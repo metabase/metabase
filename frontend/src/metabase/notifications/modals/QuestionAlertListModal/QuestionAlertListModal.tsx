@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { usePreviousDistinct } from "react-use";
 import { t } from "ttag";
 
@@ -7,10 +7,9 @@ import {
   useUnsubscribeFromNotificationMutation,
   useUpdateNotificationMutation,
 } from "metabase/api";
-import { useDispatch } from "metabase/lib/redux";
+import { useToast } from "metabase/common/hooks/use-toast";
 import { DeleteAlertConfirmModal } from "metabase/notifications/modals/DeleteAlertConfirmModal";
 import { UnsubscribeConfirmModal } from "metabase/notifications/modals/UnsubscribeConfirmModal";
-import { addUndo } from "metabase/redux/undo";
 import type Question from "metabase-lib/v1/Question";
 import type { Notification } from "metabase-types/api";
 
@@ -34,7 +33,7 @@ export const QuestionAlertListModal = ({
 }) => {
   const [editingItem, setEditingItem] = useState<Notification | null>(null);
 
-  const dispatch = useDispatch();
+  const [sendToast] = useToast();
 
   const { data: questionNotifications } = useListNotificationsQuery({
     card_id: question.id(),
@@ -44,11 +43,23 @@ export const QuestionAlertListModal = ({
   const [updateNotification] = useUpdateNotificationMutation();
   const [unsubscribe] = useUnsubscribeFromNotificationMutation();
 
-  const [activeModal, setActiveModal] = useState<AlertModalMode>(
-    !questionNotifications || questionNotifications.length === 0
-      ? "create-modal"
-      : "list-modal",
+  const [activeModal, setActiveModal] = useState<AlertModalMode | null>(
+    questionNotifications ? getDefaultActiveModal(questionNotifications) : null,
   );
+
+  useEffect(() => {
+    /**
+     * Attempt to set the active modal only once when it's null.
+     *
+     * In the core app, this is a noop because the data is already
+     * loaded and activeModal will not be null. However, in the SDK,
+     * we'll need to wait for the data to load, so the activeModal
+     * will be null at first.
+     */
+    if (questionNotifications && activeModal === null) {
+      setActiveModal(getDefaultActiveModal(questionNotifications));
+    }
+  }, [activeModal, questionNotifications]);
 
   const previousActiveModal = usePreviousDistinct(activeModal);
 
@@ -67,17 +78,15 @@ export const QuestionAlertListModal = ({
     });
 
     if (result.error) {
-      dispatch(
-        addUndo({
-          icon: "warning",
-          toastColor: "error",
-          message: t`An error occurred`,
-        }),
-      );
+      sendToast({
+        icon: "warning",
+        toastColor: "error",
+        message: t`An error occurred`,
+      });
       return;
     }
 
-    dispatch(addUndo({ message: t`The alert was successfully deleted.` }));
+    sendToast({ message: t`The alert was successfully deleted.` });
 
     const alertCount = questionNotifications?.length || 0;
     // if we have just unsubscribed from the last alert, close the popover
@@ -92,17 +101,15 @@ export const QuestionAlertListModal = ({
     const result = await unsubscribe(alert.id);
 
     if (result.error) {
-      dispatch(
-        addUndo({
-          icon: "warning",
-          toastColor: "error",
-          message: t`An error occurred`,
-        }),
-      );
+      sendToast({
+        icon: "warning",
+        toastColor: "error",
+        message: t`An error occurred`,
+      });
       return;
     }
 
-    dispatch(addUndo({ message: t`Successfully unsubscribed.` }));
+    sendToast({ message: t`Successfully unsubscribed.` });
 
     const alertCount = questionNotifications?.length || 0;
     // if we have just unsubscribed from the last alert, close the popover
@@ -140,6 +147,7 @@ export const QuestionAlertListModal = ({
 
       {(activeModal === "create-modal" || activeModal === "update-modal") && (
         <CreateOrEditQuestionAlertModal
+          question={question}
           editingNotification={
             activeModal === "update-modal" && editingItem
               ? editingItem
@@ -167,3 +175,9 @@ export const QuestionAlertListModal = ({
     </>
   );
 };
+
+function getDefaultActiveModal(
+  questionNotifications: Notification[],
+): AlertModalMode {
+  return questionNotifications.length === 0 ? "create-modal" : "list-modal";
+}

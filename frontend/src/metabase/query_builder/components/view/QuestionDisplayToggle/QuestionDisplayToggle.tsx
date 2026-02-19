@@ -12,7 +12,7 @@ export interface QuestionDisplayToggleProps {
   onToggleRawTable: (isShowingRawTable: boolean) => void;
 }
 
-const QuestionDisplayToggle = ({
+export const QuestionDisplayToggle = ({
   className,
   isShowingRawTable,
   onToggleRawTable,
@@ -83,5 +83,3 @@ const QuestionDisplayToggle = ({
     />
   );
 };
-
-export { QuestionDisplayToggle };

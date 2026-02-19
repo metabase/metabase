@@ -1,6 +1,6 @@
-import type { JSX, ReactNode } from "react";
+import type { ReactNode } from "react";
 
-import type { MetabaseTheme } from "metabase/embedding-sdk/theme";
+import type { MetabaseEmbeddingTheme } from "metabase/embedding-sdk/theme";
 
 import type { MetabaseAuthConfig } from "./auth-config";
 import type { SdkEventHandlersConfig } from "./events";
@@ -32,7 +32,7 @@ export interface MetabaseProviderProps {
   /**
    * See [Appearance](https://www.metabase.com/docs/latest/embedding/sdk/appearance).
    */
-  theme?: MetabaseTheme;
+  theme?: MetabaseEmbeddingTheme;
 
   /**
    * See [Plugins](https://www.metabase.com/docs/latest/embedding/sdk/plugins).
@@ -52,8 +52,10 @@ export interface MetabaseProviderProps {
 
   /**
    * A custom loader component to display while the SDK is loading.
+   *
+   * The component receives an optional `label` prop that can be used to display a loading message.
    **/
-  loaderComponent?: () => JSX.Element;
+  loaderComponent?: React.ComponentType<{ label?: string }>;
 
   /**
    * A custom error component to display when the SDK encounters an error.

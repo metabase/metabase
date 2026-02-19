@@ -6,13 +6,13 @@ import {
 } from "__support__/storybook";
 import { Box } from "metabase/ui";
 
-import { PivotTable } from "./PivotTable";
+import { PivotTableView } from "./PivotTable";
 import { PivotTableTestWrapper } from "./pivot-table-test-mocks";
 import { PIVOT_3_ROWS_NO_COLUMNS } from "./stories-data";
 
 export default {
   title: "viz/PivotTable",
-  component: PivotTable,
+  component: PivotTableView,
 };
 
 export const Default: StoryFn = () => {
@@ -27,8 +27,7 @@ export const EmbeddingTheme: StoryFn = () => {
   const theme = {
     colors: {
       border: "#95a5a6",
-      background: "#4c5773",
-      "background-hover": "#46464b",
+      background: "#46464b",
     },
     components: {
       table: {

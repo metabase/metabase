@@ -92,7 +92,6 @@ const DestinationDatabasesListItem = ({
         <DatabaseConnectionHealthInfo
           databaseId={database.id}
           displayText="tooltip"
-          data-testid="destination-db-health-info"
         />
         <Text>{database.name}</Text>
       </Flex>

@@ -22,7 +22,7 @@ export const ResizeNode: Node<{
 }> = Node.create({
   name: "resizeNode",
   group: "block",
-  content: "(flexContainer | cardEmbed)",
+  content: "(flexContainer|cardEmbed)",
   draggable: false,
   selectable: false,
   disableDropCursor: true,

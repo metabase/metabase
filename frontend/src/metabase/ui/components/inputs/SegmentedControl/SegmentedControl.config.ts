@@ -22,10 +22,11 @@ export const segmentedControlOverrides: MantineThemeOverride["components"] = {
     },
     vars: (theme, props) => ({
       root: {
-        "--sc-active-text-color": props.c ?? "var(--mb-color-text-dark)",
-        "--sc-background-color": props.bg ?? "var(--mb-color-bg-medium)",
+        "--sc-active-text-color": props.c ?? "var(--mb-color-text-primary)",
+        "--sc-background-color":
+          props.bg ?? "var(--mb-color-background-tertiary)",
         ...(!props.color && {
-          "--sc-color": "var(--mb-color-bg-white)",
+          "--sc-color": "var(--mb-color-background-primary)",
         }),
         "--sc-padding": getPadding(theme, props),
         "--sc-font-size": theme.fontSizes.md,

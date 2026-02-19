@@ -8,7 +8,7 @@ export type NodeType = {
   // Number of operands to expect for this node on the right side
   rightOperands: number;
   // Maximum number of children before this node is considered complete. May be
-  // `Infinity` for nodes lik ARG_LIST, or number of left+right operands
+  // `Infinity` for nodes like ARG_LIST, or number of left+right operands
   expectedChildCount: number;
   // Check child constraints
   checkChildConstraints: (

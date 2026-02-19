@@ -9,10 +9,11 @@ import {
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { useSelector } from "metabase/lib/redux";
 import { getUserIsAdmin } from "metabase/selectors/user";
-import { Group, Tabs, Title } from "metabase/ui";
+import { Box, Group, Tabs, Title } from "metabase/ui";
 import { useListTenantsQuery } from "metabase-enterprise/api";
 
-import { CreateTenantCollectionButton } from "../components/CreateTenantCollectionButton";
+import { EditUserStrategySettingsButton } from "../EditUserStrategySettingsButton";
+import { TenantsDocsButton } from "../TenantsDocsButton";
 import { TenantsListing } from "../components/TenantsListing";
 
 import S from "./TenantsListingApp.module.css";
@@ -54,12 +55,18 @@ export const TenantsListingApp = ({
     }
   }, [hasDeactivatedTenants]);
 
+  const hasNoTenants = data?.data?.length === 0;
+
   return (
-    <div>
+    // Make the layout narrow when there are no tenants
+    <Box maw={hasNoTenants ? "700px" : undefined} mx="auto">
       <Group justify="space-between" w="100%" mb="lg">
         <Title order={1}>{t`Tenants`}</Title>
 
-        <CreateTenantCollectionButton />
+        <Group gap="sm">
+          <TenantsDocsButton />
+          <EditUserStrategySettingsButton page="tenants" />
+        </Group>
       </Group>
 
       {isAdmin && hasDeactivatedTenants && (
@@ -82,11 +89,12 @@ export const TenantsListingApp = ({
             searchInputValue={searchInputValue}
             setSearchInputValue={setSearchInputValue}
             status={status}
+            hasNoTenants={hasNoTenants}
           />
         </LoadingAndErrorWrapper>
 
         {children}
       </SettingsSection>
-    </div>
+    </Box>
   );
 };

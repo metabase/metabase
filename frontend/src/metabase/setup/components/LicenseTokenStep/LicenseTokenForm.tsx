@@ -1,7 +1,7 @@
 import { c, t } from "ttag";
 
-import ExternalLink from "metabase/common/components/ExternalLink";
-import FormSubmitButton from "metabase/common/components/FormSubmitButton";
+import { ExternalLink } from "metabase/common/components/ExternalLink";
+import { FormSubmitButton } from "metabase/common/components/FormSubmitButton";
 import { useStoreUrl } from "metabase/common/hooks";
 import {
   Form,
@@ -108,7 +108,7 @@ export const LicenseTokenForm = ({
               px={0}
               fw="normal"
             >{t`I'll activate later`}</Button>
-            <Text c="text-light" size="sm">
+            <Text c="text-tertiary" size="sm">
               {t`You won't have access to paid features until you activate.`}
             </Text>
           </Box>

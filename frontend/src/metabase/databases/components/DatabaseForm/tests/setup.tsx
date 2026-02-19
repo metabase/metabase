@@ -1,4 +1,4 @@
-import { setupEnterprisePlugins } from "__support__/enterprise";
+import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
 import { mockSettings } from "__support__/settings";
 import { renderWithProviders } from "__support__/ui";
 import type {
@@ -99,7 +99,7 @@ export const TEST_ENGINES: Record<string, Engine> = {
 
 export interface SetupOpts {
   settings?: Settings;
-  hasEnterprisePlugins?: boolean;
+  enterprisePlugins?: Parameters<typeof setupEnterpriseOnlyPlugin>[0][];
   engines?: Record<string, Engine>;
   initialValues?: Partial<DatabaseData> & { engine?: EngineKey };
   isAdvanced?: boolean;
@@ -107,7 +107,7 @@ export interface SetupOpts {
 
 export const setup = ({
   settings,
-  hasEnterprisePlugins,
+  enterprisePlugins,
   engines = TEST_ENGINES,
   initialValues = {},
   isAdvanced = true,
@@ -116,8 +116,10 @@ export const setup = ({
     settings: mockSettings({ ...settings, engines }),
   });
 
-  if (hasEnterprisePlugins) {
-    setupEnterprisePlugins();
+  if (enterprisePlugins) {
+    enterprisePlugins.forEach((plugin) => {
+      setupEnterpriseOnlyPlugin(plugin);
+    });
   }
 
   const onSubmit = jest.fn();

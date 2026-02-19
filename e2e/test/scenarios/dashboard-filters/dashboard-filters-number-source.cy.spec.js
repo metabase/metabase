@@ -230,7 +230,7 @@ const filterDashboard = ({ isLabeled = false, isDropdown = false } = {}) => {
 
   if (isLabeled) {
     H.popover().first().findByPlaceholderText("Enter a number").type("T");
-    // eslint-disable-next-line no-unsafe-element-filtering
+    // eslint-disable-next-line metabase/no-unsafe-element-filtering
     H.popover().last().findByText("Twenty").click();
     H.popover().first().button("Add filter").click();
     return;

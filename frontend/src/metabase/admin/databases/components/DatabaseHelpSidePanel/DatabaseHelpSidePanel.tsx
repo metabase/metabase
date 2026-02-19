@@ -56,7 +56,7 @@ export const DatabaseHelpSidePanel = ({ engineKey, onClose }: Props) => {
       display="flex"
       flex={{ sm: "1 0 20rem", md: "1 0 26.5rem", base: "1 0 100%" }}
       h="100%"
-      bg="var(--mb-color-bg-white)"
+      bg="background-primary"
     >
       <Box p="xl" w="100%">
         <Flex align="baseline" justify="space-between" mb="md">

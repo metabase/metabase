@@ -13,6 +13,7 @@ import {
 import { usePrevious, useUnmount } from "react-use";
 import { isEqual, isObject, noop } from "underscore";
 
+import { useEmbeddingEntityContext } from "metabase/embedding/context";
 import { getTabHiddenParameterSlugs } from "metabase/public/lib/tab-parameters";
 import type {
   Dashboard,
@@ -52,7 +53,6 @@ type DashboardActionButtonList = DashboardActionKey[] | null;
 
 export type DashboardContextOwnProps = {
   dashboardId: DashboardId;
-  token?: EntityToken | null;
   parameterQueryParams?: ParameterValuesMap;
   onLoad?: (dashboard: Dashboard) => void;
   onError?: (error: unknown) => void;
@@ -77,6 +77,11 @@ export type DashboardContextOwnProps = {
    * Forcing passing it isn't ideal since we only need to do this in a couple of places
    */
   onNewQuestion?: () => void;
+  /**
+   * When true, internal click behaviors (dashboard/question links) are preserved
+   * instead of being filtered out. Used by the SDK for internal navigation.
+   */
+  enableEntityNavigation?: boolean;
 };
 
 export type DashboardContextOwnResult = {
@@ -119,7 +124,6 @@ const DashboardContextProviderInner = forwardRef(
   function DashboardContextProviderInner(
     {
       dashboardId,
-      token,
       parameterQueryParams = {},
       onLoad,
       onLoadWithoutCards,
@@ -149,6 +153,7 @@ const DashboardContextProviderInner = forwardRef(
       cardTitled = true,
       getClickActionMode = undefined,
       withFooter = true,
+      enableEntityNavigation = true, // true in core app, SDK passes it down as false
 
       // redux selectors
       dashboard,
@@ -185,6 +190,8 @@ const DashboardContextProviderInner = forwardRef(
     const previousDashboardId = usePrevious(dashboardId);
     const previousTabId = usePrevious(selectedTabId);
     const previousParameterValues = usePrevious(parameterValues);
+
+    const { token } = useEmbeddingEntityContext();
 
     const { refreshDashboardCardData } = useRefreshDashboard({
       dashboardId,
@@ -399,7 +406,6 @@ const DashboardContextProviderInner = forwardRef(
       <DashboardContext.Provider
         value={{
           dashboardId,
-          token,
           dashboard: dashboardWithFilteredCards,
           parameterQueryParams,
           onLoad,
@@ -433,6 +439,7 @@ const DashboardContextProviderInner = forwardRef(
           cardTitled,
           getClickActionMode,
           withFooter,
+          enableEntityNavigation,
 
           // redux selectors
           selectedTabId,

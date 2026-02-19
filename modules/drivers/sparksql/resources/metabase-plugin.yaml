@@ -10,19 +10,25 @@ driver:
     lazy-load: true
     parent: hive-like
     connection-properties:
-      - merge:
-        - host
-        - required: true
-      - merge:
-          - port
-          - placeholder: 10000
+      - group:
+          container-style: ["grid", "3fr 1fr"]
+          fields:
+            - merge:
+                - host
+                - required: true
+            - merge:
+                - port
+                - placeholder: 10000
       - merge:
           - dbname
           - placeholder: default
       - user
       - password
       - cloud-ip-address-info
-      - ssh-tunnel
+      - group:
+          container-style: ["component", "backdrop"]
+          fields:
+          - ssh-tunnel
       - advanced-options-start
       - merge:
           - additional-options

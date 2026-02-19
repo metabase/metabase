@@ -1,7 +1,7 @@
 import { t } from "ttag";
 import _ from "underscore";
 
-import Button from "metabase/common/components/Button";
+import { Button } from "metabase/common/components/Button";
 import { getFormattedTime } from "metabase/common/components/DateTime/DateTime";
 import { getRelativeTime } from "metabase/lib/time-dayjs";
 import type { RevisionOrModerationEvent } from "metabase/plugins";
@@ -24,7 +24,7 @@ interface TimelineProps {
   canWrite: boolean;
   revert: (revision: Revision) => void;
   className?: string;
-  entity: "card" | "dashboard";
+  entity: "card" | "dashboard" | "document" | "transform";
 }
 
 export function Timeline({
@@ -86,5 +86,5 @@ function EventIcon({ icon }: { icon: RevisionOrModerationEvent["icon"] }) {
   if (_.isObject(icon)) {
     return <Icon name={icon.name} c={icon.color} size={16} />;
   }
-  return <Icon name={icon} c="text-light" size={16} />;
+  return <Icon name={icon} c="text-tertiary" size={16} />;
 }

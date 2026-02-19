@@ -33,11 +33,15 @@ const timelineEventProps = {
 const mapDispatchToProps = (dispatch: any) => ({
   onSubmit: async (event: TimelineEvent, timeline?: Timeline) => {
     await dispatch(TimelineEvents.actions.update(event));
-    timeline && dispatch(push(Urls.timelineInCollection(timeline)));
+    if (timeline) {
+      dispatch(push(Urls.timelineInCollection(timeline)));
+    }
   },
   onArchive: async (event: TimelineEvent, timeline?: Timeline) => {
     await dispatch(TimelineEvents.actions.setArchived(event, true));
-    timeline && dispatch(push(Urls.timelineInCollection(timeline)));
+    if (timeline) {
+      dispatch(push(Urls.timelineInCollection(timeline)));
+    }
   },
 });
 

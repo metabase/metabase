@@ -112,7 +112,7 @@ export const Body = styled.main`
 `;
 
 export const ActionButtonsContainer = styled.div`
-  color: var(--mb-color-text-medium);
+  color: var(--mb-color-text-secondary);
   margin-left: auto;
 `;
 

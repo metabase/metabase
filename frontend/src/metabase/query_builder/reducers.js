@@ -270,6 +270,7 @@ export const uiControls = handleActions(
     [onOpenQuestionInfo]: (state) =>
       setUIControls(state, {
         ...UI_CONTROLS_SIDEBAR_DEFAULTS,
+        ...CLOSED_NATIVE_EDITOR_SIDEBARS,
         isShowingQuestionInfoSidebar: true,
         queryBuilderMode: "view",
       }),

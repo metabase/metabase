@@ -1,1 +1,1 @@
-export type PillSize = "small" | "medium" | "large";
+export type PillSize = "xsmall" | "small" | "medium" | "large";

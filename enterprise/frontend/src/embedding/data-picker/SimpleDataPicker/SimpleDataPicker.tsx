@@ -7,8 +7,8 @@ import type { SimpleDataPickerProps } from "metabase/plugins";
 import { Box, Popover } from "metabase/ui";
 import { getQuestionVirtualTableId } from "metabase-lib/v1/metadata/utils/saved-questions";
 import type { SearchModel, SearchResult, TableId } from "metabase-types/api";
-import { SortDirection, type SortingOptions } from "metabase-types/api/sorting";
-import type { EmbeddingEntityType } from "metabase-types/store/embedding-data-picker";
+import type { SortingOptions } from "metabase-types/api/sorting";
+import type { ModularEmbeddingEntityType } from "metabase-types/store/embedding-data-picker";
 
 import { SimpleDataPickerView } from "./SimpleDataPickerView";
 
@@ -42,7 +42,7 @@ export function SimpleDataPicker({
               : entity.id,
         };
       }),
-      { sort_column: "name", sort_direction: SortDirection.Asc },
+      { sort_column: "name", sort_direction: "asc" },
     );
   }, [data]);
 
@@ -58,7 +58,12 @@ export function SimpleDataPicker({
       trapFocus
     >
       <Popover.Target>
-        <Box onClick={toggle}>{triggerElement}</Box>
+        <Box
+          onClick={toggle}
+          data-testid="embedding-simple-data-picker-trigger"
+        >
+          {triggerElement}
+        </Box>
       </Popover.Target>
       <Popover.Dropdown>
         <DelayedLoadingAndErrorWrapper loading={isLoading} error={error}>
@@ -91,14 +96,14 @@ function sortEntities(
     const result = compareString(aValue, bValue);
 
     // No need to check for 0 since -0 and 0 are equal
-    return sort_direction === SortDirection.Asc ? result : -result;
+    return sort_direction === "asc" ? result : -result;
   });
 }
 
 const compareString = (a: string, b: string) => a.localeCompare(b);
 
 function translateEntityTypesToSearchModels(
-  entityTypes: EmbeddingEntityType[],
+  entityTypes: ModularEmbeddingEntityType[],
 ): SearchModel[] {
   const searchModels: SearchModel[] = [];
 

@@ -101,7 +101,7 @@ describe("memoize", () => {
     expect(f.biz()).toEqual(2);
   });
 
-  it("should throw on nonexistant keys", () => {
+  it("should throw on nonexistent keys", () => {
     expect(() => {
       class fooInner {}
       memoizeClass("bar")(fooInner);

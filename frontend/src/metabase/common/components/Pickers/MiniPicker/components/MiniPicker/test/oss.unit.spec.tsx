@@ -115,6 +115,7 @@ describe("MiniPicker", () => {
         value: {
           model: "table",
           id: 4,
+          // @ts-expect-error - needed to make compatible with minipicker and entity picker
           db_id: 1,
           schema: "pokemon",
           name: "cards",
@@ -194,7 +195,6 @@ describe("MiniPicker", () => {
         value: {
           id: 202,
           model: "card",
-          name: "Rosings",
           database_id: 1,
         },
       });
@@ -216,6 +216,12 @@ describe("MiniPicker", () => {
       await setup({ searchQuery: "bing" });
       expect(await screen.findByText("Bingley")).toBeInTheDocument();
       expect(await screen.findByText("Misc Metrics")).toBeInTheDocument();
+    });
+
+    it("shows the collection name for our analytics", async () => {
+      await setup({ searchQuery: "Fan" });
+      expect(await screen.findByText("Fanny")).toBeInTheDocument();
+      expect(await screen.findByText("Our analytics")).toBeInTheDocument();
     });
 
     it("shows db and schema names for table items in search results", async () => {

@@ -16,6 +16,7 @@
    [metabase.search.ingestion :as search.ingestion]
    [metabase.search.permissions :as search.permissions]
    [metabase.search.settings :as search.settings]
+   [metabase.search.spec :as search.spec]
    [metabase.search.util :as search.util]
    [metabase.settings.core :as setting]
    [metabase.util :as u]
@@ -137,7 +138,7 @@
       (throw (ex-info "Search Index not found."
                       {:search-engine      search-engine
                        :db-type            (mdb/db-type)
-                       :version            @#'search.index/*index-version-id*
+                       :version            (search.spec/index-version-hash)
                        :lang_code          (i18n/site-locale-string)
                        :forced-init?       init-now?
                        :index-state-before index-state
@@ -159,6 +160,10 @@
           query   (->> (search.index/search-query search-string search-ctx [:legacy_input])
                        (add-collection-join-and-where-clauses search-ctx)
                        (add-table-where-clauses search-ctx)
+                       (#(sql.helpers/where % (search.filter/transform-source-type-where-clause
+                                               search-ctx
+                                               :search_index.model
+                                               :search_index.source_type)))
                        (search.scoring/with-scores search-ctx scorers)
                        (search.filter/with-filters search-ctx))]
       (->> (t2/query query)
@@ -180,6 +185,10 @@
         search-ctx         (assoc search-ctx :models applicable-models)]
     (->> (search.index/search-query (:search-string search-ctx) search-ctx [[[:distinct :model] :model]])
          (add-collection-join-and-where-clauses search-ctx)
+         (#(sql.helpers/where % (search.filter/transform-source-type-where-clause
+                                 search-ctx
+                                 :search_index.model
+                                 :search_index.source_type)))
          (search.filter/with-filters search-ctx)
          t2/query
          (into #{} (map :model)))))

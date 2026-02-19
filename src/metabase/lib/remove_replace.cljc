@@ -163,10 +163,7 @@
             (remove-stage-references stage-number unmodified-query-for-stage target-uuid)
             (update-stale-references stage-number unmodified-query-for-stage))
 
-        (q :guard (and (vector? q)
-                       (or (= q [:breakout])
-                           (= q [:fields])
-                           (and (= (nth q 0) :joins) (= (nth q 2) :fields) (= (count q) 3)))))
+        (:or [:breakout] [:fields] [:joins _ :fields])
         (-> (remove-stage-references result stage-number unmodified-query-for-stage target-uuid)
             (update-stale-references stage-number unmodified-query-for-stage))
 
@@ -181,7 +178,7 @@
                      (when-let [clauses (get-in stage location)]
                        (->> clauses
                             (keep (fn [clause]
-                                    (lib.util.match/match-lite-recursive clause
+                                    (lib.util.match/match-lite clause
                                       [(op :guard (= op target-op))
                                        (opts :guard (or (empty? target-opts)
                                                         (set/subset? (set target-opts) (set opts))))
@@ -377,9 +374,9 @@
   [query next-stage-number [col replaced-col]]
   (let [target-ref-id (:lib/desired-column-alias col)
         replaced-ref (lib.ref/ref (assoc replaced-col :lib/source :source/previous-stage))]
-    (map (fn [target-ref] [target-ref (fresh-ref replaced-ref)])
-         (lib.util.match/match (lib.util/query-stage query next-stage-number)
-           [:field _ target-ref-id] &match))))
+    (mapv (fn [target-ref] [target-ref (fresh-ref replaced-ref)])
+          (lib.util.match/match-many (lib.util/query-stage query next-stage-number)
+            [:field _ (id :guard (= id target-ref-id))] &match))))
 
 (defn- typed-expression
   [query stage-number expression]

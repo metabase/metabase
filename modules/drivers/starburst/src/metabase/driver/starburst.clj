@@ -1,6 +1,6 @@
 (ns metabase.driver.starburst
   "starburst driver."
-  (:refer-clojure :exclude [select-keys get-in])
+  (:refer-clojure :exclude [select-keys])
   (:require
    [clojure.java.jdbc :as jdbc]
    [clojure.set :as set]
@@ -10,6 +10,7 @@
    [java-time.api :as t]
    [metabase.driver :as driver]
    [metabase.driver-api.core :as driver-api]
+   [metabase.driver.connection :as driver.conn]
    [metabase.driver.sql :as driver.sql]
    [metabase.driver.sql-jdbc.common :as sql-jdbc.common]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
@@ -26,7 +27,7 @@
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.i18n :refer [trs]]
    [metabase.util.log :as log]
-   [metabase.util.performance :refer [select-keys get-in]])
+   [metabase.util.performance :refer [select-keys]])
   (:import
    (com.mchange.v2.c3p0 C3P0ProxyConnection)
    (io.trino.jdbc TrinoConnection)
@@ -489,37 +490,39 @@
             (jdbc/reducible-result-set rs {})))))
 
 (defmethod driver/describe-database* :starburst
-  [driver {{:keys [catalog schema] :as _details} :details :as database}]
-  (sql-jdbc.execute/do-with-connection-with-options
-   driver
-   database
-   nil
-   (fn [^Connection conn]
-     (let [schemas (if schema
-                     #{(describe-schema driver conn catalog schema)}
-                     (all-schemas driver conn catalog))]
-       {:tables (reduce set/union #{} schemas)}))))
+  [driver database]
+  (let [{:keys [catalog schema]} (driver.conn/effective-details database)]
+    (sql-jdbc.execute/do-with-connection-with-options
+     driver
+     database
+     nil
+     (fn [^Connection conn]
+       (let [schemas (if schema
+                       #{(describe-schema driver conn catalog schema)}
+                       (all-schemas driver conn catalog))]
+         {:tables (reduce set/union #{} schemas)})))))
 
 (defmethod driver/describe-table :starburst
-  [driver {{:keys [catalog] :as _details} :details :as database} {schema :schema, table-name :name}]
-  (sql-jdbc.execute/do-with-connection-with-options
-   driver
-   database
-   nil
-   (fn [^Connection conn]
-     (with-open [stmt (.createStatement conn)]
-       (let [sql (describe-table-sql driver catalog schema table-name)
-             rs (sql-jdbc.execute/execute-statement! driver stmt sql)]
-         {:schema schema
-          :name   table-name
-          :fields (into
-                   #{}
-                   (map-indexed (fn [idx {:keys [column type] :as _col}]
-                                  {:name column
-                                   :database-type type
-                                   :base-type (starburst-type->base-type type)
-                                   :database-position idx}))
-                   (jdbc/reducible-result-set rs {}))})))))
+  [driver database {schema :schema, table-name :name}]
+  (let [{:keys [catalog]} (driver.conn/effective-details database)]
+    (sql-jdbc.execute/do-with-connection-with-options
+     driver
+     database
+     nil
+     (fn [^Connection conn]
+       (with-open [stmt (.createStatement conn)]
+         (let [sql (describe-table-sql driver catalog schema table-name)
+               rs  (sql-jdbc.execute/execute-statement! driver stmt sql)]
+           {:schema schema
+            :name   table-name
+            :fields (into
+                     #{}
+                     (map-indexed (fn [idx {:keys [column type] :as _col}]
+                                    {:name              column
+                                     :database-type     type
+                                     :base-type         (starburst-type->base-type type)
+                                     :database-position idx}))
+                     (jdbc/reducible-result-set rs {}))}))))))
 
 (defmethod driver/db-default-timezone :starburst
   [driver database]
@@ -659,7 +662,7 @@
          (t/zone-offset 0))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
-;;; |                                          SQL Statment Operations                                               |
+;;; |                                          SQL Statement Operations                                              |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 ; Metabase tests require a specific error when an invalid number of parameters are passed
@@ -993,7 +996,7 @@
 
 (defmethod driver.sql/default-database-role :starburst
   [_driver database]
-  (get-in database [:details :user]))
+  (:user (driver.conn/effective-details database)))
 
 (defmethod driver/set-role! :starburst
   [_driver ^Connection conn role]

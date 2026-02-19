@@ -1,18 +1,18 @@
 ::-webkit-input-placeholder {
-  color: var(--mb-color-text-light);
+  color: var(--mb-color-text-tertiary);
 }
 
 :-moz-placeholder {
-  color: var(--mb-color-text-light);
+  color: var(--mb-color-text-tertiary);
 }
 
 :-ms-input-placeholder {
-  color: var(--mb-color-text-light);
+  color: var(--mb-color-text-tertiary);
 }
 
 .FormField {
   margin-bottom: 1.5em;
-  color: var(--mb-color-text-medium);
+  color: var(--mb-color-text-secondary);
 }
 
 .FormField.FormFieldError {
@@ -31,8 +31,8 @@
   font-family: var(--mb-default-font-family);
   font-weight: 700;
   font-size: 16px;
-  color: var(--mb-color-text-dark);
-  background-color: var(--mb-color-bg-white);
+  color: var(--mb-color-text-primary);
+  background-color: var(--mb-color-background-primary);
   padding: 0.75em;
   border: 1px solid var(--mb-color-border);
   border-radius: 8px;

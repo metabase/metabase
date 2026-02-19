@@ -102,11 +102,19 @@ export const collectionApi = Api.injectEndpoints({
         body,
       }),
       invalidatesTags: (_, error, payload) => {
-        return invalidateTags(error, [
+        const tags = [
           listTag("collection"),
           idTag("collection", payload.id),
           idTag("collection", payload.parent_id ?? "root"),
-        ]);
+        ];
+
+        // When archiving/restoring a collection, invalidate bookmarks
+        // since items within the collection may be bookmarked
+        if ("archived" in payload) {
+          tags.push(listTag("bookmark"));
+        }
+
+        return invalidateTags(error, tags);
       },
     }),
     deleteCollection: builder.mutation<void, DeleteCollectionRequest>({

@@ -72,10 +72,11 @@
   #{:internal :personal :api-key})
 
 (def ^:private insert-default-values
-  {:date_joined  :%now
-   :last_login   nil
-   :is_active    true
-   :is_superuser false})
+  {:date_joined     :%now
+   :last_login      nil
+   :is_active       true
+   :is_superuser    false
+   :is_data_analyst false})
 
 (defn user-local-settings
   "Returns the user's settings (defaulting to an empty map) or `nil` if the user/user-id isn't set"
@@ -120,7 +121,8 @@
   (validate-user-type! user-type)
   (validate-user-locale! locale)
   (validate-sso-setup! sso_source)
-  (premium-features/airgap-check-user-count))
+  (when (or (nil? user-type) (= user-type :personal))
+    (premium-features/assert-airgap-allows-user-creation!)))
 
 ;;; -------------------------------------------------- Password Management --------------------------------------------------
 
@@ -185,9 +187,9 @@
 
 (defn- validate-last-admin-not-archived!
   "Prevent archiving the last admin user by throwing an exception."
-  [in-admin-group? active?]
+  [id in-admin-group? active?]
   (when (and in-admin-group? (false? active?))
-    (perms/throw-if-last-admin!)))
+    (perms/throw-if-last-admin! id)))
 
 ;;; -------------------------------------------------- User Archival --------------------------------------------------
 
@@ -274,7 +276,7 @@
                                               :group_id (:id (perms/admin-group))
                                               :user_id id)
         hashed-pw (prepare-password-for-update changes)]
-    (validate-last-admin-not-archived! in-admin-group? active?)
+    (validate-last-admin-not-archived! id in-admin-group? active?)
     (when email (validate-user-email! email))
     (when locale (validate-user-locale! locale))
     (handle-superuser-toggle! id superuser? in-admin-group?)
@@ -345,7 +347,7 @@
 
 (def ^:private default-user-columns
   "Sequence of columns that are normally returned when fetching a User from the DB."
-  [:id :email :date_joined :first_name :last_name :last_login :is_superuser :is_qbnewb :tenant_id])
+  [:id :email :date_joined :first_name :last_name :last_login :is_superuser :is_data_analyst :is_qbnewb :tenant_id])
 
 (def admin-or-self-visible-columns
   "Sequence of columns that we can/should return for admins fetching a list of all Users, or for the current user
@@ -544,22 +546,52 @@
    [:like :%lower.email      (wildcard-query query)]])
 
 (defn filter-clauses
-  "Honeysql clauses for filtering on users
-  - with a status,
-  - with a query,
-  - with a group_id,
-  - with include_deactivated"
-  [status query group_ids include_deactivated & [{:keys [limit offset]}]]
+  "Honeysql clauses for filtering on users.
+
+  Options:
+    :status                  - filter by status (\"active\", \"deactivated\", \"all\")
+    :query                   - text search on first_name, last_name, email
+    :group-ids               - filter by permissions group membership
+    :include-deactivated     - legacy alias for status=all
+    :is-data-analyst?        - filter by data analyst status (true/false)
+    :can-access-data-studio? - filter by Data Studio access (analysts, superusers, or users with table metadata perms)
+    :limit                   - pagination limit
+    :offset                  - pagination offset"
+  [{:keys [status query group-ids include-deactivated is-data-analyst? can-access-data-studio? limit offset]}]
   (cond-> {}
     true                                    (sql.helpers/where [:= :core_user.type "personal"])
-    true                                    (sql.helpers/where (status-clause status include_deactivated))
+    true                                    (sql.helpers/where (status-clause status include-deactivated))
     ;; don't send the internal user
     (perms/sandboxed-or-impersonated-user?) (sql.helpers/where [:= :core_user.id api/*current-user-id*])
     (some? query)                           (sql.helpers/where (query-clause query))
-    (some? group_ids)                       (sql.helpers/right-join
+    (some? is-data-analyst?)                (sql.helpers/where (if is-data-analyst?
+                                                                 :core_user.is_data_analyst
+                                                                 [:not :core_user.is_data_analyst]))
+    (some? can-access-data-studio?)         (sql.helpers/where (if can-access-data-studio?
+                                                                 [:or
+                                                                  :core_user.is_data_analyst
+                                                                  :core_user.is_superuser
+                                                                  [:in :core_user.id
+                                                                   {:select-distinct [:pgm.user_id]
+                                                                    :from [[:permissions_group_membership :pgm]]
+                                                                    :join [[:data_permissions :p] [:= :p.group_id :pgm.group_id]]
+                                                                    :where [:and
+                                                                            [:= :p.perm_type "perms/manage-table-metadata"]
+                                                                            [:= :p.perm_value "yes"]]}]]
+                                                                 [:and
+                                                                  [:not :core_user.is_data_analyst]
+                                                                  [:not :core_user.is_superuser]
+                                                                  [:not-in :core_user.id
+                                                                   {:select-distinct [:pgm.user_id]
+                                                                    :from [[:permissions_group_membership :pgm]]
+                                                                    :join [[:data_permissions :p] [:= :p.group_id :pgm.group_id]]
+                                                                    :where [:and
+                                                                            [:= :p.perm_type "perms/manage-table-metadata"]
+                                                                            [:= :p.perm_value "yes"]]}]]))
+    (some? group-ids)                       (sql.helpers/right-join
                                              :permissions_group_membership
                                              [:= :core_user.id :permissions_group_membership.user_id])
-    (some? group_ids)                       (sql.helpers/where
-                                             [:in :permissions_group_membership.group_id group_ids])
+    (some? group-ids)                       (sql.helpers/where
+                                             [:in :permissions_group_membership.group_id group-ids])
     (some? limit)                           (sql.helpers/limit limit)
     (some? offset)                          (sql.helpers/offset offset)))

@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { push } from "react-router-redux";
 import { t } from "ttag";
 
 import { permissionApi } from "metabase/api";
@@ -20,7 +21,7 @@ export const EditUserStrategyModal = ({
 }: EditUserStrategyModalProps) => {
   const dispatch = useDispatch();
 
-  const { isLoading, error, value, updateSetting } =
+  const { isLoading, error, value, updateSetting, refetch } =
     useAdminSetting("use-tenants");
 
   const [addToast] = useToast();
@@ -73,13 +74,7 @@ export const EditUserStrategyModal = ({
       return;
     }
 
-    addToast({
-      message:
-        selectedStrategy === "multi-tenant"
-          ? // eslint-disable-next-line no-literal-metabase-strings -- used in admin
-            t`You can create tenant collections from the main Metabase navigation`
-          : t`Changes saved`,
-    });
+    addToast({ message: t`Changes saved` });
 
     dispatch(
       permissionApi.util.invalidateTags([
@@ -90,6 +85,14 @@ export const EditUserStrategyModal = ({
 
     setIsApplyingAfterConfirm(false);
     onClose();
+
+    if (selectedStrategy === "multi-tenant") {
+      // Wait for settings to be refetched before navigating.
+      // This ensures `createTenantsRouteGuard` sees the updated setting.
+      await refetch();
+
+      dispatch(push("/admin/people/tenants"));
+    }
   };
 
   const handleCancel = () => {
@@ -99,15 +102,15 @@ export const EditUserStrategyModal = ({
 
   const strategyOptions = [
     {
-      value: "single-tenant",
-      title: t`Single tenant`,
-      // eslint-disable-next-line no-literal-metabase-strings -- in admin settings
-      description: t`All users exist in the same world and are managed via Metabase groups. Ideal for internal company analytics, proof of concept, or simple embedding setups.`,
-    },
-    {
       value: "multi-tenant",
       title: t`Multi tenant`,
       description: t`Each tenant operates in an isolated environment with dedicated resources and permissions. Best for SaaS platforms, scalable embedding, or strict data isolation needs.`,
+    },
+    {
+      value: "single-tenant",
+      title: t`Single tenant`,
+      // eslint-disable-next-line metabase/no-literal-metabase-strings -- in admin settings
+      description: t`All users exist in the same world and are managed via Metabase groups. Ideal for internal company analytics, proof of concept, or simple embedding setups.`,
     },
   ];
 
@@ -115,7 +118,7 @@ export const EditUserStrategyModal = ({
     <>
       <Modal
         opened={!confirmationModal && !isApplyingAfterConfirm}
-        title={t`User strategy`}
+        title={t`Pick a user strategy`}
         padding="xl"
         size="md"
         onClose={onClose}
@@ -136,10 +139,14 @@ export const EditUserStrategyModal = ({
                     className={S.radioCard}
                   >
                     <Group wrap="nowrap">
-                      <Radio.Indicator />
-
                       <div>
-                        <Text fw={700} fz="lg" lh="xl" mb="xs">
+                        <Text
+                          fw={700}
+                          fz="lg"
+                          lh="xl"
+                          mb="xs"
+                          className={S.radioCardTitle}
+                        >
                           {option.title}
                         </Text>
 

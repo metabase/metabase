@@ -8,6 +8,7 @@ import {
   useCallback,
   useEffect,
   useMemo,
+  useRef,
   useState,
 } from "react";
 import type { Route } from "react-router";
@@ -19,6 +20,7 @@ import _ from "underscore";
 
 import {
   skipToken,
+  useCopyDocumentMutation,
   useCreateBookmarkMutation,
   useCreateDocumentMutation,
   useDeleteBookmarkMutation,
@@ -28,6 +30,7 @@ import {
   useUpdateDocumentMutation,
 } from "metabase/api";
 import { canonicalCollectionId } from "metabase/collections/utils";
+import { ConfirmModal } from "metabase/common/components/ConfirmModal";
 import {
   LeaveConfirmModal,
   LeaveRouteConfirmModal,
@@ -35,9 +38,11 @@ import {
 import { CollectionPickerModal } from "metabase/common/components/Pickers/CollectionPicker";
 import { useToast } from "metabase/common/hooks";
 import { useCallbackEffect } from "metabase/common/hooks/use-callback-effect";
+import EntityCopyModal from "metabase/entities/containers/EntityCopyModal";
 import { usePageTitle } from "metabase/hooks/use-page-title";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import { extractEntityId } from "metabase/lib/urls";
+import * as Urls from "metabase/lib/urls";
 import { setErrorPage } from "metabase/redux/app";
 import { Box } from "metabase/ui";
 import type {
@@ -49,6 +54,7 @@ import type {
 import {
   trackDocumentBookmark,
   trackDocumentCreated,
+  trackDocumentDuplicated,
   trackDocumentUnsavedChangesWarningDisplayed,
   trackDocumentUpdated,
 } from "../analytics";
@@ -59,12 +65,15 @@ import {
   setChildTargetId,
   setCurrentDocument,
   setHasUnsavedChanges,
+  setIsHistorySidebarOpen,
 } from "../documents.slice";
 import { useDocumentState } from "../hooks/use-document-state";
 import { useRegisterDocumentMetabotContext } from "../hooks/use-register-document-metabot-context";
+import { useScrollToAnchor } from "../hooks/use-scroll-to-anchor";
 import {
   getDraftCards,
   getHasUnsavedChanges,
+  getIsHistorySidebarOpen,
   getSelectedEmbedIndex,
   getSelectedQuestionId,
 } from "../selectors";
@@ -73,6 +82,7 @@ import { getListCommentsQuery } from "../utils/api";
 import { DocumentArchivedEntityBanner } from "./DocumentArchivedEntityBanner";
 import { DocumentHeader } from "./DocumentHeader";
 import styles from "./DocumentPage.module.css";
+import { DocumentRevisionHistorySidebar } from "./DocumentRevisionHistorySidebar";
 import { Editor } from "./Editor";
 import { EmbedQuestionSettingsSidebar } from "./EmbedQuestionSettingsSidebar";
 
@@ -97,16 +107,22 @@ export const DocumentPage = ({
   const selectedQuestionId = useSelector(getSelectedQuestionId);
   const selectedEmbedIndex = useSelector(getSelectedEmbedIndex);
   const draftCards = useSelector(getDraftCards);
+  const isHistorySidebarOpen = useSelector(getIsHistorySidebarOpen);
   const [editorInstance, setEditorInstance] = useState<TiptapEditor | null>(
     null,
   );
+  const editorContainerRef = useRef<HTMLDivElement>(null);
   const hasUnsavedEditorChanges = useSelector(getHasUnsavedChanges);
   const [createDocument, { isLoading: isCreating }] =
     useCreateDocumentMutation();
   const [updateDocument, { isLoading: isUpdating }] =
     useUpdateDocumentMutation();
+  const [copyDocument] = useCopyDocumentMutation();
   const [collectionPickerMode, setCollectionPickerMode] = useState<
     "save" | "move" | null
+  >(null);
+  const [duplicateModalMode, setDuplicateModalMode] = useState<
+    "duplicate" | "leave" | null
   >(null);
   const [sendToast] = useToast();
 
@@ -201,6 +217,14 @@ export const DocumentPage = ({
     dispatch(setChildTargetId(paramsChildTargetId));
   }, [dispatch, paramsChildTargetId]);
 
+  // Scroll to anchor block when navigating with URL hash
+  const blockId = location.hash ? location.hash.slice(1) : null;
+  useScrollToAnchor({
+    blockId,
+    editorContainerRef,
+    isLoading: isDocumentLoading,
+  });
+
   const hasUnsavedChanges = useCallback(() => {
     const currentTitle = documentTitle.trim();
     const originalTitle = documentData?.name || "";
@@ -254,6 +278,14 @@ export const DocumentPage = ({
     [dispatch, editorInstance, documentContent, isNewDocument],
   );
 
+  const handleDuplicate = useCallback(() => {
+    if (hasUnsavedChanges()) {
+      setDuplicateModalMode("leave");
+      return;
+    }
+    setDuplicateModalMode("duplicate");
+  }, [hasUnsavedChanges]);
+
   const handleToggleBookmark = useCallback(() => {
     if (!documentId) {
       return;
@@ -263,10 +295,16 @@ export const DocumentPage = ({
       trackDocumentBookmark();
     }
 
-    isBookmarked
-      ? deleteBookmark({ type: "document", id: documentId })
-      : createBookmark({ type: "document", id: documentId });
+    if (isBookmarked) {
+      deleteBookmark({ type: "document", id: documentId });
+    } else {
+      createBookmark({ type: "document", id: documentId });
+    }
   }, [isBookmarked, deleteBookmark, createBookmark, documentId]);
+
+  const handleShowHistory = useCallback(() => {
+    dispatch(setIsHistorySidebarOpen(true));
+  }, [dispatch]);
 
   const handleSave = useCallback(
     async (collectionId: RegularCollectionId | null = null) => {
@@ -309,7 +347,7 @@ export const DocumentPage = ({
                   const _document = response.data;
                   trackDocumentUpdated(_document);
                   scheduleNavigation(() => {
-                    dispatch(push(`/document/${_document.id}`));
+                    dispatch(push(Urls.document(_document)));
                   });
                 }
                 return response;
@@ -323,7 +361,7 @@ export const DocumentPage = ({
                 const _document = response.data;
                 trackDocumentCreated(_document);
                 scheduleNavigation(() => {
-                  dispatch(replace(`/document/${_document.id}`));
+                  dispatch(replace(Urls.document(_document)));
                 });
               }
               return response;
@@ -336,12 +374,18 @@ export const DocumentPage = ({
           dispatch(clearDraftCards());
           // Mark document as clean
           dispatch(setHasUnsavedChanges(false));
+          return {
+            document: result.data,
+          };
         } else if (result.error) {
           throw result.error;
         }
       } catch (error) {
         console.error("Failed to save document:", error);
         sendToast({ message: t`Error saving document`, icon: "warning" });
+        return {
+          error: error,
+        };
       }
     },
     [
@@ -381,7 +425,11 @@ export const DocumentPage = ({
           return;
         }
 
-        isNewDocument ? setCollectionPickerMode("save") : handleSave();
+        if (isNewDocument) {
+          setCollectionPickerMode("save");
+        } else {
+          handleSave();
+        }
       }
     };
 
@@ -453,8 +501,10 @@ export const DocumentPage = ({
                 }
               }}
               onMove={() => setCollectionPickerMode("move")}
+              onDuplicate={handleDuplicate}
               onToggleBookmark={handleToggleBookmark}
               onArchive={() => handleUpdate({ archived: true })}
+              onShowHistory={handleShowHistory}
               hasComments={hasComments}
             />
             <Editor
@@ -463,8 +513,9 @@ export const DocumentPage = ({
               onQuestionSelect={handleQuestionSelect}
               initialContent={documentContent}
               onChange={handleChange}
-              editable={canWrite}
+              editable={canWrite && !isSaving}
               isLoading={isDocumentLoading}
+              editorContainerRef={editorContainerRef}
             />
           </Box>
         </Box>
@@ -484,12 +535,8 @@ export const DocumentPage = ({
           <CollectionPickerModal
             title={t`Where should we save this document?`}
             onClose={() => setCollectionPickerMode(null)}
-            options={{
-              showPersonalCollections: true,
-              showRootCollection: true,
-            }}
             entityType="document"
-            onChange={async (collection) => {
+            onChange={(collection) => {
               if (collectionPickerMode === "save") {
                 handleSave(canonicalCollectionId(collection.id));
                 setCollectionPickerMode(null);
@@ -498,6 +545,42 @@ export const DocumentPage = ({
                   collection_id: canonicalCollectionId(collection.id),
                 });
               }
+            }}
+          />
+        )}
+
+        {duplicateModalMode === "duplicate" && (
+          <EntityCopyModal
+            entityType="documents"
+            onClose={() => setDuplicateModalMode(null)}
+            onSaved={(document) => {
+              setDuplicateModalMode(null);
+              scheduleNavigation(() => {
+                dispatch(push(Urls.document(document)));
+              });
+            }}
+            entityObject={documentData}
+            title={t`Duplicate "${documentData?.name}"`}
+            overwriteOnInitialValuesChange
+            copy={async (object) => {
+              if (!documentData?.id) {
+                throw new Error(
+                  "Cannot duplicate document that has not been saved",
+                );
+              }
+
+              return await copyDocument({
+                ...object,
+                id: documentData.id,
+              }).then((response) => {
+                if (response.data) {
+                  const _document = response.data;
+                  trackDocumentDuplicated(_document);
+                  return _document;
+                } else if (response.error) {
+                  throw response.error;
+                }
+              });
             }}
           />
         )}
@@ -523,7 +606,32 @@ export const DocumentPage = ({
           onConfirm={resetDocument}
           onClose={() => forceUpdate()}
         />
+
+        <ConfirmModal
+          // only applies when trying to duplicate a document that has unsaved changes
+          opened={duplicateModalMode === "leave"}
+          confirmButtonText={t`Save changes`}
+          confirmButtonProps={{ color: "brand" }}
+          data-testid="save-confirmation"
+          message={t`You need to save before you can duplicate this document.`}
+          title={t`Save your changes first`}
+          onConfirm={async () => {
+            if ((await handleSave())?.error) {
+              throw new Error("Failed to save document");
+            }
+            setDuplicateModalMode("duplicate");
+          }}
+          onClose={() => setDuplicateModalMode(null)}
+        />
       </Box>
+      {isHistorySidebarOpen && documentData && (
+        <Box className={styles.sidebar} data-testid="document-history-sidebar">
+          <DocumentRevisionHistorySidebar
+            document={documentData}
+            onClose={() => dispatch(setIsHistorySidebarOpen(false))}
+          />
+        </Box>
+      )}
     </Box>
   );
 };

@@ -59,14 +59,18 @@
   "Operators that should be listed as options in join conditions."
   (into [:enum] condition-operators))
 
+(def default-strategy
+  "The default join strategy when `:strategy` is not specified."
+  :left-join)
+
 (mr/def ::strategy
   "Valid values for the optional `:strategy` key in a join. Note that these are only valid if the current Database
   supports that specific join type; these match 1:1 with the Database `:features`, e.g. a Database that supports left
   joins will support the `:left-join` feature.
 
-  When `:strategy` is not specified, `:left-join` is the default strategy."
+  When `:strategy` is not specified, [[default-strategy]] is used."
   [:enum
-   {:decode/normalize common/normalize-keyword, :default :left-join}
+   {:decode/normalize common/normalize-keyword, :default default-strategy}
    :left-join
    :right-join
    :inner-join
@@ -131,7 +135,8 @@
      :source-query       "join should not have :source-query; use :stages instead"
      :filter             "join should not have top-level :filters; these should belong to one of the join :stages"
      :filters            "join should not have top-level :filters; these should belong to one of the join :stages"
-     :parameters         "join should not have top-level :parameters; these should belong to one of the join :stages"})
+     :parameters         "join should not have top-level :parameters; these should belong to one of the join :stages"
+     :ident              ":ident is deprecated and should not be included in joins"})
    [:ref ::validate-field-aliases-match-join-alias]])
 
 (mr/def ::joins

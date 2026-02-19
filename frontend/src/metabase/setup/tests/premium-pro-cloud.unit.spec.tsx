@@ -16,7 +16,6 @@ import {
 const setupPremium = (opts?: SetupOpts) => {
   return setup({
     ...opts,
-    hasEnterprisePlugins: true,
     tokenFeatures: createMockTokenFeatures({ hosting: true, embedding: true }),
   });
 };

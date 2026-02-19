@@ -114,7 +114,7 @@ describe("scenarios > search > snowplow", () => {
       });
 
       H.entityPickerModal()
-        .findByRole("button", { name: /Second/ })
+        .findByRole("link", { name: /Second collection/ })
         .click();
 
       H.expectUnstructuredSnowplowEvent({

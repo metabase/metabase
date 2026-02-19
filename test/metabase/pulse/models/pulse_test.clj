@@ -52,7 +52,8 @@
    :dashboard_id        nil
    :skip_if_empty       false
    :archived            false
-   :parameters          []})
+   :parameters          []
+   :disable_links       false})
 
 (deftest retrieve-pulse-test
   (testing "this should cover all the basic Pulse attributes"
@@ -86,7 +87,7 @@
                                     :channel_type  :email
                                     :details       {:other "stuff"}
                                     :recipients    [{:email "foo@bar.com"}
-                                                    (dissoc (user-details :rasta) :is_superuser :is_qbnewb)]})]})
+                                                    (dissoc (user-details :rasta) :is_superuser :is_qbnewb :is_data_analyst)]})]})
              (-> (dissoc (models.pulse/retrieve-pulse pulse-id) :id :pulse_id :created_at :updated_at)
                  (update :creator  dissoc :date_joined :last_login :tenant_id)
                  (update :entity_id boolean)
@@ -255,7 +256,7 @@
                                           :schedule_hour 18
                                           :channel_type  :email
                                           :recipients    [{:email "foo@bar.com"}
-                                                          (dissoc (user-details :crowberto) :is_superuser :is_qbnewb :tenant_id)]})]})
+                                                          (dissoc (user-details :crowberto) :is_superuser :is_qbnewb :tenant_id :is_data_analyst)]})]})
              (mt/derecordize
               (update-pulse-then-select! {:id            (u/the-id pulse)
                                           :name          "We like to party"

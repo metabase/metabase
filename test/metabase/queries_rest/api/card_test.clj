@@ -1470,7 +1470,7 @@
                                                            :moderator_id        (mt/user->id :rasta)
                                                            :most_recent         true
                                                            :status              "verified"
-                                                           :text                "lookin good"}]
+                                                           :text                "lookin' good"}]
               (is (= [(clean (assoc review :user {:id true}))]
                      (->> (mt/user-http-request :rasta :get 200 (str "card/" (u/the-id card)))
                           mt/boolean-ids-and-timestamps
@@ -2003,7 +2003,7 @@
 ;;; |                                        Card updates that impact alerts                                         |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(defn- test-alert-deletion! [{:keys [message card deleted? expected-email-re f]}]
+(defn- test-alert-deletion! [{:keys [message card deleted? disable-links? expected-email-re should-re-not-match? f]}]
   (testing message
     (notification.tu/with-channel-fixtures [:channel/email]
       (api.notification-test/with-send-messages-sync!
@@ -2015,13 +2015,14 @@
                                                    {:type    :notification-recipient/user
                                                     :user_id (mt/user->id :rasta)}
                                                    {:type    :notification-recipient/raw-value
-                                                    :details {:value "ngoc@metabase.com"}}]}]}]
+                                                    :details {:value "ngoc@metabase.com"}}]}]
+                         :notification-card {:disable_links (boolean disable-links?)}}]
           (when deleted?
             (let [[email] (notification.tu/with-mock-inbox-email!
                             (f (->> notification :payload :card_id (t2/select-one :model/Card))))]
               (is (=? {:bcc     #{"rasta@metabase.com" "crowberto@metabase.com" "ngoc@metabase.com"}
                        :subject "One of your alerts has stopped working"
-                       :body    [{(str expected-email-re) true}]}
+                       :body    [{(str expected-email-re) (not should-re-not-match?)}]}
                       (mt/summarize-multipart-single-email email expected-email-re)))))
           (if deleted?
             (is (not (t2/exists? :model/Notification :id (:id notification)))
@@ -2035,7 +2036,25 @@
     :deleted?          true
     :expected-email-re #"Alerts about [A-Za-z]+ \(#\d+\) have stopped because the question was archived by Rasta Toucan"
     :f                 (fn [card]
-                         (mt/user-http-request :rasta :put 200 (str "card/" (u/the-id card)) {:archived true}))}))
+                         (mt/user-http-request :rasta :put 200 (str "card/" (u/the-id card)) {:archived true}))})
+
+  (test-alert-deletion!
+   {:message              "Archiving a Card should trigger Alert deletion with email links when disable_links: false"
+    :deleted?             true
+    :disable-links?       false
+    :expected-email-re    #"If you want to restore the alert, go to the <a href=\".*\">trash</a>"
+    :should-re-not-match? false
+    :f                    (fn [card]
+                            (mt/user-http-request :rasta :put 200 (str "card/" (u/the-id card)) {:archived true}))})
+
+  (test-alert-deletion!
+   {:message              "Archiving a Card should trigger Alert deletion without email links when disable_links: true"
+    :deleted?             true
+    :disable-links?       true
+    :expected-email-re    #"If you want to restore the alert, go to the <a href=\".*\">trash</a>"
+    :should-re-not-match? true
+    :f                    (fn [card]
+                            (mt/user-http-request :rasta :put 200 (str "card/" (u/the-id card)) {:archived true}))}))
 
 (deftest alert-deletion-test-2
   (test-alert-deletion!
@@ -2044,7 +2063,17 @@
     :deleted?          true
     :expected-email-re #"Alerts about <a href=\"https?://[^\/]+\/question/\d+\">([^<]+)<\/a> have stopped because the question was edited by Rasta Toucan"
     :f                 (fn [card]
-                         (mt/user-http-request :rasta :put 200 (str "card/" (u/the-id card)) {:display :line}))}))
+                         (mt/user-http-request :rasta :put 200 (str "card/" (u/the-id card)) {:display :line}))})
+
+  (test-alert-deletion!
+   {:message              "Validate changing display type triggers alert deletion without email links when disable_links: true"
+    :card                 {:display :table}
+    :deleted?             true
+    :disable-links?       true
+    :expected-email-re    #"Alerts about <a href=\"https?://[^\/]+\/question/\d+\">([^<]+)<\/a> have stopped because the question was edited by Rasta Toucan"
+    :should-re-not-match? true
+    :f                    (fn [card]
+                            (mt/user-http-request :rasta :put 200 (str "card/" (u/the-id card)) {:display :line}))}))
 
 (deftest alert-deletion-test-3
   (test-alert-deletion!
@@ -2722,7 +2751,7 @@
                                      :moderator_id        (mt/user->id :crowberto)
                                      :most_recent         true
                                      :status              "verified"
-                                     :text                "lookin good"}]))
+                                     :text                "lookin' good"}]))
          ~@body))]
     (letfn [(verified? [card]
               (-> card (t2/hydrate [:moderation_reviews :moderator_details])
@@ -3881,9 +3910,14 @@
                     :databases [{:id (mt/id) :engine string?}]}
                    (query-metadata 200 card-id)))))
          #(testing "After delete"
-            (doseq [card-id [card-id-1 card-id-2]]
-              (is (= "Not found."
-                     (query-metadata 404 card-id))))))))))
+            ;; card-id-1 is deleted, so it should return 404
+            (is (= "Not found."
+                   (query-metadata 404 card-id-1)))
+            ;; card-id-2 still exists but its source is gone, so it should return empty metadata
+            (is (=? {:fields empty?
+                     :tables empty?
+                     :databases [{:id (mt/id) :engine string?}]}
+                    (query-metadata 200 card-id-2)))))))))
 
 (deftest card-query-metadata-no-tables-test
   (testing "Don't throw an error if users doesn't have access to any tables #44043"
@@ -4342,7 +4376,7 @@
                                                       :moderator_id        (mt/user->id :rasta)
                                                       :most_recent         true
                                                       :status              "verified"
-                                                      :text                "lookin good"}]
+                                                      :text                "lookin' good"}]
     (is (= {:name "My Dashboard"
             :id dash-id
             :moderation_status "verified"}

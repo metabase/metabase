@@ -1,4 +1,4 @@
-import { setupEnterprisePlugins } from "__support__/enterprise";
+import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
 import {
   setupCollectionByIdEndpoint,
   setupUserRecipientsEndpoint,
@@ -50,13 +50,13 @@ const officialCollectionResult = createWrappedSearchResult({
 
 interface SetupOpts {
   tokenFeatures?: Partial<TokenFeatures>;
-  hasEnterprisePlugins?: boolean;
+  enterprisePlugins?: Parameters<typeof setupEnterpriseOnlyPlugin>[0][];
   result: WrappedResult;
 }
 
 const setup = ({
   tokenFeatures = {},
-  hasEnterprisePlugins = false,
+  enterprisePlugins,
   result,
 }: SetupOpts) => {
   setupCollectionByIdEndpoint({
@@ -72,8 +72,8 @@ const setup = ({
   });
   reinitialize();
 
-  if (hasEnterprisePlugins) {
-    setupEnterprisePlugins();
+  if (enterprisePlugins) {
+    enterprisePlugins.forEach(setupEnterpriseOnlyPlugin);
   }
 
   renderWithProviders(<SearchResult result={result} index={0} />, {
@@ -86,7 +86,7 @@ describe("SearchResult > Collections", () => {
     it("renders regular collection correctly", async () => {
       setup({
         result: regularCollectionResult,
-        hasEnterprisePlugins: true,
+        enterprisePlugins: ["collections", "advanced_permissions"],
         tokenFeatures: { official_collections: true },
       });
       expect(
@@ -99,7 +99,7 @@ describe("SearchResult > Collections", () => {
     it("renders official collections correctly", async () => {
       setup({
         result: officialCollectionResult,
-        hasEnterprisePlugins: true,
+        enterprisePlugins: ["collections", "advanced_permissions"],
         tokenFeatures: { official_collections: true },
       });
 

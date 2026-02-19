@@ -40,6 +40,7 @@ export const getTableUrl = (table, metadata) => {
   return ML_Urls.getUrl(metadataTable?.newQuestion(), { clean: false });
 };
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default _.compose(
   Tables.loadList({
     query: (state, props) => ({

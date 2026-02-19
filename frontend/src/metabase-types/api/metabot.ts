@@ -21,9 +21,36 @@ export type MetabotFeedbackType =
 
 /* Metabot v3 - Base Types */
 
+export type MetabotCodeEditorBufferContext = {
+  id: string;
+  source: Record<string, unknown> & {
+    language: "sql";
+    database_id: number | null;
+  };
+  cursor: { line: number; column: number };
+  selection?: {
+    text: string;
+    start: { line: number; column: number };
+    end: { line: number; column: number };
+  };
+};
+
+export type MetabotCodeEditorContext = {
+  type: "code_editor";
+  buffers: MetabotCodeEditorBufferContext[];
+};
+
+export type MetabotUserIsViewingContext = Array<
+  MetabotEntityInfo | MetabotCodeEditorContext
+>;
+
 export type MetabotChatContext = {
-  user_is_viewing: MetabotEntityInfo[];
+  user_is_viewing: MetabotUserIsViewingContext;
   current_time_with_timezone: string;
+  default_database_id?: number;
+  workspace_id?: number;
+  capabilities: string[];
+  code_editor?: MetabotCodeEditorContext;
 };
 
 export type MetabotTool = {
@@ -136,14 +163,14 @@ export type MetabotEntityInfo =
   | MetabotDocumentInfo
   | MetabotTransformInfo;
 
-/* Metabot v3 - API Request Types */
+export type MetabotCodeEdit = {
+  buffer_id: string;
+  mode: "rewrite";
+  value: string;
+  active?: boolean;
+};
 
-export type MetabotUseCase =
-  | "omnibot"
-  | "transforms"
-  | "nlq"
-  | "sql"
-  | "embedding";
+/* Metabot v3 - API Request Types */
 
 export type MetabotAgentRequest = {
   message: string;
@@ -151,7 +178,6 @@ export type MetabotAgentRequest = {
   history: MetabotHistory;
   state: MetabotStateContext;
   conversation_id: string; // uuid
-  use_case: MetabotUseCase;
   metabot_id?: string;
   profile_id?: string;
 };
@@ -219,13 +245,6 @@ export interface MetabotFeedback {
 export type MetabotId = number;
 export type MetabotName = string;
 
-export type MetabotUseCaseInfo = {
-  id: number;
-  name: MetabotUseCase;
-  profile: string;
-  enabled: boolean;
-};
-
 export type MetabotInfo = {
   id: MetabotId;
   entity_id: string;
@@ -233,7 +252,6 @@ export type MetabotInfo = {
   description: string;
   use_verified_content: boolean;
   collection_id: number | null;
-  use_cases: MetabotUseCaseInfo[];
   created_at: string;
   updated_at: string;
 };

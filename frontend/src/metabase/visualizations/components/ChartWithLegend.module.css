@@ -1,8 +1,8 @@
 .ChartWithLegend {
   display: flex;
-  justify-content: flex-end;
-  width: 100%;
   height: 100%;
+  justify-content: center;
+  width: 100%;
 }
 
 .ChartWithLegend .Legend {

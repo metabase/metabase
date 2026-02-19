@@ -3,7 +3,7 @@ import { Popover as MantinePopover } from "@mantine/core";
 import cx from "classnames";
 import { type Ref, forwardRef, useEffect } from "react";
 
-import useSequencedContentCloseHandler from "metabase/common/hooks/use-sequenced-content-close-handler";
+import { useSequencedContentCloseHandler } from "metabase/common/hooks/use-sequenced-content-close-handler";
 import ZIndex from "metabase/css/core/z-index.module.css";
 import { PreventEagerPortal } from "metabase/ui";
 
@@ -50,7 +50,5 @@ PopoverDropdown.displayName = MantinePopoverDropdown.displayName;
 // @ts-expect-error -- our types are better
 MantinePopover.Dropdown = PopoverDropdown;
 
-const Popover = MantinePopover;
-
-export { Popover };
+export const Popover = MantinePopover;
 export { DEFAULT_POPOVER_Z_INDEX } from "./Popover.config";

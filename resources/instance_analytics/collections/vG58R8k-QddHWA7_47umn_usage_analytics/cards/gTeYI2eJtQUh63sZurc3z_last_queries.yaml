@@ -427,13 +427,12 @@ visualization_settings:
     - {base-type: type/Text}
     name: error
   table.pivot_column: error
-card_schema: 22
+card_schema: 23
 serdes/meta:
 - {id: gTeYI2eJtQUh63sZurc3z, label: last_queries, model: Card}
 archived_directly: false
 dashboard_id: DHMhMa1FYxiyIgM7_xdgR
 document_id: null
 embedding_type: null
-published_table_id: null
 source_card_id: QOtZaiTLf2FDD4AT6Oinb
 type: question

@@ -1,6 +1,7 @@
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
   JWT_SHARED_SECRET,
+  embedModalEnableEmbedding,
   entityPickerModal,
   getParametersContainer,
 } from "e2e/support/helpers";
@@ -127,6 +128,7 @@ describe("scenarios > embedding > sdk iframe embed setup > guest-embed", () => {
 
   describe("Happy path", () => {
     it("Navigates through the guest-embed flow for a question and opens its embed page", () => {
+      cy.intercept("GET", "api/preview_embed/card/*").as("previewEmbed");
       visitNewEmbedPage();
 
       H.expectUnstructuredSnowplowEvent({ event: "embed_wizard_opened" });
@@ -156,7 +158,6 @@ describe("scenarios > embedding > sdk iframe embed setup > guest-embed", () => {
 
       H.entityPickerModal().within(() => {
         cy.findByText("Select a chart").should("be.visible");
-        cy.findByText("Questions").click();
         cy.findByText(FIRST_QUESTION_NAME).click();
       });
 
@@ -207,12 +208,21 @@ describe("scenarios > embedding > sdk iframe embed setup > guest-embed", () => {
       H.expectUnstructuredSnowplowEvent({
         event: "embed_wizard_options_completed",
         event_detail:
-          'settings=custom,experience=chart,guestEmbedEnabled=true,guestEmbedType=guest-embed,authType=guest-embed,drills=false,withDownloads=false,withTitle=true,isSaveEnabled=false,params={"disabled":0,"locked":1,"enabled":0},theme=default',
+          'settings=custom,experience=chart,guestEmbedEnabled=true,guestEmbedType=guest-embed,authType=guest-embed,drills=false,withDownloads=false,withAlerts=false,withTitle=true,isSaveEnabled=false,params={"disabled":0,"locked":1,"enabled":0},theme=default',
       });
 
       // Get code step
       getEmbedSidebar().within(() => {
         cy.findByTestId("publish-guest-embed-link").should("not.exist");
+      });
+
+      cy.log(
+        'Embed preview requests should not have "X-Metabase-Client" header (EMB-945)',
+      );
+      cy.wait("@previewEmbed").then(({ request }) => {
+        expect(request?.headers?.["x-metabase-embedded-preview"]).to.equal(
+          "true",
+        );
       });
 
       H.unpublishChanges("card");
@@ -298,7 +308,7 @@ describe("scenarios > embedding > sdk iframe embed setup > guest-embed", () => {
         });
 
         entityPickerModal().within(() => {
-          cy.findByText("Questions").click();
+          cy.findByText("Our analytics").click();
           cy.findAllByText(SECOND_QUESTION_NAME).first().click();
         });
 
@@ -327,7 +337,7 @@ describe("scenarios > embedding > sdk iframe embed setup > guest-embed", () => {
         });
 
         entityPickerModal().within(() => {
-          cy.findByText("Questions").click();
+          cy.findByText("Our analytics").click();
           cy.findAllByText(FIRST_QUESTION_NAME).first().click();
         });
 
@@ -376,8 +386,13 @@ describe("scenarios > embedding > sdk iframe embed setup > guest-embed", () => {
           cy.findByText("Back").click();
 
           cy.findByLabelText("Guest").should("be.visible").should("be.checked");
-          cy.findByLabelText("Metabase account (SSO)").click();
 
+          cy.findByLabelText("Metabase account (SSO)").click();
+        });
+
+        embedModalEnableEmbedding();
+
+        getEmbedSidebar().within(() => {
           cy.findByText("Next").click();
           cy.findByText("Next").click();
           cy.findByText("Get code").click();

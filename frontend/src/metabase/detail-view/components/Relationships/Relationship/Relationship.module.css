@@ -1,5 +1,5 @@
 .clickable {
-  color: var(--mb-color-text-dark) !important;
+  color: var(--mb-color-text-primary) !important;
 
   &:hover {
     .text {

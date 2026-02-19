@@ -6,7 +6,7 @@ describe("UserProfileApp (EE with token)", () => {
   it("should show only show language field for an SSO user", () => {
     setup({
       isPasswordLoginEnabled: false,
-      hasEnterprisePlugins: true,
+      enterprisePlugins: ["auth"],
       tokenFeatures: { disable_password_login: true },
     });
 

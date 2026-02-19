@@ -1,11 +1,9 @@
 import { memo } from "react";
 
+import CS from "metabase/css/core/text.module.css";
 import { Box, Group, Stack } from "metabase/ui";
 import type { DependencyEntry, DependencyNode } from "metabase-types/api";
 
-import { GraphBreadcrumbs } from "../../GraphBreadcrumbs";
-import { GraphExternalLink } from "../../GraphExternalLink";
-import { GraphLink } from "../../GraphLink";
 import {
   getNodeIcon,
   getNodeId,
@@ -13,10 +11,13 @@ import {
   getNodeLink,
   getNodeLocationInfo,
   getNodeViewCount,
-} from "../../utils";
+  getNodeViewCountLabel,
+} from "../../../../utils";
+import { GraphBreadcrumbs } from "../../GraphBreadcrumbs";
+import { GraphExternalLink } from "../../GraphExternalLink";
+import { GraphLink } from "../../GraphLink";
 
 import S from "./PanelBody.module.css";
-import { getNodeViewCountLabel } from "./utils";
 
 type PanelBodyProps = {
   nodes: DependencyNode[];
@@ -60,7 +61,7 @@ function ListItem({ node, getGraphUrl }: ListItemProps) {
           url={getGraphUrl(node)}
         />
         {viewCount != null ? (
-          <Box c="text-secondary" fz="sm" lh="1rem">
+          <Box className={CS.textNoWrap} c="text-secondary" fz="sm" lh="1rem">
             {getNodeViewCountLabel(viewCount)}
           </Box>
         ) : link != null ? (
@@ -73,7 +74,7 @@ function ListItem({ node, getGraphUrl }: ListItemProps) {
           wrap="nowrap"
         >
           {location != null && (
-            <GraphBreadcrumbs location={location} ml="1rem" pl="sm" />
+            <GraphBreadcrumbs links={location.links} ml="1rem" pl="sm" />
           )}
           {link != null && viewCount != null && (
             <GraphExternalLink label={link.label} url={link.url} />

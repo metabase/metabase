@@ -1,6 +1,6 @@
 import fetchMock from "fetch-mock";
 
-import { setupEnterprisePlugins } from "__support__/enterprise";
+import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
 import { mockSettings } from "__support__/settings";
 import { createMockEntitiesState } from "__support__/store";
 import { renderWithProviders } from "__support__/ui";
@@ -19,14 +19,14 @@ import { PreviewQueryModal } from "..";
 
 export interface SetupOpts {
   showMetabaseLinks?: boolean;
-  hasEnterprisePlugins?: boolean;
   tokenFeatures?: Partial<TokenFeatures>;
+  enterprisePlugins?: Parameters<typeof setupEnterpriseOnlyPlugin>[0][];
 }
 
 export const setup = ({
   showMetabaseLinks = true,
-  hasEnterprisePlugins,
   tokenFeatures = {},
+  enterprisePlugins = [],
 }: SetupOpts = {}) => {
   const card = createMockNativeCard();
   const state = createMockState({
@@ -41,9 +41,9 @@ export const setup = ({
     }),
   });
 
-  if (hasEnterprisePlugins) {
-    setupEnterprisePlugins();
-  }
+  enterprisePlugins.forEach((plugin) => {
+    setupEnterpriseOnlyPlugin(plugin);
+  });
 
   fetchMock.post("path:/api/dataset/native", {
     status: 500,

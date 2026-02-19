@@ -155,3 +155,25 @@
           (is (= "Error rolling back after previous error: Original error" (ex-message e)))
           (is (= "Rollback error" (-> e ex-data :rollback-error ex-message)))
           (is (= "Original error" (-> e ex-cause ex-message))))))))
+
+(deftest exception-when-resetting-autocommit-does-not-mask-original-exception-test
+  (testing "when setAutoCommit fails in finally block, the original exception is not masked"
+    (let [msg "Original transaction error"
+          autocommit-reset-called (volatile! false)
+          mock-conn  (reify Connection
+                       (rollback [_ _savepoint])
+                       (setAutoCommit [_ value]
+                         (when value
+                           (vreset! autocommit-reset-called true)
+                           ;; Simulate setAutoCommit(true) failing in the finally block
+                           (throw (ex-info (str "setAutoCommit failed, hiding " msg) {}))))
+                       (getAutoCommit [_] true)
+                       (setSavepoint [_])
+                       (commit [_]))]
+      (binding [t2.connection/*current-connectable* mock-conn]
+        (let [e (is (thrown? clojure.lang.ExceptionInfo
+                             (t2/with-transaction [_t-conn]
+                               (throw (ex-info msg {})))))]
+          ;; The original exception should be thrown, not the setAutoCommit exception
+          (is (= msg (ex-message e))))
+        (is (true? @autocommit-reset-called))))))

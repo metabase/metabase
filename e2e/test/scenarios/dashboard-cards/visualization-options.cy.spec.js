@@ -91,7 +91,8 @@ describe("scenarios > dashboard cards > visualization options", () => {
     H.getDashboardCard().realHover();
     cy.findByLabelText("Show visualization options").click();
     cy.findByTestId("chartsettings-sidebar").within(() => {
-      H.moveDnDKitElement(H.getDraggableElements().contains("ID"), {
+      H.getDraggableElements().contains("ID").as("dragElement");
+      H.moveDnDKitElementByAlias("@dragElement", {
         vertical: 100,
       });
       const idButton = () =>

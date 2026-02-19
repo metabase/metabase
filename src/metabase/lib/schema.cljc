@@ -9,6 +9,7 @@
   (:refer-clojure :exclude [ref every? some select-keys empty? get-in])
   (:require
    [medley.core :as m]
+   [metabase.lib.options :as lib.options]
    [metabase.lib.schema.actions :as actions]
    [metabase.lib.schema.aggregation :as aggregation]
    [metabase.lib.schema.common :as common]
@@ -123,10 +124,44 @@
    [:sequential {:min 1} ::breakout]
    [:ref ::lib.schema.util/distinct-mbql-clauses]])
 
+(defn- deduplicate-refs-ignoring-source-field-name-when-possible
+  "`:source-field-name` is only relevant when we have multiple field refs with the same `:source-field` AND different
+  `:source-field-name`s (see documentation in `:metabase.lib.schema.ref/field.options`). Deduplicate refs ignoring
+  this value when it is not relevant."
+  [fields]
+  (let [source-field->refs        (group-by (fn [[_tag opts _field-id :as _ref]]
+                                              (:source-field opts))
+                                            fields)
+        source-field->names       (update-vals source-field->refs
+                                               (fn [field-refs]
+                                                 (into #{}
+                                                       (keep #(:source-field-name (lib.options/options %)))
+                                                       field-refs)))
+        ignore-source-field-name? (fn [[_tag {:keys [source-field source-field-name], :as _opts} _id-or-name :as _ref]]
+                                    (when source-field-name
+                                      (let [source-field-names-for-source-field (source-field->names source-field)]
+                                        (< (count source-field-names-for-source-field) 2))))]
+    (into
+     []
+     (m/distinct-by (fn [field-ref]
+                      (lib.schema.util/mbql-clause-distinct-key
+                       (cond-> field-ref
+                         (ignore-source-field-name? field-ref)
+                         (lib.options/update-options dissoc :source-field-name)))))
+     fields)))
+
+(mr/def ::deduplicate-refs-ignoring-source-field-name-when-possible
+  [:schema
+   {:decode/normalize deduplicate-refs-ignoring-source-field-name-when-possible}
+   :any])
+
+;; TODO (Cam 2026-01-13) -- we should ensure sequences like these are [[vector?]] and normalize them to vectors if
+;; they're not
 (mr/def ::fields
   [:and
    [:sequential {:min 1} [:ref ::ref/ref]]
-   [:ref ::lib.schema.util/distinct-mbql-clauses]])
+   [:ref ::lib.schema.util/distinct-mbql-clauses]
+   [:ref ::deduplicate-refs-ignoring-source-field-name-when-possible]])
 
 (mr/def ::filters
   [:sequential {:min 1} [:ref ::expression/boolean]])
@@ -226,7 +261,7 @@
 (defn- encode-mbql-stage-for-hashing [stage]
   (-> stage
       common/encode-map-for-hashing
-      lib.schema.util/indexed-order-bys-for-stage
+      lib.schema.util/indexed-aggregation-refs-for-stage
       ;; preserve these keys because we want to hash two identical queries from different source cards
       ;; differently (see [[metabase.query-processor.middleware.cache-test/multiple-models-e2e-test]]) and this is a
       ;; reliable way to differentiate them since it gets populated by the QP.
@@ -369,7 +404,7 @@
       (let [visible-join-alias? (some-fn visible-join-alias? (visible-join-alias?-fn stage))]
         (or
          (when (map? stage)
-           (lib.util.match/match-lite-recursive (dissoc stage :joins :lib/stage-metadata)
+           (lib.util.match/match-lite (dissoc stage :joins :lib/stage-metadata)
              [:field {:join-alias (join-alias :guard (and (some? join-alias)
                                                           (not (visible-join-alias? join-alias))))} _id-or-name]
              (str "Invalid :field reference in stage " i ": no join named " (pr-str join-alias))))

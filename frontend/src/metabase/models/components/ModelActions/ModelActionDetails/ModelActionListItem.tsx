@@ -3,8 +3,8 @@ import { useCallback, useMemo } from "react";
 import { t } from "ttag";
 
 import { ActionExecuteModal } from "metabase/actions/containers/ActionExecuteModal";
-import EntityMenu from "metabase/common/components/EntityMenu";
-import Link from "metabase/common/components/Link";
+import { EntityMenu } from "metabase/common/components/EntityMenu";
+import { Link } from "metabase/common/components/Link";
 import { useConfirmation } from "metabase/common/hooks/use-confirmation";
 import { Icon } from "metabase/ui";
 import * as Lib from "metabase-lib";

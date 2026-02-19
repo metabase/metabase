@@ -3,16 +3,14 @@
 
   Call [[errors-from-proposed-edits]] to find out what things will break downstream of a set of new/updated entities."
   (:require
+   [metabase-enterprise.dependencies.analysis :as deps.analysis]
    [metabase-enterprise.dependencies.metadata-provider :as deps.provider]
    [metabase-enterprise.dependencies.models.dependency :as deps.graph]
-   [metabase-enterprise.dependencies.native-validation :as deps.native]
-   [metabase.graph.core :as graph]
    [metabase.lib-be.core :as lib-be]
-   [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
-   [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
+   [metabase.lib.schema.validate :as lib.schema.validate]
    [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
@@ -26,6 +24,12 @@
   ;; TODO: Make this more specific.
   [:map-of ::entity-type [:sequential [:map [:id {:optional true} :int]]]])
 
+(defn- transitive-dependents
+  [& {:keys [graph updated-entities include-native?]}]
+  (if include-native?
+    (deps.graph/transitive-dependents graph updated-entities)
+    (deps.graph/transitive-mbql-dependents graph updated-entities)))
+
 (mu/defn- metadata-provider :- ::lib.schema.metadata/metadata-provider
   "Constructs a `MetadataProvider` with some pending edits applied.
 
@@ -34,65 +38,25 @@
 
   Note that if `:result-metadata` is present on an updated Card, it **will be used!** The only case where that is
   actually useful is with a native query which has been executed, so the caller has driver metadata to give us. Any
-  old, pre-update `:result-metadata` should be dropped from any other cards in `updated-entities`."
+  old, pre-update `:result-metadata` should be dropped from any other cards in `updated-entities`.
+
+  Also note that `include-native?` is only relevant if you don't pass in `dependents`.  If you pass in `dependents`,
+  those will be included in the metadata provider whether or not they are native.  If you don't pass in `dependents`,
+  `include-native` will determine whether native dependents are included in the metadata provider."
   ([base-provider    :- ::lib.schema.metadata/metadata-provider
     updated-entities :- ::updates-map
-    & {:keys [graph dependents]}]
+    & {:keys [graph dependents include-native?]}]
    ;; Reusing the cache with different overrides breaks the caching of [[lib.metadata/card]] calls.
    (lib.metadata.protocols/clear-cache! base-provider)
-   (let [dependents (or dependents (deps.graph/transitive-dependents graph updated-entities))]
-     (deps.provider/override-metadata-provider base-provider updated-entities dependents))))
+   (let [dependents (or dependents (transitive-dependents :graph            graph
+                                                          :updated-entities updated-entities
+                                                          :include-native?  include-native?))]
+     (deps.provider/override-metadata-provider
+      {:base-provider base-provider
+       :updated-entities updated-entities
+       :dependent-ids dependents}))))
 
-(mu/defn- check-query
-  "Find any bad refs in a `query`."
-  [driver :- :keyword
-   query  :- ::lib.schema/query]
-  (if (lib/any-native-stage? query)
-    (deps.native/validate-native-query driver query)
-    (lib/find-bad-refs query)))
-
-(defmulti ^:private check-entity
-  "Given a `MetadataProvider`, and entity type, and an entity id, find any bad refs in that entity."
-  {:arglists '([metadata-provider entity-type entity-id])}
-  (fn [_mp entity-type _entity-id]
-    entity-type))
-
-(defmethod check-entity :default
-  [_mp _entity-type _entity-id]
-  nil)
-
-;; TODO (Cam 10/2/25) -- we already have keywords for these things, `:model/Card` and `:model/Transform`, can use
-;; those for consistency and discoverability?
-(defmethod check-entity :card
-  [mp _entity-type card-id]
-  (let [query  (lib/query mp (:dataset-query (lib.metadata/card mp card-id)))
-        driver (:engine (lib.metadata/database query))]
-    (check-query driver query)))
-
-(defmethod check-entity :transform
-  [mp _entity-type entity-id]
-  (let [{{target-schema :schema target-name :name} :target
-         {query :query} :source
-         :as _transform} (lib.metadata/transform mp entity-id)
-        driver (:engine (lib.metadata/database mp))
-        query (lib/query mp query)
-        output-table (some #(when (and (= (:schema %) target-schema)
-                                       (= (:name %) target-name))
-                              %)
-                           (lib.metadata/tables mp))
-        output-fields (lib.metadata/active-fields mp (:id output-table))
-        {:keys [duplicate-fields]} (reduce (fn [{:keys [seen duplicate-fields]}
-                                                {name :name :as field}]
-                                             (if (seen name)
-                                               {:seen seen
-                                                :duplicate-fields (conj duplicate-fields field)}
-                                               {:seen (conj seen name)
-                                                :duplicate-fields duplicate-fields}))
-                                           {:seen #{}}
-                                           output-fields)]
-    (into duplicate-fields (check-query driver query))))
-
-(mu/defn- check-query-soundness ;; :- [:map-of ::lib.schema.id/card [:sequential ::lib.schema.mbql-clause/clause]]
+(mu/defn- check-query-soundness :- [:map-of ::entity-type [:map-of :int [:set [:ref ::lib.schema.validate/error]]]]
   "Given a `MetadataProvider` as returned by [[metadata-provider]], scan all its updated entities and their dependents
   to check that everything is still sound.
 
@@ -109,7 +73,7 @@
         errors    (volatile! {})]
     (doseq [[entity-type ids] overrides
             id ids
-            :let [bad-refs (check-entity provider entity-type id)]]
+            :let [bad-refs (deps.analysis/check-entity provider entity-type id)]]
       (when (seq bad-refs)
         (vswap! errors assoc-in [entity-type id] bad-refs)))
     @errors))
@@ -136,37 +100,43 @@
 
     @by-db))
 
-;; TODO: (Braden 09/22/2025) More precise schemas for the errors this function returns. Currently they're pretty
-;; opaque, since the consumers of this function really care about "working/broken" and not the details of what's wrong
-;; with any particular card.
-(mu/defn errors-from-proposed-edits :- [:map-of ::entity-type [:map-of :int [:or :boolean [:sequential :any]]]]
+(mu/defn errors-from-proposed-edits :- [:map-of ::entity-type [:map-of :int [:set [:ref ::lib.schema.validate/error]]]]
   "Given a regular `MetadataProvider`, and a map of entity types (`:card`, `:transform`, `:snippet`) to lists of
   updated entities, this returns a map of `{entity-type {entity-id [bad-ref ...]}}`.
 
   The 1-arity groups all the dependents by which Database they are part of, and runs the analysis for each of them.
 
   The output is a map: `{entity-type {id [errors...]}}`; an empty map is returned when there are no errors
-  detected."
-  ([edits :- ::updates-map]
-   (let [all-deps (deps.graph/transitive-dependents edits)
-         by-db    (group-by-db all-deps)]
-     (reduce (fn [errors [db-id deps]]
-               (-> (lib-be/application-database-metadata-provider db-id)
-                   (metadata-provider edits :dependents deps)
-                   check-query-soundness
-                   (merge errors)))
-             {} by-db)))
+  detected.
 
-  ([base-provider :- ::lib.schema.metadata/metadata-provider
-    edits         :- ::updates-map]
-   (errors-from-proposed-edits base-provider nil edits))
+  When `include-native?` is false, this function will ignore any entities using native sql and their children."
+  ([edits :- ::updates-map
+    & {:keys [base-provider graph include-native?]}]
+   (let [valid-edits (if include-native?
+                       edits
+                       (into {}
+                             (map (fn [[entity-type instances]]
+                                    [entity-type (remove #(deps.graph/is-native-entity? entity-type %)
+                                                         instances)]))
+                             edits))]
+     (cond
+       (not (some seq (vals valid-edits)))
+       {}
 
-  ([base-provider :- ::lib.schema.metadata/metadata-provider
-    graph         :- [:maybe ::graph/graph]
-    edits         :- ::updates-map]
-   (-> base-provider
-       (metadata-provider edits :graph graph)
-       check-query-soundness)))
+       base-provider
+       (-> base-provider
+           (metadata-provider valid-edits :graph graph :include-native? include-native?)
+           check-query-soundness)
+
+       :else
+       (let [all-deps (transitive-dependents :updated-entities valid-edits :include-native? include-native?)
+             by-db    (group-by-db all-deps)]
+         (reduce (fn [errors [db-id deps]]
+                   (-> (lib-be/application-database-metadata-provider db-id)
+                       (metadata-provider valid-edits :dependents deps)
+                       check-query-soundness
+                       (merge errors)))
+                 {} by-db))))))
 
 #_{:clj-kondo/ignore [:unresolved-namespace]}
 (comment

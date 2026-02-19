@@ -668,6 +668,16 @@
         } ],
         "type" : "array"
       },
+      "mbql.clause.measure" : {
+        "prefixItems" : [ {
+          "const" : "measure"
+        }, {
+          "$ref" : "#/components/schemas/metabase.lib.schema.common.options"
+        }, {
+          "$ref" : "#/components/schemas/metabase.lib.schema.id.measure"
+        } ],
+        "type" : "array"
+      },
       "mbql.clause.median" : {
         "prefixItems" : [ {
           "const" : "median"
@@ -1244,9 +1254,82 @@
         },
         "type" : "object"
       },
+      "metabase-enterprise.dependencies.api.base-entity" : {
+        "properties" : {
+          "data" : {
+            "properties" : { },
+            "type" : "object"
+          },
+          "dependents_count" : {
+            "oneOf" : [ {
+              "$ref" : "#/components/schemas/metabase-enterprise.dependencies.api.usages"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "errors" : {
+            "items" : {
+              "$ref" : "#/components/schemas/metabase.lib.schema.validate.error"
+            },
+            "type" : "array",
+            "uniqueItems" : true
+          },
+          "id" : {
+            "minimum" : 1,
+            "type" : "integer"
+          },
+          "type" : {
+            "type" : "string"
+          }
+        },
+        "required" : [ "id", "type", "data", "dependents_count" ],
+        "type" : "object"
+      },
+      "metabase-enterprise.dependencies.api.broken-cards-response" : {
+        "properties" : {
+          "bad_cards" : {
+            "items" : {
+              "$ref" : "#/components/schemas/metabase.queries.schema.card"
+            },
+            "type" : "array"
+          },
+          "bad_transforms" : {
+            "items" : {
+              "$ref" : "#/components/schemas/metabase-enterprise.transforms.schema.transform"
+            },
+            "type" : "array"
+          },
+          "success" : {
+            "type" : "boolean"
+          }
+        },
+        "required" : [ "success" ],
+        "type" : "object"
+      },
       "metabase-enterprise.dependencies.api.card-body" : {
         "description" : "Schema for an instance of a `:model/Card` (everything is optional to support updates).",
         "properties" : {
+          "collection_id" : {
+            "oneOf" : [ {
+              "$ref" : "#/components/schemas/metabase.lib.schema.id.collection"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "dashboard_id" : {
+            "oneOf" : [ {
+              "$ref" : "#/components/schemas/metabase.lib.schema.id.dashboard"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "database_id" : {
+            "oneOf" : [ {
+              "$ref" : "#/components/schemas/metabase.lib.schema.id.database"
+            }, {
+              "type" : "null"
+            } ]
+          },
           "dataset_query" : {
             "oneOf" : [ {
               "$ref" : "#/components/schemas/metabase.queries.schema.query"
@@ -1254,9 +1337,30 @@
               "type" : "null"
             } ]
           },
+          "description" : {
+            "oneOf" : [ {
+              "type" : "string"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "document_id" : {
+            "oneOf" : [ {
+              "$ref" : "#/components/schemas/metabase.documents.schema..document.id"
+            }, {
+              "type" : "null"
+            } ]
+          },
           "id" : {
             "oneOf" : [ {
               "$ref" : "#/components/schemas/metabase.lib.schema.id.card"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "name" : {
+            "oneOf" : [ {
+              "type" : "string"
             }, {
               "type" : "null"
             } ]
@@ -1292,12 +1396,396 @@
         },
         "type" : "object"
       },
+      "metabase-enterprise.dependencies.api.card-entity" : {
+        "properties" : {
+          "data" : {
+            "properties" : {
+              "collection" : { },
+              "collection_id" : { },
+              "created_at" : { },
+              "creator" : { },
+              "creator_id" : { },
+              "dashboard" : { },
+              "dashboard_id" : { },
+              "database_id" : { },
+              "description" : { },
+              "display" : { },
+              "document" : { },
+              "document_id" : { },
+              "last-edit-info" : { },
+              "name" : { },
+              "query_type" : { },
+              "result_metadata" : { },
+              "type" : { },
+              "view_count" : { }
+            },
+            "type" : "object"
+          },
+          "dependents_count" : {
+            "oneOf" : [ {
+              "$ref" : "#/components/schemas/metabase-enterprise.dependencies.api.usages"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "errors" : {
+            "items" : {
+              "$ref" : "#/components/schemas/metabase.lib.schema.validate.error"
+            },
+            "type" : "array",
+            "uniqueItems" : true
+          },
+          "id" : {
+            "minimum" : 1,
+            "type" : "integer"
+          },
+          "type" : {
+            "const" : "card"
+          }
+        },
+        "required" : [ "id", "type", "data", "dependents_count" ],
+        "type" : "object"
+      },
+      "metabase-enterprise.dependencies.api.dashboard-entity" : {
+        "properties" : {
+          "data" : {
+            "properties" : {
+              "collection" : { },
+              "collection_id" : { },
+              "created_at" : { },
+              "creator" : { },
+              "creator_id" : { },
+              "description" : { },
+              "last-edit-info" : { },
+              "moderation_reviews" : { },
+              "name" : { },
+              "view_count" : { }
+            },
+            "type" : "object"
+          },
+          "dependents_count" : {
+            "oneOf" : [ {
+              "$ref" : "#/components/schemas/metabase-enterprise.dependencies.api.usages"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "errors" : {
+            "items" : {
+              "$ref" : "#/components/schemas/metabase.lib.schema.validate.error"
+            },
+            "type" : "array",
+            "uniqueItems" : true
+          },
+          "id" : {
+            "minimum" : 1,
+            "type" : "integer"
+          },
+          "type" : {
+            "const" : "dashboard"
+          }
+        },
+        "required" : [ "id", "type", "data", "dependents_count" ],
+        "type" : "object"
+      },
+      "metabase-enterprise.dependencies.api.document-entity" : {
+        "properties" : {
+          "data" : {
+            "properties" : {
+              "collection" : { },
+              "collection_id" : { },
+              "created_at" : { },
+              "creator" : { },
+              "description" : { },
+              "name" : { },
+              "view_count" : { }
+            },
+            "type" : "object"
+          },
+          "dependents_count" : {
+            "oneOf" : [ {
+              "$ref" : "#/components/schemas/metabase-enterprise.dependencies.api.usages"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "errors" : {
+            "items" : {
+              "$ref" : "#/components/schemas/metabase.lib.schema.validate.error"
+            },
+            "type" : "array",
+            "uniqueItems" : true
+          },
+          "id" : {
+            "minimum" : 1,
+            "type" : "integer"
+          },
+          "type" : {
+            "const" : "document"
+          }
+        },
+        "required" : [ "id", "type", "data", "dependents_count" ],
+        "type" : "object"
+      },
+      "metabase-enterprise.dependencies.api.entity" : {
+        "oneOf" : [ {
+          "$ref" : "#/components/schemas/metabase-enterprise.dependencies.api.table-entity"
+        }, {
+          "$ref" : "#/components/schemas/metabase-enterprise.dependencies.api.card-entity"
+        }, {
+          "$ref" : "#/components/schemas/metabase-enterprise.dependencies.api.snippet-entity"
+        }, {
+          "$ref" : "#/components/schemas/metabase-enterprise.dependencies.api.transform-entity"
+        }, {
+          "$ref" : "#/components/schemas/metabase-enterprise.dependencies.api.dashboard-entity"
+        }, {
+          "$ref" : "#/components/schemas/metabase-enterprise.dependencies.api.document-entity"
+        }, {
+          "$ref" : "#/components/schemas/metabase-enterprise.dependencies.api.sandbox-entity"
+        }, {
+          "$ref" : "#/components/schemas/metabase-enterprise.dependencies.api.segment-entity"
+        }, {
+          "$ref" : "#/components/schemas/metabase-enterprise.dependencies.api.measure-entity"
+        } ]
+      },
+      "metabase-enterprise.dependencies.api.graph-response" : {
+        "properties" : {
+          "edges" : {
+            "items" : {
+              "properties" : {
+                "from_entity_id" : {
+                  "$ref" : "#/components/schemas/metabase-enterprise.dependencies.dependency-types.entity-id"
+                },
+                "from_entity_type" : {
+                  "$ref" : "#/components/schemas/metabase-enterprise.dependencies.dependency-types.dependency-types"
+                },
+                "to_entity_id" : {
+                  "$ref" : "#/components/schemas/metabase-enterprise.dependencies.dependency-types.entity-id"
+                },
+                "to_entity_type" : {
+                  "$ref" : "#/components/schemas/metabase-enterprise.dependencies.dependency-types.dependency-types"
+                }
+              },
+              "required" : [ "from_entity_type", "from_entity_id", "to_entity_type", "to_entity_id" ],
+              "type" : "object"
+            },
+            "type" : "array"
+          },
+          "nodes" : {
+            "items" : {
+              "$ref" : "#/components/schemas/metabase-enterprise.dependencies.api.entity"
+            },
+            "type" : "array"
+          }
+        },
+        "required" : [ "nodes", "edges" ],
+        "type" : "object"
+      },
+      "metabase-enterprise.dependencies.api.measure-entity" : {
+        "properties" : {
+          "data" : {
+            "properties" : {
+              "created_at" : { },
+              "creator" : { },
+              "creator_id" : { },
+              "description" : { },
+              "name" : { },
+              "table" : { },
+              "table_id" : { }
+            },
+            "type" : "object"
+          },
+          "dependents_count" : {
+            "oneOf" : [ {
+              "$ref" : "#/components/schemas/metabase-enterprise.dependencies.api.usages"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "errors" : {
+            "items" : {
+              "$ref" : "#/components/schemas/metabase.lib.schema.validate.error"
+            },
+            "type" : "array",
+            "uniqueItems" : true
+          },
+          "id" : {
+            "minimum" : 1,
+            "type" : "integer"
+          },
+          "type" : {
+            "const" : "measure"
+          }
+        },
+        "required" : [ "id", "type", "data", "dependents_count" ],
+        "type" : "object"
+      },
+      "metabase-enterprise.dependencies.api.sandbox-entity" : {
+        "properties" : {
+          "data" : {
+            "properties" : {
+              "table" : { },
+              "table_id" : { }
+            },
+            "type" : "object"
+          },
+          "dependents_count" : {
+            "oneOf" : [ {
+              "$ref" : "#/components/schemas/metabase-enterprise.dependencies.api.usages"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "errors" : {
+            "items" : {
+              "$ref" : "#/components/schemas/metabase.lib.schema.validate.error"
+            },
+            "type" : "array",
+            "uniqueItems" : true
+          },
+          "id" : {
+            "minimum" : 1,
+            "type" : "integer"
+          },
+          "type" : {
+            "const" : "sandbox"
+          }
+        },
+        "required" : [ "id", "type", "data", "dependents_count" ],
+        "type" : "object"
+      },
+      "metabase-enterprise.dependencies.api.segment-entity" : {
+        "properties" : {
+          "data" : {
+            "properties" : {
+              "collection" : { },
+              "collection_id" : { },
+              "created_at" : { },
+              "creator" : { },
+              "creator_id" : { },
+              "dashboard" : { },
+              "dashboard_id" : { },
+              "database_id" : { },
+              "description" : { },
+              "display" : { },
+              "document" : { },
+              "document_id" : { },
+              "last-edit-info" : { },
+              "name" : { },
+              "query_type" : { },
+              "result_metadata" : { },
+              "type" : { },
+              "view_count" : { }
+            },
+            "type" : "object"
+          },
+          "dependents_count" : {
+            "oneOf" : [ {
+              "$ref" : "#/components/schemas/metabase-enterprise.dependencies.api.usages"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "errors" : {
+            "items" : {
+              "$ref" : "#/components/schemas/metabase.lib.schema.validate.error"
+            },
+            "type" : "array",
+            "uniqueItems" : true
+          },
+          "id" : {
+            "minimum" : 1,
+            "type" : "integer"
+          },
+          "type" : {
+            "const" : "segment"
+          }
+        },
+        "required" : [ "id", "type", "data", "dependents_count" ],
+        "type" : "object"
+      },
+      "metabase-enterprise.dependencies.api.snippet-entity" : {
+        "properties" : {
+          "data" : {
+            "properties" : {
+              "collection" : { },
+              "collection_id" : { },
+              "created_at" : { },
+              "creator" : { },
+              "creator_id" : { },
+              "description" : { },
+              "name" : { }
+            },
+            "type" : "object"
+          },
+          "dependents_count" : {
+            "oneOf" : [ {
+              "$ref" : "#/components/schemas/metabase-enterprise.dependencies.api.usages"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "errors" : {
+            "items" : {
+              "$ref" : "#/components/schemas/metabase.lib.schema.validate.error"
+            },
+            "type" : "array",
+            "uniqueItems" : true
+          },
+          "id" : {
+            "minimum" : 1,
+            "type" : "integer"
+          },
+          "type" : {
+            "const" : "snippet"
+          }
+        },
+        "required" : [ "id", "type", "data", "dependents_count" ],
+        "type" : "object"
+      },
+      "metabase-enterprise.dependencies.api.table-entity" : {
+        "properties" : {
+          "data" : {
+            "properties" : {
+              "db" : { },
+              "db_id" : { },
+              "description" : { },
+              "display_name" : { },
+              "fields" : { },
+              "name" : { },
+              "schema" : { }
+            },
+            "type" : "object"
+          },
+          "dependents_count" : {
+            "oneOf" : [ {
+              "$ref" : "#/components/schemas/metabase-enterprise.dependencies.api.usages"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "errors" : {
+            "items" : {
+              "$ref" : "#/components/schemas/metabase.lib.schema.validate.error"
+            },
+            "type" : "array",
+            "uniqueItems" : true
+          },
+          "id" : {
+            "minimum" : 1,
+            "type" : "integer"
+          },
+          "type" : {
+            "const" : "table"
+          }
+        },
+        "required" : [ "id", "type", "data", "dependents_count" ],
+        "type" : "object"
+      },
       "metabase-enterprise.dependencies.api.transform-body" : {
         "properties" : {
           "id" : {
-            "description" : "value must be an integer greater than zero.",
-            "minimum" : 1,
-            "type" : "integer"
+            "$ref" : "#/components/schemas/metabase.lib.schema.id.transform"
           },
           "name" : {
             "type" : "string"
@@ -1329,6 +1817,57 @@
         },
         "required" : [ "id" ],
         "type" : "object"
+      },
+      "metabase-enterprise.dependencies.api.transform-entity" : {
+        "properties" : {
+          "data" : {
+            "properties" : {
+              "creator" : { },
+              "description" : { },
+              "last_run" : { },
+              "name" : { },
+              "table" : { }
+            },
+            "type" : "object"
+          },
+          "dependents_count" : {
+            "oneOf" : [ {
+              "$ref" : "#/components/schemas/metabase-enterprise.dependencies.api.usages"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "errors" : {
+            "items" : {
+              "$ref" : "#/components/schemas/metabase.lib.schema.validate.error"
+            },
+            "type" : "array",
+            "uniqueItems" : true
+          },
+          "id" : {
+            "minimum" : 1,
+            "type" : "integer"
+          },
+          "type" : {
+            "const" : "transform"
+          }
+        },
+        "required" : [ "id", "type", "data", "dependents_count" ],
+        "type" : "object"
+      },
+      "metabase-enterprise.dependencies.api.usages" : {
+        "additionalProperties" : {
+          "$ref" : "#/components/schemas/metabase-enterprise.dependencies.dependency-types.entity-id"
+        },
+        "type" : "object"
+      },
+      "metabase-enterprise.dependencies.dependency-types.dependency-types" : {
+        "enum" : [ "transform", "table", "snippet", "dashboard", "sandbox", "measure", "card", "document", "segment" ],
+        "type" : "string"
+      },
+      "metabase-enterprise.dependencies.dependency-types.entity-id" : {
+        "minimum" : 1,
+        "type" : "integer"
       },
       "metabase-enterprise.metabot-v3.client.schema.message" : {
         "properties" : {
@@ -1390,33 +1929,12 @@
         "type" : "object"
       },
       "metabase-enterprise.metabot-v3.tools.api.aggregation" : {
-        "allOf" : [ {
-          "properties" : {
-            "bucket" : {
-              "$ref" : "#/components/schemas/metabase-enterprise.metabot-v3.tools.api.bucket"
-            },
-            "field_id" : {
-              "type" : "string"
-            },
-            "function" : {
-              "enum" : [ "avg", "count", "count-distinct", "max", "min", "sum" ],
-              "type" : "string"
-            },
-            "sort_order" : {
-              "oneOf" : [ {
-                "enum" : [ "asc", "desc" ],
-                "type" : "string"
-              }, {
-                "type" : "null"
-              } ]
-            }
-          },
-          "required" : [ "field_id", "function" ],
-          "type" : "object"
+        "anyOf" : [ {
+          "$ref" : "#/components/schemas/metabase-enterprise.metabot-v3.tools.api.field-aggregation"
         }, {
-          "properties" : { },
-          "type" : "object"
-        } ]
+          "$ref" : "#/components/schemas/metabase-enterprise.metabot-v3.tools.api.measure-aggregation"
+        } ],
+        "description" : "Aggregation - either field-based or measure-based."
       },
       "metabase-enterprise.metabot-v3.tools.api.answer-sources-arguments" : {
         "allOf" : [ {
@@ -1861,6 +2379,36 @@
           "type" : "object"
         } ]
       },
+      "metabase-enterprise.metabot-v3.tools.api.field-aggregation" : {
+        "allOf" : [ {
+          "properties" : {
+            "bucket" : {
+              "$ref" : "#/components/schemas/metabase-enterprise.metabot-v3.tools.api.bucket"
+            },
+            "field_id" : {
+              "type" : "string"
+            },
+            "function" : {
+              "enum" : [ "avg", "count", "count-distinct", "max", "min", "sum" ],
+              "type" : "string"
+            },
+            "sort_order" : {
+              "oneOf" : [ {
+                "enum" : [ "asc", "desc" ],
+                "type" : "string"
+              }, {
+                "type" : "null"
+              } ]
+            }
+          },
+          "required" : [ "field_id", "function" ],
+          "type" : "object"
+        }, {
+          "properties" : { },
+          "type" : "object"
+        } ],
+        "description" : "Aggregation using a field and function."
+      },
       "metabase-enterprise.metabot-v3.tools.api.field-type" : {
         "enum" : [ "boolean", "date", "datetime", "time", "number", "string" ],
         "type" : "string"
@@ -1953,6 +2501,8 @@
       },
       "metabase-enterprise.metabot-v3.tools.api.filter" : {
         "anyOf" : [ {
+          "$ref" : "#/components/schemas/metabase-enterprise.metabot-v3.tools.api.segment-filter"
+        }, {
           "$ref" : "#/components/schemas/metabase-enterprise.metabot-v3.tools.api.existence-filter"
         }, {
           "$ref" : "#/components/schemas/metabase-enterprise.metabot-v3.tools.api.temporal-extraction-filter"
@@ -2193,6 +2743,12 @@
           },
           "queryable_dimensions" : {
             "$ref" : "#/components/schemas/metabase-enterprise.metabot-v3.tools.api.columns"
+          },
+          "segments" : {
+            "items" : {
+              "$ref" : "#/components/schemas/metabase-enterprise.metabot-v3.tools.api.segment"
+            },
+            "type" : "array"
           },
           "type" : {
             "const" : "metric"
@@ -2469,6 +3025,10 @@
             "with_queryable_dimensions" : {
               "default" : true,
               "type" : "boolean"
+            },
+            "with_segments" : {
+              "default" : false,
+              "type" : "boolean"
             }
           },
           "required" : [ "metric_id" ],
@@ -2666,6 +3226,10 @@
               "default" : true,
               "type" : "boolean"
             },
+            "with_measures" : {
+              "default" : false,
+              "type" : "boolean"
+            },
             "with_metric_default_temporal_breakout" : {
               "default" : true,
               "type" : "boolean"
@@ -2676,6 +3240,10 @@
             },
             "with_related_tables" : {
               "default" : true,
+              "type" : "boolean"
+            },
+            "with_segments" : {
+              "default" : false,
               "type" : "boolean"
             }
           },
@@ -2926,6 +3494,63 @@
           "properties" : { },
           "type" : "object"
         } ]
+      },
+      "metabase-enterprise.metabot-v3.tools.api.measure" : {
+        "properties" : {
+          "definition" : {
+            "oneOf" : [ {
+              "properties" : { },
+              "type" : "object"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "description" : {
+            "oneOf" : [ {
+              "type" : "string"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "display_name" : {
+            "oneOf" : [ {
+              "type" : "string"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "id" : {
+            "type" : "integer"
+          },
+          "name" : {
+            "type" : "string"
+          }
+        },
+        "required" : [ "id", "name" ],
+        "type" : "object"
+      },
+      "metabase-enterprise.metabot-v3.tools.api.measure-aggregation" : {
+        "allOf" : [ {
+          "properties" : {
+            "measure_id" : {
+              "type" : "integer"
+            },
+            "sort_order" : {
+              "oneOf" : [ {
+                "enum" : [ "asc", "desc" ],
+                "type" : "string"
+              }, {
+                "type" : "null"
+              } ]
+            }
+          },
+          "required" : [ "measure_id" ],
+          "type" : "object"
+        }, {
+          "properties" : { },
+          "type" : "object"
+        } ],
+        "description" : "Aggregation using a pre-defined measure."
       },
       "metabase-enterprise.metabot-v3.tools.api.numeric-filter" : {
         "allOf" : [ {
@@ -3362,6 +3987,55 @@
         "required" : [ "id", "type", "name" ],
         "type" : "object"
       },
+      "metabase-enterprise.metabot-v3.tools.api.segment" : {
+        "properties" : {
+          "definition" : {
+            "oneOf" : [ {
+              "properties" : { },
+              "type" : "object"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "description" : {
+            "oneOf" : [ {
+              "type" : "string"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "display_name" : {
+            "oneOf" : [ {
+              "type" : "string"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "id" : {
+            "type" : "integer"
+          },
+          "name" : {
+            "type" : "string"
+          }
+        },
+        "required" : [ "id", "name" ],
+        "type" : "object"
+      },
+      "metabase-enterprise.metabot-v3.tools.api.segment-filter" : {
+        "allOf" : [ {
+          "properties" : {
+            "segment_id" : {
+              "type" : "integer"
+            }
+          },
+          "required" : [ "segment_id" ],
+          "type" : "object"
+        }, {
+          "properties" : { },
+          "type" : "object"
+        } ],
+        "description" : "Filter using a pre-defined segment."
+      },
       "metabase-enterprise.metabot-v3.tools.api.statistics" : {
         "properties" : {
           "average_length" : {
@@ -3588,6 +4262,12 @@
           "id" : {
             "type" : "integer"
           },
+          "measures" : {
+            "items" : {
+              "$ref" : "#/components/schemas/metabase-enterprise.metabot-v3.tools.api.measure"
+            },
+            "type" : "array"
+          },
           "metrics" : {
             "items" : {
               "$ref" : "#/components/schemas/metabase-enterprise.metabot-v3.tools.api.basic-metric"
@@ -3607,6 +4287,12 @@
           "related_tables" : {
             "items" : {
               "$ref" : "#/components/schemas/metabase-enterprise.metabot-v3.tools.api.table-result"
+            },
+            "type" : "array"
+          },
+          "segments" : {
+            "items" : {
+              "$ref" : "#/components/schemas/metabase-enterprise.metabot-v3.tools.api.segment"
             },
             "type" : "array"
           },
@@ -3668,12 +4354,19 @@
         } ]
       },
       "metabase-enterprise.metabot-v3.tools.deftool.tool-request" : {
-        "description" : "Base schema for all tool requests. Contains the conversation ID.",
+        "description" : "Base schema for all tool requests. Contains the conversation ID and optional profile ID.",
         "properties" : {
           "conversation_id" : {
             "description" : "value must be a valid UUID.",
             "pattern" : "[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}",
             "type" : "string"
+          },
+          "profile_id" : {
+            "oneOf" : [ {
+              "type" : "string"
+            }, {
+              "type" : "null"
+            } ]
           }
         },
         "required" : [ "conversation_id" ],
@@ -3933,6 +4626,41 @@
           "$ref" : "#/components/schemas/metabase-enterprise.transforms.schema.checkpoint-strategy"
         } ]
       },
+      "metabase-enterprise.transforms.schema.source-table-ref" : {
+        "description" : "A reference to a source table by name, for cases where table_id may not exist yet.\n  Also saves querying metadata in situations where we'll need the name.",
+        "properties" : {
+          "database_id" : {
+            "type" : "integer"
+          },
+          "schema" : {
+            "oneOf" : [ {
+              "type" : "string"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "table" : {
+            "type" : "string"
+          },
+          "table_id" : {
+            "oneOf" : [ {
+              "type" : "integer"
+            }, {
+              "type" : "null"
+            } ]
+          }
+        },
+        "required" : [ "database_id", "table" ],
+        "type" : "object"
+      },
+      "metabase-enterprise.transforms.schema.source-table-value" : {
+        "anyOf" : [ {
+          "type" : "integer"
+        }, {
+          "$ref" : "#/components/schemas/metabase-enterprise.transforms.schema.source-table-ref"
+        } ],
+        "description" : "Either a table ID (int) or a reference map."
+      },
       "metabase-enterprise.transforms.schema.table-incremental-target" : {
         "properties" : {
           "database" : {
@@ -3987,6 +4715,28 @@
           "$ref" : "#/components/schemas/metabase-enterprise.transforms.schema.append-config"
         } ]
       },
+      "metabase-enterprise.transforms.schema.transform" : {
+        "properties" : {
+          "description" : {
+            "oneOf" : [ {
+              "type" : "string"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "name" : {
+            "type" : "string"
+          },
+          "source" : {
+            "$ref" : "#/components/schemas/metabase-enterprise.transforms.schema.transform-source"
+          },
+          "target" : {
+            "$ref" : "#/components/schemas/metabase-enterprise.transforms.schema.transform-target"
+          }
+        },
+        "required" : [ "name", "source", "target" ],
+        "type" : "object"
+      },
       "metabase-enterprise.transforms.schema.transform-source" : {
         "oneOf" : [ {
           "properties" : {
@@ -4015,7 +4765,7 @@
             },
             "source-tables" : {
               "additionalProperties" : {
-                "type" : "integer"
+                "$ref" : "#/components/schemas/metabase-enterprise.transforms.schema.source-table-value"
               },
               "type" : "object"
             },
@@ -4745,6 +5495,349 @@
         "required" : [ "moved" ],
         "type" : "object"
       },
+      "metabase.collections.schema.CardType" : {
+        "enum" : [ "model", "question", "metric" ],
+        "type" : "string"
+      },
+      "metabase.collections.schema.Collection" : {
+        "properties" : {
+          "archived" : {
+            "type" : "boolean"
+          },
+          "authority_level" : {
+            "oneOf" : [ {
+              "type" : "string"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "below" : {
+            "items" : {
+              "$ref" : "#/components/schemas/metabase.collections.schema.CollectionItemModel"
+            },
+            "type" : "array"
+          },
+          "can_delete" : {
+            "type" : "boolean"
+          },
+          "can_restore" : {
+            "type" : "boolean"
+          },
+          "can_write" : {
+            "type" : "boolean"
+          },
+          "children" : {
+            "items" : {
+              "$ref" : "#/components/schemas/metabase.collections.schema.Collection"
+            },
+            "type" : "array"
+          },
+          "description" : {
+            "oneOf" : [ {
+              "type" : "string"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "effective_ancestors" : {
+            "properties" : { },
+            "type" : "object"
+          },
+          "effective_location" : {
+            "type" : "string"
+          },
+          "entity_id" : {
+            "type" : "string"
+          },
+          "git_sync_enabled" : {
+            "type" : "boolean"
+          },
+          "here" : {
+            "items" : {
+              "$ref" : "#/components/schemas/metabase.collections.schema.CollectionItemModel"
+            },
+            "type" : "array",
+            "uniqueItems" : true
+          },
+          "id" : {
+            "anyOf" : [ {
+              "type" : "string"
+            }, {
+              "description" : "value must be an integer greater than zero.",
+              "minimum" : 1,
+              "type" : "integer"
+            } ]
+          },
+          "is_personal" : {
+            "type" : "boolean"
+          },
+          "is_remote_synced" : {
+            "type" : "boolean"
+          },
+          "is_sample" : {
+            "type" : "boolean"
+          },
+          "location" : {
+            "oneOf" : [ {
+              "type" : "string"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "name" : {
+            "type" : "string"
+          },
+          "parent_id" : {
+            "oneOf" : [ {
+              "anyOf" : [ {
+                "type" : "string"
+              }, {
+                "description" : "value must be an integer greater than zero.",
+                "minimum" : 1,
+                "type" : "integer"
+              } ]
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "personal_owner_id" : {
+            "description" : "value must be an integer greater than zero.",
+            "minimum" : 1,
+            "type" : "integer"
+          },
+          "slug" : {
+            "type" : "string"
+          },
+          "type" : {
+            "$ref" : "#/components/schemas/metabase.collections.schema.CollectionType"
+          }
+        },
+        "required" : [ "id", "name", "description", "can_write", "can_restore", "can_delete", "archived", "location" ],
+        "type" : "object"
+      },
+      "metabase.collections.schema.CollectionItem" : {
+        "properties" : {
+          "archived" : {
+            "type" : "boolean"
+          },
+          "authority_level" : {
+            "oneOf" : [ {
+              "type" : "string"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "based_on_upload" : {
+            "oneOf" : [ {
+              "anyOf" : [ {
+                "description" : "value must be an integer greater than zero.",
+                "minimum" : 1,
+                "type" : "integer"
+              }, {
+                "type" : "string"
+              } ]
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "below" : {
+            "items" : {
+              "$ref" : "#/components/schemas/metabase.collections.schema.CollectionItemModel"
+            },
+            "type" : "array"
+          },
+          "can_delete" : {
+            "type" : "boolean"
+          },
+          "can_restore" : {
+            "type" : "boolean"
+          },
+          "can_write" : {
+            "type" : "boolean"
+          },
+          "collection" : {
+            "oneOf" : [ {
+              "$ref" : "#/components/schemas/metabase.collections.schema.Collection"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "collection_id" : {
+            "oneOf" : [ {
+              "anyOf" : [ {
+                "description" : "value must be an integer greater than zero.",
+                "minimum" : 1,
+                "type" : "integer"
+              }, {
+                "type" : "string"
+              } ]
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "collection_position" : {
+            "oneOf" : [ {
+              "description" : "value must be an integer greater than zero.",
+              "minimum" : 1,
+              "type" : "integer"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "collection_preview" : {
+            "oneOf" : [ {
+              "type" : "boolean"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "copy" : {
+            "type" : "boolean"
+          },
+          "dashboard_count" : {
+            "oneOf" : [ {
+              "description" : "value must be an integer greater than zero.",
+              "minimum" : 1,
+              "type" : "integer"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "database_id" : {
+            "oneOf" : [ {
+              "description" : "value must be an integer greater than zero.",
+              "minimum" : 1,
+              "type" : "integer"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "description" : {
+            "oneOf" : [ {
+              "type" : "string"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "display" : {
+            "type" : "string"
+          },
+          "effective_location" : {
+            "type" : "string"
+          },
+          "entity_id" : {
+            "type" : "string"
+          },
+          "fully_parameterized" : {
+            "oneOf" : [ {
+              "type" : "boolean"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "here" : {
+            "items" : {
+              "$ref" : "#/components/schemas/metabase.collections.schema.CollectionItemModel"
+            },
+            "type" : "array",
+            "uniqueItems" : true
+          },
+          "id" : {
+            "description" : "value must be an integer greater than zero.",
+            "minimum" : 1,
+            "type" : "integer"
+          },
+          "last-edit-info" : {
+            "$ref" : "#/components/schemas/metabase.collections.schema.LastEditInfo"
+          },
+          "location" : {
+            "type" : "string"
+          },
+          "model" : {
+            "$ref" : "#/components/schemas/metabase.collections.schema.CollectionItemModel"
+          },
+          "moderated_status" : {
+            "type" : "string"
+          },
+          "name" : {
+            "type" : "string"
+          },
+          "personal_owner_id" : {
+            "oneOf" : [ {
+              "description" : "value must be an integer greater than zero.",
+              "minimum" : 1,
+              "type" : "integer"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "type" : {
+            "anyOf" : [ {
+              "$ref" : "#/components/schemas/metabase.collections.schema.CollectionType"
+            }, {
+              "$ref" : "#/components/schemas/metabase.collections.schema.CardType"
+            } ]
+          }
+        },
+        "required" : [ "id", "name", "description", "archived" ],
+        "type" : "object"
+      },
+      "metabase.collections.schema.CollectionItemModel" : {
+        "enum" : [ "card", "dataset", "metric", "dashboard", "snippet", "collection", "indexed-entity", "indexed-entity", "document", "table" ],
+        "type" : "string"
+      },
+      "metabase.collections.schema.CollectionType" : {
+        "enum" : [ "instance-analytics", "trash", "remote-synced", "library", "library-models", "library-metrics" ],
+        "type" : "string"
+      },
+      "metabase.collections.schema.LastEditInfo" : {
+        "properties" : {
+          "email" : {
+            "oneOf" : [ {
+              "type" : "string"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "first_name" : {
+            "oneOf" : [ {
+              "type" : "string"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "id" : {
+            "oneOf" : [ {
+              "description" : "value must be an integer greater than zero.",
+              "minimum" : 1,
+              "type" : "integer"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "last_name" : {
+            "oneOf" : [ {
+              "type" : "string"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "timestamp" : {
+            "oneOf" : [ {
+              "type" : "string"
+            }, {
+              "type" : "null"
+            } ]
+          }
+        },
+        "required" : [ "id", "email", "first_name", "last_name", "timestamp" ],
+        "type" : "object"
+      },
+      "metabase.documents.schema..document.id" : {
+        "description" : "Valid Document ID",
+        "minimum" : 1,
+        "type" : "integer"
+      },
       "metabase.legacy-mbql.schema.!=" : {
         "allOf" : [ ],
         "description" : "schema for a valid MBQL 4 :!= clause"
@@ -4821,8 +5914,7 @@
           "options" : {
             "description" : "optional map to be appended to filter clause",
             "oneOf" : [ {
-              "additionalProperties" : { },
-              "type" : "object"
+              "$ref" : "#/components/schemas/metabase.legacy-mbql.schema..TemplateTag.FieldFilter.Options"
             }, {
               "type" : "null"
             } ]
@@ -4840,6 +5932,10 @@
           }
         },
         "required" : [ "type", "name", "display-name", "dimension", "widget-type" ],
+        "type" : "object"
+      },
+      "metabase.legacy-mbql.schema..TemplateTag.FieldFilter.Options" : {
+        "additionalProperties" : { },
         "type" : "object"
       },
       "metabase.legacy-mbql.schema..TemplateTag.RawValue" : {
@@ -5280,18 +6376,47 @@
         } ]
       },
       "metabase.legacy-mbql.schema.Aggregation" : {
-        "description" : "Schema for anything that is a valid `:aggregation` clause.",
-        "oneOf" : [ {
-          "$ref" : "#/components/schemas/metabase.legacy-mbql.schema.aggregation-options"
+        "allOf" : [ {
+          "oneOf" : [ {
+            "$ref" : "#/components/schemas/metabase.legacy-mbql.schema.aggregation-options"
+          }, {
+            "$ref" : "#/components/schemas/metabase.legacy-mbql.schema.UnnamedAggregation"
+          } ]
         }, {
-          "$ref" : "#/components/schemas/metabase.legacy-mbql.schema.UnnamedAggregation"
-        } ]
+          "description" : "Normalization should automatically unwrap :aggregation-options with an empty options map"
+        } ],
+        "description" : "Schema for anything that is a valid `:aggregation` clause."
       },
       "metabase.legacy-mbql.schema.AggregationOptionsOptions" : {
         "description" : "Additional options for any aggregation clause when wrapping it in `:aggregation-options`.",
         "properties" : {
           "display-name" : {
             "$ref" : "#/components/schemas/metabase.lib.schema.common.non-blank-string"
+          },
+          "name" : {
+            "$ref" : "#/components/schemas/metabase.lib.schema.common.non-blank-string"
+          }
+        },
+        "type" : "object"
+      },
+      "metabase.legacy-mbql.schema.AggregationRefOptions" : {
+        "properties" : {
+          "base-type" : {
+            "oneOf" : [ {
+              "$ref" : "#/components/schemas/metabase.lib.schema.common.base-type"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "display-name" : {
+            "$ref" : "#/components/schemas/metabase.lib.schema.common.non-blank-string"
+          },
+          "effective-type" : {
+            "oneOf" : [ {
+              "$ref" : "#/components/schemas/metabase.lib.schema.common.base-type"
+            }, {
+              "type" : "null"
+            } ]
           },
           "name" : {
             "$ref" : "#/components/schemas/metabase.lib.schema.common.non-blank-string"
@@ -5468,6 +6593,12 @@
           "$ref" : "#/components/schemas/metabase.legacy-mbql.schema.datetime"
         }, {
           "$ref" : "#/components/schemas/metabase.legacy-mbql.schema.today"
+        }, {
+          "$ref" : "#/components/schemas/metabase.legacy-mbql.schema.coalesce"
+        }, {
+          "$ref" : "#/components/schemas/metabase.legacy-mbql.schema.case"
+        }, {
+          "$ref" : "#/components/schemas/metabase.legacy-mbql.schema.if"
         } ]
       },
       "metabase.legacy-mbql.schema.DatetimeOptions" : {
@@ -5529,6 +6660,8 @@
           "$ref" : "#/components/schemas/metabase.legacy-mbql.schema.DatetimeExpression"
         }, {
           "$ref" : "#/components/schemas/metabase.legacy-mbql.schema.Aggregation"
+        }, {
+          "$ref" : "#/components/schemas/metabase.legacy-mbql.schema.aggregation"
         }, {
           "type" : "string"
         }, {
@@ -5615,12 +6748,18 @@
         "oneOf" : [ {
           "$ref" : "#/components/schemas/metabase.legacy-mbql.schema.NumericExpression"
         }, {
+          "type" : "number"
+        }, {
           "$ref" : "#/components/schemas/metabase.legacy-mbql.schema.StringExpression"
+        }, {
+          "type" : "string"
         }, {
           "$ref" : "#/components/schemas/metabase.legacy-mbql.schema.BooleanExpression"
         }, {
-          "$ref" : "#/components/schemas/metabase.legacy-mbql.schema.DatetimeExpression"
+          "type" : "boolean"
         }, {
+          "$ref" : "#/components/schemas/metabase.legacy-mbql.schema.DatetimeExpression"
+        }, { }, {
           "$ref" : "#/components/schemas/metabase.legacy-mbql.schema.case"
         }, {
           "$ref" : "#/components/schemas/metabase.legacy-mbql.schema.if"
@@ -7613,6 +8752,11 @@
         "minimum" : 1,
         "type" : "integer"
       },
+      "metabase.lib.schema.id.collection" : {
+        "description" : "Valid Collection ID",
+        "minimum" : 1,
+        "type" : "integer"
+      },
       "metabase.lib.schema.id.dashboard" : {
         "description" : "Valid Dashboard ID",
         "minimum" : 1,
@@ -7638,8 +8782,18 @@
         "minimum" : 1,
         "type" : "integer"
       },
+      "metabase.lib.schema.id.measure" : {
+        "description" : "Valid Measure ID",
+        "minimum" : 1,
+        "type" : "integer"
+      },
       "metabase.lib.schema.id.pulse" : {
         "description" : "Valid Pulse ID",
+        "minimum" : 1,
+        "type" : "integer"
+      },
+      "metabase.lib.schema.id.sandbox" : {
+        "description" : "Valid Sandbox ID",
         "minimum" : 1,
         "type" : "integer"
       },
@@ -7659,6 +8813,11 @@
       },
       "metabase.lib.schema.id.table" : {
         "description" : "Valid Table ID",
+        "minimum" : 1,
+        "type" : "integer"
+      },
+      "metabase.lib.schema.id.transform" : {
+        "description" : "Valid Transform ID",
         "minimum" : 1,
         "type" : "integer"
       },
@@ -8129,6 +9288,8 @@
           "$ref" : "#/components/schemas/mbql.clause.ltrim"
         }, {
           "$ref" : "#/components/schemas/mbql.clause.max"
+        }, {
+          "$ref" : "#/components/schemas/mbql.clause.measure"
         }, {
           "$ref" : "#/components/schemas/mbql.clause.median"
         }, {
@@ -10009,6 +11170,89 @@
       },
       "metabase.lib.schema.util.distinct-mbql-clauses" : { },
       "metabase.lib.schema.util.unique-uuids" : { },
+      "metabase.lib.schema.validate.duplicate-column-error" : {
+        "properties" : {
+          "name" : {
+            "type" : "string"
+          },
+          "type" : {
+            "const" : "validate/duplicate-column"
+          }
+        },
+        "required" : [ "type", "name" ],
+        "type" : "object"
+      },
+      "metabase.lib.schema.validate.error" : {
+        "allOf" : [ {
+          "properties" : {
+            "type" : {
+              "$ref" : "#/components/schemas/metabase.lib.schema.validate.validate-error-type"
+            }
+          },
+          "required" : [ "type" ],
+          "type" : "object"
+        }, {
+          "oneOf" : [ {
+            "$ref" : "#/components/schemas/metabase.lib.schema.validate.missing-column-error"
+          }, {
+            "$ref" : "#/components/schemas/metabase.lib.schema.validate.missing-table-alias-error"
+          }, {
+            "$ref" : "#/components/schemas/metabase.lib.schema.validate.duplicate-column-error"
+          }, {
+            "$ref" : "#/components/schemas/metabase.lib.schema.validate.syntax-error"
+          }, {
+            "$ref" : "#/components/schemas/metabase.lib.schema.validate.validation-exception-error"
+          } ]
+        } ]
+      },
+      "metabase.lib.schema.validate.missing-column-error" : {
+        "properties" : {
+          "name" : {
+            "type" : "string"
+          },
+          "type" : {
+            "const" : "validate/missing-column"
+          }
+        },
+        "required" : [ "type", "name" ],
+        "type" : "object"
+      },
+      "metabase.lib.schema.validate.missing-table-alias-error" : {
+        "properties" : {
+          "name" : {
+            "type" : "string"
+          },
+          "type" : {
+            "const" : "validate/missing-table-alias"
+          }
+        },
+        "required" : [ "type", "name" ],
+        "type" : "object"
+      },
+      "metabase.lib.schema.validate.syntax-error" : {
+        "properties" : {
+          "type" : {
+            "const" : "validate/syntax-error"
+          }
+        },
+        "required" : [ "type" ],
+        "type" : "object"
+      },
+      "metabase.lib.schema.validate.validate-error-type" : {
+        "type" : "string"
+      },
+      "metabase.lib.schema.validate.validation-exception-error" : {
+        "properties" : {
+          "message" : {
+            "type" : "string"
+          },
+          "type" : {
+            "const" : "validate/validation-exception-error"
+          }
+        },
+        "required" : [ "type", "message" ],
+        "type" : "object"
+      },
       "metabase.logger.api.log-level" : {
         "enum" : [ "off", "fatal", "error", "warn", "info", "debug", "trace" ],
         "type" : "string"
@@ -10016,6 +11260,63 @@
       "metabase.logger.api.time-unit" : {
         "enum" : [ "days", "hours", "minutes", "seconds", "milliseconds", "microseconds", "nanoseconds" ],
         "type" : "string"
+      },
+      "metabase.measures.api.measure" : {
+        "description" : "Schema for a Measure entity as returned from the API.",
+        "properties" : {
+          "archived" : {
+            "type" : "boolean"
+          },
+          "created_at" : { },
+          "creator" : {
+            "oneOf" : [ {
+              "properties" : { },
+              "type" : "object"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "creator_id" : {
+            "description" : "value must be an integer greater than zero.",
+            "minimum" : 1,
+            "type" : "integer"
+          },
+          "definition" : {
+            "properties" : { },
+            "type" : "object"
+          },
+          "description" : {
+            "oneOf" : [ {
+              "type" : "string"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "entity_id" : {
+            "oneOf" : [ {
+              "type" : "string"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "id" : {
+            "description" : "value must be an integer greater than zero.",
+            "minimum" : 1,
+            "type" : "integer"
+          },
+          "name" : {
+            "minLength" : 1,
+            "type" : "string"
+          },
+          "table_id" : {
+            "description" : "value must be an integer greater than zero.",
+            "minimum" : 1,
+            "type" : "integer"
+          },
+          "updated_at" : { }
+        },
+        "required" : [ "id", "name", "table_id", "definition", "archived", "creator_id", "created_at", "updated_at" ],
+        "type" : "object"
       },
       "metabase.notification.models.FullyHydratedNotification" : {
         "description" : "Fully hydrated notification.",
@@ -10943,6 +12244,27 @@
       "metabase.queries.schema.card" : {
         "description" : "Schema for an instance of a `:model/Card` (everything is optional to support updates).",
         "properties" : {
+          "collection_id" : {
+            "oneOf" : [ {
+              "$ref" : "#/components/schemas/metabase.lib.schema.id.collection"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "dashboard_id" : {
+            "oneOf" : [ {
+              "$ref" : "#/components/schemas/metabase.lib.schema.id.dashboard"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "database_id" : {
+            "oneOf" : [ {
+              "$ref" : "#/components/schemas/metabase.lib.schema.id.database"
+            }, {
+              "type" : "null"
+            } ]
+          },
           "dataset_query" : {
             "oneOf" : [ {
               "$ref" : "#/components/schemas/metabase.queries.schema.query"
@@ -10950,9 +12272,30 @@
               "type" : "null"
             } ]
           },
+          "description" : {
+            "oneOf" : [ {
+              "type" : "string"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "document_id" : {
+            "oneOf" : [ {
+              "$ref" : "#/components/schemas/metabase.documents.schema..document.id"
+            }, {
+              "type" : "null"
+            } ]
+          },
           "id" : {
             "oneOf" : [ {
               "$ref" : "#/components/schemas/metabase.lib.schema.id.card"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "name" : {
+            "oneOf" : [ {
+              "type" : "string"
             }, {
               "type" : "null"
             } ]
@@ -11087,6 +12430,244 @@
             "$ref" : "#/components/schemas/metabase.util.cron.ScheduleMap"
           }
         },
+        "type" : "object"
+      },
+      "metabase.task-history.api.RunEntity" : {
+        "properties" : {
+          "entity_id" : {
+            "description" : "value must be an integer greater than zero.",
+            "minimum" : 1,
+            "type" : "integer"
+          },
+          "entity_name" : {
+            "oneOf" : [ {
+              "type" : "string"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "entity_type" : {
+            "enum" : [ "dashboard", "card", "database" ],
+            "type" : "string"
+          }
+        },
+        "required" : [ "entity_type", "entity_id" ],
+        "type" : "object"
+      },
+      "metabase.task-history.api.RunFilterParams" : {
+        "properties" : {
+          "entity-id" : {
+            "description" : "value must be an integer greater than zero.",
+            "minimum" : 1,
+            "type" : "integer"
+          },
+          "entity-type" : {
+            "enum" : [ "dashboard", "card", "database" ],
+            "type" : "string"
+          },
+          "run-type" : {
+            "enum" : [ "alert", "sync", "fingerprint", "subscription" ],
+            "type" : "string"
+          },
+          "status" : {
+            "enum" : [ "started", "success", "failed", "abandoned" ],
+            "type" : "string"
+          }
+        },
+        "type" : "object"
+      },
+      "metabase.task-history.api.TaskHistory" : {
+        "properties" : {
+          "duration" : {
+            "oneOf" : [ {
+              "type" : "integer"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "ended_at" : {
+            "oneOf" : [ { }, {
+              "type" : "null"
+            } ]
+          },
+          "id" : {
+            "description" : "value must be an integer greater than zero.",
+            "minimum" : 1,
+            "type" : "integer"
+          },
+          "logs" : {
+            "oneOf" : [ { }, {
+              "type" : "null"
+            } ]
+          },
+          "run_id" : {
+            "oneOf" : [ {
+              "description" : "value must be an integer greater than zero.",
+              "minimum" : 1,
+              "type" : "integer"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "started_at" : { },
+          "status" : {
+            "enum" : [ "started", "success", "failed", "unknown" ],
+            "type" : "string"
+          },
+          "task" : {
+            "type" : "string"
+          },
+          "task_details" : {
+            "oneOf" : [ {
+              "properties" : { },
+              "type" : "object"
+            }, {
+              "type" : "null"
+            } ]
+          }
+        },
+        "required" : [ "id", "task", "started_at", "ended_at", "duration", "status" ],
+        "type" : "object"
+      },
+      "metabase.task-history.api.TaskRun" : {
+        "properties" : {
+          "ended_at" : {
+            "oneOf" : [ { }, {
+              "type" : "null"
+            } ]
+          },
+          "entity_id" : {
+            "description" : "value must be an integer greater than zero.",
+            "minimum" : 1,
+            "type" : "integer"
+          },
+          "entity_name" : {
+            "oneOf" : [ {
+              "type" : "string"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "entity_type" : {
+            "enum" : [ "dashboard", "card", "database" ],
+            "type" : "string"
+          },
+          "failed_count" : {
+            "type" : "integer"
+          },
+          "id" : {
+            "description" : "value must be an integer greater than zero.",
+            "minimum" : 1,
+            "type" : "integer"
+          },
+          "run_type" : {
+            "enum" : [ "alert", "sync", "fingerprint", "subscription" ],
+            "type" : "string"
+          },
+          "started_at" : { },
+          "status" : {
+            "enum" : [ "started", "success", "failed", "abandoned" ],
+            "type" : "string"
+          },
+          "success_count" : {
+            "type" : "integer"
+          },
+          "task_count" : {
+            "type" : "integer"
+          }
+        },
+        "required" : [ "id", "run_type", "entity_type", "entity_id", "started_at", "ended_at", "status" ],
+        "type" : "object"
+      },
+      "metabase.task-history.api.TaskRunWithTasks" : {
+        "properties" : {
+          "ended_at" : {
+            "oneOf" : [ { }, {
+              "type" : "null"
+            } ]
+          },
+          "entity_id" : {
+            "description" : "value must be an integer greater than zero.",
+            "minimum" : 1,
+            "type" : "integer"
+          },
+          "entity_name" : {
+            "oneOf" : [ {
+              "type" : "string"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "entity_type" : {
+            "enum" : [ "dashboard", "card", "database" ],
+            "type" : "string"
+          },
+          "failed_count" : {
+            "type" : "integer"
+          },
+          "id" : {
+            "description" : "value must be an integer greater than zero.",
+            "minimum" : 1,
+            "type" : "integer"
+          },
+          "run_type" : {
+            "enum" : [ "alert", "sync", "fingerprint", "subscription" ],
+            "type" : "string"
+          },
+          "started_at" : { },
+          "status" : {
+            "enum" : [ "started", "success", "failed", "abandoned" ],
+            "type" : "string"
+          },
+          "success_count" : {
+            "type" : "integer"
+          },
+          "task_count" : {
+            "type" : "integer"
+          },
+          "tasks" : {
+            "items" : {
+              "$ref" : "#/components/schemas/metabase.task-history.api.TaskHistory"
+            },
+            "type" : "array"
+          }
+        },
+        "required" : [ "id", "run_type", "entity_type", "entity_id", "started_at", "ended_at", "status", "tasks" ],
+        "type" : "object"
+      },
+      "metabase.task-history.api.TaskRunsResponse" : {
+        "properties" : {
+          "data" : {
+            "items" : {
+              "$ref" : "#/components/schemas/metabase.task-history.api.TaskRun"
+            },
+            "type" : "array"
+          },
+          "limit" : {
+            "oneOf" : [ {
+              "description" : "value must be an integer greater than zero.",
+              "minimum" : 1,
+              "type" : "integer"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "offset" : {
+            "oneOf" : [ {
+              "description" : "value must be an integer greater or equal to than zero.",
+              "minimum" : 0,
+              "type" : "integer"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "total" : {
+            "description" : "value must be an integer greater or equal to than zero.",
+            "minimum" : 0,
+            "type" : "integer"
+          }
+        },
+        "required" : [ "total", "limit", "offset", "data" ],
         "type" : "object"
       },
       "metabase.tiles.api.legacy-ref" : {
@@ -11287,7 +12868,7 @@
                 }
               }
             },
-            "description" : "sequence of An Action as it should appear when we `SELECT` it from the app DB."
+            "description" : "Successful response"
           },
           "4XX" : {
             "description" : "Client error response"
@@ -11320,7 +12901,7 @@
                 }
               }
             },
-            "description" : "An Action as it should appear when we `SELECT` it from the app DB."
+            "description" : "Successful response"
           },
           "4XX" : {
             "description" : "Client error response"
@@ -11349,7 +12930,7 @@
                 }
               }
             },
-            "description" : "sequence of An Action as it should appear when we `SELECT` it from the app DB."
+            "description" : "Successful response"
           },
           "4XX" : {
             "description" : "Client error response"
@@ -11410,7 +12991,7 @@
                 }
               }
             },
-            "description" : "An Action as it should appear when we `SELECT` it from the app DB."
+            "description" : "Successful response"
           },
           "4XX" : {
             "description" : "Client error response"
@@ -12042,7 +13623,7 @@
                 }
               }
             },
-            "description" : "map where {:id -> <value must be an integer greater than zero.>, :unmasked_key -> <Unhashed string of the form 'mb_<base-64-bytes>'.>, :masked_key -> <Masked string like 'mb_1234**********'.>, :prefix -> <Prefix string of an API Key, suitable for passing around unmasked. This must be unique.>}"
+            "description" : "Successful response"
           },
           "4XX" : {
             "description" : "Client error response"
@@ -14814,7 +16395,7 @@
                 }
               }
             },
-            "description" : "map where {:data -> <sequence of map where {:id -> <integer greater than 0>, :name -> <string>, :description -> <nullable string>, :sole_dashboard_info -> <map where {:id -> <integer greater than 0>, :name -> <string>, :description -> <nullable string>}>}>, :total -> <integer>}"
+            "description" : "Successful response"
           },
           "4XX" : {
             "description" : "Client error response"
@@ -14837,7 +16418,7 @@
           "schema" : {
             "oneOf" : [ {
               "items" : {
-                "enum" : [ "dashboard", "table", "dataset", "no_models", "timeline", "snippet", "collection", "document", "pulse", "metric", "card" ],
+                "enum" : [ "dashboard", "table", "dataset", "no_models", "timeline", "snippet", "collection", "transform", "document", "pulse", "metric", "card" ],
                 "type" : "string"
               },
               "type" : "array"
@@ -15014,7 +16595,7 @@
                 }
               }
             },
-            "description" : "map where {:moved -> <sequence of value must be an integer greater than zero.>}"
+            "description" : "Successful response"
           },
           "4XX" : {
             "description" : "Client error response"
@@ -15321,7 +16902,7 @@
                 }
               }
             },
-            "description" : "map where {:data -> <sequence of map where {:id -> <integer greater than 0>, :name -> <string>, :description -> <nullable string>, :sole_dashboard_info -> <map where {:id -> <integer greater than 0>, :name -> <string>, :description -> <nullable string>}>}>, :total -> <integer>}"
+            "description" : "Successful response"
           },
           "4XX" : {
             "description" : "Client error response"
@@ -15359,7 +16940,7 @@
           "schema" : {
             "oneOf" : [ {
               "items" : {
-                "enum" : [ "dashboard", "table", "dataset", "no_models", "timeline", "snippet", "collection", "document", "pulse", "metric", "card" ],
+                "enum" : [ "dashboard", "table", "dataset", "no_models", "timeline", "snippet", "collection", "transform", "document", "pulse", "metric", "card" ],
                 "type" : "string"
               },
               "type" : "array"
@@ -15513,7 +17094,7 @@
                 }
               }
             },
-            "description" : "map where {:moved -> <sequence of value must be an integer greater than zero.>}"
+            "description" : "Successful response"
           },
           "4XX" : {
             "description" : "Client error response"
@@ -17139,7 +18720,7 @@
     },
     "/api/database/" : {
       "get" : {
-        "description" : "Fetch all `Databases`.\n\n  * `include=tables` means we should hydrate the Tables belonging to each DB. Default: `false`.\n\n  * `saved` means we should include the saved questions virtual database. Default: `false`.\n\n  * `include_editable_data_model` will only include DBs for which the current user has data model editing\n    permissions. (If `include=tables`, this also applies to the list of tables in each DB). Should only be used if\n    Enterprise Edition code is available the advanced-permissions feature is enabled.\n\n  * `exclude_uneditable_details` will only include DBs for which the current user can edit the DB details. Has no\n    effect unless Enterprise Edition code is available and the advanced-permissions feature is enabled.\n\n  * `include_only_uploadable` will only include DBs into which Metabase can insert new data.\n\n  Independently of these flags, the implementation of [[metabase.models.interface/to-json]] for `:model/Database` in\n  [[metabase.warehouses.models.database]] uses the implementation of [[metabase.models.interface/can-write?]] for\n  `:model/Database` in [[metabase.warehouses.models.database]] to exclude the `details` field, if the requesting user\n  lacks permission to change the database details.",
+        "description" : "Fetch all `Databases`.\n\n  * `include=tables` means we should hydrate the Tables belonging to each DB. Default: `false`.\n\n  * `saved` means we should include the saved questions virtual database. Default: `false`.\n\n  * `include_editable_data_model` will only include DBs for which the current user has data model editing\n    permissions. (If `include=tables`, this also applies to the list of tables in each DB). Should only be used if\n    Enterprise Edition code is available the advanced-permissions feature is enabled.\n\n  * `exclude_uneditable_details` will only include DBs for which the current user can edit the DB details. Has no\n    effect unless Enterprise Edition code is available and the advanced-permissions feature is enabled.\n\n  * `include_only_uploadable` will only include DBs into which Metabase can insert new data.\n\n  * `can-query` will only include DBs for which the current user has query permissions. Default: `false`.\n\n  * `can-write-metadata` will only include DBs for which the current user has data model editing permissions\n    for at least one table in the database. Default: `false`.\n\n  Independently of these flags, the implementation of [[metabase.models.interface/to-json]] for `:model/Database` in\n  [[metabase.warehouses.models.database]] uses the implementation of [[metabase.models.interface/can-write?]] for\n  `:model/Database` in [[metabase.warehouses.models.database]] to exclude the `details` field, if the requesting user\n  lacks permission to change the database details.",
         "parameters" : [ {
           "description" : "include must be either empty or the value 'tables'",
           "in" : "query",
@@ -17221,6 +18802,28 @@
               "description" : "value must be an integer greater than zero.",
               "minimum" : 1,
               "type" : "integer"
+            }, {
+              "type" : "null"
+            } ]
+          }
+        }, {
+          "in" : "query",
+          "name" : "can-query",
+          "required" : false,
+          "schema" : {
+            "oneOf" : [ {
+              "type" : "boolean"
+            }, {
+              "type" : "null"
+            } ]
+          }
+        }, {
+          "in" : "query",
+          "name" : "can-write-metadata",
+          "required" : false,
+          "schema" : {
+            "oneOf" : [ {
+              "type" : "boolean"
             }, {
               "type" : "null"
             } ]
@@ -17955,7 +19558,7 @@
     },
     "/api/database/{id}/schema/" : {
       "get" : {
-        "description" : "Return a list of Tables for a Database whose `schema` is `nil` or an empty string.",
+        "description" : "Return a list of Tables for a Database whose `schema` is `nil` or an empty string.\n\n  Optional filters:\n  - `can-query=true` - filter to only tables the user can query\n  - `can-write-metadata=true` - filter to only tables the user can edit metadata for",
         "parameters" : [ {
           "description" : "value must be an integer greater than zero.",
           "in" : "path",
@@ -17989,6 +19592,28 @@
               "type" : "null"
             } ]
           }
+        }, {
+          "in" : "query",
+          "name" : "can-query",
+          "required" : false,
+          "schema" : {
+            "oneOf" : [ {
+              "type" : "boolean"
+            }, {
+              "type" : "null"
+            } ]
+          }
+        }, {
+          "in" : "query",
+          "name" : "can-write-metadata",
+          "required" : false,
+          "schema" : {
+            "oneOf" : [ {
+              "type" : "boolean"
+            }, {
+              "type" : "null"
+            } ]
+          }
         } ],
         "responses" : {
           "2XX" : {
@@ -18007,7 +19632,7 @@
     },
     "/api/database/{id}/schema/{schema}" : {
       "get" : {
-        "description" : "Returns a list of Tables for the given Database `id` and `schema`",
+        "description" : "Returns a list of Tables for the given Database `id` and `schema`.\n\n  Optional filters:\n  - `can-query=true` - filter to only tables the user can query\n  - `can-write-metadata=true` - filter to only tables the user can edit metadata for",
         "parameters" : [ {
           "description" : "value must be an integer greater than zero.",
           "in" : "path",
@@ -18049,6 +19674,28 @@
               "type" : "null"
             } ]
           }
+        }, {
+          "in" : "query",
+          "name" : "can-query",
+          "required" : false,
+          "schema" : {
+            "oneOf" : [ {
+              "type" : "boolean"
+            }, {
+              "type" : "null"
+            } ]
+          }
+        }, {
+          "in" : "query",
+          "name" : "can-write-metadata",
+          "required" : false,
+          "schema" : {
+            "oneOf" : [ {
+              "type" : "boolean"
+            }, {
+              "type" : "null"
+            } ]
+          }
         } ],
         "responses" : {
           "2XX" : {
@@ -18067,7 +19714,7 @@
     },
     "/api/database/{id}/schemas" : {
       "get" : {
-        "description" : "Returns a list of all the schemas with tables found for the database `id`. Excludes schemas with no tables.",
+        "description" : "Returns a list of all the schemas with tables found for the database `id`. Excludes schemas with no tables.\n\n  Optional filters:\n  - `can-query=true` - filter to only schemas containing tables the user can query\n  - `can-write-metadata=true` - filter to only schemas containing tables the user can edit metadata for",
         "parameters" : [ {
           "description" : "value must be an integer greater than zero.",
           "in" : "path",
@@ -18101,9 +19748,41 @@
               "type" : "null"
             } ]
           }
+        }, {
+          "in" : "query",
+          "name" : "can-query",
+          "required" : false,
+          "schema" : {
+            "oneOf" : [ {
+              "type" : "boolean"
+            }, {
+              "type" : "null"
+            } ]
+          }
+        }, {
+          "in" : "query",
+          "name" : "can-write-metadata",
+          "required" : false,
+          "schema" : {
+            "oneOf" : [ {
+              "type" : "boolean"
+            }, {
+              "type" : "null"
+            } ]
+          }
         } ],
         "responses" : {
           "2XX" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "items" : {
+                    "type" : "string"
+                  },
+                  "type" : "array"
+                }
+              }
+            },
             "description" : "Successful response"
           },
           "4XX" : {
@@ -18145,7 +19824,7 @@
                 }
               }
             },
-            "description" : "map where {:settings -> <map from <keyword> to <map where {:enabled -> <boolean>, :reasons (optional) -> <sequence of map where {:key -> <keyword>, :type -> <enum of :error, :warning>, :message -> <string, or function>}>}>>}"
+            "description" : "Successful response"
           },
           "4XX" : {
             "description" : "Client error response"
@@ -18882,7 +20561,7 @@
                 }
               }
             },
-            "description" : "sequence of map where {:name -> <string>, :id -> <value must be an integer greater than zero.>, :public_uuid -> <value must be a valid UUID.>}"
+            "description" : "Successful response"
           },
           "4XX" : {
             "description" : "Client error response"
@@ -19246,7 +20925,7 @@
                 }
               }
             },
-            "description" : "map where {:uuid -> <value must be a valid UUID.>}"
+            "description" : "Successful response"
           },
           "4XX" : {
             "description" : "Client error response"
@@ -19691,7 +21370,7 @@
                 }
               }
             },
-            "description" : "map where {:body -> <anything>}"
+            "description" : "Successful response"
           },
           "4XX" : {
             "description" : "Client error response"
@@ -20021,6 +21700,62 @@
         "tags" : [ "/api/ee/content-translation" ]
       }
     },
+    "/api/ee/content-translation/dictionary" : {
+      "get" : {
+        "description" : "Fetch the content translation dictionary for authenticated users (auth-based embedding flows).",
+        "parameters" : [ {
+          "in" : "query",
+          "name" : "locale",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "2XX" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "properties" : {
+                    "data" : {
+                      "items" : {
+                        "properties" : {
+                          "locale" : {
+                            "minLength" : 1,
+                            "type" : "string"
+                          },
+                          "msgid" : {
+                            "minLength" : 1,
+                            "type" : "string"
+                          },
+                          "msgstr" : {
+                            "type" : "string"
+                          }
+                        },
+                        "required" : [ "locale", "msgid", "msgstr" ],
+                        "type" : "object"
+                      },
+                      "type" : "array"
+                    }
+                  },
+                  "required" : [ "data" ],
+                  "type" : "object"
+                }
+              }
+            },
+            "description" : "Successful response"
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "summary" : "GET /api/ee/content-translation/dictionary",
+        "tags" : [ "/api/ee/content-translation" ]
+      }
+    },
     "/api/ee/content-translation/dictionary/{token}" : {
       "get" : {
         "description" : "Fetch the content translation dictionary via a JSON Web Token signed with the `embedding-secret-key`.",
@@ -20111,7 +21846,7 @@
                 }
               }
             },
-            "description" : "null"
+            "description" : "Successful response"
           },
           "4XX" : {
             "description" : "Client error response"
@@ -20215,7 +21950,7 @@
                 }
               }
             },
-            "description" : "map with no other keys"
+            "description" : "Successful response"
           },
           "4XX" : {
             "description" : "Client error response"
@@ -20250,7 +21985,7 @@
                 }
               }
             },
-            "description" : "Schema for /publish-tables endpoint response. Matches frontend PublishTablesResponse type."
+            "description" : "Successful response"
           },
           "4XX" : {
             "description" : "Client error response"
@@ -20285,7 +22020,7 @@
                 }
               }
             },
-            "description" : "null"
+            "description" : "Successful response"
           },
           "4XX" : {
             "description" : "Client error response"
@@ -20320,7 +22055,7 @@
                 }
               }
             },
-            "description" : "Schema for /selection endpoint response. Matches frontend BulkTableSelectionInfo type."
+            "description" : "Successful response"
           },
           "4XX" : {
             "description" : "Client error response"
@@ -20335,7 +22070,7 @@
     },
     "/api/ee/data-studio/table/sync-schema" : {
       "post" : {
-        "description" : "Batch version of /table/:id/sync_schema. Takes an abstract table selection as /table/edit does.\n  - Currently checks policy before returning (so you might receive a 4xx on e.g. AuthZ policy failure)\n  - The sync itself is however, asyncronous. This call may return before all tables synced.",
+        "description" : "Batch version of /table/:id/sync_schema. Takes an abstract table selection as /table/edit does.\n  - Currently checks policy before returning (so you might receive a 4xx on e.g. AuthZ policy failure)\n  - The sync itself is however, asynchronous. This call may return before all tables synced.",
         "parameters" : [ ],
         "requestBody" : {
           "content" : {
@@ -20355,7 +22090,7 @@
                 }
               }
             },
-            "description" : "null"
+            "description" : "Successful response"
           },
           "4XX" : {
             "description" : "Client error response"
@@ -20390,7 +22125,7 @@
                 }
               }
             },
-            "description" : "null"
+            "description" : "Successful response"
           },
           "4XX" : {
             "description" : "Client error response"
@@ -20656,6 +22391,13 @@
         },
         "responses" : {
           "2XX" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/metabase-enterprise.dependencies.api.broken-cards-response"
+                }
+              }
+            },
             "description" : "Successful response"
           },
           "4XX" : {
@@ -20682,9 +22424,7 @@
                     "type" : "string"
                   },
                   "id" : {
-                    "description" : "value must be an integer greater than zero.",
-                    "minimum" : 1,
-                    "type" : "integer"
+                    "$ref" : "#/components/schemas/metabase.lib.schema.id.snippet"
                   },
                   "name" : {
                     "description" : "snippet names cannot include '}' or start with spaces"
@@ -20698,6 +22438,13 @@
         },
         "responses" : {
           "2XX" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/metabase-enterprise.dependencies.api.broken-cards-response"
+                }
+              }
+            },
             "description" : "Successful response"
           },
           "4XX" : {
@@ -20726,6 +22473,13 @@
         },
         "responses" : {
           "2XX" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/metabase-enterprise.dependencies.api.broken-cards-response"
+                }
+              }
+            },
             "description" : "Successful response"
           },
           "4XX" : {
@@ -20756,8 +22510,7 @@
           "name" : "type",
           "required" : false,
           "schema" : {
-            "enum" : [ "table", "card", "snippet", "transform", "dashboard", "document", "sandbox", "segment" ],
-            "type" : "string"
+            "$ref" : "#/components/schemas/metabase-enterprise.dependencies.dependency-types.dependency-types"
           }
         }, {
           "in" : "query",
@@ -20769,6 +22522,13 @@
         } ],
         "responses" : {
           "2XX" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/metabase-enterprise.dependencies.api.graph-response"
+                }
+              }
+            },
             "description" : "Successful response"
           },
           "4XX" : {
@@ -20779,6 +22539,121 @@
           }
         },
         "summary" : "GET /api/ee/dependencies/graph",
+        "tags" : [ "/api/ee/dependencies" ]
+      }
+    },
+    "/api/ee/dependencies/graph/broken" : {
+      "get" : {
+        "description" : "Returns a list of all items with broken queries.\n\n   Accepts optional parameters for filtering:\n   - `types`: List of entity types to include (e.g., `[:card :transform :snippet :dashboard]`)\n   - `card_types`: List of card types to include when filtering cards (e.g., `[:question :model :metric]`)\n   - `query`: Search string to filter by name or location\n   - `archived`: Controls whether archived entities are included\n   - `include_personal_collections`: Controls whether items in personal collections are included (default: false)\n   - `sort_column`: Sort column - `:name`, `:location`, or `:dependents-count` (default: `:name`)\n   - `sort_direction`: Sort direction - `:asc` or `:desc` (default: `:asc`)\n   - `offset`: Default 0\n   - `limit`: Default 50\n\n   Returns a map with:\n   - `data`: List of broken items, each with `:id`, `:type`, `:data`, and `:error`s fields\n   - `total`: Total count of matched items\n   - `offset`: Applied offset\n   - `limit`: Applied limit",
+        "parameters" : [ {
+          "in" : "query",
+          "name" : "types",
+          "required" : false,
+          "schema" : {
+            "anyOf" : [ {
+              "$ref" : "#/components/schemas/metabase-enterprise.dependencies.dependency-types.dependency-types"
+            }, {
+              "items" : {
+                "$ref" : "#/components/schemas/metabase-enterprise.dependencies.dependency-types.dependency-types"
+              },
+              "type" : "array"
+            } ]
+          }
+        }, {
+          "in" : "query",
+          "name" : "card_types",
+          "required" : false,
+          "schema" : {
+            "anyOf" : [ {
+              "enum" : [ "question", "metric", "model" ],
+              "type" : "string"
+            }, {
+              "items" : {
+                "enum" : [ "question", "metric", "model" ],
+                "type" : "string"
+              },
+              "type" : "array"
+            } ]
+          }
+        }, {
+          "in" : "query",
+          "name" : "query",
+          "required" : false,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "in" : "query",
+          "name" : "archived",
+          "required" : false,
+          "schema" : {
+            "type" : "boolean"
+          }
+        }, {
+          "in" : "query",
+          "name" : "include_personal_collections",
+          "required" : false,
+          "schema" : {
+            "type" : "boolean"
+          }
+        }, {
+          "in" : "query",
+          "name" : "sort_column",
+          "required" : false,
+          "schema" : {
+            "enum" : [ "name", "location", "dependents-count" ],
+            "type" : "string"
+          }
+        }, {
+          "in" : "query",
+          "name" : "sort_direction",
+          "required" : false,
+          "schema" : {
+            "enum" : [ "desc", "asc" ],
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "2XX" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "properties" : {
+                    "data" : {
+                      "items" : {
+                        "$ref" : "#/components/schemas/metabase-enterprise.dependencies.api.entity"
+                      },
+                      "type" : "array"
+                    },
+                    "limit" : {
+                      "description" : "value must be an integer greater than zero.",
+                      "minimum" : 1,
+                      "type" : "integer"
+                    },
+                    "offset" : {
+                      "minimum" : 0,
+                      "type" : "integer"
+                    },
+                    "total" : {
+                      "minimum" : 0,
+                      "type" : "integer"
+                    }
+                  },
+                  "required" : [ "data", "total", "offset", "limit" ],
+                  "type" : "object"
+                }
+              }
+            },
+            "description" : "Successful response"
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "summary" : "GET /api/ee/dependencies/graph/broken",
         "tags" : [ "/api/ee/dependencies" ]
       }
     },
@@ -20799,23 +22674,21 @@
           "name" : "type",
           "required" : true,
           "schema" : {
-            "enum" : [ "table", "card", "snippet", "transform", "dashboard", "document", "sandbox", "segment" ],
-            "type" : "string"
+            "$ref" : "#/components/schemas/metabase-enterprise.dependencies.dependency-types.dependency-types"
           }
         }, {
           "in" : "query",
           "name" : "dependent_type",
           "required" : true,
           "schema" : {
-            "enum" : [ "table", "card", "snippet", "transform", "dashboard", "document", "sandbox", "segment" ],
-            "type" : "string"
+            "$ref" : "#/components/schemas/metabase-enterprise.dependencies.dependency-types.dependency-types"
           }
         }, {
           "in" : "query",
           "name" : "dependent_card_type",
           "required" : false,
           "schema" : {
-            "enum" : [ "question", "model", "metric" ],
+            "enum" : [ "question", "metric", "model" ],
             "type" : "string"
           }
         }, {
@@ -20828,6 +22701,16 @@
         } ],
         "responses" : {
           "2XX" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "items" : {
+                    "$ref" : "#/components/schemas/metabase-enterprise.dependencies.api.entity"
+                  },
+                  "type" : "array"
+                }
+              }
+            },
             "description" : "Successful response"
           },
           "4XX" : {
@@ -20838,6 +22721,121 @@
           }
         },
         "summary" : "GET /api/ee/dependencies/graph/dependents",
+        "tags" : [ "/api/ee/dependencies" ]
+      }
+    },
+    "/api/ee/dependencies/graph/unreferenced" : {
+      "get" : {
+        "description" : "Returns a list of all unreferenced items in the instance.\n   An unreferenced item is one that is not a dependency of any other item.\n\n   Accepts optional parameters for filtering:\n   - `types`: List of entity types to include (e.g., [:card :transform :snippet :dashboard])\n   - `card_types`: List of card types to include when filtering cards (e.g., [:question :model :metric])\n   - `query`: Search string to filter by name or location\n   - `archived`: Controls whether archived entities are included\n   - `include_personal_collections`: Controls whether items in personal collections are included (default: false)\n   - `sort_column`: Sort column - `:name`, `:location`, or `:dependents-count` (default: `:name`)\n   - `sort_direction`: Sort direction - `:asc` or `:desc` (default: `:asc`)\n   - `offset`: Default 0\n   - `limit`: Default 50\n\n   Returns a map with:\n   - `data`: List of unreferenced items, each with `:id`, `:type`, and `:data` fields\n   - `total`: Total count of matched items\n   - `offset`: Applied offset\n   - `limit`: Applied limit",
+        "parameters" : [ {
+          "in" : "query",
+          "name" : "types",
+          "required" : false,
+          "schema" : {
+            "anyOf" : [ {
+              "$ref" : "#/components/schemas/metabase-enterprise.dependencies.dependency-types.dependency-types"
+            }, {
+              "items" : {
+                "$ref" : "#/components/schemas/metabase-enterprise.dependencies.dependency-types.dependency-types"
+              },
+              "type" : "array"
+            } ]
+          }
+        }, {
+          "in" : "query",
+          "name" : "card_types",
+          "required" : false,
+          "schema" : {
+            "anyOf" : [ {
+              "enum" : [ "question", "metric", "model" ],
+              "type" : "string"
+            }, {
+              "items" : {
+                "enum" : [ "question", "metric", "model" ],
+                "type" : "string"
+              },
+              "type" : "array"
+            } ]
+          }
+        }, {
+          "in" : "query",
+          "name" : "query",
+          "required" : false,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "in" : "query",
+          "name" : "archived",
+          "required" : false,
+          "schema" : {
+            "type" : "boolean"
+          }
+        }, {
+          "in" : "query",
+          "name" : "include_personal_collections",
+          "required" : false,
+          "schema" : {
+            "type" : "boolean"
+          }
+        }, {
+          "in" : "query",
+          "name" : "sort_column",
+          "required" : false,
+          "schema" : {
+            "enum" : [ "name", "location", "dependents-count" ],
+            "type" : "string"
+          }
+        }, {
+          "in" : "query",
+          "name" : "sort_direction",
+          "required" : false,
+          "schema" : {
+            "enum" : [ "desc", "asc" ],
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "2XX" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "properties" : {
+                    "data" : {
+                      "items" : {
+                        "$ref" : "#/components/schemas/metabase-enterprise.dependencies.api.entity"
+                      },
+                      "type" : "array"
+                    },
+                    "limit" : {
+                      "description" : "value must be an integer greater than zero.",
+                      "minimum" : 1,
+                      "type" : "integer"
+                    },
+                    "offset" : {
+                      "minimum" : 0,
+                      "type" : "integer"
+                    },
+                    "total" : {
+                      "minimum" : 0,
+                      "type" : "integer"
+                    }
+                  },
+                  "required" : [ "data", "total", "offset", "limit" ],
+                  "type" : "object"
+                }
+              }
+            },
+            "description" : "Successful response"
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "summary" : "GET /api/ee/dependencies/graph/unreferenced",
         "tags" : [ "/api/ee/dependencies" ]
       }
     },
@@ -20972,7 +22970,7 @@
                 }
               }
             },
-            "description" : "map where {:error -> <true>, :message -> <value must be a non-blank string.>}, or one of <not-connected = map | syncing = map where {:url -> <value must be a non-blank string.>, :created_at -> <integer greater than 0>, :sync_started_at -> <integer greater than 0>, :created_by_id -> <integer greater than 0>, :db_id -> <integer greater than 0>} | active = map where {:url -> <value must be a non-blank string.>, :created_at -> <integer greater than 0>, :last_sync_at -> <integer greater than 0>, :next_sync_at -> <integer greater than 0>, :created_by_id -> <integer greater than 0>, :db_id -> <integer greater than 0>} | error = map where {:url -> <value must be a non-blank string.>, :created_at -> <integer greater than 0>, :error_message -> <value must be a non-blank string.>, :created_by_id -> <integer greater than 0>, :db_id -> <integer greater than 0>}> dispatched by :status"
+            "description" : "Successful response"
           },
           "4XX" : {
             "description" : "Client error response"
@@ -21012,7 +23010,7 @@
                 }
               }
             },
-            "description" : "map where {:error -> <true>, :message -> <value must be a non-blank string.>}, or one of <not-connected = map | syncing = map where {:url -> <value must be a non-blank string.>, :created_at -> <integer greater than 0>, :sync_started_at -> <integer greater than 0>, :created_by_id -> <integer greater than 0>, :db_id -> <integer greater than 0>} | active = map where {:url -> <value must be a non-blank string.>, :created_at -> <integer greater than 0>, :last_sync_at -> <integer greater than 0>, :next_sync_at -> <integer greater than 0>, :created_by_id -> <integer greater than 0>, :db_id -> <integer greater than 0>} | error = map where {:url -> <value must be a non-blank string.>, :created_at -> <integer greater than 0>, :error_message -> <value must be a non-blank string.>, :created_by_id -> <integer greater than 0>, :db_id -> <integer greater than 0>}> dispatched by :status"
+            "description" : "Successful response"
           },
           "4XX" : {
             "description" : "Client error response"
@@ -21067,7 +23065,7 @@
                 }
               }
             },
-            "description" : "map where {:email -> <nullable string>}"
+            "description" : "Successful response"
           },
           "4XX" : {
             "description" : "Client error response"
@@ -21082,10 +23080,27 @@
     },
     "/api/ee/library/" : {
       "get" : {
-        "description" : "Get the Library. If no library exists, it doesn't fail but returns an empty response.",
+        "description" : "Get the Library. If no library exists, it doesn't fail but returns an empty response",
         "parameters" : [ ],
         "responses" : {
           "2XX" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "anyOf" : [ {
+                    "$ref" : "#/components/schemas/metabase.collections.schema.CollectionItem"
+                  }, {
+                    "properties" : {
+                      "data" : {
+                        "type" : "null"
+                      }
+                    },
+                    "required" : [ "data" ],
+                    "type" : "object"
+                  } ]
+                }
+              }
+            },
             "description" : "Successful response"
           },
           "4XX" : {
@@ -21171,7 +23186,7 @@
           "content" : {
             "application/json" : {
               "schema" : {
-                "description" : "Base schema for all tool requests. Contains the conversation ID.",
+                "description" : "Base schema for all tool requests. Contains the conversation ID and optional profile ID.",
                 "properties" : {
                   "arguments" : {
                     "$ref" : "#/components/schemas/metabase-enterprise.metabot-v3.tools.api.answer-sources-arguments"
@@ -21180,6 +23195,13 @@
                     "description" : "value must be a valid UUID.",
                     "pattern" : "[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}",
                     "type" : "string"
+                  },
+                  "profile_id" : {
+                    "oneOf" : [ {
+                      "type" : "string"
+                    }, {
+                      "type" : "null"
+                    } ]
                   }
                 },
                 "required" : [ "conversation_id" ],
@@ -21193,12 +23215,19 @@
             "content" : {
               "application/json" : {
                 "schema" : {
-                  "description" : "Base schema for all tool requests. Contains the conversation ID.",
+                  "description" : "Base schema for all tool requests. Contains the conversation ID and optional profile ID.",
                   "properties" : {
                     "conversation_id" : {
                       "description" : "value must be a valid UUID.",
                       "pattern" : "[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}",
                       "type" : "string"
+                    },
+                    "profile_id" : {
+                      "oneOf" : [ {
+                        "type" : "string"
+                      }, {
+                        "type" : "null"
+                      } ]
                     }
                   },
                   "required" : [ "conversation_id" ],
@@ -21206,7 +23235,7 @@
                 }
               }
             },
-            "description" : "Base schema for all tool requests. Contains the conversation ID."
+            "description" : "Base schema for all tool requests. Contains the conversation ID and optional profile ID."
           },
           "4XX" : {
             "description" : "Client error response"
@@ -21227,7 +23256,7 @@
           "content" : {
             "application/json" : {
               "schema" : {
-                "description" : "Base schema for all tool requests. Contains the conversation ID.",
+                "description" : "Base schema for all tool requests. Contains the conversation ID and optional profile ID.",
                 "properties" : {
                   "arguments" : {
                     "$ref" : "#/components/schemas/metabase-enterprise.metabot-v3.tools.api.check-transform-dependencies-arguments"
@@ -21236,6 +23265,13 @@
                     "description" : "value must be a valid UUID.",
                     "pattern" : "[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}",
                     "type" : "string"
+                  },
+                  "profile_id" : {
+                    "oneOf" : [ {
+                      "type" : "string"
+                    }, {
+                      "type" : "null"
+                    } ]
                   }
                 },
                 "required" : [ "arguments", "conversation_id" ],
@@ -21249,12 +23285,19 @@
             "content" : {
               "application/json" : {
                 "schema" : {
-                  "description" : "Base schema for all tool requests. Contains the conversation ID.",
+                  "description" : "Base schema for all tool requests. Contains the conversation ID and optional profile ID.",
                   "properties" : {
                     "conversation_id" : {
                       "description" : "value must be a valid UUID.",
                       "pattern" : "[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}",
                       "type" : "string"
+                    },
+                    "profile_id" : {
+                      "oneOf" : [ {
+                        "type" : "string"
+                      }, {
+                        "type" : "null"
+                      } ]
                     }
                   },
                   "required" : [ "conversation_id" ],
@@ -21262,7 +23305,7 @@
                 }
               }
             },
-            "description" : "Base schema for all tool requests. Contains the conversation ID."
+            "description" : "Base schema for all tool requests. Contains the conversation ID and optional profile ID."
           },
           "4XX" : {
             "description" : "Client error response"
@@ -21283,7 +23326,7 @@
           "content" : {
             "application/json" : {
               "schema" : {
-                "description" : "Base schema for all tool requests. Contains the conversation ID.",
+                "description" : "Base schema for all tool requests. Contains the conversation ID and optional profile ID.",
                 "properties" : {
                   "arguments" : {
                     "$ref" : "#/components/schemas/metabase-enterprise.metabot-v3.tools.api.create-dashboard-subscription-arguments"
@@ -21292,6 +23335,13 @@
                     "description" : "value must be a valid UUID.",
                     "pattern" : "[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}",
                     "type" : "string"
+                  },
+                  "profile_id" : {
+                    "oneOf" : [ {
+                      "type" : "string"
+                    }, {
+                      "type" : "null"
+                    } ]
                   }
                 },
                 "required" : [ "arguments", "conversation_id" ],
@@ -21305,7 +23355,7 @@
             "content" : {
               "application/json" : {
                 "schema" : {
-                  "description" : "Base schema for all tool requests. Contains the conversation ID.",
+                  "description" : "Base schema for all tool requests. Contains the conversation ID and optional profile ID.",
                   "properties" : {
                     "conversation_id" : {
                       "description" : "value must be a valid UUID.",
@@ -21314,6 +23364,13 @@
                     },
                     "output" : {
                       "type" : "string"
+                    },
+                    "profile_id" : {
+                      "oneOf" : [ {
+                        "type" : "string"
+                      }, {
+                        "type" : "null"
+                      } ]
                     }
                   },
                   "required" : [ "output", "conversation_id" ],
@@ -21321,7 +23378,7 @@
                 }
               }
             },
-            "description" : "Base schema for all tool requests. Contains the conversation ID."
+            "description" : "Base schema for all tool requests. Contains the conversation ID and optional profile ID."
           },
           "4XX" : {
             "description" : "Client error response"
@@ -21342,7 +23399,7 @@
           "content" : {
             "application/json" : {
               "schema" : {
-                "description" : "Base schema for all tool requests. Contains the conversation ID.",
+                "description" : "Base schema for all tool requests. Contains the conversation ID and optional profile ID.",
                 "properties" : {
                   "arguments" : {
                     "$ref" : "#/components/schemas/metabase-enterprise.metabot-v3.tools.api.field-values-arguments"
@@ -21351,6 +23408,13 @@
                     "description" : "value must be a valid UUID.",
                     "pattern" : "[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}",
                     "type" : "string"
+                  },
+                  "profile_id" : {
+                    "oneOf" : [ {
+                      "type" : "string"
+                    }, {
+                      "type" : "null"
+                    } ]
                   }
                 },
                 "required" : [ "arguments", "conversation_id" ],
@@ -21364,12 +23428,19 @@
             "content" : {
               "application/json" : {
                 "schema" : {
-                  "description" : "Base schema for all tool requests. Contains the conversation ID.",
+                  "description" : "Base schema for all tool requests. Contains the conversation ID and optional profile ID.",
                   "properties" : {
                     "conversation_id" : {
                       "description" : "value must be a valid UUID.",
                       "pattern" : "[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}",
                       "type" : "string"
+                    },
+                    "profile_id" : {
+                      "oneOf" : [ {
+                        "type" : "string"
+                      }, {
+                        "type" : "null"
+                      } ]
                     }
                   },
                   "required" : [ "conversation_id" ],
@@ -21377,7 +23448,7 @@
                 }
               }
             },
-            "description" : "Base schema for all tool requests. Contains the conversation ID."
+            "description" : "Base schema for all tool requests. Contains the conversation ID and optional profile ID."
           },
           "4XX" : {
             "description" : "Client error response"
@@ -21398,7 +23469,7 @@
           "content" : {
             "application/json" : {
               "schema" : {
-                "description" : "Base schema for all tool requests. Contains the conversation ID.",
+                "description" : "Base schema for all tool requests. Contains the conversation ID and optional profile ID.",
                 "properties" : {
                   "arguments" : {
                     "$ref" : "#/components/schemas/metabase-enterprise.metabot-v3.tools.api.filter-records-arguments"
@@ -21407,6 +23478,13 @@
                     "description" : "value must be a valid UUID.",
                     "pattern" : "[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}",
                     "type" : "string"
+                  },
+                  "profile_id" : {
+                    "oneOf" : [ {
+                      "type" : "string"
+                    }, {
+                      "type" : "null"
+                    } ]
                   }
                 },
                 "required" : [ "arguments", "conversation_id" ],
@@ -21420,12 +23498,19 @@
             "content" : {
               "application/json" : {
                 "schema" : {
-                  "description" : "Base schema for all tool requests. Contains the conversation ID.",
+                  "description" : "Base schema for all tool requests. Contains the conversation ID and optional profile ID.",
                   "properties" : {
                     "conversation_id" : {
                       "description" : "value must be a valid UUID.",
                       "pattern" : "[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}",
                       "type" : "string"
+                    },
+                    "profile_id" : {
+                      "oneOf" : [ {
+                        "type" : "string"
+                      }, {
+                        "type" : "null"
+                      } ]
                     }
                   },
                   "required" : [ "conversation_id" ],
@@ -21433,7 +23518,7 @@
                 }
               }
             },
-            "description" : "Base schema for all tool requests. Contains the conversation ID."
+            "description" : "Base schema for all tool requests. Contains the conversation ID and optional profile ID."
           },
           "4XX" : {
             "description" : "Client error response"
@@ -21454,7 +23539,7 @@
           "content" : {
             "application/json" : {
               "schema" : {
-                "description" : "Base schema for all tool requests. Contains the conversation ID.",
+                "description" : "Base schema for all tool requests. Contains the conversation ID and optional profile ID.",
                 "properties" : {
                   "arguments" : {
                     "$ref" : "#/components/schemas/metabase-enterprise.metabot-v3.tools.api.find-outliers-arguments"
@@ -21463,6 +23548,13 @@
                     "description" : "value must be a valid UUID.",
                     "pattern" : "[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}",
                     "type" : "string"
+                  },
+                  "profile_id" : {
+                    "oneOf" : [ {
+                      "type" : "string"
+                    }, {
+                      "type" : "null"
+                    } ]
                   }
                 },
                 "required" : [ "arguments", "conversation_id" ],
@@ -21476,12 +23568,19 @@
             "content" : {
               "application/json" : {
                 "schema" : {
-                  "description" : "Base schema for all tool requests. Contains the conversation ID.",
+                  "description" : "Base schema for all tool requests. Contains the conversation ID and optional profile ID.",
                   "properties" : {
                     "conversation_id" : {
                       "description" : "value must be a valid UUID.",
                       "pattern" : "[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}",
                       "type" : "string"
+                    },
+                    "profile_id" : {
+                      "oneOf" : [ {
+                        "type" : "string"
+                      }, {
+                        "type" : "null"
+                      } ]
                     }
                   },
                   "required" : [ "conversation_id" ],
@@ -21489,7 +23588,7 @@
                 }
               }
             },
-            "description" : "Base schema for all tool requests. Contains the conversation ID."
+            "description" : "Base schema for all tool requests. Contains the conversation ID and optional profile ID."
           },
           "4XX" : {
             "description" : "Client error response"
@@ -21510,7 +23609,7 @@
           "content" : {
             "application/json" : {
               "schema" : {
-                "description" : "Base schema for all tool requests. Contains the conversation ID.",
+                "description" : "Base schema for all tool requests. Contains the conversation ID and optional profile ID.",
                 "properties" : {
                   "arguments" : {
                     "$ref" : "#/components/schemas/metabase-enterprise.metabot-v3.tools.api.generate-insights-arguments"
@@ -21519,6 +23618,13 @@
                     "description" : "value must be a valid UUID.",
                     "pattern" : "[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}",
                     "type" : "string"
+                  },
+                  "profile_id" : {
+                    "oneOf" : [ {
+                      "type" : "string"
+                    }, {
+                      "type" : "null"
+                    } ]
                   }
                 },
                 "required" : [ "arguments", "conversation_id" ],
@@ -21532,7 +23638,7 @@
             "content" : {
               "application/json" : {
                 "schema" : {
-                  "description" : "Base schema for all tool requests. Contains the conversation ID.",
+                  "description" : "Base schema for all tool requests. Contains the conversation ID and optional profile ID.",
                   "properties" : {
                     "conversation_id" : {
                       "description" : "value must be a valid UUID.",
@@ -21541,6 +23647,13 @@
                     },
                     "output" : {
                       "type" : "string"
+                    },
+                    "profile_id" : {
+                      "oneOf" : [ {
+                        "type" : "string"
+                      }, {
+                        "type" : "null"
+                      } ]
                     },
                     "reactions" : {
                       "items" : {
@@ -21554,7 +23667,7 @@
                 }
               }
             },
-            "description" : "Base schema for all tool requests. Contains the conversation ID."
+            "description" : "Base schema for all tool requests. Contains the conversation ID and optional profile ID."
           },
           "4XX" : {
             "description" : "Client error response"
@@ -21585,12 +23698,19 @@
             "content" : {
               "application/json" : {
                 "schema" : {
-                  "description" : "Base schema for all tool requests. Contains the conversation ID.",
+                  "description" : "Base schema for all tool requests. Contains the conversation ID and optional profile ID.",
                   "properties" : {
                     "conversation_id" : {
                       "description" : "value must be a valid UUID.",
                       "pattern" : "[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}",
                       "type" : "string"
+                    },
+                    "profile_id" : {
+                      "oneOf" : [ {
+                        "type" : "string"
+                      }, {
+                        "type" : "null"
+                      } ]
                     }
                   },
                   "required" : [ "conversation_id" ],
@@ -21598,7 +23718,7 @@
                 }
               }
             },
-            "description" : "Base schema for all tool requests. Contains the conversation ID."
+            "description" : "Base schema for all tool requests. Contains the conversation ID and optional profile ID."
           },
           "4XX" : {
             "description" : "Client error response"
@@ -21619,7 +23739,7 @@
           "content" : {
             "application/json" : {
               "schema" : {
-                "description" : "Base schema for all tool requests. Contains the conversation ID.",
+                "description" : "Base schema for all tool requests. Contains the conversation ID and optional profile ID.",
                 "properties" : {
                   "arguments" : {
                     "$ref" : "#/components/schemas/metabase-enterprise.metabot-v3.tools.api.get-dashboard-details-arguments"
@@ -21628,6 +23748,13 @@
                     "description" : "value must be a valid UUID.",
                     "pattern" : "[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}",
                     "type" : "string"
+                  },
+                  "profile_id" : {
+                    "oneOf" : [ {
+                      "type" : "string"
+                    }, {
+                      "type" : "null"
+                    } ]
                   }
                 },
                 "required" : [ "arguments", "conversation_id" ],
@@ -21641,12 +23768,19 @@
             "content" : {
               "application/json" : {
                 "schema" : {
-                  "description" : "Base schema for all tool requests. Contains the conversation ID.",
+                  "description" : "Base schema for all tool requests. Contains the conversation ID and optional profile ID.",
                   "properties" : {
                     "conversation_id" : {
                       "description" : "value must be a valid UUID.",
                       "pattern" : "[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}",
                       "type" : "string"
+                    },
+                    "profile_id" : {
+                      "oneOf" : [ {
+                        "type" : "string"
+                      }, {
+                        "type" : "null"
+                      } ]
                     }
                   },
                   "required" : [ "conversation_id" ],
@@ -21654,7 +23788,7 @@
                 }
               }
             },
-            "description" : "Base schema for all tool requests. Contains the conversation ID."
+            "description" : "Base schema for all tool requests. Contains the conversation ID and optional profile ID."
           },
           "4XX" : {
             "description" : "Client error response"
@@ -21675,7 +23809,7 @@
           "content" : {
             "application/json" : {
               "schema" : {
-                "description" : "Base schema for all tool requests. Contains the conversation ID.",
+                "description" : "Base schema for all tool requests. Contains the conversation ID and optional profile ID.",
                 "properties" : {
                   "arguments" : {
                     "$ref" : "#/components/schemas/metabase-enterprise.metabot-v3.tools.api.get-document-details-arguments"
@@ -21684,6 +23818,13 @@
                     "description" : "value must be a valid UUID.",
                     "pattern" : "[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}",
                     "type" : "string"
+                  },
+                  "profile_id" : {
+                    "oneOf" : [ {
+                      "type" : "string"
+                    }, {
+                      "type" : "null"
+                    } ]
                   }
                 },
                 "required" : [ "arguments", "conversation_id" ],
@@ -21697,12 +23838,19 @@
             "content" : {
               "application/json" : {
                 "schema" : {
-                  "description" : "Base schema for all tool requests. Contains the conversation ID.",
+                  "description" : "Base schema for all tool requests. Contains the conversation ID and optional profile ID.",
                   "properties" : {
                     "conversation_id" : {
                       "description" : "value must be a valid UUID.",
                       "pattern" : "[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}",
                       "type" : "string"
+                    },
+                    "profile_id" : {
+                      "oneOf" : [ {
+                        "type" : "string"
+                      }, {
+                        "type" : "null"
+                      } ]
                     }
                   },
                   "required" : [ "conversation_id" ],
@@ -21710,7 +23858,7 @@
                 }
               }
             },
-            "description" : "Base schema for all tool requests. Contains the conversation ID."
+            "description" : "Base schema for all tool requests. Contains the conversation ID and optional profile ID."
           },
           "4XX" : {
             "description" : "Client error response"
@@ -21731,7 +23879,7 @@
           "content" : {
             "application/json" : {
               "schema" : {
-                "description" : "Base schema for all tool requests. Contains the conversation ID.",
+                "description" : "Base schema for all tool requests. Contains the conversation ID and optional profile ID.",
                 "properties" : {
                   "arguments" : {
                     "$ref" : "#/components/schemas/metabase-enterprise.metabot-v3.tools.api.get-metric-details-arguments"
@@ -21740,6 +23888,13 @@
                     "description" : "value must be a valid UUID.",
                     "pattern" : "[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}",
                     "type" : "string"
+                  },
+                  "profile_id" : {
+                    "oneOf" : [ {
+                      "type" : "string"
+                    }, {
+                      "type" : "null"
+                    } ]
                   }
                 },
                 "required" : [ "arguments", "conversation_id" ],
@@ -21753,12 +23908,19 @@
             "content" : {
               "application/json" : {
                 "schema" : {
-                  "description" : "Base schema for all tool requests. Contains the conversation ID.",
+                  "description" : "Base schema for all tool requests. Contains the conversation ID and optional profile ID.",
                   "properties" : {
                     "conversation_id" : {
                       "description" : "value must be a valid UUID.",
                       "pattern" : "[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}",
                       "type" : "string"
+                    },
+                    "profile_id" : {
+                      "oneOf" : [ {
+                        "type" : "string"
+                      }, {
+                        "type" : "null"
+                      } ]
                     }
                   },
                   "required" : [ "conversation_id" ],
@@ -21766,7 +23928,7 @@
                 }
               }
             },
-            "description" : "Base schema for all tool requests. Contains the conversation ID."
+            "description" : "Base schema for all tool requests. Contains the conversation ID and optional profile ID."
           },
           "4XX" : {
             "description" : "Client error response"
@@ -21787,7 +23949,7 @@
           "content" : {
             "application/json" : {
               "schema" : {
-                "description" : "Base schema for all tool requests. Contains the conversation ID.",
+                "description" : "Base schema for all tool requests. Contains the conversation ID and optional profile ID.",
                 "properties" : {
                   "arguments" : {
                     "$ref" : "#/components/schemas/metabase-enterprise.metabot-v3.tools.api.get-query-details-arguments"
@@ -21796,6 +23958,13 @@
                     "description" : "value must be a valid UUID.",
                     "pattern" : "[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}",
                     "type" : "string"
+                  },
+                  "profile_id" : {
+                    "oneOf" : [ {
+                      "type" : "string"
+                    }, {
+                      "type" : "null"
+                    } ]
                   }
                 },
                 "required" : [ "arguments", "conversation_id" ],
@@ -21809,12 +23978,19 @@
             "content" : {
               "application/json" : {
                 "schema" : {
-                  "description" : "Base schema for all tool requests. Contains the conversation ID.",
+                  "description" : "Base schema for all tool requests. Contains the conversation ID and optional profile ID.",
                   "properties" : {
                     "conversation_id" : {
                       "description" : "value must be a valid UUID.",
                       "pattern" : "[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}",
                       "type" : "string"
+                    },
+                    "profile_id" : {
+                      "oneOf" : [ {
+                        "type" : "string"
+                      }, {
+                        "type" : "null"
+                      } ]
                     }
                   },
                   "required" : [ "conversation_id" ],
@@ -21822,7 +23998,7 @@
                 }
               }
             },
-            "description" : "Base schema for all tool requests. Contains the conversation ID."
+            "description" : "Base schema for all tool requests. Contains the conversation ID and optional profile ID."
           },
           "4XX" : {
             "description" : "Client error response"
@@ -21843,7 +24019,7 @@
           "content" : {
             "application/json" : {
               "schema" : {
-                "description" : "Base schema for all tool requests. Contains the conversation ID.",
+                "description" : "Base schema for all tool requests. Contains the conversation ID and optional profile ID.",
                 "properties" : {
                   "arguments" : {
                     "$ref" : "#/components/schemas/metabase-enterprise.metabot-v3.tools.api.get-report-details-arguments"
@@ -21852,6 +24028,13 @@
                     "description" : "value must be a valid UUID.",
                     "pattern" : "[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}",
                     "type" : "string"
+                  },
+                  "profile_id" : {
+                    "oneOf" : [ {
+                      "type" : "string"
+                    }, {
+                      "type" : "null"
+                    } ]
                   }
                 },
                 "required" : [ "arguments", "conversation_id" ],
@@ -21865,12 +24048,19 @@
             "content" : {
               "application/json" : {
                 "schema" : {
-                  "description" : "Base schema for all tool requests. Contains the conversation ID.",
+                  "description" : "Base schema for all tool requests. Contains the conversation ID and optional profile ID.",
                   "properties" : {
                     "conversation_id" : {
                       "description" : "value must be a valid UUID.",
                       "pattern" : "[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}",
                       "type" : "string"
+                    },
+                    "profile_id" : {
+                      "oneOf" : [ {
+                        "type" : "string"
+                      }, {
+                        "type" : "null"
+                      } ]
                     }
                   },
                   "required" : [ "conversation_id" ],
@@ -21878,7 +24068,7 @@
                 }
               }
             },
-            "description" : "Base schema for all tool requests. Contains the conversation ID."
+            "description" : "Base schema for all tool requests. Contains the conversation ID and optional profile ID."
           },
           "4XX" : {
             "description" : "Client error response"
@@ -21899,7 +24089,7 @@
           "content" : {
             "application/json" : {
               "schema" : {
-                "description" : "Base schema for all tool requests. Contains the conversation ID.",
+                "description" : "Base schema for all tool requests. Contains the conversation ID and optional profile ID.",
                 "properties" : {
                   "arguments" : {
                     "$ref" : "#/components/schemas/metabase-enterprise.metabot-v3.tools.api.get-snippet-details-arguments"
@@ -21908,6 +24098,13 @@
                     "description" : "value must be a valid UUID.",
                     "pattern" : "[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}",
                     "type" : "string"
+                  },
+                  "profile_id" : {
+                    "oneOf" : [ {
+                      "type" : "string"
+                    }, {
+                      "type" : "null"
+                    } ]
                   }
                 },
                 "required" : [ "arguments", "conversation_id" ],
@@ -21921,12 +24118,19 @@
             "content" : {
               "application/json" : {
                 "schema" : {
-                  "description" : "Base schema for all tool requests. Contains the conversation ID.",
+                  "description" : "Base schema for all tool requests. Contains the conversation ID and optional profile ID.",
                   "properties" : {
                     "conversation_id" : {
                       "description" : "value must be a valid UUID.",
                       "pattern" : "[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}",
                       "type" : "string"
+                    },
+                    "profile_id" : {
+                      "oneOf" : [ {
+                        "type" : "string"
+                      }, {
+                        "type" : "null"
+                      } ]
                     },
                     "structured_output" : {
                       "$ref" : "#/components/schemas/metabase-enterprise.metabot-v3.tools.api.full-snippet"
@@ -21937,7 +24141,7 @@
                 }
               }
             },
-            "description" : "Base schema for all tool requests. Contains the conversation ID."
+            "description" : "Base schema for all tool requests. Contains the conversation ID and optional profile ID."
           },
           "4XX" : {
             "description" : "Client error response"
@@ -21968,12 +24172,19 @@
             "content" : {
               "application/json" : {
                 "schema" : {
-                  "description" : "Base schema for all tool requests. Contains the conversation ID.",
+                  "description" : "Base schema for all tool requests. Contains the conversation ID and optional profile ID.",
                   "properties" : {
                     "conversation_id" : {
                       "description" : "value must be a valid UUID.",
                       "pattern" : "[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}",
                       "type" : "string"
+                    },
+                    "profile_id" : {
+                      "oneOf" : [ {
+                        "type" : "string"
+                      }, {
+                        "type" : "null"
+                      } ]
                     },
                     "structured_output" : {
                       "items" : {
@@ -21987,7 +24198,7 @@
                 }
               }
             },
-            "description" : "Base schema for all tool requests. Contains the conversation ID."
+            "description" : "Base schema for all tool requests. Contains the conversation ID and optional profile ID."
           },
           "4XX" : {
             "description" : "Client error response"
@@ -22008,7 +24219,7 @@
           "content" : {
             "application/json" : {
               "schema" : {
-                "description" : "Base schema for all tool requests. Contains the conversation ID.",
+                "description" : "Base schema for all tool requests. Contains the conversation ID and optional profile ID.",
                 "properties" : {
                   "arguments" : {
                     "$ref" : "#/components/schemas/metabase-enterprise.metabot-v3.tools.api.get-table-details-arguments"
@@ -22017,6 +24228,13 @@
                     "description" : "value must be a valid UUID.",
                     "pattern" : "[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}",
                     "type" : "string"
+                  },
+                  "profile_id" : {
+                    "oneOf" : [ {
+                      "type" : "string"
+                    }, {
+                      "type" : "null"
+                    } ]
                   }
                 },
                 "required" : [ "arguments", "conversation_id" ],
@@ -22030,12 +24248,19 @@
             "content" : {
               "application/json" : {
                 "schema" : {
-                  "description" : "Base schema for all tool requests. Contains the conversation ID.",
+                  "description" : "Base schema for all tool requests. Contains the conversation ID and optional profile ID.",
                   "properties" : {
                     "conversation_id" : {
                       "description" : "value must be a valid UUID.",
                       "pattern" : "[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}",
                       "type" : "string"
+                    },
+                    "profile_id" : {
+                      "oneOf" : [ {
+                        "type" : "string"
+                      }, {
+                        "type" : "null"
+                      } ]
                     }
                   },
                   "required" : [ "conversation_id" ],
@@ -22043,7 +24268,7 @@
                 }
               }
             },
-            "description" : "Base schema for all tool requests. Contains the conversation ID."
+            "description" : "Base schema for all tool requests. Contains the conversation ID and optional profile ID."
           },
           "4XX" : {
             "description" : "Client error response"
@@ -22064,7 +24289,7 @@
           "content" : {
             "application/json" : {
               "schema" : {
-                "description" : "Base schema for all tool requests. Contains the conversation ID.",
+                "description" : "Base schema for all tool requests. Contains the conversation ID and optional profile ID.",
                 "properties" : {
                   "arguments" : {
                     "$ref" : "#/components/schemas/metabase-enterprise.metabot-v3.tools.api.get-tables-arguments"
@@ -22073,6 +24298,13 @@
                     "description" : "value must be a valid UUID.",
                     "pattern" : "[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}",
                     "type" : "string"
+                  },
+                  "profile_id" : {
+                    "oneOf" : [ {
+                      "type" : "string"
+                    }, {
+                      "type" : "null"
+                    } ]
                   }
                 },
                 "required" : [ "arguments", "conversation_id" ],
@@ -22086,12 +24318,19 @@
             "content" : {
               "application/json" : {
                 "schema" : {
-                  "description" : "Base schema for all tool requests. Contains the conversation ID.",
+                  "description" : "Base schema for all tool requests. Contains the conversation ID and optional profile ID.",
                   "properties" : {
                     "conversation_id" : {
                       "description" : "value must be a valid UUID.",
                       "pattern" : "[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}",
                       "type" : "string"
+                    },
+                    "profile_id" : {
+                      "oneOf" : [ {
+                        "type" : "string"
+                      }, {
+                        "type" : "null"
+                      } ]
                     }
                   },
                   "required" : [ "conversation_id" ],
@@ -22099,7 +24338,7 @@
                 }
               }
             },
-            "description" : "Base schema for all tool requests. Contains the conversation ID."
+            "description" : "Base schema for all tool requests. Contains the conversation ID and optional profile ID."
           },
           "4XX" : {
             "description" : "Client error response"
@@ -22120,7 +24359,7 @@
           "content" : {
             "application/json" : {
               "schema" : {
-                "description" : "Base schema for all tool requests. Contains the conversation ID.",
+                "description" : "Base schema for all tool requests. Contains the conversation ID and optional profile ID.",
                 "properties" : {
                   "arguments" : {
                     "$ref" : "#/components/schemas/metabase-enterprise.metabot-v3.tools.api.get-transform-details-arguments"
@@ -22129,6 +24368,13 @@
                     "description" : "value must be a valid UUID.",
                     "pattern" : "[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}",
                     "type" : "string"
+                  },
+                  "profile_id" : {
+                    "oneOf" : [ {
+                      "type" : "string"
+                    }, {
+                      "type" : "null"
+                    } ]
                   }
                 },
                 "required" : [ "arguments", "conversation_id" ],
@@ -22142,12 +24388,19 @@
             "content" : {
               "application/json" : {
                 "schema" : {
-                  "description" : "Base schema for all tool requests. Contains the conversation ID.",
+                  "description" : "Base schema for all tool requests. Contains the conversation ID and optional profile ID.",
                   "properties" : {
                     "conversation_id" : {
                       "description" : "value must be a valid UUID.",
                       "pattern" : "[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}",
                       "type" : "string"
+                    },
+                    "profile_id" : {
+                      "oneOf" : [ {
+                        "type" : "string"
+                      }, {
+                        "type" : "null"
+                      } ]
                     }
                   },
                   "required" : [ "conversation_id" ],
@@ -22155,7 +24408,7 @@
                 }
               }
             },
-            "description" : "Base schema for all tool requests. Contains the conversation ID."
+            "description" : "Base schema for all tool requests. Contains the conversation ID and optional profile ID."
           },
           "4XX" : {
             "description" : "Client error response"
@@ -22176,7 +24429,7 @@
           "content" : {
             "application/json" : {
               "schema" : {
-                "description" : "Base schema for all tool requests. Contains the conversation ID.",
+                "description" : "Base schema for all tool requests. Contains the conversation ID and optional profile ID.",
                 "properties" : {
                   "arguments" : {
                     "$ref" : "#/components/schemas/metabase-enterprise.metabot-v3.tools.api.get-transform-python-library-details-arguments"
@@ -22185,6 +24438,13 @@
                     "description" : "value must be a valid UUID.",
                     "pattern" : "[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}",
                     "type" : "string"
+                  },
+                  "profile_id" : {
+                    "oneOf" : [ {
+                      "type" : "string"
+                    }, {
+                      "type" : "null"
+                    } ]
                   }
                 },
                 "required" : [ "arguments", "conversation_id" ],
@@ -22198,12 +24458,19 @@
             "content" : {
               "application/json" : {
                 "schema" : {
-                  "description" : "Base schema for all tool requests. Contains the conversation ID.",
+                  "description" : "Base schema for all tool requests. Contains the conversation ID and optional profile ID.",
                   "properties" : {
                     "conversation_id" : {
                       "description" : "value must be a valid UUID.",
                       "pattern" : "[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}",
                       "type" : "string"
+                    },
+                    "profile_id" : {
+                      "oneOf" : [ {
+                        "type" : "string"
+                      }, {
+                        "type" : "null"
+                      } ]
                     }
                   },
                   "required" : [ "conversation_id" ],
@@ -22211,7 +24478,7 @@
                 }
               }
             },
-            "description" : "Base schema for all tool requests. Contains the conversation ID."
+            "description" : "Base schema for all tool requests. Contains the conversation ID and optional profile ID."
           },
           "4XX" : {
             "description" : "Client error response"
@@ -22242,12 +24509,19 @@
             "content" : {
               "application/json" : {
                 "schema" : {
-                  "description" : "Base schema for all tool requests. Contains the conversation ID.",
+                  "description" : "Base schema for all tool requests. Contains the conversation ID and optional profile ID.",
                   "properties" : {
                     "conversation_id" : {
                       "description" : "value must be a valid UUID.",
                       "pattern" : "[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}",
                       "type" : "string"
+                    },
+                    "profile_id" : {
+                      "oneOf" : [ {
+                        "type" : "string"
+                      }, {
+                        "type" : "null"
+                      } ]
                     }
                   },
                   "required" : [ "conversation_id" ],
@@ -22255,7 +24529,7 @@
                 }
               }
             },
-            "description" : "Base schema for all tool requests. Contains the conversation ID."
+            "description" : "Base schema for all tool requests. Contains the conversation ID and optional profile ID."
           },
           "4XX" : {
             "description" : "Client error response"
@@ -22276,7 +24550,7 @@
           "content" : {
             "application/json" : {
               "schema" : {
-                "description" : "Base schema for all tool requests. Contains the conversation ID.",
+                "description" : "Base schema for all tool requests. Contains the conversation ID and optional profile ID.",
                 "properties" : {
                   "arguments" : {
                     "$ref" : "#/components/schemas/metabase-enterprise.metabot-v3.tools.api.query-datasource-arguments"
@@ -22285,6 +24559,13 @@
                     "description" : "value must be a valid UUID.",
                     "pattern" : "[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}",
                     "type" : "string"
+                  },
+                  "profile_id" : {
+                    "oneOf" : [ {
+                      "type" : "string"
+                    }, {
+                      "type" : "null"
+                    } ]
                   }
                 },
                 "required" : [ "arguments", "conversation_id" ],
@@ -22298,12 +24579,19 @@
             "content" : {
               "application/json" : {
                 "schema" : {
-                  "description" : "Base schema for all tool requests. Contains the conversation ID.",
+                  "description" : "Base schema for all tool requests. Contains the conversation ID and optional profile ID.",
                   "properties" : {
                     "conversation_id" : {
                       "description" : "value must be a valid UUID.",
                       "pattern" : "[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}",
                       "type" : "string"
+                    },
+                    "profile_id" : {
+                      "oneOf" : [ {
+                        "type" : "string"
+                      }, {
+                        "type" : "null"
+                      } ]
                     }
                   },
                   "required" : [ "conversation_id" ],
@@ -22311,7 +24599,7 @@
                 }
               }
             },
-            "description" : "Base schema for all tool requests. Contains the conversation ID."
+            "description" : "Base schema for all tool requests. Contains the conversation ID and optional profile ID."
           },
           "4XX" : {
             "description" : "Client error response"
@@ -22332,7 +24620,7 @@
           "content" : {
             "application/json" : {
               "schema" : {
-                "description" : "Base schema for all tool requests. Contains the conversation ID.",
+                "description" : "Base schema for all tool requests. Contains the conversation ID and optional profile ID.",
                 "properties" : {
                   "arguments" : {
                     "$ref" : "#/components/schemas/metabase-enterprise.metabot-v3.tools.api.query-metric-arguments"
@@ -22341,6 +24629,13 @@
                     "description" : "value must be a valid UUID.",
                     "pattern" : "[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}",
                     "type" : "string"
+                  },
+                  "profile_id" : {
+                    "oneOf" : [ {
+                      "type" : "string"
+                    }, {
+                      "type" : "null"
+                    } ]
                   }
                 },
                 "required" : [ "arguments", "conversation_id" ],
@@ -22354,12 +24649,19 @@
             "content" : {
               "application/json" : {
                 "schema" : {
-                  "description" : "Base schema for all tool requests. Contains the conversation ID.",
+                  "description" : "Base schema for all tool requests. Contains the conversation ID and optional profile ID.",
                   "properties" : {
                     "conversation_id" : {
                       "description" : "value must be a valid UUID.",
                       "pattern" : "[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}",
                       "type" : "string"
+                    },
+                    "profile_id" : {
+                      "oneOf" : [ {
+                        "type" : "string"
+                      }, {
+                        "type" : "null"
+                      } ]
                     }
                   },
                   "required" : [ "conversation_id" ],
@@ -22367,7 +24669,7 @@
                 }
               }
             },
-            "description" : "Base schema for all tool requests. Contains the conversation ID."
+            "description" : "Base schema for all tool requests. Contains the conversation ID and optional profile ID."
           },
           "4XX" : {
             "description" : "Client error response"
@@ -22388,7 +24690,7 @@
           "content" : {
             "application/json" : {
               "schema" : {
-                "description" : "Base schema for all tool requests. Contains the conversation ID.",
+                "description" : "Base schema for all tool requests. Contains the conversation ID and optional profile ID.",
                 "properties" : {
                   "arguments" : {
                     "$ref" : "#/components/schemas/metabase-enterprise.metabot-v3.tools.api.query-model-arguments"
@@ -22397,6 +24699,13 @@
                     "description" : "value must be a valid UUID.",
                     "pattern" : "[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}",
                     "type" : "string"
+                  },
+                  "profile_id" : {
+                    "oneOf" : [ {
+                      "type" : "string"
+                    }, {
+                      "type" : "null"
+                    } ]
                   }
                 },
                 "required" : [ "arguments", "conversation_id" ],
@@ -22410,12 +24719,19 @@
             "content" : {
               "application/json" : {
                 "schema" : {
-                  "description" : "Base schema for all tool requests. Contains the conversation ID.",
+                  "description" : "Base schema for all tool requests. Contains the conversation ID and optional profile ID.",
                   "properties" : {
                     "conversation_id" : {
                       "description" : "value must be a valid UUID.",
                       "pattern" : "[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}",
                       "type" : "string"
+                    },
+                    "profile_id" : {
+                      "oneOf" : [ {
+                        "type" : "string"
+                      }, {
+                        "type" : "null"
+                      } ]
                     }
                   },
                   "required" : [ "conversation_id" ],
@@ -22423,7 +24739,7 @@
                 }
               }
             },
-            "description" : "Base schema for all tool requests. Contains the conversation ID."
+            "description" : "Base schema for all tool requests. Contains the conversation ID and optional profile ID."
           },
           "4XX" : {
             "description" : "Client error response"
@@ -22444,7 +24760,7 @@
           "content" : {
             "application/json" : {
               "schema" : {
-                "description" : "Base schema for all tool requests. Contains the conversation ID.",
+                "description" : "Base schema for all tool requests. Contains the conversation ID and optional profile ID.",
                 "properties" : {
                   "arguments" : {
                     "$ref" : "#/components/schemas/metabase-enterprise.metabot-v3.tools.api.search-arguments"
@@ -22453,6 +24769,13 @@
                     "description" : "value must be a valid UUID.",
                     "pattern" : "[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}",
                     "type" : "string"
+                  },
+                  "profile_id" : {
+                    "oneOf" : [ {
+                      "type" : "string"
+                    }, {
+                      "type" : "null"
+                    } ]
                   }
                 },
                 "required" : [ "conversation_id" ],
@@ -22466,12 +24789,19 @@
             "content" : {
               "application/json" : {
                 "schema" : {
-                  "description" : "Base schema for all tool requests. Contains the conversation ID.",
+                  "description" : "Base schema for all tool requests. Contains the conversation ID and optional profile ID.",
                   "properties" : {
                     "conversation_id" : {
                       "description" : "value must be a valid UUID.",
                       "pattern" : "[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}",
                       "type" : "string"
+                    },
+                    "profile_id" : {
+                      "oneOf" : [ {
+                        "type" : "string"
+                      }, {
+                        "type" : "null"
+                      } ]
                     }
                   },
                   "required" : [ "conversation_id" ],
@@ -22479,7 +24809,7 @@
                 }
               }
             },
-            "description" : "Base schema for all tool requests. Contains the conversation ID."
+            "description" : "Base schema for all tool requests. Contains the conversation ID and optional profile ID."
           },
           "4XX" : {
             "description" : "Client error response"
@@ -22500,7 +24830,7 @@
           "content" : {
             "application/json" : {
               "schema" : {
-                "description" : "Base schema for all tool requests. Contains the conversation ID.",
+                "description" : "Base schema for all tool requests. Contains the conversation ID and optional profile ID.",
                 "properties" : {
                   "arguments" : {
                     "$ref" : "#/components/schemas/metabase-enterprise.metabot-v3.tools.api.search-arguments"
@@ -22509,6 +24839,13 @@
                     "description" : "value must be a valid UUID.",
                     "pattern" : "[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}",
                     "type" : "string"
+                  },
+                  "profile_id" : {
+                    "oneOf" : [ {
+                      "type" : "string"
+                    }, {
+                      "type" : "null"
+                    } ]
                   }
                 },
                 "required" : [ "conversation_id" ],
@@ -22522,12 +24859,19 @@
             "content" : {
               "application/json" : {
                 "schema" : {
-                  "description" : "Base schema for all tool requests. Contains the conversation ID.",
+                  "description" : "Base schema for all tool requests. Contains the conversation ID and optional profile ID.",
                   "properties" : {
                     "conversation_id" : {
                       "description" : "value must be a valid UUID.",
                       "pattern" : "[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}",
                       "type" : "string"
+                    },
+                    "profile_id" : {
+                      "oneOf" : [ {
+                        "type" : "string"
+                      }, {
+                        "type" : "null"
+                      } ]
                     }
                   },
                   "required" : [ "conversation_id" ],
@@ -22535,7 +24879,7 @@
                 }
               }
             },
-            "description" : "Base schema for all tool requests. Contains the conversation ID."
+            "description" : "Base schema for all tool requests. Contains the conversation ID and optional profile ID."
           },
           "4XX" : {
             "description" : "Client error response"
@@ -22585,9 +24929,6 @@
                   "state" : {
                     "properties" : { },
                     "type" : "object"
-                  },
-                  "use_case" : {
-                    "type" : "string"
                   }
                 },
                 "required" : [ "message", "context", "conversation_id", "history", "state" ],
@@ -22749,24 +25090,6 @@
                     }, {
                       "type" : "null"
                     } ]
-                  },
-                  "use_cases" : {
-                    "items" : {
-                      "additionalProperties" : false,
-                      "properties" : {
-                        "enabled" : {
-                          "type" : "boolean"
-                        },
-                        "id" : {
-                          "description" : "value must be an integer greater than zero.",
-                          "minimum" : 1,
-                          "type" : "integer"
-                        }
-                      },
-                      "required" : [ "id" ],
-                      "type" : "object"
-                    },
-                    "type" : "array"
                   },
                   "use_verified_content" : {
                     "type" : "boolean"
@@ -22965,7 +25288,7 @@
                 }
               }
             },
-            "description" : "map where {:model-type -> <enum of card, invalid>, :model-id -> <string>, :decision -> <enum of allow, denied, limited>, :segment -> <set of enum of sandboxed, impersonated, routed>, :message -> <sequence of string>, :data -> <map>, :suggestions -> <map from <integer> to <string>>}"
+            "description" : "Successful response"
           },
           "4XX" : {
             "description" : "Client error response"
@@ -23000,7 +25323,7 @@
                 }
               }
             },
-            "description" : "map where {:items -> <sequence of string>}"
+            "description" : "Successful response"
           },
           "4XX" : {
             "description" : "Client error response"
@@ -23051,7 +25374,7 @@
                 }
               }
             },
-            "description" : "map where {:status -> <string>, :message -> <string>}"
+            "description" : "Successful response"
           },
           "4XX" : {
             "description" : "Client error response"
@@ -23145,7 +25468,7 @@
                 }
               }
             },
-            "description" : "nullable map where {:id -> <integer greater than 0>, :sync_task_type -> <enum of import, export>, :initiated_by (optional) -> <nullable integer greater than 0>, :progress -> <nullable float between 0.0 and 1.0 inclusive>, :started_at -> <anything>, :ended_at (optional) -> <nullable anything>, :last_progress_report_at (optional) -> <nullable anything>, :version (optional) -> <nullable string>, :cancelled (optional) -> <nullable boolean>, :error_message (optional) -> <nullable string>, :status -> <enum of :running, :successful, :errored, :cancelled, :timed-out>}"
+            "description" : "Successful response"
           },
           "4XX" : {
             "description" : "Client error response"
@@ -23235,7 +25558,7 @@
                 }
               }
             },
-            "description" : "map where {:id -> <integer greater than 0>, :sync_task_type -> <enum of import, export>, :initiated_by (optional) -> <nullable integer greater than 0>, :progress -> <nullable float between 0.0 and 1.0 inclusive>, :started_at -> <anything>, :ended_at (optional) -> <nullable anything>, :last_progress_report_at (optional) -> <nullable anything>, :version (optional) -> <nullable string>, :cancelled (optional) -> <nullable boolean>, :error_message (optional) -> <nullable string>, :status -> <enum of :running, :successful, :errored, :cancelled, :timed-out>}"
+            "description" : "Successful response"
           },
           "4XX" : {
             "description" : "Client error response"
@@ -23315,6 +25638,21 @@
                           "sync_status" : {
                             "type" : "string"
                           },
+                          "table_id" : {
+                            "oneOf" : [ {
+                              "minimum" : 1,
+                              "type" : "integer"
+                            }, {
+                              "type" : "null"
+                            } ]
+                          },
+                          "table_name" : {
+                            "oneOf" : [ {
+                              "type" : "string"
+                            }, {
+                              "type" : "null"
+                            } ]
+                          },
                           "updated_at" : {
                             "oneOf" : [ { }, {
                               "type" : "null"
@@ -23332,7 +25670,7 @@
                 }
               }
             },
-            "description" : "map where {:dirty -> <sequence of map where {:id -> <integer greater than 0>, :name -> <nullable string>, :model -> <string>, :sync_status -> <string>, :created_at (optional) -> <anything>, :updated_at (optional) -> <nullable anything>, :collection_id (optional) -> <nullable integer greater than 0>, :authority_level (optional) -> <nullable string>, :display (optional) -> <nullable string>, :query_type (optional) -> <nullable string>, :description (optional) -> <nullable string>}>}"
+            "description" : "Successful response"
           },
           "4XX" : {
             "description" : "Client error response"
@@ -23368,7 +25706,7 @@
                 }
               }
             },
-            "description" : "map where {:message -> <string>, :task_id -> <integer greater than 0>}"
+            "description" : "Successful response"
           },
           "4XX" : {
             "description" : "Client error response"
@@ -23378,6 +25716,62 @@
           }
         },
         "summary" : "POST /api/ee/remote-sync/export",
+        "tags" : [ "/api/ee/remote-sync" ]
+      }
+    },
+    "/api/ee/remote-sync/has-remote-changes" : {
+      "get" : {
+        "description" : "Check if there are new changes on the remote branch that can be pulled.\n   Uses in-memory caching (configurable TTL via remote-sync-check-changes-cache-ttl-seconds setting).\n\n   Returns:\n   - has_changes: true if remote version differs from last imported version, or if never imported\n   - remote_version: current Git SHA on remote branch\n   - local_version: Git SHA of last successful import (nil if never imported)\n   - cached: true if result was served from cache",
+        "parameters" : [ {
+          "in" : "query",
+          "name" : "force-refresh",
+          "required" : false,
+          "schema" : {
+            "type" : "boolean"
+          }
+        } ],
+        "responses" : {
+          "2XX" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "properties" : {
+                    "cached" : {
+                      "type" : "boolean"
+                    },
+                    "has_changes" : {
+                      "type" : "boolean"
+                    },
+                    "local_version" : {
+                      "oneOf" : [ {
+                        "type" : "string"
+                      }, {
+                        "type" : "null"
+                      } ]
+                    },
+                    "remote_version" : {
+                      "oneOf" : [ {
+                        "type" : "string"
+                      }, {
+                        "type" : "null"
+                      } ]
+                    }
+                  },
+                  "required" : [ "has_changes", "remote_version", "local_version", "cached" ],
+                  "type" : "object"
+                }
+              }
+            },
+            "description" : "Successful response"
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "summary" : "GET /api/ee/remote-sync/has-remote-changes",
         "tags" : [ "/api/ee/remote-sync" ]
       }
     },
@@ -23433,7 +25827,7 @@
                 }
               }
             },
-            "description" : "map where {:status -> <must equal :success>, :task_id -> <nullable integer greater than 0>, :message (optional) -> <nullable string>}"
+            "description" : "Successful response"
           },
           "4XX" : {
             "description" : "Client error response"
@@ -23465,7 +25859,7 @@
                 }
               }
             },
-            "description" : "map where {:is_dirty -> <boolean>}"
+            "description" : "Successful response"
           },
           "4XX" : {
             "description" : "Client error response"
@@ -23551,7 +25945,7 @@
                 }
               }
             },
-            "description" : "map where {:success -> <boolean>, :task_id (optional) -> <integer greater than 0>}"
+            "description" : "Successful response"
           },
           "4XX" : {
             "description" : "Client error response"
@@ -23610,7 +26004,7 @@
                 }
               }
             },
-            "description" : "map where {:status -> <string>, :message -> <string>, :task_id -> <integer greater than 0>}"
+            "description" : "Successful response"
           },
           "4XX" : {
             "description" : "Client error response"
@@ -24586,7 +26980,7 @@
                 }
               }
             },
-            "description" : "Schema for GET /api/ee/support-access-grants response (paginated list)."
+            "description" : "Successful response"
           },
           "4XX" : {
             "description" : "Client error response"
@@ -24619,7 +27013,7 @@
                 }
               }
             },
-            "description" : "Schema for a support access grant object in API responses."
+            "description" : "Successful response"
           },
           "4XX" : {
             "description" : "Client error response"
@@ -24645,7 +27039,7 @@
                 }
               }
             },
-            "description" : "Schema for GET /api/ee/support-access-grants/current response."
+            "description" : "Successful response"
           },
           "4XX" : {
             "description" : "Client error response"
@@ -24680,7 +27074,7 @@
                 }
               }
             },
-            "description" : "Schema for a support access grant object in API responses."
+            "description" : "Successful response"
           },
           "4XX" : {
             "description" : "Client error response"
@@ -24765,7 +27159,7 @@
                 }
               }
             },
-            "description" : "map where {:data -> <sequence of map where {:id -> <value must be an integer greater than zero.>, :name -> <value must be a non-blank string.>, :slug -> <invalid slug>, :is_active -> <value must be a valid boolean string ('true' or 'false').>, :member_count -> <value must be an integer.>, :attributes -> <nullable map from <string> to <string>>, :tenant_collection_id -> <value must be an integer greater than zero.>} with no other keys>} with no other keys"
+            "description" : "Successful response"
           },
           "4XX" : {
             "description" : "Client error response"
@@ -24859,7 +27253,7 @@
                 }
               }
             },
-            "description" : "map where {:id -> <value must be an integer greater than zero.>, :name -> <value must be a non-blank string.>, :slug -> <invalid slug>, :is_active -> <value must be a valid boolean string ('true' or 'false').>, :member_count -> <value must be an integer.>, :attributes -> <nullable map from <string> to <string>>, :tenant_collection_id -> <value must be an integer greater than zero.>} with no other keys"
+            "description" : "Successful response"
           },
           "4XX" : {
             "description" : "Client error response"
@@ -24934,7 +27328,7 @@
                 }
               }
             },
-            "description" : "map where {:id -> <value must be an integer greater than zero.>, :name -> <value must be a non-blank string.>, :slug -> <invalid slug>, :is_active -> <value must be a valid boolean string ('true' or 'false').>, :member_count -> <value must be an integer.>, :attributes -> <nullable map from <string> to <string>>, :tenant_collection_id -> <value must be an integer greater than zero.>} with no other keys"
+            "description" : "Successful response"
           },
           "4XX" : {
             "description" : "Client error response"
@@ -25042,7 +27436,7 @@
                 }
               }
             },
-            "description" : "map where {:id -> <value must be an integer greater than zero.>, :name -> <value must be a non-blank string.>, :slug -> <invalid slug>, :is_active -> <value must be a valid boolean string ('true' or 'false').>, :member_count -> <value must be an integer.>, :attributes -> <nullable map from <string> to <string>>, :tenant_collection_id -> <value must be an integer greater than zero.>} with no other keys"
+            "description" : "Successful response"
           },
           "4XX" : {
             "description" : "Client error response"
@@ -26200,7 +28594,7 @@
                 }
               }
             },
-            "description" : "map where {:logs -> <string>, :error (optional) -> <map where {:message -> <function, or function>}>, :output (optional) -> <map where {:cols -> <sequence of map where {:name -> <string>}>, :rows -> <sequence of anything>}>}"
+            "description" : "Successful response"
           },
           "4XX" : {
             "description" : "Client error response"
@@ -28049,7 +30443,7 @@
                 }
               }
             },
-            "description" : "sequence of map where {:id -> <keyword>, :display_name -> <string>, :loggers -> <sequence of map where {:name -> <string>, :level -> <enum of :off, :fatal, :error, :warn, :info, :debug, :trace>}>}"
+            "description" : "Successful response"
           },
           "4XX" : {
             "description" : "Client error response"
@@ -28079,6 +30473,206 @@
         },
         "summary" : "GET /api/login-history/current",
         "tags" : [ "/api/login-history" ]
+      }
+    },
+    "/api/measure/" : {
+      "get" : {
+        "description" : "Fetch *all* `Measures`.",
+        "parameters" : [ ],
+        "responses" : {
+          "2XX" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "items" : {
+                    "$ref" : "#/components/schemas/metabase.measures.api.measure"
+                  },
+                  "type" : "array"
+                }
+              }
+            },
+            "description" : "Successful response"
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "summary" : "GET /api/measure/",
+        "tags" : [ "/api/measure" ]
+      },
+      "post" : {
+        "description" : "Create a new `Measure`.",
+        "parameters" : [ ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "properties" : {
+                  "definition" : {
+                    "description" : "Value must be a map.",
+                    "properties" : { },
+                    "type" : "object"
+                  },
+                  "description" : {
+                    "oneOf" : [ {
+                      "type" : "string"
+                    }, {
+                      "type" : "null"
+                    } ]
+                  },
+                  "name" : {
+                    "minLength" : 1,
+                    "type" : "string"
+                  },
+                  "table_id" : {
+                    "description" : "value must be an integer greater than zero.",
+                    "minimum" : 1,
+                    "type" : "integer"
+                  }
+                },
+                "required" : [ "name", "table_id", "definition" ],
+                "type" : "object"
+              }
+            }
+          }
+        },
+        "responses" : {
+          "2XX" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/metabase.measures.api.measure"
+                }
+              }
+            },
+            "description" : "Successful response"
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "summary" : "POST /api/measure/",
+        "tags" : [ "/api/measure" ]
+      }
+    },
+    "/api/measure/{id}" : {
+      "get" : {
+        "description" : "Fetch `Measure` with ID.",
+        "parameters" : [ {
+          "description" : "value must be an integer greater than zero.",
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "minimum" : 1,
+            "type" : "integer"
+          }
+        } ],
+        "responses" : {
+          "2XX" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/metabase.measures.api.measure"
+                }
+              }
+            },
+            "description" : "Successful response"
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "summary" : "GET /api/measure/{id}",
+        "tags" : [ "/api/measure" ]
+      },
+      "put" : {
+        "description" : "Update a `Measure` with ID.",
+        "parameters" : [ {
+          "description" : "value must be an integer greater than zero.",
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "minimum" : 1,
+            "type" : "integer"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "properties" : {
+                  "archived" : {
+                    "oneOf" : [ {
+                      "type" : "boolean"
+                    }, {
+                      "type" : "null"
+                    } ]
+                  },
+                  "definition" : {
+                    "oneOf" : [ {
+                      "properties" : { },
+                      "type" : "object"
+                    }, {
+                      "type" : "null"
+                    } ]
+                  },
+                  "description" : {
+                    "oneOf" : [ {
+                      "type" : "string"
+                    }, {
+                      "type" : "null"
+                    } ]
+                  },
+                  "name" : {
+                    "oneOf" : [ {
+                      "minLength" : 1,
+                      "type" : "string"
+                    }, {
+                      "type" : "null"
+                    } ]
+                  },
+                  "revision_message" : {
+                    "minLength" : 1,
+                    "type" : "string"
+                  }
+                },
+                "required" : [ "revision_message" ],
+                "type" : "object"
+              }
+            }
+          }
+        },
+        "responses" : {
+          "2XX" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/metabase.measures.api.measure"
+                }
+              }
+            },
+            "description" : "Successful response"
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "summary" : "PUT /api/measure/{id}",
+        "tags" : [ "/api/measure" ]
       }
     },
     "/api/model-index/" : {
@@ -28452,7 +31046,7 @@
         "tags" : [ "/api/mt/gtap" ]
       },
       "put" : {
-        "description" : "Update a GTAP entry. The only things you're allowed to update for a GTAP are the Card being used (`card_id`) or the\n  parameter mappings; changing `table_id` or `group_id` would effectively be deleting this entry and creating a new\n  one. If that's what you want to do, do so explicity with appropriate calls to the `DELETE` and `POST` endpoints.",
+        "description" : "Update a GTAP entry. The only things you're allowed to update for a GTAP are the Card being used (`card_id`) or the\n  parameter mappings; changing `table_id` or `group_id` would effectively be deleting this entry and creating a new\n  one. If that's what you want to do, do so explicitly with appropriate calls to the `DELETE` and `POST` endpoints.",
         "parameters" : [ {
           "description" : "value must be an integer greater than zero.",
           "in" : "path",
@@ -30144,7 +32738,7 @@
                 }
               }
             },
-            "description" : "map where {:has_more_values -> <boolean>, :values -> <sequence of vector with exactly 2 items of type: anything, string, or vector with exactly 1 items of type: anything>}"
+            "description" : "Successful response"
           },
           "4XX" : {
             "description" : "Client error response"
@@ -32162,6 +34756,14 @@
                       "type" : "null"
                     } ]
                   },
+                  "disable_links" : {
+                    "default" : false,
+                    "oneOf" : [ {
+                      "type" : "boolean"
+                    }, {
+                      "type" : "null"
+                    } ]
+                  },
                   "name" : {
                     "minLength" : 1,
                     "type" : "string"
@@ -32175,7 +34777,7 @@
                     } ]
                   }
                 },
-                "required" : [ "name", "cards", "channels", "skip_if_empty" ],
+                "required" : [ "name", "cards", "channels", "skip_if_empty", "disable_links" ],
                 "type" : "object"
               }
             }
@@ -32446,7 +35048,7 @@
           "name" : "entity",
           "required" : true,
           "schema" : {
-            "enum" : [ "card", "dashboard", "document", "segment" ],
+            "enum" : [ "card", "dashboard", "document", "measure", "segment", "transform" ],
             "type" : "string"
           }
         } ],
@@ -32475,7 +35077,7 @@
               "schema" : {
                 "properties" : {
                   "entity" : {
-                    "enum" : [ "card", "dashboard", "document", "segment" ],
+                    "enum" : [ "card", "dashboard", "document", "measure", "segment", "transform" ],
                     "type" : "string"
                   },
                   "id" : {
@@ -32518,7 +35120,7 @@
           "name" : "entity",
           "required" : true,
           "schema" : {
-            "enum" : [ "card", "dashboard", "document", "segment" ],
+            "enum" : [ "card", "dashboard", "document", "measure", "segment", "transform" ],
             "type" : "string"
           }
         }, {
@@ -32616,7 +35218,7 @@
           "schema" : {
             "oneOf" : [ {
               "items" : {
-                "enum" : [ "dashboard", "table", "dataset", "segment", "collection", "transform", "document", "database", "action", "indexed-entity", "metric", "card" ],
+                "enum" : [ "dashboard", "table", "dataset", "segment", "collection", "measure", "transform", "document", "database", "action", "indexed-entity", "metric", "card" ],
                 "type" : "string"
               },
               "type" : "array"
@@ -33729,7 +36331,7 @@
     },
     "/api/table/" : {
       "get" : {
-        "description" : "Get all `Tables`.",
+        "description" : "Get all `Tables`.\n\n  Optional filters:\n  - `can-query=true` - filter to only tables the user can execute queries against\n  - `can-write=true` - filter to only tables the user can edit metadata for",
         "parameters" : [ {
           "in" : "query",
           "name" : "term",
@@ -33790,6 +36392,28 @@
         }, {
           "in" : "query",
           "name" : "unused-only",
+          "required" : false,
+          "schema" : {
+            "oneOf" : [ {
+              "type" : "boolean"
+            }, {
+              "type" : "null"
+            } ]
+          }
+        }, {
+          "in" : "query",
+          "name" : "can-query",
+          "required" : false,
+          "schema" : {
+            "oneOf" : [ {
+              "type" : "boolean"
+            }, {
+              "type" : "null"
+            } ]
+          }
+        }, {
+          "in" : "query",
+          "name" : "can-write",
           "required" : false,
           "schema" : {
             "oneOf" : [ {
@@ -34283,7 +36907,7 @@
                 }
               }
             },
-            "description" : "map where {:success -> <must equal true>}"
+            "description" : "Successful response"
           },
           "4XX" : {
             "description" : "Client error response"
@@ -34588,6 +37212,104 @@
         "tags" : [ "/api/task" ]
       }
     },
+    "/api/task/runs" : {
+      "get" : {
+        "description" : "List task runs with optional filters. Returns runs with hydrated entity names and task counts.",
+        "parameters" : [ ],
+        "responses" : {
+          "2XX" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/metabase.task-history.api.TaskRunsResponse"
+                }
+              }
+            },
+            "description" : "Successful response"
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "summary" : "GET /api/task/runs",
+        "tags" : [ "/api/task" ]
+      }
+    },
+    "/api/task/runs/entities" : {
+      "get" : {
+        "description" : "Get distinct entities that have task runs for a given run type. Used for populating entity filter picker.",
+        "parameters" : [ {
+          "in" : "query",
+          "name" : "run-type",
+          "required" : true,
+          "schema" : {
+            "enum" : [ "alert", "sync", "fingerprint", "subscription" ],
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "2XX" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "items" : {
+                    "$ref" : "#/components/schemas/metabase.task-history.api.RunEntity"
+                  },
+                  "type" : "array"
+                }
+              }
+            },
+            "description" : "Successful response"
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "summary" : "GET /api/task/runs/entities",
+        "tags" : [ "/api/task" ]
+      }
+    },
+    "/api/task/runs/{id}" : {
+      "get" : {
+        "description" : "Get a single task run with all its child tasks.",
+        "parameters" : [ {
+          "description" : "value must be an integer greater than zero.",
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "minimum" : 1,
+            "type" : "integer"
+          }
+        } ],
+        "responses" : {
+          "2XX" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/metabase.task-history.api.TaskRunWithTasks"
+                }
+              }
+            },
+            "description" : "Successful response"
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "summary" : "GET /api/task/runs/{id}",
+        "tags" : [ "/api/task" ]
+      }
+    },
     "/api/task/unique-tasks" : {
       "get" : {
         "description" : "Returns possibly empty vector of unique task names in alphabetical order. It is expected that number of unique\n  tasks is small, hence no need for pagination. If that changes this endpoint and function that powers it should\n  reflect that.",
@@ -34637,7 +37359,7 @@
     },
     "/api/testing/echo" : {
       "get" : {
-        "description" : "Simple echo hander. Fails when you GET with `?fail=true`.",
+        "description" : "Simple echo handler. Fails when you GET with `?fail=true`.",
         "parameters" : [ {
           "in" : "query",
           "name" : "fail",
@@ -34670,7 +37392,7 @@
         "tags" : [ "/api/testing" ]
       },
       "post" : {
-        "description" : "Simple echo hander. Fails when you POST with `?fail=true`.",
+        "description" : "Simple echo handler. Fails when you POST with `?fail=true`.",
         "parameters" : [ {
           "in" : "query",
           "name" : "fail",
@@ -35375,7 +38097,7 @@
                 }
               }
             },
-            "description" : "sequence of map where {:id -> <integer greater than 0>}"
+            "description" : "Successful response"
           },
           "4XX" : {
             "description" : "Client error response"
@@ -35453,7 +38175,7 @@
                 }
               }
             },
-            "description" : "map where {:id -> <integer greater than 0>}"
+            "description" : "Successful response"
           },
           "4XX" : {
             "description" : "Client error response"
@@ -35638,7 +38360,7 @@
                 }
               }
             },
-            "description" : "map where {:id -> <integer greater than 0>}"
+            "description" : "Successful response"
           },
           "4XX" : {
             "description" : "Client error response"

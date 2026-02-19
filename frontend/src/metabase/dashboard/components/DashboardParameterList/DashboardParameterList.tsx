@@ -52,7 +52,6 @@ export const DashboardParameterList = forwardRef<
     hideParameters,
     parameters: dashboardParameters,
     parameterValues,
-    token,
   } = useDashboardContext();
 
   const linkedFilterParameters = useMemo(
@@ -73,7 +72,6 @@ export const DashboardParameterList = forwardRef<
       editingParameter={editingParameter}
       hideParameters={hideParameters}
       dashboardId={dashboard?.id}
-      token={token}
       isSortable={isSortable}
       isFullscreen={isFullscreen}
       isEditing={isEditing}

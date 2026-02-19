@@ -4,7 +4,7 @@ import * as Yup from "yup";
 
 import { render, screen, waitFor } from "__support__/ui";
 
-import FormSelect from "./FormSelect";
+import { FormSelect } from "./FormSelect";
 
 const TEST_SCHEMA = Yup.object({
   value: Yup.string().notOneOf(["bar"], "error"),

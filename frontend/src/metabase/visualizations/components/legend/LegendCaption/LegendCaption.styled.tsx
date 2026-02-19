@@ -2,7 +2,6 @@
 import styled from "@emotion/styled";
 import { forwardRef } from "react";
 
-import { lighten } from "metabase/lib/colors";
 import { Box, type BoxProps, Icon, type IconProps } from "metabase/ui";
 
 import { LegendLabel as BaseLegendLabel } from "../LegendLabel";
@@ -44,11 +43,11 @@ export const LegendDescriptionIcon = styled(
     );
   }),
 )`
-  color: ${({ theme }) => lighten(theme.fn?.themeColor("text-light"), 0.1)};
+  color: var(--mb-color-text-tertiary);
   margin: 0 0.25rem;
 
   &:hover {
-    color: var(--mb-color-text-medium);
+    color: var(--mb-color-text-secondary);
   }
 `;
 

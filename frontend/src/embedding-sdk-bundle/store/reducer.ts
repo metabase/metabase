@@ -66,7 +66,6 @@ const initialState: SdkState = {
   plugins: null,
   eventHandlers: null,
   usageProblem: null,
-  loaderComponent: null,
   errorComponent: null,
   fetchRefreshTokenFn: null,
 };
@@ -113,10 +112,6 @@ export const sdk = createReducer(initialState, (builder) => {
   builder.addCase(initGuestEmbed.rejected, (state, action) => {
     const error = action.error as Error;
     state.initStatus = { status: "error", error };
-  });
-
-  builder.addCase(setLoaderComponent, (state, action) => {
-    state.loaderComponent = action.payload;
   });
 
   builder.addCase(setIsGuestEmbed, (state, action) => {

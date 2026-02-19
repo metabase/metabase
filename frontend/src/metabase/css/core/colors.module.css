@@ -21,7 +21,7 @@
 */
 
 .textDefault {
-  color: var(--mb-color-text-dark);
+  color: var(--mb-color-text-primary);
 }
 
 .textBrand,
@@ -50,29 +50,29 @@
 }
 
 .bgErrorInput {
-  background-color: var(--mb-color-bg-white);
+  background-color: var(--mb-color-background-primary);
 }
 
 .textSlate {
-  color: var(--mb-color-text-medium);
+  color: var(--mb-color-text-secondary);
 }
 
 .textSlateLight {
-  color: var(--mb-color-text-light);
+  color: var(--mb-color-text-tertiary);
 }
 
 .textLight {
-  color: var(--mb-color-text-light);
+  color: var(--mb-color-text-tertiary);
 }
 
 .textMedium,
 .textMediumHover:hover {
-  color: var(--mb-color-text-medium);
+  color: var(--mb-color-text-secondary);
 }
 
 .textDark,
 .textDarkHover:hover {
-  color: var(--mb-color-text-dark);
+  color: var(--mb-color-text-primary);
 }
 
 .textPrimary {
@@ -87,33 +87,32 @@
   color: var(--mb-color-text-tertiary);
 }
 
-.bgBrandLighter,
-.bgBrandLighterHover:hover {
-  background-color: var(--mb-color-brand-lighter);
+.bgBrandHover:hover {
+  background-color: var(--mb-color-background-hover);
 }
 
 .bgLight,
 .bgLightHover:hover {
-  background-color: var(--mb-color-bg-light);
+  background-color: var(--mb-color-background-secondary);
 }
 
 .bgMedium,
 .bgMediumHover:hover {
-  background-color: var(--mb-color-bg-medium);
+  background-color: var(--mb-color-background-tertiary);
 }
 
 /* white  - move to bottom for specificity since its often used on hovers, etc */
 .textWhite,
 .textWhiteHover:hover {
-  color: var(--mb-color-text-white);
+  color: var(--mb-color-text-primary-inverse);
 }
 
 .bgWhite {
-  background-color: var(--mb-color-bg-white);
+  background-color: var(--mb-color-background-primary);
 }
 
 .bgLightBlue {
-  background-color: var(--mb-color-bg-light);
+  background-color: var(--mb-color-background-secondary);
 }
 
 .textTooltipSecondary {

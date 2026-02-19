@@ -50,15 +50,13 @@ class ItemsDragLayerInner extends Component {
   }
 }
 
-const ItemsDragLayer = DragLayer((monitor, props) => ({
+export const ItemsDragLayer = DragLayer((monitor, props) => ({
   item: monitor.getItem(),
   // itemType: monitor.getItemType(),
   initialOffset: monitor.getInitialSourceClientOffset(),
   currentOffset: monitor.getSourceClientOffset(),
   isDragging: monitor.isDragging(),
 }))(ItemsDragLayerInner);
-
-export default ItemsDragLayer;
 
 class DraggedItems extends Component {
   shouldComponentUpdate(nextProps) {

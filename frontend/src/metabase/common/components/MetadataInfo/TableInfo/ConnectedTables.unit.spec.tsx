@@ -10,7 +10,7 @@ import {
 } from "metabase-types/api/mocks";
 import { createMockState } from "metabase-types/store/mocks";
 
-import ConnectedTables from "./ConnectedTables";
+import { ConnectedTables } from "./ConnectedTables";
 
 const EMPTY_TABLE = createMockTable();
 

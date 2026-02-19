@@ -18,7 +18,7 @@
     top: calc(-1 * var(--padding-v) / 2);
     width: calc(100% + var(--padding-h) + 12.5px);
     height: calc(100% + var(--padding-v) + 4px);
-    background-color: var(--mb-color-brand-alpha-04);
+    background-color: var(--mb-color-background-highlight);
     border: 1px solid var(--mb-color-brand) !important;
     border-radius: 8px;
     pointer-events: none;
@@ -49,8 +49,8 @@
 }
 
 .commentBulletDeleted {
-  background-color: var(--mb-color-background);
-  color: var(--mb-color-text-disabled);
+  background-color: var(--mb-color-background-primary);
+  color: var(--mb-color-text-tertiary);
 }
 
 .reaction {
@@ -58,10 +58,10 @@
   border: none;
   outline: none;
   cursor: pointer;
-  background-color: var(--mb-color-bg-medium);
+  background-color: var(--mb-color-background-tertiary);
   padding: 0 0.5rem;
   border-radius: 1rem;
-  color: var(--mb-color-text-dark);
+  color: var(--mb-color-text-primary);
 
   &:hover {
     background-color: var(--mb-color-background-hover);
@@ -69,10 +69,10 @@
 }
 
 .currentUserReaction {
-  background-color: var(--mb-color-focus);
+  background-color: var(--mb-color-background-selected);
   border: 1px solid var(--mb-color-brand);
 
   &:hover {
-    background-color: var(--mb-color-brand-alpha-88);
+    background-color: var(--mb-color-background-hover);
   }
 }

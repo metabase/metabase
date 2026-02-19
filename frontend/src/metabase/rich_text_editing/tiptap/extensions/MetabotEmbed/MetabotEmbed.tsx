@@ -288,7 +288,7 @@ export const MetabotComponent = memo(
     return (
       <NodeViewWrapper>
         <Flex
-          bg="bg-light"
+          bg="background-secondary"
           bd="1px solid var(--border-color)"
           className={S.borderRadius}
           pos="relative"

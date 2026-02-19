@@ -1,5 +1,6 @@
-import { assoc, dissoc } from "icepick";
 import { parse } from "url";
+
+import { assoc, dissoc } from "icepick";
 
 import { createMockMetadata } from "__support__/metadata";
 import { deserializeCardFromUrl } from "metabase/lib/card";

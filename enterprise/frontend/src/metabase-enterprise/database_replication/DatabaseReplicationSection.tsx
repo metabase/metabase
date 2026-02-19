@@ -52,7 +52,7 @@ export function DatabaseReplicationSection({
     <DatabaseInfoSection
       condensed
       name={t`Database replication`}
-      // eslint-disable-next-line no-literal-metabase-strings -- This string only shows for admins.
+      // eslint-disable-next-line metabase/no-literal-metabase-strings -- This string only shows for admins.
       description={t`Continuously sync the tables from this database with Metabase Cloud Storage - a fast managed database. Then query the copied tables instead of the originals.`}
     >
       <Flex align="center" justify="space-between" gap="lg">

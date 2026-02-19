@@ -18,7 +18,6 @@ import {
   hasValue,
 } from "metabase-lib/v1/parameters/utils/parameter-values";
 import type { CardId, DashboardId, RowValue } from "metabase-types/api";
-import type { EntityToken } from "metabase-types/api/entity";
 
 import { Footer } from "../Widget";
 import { MIN_WIDTH } from "../constants";
@@ -35,7 +34,6 @@ interface ParameterFieldWidgetProps {
   value?: string | string[];
   cardId?: CardId;
   dashboardId?: DashboardId;
-  token?: EntityToken | null;
 }
 
 export function ParameterFieldWidget({
@@ -47,7 +45,6 @@ export function ParameterFieldWidget({
   parameters,
   cardId,
   dashboardId,
-  token,
 }: ParameterFieldWidgetProps) {
   const [unsavedValue, setUnsavedValue] = useState<RowValue[]>(() =>
     normalizeValue(value),
@@ -107,15 +104,16 @@ export function ParameterFieldWidget({
               parameters={parameters}
               cardId={cardId}
               dashboardId={dashboardId}
-              token={token}
               onChange={onValueChange}
               placeholder={isEditing ? t`Enter a default value…` : undefined}
               fields={fields}
               autoFocus={index === 0}
               multi={supportsMultipleValues}
-              formatOptions={
-                operator && getFilterArgumentFormatOptions(operator, index)
-              }
+              formatOptions={{
+                ...(operator &&
+                  getFilterArgumentFormatOptions(operator, index)),
+                ...fields?.[0]?.settings,
+              }}
               color="brand"
               minWidth={300}
               maxWidth={400}

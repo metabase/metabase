@@ -1,7 +1,12 @@
+.header {
+  border-top: 1px solid var(--mb-color-border);
+  border-bottom: 1px solid var(--mb-color-border);
+}
+
 .logs {
   white-space: pre;
-  border: 1px solid var(--mb-color-border);
   font-family: var(--mb-default-monospace-font-family);
+  overflow: auto;
 }
 
 .visualization {
@@ -15,35 +20,14 @@
   border-radius: var(--mantine-radius-md);
 }
 
-.empty {
-  border-top: 1px solid var(--mb-color-border);
-}
-
 .tableHeader {
-  background-color: var(--mb-color-bg-light);
+  background-color: var(--mb-color-background-secondary);
   padding: var(--mantine-spacing-sm);
 }
 
 .tableCell {
   border-top: 1px solid var(--mb-color-border);
   padding: var(--mantine-spacing-sm);
-}
-
-.error {
-  color: var(--mb-color-error);
-  background-color: var(--mb-color-background-error);
-  border-bottom: 1px solid var(--mb-color-border);
-}
-
-.info {
-  color: var(--mb-color-text-dark);
-  border: 1px solid var(--mb-color-bg-medium);
-  background-color: var(--mb-color-bg-light);
-}
-
-.success {
-  color: var(--mb-color-success);
-  border-bottom: 1px solid var(--mb-color-border);
 }
 
 .loading {
@@ -53,4 +37,23 @@
   bottom: 0;
   right: 0;
   background-color: rgba(255, 255, 255, 0.5);
+}
+
+.error {
+  background-color: var(--mb-color-background-error);
+}
+
+.traceback {
+  white-space: pre;
+  font-family: var(--mb-default-monospace-font-family);
+  overflow: auto;
+}
+
+.content {
+  overflow: auto;
+}
+
+.footer {
+  border-top: 1px solid var(--mb-color-border);
+  flex-shrink: 0;
 }

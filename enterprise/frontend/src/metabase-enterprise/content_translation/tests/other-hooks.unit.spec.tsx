@@ -54,7 +54,7 @@ describe("Content translation hooks (other than useTranslateContent)", () => {
     };
     setupForContentTranslationTest({
       localeCode: "en",
-      hasEnterprisePlugins: true,
+      enterprisePlugins: ["content_translation"],
       tokenFeatures: { content_translation: true },
       dictionary: [
         { locale: "en", msgid: "Column 1", msgstr: "translation of Column 1" },
@@ -128,7 +128,7 @@ describe("Content translation hooks (other than useTranslateContent)", () => {
     };
     setupForContentTranslationTest({
       localeCode: "en",
-      hasEnterprisePlugins: true,
+      enterprisePlugins: ["content_translation"],
       tokenFeatures: { content_translation: true },
       dictionary: [
         { locale: "en", msgid: "Column 1", msgstr: "translation of Column 1" },
@@ -212,7 +212,7 @@ describe("Content translation hooks (other than useTranslateContent)", () => {
     };
     setupForContentTranslationTest({
       localeCode: "en",
-      hasEnterprisePlugins: true,
+      enterprisePlugins: ["content_translation"],
       tokenFeatures: { content_translation: true },
       dictionary: [
         { locale: "en", msgid: "Column 1", msgstr: "translation of Column 1" },
@@ -268,7 +268,7 @@ describe("Content translation hooks (other than useTranslateContent)", () => {
 
     setupForContentTranslationTest({
       localeCode: "en",
-      hasEnterprisePlugins: true,
+      enterprisePlugins: ["content_translation"],
       tokenFeatures: { content_translation: true },
       dictionary: [
         { locale: "en", msgid: "Zebra", msgstr: "A-Animal" },

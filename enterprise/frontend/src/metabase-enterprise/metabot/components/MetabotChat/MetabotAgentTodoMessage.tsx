@@ -3,13 +3,14 @@ import cx from "classnames";
 import { match } from "ts-pattern";
 import { t } from "ttag";
 
+import type { ColorName } from "metabase/lib/colors/types";
 import { Collapse, Flex, Group, Icon, Paper, Stack, Text } from "metabase/ui";
 import type { MetabotTodoItem } from "metabase-types/api";
 
 import S from "./MetabotAgentTodoMessage.module.css";
 
 type TodoStatusConfig = {
-  color: string;
+  color: ColorName;
   td?: string;
 };
 

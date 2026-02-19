@@ -10,11 +10,11 @@ import {
 } from "./setup";
 
 const setup = async ({ isAdmin = true, initialRoute = "" } = {}) => {
-  return baseSetup({
-    hasEnterprisePlugins: true,
+  await baseSetup({
     hasTokenFeatures: false,
     isAdmin,
     initialRoute,
+    enterprisePlugins: "*", // means all enterprise plugins
   });
 };
 

@@ -100,6 +100,17 @@
   Adjusting the timeout does not impact Metabase’s frontend.
   Please be aware that other services (like Nginx) may still drop long-running queries.")
 
+;; This is normally set via the env var `MB_JDBC_NETWORK_TIMEOUT_MS`
+(defsetting jdbc-network-timeout-ms
+  "By default, this is 30 minutes."
+  :visibility :internal
+  :export?    false
+  :type       :integer
+  :default    (max (if config/is-prod? 1800000 600000) (* 1000 60 (+ (db-query-timeout-minutes) 5)))
+  :doc "Timeout in milliseconds to wait for database operations to complete. This is used to free up threads that
+        are stuck waiting for a database response in a socket read. See the documentation for more details:
+        https://docs.oracle.com/javase/8/docs/api/java/sql/Connection.html#setNetworkTimeout-java.util.concurrent.Executor-int-")
+
 (defsetting jdbc-data-warehouse-max-connection-pool-size
   "Maximum size of the c3p0 connection pool."
   :visibility :internal
@@ -117,6 +128,10 @@
 (def ^:dynamic ^Long *query-timeout-ms*
   "Maximum amount of time query is allowed to run, in ms."
   (u/minutes->ms (db-query-timeout-minutes)))
+
+(def ^:dynamic ^Long *network-timeout-ms*
+  "Maximum amount of time to wait for a response from the database, in ms."
+  (jdbc-network-timeout-ms))
 
 (def ^:dynamic *allow-testing-h2-connections*
   "Whether to allow testing new H2 connections. Normally this is disabled, which effectively means you cannot create new

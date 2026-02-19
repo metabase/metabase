@@ -139,13 +139,12 @@ visualization_settings:
     name: count
   table.pivot: false
   table.pivot_column: name
-card_schema: 22
+card_schema: 23
 serdes/meta:
 - {id: MUXrck2HHcd2TIRuPfK0v, label: most_viewed_dashboards, model: Card}
 archived_directly: false
 dashboard_id: IW64bVIFFkpldy410Pe5F
 document_id: null
 embedding_type: null
-published_table_id: null
 source_card_id: P6Ityjj7igswKh4NgZZjz
 type: question

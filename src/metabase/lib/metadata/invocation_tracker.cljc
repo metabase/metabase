@@ -30,6 +30,7 @@
     table-id
     (let [tracking-type (case metadata-type
                           :metadata/column  ::table-fields
+                          :metadata/measure ::table-measures
                           :metadata/metric  ::table-metrics
                           :metadata/segment ::table-segments)]
       (track-ids! tracker tracking-type [table-id]))

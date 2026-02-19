@@ -4,8 +4,10 @@ import { type SetupOpts, setup as baseSetup } from "./setup";
 
 const setup = (opts: SetupOpts = {}) =>
   baseSetup({
-    hasEnterprisePlugins: true,
-    tokenFeatures: { embedding_sdk: opts.isEmbeddingSdkEnabled },
+    tokenFeatures: {
+      embedding_simple: opts.isEmbeddingSimpleEnabled,
+      embedding_sdk: opts.isEmbeddingSdkEnabled,
+    },
     ...opts,
   });
 
@@ -13,7 +15,13 @@ describe("EmbeddingSdkSettings (EE with Embedding SDK token)", () => {
   it("should not tell users to upgrade or switch binaries", async () => {
     await setup({
       isEmbeddingSdkEnabled: true,
+      isEmbeddingSimpleEnabled: true,
       showSdkEmbedTerms: false,
+      enterprisePlugins: [
+        "embedding-sdk",
+        "embedding_iframe_sdk",
+        "embedding_iframe_sdk_setup",
+      ],
     });
     expect(
       screen.getByText(
@@ -36,7 +44,17 @@ describe("EmbeddingSdkSettings (EE with Embedding SDK token)", () => {
 
   describe("Version pinning", () => {
     it("should offer users version pinning when they have a cloud instance", async () => {
-      await setup({ isHosted: true });
+      await setup({
+        isEmbeddingSdkEnabled: true,
+        isEmbeddingSimpleEnabled: true,
+        showSdkEmbedTerms: false,
+        isHosted: true,
+        enterprisePlugins: [
+          "embedding-sdk",
+          "embedding_iframe_sdk",
+          "embedding_iframe_sdk_setup",
+        ],
+      });
 
       expect(screen.getByText("Version pinning")).toBeInTheDocument();
       expect(
@@ -57,5 +75,16 @@ describe("EmbeddingSdkSettings (EE with Embedding SDK token)", () => {
         screen.queryByRole("link", { name: "Request version pinning" }),
       ).not.toBeInTheDocument();
     });
+  });
+
+  it("should show Security and Appearance in related settings", async () => {
+    await setup({
+      isEmbeddingSdkEnabled: true,
+      isEmbeddingSimpleEnabled: true,
+      showSdkEmbedTerms: false,
+    });
+
+    expect(screen.getByText("Security")).toBeInTheDocument();
+    expect(screen.getByText("Appearance")).toBeInTheDocument();
   });
 });

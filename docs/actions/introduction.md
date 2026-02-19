@@ -28,7 +28,7 @@ If you're an admin who just wants to edit data in your tables, check out [Editab
 
 For actions to work, you'll first need to do the following two things:
 
-1. **Enable model actions for the database connection**. To enable actions for a database connection, admins should click on the **gear** icon in the upper right and navigate to **Admin settings** > **Databases**, then click on the database you want to create actions for. On the right side of the connection settings form, toggle the **Model actions** option. For actions to work, the database user account (the account you're using to connect to the database) must have [write permissions](../databases/users-roles-privileges.md#privileges-to-enable-actions-and-editable-table-data). And for now, actions are only supported on PostgreSQL and MySQL databases.
+1. **Enable model actions for the database connection**. To enable actions for a database connection, admins should click on the **grid** icon in the upper right and navigate to **Admin** > **Databases**, then click on the database you want to create actions for. On the right side of the connection settings form, toggle the **Model actions** option. For actions to work, the database user account (the account you're using to connect to the database) must have [write permissions](../databases/users-roles-privileges.md#privileges-to-enable-actions-and-editable-table-data). And for now, actions are only supported on PostgreSQL and MySQL databases.
 2. **Create at least one model from that database.** Actions are associated with models, so you'll need to have created (or have access to) at least one model before you can start creating actions.
 
 ## Who can use actions
@@ -64,7 +64,7 @@ Before using actions in production, consider playing around with actions on some
 - If caching is enabled for the relevant table or model, you may not see the effects of an action in Metabase until Metabase refreshes the data (though you can always manually refresh the data).
 - When creating records on a table that lacks an automatically generated primary key, you'll need to input an available ID (i.e., an ID not already in use by another record).
 - You can't "undo" actions. You can, however, create and run an action to recreate a deleted record, or change an updated record back to its original values (provided you know the original values).
-- Actions are unavailable for public dashboards, and dashboards in [static embeds](../embedding/static-embedding.md).
+- Actions are unavailable for public dashboards and dashboards in [guest embeds](../embedding/guest-embedding.md). To use actions in embeds, you can use [modular embedding](../embedding/modular-embedding.md) with SSO or [full app embedding](../embedding/full-app-embedding.md).
 
 ## Further reading
 

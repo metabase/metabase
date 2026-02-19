@@ -1,6 +1,6 @@
 import type { MouseEvent } from "react";
 
-import LogoIcon from "metabase/common/components/LogoIcon";
+import { LogoIcon } from "metabase/common/components/LogoIcon";
 import { useIsAtHomepageDashboard } from "metabase/common/hooks/use-is-at-homepage-dashboard";
 
 import { LogoLink } from "./AppBarLogo.styled";
@@ -9,6 +9,7 @@ export interface AppBarLogoProps {
   isSmallAppBar?: boolean;
   isLogoVisible?: boolean;
   isNavBarEnabled?: boolean;
+  isGitSyncVisible?: boolean;
   onLogoClick?: () => void;
 }
 
@@ -16,6 +17,7 @@ export function AppBarLogo({
   isLogoVisible,
   isSmallAppBar,
   isNavBarEnabled,
+  isGitSyncVisible,
   onLogoClick,
 }: AppBarLogoProps): JSX.Element | null {
   const isAtHomepageDashboard = useIsAtHomepageDashboard();
@@ -37,6 +39,7 @@ export function AppBarLogo({
     <LogoLink
       to="/"
       isSmallAppBar={Boolean(isSmallAppBar)}
+      isGitSyncVisible={Boolean(isGitSyncVisible)}
       onClick={handleClick}
       disabled={!isNavBarEnabled}
       data-testid="main-logo-link"

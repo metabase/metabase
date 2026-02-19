@@ -5,8 +5,8 @@ import { Tree } from "metabase/common/components/tree";
 import type { ITreeNodeItem } from "metabase/common/components/tree/types";
 import type { CollectionTreeItem } from "metabase/entities/collections";
 import { SidebarCollectionLink } from "metabase/nav/containers/MainNavbar/SidebarItems";
-import { useGetRemoteSyncChangesQuery } from "metabase-enterprise/api";
 
+import { useRemoteSyncDirtyState } from "../../hooks/use-remote-sync-dirty-state";
 import { CollectionSyncStatusBadge } from "../SyncedCollectionsSidebarSection/CollectionSyncStatusBadge";
 
 interface CollectionsNavTreeProps {
@@ -30,28 +30,16 @@ export const CollectionsNavTree = ({
     [collectionsList],
   );
 
-  const { data: dirtyData } = useGetRemoteSyncChangesQuery(undefined, {
-    skip: !hasRemoteSyncedCollections,
-    refetchOnFocus: true,
-  });
-
-  const changedCollections = useMemo(
-    () => dirtyData?.changedCollections ?? {},
-    [dirtyData?.changedCollections],
-  );
+  const { isCollectionDirty } = useRemoteSyncDirtyState();
 
   const showChangesBadge = useCallback(
     (itemId?: number | string) => {
-      if (
-        !hasRemoteSyncedCollections ||
-        !changedCollections ||
-        typeof itemId !== "number"
-      ) {
+      if (!hasRemoteSyncedCollections) {
         return false;
       }
-      return !!changedCollections[itemId];
+      return isCollectionDirty(itemId);
     },
-    [hasRemoteSyncedCollections, changedCollections],
+    [hasRemoteSyncedCollections, isCollectionDirty],
   );
 
   return (

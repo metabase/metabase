@@ -772,7 +772,7 @@
 
 (defn- update-collection-positions!
   "For cards that have a position in the previous collection, add them to the end of the new collection, trying to
-  preseve the order from the original collections. Note it's possible for there to be multiple collections
+  preserve the order from the original collections. Note it's possible for there to be multiple collections
   (and thus duplicate collection positions) merged into this new collection. No special tie breaker logic for when
   that's the case, just use the order the DB returned it in"
   [new-collection-id-or-nil cards]
@@ -797,7 +797,7 @@
                         {:collection_position idx
                          :collection_id       new-collection-id-or-nil}))
           ;; These are reversed because of the classic issue when removing an item from array. If we remove an
-          ;; item at index 1, everthing above index 1 will get decremented. By reversing our processing order we
+          ;; item at index 1, everything above index 1 will get decremented. By reversing our processing order we
           ;; can avoid changing the index of cards we haven't yet updated
           (reverse (range starting-position (+ (count sorted-cards) starting-position)))
           (reverse sorted-cards)))))
@@ -820,7 +820,7 @@
       (doseq [old-collection-id (set (filter identity (map :collection_id cards)))]
         (api/write-check :model/Collection old-collection-id))
 
-      ;; Ensure all of the card updates occur in a transaction. Read commited (the default) really isn't what we want
+      ;; Ensure all of the card updates occur in a transaction. Read committed (the default) really isn't what we want
       ;; here. We are querying for the max card position for a given collection, then using that to base our position
       ;; changes if the cards are moving to a different collection. Without repeatable read here, it's possible we'll
       ;; get duplicates
@@ -878,7 +878,7 @@
   ;;
   ;;    POST /api/dashboard/:dashboard-id/queries/:card-id/query
   ;;
-  ;; endpoint instead. Or error in that situtation? We're not even validating that you have access to this Dashboard.
+  ;; endpoint instead. Or error in that situation? We're not even validating that you have access to this Dashboard.
   (let [resolved-card-id (eid-translation/->id-or-404 :card card-id)]
     (qp.card/process-query-for-card
      resolved-card-id :api

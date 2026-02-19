@@ -117,20 +117,22 @@ describe("scenarios > metrics > editing", () => {
       cy.visit("/browse/metrics");
       cy.findByTestId("browse-metrics-header")
         .findByLabelText("Create a new metric")
+        .should("be.visible")
         .click();
 
       H.miniPicker().within(() => {
         cy.findByText("Sample Database").click();
         cy.findByText("Orders").click();
       });
-      saveMetric({ name: "New metric" });
+      saveMetric();
 
+      cy.log("Go to the collection this metric was saved in");
       cy.findByTestId("head-crumbs-container")
-        .findByText("Our analytics")
+        .find('a[href*="collection"]')
         .click();
+
       cy.findByTestId("pinned-items").within(() => {
-        cy.findByText("Metrics").should("be.visible");
-        cy.findByText("New metric").should("be.visible");
+        cy.findByRole("heading", { name: "Metrics" }).should("be.visible");
         verifyScalarValue("18,760");
       });
     });
@@ -295,10 +297,9 @@ describe("scenarios > metrics > editing", () => {
       });
       H.miniPickerBrowseAll().click();
       H.entityPickerModal().within(() => {
-        H.entityPickerModalTab("Data").click();
+        cy.findByText("Sample Database").click();
         cy.findByText("Orders").should("be.visible");
-        // FIXME: metabase#66210
-        // cy.findByText(ORDERS_SCALAR_METRIC.name).should("not.exist");
+        cy.findByText(ORDERS_SCALAR_METRIC.name).should("not.exist");
       });
     });
 
@@ -385,12 +386,12 @@ describe("scenarios > metrics > editing", () => {
     it("should create a metric with a custom aggregation expression based on 1 metric", () => {
       H.createQuestion(ORDERS_SCALAR_METRIC);
       H.startNewMetric();
-      cy.intercept("POST", "/api/dataset/query_metadata").as("queryMetadata");
+      cy.intercept("POST", "/api/dataset/query_metadata").as("metadata");
       H.miniPicker().within(() => {
         cy.findByText("Our analytics").click();
         cy.findByText(ORDERS_SCALAR_METRIC.name).click();
       });
-      cy.wait("@queryMetadata");
+      cy.wait("@metadata");
       H.getNotebookStep("summarize")
         .findByText(ORDERS_SCALAR_METRIC.name)
         .click();
@@ -502,7 +503,7 @@ function getActionButton(title) {
 }
 
 function getPlusButton() {
-  // eslint-disable-next-line no-unsafe-element-filtering
+  // eslint-disable-next-line metabase/no-unsafe-element-filtering
   return cy.findAllByTestId("notebook-cell-item").last();
 }
 
@@ -568,7 +569,7 @@ function addBreakout({ tableName, columnName, bucketName, stageIndex }) {
   }
   if (bucketName) {
     H.popover().findByLabelText(columnName).findByText("by month").click();
-    // eslint-disable-next-line no-unsafe-element-filtering
+    // eslint-disable-next-line metabase/no-unsafe-element-filtering
     H.popover().last().findByText(bucketName).click();
   } else {
     H.popover().findByText(columnName).click();
@@ -601,7 +602,7 @@ function renameMetric(newName) {
 }
 
 function verifyScalarValue(value) {
-  cy.findByTestId("scalar-container").findByText(value).should("be.visible");
+  cy.findByTestId("scalar-value").should("have.text", value).and("be.visible");
 }
 
 function verifyLineAreaBarChart({ xAxis, yAxis }) {

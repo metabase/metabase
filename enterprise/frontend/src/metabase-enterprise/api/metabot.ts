@@ -28,7 +28,7 @@ export const metabotApi = EnterpriseApi.injectEndpoints({
       MetabotInfo,
       { id: MetabotId } & Partial<
         Pick<MetabotInfo, "use_verified_content" | "collection_id">
-      > & { use_cases?: Array<{ id: number; enabled?: boolean }> }
+      >
     >({
       query: ({ id, ...updates }) => ({
         method: "PUT",

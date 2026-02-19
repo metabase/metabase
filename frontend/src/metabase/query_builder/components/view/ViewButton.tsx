@@ -1,8 +1,7 @@
 import cx from "classnames";
 import type { CSSProperties } from "react";
 
-import Button, { type ButtonProps } from "metabase/common/components/Button";
-import { useMantineTheme } from "metabase/ui";
+import { Button, type ButtonProps } from "metabase/common/components/Button";
 
 import S from "./ViewButton.module.css";
 
@@ -12,9 +11,7 @@ interface Props extends ButtonProps {
 }
 
 // NOTE: some of this is duplicated from NotebookCell.jsx
-const ViewButton = ({ className, active, color, ...props }: Props) => {
-  const theme = useMantineTheme();
-
+export const ViewButton = ({ className, active, color, ...props }: Props) => {
   return (
     <Button
       classNames={{
@@ -22,13 +19,10 @@ const ViewButton = ({ className, active, color, ...props }: Props) => {
       }}
       style={
         {
-          "--view-button-color": color ?? theme.fn.themeColor("brand"),
+          "--view-button-color": color ?? "var(--mb-color-brand)",
         } as CSSProperties
       }
       {...props}
     />
   );
 };
-
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default ViewButton;

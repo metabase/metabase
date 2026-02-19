@@ -1,4 +1,6 @@
+import { ActionIcon } from "@mantine/core";
 import cx from "classnames";
+import { memo } from "react";
 import { t } from "ttag";
 
 import { Center, Icon, Loader } from "metabase/ui";
@@ -7,7 +9,7 @@ import type { ExpandButtonProps } from "../types";
 
 import S from "./ExpandButton.module.css";
 
-export function ExpandButton({
+export const ExpandButton = memo(function ExpandButton({
   canExpand,
   isExpanded,
   isLoading,
@@ -34,22 +36,19 @@ export function ExpandButton({
   }
 
   return (
-    <Center
-      component="button"
-      type="button"
-      w={16}
-      h={16}
-      p={0}
+    <ActionIcon
+      aria-expanded={isExpanded}
+      aria-label={isExpanded ? t`Collapse` : t`Expand`}
       className={cx(S.wrapper, S.button, className)}
       onClick={onClick}
-      aria-label={isExpanded ? t`Collapse` : t`Expand`}
+      size="1rem"
       tabIndex={-1}
     >
       <Icon
+        className={cx(S.icon, { [S.iconExpanded]: isExpanded })}
         name="chevronright"
         size={10}
-        className={cx(S.icon, { [S.iconExpanded]: isExpanded })}
       />
-    </Center>
+    </ActionIcon>
   );
-}
+});

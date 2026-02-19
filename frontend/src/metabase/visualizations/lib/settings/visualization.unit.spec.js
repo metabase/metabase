@@ -1,6 +1,10 @@
 import icepick from "icepick";
 
-import { DateTimeColumn, NumberColumn } from "__support__/visualizations";
+import {
+  DateTimeColumn,
+  NumberColumn,
+  StringColumn,
+} from "__support__/visualizations";
 import {
   getComputedSettingsForSeries,
   getStoredSettingsForSeries,
@@ -38,7 +42,7 @@ describe("visualization_settings", () => {
         "day-of-week",
         "month-of-year",
         "quarter-of-year",
-        // arguably histogram but diabled for now
+        // arguably histogram but disabled for now
         "minute-of-hour",
         "hour-of-day",
         "day-of-month",
@@ -46,7 +50,7 @@ describe("visualization_settings", () => {
         "week-of-year",
       ];
 
-      describe("non-histgram units", () => {
+      describe("non-histogram units", () => {
         NON_HISTOGRAM_UNITS.forEach((unit) => {
           it(`should default ${unit} to false`, () => {
             const settings = getComputedSettingsForSeries(
@@ -57,7 +61,7 @@ describe("visualization_settings", () => {
         });
       });
 
-      describe("histgram units", () => {
+      describe("histogram units", () => {
         HISTOGRAM_UNITS.forEach((unit) => {
           it(`should default ${unit} to true`, () => {
             const settings = getComputedSettingsForSeries(
@@ -256,6 +260,56 @@ describe("visualization_settings", () => {
           originalName: "1",
         },
       ]);
+    });
+  });
+
+  describe("pie.metric and pie.dimension", () => {
+    it("should pick defaults when there are multiple metric columns", () => {
+      const series = [
+        {
+          card: { display: "pie", visualization_settings: {} },
+          data: {
+            cols: [
+              StringColumn({ name: "category" }),
+              NumberColumn({ name: "sum" }),
+              NumberColumn({ name: "count" }),
+            ],
+            rows: [
+              ["a", 10, 1],
+              ["b", 20, 2],
+            ],
+          },
+        },
+      ];
+      const settings = getComputedSettingsForSeries(series);
+      expect(settings["pie.dimension"]).toEqual(["category"]);
+      expect(settings["pie.metric"]).toBe("sum");
+    });
+  });
+
+  describe("map.metric and map.dimension", () => {
+    it("should pick defaults when there are multiple metric columns", () => {
+      const series = [
+        {
+          card: {
+            display: "map",
+            visualization_settings: { "map.type": "region" },
+          },
+          data: {
+            cols: [
+              StringColumn({
+                name: "state",
+                semantic_type: "type/State",
+              }),
+              NumberColumn({ name: "count" }),
+              NumberColumn({ name: "sum" }),
+            ],
+            rows: [["CA", 100, 100]],
+          },
+        },
+      ];
+      const settings = getComputedSettingsForSeries(series);
+      expect(settings["map.metric"]).toBe("count");
     });
   });
 });

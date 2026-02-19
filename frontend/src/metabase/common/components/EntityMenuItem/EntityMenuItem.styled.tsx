@@ -2,7 +2,7 @@
 import styled from "@emotion/styled";
 import { Link } from "react-router";
 
-import ExternalLink from "metabase/common/components/ExternalLink";
+import { ExternalLink } from "metabase/common/components/ExternalLink";
 import type { ColorName } from "metabase/lib/colors/types";
 import { Icon } from "metabase/ui";
 import { color } from "metabase/ui/utils/colors";
@@ -20,7 +20,7 @@ export const MenuItemContent = styled.div<MenuItemProps>`
   border-radius: 0.5em;
   cursor: ${(props) => (props.disabled ? "not-allowed" : "pointer")};
   color: ${(props) =>
-    color(props.disabled ? "text-light" : props.color || "text-dark")};
+    color(props.disabled ? "text-tertiary" : props.color || "text-primary")};
   padding: 0.85em 1.45em;
   text-decoration: none;
 
@@ -30,12 +30,12 @@ export const MenuItemContent = styled.div<MenuItemProps>`
     background-color: ${(props) =>
       !props.disabled && props.hoverBgColor
         ? color(props.hoverBgColor)
-        : "var(--mb-color-bg-light)"};
+        : "var(--mb-color-background-secondary)"};
   }
 
   > .Icon {
     color: ${(props) =>
-      color(props.disabled ? "text-light" : props.color || "text-dark")};
+      color(props.disabled ? "text-tertiary" : props.color || "text-primary")};
     margin-right: 0.65em;
   }
 

@@ -3,20 +3,20 @@
 }
 
 .DataBucketListItemTitle {
-  color: var(--mb-color-text-dark);
+  color: var(--mb-color-text-primary);
   font-weight: 700;
   font-size: 14px;
   margin-left: 0.5rem;
 }
 
 .DataBucketListItemDescription {
-  color: var(--mb-color-text-light);
+  color: var(--mb-color-text-tertiary);
   font-weight: 700;
   font-size: 12px;
 }
 
 .DataBucketListItemIcon {
-  color: var(--mb-color-text-dark);
+  color: var(--mb-color-text-primary);
 }
 
 .DataBucketListItemContainer {
@@ -24,7 +24,7 @@
     .DataBucketListItemDescription,
     .DataBucketListItemTitle,
     .DataBucketListItemIcon {
-      color: var(--mb-color-text-white);
+      color: var(--mb-color-text-primary-inverse);
     }
   }
 }

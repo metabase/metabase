@@ -3,7 +3,7 @@ import { push } from "react-router-redux";
 import { useDebounce } from "react-use";
 import { t } from "ttag";
 
-import EmptyState from "metabase/common/components/EmptyState";
+import { EmptyState } from "metabase/common/components/EmptyState";
 import { useSearchListQuery } from "metabase/common/hooks";
 import { useListKeyboardNavigation } from "metabase/common/hooks/use-list-keyboard-navigation";
 import { Search } from "metabase/entities/search";
@@ -22,7 +22,7 @@ import {
 import { SearchResult } from "metabase/search/components/SearchResult/SearchResult";
 import { SearchContextTypes } from "metabase/search/constants";
 import type { SearchFilters } from "metabase/search/types";
-import { Loader, Stack, Text } from "metabase/ui";
+import { Loader } from "metabase/ui";
 import type {
   CollectionItem,
   SearchModel,
@@ -51,12 +51,7 @@ export type SearchResultsProps = {
 };
 
 export const SearchLoadingSpinner = () => (
-  <Stack p="xl" align="center">
-    <Loader size="lg" data-testid="loading-indicator" />
-    <Text size="xl" color="text-light">
-      {t`Loading…`}
-    </Text>
-  </Stack>
+  <Loader size="lg" data-testid="loading-indicator" label={t`Loading…`} />
 );
 
 export const SearchResults = ({

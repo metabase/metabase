@@ -1,6 +1,11 @@
 import fetchMock, { type UserRouteConfig } from "fetch-mock";
 
-import type { ListTasksResponse, Task } from "metabase-types/api";
+import type {
+  ListTaskRunsResponse,
+  ListTasksResponse,
+  Task,
+  TaskRunExtended,
+} from "metabase-types/api";
 
 export function setupTasksEndpoints(
   response: ListTasksResponse,
@@ -19,4 +24,19 @@ export function setupUniqueTasksEndpoint(
   options?: UserRouteConfig,
 ) {
   fetchMock.get(`path:/api/task/unique-tasks`, tasks, options);
+}
+
+export function setupTaskRunsEndpoints(
+  response: ListTaskRunsResponse,
+  options?: UserRouteConfig,
+) {
+  fetchMock.get("path:/api/task/runs", response, options);
+  fetchMock.get("path:/api/task/runs/entities", []);
+}
+
+export function setupTaskRunEndpoint(
+  taskRun: TaskRunExtended,
+  options?: UserRouteConfig,
+) {
+  fetchMock.get(`path:/api/task/runs/${taskRun.id}`, taskRun, options);
 }

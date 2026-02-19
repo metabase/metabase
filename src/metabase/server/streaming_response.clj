@@ -23,6 +23,7 @@
    (java.nio ByteBuffer)
    (java.nio.channels ClosedChannelException SocketChannel)
    (java.nio.charset StandardCharsets)
+   (java.util.concurrent Future)
    (java.util.zip GZIPOutputStream)
    (org.eclipse.jetty.ee9.nested Request)
    (org.eclipse.jetty.io EofException SocketChannelEndPoint)))
@@ -88,6 +89,21 @@
       (a/>!! canceled-chan ::thread-interrupted)
       nil)))
 
+(defn- start-interrupt-escalation!
+  "If `*thread-interrupt-escalation-timeout-ms*` is set and we receive a cancellation,
+  then cancel the future (ie interrupt the thread) if the finished-chan doesn't complete before the timeout.
+  This is to handle JDBC drivers that deadlock on `(.cancel stmt)`."
+  [^Future fut finished-chan canceled-chan]
+  (when (pos? server.settings/*thread-interrupt-escalation-timeout-ms*)
+    (a/go
+      (when (a/<! canceled-chan)
+        (let [timeout-chan (a/timeout server.settings/*thread-interrupt-escalation-timeout-ms*)
+              [_ port]     (a/alts! [finished-chan timeout-chan])]
+          (when (= port timeout-chan)
+            (log/infof "Task still running %s after cancellation, escalating to thread interruption"
+                       (u/format-milliseconds server.settings/*thread-interrupt-escalation-timeout-ms*))
+            (.cancel fut true)))))))
+
 (defn- do-f-async
   "Runs `f` asynchronously on the streaming response `thread-pool`, returning immediately. When `f` finishes,
   completes (i.e., closes) Jetty `async-context`."
@@ -101,13 +117,17 @@
                    (a/>!! finished-chan :unexpected-error)
                    (write-error! os e nil))
                  (finally
+                   ;; Clear the interrupted flag to prevent the thread from
+                   ;; carrying stale interrupted state to the next task.
+                   (Thread/interrupted)
                    (a/>!! finished-chan (if (a/poll! canceled-chan)
                                           :canceled
                                           :completed))
                    (a/close! finished-chan)
                    (a/close! canceled-chan)
-                   (.complete async-context))))]
-    (.submit (thread-pool/thread-pool) ^Runnable task)
+                   (.complete async-context))))
+        fut  (.submit (thread-pool/thread-pool) ^Runnable task)]
+    (start-interrupt-escalation! fut finished-chan canceled-chan)
     nil))
 
 ;; `ring.middleware.gzip` doesn't work on our StreamingResponse class.
@@ -321,3 +341,26 @@
   {:pre [(= (count bindings) 2)]}
   `(-streaming-response (bound-fn [~(vary-meta os-binding assoc :tag 'java.io.OutputStream) ~canceled-chan-binding] ~@body)
                         ~options))
+
+;;;; Malli schema for StreamingResponse
+
+(defn streaming-response-schema
+  "Malli schema for a streaming HTTP response that will contain JSON matching `content-schema`.
+
+  At runtime, validates that the response is a StreamingResponse instance.
+  WARNING: DOES NOT VALIDATE the actual data being streamed at runtime. For OpenAPI documentation, uses `content-schema`
+  to describe the JSON response body.
+
+  Example:
+    (api.macros/defendpoint :post \"/query\"
+      :- (server/streaming-response-schema
+           [:map
+            [:data [:map [:cols sequential?] [:rows sequential?]]]
+            [:row_count :int]])
+      ...)"
+  [content-schema]
+  [:fn
+   {:openapi/response-schema content-schema
+    :description             "Streaming JSON response"
+    :error/message           "Non-streaming response returned from streaming endpoint"}
+   #(instance? StreamingResponse %)])

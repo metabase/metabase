@@ -60,7 +60,7 @@ export const MetabotPromptSuggestionPane = ({
     sendToast(
       error
         ? { message: t`Error removing prompt`, icon: "warning" }
-        : { message: t`Succesfully removed prompt`, icon: "check" },
+        : { message: t`Successfully removed prompt`, icon: "check" },
     );
 
     const newMaxPage = Math.max(
@@ -154,7 +154,7 @@ export const MetabotPromptSuggestionPane = ({
                 {t`Something went wrong.`}
               </Center>
             ) : data?.total === 0 ? (
-              <Center my="lg" fw="bold" c="text-light">
+              <Center my="lg" fw="bold" c="text-tertiary">
                 {t`No prompts found.`}
               </Center>
             ) : null
@@ -211,7 +211,7 @@ const SuggestedPromptRow = ({
       </Box>
       <td>
         <Flex align="center" gap="sm">
-          <Icon name={row.model} c="text-medium" /> {row.model_name}
+          <Icon name={row.model} c="text-secondary" /> {row.model_name}
         </Flex>
       </td>
       <Box component="td" h="3.5rem">

@@ -6,7 +6,7 @@ import {
   useGetFieldQuery,
   useGetValidDashboardFilterFieldsQuery,
 } from "metabase/api";
-import ExternalLink from "metabase/common/components/ExternalLink";
+import { ExternalLink } from "metabase/common/components/ExternalLink";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { useDocsUrl, useLearnUrl } from "metabase/common/hooks";
 import { showAddParameterPopover } from "metabase/dashboard/actions";
@@ -302,7 +302,7 @@ const ParameterItem = ({
   const [isExpanded, setIsExpanded] = useState(false);
 
   return (
-    <Box className={S.parameterItem} bg="bg-light">
+    <Box className={S.parameterItem} bg="background-secondary">
       <Group justify="space-between" align="center" pr="md">
         <Button
           c={isCompatible ? "text-primary" : undefined}

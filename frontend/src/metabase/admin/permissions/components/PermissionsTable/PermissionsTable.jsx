@@ -87,7 +87,11 @@ export function PermissionsTable({
                   <ColumnName>
                     {name}{" "}
                     {hint && (
-                      <Tooltip position="right" label={hint}>
+                      <Tooltip
+                        label={hint}
+                        closeDelay={100}
+                        classNames={{ tooltip: CS.pointerEventsAuto }}
+                      >
                         <HintIcon />
                       </Tooltip>
                     )}
@@ -103,7 +107,7 @@ export function PermissionsTable({
               <span className={cx(CS.flex, CS.alignCenter)}>
                 <Ellipsified>{entity.name}</Ellipsified>
                 {typeof entity.hint === "string" && (
-                  <Tooltip tooltip={entity.hint}>
+                  <Tooltip label={entity.hint}>
                     <HintIcon />
                   </Tooltip>
                 )}

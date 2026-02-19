@@ -35,7 +35,8 @@
    [:date_joined  :any]
    [:is_qbnewb    :boolean]
    [:is_superuser :boolean]
-   [:tenant_id    [:maybe ms/PositiveInt]]])
+   [:tenant_id    [:maybe ms/PositiveInt]]
+   [:is_data_analyst :boolean]])
 
 (def ^:private ExpectedGetQueryActionAPIResponse
   "Expected schema for a query action as it should appear in the response for an API request to one of the GET endpoints."

@@ -7,6 +7,7 @@ import {
   fields,
   findDimensions,
   findField,
+  measures,
   metrics,
   query,
   queryWithAggregation,
@@ -62,6 +63,12 @@ describe("resolver", () => {
             "Unknown Segment or boolean column: Foo Metric",
           );
         });
+
+        it("should not resolve measures", () => {
+          expect(() => boolean("Bar Measure")).toThrow(
+            "Unknown Segment or boolean column: Bar Measure",
+          );
+        });
       });
 
       describe("type = string", () => {
@@ -103,6 +110,12 @@ describe("resolver", () => {
             "Unknown column: Foo Metric",
           );
         });
+
+        it("should not resolve measures", () => {
+          expect(() => string("Bar Measure")).toThrow(
+            "Unknown column: Bar Measure",
+          );
+        });
       });
 
       describe("type = number", () => {
@@ -134,6 +147,12 @@ describe("resolver", () => {
             "Unknown column: Foo Metric",
           );
         });
+
+        it("should not resolve measures", () => {
+          expect(() => number("Bar Measure")).toThrow(
+            "Unknown column: Bar Measure",
+          );
+        });
       });
 
       describe("type = datetime", () => {
@@ -156,6 +175,12 @@ describe("resolver", () => {
         it("should not resolve metrics", () => {
           expect(() => datetime("Foo Metric")).toThrow(
             "Unknown column: Foo Metric",
+          );
+        });
+
+        it("should resolve measures", () => {
+          expect(() => datetime("Bar Measure")).toThrow(
+            "Unknown column: Bar Measure",
           );
         });
       });
@@ -182,6 +207,12 @@ describe("resolver", () => {
 
         it("should not resolve metrics", () => {
           expect(() => any("Foo Metric")).toThrow("Unknown column: Foo Metric");
+        });
+
+        it("should not resolve measures", () => {
+          expect(() => any("Bar Measure")).toThrow(
+            "Unknown column: Bar Measure",
+          );
         });
       });
 
@@ -212,6 +243,12 @@ describe("resolver", () => {
             "Unknown column: Foo Metric",
           );
         });
+
+        it("should not resolve measures", () => {
+          expect(() => expression("Bar Measure")).toThrow(
+            "Unknown column: Bar Measure",
+          );
+        });
       });
 
       describe("type = aggregation", () => {
@@ -219,7 +256,7 @@ describe("resolver", () => {
 
         it("should not resolve fields", () => {
           expect(() => aggregation("Unknown")).toThrow(
-            "Unknown Aggregation or Metric: Unknown",
+            "Unknown Aggregation, Measure or Metric: Unknown",
           );
           expect(() => aggregation("Created At")).toThrow(
             "No aggregation found in: Created At. Use functions like Sum() or custom Metrics",
@@ -234,19 +271,24 @@ describe("resolver", () => {
 
         it("should not resolve unknown fields", () => {
           expect(() => aggregation("Unknown")).toThrow(
-            "Unknown Aggregation or Metric: Unknown",
+            "Unknown Aggregation, Measure or Metric: Unknown",
           );
         });
 
         it("should not resolve segments", () => {
           expect(() => aggregation("Expensive Things")).toThrow(
-            "Unknown Aggregation or Metric: Expensive Things",
+            "Unknown Aggregation, Measure or Metric: Expensive Things",
           );
         });
 
         it("should resolve metrics", () => {
           expect(aggregation("Foo Metric")).toEqual(metrics.FOO);
           expect(aggregation("foo metric")).toEqual(metrics.FOO);
+        });
+
+        it("should resolve measures", () => {
+          expect(aggregation("Bar Measure")).toEqual(measures.BAR);
+          expect(aggregation("bar measure")).toEqual(measures.BAR);
         });
       });
 
@@ -331,6 +373,12 @@ describe("resolver", () => {
         );
       });
 
+      it("should not resolve measures", () => {
+        expect(() => boolean("Bar Measure")).toThrow(
+          "Unknown Segment or boolean column: Bar Measure",
+        );
+      });
+
       it("should not resolve aggregations", () => {
         expect(() => boolean("Bar Aggregation")).toThrow(
           "Unknown Segment or boolean column: Bar Aggregation",
@@ -355,18 +403,22 @@ describe("resolver", () => {
 
       it("should not resolve unknown fields", () => {
         expect(() => string("Unknown")).toThrow(
-          "Unknown column, Aggregation or Metric: Unknown",
+          "Unknown column, Aggregation, Measure or Metric: Unknown",
         );
       });
 
       it("should not resolve segments", () => {
         expect(() => string("Expensive Things")).toThrow(
-          "Unknown column, Aggregation or Metric: Expensive Things",
+          "Unknown column, Aggregation, Measure or Metric: Expensive Things",
         );
       });
 
       it("should resolve metrics", () => {
         expect(string("Foo Metric")).toEqual(metrics.FOO);
+      });
+
+      it("should resolve measures", () => {
+        expect(string("Bar Measure")).toEqual(measures.BAR);
       });
 
       it("should resolve aggregations", () => {
@@ -387,18 +439,22 @@ describe("resolver", () => {
 
       it("should not resolve unknown fields", () => {
         expect(() => number("Unknown")).toThrow(
-          "Unknown column, Aggregation or Metric: Unknown",
+          "Unknown column, Aggregation, Measure or Metric: Unknown",
         );
       });
 
       it("should not resolve segments", () => {
         expect(() => number("Expensive Things")).toThrow(
-          "Unknown column, Aggregation or Metric: Expensive Things",
+          "Unknown column, Aggregation, Measure or Metric: Expensive Things",
         );
       });
 
       it("should resolve metrics", () => {
         expect(number("Foo Metric")).toEqual(metrics.FOO);
+      });
+
+      it("should resolve measures", () => {
+        expect(number("Bar Measure")).toEqual(measures.BAR);
       });
 
       it("should resolve aggregations", () => {
@@ -415,18 +471,22 @@ describe("resolver", () => {
 
       it("should not resolve unknown fields", () => {
         expect(() => datetime("Unknown")).toThrow(
-          "Unknown column, Aggregation or Metric: Unknown",
+          "Unknown column, Aggregation, Measure or Metric: Unknown",
         );
       });
 
       it("should not resolve segments", () => {
         expect(() => datetime("Expensive Things")).toThrow(
-          "Unknown column, Aggregation or Metric: Expensive Things",
+          "Unknown column, Aggregation, Measure or Metric: Expensive Things",
         );
       });
 
       it("should resolve metrics", () => {
         expect(datetime("Foo Metric")).toEqual(metrics.FOO);
+      });
+
+      it("should resolve measures", () => {
+        expect(datetime("Bar Measure")).toEqual(measures.BAR);
       });
 
       it("should resolve aggregations", () => {
@@ -448,7 +508,7 @@ describe("resolver", () => {
 
       it("should not resolve unknown fields", () => {
         expect(() => any("Unknown")).toThrow(
-          "Unknown column, Aggregation or Metric: Unknown",
+          "Unknown column, Aggregation, Measure or Metric: Unknown",
         );
       });
 
@@ -456,12 +516,16 @@ describe("resolver", () => {
         // We do not resolve segments here since any is only used in offset
         // and offset only works in aggregations.
         expect(() => any("Expensive Things")).toThrow(
-          "Unknown column, Aggregation or Metric: Expensive Things",
+          "Unknown column, Aggregation, Measure or Metric: Expensive Things",
         );
       });
 
       it("should resolve metrics", () => {
         expect(any("Foo Metric")).toEqual(metrics.FOO);
+      });
+
+      it("should resolve measures", () => {
+        expect(any("Bar Measure")).toEqual(measures.BAR);
       });
 
       it("should resolve aggregations", () => {
@@ -481,18 +545,22 @@ describe("resolver", () => {
 
       it("should not resolve unknown fields", () => {
         expect(() => expression("Unknown")).toThrow(
-          "Unknown column, Aggregation or Metric: Unknown",
+          "Unknown column, Aggregation, Measure or Metric: Unknown",
         );
       });
 
       it("should not resolve segments", () => {
         expect(() => expression("Expensive Things")).toThrow(
-          "Unknown column, Aggregation or Metric: Expensive Things",
+          "Unknown column, Aggregation, Measure or Metric: Expensive Things",
         );
       });
 
       it("should resolve metrics", () => {
         expect(expression("Foo Metric")).toEqual(metrics.FOO);
+      });
+
+      it("should resolve measures", () => {
+        expect(expression("Bar Measure")).toEqual(measures.BAR);
       });
 
       it("should resolve aggregations", () => {
@@ -507,7 +575,7 @@ describe("resolver", () => {
 
       it("should not resolve fields", () => {
         expect(() => aggregation("Unknown")).toThrow(
-          "Unknown Aggregation or Metric: Unknown",
+          "Unknown Aggregation, Measure or Metric: Unknown",
         );
         expect(() => aggregation("Created At")).toThrow(
           "No aggregation found in: Created At. Use functions like Sum() or custom Metrics",
@@ -522,18 +590,22 @@ describe("resolver", () => {
 
       it("should not resolve unknown fields", () => {
         expect(() => aggregation("Unknown")).toThrow(
-          "Unknown Aggregation or Metric: Unknown",
+          "Unknown Aggregation, Measure or Metric: Unknown",
         );
       });
 
       it("should not resolve segments", () => {
         expect(() => aggregation("Expensive Things")).toThrow(
-          "Unknown Aggregation or Metric: Expensive Things",
+          "Unknown Aggregation, Measure or Metric: Expensive Things",
         );
       });
 
       it("should resolve metrics", () => {
         expect(aggregation("Foo Metric")).toEqual(metrics.FOO);
+      });
+
+      it("should resolve measures", () => {
+        expect(aggregation("Bar Measure")).toEqual(measures.BAR);
       });
 
       it("should resolve aggregations", () => {

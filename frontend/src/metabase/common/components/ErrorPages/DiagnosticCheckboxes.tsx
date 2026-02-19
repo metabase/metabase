@@ -48,7 +48,7 @@ export const DiagnosticCheckboxes = ({
     )}
     <FormCheckbox
       name="bugReportDetails"
-      // eslint-disable-next-line no-literal-metabase-strings -- this is a hidden section of bug report
+      // eslint-disable-next-line metabase/no-literal-metabase-strings -- this is a hidden section of bug report
       label={c("{0} is the name of the application, usually 'Metabase'")
         .t`${applicationName} instance version information`}
     />

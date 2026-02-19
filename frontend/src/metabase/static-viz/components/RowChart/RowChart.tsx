@@ -93,7 +93,7 @@ export const StaticRowChart = ({
   const xValueRange = getXValueRange(settings);
   const labelledSeries = getLabelledSeries(settings, series);
 
-  const legendItems = getLegendItems(series, seriesColors, settings);
+  const legendItems = getLegendItems(series, seriesColors);
   const legend = calculateLegendRows({
     items: legendItems,
     width,

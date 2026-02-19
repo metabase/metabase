@@ -3,7 +3,7 @@ import { useCallback, useMemo } from "react";
 import { jt, t } from "ttag";
 import _ from "underscore";
 
-import ExternalLink from "metabase/common/components/ExternalLink/ExternalLink";
+import { ExternalLink } from "metabase/common/components/ExternalLink/ExternalLink";
 import { useLearnUrl } from "metabase/common/hooks";
 import CS from "metabase/css/core/index.css";
 import { useDashboardContext } from "metabase/dashboard/context";
@@ -17,6 +17,7 @@ import {
   getVirtualCardType,
   isVirtualDashCard,
 } from "metabase/dashboard/utils";
+import { EmbeddingEntityContextProvider } from "metabase/embedding/context";
 import { duration } from "metabase/lib/formatting";
 import { measureTextWidth } from "metabase/lib/measure-text";
 import { useSelector } from "metabase/lib/redux";
@@ -256,6 +257,7 @@ export function DashCardVisualization({
     isFullscreen = false,
     isEditingParameter,
     onChangeLocation,
+    enableEntityNavigation,
   } = useDashboardContext();
 
   const datasets = useSelector((state) => getDashcardData(state, dashcard.id));
@@ -544,7 +546,11 @@ export function DashCardVisualization({
             result={result}
             dashcard={dashcard}
             canEdit={!isVisualizerDashboardCard(dashcard)}
-            onEditVisualization={onEditVisualization}
+            onEditVisualization={
+              isVisualizerDashboardCard(dashcard)
+                ? onEditVisualization
+                : undefined
+            }
             openUnderlyingQuestionItems={
               onChangeCardAndRun && (cardTitle ? undefined : titleMenuItems)
             }
@@ -583,49 +589,50 @@ export function DashCardVisualization({
       })}
       ref={containerRef}
     >
-      <Visualization
-        className={cx(CS.flexFull, {
-          [CS.overflowAuto]: visualizationOverlay,
-          [CS.overflowHidden]: !visualizationOverlay,
-        })}
-        dashboard={dashboard ?? undefined}
-        dashcard={dashcard}
-        rawSeries={series}
-        visualizerRawSeries={
-          isVisualizerDashboardCard(dashcard) ? rawSeries : undefined
-        }
-        metadata={metadata}
-        mode={getClickActionMode}
-        getHref={getHref}
-        gridSize={gridSize}
-        totalNumGridCols={totalNumGridCols}
-        headerIcon={headerIcon}
-        expectedDuration={expectedDuration}
-        error={error?.message}
-        errorIcon={error?.icon}
-        showTitle={cardTitled}
-        canToggleSeriesVisibility={!isEditing}
-        isAction={isAction}
-        isDashboard
-        isSlow={isSlow}
-        isFullscreen={isFullscreen}
-        isEditing={isEditing}
-        isPreviewing={isPreviewing}
-        isEditingParameter={isEditingParameter}
-        isMobile={isMobile}
-        actionButtons={actionButtons}
-        replacementContent={visualizationOverlay}
-        getExtraDataForClick={getExtraDataForClick}
-        onUpdateVisualizationSettings={handleOnUpdateVisualizationSettings}
-        onTogglePreviewing={onTogglePreviewing}
-        onChangeCardAndRun={onChangeCardAndRun}
-        onChangeLocation={onChangeLocation}
-        renderLoadingView={renderLoadingView}
-        token={token}
-        uuid={uuid}
-        titleMenuItems={titleMenuItems}
-        errorMessageOverride={visualizerErrMsg}
-      />
+      <EmbeddingEntityContextProvider uuid={uuid ?? null} token={token ?? null}>
+        <Visualization
+          className={cx(CS.flexFull, {
+            [CS.overflowAuto]: visualizationOverlay,
+            [CS.overflowHidden]: !visualizationOverlay,
+          })}
+          dashboard={dashboard ?? undefined}
+          dashcard={dashcard}
+          rawSeries={series}
+          visualizerRawSeries={
+            isVisualizerDashboardCard(dashcard) ? rawSeries : undefined
+          }
+          metadata={metadata}
+          mode={getClickActionMode}
+          getHref={getHref}
+          gridSize={gridSize}
+          totalNumGridCols={totalNumGridCols}
+          headerIcon={headerIcon}
+          expectedDuration={expectedDuration}
+          error={error?.message}
+          errorIcon={error?.icon}
+          showTitle={cardTitled}
+          canToggleSeriesVisibility={!isEditing}
+          isAction={isAction}
+          isDashboard
+          isSlow={isSlow}
+          isFullscreen={isFullscreen}
+          isEditing={isEditing}
+          isPreviewing={isPreviewing}
+          isEditingParameter={isEditingParameter}
+          isMobile={isMobile}
+          actionButtons={actionButtons}
+          replacementContent={visualizationOverlay}
+          getExtraDataForClick={getExtraDataForClick}
+          onUpdateVisualizationSettings={handleOnUpdateVisualizationSettings}
+          onTogglePreviewing={onTogglePreviewing}
+          onChangeCardAndRun={onChangeCardAndRun}
+          onChangeLocation={onChangeLocation}
+          renderLoadingView={renderLoadingView}
+          titleMenuItems={titleMenuItems}
+          errorMessageOverride={visualizerErrMsg}
+          enableEntityNavigation={enableEntityNavigation}
+        />
+      </EmbeddingEntityContextProvider>
     </div>
   );
 }

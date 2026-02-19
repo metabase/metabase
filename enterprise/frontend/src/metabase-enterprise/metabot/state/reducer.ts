@@ -3,7 +3,13 @@ import { castDraft } from "immer";
 import _ from "underscore";
 
 import { logout } from "metabase/auth/actions";
-import type { SuggestedTransform } from "metabase-types/api";
+import { uuid } from "metabase/lib/uuid";
+import type {
+  MetabotCodeEdit,
+  MetabotHistory,
+  MetabotSuggestedTransform,
+  SuggestedTransform,
+} from "metabase-types/api";
 
 import { TOOL_CALL_MESSAGES } from "../constants";
 
@@ -18,8 +24,9 @@ import {
 } from "./reducer-utils";
 import type {
   MetabotAgentChatMessage,
+  MetabotChatMessage,
   MetabotErrorMessage,
-  MetabotSuggestedTransform,
+  MetabotToolCall,
   MetabotUserChatMessage,
 } from "./types";
 import { createMessageId } from "./utils";
@@ -53,6 +60,12 @@ export const metabot = createSlice({
     setDebugMode: (state, action: PayloadAction<boolean>) => {
       state.debugMode = action.payload;
     },
+    // CONVERSATION REDUCERS
+    addDeveloperMessage: convoReducer(
+      (convo, action: ConvoPayloadAction<{ message: string }>) => {
+        convo.experimental.developerMessage = `HIDDEN DEVELOPER MESSAGE: ${action.payload.message}\n\n`;
+      },
+    ),
     addUserMessage: convoReducer(
       (
         convo,
@@ -198,7 +211,7 @@ export const metabot = createSlice({
       },
     ),
     // REACTIONS REDUCERS
-    setNavigateToPath: (state, action: PayloadAction<string>) => {
+    setNavigateToPath: (state, action: PayloadAction<string | null>) => {
       state.reactions.navigateToPath = action.payload;
     },
     addSuggestedTransform: (
@@ -239,6 +252,70 @@ export const metabot = createSlice({
           t.active = false;
         }
       });
+    },
+    updateSuggestedTransformId: (
+      state,
+      action: PayloadAction<{
+        suggestionId: string;
+        newId: number | undefined;
+      }>,
+    ) => {
+      const { suggestionId, newId } = action.payload;
+      const transform = state.reactions.suggestedTransforms.find(
+        (t) => t.suggestionId === suggestionId,
+      );
+      if (transform) {
+        transform.id = newId;
+      }
+    },
+    addSuggestedCodeEdit: (
+      state,
+      { payload: codeEdit }: PayloadAction<MetabotCodeEdit>,
+    ) => {
+      state.reactions.suggestedCodeEdits[codeEdit.buffer_id] = codeEdit;
+    },
+    removeSuggestedCodeEdit: (
+      state,
+      action: PayloadAction<MetabotCodeEdit["buffer_id"]>,
+    ) => {
+      delete state.reactions.suggestedCodeEdits[action.payload];
+    },
+    setConversationSnapshot: (
+      state,
+      action: PayloadAction<{
+        messages: MetabotChatMessage[];
+        history: MetabotHistory;
+        state: any;
+        suggestedTransforms: MetabotSuggestedTransform[];
+        activeToolCalls: MetabotToolCall[];
+        errorMessages: MetabotErrorMessage[];
+        conversationId: string;
+      }>,
+    ) => {
+      const convo = state.conversations["omnibot"];
+      if (!convo) {
+        return;
+      }
+
+      const {
+        messages,
+        history,
+        state: snapshotState,
+        suggestedTransforms,
+        activeToolCalls,
+        errorMessages,
+        conversationId,
+      } = action.payload;
+
+      convo.messages = castDraft(messages ?? []);
+      convo.history = history ?? [];
+      convo.state = snapshotState ?? {};
+      convo.activeToolCalls = activeToolCalls ?? [];
+      convo.errorMessages = errorMessages ?? [];
+      convo.conversationId = conversationId ?? uuid();
+      convo.isProcessing = false;
+
+      state.reactions.suggestedTransforms = (suggestedTransforms ?? []) as any;
     },
   },
   extraReducers: (builder) => {
@@ -299,3 +376,4 @@ export const metabot = createSlice({
 });
 
 export const metabotReducer = metabot.reducer;
+export const metabotActions = metabot.actions;

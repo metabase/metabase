@@ -1,8 +1,9 @@
-import { useDebouncedValue } from "@mantine/hooks";
+import { useMemo } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
 import {
+  searchApi,
   skipToken,
   useGetCollectionQuery,
   useListCollectionItemsQuery,
@@ -12,14 +13,20 @@ import {
   useSearchQuery,
 } from "metabase/api";
 import { Ellipsified } from "metabase/common/components/Ellipsified";
-import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { canCollectionCardBeUsed } from "metabase/common/components/Pickers/utils";
 import { VirtualizedList } from "metabase/common/components/VirtualizedList";
 import { useSetting } from "metabase/common/hooks";
+import { useDebouncedValue } from "metabase/common/hooks/use-debounced-value";
 import { getIcon } from "metabase/lib/icon";
-import { PLUGIN_DATA_STUDIO } from "metabase/plugins";
-import { Box, Flex, Icon, Text } from "metabase/ui";
-import type { SchemaName, SearchModel } from "metabase-types/api";
+import { useSelector } from "metabase/lib/redux";
+import { PLUGIN_LIBRARY } from "metabase/plugins";
+import { Box, Flex, Icon, Repeat, Skeleton, Stack, Text } from "metabase/ui";
+import type {
+  CollectionItem,
+  SchemaName,
+  SearchModel,
+  SearchRequest,
+} from "metabase-types/api";
 
 import { useMiniPickerContext } from "../context";
 import type {
@@ -27,6 +34,7 @@ import type {
   MiniPickerDatabaseItem,
   MiniPickerPickableItem,
   MiniPickerSchemaItem,
+  MiniPickerTableItem,
 } from "../types";
 
 import { MiniPickerItem } from "./MiniPickerItem";
@@ -56,13 +64,13 @@ export function MiniPickerItemList() {
 }
 
 function RootItemList() {
-  const { data: databases } = useListDatabasesQuery();
+  const { data: databases } = useListDatabasesQuery({ "can-query": true });
   const { setPath, isHidden, models, shouldShowLibrary } =
     useMiniPickerContext();
   const { isLoading: isLoadingRootCollection, error: rootCollectionError } =
     useGetCollectionQuery({ id: "root" });
   const { data: libraryCollection, isLoading } =
-    PLUGIN_DATA_STUDIO.useGetResolvedLibraryCollection();
+    PLUGIN_LIBRARY.useGetResolvedLibraryCollection();
   const enableNestedQueries = useSetting("enable-nested-queries");
 
   if (isLoading || isLoadingRootCollection) {
@@ -80,7 +88,6 @@ function RootItemList() {
           <MiniPickerItem
             key={db.id}
             name={db.name}
-            isHidden={isHidden({ model: "database", id: db.id, name: db.name })}
             model="database"
             isFolder
             onClick={() => {
@@ -118,7 +125,6 @@ function RootItemList() {
           key={db.id}
           name={db.name}
           model="database"
-          isHidden={isHidden({ model: "database", id: db.id, name: db.name })}
           isFolder
           onClick={() => {
             setPath([{ model: "database", id: db.id, name: db.name }]);
@@ -149,10 +155,23 @@ function DatabaseItemList({
   parent: MiniPickerDatabaseItem | MiniPickerSchemaItem;
 }) {
   const { setPath, onChange, isHidden } = useMiniPickerContext();
-  const { data: schemas, isLoading: isLoadingSchemas } =
+  const { data: allSchemas, isLoading: isLoadingSchemas } =
     useListDatabaseSchemasQuery(
-      parent.model === "database" ? { id: parent.id } : skipToken,
+      parent.model === "database"
+        ? { id: parent.id, "can-query": true }
+        : skipToken,
     );
+
+  const dbId = parent.model === "database" ? parent.id : parent.dbId!;
+
+  const schemas = allSchemas?.filter((schema) => {
+    return !isHidden({
+      model: "schema",
+      id: schema,
+      dbId,
+      name: schema,
+    });
+  });
 
   const schemaName: SchemaName | null =
     parent.model === "schema"
@@ -161,14 +180,13 @@ function DatabaseItemList({
         ? schemas[0] // if there's one schema, go straight to tables
         : null;
 
-  const dbId = parent.model === "database" ? parent.id : parent.dbId!;
-
   const { data: tablesData, isLoading: isLoadingTables } =
     useListDatabaseSchemaTablesQuery(
       schemaName !== null
         ? {
             id: dbId,
             schema: schemaName,
+            "can-query": true,
           }
         : skipToken,
     );
@@ -184,12 +202,6 @@ function DatabaseItemList({
           <MiniPickerItem
             key={schema}
             name={schema}
-            isHidden={isHidden({
-              model: "schema",
-              id: schema,
-              dbId,
-              name: schema,
-            })}
             isFolder
             model="schema"
             onClick={() => {
@@ -213,11 +225,15 @@ function DatabaseItemList({
     return <MiniPickerListLoader />;
   }
 
-  if (!isLoadingSchemas && tablesData?.length) {
+  const nonHiddenTables = tablesData?.filter((table) => {
+    return !isHidden({ model: "table", ...table });
+  });
+
+  if (!isLoadingSchemas && nonHiddenTables?.length) {
     const tables =
       parent.model === "schema"
-        ? tablesData.filter((table) => table.schema === parent.id)
-        : tablesData;
+        ? nonHiddenTables.filter((table) => table.schema === parent.id)
+        : nonHiddenTables;
 
     return (
       <ItemList>
@@ -225,7 +241,6 @@ function DatabaseItemList({
           <MiniPickerItem
             key={table.id}
             name={table.display_name}
-            isHidden={isHidden({ model: "table", ...table })}
             model="table"
             onClick={() => {
               onChange({
@@ -250,7 +265,8 @@ function CollectionItemList({ parent }: { parent: MiniPickerCollectionItem }) {
     include_can_run_adhoc_query: true,
   });
 
-  const items = data?.data?.filter(canCollectionCardBeUsed);
+  const allItems = data?.data?.filter(canCollectionCardBeUsed) ?? [];
+  const items: CollectionItem[] = allItems.filter((item) => !isHidden(item));
 
   if (isLoading || isFetching) {
     return <MiniPickerListLoader />;
@@ -266,7 +282,6 @@ function CollectionItemList({ parent }: { parent: MiniPickerCollectionItem }) {
             model={item.model}
             display={item.display}
             isFolder={isFolder(item)}
-            isHidden={isHidden(item)}
             onClick={() => {
               if (isFolder(item)) {
                 setPath((prevPath) => [
@@ -294,53 +309,91 @@ function CollectionItemList({ parent }: { parent: MiniPickerCollectionItem }) {
 
 function SearchItemList({ query }: { query: string }) {
   const { onChange, models, isHidden } = useMiniPickerContext();
-  const [debouncedQuery] = useDebouncedValue(query, 500);
+  const debouncedQuery = useDebouncedValue(query, 500);
 
-  const { data: searchResponse, isLoading } = useSearchQuery({
-    q: debouncedQuery,
+  const makeQueryArgs = (
+    query: string,
+    models: MiniPickerPickableItem["model"][],
+  ): SearchRequest => ({
+    q: query,
     models: models as SearchModel[],
     limit: 50,
+    // FIXME: optionally pass table_db_id so we filter on the backend to valid joins
   });
 
+  const rawQueryArgs = useMemo(
+    () => makeQueryArgs(query, models),
+    [query, models],
+  );
+
+  const cachedSearch = useSelector(
+    searchApi.endpoints.search.select(rawQueryArgs),
+  );
+  const hasCachedResults = Boolean(cachedSearch?.data);
+
+  const effectiveQuery = hasCachedResults ? query : debouncedQuery;
+  const searchQueryArgs = useMemo(
+    () => makeQueryArgs(effectiveQuery, models),
+    [effectiveQuery, models],
+  );
+
+  const { data: searchResponse, isFetching } = useSearchQuery(searchQueryArgs);
+
+  const isSearching =
+    isFetching || (!hasCachedResults && query !== debouncedQuery);
   const searchResults: MiniPickerPickableItem[] = (
     searchResponse?.data ?? []
   ).filter((i) => !isHidden(i));
 
   return (
     <ItemList>
-      <Box>
-        {isLoading && <MiniPickerListLoader />}
-        {!isLoading && searchResults.length === 0 && (
-          <Text px="md" py="sm" c="text-medium">{t`No search results`}</Text>
-        )}
-      </Box>
-      {searchResults.map((item) => {
-        return (
-          <MiniPickerItem
-            key={`${item.model}-${item.id}`}
-            name={item.name}
-            model={item.model}
-            onClick={() => {
-              onChange(item);
-            }}
-            rightSection={<LocationInfo item={item} />}
-          />
-        );
-      })}
+      {!isSearching && searchResults.length === 0 && (
+        <Box>
+          <Text px="md" py="sm" c="text-secondary">{t`No search results`}</Text>
+        </Box>
+      )}
+      {isSearching && <MiniPickerListLoader />}
+      {!isSearching &&
+        searchResults.map((item) => {
+          return (
+            <MiniPickerItem
+              key={`${item.model}-${item.id}`}
+              name={item.name}
+              model={item.model}
+              onClick={() => {
+                onChange(item);
+              }}
+              rightSection={<LocationInfo item={item} />}
+            />
+          );
+        })}
     </ItemList>
   );
 }
 
 export const MiniPickerListLoader = () => (
-  <Box data-testid="mini-picker-loader">
-    <LoadingAndErrorWrapper loading />
-  </Box>
+  <Stack px="1rem" pt="0.5rem" pb="13px" gap="1rem">
+    <Repeat times={3}>
+      <Skeleton
+        height="1.5rem"
+        width="100%"
+        radius="0.5rem"
+        bg="background-secondary"
+      />
+    </Repeat>
+  </Stack>
 );
 
-const isInCollection = (
+const isTableInDb = (
   item: MiniPickerPickableItem,
-): item is MiniPickerCollectionItem => {
-  return "collection" in item && !!item.collection && !!item.collection.name;
+): item is MiniPickerTableItem => {
+  // note: if you publish a table to Our analytics, we just can't figure that out
+  return (
+    item.model === "table" &&
+    "collection" in item &&
+    !!item.collection &&
+    !item.collection.name
+  );
 };
 
 const ItemList = ({ children }: { children: React.ReactNode[] }) => {
@@ -348,27 +401,27 @@ const ItemList = ({ children }: { children: React.ReactNode[] }) => {
 };
 
 const LocationInfo = ({ item }: { item: MiniPickerPickableItem }) => {
-  const isCollectionItem = isInCollection(item);
+  const isTable = isTableInDb(item);
 
-  const itemText = isCollectionItem
-    ? item?.collection?.name
-    : `${item.database_name}${item.table_schema ? ` (${item.table_schema})` : ""}`;
+  const itemText = isTable
+    ? `${item.database_name}${item.table_schema ? ` (${item.table_schema})` : ""}`
+    : (item?.collection?.name ?? t`Our analytics`);
 
   if (!itemText) {
     return null;
   }
 
-  const iconProps = isCollectionItem
-    ? getIcon({
+  const iconProps = isTable
+    ? null
+    : getIcon({
         ...item.collection,
         model: "collection",
-      })
-    : null;
+      });
 
   return (
     <Flex gap="xs" align="center">
       {iconProps && <Icon {...iconProps} size={12} />}
-      <Text size="sm" c="text-medium">
+      <Text size="sm" c="text-secondary">
         <Ellipsified maw="18rem">{itemText}</Ellipsified>
       </Text>
     </Flex>

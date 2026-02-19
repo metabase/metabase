@@ -169,7 +169,7 @@ const PartitionContainer = ({
 
   return (
     <Box py="md" className={partitionIndex > 0 ? CS.borderTop : undefined}>
-      <Text c="text-medium">{title}</Text>
+      <Text c="text-secondary">{title}</Text>
 
       <SortableContext
         id={partitionName}
@@ -186,7 +186,7 @@ const PartitionContainer = ({
               w="100%"
               p="0.75rem"
               bg="border"
-              c="text-medium"
+              c="text-secondary"
               className={CS.rounded}
             >
               {t`Drag fields here`}

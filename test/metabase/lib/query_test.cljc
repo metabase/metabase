@@ -3,7 +3,6 @@
    #?@(:cljs ([metabase.test-runner.assert-exprs.approximately-equal]))
    [clojure.test :refer [are deftest is testing]]
    [clojure.walk :as walk]
-   [medley.core :as m]
    [metabase.lib.convert :as lib.convert]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
@@ -104,31 +103,6 @@
                                                  "CC"]]]}]}]}
 
               (lib/query meta/metadata-provider converted-query))))))
-
-(deftest ^:parallel converted-query-leaves-stage-metadata-refs-alone
-  (let [query (-> (lib/query meta/metadata-provider (meta/table-metadata :people))
-                  (lib/expression "BirthMonth" (lib/+ 1 1))
-                  (as-> $q (lib/breakout $q (m/find-first #(= (:name %) "BirthMonth") (lib/breakoutable-columns $q))))
-                  (lib/aggregate (lib/count))
-                  (lib/append-stage)
-                  (lib/aggregate (lib/count)))]
-    (is (=? {:stages [{:lib/stage-metadata {:columns [{:field-ref [:expression "BirthMonth" {:base-type :type/Integer}]} {}]}} {}]}
-            (lib/query meta/metadata-provider (assoc-in (lib.convert/->pMBQL (lib.convert/->legacy-MBQL query))
-                                                        [:stages 0 :lib/stage-metadata]
-                                                        {:columns [{:base-type :type/Float,
-                                                                    :display-name "BirthMonth",
-                                                                    :field-ref [:expression
-                                                                                "BirthMonth"
-                                                                                {:base-type :type/Integer}],
-                                                                    :name "BirthMonth",
-                                                                    :lib/type :metadata/column}
-                                                                   {:base-type :type/Integer,
-                                                                    :display-name "Count",
-                                                                    :field-ref [:aggregation 0],
-                                                                    :name "count",
-                                                                    :semantic-type :type/Quantity,
-                                                                    :lib/type :metadata/column}],
-                                                         :lib/type :metadata/results}))))))
 
 (deftest ^:parallel stage-count-test
   (is (= 1 (lib/stage-count (lib.tu/venues-query))))
@@ -622,3 +596,18 @@
              :lib/type :mbql/query}
             (lib.query/query (lib.tu/mock-metadata-provider {})
                              {"database" 1, "type" "query", "query" {"source-table" 2}})))))
+
+(deftest ^:parallel discard-invalid-clauses-on-conversion-from-mbql-4-test
+  (testing "Invalid expressions that do not get normalized correctly (e.g. :sum inside :expressions) should get dropped"
+    (mu/disable-enforcement
+      (let [query {"database" 1
+                   "type"     "query"
+                   "query"    {"source-table" 2
+                               "expressions"  {"booking" ["sum" ["field" 3 {"base-type" "type/BigInteger"}]]}}}
+            mp    (lib.tu/mock-metadata-provider {})]
+        (is (= {:lib/type               :mbql/query,
+                :stages                 [{:lib/type :mbql.stage/mbql, :source-table 2}]
+                :database               1
+                :lib.convert/converted? true
+                :lib/metadata           (lib.metadata.cached-provider/cached-metadata-provider mp)}
+               (lib.query/query mp query)))))))

@@ -20,10 +20,10 @@ const setup = async ({
       }),
     showSdkEmbedTerms,
     isEmbeddingSdkEnabled,
-    hasEnterprisePlugins: isEmbeddingSdkEnabled,
     tokenFeatures: {
       embedding_sdk: isEmbeddingSdkEnabled,
     },
+    enterprisePlugins: isEmbeddingSdkEnabled ? ["embedding-sdk"] : [],
   });
 
   expect(await screen.findByText("Security")).toBeInTheDocument();
@@ -43,7 +43,7 @@ describe("EmbeddingSecuritySettings => enterprise", () => {
     expect(input).toBeEnabled();
     await userEvent.clear(input);
     await userEvent.type(input, "fast.limos");
-    await fireEvent.blur(input);
+    fireEvent.blur(input);
     await screen.findByDisplayValue("fast.limos");
 
     const puts = await findRequests("PUT");

@@ -36,7 +36,7 @@ import Question from "metabase-lib/v1/Question";
  *
  * @example
  */
-const SavedQuestionLoader = ({
+const SavedQuestionLoaderInner = ({
   children,
   question: loadedQuestion,
   error,
@@ -73,9 +73,9 @@ const SavedQuestionLoader = ({
   );
 };
 
-export default _.compose(
+export const SavedQuestionLoader = _.compose(
   Questions.load({
     id: (_state, props) => props.questionId,
     loadingAndErrorWrapper: false,
   }),
-)(SavedQuestionLoader);
+)(SavedQuestionLoaderInner);

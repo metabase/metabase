@@ -377,7 +377,7 @@
   The processing is triggered by means :hook/search-index which :model/Card (and others) derive.
 
   As of 2025-09-10, processing triggered by insertion, combined with manual gating of documents that callers
-  of this fn do, would result in duplicate processing and deletion of those entitities from index
+  of this fn do, would result in duplicate processing and deletion of those entities from index
   due to [[search.ingestion/bulk-ingest!]].
 
   For details see the https://metaboat.slack.com/archives/C07SJT1P0ET/p1757452434713309?thread_ts=1757410361.879029&cid=C07SJT1P0ET"

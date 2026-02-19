@@ -43,7 +43,7 @@
 .footer {
   box-sizing: border-box;
   height: 2.5rem;
-  background-color: var(--mb-color-bg-light);
+  background-color: var(--mb-color-background-secondary);
   padding: 0.5rem 1rem;
   display: flex;
   align-items: center;
@@ -57,7 +57,7 @@
   padding: 6px;
   display: inline-block;
   border-radius: 6px;
-  background-color: var(--mb-color-bg-medium);
+  background-color: var(--mb-color-background-tertiary);
   height: 24px;
   width: 24px;
   margin: 0 4px;

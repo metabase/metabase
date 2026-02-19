@@ -4,7 +4,7 @@
 
 .message {
   padding: 1rem;
-  color: var(--mb-color-text-white);
+  color: var(--mb-color-text-primary-inverse);
   font-weight: bold;
   border: 1px solid var(--mb-color-brand);
   border-radius: 0.5rem;

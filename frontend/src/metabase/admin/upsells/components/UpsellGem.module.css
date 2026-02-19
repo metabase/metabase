@@ -1,6 +1,9 @@
-@import "./Upsells.base.module.css";
-
 .UpsellGem {
   color: var(--mb-color-upsell-gem);
+  flex-shrink: 0;
+}
+
+.UpsellGemNew {
+  color: var(--mb-color-brand);
   flex-shrink: 0;
 }

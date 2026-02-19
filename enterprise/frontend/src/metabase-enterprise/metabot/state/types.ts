@@ -1,10 +1,11 @@
 import type { EnterpriseSharedState } from "metabase-enterprise/shared/reducer";
 import type { EnterpriseState } from "metabase-enterprise/shared/types";
 import type {
+  MetabotCodeEdit,
   MetabotHistory,
+  MetabotSuggestedTransform,
   MetabotTodoItem,
   MetabotTransformInfo,
-  SuggestedTransform,
 } from "metabase-types/api";
 
 export type MetabotUserTextChatMessage = {
@@ -87,13 +88,11 @@ export type MetabotToolCall = {
   status: "started" | "ended";
 };
 
-export type MetabotSuggestedTransform = SuggestedTransform & {
-  active: boolean;
-  suggestionId: string; // internal unique identifier for marking active/inactive
-};
-
 export type MetabotReactionsState = {
   navigateToPath: string | null;
+  suggestedCodeEdits: Partial<
+    Record<MetabotCodeEdit["buffer_id"], MetabotCodeEdit>
+  >;
   suggestedTransforms: MetabotSuggestedTransform[];
 };
 
@@ -113,7 +112,7 @@ export interface MetabotConverstationState {
   };
 }
 
-export const fixedMetabotAgentIds = ["omnibot", "inline_sql"] as const;
+export const fixedMetabotAgentIds = ["omnibot", "sql"] as const;
 type FixedMetabotAgentId = (typeof fixedMetabotAgentIds)[number];
 
 export type MetabotAgentId = FixedMetabotAgentId | `test_${number}`;

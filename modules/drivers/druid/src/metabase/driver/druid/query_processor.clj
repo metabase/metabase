@@ -336,7 +336,7 @@
     (add-datetime-units* clause n)))
 
 (defn- ->absolute-timestamp ^java.time.temporal.Temporal [clause]
-  (driver-api/match-one clause
+  (driver-api/match-lite clause
     [:absolute-datetime t :default]
     t
 
@@ -351,12 +351,12 @@
 
 (defmulti ^:private filter-clause->intervals
   "Generate query intervals as appropriate from a `filter-clause` containing a temporal `:field`. `:intervals` are
-  specified seperately from other things we think of as filter clauses in Druid. For temporal filter clauses, this
+  specified separately from other things we think of as filter clauses in Druid. For temporal filter clauses, this
   returns a sequence of min/max datetime tuples; like `[#t 2019-01-01 #t 2019-10-01]`; for irrelevant filter
   clauses, the methods are skipped entirely."
   {:arglists '([filter-clause])}
   (fn [filter-clause]
-    (when (driver-api/match-one filter-clause [:field _ (_ :guard :temporal-unit)])
+    (when (driver-api/match-lite filter-clause [:field _ (_ :guard :temporal-unit)] true)
       (driver-api/dispatch-by-clause-name-or-class filter-clause))))
 
 (defmethod filter-clause->intervals :default
@@ -683,8 +683,8 @@
    ag-clause :- driver-api/mbql.schema.Aggregation
    druid-query]
   (let [output-name               (*query-unique-name-fn* (driver-api/aggregation-name *query* ag-clause))
-        [ag-type ag-field & args] (driver-api/match-one ag-clause
-                                    [:aggregation-options ag & _] #_:clj-kondo/ignore (recur ag)
+        [ag-type ag-field & args] (driver-api/match-lite ag-clause
+                                    [:aggregation-options ag & _] (&recur ag)
                                     _                             &match)]
     (if-not (isa? query-type ::ag-query)
       druid-query
@@ -730,25 +730,24 @@
 
 (defn- expression-post-aggregation
   [[operator & args, :as expression]]
-  (driver-api/match-one expression
+  (driver-api/match-lite expression
     ;; If it's a named expression, we want to preserve the included name, so recurse, but merge in the name
     [:aggregation-options ag _]
-    (merge (expression-post-aggregation (second expression))
-           {:name (driver-api/aggregation-name *query* expression)})
+    (assoc (expression-post-aggregation ag) :name (driver-api/aggregation-name *query* expression))
 
     _
     {:type   :arithmetic
      :name   (driver-api/aggregation-name *query* expression)
      :fn     operator
      :fields (vec (for [arg args]
-                    (driver-api/match-one arg
-                      number?
+                    (driver-api/match-lite arg
+                      (_ :guard number?)
                       {:type :constant, :name (str &match), :value &match}
 
-                      [:aggregation-options ag (options :guard :name)]
-                      {:type (post-aggregator-type ag), :fieldName (:name options)}
+                      [:aggregation-options ag {:name name}]
+                      {:type (post-aggregator-type ag), :fieldName name}
 
-                      #{:+ :- :/ :*}
+                      [#{:+ :- :/ :*} & _]
                       (expression-post-aggregation &match)
 
                       ;; we should never get here unless our code is B U S T E D
@@ -797,15 +796,15 @@
       (*query-unique-name-fn* (name projection)))
     (reduce
      (fn [druid-query aggregation]
-       (driver-api/match-one aggregation
-         [:aggregation-options [(_ :guard #{:+ :- :/ :*}) & _] _]
+       (driver-api/match-lite aggregation
+         [:aggregation-options [#{:+ :- :/ :*} & _] _]
          (handle-expression-aggregation query-type &match druid-query)
 
-         #{:+ :- :/ :*}
+         [#{:+ :- :/ :*} & _]
          (handle-expression-aggregation query-type &match druid-query)
 
          _
-         (handle-aggregation query-type &match druid-query)))
+         (handle-aggregation query-type aggregation druid-query)))
      druid-query
      aggregations)))
 
@@ -955,7 +954,7 @@
 
 (defn- field-clause->name
   [field-clause]
-  (driver-api/match-one field-clause
+  (driver-api/match-lite field-clause
     [:field (id :guard integer?) _]
     (:name (driver-api/field (driver-api/metadata-provider) id))
 
@@ -1003,18 +1002,11 @@
   (let [field             (->rvalue field)
         breakout-field    (->rvalue breakout-field)
         sort-by-breakout? (= field breakout-field)
-        ag-field          (driver-api/match-one ag
-                            :distinct
-                            :distinct___count
-
-                            [:aggregation-options _ (options :guard :name)]
-                            (:name options)
-
-                            [:aggregation-options wrapped-ag _]
-                            #_:clj-kondo/ignore (recur wrapped-ag)
-
-                            [(ag-type :guard keyword?) & _]
-                            ag-type)]
+        ag-field          (driver-api/match-lite ag
+                            [:distinct & _]                       :distinct___count
+                            [:aggregation-options _ {:name name}] name
+                            [:aggregation-options wrapped-ag _]   (&recur wrapped-ag)
+                            [(ag-type :guard keyword?) & _]       ag-type)]
     (when-not sort-by-breakout?
       (assert ag-field))
     (assoc-in druid-query [:query :metric] (match [sort-by-breakout? direction]
@@ -1035,14 +1027,14 @@
   datetime"
   [field]
   (when field
-    (driver-api/match-one field
+    (driver-api/match-lite field
       [:field _id-or-name (_opts :guard :temporal-unit)]
       true
 
       [:field (id :guard pos-int?) _opts]
       (driver-api/temporal? (driver-api/field (driver-api/metadata-provider) id)))))
 
-;; Handle order by timstamp field
+;; Handle order by timestamp field
 (defmethod handle-order-by ::grouped-timeseries
   [_ {[[direction field]] :order-by} druid-query]
   (let [can-sort? (if (temporal-field? field)
@@ -1089,7 +1081,7 @@
    (fn
      ([druid-query]
       ;; If you specify nil or empty `:columns` Druid will just return all of the ones available. In cases where
-      ;; we don't want anything to be returned in one or the other, we'll ask for a `:___dummy` column intead.
+      ;; we don't want anything to be returned in one or the other, we'll ask for a `:___dummy` column instead.
       ;; Druid happily returns `nil` for the column in every row, and it will get auto-filtered out of the results
       ;; so the User will never see it.
       (update-in druid-query [:query :columns] #(or (seq %) [:___dummy])))
@@ -1174,7 +1166,7 @@
         ts?       (boolean
                    (and
                     ;; Checks whether the query is a timeseries
-                    (driver-api/match-one (first breakout-fields) [:field _ (_ :guard :temporal-unit)])
+                    (driver-api/match-lite (first breakout-fields) [:field _ (_ :guard :temporal-unit)] true)
                     ;; (excludes x-of-y type breakouts)
                     (contains? timeseries-units (:unit (first breakout-fields)))
                     ;; (excludes queries with LIMIT)

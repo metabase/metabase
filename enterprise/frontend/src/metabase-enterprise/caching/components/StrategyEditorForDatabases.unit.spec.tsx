@@ -18,7 +18,7 @@ import { createMockTokenFeatures } from "metabase-types/api/mocks";
 
 function setup(opts: SetupOpts = {}) {
   baseSetup({
-    hasEnterprisePlugins: true,
+    enterprisePlugins: "*", // TODO be more granular about this
     tokenFeatures: createMockTokenFeatures({ cache_granular_controls: true }),
     ...opts,
   });

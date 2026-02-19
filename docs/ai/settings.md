@@ -7,7 +7,7 @@ summary: Configure Metabot settings, including which collections Metabot can acc
 
 > Metabot is only available as an add-on on Metabase Cloud.
 
-_Settings > Admin settings > AI_
+_Admin > AI_
 
 This page covers admin settings for Metabase's AI assistant, [Metabot](./metabot.md).
 
@@ -28,13 +28,21 @@ For now, Metabot is only available for Metabase Cloud. Before you can set up Met
 
 5. Read through the [terms of service](https://www.metabase.com/license/hosting) and click **Add Metabot AI**.
 
-Once you've added Metabot AI in the Metabase store, you can log into your Metabase and configure it in _Admin settings > AI_.
+Once you've added Metabot AI in the Metabase store, you can log into your Metabase and configure it in _Admin > AI_.
 
 ## Verified content
 
 Admins on Pro and Enterprise plans can tell Metabot to only work with [models](../data-modeling/models.md) and [metrics](../data-modeling/metrics.md) that have been [verified](../exploration-and-organization/content-verification.md).
 
 Restricting Metabot to verified models and metrics (and only models and metrics) helps Metabot produce more reliable answers, since you know someone has at least vetted the data Metabot can use.
+
+## Collection for natural language querying
+
+Select a collection (including its subcollections) to limit which collections Metabot searches during [AI exploration](../ai/metabot.md#ai-exploration).
+
+This setting only affects conversations started from **+ New → AI exploration**.
+
+People can still @-mention items outside of this collection when prompting in AI exploration. Metabot can also see the person's current context (for example, Metabot will know about the dashboard they're currently viewing, even if the dashboard is outside the selected collection).
 
 ## When embedding Metabot, you can pick a collection for Metabot to have access to
 
@@ -52,17 +60,10 @@ Alternatively (or additionally), you can restrict Metabot to [verified content](
 
 The best thing you can do to improve Metabot's performance is to prep your data like you would for onboarding a new (human) hire to your data. In practice, this means you should:
 
-- [Add models and metrics to your Metabot collection](#add-models-and-metrics-to-your-metabot-collection)
 - [Add descriptions for your data and content](#add-descriptions-for-your-data-and-content)
 - [Make sure the semantic types for each field are correct](#make-sure-the-semantic-types-for-each-field-are-correct)
 - [Define domain-specific terms in the glossary](#define-domain-specific-terms-in-the-glossary)
 - [Curate prompt suggestions](#curate-prompt-suggestions)
-
-### Add models and metrics to your Metabot collection
-
-Create models that make it easy for Metabot to find answers to the kinds of questions you expect people to ask about your data. Create metrics that capture key business calculations that people frequently need to reference. Add these models and metrics to the collection you've designated for Metabot to learn from.
-
-For example, if people often ask questions about customer lifetime value (LTV), create a model that joins customer data with order history and calculates LTV. Or if people frequently need to know monthly active users (MAU), create a metric that defines exactly how MAU should be calculated.
 
 ### Add descriptions for your data and content
 
@@ -104,7 +105,7 @@ In other words, to restrict what data Metabot can see for each person, simply ap
 
 ## Viewing Metabot usage
 
-You can see how many Metabot requests people have made this month by going to **Admin settings > Settings > License**.
+You can see how many Metabot requests people have made this month by going to **Admin > Settings > License**.
 
 If you aren't logged into the [Metabase Store](../cloud/accounts-and-billing.md).(, you'll need to log in to the store before you can view the usage. Once logged in to the store, go back to your Metabase and view the license page.
 

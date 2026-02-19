@@ -54,3 +54,8 @@ export type SyncedCollectionsSidebarSectionProps = {
   selectedId?: number | string;
   syncedCollections: CollectionTreeItem[];
 };
+
+export type GitSyncSetupMenuItemProps = {
+  isNavbarOpened: boolean;
+  onClick: VoidFunction;
+};

@@ -5,7 +5,7 @@ export const CollectionRoot = styled.div`
   height: 100%;
   overflow: hidden;
   position: relative;
-  background-color: var(--mb-color-bg-secondary);
+  background-color: var(--mb-color-background-secondary);
 `;
 
 export const CollectionMain = styled.div`

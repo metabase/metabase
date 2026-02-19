@@ -21,9 +21,9 @@ export const CardTitle = styled(Ellipsified)`
 `;
 
 export const CardTitlePrimary = styled.span`
-  color: var(--mb-color-text-dark);
+  color: var(--mb-color-text-primary);
 `;
 
 export const CardTitleSecondary = styled.span`
-  color: var(--mb-color-text-medium);
+  color: var(--mb-color-text-secondary);
 `;

@@ -13,7 +13,7 @@ describe("useTranslateContent (EE without token)", () => {
       dictionary: [
         { locale: "es", msgid: "Hello World", msgstr: "Hola Mundo" },
       ],
-      hasEnterprisePlugins: true,
+      enterprisePlugins: ["content_translation"],
       tokenFeatures: { content_translation: false },
       staticallyEmbedded: false,
     });

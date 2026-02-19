@@ -237,11 +237,11 @@
       (testing "throws for invalid field ID format"
         (is (thrown-with-msg?
              clojure.lang.ExceptionInfo
-             #"invalid field_id format"
+             #"Invalid field_id format"
              (metabot-v3.tools.util/resolve-column {:field-id "invalid"} "t1-" columns)))
         (is (thrown-with-msg?
              clojure.lang.ExceptionInfo
-             #"invalid field_id format"
+             #"Invalid field_id format"
              (metabot-v3.tools.util/resolve-column {:field-id "t154/1"} "t154-" columns))))
 
       (testing "throws when field index is out of bounds"

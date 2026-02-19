@@ -463,7 +463,6 @@ function setupDashboardClickBehavior({ targetName }: { targetName: string }) {
       cy.findByText("Dashboard").click();
     });
     H.entityPickerModal().within(() => {
-      H.entityPickerModalTab("Dashboards").click();
       cy.findByText(DASHBOARD_NAME).click();
     });
     H.sidebar().findByText(PARAMETER_NAME).click();

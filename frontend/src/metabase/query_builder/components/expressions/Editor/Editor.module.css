@@ -5,7 +5,7 @@
   flex-direction: column;
 
   &.formatting {
-    background-color: var(--mb-color-bg-medium);
+    background-color: var(--mb-color-background-tertiary);
   }
 }
 
@@ -29,7 +29,7 @@
   overflow: auto;
   height: 100%;
   box-sizing: border-box;
-  color: var(--mb-color-text-dark);
+  color: var(--mb-color-text-primary);
   margin-right: calc(28px + var(--mantine-spacing-sm));
 
   :global {

@@ -5,7 +5,7 @@ import { getMetadata } from "metabase/selectors/metadata";
 import { createMockDatabase, createMockSchema } from "metabase-types/api/mocks";
 import { createMockState } from "metabase-types/store/mocks";
 
-import DataSelectorDatabaseSchemaPicker from "./DataSelectorDatabaseSchemaPicker";
+import { DataSelectorDatabaseSchemaPicker } from "./DataSelectorDatabaseSchemaPicker";
 
 const setup = (opts) => {
   const state = createMockState({

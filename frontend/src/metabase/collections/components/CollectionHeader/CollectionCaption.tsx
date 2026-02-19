@@ -1,6 +1,7 @@
 import { useCallback } from "react";
 import { t } from "ttag";
 
+import { getCurrentUser } from "metabase/admin/datamodel/selectors";
 import {
   isEditableCollection,
   isInstanceAnalyticsCollection,
@@ -31,7 +32,8 @@ export const CollectionCaption = ({
   collection,
   onUpdateCollection,
 }: CollectionCaptionProps): JSX.Element => {
-  const isEditable = isEditableCollection(collection);
+  const currentUser = useSelector(getCurrentUser);
+  const isEditable = isEditableCollection(collection, { currentUser });
   const hasDescription = Boolean(collection.description);
 
   const handleChangeName = useCallback(
@@ -104,14 +106,14 @@ const CollectionCaptionIcon = ({ collection }: { collection: Collection }) => {
   }
 
   if (isRootTrashCollection(collection)) {
-    return <Icon name="trash" size={24} c="text-disabled" />;
+    return <Icon name="trash" size={24} c="text-tertiary" />;
   }
 
   if (
     collection.archived &&
     PLUGIN_COLLECTIONS.isRegularCollection(collection)
   ) {
-    return <Icon name="folder" size={24} c="text-disabled" />;
+    return <Icon name="folder" size={24} c="text-tertiary" />;
   }
 
   return (

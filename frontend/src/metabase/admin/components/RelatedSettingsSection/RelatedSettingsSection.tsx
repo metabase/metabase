@@ -1,6 +1,6 @@
 import { t } from "ttag";
 
-import Link from "metabase/common/components/Link";
+import { Link } from "metabase/common/components/Link";
 import {
   Card,
   Group,
@@ -61,7 +61,7 @@ const RelatedSettingCard = ({
       className={S.relatedSettingCard}
     >
       <Group gap="sm" align="center" h="100%">
-        <Icon name={icon} color="var(--mb-color-brand)" />
+        <Icon name={icon} c="brand" />
 
         <Text fw={500} ta="center">
           {name}

@@ -265,7 +265,7 @@
   tends to break like running Liquibase migrations.)
 
   Note that because `Locale/setDefault` and `Locale/getDefault` aren't thread-local (as far as I know) I've had to put
-  a lock in place to prevent race conditions where threads simulataneously attempt to fetch and change the default
+  a lock in place to prevent race conditions where threads simultaneously attempt to fetch and change the default
   Locale. Thus this macro should be used sparingly, and only in places that are already single-threaded (such as the
   launch code that runs Liquibase).
 
@@ -344,7 +344,7 @@
        [#"[^\d,.-]+"          ""]
        ;; now strip out any thousands separators
        [#"(?<=\d)[,.](\d{3})" "$1"]
-       ;; now replace a comma decimal seperator with a period
+       ;; now replace a comma decimal separator with a period
        [#","                  "."]
        ;; move minus sign at end to front
        [#"(^[^-]+)-$"         "-$1"]]))))

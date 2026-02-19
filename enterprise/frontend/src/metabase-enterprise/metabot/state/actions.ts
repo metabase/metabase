@@ -8,14 +8,16 @@ import { push } from "react-router-redux";
 import { P, match } from "ts-pattern";
 import _ from "underscore";
 
+import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
 import { addUndo } from "metabase/redux/undo";
-import { getIsEmbedding } from "metabase/selectors/embed";
+import { getIsWorkspace } from "metabase/selectors/routing";
 import { getUser } from "metabase/selectors/user";
 import {
   type JSONValue,
   aiStreamingQuery,
   findMatchingInflightAiStreamingRequests,
 } from "metabase-enterprise/api/ai-streaming";
+import type { ProcessedChatResponse } from "metabase-enterprise/api/ai-streaming/process-stream";
 import type {
   MetabotAgentRequest,
   MetabotAgentResponse,
@@ -31,6 +33,7 @@ import {
   getAgentErrorMessages,
   getAgentRequestMetadata,
   getDebugMode,
+  getDeveloperMessage,
   getHistory,
   getIsProcessing,
   getLastMessage,
@@ -59,19 +62,23 @@ export const {
   addAgentTextDelta,
   addAgentMessage,
   addAgentErrorMessage,
+  addDeveloperMessage,
   addUserMessage,
   setIsProcessing,
   setNavigateToPath,
+  setProfileOverride,
   toolCallStart,
   toolCallEnd,
-  setProfileOverride,
   setMetabotReqIdOverride,
   setDebugMode,
   addSuggestedTransform,
   activateSuggestedTransform,
   deactivateSuggestedTransform,
+  updateSuggestedTransformId,
   createAgent,
   destroyAgent,
+  addSuggestedCodeEdit,
+  removeSuggestedCodeEdit,
 } = metabot.actions;
 
 type PromptErrorOutcome = {
@@ -85,6 +92,17 @@ const handleResponseError = (error: unknown): PromptErrorOutcome => {
       errorMessage: false as const,
       shouldRetry: false,
     }))
+    .with(
+      { message: P.string.startsWith("Response status: 401") },
+      { status: 401 },
+      () => ({
+        errorMessage: {
+          type: "alert" as const,
+          message: METABOT_ERR_MSG.unauthenticated,
+        },
+        shouldRetry: true,
+      }),
+    )
     .with(
       { message: P.string.startsWith("Response status: 5") },
       { status: 500 },
@@ -159,9 +177,14 @@ export const executeSlashCommand = createAsyncThunk<
 );
 
 export type MetabotPromptSubmissionResult =
-  | { prompt: string; success: true; shouldRetry?: void }
-  | { prompt: string; success: false; shouldRetry: false }
-  | { prompt: string; success: false; shouldRetry: true };
+  | {
+      prompt: string;
+      success: true;
+      shouldRetry?: void;
+      data?: SendAgentRequestResult;
+    }
+  | { prompt: string; success: false; shouldRetry: false; data?: void }
+  | { prompt: string; success: false; shouldRetry: true; data?: void };
 
 export const submitInput = createAsyncThunk<
   MetabotPromptSubmissionResult,
@@ -217,6 +240,7 @@ export const submitInput = createAsyncThunk<
       // altering it by adding the current message the user is wanting to send
       const agentMetadata = getAgentRequestMetadata(getState(), agentId);
       const messageId = createMessageId();
+      const promptWithDevMessage = getDeveloperMessage(state, agentId) + prompt;
       dispatch(
         addUserMessage({
           id: messageId,
@@ -229,7 +253,7 @@ export const submitInput = createAsyncThunk<
       const sendMessageRequestPromise = dispatch(
         sendAgentRequest({
           ...data,
-          message: prompt,
+          message: promptWithDevMessage,
           agentId,
           conversation_id: convo.conversationId,
           ...agentMetadata,
@@ -241,18 +265,21 @@ export const submitInput = createAsyncThunk<
 
       const result = await sendMessageRequestPromise;
 
-      if (isRejected(result) && result.payload?.type === "error") {
-        dispatch(
-          stopProcessingAndNotify({
-            agentId,
-            message: result.payload?.errorMessage,
-          }),
-        );
-        return {
-          prompt,
-          success: false,
-          shouldRetry: result.payload?.shouldRetry ?? false,
-        };
+      if (isRejected(result)) {
+        if (result.payload?.type === "error") {
+          dispatch(
+            stopProcessingAndNotify({
+              agentId,
+              message: result.payload?.errorMessage,
+            }),
+          );
+        }
+        const shouldRetry =
+          (result.payload &&
+            "shouldRetry" in result.payload &&
+            (result.payload?.shouldRetry ?? {})) ??
+          false;
+        return { prompt: rawPrompt, success: false, shouldRetry };
       }
 
       return { prompt, success: true, data: result.payload };
@@ -272,8 +299,12 @@ type SendAgentRequestError =
       unresolved_tool_calls: { toolCallId: string; toolName: string }[];
     } & MetabotAgentResponse);
 
+type SendAgentRequestResult = MetabotAgentResponse & {
+  processedResponse: ProcessedChatResponse;
+};
+
 export const sendAgentRequest = createAsyncThunk<
-  MetabotAgentResponse,
+  SendAgentRequestResult,
   MetabotAgentRequest & { agentId: MetabotAgentId },
   { rejectValue: SendAgentRequestError }
 >(
@@ -282,7 +313,7 @@ export const sendAgentRequest = createAsyncThunk<
     payload,
     { dispatch, getState, signal, rejectWithValue, fulfillWithValue },
   ) => {
-    const isEmbedding = getIsEmbedding(getState());
+    const isWorkspace = getIsWorkspace(getState());
     const { agentId, ...request } = payload;
 
     try {
@@ -314,10 +345,13 @@ export const sendAgentRequest = createAsyncThunk<
 
                 dispatch(addAgentMessage({ ...message, agentId }));
               })
+              .with({ type: "code_edit" }, (part) => {
+                dispatch(addSuggestedCodeEdit({ ...part.value, active: true }));
+              })
               .with({ type: "navigate_to" }, (part) => {
                 dispatch(setNavigateToPath(part.value));
 
-                if (!isEmbedding) {
+                if (!isEmbeddingSdk() && !isWorkspace) {
                   dispatch(push(part.value) as UnknownAction);
                 }
               })
@@ -377,7 +411,7 @@ export const sendAgentRequest = createAsyncThunk<
             (tc) => tc.state === "call",
           ),
           history: [...getHistory(getState(), agentId), ...response.history],
-          // state object comes at the end, so we may not have recieved it
+          // state object comes at the end, so we may not have received it
           // so fallback to the state used when the request was issued
           state: Object.keys(state).length === 0 ? request.state : state,
         });
@@ -387,6 +421,7 @@ export const sendAgentRequest = createAsyncThunk<
         conversation_id: request.conversation_id,
         history: [...getHistory(getState(), agentId), ...response.history],
         state,
+        processedResponse: response,
       });
     } catch (error) {
       console.error(error);

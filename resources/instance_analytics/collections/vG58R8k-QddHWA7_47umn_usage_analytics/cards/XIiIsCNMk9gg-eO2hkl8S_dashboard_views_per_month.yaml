@@ -106,13 +106,12 @@ visualization_settings:
   graph.show_values: true
   table.cell_column: model_id
   table.pivot_column: end_timestamp
-card_schema: 22
+card_schema: 23
 serdes/meta:
 - {id: XIiIsCNMk9gg-eO2hkl8S, label: dashboard_views_per_month, model: Card}
 archived_directly: false
 dashboard_id: bJEYb0o5CXlfWFcIztDwJ
 document_id: null
 embedding_type: null
-published_table_id: null
 source_card_id: P6Ityjj7igswKh4NgZZjz
 type: question

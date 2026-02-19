@@ -1,7 +1,7 @@
 import { t } from "ttag";
 
 import { Badge } from "metabase/common/components/Badge";
-import Link from "metabase/common/components/Link/Link";
+import { Link } from "metabase/common/components/Link/Link";
 import CS from "metabase/css/core/index.css";
 import type { IconName } from "metabase/ui";
 import type Question from "metabase-lib/v1/Question";

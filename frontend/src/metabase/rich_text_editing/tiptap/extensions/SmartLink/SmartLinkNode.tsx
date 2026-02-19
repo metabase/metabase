@@ -17,8 +17,10 @@ import {
   useGetDocumentQuery,
   useGetSegmentQuery,
   useGetTableQuery,
+  useGetTransformQuery,
   useListMentionsQuery,
 } from "metabase/api";
+import { Link } from "metabase/common/components/Link";
 import { updateMentionsCache } from "metabase/documents/documents.slice";
 import {
   type IconModel,
@@ -175,7 +177,17 @@ export const SmartLink = Node.create<{
       },
       href: {
         default: "/",
-        parseHTML: (element) => element.getAttribute("data-href"),
+        parseHTML: (element) => {
+          const href = element.getAttribute("href");
+          const siteUrl = element.getAttribute("data-site-url");
+
+          // Remove siteUrl prefix if present to store relative path
+          if (href && siteUrl && href.startsWith(siteUrl)) {
+            return href.substring(siteUrl.length);
+          }
+
+          return href || element.getAttribute("data-href") || "/";
+        },
       },
     };
   },
@@ -187,7 +199,23 @@ export const SmartLink = Node.create<{
   parseHTML() {
     return [
       {
-        tag: 'span[data-type="smart-link"]',
+        tag: 'a[data-type="smart-link"]',
+        priority: 100, // Higher priority than default to override Link mark
+        getAttrs: (element) => {
+          if (typeof element === "string") {
+            return false;
+          }
+
+          const entityId = element.getAttribute("data-entity-id");
+          const model = element.getAttribute("data-model");
+
+          // Only parse as smartLink if it has the required attributes
+          if (!entityId || !model) {
+            return false;
+          }
+
+          return null; // Return null to let the attribute parsers handle extraction
+        },
       },
     ];
   },
@@ -317,7 +345,7 @@ export const useEntityData = (
     },
   );
 
-  const transformQuery = PLUGIN_TRANSFORMS.useGetTransformQuery(entityId!, {
+  const transformQuery = useGetTransformQuery(entityId!, {
     skip: !PLUGIN_TRANSFORMS.isEnabled || !entityId || model !== "transform",
   });
 
@@ -434,7 +462,7 @@ export const SmartLinkComponent = memo(
     const showLoading = isLoading && !entity;
     if (showLoading) {
       return (
-        <NodeViewWrapper as="span">
+        <NodeViewWrapper as="span" data-type="smart-link">
           <span className={styles.smartLink}>
             <span className={styles.smartLinkInner}>
               <Icon name="hourglass" className={styles.icon} />
@@ -447,7 +475,7 @@ export const SmartLinkComponent = memo(
 
     if (error || !entity) {
       return (
-        <NodeViewWrapper as="span">
+        <NodeViewWrapper as="span" data-type="smart-link">
           <span className={styles.smartLink}>
             <span className={styles.smartLinkInner}>
               {isObject(error) && error.status === 403 ? (
@@ -469,7 +497,7 @@ export const SmartLinkComponent = memo(
 
     if (model === "user" && isMentionableUser(entity)) {
       return (
-        <NodeViewWrapper as="span">
+        <NodeViewWrapper as="span" data-type="smart-link">
           <span className={styles.userMention}>@{entity.common_name}</span>
         </NodeViewWrapper>
       );
@@ -489,11 +517,12 @@ export const SmartLinkComponent = memo(
           );
 
     return (
-      <NodeViewWrapper as="span">
-        <a
-          href={entityUrl || "#"}
+      <NodeViewWrapper as="span" data-type="smart-link">
+        <Link
+          to={entityUrl || "#"}
           target="_blank"
           rel="noreferrer"
+          tabIndex={-1}
           onMouseUp={(e) => {
             // Stop tiptap from opening this link twice
             e.stopPropagation();
@@ -504,7 +533,7 @@ export const SmartLinkComponent = memo(
             <Icon name={iconData.name} className={styles.icon} />
             {getName(entity)}
           </span>
-        </a>
+        </Link>
       </NodeViewWrapper>
     );
   },

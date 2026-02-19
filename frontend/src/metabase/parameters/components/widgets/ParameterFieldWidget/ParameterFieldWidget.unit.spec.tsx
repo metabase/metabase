@@ -4,20 +4,34 @@ import {
   setupParameterSearchValuesEndpoint,
   setupParameterValuesEndpoints,
 } from "__support__/server-mocks";
+import { createMockEntitiesState } from "__support__/store";
 import { renderWithProviders, screen } from "__support__/ui";
+import { getMetadata } from "metabase/selectors/metadata";
 import type Field from "metabase-lib/v1/metadata/Field";
 import { createMockUiParameter } from "metabase-lib/v1/parameters/mock";
 import type { UiParameter } from "metabase-lib/v1/parameters/types";
-import type { ParameterValues } from "metabase-types/api";
-import { createMockParameterValues } from "metabase-types/api/mocks";
+import type { Field as FieldType, ParameterValues } from "metabase-types/api";
+import {
+  createMockField,
+  createMockParameterValues,
+} from "metabase-types/api/mocks";
+import {
+  REVIEWS_ID,
+  createReviewsTable,
+  createSampleDatabase,
+} from "metabase-types/api/mocks/presets";
+import { createMockState } from "metabase-types/store/mocks";
 
 import { ParameterFieldWidget } from "./ParameterFieldWidget";
+
+const FIELD_ID = 100;
 
 type SetupOpts = {
   parameter?: UiParameter;
   fields?: Field[];
   parameterValues?: ParameterValues;
   parameterSearchValues?: Record<string, ParameterValues>;
+  fieldSettings?: Partial<FieldType>;
 };
 
 function setup({
@@ -25,19 +39,45 @@ function setup({
   fields = [],
   parameterValues = createMockParameterValues(),
   parameterSearchValues = {},
+  fieldSettings,
 }: SetupOpts = {}) {
   setupParameterValuesEndpoints(parameterValues);
   Object.entries(parameterSearchValues).forEach(([query, values]) => {
     setupParameterSearchValuesEndpoint(query, values);
   });
 
+  const database = createSampleDatabase({
+    tables: [
+      createReviewsTable({
+        fields: [
+          createMockField({
+            id: FIELD_ID,
+            table_id: REVIEWS_ID,
+            ...fieldSettings,
+          }),
+        ],
+      }),
+    ],
+  });
+
+  const storeInitialState = createMockState({
+    entities: createMockEntitiesState({
+      databases: [database],
+    }),
+  });
+
+  const metadata = getMetadata(storeInitialState);
+  const field = metadata.field(FIELD_ID);
+  const fieldsToUse = field ? [field] : fields;
+
   const setValue = jest.fn();
   renderWithProviders(
     <ParameterFieldWidget
       parameter={parameter}
-      fields={fields}
+      fields={fieldsToUse}
       setValue={setValue}
     />,
+    { storeInitialState },
   );
 
   return { setValue };
@@ -252,6 +292,59 @@ describe("ParameterFieldWidget", () => {
 
       await userEvent.type(input, "{backspace}{enter}");
       expect(setValue).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("field formatting", () => {
+    const numericFieldParameter = createMockUiParameter({
+      values_query_type: "list",
+      values_source_type: "static-list",
+      values_source_config: {
+        values: [[1000], [2000], [3000]],
+      },
+    });
+
+    const numericFieldValues = createMockParameterValues({
+      values: [[1000], [2000], [3000]],
+    });
+
+    const numericFieldSettings = {
+      display_name: "Amount",
+      base_type: "type/BigInteger",
+      effective_type: "type/BigInteger",
+      has_field_values: "list",
+      values: [[1000], [2000], [3000]],
+    } satisfies Partial<FieldType>;
+
+    it("should format numbers with default separators when no custom settings", async () => {
+      setup({
+        parameter: numericFieldParameter,
+        parameterValues: numericFieldValues,
+        fieldSettings: numericFieldSettings,
+      });
+
+      // need to wait for the settings to load
+      expect(await screen.findByText("1,000")).toBeInTheDocument();
+      expect(screen.getByText("2,000")).toBeInTheDocument();
+      expect(screen.getByText("3,000")).toBeInTheDocument();
+    });
+
+    it("should apply custom field formatting settings", async () => {
+      setup({
+        parameter: numericFieldParameter,
+        parameterValues: numericFieldValues,
+        fieldSettings: {
+          ...numericFieldSettings,
+          settings: { number_separators: "." },
+        },
+      });
+
+      // need to wait for the settings to load
+      expect(await screen.findByText("1000")).toBeInTheDocument();
+      expect(screen.getByText("2000")).toBeInTheDocument();
+      expect(screen.getByText("3000")).toBeInTheDocument();
+
+      expect(screen.queryByText("1,000")).not.toBeInTheDocument();
     });
   });
 });

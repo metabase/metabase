@@ -12,7 +12,6 @@ const DASHBOARD_TITLE = '"My test dash"';
 const setupEnterprise = async (opts?: Partial<SetupOpts>) => {
   return await setup({
     ...opts,
-    hasEnterprisePlugins: true,
     dashboardTitle: DASHBOARD_TITLE,
   });
 };

@@ -6,7 +6,7 @@
    TODO: We should consider removing this namespace completely. Having it just adds need for maintaining list of
          operators monger provides. We could use keywords instead. Conversion code currently handles
          transformation of those into strings during transformations to document. More importantly -- we are already
-         using keywords in lot of places in [[metabase.driver.mongo.query-processor]]. Try seraching it for `:\\$``
+         using keywords in lot of places in [[metabase.driver.mongo.query-processor]]. Try searching it for `:\\$``
          regex.
 
    TODO should be addressed during follow-up of monger removal."

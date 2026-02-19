@@ -9,8 +9,7 @@ A handy list of keyboard shortcuts to help you zip around Metabase.
 
 Shortcuts change depending on which page you're viewing in your Metabase.
 
-To view the shortcut menu in Metabase, press `?`, or click on the **Gear** icon
-in the top right corner and select **Keyboard shortcuts**.
+To view the shortcut menu in Metabase, press `?`, or click the **grid** icon in the top right corner and select **Help**, then choose **Keyboard shortcuts**.
 
 ## Global
 
@@ -25,7 +24,7 @@ in the top right corner and select **Keyboard shortcuts**.
 | Browse databases         | g > d       |
 | Browse models            | g > m       |
 | Browse metrics           | g > k       |
-| Report an issue          | Ctrl/Cmd+f1 |
+| Download diagnostics     | Ctrl/Cmd+f1 |
 | View shortcuts           | ?           |
 | Open trash               | g > t       |
 | Open personal collection | g > p       |

@@ -1,7 +1,7 @@
 :root {
-  --title-color: var(--mb-color-text-dark);
-  --subtitle-color: var(--mb-color-text-medium);
-  --muted-color: var(--mb-color-text-light);
+  --title-color: var(--mb-color-text-primary);
+  --subtitle-color: var(--mb-color-text-secondary);
+  --muted-color: var(--mb-color-text-tertiary);
 }
 
 .list {

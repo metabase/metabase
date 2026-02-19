@@ -27,10 +27,7 @@ describe("scenarios > data studio > library > metrics", () => {
     H.DataStudio.Metrics.saveButton().should("be.disabled");
 
     H.miniPickerBrowseAll().click();
-    H.entityPickerModal().within(() => {
-      cy.findByText("Databases").click();
-      cy.findByText("Orders").click();
-    });
+    H.pickEntity({ path: ["Databases", /Sample Database/, "Orders"] });
 
     H.getNotebookStep("summarize")
       .findByText("Pick a column to group by")
@@ -97,7 +94,9 @@ describe("scenarios > data studio > library > metrics", () => {
     cy.visit("/data-studio/library");
 
     cy.log("Click on the metric from the collection view");
-    cy.findByRole("table").findByText("Trusted Orders Metric").click();
+    H.DataStudio.Library.libraryPage()
+      .findByText("Trusted Orders Metric")
+      .click();
 
     cy.log("Verify metric overview page displays correct data");
     H.DataStudio.Metrics.overviewPage()
@@ -129,7 +128,9 @@ describe("scenarios > data studio > library > metrics", () => {
     cy.visit("/data-studio/library");
 
     cy.log("Click on the metric from the collection view");
-    cy.findByRole("table").findByText("Trusted Orders Metric").click();
+    H.DataStudio.Library.libraryPage()
+      .findByText("Trusted Orders Metric")
+      .click();
 
     cy.log("Navigate to definition tab");
     H.DataStudio.Metrics.definitionTab().click();
@@ -152,7 +153,9 @@ describe("scenarios > data studio > library > metrics", () => {
     cy.visit("/data-studio/library");
 
     cy.log("Click on the metric from the collection view");
-    cy.findByRole("table").findByText("Trusted Orders Metric").click();
+    H.DataStudio.Library.libraryPage()
+      .findByText("Trusted Orders Metric")
+      .click();
 
     cy.log("Navigate to definition tab");
     H.DataStudio.Metrics.definitionTab().click();
@@ -181,7 +184,9 @@ describe("scenarios > data studio > library > metrics", () => {
     cy.visit("/data-studio/library");
 
     cy.log("Click on the metric from the collection view");
-    cy.findByRole("table").findByText("Trusted Orders Metric").click();
+    H.DataStudio.Library.libraryPage()
+      .findByText("Trusted Orders Metric")
+      .click();
 
     cy.log("Verify metric is loaded before archiving");
     H.DataStudio.Metrics.overviewPage()
@@ -202,7 +207,7 @@ describe("scenarios > data studio > library > metrics", () => {
 
     cy.log("Verify metric is removed from collection view");
     cy.visit("/data-studio/library");
-    cy.findByRole("table")
+    H.DataStudio.Library.libraryPage()
       .findByText("Trusted Orders Metric")
       .should("not.exist");
 
@@ -222,7 +227,7 @@ describe("scenarios > data studio > library > metrics", () => {
 
     cy.log("Verify metric is restored in collection view");
     cy.visit("/data-studio/library");
-    cy.findByRole("table")
+    H.DataStudio.Library.libraryPage()
       .findByText("Trusted Orders Metric")
       .should("be.visible");
   });
@@ -232,7 +237,9 @@ describe("scenarios > data studio > library > metrics", () => {
     cy.visit("/data-studio/library");
 
     cy.log("Click on the metric from the collection view");
-    cy.findByRole("table").findByText("Trusted Orders Metric").click();
+    H.DataStudio.Library.libraryPage()
+      .findByText("Trusted Orders Metric")
+      .click();
 
     cy.log("Verify metric is loaded");
     H.DataStudio.Metrics.overviewPage()
@@ -254,7 +261,9 @@ describe("scenarios > data studio > library > metrics", () => {
     cy.visit("/data-studio/library");
 
     cy.log("Click on the metric from the collection view");
-    cy.findByRole("table").findByText("Trusted Orders Metric").click();
+    H.DataStudio.Library.libraryPage()
+      .findByText("Trusted Orders Metric")
+      .click();
 
     cy.log("Verify metric is loaded");
     H.DataStudio.Metrics.overviewPage()
@@ -274,7 +283,6 @@ describe("scenarios > data studio > library > metrics", () => {
       .should("have.value", "Trusted Orders Metric - Duplicate");
     H.modal().findByTestId("dashboard-and-collection-picker-button").click();
 
-    H.entityPickerModalTab("Collections").click();
     H.entityPickerModal().within(() => {
       cy.findByText("Our analytics").click();
       cy.findByText("Library").click();
@@ -294,7 +302,7 @@ describe("scenarios > data studio > library > metrics", () => {
 
     cy.log("Verify both metrics appear in collection view");
     H.DataStudio.nav().findByRole("link", { name: "Library" }).click();
-    cy.findByRole("table").within(() => {
+    H.DataStudio.Library.libraryPage().within(() => {
       cy.findByText("Trusted Orders Metric").should("be.visible");
       cy.findByText("Trusted Orders Metric - Duplicate").should("be.visible");
     });
@@ -305,7 +313,9 @@ describe("scenarios > data studio > library > metrics", () => {
     cy.visit("/data-studio/library");
 
     cy.log("Click on the metric from the collection view");
-    cy.findByRole("table").findByText("Trusted Orders Metric").click();
+    H.DataStudio.Library.libraryPage()
+      .findByText("Trusted Orders Metric")
+      .click();
 
     cy.log("Verify metric is loaded");
     H.DataStudio.Metrics.overviewPage()
@@ -317,8 +327,7 @@ describe("scenarios > data studio > library > metrics", () => {
     H.popover().findByText("Move").click();
 
     cy.log("Select First collection as destination");
-    H.entityPickerModal().findByText("First collection").click();
-    H.entityPickerModal().button("Move").click();
+    H.pickEntity({ path: ["Our analytics", "First collection"], select: true });
 
     cy.wait("@updateCard");
 
@@ -327,8 +336,36 @@ describe("scenarios > data studio > library > metrics", () => {
 
     cy.log("Verify metric is no longer in Metrics collection");
     cy.visit("/data-studio/library");
-    cy.findByRole("table")
+    H.DataStudio.Library.libraryPage()
       .findByText("Trusted Orders Metric")
       .should("not.exist");
+  });
+
+  describe("caching", () => {
+    it("should allow changing metric caching settings", () => {
+      cy.log("Navigate to Data Studio Library");
+      cy.visit("/data-studio/library");
+
+      cy.log("Click on the metric from the collection view");
+      H.DataStudio.Library.metricItem("Trusted Orders Metric").click();
+
+      cy.log("Navigate to caching tab");
+      H.DataStudio.Metrics.cachingTab().click();
+
+      cy.log("Change the setting and save");
+      cy.findByRole("radio", { name: /Use default/ }).should("be.checked");
+      cy.findByRole("radio", { name: /Duration/ }).click();
+      cy.findByRole("button", { name: "Save" }).click();
+      cy.findByRole("button", { name: /Saved/ }).should("exist");
+
+      // wait for the save button to disappear - that means the form is no longer dirty
+      // and navigating away won't show the confirmation modal that was causing flakes
+      cy.findByRole("button", { name: /Saved/ }).should("not.exist");
+
+      cy.log("Navigate away and come back to verify the change is persisted");
+      H.DataStudio.Metrics.overviewTab().click();
+      H.DataStudio.Metrics.cachingTab().click();
+      cy.findByRole("radio", { name: /Duration/ }).should("be.checked");
+    });
   });
 });

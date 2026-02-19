@@ -25,7 +25,7 @@
   justify-content: center;
   align-items: center;
   padding: 6px 12px;
-  color: var(--mb-color-text-white);
+  color: var(--mb-color-text-primary-inverse);
   font-weight: bold;
   border: 2px solid;
   border-radius: 8px;

@@ -1,4 +1,8 @@
-import { mockEmbedJsToDevServer } from "e2e/support/helpers";
+import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
+import {
+  embedModalEnableEmbedding,
+  mockEmbedJsToDevServer,
+} from "e2e/support/helpers";
 
 import {
   codeBlock,
@@ -7,6 +11,8 @@ import {
 } from "./helpers";
 
 const { H } = cy;
+
+const { PRODUCTS, PRODUCTS_ID } = SAMPLE_DATABASE;
 
 const DASHBOARD_NAME = "Orders in a dashboard";
 const QUESTION_NAME = "Orders, Count";
@@ -33,6 +39,15 @@ describe("OSS", { tags: "@OSS" }, () => {
       navigateToEmbedOptionsStep({
         experience: "dashboard",
         resourceName: DASHBOARD_NAME,
+      });
+
+      getEmbedSidebar().findByTestId("upsell-card").should("be.visible");
+    });
+
+    it("should show upsell for Allow alerts option", () => {
+      navigateToEmbedOptionsStep({
+        experience: "chart",
+        resourceName: QUESTION_NAME,
       });
 
       getEmbedSidebar().findByTestId("upsell-card").should("be.visible");
@@ -205,7 +220,11 @@ describe(suiteTitle, () => {
       cy.button("Back").click();
 
       cy.findByLabelText("Metabase account (SSO)").click();
+    });
 
+    embedModalEnableEmbedding();
+
+    getEmbedSidebar().within(() => {
       cy.button("Next").click();
       cy.button("Next").click();
 
@@ -222,10 +241,56 @@ describe(suiteTitle, () => {
 
   it("toggles subscriptions for dashboard when email is set up", () => {
     H.setupSMTP();
+    const dashboardName = "Dashboard with parameter";
+
+    cy.log("Create a dashboard with a single parameter mapped to a card");
+    const parameter = {
+      id: "1b9cd9f1",
+      name: "Category",
+      slug: "category",
+      type: "string/=",
+      sectionId: "string",
+    };
+
+    const questionDetails = {
+      display: "table",
+      query: { "source-table": PRODUCTS_ID },
+    } as const;
+
+    const dashboardDetails = {
+      name: dashboardName,
+      parameters: [parameter],
+    };
+
+    H.createQuestionAndDashboard({
+      questionDetails,
+      dashboardDetails,
+    }).then(({ body: { id, card_id, dashboard_id } }) => {
+      cy.request("PUT", `/api/dashboard/${dashboard_id}`, {
+        dashcards: [
+          {
+            id,
+            card_id,
+            row: 0,
+            col: 0,
+            size_x: 16,
+            size_y: 8,
+            parameter_mappings: [
+              {
+                parameter_id: parameter.id,
+                card_id,
+                target: ["dimension", ["field", PRODUCTS.CATEGORY, null]],
+              },
+            ],
+            visualization_settings: {},
+          },
+        ],
+      });
+    });
 
     navigateToEmbedOptionsStep({
       experience: "dashboard",
-      resourceName: DASHBOARD_NAME,
+      resourceName: dashboardName,
       preselectSso: true,
     });
 
@@ -254,6 +319,11 @@ describe(suiteTitle, () => {
       cy.findByRole("heading", { name: "Email this dashboard" }).should(
         "be.visible",
       );
+
+      cy.log("can customize filter values");
+      cy.findByRole("heading", {
+        name: "Set filter values for when this gets sent",
+      }).should("be.visible");
 
       /**
        * It seems `should("be.visible")` above doesn't not work in iframe.
@@ -410,7 +480,7 @@ describe(suiteTitle, () => {
     H.expectUnstructuredSnowplowEvent({
       event: "embed_wizard_options_completed",
       event_detail:
-        'settings=custom,experience=chart,guestEmbedEnabled=true,guestEmbedType=guest-embed,authType=guest-embed,drills=false,withDownloads=true,withTitle=true,isSaveEnabled=false,params={"disabled":0,"locked":0,"enabled":0},theme=default',
+        'settings=custom,experience=chart,guestEmbedEnabled=true,guestEmbedType=guest-embed,authType=guest-embed,drills=false,withDownloads=true,withAlerts=false,withTitle=true,isSaveEnabled=false,params={"disabled":0,"locked":0,"enabled":0},theme=default',
     });
 
     codeBlock().should("contain", 'with-downloads="true"');
@@ -477,6 +547,140 @@ describe(suiteTitle, () => {
       .should("be.visible");
   });
 
+  it("cannot select alerts for question when email is not set up", () => {
+    navigateToEmbedOptionsStep({
+      experience: "chart",
+      resourceName: QUESTION_NAME,
+    });
+
+    getEmbedSidebar()
+      .findByLabelText("Allow alerts")
+      .should("not.be.checked")
+      .and("be.disabled");
+
+    cy.log("Email warning should only be shown on non-guest embedding");
+    getEmbedSidebar()
+      .findByLabelText("Allow alerts")
+      .closest("[data-testid=tooltip-warning]")
+      .icon("info")
+      .realHover();
+    H.tooltip().should(
+      "contain.text",
+      "Not available if Guest Mode is selected",
+    );
+
+    H.getSimpleEmbedIframeContent()
+      .findByRole("button", { name: "Alerts" })
+      .should("not.exist");
+
+    cy.log("snippet should show alerts as false");
+    getEmbedSidebar().findByText("Get code").click();
+
+    H.expectUnstructuredSnowplowEvent({
+      event: "embed_wizard_options_completed",
+      event_detail: "settings=default",
+    });
+
+    cy.log("test non-guest embeds");
+    getEmbedSidebar().within(() => {
+      cy.button("Back").click();
+      cy.button("Back").click();
+      cy.button("Back").click();
+
+      cy.findByLabelText("Metabase account (SSO)").click();
+    });
+
+    embedModalEnableEmbedding();
+
+    getEmbedSidebar().within(() => {
+      cy.button("Next").click();
+      cy.button("Next").click();
+
+      cy.findByLabelText("Allow alerts")
+        .closest("[data-testid=tooltip-warning]")
+        .icon("info")
+        .realHover();
+    });
+    H.hovercard().should(
+      "contain.text",
+      "To allow alerts, set up email in admin settings",
+    );
+  });
+
+  it("toggles alerts for question when email is set up", () => {
+    H.setupSMTP();
+
+    navigateToEmbedOptionsStep({
+      experience: "chart",
+      resourceName: QUESTION_NAME,
+      preselectSso: true,
+    });
+
+    getEmbedSidebar().findByLabelText("Allow alerts").should("not.be.checked");
+
+    H.getSimpleEmbedIframeContent()
+      .findByRole("button", { name: "Alerts" })
+      .should("not.exist");
+
+    cy.log("turn on alerts");
+    getEmbedSidebar()
+      .findByLabelText("Allow alerts")
+      .click()
+      .should("be.checked");
+
+    cy.log("assert that alert button appears in preview");
+    H.getSimpleEmbedIframeContent()
+      .findByRole("button", { name: "Alerts" })
+      .should("be.visible");
+
+    cy.log(
+      "test that with drills off, alerts still work because it will now render <StaticQuestion /> (from <SdkQuestion />)",
+    );
+    getEmbedSidebar()
+      .findByLabelText("Allow people to drill through on data points")
+      .should("be.checked")
+      .click()
+      .should("not.be.checked");
+    H.getSimpleEmbedIframeContent()
+      .findByRole("button", { name: "Alerts" })
+      .should("be.visible");
+
+    cy.log("assert that unchecking alerts will close the alert modal");
+    const newAlertModalTitle = "New alert";
+    H.getSimpleEmbedIframeContent().within(() => {
+      cy.findByRole("button", { name: "Alerts" }).should("be.visible").click();
+
+      cy.findByRole("heading", { name: newAlertModalTitle }).should(
+        "be.visible",
+      );
+    });
+
+    getEmbedSidebar()
+      .findByLabelText("Allow alerts")
+      .click()
+      .should("not.be.checked");
+    H.getSimpleEmbedIframeContent()
+      .findByRole("heading", { name: newAlertModalTitle })
+      .should("not.exist");
+
+    cy.log("toggle alerts back on");
+    getEmbedSidebar()
+      .findByLabelText("Allow alerts")
+      .click()
+      .should("be.checked");
+
+    cy.log("snippet should be updated");
+    getEmbedSidebar().findByText("Get code").click();
+
+    H.expectUnstructuredSnowplowEvent({
+      event: "embed_wizard_options_completed",
+      event_detail:
+        "settings=custom,experience=chart,authType=sso,drills=false,withDownloads=false,withAlerts=true,withTitle=true,isSaveEnabled=false,theme=default",
+    });
+
+    codeBlock().should("contain", 'with-alerts="true"');
+  });
+
   ["exploration", "chart"].forEach((experience) => {
     it(`toggles save button for ${experience}`, () => {
       navigateToEmbedOptionsStep(
@@ -529,7 +733,7 @@ describe(suiteTitle, () => {
         event: "embed_wizard_options_completed",
         event_detail:
           experience === "chart"
-            ? "settings=custom,experience=chart,authType=sso,drills=true,withDownloads=false,withTitle=true,isSaveEnabled=true,theme=default"
+            ? "settings=custom,experience=chart,authType=sso,drills=true,withDownloads=false,withAlerts=false,withTitle=true,isSaveEnabled=true,theme=default"
             : "settings=custom,experience=exploration,authType=sso,isSaveEnabled=true,theme=default",
       });
 
@@ -701,9 +905,12 @@ describe(suiteTitle, () => {
 
     // derived-colors-for-embed-flow.unit.spec.ts contains the tests for other derived colors.
     cy.log("dark mode colors should be derived");
-    codeBlock().should("contain", '"background-hover": "rgb(27, 27, 27)"');
     codeBlock().should("contain", '"text-secondary": "rgb(169, 169, 169)"');
     codeBlock().should("contain", '"brand-hover": "rgba(189, 81, 253, 0.5)"');
+
+    // Should no longer derive background-hover as it is color-mix'd
+    // in the colors configuration
+    codeBlock().should("not.contain", '"background-hover"');
   });
 
   it("can toggle the Metabot layout from auto to stacked to sidebar", () => {

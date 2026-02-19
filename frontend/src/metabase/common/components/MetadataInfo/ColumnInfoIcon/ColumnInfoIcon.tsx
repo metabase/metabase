@@ -1,6 +1,7 @@
 import { t } from "ttag";
 
 import { getColumnIcon } from "metabase/common/utils/columns";
+import type { ColorName } from "metabase/lib/colors/types";
 import type { IconName } from "metabase/ui";
 
 import type {
@@ -16,12 +17,13 @@ import {
   PopoverDefaultIcon,
   PopoverHoverTarget,
 } from "../InfoIcon";
+
 export { HoverParent };
 
 type QueryColumnInfoIconProps = QueryColumnInfoPopoverProps & {
   size?: number;
   icon?: IconName;
-  color?: string;
+  color?: ColorName;
 };
 
 export function QueryColumnInfoIcon({
@@ -41,7 +43,7 @@ export function QueryColumnInfoIcon({
             className={className}
             name={icon ?? getColumnIcon(column)}
             size={size}
-            color={color}
+            c={color}
           />
           <PopoverHoverTarget className={className} name="info" size={size} />
         </span>
@@ -55,7 +57,7 @@ QueryColumnInfoIcon.HoverParent = HoverParent;
 type TableColumnInfoIconProps = TableColumnInfoPopoverProps & {
   icon: IconName;
   size?: number;
-  color?: string;
+  color?: ColorName;
 };
 
 export function TableColumnInfoIcon({
@@ -73,7 +75,7 @@ export function TableColumnInfoIcon({
           className={className}
           name={icon}
           size={size}
-          color={color}
+          c={color}
         />
         <PopoverHoverTarget className={className} name="info" size={size} />
       </span>

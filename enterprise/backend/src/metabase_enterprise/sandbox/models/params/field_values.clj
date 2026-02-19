@@ -27,7 +27,7 @@
                              :table_id table-id)]
     (when sandboxes
       (sandboxing/assert-one-sandbox-per-table sandboxes)
-      ;; there shold be only one gtap per table and we only need one table here
+      ;; there should be only one gtap per table and we only need one table here
       ;; see docs in [[metabase.permissions.models.permissions]] for more info
       (t2/hydrate (first sandboxes) :card))))
 
@@ -67,7 +67,7 @@
          (into {} (for [[k v] attribute_remappings
                         ;; get attribute that map to fields of the same table
                         :when (contains? field-ids
-                                         (lib.util.match/match-one v
+                                         (lib.util.match/match-lite v
                                            ;; new style with {:stage-number }
                                            [:dimension [:field field-id _] _] field-id
                                            ;; old style without stage number

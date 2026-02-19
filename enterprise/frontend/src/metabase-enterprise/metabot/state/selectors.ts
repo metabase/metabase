@@ -1,9 +1,10 @@
 import { createSelector } from "@reduxjs/toolkit";
+import { match } from "ts-pattern";
 import _ from "underscore";
 
-import * as Urls from "metabase/lib/urls";
 import { getIsEmbedding } from "metabase/selectors/embed";
 import { getLocation } from "metabase/selectors/routing";
+import { Urls } from "metabase-enterprise/urls";
 import type { TransformId } from "metabase-types/api";
 
 import {
@@ -33,15 +34,6 @@ export const getActiveMetabotAgentIds = createSelector(
 
 export const getMetabotId = createSelector(getIsEmbedding, (isEmbedding) =>
   isEmbedding ? FIXED_METABOT_IDS.EMBEDDED : FIXED_METABOT_IDS.DEFAULT,
-);
-
-export const getUseCase = createSelector(
-  getLocation,
-  (location): "transforms" | "omnibot" => {
-    return location.pathname.startsWith(Urls.transformList())
-      ? "transforms"
-      : "omnibot";
-  },
 );
 
 export const getDebugMode = createSelector(
@@ -120,6 +112,11 @@ export const getMessages = createSelector(
       ? messages
       : messages.filter((msg) => msg.type !== "tool_call");
   },
+);
+
+export const getDeveloperMessage = createSelector(
+  getMetabotConversation,
+  (convo) => convo.experimental.developerMessage,
 );
 
 export const getActiveToolCalls = createSelector(
@@ -201,18 +198,43 @@ export const getProfileOverride = createSelector(
   (convo) => convo.profileOverride,
 );
 
+export const getProfile = createSelector(
+  [getProfileOverride, getDebugMode, getLocation],
+  (profileOverride, debugMode, location) => {
+    const isTransformsPage = location.pathname.startsWith(Urls.transformList());
+    return match({ debugMode, isTransformsPage })
+      .with(
+        { debugMode: false, isTransformsPage: true },
+        () => "transforms_codegen",
+      )
+      .with(
+        { debugMode: true, isTransformsPage: true },
+        () => profileOverride ?? "transforms_codegen",
+      )
+      .otherwise(() => profileOverride);
+  },
+);
+
 export const getAgentRequestMetadata = createSelector(
   getHistory,
   getMetabotRequestState,
-  getUseCase,
-  getProfileOverride,
-  (history, state, useCase, profileOverride) => ({
+  getProfile,
+  (history, state, profile) => ({
     state,
     // NOTE: need end to end support for ids on messages as BE will error if ids are present
     history: history.map((h) =>
       h.id && h.id.startsWith(`msg_`) ? _.omit(h, "id") : h,
     ),
-    use_case: useCase,
-    ...(profileOverride ? { profile_id: profileOverride } : {}),
+    ...(profile ? { profile_id: profile } : {}),
   }),
+);
+
+export const getMetabotSuggestedCodeEdits = createSelector(
+  getMetabotReactionsState,
+  (reactionsState) => reactionsState.suggestedCodeEdits,
+);
+
+export const getMetabotSuggestedCodeEdit = createSelector(
+  [getMetabotSuggestedCodeEdits, (_, bufferId: string) => bufferId],
+  (suggestedCodeEdits, bufferId) => suggestedCodeEdits[bufferId],
 );

@@ -595,6 +595,21 @@
           (is (= expected
                  (query->params-map (query-with-snippet :snippet-id 1, :snippet-name "Old Name")))))))))
 
+(deftest ^:parallel unnormalized-snippet-test
+  (testing "Snippet parsing should normalize snippet names when parsing"
+    (mt/with-temp [:model/NativeQuerySnippet {snippet-id :id} {:name    "expensive-venues"
+                                                               :content "venues WHERE price = 4"}]
+      (let [expected {"snippet: expensive-venues" (params/map->ReferencedQuerySnippet {:snippet-id snippet-id
+                                                                                       :content    "venues WHERE price = 4"})}
+            query (assoc (mt/native-query {:query "SELECT * FROM {{snippet:expensive-venues}}"})
+                         :template-tags {"snippet:expensive-venues" {:type :snippet
+                                                                     :name         "expensive-venues"
+                                                                     :display-name "Expensive Venues"
+                                                                     :snippet-name "expensive-venues"
+                                                                     :snippet-id snippet-id}})]
+        (is (= expected
+               (query->params-map query)))))))
+
 (deftest ^:parallel invalid-param-test
   (testing "Should throw an Exception if we try to pass with a `:type` we don't understand"
     (let [query (assoc (mt/native-query {:query "SELECT * FROM table WHERE {{x}}"})

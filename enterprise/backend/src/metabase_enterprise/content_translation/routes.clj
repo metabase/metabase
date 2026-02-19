@@ -26,6 +26,16 @@
                                     {:locale "ja" :msgid "Sample translation" :msgstr "サンプル翻訳"}
                                     {:locale "ko" :msgid "Sample translation" :msgstr "샘플 번역"}])
 
+(def ^:private Translation
+  [:map
+   [:locale ms/NonBlankString]
+   [:msgid ms/NonBlankString]
+   [:msgstr :string]])
+
+(def ^:private DictionaryResponse
+  [:map
+   [:data [:sequential Translation]]])
+
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
 ;;
@@ -91,6 +101,13 @@
   (if locale
     {:data (ct/get-translations (i18n/normalized-locale-string (str/trim locale)))}
     (throw (ex-info (str (tru "Locale is required.")) {:status-code 400}))))
+
+(api.macros/defendpoint :get "/dictionary" :- DictionaryResponse
+  "Fetch the content translation dictionary for authenticated users (auth-based embedding flows)."
+  [_route-params
+   {:keys [locale]} :- [:map [:locale :string]]]
+  (api/check api/*current-user-id* 401 "Unauthenticated")
+  {:data (ct/get-translations (i18n/normalized-locale-string (str/trim locale)))})
 
 (defn- +require-content-translation [handler]
   (ee.api/+require-premium-feature :content-translation (deferred-tru "Content translation") handler))

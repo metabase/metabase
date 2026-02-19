@@ -13,6 +13,7 @@ import {
   TOOLTIP_SETTINGS,
 } from "metabase/visualizations/lib/settings/graph";
 import {
+  validateBreakoutSeriesCount,
   validateChartDataSettings,
   validateDatasetRows,
   validateStacking,
@@ -50,6 +51,7 @@ export const getCartesianChartDefinition = (
 
     checkRenderable(series, settings) {
       validateDatasetRows(series);
+      validateBreakoutSeriesCount(series, settings);
       validateChartDataSettings(settings);
       validateStacking(settings);
     },

@@ -140,11 +140,8 @@ const BaseInput = forwardRef(function Input(
 /**
  * @deprecated: use TextInput from "metabase/ui"
  */
-const Input = Object.assign(BaseInput, {
+export const Input = Object.assign(BaseInput, {
   Root: InputRoot,
   Field: InputField,
   Subtitle: InputSubtitle,
 });
-
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default Input;

@@ -4,7 +4,7 @@
    [clojure.test :refer :all]
    [metabase-enterprise.metabot-v3.util :as metabot.u]))
 
-(deftest aisdk-line-parse-test
+(deftest ^:parallel aisdk-line-parse-test
   (testing "We should be able to parse AI SDK streaming format to ai-service format 1"
     (is (=? [{:role       "assistant"
               :_type      :TOOL_CALL
@@ -64,5 +64,39 @@
               :usage         {}}]
             (metabot.u/aisdk->messages "assistant"
                                        (-> (io/resource "metabase_enterprise/metabot_v3/aisdkstream2.txt")
+                                           io/reader
+                                           line-seq)))))
+  (testing "We should be able to parse AI SDK streaming format with error messages 3"
+    (is (=? [{:role    "assistant"
+              :_type   :ERROR
+              :content #"litellm.ServiceUnavailableError: litellm.MidStreamFallbackError:.*Connection closed."}
+             {:finish_reason "error"
+              :_type         :FINISH_MESSAGE
+              :usage         {}}]
+            (metabot.u/aisdk->messages "assistant"
+                                       (-> (io/resource "metabase_enterprise/metabot_v3/aisdkstream3.txt")
+                                           io/reader
+                                           line-seq)))))
+  (testing "We should be able to parse AI SDK streaming format with error messages 4"
+    (is (=? [{:role    "assistant"
+              :_type   :TEXT
+              :content #"(?s)I'll help.*find the right source."}
+             {:role       "assistant"
+              :_type      :TOOL_CALL
+              :tool_calls [{:id        "toolu_bdrk_01GPPfFCzqWpZhsDdGMi9mYi"
+                            :name      "search"
+                            :arguments #"\{\"semantic_queries\":.*\}"}]}
+             {:role         "tool"
+              :_type        :TOOL_RESULT
+              :tool_call_id "toolu_bdrk_01GPPfFCzqWpZhsDdGMi9mYi"
+              :content      #"(?s)\n<result>.*</instructions>"}
+             {:role    "assistant"
+              :_type   :ERROR
+              :content #"litellm.Timeout: Timeout Error: OpenrouterException.*seconds"}
+             {:finish_reason "error"
+              :_type         :FINISH_MESSAGE
+              :usage         {}}]
+            (metabot.u/aisdk->messages "assistant"
+                                       (-> (io/resource "metabase_enterprise/metabot_v3/aisdkstream4.txt")
                                            io/reader
                                            line-seq))))))

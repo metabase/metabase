@@ -830,12 +830,12 @@
     (let [query (lib/query meta/metadata-provider (meta/table-metadata :categories))]
       (is (not (set/subset?
                 #{:avg :sum}
-                (set (mapv :short (lib/available-aggregation-operators query)))))
-          (is (set/subset?
-               #{:avg :sum}
-               (set (mapv :short (-> query
-                                     (lib/join (meta/table-metadata :venues))
-                                     lib/available-aggregation-operators)))))))))
+                (set (mapv :short (lib/available-aggregation-operators query))))))
+      (is (set/subset?
+           #{:avg :sum}
+           (set (mapv :short (-> query
+                                 (lib/join (meta/table-metadata :venues))
+                                 lib/available-aggregation-operators))))))))
 
 (deftest ^:synchronized selected-aggregation-operators-skip-marking-columns-for-non-refs-test
   (testing "when the aggregation's argument is not a column ref, don't try to mark selected columns"
@@ -952,4 +952,38 @@
                   :name         "max"}]
                 (lib/aggregations-metadata query 1)))))))
 
-;; trivial change to test CI; remove this next time you see it
+(deftest ^:parallel aggregation-display-name-patterns-test
+  (testing "aggregation-display-name-patterns returns patterns with prefix and suffix"
+    (let [patterns (lib.aggregation/aggregation-display-name-patterns)]
+      (testing "returns a non-empty vector"
+        (is (vector? patterns))
+        (is (pos? (count patterns))))
+      (testing "each pattern has :prefix and :suffix keys"
+        (doseq [pattern patterns]
+          (is (contains? pattern :prefix))
+          (is (contains? pattern :suffix))
+          (is (string? (:prefix pattern)))
+          (is (string? (:suffix pattern)))))
+      (testing "includes expected aggregation patterns"
+        (let [prefixes (set (map :prefix patterns))]
+          (is (contains? prefixes "Sum of "))
+          (is (contains? prefixes "Average of "))
+          (is (contains? prefixes "Distinct values of "))
+          (is (contains? prefixes "Max of "))
+          (is (contains? prefixes "Min of "))
+          (is (contains? prefixes "Count of "))))
+      (testing "includes pattern with suffix (sum-where)"
+        (is (some #(= " matching condition" (:suffix %)) patterns))))))
+
+(deftest ^:parallel aggregation-display-name-patterns-order-test
+  (testing "more specific patterns (with suffix) come before general patterns"
+    (let [patterns (lib.aggregation/aggregation-display-name-patterns)
+          sum-where-idx (some #(when (= " matching condition" (:suffix (second %))) (first %))
+                              (map-indexed vector patterns))
+          sum-idx (some #(when (and (= "Sum of " (:prefix (second %)))
+                                    (= "" (:suffix (second %))))
+                           (first %))
+                        (map-indexed vector patterns))]
+      (when (and sum-where-idx sum-idx)
+        (is (< sum-where-idx sum-idx)
+            "Sum-where pattern should come before plain Sum pattern")))))

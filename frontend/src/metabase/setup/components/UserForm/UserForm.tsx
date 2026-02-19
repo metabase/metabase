@@ -3,8 +3,8 @@ import { t } from "ttag";
 import _ from "underscore";
 import * as Yup from "yup";
 
-import FormInput from "metabase/common/components/FormInput";
-import FormSubmitButton from "metabase/common/components/FormSubmitButton";
+import { FormInput } from "metabase/common/components/FormInput";
+import { FormSubmitButton } from "metabase/common/components/FormSubmitButton";
 import { Form, FormProvider, useFormSubmitButton } from "metabase/forms";
 import * as Errors from "metabase/lib/errors";
 import { validatePassword } from "metabase/setup/utils";

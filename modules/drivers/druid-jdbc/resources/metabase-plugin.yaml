@@ -8,15 +8,21 @@ driver:
   lazy-load: true
   parent: sql-jdbc
   connection-properties:
-    - merge:
-        - host
-        - placeholder: http://localhost
-          required: true
-    - merge:
-        - port
-        - display-name: Router node port
-          placeholder: 8888
-    - ssh-tunnel
+    - group:
+        container-style: ["grid", "3fr 1fr"]
+        fields:
+          - merge:
+              - host
+              - placeholder: http://localhost
+                required: true
+          - merge:
+              - port
+              - display-name: Router node port
+                placeholder: 8888
+    - group:
+        container-style: ["component", "backdrop"]
+        fields:
+        - ssh-tunnel
     - advanced-options-start
     - name: json-unfolding
       display-name: Allow unfolding of JSON columns

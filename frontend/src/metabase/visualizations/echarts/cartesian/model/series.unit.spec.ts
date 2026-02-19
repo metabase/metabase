@@ -126,7 +126,7 @@ describe("series", () => {
         });
       });
 
-      it("should return a series model with overriden name", () => {
+      it("should return a series model with overridden name", () => {
         const rawSeries = [metricSeries];
         const cardsColumns = [metricColumns];
 
@@ -228,7 +228,7 @@ describe("series", () => {
         });
       });
 
-      it("should return a series model with overriden names", () => {
+      it("should return a series model with overridden names", () => {
         const rawSeries = [breakoutSeries];
         const cardsColumns = [breakoutColumns];
 
@@ -345,7 +345,7 @@ describe("series", () => {
         });
       });
 
-      it("should return series models of two combined cards with overriden names", () => {
+      it("should return series models of two combined cards with overridden names", () => {
         const result = getCardsSeriesModels(
           rawSeries,
           cardsColumns,

@@ -1,6 +1,6 @@
 import { Route } from "react-router";
 
-import { setupEnterprisePlugins } from "__support__/enterprise";
+import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
 import {
   setupCardEndpoints,
   setupCardQueryEndpoints,
@@ -208,18 +208,18 @@ export type SetupOpts = {
   metricCount?: number;
   recentMetricCount?: number;
   showMetabaseLinks?: boolean;
-  hasEnterprisePlugins?: boolean;
   tokenFeatures?: Partial<TokenFeatures>;
   canCreateQueries?: boolean;
+  enterprisePlugins?: Parameters<typeof setupEnterpriseOnlyPlugin>[0][];
 };
 
 export function setup({
   metricCount = Infinity,
   recentMetricCount = 5,
   showMetabaseLinks = true,
-  hasEnterprisePlugins,
   tokenFeatures = {},
   canCreateQueries = true,
+  enterprisePlugins = [],
 }: SetupOpts = {}) {
   const state = createMockState({
     setup: createMockSetupState({
@@ -237,9 +237,9 @@ export function setup({
     }),
   });
 
-  if (hasEnterprisePlugins) {
-    setupEnterprisePlugins();
-  }
+  enterprisePlugins.forEach((plugin) => {
+    setupEnterpriseOnlyPlugin(plugin);
+  });
 
   const mockMetricResults = mockMetrics.map(createMockMetricResult);
   const mockRecentMetrics = mockMetrics.map((metric) =>

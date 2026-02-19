@@ -6,6 +6,7 @@ import Question from "metabase-lib/v1/Question";
 import Database from "metabase-lib/v1/metadata/Database";
 import Field from "metabase-lib/v1/metadata/Field";
 import ForeignKey from "metabase-lib/v1/metadata/ForeignKey";
+import Measure from "metabase-lib/v1/metadata/Measure";
 import Metadata from "metabase-lib/v1/metadata/Metadata";
 import Schema from "metabase-lib/v1/metadata/Schema";
 import Segment from "metabase-lib/v1/metadata/Segment";
@@ -20,6 +21,7 @@ import type {
   NormalizedDatabase,
   NormalizedField,
   NormalizedForeignKey,
+  NormalizedMeasure,
   NormalizedSchema,
   NormalizedSegment,
   NormalizedTable,
@@ -86,6 +88,7 @@ const getNormalizedFields = createSelector(
 );
 
 const getNormalizedSegments = (state: State) => state.entities.segments;
+const getNormalizedMeasures = (state: State) => state.entities.measures ?? {};
 const getNormalizedQuestions = (state: State) => state.entities.questions;
 const getNormalizedSnippets = (state: State) => state.entities.snippets;
 
@@ -93,6 +96,7 @@ export const getShallowDatabases = getNormalizedDatabases;
 export const getShallowTables = getNormalizedTables;
 export const getShallowFields = getNormalizedFields;
 export const getShallowSegments = getNormalizedSegments;
+export const getShallowMeasures = getNormalizedMeasures;
 
 export const getMetadata: (
   state: State,
@@ -104,6 +108,7 @@ export const getMetadata: (
     getNormalizedTables,
     getNormalizedFields,
     getNormalizedSegments,
+    getNormalizedMeasures,
     getNormalizedQuestions,
     getNormalizedSnippets,
     getSettings,
@@ -114,6 +119,7 @@ export const getMetadata: (
     tables,
     fields,
     segments,
+    measures,
     questions,
     snippets,
     settings,
@@ -137,6 +143,9 @@ export const getMetadata: (
     metadata.segments = Object.fromEntries(
       Object.values(segments).map((s) => [s.id, createSegment(s, metadata)]),
     );
+    metadata.measures = Object.fromEntries(
+      Object.values(measures).map((m) => [m.id, createMeasure(m, metadata)]),
+    );
     metadata.questions = Object.fromEntries(
       Object.values(questions).map((c) => [c.id, createQuestion(c, metadata)]),
     );
@@ -156,6 +165,7 @@ export const getMetadata: (
       table.fields = hydrateTableFields(table, metadata);
       table.fks = hydrateTableForeignKeys(table, metadata);
       table.segments = hydrateTableSegments(table, metadata);
+      table.measures = hydrateTableMeasures(table, metadata);
       table.metrics = hydrateTableMetrics(table, metadata);
     });
     Object.values(metadata.databases).forEach((database) => {
@@ -166,6 +176,9 @@ export const getMetadata: (
     });
     Object.values(metadata.segments).forEach((segment) => {
       segment.table = hydrateSegmentTable(segment, metadata);
+    });
+    Object.values(metadata.measures).forEach((measure) => {
+      measure.table = hydrateMeasureTable(measure, metadata);
     });
     Object.values(metadata.fields).forEach((field) => {
       hydrateField(field, metadata);
@@ -244,6 +257,15 @@ function createSegment(
   metadata: Metadata,
 ): Segment {
   const instance = new Segment(segment);
+  instance.metadata = metadata;
+  return instance;
+}
+
+function createMeasure(
+  measure: NormalizedMeasure,
+  metadata: Metadata,
+): Measure {
+  const instance = new Measure(measure);
   instance.metadata = metadata;
   return instance;
 }
@@ -360,6 +382,11 @@ function hydrateTableSegments(table: Table, metadata: Metadata): Segment[] {
   return segmentIds.map((id) => metadata.segment(id)).filter(isNotNull);
 }
 
+function hydrateTableMeasures(table: Table, metadata: Metadata): Measure[] {
+  const measureIds = table.getPlainObject().measures ?? [];
+  return measureIds.map((id) => metadata.measure(id)).filter(isNotNull);
+}
+
 function hydrateTableMetrics(table: Table, metadata: Metadata): Question[] {
   const metricIds = table.getPlainObject().metrics ?? [];
   return metricIds.map((id) => metadata.question(id)).filter(isNotNull);
@@ -391,4 +418,11 @@ function hydrateSegmentTable(
   metadata: Metadata,
 ): Table | undefined {
   return metadata.table(segment.table_id) ?? undefined;
+}
+
+function hydrateMeasureTable(
+  measure: Measure,
+  metadata: Metadata,
+): Table | undefined {
+  return metadata.table(measure.table_id) ?? undefined;
 }

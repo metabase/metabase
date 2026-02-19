@@ -51,7 +51,6 @@ describe("scenarios > organization > entity picker > shared-tenant-collection na
         H.popover().findByText("Move").click();
 
         H.entityPickerModal().within(() => {
-          H.entityPickerModalTab("Browse").click();
           cy.findByText(TENANT_ROOT_NAME).should("be.visible");
         });
       });
@@ -65,7 +64,6 @@ describe("scenarios > organization > entity picker > shared-tenant-collection na
       H.popover().findByText("Move").click();
 
       H.entityPickerModal().within(() => {
-        H.entityPickerModalTab("Browse").click();
         cy.findByText(TENANT_ROOT_NAME).should("not.exist");
       });
     });
@@ -77,7 +75,6 @@ describe("scenarios > organization > entity picker > shared-tenant-collection na
         H.popover().findByText("Move").click();
 
         H.entityPickerModal().within(() => {
-          H.entityPickerModalTab("Browse").click();
           cy.findByText(TENANT_ROOT_NAME).click();
 
           cy.findByText("Test Tenant Collection").should("be.visible");
@@ -101,7 +98,6 @@ describe("scenarios > organization > entity picker > shared-tenant-collection na
         });
 
         H.entityPickerModal().within(() => {
-          H.entityPickerModalTab("Collections").click();
           cy.findByText(TENANT_ROOT_NAME).click();
 
           cy.button("Select").should("not.be.disabled");
@@ -124,7 +120,6 @@ describe("scenarios > organization > entity picker > shared-tenant-collection na
             H.popover().findByText("Move").click();
 
             H.entityPickerModal().within(() => {
-              H.entityPickerModalTab("Collections").click();
               cy.findByText(TENANT_ROOT_NAME).should("not.exist");
 
               // Close the modal
@@ -156,7 +151,6 @@ describe("scenarios > organization > entity picker > shared-tenant-collection na
         });
 
         H.entityPickerModal().within(() => {
-          H.entityPickerModalTab("Collections").click();
           cy.findByText(TENANT_ROOT_NAME).click();
 
           cy.button("Select").should("be.disabled");
@@ -175,7 +169,6 @@ describe("scenarios > organization > entity picker > shared-tenant-collection na
         });
 
         H.entityPickerModal().within(() => {
-          H.entityPickerModalTab("Collections").click();
           cy.findByText(TENANT_ROOT_NAME).click();
           cy.findByText("Test Tenant Collection").click();
 
@@ -204,7 +197,6 @@ describe("scenarios > organization > entity picker > shared-tenant-collection na
           H.popover().findByText("Move").click();
 
           H.entityPickerModal().within(() => {
-            H.entityPickerModalTab("Collections").click();
             cy.findByText(TENANT_ROOT_NAME).click();
 
             cy.button("Move").should("be.disabled");
@@ -224,6 +216,7 @@ describe("scenarios > organization > entity picker > shared-tenant-collection na
         H.miniPickerBrowseAll().click();
         H.entityPickerModal().within(() => {
           H.entityPickerModalItem(0, "Databases").click();
+          H.entityPickerModalItem(1, "Sample Database").click();
           cy.findByText("Orders").click();
         });
 
@@ -235,7 +228,6 @@ describe("scenarios > organization > entity picker > shared-tenant-collection na
         });
 
         H.entityPickerModal().within(() => {
-          H.entityPickerModalTab("Browse").click();
           cy.findByText(TENANT_ROOT_NAME).click();
 
           cy.button("Select this collection").should("be.disabled");
@@ -249,6 +241,7 @@ describe("scenarios > organization > entity picker > shared-tenant-collection na
         H.miniPickerBrowseAll().click();
         H.entityPickerModal().within(() => {
           H.entityPickerModalItem(0, "Databases").click();
+          H.entityPickerModalItem(1, "Sample Database").click();
           cy.findByText("Orders").click();
         });
 
@@ -260,7 +253,6 @@ describe("scenarios > organization > entity picker > shared-tenant-collection na
         });
 
         H.entityPickerModal().within(() => {
-          H.entityPickerModalTab("Browse").click();
           cy.findByText(TENANT_ROOT_NAME).click();
           cy.findByText("Test Tenant Collection").click();
 
@@ -289,7 +281,6 @@ describe("scenarios > organization > entity picker > shared-tenant-collection na
         H.popover().findByText("Move").click();
 
         H.entityPickerModal().within(() => {
-          H.entityPickerModalTab("Browse").click();
           cy.findByText(TENANT_ROOT_NAME).click();
 
           cy.button("Move").should("be.disabled");
@@ -352,7 +343,6 @@ describe("scenarios > organization > entity picker > shared-tenant-collection na
         H.popover().findByText("Add to dashboard").click();
 
         H.entityPickerModal().within(() => {
-          H.entityPickerModalTab("Dashboards").click();
           cy.findByText(TENANT_ROOT_NAME).click();
           cy.button(/New dashboard/).should("be.disabled");
         });

@@ -103,6 +103,7 @@ import powYScaleCustomYAxisRange from "./pow-y-scale-custom-y-axis-range.json";
 import safariNonIanaTimezoneRepro44128 from "./safari-non-iana-timezone-repro-44128.json";
 import seriesOrderSettingsDoNotMatchSeriesCount from "./series-order-settings-do-not-match-series-count.json";
 import stackedChartCustomYAxisRange from "./stacked-chart-custom-y-axis-range.json";
+import symlogDecimals from "./symlog-decimals.json";
 import ticksNativeWeekWithGapLongRange from "./ticks-native-week-with-gap-long-range.json";
 import ticksNativeWeekWithGapShortRange from "./ticks-native-week-with-gap-short-range.json";
 import timeSeriesTicksCompactFormattingMixedTimezones from "./time-series-ticks-compact-formatting-mixed-timezones.json";
@@ -248,6 +249,7 @@ export const data = {
   combinedWithInvalidSettings,
   stackedChartCustomYAxisRange,
   seriesOrderSettingsDoNotMatchSeriesCount,
+  symlogDecimals,
   trendGoalLinesWithScalingPowScaleCustomRange,
   barStackedAllLabelsTimeseriesWithGap45717,
   offsetBasedTimezone47835,

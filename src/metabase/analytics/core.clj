@@ -43,6 +43,7 @@
 
  [metabase.analytics.settings
 
+  analytics-uuid
   anon-tracking-enabled
   anon-tracking-enabled!
   instance-creation]

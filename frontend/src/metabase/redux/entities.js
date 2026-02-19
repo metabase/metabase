@@ -9,6 +9,7 @@ const entitiesArray = Object.values({
 
 export const { entities, reducer, requestsReducer } =
   combineEntities(entitiesArray);
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default reducer;
 
 export const enhanceRequestsReducer = (originalRequestsReducer) => {

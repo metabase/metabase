@@ -85,7 +85,7 @@ export const PublicLinkCopyPanel = ({
                 data-testid="extension-option"
                 key={extension}
                 tt="uppercase"
-                c={extension === selectedExtension ? "brand" : "text-light"}
+                c={extension === selectedExtension ? "brand" : "text-tertiary"}
                 fw={700}
                 onClick={() =>
                   onChangeExtension?.(

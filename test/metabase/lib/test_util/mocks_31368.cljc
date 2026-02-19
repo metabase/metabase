@@ -23,9 +23,9 @@
   (for [col (lib/returned-columns
              (lib/query meta/metadata-provider legacy-card-query))]
     (cond-> col
-      (:source-alias col)
+      (:lib/original-join-alias col)
       (update :display-name (fn [display-name]
-                              (str (:source-alias col) " → " display-name))))))
+                              (str (:lib/original-join-alias col) " → " display-name))))))
 
 (defn query-with-legacy-source-card
   "An MLv2 query that has a `:source-card` that has a legacy query, and legacy metadata."

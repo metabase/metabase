@@ -100,13 +100,12 @@ visualization_settings:
     - null
     name: group_name
   table.pivot_column: group_id
-card_schema: 22
+card_schema: 23
 serdes/meta:
 - {id: zn_VtBXm5-teZmXpwGcNu, label: member_of, model: Card}
 archived_directly: false
 dashboard_id: DHMhMa1FYxiyIgM7_xdgR
 document_id: null
 embedding_type: null
-published_table_id: null
 source_card_id: lTp-ATFsCUFEr9I0fMEaO
 type: question

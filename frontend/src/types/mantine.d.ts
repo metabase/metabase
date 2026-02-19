@@ -1,4 +1,7 @@
+import type { MantineColorsTuple } from "@mantine/core";
+
 import type { EmbeddingThemeOptions } from "metabase/embedding-sdk/theme/private";
+import type { ColorName } from "metabase/lib/colors/types";
 import type { ColorSettings } from "metabase-types/api/settings";
 
 interface _EmotionCompatibilityTheme {
@@ -17,5 +20,14 @@ declare module "@mantine/core" {
     colorScheme: "light" | "dark";
     updateColorSettings: (settings: ColorSettings) => void;
   }
+
+  // eslint-disable-next-line @typescript-eslint/no-empty-object-type -- module augment
   export interface MantineTheme extends _EmotionCompatibilityTheme {}
+
+  export interface MantineThemeColorsOverride {
+    colors: Record<
+      ColorName | "inherit" | "transparent" | "currentColor" | "none" | "unset",
+      MantineColorsTuple
+    >;
+  }
 }
