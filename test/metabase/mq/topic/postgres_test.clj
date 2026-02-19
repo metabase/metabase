@@ -30,14 +30,14 @@
     (tpt/with-postgres-topics
       (let [received (atom [])
             topic    :topic/postgres-test]
-        (tp.backend/subscribe! :topic.backend/postgres topic "test-sub"
+        (tp.backend/subscribe! :topic.backend/postgres topic
                                (fn [{:keys [messages]}]
                                  (swap! received into messages)))
         (tp.backend/publish! :topic.backend/postgres topic ["hello-pg"])
         (Thread/sleep 2000)
         (testing "Subscriber receives message via LISTEN/NOTIFY"
           (is (= ["hello-pg"] @received)))
-        (tp.backend/unsubscribe! :topic.backend/postgres topic "test-sub")))))
+        (tp.backend/unsubscribe! :topic.backend/postgres topic)))))
 
 (deftest large-message-fallback-test
   (when (postgres?)
@@ -46,7 +46,7 @@
             topic    :topic/pg-large-msg-test
             ;; Create a message larger than 7500 bytes
             large-msg (apply str (repeat 8000 "x"))]
-        (tp.backend/subscribe! :topic.backend/postgres topic "large-sub"
+        (tp.backend/subscribe! :topic.backend/postgres topic
                                (fn [{:keys [messages]}]
                                  (swap! received into messages)))
         (tp.backend/publish! :topic.backend/postgres topic [large-msg])
@@ -54,43 +54,23 @@
         (testing "Large message is delivered via table fallback"
           (is (= 1 (count @received)))
           (is (= large-msg (first @received))))
-        (tp.backend/unsubscribe! :topic.backend/postgres topic "large-sub")
+        (tp.backend/unsubscribe! :topic.backend/postgres topic)
         ;; cleanup fallback rows
-        (t2/delete! :topic_message :topic_name (name topic))))))
-
-(deftest fan-out-test
-  (when (postgres?)
-    (tpt/with-postgres-topics
-      (let [received-a (atom [])
-            received-b (atom [])
-            topic      :topic/pg-fan-out-test]
-        (tp.backend/subscribe! :topic.backend/postgres topic "fan-a"
-                               (fn [{:keys [messages]}]
-                                 (swap! received-a into messages)))
-        (tp.backend/subscribe! :topic.backend/postgres topic "fan-b"
-                               (fn [{:keys [messages]}]
-                                 (swap! received-b into messages)))
-        (tp.backend/publish! :topic.backend/postgres topic ["broadcast"])
-        (Thread/sleep 2000)
-        (testing "Both subscribers receive the broadcast"
-          (is (= ["broadcast"] @received-a))
-          (is (= ["broadcast"] @received-b)))
-        (tp.backend/unsubscribe! :topic.backend/postgres topic "fan-a")
-        (tp.backend/unsubscribe! :topic.backend/postgres topic "fan-b")))))
+        (t2/delete! :topic_message_batch :topic_name (name topic))))))
 
 (deftest unsubscribe-test
   (when (postgres?)
     (tpt/with-postgres-topics
       (let [received (atom [])
             topic    :topic/pg-unsub-test]
-        (tp.backend/subscribe! :topic.backend/postgres topic "unsub-handler"
+        (tp.backend/subscribe! :topic.backend/postgres topic
                                (fn [{:keys [messages]}]
                                  (swap! received into messages)))
         (tp.backend/publish! :topic.backend/postgres topic ["before-unsub"])
         (Thread/sleep 2000)
         (testing "Receives before unsubscribe"
           (is (= ["before-unsub"] @received)))
-        (tp.backend/unsubscribe! :topic.backend/postgres topic "unsub-handler")
+        (tp.backend/unsubscribe! :topic.backend/postgres topic)
         (tp.backend/publish! :topic.backend/postgres topic ["after-unsub"])
         (Thread/sleep 2000)
         (testing "Does not receive after unsubscribe"

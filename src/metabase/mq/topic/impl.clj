@@ -24,25 +24,22 @@
   (topic.backend/publish! topic.backend/*backend* topic-name messages))
 
 (mu/defn subscribe!
-  "Subscribes to a topic with the given subscriber name and handler function.
+  "Subscribes to a topic with the given handler function.
   The handler receives a map with `:batch-id` and `:messages` keys for each row.
   Each node that subscribes receives every message published after subscribing."
   [topic-name :- :metabase.mq.topic/topic-name
-   subscriber-name :- :string
    handler :- fn?]
-  (topic.backend/subscribe! topic.backend/*backend* topic-name subscriber-name handler))
+  (when (get @topic.backend/*handlers* topic-name)
+    (throw (ex-info "Handler already registered for topic"
+                    {:topic topic-name})))
+  (swap! topic.backend/*handlers* assoc topic-name handler)
+  (topic.backend/subscribe! topic.backend/*backend* topic-name handler))
 
 (mu/defn unsubscribe!
-  "Unsubscribes from a topic, stopping the polling loop for this subscriber."
-  [topic-name :- :metabase.mq.topic/topic-name
-   subscriber-name :- :string]
-  (topic.backend/unsubscribe! topic.backend/*backend* topic-name subscriber-name))
-
-(mu/defn cleanup!
-  "Removes messages older than `max-age-ms` milliseconds from the given topic."
-  [topic-name :- :metabase.mq.topic/topic-name
-   max-age-ms :- :int]
-  (topic.backend/cleanup! topic.backend/*backend* topic-name max-age-ms))
+  "Unsubscribes from a topic, stopping the polling loop."
+  [topic-name :- :metabase.mq.topic/topic-name]
+  (topic.backend/unsubscribe! topic.backend/*backend* topic-name)
+  (swap! topic.backend/*handlers* dissoc topic-name))
 
 (defmacro with-topic
   "Runs the body with the ability to add messages to the given topic.

@@ -3545,10 +3545,10 @@ databaseChangeLog:
   - changeSet:
       id: v59.2026-02-17T22:00:00
       author: nvoxland
-      comment: Create topic_message table for pub/sub messaging
+      comment: Create topic_message_batch table for pub/sub messaging
       changes:
         - createTable:
-            tableName: topic_message
+            tableName: topic_message_batch
             remarks: Append-only message log for pub/sub fan-out messaging
             columns:
               - column:
@@ -3581,11 +3581,11 @@ databaseChangeLog:
   - changeSet:
       id: v59.2026-02-17T22:00:01
       author: nvoxland
-      comment: Index topic_message by topic_name and id for efficient polling
+      comment: Index topic_message_batch by topic_name and id for efficient polling
       changes:
         - createIndex:
-            tableName: topic_message
-            indexName: idx_topic_message_topic_id
+            tableName: topic_message_batch
+            indexName: idx_topic_message_batch_topic_id
             columns:
               - column:
                   name: topic_name

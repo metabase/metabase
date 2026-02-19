@@ -14,7 +14,7 @@
   **Topic** — fan-out pub/sub.  Every active subscriber receives every published message.
   Messages are fire-and-forget from the publisher's perspective.
 
-      (subscribe! :topic/my-events \"my-subscriber\" handler-fn)
+      (subscribe! :topic/my-events handler-fn)
       (with-topic :topic/my-events [t]
         (put t payload))
 
@@ -39,7 +39,6 @@
 (comment
   q.appdb/keep-me
   q.memory/keep-me
-  topic.appdb/keep-me
   topic.memory/keep-me
   topic.postgres/keep-me)
 
@@ -58,7 +57,6 @@
   publish!
   subscribe!
   unsubscribe!
-  cleanup!
   with-topic])
 
 (defn init!
@@ -70,9 +68,10 @@
     (log/info "Topic backend set to postgres (PostgreSQL LISTEN/NOTIFY)")))
 
 (defn stop!
-  "Stops the postgres listener if it is running."
+  "Stops the postgres listener and appdb cleanup loop if they are running."
   []
-  (topic.postgres/stop-listener!))
+  (topic.postgres/stop-listener!)
+  (topic.appdb/stop-cleanup!))
 
 (defmethod startup/def-startup-logic! ::TopicInit
   [_]

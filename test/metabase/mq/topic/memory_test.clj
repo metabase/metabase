@@ -2,6 +2,7 @@
   (:require
    [clojure.test :refer :all]
    [metabase.mq.topic.backend :as tp.backend]
+   [metabase.mq.topic.impl :as tp.impl]
    [metabase.mq.topic.test-util :as tpt])
   (:import (clojure.lang ExceptionInfo)))
 
@@ -10,7 +11,7 @@
 (deftest ^:parallel publish-and-subscribe-test
   (tpt/with-memory-topics [recent]
     (let [received (atom [])]
-      (tp.backend/subscribe! :topic.backend/tracking :topic/test "sub-1"
+      (tp.backend/subscribe! :topic.backend/tracking :topic/test
                              (fn [{:keys [messages]}]
                                (swap! received into messages)))
       (tp.backend/publish! :topic.backend/tracking :topic/test ["hello"])
@@ -26,12 +27,12 @@
       (testing "Received messages are tracked"
         (is (= 2 (count @(:received-messages recent)))))
 
-      (tp.backend/unsubscribe! :topic.backend/tracking :topic/test "sub-1"))))
+      (tp.backend/unsubscribe! :topic.backend/tracking :topic/test))))
 
 (deftest ^:parallel batch-publish-test
   (tpt/with-memory-topics [_recent]
     (let [received (atom [])]
-      (tp.backend/subscribe! :topic.backend/memory :topic/batch "sub-1"
+      (tp.backend/subscribe! :topic.backend/memory :topic/batch
                              (fn [{:keys [messages]}]
                                (swap! received into messages)))
       (tp.backend/publish! :topic.backend/memory :topic/batch ["msg-1" "msg-2" "msg-3"])
@@ -40,37 +41,13 @@
       (testing "Batch of messages received in one row"
         (is (= ["msg-1" "msg-2" "msg-3"] @received)))
 
-      (tp.backend/unsubscribe! :topic.backend/memory :topic/batch "sub-1"))))
-
-(deftest ^:parallel fan-out-test
-  (tpt/with-memory-topics [recent]
-    (let [received-1 (atom [])
-          received-2 (atom [])]
-      (tp.backend/subscribe! :topic.backend/tracking :topic/fan-out "sub-1"
-                             (fn [{:keys [messages]}]
-                               (swap! received-1 into messages)))
-      (tp.backend/subscribe! :topic.backend/tracking :topic/fan-out "sub-2"
-                             (fn [{:keys [messages]}]
-                               (swap! received-2 into messages)))
-
-      (tp.backend/publish! :topic.backend/tracking :topic/fan-out ["broadcast"])
-      (Thread/sleep 200)
-
-      (testing "Both subscribers receive the message"
-        (is (= ["broadcast"] @received-1))
-        (is (= ["broadcast"] @received-2)))
-
-      (testing "Received messages tracked for each subscriber"
-        (is (= 2 (count @(:received-messages recent)))))
-
-      (tp.backend/unsubscribe! :topic.backend/tracking :topic/fan-out "sub-1")
-      (tp.backend/unsubscribe! :topic.backend/tracking :topic/fan-out "sub-2"))))
+      (tp.backend/unsubscribe! :topic.backend/memory :topic/batch))))
 
 (deftest ^:parallel subscribe-only-sees-new-messages-test
   (tpt/with-memory-topics [_recent]
     (tp.backend/publish! :topic.backend/memory :topic/late-join ["before-subscribe"])
     (let [received (atom [])]
-      (tp.backend/subscribe! :topic.backend/memory :topic/late-join "late-sub"
+      (tp.backend/subscribe! :topic.backend/memory :topic/late-join
                              (fn [{:keys [messages]}]
                                (swap! received into messages)))
 
@@ -80,12 +57,12 @@
       (testing "Subscriber only sees messages published after subscribing"
         (is (= ["after-subscribe"] @received)))
 
-      (tp.backend/unsubscribe! :topic.backend/memory :topic/late-join "late-sub"))))
+      (tp.backend/unsubscribe! :topic.backend/memory :topic/late-join))))
 
 (deftest ^:parallel unsubscribe-stops-delivery-test
   (tpt/with-memory-topics [_recent]
     (let [received (atom [])]
-      (tp.backend/subscribe! :topic.backend/memory :topic/unsub "sub-1"
+      (tp.backend/subscribe! :topic.backend/memory :topic/unsub
                              (fn [{:keys [messages]}]
                                (swap! received into messages)))
 
@@ -93,7 +70,7 @@
       (Thread/sleep 200)
       (is (= ["before"] @received))
 
-      (tp.backend/unsubscribe! :topic.backend/memory :topic/unsub "sub-1")
+      (tp.backend/unsubscribe! :topic.backend/memory :topic/unsub)
 
       (tp.backend/publish! :topic.backend/memory :topic/unsub ["after"])
       (Thread/sleep 200)
@@ -104,7 +81,7 @@
 (deftest ^:parallel error-handling-test
   (tpt/with-memory-topics [recent]
     (let [received (atom [])]
-      (tp.backend/subscribe! :topic.backend/tracking :topic/errors "error-sub"
+      (tp.backend/subscribe! :topic.backend/tracking :topic/errors
                              (fn [{:keys [messages]}]
                                (when (= ["error!"] messages)
                                  (throw (ex-info "Test error" {})))
@@ -121,39 +98,24 @@
       (testing "Errors are tracked"
         (is (= 1 (count @(:errors recent)))))
 
-      (tp.backend/unsubscribe! :topic.backend/tracking :topic/errors "error-sub"))))
+      (tp.backend/unsubscribe! :topic.backend/tracking :topic/errors))))
 
 (deftest ^:parallel double-subscribe-throws-test
   (tpt/with-memory-topics [_recent]
-    (tp.backend/subscribe! :topic.backend/memory :topic/double "sub-1"
-                           (fn [_] nil))
-    (testing "Subscribing the same name to the same topic throws"
+    (tp.impl/subscribe! :topic/double (fn [_] nil))
+    (testing "Subscribing twice to the same topic throws"
       (is (thrown-with-msg? ExceptionInfo #"Handler already registered"
-                            (tp.backend/subscribe! :topic.backend/memory :topic/double "sub-1"
-                                                   (fn [_] nil)))))
-    (tp.backend/unsubscribe! :topic.backend/memory :topic/double "sub-1")))
-
-(deftest ^:parallel cleanup-removes-old-messages-test
-  (tpt/with-memory-topics [_recent]
-    (tp.backend/publish! :topic.backend/memory :topic/cleanup ["old-msg"])
-    ;; Wait so the message ages past the threshold
-    (Thread/sleep 50)
-
-    (testing "Cleanup removes messages older than max-age-ms"
-      (let [removed (tp.backend/cleanup! :topic.backend/memory :topic/cleanup 10)]
-        (is (= 1 removed))))
-
-    (testing "No messages remain after cleanup"
-      (is (= 0 (tp.backend/cleanup! :topic.backend/memory :topic/cleanup 10))))))
+                            (tp.impl/subscribe! :topic/double (fn [_] nil)))))
+    (tp.impl/unsubscribe! :topic/double)))
 
 (deftest ^:parallel topic-isolation-test
   (tpt/with-memory-topics [_recent]
     (let [received-a (atom [])
           received-b (atom [])]
-      (tp.backend/subscribe! :topic.backend/memory :topic/isolated-a "sub-a"
+      (tp.backend/subscribe! :topic.backend/memory :topic/isolated-a
                              (fn [{:keys [messages]}]
                                (swap! received-a into messages)))
-      (tp.backend/subscribe! :topic.backend/memory :topic/isolated-b "sub-b"
+      (tp.backend/subscribe! :topic.backend/memory :topic/isolated-b
                              (fn [{:keys [messages]}]
                                (swap! received-b into messages)))
 
@@ -165,5 +127,5 @@
         (is (= ["for-a"] @received-a))
         (is (= ["for-b"] @received-b)))
 
-      (tp.backend/unsubscribe! :topic.backend/memory :topic/isolated-a "sub-a")
-      (tp.backend/unsubscribe! :topic.backend/memory :topic/isolated-b "sub-b"))))
+      (tp.backend/unsubscribe! :topic.backend/memory :topic/isolated-a)
+      (tp.backend/unsubscribe! :topic.backend/memory :topic/isolated-b))))

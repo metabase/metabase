@@ -21,7 +21,7 @@
 
 ;;; ------------------------------------------------ Channel Naming ------------------------------------------------
 
-(def ^:private channel-prefix "mb_ps_")
+(def ^:private channel-prefix "mb_topic_")
 
 (def ^:private max-channel-bytes
   "PostgreSQL channel names are limited to 63 bytes."
@@ -100,15 +100,15 @@
         (let [payload (json/decode payload-str)]
           (if-let [ref-id (and (map? payload) (get payload "ref"))]
             ;; Large message fallback: fetch from topic_message table
-            (let [row (t2/select-one :topic_message :id ref-id)]
+            (let [row (t2/select-one :topic_message_batch :id ref-id)]
               (when row
-                (doseq [[_ handler] (filter (fn [[k _]] (= (first k) topic)) @topic.backend/*handlers*)]
+                (when-let [handler (get @topic.backend/*handlers* topic)]
                   (try
                     (handler {:batch-id (:id row) :messages (json/decode (:messages row))})
                     (catch Exception e
                       (log/errorf e "Error in postgres handler for topic %s (ref %d)" (name topic) ref-id))))))
             ;; Normal inline payload
-            (doseq [[_ handler] (filter (fn [[k _]] (= (first k) topic)) @topic.backend/*handlers*)]
+            (when-let [handler (get @topic.backend/*handlers* topic)]
               (try
                 (handler {:batch-id 0 :messages payload})
                 (catch Exception e
@@ -215,16 +215,15 @@
       ;; Small message: send inline via NOTIFY
       (t2/query {:select [[[:pg_notify channel payload-str]]]})
       ;; Large message: write to table, send ref
-      (let [{:keys [id]} (first (t2/insert-returning-instances! :topic_message
+      (let [{:keys [id]} (first (t2/insert-returning-instances! :topic_message_batch
                                                                 {:topic_name (name topic-name)
                                                                  :messages   payload-str}))
             ref-payload (json/encode {"ref" id})]
         (t2/query {:select [[[:pg_notify channel ref-payload]]]})))))
 
 (defmethod topic.backend/subscribe! :topic.backend/postgres
-  [_ topic-name subscriber-name handler]
+  [_ topic-name handler]
   (ensure-listener!)
-  (topic.backend/register-handler! topic-name subscriber-name handler)
   (let [channel (topic->channel-name topic-name)]
     (locking listener-state
       (let [{:keys [connection channels]} @listener-state]
@@ -232,32 +231,18 @@
           (listen-on-channel! connection channel)
           (swap! listener-state update :channels conj channel)
           (swap! listener-state assoc-in [:channel->topic channel] topic-name))))
-    (log/infof "postgres subscribed %s to topic %s (channel %s)" subscriber-name (name topic-name) channel)))
+    (log/infof "postgres subscribed to topic %s (channel %s)" (name topic-name) channel)))
 
 (defmethod topic.backend/unsubscribe! :topic.backend/postgres
-  [_ topic-name subscriber-name]
-  (topic.backend/unregister-handler! topic-name subscriber-name)
-  (let [channel (topic->channel-name topic-name)
-        ;; Check if any handlers remain for this topic
-        remaining (filter (fn [[k _]] (= (first k) topic-name)) @topic.backend/*handlers*)]
-    (when (empty? remaining)
-      (locking listener-state
-        (when-let [{:keys [connection]} @listener-state]
-          (try
-            (unlisten-channel! connection channel)
-            (catch Exception e
-              (log/warnf e "Error during UNLISTEN for channel %s" channel)))
-          (swap! listener-state update :channels disj channel)
-          (swap! listener-state update :channel->topic dissoc channel))))
-    (log/infof "postgres unsubscribed %s from topic %s" subscriber-name (name topic-name))))
+  [_ topic-name]
+  (let [channel (topic->channel-name topic-name)]
+    (locking listener-state
+      (when-let [{:keys [connection]} @listener-state]
+        (try
+          (unlisten-channel! connection channel)
+          (catch Exception e
+            (log/warnf e "Error during UNLISTEN for channel %s" channel)))
+        (swap! listener-state update :channels disj channel)
+        (swap! listener-state update :channel->topic dissoc channel)))
+    (log/infof "postgres unsubscribed from topic %s" (name topic-name))))
 
-(defmethod topic.backend/cleanup! :topic.backend/postgres
-  [_ topic-name max-age-ms]
-  (let [threshold (java.sql.Timestamp. (- (System/currentTimeMillis) max-age-ms))
-        deleted   (t2/delete! :topic_message
-                              :topic_name (name topic-name)
-                              :created_at [:< threshold])]
-    (when (pos? deleted)
-      (log/infof "postgres cleaned up %d fallback messages from topic %s older than %dms"
-                 deleted (name topic-name) max-age-ms))
-    deleted))

@@ -27,20 +27,17 @@
   (swap! (:published-messages *recent*) conj {:topic topic-name :messages messages}))
 
 (defmethod topic.backend/subscribe! :topic.backend/tracking
-  [_ topic-name subscriber-name handler]
+  [_ topic-name handler]
   (let [tracking-handler (fn [{:keys [messages] :as msg}]
                            (try
                              (handler msg)
-                             (swap! (:received-messages *recent*) conj {:topic topic-name :subscriber subscriber-name :messages messages})
+                             (swap! (:received-messages *recent*) conj {:topic topic-name :messages messages})
                              (catch Exception e
-                               (log/warnf e "Error in tracking subscriber %s for topic %s" subscriber-name (name topic-name))
-                               (swap! (:errors *recent*) conj {:topic topic-name :subscriber subscriber-name :error e}))))]
-    (topic.backend/subscribe! :topic.backend/memory topic-name subscriber-name tracking-handler)))
+                               (log/warnf e "Error in tracking subscriber for topic %s" (name topic-name))
+                               (swap! (:errors *recent*) conj {:topic topic-name :error e}))))]
+    (topic.backend/subscribe! :topic.backend/memory topic-name tracking-handler)))
 
 (defmethod topic.backend/unsubscribe! :topic.backend/tracking
-  [_ topic-name subscriber-name]
-  (topic.backend/unsubscribe! :topic.backend/memory topic-name subscriber-name))
+  [_ topic-name]
+  (topic.backend/unsubscribe! :topic.backend/memory topic-name))
 
-(defmethod topic.backend/cleanup! :topic.backend/tracking
-  [_ topic-name max-age-ms]
-  (topic.backend/cleanup! :topic.backend/memory topic-name max-age-ms))

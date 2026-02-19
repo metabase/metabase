@@ -12,7 +12,7 @@
   (atom {}))
 
 (def ^:dynamic *subscriptions*
-  "Atom containing map of [topic-name subscriber-name] -> {:offset (atom n), :future f, :handler fn}"
+  "Atom containing map of topic-name -> {:offset (atom n), :future f, :handler fn}"
   (atom {}))
 
 (defn- ensure-topic!
@@ -34,11 +34,11 @@
 
 (defn- start-polling-loop!
   "Starts a background polling loop for a memory subscription."
-  [topic-name subscriber-name]
+  [topic-name]
   (future
     (try
       (loop []
-        (when-let [{:keys [offset handler]} (get @*subscriptions* [topic-name subscriber-name])]
+        (when-let [{:keys [offset handler]} (get @*subscriptions* topic-name)]
           (let [{:keys [rows]} (get-topic topic-name)
                 current-offset @offset
                 new-rows       (filterv #(> (:id %) current-offset) @rows)]
@@ -46,12 +46,12 @@
               (try
                 (handler {:batch-id id :messages messages})
                 (catch Exception e
-                  (log/warnf e "Error in memory subscriber %s for topic %s on row %d" subscriber-name (name topic-name) id)))
+                  (log/warnf e "Error in memory subscriber for topic %s on row %d" (name topic-name) id)))
               (reset! offset id)))
           (Thread/sleep (long poll-interval-ms))
           (recur)))
       (catch InterruptedException _
-        (log/infof "Memory polling loop interrupted for %s on topic %s" subscriber-name (name topic-name))))))
+        (log/infof "Memory polling loop interrupted for topic %s" (name topic-name))))))
 
 (defmethod topic.backend/publish! :topic.backend/memory
   [_ topic-name messages]
@@ -61,35 +61,26 @@
     (swap! rows conj {:id id :messages messages :created-at (System/currentTimeMillis)})))
 
 (defmethod topic.backend/subscribe! :topic.backend/memory
-  [_ topic-name subscriber-name handler]
+  [_ topic-name handler]
   (ensure-topic! topic-name)
-  (topic.backend/register-handler! topic-name subscriber-name handler)
   (let [{:keys [rows]} (get-topic topic-name)
         current-max (if (seq @rows)
                       (:id (last @rows))
                       0)
         offset      (atom current-max)]
     ;; Register subscription BEFORE starting the polling loop to avoid race condition
-    (swap! *subscriptions* assoc [topic-name subscriber-name]
+    (swap! *subscriptions* assoc topic-name
            {:offset  offset
             :future  nil
             :handler handler})
-    (let [f (start-polling-loop! topic-name subscriber-name)]
-      (swap! *subscriptions* update [topic-name subscriber-name] assoc :future f))
-    (log/infof "Memory subscribed %s to topic %s (offset %d)" subscriber-name (name topic-name) current-max)))
+    (let [f (start-polling-loop! topic-name)]
+      (swap! *subscriptions* update topic-name assoc :future f))
+    (log/infof "Memory subscribed to topic %s (offset %d)" (name topic-name) current-max)))
 
 (defmethod topic.backend/unsubscribe! :topic.backend/memory
-  [_ topic-name subscriber-name]
-  (when-let [{:keys [^java.util.concurrent.Future future]} (get @*subscriptions* [topic-name subscriber-name])]
+  [_ topic-name]
+  (when-let [{:keys [^java.util.concurrent.Future future]} (get @*subscriptions* topic-name)]
     (.cancel future true)
-    (swap! *subscriptions* dissoc [topic-name subscriber-name])
-    (topic.backend/unregister-handler! topic-name subscriber-name)
-    (log/infof "Memory unsubscribed %s from topic %s" subscriber-name (name topic-name))))
+    (swap! *subscriptions* dissoc topic-name)
+    (log/infof "Memory unsubscribed from topic %s" (name topic-name))))
 
-(defmethod topic.backend/cleanup! :topic.backend/memory
-  [_ topic-name max-age-ms]
-  (let [{:keys [rows]} (get-topic topic-name)
-        threshold (- (System/currentTimeMillis) max-age-ms)
-        before    (count @rows)]
-    (swap! rows (fn [rs] (filterv #(> (or (:created-at %) (System/currentTimeMillis)) threshold) rs)))
-    (- before (count @rows))))

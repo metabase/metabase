@@ -11,17 +11,8 @@
 
 (set! *warn-on-reflection* true)
 
-(def ^:private node-id
-  "Unique identifier for this node, used to distinguish subscribers across nodes."
-  (str (random-uuid)))
-
-(defn- subscriber-key
-  "Internal subscriber key that uniquely identifies a subscriber on this node."
-  [subscriber-name]
-  (str subscriber-name "::" node-id))
-
 (def ^:private ^:dynamic *subscriptions*
-  "Map of [topic-name subscriber-key] -> {:offset (atom n), :future f, :handler fn, :subscriber-name s}"
+  "Map of topic-name -> {:offset (atom n), :future f, :handler fn}"
   (atom {}))
 
 (def ^:private poll-interval-ms
@@ -35,7 +26,7 @@
 (defn- current-max-id
   "Returns the current maximum id in topic_message for the given topic, or 0 if none exist."
   [topic-name]
-  (or (t2/select-one-fn :max-id [:topic_message [[:max :id] :max-id]]
+  (or (t2/select-one-fn :max-id [:topic_message_batch [[:max :id] :max-id]]
                         :topic_name (name topic-name))
       0))
 
@@ -43,7 +34,7 @@
   "Fetches rows from the topic_message table with id > offset. Returns a seq of maps."
   [topic-name offset]
   (t2/query {:select   [:id :messages]
-             :from     [:topic_message]
+             :from     [:topic_message_batch]
              :where    [:and
                         [:= :topic_name (name topic-name)]
                         [:> :id offset]]
@@ -76,11 +67,11 @@
 
 (defn- start-polling-loop!
   "Starts a background polling loop for a subscription. Returns the future."
-  [topic-name sub-key]
+  [topic-name]
   (future
     (try
       (loop []
-        (when-let [{:keys [offset handler]} (get @*subscriptions* [topic-name sub-key])]
+        (when-let [{:keys [offset handler]} (get @*subscriptions* topic-name)]
           (let [rows (poll-messages! topic-name @offset)]
             (doseq [{:keys [id messages]} rows]
               (process-row! handler id messages)
@@ -88,46 +79,88 @@
           (Thread/sleep (long poll-interval-ms))
           (recur)))
       (catch InterruptedException _
-        (log/infof "Polling loop interrupted for %s on topic %s" sub-key (name topic-name)))
+        (log/infof "Polling loop interrupted for topic %s" (name topic-name)))
       (catch Exception e
-        (log/errorf e "Unexpected error in polling loop for %s on topic %s" sub-key (name topic-name))))))
+        (log/errorf e "Unexpected error in polling loop for topic %s" (name topic-name))))))
+
+;;; ------------------------------------------- Automatic Periodic Cleanup -------------------------------------------
+
+(def ^:private cleanup-max-age-ms
+  "Messages older than this are eligible for cleanup (1 hour)."
+  (* 60 60 1000))
+
+(def ^:private cleanup-interval-ms
+  "How often the cleanup loop runs (10 mins)."
+  (* 10 60 1000))
+
+(def ^:private cleanup-future
+  "Holds the background future running the cleanup loop, or nil if not started."
+  (atom nil))
+
+(defn- cleanup-old-messages!
+  "Deletes all `topic_message` rows older than [[cleanup-max-age-ms]]."
+  []
+  (let [threshold (java.sql.Timestamp. (- (System/currentTimeMillis) cleanup-max-age-ms))
+        deleted   (t2/delete! :topic_message_batch :created_at [:< threshold])]
+    (when (pos? deleted)
+      (log/infof "Cleaned up %d old topic messages" deleted))
+    deleted))
+
+(defn- start-cleanup-loop!
+  "Starts a background loop that periodically runs [[cleanup-old-messages!]].
+  Loops while [[cleanup-future]] is non-nil."
+  []
+  (future
+    (try
+      (loop []
+        (when @cleanup-future
+          (try
+            (cleanup-old-messages!)
+            (catch Exception e
+              (log/errorf e "Error during topic message cleanup")))
+          (Thread/sleep (long cleanup-interval-ms))
+          (recur)))
+      (catch InterruptedException _
+        (log/info "Topic cleanup loop interrupted")))))
+
+(defn stop-cleanup!
+  "Stops the periodic cleanup loop if it is running."
+  []
+  (when-let [^java.util.concurrent.Future f @cleanup-future]
+    (reset! cleanup-future nil)
+    (.cancel f true)
+    (log/info "Topic cleanup loop stopped")))
+
+;;; ------------------------------------------- Backend Multimethods -------------------------------------------
 
 (defmethod topic.backend/publish! :topic.backend/appdb
   [_ topic-name messages]
-  (t2/insert! :topic_message
+  (t2/insert! :topic_message_batch
               {:topic_name (name topic-name)
                :messages   (json/encode messages)}))
 
 (defmethod topic.backend/subscribe! :topic.backend/appdb
-  [_ topic-name subscriber-name handler]
-  (let [sub-key (subscriber-key subscriber-name)
-        offset  (atom (current-max-id topic-name))]
-    (topic.backend/register-handler! topic-name subscriber-name handler)
+  [_ topic-name handler]
+  (let [offset (atom (current-max-id topic-name))]
     ;; Register subscription BEFORE starting the polling loop to avoid race condition
-    (swap! *subscriptions* assoc [topic-name sub-key]
-           {:offset          offset
-            :future          nil
-            :handler         handler
-            :subscriber-name subscriber-name})
-    (let [f (start-polling-loop! topic-name sub-key)]
-      (swap! *subscriptions* update [topic-name sub-key] assoc :future f))
-    (log/infof "Subscribed %s to topic %s (starting offset %d)" sub-key (name topic-name) @offset)))
+    (swap! *subscriptions* assoc topic-name
+           {:offset  offset
+            :future  nil
+            :handler handler})
+    (let [f (start-polling-loop! topic-name)]
+      (swap! *subscriptions* update topic-name assoc :future f))
+    ;; Idempotently start the cleanup loop on first subscription
+    (when-not @cleanup-future
+      (locking cleanup-future
+        (when-not @cleanup-future
+          (let [f (start-cleanup-loop!)]
+            (reset! cleanup-future f)
+            (log/info "Topic cleanup loop started")))))
+    (log/infof "Subscribed to topic %s (starting offset %d)" (name topic-name) @offset)))
 
 (defmethod topic.backend/unsubscribe! :topic.backend/appdb
-  [_ topic-name subscriber-name]
-  (let [sub-key (subscriber-key subscriber-name)]
-    (when-let [{:keys [^java.util.concurrent.Future future]} (get @*subscriptions* [topic-name sub-key])]
-      (.cancel future true)
-      (swap! *subscriptions* dissoc [topic-name sub-key])
-      (topic.backend/unregister-handler! topic-name subscriber-name)
-      (log/infof "Unsubscribed %s from topic %s" sub-key (name topic-name)))))
-
-(defmethod topic.backend/cleanup! :topic.backend/appdb
-  [_ topic-name max-age-ms]
-  (let [threshold (java.sql.Timestamp. (- (System/currentTimeMillis) max-age-ms))
-        deleted   (t2/delete! :topic_message
-                              :topic_name (name topic-name)
-                              :created_at [:< threshold])]
-    (when (pos? deleted)
-      (log/infof "Cleaned up %d messages from topic %s older than %dms" deleted (name topic-name) max-age-ms))
-    deleted))
+  [_ topic-name]
+  (when-let [{:keys [^java.util.concurrent.Future future]} (get @*subscriptions* topic-name)]
+    (.cancel future true)
+    (swap! *subscriptions* dissoc topic-name)
+    (log/infof "Unsubscribed from topic %s" (name topic-name))))
