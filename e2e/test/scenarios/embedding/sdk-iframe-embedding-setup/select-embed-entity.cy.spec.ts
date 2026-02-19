@@ -80,10 +80,10 @@ describe(suiteTitle, () => {
       cy.findByText("Next").click();
       cy.findByText("Select a dashboard to embed").should("be.visible");
 
-      // see the "shows newly created dashboard at the top of the list (EMB-1179)"
+      // see the "shows recently created dashboard at the top of the list (EMB-1179)"
       // test below for why we prioritize new dashboards
       cy.log(
-        "newly created dashboard should be selected by default (EMB-1179)",
+        "recently created dashboard should be selected by default (EMB-1179)",
       );
       getRecentItemCards()
         .should("have.length", 2)
@@ -370,17 +370,17 @@ describe("recently created dashboards", () => {
   });
 
   // When using x-rays to create your first dashboard in the onboarding
-  // flow, user expects this to be the default for the wizard,
+  // flow, user expects that to be the default for the wizard,
   // even if they have never visited that dashboard before.
-  it("shows newly created dashboard at the top of the list (EMB-1179)", () => {
-    const NEW_DASHBOARD_NAME = "Newly Created X-Ray Dashboard";
+  it("shows recently created dashboard at the top of the list (EMB-1179)", () => {
+    const NEW_DASHBOARD_NAME = "Recently created dashboard";
 
-    cy.log("create a new dashboard without logging it to the activity log");
+    cy.log("create a dashboard without logging it to activity log");
     H.createDashboard({ name: NEW_DASHBOARD_NAME }).then(
       ({ body: { id: newDashboardId } }) => {
         cy.wrap(newDashboardId).as("newDashboardId");
 
-        cy.log("simulate existing recent activity");
+        cy.log("simulates existing recent activity");
         logRecent("dashboard", ORDERS_DASHBOARD_ID);
 
         visitNewEmbedPage();
@@ -390,7 +390,7 @@ describe("recently created dashboards", () => {
           cy.findByText("Select a dashboard to embed").should("be.visible");
 
           cy.log(
-            "newly created dashboard should appear in the list even though it was never viewed",
+            "recently created dashboard should show up even though it was never viewed",
           );
           cy.findByText(NEW_DASHBOARD_NAME).should("be.visible");
 
