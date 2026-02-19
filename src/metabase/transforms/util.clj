@@ -20,8 +20,10 @@
    [metabase.query-processor :as qp]
    [metabase.query-processor.compile :as qp.compile]
    [metabase.query-processor.middleware.add-remaps :as remap]
+   [metabase.query-processor.middleware.catch-exceptions :as qp.catch-exceptions]
    [metabase.query-processor.parameters.dates :as params.dates]
    [metabase.query-processor.pipeline :as qp.pipeline]
+   [metabase.query-processor.preprocess :as qp.preprocess]
    [metabase.sync.core :as sync]
    [metabase.transforms.canceling :as canceling]
    [metabase.transforms.feature-gating :as transforms.gating]
@@ -398,6 +400,17 @@
                            (first (sql.qp/format-honeysql driver honeysql-query))))]
         (update outer-query :query wrap-query))
       outer-query)))
+
+(mu/defn validate-transform-query :- [:maybe [:map [:error :string]]]
+  "Verifies that a query transform's query can actually be run as is.  Returns nil on success and an error map on failure."
+  [{:keys [source]}]
+  (case (keyword (:type source))
+    :query
+    (try
+      (qp.preprocess/preprocess (:query source))
+      nil
+      (catch Exception e
+        (qp.catch-exceptions/exception-response e)))))
 
 (defn compile-source
   "Compile the source query of a transform to SQL, applying incremental filtering if required."
