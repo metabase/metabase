@@ -34,21 +34,37 @@ runs:
     - name: Extract embedding-sdk.js from current uberjar
       shell: bash
       run: unzip -j temp/current-uberjar/target/uberjar/metabase.jar frontend_client/app/embedding-sdk.js -d temp/current-bundle
+    - name: Wait for base-ref uberjar build
+      id: wait-for-uberjar
+      continue-on-error: true
+      shell: bash
+      env:
+        GH_TOKEN: ${{ github.token }}
+      run: |
+        COMMIT="${{ inputs.base-ref-commit }}"
+        RUN_ID=$(gh run list --repo "${{ github.repository }}" --workflow uberjar.yml --commit "$COMMIT" --json databaseId --jq '.[0].databaseId')
+
+        if [ -z "$RUN_ID" ]; then
+          echo "::error::No uberjar workflow run found for commit $COMMIT"
+          exit 1
+        fi
+
+        echo "Waiting for workflow run $RUN_ID to complete (10 min timeout)..."
+        timeout 300 gh run watch "$RUN_ID" --repo "${{ github.repository }}" --exit-status --interval 30
     - name: Download base-ref uberjar
       id: fetch-base-ref
-      continue-on-error: true
+      if: steps.wait-for-uberjar.outcome == 'success'
       uses: ./.github/actions/fetch-artifact
       with:
         commit: ${{ inputs.base-ref-commit }}
         edition: ${{ inputs.edition }}
         extract-path: temp/base-ref-uberjar
-        retries: "20"
     - name: Extract embedding-sdk.js from base-ref uberjar
-      if: steps.fetch-base-ref.outcome == 'success'
+      if: steps.wait-for-uberjar.outcome == 'success'
       shell: bash
       run: unzip -j temp/base-ref-uberjar/metabase.jar frontend_client/app/embedding-sdk.js -d temp/base-ref-bundle
     - name: Compare sizes and set output
-      if: steps.fetch-base-ref.outcome == 'success'
+      if: steps.wait-for-uberjar.outcome == 'success'
       id: compare
       shell: bash
       run: |

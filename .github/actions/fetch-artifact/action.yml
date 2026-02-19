@@ -20,10 +20,6 @@ inputs:
     description: Directory path where the jar should be extracted (defaults to current directory)
     required: false
     default: "."
-  retries:
-    description: Number of retry attempts if artifact is not found (waits 30s between retries)
-    required: false
-    default: "0"
 
 runs:
   using: "composite"
@@ -39,36 +35,20 @@ runs:
           const isRelease = "${{ inputs.release }}" === "true";
           const prefix = isRelease ? "metabase-release" : "metabase";
           const artifactName = `${prefix}-${{ inputs.edition }}-${{ inputs.commit }}-uberjar`;
-          const maxRetries = parseInt("${{ inputs.retries }}", 10) || 0;
+          console.log(`Looking for artifact: ${artifactName}`);
 
-          const retryInterval = 30000
+          const artifacts = await github.rest.actions.listArtifactsForRepo({
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            name: artifactName,
+            per_page: 1,
+          });
 
-          let artifact_id = null;
-
-          for (let attempt = 0; attempt <= maxRetries; attempt++) {
-            console.log(`Looking for artifact: ${artifactName} (attempt ${attempt + 1}/${maxRetries + 1})`);
-
-            const artifacts = await github.rest.actions.listArtifactsForRepo({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              name: artifactName,
-              per_page: 1,
-            });
-
-            if (artifacts.data?.artifacts?.[0]?.id) {
-              artifact_id = artifacts.data.artifacts[0].id;
-              break;
-            }
-
-            if (attempt < maxRetries) {
-              console.log(`Artifact not found, retrying in 30s...`);
-              await new Promise(resolve => setTimeout(resolve, retryInterval));
-            }
+          if (!artifacts.data?.artifacts?.[0]?.id) {
+            throw new Error(`No artifacts found for ${artifactName}`);
           }
 
-          if (!artifact_id) {
-            throw new Error(`No artifacts found for ${artifactName} after ${maxRetries + 1} attempt(s)`);
-          }
+          const artifact_id = artifacts.data.artifacts[0].id;
 
           const download = await github.rest.actions.downloadArtifact({
             owner: context.repo.owner,
