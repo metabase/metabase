@@ -9,6 +9,7 @@ import {
 } from "__support__/server-mocks";
 import { renderWithProviders } from "__support__/ui";
 import { UndoListing } from "metabase/common/components/UndoListing";
+import type { AuthSettingsPageTab } from "metabase/plugins";
 import type { ApiKey, EnterpriseSettings } from "metabase-types/api";
 import {
   createMockSettings,
@@ -56,7 +57,7 @@ export const testApiKeys: ApiKey[] = [
 export const setup = async (
   extraSettings?: Partial<EnterpriseSettings>,
   isEnterprise = false,
-  tab = "authentication",
+  tab: AuthSettingsPageTab = "authentication",
 ) => {
   const settings = createMockSettings({
     "google-auth-enabled": false,

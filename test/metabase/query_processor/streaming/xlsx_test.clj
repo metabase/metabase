@@ -231,6 +231,30 @@
                                                            ::mb.viz/currency-style "name"}
                                                           price-col))))))))
 
+(deftest format-settings->format-string-test-3d2
+  (mt/with-temporary-setting-values [custom-formatting {}]
+    (testing "Currency formatting"
+      (let [price-col {:semantic_type :type/Price, :effective_type :type/Float}]
+        (testing "narrowSymbol uses symbol_native and produces correct format strings"
+          (is (= "[$$]#,##0.00"   (format-string {::mb.viz/currency-in-header false,
+                                                  ::mb.viz/currency "USD",
+                                                  ::mb.viz/currency-style "narrowSymbol"}
+                                                 price-col)))
+          ;; CAD narrowSymbol is "$" (not "CA$" like symbol), so no space before number
+          (is (= "[$$]#,##0.00"   (format-string {::mb.viz/currency-in-header false,
+                                                  ::mb.viz/currency "CAD",
+                                                  ::mb.viz/currency-style "narrowSymbol"}
+                                                 price-col)))
+          (is (= "[$€]#,##0.00"   (format-string {::mb.viz/currency-in-header false,
+                                                  ::mb.viz/currency "EUR",
+                                                  ::mb.viz/currency-style "narrowSymbol"}
+                                                 price-col))))
+        (testing "narrowSymbol falls back to code with space if symbol not supported"
+          (is (= "[$KGS] #,##0.00" (format-string {::mb.viz/currency-in-header false,
+                                                   ::mb.viz/currency "KGS",
+                                                   ::mb.viz/currency-style "narrowSymbol"}
+                                                  price-col))))))))
+
 (deftest format-settings->format-string-test-3e
   (mt/with-temporary-setting-values [custom-formatting {}]
     (testing "Currency formatting"
@@ -243,11 +267,13 @@
       (let [price-col {:semantic_type :type/Price, :effective_type :type/Float}]
         (testing "Formatting options are ignored if currency-in-header is true or absent (defaults to true)"
           (is (= "#,##0.00" (format-string {::mb.viz/currency-style "symbol"} price-col)))
+          (is (= "#,##0.00" (format-string {::mb.viz/currency-style "narrowSymbol"} price-col)))
           (is (= "#,##0.00" (format-string {::mb.viz/currency-style "name"} price-col)))
           (is (= "#,##0.00" (format-string {::mb.viz/currency-style "code"} price-col)))
           (is (= "#,##0.00" (format-string {::mb.viz/currency "USD"} price-col)))
           (is (= "#,##0.00" (format-string {::mb.viz/currency "EUR"} price-col)))
           (is (= "#,##0.00" (format-string {::currency-in-header true, ::mb.viz/currency-style "symbol"} price-col)))
+          (is (= "#,##0.00" (format-string {::currency-in-header true, ::mb.viz/currency-style "narrowSymbol"} price-col)))
           (is (= "#,##0.00" (format-string {::currency-in-header true, ::mb.viz/currency-style "name"} price-col)))
           (is (= "#,##0.00" (format-string {::currency-in-header true, ::mb.viz/currency-style "code"} price-col)))
           (is (= "#,##0.00" (format-string {::currency-in-header true, ::mb.viz/currency "USD"} price-col)))
@@ -514,6 +540,19 @@
     (is (= ["Col (€)"]
            (first (xlsx-export [{:id 0, :name "Col", :semantic_type :type/Cost :field_ref [:field 0]}]
                                {::mb.viz/column-settings {{::mb.viz/field-id 0} {::mb.viz/currency "EUR"}}}
+                               []))))
+    ;; narrowSymbol uses symbol_native (e.g. "$" for CAD instead of "CA$")
+    (is (= ["Col ($)"]
+           (first (xlsx-export [{:id 0, :name "Col", :semantic_type :type/Cost :field_ref [:field 0]}]
+                               {::mb.viz/column-settings {{::mb.viz/field-id 0}
+                                                          {::mb.viz/currency "CAD",
+                                                           ::mb.viz/currency-style "narrowSymbol"}}}
+                               []))))
+    ;; narrowSymbol falls back to code if symbol not supported
+    (is (= ["Col (KGS)"]
+           (first (xlsx-export [{:id 0, :name "Col", :semantic_type :type/Cost :field_ref [:field 0]}]
+                               {::mb.viz/column-settings {{::mb.viz/field-id 0}
+                                                          {::mb.viz/currency "KGS", ::mb.viz/currency-style "narrowSymbol"}}}
                                []))))
     ;; Falls back to code if native symbol is not supported
     (is (= ["Col (KGS)"]
