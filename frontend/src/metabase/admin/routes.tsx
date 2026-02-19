@@ -43,6 +43,7 @@ import {
 import {
   EmbeddingHubAdminSettingsPage,
   SetupPermissionsAndTenantsPage,
+  SetupSsoPage,
 } from "metabase/embedding/embedding-hub";
 import { ModalRoute } from "metabase/hoc/ModalRoute";
 import { getAdminRoutes as getMetabotAdminRoutes } from "metabase/metabot/components/MetabotAdmin/MetabotAdminPage";
@@ -188,9 +189,16 @@ export const getRoutes = (
 
             <Route path="setup-guide">
               <IndexRoute component={EmbeddingHubAdminSettingsPage} />
+
               <Route
                 path="permissions"
                 component={SetupPermissionsAndTenantsPage}
+              />
+
+              <Route
+                path="sso"
+                title={t`Configure SSO`}
+                component={SetupSsoPage}
               />
             </Route>
 
