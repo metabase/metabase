@@ -1,7 +1,7 @@
 {
   "base": {
     "name": "integration-embedding-onboarding-improvements",
-    "hash": "6028aa6e788cf3bcf01e7257e27fd97ee6870401"
+    "hash": "03926ac56e809d82d52b212659fd2fc99c55bec7"
   },
   "upstream": {
     "branch": "emb-1180-mark-get-embed-snippet-card-as-done-on-guest-embedding"
