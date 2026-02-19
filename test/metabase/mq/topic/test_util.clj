@@ -2,7 +2,7 @@
   (:require
    [metabase.mq.topic.backend :as topic.backend]
    [metabase.mq.topic.memory :as topic.memory]
-   [metabase.mq.topic.postgres :as topic.postgres]))
+   [metabase.mq.topic.postgres])) ;; required for multimethod registration
 
 (defmacro with-memory-topics
   "Binds the topic system to a fresh, isolated in-memory backend.
@@ -23,4 +23,4 @@
      (try
        ~@body
        (finally
-         (topic.postgres/stop-listener!)))))
+         (topic.backend/shutdown! :topic.backend/postgres)))))

@@ -8,6 +8,7 @@
   (:require
    [metabase.analytics.prometheus :as analytics]
    [metabase.util.log :as log]
+   [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]))
 
 (set! *warn-on-reflection* true)
@@ -56,10 +57,13 @@
 
 (defmethod shutdown! :default [_] nil)
 
-(defn handle!
+(mu/defn handle!
   "Handles a batch of messages from a topic by invoking the registered handler.
   On error, logs and continues."
-  [backend topic-name batch-id messages]
+  [backend :- ::backend
+   topic-name :- :metabase.mq.topic/topic-name
+   batch-id
+   messages :- [:sequential :any]]
   (let [handler (get @*handlers* topic-name)
         start   (System/nanoTime)]
     (try

@@ -36,7 +36,7 @@
 
 (defn topic->channel-name
   "Converts a topic keyword to a valid PostgreSQL channel name.
-  The channel name is lowercased, with `/` replaced by `__`, and prefixed with `mb_ps_`.
+  The channel name is lowercased, with `/` replaced by `__`, and prefixed with `\"mb_topic_\"`.
   If the result exceeds 63 bytes, a SHA-256 hash is used instead."
   [topic-kw]
   (let [raw   (-> (str (namespace topic-kw) "/" (name topic-kw))

@@ -44,11 +44,9 @@
  [q.impl
   listen!
   with-queue
-  queue-length
   stop-listening!]
 
  [topic.impl
-  publish!
   subscribe!
   unsubscribe!
   with-topic])

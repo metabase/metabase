@@ -7,7 +7,8 @@
    [metabase.util.json :as json]
    [metabase.util.log :as log]
    [toucan2.core :as t2])
-  (:import (java.time Instant)
+  (:import (java.sql Timestamp)
+           (java.time Instant)
            (java.util.concurrent Future)))
 
 (set! *warn-on-reflection* true)
@@ -77,7 +78,7 @@
 (defn- cleanup-old-messages!
   "Deletes all `topic_message` rows older than [[cleanup-max-age-ms]]."
   []
-  (let [threshold (java.sql.Timestamp. (- (.toEpochMilli (Instant/now)) cleanup-max-age-ms))
+  (let [threshold (Timestamp/from (.minusMillis (Instant/now) cleanup-max-age-ms))
         deleted   (t2/delete! :topic_message_batch :created_at [:< threshold])]
     (when (pos? deleted)
       (log/infof "Cleaned up %d old topic messages" deleted))

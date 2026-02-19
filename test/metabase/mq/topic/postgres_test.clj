@@ -17,14 +17,14 @@
 
 (deftest ^:parallel topic->channel-name-test
   (testing "Basic topic name conversion"
-    (is (= "mb_ps_topic__foo" (topic.postgres/topic->channel-name :topic/foo))))
+    (is (= "mb_topic_topic__foo" (topic.postgres/topic->channel-name :topic/foo))))
   (testing "Name is lowercased"
-    (is (= "mb_ps_topic__myevent" (topic.postgres/topic->channel-name :topic/MyEvent))))
+    (is (= "mb_topic_topic__myevent" (topic.postgres/topic->channel-name :topic/MyEvent))))
   (testing "Long names are hashed to fit within 63 bytes"
     (let [long-topic (keyword "topic" (apply str (repeat 100 "x")))
           channel    (topic.postgres/topic->channel-name long-topic)]
       (is (<= (count (.getBytes ^String channel "UTF-8")) 63))
-      (is (.startsWith ^String channel "mb_ps_")))))
+      (is (.startsWith ^String channel "mb_topic_")))))
 
 (deftest publish-and-receive-test
   (when (postgres?)

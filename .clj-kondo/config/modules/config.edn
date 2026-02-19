@@ -1244,6 +1244,7 @@
            app-db
            models
            settings
+           startup
            util}}
 
   remote-sync

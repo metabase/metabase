@@ -39,6 +39,7 @@
    [metabase.login-history.init]
    [metabase.model-persistence.init]
    [metabase.models.init]
+   [metabase.mq.init]
    [metabase.notification.init]
    [metabase.parameters.init]
    [metabase.permissions.init]
