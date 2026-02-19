@@ -1236,8 +1236,14 @@
            util}}
 
   mq
-  {:api  #{metabase.mq.queue.core}
-   :uses #{models util}}
+  {:team "UX West"
+   :api  #{metabase.mq.core
+           metabase.mq.init}
+   :uses #{app-db
+           models
+           settings
+           startup
+           util}}
 
   remote-sync
   {:team "UX West"

@@ -1,6 +1,7 @@
 (ns metabase.mq.queue.memory
   "In-memory implementation of the message queue."
   (:require
+   [metabase.analytics.prometheus :as analytics]
    [metabase.mq.queue.backend :as q.backend]
    [metabase.mq.settings :as mq.settings]
    [metabase.util.log :as log]
@@ -67,10 +68,14 @@
     (swap! *batch-registry* dissoc batch-id)
     (let [new-failures (inc failures)]
       (if (>= new-failures (mq.settings/queue-max-retries))
-        (log/warnf "Batch %s has reached max failures (%d), dropping" batch-id (mq.settings/queue-max-retries))
+        (do
+          (log/warnf "Batch %s has reached max failures (%d), dropping" batch-id (mq.settings/queue-max-retries))
+          (analytics/inc! :metabase-mq/queue-batch-permanent-failures {:queue (name queue-name)}))
         ;; Retry asynchronously with a new batch-id carrying the accumulated failure count.
         ;; We call handle! directly rather than re-queuing, so the failure count is preserved.
-        (future
-          (let [new-batch-id (str (random-uuid))]
-            (swap! *batch-registry* assoc new-batch-id {:message message :failures new-failures})
-            (q.backend/handle! q.backend/*backend* queue-name new-batch-id [message])))))))
+        (do
+          (analytics/inc! :metabase-mq/queue-batch-retries {:queue (name queue-name)})
+          (future
+            (let [new-batch-id (str (random-uuid))]
+              (swap! *batch-registry* assoc new-batch-id {:message message :failures new-failures})
+              (q.backend/handle! q.backend/*backend* queue-name new-batch-id [message]))))))))

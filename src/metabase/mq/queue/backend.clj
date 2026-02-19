@@ -2,6 +2,7 @@
   "Backend abstraction layer for the message queue system.
   Defines multimethods that different queue implementations must provide."
   (:require
+   [metabase.analytics.prometheus :as analytics]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]))
@@ -80,7 +81,8 @@
    queue-name :- :metabase.mq.queue/queue-name
    batch-id
    messages :- [:sequential :any]]
-  (let [handler (get @*handlers* queue-name)]
+  (let [handler (get @*handlers* queue-name)
+        start   (System/nanoTime)]
     (try
       (when-not handler
         (throw (ex-info "No handler defined for queue" {:queue queue-name :backend backend})))
@@ -88,6 +90,12 @@
         (handler {:batch-id batch-id :queue queue-name :message message}))
       (log/info "Handled queue message" {:queue queue-name :batch-id batch-id})
       (batch-successful! backend queue-name batch-id)
+      (analytics/inc! :metabase-mq/queue-batches-handled {:queue (name queue-name) :status "success"})
       (catch Exception e
         (log/error e "Error handling queue message" {:queue queue-name :batch-id batch-id :backend backend})
-        (batch-failed! backend queue-name batch-id)))))
+        (batch-failed! backend queue-name batch-id)
+        (analytics/inc! :metabase-mq/queue-batches-handled {:queue (name queue-name) :status "error"}))
+      (finally
+        (analytics/observe! :metabase-mq/queue-handle-duration-ms
+                            {:queue (name queue-name)}
+                            (/ (double (- (System/nanoTime) start)) 1e6))))))

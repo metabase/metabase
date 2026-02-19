@@ -2,6 +2,7 @@
   "Internal implementation for the queue system: listener registration
   and message handling logic."
   (:require
+   [metabase.analytics.prometheus :as analytics]
    [metabase.mq.impl :as mq.impl]
    [metabase.mq.queue.backend :as q.backend]
    [metabase.util.log :as log]
@@ -47,7 +48,10 @@
        (let [result# (do ~@body)]
          (let [msgs# @buffer#]
            (when (seq msgs#)
-             (q.backend/publish! q.backend/*backend* ~queue-name msgs#)))
+             (q.backend/publish! q.backend/*backend* ~queue-name msgs#)
+             (analytics/inc! :metabase-mq/queue-messages-published
+                             {:queue (name ~queue-name)}
+                             (count msgs#))))
          result#)
        (catch Exception e#
          (log/error e# "Error in queue processing, no messages will be persisted to the queue")

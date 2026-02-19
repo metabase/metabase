@@ -1,6 +1,7 @@
 (ns metabase.mq.topic.impl
   "Internal implementation for the pub/sub system"
   (:require
+   [metabase.analytics.prometheus :as analytics]
    [metabase.mq.impl :as mq.impl]
    [metabase.mq.topic.backend :as topic.backend]
    [metabase.util.log :as log]
@@ -21,7 +22,10 @@
   `messages` is a vector of values stored as a JSON array in a single row."
   [topic-name :- :metabase.mq.topic/topic-name
    messages :- [:sequential :any]]
-  (topic.backend/publish! topic.backend/*backend* topic-name messages))
+  (topic.backend/publish! topic.backend/*backend* topic-name messages)
+  (analytics/inc! :metabase-mq/topic-messages-published
+                  {:topic (name topic-name)}
+                  (count messages)))
 
 (mu/defn subscribe!
   "Subscribes to a topic with the given handler function.
@@ -32,8 +36,17 @@
   (when (get @topic.backend/*handlers* topic-name)
     (throw (ex-info "Handler already registered for topic"
                     {:topic topic-name})))
-  (swap! topic.backend/*handlers* assoc topic-name handler)
-  (topic.backend/subscribe! topic.backend/*backend* topic-name handler))
+  (let [instrumented-handler (fn [msg]
+                               (try
+                                 (handler msg)
+                                 (analytics/inc! :metabase-mq/topic-messages-received
+                                                 {:topic (name topic-name)})
+                                 (catch Exception e
+                                   (analytics/inc! :metabase-mq/topic-handler-errors
+                                                   {:topic (name topic-name)})
+                                   (throw e))))]
+    (swap! topic.backend/*handlers* assoc topic-name instrumented-handler)
+    (topic.backend/subscribe! topic.backend/*backend* topic-name instrumented-handler)))
 
 (mu/defn unsubscribe!
   "Unsubscribes from a topic, stopping the polling loop."

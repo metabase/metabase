@@ -1,6 +1,7 @@
 (ns metabase.mq.queue.appdb
   "Database-backed implementation of the message queue using the application database."
   (:require
+   [metabase.analytics.prometheus :as analytics]
    [metabase.models.interface :as mi]
    [metabase.mq.queue.backend :as q.backend]
    [metabase.mq.settings :as mq.settings]
@@ -114,12 +115,13 @@
       (log/warnf "Message %d was already deleted from the queue. Likely error in concurrency handling" batch-id))))
 
 (defmethod q.backend/batch-failed! :queue.backend/appdb
-  [_ _queue-name batch-id]
+  [_ queue-name batch-id]
   (let [row     (t2/select-one :queue_message_batch :id batch-id :owner owner-id)
         updated (when row
                   (if (>= (inc (:failures row)) (mq.settings/queue-max-retries))
                     (do
                       (log/warnf "Message %d has reached max failures (%d), marking as failed" batch-id (mq.settings/queue-max-retries))
+                      (analytics/inc! :metabase-mq/queue-batch-permanent-failures {:queue (name queue-name)})
                       (t2/update! :queue_message_batch
                                   {:id    batch-id
                                    :owner owner-id}
@@ -127,12 +129,14 @@
                                    :failures         [:+ :failures 1]
                                    :status_heartbeat (mi/now)
                                    :owner            nil}))
-                    (t2/update! :queue_message_batch
-                                {:id    batch-id
-                                 :owner owner-id}
-                                {:status           "pending"
-                                 :failures         [:+ :failures 1]
-                                 :status_heartbeat (mi/now)
-                                 :owner            nil})))]
+                    (do
+                      (analytics/inc! :metabase-mq/queue-batch-retries {:queue (name queue-name)})
+                      (t2/update! :queue_message_batch
+                                  {:id    batch-id
+                                   :owner owner-id}
+                                  {:status           "pending"
+                                   :failures         [:+ :failures 1]
+                                   :status_heartbeat (mi/now)
+                                   :owner            nil}))))]
     (when (and row (= 0 updated))
       (log/warnf "Message %d was not found in the queue. Likely error in concurrency handling" batch-id))))
