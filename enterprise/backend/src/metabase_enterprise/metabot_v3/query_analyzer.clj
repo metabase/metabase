@@ -1,8 +1,8 @@
 (ns metabase-enterprise.metabot-v3.query-analyzer
-  "Integration with SQLGlot, which parses native SQL queries. All SQL-specific logic is in SQLGlot, the purpose of this
-  namespace is to:
+  "Integration with `sql-tools`, which parses native SQL queries. All SQL-specific logic is in `sql-tools,
+  the purpose of this namespace is to:
 
-  1. Translate Metabase-isms into generic SQL that SQLGlot can understand.
+  1. Translate Metabase-isms into generic SQL that `sql-tools` can understand.
   2. Encapsulate Metabase-specific business logic."
   (:require
    [clojure.string :as str]

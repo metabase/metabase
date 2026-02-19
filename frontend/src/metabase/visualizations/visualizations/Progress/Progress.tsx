@@ -2,10 +2,9 @@ import cx from "classnames";
 import { type MouseEvent, useCallback, useEffect, useRef } from "react";
 import { t } from "ttag";
 
-import { IconBorder } from "metabase/common/components/IconBorder";
 import CS from "metabase/css/core/index.css";
 import { formatValue } from "metabase/lib/formatting";
-import { Icon } from "metabase/ui";
+import { Flex, Icon } from "metabase/ui";
 import type { VisualizationProps } from "metabase/visualizations/types";
 
 import { PROGRESS_CHART_DEFINITION } from "./chart-definition";
@@ -200,9 +199,7 @@ export function Progress(props: VisualizationProps) {
                 CS.px2,
               )}
             >
-              <IconBorder borderWidth={2}>
-                <Icon name="check" />
-              </IconBorder>
+              <IconWithBorder />
               <div className={CS.pl2}>{barMessage}</div>
             </div>
           )}
@@ -241,4 +238,17 @@ function computeBarHeight({
   }
 
   return `${MAX_BAR_HEIGHT}px`;
+}
+
+export function IconWithBorder() {
+  return (
+    <Flex
+      align="center"
+      justify="center"
+      bdrs="99px"
+      bd="2px solid currentcolor"
+    >
+      <Icon name="check" />
+    </Flex>
+  );
 }

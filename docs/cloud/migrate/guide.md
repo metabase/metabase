@@ -32,7 +32,7 @@ You'll kick off the migration process in your self-hosted Metabase, and finish u
 
 ### Initiate your migration
 
-In your Metabase, go to **Admin settings** > **Settings** > **Cloud**.
+In your Metabase, go to **Admin** > **Settings** > **Cloud**.
 
 In the **Migrate to Metabase Cloud** section, click on the **Get started** button.
 

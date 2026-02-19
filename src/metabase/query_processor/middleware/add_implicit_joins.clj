@@ -34,8 +34,8 @@
   [x]
   (into []
         (distinct)
-        (lib.util.match/match (dissoc x :lib/stage-metadata)
-          [:field (_opts :guard (every-pred :source-field (complement :join-alias))) _id-or-oname]
+        (lib.util.match/match-many (dissoc x :lib/stage-metadata)
+          [:field (opts :guard (and (:source-field opts) (not (:join-alias opts)))) _id-or-oname]
           &match)))
 
 (defn- join-alias [dest-table-name source-fk-field-name source-fk-join-alias]
@@ -259,8 +259,8 @@
         (let [next-stage (get-in query next-path)]
           (when-let [reused-join-aliases (not-empty (::reused-join-aliases next-stage))]
             (when-let [referenced-fields (not-empty
-                                          (set (lib.util.match/match (dissoc next-stage :joins :lib/stage-metadata)
-                                                 :field
+                                          (set (lib.util.match/match-many (dissoc next-stage :joins :lib/stage-metadata)
+                                                 [:field & _]
                                                  (when (contains? reused-join-aliases (lib/current-join-alias &match))
                                                    &match))))]
               (log/debugf "Adding referenced fields from next stage: %s" (pr-str referenced-fields))
@@ -306,12 +306,9 @@
   "Get a set of join aliases that `join` has an immediate dependency on."
   [join :- ::lib.schema.join/join]
   (set
-   (lib.util.match/match (:conditions join)
-     [:field (opts :guard :join-alias) _id-or-name]
-     (let [join-alias (:join-alias opts)]
-       (when (and join-alias
-                  (not= join-alias (:alias join)))
-         join-alias)))))
+   (lib.util.match/match-many (:conditions join)
+     [:field {:join-alias (join-alias :guard (and join-alias (not= join-alias (:alias join))))} _id-or-name]
+     join-alias)))
 
 (mu/defn- topologically-sort-joins :- ::lib.schema.join/joins
   "Sort `joins` by topological dependency order: joins that are referenced by the `:condition` of another will be sorted

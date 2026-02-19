@@ -44,7 +44,7 @@
 (deftest ^:parallel analyze-entity-native-query-existing-table-test
   (testing "analyze-entity extracts dependencies from native query referencing existing table"
     (let [mp        (mt/metadata-provider)
-          query     (lib/native-query mp "SELECT * FROM ORDERS WHERE total > 100")
+          query     (lib/native-query mp "SELECT * FROM orders WHERE total > 100")
           transform {:source {:type  "query"
                               :query query}
                      :target {:database (mt/id)
@@ -56,7 +56,7 @@
                 :schema "analytics"
                 :table  "high_value_orders"}
                (:output result))))
-      (testing "inputs include table_id since ORDERS table exists"
+      (testing "inputs include table_id since orders table exists"
         (let [inputs (:inputs result)]
           ;; Native query parsing should detect ORDERS table reference and look up table_id
           (is (pos? (count inputs)))

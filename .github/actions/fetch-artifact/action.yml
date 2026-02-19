@@ -45,7 +45,8 @@ runs:
           });
 
           if (!artifacts.data?.artifacts?.[0]?.id) {
-            throw new Error(`No artifacts found for ${artifactName}`);
+            core.setFailed(`No artifacts found for ${artifactName}`);
+            return;
           }
 
           const artifact_id = artifacts.data.artifacts[0].id;

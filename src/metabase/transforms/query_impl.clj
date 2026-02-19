@@ -2,6 +2,7 @@
   (:require
    [metabase.database-routing.core :as database-routing]
    [metabase.driver :as driver]
+   [metabase.driver.connection :as driver.conn]
    [metabase.driver.util :as driver.u]
    [metabase.lib.schema.common :as schema.common]
    [metabase.query-processor.compile :as qp.compile]
@@ -54,40 +55,45 @@
   ([transform] (run-mbql-transform! transform nil))
   ([{:keys [id source target owner_user_id creator_id] :as transform} {:keys [run-method start-promise user-id]}]
    (try
-     (let [db (get-in source [:query :database])
+     (let [db                            (get-in source [:query :database])
            {driver :engine :as database} (t2/select-one :model/Database db)
            ;; important to test routing before calling compile-source (whose qp middleware will also throw)
-           _ (throw-if-db-routing-enabled transform driver database)
-           transform-details {:db-id db
-                              :database database
-                              :transform-id   id
-                              :transform-type (keyword (:type target))
-                              :conn-spec (driver/connection-spec driver database)
-                              :query (transforms.util/compile-source transform)
-                              :output-schema (:schema target)
-                              :output-table (transforms.util/qualified-table-name driver target)}
-           opts (transform-opts transform-details)
-           features (transforms.util/required-database-features transform)
-           ;; For manual runs, use the triggering user; for cron, use owner/creator
-           run-user-id (if (and (= run-method :manual) user-id)
-                         user-id
-                         (or owner_user_id creator_id))]
-       (when-not (every? (fn [feature] (driver.u/supports? (:engine database) feature database)) features)
-         (throw (ex-info "The database does not support the requested transform target type."
-                         {:driver driver, :database database, :features features})))
-       ;; mark the execution as started and notify any observers
-       (let [{run-id :id} (transforms.util/try-start-unless-already-running id run-method run-user-id)]
-         (when start-promise
-           (deliver start-promise [:started run-id]))
-         (log/info "Executing transform" id "with target" (pr-str target))
-         (transforms.instrumentation/with-stage-timing [run-id [:computation :mbql-query]]
-           (transforms.util/run-cancelable-transform!
-            run-id driver transform-details
-            (fn [_cancel-chan] (driver/run-transform! driver transform-details opts))))
-         (transforms.util/handle-transform-complete!
-          :run-id run-id
-          :transform transform
-          :db database)))
+           _                             (throw-if-db-routing-enabled transform driver database)]
+       (driver.conn/with-write-connection
+         (let [conn-spec         (driver/connection-spec driver database)
+               transform-details {:db-id          db
+                                  :database       database
+                                  :transform-id   id
+                                  :transform-type (keyword (:type target))
+                                  :conn-spec      conn-spec
+                                  :query          (transforms.util/compile-source transform)
+                                  :output-schema  (:schema target)
+                                  :output-table   (transforms.util/qualified-table-name driver target)}
+               opts              (transform-opts transform-details)
+               features          (transforms.util/required-database-features transform)
+               ;; For manual runs, use the triggering user; for cron, use owner/creator
+               run-user-id       (if (and (= run-method :manual) user-id)
+                                   user-id
+                                   (or owner_user_id creator_id))]
+           (when-not (every? (fn [feature] (driver.u/supports? (:engine database) feature database)) features)
+             (throw (ex-info "The database does not support the requested transform target type."
+                             {:driver driver, :database database, :features features})))
+           ;; mark the execution as started and notify any observers
+           (let [{run-id :id} (transforms.util/try-start-unless-already-running id run-method run-user-id)]
+             (when start-promise
+               (deliver start-promise [:started run-id]))
+             (log/info "Executing transform" id "with target" (pr-str target)
+                       (when (driver.conn/write-connection-requested?)
+                         " using write connection"))
+             (transforms.instrumentation/with-stage-timing [run-id [:computation :mbql-query]]
+               (transforms.util/run-cancelable-transform!
+                run-id driver transform-details
+                (fn [_cancel-chan]
+                  (driver/run-transform! driver transform-details opts))))
+             (transforms.util/handle-transform-complete!
+              :run-id run-id
+              :transform transform
+              :db database)))))
      (catch Throwable t
        (if (= :already-running (:error (ex-data t)))
          (log/warnf "Transform %d is already running" id)

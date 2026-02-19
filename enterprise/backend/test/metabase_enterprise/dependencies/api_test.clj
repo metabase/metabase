@@ -301,9 +301,9 @@
                   dependent-query (lib/native-query mp (str "select * from {{#"
                                                             (:id base-card)
                                                             "}} orders where total > 100"))
-                  _dependent-card (card/create-card!
-                                   (card-with-query "Dependent Card filtering on Total" dependent-query)
-                                   user)
+                  dependent-card (card/create-card!
+                                  (card-with-query "Dependent Card filtering on Total" dependent-query)
+                                  user)
                   ;; Propose changing to products table (doesn't have TOTAL column, breaks downstream)
                   proposed-query (lib/query mp (lib.metadata/table mp (mt/id :products)))
                   proposed-card {:id (:id base-card)
@@ -311,8 +311,8 @@
                                  :dataset_query proposed-query
                                  :result_metadata nil}
                   response (mt/user-http-request :rasta :post 200 "ee/dependencies/check_card" proposed-card)]
-              (is (=? {:success true
-                       :bad_cards []
+              (is (=? {:success false
+                       :bad_cards [{:id (:id dependent-card)}]
                        :bad_transforms []}
                       response)))))))))
 

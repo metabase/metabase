@@ -18,7 +18,6 @@ import type {
   NativeQuerySnippetId,
   SegmentId,
   TableId,
-  TransformId,
 } from "metabase-types/api";
 import { createMockCard } from "metabase-types/api/mocks";
 
@@ -493,7 +492,7 @@ describe("scenarios > dependencies > dependency graph", () => {
     it("should display dependencies for a transform and navigate to them", () => {
       createTableBasedTransform({ tableName: TABLE_NAME }).then(
         ({ body: transform }) => {
-          runTransformAndWaitForSuccess(transform.id);
+          H.runTransformAndWaitForSuccess(transform.id);
           visitGraphForEntity(transform.id, "transform");
         },
       );
@@ -1070,11 +1069,6 @@ function createSnippetBasedTransform({
       name: TRANSFORM_TABLE_NAME,
     },
   });
-}
-
-function runTransformAndWaitForSuccess(transformId: TransformId) {
-  cy.request("POST", `/api/transform/${transformId}/run`);
-  H.waitForSucceededTransformRuns();
 }
 
 function createEmptySnippet() {

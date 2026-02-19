@@ -688,14 +688,14 @@
   (merge
    {:lib/type :option/join.strategy
     :strategy raw-strategy}
-   (when (= raw-strategy :left-join)
+   (when (= raw-strategy lib.schema.join/default-strategy)
      {:default true})))
 
 (mu/defn raw-join-strategy :- ::lib.schema.join/strategy
   "Get the raw keyword strategy (type) of a given join, e.g. `:left-join` or `:right-join`. This is either the value
-  of the optional `:strategy` key or the default, `:left-join`, if `:strategy` is not specified."
+  of the optional `:strategy` key or [[lib.schema.join/default-strategy]] if `:strategy` is not specified."
   [a-join :- ::lib.join.util/partial-join]
-  (get a-join :strategy :left-join))
+  (get a-join :strategy lib.schema.join/default-strategy))
 
 (mu/defn join-strategy :- ::lib.schema.join/strategy.option
   "Get the strategy (type) of a given join, as a `:option/join.strategy` map. If `:strategy` is unspecified, returns
@@ -735,7 +735,7 @@
        (u/assoc-default :fields :all)))
 
   ([joinable conditions]
-   (join-clause joinable conditions :left-join))
+   (join-clause joinable conditions lib.schema.join/default-strategy))
 
   ([joinable conditions strategy]
    (-> (join-clause joinable)

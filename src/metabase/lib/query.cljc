@@ -127,10 +127,10 @@
   "Add `:base-type` and `:effective-type` to options of fields in `x` using `metadata-provider`. Works on pmbql fields.
   `:effective-type` is required for coerced fields to pass schema checks."
   [x metadata-provider :- ::lib.schema.metadata/metadata-provider]
-  (if-let [field-ids (lib.util.match/match x
+  (if-let [field-ids (lib.util.match/match-many x
                        [:field
-                        (_options :guard (every-pred map? (complement (every-pred :base-type :effective-type))))
-                        (id :guard integer? pos?)]
+                        (_opts :guard (and (map? _opts) (not (and (:base-type _opts) (:effective-type _opts)))))
+                        (id :guard (and (integer? id) (pos? id)))]
                        (when-not (some #{:mbql/stage-metadata} &parents)
                          id))]
     ;; "pre-warm" the metadata provider

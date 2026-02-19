@@ -8,8 +8,8 @@ Metabase allows admins to create segments so people can quickly and easily refer
 
 To manage segments:
 
-1. Click the **gear** icon in the upper right.
-2. Select **Admin setting**.
+1. Click the **grid** icon in the upper right.
+2. Select **Admin**.
 3. Go to the **Table Metadata** tab.
 4. Click **Segments** at the bottom left.
 

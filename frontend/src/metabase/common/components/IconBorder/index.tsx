@@ -1,1 +1,0 @@
-export { IconBorder } from "./IconBorder";

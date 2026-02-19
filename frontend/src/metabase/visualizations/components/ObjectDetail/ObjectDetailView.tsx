@@ -13,7 +13,6 @@ import { runQuestionQuery } from "metabase/query_builder/actions";
 import { ActionsApi, MetabaseApi } from "metabase/services";
 import { Modal } from "metabase/ui";
 import * as Lib from "metabase-lib";
-import type ForeignKey from "metabase-lib/v1/metadata/ForeignKey";
 import { isVirtualCardId } from "metabase-lib/v1/metadata/utils/saved-questions";
 import { isPK } from "metabase-lib/v1/types/utils/isa";
 import type {
@@ -74,7 +73,6 @@ export function ObjectDetailView({
   zoomedRow: passedZoomedRow,
   zoomedRowID,
   tableForeignKeys,
-  tableForeignKeyReferences,
   settings,
   canZoom,
   canZoomPreviousRow,
@@ -86,7 +84,6 @@ export function ObjectDetailView({
   visualizationIsClickable,
   fetchTableFks,
   loadObjectDetailFKReferences,
-  followForeignKey,
   viewPreviousObjectDetail,
   viewNextObjectDetail,
   closeObjectDetail,
@@ -247,15 +244,6 @@ export function ObjectDetailView({
     }
   }, [hasFks, data, prevData, prevTableForeignKeys, loadFKReferences]);
 
-  const onFollowForeignKey = useCallback(
-    (fk: ForeignKey) => {
-      if (zoomedRowID !== undefined) {
-        followForeignKey({ objectId: zoomedRowID, fk });
-      }
-    },
-    [zoomedRowID, followForeignKey],
-  );
-
   const areImplicitActionsEnabled = Boolean(
     question &&
       question.canWrite() &&
@@ -363,15 +351,10 @@ export function ObjectDetailView({
             )}
             <ObjectDetailBody
               columns={passedData.cols}
-              objectName={objectName}
               zoomedRow={zoomedRow ?? []}
               settings={settings}
-              hasRelationships={hasRelationships}
               onVisualizationClick={onVisualizationClick}
               visualizationIsClickable={visualizationIsClickable}
-              tableForeignKeys={tableForeignKeys}
-              tableForeignKeyReferences={tableForeignKeyReferences}
-              followForeignKey={onFollowForeignKey}
             />
           </ObjectDetailWrapperDiv>
         )}

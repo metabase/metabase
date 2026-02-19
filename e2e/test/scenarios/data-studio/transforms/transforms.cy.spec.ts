@@ -1618,8 +1618,7 @@ LIMIT
 
       cy.get<TransformId>("@transformId").then((transformId) => {
         cy.log("run the transform to create the output table");
-        cy.request("POST", `/api/transform/${transformId}/run`);
-        H.waitForSucceededTransformRuns();
+        H.runTransformAndWaitForSuccess(transformId);
         H.resyncDatabase({
           dbId: WRITABLE_DB_ID,
           tableName: transformTableName,

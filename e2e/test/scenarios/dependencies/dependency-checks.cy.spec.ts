@@ -161,9 +161,12 @@ describe("scenarios > dependencies > dependency checks", () => {
       cy.get<number>("@transformId").then(H.visitTransform);
       goToEditorAndType('SELECT name FROM "Schema A"."Animals"');
 
-      cy.log("no confirmation is shown");
+      cy.log("confirmation is shown");
       H.DataStudio.Transforms.saveChangesButton().click();
-      cy.wait("@updateTransform");
+      cy.contains(
+        "h2",
+        "These changes will break some other things. Save anyway?",
+      );
     });
 
     it("should not show a confirmation if there are no breaking changes when updating a SQL transform after it was run", () => {
@@ -361,8 +364,7 @@ function createSqlTransformWithDependentMbqlQuestions() {
     },
   }).then(({ body: transform }) => {
     cy.wrap(transform.id).as("transformId");
-    cy.request("POST", `/api/transform/${transform.id}/run`);
-    H.waitForSucceededTransformRuns();
+    H.runTransformAndWaitForSuccess(transform.id);
     H.resyncDatabase({ dbId: WRITABLE_DB_ID, tableName: transformTableName });
 
     H.getTableId({ databaseId: WRITABLE_DB_ID, name: transformTableName }).then(
@@ -417,9 +419,8 @@ function createMbqlTransformWithDependentMbqlTransforms() {
         { wrapId: true },
       );
       cy.get<number>("@transformId").then((transformId) =>
-        H.runTransform(transformId),
+        H.runTransformAndWaitForSuccess(transformId),
       );
-      H.waitForSucceededTransformRuns();
 
       H.getTableId({ databaseId: WRITABLE_DB_ID, name: "base_transform" }).then(
         (tableId) => {

@@ -59,7 +59,7 @@ _Data Studio > Transforms_
 You can see all your Metabase's transforms:
 
 1. Make sure you have [appropriate permissions to see transforms](#permissions-for-transforms).
-2. Click on the **grid** icon on top right and go to **Data Studio**.
+2. Click the **grid** icon on top right and go to **Data Studio**.
 3. In the left sidebar, select **Transforms**.
 
 ## Create a transform
@@ -71,7 +71,7 @@ If you're using remote sync, you won't be able to create transforms if your inst
 To create a transform:
 
 1. Make sure you have [appropriate permissions for creating transforms](#permissions-for-transforms).
-2. Click on the **grid** icon on top right and go to **Data Studio**.
+2. Click the **grid** icon on top right and go to **Data Studio**.
 3. In the left sidebar, select **Transforms**.
 4. Click **+ New** and select a source for your transform.
 
@@ -191,13 +191,13 @@ Incremental transforms work differently for query-based transforms and Python tr
 
 ## Versioning transforms
 
-_Admin settings > General > Remote sync_
+_Admin > General > Remote sync_
 
 You can check your transforms into git with [Remote Sync](../../installation-and-operation/remote-sync.md). If you enable transform sync, Metabase will serialize transforms as YAML files and push them to your specified GitHub repo branch.
 
 To enable git sync of transforms:
 
-1. Go to Admin settings by click on the **grid** icon in top right and select **Admin**.
+1. Go to Admin settings by click the **grid** icon in top right and select **Admin**.
 2. On the **General** tab, pick **Remote sync** in the left sidebar.
 3. Follow the steps to [Set up Remote Sync](../../installation-and-operation/remote-sync.md), and toggle "Transforms" sync on.
 

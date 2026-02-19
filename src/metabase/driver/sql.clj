@@ -121,7 +121,7 @@
 
 (defn- create-table-and-insert-data!
   [driver transform-details conn-spec]
-  (let [create-query (driver/compile-transform driver transform-details)
+  (let [create-query  (driver/compile-transform driver transform-details)
         rows-affected (last (driver/execute-raw-queries! driver conn-spec [create-query]))]
     rows-affected))
 
@@ -131,9 +131,9 @@
         old-temp (driver.u/temp-table-name driver output-table)]
     (try
       (let [new-temp-details (assoc transform-details :output-table new-temp)
-            rows-affected (create-table-and-insert-data! driver new-temp-details conn-spec)]
+            rows-affected    (create-table-and-insert-data! driver new-temp-details conn-spec)]
         (driver/rename-tables! driver (:id database) {output-table old-temp
-                                                      new-temp output-table})
+                                                      new-temp     output-table})
         (driver/drop-table! driver (:id database) old-temp)
         {:rows-affected rows-affected})
       (catch Exception e
@@ -146,7 +146,7 @@
   (let [tmp-table (driver.u/temp-table-name driver output-table)]
     (try
       (let [tmp-table-details (assoc transform-details :output-table tmp-table)
-            rows-affected (create-table-and-insert-data! driver tmp-table-details conn-spec)]
+            rows-affected     (create-table-and-insert-data! driver tmp-table-details conn-spec)]
         (driver/drop-table! driver (:id database) output-table)
         (driver/rename-table! driver (:id database) tmp-table output-table)
         {:rows-affected rows-affected})
@@ -169,7 +169,7 @@
   [driver {:keys [conn-spec output-table database] :as transform-details} _opts]
   (let [table-exists? (driver/table-exists? driver database
                                             {:schema (namespace output-table)
-                                             :name (name output-table)})]
+                                             :name   (name output-table)})]
     (cond
       (or (not table-exists?)
           (driver/database-supports? driver :create-or-replace-table database))

@@ -1,4 +1,7 @@
 (ns metabase.lib.util.match-test
+  {:clj-kondo/config '{:linters
+                       {:discouraged-var {metabase.lib.util.match/match {:level :off}
+                                          metabase.lib.util.match/match-one {:level :off}}}}}
   (:require
    [clojure.test :as t]
    [metabase.lib.util.match :as lib.util.match]))
@@ -360,7 +363,7 @@
   (t/is (= 10 (lib.util.match/match-lite [1 2 3]
                 (:or [a] [a b] [a b c]) (* a 10))))
   (t/is (= nil (lib.util.match/match-lite [1 2 3]
-                 (:or [(a :guard even?) b] [a (b :guard odd?)]) [* a b])))
+                 (:or [(a :guard even?) b] [a (b :guard odd?)]) (* a b))))
   (t/testing ":or can mix with other patterns"
     (t/is (= 20 (lib.util.match/match-lite [1 2 3]
                   [a b c d] 10
@@ -412,3 +415,30 @@
     (t/is (= :inside (lib.util.match/match-lite [[[[[[:inside]]]]]]
                        [in] (&recur in)
                        _ &match)))))
+
+(t/deftest ^:parallel match-many-test
+  (t/is (= [6 15] (lib.util.match/match-many [[1 2 3] [4 5 6]]
+                    [a b c] (+ a b c))))
+  (t/is (= [1 2 3 4 5 6] (lib.util.match/match-many [[1 2 3] [4 5 6]]
+                           (_ :guard number?) &match)))
+  (t/is (= [100] (lib.util.match/match-many [[1 2 3] [4 5 6]]
+                   (_ :guard keyword?) &match
+                   _ 100)))
+
+  (t/testing "absent of matches returns nil"
+    (t/is (= nil (lib.util.match/match-many [[1 2 3] [4 5 6]]
+                   (_ :guard keyword?) &match))))
+
+  (t/testing "nils aren't recorded into the result"
+    (t/is (= [15] (lib.util.match/match-many [[1 2 3] [4 5 6]]
+                    [a b c] (when (> a 1)
+                              (+ a b c)))))))
+
+(t/deftest ^:parallel parents-tests
+  (t/is (= [:foo :bar :baz :qux]
+           (lib.util.match/match-lite [:foo [:bar [:baz {:qux 42}]]]
+             42 &parents)))
+  (t/is (= [[:foo :bar :baz :qux]
+            [:foo :bar :baz :corge]]
+           (lib.util.match/match-many [:foo [:bar [:baz {:qux 42 :corge 42}]]]
+             42 &parents))))

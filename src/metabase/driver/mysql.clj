@@ -12,6 +12,7 @@
    [metabase.driver :as driver]
    [metabase.driver-api.core :as driver-api]
    [metabase.driver.common :as driver.common]
+   [metabase.driver.connection :as driver.conn]
    [metabase.driver.mysql.actions :as mysql.actions]
    [metabase.driver.mysql.ddl :as mysql.ddl]
    [metabase.driver.sql :as driver.sql]
@@ -1187,7 +1188,7 @@
 
 (defmethod driver.sql/default-database-role :mysql
   [_driver database]
-  (-> database :details :role))
+  (-> database driver.conn/effective-details :role))
 
 (defmethod driver.sql/set-role-statement :mysql
   [_driver role]
@@ -1209,7 +1210,7 @@
   (let [db (try
              (driver-api/database (driver-api/metadata-provider))
              (catch Throwable _ nil))
-        tiny-int-1-is-bit? (not (some-> db :details :additional-options (str/includes? "tinyInt1isBit=false")))
+        tiny-int-1-is-bit? (not (some-> db driver.conn/effective-details :additional-options (str/includes? "tinyInt1isBit=false")))
         db-type-name (.getColumnTypeName rsmeta column-index)
         precision    (try
                        (.getPrecision rsmeta column-index)

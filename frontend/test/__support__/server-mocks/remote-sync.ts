@@ -86,6 +86,29 @@ export const setupRemoteSyncImportEndpoint = ({
 };
 
 /**
+ * Setup the remote-sync cancel task endpoint
+ */
+export const setupRemoteSyncCancelTaskEndpoint = ({
+  status = 200,
+  body = {},
+  delay = 0,
+}: { status?: number; body?: any; delay?: number } = {}) => {
+  fetchMock.removeRoute("remote-sync-cancel-task");
+  if (status === 200) {
+    fetchMock.post("path:/api/ee/remote-sync/current-task/cancel", body, {
+      name: "remote-sync-cancel-task",
+      delay,
+    });
+  } else {
+    fetchMock.post(
+      "path:/api/ee/remote-sync/current-task/cancel",
+      { status, body },
+      { name: "remote-sync-cancel-task", delay },
+    );
+  }
+};
+
+/**
  * Setup all remote-sync endpoints at once
  */
 export const setupRemoteSyncEndpoints = ({

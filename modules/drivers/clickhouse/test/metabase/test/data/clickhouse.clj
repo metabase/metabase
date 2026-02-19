@@ -77,7 +77,7 @@
 (defmethod tx/dbdef->connection-details :clickhouse [driver context {:keys [database-name]}]
   (merge
    {:host     (mt/db-test-env-var :clickhouse :host)
-    :port     (Integer/parseInt (mt/db-test-env-var :clickhouse :port))
+    :port     (parse-long (mt/db-test-env-var-or-throw :clickhouse :port))
     :enable-multiple-db true}
    (when-let [user (mt/db-test-env-var :clickhouse :user)]
      {:user user})

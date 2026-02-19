@@ -7,7 +7,7 @@ redirect_from:
 
 # Account settings
 
-You can view your account settings by going to the top right of the screen and clicking on the **gear** icon > **Account settings**.
+To access your account settings, click the **grid** icon in the top right corner, then click your **profile name and email.**
 
 ## Account profile
 

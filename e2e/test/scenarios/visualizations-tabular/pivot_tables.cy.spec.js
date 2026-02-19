@@ -481,7 +481,9 @@ describe("scenarios > visualizations > pivot tables", { tags: "@slow" }, () => {
     });
 
     // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Pivot tables can only be used with aggregated queries.");
+    cy.findByText(
+      "Pivot tables are only supported for questions built in the query builder.",
+    );
   });
 
   describe("custom columns (metabase#14604)", () => {

@@ -183,6 +183,12 @@ describe("scenarios > embedding > sdk iframe embed setup > guest-embed", () => {
         .should("be.visible")
         .should("be.disabled");
 
+      getEmbedSidebar().findByTestId("behavior-docs-link").should("be.visible");
+      getEmbedSidebar()
+        .findByTestId("behavior-docs-link")
+        .should("have.attr", "href")
+        .and("include", "embedding/guest-embedding");
+
       H.setEmbeddingParameter("Text", "Locked");
       cy.findAllByTestId("parameter-widget").find("input").type("Foo Bar Baz");
 

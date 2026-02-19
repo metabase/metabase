@@ -445,7 +445,8 @@
                                         [true? {:dbname nil}]
                                         [true? {:dbname ""}]
                                         [false? {:dbname "db_name"}]]]
-    (is (schemas-supported? (driver/database-supports? :athena :schemas {:details details})))))
+    (is (schemas-supported? (driver/database-supports? :athena :schemas {:lib/type :metadata/database
+                                                                         :details  details})))))
 
 (deftest ^:parallel athena-describe-database
   (mt/test-driver :athena
