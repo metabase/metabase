@@ -5,7 +5,6 @@
   (:require
    [buddy.core.codecs :as codecs]
    [metabase-enterprise.metabot-v3.agent.markdown-link-buffer :as markdown-link-buffer]
-   [metabase.lib.core :as lib]
    [metabase.util.json :as json]))
 
 (set! *warn-on-reflection* true)
@@ -26,15 +25,10 @@
   "Convert an MLv2/MBQL query to a base64-encoded URL hash.
   Used for /question# URLs."
   [query]
-  ;; Frontend /question# URLs require legacy MBQL format
-  #_{:clj-kondo/ignore [:discouraged-var]}
-  (let [dataset-query (if (and (map? query) (:lib/type query))
-                        (lib/->legacy-MBQL query)
-                        query)]
-    (-> {:dataset_query dataset-query}
-        json/encode
-        (.getBytes "UTF-8")
-        codecs/bytes->b64-str)))
+  (-> {:dataset_query query}
+      json/encode
+      (.getBytes "UTF-8")
+      codecs/bytes->b64-str))
 
 (defn query->question-url
   "Convert a query to a /question# URL."
