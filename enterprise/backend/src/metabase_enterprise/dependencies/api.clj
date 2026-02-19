@@ -155,7 +155,7 @@
                                       :name snippet-name
                                       :content content)
                   content native-query-snippets/add-template-tags)
-        breakages (dependencies/errors-from-proposed-edits {:snippet [snippet]})]
+        breakages (dependencies/errors-from-proposed-edits {:snippet [snippet]} :include-native? true)]
     (broken-cards-response breakages)))
 
 (def ^:private entity-keys
