@@ -12,6 +12,7 @@ import {
 } from "metabase/plugins/oss/tenants";
 import { Group, Icon, Stack, Text, Title } from "metabase/ui";
 
+import { ConnectionImpersonationStepContent } from "./ConnectionImpersonationStepContent";
 import {
   type DataSegregationStrategy,
   DataSegregationStrategyPicker,
@@ -149,8 +150,11 @@ export const SetupPermissionsAndTenantsPage = () => {
               />
             ))
             .with("database-routing", () => <DatabaseRoutingStepContent />)
-            // TODO(EMB-1271): implement connection impersonation onboarding
-            .with("connection-impersonation", () => null)
+            .with("connection-impersonation", () => (
+              <ConnectionImpersonationStepContent
+                onNext={() => stepperRef.current?.goToNextIncompleteStep()}
+              />
+            ))
             .otherwise(() => null)}
         </OnboardingStepper.Step>
 
