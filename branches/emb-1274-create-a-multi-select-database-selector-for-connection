@@ -1,7 +1,7 @@
 {
   "base": {
     "name": "integration-embedding-onboarding-improvements",
-    "hash": "e25b5390309a3613f0a2d0ee66f2c60c9c5a500d"
+    "hash": "1cbb671dec2da7b6a9fc2edbfd6f170095ecc400"
   },
   "upstream": {
     "branch": "emb-1274-create-a-multi-select-database-selector-for-connection"
