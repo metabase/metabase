@@ -23,4 +23,4 @@
   (handlers/route-map-handler
    {"/auth" {"/sso"  'metabase-enterprise.sso.api.sso}
     "/api"  {"/saml" 'metabase-enterprise.sso.api.saml
-             "/ee"   {"/sso" {"/oidc" 'metabase-enterprise.sso.api.oidc}}}}))
+             "/ee"   {"/sso" {"/oidc" metabase-enterprise.sso.api.oidc/routes}}}}))

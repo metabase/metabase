@@ -62,8 +62,9 @@
 
 ;;; -------------------------------------------------- Helpers --------------------------------------------------
 
-(defn- sanitize-provider
-  "Remove sensitive fields from a provider for API responses."
+(defn- sanitize-response
+  "Ensures the API response is safe to return to the client.
+  Obfuscates the client-secret and ensures keys are strings."
   [provider]
   (cond-> provider
     (:client-secret provider)  (update :client-secret setting/obfuscate-value)
@@ -85,19 +86,17 @@
 (api.macros/defendpoint :get "/" :- [:sequential oidc-provider-response-schema]
   "List all OIDC providers (with client secrets masked)."
   []
-  (api/check-superuser)
   (premium-features/assert-has-feature :sso-oidc (tru "OIDC authentication"))
-  (mapv sanitize-provider (sso-settings/oidc-providers)))
+  (mapv sanitize-response (sso-settings/oidc-providers)))
 
 ;; GET /api/ee/sso/oidc/:key
 (api.macros/defendpoint :get "/:key" :- oidc-provider-response-schema
   "Get a single OIDC provider by key (with client secret masked)."
   [{provider-key :key} :- [:map [:key :string]]]
-  (api/check-superuser)
   (premium-features/assert-has-feature :sso-oidc (tru "OIDC authentication"))
   (let [provider (sso-settings/get-oidc-provider provider-key)]
     (api/check-404 provider)
-    (sanitize-provider provider)))
+    (sanitize-response provider)))
 
 ;; POST /api/ee/sso/oidc
 (api.macros/defendpoint :post "/" :- oidc-provider-response-schema
@@ -105,7 +104,6 @@
   [_route-params
    _query-params
    body :- oidc-provider-create-schema]
-  (api/check-superuser)
   (premium-features/assert-has-feature :sso-oidc (tru "OIDC authentication"))
   (let [provider-key (:key body)]
     (api/check-400 (u/valid-slug? provider-key) "Provider key must be a URL-safe slug (lowercase letters, numbers, hyphens, must start with letter or number)")
@@ -116,7 +114,7 @@
                                :scopes ["openid" "email" "profile"]}
                               body)]
       (sso-settings/oidc-providers! (conj (vec providers) new-provider))
-      (sanitize-provider new-provider))))
+      (sanitize-response new-provider))))
 
 ;; PUT /api/ee/sso/oidc/:key
 (api.macros/defendpoint :put "/:key" :- oidc-provider-response-schema
@@ -124,7 +122,6 @@
   [{provider-key :key} :- [:map [:key :string]]
    _query-params
    body :- oidc-provider-update-schema]
-  (api/check-superuser)
   (premium-features/assert-has-feature :sso-oidc (tru "OIDC authentication"))
   (let [providers (sso-settings/oidc-providers)
         idx       (some (fn [[i p]] (when (= (:key p) provider-key) i))
@@ -140,7 +137,7 @@
       (check-oidc-connection! (:issuer-uri updated) (:client-id updated) (:client-secret updated))
       (let [providers (assoc (vec providers) idx updated)]
         (sso-settings/oidc-providers! providers)
-        (sanitize-provider updated)))))
+        (sanitize-response updated)))))
 
 ;; POST /api/ee/sso/oidc/check
 (def ^:private oidc-check-request-schema
@@ -169,7 +166,6 @@
   [_route-params
    _query-params
    body :- oidc-check-request-schema]
-  (api/check-superuser)
   (premium-features/assert-has-feature :sso-oidc (tru "OIDC authentication"))
   (let [issuer-uri    (:issuer-uri body)
         client-id     (:client-id body)
@@ -186,7 +182,6 @@
 (api.macros/defendpoint :delete "/:key"  :- :nil
   "Delete an OIDC provider."
   [{provider-key :key} :- [:map [:key :string]]]
-  (api/check-superuser)
   (premium-features/assert-has-feature :sso-oidc (tru "OIDC authentication"))
   (let [providers (sso-settings/oidc-providers)
         filtered  (vec (remove #(= (:key %) provider-key) providers))]
@@ -194,3 +189,7 @@
       (api/check-404 nil))
     (sso-settings/oidc-providers! filtered)
     nil))
+
+(def ^{:arglists '([request respond raise])} routes
+  "`/api/ee/sso/oidc` routes."
+  (api.macros/ns-handler *ns* api/+check-superuser))
