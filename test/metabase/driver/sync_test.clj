@@ -34,12 +34,14 @@
 (deftest ^:parallel schema-filter-NPE-test
   (testing "Schema filter function should not NPE if you pass in a `nil` schema (#38156)"
     (testing "inclusion -- don't include nil schemas"
-      (let [db {:details {:schema-filters-type "inclusion"
-                          :schema-filters-patterns "x"}
-                :engine :postgres}]
+      (let [db {:lib/type :metadata/database
+                :details  {:schema-filters-type     "inclusion"
+                           :schema-filters-patterns "x"}
+                :engine   :postgres}]
         (is (not (driver.s/include-schema? db nil)))))
     (testing "exclusion -- don't exclude nil schemas"
-      (let [db {:details {:schema-filters-type "exclusion"
-                          :schema-filters-patterns "x"}
-                :engine :postgres}]
+      (let [db {:lib/type :metadata/database
+                :details  {:schema-filters-type     "exclusion"
+                           :schema-filters-patterns "x"}
+                :engine   :postgres}]
         (is (driver.s/include-schema? db nil))))))
