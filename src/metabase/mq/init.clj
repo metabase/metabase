@@ -4,7 +4,6 @@
    [metabase.mq.queue.backend :as q.backend]
    [metabase.mq.settings :as mq.settings]
    [metabase.mq.topic.backend :as topic.backend]
-   [metabase.startup.core :as startup]
    [metabase.util.log :as log]))
 
 (defn init!
@@ -17,6 +16,4 @@
     (log/infof "Queue backend set to %s" queue-be)
     (log/infof "Topic backend set to %s" topic-be)))
 
-(defmethod startup/def-startup-logic! ::MqInit
-  [_]
-  (init!))
+(init!)

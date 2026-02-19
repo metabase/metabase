@@ -11,14 +11,12 @@
       (with-queue :queue/my-task [q]
         (put q message))
 
-  **Topic** — fan-out pub/sub.  Every active subscriber receives every published message.
-  Messages are fire-and-forget from the publisher's perspective.
+  **Topic** — single-consumer pub/sub.  Each active node receives every published message.
+  There can be up to one handler per node for each topic. Failed messages are never retried.
 
       (subscribe! :topic/my-events handler-fn)
       (with-topic :topic/my-events [t]
-        (put t payload))
-
-  Topics are auto-created on first publish or subscribe — no upfront registration is required."
+        (put t payload))"
   (:require
    [metabase.mq.impl :as mq.impl]
    [metabase.mq.queue.appdb :as q.appdb]

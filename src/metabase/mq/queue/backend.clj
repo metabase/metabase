@@ -10,7 +10,7 @@
 (set! *warn-on-reflection* true)
 
 (mr/def ::backend
-  [:enum :queue.backend/appdb :queue.backend/memory :queue.backend/tracking])
+  [:enum :queue.backend/appdb :queue.backend/memory])
 
 (def ^:dynamic *backend*
   "Dynamic var specifying which queue backend to use.

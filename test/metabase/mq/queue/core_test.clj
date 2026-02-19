@@ -8,7 +8,7 @@
 (set! *warn-on-reflection* true)
 
 (deftest ^:parallel e2e-test
-  (qt/with-memory-queue [recent]
+  (qt/with-memory-queue
     (let [heard-messages (atom [])
           queue-name (keyword "queue" (str "core-e2e-test-" (gensym)))]
       (mq/listen! queue-name (fn [{:keys [message]}]
@@ -22,31 +22,26 @@
           (mq/put q "test message 2"))
         (Thread/sleep 200)
 
-        (is (= ["test message 1" "test message 2"] @heard-messages))
-        (is (= 2 (count @(:successful-callbacks recent))))
-        (is (= 0 (count @(:failed-callbacks recent)))))
+        (is (= ["test message 1" "test message 2"] @heard-messages)))
 
       (testing "The error messages are heard and retried up to max failures"
         (mq/with-queue queue-name [q]
           (mq/put q "error!"))
         (Thread/sleep 1000)
 
-        (is (= (into ["test message 1" "test message 2"] (repeat 5 "error!")) @heard-messages))
-        (is (= 2 (count @(:successful-callbacks recent))))
-        (is (= 5 (count @(:failed-callbacks recent)))))
+        (is (= (into ["test message 1" "test message 2"] (repeat 5 "error!")) @heard-messages)))
 
-      (mq/stop-listening! queue-name)
-      (is (= 1 (count @(:close-queue-callbacks recent)))))))
+      (mq/stop-listening! queue-name))))
 
 (deftest ^:parallel publish-to-undefined-queue-test
-  (qt/with-memory-queue [_recent]
+  (qt/with-memory-queue
     (testing "with-queue on an undefined queue throws"
       (is (thrown-with-msg? ExceptionInfo #"Queue not defined"
                             (mq/with-queue :queue/nonexistent [q]
                               (mq/put q "msg")))))))
 
 (deftest ^:parallel with-queue-success-test
-  (qt/with-memory-queue [_recent]
+  (qt/with-memory-queue
     (let [queue-name (keyword "queue" (str "wq-success-" (gensym)))]
       (mq/listen! queue-name (fn [_msg] nil))
 
@@ -62,7 +57,7 @@
       (mq/stop-listening! queue-name))))
 
 (deftest ^:parallel with-queue-exception-discards-test
-  (qt/with-memory-queue [_recent]
+  (qt/with-memory-queue
     (let [queue-name (keyword "queue" (str "wq-error-" (gensym)))]
       (mq/listen! queue-name (fn [_] nil))
 
@@ -74,14 +69,14 @@
         (is (= 0 (mq/queue-length queue-name)))))))
 
 (deftest ^:parallel with-queue-undefined-queue-test
-  (qt/with-memory-queue [_recent]
+  (qt/with-memory-queue
     (testing "with-queue on undefined queue throws before body executes"
       (is (thrown-with-msg? ExceptionInfo #"Queue not defined"
                             (mq/with-queue :queue/nonexistent [q]
                               (mq/put q "msg")))))))
 
 (deftest ^:parallel double-listen-throws-test
-  (qt/with-memory-queue [_recent]
+  (qt/with-memory-queue
     (let [queue-name (keyword "queue" (str "double-listen-" (gensym)))]
       (mq/listen! queue-name (fn [_] nil))
 
@@ -92,7 +87,7 @@
       (mq/stop-listening! queue-name))))
 
 (deftest ^:parallel fifo-ordering-test
-  (qt/with-memory-queue [_recent]
+  (qt/with-memory-queue
     (let [queue-name (keyword "queue" (str "fifo-" (gensym)))
           received   (atom [])]
       (mq/listen! queue-name (fn [{:keys [message]}]

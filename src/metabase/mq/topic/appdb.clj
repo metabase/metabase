@@ -3,17 +3,17 @@
   Messages are stored in the `topic_message` table. Each subscriber on each node polls
   independently, tracking its read offset in memory."
   (:require
-   [metabase.mq.settings :as mq.settings]
    [metabase.mq.topic.backend :as topic.backend]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
    [toucan2.core :as t2])
-  (:import (java.util.concurrent Future)))
+  (:import (java.time Instant)
+           (java.util.concurrent Future)))
 
 (set! *warn-on-reflection* true)
 
 (def ^:private ^:dynamic *subscriptions*
-  "Map of topic-name -> {:offset (atom n), :future f, :handler fn}"
+  "Map of topic-name -> {:offset (atom n), :future f}"
   (atom {}))
 
 (def ^:private poll-interval-ms
@@ -42,40 +42,16 @@
              :order-by [[:id :asc]]
              :limit    batch-size}))
 
-(defn- process-row!
-  "Process a single row (which may contain multiple messages), retrying up to max-retries times.
-  Returns the row id on success or skip."
-  [handler row-id messages-json]
-  (let [max-retries (mq.settings/topic-max-retries)]
-    (loop [attempt 1]
-      (let [result (try
-                     (handler {:batch-id row-id :messages (json/decode messages-json)})
-                     :success
-                     (catch Exception e
-                       (if (< attempt max-retries)
-                         (do
-                           (log/warnf e "Error processing topic message row %d (attempt %d/%d), retrying"
-                                      row-id attempt max-retries)
-                           :retry)
-                         (do
-                           (log/errorf e "Error processing topic message row %d after %d attempts, skipping"
-                                       row-id max-retries)
-                           :skip))))]
-        (case result
-          :success row-id
-          :skip    row-id
-          :retry   (recur (inc attempt)))))))
-
 (defn- start-polling-loop!
   "Starts a background polling loop for a subscription. Returns the future."
   [topic-name]
   (future
     (try
       (loop []
-        (when-let [{:keys [offset handler]} (get @*subscriptions* topic-name)]
+        (when-let [{:keys [offset]} (get @*subscriptions* topic-name)]
           (let [rows (poll-messages! topic-name @offset)]
             (doseq [{:keys [id messages]} rows]
-              (process-row! handler id messages)
+              (topic.backend/handle! :topic.backend/appdb topic-name id (json/decode messages))
               (reset! offset id)))
           (Thread/sleep (long poll-interval-ms))
           (recur)))
@@ -101,7 +77,7 @@
 (defn- cleanup-old-messages!
   "Deletes all `topic_message` rows older than [[cleanup-max-age-ms]]."
   []
-  (let [threshold (java.sql.Timestamp. (- (System/currentTimeMillis) cleanup-max-age-ms))
+  (let [threshold (java.sql.Timestamp. (- (.toEpochMilli (Instant/now)) cleanup-max-age-ms))
         deleted   (t2/delete! :topic_message_batch :created_at [:< threshold])]
     (when (pos? deleted)
       (log/infof "Cleaned up %d old topic messages" deleted))
@@ -118,7 +94,7 @@
           (try
             (cleanup-old-messages!)
             (catch Exception e
-              (log/errorf e "Error during topic message cleanup")))
+              (log/error e "Error during topic message cleanup")))
           (Thread/sleep (long cleanup-interval-ms))
           (recur)))
       (catch InterruptedException _
@@ -139,13 +115,12 @@
                :messages   (json/encode messages)}))
 
 (defmethod topic.backend/subscribe! :topic.backend/appdb
-  [_ topic-name handler]
+  [_ topic-name]
   (let [offset (atom (current-max-id topic-name))]
     ;; Register subscription BEFORE starting the polling loop to avoid race condition
     (swap! *subscriptions* assoc topic-name
-           {:offset  offset
-            :future  nil
-            :handler handler})
+           {:offset offset
+            :future nil})
     (let [f (start-polling-loop! topic-name)]
       (swap! *subscriptions* update topic-name assoc :future f))
     ;; Idempotently start the cleanup loop on first subscription
@@ -163,3 +138,4 @@
     (.cancel future true)
     (swap! *subscriptions* dissoc topic-name)
     (log/infof "Unsubscribed from topic %s" (name topic-name))))
+

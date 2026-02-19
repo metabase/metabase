@@ -12,7 +12,7 @@
   (atom {}))
 
 (def ^:dynamic *subscriptions*
-  "Atom containing map of topic-name -> {:offset (atom n), :future f, :handler fn}"
+  "Atom containing map of topic-name -> {:offset (atom n), :future f}"
   (atom {}))
 
 (defn- ensure-topic!
@@ -38,15 +38,12 @@
   (future
     (try
       (loop []
-        (when-let [{:keys [offset handler]} (get @*subscriptions* topic-name)]
+        (when-let [{:keys [offset]} (get @*subscriptions* topic-name)]
           (let [{:keys [rows]} (get-topic topic-name)
                 current-offset @offset
                 new-rows       (filterv #(> (:id %) current-offset) @rows)]
             (doseq [{:keys [id messages]} new-rows]
-              (try
-                (handler {:batch-id id :messages messages})
-                (catch Exception e
-                  (log/warnf e "Error in memory subscriber for topic %s on row %d" (name topic-name) id)))
+              (topic.backend/handle! :topic.backend/memory topic-name id messages)
               (reset! offset id)))
           (Thread/sleep (long poll-interval-ms))
           (recur)))
@@ -61,7 +58,7 @@
     (swap! rows conj {:id id :messages messages :created-at (System/currentTimeMillis)})))
 
 (defmethod topic.backend/subscribe! :topic.backend/memory
-  [_ topic-name handler]
+  [_ topic-name]
   (ensure-topic! topic-name)
   (let [{:keys [rows]} (get-topic topic-name)
         current-max (if (seq @rows)
@@ -70,9 +67,8 @@
         offset      (atom current-max)]
     ;; Register subscription BEFORE starting the polling loop to avoid race condition
     (swap! *subscriptions* assoc topic-name
-           {:offset  offset
-            :future  nil
-            :handler handler})
+           {:offset offset
+            :future nil})
     (let [f (start-polling-loop! topic-name)]
       (swap! *subscriptions* update topic-name assoc :future f))
     (log/infof "Memory subscribed to topic %s (offset %d)" (name topic-name) current-max)))

@@ -3,7 +3,7 @@
   Uses native LISTEN/NOTIFY for near-instant message delivery with zero storage overhead.
   Falls back to the `topic_message` table for payloads exceeding PostgreSQL's 8000-byte limit."
   (:require
-   [metabase.app-db.env :as mdb.env]
+   [metabase.app-db.core :as mdb]
    [metabase.mq.topic.backend :as topic.backend]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
@@ -58,11 +58,12 @@
 
 ;;; -------------------------------------------- Raw Connection Helpers --------------------------------------------
 
-(defn- create-raw-connection
-  "Creates a non-pooled connection directly from the DriverManager-based DataSource.
-  This avoids c3p0's `DISCARD ALL` on check-in which would clear LISTEN registrations."
+(defn- open-connection
+  "Borrows a connection from the pooled DataSource and holds it indefinitely.
+  Because this connection is never returned to the pool, c3p0's `DISCARD ALL`
+  on check-in never fires, so LISTEN registrations are preserved."
   ^Connection []
-  (let [conn (.getConnection mdb.env/data-source)]
+  (let [conn (.getConnection (mdb/data-source))]
     (.setAutoCommit conn true)
     conn))
 
@@ -97,22 +98,15 @@
         topic        (get channel->topic channel-name)]
     (when topic
       (try
-        (let [payload (json/decode payload-str)]
-          (if-let [ref-id (and (map? payload) (get payload "ref"))]
-            ;; Large message fallback: fetch from topic_message table
-            (let [row (t2/select-one :topic_message_batch :id ref-id)]
-              (when row
-                (when-let [handler (get @topic.backend/*handlers* topic)]
-                  (try
-                    (handler {:batch-id (:id row) :messages (json/decode (:messages row))})
-                    (catch Exception e
-                      (log/errorf e "Error in postgres handler for topic %s (ref %d)" (name topic) ref-id))))))
-            ;; Normal inline payload
-            (when-let [handler (get @topic.backend/*handlers* topic)]
-              (try
-                (handler {:batch-id 0 :messages payload})
-                (catch Exception e
-                  (log/errorf e "Error in postgres handler for topic %s" (name topic)))))))
+        (let [payload (json/decode payload-str)
+              [batch-id messages] (if-let [ref-id (and (map? payload) (get payload "ref"))]
+                                    ;; Large message fallback: fetch from topic_message table
+                                    (when-let [row (t2/select-one :topic_message_batch :id ref-id)]
+                                      [(:id row) (json/decode (:messages row))])
+                                    ;; Normal inline payload
+                                    [0 payload])]
+          (when messages
+            (topic.backend/handle! topic.backend/*backend* topic batch-id messages)))
         (catch Exception e
           (log/errorf e "Error parsing postgres payload for channel %s" channel-name))))))
 
@@ -132,13 +126,13 @@
       (log/infof "postgres listener reconnecting in %dms..." delay-ms)
       (Thread/sleep (long delay-ms))
       (if-let [new-conn (try
-                          (let [conn (create-raw-connection)]
+                          (let [conn (open-connection)]
                             ;; Re-issue LISTEN for all tracked channels
                             (doseq [ch (:channels @state)]
                               (listen-on-channel! conn ch))
                             conn)
                           (catch Exception e
-                            (log/errorf e "postgres reconnection failed")
+                            (log/error e "postgres reconnection failed")
                             nil))]
         (do
           (swap! state assoc :connection new-conn)
@@ -163,7 +157,7 @@
                                            (dispatch-notification! n channel->topic))))
                                      (catch Exception e
                                        (when (:running? @state)
-                                         (log/errorf e "postgres listener error, reconnecting...")
+                                         (log/error e "postgres listener error, reconnecting...")
                                          (try
                                            (.close ^Connection conn)
                                            (catch Exception _))
@@ -181,7 +175,7 @@
   (when-not (:running? @listener-state)
     (locking listener-state
       (when-not (:running? @listener-state)
-        (let [conn (create-raw-connection)]
+        (let [conn (open-connection)]
           (reset! listener-state {:connection    conn
                                   :running?      true
                                   :channels      #{}
@@ -211,7 +205,7 @@
         (t2/query {:select [[[:pg_notify channel ref-payload]]]})))))
 
 (defmethod topic.backend/subscribe! :topic.backend/postgres
-  [_ topic-name handler]
+  [_ topic-name]
   (ensure-listener!)
   (let [channel (topic->channel-name topic-name)]
     (locking listener-state

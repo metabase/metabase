@@ -10,6 +10,7 @@
 (set! *warn-on-reflection* true)
 
 (def ^:dynamic *queues*
+  "Atom containing map of queue-name -> DelayQueue for the in-memory backend."
   (atom {}))
 
 (def ^:dynamic *batch-registry*
@@ -48,8 +49,7 @@
          (let [batch-id (str (random-uuid))]
            ;; Register the batch for retry tracking
            (swap! *batch-registry* assoc batch-id {:message batch :failures 0})
-           ;; use *backend* in case being called from tracking backend wrapper
-           (q.backend/handle! q.backend/*backend* queue-name batch-id [batch])))) {})
+           (q.backend/handle! :queue.backend/memory queue-name batch-id [batch])))) {})
     (log/infof "Registered memory handler for queue %s" (name queue-name))))
 
 (defmethod q.backend/stop-listening! :queue.backend/memory [_ queue-name]
@@ -78,4 +78,4 @@
           (future
             (let [new-batch-id (str (random-uuid))]
               (swap! *batch-registry* assoc new-batch-id {:message message :failures new-failures})
-              (q.backend/handle! q.backend/*backend* queue-name new-batch-id [message]))))))))
+              (q.backend/handle! :queue.backend/memory queue-name new-batch-id [message]))))))))

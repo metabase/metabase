@@ -1239,10 +1239,10 @@
   {:team "UX West"
    :api  #{metabase.mq.core
            metabase.mq.init}
-   :uses #{app-db
+   :uses #{analytics
+           app-db
            models
            settings
-           startup
            util}}
 
   remote-sync

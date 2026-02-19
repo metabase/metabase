@@ -3,6 +3,7 @@
    [clojure.test :refer :all]
    [metabase.mq.queue.appdb :as q.appdb]
    [metabase.mq.queue.backend :as q.backend]
+   [metabase.mq.settings :as mq.settings]
    [metabase.util.json :as json]
    [toucan2.core :as t2]))
 
@@ -118,12 +119,12 @@
                                                 {:queue_name (name queue-name)
                                                  :messages (json/encode ["test-message"])
                                                  :status "processing"
-                                                 :failures (dec @#'q.appdb/max-failures)
+                                                 :failures (dec (mq.settings/queue-max-retries))
                                                  :owner @#'q.appdb/owner-id})]
         (q.backend/batch-failed! :queue.backend/appdb queue-name message-id)
         (let [updated-message (t2/select-one :queue_message_batch :id message-id)]
           (is (= "failed" (:status updated-message)))
-          (is (= @#'q.appdb/max-failures (:failures updated-message)))
+          (is (= (mq.settings/queue-max-retries) (:failures updated-message)))
           (is (nil? (:owner updated-message))))))
 
     (testing "Message failed on non-existent message does not fail"
