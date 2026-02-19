@@ -125,6 +125,21 @@ describe("scenarios > admin > databases > writable connection", () => {
       runAction(action.id).then(expectSuccess);
     });
   });
+
+  it("should be able to use table editing with a writable connection", () => {
+    visitDatabase(WRITABLE_DB_ID);
+    enableTableEditing();
+
+    H.getTableId({ databaseId: WRITABLE_DB_ID, name: "ORDERS" }).then(
+      (ordersId) => {
+        updateMainConnection(READ_ONLY_USER);
+        performTableEdit(ordersId).then(expectFailure);
+
+        createWritableConnection(DEFAULT_USER);
+        performTableEdit(ordersId).then(expectSuccess);
+      },
+    );
+  });
 });
 
 function createTransform({ tagIds = [] }: { tagIds?: TransformTagId[] } = {}) {
@@ -271,4 +286,24 @@ function expectFailure(response: Response) {
 
 function expectSuccess(response: Response) {
   expect(response.status).to.be.lt(400);
+}
+
+function enableTableEditing() {
+  cy.findByLabelText("Editable tables").scrollIntoView().click();
+}
+
+function performTableEdit(tableId: TableId) {
+  return cy.request({
+    failOnStatusCode: false,
+    method: "POST",
+    url: "/api/ee/action-v2/execute-bulk",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      action: "data-grid.row/create",
+      scope: { "table-id": tableId },
+      inputs: [{ ID: 42 }],
+    }),
+  });
 }
