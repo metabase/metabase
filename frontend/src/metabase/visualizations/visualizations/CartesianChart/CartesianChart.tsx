@@ -37,6 +37,7 @@ function CartesianChartInner(props: VisualizationProps) {
     hideLegend,
     rawSeries,
     settings: originalSettings,
+    autoAdjustSettings = false,
     card,
     getHref,
     width: outerWidth,
@@ -59,13 +60,14 @@ function CartesianChartInner(props: VisualizationProps) {
 
   const settings = useMemo(
     () =>
-      getDashboardAdjustedSettings(
-        originalSettings,
-        isDashboard ?? false,
-        outerWidth,
-        outerHeight,
-      ),
-    [originalSettings, isDashboard, outerWidth, outerHeight],
+      autoAdjustSettings
+        ? getDashboardAdjustedSettings?.({
+            settings: originalSettings,
+            height: outerHeight,
+            width: outerWidth,
+          })
+        : originalSettings,
+    [originalSettings, outerHeight, outerWidth, autoAdjustSettings],
   );
 
   const { chartModel, timelineEventsModel, option } = useModelsAndOption(
