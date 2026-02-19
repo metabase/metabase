@@ -80,11 +80,11 @@ export function DependencyDiagnostics({
   } = useListGraphNodesQuery(
     {
       types: getDependencyTypes(groupTypes),
-      card_types: getCardTypes(groupTypes),
+      "card-types": getCardTypes(groupTypes),
       query,
-      include_personal_collections: includePersonalCollections,
-      sort_column: sortColumn,
-      sort_direction: sortDirection,
+      "include-personal-collections": includePersonalCollections,
+      "sort-column": sortColumn,
+      "sort-direction": sortDirection,
       offset: page * PAGE_SIZE,
       limit: PAGE_SIZE,
     },

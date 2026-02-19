@@ -19,11 +19,11 @@ export function getListRequest(
   return {
     id: node.id,
     type: node.type,
-    dependent_types: getDependencyTypes(filterOptions.groupTypes),
-    dependent_card_types: getCardTypes(filterOptions.groupTypes),
-    include_personal_collections: filterOptions.includePersonalCollections,
-    sort_column: sortOptions.column,
-    sort_direction: sortOptions.direction,
+    "dependent-types": getDependencyTypes(filterOptions.groupTypes),
+    "dependent-card-types": getCardTypes(filterOptions.groupTypes),
+    "include-personal-collections": filterOptions.includePersonalCollections,
+    "sort-column": sortOptions.column,
+    "sort-direction": sortOptions.direction,
   };
 }
 

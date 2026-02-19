@@ -271,13 +271,13 @@ export type GetDependencyGraphRequest = {
 export type ListNodeDependentsRequest = {
   id: DependencyId;
   type: DependencyType;
-  dependent_types?: DependencyType[];
-  dependent_card_types?: CardType[];
+  "dependent-types"?: DependencyType[];
+  "dependent-card-types"?: CardType[];
   query?: string;
-  include_personal_collections?: boolean;
+  "include-personal-collections"?: boolean;
   archived?: boolean;
-  sort_column?: DependencySortColumn;
-  sort_direction?: SortDirection;
+  "sort-column"?: DependencySortColumn;
+  "sort-direction"?: SortDirection;
 };
 
 export type CheckDependenciesResponse = {
@@ -306,11 +306,11 @@ export type DependencySortColumn = (typeof DEPENDENCY_SORT_COLUMNS)[number];
 
 export type ListBreakingGraphNodesRequest = PaginationRequest & {
   types?: DependencyType[];
-  card_types?: CardType[];
+  "card-types"?: CardType[];
   query?: string;
-  include_personal_collections?: boolean;
-  sort_column?: DependencySortColumn;
-  sort_direction?: SortDirection;
+  "include-personal-collections"?: boolean;
+  "sort-column"?: DependencySortColumn;
+  "sort-direction"?: SortDirection;
 };
 
 export type ListBreakingGraphNodesResponse = PaginationResponse & {
@@ -320,20 +320,20 @@ export type ListBreakingGraphNodesResponse = PaginationResponse & {
 export type ListBrokenGraphNodesRequest = {
   id: DependencyId;
   type: DependencyType;
-  dependent_types?: DependencyType[];
-  dependent_card_types?: CardType[];
-  include_personal_collections?: boolean;
-  sort_column?: DependencySortColumn;
-  sort_direction?: SortDirection;
+  "dependent-types"?: DependencyType[];
+  "dependent-card-types"?: CardType[];
+  "include-personal-collections"?: boolean;
+  "sort-column"?: DependencySortColumn;
+  "sort-direction"?: SortDirection;
 };
 
 export type ListUnreferencedGraphNodesRequest = PaginationRequest & {
   types?: DependencyType[];
-  card_types?: CardType[];
+  "card-types"?: CardType[];
   query?: string;
-  include_personal_collections?: boolean;
-  sort_column?: DependencySortColumn;
-  sort_direction?: SortDirection;
+  "include-personal-collections"?: boolean;
+  "sort-column"?: DependencySortColumn;
+  "sort-direction"?: SortDirection;
 };
 
 export type ListUnreferencedGraphNodesResponse = PaginationResponse & {
