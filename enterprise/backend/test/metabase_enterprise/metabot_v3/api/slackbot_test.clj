@@ -973,16 +973,17 @@
         (testing "returns nil when no AuthIdentity exists"
           (is (nil? (#'slackbot/slack-id->user-id slack-id))))))))
 
-(deftest thread->history-includes-table-blocks-test
-  (testing "thread->history includes table block content in assistant messages"
-    (let [thread {:messages [{:text    "Here are the results"
-                              :bot_id  "B123"
-                              :blocks  [{:type "table"
-                                         :rows [[{:type "raw_text" :text "Product"}
-                                                 {:type "raw_text" :text "Sales"}]
-                                                [{:type "raw_text" :text "Widget"}
-                                                 {:type "raw_text" :text "$100"}]]}]}]}
-          result (#'slackbot/thread->history thread nil)]
-      (is (str/includes? (:content (first result)) "Product"))
-      (is (str/includes? (:content (first result)) "Widget"))
-      (is (str/includes? (:content (first result)) "$100")))))
+;; NOTE: Table block extraction disabled due to hallucinations - see slackbot.clj
+#_(deftest thread->history-includes-table-blocks-test
+    (testing "thread->history includes table block content in assistant messages"
+      (let [thread {:messages [{:text    "Here are the results"
+                                :bot_id  "B123"
+                                :blocks  [{:type "table"
+                                           :rows [[{:type "raw_text" :text "Product"}
+                                                   {:type "raw_text" :text "Sales"}]
+                                                  [{:type "raw_text" :text "Widget"}
+                                                   {:type "raw_text" :text "$100"}]]}]}]}
+            result (#'slackbot/thread->history thread nil)]
+        (is (str/includes? (:content (first result)) "Product"))
+        (is (str/includes? (:content (first result)) "Widget"))
+        (is (str/includes? (:content (first result)) "$100")))))
