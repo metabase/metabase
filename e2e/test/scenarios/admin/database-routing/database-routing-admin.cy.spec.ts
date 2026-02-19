@@ -614,6 +614,43 @@ describe("admin > database > database routing", () => {
           });
         });
       });
+
+      describe("Table editing", () => {
+        it("should not be possible to enable table editing when database routing is enabled", () => {
+          configurDbRoutingViaAPI({
+            router_database_id: WRITABLE_DB_ID,
+            user_attribute: "role",
+          });
+
+          visitDatabaseAdminPage(WRITABLE_DB_ID);
+
+          tableEditingSection().within(() => {
+            cy.findByLabelText("Editable tables").should("be.disabled");
+            cy.findByText(
+              "Table editing cannot be enabled when database routing is enabled.",
+            )
+              .scrollIntoView()
+              .should("be.visible");
+          });
+        });
+
+        it("should not be possible to enable table editing when database routing is enabled", () => {
+          visitDatabaseAdminPage(WRITABLE_DB_ID);
+
+          tableEditingSection()
+            .findByLabelText("Editable tables")
+            .click({ force: true });
+
+          dbRoutingSection().within(() => {
+            cy.findByLabelText("Enable database routing").should("be.disabled");
+            cy.findByText(
+              "Database routing can't be enabled when table editing is enabled.",
+            )
+              .scrollIntoView()
+              .should("be.visible");
+          });
+        });
+      });
     });
   });
 
@@ -695,4 +732,8 @@ function enableGlobalModelPersistence() {
 
 function workspacesSection() {
   return cy.findByTestId("database-workspaces-section");
+}
+
+function tableEditingSection() {
+  return cy.findByTestId("database-table-editing-section");
 }
