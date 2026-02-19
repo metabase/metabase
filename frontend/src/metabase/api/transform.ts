@@ -25,6 +25,7 @@ import {
   idTag,
   invalidateTags,
   listTag,
+  provideInspectorLensTags,
   provideTransformListTags,
   provideTransformRunListTags,
   provideTransformTags,
@@ -230,8 +231,7 @@ export const transformApi = Api.injectEndpoints({
         method: "GET",
         url: `/api/transform/${id}/inspect`,
       }),
-      providesTags: (_, error, id) =>
-        invalidateTags(error, [idTag("transform", id)]),
+      providesTags: (_, _error, id) => [idTag("transform", id)],
     }),
     getInspectorLens: builder.query<InspectorLens, GetInspectorLensRequest>({
       query: ({ transformId, lensId, lensParams }) => ({
@@ -239,8 +239,7 @@ export const transformApi = Api.injectEndpoints({
         url: `/api/transform/${transformId}/inspect/${lensId}`,
         params: lensParams,
       }),
-      providesTags: (_, error, { transformId }) =>
-        invalidateTags(error, [idTag("transform", transformId)]),
+      providesTags: provideInspectorLensTags,
     }),
     runInspectorQuery: builder.query<
       Dataset,

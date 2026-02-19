@@ -23,9 +23,13 @@ import type {
   FieldDimension,
   FieldId,
   ForeignKey,
+  GetInspectorLensRequest,
   GetUserKeyValueRequest,
   Group,
   GroupListQuery,
+  InspectorLens,
+  InspectorLensId,
+  LensParams,
   LoggerPreset,
   Measure,
   ModelCacheRefreshStatus,
@@ -784,4 +788,32 @@ export function provideTransformJobListTags(
   jobs: TransformJob[],
 ): TagDescription<TagType>[] {
   return [listTag("transform-job"), ...jobs.flatMap(provideTransformJobTags)];
+}
+
+export type LensHandle = {
+  id: InspectorLensId;
+  params?: LensParams;
+};
+
+export const getLensKey = (handle: LensHandle): string => {
+  if (!handle.params) {
+    return handle.id;
+  }
+  const searchParams = new URLSearchParams(
+    Object.entries(handle.params).map(([key, value]) => [key, String(value)]),
+  );
+  searchParams.sort();
+  return `${handle.id}?${searchParams.toString()}`;
+};
+
+export function provideInspectorLensTags(
+  lens: InspectorLens | undefined,
+  _error: unknown,
+  { transformId, lensParams }: GetInspectorLensRequest,
+): TagDescription<TagType>[] {
+  const lensKey = getLensKey({ id: lens?.id ?? "", params: lensParams });
+  return [
+    idTag("transform", transformId),
+    idTag("transform-inspector-lens", lensKey),
+  ];
 }

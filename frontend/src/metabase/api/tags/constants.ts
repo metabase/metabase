@@ -51,6 +51,7 @@ export const TAG_TYPES = [
   "transform-job",
   "transform-job-via-tag",
   "transform-run",
+  "transform-inspector-lens",
   "user",
   "public-dashboard",
   "embed-dashboard",

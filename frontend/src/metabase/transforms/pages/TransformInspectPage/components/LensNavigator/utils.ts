@@ -1,8 +1,11 @@
+import { getLensKey } from "metabase/api/tags/utils";
 import type {
   InspectorDrillLensTrigger,
   InspectorLensMetadata,
   LensParams,
 } from "metabase-types/api";
+
+export { getLensKey } from "metabase/api/tags/utils";
 
 import type { LensHandle } from "../../types";
 
@@ -18,17 +21,6 @@ export const toLensHandle = (
     };
   }
   return { id: source.id };
-};
-
-export const getLensKey = (handle: LensHandle): string => {
-  if (!handle.params) {
-    return handle.id;
-  }
-  const searchParams = new URLSearchParams(
-    Object.entries(handle.params).map(([key, value]) => [key, String(value)]),
-  );
-  searchParams.sort();
-  return `${handle.id}?${searchParams.toString()}`;
 };
 
 export const parseLocationParams = (search: string): LensParams | undefined => {
