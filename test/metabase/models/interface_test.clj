@@ -176,6 +176,15 @@
             :graph.dimensions ["CREATED_AT"]}
            (mi/normalize-visualization-settings viz-settings)))))
 
+(deftest ^:parallel normalize-invalid-visualization-settings-test
+  (testing "Unknown keys in `:column_settings` should be removed rather than causing normalization to fail (#69626)"
+    (let [viz-settings {"column_settings" {"[\"ref\",[\"expression\",\"expression\"]]" {:number_style "x"}
+                                           "[\"REF\",[\"expression\",\"expression\"]]" {:number_style "y"}
+                                           "[\"bad-clause\",\"a\"]"                    {:number_style "z"}}}]
+      (is (= {:column_settings
+              {"[\"ref\",[\"expression\",\"expression\"]]" {:number_style "x"}}}
+             (mi/normalize-visualization-settings viz-settings))))))
+
 (deftest ^:parallel json-in-with-eliding
   (is (= "{}" (#'mi/json-in-with-eliding {})))
   (is (= (json/encode {:a "short"}) (#'mi/json-in-with-eliding {:a "short"})))
