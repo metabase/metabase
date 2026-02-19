@@ -1,5 +1,6 @@
 import { SAMPLE_DB_TABLES } from "e2e/support/cypress_data";
 import { ALL_EXTERNAL_USERS_GROUP_ID } from "e2e/support/cypress_sample_instance_data";
+import { enableJwtAuth } from "e2e/support/helpers/e2e-jwt-helpers";
 
 const { H } = cy;
 
@@ -161,6 +162,75 @@ describe("scenarios - embedding hub", () => {
         .within(() => {
           cy.findByText("Select your embed experience").should("be.visible");
         });
+    });
+
+    it('"Get embed snippet" step should be done when a guest embed is published', () => {
+      cy.log("Create a dashboard to embed");
+      H.createDashboard({ name: "Test Dashboard" });
+
+      cy.visit("/admin/embedding/setup-guide");
+
+      cy.log("step should not be marked as done at first");
+      cy.findByTestId("admin-layout-content")
+        .findByText("Get embed snippet")
+        .closest("button")
+        .findByText("Done")
+        .should("not.exist");
+
+      cy.log("open embed wizard");
+      cy.findByTestId("admin-layout-content")
+        .findByText("Get embed snippet")
+        .click();
+
+      cy.log("choose dashboard experience");
+      H.modal()
+        .first()
+        .within(() => {
+          cy.findByText("Dashboard").click();
+          cy.findByText("Next").click();
+        });
+
+      cy.log("pick a dashboard");
+      H.modal().first().findByTestId("embed-browse-entity-button").click();
+      H.entityPickerModal().findByText("Test Dashboard").click();
+      H.modal().first().findByText("Next").click();
+
+      cy.log("publish the embed");
+      H.publishChanges("dashboard");
+
+      cy.log("close the wizard");
+      H.modal().first().findByText("Get code").click();
+      H.modal().first().findByLabelText("Close").click();
+
+      cy.log("step should be marked as done");
+      cy.findByTestId("admin-layout-content")
+        .findByText("Get embed snippet")
+        .closest("button")
+        .findByText("Done", { timeout: 10_000 })
+        .should("be.visible");
+    });
+
+    it("Embed in production step should be locked until JWT is enabled", () => {
+      cy.visit("/admin/embedding/setup-guide");
+
+      cy.findByTestId("admin-layout-content")
+        .findByText("Embed in production with SSO")
+        .scrollIntoView()
+        .should("be.visible")
+        .closest("button")
+        .icon("lock")
+        .should("be.visible");
+
+      enableJwtAuth();
+      cy.reload();
+
+      cy.findByTestId("admin-layout-content")
+        .findByText("Embed in production with SSO")
+        .scrollIntoView()
+        .should("be.visible")
+        .closest("button")
+        .icon("lock")
+        .should("not.exist");
     });
 
     it("embedding checklist should show up on the embedding homepage", () => {
