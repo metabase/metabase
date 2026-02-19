@@ -2,6 +2,7 @@
   (:require
    [metabase-enterprise.replacement.field-refs :as field-refs]
    [metabase-enterprise.replacement.source :as source]
+   [metabase-enterprise.replacement.source-swap :as source-swap]
    [metabase-enterprise.replacement.usages :as usages]
    [metabase.util.malli :as mu]))
 
@@ -20,13 +21,17 @@
   [old-source :- ::source/source-ref
    new-source :- ::source/source-ref]
   ;; TODO (eric 2026-02-18): Check for cycles!
+
+  ;; sanity checks:
+  ;; no cycles
+  ;; old-source exists
+  ;; new-source exists
+  ;; both are swappable
+
   ;; phase 1: Upgrade all field refs
   (doseq [entity (usages/transitive-usages old-source)]
     (field-refs/upgrade! entity))
 
   ;; phase 2: Swap the sources
-
-  #_(let [found-usages (usages/usages old-source)]
-      (doseq [[entity-type entity-id] found-usages]
-        (update-entity entity-type entity-id old-source new-source))
-      {:swapped (vec found-usages)}))
+  (doseq [entity (usages/direct-usages old-source)]
+    (source-swap/swap! entity old-source new-source)))

@@ -75,6 +75,10 @@
      :destination-filter-fn destination-filter-fn
      :source-filter-fn      source-filter-fn})))
 
+(defn direct-dependents
+  [key-seq]
+  (key-dependents key-seq))
+
 (defn- key-dependencies
   "Get the dependency entity keys for the entity keys in `key-seq`.
 

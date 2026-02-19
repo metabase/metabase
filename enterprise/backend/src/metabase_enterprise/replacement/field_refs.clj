@@ -9,17 +9,35 @@
 ;; I tried putting the various {dashboard-card,card,transform}-upgrade-field-refs! functions in the respective models
 ;; namespaces, but there were cyclical dependencies.
 
-(defn- upgrade-legacy-field-ref
-  "Given a card's dataset_query (pMBQL) and a legacy field ref
-  ([\"field\" 42 {...}]), resolve it through the metadata system and return
-  an upgraded version."
-  [query stage-number field-ref]
-  (let [pmbql-ref   (lib.convert/legacy-ref->pMBQL query field-ref)
-        ;; TODO (eric 2026-02-18): Is this the right way?
-        col-meta    (lib/metadata query stage-number pmbql-ref)
-        upgraded    (lib/ref col-meta)
-        legacy-back (lib/->legacy-MBQL upgraded)]
-    legacy-back))
+(defn- upgrade-target
+  [target query]
+  (let [field-ref (lib/parameter-target-field-ref target)
+        options (lib/parameter-target-dimension-options target)
+        filterable-columns (lib/filterable-columns query (:stage-number options))
+        matching-column (lib/find-matching-column query (:stage-number options) field-ref filterable-columns)]
+    (when (nil? matching-column)
+      (throw (ex-info "Could not find matching column for parameter mapping."
+                      {:query query
+                       :parameter-mapping target})))
+      ;; TODO (eric 2026-02-18): Probably shouldn't build one of these from scratch outside of lib
+    [:dimension (-> matching-column lib/ref) options]))
+
+(defn- upgrade-legacy-target
+  [target query]
+  (try
+    (let [field-ref (lib.convert/legacy-ref->pMBQL query (lib/parameter-target-field-ref target))
+          options (lib/parameter-target-dimension-options target)
+          filterable-columns (lib/filterable-columns query (:stage-number options))
+          matching-column (lib/find-matching-column query (:stage-number options) field-ref filterable-columns)]
+      (when (nil? matching-column)
+        (throw (ex-info "Could not find matching column for parameter mapping."
+                        {:query query
+                         :parameter-mapping target})))
+      ;; TODO (eric 2026-02-18): Probably shouldn't build one of these from scratch outside of lib
+      [:dimension (-> matching-column lib/ref lib/->legacy-MBQL) options])
+    (catch Exception e
+      (tap> [:error target (lib/parameter-target-field-ref target) e])
+      (throw e))))
 
 (defn- upgrade-column-settings-keys
   "Given a card's dataset_query (pMBQL) and a column_settings map (from visualization_settings),
@@ -27,33 +45,32 @@
   [query stage-number column-settings]
   (clojure.walk/postwalk
    (fn [form]
-     (if (lib/is-field-clause? form)
-       (upgrade-legacy-field-ref query stage-number form)
+     (if (and (vector? form)
+              (= "dimension" (first form)))
+       (let [dim (-> form
+                     (update 0 keyword)
+                     (update-in [1 0] keyword)
+                     (update-in [1 1 :base-type] keyword))]
+         (upgrade-target dim query))
        form))
    column-settings))
 
 (defn- upgrade-parameter-mappings
   [query parameter-mapping]
-  (update parameter-mapping :target
-          #(let [field-ref (lib.convert/legacy-ref->pMBQL query (lib/parameter-target-field-ref %))
-                 options (lib/parameter-target-dimension-options %)
-                 filterable-columns (lib/filterable-columns query (:stage-number options))
-                 matching-column (lib/find-matching-column query (:stage-number options) field-ref filterable-columns)]
-             (when (nil? matching-column)
-               (throw (ex-info "Could not find matching column for parameter mapping."
-                               {:query query
-                                :parameter-mapping parameter-mapping})))
-             ;; TODO (eric 2026-02-18): Probably shouldn't build one of these from scratch outside of lib
-             [:dimension (-> matching-column lib/ref lib/->legacy-MBQL) options])))
+  (update parameter-mapping :target upgrade-legacy-target query))
 
 (defn- dashboard-card-upgrade-field-refs!
   [query card-id]
   (doseq [dashcard (t2/select :model/DashboardCard :card_id card-id)]
     (let [viz (vs/db->norm (:visualization_settings dashcard))
           column-settings (::vs/column-settings viz)
+          _ (tap> [:un column-settings])
           column-settings' (upgrade-column-settings-keys query -1 column-settings)
+          _ (tap> [:up column-settings'])
           parameter-mappings (:parameter_mappings dashcard)
+          _ (tap> [:pm parameter-mappings])
           parameter-mappings' (mapv #(upgrade-parameter-mappings query %) parameter-mappings)
+          _ (tap> [:pm' parameter-mappings])
           changes (cond-> {}
                     (not= column-settings column-settings')
                     (merge {:visualization_settings (-> viz
@@ -67,7 +84,7 @@
 
 (defn- card-upgrade-field-refs!
   [card-id]
-  (let [dataset-query (t2/select-one-pk :dataset_query :model/Card card-id)
+  (let [dataset-query (t2/select-one-fn :dataset_query :model/Card card-id)
         dataset-query' (lib/upgrade-field-refs dataset-query)]
     (when (not= dataset-query dataset-query')
       (t2/update! :model/Card card-id {:dataset_query dataset-query'}))
@@ -75,7 +92,7 @@
 
 (defn- transform-upgrade-field-refs!
   [transform-id]
-  (let [source (t2/select-one-pk :source :model/Transform transform-id)]
+  (let [source (t2/select-one-fn :source :model/Transform transform-id)]
     (when (= :query (:type source))
       (let [query (:query source)
             query' (lib/upgrade-field-refs query)]
