@@ -33,7 +33,7 @@ export const EmbeddingHub = () => {
 
   const lockedSteps: Partial<Record<EmbeddingHubStepId, boolean>> = useMemo(
     () => ({
-      "embed-production": !completedSteps?.["secure-embeds"],
+      "embed-production": !completedSteps?.["sso-configured"],
     }),
     [completedSteps],
   );
