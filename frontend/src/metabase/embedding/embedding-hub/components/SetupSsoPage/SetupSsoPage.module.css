@@ -1,0 +1,14 @@
+.backLink {
+  text-decoration: none;
+}
+
+.backLink:hover {
+  text-decoration: underline;
+}
+
+.docsIframe {
+  width: 100%;
+  height: 50rem;
+  border: 1px solid var(--mb-color-border);
+  border-radius: 0.5rem;
+}
