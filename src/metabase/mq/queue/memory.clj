@@ -27,11 +27,6 @@
     (doseq [message messages]
       (u.queue/put-with-delay! q 0 message))))
 
-(defmethod q.backend/clear-queue! :queue.backend/memory [_ queue-name]
-  (let [^java.util.Collection q (get-queue queue-name)]
-    (.clear q))
-  (reset! *batch-registry* {}))
-
 (defmethod q.backend/queue-length :queue.backend/memory [_ queue-name]
   (if-let [^java.util.Collection q (get @*queues* queue-name)]
     (.size q)

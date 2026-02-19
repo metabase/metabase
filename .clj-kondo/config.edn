@@ -188,7 +188,14 @@
      ;; Safe in tests, where we typically use a private, temporary index per thread.
      metabase.search.core/reindex!
      metabase.util/run-count!
-     next.jdbc/execute!}}
+     next.jdbc/execute!
+     ;; MQ functions are safe in parallel tests because with-memory-queue and
+     ;; with-memory-topics bind fresh isolated atoms via dynamic vars
+     metabase.mq.core/listen!
+     metabase.mq.core/stop-listening!
+     metabase.mq.core/subscribe!
+     metabase.mq.core/unsubscribe!
+     metabase.mq.core/publish!}}
 
   :metabase/i-like-making-cams-eyes-bleed-with-horrifically-long-tests
   {:level      :warning
@@ -582,6 +589,10 @@
    metabase.model-persistence.api-test/with-persistence-setup!                                                               hooks.common/with-one-top-level-binding
    metabase.model-persistence.api-test/with-setup!                                                                           hooks.common/with-one-top-level-binding
    metabase.model-persistence.test-util/with-persistence-enabled!                                                            hooks.metabase.model-persistence.test-util/with-persistence-enabled!
+   metabase.mq.core/with-queue                                                                                              hooks.common/let-second
+   metabase.mq.core/with-topic                                                                                              hooks.common/let-second
+   metabase.mq.queue.impl/with-queue                                                                                        hooks.common/let-second
+   metabase.mq.topic.impl/with-topic                                                                                        hooks.common/let-second
    metabase.models.interface/define-batched-hydration-method                                                                 hooks.metabase.models.interface/define-hydration-method
    metabase.models.interface/define-simple-hydration-method                                                                  hooks.metabase.models.interface/define-hydration-method
    metabase.permissions.core/allow-changing-all-users-group-members                                                          hooks.common/do*

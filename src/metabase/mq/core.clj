@@ -44,7 +44,6 @@
  [q.impl
   listen!
   with-queue
-  clear-queue!
   queue-length
   stop-listening!]
 

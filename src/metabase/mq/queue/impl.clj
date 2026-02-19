@@ -57,12 +57,6 @@
          (log/error e# "Error in queue processing, no messages will be persisted to the queue")
          (throw e#)))))
 
-(mu/defn clear-queue!
-  "Deletes all persisted messages from the given queue.
-  This is a destructive operation and should be used with caution. Mostly for testing."
-  [queue-name :- :metabase.mq.queue/queue-name]
-  (q.backend/clear-queue! q.backend/*backend* queue-name))
-
 (mu/defn queue-length :- :int
   "The number of message *batches* in the queue."
   [queue-name :- :metabase.mq.queue/queue-name]

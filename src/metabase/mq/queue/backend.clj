@@ -42,12 +42,6 @@
   (fn [backend _queue-name]
     backend))
 
-(defmulti clear-queue!
-  "Deletes all persisted messages from the given queue. This is a destructive operation and should be used with caution."
-  {:arglists '([backend queue-name])}
-  (fn [backend _queue-name]
-    backend))
-
 (defmulti stop-listening!
   "Stops listening on the queue with the given name. This is a no-op if the queue does not exist."
   {:arglists '([backend queue-name])}

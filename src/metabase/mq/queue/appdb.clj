@@ -87,10 +87,6 @@
     (log/infof "Registered listener for queue %s" (name queue-name))
     (start-polling!)))
 
-(defmethod q.backend/clear-queue! :queue.backend/appdb
-  [_ queue-name]
-  (t2/delete! :queue_message_batch :queue_name (name queue-name)))
-
 (defmethod q.backend/stop-listening! :queue.backend/appdb [_ queue-name]
   (swap! listening-queues disj queue-name)
   (log/infof "Unregistered handler for queue %s" (name queue-name)))
