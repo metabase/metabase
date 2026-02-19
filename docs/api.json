@@ -6946,6 +6946,10 @@
         },
         "required" : [ "id" ]
       },
+      "metabase.driver.connection.connection-type" : {
+        "type" : "string",
+        "enum" : [ "default", "write-data" ]
+      },
       "metabase.legacy-mbql.schema.!=" : {
         "description" : "schema for a valid MBQL 4 :!= clause",
         "allOf" : [ ]
@@ -7461,6 +7465,14 @@
             "description" : "The original name of the column as it appeared in the very first place it came from (i.e., the physical name of the\n  column in the table it appears in). This should be the same as the `:lib/source-column-alias` for the very first\n  usage of the column.\n  Allowed to be blank because some databases like SQL Server allow blank column names.",
             "oneOf" : [ {
               "type" : "string"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "metabase.lib.field/simple-display-name" : {
+            "oneOf" : [ {
+              "type" : "string",
+              "minLength" : 1
             }, {
               "type" : "null"
             } ]
@@ -9193,6 +9205,14 @@
                 "type" : "null"
               } ]
             },
+            "metabase.lib.field/simple-display-name" : {
+              "oneOf" : [ {
+                "type" : "string",
+                "minLength" : 1
+              }, {
+                "type" : "null"
+              } ]
+            },
             "lib/desired-column-alias" : {
               "oneOf" : [ {
                 "description" : "Name we should use as a column alias for a column in this stage of a query. The desired column alias in stage N\n  becomes the source column alias in stage N+1. The right-hand side (RHS) in\n\n    SELECT lhs AS rhs",
@@ -10149,7 +10169,7 @@
         "minItems" : 1
       },
       "metabase.lib.schema.join.strategy" : {
-        "description" : "Valid values for the optional `:strategy` key in a join. Note that these are only valid if the current Database\n  supports that specific join type; these match 1:1 with the Database `:features`, e.g. a Database that supports left\n  joins will support the `:left-join` feature.\n\n  When `:strategy` is not specified, `:left-join` is the default strategy.",
+        "description" : "Valid values for the optional `:strategy` key in a join. Note that these are only valid if the current Database\n  supports that specific join type; these match 1:1 with the Database `:features`, e.g. a Database that supports left\n  joins will support the `:left-join` feature.\n\n  When `:strategy` is not specified, [[default-strategy]] is used.",
         "default" : "left-join",
         "type" : "string",
         "enum" : [ "left-join", "right-join", "inner-join", "full-join" ]
@@ -10908,6 +10928,13 @@
                 "type" : "null"
               } ]
             },
+            "metabase.lib.field/simple-display-name" : {
+              "oneOf" : [ {
+                "$ref" : "#/components/schemas/metabase.lib.schema.common.non-blank-string"
+              }, {
+                "type" : "null"
+              } ]
+            },
             "lib/desired-column-alias" : {
               "oneOf" : [ {
                 "$ref" : "#/components/schemas/metabase.lib.schema.metadata.desired-column-alias"
@@ -11380,6 +11407,13 @@
               "fk-target-field-id" : {
                 "oneOf" : [ {
                   "$ref" : "#/components/schemas/metabase.lib.schema.id.field"
+                }, {
+                  "type" : "null"
+                } ]
+              },
+              "metabase.lib.field/simple-display-name" : {
+                "oneOf" : [ {
+                  "$ref" : "#/components/schemas/metabase.lib.schema.common.non-blank-string"
                 }, {
                   "type" : "null"
                 } ]
@@ -21185,6 +21219,15 @@
                       "type" : "null"
                     } ]
                   },
+                  "write_data_details" : {
+                    "oneOf" : [ {
+                      "description" : "Value must be a map.",
+                      "type" : "object",
+                      "properties" : { }
+                    }, {
+                      "type" : "null"
+                    } ]
+                  },
                   "settings" : {
                     "oneOf" : [ {
                       "description" : "Value must be a map.",
@@ -21490,6 +21533,13 @@
             "minimum" : 1
           },
           "description" : "value must be an integer greater than zero."
+        }, {
+          "in" : "query",
+          "name" : "connection-type",
+          "required" : false,
+          "schema" : {
+            "$ref" : "#/components/schemas/metabase.driver.connection.connection-type"
+          }
         } ],
         "responses" : {
           "2XX" : {
@@ -44281,6 +44331,149 @@
                     }
                   },
                   "required" : [ "data", "limit", "offset", "total" ],
+                  "additionalProperties" : false
+                }
+              }
+            }
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "tags" : [ "/api/transform" ]
+      }
+    },
+    "/api/transform/run/{run-id}" : {
+      "get" : {
+        "summary" : "GET /api/transform/run/{run-id}",
+        "description" : "Get a transform run by ID.",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "run-id",
+          "required" : true,
+          "schema" : {
+            "type" : "integer",
+            "minimum" : 1
+          },
+          "description" : "value must be an integer greater than zero."
+        } ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "object",
+                  "properties" : {
+                    "message" : {
+                      "oneOf" : [ {
+                        "type" : "string"
+                      }, {
+                        "type" : "null"
+                      } ]
+                    },
+                    "user_id" : {
+                      "oneOf" : [ {
+                        "type" : "integer",
+                        "minimum" : 1
+                      }, {
+                        "type" : "null"
+                      } ]
+                    },
+                    "is_active" : {
+                      "oneOf" : [ {
+                        "type" : "boolean"
+                      }, {
+                        "type" : "null"
+                      } ]
+                    },
+                    "transform_id" : {
+                      "oneOf" : [ {
+                        "type" : "integer",
+                        "minimum" : 1
+                      }, {
+                        "type" : "null"
+                      } ]
+                    },
+                    "id" : {
+                      "type" : "integer",
+                      "minimum" : 1
+                    },
+                    "transform" : {
+                      "oneOf" : [ {
+                        "type" : "object",
+                        "properties" : {
+                          "collection" : {
+                            "oneOf" : [ {
+                              "type" : "object",
+                              "properties" : { }
+                            }, {
+                              "type" : "null"
+                            } ]
+                          },
+                          "collection_id" : {
+                            "oneOf" : [ {
+                              "type" : "integer",
+                              "minimum" : 1
+                            }, {
+                              "type" : "null"
+                            } ]
+                          },
+                          "deleted" : {
+                            "type" : "boolean"
+                          },
+                          "id" : {
+                            "type" : "integer",
+                            "minimum" : 1
+                          },
+                          "name" : {
+                            "type" : "string"
+                          },
+                          "tag_ids" : {
+                            "type" : "array",
+                            "items" : {
+                              "type" : "integer",
+                              "minimum" : 1
+                            }
+                          }
+                        },
+                        "additionalProperties" : false
+                      }, {
+                        "type" : "null"
+                      } ]
+                    },
+                    "run_method" : {
+                      "type" : "string"
+                    },
+                    "status" : {
+                      "type" : "string",
+                      "enum" : [ "started", "succeeded", "failed", "timeout", "canceled", "canceling" ]
+                    },
+                    "transform_entity_id" : {
+                      "oneOf" : [ {
+                        "type" : "string"
+                      }, {
+                        "type" : "null"
+                      } ]
+                    },
+                    "end_time" : {
+                      "oneOf" : [ { }, {
+                        "type" : "null"
+                      } ]
+                    },
+                    "transform_name" : {
+                      "oneOf" : [ {
+                        "type" : "string"
+                      }, {
+                        "type" : "null"
+                      } ]
+                    },
+                    "start_time" : { }
+                  },
+                  "required" : [ "id", "transform_id", "run_method", "status", "is_active", "start_time", "message", "user_id" ],
                   "additionalProperties" : false
                 }
               }
