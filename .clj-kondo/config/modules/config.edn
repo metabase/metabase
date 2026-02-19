@@ -284,6 +284,7 @@
   channel
   {:team "Gadget"
    :api  #{metabase.channel.api
+           metabase.channel.api.slack
            metabase.channel.core
            metabase.channel.email
            metabase.channel.email.messages
@@ -1942,7 +1943,8 @@
 
   enterprise/api
   {:team "UX West"
-   :api  #{metabase-enterprise.api.core}
+   :api  #{metabase-enterprise.api.core
+           metabase-enterprise.api.routes.common}
    :uses #{api
            premium-features
            util}}
@@ -2241,6 +2243,7 @@
               users
               util
               warehouses
+              enterprise/api
               enterprise/dependencies
               enterprise/sso
               enterprise/transforms-python}}

@@ -890,20 +890,20 @@
             (try
               (process-app-mention client event)
               (catch Exception e
-                (log/errorf e "[slackbot] Error processing app_mention: %s" (ex-message e)))))
+                (log/errorf e "[slackbot] Error processing app_mention: %s" (ex-message e))))))
 
-          (known-user-message? event)
-          (do
-            (log/debug "[slackbot] Processing user message event")
-            (future
-              (try
-                (process-user-message client event)
-                (catch Exception e
-                  (log/errorf e "[slackbot] Error processing message: %s" (ex-message e))))))))
+        (known-user-message? event)
+        (do
+          (log/debug "[slackbot] Processing user message event")
+          (future
+            (try
+              (process-user-message client event)
+              (catch Exception e
+                (log/errorf e "[slackbot] Error processing message: %s" (ex-message e))))))
 
-      :else
-      (log/debugf "[slackbot] Ignoring unhandled event type: %s" (:type event)))
-    ack-msg))
+        :else
+        (log/debugf "[slackbot] Ignoring unhandled event type: %s" (:type event)))
+      ack-msg)))
 
 ;; ----------------------- ROUTES --------------------------
 ;; NOTE: make sure to do premium-features/enable-metabot-v3? checks if you add new endpoints
