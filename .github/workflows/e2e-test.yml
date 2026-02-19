@@ -97,13 +97,20 @@ jobs:
         uses: actions/download-artifact@v4
         if: github.run_attempt != '1'
         continue-on-error: true
-        id: failed-specs
+        id: download-failed-specs
         with:
           name: failed-tests-${{ inputs.name }}-${{ inputs.edition }}
 
       - name: Get failed specs
-        if: github.run_attempt != '1'
-        run: echo "specs=$(cat failed-specs)" >> $GITHUB_ENV
+        if: github.run_attempt != '1' && steps.download-failed-specs.outcome == 'success'
+        run: |
+          if [ -f "./failed-specs" ]; then
+            SPECS=$(cat ./failed-specs)
+            echo "specs=${SPECS}" >> $GITHUB_ENV
+            echo "Retrying only failed specs: ${SPECS}"
+          else
+            echo "No failed-specs file found, will run all tests"
+          fi
 
       - name: Compile CLJS
         run: bun run build-pure:cljs
