@@ -156,6 +156,60 @@
   [client message]
   (slack-post-json client "/chat.delete" (select-keys message [:channel :ts])))
 
+;; -------------------- SLACK STREAMING API --------------------
+;; These functions implement Slack's chat streaming API for progressive AI responses.
+;; See: https://docs.slack.dev/changelog/2025/10/7/chat-streaming/
+
+(defn- start-stream
+  "Start a Slack message stream. Returns the stream ts on success.
+   Required params: channel, thread_ts, recipient_team_id, recipient_user_id"
+  [client {:keys [channel thread_ts team_id user_id]}]
+  (let [response (slack-post-json client "/chat.startStream"
+                                  {:channel           channel
+                                   :thread_ts         thread_ts
+                                   :recipient_team_id team_id
+                                   :recipient_user_id user_id})]
+    (log/debugf "[slackbot] start-stream response: %s" (pr-str response))
+    (if (:ok response)
+      {:stream_ts (:ts response)
+       :channel   (:channel response)
+       :thread_ts thread_ts}
+      (do
+        (log/warnf "[slackbot] start-stream failed: %s" (:error response))
+        nil))))
+
+(defn- append-stream
+  "Append chunks to an active stream.
+   chunk-type is one of: :markdown_text, :task_update, :plan_update
+   chunk-data is the content for that chunk type."
+  [client channel stream-ts chunks]
+  (let [payload  {:channel channel
+                  :ts      stream-ts
+                  :chunks  chunks}
+        response (slack-post-json client "/chat.appendStream" payload)]
+    (when-not (:ok response)
+      (log/warnf "[slackbot] append-stream failed: %s" (:error response)))
+    response))
+
+(defn- append-markdown-text
+  "Helper to append markdown text to a stream."
+  [client channel stream-ts text]
+  (append-stream client channel stream-ts [{:type "markdown_text" :text text}]))
+
+(defn- stop-stream
+  "Stop a stream and finalize it into a regular message.
+   Optionally include final blocks (e.g., feedback buttons)."
+  ([client channel stream-ts]
+   (stop-stream client channel stream-ts nil))
+  ([client channel stream-ts blocks]
+   (let [response (slack-post-json client "/chat.stopStream"
+                                   (cond-> {:channel channel
+                                            :ts      stream-ts}
+                                     blocks (assoc :blocks blocks)))]
+     (when-not (:ok response)
+       (log/warnf "[slackbot] stop-stream failed: %s" (:error response)))
+     response)))
+
 ;; -------------------- VISUALIZATION GENERATION ---------------------------
 
 (defn- pulse-card-query-results
@@ -771,6 +825,264 @@
            (catch Exception e
              (log/errorf e "Failed to generate visualization for %s" type))))))))
 
+;; -------------------- STREAMING AI RESPONSES ---------------------------
+;; This section implements progressive streaming of AI responses to Slack
+;; using Slack's chat streaming API (startStream/appendStream/stopStream).
+
+(def ^:private tool-friendly-names
+  "Map of tool names to user-friendly gerund descriptions."
+  {"search_database"               "Searching database"
+   "construct_notebook_query"      "Building query"
+   "run_query"                     "Running query"
+   "get_card"                      "Loading saved question"
+   "search_cards"                  "Searching saved questions"
+   "search_dashboards"             "Searching dashboards"
+   "get_dashboard"                 "Loading dashboard"
+   "create_dashboard_subscription" "Creating subscription"
+   "create_alert"                  "Creating alert"
+   "get_table_metadata"            "Loading table info"
+   "get_current_user_info"         "Getting user info"
+   "list_available_fields"         "Finding available fields"})
+
+(defn- tool-name->friendly
+  "Convert a tool name to a user-friendly status message (gerund form)."
+  [tool-name]
+  (get tool-friendly-names tool-name "Thinking"))
+
+;; -------------------- TEXT BATCHING --------------------
+;; Batch text chunks to reduce Slack API call frequency.
+;; The ai-service already buffers markdown links, so we just need to
+;; accumulate text and flush periodically.
+
+(def ^:private text-batch-interval-ms
+  "Minimum time between text flushes to Slack (ms)."
+  100)
+
+(def ^:private min-text-batch-size
+  "Minimum characters to accumulate before considering a flush."
+  50)
+
+(defn- parse-aisdk-line
+  "Parse a single AI SDK line into type and content.
+   Returns [type content] or nil if unparseable."
+  [line]
+  (when (and line (>= (count line) 2))
+    (let [prefix (subs line 0 2)
+          type   (get metabot-v3.util/prefix-type prefix)]
+      (when type
+        [type (json/decode (subs line 2) true)]))))
+
+(defn- make-streaming-ai-request
+  "Make a streaming AI request with callbacks for each message type.
+   Returns {:text <full-text> :data-parts <seq>} like make-ai-request.
+
+   Callbacks:
+   - on-text: Called with text content (ai-service already buffers markdown links)
+   - on-tool-start: Called with {:id :name} when a tool starts
+   - on-tool-end: Called with {:id :result} when a tool completes"
+  [conversation-id prompt thread bot-user-id channel-id extra-history
+   {:keys [on-text on-tool-start on-tool-end]}]
+  (let [message        (metabot-v3.envelope/user-message prompt)
+        metabot-id     (metabot-v3.config/resolve-dynamic-metabot-id nil)
+        profile-id     (metabot-v3.config/resolve-dynamic-profile-id "slackbot" metabot-id)
+        session-id     (metabot-v3.client/get-ai-service-token api/*current-user-id* metabot-id)
+        capabilities   (compute-capabilities)
+        thread-history (thread->history thread bot-user-id)
+        history        (into (vec thread-history) extra-history)
+        ;; Accumulators for building final response
+        all-text       (atom (StringBuilder.))
+        data-parts     (atom [])
+        ;; Track tool calls in progress
+        active-tools   (atom {})
+
+        handle-line    (fn [line]
+                         (when-let [[type content] (parse-aisdk-line line)]
+                           (case type
+                             :TEXT
+                             (do
+                               ;; Accumulate all text for final response
+                               (.append ^StringBuilder @all-text content)
+                               ;; Pass text directly - ai-service already buffers markdown links
+                               (when (and on-text (seq content))
+                                 (on-text content)))
+
+                             :TOOL_CALL
+                             (let [tool-id   (:toolCallId content)
+                                   tool-name (:toolName content)]
+                               (swap! active-tools assoc tool-id {:name tool-name :start-time (System/currentTimeMillis)})
+                               (when on-tool-start
+                                 (on-tool-start {:id tool-id :name tool-name})))
+
+                             :TOOL_RESULT
+                             (let [tool-id (:toolCallId content)
+                                   result  (:result content)]
+                               (swap! active-tools dissoc tool-id)
+                               (when on-tool-end
+                                 (on-tool-end {:id tool-id :result result})))
+
+                             :DATA
+                             (swap! data-parts conj (assoc content :_type :DATA))
+
+                             ;; Ignore other types for now
+                             nil)))
+
+        lines          (metabot-v3.client/streaming-request-with-callback
+                        {:context         (metabot-v3.context/create-context
+                                           {:current_time_with_timezone (str (java.time.OffsetDateTime/now))
+                                            :capabilities               capabilities
+                                            :slack_channel_id           channel-id})
+                         :metabot-id      metabot-id
+                         :profile-id      profile-id
+                         :session-id      session-id
+                         :conversation-id conversation-id
+                         :message         message
+                         :history         history
+                         :state           {}
+                         :on-line         handle-line})]
+    ;; Parse all lines for the complete response
+    (let [messages (metabot-v3.util/aisdk->messages :assistant lines)]
+      {:text       (str @all-text)
+       :data-parts (filter #(= (:_type %) :DATA) messages)})))
+
+(defn- send-streaming-metabot-response
+  "Send a metabot response using Slack's streaming API for progressive updates.
+   Shows tool execution status and streams text as it arrives."
+  ([client event]
+   (send-streaming-metabot-response client event nil))
+  ([client event extra-history]
+   (let [prompt      (:text event)
+         thread      (-> (fetch-thread client event)
+                         (update :messages #(remove (fn [m] (= (:ts m) (:ts event))) %)))
+         auth-info   (auth-test client)
+         bot-user-id (:user_id auth-info)
+         team-id     (:team_id auth-info)
+         user-id     (:user event)
+         channel-id  (:channel event)
+         message-ctx (event->reply-context event)
+         channel     (:channel message-ctx)
+         thread-ts   (:thread_ts message-ctx)
+
+         ;; Lazily start the stream when we have content
+         stream-state  (atom nil)  ; {:stream_ts :channel} once started
+
+         ensure-stream! (fn []
+                          (when-not @stream-state
+                            (let [stream (start-stream client {:channel   channel
+                                                               :thread_ts thread-ts
+                                                               :team_id   team-id
+                                                               :user_id   user-id})]
+                              (when (:stream_ts stream)
+                                (reset! stream-state stream)))))
+
+         ;; Track state for streaming updates
+         tool-id->name (atom {})  ; Track tool names for completion updates
+
+         ;; Text batching to reduce Slack API calls
+         text-buffer     (atom (StringBuilder.))
+         last-flush-time (atom (System/currentTimeMillis))
+         last-flushed    (atom "")  ; Track last flushed text for newline logic
+
+         flush-text!     (fn []
+                           (let [text (str @text-buffer)]
+                             (when (seq text)
+                               (ensure-stream!)
+                               (when-let [{:keys [stream_ts channel]} @stream-state]
+                                 (append-markdown-text client channel stream_ts text)
+                                 (reset! last-flushed text)))
+                             (reset! text-buffer (StringBuilder.))
+                             (reset! last-flush-time (System/currentTimeMillis))))
+
+         ;; Callbacks for streaming
+         on-text       (fn [text]
+                         ;; Accumulate text and flush based on time/size thresholds
+                         (when (seq text)
+                           (.append ^StringBuilder @text-buffer text)
+                           (let [buffer-size (.length ^StringBuilder @text-buffer)
+                                 elapsed     (- (System/currentTimeMillis) @last-flush-time)]
+                             (when (or (>= buffer-size min-text-batch-size)
+                                       (>= elapsed text-batch-interval-ms))
+                               (flush-text!)))))
+
+         on-tool-start (fn [{:keys [id name]}]
+                         ;; Flush any pending text before showing tool status
+                         (flush-text!)
+                         (ensure-stream!)
+                         (swap! tool-id->name assoc id name)
+                         (when-let [{:keys [stream_ts channel]} @stream-state]
+                           ;; Add newline before tool status if text doesn't end with one
+                           (when (and (seq @last-flushed)
+                                      (not (str/ends-with? @last-flushed "\n")))
+                             (append-markdown-text client channel stream_ts "\n"))
+                           (append-stream client channel stream_ts
+                                          [{:type   "task_update"
+                                            :id     id
+                                            :title  (tool-name->friendly name)
+                                            :status "in_progress"}])))
+
+         on-tool-end   (fn [{:keys [id]}]
+                         ;; Mark task as complete, including title
+                         (when-let [{:keys [stream_ts channel]} @stream-state]
+                           (let [name (get @tool-id->name id)]
+                             (append-stream client channel stream_ts
+                                            [{:type   "task_update"
+                                              :id     id
+                                              :title  (tool-name->friendly name)
+                                              :status "complete"}])
+                             ;; Add newline after tool completion for clean text flow
+                             (append-markdown-text client channel stream_ts "\n")))
+                         (swap! tool-id->name dissoc id))]
+
+     ;; Use streaming with lazy initialization
+     (try
+       (let [{:keys [_text data-parts]} (make-streaming-ai-request
+                                         (str (random-uuid))
+                                         prompt
+                                         thread
+                                         bot-user-id
+                                         channel-id
+                                         extra-history
+                                         {:on-text       on-text
+                                          :on-tool-start on-tool-start
+                                          :on-tool-end   on-tool-end})]
+         ;; Flush any remaining text before stopping the stream
+         (flush-text!)
+         ;; Stop the stream if it was started, or fall back to non-streaming
+         (if-let [{:keys [stream_ts channel]} @stream-state]
+           (do
+             (stop-stream client channel stream_ts)
+             ;; Send visualizations as separate messages (can't be streamed)
+             (let [vizs (filter #(#{"static_viz" "adhoc_viz"} (:type %)) data-parts)]
+               (doseq [{:keys [type value]} vizs]
+                 (try
+                   (case type
+                     "static_viz"
+                     (let [card-id  (or (:entity_id value)
+                                        (throw (ex-info "static_viz missing entity_id" {:value value})))
+                           output   (generate-card-output card-id)
+                           filename (str "chart-" card-id)]
+                       (send-viz-output client channel thread-ts output filename))
+
+                     "adhoc_viz"
+                     (let [query    (or (:query value)
+                                        (throw (ex-info "adhoc_viz missing query" {:value value})))
+                           display  (or (some-> (:display value) keyword) :table)
+                           output   (slackbot.query/generate-adhoc-output query :display display)
+                           filename (str "adhoc-" (System/currentTimeMillis))]
+                       (send-viz-output client channel thread-ts output filename)))
+                   (catch Exception e
+                     (log/errorf e "Failed to generate visualization for %s" type))))))
+           ;; Stream was never started (no content?) - fall back to regular message
+           (send-metabot-response client event extra-history)))
+       (catch Exception e
+         (log/error e "[slackbot] Error in streaming response")
+           ;; Clean up stream gracefully if it was started
+         (when-let [{:keys [stream_ts channel]} @stream-state]
+           (try
+             (stop-stream client channel stream_ts)
+             (catch Exception _)))
+           ;; Re-throw to let outer handler deal with it
+         (throw e))))))
+
 (defn- send-auth-link
   "Respond to an incoming slack message with a request to authorize"
   [client event]
@@ -803,7 +1115,7 @@
    event   :- SlackMessageImEvent
    user-id :- :int]
   (request/with-current-user user-id
-    (send-metabot-response client event)))
+    (send-streaming-metabot-response client event)))
 
 (defn- all-files-skipped?
   "Returns true if all files were skipped (none were CSV/TSV)."
@@ -844,7 +1156,7 @@
                         (merge (event->reply-context event)
                                {:text (format "I can only process CSV and TSV files. The following files were skipped: %s"
                                               (str/join ", " skipped-files))})))
-        (send-metabot-response client event extra-history)))))
+        (send-streaming-metabot-response client event extra-history)))))
 
 (mu/defn- process-user-message :- :nil
   "Respond to an incoming user slack message, dispatching based on channel_type or subtype"
@@ -867,7 +1179,7 @@
    event  :- SlackAppMentionEvent]
   (when-let [user-id (require-authenticated-slack-user! client event)]
     (request/with-current-user user-id
-      (send-metabot-response client event)))
+      (send-streaming-metabot-response client event)))
   nil)
 
 (defn- app-mention-with-files?
