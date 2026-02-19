@@ -333,8 +333,8 @@
           (is (= {:bad_cards [], :bad_transforms [], :success true}
                  response)))))))
 
-(deftest check-snippet-content-change-doest-not-break-cards-test
-  (testing "POST /api/ee/dependencies/check_snippet doesn't catch when a change would break a card, because native query validation is disabled"
+(deftest check-snippet-content-change-doest-break-cards-test
+  (testing "POST /api/ee/dependencies/check_snippet catches when a change would break a card"
     (mt/dataset test-data
       (mt/with-premium-features #{:dependencies}
         (mt/with-temp [:model/User user {:email "test@test.com"}
