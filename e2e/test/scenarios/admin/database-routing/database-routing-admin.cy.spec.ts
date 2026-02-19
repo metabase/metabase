@@ -653,6 +653,35 @@ describe("admin > database > database routing", () => {
           });
         });
       });
+      describe("Uploads", () => {
+        it("should not be possible to enable uploads when database routing is enabled", () => {
+          configureDbRoutingViaAPI({
+            router_database_id: WRITABLE_DB_ID,
+            user_attribute: "role",
+          });
+
+          visitUploadSettingsPage();
+
+          cy.findByLabelText("Database to use for uploads").click();
+          H.popover()
+            .findByText("Writable Postgres12 (DB Routing Enabled)")
+            .should("be.visible");
+        });
+
+        it("should not be possible to enable database routing when uploads are enabled", () => {
+          H.enableUploads("postgres");
+          visitDatabaseAdminPage(WRITABLE_DB_ID);
+
+          dbRoutingSection().within(() => {
+            cy.findByLabelText("Enable database routing").should("be.disabled");
+            cy.findByText(
+              "Database routing can't be enabled if uploads are enabled for this database.",
+            )
+              .scrollIntoView()
+              .should("be.visible");
+          });
+        });
+      });
     });
   });
 
@@ -738,4 +767,8 @@ function workspacesSection() {
 
 function tableEditingSection() {
   return cy.findByTestId("database-table-editing-section");
+}
+
+function visitUploadSettingsPage() {
+  cy.visit("/admin/settings/uploads");
 }
