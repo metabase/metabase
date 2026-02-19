@@ -2304,6 +2304,7 @@
               parameters
               permissions
               premium-features
+              pulse
               query-processor
               request
               search
@@ -2315,8 +2316,10 @@
               system
               task
               transforms
+              transforms-base
               util
               warehouses
+              enterprise/dependencies
               enterprise/llm
               enterprise/transforms-python}}
 
