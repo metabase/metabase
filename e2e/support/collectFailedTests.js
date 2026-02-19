@@ -18,12 +18,12 @@ const collectFailingTests = (on, config) => {
       .map((run) => run.spec.relative);
 
     if (failedSpecs.length > 0) {
-      const failedTestFilePath = "./cypress/test-results/";
-      fs.mkdirSync(failedTestFilePath, { recursive: true });
-      fs.writeFileSync(
-        path.join(failedTestFilePath, "failed-specs"),
-        failedSpecs.join(","),
-      );
+      const repoRoot = path.resolve(__dirname, "../..");
+      const failedTestDir = path.join(repoRoot, "cypress", "test-results");
+      const failedSpecsPath = path.join(failedTestDir, "failed-specs");
+
+      fs.mkdirSync(failedTestDir, { recursive: true });
+      fs.writeFileSync(failedSpecsPath, failedSpecs.join(","));
       console.log(
         `Saved ${failedSpecs.length} failed specs for retry: ${failedSpecs.join(", ")}`,
       );
