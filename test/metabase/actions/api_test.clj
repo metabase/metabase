@@ -557,7 +557,7 @@
 
 (deftest execute-action-permission-test
   (mt/test-drivers (mt/normal-drivers-with-feature :actions)
-    (mt/with-actions-enabled
+    (mt/with-actions-test-data-and-actions-enabled
       (mt/with-actions [_ {:type :model :dataset_query (mt/mbql-query categories)
                            :collection_id (:id (collection/user->personal-collection (mt/user->id :crowberto)))}
                         {query-action-id :action-id}  (assoc unshared-action-opts :type :query)
