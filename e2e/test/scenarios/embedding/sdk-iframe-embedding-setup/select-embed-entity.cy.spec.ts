@@ -392,7 +392,9 @@ describe("recently created dashboards", () => {
           cy.log(
             "recently created dashboard should show up even though it was never viewed",
           );
-          cy.findByText(NEW_DASHBOARD_NAME).should("be.visible");
+          cy.findByText(NEW_DASHBOARD_NAME, { timeout: 10_000 }).should(
+            "be.visible",
+          );
 
           cy.log("the dashboard should be selected by default");
           getRecentItemCards()

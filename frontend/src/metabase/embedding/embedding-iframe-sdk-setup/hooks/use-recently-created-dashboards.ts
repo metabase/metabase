@@ -20,6 +20,10 @@ export const useRecentlyCreatedDashboards = () => {
       models: ["dashboard"],
       created_by: currentUserId ? [currentUserId] : undefined,
       limit: 5,
+
+      // If the dashboard is created more than 1 hour ago,
+      // it is likely stale and latest activity should take priority.
+      created_at: "past1hours~",
     },
     { refetchOnMountOrArgChange: true },
   );
