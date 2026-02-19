@@ -18,3 +18,8 @@
   (for [[entity-type entity-ids] (deps/transitive-dependents {source-type [{:id source-id}]})
         entity-id entity-ids]
     [entity-type entity-id]))
+
+(defn direct-usages
+  [entity]
+  (-> (deps/direct-dependents [entity] #_{source-type [{:id source-id}]})
+      (get entity)))

@@ -68,3 +68,7 @@
         (doseq [[entity-type entity-id] found-usages]
           (update-entity entity-type entity-id old-source new-source)))
       {:swapped (vec found-usages)}))
+
+(defn swap!
+  [[entity-type entity-id] old-source new-source]
+  (case entity-type))
