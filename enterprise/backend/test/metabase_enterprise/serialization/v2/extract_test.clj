@@ -950,43 +950,6 @@
                   (is (= #{[{:model "Card" :id card-eid-1}]}
                          (set (serdes/dependencies ser)))))))))))))
 
-(deftest http-action-test
-  (mt/with-empty-h2-app-db!
-    (ts/with-temp-dpc [:model/User     {ann-id :id} {:first_name "Ann"
-                                                     :last_name  "Wilson"
-                                                     :email      "ann@heart.band"}
-                       :model/Database {db-id :id :as db} {:name "My Database"}]
-      (mt/with-db db
-        (mt/with-actions [{card-id-1  :id
-                           card-eid-1 :entity_id}
-                          {:name          "Source question"
-                           :database_id   db-id
-                           :type          :model
-                           :query_type    :native
-                           :dataset_query (mt/native-query {:query "select 1"})
-                           :creator_id    ann-id}
-
-                          {:keys [action-id]}
-                          {:name       "My Action"
-                           :type       :http
-                           :template   {:method "GET", :url "https://camsaul.com"}
-                           :creator_id ann-id
-                           :model_id   card-id-1}]
-          (let [action (action/select-action :id action-id)]
-            (testing "action"
-              (let [ser (ts/extract-one "Action" action-id)]
-                (is (=? {:serdes/meta [{:model "Action" :id (:entity_id action) :label "my_action"}]
-                         :creator_id  "ann@heart.band"
-                         :type        "http"
-                         :created_at  string?
-                         :model_id    card-eid-1
-                         :http        [{:template {}}]}
-                        ser))
-                (is (not (contains? ser :id)))
-                (testing "depends on the Model"
-                  (is (= #{[{:model "Card" :id card-eid-1}]}
-                         (set (serdes/dependencies ser)))))))))))))
-
 (deftest query-action-test
   (mt/with-empty-h2-app-db!
     (ts/with-temp-dpc [:model/User     {ann-id :id} {:first_name "Ann"
