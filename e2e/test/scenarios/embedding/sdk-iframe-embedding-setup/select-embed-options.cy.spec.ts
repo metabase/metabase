@@ -231,18 +231,14 @@ describe(suiteTitle, () => {
       cy.button("Next").click();
       cy.button("Next").click();
 
-      // Dispatch a native MouseEvent on the HoverCard.Target's <Flex> wrapper.
-      // cy.trigger() doesn't create a proper MouseEvent, and floating-ui's
-      // useHover attaches a native addEventListener('mouseenter') handler.
+      // Trigger mouseover (not mouseenter) because this HoverCard is outside a
+      // HoverCardGroup, so Mantine attaches a React onMouseEnter prop. React 18
+      // simulates onMouseEnter from mouseover events (which bubble to the React
+      // root for delegation). Native mouseenter doesn't bubble and React ignores it.
       cy.findByLabelText("Allow subscriptions")
         .closest("[data-testid=tooltip-warning]")
         .icon("info")
-        .parent()
-        .then(($el) => {
-          $el[0].dispatchEvent(
-            new MouseEvent("mouseenter", { bubbles: false }),
-          );
-        });
+        .trigger("mouseover");
     });
     H.hovercard().should(
       "contain.text",
@@ -610,12 +606,7 @@ describe(suiteTitle, () => {
       cy.findByLabelText("Allow alerts")
         .closest("[data-testid=tooltip-warning]")
         .icon("info")
-        .parent()
-        .then(($el) => {
-          $el[0].dispatchEvent(
-            new MouseEvent("mouseenter", { bubbles: false }),
-          );
-        });
+        .trigger("mouseover");
     });
     H.hovercard().should(
       "contain.text",
