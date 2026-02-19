@@ -4,6 +4,7 @@
    [clojure.test :refer [deftest is testing]]
    [metabase-enterprise.dependencies.events]
    [metabase-enterprise.replacement.source-swap :as source-swap]
+   [metabase-enterprise.replacement.swap.native :as swap.native]
    [metabase.events.core :as events]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
@@ -106,7 +107,7 @@
     (let [query  (make-native-query
                   "SELECT * FROM {{#3}}"
                   {"#3" {:type :card :card-id 3 :name "#3" :display-name "#3"}})
-          result (#'source-swap/swap-card-in-native-query query 3 99)]
+          result (#'swap.native/swap-card-in-native-query query 3 99)]
       (is (= "SELECT * FROM {{#99}}"
              (get-in result [:stages 0 :native])))
       (is (= 99 (get-in result [:stages 0 :template-tags "#99" :card-id])))))
@@ -116,7 +117,7 @@
                   "SELECT * FROM {{#3}} JOIN {{#7}} ON 1=1"
                   {"#3" {:type :card :card-id 3 :name "#3" :display-name "#3"}
                    "#7" {:type :card :card-id 7 :name "#7" :display-name "#7"}})
-          result (#'source-swap/swap-card-in-native-query query 3 99)]
+          result (#'swap.native/swap-card-in-native-query query 3 99)]
       (is (= "SELECT * FROM {{#99}} JOIN {{#7}} ON 1=1"
              (get-in result [:stages 0 :native])))
       (is (= 99 (get-in result [:stages 0 :template-tags "#99" :card-id])))
@@ -128,7 +129,7 @@
                   "SELECT * FROM {{#3}} WHERE {{created_at}}"
                   {"#3"        {:type :card :card-id 3 :name "#3" :display-name "#3"}
                    "created_at" {:type :dimension :name "created_at" :display-name "Created At"}})
-          result (#'source-swap/swap-card-in-native-query query 3 99)]
+          result (#'swap.native/swap-card-in-native-query query 3 99)]
       (is (= "SELECT * FROM {{#99}} WHERE {{created_at}}"
              (get-in result [:stages 0 :native])))
       (is (= 99 (get-in result [:stages 0 :template-tags "#99" :card-id])))
@@ -141,7 +142,7 @@
                   "SELECT * FROM {{#3}} [[WHERE {{created_at}}]]"
                   {"#3"         {:type :card :card-id 3 :name "#3" :display-name "#3"}
                    "created_at" {:type :dimension :name "created_at" :display-name "Created At"}})
-          result (#'source-swap/swap-card-in-native-query query 3 99)]
+          result (#'swap.native/swap-card-in-native-query query 3 99)]
       (is (= "SELECT * FROM {{#99}} [[WHERE {{created_at}}]]"
              (get-in result [:stages 0 :native])))
       (is (= 99 (get-in result [:stages 0 :template-tags "#99" :card-id])))))
@@ -150,7 +151,7 @@
     (let [query  (make-native-query
                   "SELECT * FROM foo [[JOIN {{#3}} ON 1=1]]"
                   {"#3" {:type :card :card-id 3 :name "#3" :display-name "#3"}})
-          result (#'source-swap/swap-card-in-native-query query 3 99)]
+          result (#'swap.native/swap-card-in-native-query query 3 99)]
       (is (= "SELECT * FROM foo [[JOIN {{#99}} ON 1=1]]"
              (get-in result [:stages 0 :native])))
       (is (= 99 (get-in result [:stages 0 :template-tags "#99" :card-id]))))))
@@ -160,7 +161,7 @@
     (let [query  (make-native-query
                   "SELECT * FROM {{#3}}\n-- old: {{#3}}"
                   {"#3" {:type :card :card-id 3 :name "#3" :display-name "#3"}})
-          result (#'source-swap/swap-card-in-native-query query 3 99)]
+          result (#'swap.native/swap-card-in-native-query query 3 99)]
       (is (= "SELECT * FROM {{#99}}\n-- old: {{#3}}"
              (get-in result [:stages 0 :native]))
           "The tag in the comment should be left alone")))
@@ -169,7 +170,7 @@
     (let [query  (make-native-query
                   "SELECT * FROM {{#3}} /* see also {{#3}} */"
                   {"#3" {:type :card :card-id 3 :name "#3" :display-name "#3"}})
-          result (#'source-swap/swap-card-in-native-query query 3 99)]
+          result (#'swap.native/swap-card-in-native-query query 3 99)]
       (is (= "SELECT * FROM {{#99}} /* see also {{#3}} */"
              (get-in result [:stages 0 :native]))
           "The tag in the block comment should be left alone"))))
@@ -179,7 +180,7 @@
     (let [query  (make-native-query
                   "SELECT * FROM {{#3}} WHERE col = '{{#3}}'"
                   {"#3" {:type :card :card-id 3 :name "#3" :display-name "#3"}})
-          result (#'source-swap/swap-card-in-native-query query 3 99)]
+          result (#'swap.native/swap-card-in-native-query query 3 99)]
       (is (= "SELECT * FROM {{#99}} WHERE col = '{{#99}}'"
              (get-in result [:stages 0 :native]))
           "Both tags are replaced since the parser treats string literal tags as params too"))))
@@ -190,7 +191,7 @@
                   "SELECT a.* FROM {{#3}} a JOIN {{#5}} b ON a.id = b.id JOIN {{#3}} c ON a.id = c.id"
                   {"#3" {:type :card :card-id 3 :name "#3" :display-name "#3"}
                    "#5" {:type :card :card-id 5 :name "#5" :display-name "#5"}})
-          result (#'source-swap/swap-card-in-native-query query 3 99)]
+          result (#'swap.native/swap-card-in-native-query query 3 99)]
       (is (= "SELECT a.* FROM {{#99}} a JOIN {{#5}} b ON a.id = b.id JOIN {{#99}} c ON a.id = c.id"
              (get-in result [:stages 0 :native])))
       (is (= 99 (get-in result [:stages 0 :template-tags "#99" :card-id])))
@@ -782,7 +783,7 @@
 
 (deftest replace-table-in-native-sql-basic-test
   (testing "Basic table rename in native SQL"
-    (let [result (#'source-swap/replace-table-in-native-sql :h2
+    (let [result (#'swap.native/replace-table-in-native-sql :h2
                                                             "SELECT * FROM ORDERS"
                                                             "ORDERS" "NEW_ORDERS")]
       (is (str/includes? result "NEW_ORDERS"))
@@ -790,7 +791,7 @@
 
 (deftest replace-table-in-native-sql-with-template-tags-test
   (testing "Table rename preserves template tags"
-    (let [result (#'source-swap/replace-table-in-native-sql :h2
+    (let [result (#'swap.native/replace-table-in-native-sql :h2
                                                             "SELECT * FROM ORDERS WHERE status = {{status}}"
                                                             "ORDERS" "NEW_ORDERS")]
       (is (str/includes? result "NEW_ORDERS"))
@@ -798,7 +799,7 @@
 
 (deftest replace-table-in-native-sql-with-optional-clause-test
   (testing "Table rename works with optional clauses"
-    (let [result (#'source-swap/replace-table-in-native-sql :h2
+    (let [result (#'swap.native/replace-table-in-native-sql :h2
                                                             "SELECT * FROM ORDERS WHERE 1=1 [[AND status = {{status}}]]"
                                                             "ORDERS" "NEW_ORDERS")]
       (is (str/includes? result "NEW_ORDERS"))
@@ -809,7 +810,7 @@
 (deftest replace-table-in-native-sql-table-in-optional-test
   (testing "Table inside optional clause is renamed"
     ;; Note: [[...]] must contain at least one {{param}} per Metabase parser rules
-    (let [result (#'source-swap/replace-table-in-native-sql :h2
+    (let [result (#'swap.native/replace-table-in-native-sql :h2
                                                             "SELECT * FROM ORDERS WHERE 1=1 [[AND product_id IN (SELECT id FROM PRODUCTS WHERE cat = {{cat}})]]"
                                                             "PRODUCTS" "NEW_PRODUCTS")]
       (is (str/includes? result "NEW_PRODUCTS"))
@@ -817,7 +818,7 @@
 
 (deftest replace-table-in-native-sql-with-join-test
   (testing "Table rename in JOIN"
-    (let [result (#'source-swap/replace-table-in-native-sql :h2
+    (let [result (#'swap.native/replace-table-in-native-sql :h2
                                                             "SELECT * FROM ORDERS o JOIN PRODUCTS p ON o.product_id = p.id"
                                                             "PRODUCTS" "NEW_PRODUCTS")]
       (is (str/includes? result "NEW_PRODUCTS"))
@@ -825,7 +826,7 @@
 
 (deftest replace-table-in-native-sql-with-cte-test
   (testing "Table inside CTE is renamed"
-    (let [result (#'source-swap/replace-table-in-native-sql :h2
+    (let [result (#'swap.native/replace-table-in-native-sql :h2
                                                             "WITH recent AS (SELECT * FROM ORDERS WHERE created > '2024-01-01') SELECT * FROM recent"
                                                             "ORDERS" "NEW_ORDERS")]
       (is (str/includes? result "NEW_ORDERS"))
@@ -833,7 +834,7 @@
 
 (deftest replace-table-in-native-sql-multiple-tags-test
   (testing "Table rename with multiple template tags"
-    (let [result (#'source-swap/replace-table-in-native-sql :h2
+    (let [result (#'swap.native/replace-table-in-native-sql :h2
                                                             "SELECT * FROM ORDERS WHERE status = {{status}} AND total > {{min_total}}"
                                                             "ORDERS" "NEW_ORDERS")]
       (is (str/includes? result "NEW_ORDERS"))
@@ -842,7 +843,7 @@
 
 (deftest replace-table-in-native-sql-nested-optionals-test
   (testing "Table rename with nested optional clauses"
-    (let [result (#'source-swap/replace-table-in-native-sql :h2
+    (let [result (#'swap.native/replace-table-in-native-sql :h2
                                                             "SELECT * FROM ORDERS WHERE 1=1 [[AND total > {{min}} [[AND status = {{status}}]]]]"
                                                             "ORDERS" "NEW_ORDERS")]
       (is (str/includes? result "NEW_ORDERS"))
@@ -852,7 +853,7 @@
 
 (deftest replace-table-in-native-sql-comment-with-bracket-markers-test
   (testing "SQL comments containing bracket markers are not modified"
-    (let [result (#'source-swap/replace-table-in-native-sql :h2
+    (let [result (#'swap.native/replace-table-in-native-sql :h2
                                                             "SELECT * FROM\n-- /*]]*/ \nORDERS LIMIT 5"
                                                             "ORDERS" "NEW_ORDERS")]
       (is (str/includes? result "NEW_ORDERS"))
@@ -862,7 +863,7 @@
 
 (deftest replace-table-in-native-sql-schema-qualified-test
   (testing "Schema-qualified table reference is matched and renamed"
-    (let [result (#'source-swap/replace-table-in-native-sql :h2
+    (let [result (#'swap.native/replace-table-in-native-sql :h2
                                                             "SELECT * FROM PUBLIC.ORDERS"
                                                             {:table "ORDERS" :schema "PUBLIC"}
                                                             {:schema "PUBLIC" :table "NEW_ORDERS"})]
@@ -870,7 +871,7 @@
       (is (not (str/includes? result "ORDERS ")))))
 
   (testing "Cross-schema rename: PUBLIC.ORDERS → ANALYTICS.NEW_ORDERS"
-    (let [result (#'source-swap/replace-table-in-native-sql :h2
+    (let [result (#'swap.native/replace-table-in-native-sql :h2
                                                             "SELECT * FROM PUBLIC.ORDERS"
                                                             {:table "ORDERS" :schema "PUBLIC"}
                                                             {:schema "ANALYTICS" :table "NEW_ORDERS"})]
@@ -879,7 +880,7 @@
       (is (not (str/includes? result "PUBLIC")))))
 
   (testing "Unqualified SQL still matches when old-table has schema"
-    (let [result (#'source-swap/replace-table-in-native-sql :h2
+    (let [result (#'swap.native/replace-table-in-native-sql :h2
                                                             "SELECT * FROM ORDERS"
                                                             {:table "ORDERS" :schema "PUBLIC"}
                                                             {:schema "PUBLIC" :table "NEW_ORDERS"})]
@@ -888,7 +889,7 @@
   (testing "Schema-qualified table→card clears the schema (no PUBLIC.{{#card}} in output)"
     ;; Just a plain string — replace-table-in-native-sql infers schema clearing
     ;; because old-table has a schema and new-table doesn't
-    (let [result (#'source-swap/replace-table-in-native-sql :h2
+    (let [result (#'swap.native/replace-table-in-native-sql :h2
                                                             "SELECT * FROM PUBLIC.ORDERS"
                                                             {:table "ORDERS" :schema "PUBLIC"}
                                                             "{{#123-my-card}}")]
@@ -1090,7 +1091,7 @@
     (let [query  (make-native-query
                   "SELECT * FROM {{my_table}}"
                   {"my_table" {:type :table :table-id 1 :name "my_table" :display-name "My Table"}})
-          result (#'source-swap/update-table-tags-for-table-swap
+          result (#'swap.native/update-table-tags-for-table-swap
                   (get-in query [:stages 0 :template-tags])
                   1 2)]
       (is (= 2 (get-in result ["my_table" :table-id]))))))
@@ -1099,7 +1100,7 @@
   (testing "swap-source table → card: {{my_table}} becomes {{#card-id-slug}}"
     (let [sql "SELECT * FROM {{my_table}}"
           tags {"my_table" {:type :table :table-id 1 :name "my_table" :display-name "My Table"}}
-          {:keys [sql template-tags]} (#'source-swap/update-table-tags-for-card-swap sql tags 1 99 "New Card")]
+          {:keys [sql template-tags]} (#'swap.native/update-table-tags-for-card-swap sql tags 1 99 "New Card")]
       ;; SQL should have card reference
       (is (str/includes? sql "{{#99-new-card}}"))
       (is (not (str/includes? sql "{{my_table}}")))
@@ -1118,7 +1119,7 @@
                             :display-name "My Table"
                             :required true
                             :default  "fallback"}}
-          {:keys [template-tags]} (#'source-swap/update-table-tags-for-card-swap sql tags 1 99 "New Card")]
+          {:keys [template-tags]} (#'swap.native/update-table-tags-for-card-swap sql tags 1 99 "New Card")]
       ;; :required and :default should be preserved
       (is (= true (get-in template-tags ["#99-new-card" :required])))
       (is (= "fallback" (get-in template-tags ["#99-new-card" :default]))))))
@@ -1134,7 +1135,7 @@
             tags {"filter" {:type :dimension
                             :name "filter"
                             :dimension [:field (:id products-id-field) nil]}}
-            result (#'source-swap/update-dimension-tags tags (mt/id :products) (mt/id :orders))]
+            result (#'swap.native/update-dimension-tags tags (mt/id :products) (mt/id :orders))]
         (is (= [:field (:id orders-id-field) nil]
                (get-in result ["filter" :dimension])))))))
 
@@ -1146,7 +1147,7 @@
                             :name "filter"
                             :dimension [:field (:id products-ean-field) nil]}}
             ;; Orders table doesn't have an EAN field
-            result (#'source-swap/update-dimension-tags tags (mt/id :products) (mt/id :orders))]
+            result (#'swap.native/update-dimension-tags tags (mt/id :products) (mt/id :orders))]
         ;; Should be unchanged since no matching field
         (is (= [:field (:id products-ean-field) nil]
                (get-in result ["filter" :dimension])))))))

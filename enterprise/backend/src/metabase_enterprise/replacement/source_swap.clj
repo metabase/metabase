@@ -3,6 +3,7 @@
    [metabase-enterprise.replacement.swap.mbql :as swap.mbql]
    [metabase-enterprise.replacement.swap.native :as swap.native]
    [metabase-enterprise.replacement.swap.viz :as swap.viz]
+   [metabase-enterprise.replacement.usages :as usages]
    [metabase.events.core :as events]
    [metabase.lib.core :as lib]
    [metabase.util.malli :as mu]
@@ -63,11 +64,11 @@
    Returns {:swapped [...]} with the list of entities that were updated."
   [old-source :- ::source-ref
    new-source :- ::source-ref]
-  #_(let [found-usages (usages/usages old-source)]
-      (t2/with-transaction [_conn]
-        (doseq [[entity-type entity-id] found-usages]
-          (update-entity entity-type entity-id old-source new-source)))
-      {:swapped (vec found-usages)}))
+  (let [found-usages (usages/transitive-usages old-source)]
+    (t2/with-transaction [_conn]
+      (doseq [[entity-type entity-id] found-usages]
+        (update-entity entity-type entity-id old-source new-source)))
+    {:swapped (vec found-usages)}))
 
 (defn swap-native-card-source!
   "Updates a single card's native query, replacing references to `old-card-id`
