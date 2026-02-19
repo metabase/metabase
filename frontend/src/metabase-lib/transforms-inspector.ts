@@ -1,45 +1,25 @@
 import * as INSPECTOR from "cljs/metabase.transforms_inspector.js";
 import type {
+  InspectorAlertTrigger,
   InspectorCard,
   InspectorCardId,
+  InspectorDrillLensTrigger,
   InspectorField,
   InspectorLens,
   InspectorLensId,
-  LensParams,
+  InspectorVisitedFields,
 } from "metabase-types/api";
 
-export type TriggeredCondition = {
-  name: string;
-  card_id: InspectorCardId;
-  [key: string]: unknown;
-};
-
-export type TriggeredAlert = {
-  id: string;
-  severity: "info" | "warning" | "error";
-  message: string;
-  condition: TriggeredCondition;
-};
-
-export type TriggeredDrillLens = {
-  lens_id: InspectorLensId;
-  params?: LensParams;
-  reason?: string;
-  condition: TriggeredCondition;
-};
-
 type TriggerResult = {
-  alerts: TriggeredAlert[];
-  drill_lenses: TriggeredDrillLens[];
+  alerts: InspectorAlertTrigger[];
+  drill_lenses: InspectorDrillLensTrigger[];
 };
 
 export type CardStats = Record<string, unknown>;
 
-type VisitedFields = Record<string, unknown>;
-
 export const interestingFields = (
   fields: InspectorField[],
-  visitedFields?: VisitedFields,
+  visitedFields?: InspectorVisitedFields,
   options?: { threshold?: number; limit?: number },
 ): Array<InspectorField & { interestingness: { score: number } }> =>
   INSPECTOR.interestingFields(

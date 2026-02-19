@@ -1,10 +1,10 @@
 import { match } from "ts-pattern";
 
 import { Alert, Icon, Stack } from "metabase/ui";
-import type { TriggeredAlert } from "metabase-lib/transforms-inspector";
+import type { InspectorAlertTrigger } from "metabase-types/api";
 
 type CardAlertsProps = {
-  alerts: TriggeredAlert[];
+  alerts: InspectorAlertTrigger[];
   fullWidth?: boolean;
 };
 

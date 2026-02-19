@@ -2,14 +2,14 @@ import { t } from "ttag";
 
 import { trackTransformInspectDrillLensClicked } from "metabase/transforms/analytics";
 import { Flex } from "metabase/ui";
-import type { TriggeredDrillLens } from "metabase-lib/transforms-inspector";
+import type { InspectorDrillLensTrigger } from "metabase-types/api";
 
 import { DrillButton } from "./DrillButton";
 import { useLensContentContext } from "./LensContent/LensContentContext";
 import { getLensKey, toLensHandle } from "./LensNavigator/utils";
 
 type CardDrillsProps = {
-  drillLenses: TriggeredDrillLens[];
+  drillLenses: InspectorDrillLensTrigger[];
 };
 
 export const CardDrills = ({ drillLenses }: CardDrillsProps) => {

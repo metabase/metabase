@@ -5,13 +5,11 @@ import {
   useMemo,
 } from "react";
 
+import type { CardStats } from "metabase-lib/transforms-inspector";
 import type {
-  CardStats,
-  TriggeredAlert,
-  TriggeredDrillLens,
-} from "metabase-lib/transforms-inspector";
-import type {
+  InspectorAlertTrigger,
   InspectorCardId,
+  InspectorDrillLensTrigger,
   InspectorLens,
   Transform,
 } from "metabase-types/api";
@@ -22,8 +20,8 @@ type LensContentContextValue = {
   transform: Transform;
   lens: InspectorLens;
   lensHandle: LensHandle;
-  alertsByCardId: Record<InspectorCardId, TriggeredAlert[]>;
-  drillLensesByCardId: Record<InspectorCardId, TriggeredDrillLens[]>;
+  alertsByCardId: Record<InspectorCardId, InspectorAlertTrigger[]>;
+  drillLensesByCardId: Record<InspectorCardId, InspectorDrillLensTrigger[]>;
   collectedCardStats: Record<InspectorCardId, CardStats>;
   navigateToLens: (lensHandle: LensHandle) => void;
   onStatsReady: (cardId: InspectorCardId, stats: CardStats | null) => void;

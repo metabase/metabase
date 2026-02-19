@@ -1,11 +1,11 @@
 import { match } from "ts-pattern";
 
 import { Box, List } from "metabase/ui";
-import type { TriggeredAlert } from "metabase-lib/transforms-inspector";
+import type { InspectorAlertTrigger } from "metabase-types/api";
 
 type AlertSubRowProps = {
-  alerts: TriggeredAlert[];
-  severity: TriggeredAlert["severity"] | null;
+  alerts: InspectorAlertTrigger[];
+  severity: InspectorAlertTrigger["severity"] | null;
 };
 
 export const AlertSubRow = ({ alerts, severity }: AlertSubRowProps) => {

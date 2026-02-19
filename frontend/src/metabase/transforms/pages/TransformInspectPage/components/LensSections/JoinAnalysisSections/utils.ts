@@ -1,8 +1,8 @@
-import type { TriggeredAlert } from "metabase-lib/transforms-inspector";
+import type { InspectorAlertTrigger } from "metabase-types/api";
 
 export const getMaxSeverity = (
-  alerts: TriggeredAlert[],
-): TriggeredAlert["severity"] => {
+  alerts: InspectorAlertTrigger[],
+): InspectorAlertTrigger["severity"] => {
   if (alerts.some((a) => a.severity === "error")) {
     return "error";
   }

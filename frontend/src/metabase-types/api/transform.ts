@@ -517,6 +517,7 @@ export type InspectorLensSummary = {
 // open schema with name key always present
 export type InspectorTriggerCondition = {
   name: string;
+  card_id: InspectorCardId;
   [key: string]: unknown;
 };
 

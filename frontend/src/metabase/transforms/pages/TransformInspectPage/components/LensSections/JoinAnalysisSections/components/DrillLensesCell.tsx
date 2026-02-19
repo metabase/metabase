@@ -3,14 +3,16 @@ import { t } from "ttag";
 import { trackTransformInspectDrillLensClicked } from "metabase/transforms/analytics";
 import type { LensHandle } from "metabase/transforms/pages/TransformInspectPage/types";
 import { Flex } from "metabase/ui";
-import type { TriggeredDrillLens } from "metabase-lib/transforms-inspector";
-import type { TransformId } from "metabase-types/api";
+import type {
+  InspectorDrillLensTrigger,
+  TransformId,
+} from "metabase-types/api";
 
 import { DrillButton } from "../../../DrillButton";
 import { getLensKey, toLensHandle } from "../../../LensNavigator/utils";
 
 type DrillLensesCellProps = {
-  drillLenses: TriggeredDrillLens[];
+  drillLenses: InspectorDrillLensTrigger[];
   transformId: TransformId;
   navigateToLens: (lensHandle: LensHandle) => void;
 };

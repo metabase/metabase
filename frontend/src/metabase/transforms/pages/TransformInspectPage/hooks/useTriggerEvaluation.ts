@@ -1,25 +1,26 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import _ from "underscore";
 
-import {
-  type TriggeredAlert,
-  type TriggeredDrillLens,
-  evaluateTriggers,
-} from "metabase-lib/transforms-inspector";
-import type { InspectorCardId, InspectorLens } from "metabase-types/api";
+import { evaluateTriggers } from "metabase-lib/transforms-inspector";
+import type {
+  InspectorAlertTrigger,
+  InspectorCardId,
+  InspectorDrillLensTrigger,
+  InspectorLens,
+} from "metabase-types/api";
 
 import type { CardStats } from "../types";
 
 type TriggerEvaluationResult = {
-  alertsByCardId: Record<InspectorCardId, TriggeredAlert[]>;
-  drillLensesByCardId: Record<InspectorCardId, TriggeredDrillLens[]>;
+  alertsByCardId: Record<InspectorCardId, InspectorAlertTrigger[]>;
+  drillLensesByCardId: Record<InspectorCardId, InspectorDrillLensTrigger[]>;
   collectedCardStats: Record<InspectorCardId, CardStats>;
   pushNewStats: (cardId: InspectorCardId, stats: CardStats | null) => void;
 };
 
 type TriggerEvaluationState = {
-  alerts: TriggeredAlert[];
-  drillLenses: TriggeredDrillLens[];
+  alerts: InspectorAlertTrigger[];
+  drillLenses: InspectorDrillLensTrigger[];
 };
 
 export const useTriggerEvaluation = (

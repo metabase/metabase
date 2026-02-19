@@ -1,12 +1,15 @@
-import type { TriggeredDrillLens } from "metabase-lib/transforms-inspector";
-import type { InspectorLensMetadata, LensParams } from "metabase-types/api";
+import type {
+  InspectorDrillLensTrigger,
+  InspectorLensMetadata,
+  LensParams,
+} from "metabase-types/api";
 
 import type { LensHandle } from "../../types";
 
 import type { DynamicLensTab, StaticLensTab } from "./types";
 
 export const toLensHandle = (
-  source: InspectorLensMetadata | TriggeredDrillLens,
+  source: InspectorLensMetadata | InspectorDrillLensTrigger,
 ): LensHandle => {
   if ("lens_id" in source) {
     return {

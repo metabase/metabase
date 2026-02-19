@@ -1,9 +1,9 @@
+import type { CardStats } from "metabase-lib/transforms-inspector";
 import type {
-  CardStats,
-  TriggeredAlert,
-  TriggeredDrillLens,
-} from "metabase-lib/transforms-inspector";
-import type { InspectorCard } from "metabase-types/api";
+  InspectorAlertTrigger,
+  InspectorCard,
+  InspectorDrillLensTrigger,
+} from "metabase-types/api";
 
 export type JoinTableRow = {
   id: string;
@@ -11,8 +11,8 @@ export type JoinTableRow = {
   tableCard: InspectorCard | undefined;
   joinAlias: string;
   joinStrategy: string;
-  alerts: TriggeredAlert[];
-  severity: TriggeredAlert["severity"] | null;
-  drillLenses: TriggeredDrillLens[];
+  alerts: InspectorAlertTrigger[];
+  severity: InspectorAlertTrigger["severity"] | null;
+  drillLenses: InspectorDrillLensTrigger[];
   cardStats: CardStats | undefined;
 };

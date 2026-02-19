@@ -2,14 +2,17 @@ import { match } from "ts-pattern";
 
 import { trackTransformInspectAlertClicked } from "metabase/transforms/analytics";
 import { ActionIcon, Icon } from "metabase/ui";
-import type { TriggeredAlert } from "metabase-lib/transforms-inspector";
-import type { InspectorCard, TransformId } from "metabase-types/api";
+import type {
+  InspectorAlertTrigger,
+  InspectorCard,
+  TransformId,
+} from "metabase-types/api";
 
 import { useLensCardLoader } from "../../../../hooks";
 
 type JoinHeaderCellProps = {
   card: InspectorCard;
-  severity: TriggeredAlert["severity"] | null;
+  severity: InspectorAlertTrigger["severity"] | null;
   transformId: TransformId;
   onToggleAlerts?: () => void;
 };
