@@ -764,7 +764,7 @@
              "adhoc_viz"
              (let [query    (or (:query value)
                                 (throw (ex-info "adhoc_viz missing query" {:value value})))
-                   display  (keyword (:display value))
+                   display  (or (some-> (:display value) keyword) :table)
                    output   (slackbot.query/generate-adhoc-output query :display display)
                    filename (str "adhoc-" (System/currentTimeMillis))]
                (send-viz-output client channel thread-ts output filename)))
