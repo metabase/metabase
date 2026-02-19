@@ -2200,6 +2200,7 @@
               lib-be
               models
               native-query-snippets
+              notification
               permissions
               premium-features
               pulse
