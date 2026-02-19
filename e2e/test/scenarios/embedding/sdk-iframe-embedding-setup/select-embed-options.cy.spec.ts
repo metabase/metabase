@@ -681,24 +681,27 @@ describe(suiteTitle, () => {
     codeBlock().should("contain", 'with-alerts="true"');
   });
 
-  it("shows a docs icon in behavior section for chart", () => {
+  it("shows a docs icon in behavior section depending on a component", () => {
     navigateToEmbedOptionsStep({
       experience: "chart",
       resourceName: QUESTION_NAME,
       preselectSso: true,
     });
 
-    getEmbedSidebar().findByTestId("behavior-docs-link").should("be.visible");
-    getEmbedSidebar()
-      .findByTestId("behavior-docs-link")
-      .should("have.attr", "href")
-      .and("include", "embedding/components.html#question");
-  });
+    getEmbedSidebar().within(() => {
+      cy.findByTestId("behavior-docs-link").should("be.visible");
+      cy.findByTestId("behavior-docs-link")
+        .should("have.attr", "href")
+        .and("include", "embedding/components.html#question");
 
-  it("does not show a docs icon in behavior section for metabot", () => {
-    navigateToEmbedOptionsStep({ experience: "metabot" });
+      cy.findByText("Back").click();
+      cy.findByText("Back").click();
 
-    getEmbedSidebar().findByTestId("behavior-docs-link").should("not.exist");
+      cy.findByText("Metabot").click();
+      cy.findByText("Next").click();
+
+      cy.findByTestId("behavior-docs-link").should("not.exist");
+    });
   });
 
   ["exploration", "chart"].forEach((experience) => {
