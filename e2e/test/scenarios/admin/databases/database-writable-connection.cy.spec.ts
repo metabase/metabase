@@ -1,4 +1,5 @@
 import { WRITABLE_DB_CONFIG, WRITABLE_DB_ID } from "e2e/support/cypress_data";
+import { FIRST_COLLECTION_ID } from "e2e/support/cypress_sample_instance_data";
 import type {
   CardId,
   DatabaseId,
@@ -160,6 +161,17 @@ describe("scenarios > admin > databases > writable connection", () => {
 
     createWritableConnection(DEFAULT_USER);
     performTableEdit().then(expectSuccess);
+  });
+
+  it("should be possible to use uploads with a writable connection", () => {
+    H.enableUploads("mysql");
+    visitDatabase(WRITABLE_DB_ID);
+
+    updateMainConnection(READ_ONLY_USER);
+    performUpload().then(expectFailure);
+
+    createWritableConnection(DEFAULT_USER);
+    performUpload().then(expectSuccess);
   });
 });
 
@@ -382,4 +394,26 @@ function refreshModelPersistenceAndAwaitError(modelId: CardId) {
 
 function refreshModelPersistenceAndAwaitSuccess(modelId: CardId) {
   return refreshModelPersistenceAndAwaitStatus(modelId, "persisted");
+}
+
+function performUpload() {
+  const file = H.VALID_CSV_FILES[0];
+  return cy
+    .fixture(`${H.FIXTURE_PATH}/${file.fileName}`)
+    .then((file) => Cypress.Blob.binaryStringToBlob(file))
+    .then((blob) => {
+      const formData = new FormData();
+      formData.append("file", blob, file.fileName);
+      formData.append("collection_id", FIRST_COLLECTION_ID.toString());
+
+      return cy.request({
+        url: "/api/upload/csv",
+        method: "POST",
+        // failOnStatusCode: false,
+        headers: {
+          "content-type": "multipart/form-data",
+        },
+        body: formData,
+      });
+    });
 }
