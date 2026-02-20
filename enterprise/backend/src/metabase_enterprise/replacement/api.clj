@@ -27,15 +27,19 @@
    [:effective_type [:maybe :string]]
    [:semantic_type  [:maybe :string]]])
 
+(def ^:private column-error-type-enum
+  [:enum :missing-column :column-type-mismatch :missing-primary-key :extra-primary-key :missing-foreign-key :foreign-key-mismatch])
+
 (def ^:private error-type-enum
-  [:enum :same-source :cycle-detected :database-mismatch
-   :missing-column :column-type-mismatch :missing-primary-key :extra-primary-key :missing-foreign-key :foreign-key-mismatch])
+  [:or
+   [:enum :same-source :cycle-detected :database-mismatch]
+   column-error-type-enum])
 
 (mr/def ::column-mapping
   [:map
    [:source [:maybe ::column]]
    [:target [:maybe ::column]]
-   [:errors {:optional true} [:sequential error-type-enum]]])
+   [:errors {:optional true} [:sequential column-error-type-enum]]])
 
 (mr/def ::check-replace-source-response
   [:map
