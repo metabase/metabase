@@ -77,25 +77,25 @@ function getTargetColumn(
 }
 
 function getErrorMessage(errors: ReplaceSourceColumnErrorType[]) {
-  const visibleErrors = errors.filter((error) => error !== "missing-column");
-  return visibleErrors.length > 0
-    ? visibleErrors.map(getColumnErrorMessage).join(" ")
-    : null;
+  const messages = errors
+    .map(getColumnErrorMessage)
+    .filter((message) => message != null);
+  return messages.length > 0 ? messages.join(" ") : null;
 }
 
-function getErrorsColumn(): TreeTableColumnDef<ColumnMappingItem> {
+function getDetailsColumn(): TreeTableColumnDef<ColumnMappingItem> {
   return {
     id: "errors",
-    header: t`Errors`,
+    header: t`Details`,
     enableSorting: true,
     accessorFn: (item) => getErrorMessage(item.errors ?? []),
     cell: ({ row }) => {
       const { errors } = row.original;
-      const errorMessage = getErrorMessage(errors ?? []);
-      if (errorMessage == null) {
+      const message = getErrorMessage(errors ?? []);
+      if (message == null) {
         return null;
       }
-      return <Ellipsified>{errorMessage}</Ellipsified>;
+      return <Ellipsified>{message}</Ellipsified>;
     },
   };
 }
@@ -117,7 +117,7 @@ export function getColumns(
   return [
     getSourceColumn(sourceHeader),
     getTargetColumn(targetHeader),
-    getErrorsColumn(),
+    getDetailsColumn(),
   ];
 }
 

@@ -23,24 +23,24 @@ export type ReplaceSourceColumnInfo = Pick<
   | "semantic_type"
 >;
 
-export const REPLACE_SOURCE_ERROR_TYPES = [
-  "same-source",
-  "cycle-detected",
-  "database-mismatch",
-  "missing-column",
-  "column-type-mismatch",
-  "missing-primary-key",
-  "extra-primary-key",
-  "missing-foreign-key",
-  "foreign-key-mismatch",
-] as const;
 export type ReplaceSourceErrorType =
-  (typeof REPLACE_SOURCE_ERROR_TYPES)[number];
+  | "same-source"
+  | "cycle-detected"
+  | "database-mismatch"
+  | ReplaceSourceColumnErrorType;
+
+export type ReplaceSourceColumnErrorType =
+  | "missing-column"
+  | "column-type-mismatch"
+  | "missing-primary-key"
+  | "extra-primary-key"
+  | "missing-foreign-key"
+  | "foreign-key-mismatch";
 
 export type ReplaceSourceColumnMapping = {
   source: ReplaceSourceColumnInfo | null;
   target: ReplaceSourceColumnInfo | null;
-  errors?: ReplaceSourceErrorType[];
+  errors?: ReplaceSourceColumnErrorType[];
 };
 
 export type CheckReplaceSourceInfo = {
