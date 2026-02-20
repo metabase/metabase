@@ -3,16 +3,27 @@ import { css } from "@emotion/react";
 // eslint-disable-next-line no-restricted-imports
 import styled from "@emotion/styled";
 import type { ComponentProps, FC } from "react";
+import { forwardRef } from "react";
+import { Link as RouterLink } from "react-router-dom";
 
 import { focusOutlineStyle } from "metabase/common/style/input";
 import { doNotForwardProps } from "metabase/common/utils/doNotForwardProps";
-import { Link } from "metabase/routing/compat/react-router-v3";
 
 type LinkVariantProp = { variant?: "default" | "brand" | "brandBold" };
-type RouterLinkProps = ComponentProps<typeof Link>;
+import { type LinkToWithQuery, normalizeTo } from "./utils";
+
+type RouterLinkProps = Omit<ComponentProps<typeof RouterLink>, "to"> & {
+  to: LinkToWithQuery;
+};
+
+const QueryAwareRouterLink = forwardRef<HTMLAnchorElement, RouterLinkProps>(
+  function QueryAwareRouterLink({ to, ...props }, ref) {
+    return <RouterLink {...props} ref={ref} to={normalizeTo(to)} />;
+  },
+);
 
 export const LinkRoot = styled(
-  Link,
+  QueryAwareRouterLink,
   doNotForwardProps("variant"),
 )<LinkVariantProp>`
   opacity: ${(props) => (props.disabled ? "0.4" : "")};

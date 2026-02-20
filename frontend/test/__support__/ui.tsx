@@ -8,13 +8,24 @@ import {
   render as testingLibraryRender,
   waitFor,
 } from "@testing-library/react";
-import type { History } from "history";
-import { createMemoryHistory } from "history";
+import type { History, Location } from "history";
+import { createMemoryHistory as createMemoryHistoryBase } from "history";
 import { KBarProvider } from "kbar";
 import type * as React from "react";
 import { useMemo } from "react";
 import { DragDropContextProvider } from "react-dnd";
 import HTML5Backend from "react-dnd-html5-backend";
+import {
+  unstable_HistoryRouter as HistoryRouter,
+  Link as LinkV7,
+  Navigate,
+  Outlet,
+  Route as RouteV7,
+  Routes,
+  useLocation,
+  useNavigate,
+  useParams,
+} from "react-router-dom";
 import _ from "underscore";
 
 import { Api } from "metabase/api";
@@ -24,18 +35,6 @@ import { HistoryProvider } from "metabase/history";
 import { MetabaseReduxProvider } from "metabase/lib/redux";
 import { makeMainReducers } from "metabase/reducers-main";
 import { publicReducers } from "metabase/reducers-public";
-import { RouterProvider } from "metabase/router";
-import {
-  IndexRedirect,
-  IndexRoute,
-  Link,
-  Redirect,
-  Route,
-  Router,
-  createMemoryHistory as createMemoryHistoryV3,
-  useRouterHistory,
-  withRouter,
-} from "metabase/routing/compat/react-router-v3";
 import { getMetabaseCssVariables } from "metabase/styled-components/theme/css-variables";
 import type { MantineThemeOverride } from "metabase/ui";
 import { ThemeProvider, useMantineTheme } from "metabase/ui";
@@ -47,26 +46,324 @@ import { getStore } from "./entities-store";
 
 type ReducerValue = ReducerObject | Reducer;
 const LOCATION_CHANGE = "@@router/LOCATION_CHANGE";
+const ROUTER_MARKER = Symbol("legacy-router-marker");
 
 interface ReducerObject {
   [slice: string]: ReducerValue;
 }
 
-export {
-  createMemoryHistoryV3 as createMemoryHistory,
-  IndexRedirect,
-  IndexRoute,
-  Link,
-  Redirect,
-  Route,
-  Router,
-  useRouterHistory,
-  withRouter,
+type Query = Record<string, string>;
+type LegacyHistory = History & {
+  getCurrentLocation: () => Location & { query: Query };
 };
-export type {
-  InjectedRouter,
-  WithRouterProps,
-} from "metabase/routing/compat/react-router-v3";
+
+type LegacyRouteObject = {
+  path?: string;
+  index?: boolean;
+  element?: React.ReactElement;
+  children?: LegacyRouteObject[];
+};
+
+export type InjectedRouter = {
+  push: (path: string) => void;
+  replace: (path: string) => void;
+  go: (count: number) => void;
+  goBack: () => void;
+  goForward: () => void;
+  setRouteLeaveHook: () => () => void;
+  createPath: (location: { pathname?: string; search?: string }) => string;
+  createHref: (location: { pathname?: string; search?: string }) => string;
+  isActive: (path: string) => boolean;
+  listen: (listener: () => void) => () => void;
+};
+
+export type WithRouterProps = {
+  params: Record<string, string | undefined>;
+  location: Location;
+  router: InjectedRouter;
+  route?: { path?: string };
+  routes?: Array<{ path?: string }>;
+};
+
+type LegacyRouteProps = {
+  path?: string;
+  component?: React.ComponentType<any>;
+  children?: React.ReactNode;
+};
+
+type LegacyRedirectProps = {
+  from?: string;
+  to: string;
+};
+
+function parseQuery(search?: string): Query {
+  const params = new URLSearchParams(search ?? "");
+  return Object.fromEntries(params.entries());
+}
+
+function withLocationQuery(location: Location): Location & { query: Query } {
+  return {
+    ...location,
+    query: parseQuery(location.search),
+  };
+}
+
+function createInjectedRouter(
+  navigate: ReturnType<typeof useNavigate>,
+): InjectedRouter {
+  return {
+    push: (path) => navigate(path),
+    replace: (path) => navigate(path, { replace: true }),
+    go: (count) => navigate(count),
+    goBack: () => navigate(-1),
+    goForward: () => navigate(1),
+    setRouteLeaveHook: () => () => undefined,
+    createPath: (location) =>
+      `${location.pathname ?? ""}${location.search ?? ""}`,
+    createHref: (location) =>
+      `${location.pathname ?? ""}${location.search ?? ""}`,
+    isActive: (path) => window.location.pathname === path,
+    listen: () => () => undefined,
+  };
+}
+
+export function createMemoryHistory(
+  options: Parameters<typeof createMemoryHistoryBase>[0] = {},
+): LegacyHistory {
+  const history = createMemoryHistoryBase(options) as LegacyHistory;
+  const listen = history.listen.bind(history);
+
+  history.listen = ((listener: (location: Location) => void) =>
+    listen((update: any) => {
+      const location = update?.location ?? update;
+      listener(withLocationQuery(location));
+    })) as LegacyHistory["listen"];
+  history.getCurrentLocation = () => withLocationQuery(history.location);
+  return history;
+}
+
+export const useRouterHistory =
+  <T extends LegacyHistory>(
+    createHistory: (
+      options?: Parameters<typeof createMemoryHistoryBase>[0],
+    ) => T,
+  ) =>
+  (options?: Parameters<typeof createMemoryHistoryBase>[0]) =>
+    createHistory(options);
+
+function withLegacyRouteMarker<T extends React.ComponentType<any>>(
+  component: T,
+) {
+  (component as any)[ROUTER_MARKER] = true;
+  return component;
+}
+
+export const Route = withLegacyRouteMarker(function Route(
+  _props: LegacyRouteProps,
+) {
+  return null;
+});
+
+export const IndexRoute = withLegacyRouteMarker(function IndexRoute(
+  _props: Pick<LegacyRouteProps, "component">,
+) {
+  return null;
+});
+
+export const Redirect = withLegacyRouteMarker(function Redirect(
+  _props: LegacyRedirectProps,
+) {
+  return null;
+});
+
+export const IndexRedirect = withLegacyRouteMarker(function IndexRedirect(
+  _props: Pick<LegacyRedirectProps, "to">,
+) {
+  return null;
+});
+
+export const Link = LinkV7;
+
+const isLegacyRouterElement = (element: React.ReactElement) =>
+  Boolean((element.type as any)?.[ROUTER_MARKER]);
+
+function expandOptionalPath(path: string): string[] {
+  const match = path.match(/\(([^()]+)\)/);
+
+  if (!match || match.index == null) {
+    return [path];
+  }
+
+  const [optionalGroup, optionalValue] = match;
+  const before = path.slice(0, match.index);
+  const after = path.slice(match.index + optionalGroup.length);
+
+  return [
+    ...expandOptionalPath(`${before}${after}`),
+    ...expandOptionalPath(`${before}${optionalValue}${after}`),
+  ];
+}
+
+function LegacyComponentElement({
+  component: Component,
+  path,
+}: {
+  component?: React.ComponentType<any>;
+  path?: string;
+}) {
+  const location = useLocation() as unknown as Location;
+  const params = useParams();
+  const navigate = useNavigate();
+
+  if (!Component) {
+    return <Outlet />;
+  }
+
+  return (
+    <Component
+      location={location}
+      params={params}
+      route={{ path }}
+      routes={[]}
+      router={createInjectedRouter(navigate)}
+    />
+  );
+}
+
+function mapLegacyChildrenToRoutes(
+  children: React.ReactNode,
+): LegacyRouteObject[] {
+  const routes: LegacyRouteObject[] = [];
+
+  React.Children.forEach(children, (child) => {
+    if (!React.isValidElement(child)) {
+      return;
+    }
+
+    if ((child.type as any) === React.Fragment) {
+      routes.push(...mapLegacyChildrenToRoutes(child.props.children));
+      return;
+    }
+
+    if (!isLegacyRouterElement(child)) {
+      return;
+    }
+
+    if (child.type === IndexRoute) {
+      const component = child.props.component as React.ComponentType<any>;
+      routes.push({
+        index: true,
+        element: <LegacyComponentElement component={component} />,
+      });
+      return;
+    }
+
+    if (child.type === IndexRedirect) {
+      routes.push({
+        index: true,
+        element: <Navigate replace to={child.props.to} />,
+      });
+      return;
+    }
+
+    if (child.type === Redirect) {
+      const from = child.props.from as string;
+      const to = child.props.to as string;
+      routes.push({
+        path: from,
+        element: <Navigate replace to={to} />,
+      });
+      return;
+    }
+
+    const path = child.props.path as string | undefined;
+    const expandedPaths = path ? expandOptionalPath(path) : [undefined];
+    const component = child.props.component as React.ComponentType<any>;
+    const nestedRoutes = mapLegacyChildrenToRoutes(child.props.children);
+
+    expandedPaths.forEach((expandedPath) => {
+      routes.push({
+        path: expandedPath,
+        element: <LegacyComponentElement component={component} path={path} />,
+        children: nestedRoutes.length > 0 ? nestedRoutes : undefined,
+      });
+    });
+  });
+
+  return routes;
+}
+
+function LegacyRouteRenderer({ children }: { children: React.ReactNode }) {
+  const routes = useMemo(() => mapLegacyChildrenToRoutes(children), [children]);
+  if (routes.length === 0) {
+    return <>{children}</>;
+  }
+  return <Routes>{routes.map(renderRouteObject)}</Routes>;
+}
+
+function renderRouteObject(
+  route: LegacyRouteObject,
+  index = 0,
+): React.ReactElement {
+  if (route.index) {
+    return <RouteV7 index key={`index-${index}`} element={route.element} />;
+  }
+
+  return (
+    <RouteV7
+      path={route.path}
+      key={`${route.path ?? "root"}-${index}`}
+      element={route.element}
+    >
+      {route.children?.map((child, childIndex) =>
+        renderRouteObject(child, childIndex),
+      )}
+    </RouteV7>
+  );
+}
+
+export function Router({
+  history,
+  children,
+}: {
+  history: LegacyHistory;
+  children: React.ReactNode;
+}) {
+  return (
+    <HistoryProvider history={history}>
+      <HistoryRouter history={history}>
+        <LegacyRouteRenderer>{children}</LegacyRouteRenderer>
+      </HistoryRouter>
+    </HistoryProvider>
+  );
+}
+
+export function withRouter<P extends object>(
+  Component: React.ComponentType<P & WithRouterProps>,
+) {
+  const Wrapped = (props: P) => {
+    const location = useLocation() as unknown as Location;
+    const params = useParams();
+    const navigate = useNavigate();
+
+    return (
+      <Component
+        {...props}
+        location={location}
+        params={params}
+        route={{}}
+        routes={[]}
+        router={createInjectedRouter(navigate)}
+      />
+    );
+  };
+
+  Wrapped.displayName = `WithRouter[${
+    Component.displayName ?? Component.name ?? "Component"
+  }]`;
+
+  return Wrapped;
+}
 
 export interface RenderWithProvidersOptions {
   // the mode changes the reducers and initial state to be used for
@@ -327,7 +624,7 @@ function MaybeRouter({
   }
   return (
     <HistoryProvider history={history}>
-      <RouterProvider>{children}</RouterProvider>
+      <Router history={history as LegacyHistory}>{children}</Router>
     </HistoryProvider>
   );
 }

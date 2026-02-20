@@ -9,12 +9,8 @@ import api from "metabase/lib/api";
 import { mainReducers } from "metabase/reducers-main";
 import { setErrorPage } from "metabase/redux/app";
 import { clearCurrentUser } from "metabase/redux/user";
-import { getRoutes as getRoutesV3 } from "metabase/routes";
-import { USE_REACT_ROUTER_V7 } from "metabase/routing/compat";
 import { routerActions } from "metabase/routing/compat/react-router-redux";
 import { createRoutes as getRoutesV7 } from "metabase/routing/routes";
-
-const getRoutes = USE_REACT_ROUTER_V7 ? getRoutesV7 : getRoutesV3;
 
 // If any of these receives a 403, we should display the "not authorized" page.
 const NOT_AUTHORIZED_TRIGGERS = [
@@ -25,7 +21,7 @@ const NOT_AUTHORIZED_TRIGGERS = [
   /\/api\/dataset$/,
 ];
 
-init(mainReducers, getRoutes, (store) => {
+init(mainReducers, getRoutesV7, (store) => {
   // received a 401 response
   api.on("401", (url) => {
     if (url.indexOf("/api/user/current") >= 0) {

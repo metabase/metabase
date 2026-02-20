@@ -1,5 +1,6 @@
 import type React from "react";
 import type { ComponentType } from "react";
+import type { RouteObject } from "react-router-dom";
 import { t } from "ttag";
 
 import { Messages } from "metabase/admin/permissions/constants/messages";
@@ -90,6 +91,7 @@ const getDefaultPluginCollections = () => ({
     menuItems: [],
   }),
   cleanUpRoute: null as React.ReactElement | null,
+  cleanUpRouteObjects: [] as RouteObject[],
   cleanUpAlert: (() => null) as (props: {
     collection: Collection;
   }) => JSX.Element | null,

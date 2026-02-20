@@ -1,3 +1,4 @@
+import type { Location } from "history";
 import { t } from "ttag";
 
 import { skipToken, useListCollectionItemsQuery } from "metabase/api";
@@ -6,6 +7,11 @@ import { UserHasSeen } from "metabase/common/components/UserHasSeen/UserHasSeen"
 import { ModalRoute } from "metabase/hoc/ModalRoute";
 import * as Urls from "metabase/lib/urls";
 import { PLUGIN_COLLECTIONS } from "metabase/plugins";
+import {
+  createModalRoute,
+  useCompatLocation,
+  useCompatParams,
+} from "metabase/routing/compat";
 import { Badge, Icon, Menu } from "metabase/ui";
 import { useListStaleCollectionItemsQuery } from "metabase-enterprise/api/collection";
 import { hasPremiumFeature } from "metabase-enterprise/settings";
@@ -13,6 +19,23 @@ import { hasPremiumFeature } from "metabase-enterprise/settings";
 import { CleanupCollectionModal } from "./CleanupCollectionModal";
 import { getDateFilterValue } from "./CleanupCollectionModal/utils";
 import { canCleanUp } from "./utils";
+
+const CleanupCollectionModalWithRouteProps = ({
+  onClose,
+}: {
+  onClose: () => void;
+}) => {
+  const params = useCompatParams<{ slug?: string }>();
+  const location = useCompatLocation();
+
+  return (
+    <CleanupCollectionModal
+      onClose={onClose}
+      params={{ slug: params.slug }}
+      location={location as unknown as Location}
+    />
+  );
+};
 
 /**
  * Initialize clean_up plugin features that depend on hasPremiumFeature.
@@ -80,5 +103,8 @@ export function initializePlugin() {
     PLUGIN_COLLECTIONS.cleanUpRoute = (
       <ModalRoute path="cleanup" modal={CleanupCollectionModal} />
     );
+    PLUGIN_COLLECTIONS.cleanUpRouteObjects = [
+      createModalRoute("cleanup", CleanupCollectionModalWithRouteProps),
+    ];
   }
 }

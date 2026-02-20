@@ -6,7 +6,7 @@
  */
 
 // Master flag - when true, enables React Router v7 for the entire app
-export const USE_REACT_ROUTER_V7 = false;
+export const USE_REACT_ROUTER_V7 = true;
 
 // Granular flags for incremental migration
 export const USE_V7_NAVIGATION = USE_REACT_ROUTER_V7;

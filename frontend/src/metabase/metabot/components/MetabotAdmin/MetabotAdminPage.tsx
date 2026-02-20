@@ -6,19 +6,12 @@ import {
   AdminNavWrapper,
 } from "metabase/admin/components/AdminNav";
 import { AdminSettingsLayout } from "metabase/common/components/AdminLayout/AdminSettingsLayout";
-import { PLUGIN_METABOT } from "metabase/plugins";
-import { IndexRoute, Redirect } from "metabase/routing/compat/react-router-v3";
 import { Flex } from "metabase/ui";
 
 import { MetabotSQLGenerationSettingsSection } from "./MetabotSQLGenerationSettingsSection";
 
 export function getAdminRoutes() {
-  return (
-    PLUGIN_METABOT.getAdminRoutes?.() ?? [
-      <IndexRoute key="index" component={MetabotAdminPage} />,
-      <Redirect key="redirect" from="*" to="/admin/metabot" />,
-    ]
-  );
+  return [];
 }
 
 export function MetabotAdminPage() {

@@ -5,6 +5,7 @@ import { useEffect, useRef } from "react";
 import { Navigate, Outlet, type RouteObject } from "react-router-dom";
 
 import App from "metabase/App.tsx";
+import { getAccountRouteObjects } from "metabase/account/routes";
 import CollectionPermissionsModal from "metabase/admin/permissions/components/CollectionPermissionsModal/CollectionPermissionsModal";
 import { getAdminRouteObjects } from "metabase/admin/routes-v7";
 import { ForgotPassword } from "metabase/auth/components/ForgotPassword";
@@ -22,8 +23,11 @@ import { ArchiveCollectionModal } from "metabase/collections/components/ArchiveC
 import CollectionLandingComponent from "metabase/collections/components/CollectionLanding";
 import { MoveCollectionModal } from "metabase/collections/components/MoveCollectionModal";
 import { TrashCollectionLanding } from "metabase/collections/components/TrashCollectionLanding";
+import { Unauthorized } from "metabase/common/components/ErrorPages";
 import { MoveQuestionsIntoDashboardsModal } from "metabase/common/components/MoveQuestionsIntoDashboardsModal";
 import { NotFoundFallbackPage } from "metabase/common/components/NotFoundFallbackPage";
+import { UnsubscribePage } from "metabase/common/components/Unsubscribe";
+import { UserCollectionList } from "metabase/common/components/UserCollectionList";
 import { DashboardCopyModalConnected } from "metabase/dashboard/components/DashboardCopyModal";
 import { DashboardMoveModalConnected } from "metabase/dashboard/components/DashboardMoveModal";
 import { ArchiveDashboardModalConnected } from "metabase/dashboard/containers/ArchiveDashboardModal";
@@ -31,12 +35,21 @@ import { AutomaticDashboardApp } from "metabase/dashboard/containers/AutomaticDa
 import { DashboardApp } from "metabase/dashboard/containers/DashboardApp/DashboardApp";
 import { getDataStudioRouteObjects } from "metabase/data-studio/routes";
 import { TableDetailPage } from "metabase/detail-view/pages/TableDetailPage";
+import { CommentsSidesheet } from "metabase/documents/components/CommentsSidesheet";
+import { DocumentPageOuter } from "metabase/documents/routes";
 import { HomePage } from "metabase/home/components/HomePage";
 import { Onboarding } from "metabase/home/components/Onboarding";
 import { trackPageView } from "metabase/lib/analytics";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import NewModelOptions from "metabase/models/containers/NewModelOptions";
-import { PLUGIN_LANDING_PAGE } from "metabase/plugins";
+import { getModelRouteObjects } from "metabase/models/routes";
+import {
+  PLUGIN_COLLECTIONS,
+  PLUGIN_LANDING_PAGE,
+  PLUGIN_METABOT,
+  PLUGIN_TABLE_EDITING,
+  PLUGIN_TENANTS,
+} from "metabase/plugins";
 import { QueryBuilder } from "metabase/query_builder/containers/QueryBuilder";
 import { loadCurrentUser } from "metabase/redux/user";
 import DatabaseDetailContainer from "metabase/reference/databases/DatabaseDetailContainer";
@@ -57,9 +70,11 @@ import { createEntityIdRedirect } from "metabase/routes-stable-id-aware";
 import SearchApp from "metabase/search/containers/SearchApp";
 import { getSetting } from "metabase/selectors/settings";
 import { Setup } from "metabase/setup/components/Setup";
+import { getRouteObjects as getCollectionTimelineRouteObjects } from "metabase/timelines/collections/routes";
 import type { State } from "metabase-types/store";
 
 import {
+  IsAdminGuard,
   IsAuthenticatedGuard,
   IsNotAuthenticatedGuard,
   UserCanAccessOnboardingGuard,
@@ -172,6 +187,83 @@ const TableDetailPageWithParams = () => {
   return (
     <TableDetailPage params={params as { tableId: string; rowId: string }} />
   );
+};
+
+const DocumentPageOuterWithRouteProps = () => {
+  const location = useCompatLocation();
+  const params = useCompatParams<{ entityId?: string }>();
+
+  return (
+    <DocumentPageOuter
+      location={location as unknown as Location}
+      params={{ entityId: params.entityId ?? "" }}
+    />
+  );
+};
+
+const CommentsSidesheetWithRouteProps = ({
+  onClose,
+}: {
+  onClose: () => void;
+}) => {
+  const params = useCompatParams<{ childTargetId?: string }>();
+
+  return (
+    <CommentsSidesheet
+      onClose={onClose}
+      params={{ childTargetId: params.childTargetId ?? "" }}
+    />
+  );
+};
+
+const UnsubscribePageWithLocation = () => {
+  const location = useCompatLocation();
+  return <UnsubscribePage location={location as unknown as Location} />;
+};
+
+const TenantUsersPersonalCollectionListWithParams = () => {
+  const params = useCompatParams<{ tenantId?: string }>();
+
+  return (
+    <PLUGIN_TENANTS.TenantUsersPersonalCollectionList
+      params={{ tenantId: params.tenantId ?? "" }}
+    />
+  );
+};
+
+const TenantSpecificRouteGuard = () => (
+  <PLUGIN_TENANTS.CanAccessTenantSpecificRoute>
+    <Outlet />
+  </PLUGIN_TENANTS.CanAccessTenantSpecificRoute>
+);
+
+const LegacyQuestionRedirect = () => {
+  const location = useCompatLocation();
+
+  return (
+    <Navigate to={{ pathname: "/question", hash: location.hash }} replace />
+  );
+};
+
+const LegacyCardRedirect = () => {
+  const location = useCompatLocation();
+  const params = useCompatParams<{ slug?: string }>();
+
+  return (
+    <Navigate
+      to={{
+        pathname: `/question/${params.slug ?? ""}`,
+        hash: location.hash,
+      }}
+      replace
+    />
+  );
+};
+
+const LegacyDashRedirect = () => {
+  const params = useCompatParams<{ dashboardId?: string }>();
+
+  return <Navigate to={`/dashboard/${params.dashboardId ?? ""}`} replace />;
 };
 
 const MoveCollectionModalWithParams = ({
@@ -343,6 +435,7 @@ export function createRoutes(store: Store): RouteObject[] {
             {
               element: <IsAuthenticatedGuard />,
               children: [
+                ...PLUGIN_METABOT.getMetabotRouteObjects(),
                 { path: "/", element: <HomeRoute /> },
                 {
                   path: "/getting-started",
@@ -378,6 +471,7 @@ export function createRoutes(store: Store): RouteObject[] {
                       path: ":dbId/schema/:schemaName",
                       element: <LegacyBrowseSchemaRedirect />,
                     },
+                    ...PLUGIN_TABLE_EDITING.getRouteObjects(),
                   ],
                 },
                 {
@@ -410,6 +504,54 @@ export function createRoutes(store: Store): RouteObject[] {
                       "move-questions-dashboard",
                       MoveQuestionsIntoDashboardsModal,
                     ),
+                    ...PLUGIN_COLLECTIONS.cleanUpRouteObjects,
+                    ...getCollectionTimelineRouteObjects(),
+                  ],
+                },
+                {
+                  path: "/collection/users",
+                  element: <IsAdminGuard />,
+                  children: [{ index: true, element: <UserCollectionList /> }],
+                },
+                {
+                  path: "/collection/tenant-specific",
+                  element: <TenantSpecificRouteGuard />,
+                  children: [
+                    {
+                      index: true,
+                      element: <PLUGIN_TENANTS.TenantCollectionList />,
+                    },
+                  ],
+                },
+                {
+                  path: "/collection/tenant-users",
+                  element: <IsAdminGuard />,
+                  children: [
+                    {
+                      index: true,
+                      element: <PLUGIN_TENANTS.TenantUsersList />,
+                    },
+                    {
+                      path: ":tenantId",
+                      element: <TenantUsersPersonalCollectionListWithParams />,
+                    },
+                  ],
+                },
+                {
+                  path: "/document/:entityId",
+                  element: <DocumentPageOuterWithRouteProps />,
+                  children: [
+                    createModalRoute(
+                      "comments/:childTargetId",
+                      CommentsSidesheetWithRouteProps,
+                      {
+                        noWrap: true,
+                        modalProps: {
+                          enableTransition: false,
+                          closeOnClickOutside: false,
+                        },
+                      },
+                    ),
                   ],
                 },
                 {
@@ -420,6 +562,7 @@ export function createRoutes(store: Store): RouteObject[] {
                       element: <QuestionEntityIdRedirect />,
                     },
                     { index: true, element: <QueryBuilderWithRouteProps /> },
+                    ...PLUGIN_METABOT.getMetabotQueryBuilderRouteObjects(),
                     {
                       path: "notebook",
                       element: <QueryBuilderWithRouteProps />,
@@ -500,6 +643,8 @@ export function createRoutes(store: Store): RouteObject[] {
                   path: "/dashboard/entity/:entity_id",
                   element: <DashboardEntityIdRedirect />,
                 },
+                ...getModelRouteObjects(),
+                ...getAccountRouteObjects(),
                 {
                   path: "/dashboard/:slug",
                   element: <DashboardApp />,
@@ -586,6 +731,18 @@ export function createRoutes(store: Store): RouteObject[] {
           ],
         },
 
+        { path: "/q", element: <LegacyQuestionRedirect /> },
+        { path: "/card/:slug", element: <LegacyCardRedirect /> },
+        {
+          path: "/dash/:dashboardId",
+          element: <LegacyDashRedirect />,
+        },
+        {
+          path: "/collections/permissions",
+          element: <Navigate to="/admin/permissions/collections" replace />,
+        },
+        { path: "/unsubscribe", element: <UnsubscribePageWithLocation /> },
+        { path: "/unauthorized", element: <Unauthorized /> },
         { path: "*", element: <NotFoundFallbackPage /> },
       ],
     },

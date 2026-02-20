@@ -1,7 +1,5 @@
 import { Navigate, type RouteObject, useParams } from "react-router-dom";
 
-import { IndexRedirect, Route } from "metabase/routing/compat/react-router-v3";
-
 import { TaskDetailsPage } from "./components/TaskDetailsPage";
 import { TaskListPage } from "./components/TaskListPage";
 import { TaskRunDetailsPage } from "./components/TaskRunDetailsPage";
@@ -17,15 +15,7 @@ const TaskRunDetailsPageWithParams = () => {
   return <TaskRunDetailsPage params={{ runId: Number(params.runId) }} />;
 };
 
-export const getTasksRoutes = () => (
-  <>
-    <IndexRedirect to="list" />
-    <Route path="list" component={TaskListPage} />
-    <Route path="list/:taskId" component={TaskDetailsPage} />
-    <Route path="runs" component={TaskRunsPage} />
-    <Route path="runs/:runId" component={TaskRunDetailsPage} />
-  </>
-);
+export const getTasksRoutes = () => null;
 
 export const getTasksRouteObjects = (): RouteObject[] => [
   { index: true, element: <Navigate to="list" replace /> },

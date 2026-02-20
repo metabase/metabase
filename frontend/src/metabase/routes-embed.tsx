@@ -1,20 +1,41 @@
+import type { Location } from "history";
+import { Outlet, type RouteObject } from "react-router-dom";
+
 import { PublicNotFound } from "metabase/public/components/PublicNotFound";
 import PublicApp from "metabase/public/containers/PublicApp";
 import { PublicOrEmbeddedQuestion } from "metabase/public/containers/PublicOrEmbeddedQuestion";
-import { Route } from "metabase/routing/compat/react-router-v3";
+import { useCompatLocation, useCompatParams } from "metabase/routing/compat";
+import type { EntityToken } from "metabase-types/api/entity";
 
 import { PublicOrEmbeddedDashboardPage } from "./public/containers/PublicOrEmbeddedDashboard";
 
-export const getRoutes = () => (
-  <Route>
-    <Route path="embed" component={PublicApp}>
-      <Route path="question/:token" component={PublicOrEmbeddedQuestion} />
-      <Route
-        path="dashboard/:token"
-        component={PublicOrEmbeddedDashboardPage}
-      />
-      <Route path="*" component={PublicNotFound} />
-    </Route>
-    <Route path="*" component={PublicNotFound} />
-  </Route>
+const PublicAppWithOutlet = () => (
+  <PublicApp>
+    <Outlet />
+  </PublicApp>
 );
+
+const EmbeddedQuestionWithRouteProps = () => {
+  const params = useCompatParams<{ token?: string }>();
+  const location = useCompatLocation();
+
+  return (
+    <PublicOrEmbeddedQuestion
+      location={location as unknown as Location}
+      params={{ uuid: "", token: (params.token ?? "") as EntityToken }}
+    />
+  );
+};
+
+export const getEmbedRouteObjects = (): RouteObject[] => [
+  {
+    path: "/embed",
+    element: <PublicAppWithOutlet />,
+    children: [
+      { path: "question/:token", element: <EmbeddedQuestionWithRouteProps /> },
+      { path: "dashboard/:token", element: <PublicOrEmbeddedDashboardPage /> },
+      { path: "*", element: <PublicNotFound /> },
+    ],
+  },
+  { path: "*", element: <PublicNotFound /> },
+];

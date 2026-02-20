@@ -19,7 +19,6 @@ import { CollectionPickerModal } from "metabase/common/components/Pickers/Collec
 import { useToast } from "metabase/common/hooks";
 import { getIcon } from "metabase/lib/icon";
 import { useNavigation } from "metabase/routing/compat";
-import { IndexRoute, Route } from "metabase/routing/compat/react-router-v3";
 import {
   Box,
   Button,
@@ -49,10 +48,7 @@ import { MetabotPromptSuggestionPane } from "./MetabotAdminSuggestedPrompts";
 import { useMetabotIdPath } from "./utils";
 
 export function getAdminRoutes() {
-  return [
-    <IndexRoute key="index" component={MetabotAdminPage} />,
-    <Route key="route" path=":metabotId" component={MetabotAdminPage} />,
-  ];
+  return [];
 }
 
 export function MetabotAdminPage() {

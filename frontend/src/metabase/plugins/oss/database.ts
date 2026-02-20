@@ -42,6 +42,7 @@ const getDefaultPluginTableEditing = () => ({
   isEnabled: () => false,
   isDatabaseTableEditingEnabled: (_database: DatabaseType): boolean => false,
   getRoutes: () => null as React.ReactElement | null,
+  getRouteObjects: () => [] as RouteObject[],
   getTableEditUrl: (_tableId: TableId, _databaseId: DatabaseId): string => "/",
   AdminDatabaseTableEditingSection: PluginPlaceholder as ComponentType<{
     database: DatabaseType;

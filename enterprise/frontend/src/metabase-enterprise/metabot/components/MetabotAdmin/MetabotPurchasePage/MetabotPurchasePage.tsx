@@ -4,7 +4,6 @@ import { t } from "ttag";
 import { SettingsPageWrapper } from "metabase/admin/components/SettingsSection";
 import { AdminSettingsLayout } from "metabase/common/components/AdminLayout/AdminSettingsLayout";
 import { useSelector } from "metabase/lib/redux";
-import { IndexRoute, Redirect } from "metabase/routing/compat/react-router-v3";
 import { getStoreUsers } from "metabase/selectors/store-users";
 import { Text } from "metabase/ui";
 
@@ -12,10 +11,7 @@ import { MetabotPurchasePageForNonStoreUser } from "./MetabotPurchasePageForNonS
 import { MetabotPurchasePageForStoreUser } from "./MetabotPurchasePageForStoreUser";
 
 export function getAdminRoutes() {
-  return [
-    <IndexRoute key="index" component={MetabotPurchasePage} />,
-    <Redirect key="redirect" from="*" to="/admin/metabot" />,
-  ];
+  return [];
 }
 
 export function MetabotPurchasePage(): ReactElement {

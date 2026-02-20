@@ -1,12 +1,6 @@
 import type { RouteObject } from "react-router-dom";
 import { Navigate } from "react-router-dom";
 
-import {
-  IndexRedirect,
-  IndexRoute,
-  Route,
-} from "metabase/routing/compat/react-router-v3";
-
 import { DependencyGraphPage } from "./pages/DependencyGraphPage";
 import {
   BrokenDependencyListPage,
@@ -14,17 +8,11 @@ import {
 } from "./pages/DependencyListPage";
 
 export function getDataStudioDependencyRoutes() {
-  return <IndexRoute component={DependencyGraphPage} />;
+  return null;
 }
 
 export function getDataStudioDependencyDiagnosticsRoutes() {
-  return (
-    <>
-      <IndexRedirect to="broken" />
-      <Route path="broken" component={BrokenDependencyListPage} />
-      <Route path="unreferenced" component={UnreferencedDependencyListPage} />
-    </>
-  );
+  return null;
 }
 
 export function getDataStudioDependencyRouteObjects(): RouteObject[] {
