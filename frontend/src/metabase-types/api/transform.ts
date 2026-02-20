@@ -350,25 +350,6 @@ export type InspectorSummary = {
   output: InspectorSummaryTable;
 };
 
-export type InspectorJoin = {
-  strategy: JoinStrategy;
-  alias?: string;
-  source_table: ConcreteTableId;
-  stats: {
-    source_table?: unknown;
-    left_row_count?: number;
-    right_row_count?: number;
-    matched_count?: number;
-    match_rate?: number;
-    left_match_rate?: number;
-    right_match_rate?: number;
-    output_row_count?: number;
-    expansion_factor?: number;
-    rhs_null_key_count?: number;
-    rhs_null_key_percent?: number;
-  };
-};
-
 export type InspectorSource = {
   table_id?: ConcreteTableId;
   table_name: string;
