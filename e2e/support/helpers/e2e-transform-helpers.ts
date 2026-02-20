@@ -12,7 +12,6 @@ import type {
 } from "metabase-types/api";
 
 import { createTransform } from "./api";
-export { createTransform };
 import { getTableId } from "./e2e-qa-databases-helpers";
 import { retryRequest } from "./e2e-request-helpers";
 
