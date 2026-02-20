@@ -2,6 +2,7 @@
   (:require
    [clojure.test :refer :all]
    [diehard.core :as dh]
+   [metabase-enterprise.remote-sync.core :as remote-sync.core]
    [metabase-enterprise.remote-sync.impl :as impl]
    [metabase-enterprise.remote-sync.models.remote-sync-object :as remote-sync.object]
    [metabase-enterprise.remote-sync.models.remote-sync-task :as remote-sync.task]
@@ -712,6 +713,43 @@
             (is (= "Cannot change synced collections when remote-sync-type is read-only."
                    (mt/user-http-request :crowberto :put 400 "ee/remote-sync/settings"
                                          {:collections {coll-id true}})))))))))
+
+(deftest settings-collections-no-op-skips-read-only-check-test
+  (testing "PUT /api/ee/remote-sync/settings skips read-only error when collections have no actual changes"
+    (mt/with-temp [:model/Collection {unsynced-id :id} {:name "Unsynced Collection" :location "/" :is_remote_synced false}
+                   :model/Collection {synced-id :id} {:name "Synced Collection" :location "/" :is_remote_synced true}]
+      (with-redefs [settings/check-and-update-remote-settings! (constantly nil)
+                    impl/finish-remote-config! (constantly nil)]
+        (testing "sending false for already-unsynced collection in read-only mode succeeds"
+          (is (= {:success true}
+                 (mt/user-http-request :crowberto :put 200 "ee/remote-sync/settings"
+                                       {:remote-sync-type :read-only
+                                        :collections {unsynced-id false}}))))
+        (testing "sending true for already-synced collection in read-only mode succeeds"
+          (is (= {:success true}
+                 (mt/user-http-request :crowberto :put 200 "ee/remote-sync/settings"
+                                       {:remote-sync-type :read-only
+                                        :collections {synced-id true}}))))
+        (testing "mix of no-op and real change still rejects in read-only mode"
+          (is (= "Cannot change synced collections when remote-sync-type is read-only."
+                 (mt/user-http-request :crowberto :put 400 "ee/remote-sync/settings"
+                                       {:remote-sync-type :read-only
+                                        :collections {synced-id true unsynced-id true}}))))))))
+
+(deftest settings-collections-no-op-skips-bulk-set-test
+  (testing "PUT /api/ee/remote-sync/settings skips bulk-set-remote-sync when collections have no actual changes"
+    (mt/with-temporary-setting-values [remote-sync-type :read-write]
+      (mt/with-temp [:model/Collection {synced-id :id} {:name "Synced Collection" :location "/" :is_remote_synced true}
+                     :model/Collection {unsynced-id :id} {:name "Unsynced Collection" :location "/" :is_remote_synced false}]
+        (let [bulk-set-called? (atom false)]
+          (with-redefs [settings/check-and-update-remote-settings! (constantly nil)
+                        impl/finish-remote-config! (constantly nil)
+                        remote-sync.core/bulk-set-remote-sync (fn [& _] (reset! bulk-set-called? true))]
+            (testing "no-op collections do not call bulk-set-remote-sync"
+              (let [response (mt/user-http-request :crowberto :put 200 "ee/remote-sync/settings"
+                                                   {:collections {synced-id true unsynced-id false}})]
+                (is (= {:success true} response))
+                (is (false? @bulk-set-called?))))))))))
 
 (deftest settings-collections-allows-changes-in-read-write-mode-test
   (testing "PUT /api/ee/remote-sync/settings allows collection changes when remote-sync-type is read-write"
