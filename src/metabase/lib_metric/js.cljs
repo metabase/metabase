@@ -794,22 +794,30 @@
                :id       #{field-id}})))))
 
 (defn ^:export dimensionValuesInfo
-  "Get dimension values info by resolving the dimension to its underlying field.
-   Uses the field's has-field-values property to determine list/search capabilities,
-   and checks for remapped fields."
+  "Get dimension values info. Prefers has-field-values stored directly on the
+   dimension (computed during sync). Falls back to resolving the underlying field
+   for backward compatibility with older dimensions that lack the key."
   [definition dimension]
-  (let [mp    (:metadata-provider definition)
-        field (resolve-dimension-field mp dimension)
-        has-fv (when field
-                 (lib.field/infer-has-field-values field))
-        can-remap (boolean
-                   (when field
-                     (get-in field [:lib/external-remap :field-id])))]
-    (display-info->js
-     {:id                (:id dimension)
-      :can-list-values   (= :list has-fv)
-      :can-search-values (= :search has-fv)
-      :can-remap-values  can-remap})))
+  (let [raw-hfv (:has-field-values dimension)
+        dim-hfv (when raw-hfv (keyword raw-hfv))]
+    (if dim-hfv
+      (display-info->js
+       {:id                (:id dimension)
+        :can-list-values   (= :list dim-hfv)
+        :can-search-values (= :search dim-hfv)
+        :can-remap-values  false})
+      (let [mp    (:metadata-provider definition)
+            field (resolve-dimension-field mp dimension)
+            has-fv (when field
+                     (lib.field/infer-has-field-values field))
+            can-remap (boolean
+                       (when field
+                         (get-in field [:lib/external-remap :field-id])))]
+        (display-info->js
+         {:id                (:id dimension)
+          :can-list-values   (= :list has-fv)
+          :can-search-values (= :search has-fv)
+          :can-remap-values  can-remap})))))
 
 (defn ^:export isSameSource
   "Check if two dimensions share at least one common source.

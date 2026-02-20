@@ -7,6 +7,7 @@
    [metabase.lib-metric.metadata.provider :as lib-metric.provider]
    [metabase.lib-metric.schema :as lib-metric.schema]
    [metabase.lib.core :as lib]
+   [metabase.lib.field :as lib.field]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.util :as lib.util]
@@ -40,7 +41,8 @@
   ([column]
    (column->computed-pair column nil))
   ([column group]
-   (let [target (lib/ref column)]
+   (let [target (lib/ref column)
+         has-field-values (lib.field/infer-has-field-values column)]
      {:dimension (cond-> {:id   nil
                           :name (:name column)}
                    (:display-name column)    (assoc :display-name (:display-name column))
@@ -52,6 +54,7 @@
                                                                   (and (get-in fp [:type :type/Number :min])
                                                                        (get-in fp [:type :type/Number :max])))
                                                                 (assoc :binning true))])
+                   has-field-values          (assoc :has-field-values has-field-values)
                    group                     (assoc :group group))
       :mapping   (cond-> {:type   :table
                           :target target}
@@ -123,7 +126,8 @@
   [dim]
   (cond-> dim
     (seq (:sources dim)) (update :sources #(mapv normalize-dimension-source %))
-    (string? (:status dim)) (update :status keyword)))
+    (string? (:status dim)) (update :status keyword)
+    (string? (:has-field-values dim)) (update :has-field-values keyword)))
 
 ;;; ------------------------------------------------- Dimension Reconciliation -------------------------------------------------
 
@@ -211,7 +215,7 @@
   "Check if the persisted dimensions have changed between old and new sets."
   [old-persisted :- [:maybe [:sequential ::lib-metric.schema/persisted-dimension]]
    new-persisted :- [:sequential ::lib-metric.schema/persisted-dimension]]
-  (let [persist-keys [:id :name :display-name :semantic-type :effective-type :status :status-message :sources :group]
+  (let [persist-keys [:id :name :display-name :semantic-type :effective-type :has-field-values :status :status-message :sources :group]
         normalize    (fn [dims] (set (map #(perf/select-keys % persist-keys) dims)))]
     (not= (normalize old-persisted) (normalize new-persisted))))
 

@@ -105,11 +105,12 @@
   [dim]
   (let [converted (update-keys dim (comp keyword u/->kebab-case-en))]
     (cond-> converted
-      (:effective-type converted) (update :effective-type keyword)
-      (:semantic-type converted)  (update :semantic-type keyword)
-      (:base-type converted)      (update :base-type keyword)
-      (:sources converted)        (update :sources (fn [srcs] (mapv #(update % :type keyword) srcs)))
-      (:group converted)          (update :group u/normalize-map))))
+      (:effective-type converted)   (update :effective-type keyword)
+      (:semantic-type converted)    (update :semantic-type keyword)
+      (:base-type converted)        (update :base-type keyword)
+      (:has-field-values converted) (update :has-field-values keyword)
+      (:sources converted)          (update :sources (fn [srcs] (mapv #(update % :type keyword) srcs)))
+      (:group converted)            (update :group u/normalize-map))))
 
 (defn- derive-sources-from-mapping
   "Derive sources from a dimension mapping's target field ID.
@@ -134,7 +135,7 @@
           (cond->
            mapping
             (assoc :dimension-mapping mapping)
-           (and (not (seq (:sources parsed-dim))) mapping)
+            (and (not (seq (:sources parsed-dim))) mapping)
             (assoc :sources (derive-sources-from-mapping mapping)))))))
 
 (defn- extract-all-dimensions

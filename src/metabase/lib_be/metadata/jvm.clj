@@ -158,6 +158,7 @@
                 :field/effective_type
                 :field/fingerprint
                 :field/fk_target_field_id
+                :field/has_field_values
                 :field/id
                 :field/name
                 :field/nfc_path

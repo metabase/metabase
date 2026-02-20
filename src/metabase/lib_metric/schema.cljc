@@ -253,6 +253,7 @@
    [:display-name    {:optional true} [:maybe ::lib.schema.common/non-blank-string]]
    [:effective-type  {:optional true} [:maybe ::lib.schema.common/base-type]]
    [:semantic-type   {:optional true} [:maybe ::lib.schema.common/semantic-or-relation-type]]
+   [:has-field-values {:optional true} [:maybe [:enum :list :search :none]]]
    [:status          {:optional true} [:maybe ::dimension-status]]
    [:status-message  {:optional true} [:maybe :string]]
    [:sources         {:optional true} [:maybe [:sequential ::dimension-source]]]
@@ -299,6 +300,7 @@
    [:display-name     {:optional true} [:maybe ::lib.schema.common/non-blank-string]]
    [:effective-type   {:optional true} [:maybe ::lib.schema.common/base-type]]
    [:semantic-type    {:optional true} [:maybe ::lib.schema.common/semantic-or-relation-type]]
+   [:has-field-values {:optional true} [:maybe [:enum :list :search :none]]]
    [:status           {:optional true} [:maybe ::dimension-status]]
    [:status-message   {:optional true} [:maybe :string]]
    [:sources          {:optional true} [:maybe [:sequential ::dimension-source]]]
@@ -331,6 +333,7 @@
    [:display-name {:optional true} [:maybe :string]]
    [:effective-type {:optional true} [:maybe :keyword]]
    [:semantic-type {:optional true} [:maybe :keyword]]
+   [:has-field-values {:optional true} [:maybe [:enum :list :search :none]]]
    [:lib/source {:optional true} [:maybe :keyword]]
    [:group {:optional true} [:maybe ::dimension-group]]])
 
