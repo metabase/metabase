@@ -61,7 +61,7 @@ type ClickMappingsOwnProps = {
   dashcard: DashboardCard;
   isDashboard?: boolean;
   clickBehavior: ClickBehavior;
-  updateSettings: (settings: ClickBehavior | Partial<ClickBehavior>) => void;
+  updateSettings: (settings: Partial<ClickBehavior>) => void;
   excludeParametersSources?: boolean;
 };
 
@@ -320,7 +320,7 @@ function TargetWithoutSource({
   target: TargetItem;
   sourceOptions: SourceOptionsByType;
   clickBehavior: ClickBehavior;
-  updateSettings: (settings: ClickBehavior | Partial<ClickBehavior>) => void;
+  updateSettings: (settings: Partial<ClickBehavior>) => void;
 }) {
   const { id, name, type } = target;
 
@@ -377,7 +377,7 @@ function TargetWithSource({
   target: TargetItem;
   targetName: string | undefined;
   clickBehavior: ClickBehavior;
-  updateSettings: (settings: ClickBehavior | Partial<ClickBehavior>) => void;
+  updateSettings: (settings: Partial<ClickBehavior>) => void;
 }) {
   const { name, id } = target;
   const source: { name?: string; type?: SourceType } =
@@ -531,7 +531,7 @@ export function withUserAttributes<TProps extends ClickMappingsHocProps>(
         }
       };
 
-      void loadUserAttributes();
+      loadUserAttributes();
 
       return () => {
         isMounted = false;
@@ -554,7 +554,7 @@ export function isMappableColumn(column: { name: string }) {
 
 export function clickTargetObjectType(
   object: Dashboard | Question | undefined,
-) {
+): "dashboard" | "native" | "gui" {
   if (!(object instanceof Question)) {
     return "dashboard";
   }
