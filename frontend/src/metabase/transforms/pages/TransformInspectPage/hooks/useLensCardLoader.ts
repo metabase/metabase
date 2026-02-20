@@ -4,7 +4,7 @@ import { useRunInspectorQueryQuery } from "metabase/api";
 import {
   type CardStats,
   computeCardStats,
-} from "metabase-lib/transforms-inspector";
+} from "metabase/transforms/lib/transforms-inspector";
 import type { InspectorCard } from "metabase-types/api";
 
 import { useLensContentContext } from "../components/LensContent/LensContentContext";

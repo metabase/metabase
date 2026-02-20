@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import _ from "underscore";
 
-import { evaluateTriggers } from "metabase-lib/transforms-inspector";
+import { evaluateTriggers } from "metabase/transforms/lib/transforms-inspector";
 import type {
   InspectorAlertTrigger,
   InspectorCardId,

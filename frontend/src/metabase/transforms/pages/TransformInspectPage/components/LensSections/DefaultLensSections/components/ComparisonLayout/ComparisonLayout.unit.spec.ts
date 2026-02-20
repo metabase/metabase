@@ -6,7 +6,7 @@ import {
 
 import { type CardGroup, sortGroupsByScore } from "./utils";
 
-jest.mock("metabase-lib/transforms-inspector", () => ({
+jest.mock("metabase/transforms/lib/transforms-inspector", () => ({
   interestingFields: (
     fields: InspectorField[],
     _visitedFields: unknown,

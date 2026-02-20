@@ -18,8 +18,8 @@ import { LensContentProvider } from "../../LensContent/LensContentContext";
 
 import { DefaultLensSections } from "./DefaultLensSections";
 
-jest.mock("metabase-lib/transforms-inspector", () => ({
-  ...jest.requireActual("metabase-lib/transforms-inspector"),
+jest.mock("metabase/transforms/lib/transforms-inspector", () => ({
+  ...jest.requireActual("metabase/transforms/lib/transforms-inspector"),
   computeCardStats: () => null,
 }));
 
