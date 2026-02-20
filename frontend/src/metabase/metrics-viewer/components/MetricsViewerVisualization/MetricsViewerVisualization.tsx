@@ -2,11 +2,17 @@ import { DebouncedFrame } from "metabase/common/components/DebouncedFrame";
 import type { DimensionItem } from "metabase/common/components/DimensionPillBar";
 import { DimensionPillBar } from "metabase/common/components/DimensionPillBar";
 import type { MetricsViewerTabLayoutState } from "metabase/metrics-viewer/types";
-import type { MetricsViewerClickActionsMode } from "metabase/metrics-viewer/utils/MetricsViewerClickActionsMode";
+import { MetricsViewerClickActionsMode } from "metabase/metrics-viewer/utils/MetricsViewerClickActionsMode";
 import { Flex, SimpleGrid, Stack } from "metabase/ui";
 import Visualization from "metabase/visualizations/components/Visualization";
 import type { DimensionMetadata } from "metabase-lib/metric";
-import type { SingleSeries } from "metabase-types/api";
+import type { CardId, SingleSeries } from "metabase-types/api";
+
+import type {
+  MetricSourceId,
+  MetricsViewerDefinitionEntry,
+  MetricsViewerTabState,
+} from "../../types/viewer-state";
 
 import S from "./MetricsViewerVisualization.module.css";
 
@@ -22,7 +28,10 @@ type MetricsViewerVisualizationProps = {
   onBrush?: (range: { start: number; end: number }) => void;
   className?: string;
   layout?: MetricsViewerTabLayoutState;
-  clickActionsMode?: MetricsViewerClickActionsMode;
+  definitions: MetricsViewerDefinitionEntry[];
+  tab: MetricsViewerTabState;
+  onTabUpdate: (updates: Partial<MetricsViewerTabState>) => void;
+  cardIdToDimensionId: Record<CardId, MetricSourceId>;
 };
 
 export function MetricsViewerVisualization({
@@ -32,8 +41,18 @@ export function MetricsViewerVisualization({
   onBrush,
   className,
   layout,
-  clickActionsMode,
+  definitions,
+  tab,
+  onTabUpdate,
+  cardIdToDimensionId,
 }: MetricsViewerVisualizationProps) {
+  const clickActionsMode = new MetricsViewerClickActionsMode({
+    definitions,
+    tab,
+    onTabUpdate,
+    cardIdToDimensionId,
+  });
+
   if (layout?.split === false || !layout || rawSeries.length === 1) {
     return (
       <Flex direction="column" flex="1 0 auto" gap="sm" className={className}>

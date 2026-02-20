@@ -35,6 +35,7 @@ export function MetricsViewerPage() {
     changeTab,
     addAndSelectTab,
     removeTab,
+    updateTab,
     updateActiveTab,
     changeDimension,
     changeCardDimension,
@@ -90,6 +91,7 @@ export function MetricsViewerPage() {
                 <MetricsViewerCardsGrid
                   definitions={definitions}
                   tabs={tabs}
+                  updateTab={updateTab}
                   onDimensionChange={changeCardDimension}
                   sourceColors={sourceColors}
                 />

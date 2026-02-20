@@ -16,12 +16,12 @@ import type {
   MetricsViewerTabState,
   SourceColorMap,
 } from "../../../types/viewer-state";
-import { MetricsViewerClickActionsMode } from "../../../utils/MetricsViewerClickActionsMode";
 import type { DimensionFilterValue } from "../../../utils/metrics";
 import { getProjectionInfo } from "../../../utils/metrics";
 import {
   buildDimensionItemsFromDefinitions,
   buildRawSeriesFromDefinitions,
+  getCardIdToDimensionId,
 } from "../../../utils/series";
 import { DISPLAY_TYPE_REGISTRY, getTabConfig } from "../../../utils/tab-config";
 import { MetricControls } from "../../MetricControls";
@@ -87,6 +87,9 @@ export function MetricsViewerTabContent({
       sourceColors,
     ],
   );
+  const cardIdToDimensionId = useMemo(() => {
+    return getCardIdToDimensionId(rawSeries);
+  }, [rawSeries]);
 
   const dimensionItems = useMemo(
     () =>
@@ -211,12 +214,6 @@ export function MetricsViewerTabContent({
 
   const isTimeTab = tab.type === "time";
 
-  const clickActionsMode = new MetricsViewerClickActionsMode({
-    definitions,
-    tab,
-    onTabUpdate,
-  });
-
   if (isLoading || firstError) {
     return <LoadingAndErrorWrapper loading={isLoading} error={firstError} />;
   }
@@ -244,7 +241,10 @@ export function MetricsViewerTabContent({
         onDimensionChange={handleDimensionChange}
         onBrush={isTimeTab ? handleBrush : undefined}
         layout={tab.layout}
-        clickActionsMode={clickActionsMode}
+        definitions={definitions}
+        tab={tab}
+        onTabUpdate={onTabUpdate}
+        cardIdToDimensionId={cardIdToDimensionId}
       />
       {definitionForControls && (
         <Flex justify="space-between" align="center">

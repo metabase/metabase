@@ -11,6 +11,7 @@ import type { DimensionMetadata, MetricDefinition } from "metabase-lib/metric";
 import * as LibMetric from "metabase-lib/metric";
 import type {
   Card,
+  CardId,
   Dataset,
   MetricBreakoutValuesResponse,
   RowValue,
@@ -132,12 +133,12 @@ export function computeSourceColors(
 }
 
 function splitByBreakout(
-  series: SingleSeries,
+  series: SingleSeriesWithDimensionId,
   seriesCount: number,
   projectionCount: number,
   keepSeriesColumn = false,
   sourceColors?: string[],
-): SingleSeries[] {
+): SingleSeriesWithDimensionId[] {
   const { card, data } = series;
   const { cols, rows } = data;
 
@@ -227,13 +228,17 @@ function createSeriesCard(
   } as Card;
 }
 
+type SingleSeriesWithDimensionId = SingleSeries & {
+  dimensionId: MetricSourceId;
+};
+
 export function buildRawSeriesFromDefinitions(
   definitions: MetricsViewerDefinitionEntry[],
   tab: MetricsViewerTabState,
   resultsByDefinitionId: Map<MetricSourceId, Dataset>,
   modifiedDefinitions: Map<MetricSourceId, MetricDefinition>,
   sourceColors: SourceColorMap,
-): SingleSeries[] {
+): SingleSeriesWithDimensionId[] {
   const firstSettingsEntry = definitions.reduce<{
     def: MetricDefinition;
     dimension: DimensionMetadata;
@@ -297,7 +302,7 @@ export function buildRawSeriesFromDefinitions(
       name as string,
     );
 
-    const singleSeries: SingleSeries = {
+    const singleSeries: SingleSeriesWithDimensionId = {
       card: createSeriesCard(cardId, name, tab.display, {
         ...vizSettings,
         ...computeColorVizSettings({
@@ -307,6 +312,7 @@ export function buildRawSeriesFromDefinitions(
         }),
       }),
       data: result.data,
+      dimensionId: entry.id,
     };
 
     if (!entryHasBreakout(entry)) {
@@ -518,4 +524,16 @@ export function getSelectedMetricsInfo(
 
     return [];
   });
+}
+
+export function getCardIdToDimensionId(
+  series: SingleSeriesWithDimensionId[],
+): Record<CardId, MetricSourceId> {
+  return series.reduce(
+    (acc, series) => {
+      acc[series.card.id] = series.dimensionId;
+      return acc;
+    },
+    {} as Record<CardId, MetricSourceId>,
+  );
 }

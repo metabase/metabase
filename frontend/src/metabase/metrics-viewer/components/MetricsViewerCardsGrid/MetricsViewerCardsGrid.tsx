@@ -12,6 +12,7 @@ import { MetricsViewerCard } from "../MetricsViewerCard";
 type MetricsViewerCardsGridProps = {
   definitions: MetricsViewerDefinitionEntry[];
   tabs: MetricsViewerTabState[];
+  updateTab: (tabId: string, updates: Partial<MetricsViewerTabState>) => void;
   onDimensionChange: (
     tabId: string,
     definitionId: MetricSourceId,
@@ -23,6 +24,7 @@ type MetricsViewerCardsGridProps = {
 export function MetricsViewerCardsGrid({
   definitions,
   tabs,
+  updateTab,
   onDimensionChange,
   sourceColors,
 }: MetricsViewerCardsGridProps) {
@@ -33,6 +35,7 @@ export function MetricsViewerCardsGrid({
           key={tab.id}
           definitions={definitions}
           tab={tab}
+          onTabUpdate={(updates) => updateTab(tab.id, updates)}
           onDimensionChange={(defId, dimension) =>
             onDimensionChange(tab.id, defId, dimension)
           }

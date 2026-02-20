@@ -64,6 +64,7 @@ export interface UseMetricsViewerResult {
   changeTab: (tabId: string) => void;
   addAndSelectTab: (dimensionId: string) => void;
   removeTab: (tabId: string) => void;
+  updateTab: (tabId: string, updates: Partial<MetricsViewerTabState>) => void;
   updateActiveTab: (updates: Partial<MetricsViewerTabState>) => void;
   changeDimension: (
     definitionId: MetricSourceId,
@@ -341,6 +342,7 @@ export function useMetricsViewer(): UseMetricsViewerResult {
     changeTab,
     addAndSelectTab,
     removeTab,
+    updateTab,
     updateActiveTab,
     changeDimension,
     changeCardDimension,

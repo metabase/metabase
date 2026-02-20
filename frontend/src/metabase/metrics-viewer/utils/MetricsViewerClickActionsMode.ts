@@ -1,38 +1,50 @@
 import dayjs from "dayjs";
 
-import type {
-  ClickObject,
-  CustomClickAction,
-} from "metabase/visualizations/types";
-import type { TemporalUnit } from "metabase-types/api";
+import type { SpecificDatePickerValue } from "metabase/querying/common/types";
+import type { ClickAction, ClickObject } from "metabase/visualizations/types";
+import * as LibMetric from "metabase-lib/metric";
+import type { CardId, DatetimeUnit, TemporalUnit } from "metabase-types/api";
 
 import type {
+  MetricSourceId,
   MetricsViewerDefinitionEntry,
   MetricsViewerTabState,
 } from "../types/viewer-state";
+
+import { findDimensionById } from ".";
 
 type MetricsViewerClickActionParams = {
   definitions: MetricsViewerDefinitionEntry[];
   tab: MetricsViewerTabState;
   onTabUpdate: (updates: Partial<MetricsViewerTabState>) => void;
+  cardIdToDimensionId: Record<CardId, MetricSourceId>;
 };
 
 export class MetricsViewerClickActionsMode {
   private definitions: MetricsViewerDefinitionEntry[];
   private tab: MetricsViewerTabState;
   private onTabUpdate: (updates: Partial<MetricsViewerTabState>) => void;
+  private cardIdToDimensionId: Record<CardId, MetricSourceId>;
   constructor({
     definitions,
     tab,
     onTabUpdate,
+    cardIdToDimensionId,
   }: MetricsViewerClickActionParams) {
     this.definitions = definitions;
     this.tab = tab;
     this.onTabUpdate = onTabUpdate;
+    this.cardIdToDimensionId = cardIdToDimensionId;
   }
-  actionsForClick(clickObject: ClickObject): CustomClickAction[] {
+  actionsForClick(clickObject: ClickObject): ClickAction[] {
+    const definition = this.definitions.find(
+      (definition) =>
+        definition.id ===
+        this.cardIdToDimensionId[clickObject.cardId as CardId],
+    );
     const params = {
       definitions: this.definitions,
+      definition,
       tab: this.tab,
       onTabUpdate: this.onTabUpdate,
       clickObject,
@@ -43,38 +55,45 @@ export class MetricsViewerClickActionsMode {
   }
 }
 
-type GetActionParams = MetricsViewerClickActionParams & {
+type GetActionParams = {
+  definitions: MetricsViewerDefinitionEntry[];
+  definition: MetricsViewerDefinitionEntry | undefined; //definition that was clicked on
+  tab: MetricsViewerTabState;
+  onTabUpdate: (updates: Partial<MetricsViewerTabState>) => void;
   clickObject: ClickObject;
 };
 
 function getZoomInTimeSeriesAction({
-  definitions,
+  definition,
   tab,
   onTabUpdate,
   clickObject,
-}: GetActionParams): CustomClickAction | undefined {
-  if (tab.type !== "time") {
+}: GetActionParams): ClickAction | undefined {
+  if (!definition || !definition.definition) {
     return;
   }
-  const definition = definitions.find((d) => d.definition != null)?.definition;
-  if (!definition) {
+  const dimension = clickObject.dimensions?.[0];
+  if (!dimension) {
     return;
   }
-  const currentTemporalUnit = tab.projectionTemporalUnit ?? "month"; // todo defaultTemporalBucket then displayInfo
-  const nextTemporalUnit = getNextTemporalUnit(currentTemporalUnit);
+  const currentTemporalUnit = dimension.column.unit;
+  if (!isValidTemporalUnit(currentTemporalUnit)) {
+    return;
+  }
+  const nextTemporalUnit = getNextTemporalUnit(
+    definition,
+    tab,
+    currentTemporalUnit,
+  );
   if (!nextTemporalUnit) {
     return;
   }
-  const dimensionValue = clickObject.dimensions?.[0]?.value; // todo is using first dimension always correct?
+  const dimensionValue = dimension.value;
   if (typeof dimensionValue !== "string") {
     return;
   }
-  const currentDate = new Date(dimensionValue);
-  const temporalUnitRange = getTemporalUnitRange(
-    currentDate,
-    currentTemporalUnit,
-  );
-  if (!temporalUnitRange) {
+  const filter = getFilterForDateAndUnit(dimensionValue, currentTemporalUnit);
+  if (!filter) {
     return;
   }
   return {
@@ -86,12 +105,10 @@ function getZoomInTimeSeriesAction({
     buttonType: "horizontal",
     onClick: ({ closePopover }) => {
       onTabUpdate({
-        projectionTemporalUnit: nextTemporalUnit,
-        filter: {
-          type: "specific",
-          operator: "between",
-          values: [temporalUnitRange.start, temporalUnitRange.end],
-          hasTime: true, // todo?
+        projectionConfig: {
+          ...tab.projectionConfig,
+          temporalUnit: nextTemporalUnit,
+          filter,
         },
       });
       closePopover();
@@ -99,67 +116,59 @@ function getZoomInTimeSeriesAction({
   };
 }
 
-// todo move to utils/dates.ts?
-function getTemporalUnitRange(
-  date: Date,
-  unit: TemporalUnit,
-): { start: Date; end: Date } | undefined {
-  const d = dayjs(date);
-  switch (unit) {
-    case "year":
-      return {
-        start: d.startOf("year").toDate(),
-        end: d.endOf("year").startOf("day").toDate(),
-      };
-    case "quarter":
-      return {
-        start: d.startOf("quarter").toDate(),
-        end: d.endOf("quarter").startOf("day").toDate(),
-      };
-    case "month":
-      return {
-        start: d.startOf("month").toDate(),
-        end: d.endOf("month").startOf("day").toDate(),
-      };
-    case "week":
-      return {
-        start: d.startOf("week").toDate(),
-        end: d.endOf("week").startOf("day").toDate(),
-      };
-    case "day":
-      return {
-        start: d.startOf("day").toDate(),
-        end: d.add(1, "day").startOf("day").toDate(),
-      };
-    case "hour":
-      return {
-        start: d.startOf("hour").toDate(),
-        end: d.add(1, "hour").startOf("hour").toDate(),
-      };
-    default:
-      return undefined;
-  }
+function isValidTemporalUnit(unit?: DatetimeUnit): unit is TemporalUnit {
+  return ["year", "quarter", "month", "week", "day", "hour"].includes(
+    unit ?? "",
+  );
 }
 
-// todo should this be a lib function?
+function getFilterForDateAndUnit(
+  date: string,
+  unit: TemporalUnit,
+): SpecificDatePickerValue | undefined {
+  const d = dayjs(date);
+  if (!d.isValid()) {
+    return undefined;
+  }
+  return {
+    type: "specific",
+    operator: "between",
+    values: [d.startOf(unit).toDate(), d.endOf(unit).toDate()],
+    hasTime: unit === "hour" || unit === "minute",
+  };
+}
+
+const nextTemporalUnitMap: Partial<Record<TemporalUnit, TemporalUnit>> = {
+  year: "quarter",
+  quarter: "month",
+  month: "week",
+  week: "day",
+  day: "hour",
+  hour: "minute",
+};
+
 function getNextTemporalUnit(
+  entry: MetricsViewerDefinitionEntry,
+  tab: MetricsViewerTabState,
   currentUnit: TemporalUnit,
 ): TemporalUnit | undefined {
-  // todo availableTemporalBuckets then displayInfo
-  switch (currentUnit) {
-    case "year":
-      return "quarter";
-    case "quarter":
-      return "month";
-    case "month":
-      return "week";
-    case "week":
-      return "day";
-    case "day":
-      return "hour";
-    case "hour":
-      return "minute";
-    default:
-      return undefined;
+  const definition = entry.definition;
+  const dimensionId = tab.dimensionMapping[entry.id];
+  if (!definition || !dimensionId) {
+    return undefined;
   }
+  const dimension = findDimensionById(definition, dimensionId);
+  if (!dimension) {
+    return undefined;
+  }
+  const availableBuckets = LibMetric.availableTemporalBuckets(
+    definition,
+    dimension,
+  ).map((bucket) => LibMetric.displayInfo(definition, bucket).shortName);
+  const filteredNextTemporalUnitMap = Object.fromEntries(
+    Object.entries(nextTemporalUnitMap).filter(([_key, value]) =>
+      availableBuckets.includes(value),
+    ),
+  );
+  return filteredNextTemporalUnitMap[currentUnit];
 }

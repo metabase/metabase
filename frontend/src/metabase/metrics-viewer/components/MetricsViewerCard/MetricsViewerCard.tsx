@@ -14,6 +14,7 @@ import {
   buildDimensionItemsFromDefinitions,
   buildRawSeriesFromDefinitions,
   computeSourceColors,
+  getCardIdToDimensionId,
 } from "../../utils/series";
 import { getTabConfig } from "../../utils/tab-config";
 import { MetricsViewerVisualization } from "../MetricsViewerVisualization";
@@ -23,6 +24,7 @@ import S from "./MetricsViewerCard.module.css";
 type MetricsViewerCardProps = {
   definitions: MetricsViewerDefinitionEntry[];
   tab: MetricsViewerTabState;
+  onTabUpdate: (updates: Partial<MetricsViewerTabState>) => void;
   onDimensionChange: (
     definitionId: MetricSourceId,
     dimension: DimensionMetadata,
@@ -33,6 +35,7 @@ type MetricsViewerCardProps = {
 export function MetricsViewerCard({
   definitions,
   tab,
+  onTabUpdate,
   onDimensionChange,
   sourceColors,
 }: MetricsViewerCardProps) {
@@ -60,6 +63,9 @@ export function MetricsViewerCard({
       sourceColors,
     ],
   );
+  const cardIdToDimensionId = useMemo(() => {
+    return getCardIdToDimensionId(rawSeries);
+  }, [rawSeries]);
 
   const cardColors = useMemo(
     () => computeSourceColors(definitions),
@@ -109,6 +115,10 @@ export function MetricsViewerCard({
           dimensionItems={dimensionItems}
           onDimensionChange={handleDimensionChange}
           layout={tab.layout}
+          definitions={definitions}
+          tab={tab}
+          onTabUpdate={onTabUpdate}
+          cardIdToDimensionId={cardIdToDimensionId}
         />
       </Stack>
     </Paper>
