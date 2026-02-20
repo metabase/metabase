@@ -1,3 +1,4 @@
+import type { FetchBaseQueryError } from "@reduxjs/toolkit/query";
 import type { FormikErrors } from "formik";
 import { P, isMatching } from "ts-pattern";
 
@@ -9,6 +10,13 @@ export function useMetabotIdPath() {
   const metabotId = Number(location?.pathname?.split("/").pop());
   return Number.isNaN(metabotId) ? null : metabotId;
 }
+
+// https://redux-toolkit.js.org/rtk-query/usage/error-handling
+// https://redux-toolkit.js.org/rtk-query/usage-with-typescript#type-safe-error-handling
+export const isFetchBaseQueryError = (
+  error: unknown,
+): error is FetchBaseQueryError =>
+  isMatching({ status: P.any, data: P.any }, error);
 
 type IFieldError<Values> =
   | string

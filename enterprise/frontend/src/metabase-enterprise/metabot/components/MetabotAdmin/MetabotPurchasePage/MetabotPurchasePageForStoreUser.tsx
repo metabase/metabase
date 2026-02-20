@@ -7,7 +7,6 @@ import * as Yup from "yup";
 import { SettingsSection } from "metabase/admin/components/SettingsSection";
 import { ExternalLink } from "metabase/common/components/ExternalLink";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
-import { isFetchBaseQueryError } from "metabase/common/utils/react-toolkit-utils";
 import {
   Form,
   FormCheckbox,
@@ -18,7 +17,7 @@ import { Card, Stack, Text } from "metabase/ui";
 import { usePurchaseCloudAddOnMutation } from "metabase-enterprise/api";
 
 import { MetabotSettingUpModal } from "../MetabotSettingUpModal";
-import { handleFieldError } from "../utils";
+import { handleFieldError, isFetchBaseQueryError } from "../utils";
 
 import { MetabotRadios } from "./MetabotRadios";
 import { useAddOnsBilling } from "./hooks";
