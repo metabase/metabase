@@ -217,27 +217,24 @@
       (t2/hydrate :creator)
       transforms.util/add-source-readable))
 
-;; TODO (Cam 10/28/25) -- fix this endpoint so it uses kebab-case for query parameters for consistency with the rest
-;; of the REST API
-#_{:clj-kondo/ignore [:metabase/validate-defendpoint-query-params-use-kebab-case]}
 (api.macros/defendpoint :get "/" :- [:sequential TransformJobResponse]
   "Get all transform jobs."
   [_route-params
-   {:keys [last_run_start_time next_run_start_time last_run_statuses tag_ids]} :-
+   {:keys [last-run-start-time next-run-start-time last-run-statuses tag-ids]} :-
    [:map
-    [:last_run_start_time {:optional true} [:maybe ms/NonBlankString]]
-    [:next_run_start_time {:optional true} [:maybe ms/NonBlankString]]
-    [:last_run_statuses {:optional true} [:maybe (ms/QueryVectorOf [:enum "started" "succeeded" "failed" "timeout"])]]
-    [:tag_ids {:optional true} [:maybe (ms/QueryVectorOf ms/IntGreaterThanOrEqualToZero)]]]]
+    [:last-run-start-time {:optional true} [:maybe ms/NonBlankString]]
+    [:next-run-start-time {:optional true} [:maybe ms/NonBlankString]]
+    [:last-run-statuses {:optional true} [:maybe (ms/QueryVectorOf [:enum "started" "succeeded" "failed" "timeout"])]]
+    [:tag-ids {:optional true} [:maybe (ms/QueryVectorOf ms/IntGreaterThanOrEqualToZero)]]]]
   (log/info "Getting all transform jobs")
   (api/check-data-analyst)
   (let [jobs (t2/select :model/TransformJob {:order-by [[:created_at :desc]]})]
     (into []
           (comp (map add-next-run)
-                (transforms.util/->date-field-filter-xf [:last_run :start_time] last_run_start_time)
-                (transforms.util/->date-field-filter-xf [:next_run :start_time] next_run_start_time)
-                (transforms.util/->status-filter-xf [:last_run :status] last_run_statuses)
-                (transforms.util/->tag-filter-xf [:tag_ids] tag_ids)
+                (transforms.util/->date-field-filter-xf [:last_run :start_time] last-run-start-time)
+                (transforms.util/->date-field-filter-xf [:next_run :start_time] next-run-start-time)
+                (transforms.util/->status-filter-xf [:last_run :status] last-run-statuses)
+                (transforms.util/->tag-filter-xf [:tag_ids] tag-ids)
                 (map #(update % :last_run transforms.util/localize-run-timestamps))
                 (map #(update % :next_run transforms.util/localize-run-timestamps)))
           (t2/hydrate jobs :tag_ids :last_run))))

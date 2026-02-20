@@ -136,18 +136,15 @@
              :schema "transforms"
              :name "gadget_products"}}])
 
-;; TODO (Cam 10/28/25) -- fix this endpoint so it uses kebab-case for query parameters for consistency with the rest
-;; of the REST API
-#_{:clj-kondo/ignore [:metabase/validate-defendpoint-query-params-use-kebab-case]}
 (api.macros/defendpoint :get "/" :- [:sequential TransformResponse]
   "Get a list of transforms."
   [_route-params
    query-params :-
    [:map
-    [:last_run_start_time {:optional true} [:maybe ms/NonBlankString]]
-    [:last_run_statuses {:optional true} [:maybe (ms/QueryVectorOf [:enum "started" "succeeded" "failed" "timeout"])]]
-    [:tag_ids {:optional true} [:maybe (ms/QueryVectorOf ms/IntGreaterThanOrEqualToZero)]]
-    [:database_id {:optional true} [:maybe ms/PositiveInt]]]]
+    [:last-run-start-time {:optional true} [:maybe ms/NonBlankString]]
+    [:last-run-statuses {:optional true} [:maybe (ms/QueryVectorOf [:enum "started" "succeeded" "failed" "timeout"])]]
+    [:tag-ids {:optional true} [:maybe (ms/QueryVectorOf ms/IntGreaterThanOrEqualToZero)]]
+    [:database-id {:optional true} [:maybe ms/PositiveInt]]]]
   (transforms.core/get-transforms query-params))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
@@ -226,9 +223,6 @@
              {:where    [:= :transform_id id]
               :order-by [[:created_at :desc]]}))
 
-;; TODO (Cam 10/28/25) -- fix this endpoint so it uses kebab-case for query parameters for consistency with the rest
-;; of the REST API
-#_{:clj-kondo/ignore [:metabase/validate-defendpoint-query-params-use-kebab-case]}
 (api.macros/defendpoint :get "/run" :- [:map {:closed true}
                                         [:data [:sequential TransformRunResponse]]
                                         [:limit pos-int?]
@@ -238,14 +232,14 @@
   [_route-params
    query-params :-
    [:map
-    [:sort_column    {:optional true} [:enum "transform-name" "start-time" "end-time" "status" "run-method" "transform-tags"]]
-    [:sort_direction {:optional true} [:enum "asc" "desc"]]
-    [:transform_ids {:optional true} [:maybe (ms/QueryVectorOf ms/IntGreaterThanOrEqualToZero)]]
+    [:sort-column    {:optional true} [:enum "transform-name" "start-time" "end-time" "status" "run-method" "transform-tags"]]
+    [:sort-direction {:optional true} [:enum "asc" "desc"]]
+    [:transform-ids {:optional true} [:maybe (ms/QueryVectorOf ms/IntGreaterThanOrEqualToZero)]]
     [:statuses {:optional true} [:maybe (ms/QueryVectorOf [:enum "started" "succeeded" "failed" "timeout"])]]
-    [:transform_tag_ids {:optional true} [:maybe (ms/QueryVectorOf ms/IntGreaterThanOrEqualToZero)]]
-    [:start_time {:optional true} [:maybe ms/NonBlankString]]
-    [:end_time {:optional true} [:maybe ms/NonBlankString]]
-    [:run_methods {:optional true} [:maybe (ms/QueryVectorOf [:enum "manual" "cron"])]]]]
+    [:transform-tag-ids {:optional true} [:maybe (ms/QueryVectorOf ms/IntGreaterThanOrEqualToZero)]]
+    [:start-time {:optional true} [:maybe ms/NonBlankString]]
+    [:end-time {:optional true} [:maybe ms/NonBlankString]]
+    [:run-methods {:optional true} [:maybe (ms/QueryVectorOf [:enum "manual" "cron"])]]]]
   (api/check-data-analyst)
   (-> (transforms.core/paged-runs (assoc query-params
                                          :offset (request/offset)

@@ -145,16 +145,16 @@
 
 (defn get-transforms
   "Get a list of transforms."
-  [& {:keys [last_run_start_time last_run_statuses tag_ids]}]
+  [& {:keys [last-run-start-time last-run-statuses tag-ids]}]
   (let [enabled-types (transforms.util/enabled-source-types-for-user)]
     (api/check-403 (seq enabled-types))
     (let [transforms (t2/select :model/Transform {:where    [:in :source_type enabled-types]
                                                   :order-by [[:id :asc]]})]
       (->> (t2/hydrate transforms :last_run :transform_tag_ids :creator :owner)
            (into []
-                 (comp (transforms.util/->date-field-filter-xf [:last_run :start_time] last_run_start_time)
-                       (transforms.util/->status-filter-xf [:last_run :status] last_run_statuses)
-                       (transforms.util/->tag-filter-xf [:tag_ids] tag_ids)
+                 (comp (transforms.util/->date-field-filter-xf [:last_run :start_time] last-run-start-time)
+                       (transforms.util/->status-filter-xf [:last_run :status] last-run-statuses)
+                       (transforms.util/->tag-filter-xf [:tag_ids] tag-ids)
                        (map #(update % :last_run transforms.util/localize-run-timestamps))
                        (map python-source-table-ref->table-id)))
            transforms.util/add-source-readable))))
