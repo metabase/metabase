@@ -12,7 +12,7 @@ import * as Urls from "metabase/lib/urls";
 import type { Dashboard } from "metabase-types/api";
 
 type OwnProps = {
-  onClose?: () => void;
+  onClose: () => void;
 };
 
 type ArchiveDashboardModalProps = OwnProps &
@@ -49,9 +49,9 @@ const ArchiveDashboardModal = ({
           : t`Move this dashboard to trash?`
       }
       model="dashboard"
-      modelId={typeof dashboard.id === "number" ? dashboard.id : 0}
+      modelId={Number(dashboard.id)}
       message={message}
-      onClose={onClose ?? (() => undefined)}
+      onClose={onClose}
       isLoading={loading}
       onArchive={archive}
     />

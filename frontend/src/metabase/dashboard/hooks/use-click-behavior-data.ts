@@ -10,6 +10,7 @@ import { getLinkTargets } from "metabase/lib/click-behavior";
 import { useStore } from "metabase/lib/redux";
 import { getUserAttributes } from "metabase/selectors/user";
 import type { ClickObject } from "metabase/visualizations/types";
+import Question from "metabase-lib/v1/Question";
 import type { DashCardId } from "metabase-types/api";
 import type { State } from "metabase-types/store";
 
@@ -32,7 +33,7 @@ type LinkedEntityTarget = {
 };
 
 function isEntityObject(value: unknown): value is EntityObject {
-  return !!value && typeof value === "object" && "id" in value;
+  return _.isObject(value) && "id" in value;
 }
 
 function resolveLinkedObject(target: LinkedEntityTarget, state: State) {
@@ -41,12 +42,7 @@ function resolveLinkedObject(target: LinkedEntityTarget, state: State) {
   });
 
   if (target.entityType === "question") {
-    if (
-      object &&
-      typeof object === "object" &&
-      "card" in object &&
-      typeof object.card === "function"
-    ) {
+    if (object instanceof Question) {
       const card = object.card();
       return isEntityObject(card) ? card : null;
     }
@@ -60,7 +56,7 @@ function getEntitiesByTypeAndId(
   state: State,
   clicked: ClickObject | null,
 ): Record<string, Record<string | number, EntityObject>> {
-  const targets = getLinkTargets(clicked?.settings) as LinkedEntityTarget[];
+  const targets: LinkedEntityTarget[] = getLinkTargets(clicked?.settings);
 
   return targets.reduce<Record<string, Record<string | number, EntityObject>>>(
     (acc, target) => {
