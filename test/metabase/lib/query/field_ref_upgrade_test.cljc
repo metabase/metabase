@@ -25,8 +25,8 @@
     (is (lib/field-ref-id (selector q-table)))
     (is (lib/field-ref-id (selector q-card)))
     ;; Upgraded depends
-    (is (lib/field-ref-id   (selector q-table-upgraded))) ;; on table, still id
-    (is (lib/field-ref-name (selector q-card-upgraded)))  ;; on card, name
+    (is (lib/field-ref-name (selector q-table-upgraded)))
+    (is (lib/field-ref-name (selector q-card-upgraded)))
     ;; Compiled query should be the same
     (is (= (qp.compile/compile q-table)
            (qp.compile/compile q-table-upgraded)))
@@ -53,8 +53,8 @@
     (is (lib/field-ref-id (selector q-table)))
     (is (lib/field-ref-id (selector q-card)))
     ;; Upgraded depends
-    (is (lib/field-ref-id   (selector q-table-upgraded))) ;; on table, still id
-    (is (lib/field-ref-name (selector q-card-upgraded)))  ;; on card, name
+    (is (lib/field-ref-name (selector q-table-upgraded)))
+    (is (lib/field-ref-name (selector q-card-upgraded)))
     ;; Compiled query should be the same
     (is (= (qp.compile/compile q-table)
            (qp.compile/compile q-table-upgraded)))
@@ -81,8 +81,8 @@
     (is (lib/field-ref-id (selector q-table)))
     (is (lib/field-ref-id (selector q-card)))
     ;; Upgraded depends
-    (is (lib/field-ref-id   (selector q-table-upgraded))) ;; on table, still id
-    (is (lib/field-ref-name (selector q-card-upgraded)))  ;; on card, name
+    (is (lib/field-ref-name (selector q-table-upgraded)))
+    (is (lib/field-ref-name (selector q-card-upgraded)))
     ;; Compiled query should be the same
     (is (= (qp.compile/compile q-table)
            (qp.compile/compile q-table-upgraded)))
@@ -109,8 +109,8 @@
     (is (lib/field-ref-id (selector q-table)))
     (is (lib/field-ref-id (selector q-card)))
     ;; Upgraded depends
-    (is (lib/field-ref-id   (selector q-table-upgraded))) ;; on table, still id
-    (is (lib/field-ref-name (selector q-card-upgraded)))  ;; on card, name
+    (is (lib/field-ref-name (selector q-table-upgraded)))
+    (is (lib/field-ref-name (selector q-card-upgraded)))
     ;; Compiled query should be the same
     (is (= (qp.compile/compile q-table)
            (qp.compile/compile q-table-upgraded)))
@@ -137,8 +137,8 @@
     (is (lib/field-ref-id (selector q-table)))
     (is (lib/field-ref-id (selector q-card)))
     ;; Upgraded depends
-    (is (lib/field-ref-id   (selector q-table-upgraded))) ;; on table, still id
-    (is (lib/field-ref-name (selector q-card-upgraded)))  ;; on card, name
+    (is (lib/field-ref-name (selector q-table-upgraded)))
+    (is (lib/field-ref-name (selector q-card-upgraded)))
     ;; Compiled query should be the same
     (is (= (qp.compile/compile q-table)
            (qp.compile/compile q-table-upgraded)))
@@ -186,12 +186,12 @@
     (is (lib/field-ref-id (selector-right q-card-card)))
     (is (lib/field-ref-id (selector-left  q-card-card)))
     ;; Upgraded depends
-    (is (lib/field-ref-id   (selector-left q-table-upgraded)))      ;; on table, still id
-    (is (lib/field-ref-name (selector-left q-card-upgraded)))       ;; on card, name
-    (is (lib/field-ref-name (selector-left q-card-card-upgraded)))  ;; on card, name
-    (is (lib/field-ref-id   (selector-right q-table-upgraded)))      ;; on table, still id
-    (is (lib/field-ref-id   (selector-right q-card-upgraded)))       ;; on table, still id
-    (is (lib/field-ref-name (selector-right q-card-card-upgraded)))  ;; on card, name
+    (is (lib/field-ref-name (selector-left q-table-upgraded)))
+    (is (lib/field-ref-name (selector-left q-card-upgraded)))
+    (is (lib/field-ref-name (selector-left q-card-card-upgraded)))
+    (is (lib/field-ref-name (selector-right q-table-upgraded)))
+    (is (lib/field-ref-name (selector-right q-card-upgraded)))
+    (is (lib/field-ref-name (selector-right q-card-card-upgraded)))
     ;; Compiled query should be the same
     (is (= (qp.compile/compile q-table)
            (qp.compile/compile q-table-upgraded)))

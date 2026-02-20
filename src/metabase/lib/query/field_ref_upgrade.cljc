@@ -2,7 +2,6 @@
   (:require
    ;; allowed since this is needed to convert legacy queries to MBQL 5
    [metabase.lib.breakout :as lib.breakout]
-   [metabase.lib.dispatch :as lib.dispatch]
    [metabase.lib.equality :as lib.equality]
    [metabase.lib.expression :as lib.expression]
    [metabase.lib.field :as lib.field]
@@ -36,33 +35,23 @@
 
 (defn- upgrade-field-ref-by-columns
   [query stage-number columns field-ref]
-  (cond
-    (lib.ref/field-ref-id field-ref)
-    (or (some-> (lib.equality/find-matching-column query stage-number field-ref columns)
-                lib.ref/ref)
-        (throw (ex-info "Cannot find matching column."
-                        {:query query
-                         :stage-number stage-number
-                         :field-ref field-ref
-                         :columns columns})))
-
-    (lib.ref/field-ref-name field-ref)
-    field-ref
-
-    :else
-    (throw (ex-info "Unknown field-ref type." {:field-ref field-ref}))))
+  (or (some-> (lib.equality/find-matching-column query stage-number field-ref columns)
+              lib.ref/ref)
+      field-ref))
 
 (defn- walk-field-refs
   [clause f]
   (lib.walk/walk-clause clause
                         (fn [clause]
-                          (if-not (lib.field/is-field-clause? clause)
-                            clause
-                            (f clause)))))
+                          (cond-> clause
+                            (lib.field/is-field-clause? clause)
+                            f))))
 
 (defn- upgrade-field-refs-in-clauses
   [clauses query stage-number columns-fn]
   (let [columns (columns-fn query stage-number)
+        ;; remove ids so we get name-based refs
+        columns (mapv #(dissoc % :id) columns)
         upgrade (fn [field-ref]
                   (upgrade-field-ref-by-columns query stage-number columns field-ref))]
     (mapv (fn [fr] (walk-field-refs fr upgrade)) clauses)))
@@ -72,7 +61,8 @@
   (if (:conditions join)
     (let [lhs-columns (lib.join/join-condition-lhs-columns query stage-number join nil nil)
           rhs-columns (lib.join/join-condition-rhs-columns query stage-number join nil nil)
-          columns (concat lhs-columns rhs-columns)]
+          columns (concat lhs-columns rhs-columns)
+          columns (mapv #(dissoc % :id) columns)]
       (update join :conditions upgrade-field-refs-in-clauses query stage-number (constantly columns)))
     join))
 
