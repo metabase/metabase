@@ -10,6 +10,7 @@ export function setupBillingEndpoints({
   transformsBasicPrice = 100,
   transformsAdvancedPrice = 250,
   trialDays,
+  previousAddOns = [],
 }: {
   billingPeriodMonths?: number;
   hasBasicTransformsAddOn?: boolean;
@@ -17,6 +18,10 @@ export function setupBillingEndpoints({
   transformsBasicPrice?: number;
   transformsAdvancedPrice?: number;
   trialDays?: number;
+  previousAddOns?: Array<{
+    product_type: string;
+    self_service: boolean;
+  }>;
 } = {}) {
   const cloudAddOns = [
     ...(hasBasicTransformsAddOn
@@ -74,7 +79,7 @@ export function setupBillingEndpoints({
     version: "0",
     data: {
       billing_period_months: billingPeriodMonths,
-      previous_add_ons: [],
+      previous_add_ons: previousAddOns,
     },
   });
 }
