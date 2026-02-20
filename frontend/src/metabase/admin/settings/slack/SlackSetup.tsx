@@ -20,6 +20,7 @@ import {
   Button,
   Divider,
   Flex,
+  HoverCard,
   Icon,
   Stack,
   Text,
@@ -31,9 +32,11 @@ import { SlackSetupForm } from "./SlackSetupForm";
 const SlackConnectionStatus = ({
   isValid,
   docsUrl,
+  token,
 }: {
   isValid: boolean;
   docsUrl: string;
+  token: string | null;
 }) => {
   const [updateSlackSettings] = useUpdateSlackSettingsMutation();
   const [isOpened, { open: handleOpen, close: handleClose }] =
@@ -57,6 +60,24 @@ const SlackConnectionStatus = ({
           <Text>
             {isValid ? t`Slack app is working` : t`Slack app is not working.`}
           </Text>
+          {token && (
+            <HoverCard position="bottom">
+              <HoverCard.Target>
+                <Icon
+                  name="info"
+                  c="text-secondary"
+                  size={14}
+                  style={{ cursor: "pointer" }}
+                />
+              </HoverCard.Target>
+              <HoverCard.Dropdown>
+                <Stack gap="xs" p="md">
+                  <Text c="text-secondary">{t`Slack Bot OAuth Token`}</Text>
+                  <Text fw="bold">{token}</Text>
+                </Stack>
+              </HoverCard.Dropdown>
+            </HoverCard>
+          )}
           {!isValid && (
             <Text ml="sm" inline>
               {jt`Need help? ${(<ExternalLink key="link" href={docsUrl}>{t`See our docs`}</ExternalLink>)}.`}
@@ -123,7 +144,11 @@ export const SlackSetup = () => {
   return (
     <SettingsSection stackProps={{ pt: "lg" }}>
       <Box>
-        <SlackConnectionStatus isValid={isValid} docsUrl={docsUrl} />
+        <SlackConnectionStatus
+          isValid={isValid}
+          docsUrl={docsUrl}
+          token={slackAppToken}
+        />
         <Divider w="calc(100% + 4rem)" ml="-2rem" my="lg" />
         <SlackConfiguration />
       </Box>
