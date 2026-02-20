@@ -129,6 +129,7 @@
                     mw.auth/metabot-slack-signing-secret-setting (constantly test-signing-secret)]
         (mt/with-premium-features #{:sso-slack}
           (mt/with-temporary-setting-values [site-url "https://localhost:3000"
+                                             metabot.settings/metabot-slack-signing-secret test-signing-secret
                                              channel.settings/slack-app-token "xoxb-test"
                                              sso-settings/slack-connect-client-id "test-client-id"
                                              sso-settings/slack-connect-client-secret "test-secret"

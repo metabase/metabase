@@ -509,7 +509,7 @@
 (defn- assert-valid-slack-req
   "Asserts that incoming Slack request has a valid signature."
   [request]
-  (when-not (metabot.settings/metabot-slack-signing-secret)
+  (when-not (metabot.settings/unobfuscated-metabot-slack-signing-secret)
     (throw (ex-info (str (tru "Slack integration is not fully configured.")) {:status-code 503})))
   (when-not (:slack/validated? request)
     (throw (ex-info (str (tru "Slack request signature is not valid.")) {:status-code 401}))))
