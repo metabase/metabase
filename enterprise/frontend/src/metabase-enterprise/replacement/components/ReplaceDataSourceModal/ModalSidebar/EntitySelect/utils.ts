@@ -39,18 +39,14 @@ function getPickerItemDatabaseId(item: OmniPickerItem): DatabaseId | undefined {
 }
 
 export function getIsPickerItemDisabled(
-  isEntryDisabled: (
-    entry: ReplaceSourceEntry,
-    databaseId: DatabaseId,
-  ) => boolean,
-): (item: OmniPickerItem) => boolean {
+  databaseId: DatabaseId | undefined,
+): ((item: OmniPickerItem) => boolean) | undefined {
+  if (databaseId == null) {
+    return undefined;
+  }
   return (item: OmniPickerItem) => {
-    const entry = getSelectedValue(item);
-    const databaseId = getPickerItemDatabaseId(item);
-    if (entry == null || databaseId == null) {
-      return false;
-    }
-    return isEntryDisabled(entry, databaseId);
+    const itemDatabaseId = getPickerItemDatabaseId(item);
+    return itemDatabaseId != null && itemDatabaseId !== databaseId;
   };
 }
 

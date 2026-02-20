@@ -8,6 +8,7 @@ import type {
 
 import { getEntityErrorMessage, getGenericErrorMessage } from "../../../utils";
 import type { EntityInfo } from "../types";
+import { getEntityDatabaseId } from "../utils";
 
 import { EntitySection } from "./EntitySection";
 import { EntitySelect } from "./EntitySelect";
@@ -34,8 +35,10 @@ export function ModalSidebar({
   onSubmit,
   onCancel,
 }: ModalSidebarProps) {
+  const sourceDatabaseId =
+    sourceInfo != null ? getEntityDatabaseId(sourceInfo) : undefined;
   const errorMessage = getErrorMessage(checkInfo);
-  const disabled =
+  const submitDisabled =
     checkInfo == null || !checkInfo.success || dependentsCount === 0;
 
   return (
@@ -59,6 +62,7 @@ export function ModalSidebar({
               entityInfo={targetInfo}
               label={t`Replace it with this data source`}
               description={t`It must be based on the same database and include all columns from the original data source.`}
+              databaseId={sourceDatabaseId}
               onChange={onTargetChange}
             />
             {errorMessage && (
@@ -71,8 +75,8 @@ export function ModalSidebar({
       </Stack>
       <Group mt="auto" justify="flex-end" wrap="nowrap">
         <Button onClick={onCancel}>{t`Cancel`}</Button>
-        <Button variant="filled" disabled={disabled} onClick={onSubmit}>
-          {getSubmitLabel(dependentsCount, disabled)}
+        <Button variant="filled" disabled={submitDisabled} onClick={onSubmit}>
+          {getSubmitLabel(dependentsCount, submitDisabled)}
         </Button>
       </Group>
     </Stack>
