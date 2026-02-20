@@ -509,7 +509,7 @@
    Excludes built-in TransformTags and the built-in PythonLibrary from the count since they are
    system-created and not user data. Namespace collections are not checked here because they are
    organizational containers, not user data that would be lost on import."
-  [_setting-kw specs-for-feature]
+  [specs-for-feature]
   (some (fn [[_ spec]]
           (let [model-key (:model-key spec)
                 model-type (:model-type spec)
@@ -540,7 +540,7 @@
                 :when (or (some feature-model-types models-present)
                           (and feature-namespace
                                (contains? import-namespace-collections (name feature-namespace))))
-                :when (has-unsynced-entities-for-feature? setting-kw specs-for-feature)
+                :when (has-unsynced-entities-for-feature? specs-for-feature)
                 :let [category (setting->category setting-kw)]]
             {:type     (keyword (str (u/lower-case-en category) "-conflict"))
              :category category
