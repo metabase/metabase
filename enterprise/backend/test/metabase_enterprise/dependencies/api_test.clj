@@ -130,12 +130,12 @@
   (dependencies.findings/upsert-analysis! (t2/select-one :model/Card :id card-id)))
 
 (deftest check-card-test
-  (testing "POST /api/ee/dependencies/check_card"
+  (testing "POST /api/ee/dependencies/check-card"
     (mt/with-premium-features #{:dependencies}
       (mt/with-temp [:model/User user {:email "me@wherever.com"}]
         (mt/with-model-cleanup [:model/Card :model/Dependency]
           (let [card (card/create-card! (basic-card) user)
-                response (mt/user-http-request :rasta :post 200 "ee/dependencies/check_card"
+                response (mt/user-http-request :rasta :post 200 "ee/dependencies/check-card"
                                                (assoc (card/create-card! (basic-card "Product question" :products)
                                                                          user)
                                                       :id (:id card)))]
@@ -143,7 +143,7 @@
                    response))))))))
 
 (deftest check-card-hydrates-dashboard-and-document-test
-  (testing "POST /api/ee/dependencies/check_card hydrates dashboard and document for cards"
+  (testing "POST /api/ee/dependencies/check-card hydrates dashboard and document for cards"
     (mt/dataset test-data
       (mt/with-premium-features #{:dependencies}
         (mt/with-current-user (mt/user->id :rasta)
@@ -180,10 +180,10 @@
                                            :document_id  (:id document)
                                            :document     (select-keys document [:id :name])}]
                          :bad_transforms []}
-                        (mt/user-http-request :rasta :post 200 "ee/dependencies/check_card" proposed-card)))))))))))
+                        (mt/user-http-request :rasta :post 200 "ee/dependencies/check-card" proposed-card)))))))))))
 
 (deftest check-card-removing-column-breaks-downstream-test
-  (testing "POST /api/ee/dependencies/check_card detects when removing a column breaks downstream cards"
+  (testing "POST /api/ee/dependencies/check-card detects when removing a column breaks downstream cards"
     (mt/dataset test-data
       (mt/with-premium-features #{:dependencies}
         (mt/with-temp [:model/User user {:email "test@test.com"}]
@@ -206,14 +206,14 @@
                                  :type :question
                                  :dataset_query proposed-query
                                  :result_metadata nil}
-                  response (mt/user-http-request :rasta :post 200 "ee/dependencies/check_card" proposed-card)]
+                  response (mt/user-http-request :rasta :post 200 "ee/dependencies/check-card" proposed-card)]
               (is (=? {:success false
                        :bad_cards [{:id (:id dependent-card)}]
                        :bad_transforms []}
                       response)))))))))
 
 (deftest check-card-renaming-expression-breaks-downstream-test
-  (testing "POST /api/ee/dependencies/check_card detects when renaming an expression breaks downstream cards"
+  (testing "POST /api/ee/dependencies/check-card detects when renaming an expression breaks downstream cards"
     (mt/dataset test-data
       (mt/with-premium-features #{:dependencies}
         (mt/with-temp [:model/User user {:email "test@test.com"}]
@@ -243,7 +243,7 @@
                                  :type :question
                                  :dataset_query proposed-query
                                  :result_metadata nil}
-                  response (mt/user-http-request :rasta :post 200 "ee/dependencies/check_card"
+                  response (mt/user-http-request :rasta :post 200 "ee/dependencies/check-card"
                                                  proposed-card)]
               (is (=? {:success false
                        :bad_cards [{:id (:id dependent-card)}]
@@ -251,7 +251,7 @@
                       response)))))))))
 
 (deftest check-card-breaks-multiple-downstream-cards-test
-  (testing "POST /api/ee/dependencies/check_card detects when one change breaks multiple downstream cards"
+  (testing "POST /api/ee/dependencies/check-card detects when one change breaks multiple downstream cards"
     (mt/dataset test-data
       (mt/with-premium-features #{:dependencies}
         (mt/with-temp [:model/User user {:email "test@test.com"}]
@@ -282,14 +282,14 @@
                                  :type :question
                                  :dataset_query proposed-query
                                  :result_metadata nil}
-                  response (mt/user-http-request :rasta :post 200 "ee/dependencies/check_card" proposed-card)]
+                  response (mt/user-http-request :rasta :post 200 "ee/dependencies/check-card" proposed-card)]
               (is (=? {:success false
                        :bad_cards #{(:id dependent-card-1) (:id dependent-card-2)}
                        :bad_transforms []}
                       (update response :bad_cards #(into #{} (map :id) %)))))))))))
 
 (deftest check-card-skips-native-cards-test
-  (testing "POST /api/ee/dependencies/check_card does not validate native cards"
+  (testing "POST /api/ee/dependencies/check-card does not validate native cards"
     (mt/dataset test-data
       (mt/with-premium-features #{:dependencies}
         (mt/with-temp [:model/User user {:email "test@test.com"}]
@@ -301,40 +301,40 @@
                   dependent-query (lib/native-query mp (str "select * from {{#"
                                                             (:id base-card)
                                                             "}} orders where total > 100"))
-                  _dependent-card (card/create-card!
-                                   (card-with-query "Dependent Card filtering on Total" dependent-query)
-                                   user)
+                  dependent-card (card/create-card!
+                                  (card-with-query "Dependent Card filtering on Total" dependent-query)
+                                  user)
                   ;; Propose changing to products table (doesn't have TOTAL column, breaks downstream)
                   proposed-query (lib/query mp (lib.metadata/table mp (mt/id :products)))
                   proposed-card {:id (:id base-card)
                                  :type :question
                                  :dataset_query proposed-query
                                  :result_metadata nil}
-                  response (mt/user-http-request :rasta :post 200 "ee/dependencies/check_card" proposed-card)]
-              (is (=? {:success true
-                       :bad_cards []
+                  response (mt/user-http-request :rasta :post 200 "ee/dependencies/check-card" proposed-card)]
+              (is (=? {:success false
+                       :bad_cards [{:id (:id dependent-card)}]
                        :bad_transforms []}
                       response)))))))))
 
 (deftest check-transform-test
-  (testing "POST /api/ee/dependencies/check_transform"
+  (testing "POST /api/ee/dependencies/check-transform"
     (mt/with-premium-features #{:dependencies :transforms}
       (mt/with-temp [:model/Transform {_transform-id :id :as transform} {}]
-        (let [response (mt/user-http-request :crowberto :post 200 "ee/dependencies/check_transform" transform)]
+        (let [response (mt/user-http-request :crowberto :post 200 "ee/dependencies/check-transform" transform)]
           (is (= {:bad_cards [], :bad_transforms [], :success true}
                  response)))))))
 
 (deftest check-snippet-test
-  (testing "POST /api/ee/dependencies/check_snippet"
+  (testing "POST /api/ee/dependencies/check-snippet"
     (mt/with-premium-features #{:dependencies}
       (mt/with-temp [:model/NativeQuerySnippet {_snippet-id :id :as snippet} {:name "test-snippet"
                                                                               :content "WHERE ID > 10"}]
-        (let [response (mt/user-http-request :crowberto :post 200 "ee/dependencies/check_snippet" snippet)]
+        (let [response (mt/user-http-request :crowberto :post 200 "ee/dependencies/check-snippet" snippet)]
           (is (= {:bad_cards [], :bad_transforms [], :success true}
                  response)))))))
 
 (deftest check-snippet-content-change-doest-not-break-cards-test
-  (testing "POST /api/ee/dependencies/check_snippet doesn't catch when a change would break a card, because native query validation is disabled"
+  (testing "POST /api/ee/dependencies/check-snippet doesn't catch when a change would break a card, because native query validation is disabled"
     (mt/dataset test-data
       (mt/with-premium-features #{:dependencies}
         (mt/with-temp [:model/User user {:email "test@test.com"}
@@ -355,7 +355,7 @@
                                             :visualization_settings {}}
                                            user)
                   proposed-content "WHERE NONEXISTENT_COLUMN > 100"
-                  response (mt/user-http-request :rasta :post 200 "ee/dependencies/check_snippet"
+                  response (mt/user-http-request :rasta :post 200 "ee/dependencies/check-snippet"
                                                  {:id snippet-id
                                                   :content proposed-content})]
               (is (=? {:success true
@@ -451,8 +451,8 @@
                 response (mt/user-http-request :rasta :get 200 "ee/dependencies/graph/dependents"
                                                :id card-id-1
                                                :type "card"
-                                               :dependent_types "card"
-                                               :dependent_card_types "question")]
+                                               :dependent-types "card"
+                                               :dependent-card-types "question")]
             (is (=? [{:data
                       {:collection
                        {:id "root"
@@ -473,7 +473,7 @@
                     response))))))))
 
 (deftest ^:sequential dependents-multiple-types-test
-  (testing "GET /api/ee/dependencies/graph/dependents with multiple dependent_types"
+  (testing "GET /api/ee/dependencies/graph/dependents with multiple dependent-types"
     (mt/with-premium-features #{:dependencies}
       (mt/with-model-cleanup [:model/Card :model/Dependency :model/DashboardCard]
         (mt/with-temp [:model/User user {:email "test@test.com"}
@@ -487,22 +487,22 @@
                                               :size_x 4
                                               :size_y 4})
             (while (#'dependencies.backfill/backfill-dependencies!))
-            (testing "single dependent_types value (backward compatibility)"
+            (testing "single dependent-types value (backward compatibility)"
               (let [response (mt/user-http-request :rasta :get 200 "ee/dependencies/graph/dependents"
                                                    :id card-id-1
                                                    :type "card"
-                                                   :dependent_types "card")]
+                                                   :dependent-types "card")]
                 (is (= 1 (count response)))
                 (is (every? #(= "card" (:type %)) response))))
-            (testing "multiple dependent_types via repeated params"
+            (testing "multiple dependent-types via repeated params"
               (let [response (mt/user-http-request :rasta :get 200 "ee/dependencies/graph/dependents"
                                                    :id card-id-1
                                                    :type "card"
-                                                   :dependent_types "card"
-                                                   :dependent_types "dashboard")]
+                                                   :dependent-types "card"
+                                                   :dependent-types "dashboard")]
                 (is (= 2 (count response)))
                 (is (= #{"card" "dashboard"} (set (map :type response))))))
-            (testing "no dependent_types returns all types"
+            (testing "no dependent-types returns all types"
               (let [response (mt/user-http-request :rasta :get 200 "ee/dependencies/graph/dependents"
                                                    :id card-id-1
                                                    :type "card")]
@@ -511,43 +511,43 @@
                 (is (contains? (set (map :type response)) "dashboard"))))))))))
 
 (deftest ^:sequential dependents-multiple-card-types-test
-  (testing "GET /api/ee/dependencies/graph/dependents with multiple dependent_card_types"
+  (testing "GET /api/ee/dependencies/graph/dependents with multiple dependent-card-types"
     (mt/with-premium-features #{:dependencies}
       (mt/with-model-cleanup [:model/Card :model/Dependency]
         (mt/with-temp [:model/User user {:email "test@test.com"}]
           (let [{dependency-card-id :id :as dependency-card} (card/create-card! (basic-card "Base card - cardtypes") user)
                 _question-card (card/create-card! (assoc (wrap-card dependency-card) :name "Question card") user)
                 _model-card (card/create-card! (assoc (wrap-card dependency-card) :name "Model card" :type :model) user)]
-            (testing "single dependent_card_types value"
+            (testing "single dependent-card-types value"
               (let [response (mt/user-http-request :rasta :get 200 "ee/dependencies/graph/dependents"
                                                    :id dependency-card-id
                                                    :type "card"
-                                                   :dependent_types "card"
-                                                   :dependent_card_types "question")]
+                                                   :dependent-types "card"
+                                                   :dependent-card-types "question")]
                 (is (= 1 (count response)))
                 (is (= "question" (-> response first :data :type)))))
-            (testing "multiple dependent_card_types via repeated params"
+            (testing "multiple dependent-card-types via repeated params"
               (let [response (mt/user-http-request :rasta :get 200 "ee/dependencies/graph/dependents"
                                                    :id dependency-card-id
                                                    :type "card"
-                                                   :dependent_types "card"
-                                                   :dependent_card_types "question"
-                                                   :dependent_card_types "model")]
+                                                   :dependent-types "card"
+                                                   :dependent-card-types "question"
+                                                   :dependent-card-types "model")]
                 (is (= 2 (count response)))
                 (is (= #{"question" "model"} (set (map #(-> % :data :type) response))))))
-            (testing "no dependent_card_types returns all card types"
+            (testing "no dependent-card-types returns all card types"
               (let [response (mt/user-http-request :rasta :get 200 "ee/dependencies/graph/dependents"
                                                    :id dependency-card-id
                                                    :type "card"
-                                                   :dependent_types "card")]
+                                                   :dependent-types "card")]
                 (is (= 2 (count response)))
                 (is (= #{"question" "model"} (set (map #(-> % :data :type) response))))))
-            (testing "dependent_card_types ignored when dependent_types doesn't include card"
+            (testing "dependent-card-types ignored when dependent-types doesn't include card"
               (let [response (mt/user-http-request :rasta :get 200 "ee/dependencies/graph/dependents"
                                                    :id dependency-card-id
                                                    :type "card"
-                                                   :dependent_types "dashboard"
-                                                   :dependent_card_types "question")]
+                                                   :dependent-types "dashboard"
+                                                   :dependent-card-types "question")]
                 (is (every? #(= "dashboard" (:type %)) response))))))))))
 
 (deftest graph-archived-card-test
@@ -589,14 +589,14 @@
               (let [response (mt/user-http-request :rasta :get 200 "ee/dependencies/graph/dependents"
                                                    :id (:id base-card)
                                                    :type "card"
-                                                   :dependent_types "card")]
+                                                   :dependent-types "card")]
                 (is (empty? response))))
             (testing "archived=true includes archived dependent"
               (let [response (mt/user-http-request :rasta :get 200 "ee/dependencies/graph/dependents"
                                                    :id (:id base-card)
                                                    :type "card"
-                                                   :dependent_types "card"
-                                                   :dependent_card_types "question"
+                                                   :dependent-types "card"
+                                                   :dependent-card-types "question"
                                                    :archived true)
                     dependent-ids (set (map :id response))]
                 (is (contains? dependent-ids (:id dependent-card)))))))))))
@@ -626,7 +626,7 @@
                       "There should two dependents total"))))))))))
 
 (deftest check-card-permissions-test
-  (testing "POST /api/ee/dependencies/check_card requires read permissions on the input card"
+  (testing "POST /api/ee/dependencies/check-card requires read permissions on the input card"
     (mt/with-premium-features #{:dependencies}
       (mt/with-non-admin-groups-no-root-collection-perms
         (mt/with-temp [:model/Collection collection {}
@@ -635,16 +635,16 @@
             (let [card (card/create-card! (assoc (basic-card) :collection_id (u/the-id collection)) user)]
               (testing "Returns 403 when user lacks read permissions"
                 (is (= "You don't have permissions to do that."
-                       (mt/user-http-request :rasta :post 403 "ee/dependencies/check_card"
+                       (mt/user-http-request :rasta :post 403 "ee/dependencies/check-card"
                                              (assoc card :name "Modified name")))))
               (testing "Returns 200 when user has read permissions"
                 (perms/grant-collection-read-permissions! (perms/all-users-group) collection)
                 (is (=? {:success true}
-                        (mt/user-http-request :rasta :post 200 "ee/dependencies/check_card"
+                        (mt/user-http-request :rasta :post 200 "ee/dependencies/check-card"
                                               (assoc card :name "Modified name"))))))))))))
 
 (deftest check-snippet-permissions-test
-  (testing "POST /api/ee/dependencies/check_snippet requires native query execution permissions"
+  (testing "POST /api/ee/dependencies/check-snippet requires native query execution permissions"
     (mt/with-premium-features #{:dependencies}
       (mt/with-non-admin-groups-no-root-collection-perms
         (mt/with-temp [:model/NativeQuerySnippet snippet {:name "test snippet"
@@ -654,28 +654,28 @@
           (with-redefs [snippet.perms/has-any-native-permissions? (constantly false)]
             (testing "Returns 403 when user lacks native query execution permissions"
               (is (= "You don't have permissions to do that."
-                     (mt/user-http-request :rasta :post 403 "ee/dependencies/check_snippet"
+                     (mt/user-http-request :rasta :post 403 "ee/dependencies/check-snippet"
                                            {:id (:id snippet)
                                             :content "SELECT 2"})))))
           ;; Grant native query permissions
           (testing "Returns 200 when user has native query execution permissions"
-            (mt/user-http-request :rasta :post 200 "ee/dependencies/check_snippet"
+            (mt/user-http-request :rasta :post 200 "ee/dependencies/check-snippet"
                                   {:id (:id snippet)
                                    :content "SELECT 2"})))))))
 
 (deftest check-transform-permissions-test
-  (testing "POST /api/ee/dependencies/check_transform requires read permissions on the input transform"
+  (testing "POST /api/ee/dependencies/check-transform requires read permissions on the input transform"
     (mt/with-premium-features #{:dependencies :transforms}
       (mt/with-temp [:model/Transform transform {:name "test transform"}]
         (testing "Returns 403 when user is not an admin (only admins can read transforms)"
           (is (= "You don't have permissions to do that."
-                 (mt/user-http-request :rasta :post 403 "ee/dependencies/check_transform"
+                 (mt/user-http-request :rasta :post 403 "ee/dependencies/check-transform"
                                        {:id (:id transform)
                                         :source (:source transform)
                                         :target (:target transform)}))))
         (testing "Returns 200 when user is an admin"
           (is (=? {:success true}
-                  (mt/user-http-request :crowberto :post 200 "ee/dependencies/check_transform"
+                  (mt/user-http-request :crowberto :post 200 "ee/dependencies/check-transform"
                                         {:id (:id transform)
                                          :source (:source transform)
                                          :target (:target transform)}))))))))
@@ -712,15 +712,15 @@
                        (mt/user-http-request :rasta :get 403 "ee/dependencies/graph/dependents"
                                              :id card-id
                                              :type "card"
-                                             :dependent_types "card"
-                                             :dependent_card_types "question"))))
+                                             :dependent-types "card"
+                                             :dependent-card-types "question"))))
               (testing "Returns 200 when user has read permissions"
                 (perms/grant-collection-read-permissions! (perms/all-users-group) collection)
                 (mt/user-http-request :rasta :get 200 "ee/dependencies/graph/dependents"
                                       :id card-id
                                       :type "card"
-                                      :dependent_types "card"
-                                      :dependent_card_types "question")))))))))
+                                      :dependent-types "card"
+                                      :dependent-card-types "question")))))))))
 
 (deftest graph-filtering-test
   (testing "GET /api/ee/dependencies/graph filters out upstream nodes the user cannot read"
@@ -783,8 +783,8 @@
                 (let [response (mt/user-http-request :rasta :get 200 "ee/dependencies/graph/dependents"
                                                      :id (:id base-card)
                                                      :type "card"
-                                                     :dependent_types "card"
-                                                     :dependent_card_types "question")
+                                                     :dependent-types "card"
+                                                     :dependent-card-types "question")
                       dependent-ids (set (map :id response))]
                   (is (contains? dependent-ids (:id readable-dependent)))
                   (is (not (contains? dependent-ids (:id unreadable-dependent)))))))))))))
@@ -904,8 +904,8 @@
                   (let [response (mt/user-http-request :rasta :get 200 "ee/dependencies/graph/dependents"
                                                        :id snippet-id
                                                        :type "snippet"
-                                                       :dependent_types "card"
-                                                       :dependent_card_types "question")
+                                                       :dependent-types "card"
+                                                       :dependent-card-types "question")
                         dependent-ids (set (map :id response))]
                     (is (contains? dependent-ids (:id readable-card))
                         "Should see readable card as dependent")
@@ -965,8 +965,8 @@
                 (let [response (mt/user-http-request :crowberto :get 200 "ee/dependencies/graph/dependents"
                                                      :id (:id base-card)
                                                      :type :card
-                                                     :dependent_types :card
-                                                     :dependent_card_types :question)
+                                                     :dependent-types :card
+                                                     :dependent-card-types :question)
                       card-node (first (filter #(= (:id %) (:id dashboard-card)) response))]
                   (is (some? card-node))
                   (is (= {:id (:id dashboard) :name "Test Dashboard"}
@@ -997,8 +997,8 @@
               (let [response (mt/user-http-request :crowberto :get 200 "ee/dependencies/graph/dependents"
                                                    :id (:id base-card)
                                                    :type :card
-                                                   :dependent_types :card
-                                                   :dependent_card_types :question)
+                                                   :dependent-types :card
+                                                   :dependent-card-types :question)
                     card-node (first (filter #(= (:id %) (:id document-card)) response))]
                 (is (some? card-node))
                 (is (= {:id (:id document) :name "Test Document"}
@@ -1047,8 +1047,8 @@
                   response (mt/user-http-request :crowberto :get 200 "ee/dependencies/graph/dependents"
                                                  :id segment-id
                                                  :type "segment"
-                                                 :dependent_types "card"
-                                                 :dependent_card_types "question")]
+                                                 :dependent-types "card"
+                                                 :dependent-card-types "question")]
               (testing "returns card that uses the segment"
                 (is (= 1 (count response)))
                 (is (= (:id card) (:id (first response))))))))))))
@@ -1136,8 +1136,8 @@
                   response (mt/user-http-request :crowberto :get 200 "ee/dependencies/graph/dependents"
                                                  :id measure-id
                                                  :type "measure"
-                                                 :dependent_types "card"
-                                                 :dependent_card_types "question")]
+                                                 :dependent-types "card"
+                                                 :dependent-card-types "question")]
               (testing "returns card that uses the measure"
                 (is (= 1 (count response)))
                 (is (= (:id card) (:id (first response))))))))))))
@@ -1264,7 +1264,7 @@
                                                                                (lib.metadata/card mp)
                                                                                (lib/query mp))}]
           (while (#'dependencies.backfill/backfill-dependencies!))
-          (let [response (mt/user-http-request :crowberto :get 200 "ee/dependencies/graph/unreferenced?types=card&card_types=question&query=unreftest")]
+          (let [response (mt/user-http-request :crowberto :get 200 "ee/dependencies/graph/unreferenced?types=card&card-types=question&query=unreftest")]
             (is (=? {:data [{:id unreffed-card-id
                              :type "card"
                              :data {:name "Unreferenced Card - unreftest"}}]}
@@ -1399,7 +1399,7 @@
                     response))))))))
 
 (deftest ^:sequential unreferenced-card-types-test
-  (testing "GET /api/ee/dependencies/unreferenced - unreferenced models and metrics are filtered by card_types and pagination"
+  (testing "GET /api/ee/dependencies/unreferenced - unreferenced models and metrics are filtered by card-types and pagination"
     (mt/with-premium-features #{:dependencies}
       (let [mp (mt/metadata-provider)
             products (lib.metadata/table mp (mt/id :products))]
@@ -1411,14 +1411,14 @@
                                                              :dataset_query (lib/query mp products)}]
           (while (#'dependencies.backfill/backfill-dependencies!))
           (testing "filtering by model only"
-            (let [response (mt/user-http-request :crowberto :get 200 "ee/dependencies/graph/unreferenced?types=card&card_types=model&query=cardtype")]
+            (let [response (mt/user-http-request :crowberto :get 200 "ee/dependencies/graph/unreferenced?types=card&card-types=model&query=cardtype")]
               (is (=? {:data [{:id unreffed-model-id
                                :type "card"
                                :data {:name "A - Unreferenced Model - cardtype"
                                       :type "model"}}]}
                       response))))
           (testing "filtering by metric only"
-            (let [response (mt/user-http-request :crowberto :get 200 "ee/dependencies/graph/unreferenced?types=card&card_types=metric&query=cardtype")]
+            (let [response (mt/user-http-request :crowberto :get 200 "ee/dependencies/graph/unreferenced?types=card&card-types=metric&query=cardtype")]
               (is (=? {:data [{:id unreffed-metric-id
                                :type "card"
                                :data {:name "B - Unreferenced Metric - cardtype"
@@ -1450,12 +1450,12 @@
                                                            :dataset_query (lib/query mp products)}]
           (while (#'dependencies.backfill/backfill-dependencies!))
           (testing "archived=false (default) excludes archived card"
-            (let [response (mt/user-http-request :crowberto :get 200 "ee/dependencies/graph/unreferenced?types=card&card_types=question&query=archivedtest")
+            (let [response (mt/user-http-request :crowberto :get 200 "ee/dependencies/graph/unreferenced?types=card&card-types=question&query=archivedtest")
                   card-ids (set (map :id (:data response)))]
               (is (contains? card-ids unreffed-card-id))
               (is (not (contains? card-ids archived-card-id)))))
           (testing "archived=true includes archived card"
-            (let [response (mt/user-http-request :crowberto :get 200 "ee/dependencies/graph/unreferenced?types=card&card_types=question&query=archivedtest&archived=true")
+            (let [response (mt/user-http-request :crowberto :get 200 "ee/dependencies/graph/unreferenced?types=card&card-types=question&query=archivedtest&archived=true")
                   card-ids (set (map :id (:data response)))]
               (is (contains? card-ids unreffed-card-id))
               (is (contains? card-ids archived-card-id)))))))))
@@ -1636,7 +1636,7 @@
               (is (contains? measure-ids archived-measure-id)))))))))
 
 (deftest ^:sequential unreferenced-personal-collection-card-test
-  (testing "GET /api/ee/dependencies/graph/unreferenced with include_personal_collections parameter for cards"
+  (testing "GET /api/ee/dependencies/graph/unreferenced with include-personal-collections parameter for cards"
     (mt/with-premium-features #{:dependencies}
       (binding [collection/*allow-deleting-personal-collections* true]
         (let [mp (mt/metadata-provider)
@@ -1658,21 +1658,21 @@
                                                          :type :question
                                                          :dataset_query (lib/query mp products)}]
             (while (#'dependencies.backfill/backfill-dependencies!))
-            (testing "include_personal_collections=false (default) excludes cards in personal collections"
-              (let [response (mt/user-http-request :crowberto :get 200 "ee/dependencies/graph/unreferenced?types=card&card_types=question&query=personalcolltest")
+            (testing "include-personal-collections=false (default) excludes cards in personal collections"
+              (let [response (mt/user-http-request :crowberto :get 200 "ee/dependencies/graph/unreferenced?types=card&card-types=question&query=personalcolltest")
                     card-ids (set (map :id (:data response)))]
                 (is (not (contains? card-ids card-in-personal)))
                 (is (not (contains? card-ids card-in-sub-personal)))
                 (is (contains? card-ids card-regular))))
-            (testing "include_personal_collections=true includes cards in personal collections"
-              (let [response (mt/user-http-request :crowberto :get 200 "ee/dependencies/graph/unreferenced?types=card&card_types=question&query=personalcolltest&include_personal_collections=true")
+            (testing "include-personal-collections=true includes cards in personal collections"
+              (let [response (mt/user-http-request :crowberto :get 200 "ee/dependencies/graph/unreferenced?types=card&card-types=question&query=personalcolltest&include-personal-collections=true")
                     card-ids (set (map :id (:data response)))]
                 (is (contains? card-ids card-in-personal))
                 (is (contains? card-ids card-in-sub-personal))
                 (is (contains? card-ids card-regular))))))))))
 
 (deftest ^:sequential unreferenced-personal-collection-dashboard-test
-  (testing "GET /api/ee/dependencies/graph/unreferenced with include_personal_collections parameter for dashboards"
+  (testing "GET /api/ee/dependencies/graph/unreferenced with include-personal-collections parameter for dashboards"
     (mt/with-premium-features #{:dependencies}
       (binding [collection/*allow-deleting-personal-collections* true]
         (mt/with-temp [:model/User {user-id :id} {}
@@ -1682,13 +1682,13 @@
                                                                 :collection_id personal-coll-id}
                        :model/Dashboard {dash-regular :id} {:name "Dashboard Regular - personalcolltest"}]
           (while (#'dependencies.backfill/backfill-dependencies!))
-          (testing "include_personal_collections=false (default) excludes dashboards in personal collections"
+          (testing "include-personal-collections=false (default) excludes dashboards in personal collections"
             (let [response (mt/user-http-request :crowberto :get 200 "ee/dependencies/graph/unreferenced?types=dashboard&query=personalcolltest")
                   dashboard-ids (set (map :id (:data response)))]
               (is (not (contains? dashboard-ids dash-in-personal)))
               (is (contains? dashboard-ids dash-regular))))
-          (testing "include_personal_collections=true includes dashboards in personal collections"
-            (let [response (mt/user-http-request :crowberto :get 200 "ee/dependencies/graph/unreferenced?types=dashboard&query=personalcolltest&include_personal_collections=true")
+          (testing "include-personal-collections=true includes dashboards in personal collections"
+            (let [response (mt/user-http-request :crowberto :get 200 "ee/dependencies/graph/unreferenced?types=dashboard&query=personalcolltest&include-personal-collections=true")
                   dashboard-ids (set (map :id (:data response)))]
               (is (contains? dashboard-ids dash-in-personal))
               (is (contains? dashboard-ids dash-regular)))))))))
@@ -1710,8 +1710,8 @@
           (let [response (mt/user-http-request :crowberto :get 200
                                                "ee/dependencies/graph/unreferenced"
                                                :query "sorttest"
-                                               :sort_column :name
-                                               :sort_direction sort-direction)
+                                               :sort-column :name
+                                               :sort-direction sort-direction)
                 names (mapv #(get-in % [:data :name]) (:data response))]
             (is (= (cond-> ["A Card sorttest"
                             "B Table sorttest"
@@ -1775,8 +1775,8 @@
           (let [response (mt/user-http-request :crowberto :get 200
                                                "ee/dependencies/graph/unreferenced"
                                                :query "sorttest"
-                                               :sort_column :location
-                                               :sort_direction sort-direction)
+                                               :sort-column :location
+                                               :sort-direction sort-direction)
                 names (mapv #(get-in % [:data :name]) (:data response))]
             (is (= (cond-> ["Table with Database sorttest"
                             "Segment with Table 1 sorttest"
@@ -1805,8 +1805,8 @@
           (let [response (mt/user-http-request :crowberto :get 200
                                                "ee/dependencies/graph/unreferenced"
                                                :query "sorttest"
-                                               :sort_column :location
-                                               :sort_direction sort-direction)
+                                               :sort-column :location
+                                               :sort-direction sort-direction)
                 names (mapv #(get-in % [:data :name]) (:data response))]
             (is (= (cond-> ["Collection 1 sorttest"
                             "Our analytics sorttest"
@@ -1929,7 +1929,7 @@
               (is (= 1 (count model-ids)) "Model should appear exactly once even with multiple broken dependents"))))))))
 
 (deftest ^:sequential breaking-entities-personal-collection-card-test
-  (testing "GET /api/ee/dependencies/graph/breaking with include_personal_collections parameter"
+  (testing "GET /api/ee/dependencies/graph/breaking with include-personal-collections parameter"
     (mt/with-premium-features #{:dependencies}
       (binding [collection/*allow-deleting-personal-collections* true]
         (mt/with-temp [:model/User {user-id :id} {}
@@ -1955,13 +1955,13 @@
                 (while (#'dependencies.backfill/backfill-dependencies!))
                 (run-analysis-for-card! (:id dependent-card-1))
                 (run-analysis-for-card! (:id dependent-card-2)))
-              (testing "include_personal_collections=false (default) excludes source cards in personal collections"
+              (testing "include-personal-collections=false (default) excludes source cards in personal collections"
                 (let [response (mt/user-http-request :crowberto :get 200 "ee/dependencies/graph/breaking?types=card&query=personalcollbrokentest")
                       card-ids (set (map :id (:data response)))]
                   (is (not (contains? card-ids (:id model-in-personal))))
                   (is (contains? card-ids (:id model-regular)))))
-              (testing "include_personal_collections=true includes source cards in personal collections"
-                (let [response (mt/user-http-request :crowberto :get 200 "ee/dependencies/graph/breaking?types=card&query=personalcollbrokentest&include_personal_collections=true")
+              (testing "include-personal-collections=true includes source cards in personal collections"
+                (let [response (mt/user-http-request :crowberto :get 200 "ee/dependencies/graph/breaking?types=card&query=personalcollbrokentest&include-personal-collections=true")
                       card-ids (set (map :id (:data response)))]
                   (is (contains? card-ids (:id model-in-personal)))
                   (is (contains? card-ids (:id model-regular))))))))))))
@@ -2026,8 +2026,8 @@
                                                    "ee/dependencies/graph/breaking"
                                                    :types "card"
                                                    :query "sortnametest"
-                                                   :sort_column :name
-                                                   :sort_direction sort-direction)
+                                                   :sort-column :name
+                                                   :sort-direction sort-direction)
                     names (mapv #(get-in % [:data :name]) (:data response))]
                 (is (= (cond-> ["A Card sortnametest"
                                 "B Card sortnametest"]
@@ -2063,8 +2063,8 @@
                                                    "ee/dependencies/graph/breaking"
                                                    :types "card"
                                                    :query "sortloctest"
-                                                   :sort_column :location
-                                                   :sort_direction sort-direction)
+                                                   :sort-column :location
+                                                   :sort-direction sort-direction)
                     names (mapv #(get-in % [:data :name]) (:data response))]
                 (is (= (cond-> ["Card with Collection 2 sortloctest"
                                 "Card with Collection 1 sortloctest"]
@@ -2101,8 +2101,8 @@
                                                    "ee/dependencies/graph/breaking"
                                                    :types "card"
                                                    :query "sortdepstest"
-                                                   :sort_column :dependents-with-errors
-                                                   :sort_direction sort-direction)
+                                                   :sort-column :dependents-with-errors
+                                                   :sort-direction sort-direction)
                     names (mapv #(get-in % [:data :name]) (:data response))]
                 (is (= (cond-> ["Card 2 sortdepstest"
                                 "Card 1 sortdepstest"]
@@ -2140,8 +2140,8 @@
                                                    "ee/dependencies/graph/breaking"
                                                    :types "card"
                                                    :query "sorterrorstest"
-                                                   :sort_column :dependents-with-errors
-                                                   :sort_direction sort-direction)
+                                                   :sort-column :dependents-with-errors
+                                                   :sort-direction sort-direction)
                     names (mapv #(get-in % [:data :name]) (:data response))]
                 ;; Card 2 has 1 broken dependent, Card 1 has 2 broken dependents
                 ;; Ascending: fewer errors first, Descending: more errors first
@@ -2195,7 +2195,7 @@
                 (get-dependents base-card-id :query "SpecialCollection")))))))
 
 (deftest ^:sequential dependents-personal-collections-test
-  (testing "GET /api/ee/dependencies/graph/dependents with include_personal_collections parameter"
+  (testing "GET /api/ee/dependencies/graph/dependents with include-personal-collections parameter"
     (binding [collection/*allow-deleting-personal-collections* true]
       (with-dependents-test! [{user-id :id :as user} {base-card-id :id :as base-card}]
         (mt/with-temp [:model/Collection {personal-coll-id :id} {:personal_owner_id user-id}
@@ -2206,8 +2206,8 @@
           (testing "default excludes personal collections"
             (is (=? [{:data {:name "Regular"}}]
                     (get-dependents base-card-id))))
-          (testing "include_personal_collections=true includes them"
-            (is (= 3 (count (get-dependents base-card-id :include_personal_collections true))))))))))
+          (testing "include-personal-collections=true includes them"
+            (is (= 3 (count (get-dependents base-card-id :include-personal-collections true))))))))))
 
 (deftest ^:sequential dependents-sort-by-name-test
   (testing "GET /api/ee/dependencies/graph/dependents - sorting by name"
@@ -2216,9 +2216,9 @@
       (create-dependent! base-card user "A Card")
       (create-dependent! base-card user "B Card")
       (is (=? [{:data {:name "A Card"}} {:data {:name "B Card"}} {:data {:name "C Card"}}]
-              (get-dependents base-card-id :sort_column :name :sort_direction :asc)))
+              (get-dependents base-card-id :sort-column :name :sort-direction :asc)))
       (is (=? [{:data {:name "C Card"}} {:data {:name "B Card"}} {:data {:name "A Card"}}]
-              (get-dependents base-card-id :sort_column :name :sort_direction :desc))))))
+              (get-dependents base-card-id :sort-column :name :sort-direction :desc))))))
 
 (deftest ^:sequential dependents-sort-by-location-test
   (testing "GET /api/ee/dependencies/graph/dependents - sorting by location"
@@ -2230,9 +2230,9 @@
         (create-dependent! base-card user "In A" :collection_id coll-a)
         (create-dependent! base-card user "In B" :collection_id coll-b)
         (is (=? [{:data {:name "In A"}} {:data {:name "In B"}} {:data {:name "In C"}}]
-                (get-dependents base-card-id :sort_column :location :sort_direction :asc)))
+                (get-dependents base-card-id :sort-column :location :sort-direction :asc)))
         (is (=? [{:data {:name "In C"}} {:data {:name "In B"}} {:data {:name "In A"}}]
-                (get-dependents base-card-id :sort_column :location :sort_direction :desc)))))))
+                (get-dependents base-card-id :sort-column :location :sort-direction :desc)))))))
 
 (deftest ^:sequential dependents-sort-by-view-count-test
   (testing "GET /api/ee/dependencies/graph/dependents - sorting by view-count"
@@ -2244,9 +2244,9 @@
         (t2/update! :model/Card mid-id {:view_count 50})
         (t2/update! :model/Card high-id {:view_count 100})
         (is (=? [{:data {:view_count 10}} {:data {:view_count 50}} {:data {:view_count 100}}]
-                (get-dependents base-card-id :sort_column :view-count :sort_direction :asc)))
+                (get-dependents base-card-id :sort-column :view-count :sort-direction :asc)))
         (is (=? [{:data {:view_count 100}} {:data {:view_count 50}} {:data {:view_count 10}}]
-                (get-dependents base-card-id :sort_column :view-count :sort_direction :desc)))))))
+                (get-dependents base-card-id :sort-column :view-count :sort-direction :desc)))))))
 
 (deftest ^:sequential dependents-sort-view-count-mixed-types-test
   (testing "GET /api/ee/dependencies/graph/dependents - view-count sorting with mixed entity types"
@@ -2261,9 +2261,9 @@
             (t2/update! :model/Card low-id {:view_count 10})
             (t2/update! :model/Card high-id {:view_count 100})
             (is (=? [{:data {:view_count 10}} {:data {:view_count 100}} {:data {:view_count 200}}]
-                    (get-dependents base-card-id :sort_column :view-count :sort_direction :asc)))
+                    (get-dependents base-card-id :sort-column :view-count :sort-direction :asc)))
             (is (=? [{:data {:view_count 200}} {:data {:view_count 100}} {:data {:view_count 10}}]
-                    (get-dependents base-card-id :sort_column :view-count :sort_direction :desc)))))))))
+                    (get-dependents base-card-id :sort-column :view-count :sort-direction :desc)))))))))
 
 (deftest ^:sequential dependents-query-and-sort-combined-test
   (testing "GET /api/ee/dependencies/graph/dependents with query and sort together"
@@ -2273,7 +2273,7 @@
       (create-dependent! base-card user "B Match")
       (create-dependent! base-card user "Should not appear")
       (is (=? [{:data {:name "A Match"}} {:data {:name "B Match"}} {:data {:name "C Match"}}]
-              (get-dependents base-card-id :query "Match" :sort_column :name :sort_direction :asc))))))
+              (get-dependents base-card-id :query "Match" :sort-column :name :sort-direction :asc))))))
 
 (deftest ^:sequential node-errors-filtering-test
   (testing "node-errors filters by source visibility"
@@ -2375,16 +2375,16 @@
                                                  :query "errvistest"
                                                  :offset 0
                                                  :limit 1
-                                                 :sort_column "name"
-                                                 :sort_direction "asc")
+                                                 :sort-column "name"
+                                                 :sort-direction "asc")
                     page-2 (mt/user-http-request :crowberto :get 200
                                                  "ee/dependencies/graph/breaking"
                                                  :types "card"
                                                  :query "errvistest"
                                                  :offset 1
                                                  :limit 1
-                                                 :sort_column "name"
-                                                 :sort_direction "asc")]
+                                                 :sort-column "name"
+                                                 :sort-direction "asc")]
                 (testing "total count reflects all breaking entities"
                   (is (= 2 (:total page-1)))
                   (is (= 2 (:total page-2))))
@@ -2419,14 +2419,14 @@
                                                        "ee/dependencies/graph/breaking"
                                                        :types "card"
                                                        :query "errvistest"
-                                                       :sort_column "dependents-errors"
-                                                       :sort_direction "asc")
+                                                       :sort-column "dependents-errors"
+                                                       :sort-direction "asc")
                     desc-response (mt/user-http-request :crowberto :get 200
                                                         "ee/dependencies/graph/breaking"
                                                         :types "card"
                                                         :query "errvistest"
-                                                        :sort_column "dependents-errors"
-                                                        :sort_direction "desc")]
+                                                        :sort-column "dependents-errors"
+                                                        :sort-direction "desc")]
                 (testing "ascending order puts fewer errors first"
                   (is (= (:id model-card-a) (-> asc-response :data first :id))))
                 (testing "descending order puts more errors first"
@@ -2491,8 +2491,8 @@
                                                      "ee/dependencies/graph/breaking"
                                                      :types "card"
                                                      :query "sortviserr"
-                                                     :sort_column "dependents-errors"
-                                                     :sort_direction "asc")]
+                                                     :sort-column "dependents-errors"
+                                                     :sort-direction "asc")]
               (testing "ascending order should put A first (1 visible error < 2 visible errors)"
                 ;; BUG: Without fix, this fails because sort counts total errors (A=3, B=2)
                 ;; so B comes first. With fix, sort counts visible errors (A=1, B=2) so A comes first.
@@ -2512,8 +2512,8 @@
                                                :query "unreftest"
                                                :offset 0
                                                :limit 2
-                                               :sort_column "name"
-                                               :sort_direction "asc")]
+                                               :sort-column "name"
+                                               :sort-direction "asc")]
             (is (=? {:data   [{:id card2-id} {:id card3-id}]
                      :total  2
                      :offset 0
@@ -2539,8 +2539,8 @@
                                                "ee/dependencies/graph/unreferenced"
                                                :types "card"
                                                :query "unreftest"
-                                               :sort_column "name"
-                                               :sort_direction "asc")]
+                                               :sort-column "name"
+                                               :sort-direction "asc")]
             (is (=? {:data  [{:id card1-id}, {:id card4-id}]
                      :total 2}
                     response))))))))
@@ -2649,13 +2649,13 @@
             (testing "sort by name ascending"
               (let [response (mt/user-http-request :crowberto :get 200
                                                    (str "ee/dependencies/graph/broken?id=" (:id model-card)
-                                                        "&type=card&sort_column=name&sort_direction=asc"))
+                                                        "&type=card&sort-column=name&sort-direction=asc"))
                     names (mapv #(get-in % [:data :name]) response)]
                 (is (= ["A Dependent - countsorttest" "B Dependent - countsorttest"] names))))
             (testing "sort by name descending"
               (let [response (mt/user-http-request :crowberto :get 200
                                                    (str "ee/dependencies/graph/broken?id=" (:id model-card)
-                                                        "&type=card&sort_column=name&sort_direction=desc"))
+                                                        "&type=card&sort-column=name&sort-direction=desc"))
                     names (mapv #(get-in % [:data :name]) response)]
                 (is (= ["B Dependent - countsorttest" "A Dependent - countsorttest"] names))))))))))
 
@@ -2732,7 +2732,7 @@
                   "Should return only model-2 (direct dependent), not card (transitive)"))))))))
 
 (deftest ^:synchronized broken-filter-by-dependent-types-test
-  (testing "GET /api/ee/dependencies/graph/broken - filters by dependent_types"
+  (testing "GET /api/ee/dependencies/graph/broken - filters by dependent-types"
     (mt/with-premium-features #{:dependencies}
       (mt/with-temp [:model/User user {:email "test@test.com"}]
         (mt/with-model-cleanup [:model/Card :model/Dependency :model/AnalysisFinding :model/AnalysisFindingError]
@@ -2749,16 +2749,16 @@
             (testing "filtering by card type returns the dependent card"
               (let [response (mt/user-http-request :crowberto :get 200
                                                    (str "ee/dependencies/graph/broken?id=" (:id model-card)
-                                                        "&type=card&dependent_types=card&dependent_card_types=question"))]
+                                                        "&type=card&dependent-types=card&dependent-card-types=question"))]
                 (is (= [(:id dependent-card)] (mapv :id response)))))
             (testing "filtering by dashboard returns empty (no dashboards in this test)"
               (let [response (mt/user-http-request :crowberto :get 200
                                                    (str "ee/dependencies/graph/broken?id=" (:id model-card)
-                                                        "&type=card&dependent_types=dashboard"))]
+                                                        "&type=card&dependent-types=dashboard"))]
                 (is (empty? response))))))))))
 
 (deftest ^:synchronized broken-personal-collections-test
-  (testing "GET /api/ee/dependencies/graph/broken with include_personal_collections parameter"
+  (testing "GET /api/ee/dependencies/graph/broken with include-personal-collections parameter"
     (mt/with-premium-features #{:dependencies}
       (binding [collection/*allow-deleting-personal-collections* true]
         (mt/with-temp [:model/User {user-id :id} {}
@@ -2782,16 +2782,16 @@
                 (while (#'dependencies.backfill/backfill-dependencies!))
                 (run-analysis-for-card! (:id dependent-in-personal))
                 (run-analysis-for-card! (:id dependent-regular)))
-              (testing "include_personal_collections=false (default) excludes broken dependents in personal collections"
+              (testing "include-personal-collections=false (default) excludes broken dependents in personal collections"
                 (let [response (mt/user-http-request :crowberto :get 200
                                                      (str "ee/dependencies/graph/broken?id=" (:id model-card) "&type=card"))
                       card-ids (set (map :id response))]
                   (is (not (contains? card-ids (:id dependent-in-personal))))
                   (is (contains? card-ids (:id dependent-regular)))))
-              (testing "include_personal_collections=true includes broken dependents in personal collections"
+              (testing "include-personal-collections=true includes broken dependents in personal collections"
                 (let [response (mt/user-http-request :crowberto :get 200
                                                      (str "ee/dependencies/graph/broken?id=" (:id model-card)
-                                                          "&type=card&include_personal_collections=true"))
+                                                          "&type=card&include-personal-collections=true"))
                       card-ids (set (map :id response))]
                   (is (contains? card-ids (:id dependent-in-personal)))
                   (is (contains? card-ids (:id dependent-regular))))))))))))
@@ -2808,7 +2808,7 @@
           (let [response (mt/user-http-request :crowberto :get 200
                                                "ee/dependencies/graph/unreferenced"
                                                :types "table" :query "ownertest"
-                                               :sort_column "name" :sort_direction "asc")]
+                                               :sort-column "name" :sort-direction "asc")]
             (is (=? {:data [{:id   table2-id
                              :type "table"
                              :data {:name  "Email Owned Table - ownertest"
@@ -2842,7 +2842,7 @@
             (let [response (mt/user-http-request :crowberto :get 200
                                                  "ee/dependencies/graph/unreferenced"
                                                  :types "transform" :query "ownertest"
-                                                 :sort_column "name" :sort_direction "asc")]
+                                                 :sort-column "name" :sort-direction "asc")]
               (is (=? {:data [{:id   transform2-id
                                :type "transform"
                                :data {:name  "Email Owned Transform - ownertest"

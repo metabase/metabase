@@ -9,7 +9,9 @@
   (:refer-clojure :exclude [mapv select-keys some update-keys every? empty? not-empty get-in #?(:clj for)])
   (:require
    #?@(:clj
-       ([metabase.config.core :as config]))
+       ([metabase.config.core :as config]
+        [metabase.lib.binning :as lib.binning]
+        [metabase.lib.temporal-bucket :as lib.temporal-bucket]))
    [clojure.set :as set]
    [clojure.string :as str]
    [medley.core :as m]
@@ -22,11 +24,12 @@
    [metabase.lib.field.util :as lib.field.util]
    [metabase.lib.join :as lib.join]
    [metabase.lib.join.util :as lib.join.util]
-
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
+   [metabase.lib.normalize :as lib.normalize]
    [metabase.lib.options :as lib.options]
    [metabase.lib.ref :as lib.ref]
    [metabase.lib.schema :as lib.schema]
+   [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.lib.util :as lib.util]
    [metabase.lib.util.match :as lib.util.match]
@@ -41,9 +44,14 @@
   ;; came from) and then have the `annotate` middleware convert them to something else for QP results purposes. Then
   ;; we can 'ban' stuff like `:source-alias` and `:source` within Lib itself. See #59772 for some experimental work
   ;; there. (See QUE2-361)
-  [:map
-   [:source    {:optional true} ::lib.schema.metadata/column.legacy-source]
-   [:field-ref {:optional true} ::mbql.s/Reference]])
+  [:and
+   [:map
+    [::source    {:optional true} ::lib.schema.metadata/column.legacy-source]
+    [::field-ref {:optional true} ::mbql.s/Reference]]
+   (lib.schema.common/disallowed-keys
+    {:source       "Use ::source instead of :source"
+     :field-ref    "Use ::field-ref instead of :field-ref"
+     :source-alias ":source-alias is deprecated as of #69314"})])
 
 (mr/def ::kebab-cased-map
   [:and
@@ -164,10 +172,9 @@
                                                            (log/error e "Column metadata has invalid :lib/expression-name (this was probably incorrectly propagated from a previous stage) (QUE-1342)")
                                                            (log/debugf "In query:\n%s" (u/pprint-to-str query))
                                                            nil))]
-                                         (lib.util.match/match-one expr
-                                           :convert-timezone
-                                           (let [[_convert-timezone _opts _expr source-tz] &match]
-                                             source-tz)))))]
+                                         (lib.util.match/match-lite expr
+                                           [:convert-timezone _opts _expr source-tz & _]
+                                           source-tz))))]
             (cond-> col
               converted-timezone (assoc :converted-timezone converted-timezone))))
         cols))
@@ -209,12 +216,12 @@
                                 [:merge
                                  ::kebab-cased-map
                                  [:map
-                                  [:source ::lib.schema.metadata/column.legacy-source]]]]
+                                  [::source ::lib.schema.metadata/column.legacy-source]]]]
   "Add `:source` to result columns. Needed for legacy FE code. See
   https://metaboat.slack.com/archives/C0645JP1W81/p1749064861598669?thread_ts=1748958872.704799&cid=C0645JP1W81"
   [cols :- [:sequential ::kebab-cased-map]]
   (mapv (fn [col]
-          (assoc col :source (legacy-source col)))
+          (assoc col ::source (legacy-source col)))
         cols))
 
 (defn- remove-namespaced-options
@@ -291,7 +298,7 @@
                                                                  {:metabase.lib.join/join-alias previous-join-alias, :lib/source :source/joins})))
                                                             lib.ref/ref)]
               (cond
-                ;; if original ref in the query used an ID then `:field-ref` should as well for historic
+                ;; if original ref in the query used an ID then `::field-ref` should as well for historic
                 ;; reasons.
                 (and (or (= (:lib/original-ref-style-for-result-metadata-purposes col) :original-ref-style/id)
                          ;; for historic reasons implicit fields should also come back with ID refs...
@@ -320,16 +327,16 @@
 ;; settings, which use them as keys. Since ambiguous refs have never worked correctly it is ok to return
 ;; 'modern' refs instead.
 (defn- deduplicate-field-refs [cols]
-  (let [duplicate-refs (->> (frequencies (map :field-ref cols))
+  (let [duplicate-refs (->> (frequencies (map ::field-ref cols))
                             (m/filter-vals #(> % 1))
                             keys
                             set)]
     (cond->> cols
       (seq duplicate-refs) (mapv (fn [col]
                                    (cond-> col
-                                     (duplicate-refs (:field-ref col))
-                                     (update :field-ref (fn [[tag _id-or-name opts]]
-                                                          [tag (:lib/deduplicated-name col) (assoc opts :base-type (:base-type col))]))))))))
+                                     (duplicate-refs (::field-ref col))
+                                     (update ::field-ref (fn [[tag _id-or-name opts]]
+                                                           [tag (:lib/deduplicated-name col) (assoc opts :base-type (:base-type col))]))))))))
 
 (mu/defn- add-legacy-field-refs :- [:sequential ::kebab-cased-map]
   "Add legacy `:field_ref` to QP results metadata which is still used in a single place in the FE -- see
@@ -340,7 +347,7 @@
     (let [cols (mapv (fn [col]
                        (let [field-ref (super-broken-legacy-field-ref query col)]
                          (cond-> col
-                           field-ref (assoc :field-ref field-ref))))
+                           field-ref (assoc ::field-ref field-ref))))
                      cols)]
       (deduplicate-field-refs cols))))
 
@@ -463,10 +470,10 @@
                                      (apply distinct? (map :name cols))))]
                               ;; QUE-1623
                               [:fn
-                               {:error/message "columns should have unique :field-ref(s)"}
+                               {:error/message "columns should have unique ::field-ref(s)"}
                                (fn [cols]
                                  (or (empty? cols)
-                                     (apply distinct? (map :field-ref cols))))]]
+                                     (apply distinct? (map ::field-ref cols))))]]
   "Return metadata for columns returned by a pMBQL `query`.
 
   `initial-cols` are (optionally) the initial minimal metadata columns as returned by the driver (usually just column
@@ -481,3 +488,18 @@
    (->> initial-cols
         (add-extra-metadata query)
         cols->legacy-metadata)))
+
+(defn normalize-result-metadata-column
+  "Normalizes either a modern MBQL 5 `::lib.schema.metadata/column` or legacy `:result_metadata` column as it comes
+  out of AppDB. This is called by [[metabase.models.interface/result-metadata-out]]."
+  [col]
+  #?(:clj  (if (:lib/type col)
+             (lib.normalize/normalize ::lib.schema.metadata/column col)
+             ;; legacy usages -- do not use these going forward
+             #_{:clj-kondo/ignore [:deprecated-var]}
+             (-> col
+                 (->> (lib.normalize/normalize :metabase.query-processor.schema/result-metadata.column))
+                 ;; This is necessary, because in the wild, there may be cards created prior to this change.
+                 lib.temporal-bucket/ensure-temporal-unit-in-display-name
+                 lib.binning/ensure-binning-in-display-name))
+     :cljs (lib.normalize/normalize ::lib.schema.metadata/column col)))

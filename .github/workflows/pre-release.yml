@@ -30,6 +30,7 @@ jobs:
     outputs:
       run_mode: ${{ fromJson(steps.config.outputs.result).runMode }}
       dev_server: ${{ fromJson(steps.config.outputs.result).metastoreDevServer }}
+      package_manager: ${{ fromJson(steps.config.outputs.result).packageManager }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -50,13 +51,17 @@ jobs:
             // with v55 and later we use enterprise tokens that mirror actual Metabase plans
             const MULTIPLE_TEST_TOKEN_THRESHOLD = 55;
 
+            // Versions before v59 used yarn, v59 and later use bun
+            const BUN_PACKAGE_MANAGER_THRESHOLD = 59;
+
             const version = '${{ inputs.version }}';
             const majorVersion = Number(getMajorVersion(version));
             const oldTestToken = majorVersion < MULTIPLE_TEST_TOKEN_THRESHOLD;
 
             return ({
               runMode: oldTestToken ? 'prod' : 'e2e',
-              metastoreDevServer: oldTestToken ? '' : '${{ vars.METASTORE_DEV_SERVER_URL }}'
+              metastoreDevServer: oldTestToken ? '' : '${{ vars.METASTORE_DEV_SERVER_URL }}',
+              packageManager: majorVersion < BUN_PACKAGE_MANAGER_THRESHOLD ? 'yarn' : 'bun',
             });
 
   release-artifact:
@@ -173,7 +178,7 @@ jobs:
       - name: Prepare back-end environment
         uses: ./.github/actions/prepare-backend
       - name: Compile CLJS
-        run: bun run build-pure:cljs
+        run: ${{ needs.test-mode-config.outputs.package_manager }} run build-pure:cljs
       - name: Prepare Cypress environment
         id: cypress-prep
         uses: ./.github/actions/prepare-cypress

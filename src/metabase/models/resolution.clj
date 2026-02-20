@@ -118,6 +118,7 @@
     :model/Workspace                         metabase-enterprise.workspaces.models.workspace
     :model/WorkspaceInput                    metabase-enterprise.workspaces.models.workspace-input
     :model/WorkspaceInputExternal            metabase-enterprise.workspaces.models.workspace-input-external
+    :model/WorkspaceInputTransform           metabase-enterprise.workspaces.models.workspace-input-transform
     :model/WorkspaceLog                      metabase-enterprise.workspaces.models.workspace-log
     :model/WorkspaceMerge                    metabase-enterprise.workspaces.models.workspace-merge
     :model/WorkspaceMergeTransform           metabase-enterprise.workspaces.models.workspace-merge-transform

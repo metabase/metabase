@@ -21,7 +21,7 @@ If you're looking for date, time, number, or currency formatting, see [Formattin
 
 Hit cmd/ctrl + k to bring up the command palette and search for "Branding" and click on Settings -> Branding.
 
-You can also click on the **gear** icon at the bottom of the navigation sidebar and click through **Admin settings** > **Settings** > **Appearance**.
+You can also click the **grid** icon at the bottom of the navigation sidebar and click through **Admin** > **Settings** > **Appearance**.
 
 Appearance settings are split across different tabs:
 
@@ -123,7 +123,7 @@ This setting affects all links in the product experience that point to Metabase.
 
 ## Help link in the settings menu
 
-The Settings menu (the "gear" menu in the upper right of your Metabase) includes a **Help** option that links to a [Metabase help page](https://www.metabase.com/help/) by default. You can change this menu Help item by selecting one of the following options:
+The Settings menu (the "grid" menu in the upper right of your Metabase) includes a **Help** option that links to a [Metabase help page](https://www.metabase.com/help/) by default. You can change this menu Help item by selecting one of the following options:
 
 - Link to [Metabase help](https://www.metabase.com/help/) (default)
 - Hide it (the Settings menu won't display the Help option at all).
