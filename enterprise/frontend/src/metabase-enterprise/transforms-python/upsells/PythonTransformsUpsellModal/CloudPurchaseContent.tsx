@@ -3,19 +3,25 @@ import { useCallback } from "react";
 import { t } from "ttag";
 
 import { trackUpsellClicked } from "metabase/admin/upsells/components/analytics";
+import type { BillingPeriod } from "metabase/data-studio/upsells/types";
+import * as Urls from "metabase/lib/urls";
 import { useMetadataToasts } from "metabase/metadata/hooks";
-import type { CloudPurchaseContentProps } from "metabase/plugins/oss/transforms";
 import { Button, Card, Divider, Flex, Group, Stack, Text } from "metabase/ui";
 import { usePurchaseCloudAddOnMutation } from "metabase-enterprise/api";
-
-import { TransformsSettingUpModal } from "./TransformsSettingUpModal";
+import { TransformsSettingUpModal } from "metabase-enterprise/transforms/upsells/components/TransformsSettingUpModal";
 
 const CAMPAIGN = "data-studio-python-transforms";
 const LOCATION = "data-studio-transforms";
 
+type CloudPurchaseContentProps = {
+  billingPeriod: BillingPeriod;
+  handleModalClose: VoidFunction;
+  isTrialFlow: boolean;
+  pythonPrice: number;
+};
+
 export const CloudPurchaseContent = (props: CloudPurchaseContentProps) => {
-  const { billingPeriod, handleModalClose, isTrialFlow, onError, pythonPrice } =
-    props;
+  const { billingPeriod, handleModalClose, isTrialFlow, pythonPrice } = props;
   const [purchaseCloudAddOn, { isLoading: isPurchasing }] =
     usePurchaseCloudAddOnMutation();
   const [settingUpModalOpened, settingUpModalHandlers] = useDisclosure(false);
@@ -30,16 +36,15 @@ export const CloudPurchaseContent = (props: CloudPurchaseContentProps) => {
       await purchaseCloudAddOn({
         product_type: "transforms-advanced",
       }).unwrap();
+      window.location.href = Urls.transformList(); // On success, do a full-page redirect to transforms list
     } catch {
       sendErrorToast(
         t`It looks like something went wrong. Please refresh the page and try again.`,
       );
       settingUpModalHandlers.close();
-      onError();
     }
   }, [
     handleModalClose,
-    onError,
     purchaseCloudAddOn,
     sendErrorToast,
     settingUpModalHandlers,

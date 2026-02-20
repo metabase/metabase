@@ -1,18 +1,8 @@
-import userEvent from "@testing-library/user-event";
-
 import { screen } from "__support__/ui";
 
 import { setup } from "./setup";
 
-describe("PythonTransformsUpsellModal - EE", () => {
-  beforeEach(() => {
-    jest.clearAllMocks();
-  });
-
-  afterEach(() => {
-    jest.restoreAllMocks();
-  });
-
+describe("PythonTransformsUpsellModal", () => {
   it("renders single-column layout with admin message when hosted and user is not a store user", () => {
     setup({ isHosted: true, isStoreUser: false, isEnterprise: true });
 
@@ -39,7 +29,7 @@ describe("PythonTransformsUpsellModal - EE", () => {
     setup({ isHosted: true, isStoreUser: true, isEnterprise: true });
 
     expect(
-      screen.getByRole("heading", {
+      await screen.findByRole("heading", {
         name: /Add advanced transforms to your plan/,
       }),
     ).toBeInTheDocument();
@@ -50,19 +40,19 @@ describe("PythonTransformsUpsellModal - EE", () => {
     ).toBeInTheDocument();
   });
 
-  it("shows upsell CTA when instance is self-hosted and clicking it closes modal", async () => {
-    const { onClose } = setup({
+  it("shows upsell store link when instance is self-hosted", async () => {
+    setup({
       isHosted: false,
       isStoreUser: true,
       isEnterprise: true,
     });
 
-    await screen.findByRole("button", { name: /Get Python transforms/ });
-
-    await userEvent.click(
-      screen.getByRole("button", { name: /Get Python transforms/ }),
+    const link = await screen.findByRole("link", {
+      name: /Go to your store account to purchase/,
+    });
+    expect(link).toHaveAttribute(
+      "href",
+      "https://store.staging.metabase.com/account/transforms",
     );
-
-    expect(onClose).toHaveBeenCalled();
   });
 });
