@@ -13,6 +13,7 @@ type ModalSidebarProps = {
   sourceInfo: EntityInfo | undefined;
   targetInfo: EntityInfo | undefined;
   dependentsCount: number;
+  canReplace: boolean;
   onSourceChange: (sourceEntry: ReplaceSourceEntry) => void;
   onTargetChange: (targetEntry: ReplaceSourceEntry) => void;
   onSubmit: () => void;
@@ -23,6 +24,7 @@ export function ModalSidebar({
   sourceInfo,
   targetInfo,
   dependentsCount,
+  canReplace,
   onSourceChange,
   onTargetChange,
   onSubmit,
@@ -54,16 +56,16 @@ export function ModalSidebar({
       </Stack>
       <Group mt="auto" justify="flex-end" wrap="nowrap">
         <Button onClick={onCancel}>{t`Cancel`}</Button>
-        <Button variant="filled" onClick={onSubmit}>
-          {getSubmitLabel(dependentsCount)}
+        <Button variant="filled" disabled={!canReplace} onClick={onSubmit}>
+          {getSubmitLabel(dependentsCount, canReplace)}
         </Button>
       </Group>
     </Stack>
   );
 }
 
-function getSubmitLabel(dependentsCount: number) {
-  if (dependentsCount === 0) {
+function getSubmitLabel(dependentsCount: number, canReplace: boolean) {
+  if (dependentsCount === 0 || !canReplace) {
     return t`Replace data source`;
   }
   return ngettext(

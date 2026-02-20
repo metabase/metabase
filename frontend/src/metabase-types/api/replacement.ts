@@ -56,7 +56,7 @@ export type ReplaceSourceRequest = {
   target_entity_type: ReplaceSourceEntityType;
 };
 
-export type CheckReplaceSourceResponse = {
+export type CheckReplaceSourceInfo = {
   success: boolean;
   column_mappings: ReplaceSourceColumnMapping[];
 };

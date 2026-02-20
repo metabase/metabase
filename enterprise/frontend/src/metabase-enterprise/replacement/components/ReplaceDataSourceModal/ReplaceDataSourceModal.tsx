@@ -66,6 +66,8 @@ function ModalContent({
 
   const sourceInfo = getEntityInfo(sourceEntry, sourceTable, sourceCard);
   const targetInfo = getEntityInfo(targetEntry, targetTable, targetCard);
+  const columnMappings = checkInfo?.column_mappings ?? [];
+  const canReplace = checkInfo?.success ?? false;
 
   const handleSubmit = () => {};
 
@@ -75,6 +77,7 @@ function ModalContent({
         sourceInfo={sourceInfo}
         targetInfo={targetInfo}
         dependentsCount={dependents.length}
+        canReplace={canReplace}
         onSourceChange={setSourceEntry}
         onTargetChange={setTargetEntry}
         onSubmit={handleSubmit}
@@ -83,7 +86,7 @@ function ModalContent({
       <ModalBody
         sourceInfo={sourceInfo}
         targetInfo={targetInfo}
-        columnMappings={checkInfo?.column_mappings ?? []}
+        columnMappings={columnMappings}
       />
     </Flex>
   );
