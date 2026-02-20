@@ -3,10 +3,6 @@ import { useCallback, useMemo } from "react";
 import { DimensionPillBar } from "metabase/common/components/DimensionPillBar";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { getObjectKeys } from "metabase/lib/objects";
-import type {
-  DatePickerValue,
-  SpecificDatePickerValue,
-} from "metabase/querying/common/types";
 import { Box, Flex, Stack } from "metabase/ui";
 import type { DimensionMetadata, MetricDefinition } from "metabase-lib/metric";
 import * as LibMetric from "metabase-lib/metric";
@@ -21,6 +17,7 @@ import type {
   SourceColorMap,
 } from "../../../types/viewer-state";
 import { MetricsViewerClickActionsMode } from "../../../utils/MetricsViewerClickActionsMode";
+import type { DimensionFilterValue } from "../../../utils/metrics";
 import {
   buildDimensionItemsFromDefinitions,
   buildRawSeriesFromDefinitions,
@@ -129,10 +126,13 @@ export function MetricsViewerTabContent({
     [onDimensionChange],
   );
 
-  const handleFilterChange = useCallback(
-    (value: DatePickerValue | undefined) => {
+  const handleDimensionFilterChange = useCallback(
+    (value: DimensionFilterValue | undefined) => {
       onTabUpdate({
-        projectionConfig: { ...tab.projectionConfig, filter: value },
+        projectionConfig: {
+          ...tab.projectionConfig,
+          dimensionFilter: value,
+        },
       });
     },
     [onTabUpdate, tab.projectionConfig],
@@ -177,20 +177,23 @@ export function MetricsViewerTabContent({
 
   const handleBrush = useCallback(
     ({ start, end }: { start: number; end: number }) => {
-      const filterValue: SpecificDatePickerValue = {
-        type: "specific",
+      const filterValue: DimensionFilterValue = {
+        type: "specific-date",
         operator: "between",
         values: [new Date(start), new Date(end)],
         hasTime: true,
       };
       onTabUpdate({
-        projectionConfig: { ...tab.projectionConfig, filter: filterValue },
+        projectionConfig: {
+          ...tab.projectionConfig,
+          dimensionFilter: filterValue,
+        },
       });
     },
     [onTabUpdate, tab.projectionConfig],
   );
 
-  const showTimeControls = tab.type === "time";
+  const isTimeTab = tab.type === "time";
 
   const clickActionsMode = new MetricsViewerClickActionsMode({
     definitions,
@@ -223,7 +226,7 @@ export function MetricsViewerTabContent({
         rawSeries={rawSeries}
         dimensionItems={dimensionItems}
         onDimensionChange={handleDimensionChange}
-        onBrush={showTimeControls ? handleBrush : undefined}
+        onBrush={isTimeTab ? handleBrush : undefined}
         layout={tab.layout}
         clickActionsMode={clickActionsMode}
       />
@@ -234,9 +237,9 @@ export function MetricsViewerTabContent({
             definition={definitionForControls}
             displayType={tab.display}
             tabType={tab.type}
-            showTimeControls={showTimeControls}
+            dimensionFilter={tab.projectionConfig.dimensionFilter}
             onDisplayTypeChange={handleDisplayTypeChange}
-            onFilterChange={handleFilterChange}
+            onDimensionFilterChange={handleDimensionFilterChange}
             onTemporalUnitChange={handleTemporalUnitChange}
             onBinningChange={handleBinningChange}
           />

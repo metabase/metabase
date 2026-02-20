@@ -3,13 +3,10 @@ import { push, replace } from "react-router-redux";
 
 import { useDispatch } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
-import type { DatePickerValue } from "metabase/querying/common/types";
 import type { MetricDefinition } from "metabase-lib/metric";
 import * as LibMetric from "metabase-lib/metric";
 import type { MeasureId, TemporalUnit } from "metabase-types/api";
 import type { MetricId } from "metabase-types/api/metric";
-
-import { getEntryBreakout } from "../utils/series";
 
 import {
   type MetricSourceId,
@@ -20,6 +17,8 @@ import {
   getInitialMetricsViewerTabLayout,
 } from "../types/viewer-state";
 import { defineCompactSchema } from "../utils/compact-schema";
+import type { DimensionFilterValue } from "../utils/metrics";
+import { getEntryBreakout } from "../utils/series";
 import {
   createMeasureSourceId,
   createMetricSourceId,
@@ -38,7 +37,7 @@ interface SerializedTabDef {
 }
 
 interface SerializedProjectionConfig {
-  filter?: DatePickerValue;
+  dimensionFilter?: unknown;
   temporalUnit?: TemporalUnit;
   binning?: string;
 }
@@ -70,10 +69,42 @@ function definitionToSource(def: MetricDefinition): SerializedSource | null {
   return null;
 }
 
+function serializeDimensionFilter(value: DimensionFilterValue): unknown {
+  if (value.type === "specific-date" || value.type === "time") {
+    return {
+      ...value,
+      values: value.values.map((date: Date) => date.toISOString()),
+    };
+  }
+  return value;
+}
+
+function deserializeDimensionFilter(
+  raw: unknown,
+): DimensionFilterValue | undefined {
+  if (!raw || typeof raw !== "object" || !("type" in raw)) {
+    return undefined;
+  }
+  const obj = raw as Record<string, unknown>;
+  if (
+    (obj.type === "specific-date" || obj.type === "time") &&
+    Array.isArray(obj.values)
+  ) {
+    return {
+      ...obj,
+      values: obj.values.map((value: unknown) => new Date(value as string)),
+    } as DimensionFilterValue;
+  }
+  return obj as DimensionFilterValue;
+}
+
 function tabToSerializedTab(tab: MetricsViewerTabState): SerializedTab {
-  const { filter, temporalUnit, binningStrategy } = tab.projectionConfig;
+  const { dimensionFilter, temporalUnit, binningStrategy } =
+    tab.projectionConfig;
   const hasProjectionConfig =
-    filter !== undefined || temporalUnit !== undefined || binningStrategy;
+    dimensionFilter !== undefined ||
+    temporalUnit !== undefined ||
+    binningStrategy;
 
   return {
     id: tab.id,
@@ -87,7 +118,13 @@ function tabToSerializedTab(tab: MetricsViewerTabState): SerializedTab {
       }),
     ),
     p: hasProjectionConfig
-      ? { filter, temporalUnit, binning: binningStrategy }
+      ? {
+          dimensionFilter: dimensionFilter
+            ? serializeDimensionFilter(dimensionFilter)
+            : undefined,
+          temporalUnit,
+          binning: binningStrategy,
+        }
       : undefined,
   };
 }
@@ -138,7 +175,7 @@ const tabDefSchema = defineCompactSchema<SerializedTabDef>({
 });
 
 const projectionConfigSchema = defineCompactSchema<SerializedProjectionConfig>({
-  filter: { key: "f", optional: true },
+  dimensionFilter: { key: "f", optional: true },
   temporalUnit: { key: "u", optional: true },
   binning: { key: "b", optional: true },
 });
@@ -286,7 +323,9 @@ export function useViewerUrl(
           display: st.display,
           dimensionMapping,
           projectionConfig: {
-            filter: st.p?.filter,
+            dimensionFilter: st.p?.dimensionFilter
+              ? deserializeDimensionFilter(st.p.dimensionFilter)
+              : undefined,
             temporalUnit: st.p?.temporalUnit,
             binningStrategy: st.p?.binning ?? undefined,
           },

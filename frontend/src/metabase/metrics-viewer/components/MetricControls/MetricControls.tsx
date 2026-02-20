@@ -1,6 +1,5 @@
 import { useMemo } from "react";
 
-import type { DatePickerValue } from "metabase/querying/common/types";
 import { Divider, Flex } from "metabase/ui";
 import type { MetricDefinition } from "metabase-lib/metric";
 import type { TemporalUnit } from "metabase-types/api";
@@ -9,13 +8,15 @@ import type {
   MetricsViewerDisplayType,
   MetricsViewerTabType,
 } from "../../types/viewer-state";
+import type { DimensionFilterValue } from "../../utils/metrics";
 import { getProjectionInfo } from "../../utils/metrics";
 import { getTabConfig } from "../../utils/tab-config";
 
 import { BinningButton } from "./BinningButton";
+import { BucketButton } from "./BucketButton";
 import { ChartTypePicker } from "./ChartTypePicker";
+import { DimensionFilterButton } from "./DimensionFilterButton";
 import S from "./MetricControls.module.css";
-import { TimeseriesControls } from "./TimeseriesControls";
 
 function isValidDisplayTypeForTab(
   displayType: MetricsViewerDisplayType,
@@ -29,9 +30,9 @@ type MetricControlsProps = {
   definition: MetricDefinition;
   displayType: MetricsViewerDisplayType;
   tabType: MetricsViewerTabType;
-  showTimeControls?: boolean;
+  dimensionFilter?: DimensionFilterValue;
   onDisplayTypeChange: (displayType: MetricsViewerDisplayType) => void;
-  onFilterChange: (value: DatePickerValue | undefined) => void;
+  onDimensionFilterChange: (value: DimensionFilterValue | undefined) => void;
   onTemporalUnitChange: (unit: TemporalUnit | undefined) => void;
   onBinningChange: (binningStrategy: string | undefined) => void;
 };
@@ -40,9 +41,9 @@ export function MetricControls({
   definition,
   displayType,
   tabType,
-  showTimeControls = true,
+  dimensionFilter,
   onDisplayTypeChange,
-  onFilterChange,
+  onDimensionFilterChange,
   onTemporalUnitChange,
   onBinningChange,
 }: MetricControlsProps) {
@@ -50,13 +51,15 @@ export function MetricControls({
     () => getProjectionInfo(definition),
     [definition],
   );
-  const hasTimeseriesControls =
-    showTimeControls &&
-    projectionInfo.projection &&
-    projectionInfo.filterDimension &&
-    projectionInfo.isTemporalBucketable;
+
+  const hasFilterControls =
+    projectionInfo.projection && projectionInfo.filterDimension;
+
+  const hasBucketControls =
+    hasFilterControls && projectionInfo.isTemporalBucketable;
+
   const hasBinningControls =
-    !hasTimeseriesControls &&
+    !hasBucketControls &&
     projectionInfo.projection &&
     projectionInfo.projectionDimension &&
     (projectionInfo.isBinnable || projectionInfo.hasBinning);
@@ -74,14 +77,26 @@ export function MetricControls({
         value={effectiveDisplayType}
         onChange={onDisplayTypeChange}
       />
-      {hasTimeseriesControls && (
+      {hasFilterControls && projectionInfo.filterDimension && (
         <>
           <Divider orientation="vertical" className={S.divider} />
-          <TimeseriesControls
+          <DimensionFilterButton
             definition={definition}
-            projectionInfo={projectionInfo}
-            onFilterChange={onFilterChange}
-            onTemporalUnitChange={onTemporalUnitChange}
+            filterDimension={projectionInfo.filterDimension}
+            filter={projectionInfo.filter}
+            dimensionFilter={dimensionFilter}
+            onChange={onDimensionFilterChange}
+          />
+        </>
+      )}
+      {hasBucketControls && projectionInfo.projectionDimension && (
+        <>
+          <Divider orientation="vertical" className={S.divider} />
+          <BucketButton
+            definition={definition}
+            dimension={projectionInfo.projectionDimension}
+            projection={projectionInfo.projection!}
+            onChange={onTemporalUnitChange}
           />
         </>
       )}

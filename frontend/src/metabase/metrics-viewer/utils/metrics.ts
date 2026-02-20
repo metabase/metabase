@@ -1,15 +1,239 @@
-import { getDateFilterClause } from "metabase/metrics/utils/dates";
-import type { DatePickerValue } from "metabase/querying/common/types";
 import type {
+  BooleanFilterParts,
+  CoordinateFilterParts,
+  DefaultFilterParts,
   DimensionMetadata,
+  ExcludeDateFilterParts,
   FilterClause,
   MetricDefinition,
+  NumberFilterParts,
   ProjectionClause,
+  RelativeDateFilterParts,
+  SpecificDateFilterParts,
+  StringFilterParts,
+  TimeFilterParts,
 } from "metabase-lib/metric";
 import * as LibMetric from "metabase-lib/metric";
 import type { TemporalUnit } from "metabase-types/api";
 
 import { UNBINNED } from "../constants";
+
+// ── Dimension filter value (serializable, dimension-free) ──
+
+export type DimensionFilterValue =
+  | {
+      type: "string";
+      operator: StringFilterParts["operator"];
+      values: string[];
+      options: StringFilterParts["options"];
+    }
+  | {
+      type: "boolean";
+      operator: BooleanFilterParts["operator"];
+      values: boolean[];
+    }
+  | {
+      type: "number";
+      operator: NumberFilterParts["operator"];
+      values: NumberFilterParts["values"];
+    }
+  | {
+      type: "coordinate";
+      operator: CoordinateFilterParts["operator"];
+      values: CoordinateFilterParts["values"];
+    }
+  | {
+      type: "specific-date";
+      operator: SpecificDateFilterParts["operator"];
+      values: Date[];
+      hasTime: boolean;
+    }
+  | {
+      type: "relative-date";
+      unit: RelativeDateFilterParts["unit"];
+      value: number;
+      offsetUnit: RelativeDateFilterParts["offsetUnit"];
+      offsetValue: RelativeDateFilterParts["offsetValue"];
+      options: RelativeDateFilterParts["options"];
+    }
+  | {
+      type: "exclude-date";
+      operator: ExcludeDateFilterParts["operator"];
+      unit: ExcludeDateFilterParts["unit"];
+      values: number[];
+    }
+  | { type: "time"; operator: TimeFilterParts["operator"]; values: Date[] }
+  | { type: "default"; operator: DefaultFilterParts["operator"] };
+
+export function extractDimensionFilterValue(
+  definition: MetricDefinition,
+  filterClause: FilterClause,
+): DimensionFilterValue | null {
+  const stringParts = LibMetric.stringFilterParts(definition, filterClause);
+  if (stringParts) {
+    return {
+      type: "string",
+      operator: stringParts.operator,
+      values: stringParts.values,
+      options: stringParts.options,
+    };
+  }
+
+  const booleanParts = LibMetric.booleanFilterParts(definition, filterClause);
+  if (booleanParts) {
+    return {
+      type: "boolean",
+      operator: booleanParts.operator,
+      values: booleanParts.values,
+    };
+  }
+
+  const numberParts = LibMetric.numberFilterParts(definition, filterClause);
+  if (numberParts) {
+    return {
+      type: "number",
+      operator: numberParts.operator,
+      values: numberParts.values,
+    };
+  }
+
+  const coordParts = LibMetric.coordinateFilterParts(definition, filterClause);
+  if (coordParts) {
+    return {
+      type: "coordinate",
+      operator: coordParts.operator,
+      values: coordParts.values,
+    };
+  }
+
+  const specificParts = LibMetric.specificDateFilterParts(
+    definition,
+    filterClause,
+  );
+  if (specificParts) {
+    return {
+      type: "specific-date",
+      operator: specificParts.operator,
+      values: specificParts.values,
+      hasTime: specificParts.hasTime,
+    };
+  }
+
+  const relativeParts = LibMetric.relativeDateFilterParts(
+    definition,
+    filterClause,
+  );
+  if (relativeParts) {
+    return {
+      type: "relative-date",
+      unit: relativeParts.unit,
+      value: relativeParts.value,
+      offsetUnit: relativeParts.offsetUnit,
+      offsetValue: relativeParts.offsetValue,
+      options: relativeParts.options,
+    };
+  }
+
+  const excludeParts = LibMetric.excludeDateFilterParts(
+    definition,
+    filterClause,
+  );
+  if (excludeParts) {
+    return {
+      type: "exclude-date",
+      operator: excludeParts.operator,
+      unit: excludeParts.unit,
+      values: excludeParts.values,
+    };
+  }
+
+  const timeParts = LibMetric.timeFilterParts(definition, filterClause);
+  if (timeParts) {
+    return {
+      type: "time",
+      operator: timeParts.operator,
+      values: timeParts.values,
+    };
+  }
+
+  const defaultParts = LibMetric.defaultFilterParts(definition, filterClause);
+  if (defaultParts) {
+    return {
+      type: "default",
+      operator: defaultParts.operator,
+    };
+  }
+
+  return null;
+}
+
+export function buildDimensionFilterClause(
+  dimension: DimensionMetadata,
+  filterValue: DimensionFilterValue,
+): FilterClause {
+  switch (filterValue.type) {
+    case "string":
+      return LibMetric.stringFilterClause({
+        operator: filterValue.operator,
+        dimension,
+        values: filterValue.values,
+        options: filterValue.options,
+      });
+    case "boolean":
+      return LibMetric.booleanFilterClause({
+        operator: filterValue.operator,
+        dimension,
+        values: filterValue.values,
+      });
+    case "number":
+      return LibMetric.numberFilterClause({
+        operator: filterValue.operator,
+        dimension,
+        values: filterValue.values,
+      });
+    case "coordinate":
+      return LibMetric.coordinateFilterClause({
+        operator: filterValue.operator,
+        dimension,
+        longitudeDimension: null,
+        values: filterValue.values,
+      });
+    case "specific-date":
+      return LibMetric.specificDateFilterClause({
+        operator: filterValue.operator,
+        dimension,
+        values: filterValue.values,
+        hasTime: filterValue.hasTime,
+      });
+    case "relative-date":
+      return LibMetric.relativeDateFilterClause({
+        dimension,
+        unit: filterValue.unit,
+        value: filterValue.value,
+        offsetUnit: filterValue.offsetUnit,
+        offsetValue: filterValue.offsetValue,
+        options: filterValue.options,
+      });
+    case "exclude-date":
+      return LibMetric.excludeDateFilterClause({
+        operator: filterValue.operator,
+        unit: filterValue.unit,
+        dimension,
+        values: filterValue.values,
+      });
+    case "time":
+      return LibMetric.timeFilterClause({
+        operator: filterValue.operator,
+        dimension,
+        values: filterValue.values,
+      });
+    case "default":
+      return LibMetric.defaultFilterClause({
+        operator: filterValue.operator,
+        dimension,
+      });
+  }
+}
 
 // ── Dimension classification ──
 
@@ -199,18 +423,14 @@ function removeFiltersOnDimension(
   return result;
 }
 
-function applyDatePickerFilter(
+function applyDimensionFilter(
   def: MetricDefinition,
   dimension: DimensionMetadata,
-  value: DatePickerValue | undefined,
+  filterValue: DimensionFilterValue,
 ): MetricDefinition {
   let result = removeFiltersOnDimension(def, dimension);
-
-  if (value) {
-    const filterClause = getDateFilterClause(dimension, value);
-    result = LibMetric.filter(result, filterClause);
-  }
-
+  const filterClause = buildDimensionFilterClause(dimension, filterValue);
+  result = LibMetric.filter(result, filterClause);
   return result;
 }
 
@@ -285,7 +505,7 @@ export function applyBreakoutDimension(
 type ProjectionOptions = {
   projectionTemporalUnit?: TemporalUnit;
   binningStrategy?: string;
-  filter?: DatePickerValue;
+  dimensionFilter?: DimensionFilterValue;
 };
 
 export function buildExecutableDefinition(
@@ -297,7 +517,7 @@ export function buildExecutableDefinition(
     return null;
   }
 
-  const { projectionTemporalUnit, binningStrategy, filter } = options;
+  const { projectionTemporalUnit, binningStrategy, dimensionFilter } = options;
   const dimRef = LibMetric.dimensionReference(dimension);
 
   let def = baseDef;
@@ -314,18 +534,20 @@ export function buildExecutableDefinition(
         def = LibMetric.replaceClause(def, projs[0], defaultProj);
       }
     }
-
-    const projs = LibMetric.projections(def);
-    if (projs.length > 0 && filter) {
-      const projectionDimension = LibMetric.projectionDimension(def, projs[0]);
-      if (projectionDimension) {
-        def = applyDatePickerFilter(def, projectionDimension, filter);
-      }
-    }
   } else if (LibMetric.isBinnable(baseDef, dimension)) {
     def = applyBinnedProjection(def, dimension, binningStrategy);
   } else {
     def = applyProjection(def, dimRef);
+  }
+
+  if (dimensionFilter) {
+    const projs = LibMetric.projections(def);
+    if (projs.length > 0) {
+      const projDim = LibMetric.projectionDimension(def, projs[0]);
+      if (projDim) {
+        def = applyDimensionFilter(def, projDim, dimensionFilter);
+      }
+    }
   }
 
   return def;
@@ -362,7 +584,7 @@ export function getProjectionInfo(def: MetricDefinition): ProjectionInfo {
   let filterDimension: DimensionMetadata | undefined;
   let filterClause: FilterClause | undefined;
 
-  if (isTemporalBucketable && projDim) {
+  if (projDim) {
     const dimInfo = LibMetric.displayInfo(def, projDim);
     const filterableDims = LibMetric.filterableDimensions(def);
     filterDimension = filterableDims.find((d) => {

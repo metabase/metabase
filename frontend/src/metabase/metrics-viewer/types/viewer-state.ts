@@ -1,4 +1,3 @@
-import type { DatePickerValue } from "metabase/querying/common/types";
 import type { MetricDefinition } from "metabase-lib/metric";
 import type {
   CardDisplayType,
@@ -8,6 +7,7 @@ import type {
 } from "metabase-types/api";
 
 import { DISPLAY_TYPE_REGISTRY } from "../utils";
+import type { DimensionFilterValue } from "../utils/metrics";
 
 // ── Core types ──
 
@@ -59,7 +59,7 @@ export interface MetricsViewerTabLayoutState {
 export interface MetricsViewerTabProjectionConfig {
   temporalUnit?: TemporalUnit;
   binningStrategy?: string;
-  filter?: DatePickerValue;
+  dimensionFilter?: DimensionFilterValue;
 }
 
 export interface MetricsViewerTabState {

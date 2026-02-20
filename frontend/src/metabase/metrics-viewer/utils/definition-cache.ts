@@ -50,7 +50,7 @@ export const getModifiedDefinition = createSelector(
       {
         projectionTemporalUnit: projection.temporalUnit,
         binningStrategy: projection.binningStrategy,
-        filter: projection.filter,
+        dimensionFilter: projection.dimensionFilter,
       },
     );
 
