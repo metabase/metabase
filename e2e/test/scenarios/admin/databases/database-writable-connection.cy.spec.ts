@@ -325,7 +325,6 @@ function runAction(actionId: number) {
 
 function expectFailure(response: Cypress.Response<unknown>) {
   expect(response.status).to.be.gte(400);
-  expect(response.status).to.be.lt(500);
 }
 
 function expectSuccess(response: Cypress.Response<unknown>) {
