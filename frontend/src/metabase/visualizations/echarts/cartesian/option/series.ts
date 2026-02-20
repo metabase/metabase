@@ -430,10 +430,7 @@ export const buildEChartsStackLabelOptions = (
 
         // Format as percentage
         const getColumnSettings = settings.column;
-        if (!getColumnSettings) {
-          return "";
-        }
-        const columnSettings = getColumnSettings(seriesModel.column);
+        const columnSettings = getColumnSettings?.(seriesModel.column);
 
         return String(
           formatValue(percentage, {
