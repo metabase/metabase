@@ -166,7 +166,7 @@
 
 (deftest ^:parallel project-adds-projection-to-definition-test
   (testing "project adds a dimension reference to typed projections"
-    (let [result (lib-metric.projection/project valid-definition dimension-1)
+    (let [result (lib-metric.projection/project valid-definition (lib-metric.dimension/reference dimension-1))
           typed-proj (first (:projections result))
           dim-ref (first (:projection typed-proj))]
       (is (= 1 (count (:projections result))))
@@ -179,7 +179,7 @@
   (testing "project appends new projection to existing typed projection"
     (let [definition (assoc valid-definition
                             :projections [{:type :metric :id 1 :projection [dim-ref-1]}])
-          result     (lib-metric.projection/project definition dimension-2)
+          result     (lib-metric.projection/project definition (lib-metric.dimension/reference dimension-2))
           dim-refs   (get-in result [:projections 0 :projection])]
       (is (= 1 (count (:projections result))))
       (is (= 2 (count dim-refs)))
@@ -188,7 +188,7 @@
 
 (deftest ^:parallel project-creates-correct-dimension-reference-test
   (testing "project creates a [:dimension opts id] reference with :lib/uuid"
-    (let [result     (lib-metric.projection/project valid-definition dimension-1)
+    (let [result     (lib-metric.projection/project valid-definition (lib-metric.dimension/reference dimension-1))
           dim-ref    (get-in result [:projections 0 :projection 0])]
       (is (= :dimension (first dim-ref)))
       (is (string? (:lib/uuid (second dim-ref))))
@@ -197,8 +197,8 @@
 (deftest ^:parallel project-allows-same-dimension-multiple-times-test
   (testing "project allows adding the same dimension multiple times"
     (let [result (-> valid-definition
-                     (lib-metric.projection/project dimension-1)
-                     (lib-metric.projection/project dimension-1))
+                     (lib-metric.projection/project (lib-metric.dimension/reference dimension-1))
+                     (lib-metric.projection/project (lib-metric.dimension/reference dimension-1)))
           dim-refs (get-in result [:projections 0 :projection])]
       (is (= 1 (count (:projections result))))
       (is (= 2 (count dim-refs)))
@@ -220,7 +220,7 @@
 (deftest ^:parallel projection-dimension-finds-matching-dimension-test
   (testing "projection-dimension returns the dimension matching the projection"
     (let [definition (-> definition-with-provider
-                         (lib-metric.projection/project (first mock-dimensions)))
+                         (lib-metric.projection/project (lib-metric.dimension/reference (first mock-dimensions))))
           dim-ref    (get-in definition [:projections 0 :projection 0])
           result     (lib-metric.projection/projection-dimension definition dim-ref)]
       (is (some? result))
@@ -237,8 +237,8 @@
 (deftest ^:parallel projection-dimension-works-with-multiple-projections-test
   (testing "projection-dimension finds correct dimension among multiple projections"
     (let [definition (-> definition-with-provider
-                         (lib-metric.projection/project (first mock-dimensions))
-                         (lib-metric.projection/project (second mock-dimensions)))
+                         (lib-metric.projection/project (lib-metric.dimension/reference (first mock-dimensions)))
+                         (lib-metric.projection/project (lib-metric.dimension/reference (second mock-dimensions))))
           dim-refs   (get-in definition [:projections 0 :projection])
           result-1   (lib-metric.projection/projection-dimension definition (first dim-refs))
           result-2   (lib-metric.projection/projection-dimension definition (second dim-refs))]
