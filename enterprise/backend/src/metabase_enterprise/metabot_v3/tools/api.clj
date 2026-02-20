@@ -7,6 +7,7 @@
    [metabase-enterprise.metabot-v3.reactions]
    [metabase-enterprise.metabot-v3.settings :as metabot-v3.settings]
    [metabase-enterprise.metabot-v3.table-utils :as table-utils]
+   [metabase-enterprise.metabot-v3.tools.analyze-chart :as metabot-v3.tools.analyze-chart]
    [metabase-enterprise.metabot-v3.tools.create-dashboard-subscription
     :as metabot-v3.tools.create-dashboard-subscription]
    [metabase-enterprise.metabot-v3.tools.deftool :refer [deftool]]
@@ -576,6 +577,52 @@
   {:args-schema   ::find-outliers-arguments
    :result-schema ::find-outliers-result
    :handler       metabot-v3.tools.find-outliers/find-outliers})
+
+(mr/def ::analyze-chart-column-metadata
+  [:map
+   [:name :string]
+   [:type [:enum "string" "number" "datetime" "date" "time" "boolean"]]])
+
+(mr/def ::analyze-chart-series-config
+  [:map
+   [:x ::analyze-chart-column-metadata]
+   [:y ::analyze-chart-column-metadata]
+   [:x_values [:sequential :any]]
+   [:y_values [:sequential number?]]
+   [:display_name :string]
+   [:chart_type {:optional true} [:maybe :string]]
+   [:stacked {:optional true} [:maybe :boolean]]])
+
+(mr/def ::analyze-chart-timeline-event
+  [:map
+   [:name :string]
+   [:timestamp :string]
+   [:description {:optional true} [:maybe :string]]
+   [:icon {:optional true} [:maybe :string]]])
+
+(mr/def ::analyze-chart-config
+  [:map
+   [:series [:map-of :string ::analyze-chart-series-config]]
+   [:timeline_events {:optional true} [:maybe [:sequential ::analyze-chart-timeline-event]]]
+   [:query {:optional true} [:maybe :map]]
+   [:display_type {:optional true} [:maybe :string]]
+   [:title {:optional true} [:maybe :string]]])
+
+(mr/def ::analyze-chart-arguments
+  [:and
+   [:map
+    [:chart_config ::analyze-chart-config]
+    [:deep {:optional true} [:maybe :boolean]]]
+   [:map {:encode/tool-api-request #(update-keys % metabot-v3.u/safe->kebab-case-en)}]])
+
+(mr/def ::analyze-chart-result
+  [:map [:output :string]])
+
+(deftool "/analyze-chart"
+  "Compute statistics and generate context for chart analysis."
+  {:args-schema   ::analyze-chart-arguments
+   :result-schema ::analyze-chart-result
+   :handler       metabot-v3.tools.analyze-chart/analyze-chart})
 
 (mr/def ::generate-insights-arguments
   [:map
