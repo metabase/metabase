@@ -1,84 +1,109 @@
 (ns metabase-enterprise.replacement.swap.viz
   (:require
    [clojure.walk]
-   [metabase.lib.convert :as lib.convert]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.models.visualization-settings :as vs]
    [toucan2.core :as t2]))
 
-(defn- upgrade-legacy-field-ref
-  "Given a card's dataset_query (pMBQL) and a legacy field ref
-  ([\"field\" 42 {...}]), resolve it through the metadata system and return
-  an upgraded version."
-  [query field-ref]
-  (let [pmbql-ref   (lib.convert/legacy-ref->pMBQL query field-ref)
-        col-meta    (lib/metadata query 0 pmbql-ref)
-        upgraded    (lib/ref col-meta)
-        legacy-back (lib/->legacy-MBQL upgraded)]
-    legacy-back))
-
-(defn- upgrade-column-settings-keys
-  "Given a card's dataset_query (pMBQL) and a column_settings map (from visualization_settings),
-  return a new column_settings map with upgraded parameter-mapping. Keys are JSON-encoded strings."
-  [query column-settings]
-  (when (some? column-settings)
-    (clojure.walk/postwalk
-     (fn [form]
-       (if (lib/is-field-clause? form)
-         (upgrade-legacy-field-ref query form)
-         form))
-     column-settings)))
-
-(defn- swap-field-ref [mp field-ref old-table new-table]
-  (let [field-ref (lib.convert/legacy-ref->pMBQL mp field-ref)]
-    (if-some [field-id (lib/field-ref-id field-ref)]
-      (if-some [field-meta (t2/select-one :model/Field :id field-id :table_id old-table)]
-        (let [field-name (:name field-meta)
-              new-field (t2/select-one :model/Field :name field-name :table_id new-table)]
-          (when (nil? new-field)
-            (throw (ex-info "Could not find field with matching name." {:name field-name
-                                                                        :original-field field-meta
-                                                                        :table_id new-table})))
-          (let [new-field-meta (lib.metadata/field mp (:id new-field))]
-            (lib/->legacy-MBQL (lib/ref new-field-meta))))
-        ;; Can be here for two reasons:
-        ;;  1. field-id doesn't exist. Oh, well. We just give up.
-        ;;  2. field is not from the table we're swapping.
-        field-ref)
-      field-ref)))
-
-(defn- ultimate-table-id [[source-type source-id]]
+(defn- ultimate-table-id
+  [mp [source-type source-id]]
   (case source-type
-    :table source-id))
-
-(defn- swap-field-refs [mp form old-source [new-source-type new-source-id]]
-  (case new-source-type
     :table
-    (let [new-table-id new-source-id
-          old-table-id (ultimate-table-id old-source)]
-      (clojure.walk/postwalk
-       (fn [exp]
-         (if (lib/is-field-clause? exp)
-           (swap-field-ref mp exp old-table-id new-table-id)
-           exp))
-       form))
+    source-id
 
     :card
-    form))
+    (or (:table-id (lib.metadata/card mp source-id))
+        (throw (ex-info "Cannot find ulimate card for source"
+                        {:source-type source-type
+                         :source-id   source-id})))))
 
-(defn update-dashcards-column-settings!
-  "After a card's query has been updated, upgrade the column_settings keys on all
+(defn- query-source
+  [mp [source-type source-id]]
+  (case source-type
+    :card
+    (lib/query mp (lib.metadata/card mp source-id))
+
+    :table
+    (lib/query mp (lib.metadata/table mp source-id))))
+
+(defn- swap-field-ref
+  [field-ref mp old-source new-source]
+  (if (lib/field-ref-name field-ref)
+    field-ref ;; don't need to update if it's a name
+    (let [source-table-id (ultimate-table-id mp old-source)
+          field (lib.metadata/field mp (lib/field-ref-id field-ref))
+          field-table-id (:table-id field)]
+      (cond
+        (not= source-table-id field-table-id)
+        field-ref ;; not related to old-source
+
+        (:source-field (lib/options field-ref))
+        (throw (ex-info "Can't handle field-refs with joins"
+                        {:field-ref field-ref
+                         :old-source old-source
+                         :new-source new-source}))
+
+        :else ;; okay, we just have to switch it now
+        (let [query   (query-source mp new-source)
+              columns (lib/fieldable-columns query)
+              column-matches  (filter #(= (:name field) (:name %)) columns)
+              column (first column-matches)]
+          (when (not= 1 (count column-matches))
+            (throw (ex-info "Bad matches for new field ref"
+                            {:field field
+                             :column-matches column-matches
+                             :field-ref field-ref
+                             :old-source old-source
+                             :new-source new-source
+                             :columns columns})))
+          (lib/ref column))))))
+
+(defn- swap-legacy-target
+  [target mp old-source new-source]
+  (let [field-ref (lib/parameter-target-field-ref         target)
+        options   (lib/parameter-target-dimension-options target)]
+    [:dimension (lib/->legacy-MBQL (swap-field-ref field-ref mp old-source new-source)) options]))
+
+(defn- swap-target
+  [target mp old-source new-source]
+  (let [field-ref (lib/parameter-target-field-ref         target)
+        options   (lib/parameter-target-dimension-options target)]
+    [:dimension (swap-field-ref field-ref mp old-source new-source) options]))
+
+(defn- swap-parameter-mappings
+  [parameter-mapping mp old-source new-source]
+  (update parameter-mapping :target swap-legacy-target mp old-source new-source))
+
+(defn- swap-column-settings-field-refs
+  [column-settings mp old-source new-source]
+  (clojure.walk/postwalk
+   (fn [form]
+     ;; some forms don't get converted to keywords, so hack it
+     (if (and (vector? form)
+              (= "dimension" (first form)))
+       (let [dim (-> form
+                     (update 0 keyword)
+                     (update-in [1 0] keyword)
+                     (update-in [1 1 :base-type] keyword))]
+         (swap-target dim mp old-source new-source))
+       form))
+   column-settings))
+
+(defn dashboard-card-update-field-refs!
+  "After a card's query has been updated, swap the column_settings keys on all
   DashboardCards that display this card."
   [card-id query old-source new-source]
   (doseq [dashcard (t2/select :model/DashboardCard :card_id card-id)]
     (let [viz      (vs/db->norm (:visualization_settings dashcard))
-          col-sets (::vs/column-settings viz)]
-      (when (seq col-sets)
-        (let [upgraded (upgrade-column-settings-keys query col-sets)
-              swapped  (swap-field-refs query col-sets old-source new-source)]
-          (when (not= col-sets upgraded)
-            (t2/update! :model/DashboardCard (:id dashcard)
-                        {:visualization_settings (-> viz
-                                                     (assoc ::vs/column-settings swapped)
-                                                     vs/norm->db)})))))))
+          viz'     (update viz ::vs/column-settings swap-column-settings-field-refs query old-source new-source)
+          parameter-mappings (:parameter_mappings dashcard)
+          parameter-mappings' (mapv #(swap-parameter-mappings % query old-source new-source) parameter-mappings)
+          changes (cond-> {}
+                    (not= viz viz')
+                    (assoc :visualization_settings (vs/norm->db viz'))
+
+                    (not= parameter-mappings parameter-mappings')
+                    (assoc :parameter_mappings parameter-mappings'))]
+      (when (seq changes)
+        (t2/update! :model/DashboardCard (:id dashcard) changes)))))

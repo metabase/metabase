@@ -3,12 +3,14 @@
    [clojure.string :as str]
    [clojure.test :refer [deftest is testing]]
    [metabase-enterprise.dependencies.events]
+   [metabase-enterprise.replacement.field-refs :as field-refs]
    [metabase-enterprise.replacement.source-swap :as source-swap]
    [metabase-enterprise.replacement.swap.native :as swap.native]
    [metabase.events.core :as events]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.queries.models.card :as card]
+   [metabase.query-processor :as qp]
    [metabase.test :as mt]
    [metabase.util.json :as json]
    [toucan2.core :as t2]))
@@ -1230,3 +1232,248 @@
                 ;; Card template tag should be removed
                 (is (not (some #(= (:card-id %) (:id old-source)) (vals template-tags))))))))))))
 
+;; swap! on cards
+
+(deftest source-swap-card-table-table-test
+  (mt/with-premium-features #{:dependencies}
+    (mt/dataset source-swap
+      (testing "Card on table swaps with new table"
+        (let [mp (mt/metadata-provider)
+              query (lib/query mp (lib.metadata/table mp (mt/id :orders_a)))]
+          (doseq [[message query] [["Simple query"
+                                    query]
+                                   ["Query with fields"
+                                    (-> query
+                                        (lib/with-fields [(lib.metadata/field mp (mt/id :orders_a :total))]))]
+                                   ["Query with filter"
+                                    (-> query
+                                        (lib/filter (lib/< 2 (lib.metadata/field mp (mt/id :orders_a :total)))))]
+                                   ["Query with expression"
+                                    (-> query
+                                        (lib/expression "PLUS" (lib/+ 2  (lib.metadata/field mp (mt/id :orders_a :id)))))]
+                                   ["Query with aggregate"
+                                    (-> query
+                                        (lib/aggregate (lib/sum (lib.metadata/field mp (mt/id :orders_a :total)))))]
+                                   ["Query with breakout"
+                                    (-> query
+                                        (lib/breakout (lib.metadata/field mp (mt/id :orders_a :total))))]
+                                   ["Query with join"
+                                    (-> query
+                                        (lib/join (lib/join-clause (lib.metadata/table mp (mt/id :products_a))
+                                                                   [(lib/= (lib.metadata/field mp (mt/id :orders_a :product_id))
+                                                                           (lib.metadata/field mp (mt/id :products_a :id)))])))]]]
+            (testing message
+              (mt/with-temp [:model/Card card {:dataset_query query}]
+                ;; first, upgrade the card
+                (field-refs/upgrade! [:card (:id card)])
+                ;; sanity check that card points to original table
+                (is (= (mt/id :orders_a) (-> card :table_id)))
+                (is (= (mt/id :orders_a) (-> card :dataset_query :stages (get 0) :source-table)))
+                (let [results (qp/process-query (:dataset_query card))]
+                  (source-swap/swap! [:card (:id card)]
+                                     [:table (mt/id :orders_a)]
+                                     [:table (mt/id :orders_c)])
+                  (let [card' (t2/select-one :model/Card (:id card))
+                        results' (qp/process-query (:dataset_query card'))]
+                    (is (= (mt/id :orders_c) (-> card' :table_id)))
+                    (is (= (mt/id :orders_c) (-> card' :dataset_query :stages (get 0) :source-table)))
+                    (is (not= (mt/rows+column-names results)
+                              (mt/rows+column-names results')))))))))))))
+
+(deftest source-swap-card-table-card-test
+  (mt/with-premium-features #{:dependencies}
+    (mt/dataset source-swap
+      (let [mp (mt/metadata-provider)
+            query (lib/query mp (lib.metadata/table mp (mt/id :orders_a)))]
+        (doseq [[message query] [["Simple query"
+                                  query]
+                                 ["Query with fields"
+                                  (-> query
+                                      (lib/with-fields [(lib.metadata/field mp (mt/id :orders_a :total))]))]
+                                 ["Query with filter"
+                                  (-> query
+                                      (lib/filter (lib/< 2 (lib.metadata/field mp (mt/id :orders_a :total)))))]
+                                 ["Query with expression"
+                                  (-> query
+                                      (lib/expression "PLUS" (lib/+ 2  (lib.metadata/field mp (mt/id :orders_a :id)))))]
+                                 ["Query with aggregate"
+                                  (-> query
+                                      (lib/aggregate (lib/sum (lib.metadata/field mp (mt/id :orders_a :total)))))]
+                                 ["Query with breakout"
+                                  (-> query
+                                      (lib/breakout (lib.metadata/field mp (mt/id :orders_a :total))))]
+                                 ["Query with join"
+                                  (-> query
+                                      (lib/join (lib/join-clause (lib.metadata/table mp (mt/id :products_a))
+                                                                 [(lib/= (lib.metadata/field mp (mt/id :orders_a :product_id))
+                                                                         (lib.metadata/field mp (mt/id :products_a :id)))])))]]]
+          (testing message
+            (mt/with-temp [:model/Card card {:dataset_query query}
+                           :model/Card new-source {:dataset_query (lib/query mp (lib.metadata/table mp (mt/id :orders_c)))}]
+              ;; first, upgrade the card
+              (field-refs/upgrade! [:card (:id card)])
+              ;; sanity check that card points to original table
+              (is (= (mt/id :orders_a) (-> card :table_id)))
+              (is (= (mt/id :orders_a) (-> card :dataset_query :stages (get 0) :source-table)))
+              (let [results (qp/process-query (:dataset_query card))]
+                (source-swap/swap! [:card (:id card)]
+                                   [:table (mt/id :orders_a)]
+                                   [:card (:id new-source)])
+                (let [card' (t2/select-one :model/Card (:id card))
+                      results' (qp/process-query (:dataset_query card'))]
+                  (is (= (mt/id :orders_c) (-> card' :table_id)))
+                  (is (nil? (-> card' :dataset_query :stages (get 0) :source-table)))
+                  (is (= (:id new-source) (-> card' :dataset_query :stages (get 0) :source-card)))
+                  (is (not= (mt/rows+column-names results)
+                            (mt/rows+column-names results'))))))))))))
+
+(deftest source-swap-card-card-card-test
+  (mt/with-premium-features #{:dependencies}
+    (mt/dataset source-swap
+      (let [mp (mt/metadata-provider)]
+        (mt/with-temp [:model/Card old-source {:dataset_query (lib/query mp (lib.metadata/table mp (mt/id :orders_a)))}]
+          (let [query (lib/query mp (lib.metadata/card mp (:id old-source)))]
+            (doseq [[message query] [["Simple query"
+                                      query]
+                                     ["Query with fields"
+                                      (-> query
+                                          (lib/with-fields [(lib.metadata/field mp (mt/id :orders_a :total))]))]
+                                     ["Query with filter"
+                                      (-> query
+                                          (lib/filter (lib/< 2 (lib.metadata/field mp (mt/id :orders_a :total)))))]
+                                     ["Query with expression"
+                                      (-> query
+                                          (lib/expression "PLUS" (lib/+ 2  (lib.metadata/field mp (mt/id :orders_a :id)))))]
+                                     ["Query with aggregate"
+                                      (-> query
+                                          (lib/aggregate (lib/sum (lib.metadata/field mp (mt/id :orders_a :total)))))]
+                                     ["Query with breakout"
+                                      (-> query
+                                          (lib/breakout (lib.metadata/field mp (mt/id :orders_a :total))))]
+                                     ["Query with join"
+                                      (-> query
+                                          (lib/join (lib/join-clause (lib.metadata/table mp (mt/id :products_a))
+                                                                     [(lib/= (lib.metadata/field mp (mt/id :orders_a :product_id))
+                                                                             (lib.metadata/field mp (mt/id :products_a :id)))])))]]]
+              (testing message
+                (mt/with-temp [:model/Card card {:dataset_query query}
+                               :model/Card new-source {:dataset_query (lib/query mp (lib.metadata/table mp (mt/id :orders_c)))}]
+                  ;; first, upgrade the card
+                  (field-refs/upgrade! [:card (:id card)])
+                  ;; sanity check that card points to original table
+                  (is (= (mt/id :orders_a) (-> card :table_id)))
+                  (is (= (:id old-source) (-> card :dataset_query :stages (get 0) :source-card)))
+                  (let [results (qp/process-query (:dataset_query card))]
+                    (source-swap/swap! [:card (:id card)]
+                                       [:card (:id old-source)]
+                                       [:card (:id new-source)])
+                    (let [card' (t2/select-one :model/Card (:id card))
+                          results' (qp/process-query (:dataset_query card'))]
+                      (is (= (mt/id :orders_c) (-> card' :table_id)))
+                      (is (nil? (-> card' :dataset_query :stages (get 0) :source-table)))
+                      (is (= (:id new-source) (-> card' :dataset_query :stages (get 0) :source-card)))
+                      (is (not= (mt/rows+column-names results)
+                                (mt/rows+column-names results'))))))))))))))
+
+(deftest source-swap-card-card-table-test
+  (mt/with-premium-features #{:dependencies}
+    (mt/dataset source-swap
+      (let [mp (mt/metadata-provider)]
+        (mt/with-temp [:model/Card old-source {:dataset_query (lib/query mp (lib.metadata/table mp (mt/id :orders_a)))}]
+          (let [query (lib/query mp (lib.metadata/card mp (:id old-source)))]
+            (doseq [[message query] [["Simple query"
+                                      query]
+                                     ["Query with fields"
+                                      (-> query
+                                          (lib/with-fields [(lib.metadata/field mp (mt/id :orders_a :total))]))]
+                                     ["Query with filter"
+                                      (-> query
+                                          (lib/filter (lib/< 2 (lib.metadata/field mp (mt/id :orders_a :total)))))]
+                                     ["Query with expression"
+                                      (-> query
+                                          (lib/expression "PLUS" (lib/+ 2  (lib.metadata/field mp (mt/id :orders_a :id)))))]
+                                     ["Query with aggregate"
+                                      (-> query
+                                          (lib/aggregate (lib/sum (lib.metadata/field mp (mt/id :orders_a :total)))))]
+                                     ["Query with breakout"
+                                      (-> query
+                                          (lib/breakout (lib.metadata/field mp (mt/id :orders_a :total))))]
+                                     ["Query with join"
+                                      (-> query
+                                          (lib/join (lib/join-clause (lib.metadata/table mp (mt/id :products_a))
+                                                                     [(lib/= (lib.metadata/field mp (mt/id :orders_a :product_id))
+                                                                             (lib.metadata/field mp (mt/id :products_a :id)))])))]]]
+              (testing message
+                (mt/with-temp [:model/Card card {:dataset_query query}]
+                  ;; first, upgrade the card
+                  (field-refs/upgrade! [:card (:id card)])
+                  ;; sanity check that card points to original card
+                  (is (= (mt/id :orders_a) (-> card :table_id)))
+                  (is (= (:id old-source) (-> card :dataset_query :stages (get 0) :source-card)))
+                  (let [results (qp/process-query (:dataset_query card))]
+                    (source-swap/swap! [:card (:id card)]
+                                       [:card (:id old-source)]
+                                       [:table (mt/id :orders_c)])
+                    (let [card' (t2/select-one :model/Card (:id card))
+                          results' (qp/process-query (:dataset_query card'))]
+                      (is (= (mt/id :orders_c) (-> card' :table_id)))
+                      (is (= (mt/id :orders_c) (-> card' :dataset_query :stages (get 0) :source-table)))
+                      (is (nil? (-> card' :dataset_query :stages (get 0) :source-card)))
+                      (is (not= (mt/rows+column-names results)
+                                (mt/rows+column-names results'))))))))))))))
+
+(deftest source-swap-card-join-test
+  (mt/with-premium-features #{:dependencies}
+    (mt/dataset source-swap
+      (let [mp (mt/metadata-provider)]
+        (mt/with-temp [:model/Card old-card {:dataset_query (lib/query mp (lib.metadata/table mp (mt/id :products_a)))}
+                       :model/Card new-card {:dataset_query (lib/query mp (lib.metadata/table mp (mt/id :products_c)))}]
+          (let [query (lib/query mp (lib.metadata/table mp (mt/id :orders_a)))]
+            (doseq [[message query old-source new-source]
+                    [["join with table, swap table to table"
+                      (-> query
+                          (lib/join (lib/join-clause (lib.metadata/table mp (mt/id :products_a))
+                                                     [(lib/= (lib.metadata/field mp (mt/id :orders_a :product_id))
+                                                             (lib.metadata/field mp (mt/id :products_a :id)))])))
+                      [:table (mt/id :products_a)]
+                      [:table (mt/id :products_c)]]
+
+                     ["join with table, swap table to card"
+                      (-> query
+                          (lib/join (lib/join-clause (lib.metadata/table mp (mt/id :products_a))
+                                                     [(lib/= (lib.metadata/field mp (mt/id :orders_a :product_id))
+                                                             (lib.metadata/field mp (mt/id :products_a :id)))])))
+                      [:table (mt/id :products_a)]
+                      [:card  (:id new-card)]]
+
+                     ["join with card, swap card to card"
+                      (-> query
+                          (lib/join (lib/join-clause (lib.metadata/card mp (:id old-card))
+                                                     [(lib/= (lib.metadata/field mp (mt/id :orders_a :product_id))
+                                                             (lib.metadata/field mp (mt/id :products_a :id)))])))
+                      [:card (:id old-card)]
+                      [:card (:id new-card)]]
+
+                     ["join with card, swap card to table"
+                      (-> query
+                          (lib/join (lib/join-clause (lib.metadata/card mp (:id old-card))
+                                                     [(lib/= (lib.metadata/field mp (mt/id :orders_a :product_id))
+                                                             (lib.metadata/field mp (mt/id :products_a :id)))])))
+                      [:card (:id old-card)]
+                      [:table (mt/id :products_c)]]]]
+              (testing message
+                (mt/with-temp [:model/Card card {:dataset_query query}]
+                  ;; first, upgrade the card
+                  (field-refs/upgrade! [:card (:id card)])
+                  (try
+                    (let [results (qp/process-query (:dataset_query card))]
+                      (source-swap/swap! [:card (:id card)]
+                                         old-source
+                                         new-source)
+                      (let [card' (t2/select-one :model/Card (:id card))
+                            results' (qp/process-query (:dataset_query card'))]
+                        (is (not= (mt/rows+column-names results)
+                                  (mt/rows+column-names results')))))
+                    (catch Exception e
+                      (is (nil? (.getMessage e)))
+                      (is (= [] (:dataset_query card))))))))))))))

@@ -23,27 +23,24 @@
 
 (defn- upgrade-legacy-target
   [target query]
-  (try
-    (let [field-ref (lib/parameter-target-field-ref target)
-          options (lib/parameter-target-dimension-options target)
-          filterable-columns (lib/filterable-columns query (:stage-number options))
-          matching-column (lib/find-matching-column query (:stage-number options) field-ref filterable-columns)]
-      (when (nil? matching-column)
-        (throw (ex-info "Could not find matching column for parameter mapping."
-                        {:query query
-                         :parameter-mapping target})))
+  (let [field-ref (lib/parameter-target-field-ref target) ;; also converts to mbql
+        options (lib/parameter-target-dimension-options target)
+        filterable-columns (lib/filterable-columns query (:stage-number options))
+        matching-column (lib/find-matching-column query (:stage-number options) field-ref filterable-columns)]
+    (when (nil? matching-column)
+      (throw (ex-info "Could not find matching column for parameter mapping."
+                      {:query query
+                       :parameter-mapping target})))
       ;; TODO (eric 2026-02-18): Probably shouldn't build one of these from scratch outside of lib
-      [:dimension (-> matching-column lib/ref lib/->legacy-MBQL) options])
-    (catch Exception e
-      (tap> [:error target (lib/parameter-target-field-ref target) e])
-      (throw e))))
+    [:dimension (-> matching-column lib/ref lib/->legacy-MBQL) options]))
 
 (defn- upgrade-column-settings-keys
   "Given a card's dataset_query (pMBQL) and a column_settings map (from visualization_settings),
   return a new column_settings map with upgraded parameter-mapping. Keys are JSON-encoded strings."
-  [query stage-number column-settings]
+  [query column-settings]
   (clojure.walk/postwalk
    (fn [form]
+     ;; some forms don't get converted to keywords, so hack it
      (if (and (vector? form)
               (= "dimension" (first form)))
        (let [dim (-> form
@@ -63,13 +60,9 @@
   (doseq [dashcard (t2/select :model/DashboardCard :card_id card-id)]
     (let [viz (vs/db->norm (:visualization_settings dashcard))
           column-settings (::vs/column-settings viz)
-          _ (tap> [:un column-settings])
-          column-settings' (upgrade-column-settings-keys query -1 column-settings)
-          _ (tap> [:up column-settings'])
+          column-settings' (upgrade-column-settings-keys query column-settings)
           parameter-mappings (:parameter_mappings dashcard)
-          _ (tap> [:pm parameter-mappings])
           parameter-mappings' (mapv #(upgrade-parameter-mappings query %) parameter-mappings)
-          _ (tap> [:pm' parameter-mappings])
           changes (cond-> {}
                     (not= column-settings column-settings')
                     (merge {:visualization_settings (-> viz
