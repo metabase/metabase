@@ -184,8 +184,7 @@ const defaultConfig = {
 
 const mainConfig = {
   ...defaultConfig,
-  numTestsKeptInMemory: process.env["CI"] ? 0 : 50,
-  experimentalMemoryManagement: !!process.env["CI"],
+  numTestsKeptInMemory: process.env["CI"] ? 1 : 50,
   reporter: "cypress-multi-reporters",
   reporterOptions: {
     configFile: false,
