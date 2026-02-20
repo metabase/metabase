@@ -2,6 +2,7 @@
   (:require
    [clojure.test :refer [deftest is testing]]
    [metabase-enterprise.dependencies.events]
+   [metabase-enterprise.replacement.field-refs :as field-refs]
    [metabase-enterprise.replacement.source-swap :as source-swap]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
@@ -77,7 +78,10 @@
                              {:dashboard_id dashboard-id
                               :card_id (:id child)
                               :visualization_settings vis-settings}]
-                (source-swap/swap-source [:card (:id old-source)] [:card (:id new-source)])
+                (field-refs/upgrade! [:card (:id child)])
+                (source-swap/swap! [:card (:id child)]
+                                   [:card (:id old-source)]
+                                   [:card (:id new-source)])
                 ;; TODO (eric): Add assertions
                 ))))))))
 
@@ -95,7 +99,10 @@
                              {:dashboard_id dashboard-id
                               :card_id (:id child)
                               :visualization_settings {:some_setting "value"}}]
-                (source-swap/swap-source [:card (:id old-source)] [:card (:id new-source)])
+                (field-refs/upgrade! [:card (:id child)])
+                (source-swap/swap! [:card (:id child)]
+                                   [:card (:id old-source)]
+                                   [:card (:id new-source)])
                 (let [updated-viz (t2/select-one-fn :visualization_settings :model/DashboardCard :id dashcard-id)]
                   (is (= {:some_setting "value"} updated-viz)
                       "Visualization settings without column_settings should be unchanged"))))))))))
@@ -115,7 +122,10 @@
                              {:dashboard_id dashboard-id
                               :card_id (:id child)
                               :visualization_settings {:column_settings {name-key {:column_title "Custom"}}}}]
-                (source-swap/swap-source [:card (:id old-source)] [:card (:id new-source)])
+                (field-refs/upgrade! [:card (:id child)])
+                (source-swap/swap! [:card (:id child)]
+                                   [:card (:id old-source)]
+                                   [:card (:id new-source)])
                 (let [updated-viz (t2/select-one-fn :visualization_settings :model/DashboardCard :id dashcard-id)
                       updated-cs  (:column_settings updated-viz)]
                   (is (contains? updated-cs name-key)
