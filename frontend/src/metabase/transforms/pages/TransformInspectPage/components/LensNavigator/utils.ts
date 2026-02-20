@@ -1,15 +1,15 @@
-import { getLensKey } from "metabase/api/tags/utils";
+import { getLensKey } from "metabase/api/utils/transform-inspector-lens";
 import type {
   InspectorDrillLensTrigger,
   InspectorLensMetadata,
   LensParams,
 } from "metabase-types/api";
 
-export { getLensKey } from "metabase/api/tags/utils";
-
 import type { LensHandle } from "../../types";
 
 import type { DynamicLensTab, StaticLensTab } from "./types";
+
+export { getLensKey };
 
 export const toLensHandle = (
   source: InspectorLensMetadata | InspectorDrillLensTrigger,

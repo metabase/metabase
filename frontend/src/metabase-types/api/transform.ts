@@ -505,3 +505,8 @@ export type RunInspectorQueryRequest = {
   query: DatasetQuery;
   lensParams?: unknown;
 };
+
+export type LensHandle = {
+  id: InspectorLensId;
+  params?: LensParams;
+};
