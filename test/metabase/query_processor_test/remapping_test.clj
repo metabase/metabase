@@ -240,8 +240,8 @@
                       "NAME"
                       "LAST_LOGIN"
                       "CREATED_BY"
-                      "USERS__via__CREATED_BY__NAME"] ; <- remapped column
-                     (map :lib/desired-column-alias (mt/cols results)))))
+                      "NAME_2"] ; <- remapped column
+                     (map :name (mt/cols results)))))
             (is (= [[14 "Broen Olujimi"       "2014-10-03T13:45:00Z" 13 "Dwight Gresham"]
                     [7  "Conchúr Tihomir"     "2014-08-02T09:30:00Z" 6  "Shad Ferdynand"]
                     [13 "Dwight Gresham"      "2014-08-01T10:30:00Z" 12 "Kfir Caj"]
