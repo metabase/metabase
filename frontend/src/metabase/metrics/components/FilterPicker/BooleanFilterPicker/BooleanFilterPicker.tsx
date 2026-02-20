@@ -20,6 +20,7 @@ export function BooleanFilterPicker({
   readOnly,
   onSelect,
   onBack,
+  onClear,
 }: FilterPickerWidgetProps) {
   const dimensionInfo = useMemo(
     () => LibMetric.displayInfo(definition, dimension),
@@ -52,7 +53,7 @@ export function BooleanFilterPicker({
         />
       )}
       <BooleanPicker value={value} withEmptyOptions onChange={setValue} />
-      <FilterPickerFooter isNew={isNew} isValid />
+      <FilterPickerFooter isNew={isNew} isValid onClear={onClear} />
     </Box>
   );
 }

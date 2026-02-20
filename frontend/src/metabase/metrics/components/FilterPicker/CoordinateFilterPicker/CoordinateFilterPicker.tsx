@@ -27,6 +27,7 @@ export function CoordinateFilterPicker({
   readOnly,
   onSelect,
   onBack,
+  onClear,
 }: FilterPickerWidgetProps) {
   const dimensionInfo = useMemo(
     () => LibMetric.displayInfo(definition, dimension),
@@ -103,7 +104,7 @@ export function CoordinateFilterPicker({
           hasMultipleValues={hasMultipleValues}
           onChange={setValues}
         />
-        <FilterPickerFooter isNew={isNew} isValid={isValid} />
+        <FilterPickerFooter isNew={isNew} isValid={isValid} onClear={onClear} />
       </Box>
     </Box>
   );

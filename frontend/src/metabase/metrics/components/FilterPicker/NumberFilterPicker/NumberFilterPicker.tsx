@@ -26,6 +26,7 @@ export function NumberFilterPicker({
   readOnly,
   onSelect,
   onBack,
+  onClear,
 }: FilterPickerWidgetProps) {
   const dimensionInfo = useMemo(
     () => LibMetric.displayInfo(definition, dimension),
@@ -89,7 +90,7 @@ export function NumberFilterPicker({
           hasMultipleValues={hasMultipleValues}
           onChange={setValues}
         />
-        <FilterPickerFooter isNew={isNew} isValid={isValid} />
+        <FilterPickerFooter isNew={isNew} isValid={isValid} onClear={onClear} />
       </div>
     </Box>
   );

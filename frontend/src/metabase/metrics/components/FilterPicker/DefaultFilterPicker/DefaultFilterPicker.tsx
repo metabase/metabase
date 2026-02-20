@@ -17,6 +17,7 @@ export function DefaultFilterPicker({
   filter,
   isNew,
   onBack,
+  onClear,
   onSelect,
   readOnly,
 }: FilterPickerWidgetProps) {
@@ -76,7 +77,7 @@ export function DefaultFilterPicker({
             ))}
           </Stack>
         </Radio.Group>
-        <FilterPickerFooter isNew={isNew} isValid />
+        <FilterPickerFooter isNew={isNew} isValid onClear={onClear} />
       </div>
     </Box>
   );

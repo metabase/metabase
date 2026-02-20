@@ -17,6 +17,7 @@ interface FilterPickerBodyProps {
   readOnly?: boolean;
   onSelect: (filter: LibMetric.FilterClause) => void;
   onBack?: () => void;
+  onClear?: () => void;
 }
 
 export function FilterPickerBody({
@@ -27,6 +28,7 @@ export function FilterPickerBody({
   readOnly,
   onSelect,
   onBack,
+  onClear,
 }: FilterPickerBodyProps) {
   const FilterWidget = getFilterWidget(dimension);
   if (!FilterWidget) {
@@ -43,6 +45,7 @@ export function FilterPickerBody({
         readOnly={readOnly}
         onSelect={onSelect}
         onBack={onBack}
+        onClear={onClear}
       />
     </Box>
   );

@@ -22,6 +22,7 @@ export function TimeFilterPicker({
   readOnly,
   onSelect,
   onBack,
+  onClear,
 }: FilterPickerWidgetProps) {
   const dimensionInfo = useMemo(
     () => LibMetric.displayInfo(definition, dimension),
@@ -89,7 +90,7 @@ export function TimeFilterPicker({
             />
           </Flex>
         )}
-        <FilterPickerFooter isNew={isNew} isValid={isValid} />
+        <FilterPickerFooter isNew={isNew} isValid={isValid} onClear={onClear} />
       </Box>
     </Box>
   );

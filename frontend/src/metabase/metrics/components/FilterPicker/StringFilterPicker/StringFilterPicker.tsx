@@ -24,6 +24,7 @@ export function StringFilterPicker({
   readOnly,
   onSelect,
   onBack,
+  onClear,
 }: FilterPickerWidgetProps) {
   const dimensionInfo = useMemo(
     () => LibMetric.displayInfo(definition, dimension),
@@ -87,7 +88,7 @@ export function StringFilterPicker({
           type={type}
           onChange={setValues}
         />
-        <FilterPickerFooter isNew={isNew} isValid={isValid}>
+        <FilterPickerFooter isNew={isNew} isValid={isValid} onClear={onClear}>
           {type === "partial" && (
             <CaseSensitiveOption
               value={options.caseSensitive ?? false}

@@ -160,7 +160,7 @@ export function DimensionFilterButton({
           filter={reconstructedFilter}
           isNew={!reconstructedFilter}
           onSelect={handleSelect}
-          onBack={reconstructedFilter ? handleClear : undefined}
+          onClear={reconstructedFilter ? handleClear : undefined}
         />
       </Popover.Dropdown>
     </Popover>

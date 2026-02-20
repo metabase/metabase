@@ -1,4 +1,5 @@
 import { useMemo } from "react";
+import { t } from "ttag";
 
 import {
   getDateFilterClause,
@@ -7,7 +8,7 @@ import {
 } from "metabase/metrics/utils/dates";
 import { DatePicker } from "metabase/querying/common/components/DatePicker";
 import type { DatePickerValue } from "metabase/querying/common/types";
-import { PopoverBackButton } from "metabase/ui";
+import { Button, Flex, PopoverBackButton } from "metabase/ui";
 import * as LibMetric from "metabase-lib/metric";
 
 import { FilterSubmitButton } from "../FilterSubmitButton";
@@ -21,6 +22,7 @@ export function DateFilterPicker({
   readOnly,
   onSelect,
   onBack,
+  onClear,
 }: FilterPickerWidgetProps) {
   const value = useMemo(() => {
     return filter ? getDatePickerValue(definition, filter) : undefined;
@@ -45,7 +47,18 @@ export function DateFilterPicker({
         availableUnits={availableUnits}
         readOnly={readOnly}
         renderSubmitButton={() => {
-          return <FilterSubmitButton isNew={isNew} />;
+          return (
+            <Flex justify="space-between" w="100%">
+              {onClear ? (
+                <Button variant="subtle" c="text-secondary" onClick={onClear}>
+                  {t`Clear`}
+                </Button>
+              ) : (
+                <div />
+              )}
+              <FilterSubmitButton isNew={isNew} />
+            </Flex>
+          );
         }}
         renderBackButton={() =>
           onBack ? (
