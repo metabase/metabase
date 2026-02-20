@@ -3,9 +3,23 @@
    [metabase-enterprise.replacement.swap.mbql :as swap.mbql]
    [metabase-enterprise.replacement.swap.native :as swap.native]
    [metabase-enterprise.replacement.swap.viz :as swap.viz]
+   [metabase.api.common :as api]
    [metabase.events.core :as events]
    [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
    [toucan2.core :as t2]))
+
+(defn- ultimate-table-id
+  [mp [source-type source-id]]
+  (case source-type
+    :table
+    source-id
+
+    :card
+    (or (:table-id (lib.metadata/card mp source-id))
+        (throw (ex-info "Cannot find ulimate card for source"
+                        {:source-type source-type
+                         :source-id   source-id})))))
 
 (defn- update-query [query old-source new-source id-updates]
   (cond-> query
@@ -42,8 +56,30 @@
                                {:object updated}))
       (swap.viz/dashboard-card-update-field-refs! entity-id new-query old-source new-source))))
 
+(defn- segment-swap!
+  [[entity-type entity-id] old-source new-source]
+  (assert (= :segment entity-type))
+  (let [segment (t2/select-one :model/Segment entity-id)]
+    (assert (some? segment))
+    (let [query (:definition segment)
+          new-query (update-query query old-source new-source {})
+          table  (:table_id segment)
+          table' (ultimate-table-id query new-source)
+          changes (cond-> {}
+                    (not= query new-query)
+                    (assoc :definition new-query)
+
+                    (= table (ultimate-table-id query old-source))
+                    (assoc :table_id table'))]
+      ;; no changes, so don't update
+      (when (seq changes)
+        (t2/update! :model/Segment entity-id changes)
+        (events/publish-event! :event/segment-update
+                               {:object (merge segment changes) :user-id (:id @api/*current-user*)})))))
+
 (defn swap!
   [[entity-type _entity-id :as entity] old-source new-source]
   (case entity-type
     :card      (card-swap!      entity old-source new-source)
-    :transform (transform-swap! entity old-source new-source)))
+    :transform (transform-swap! entity old-source new-source)
+    :segment   (segment-swap!   entity old-source new-source)))

@@ -91,6 +91,13 @@
         (when (not= query query')
           (t2/update! :model/Transform transform-id {:source (assoc source :query query')}))))))
 
+(defn- segment-upgrade-field-refs!
+  [segment-id]
+  (let [definition  (t2/select-one-fn :definition :model/Segment segment-id)
+        definition' (lib/upgrade-field-refs definition)]
+    (when (not= definition definition')
+      (t2/update! :model/Segment segment-id {:definition definition'}))))
+
 (defn upgrade!
   [[entity-type entity-id]]
   (case entity-type
@@ -99,6 +106,9 @@
 
     :transform
     (transform-upgrade-field-refs! entity-id)
+
+    :segment
+    (segment-upgrade-field-refs! entity-id)
 
     :dashboard
     :do-nothing))
