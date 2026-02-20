@@ -16,6 +16,7 @@
    [environ.core :refer [env]]
    [java-time.api :as t]
    [metabase.analytics.prometheus :as analytics]
+   [metabase.app-db.core :as app-db]
    [metabase.config.core :as config]
    [metabase.events.core :as events]
    [metabase.internal-stats.core :as internal-stats]
@@ -368,16 +369,23 @@
 
 (defn- write-cache-to-db!
   "Upsert a token status hash into the premium_features_token_cache table.
-   Uses insert-first to avoid TOCTOU race between instances."
+   Uses update-first to avoid poisoning PostgreSQL transactions on duplicate key.
+   Catches constraint violations from concurrent inserters and retries with an update."
   [token-hash result-hash]
-  (let [now (t/offset-date-time)]
-    (try
-      (t2/insert! :model/PremiumFeaturesCache {:token_hash        token-hash
-                                               :token_status_hash result-hash
-                                               :updated_at        now})
-      (catch Exception _
-        (t2/update! :model/PremiumFeaturesCache :token_hash token-hash
-                    {:token_status_hash result-hash :updated_at now})))))
+  (t2/with-connection [_conn (app-db/app-db)]
+    (let [now     (t/offset-date-time)
+          updated (t2/update! :model/PremiumFeaturesCache :token_hash token-hash
+                              {:token_status_hash result-hash :updated_at now})]
+      (when (zero? updated) ;; even though toucan2 returns 0 if we match a row but don't update it
+        ;; we should always be updating this row with the timestamp if it's there.
+        (try
+          (t2/insert! :model/PremiumFeaturesCache {:token_hash        token-hash
+                                                   :token_status_hash result-hash
+                                                   :updated_at        now})
+          (catch Exception _e
+            ;; Another instance inserted first — update instead.
+            (t2/update! :model/PremiumFeaturesCache :token_hash token-hash
+                        {:token_status_hash result-hash :updated_at now})))))))
 
 (defn- clear-db-cache!
   "Delete all rows from the premium_features_token_cache table."
