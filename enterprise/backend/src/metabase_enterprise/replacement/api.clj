@@ -18,13 +18,28 @@
 (def ^:private entity-type-enum
   [:enum :card :table])
 
+(mr/def ::table-info
+  [:map
+   [:id           pos-int?]
+   [:name         :string]
+   [:display_name :string]
+   [:schema       [:maybe :string]]])
+
+(mr/def ::field-info
+  [:map
+   [:id           [:maybe pos-int?]]
+   [:name         :string]
+   [:display_name :string]
+   [:table        {:optional true} ::table-info]])
+
 (mr/def ::column
   [:map
    [:id                 [:maybe pos-int?]]
    [:name               :string]
    [:display_name       :string]
    [:database_type      [:maybe :string]]
-   [:fk_target_field_id [:maybe pos-int?]]])
+   [:fk_target_field_id [:maybe pos-int?]]
+   [:target             {:optional true} ::field-info]])
 
 (def ^:private error-type-enum
   [:enum :missing-column :column-type-mismatch :missing-primary-key :extra-primary-key :missing-foreign-key :foreign-key-mismatch])

@@ -70,7 +70,6 @@ function getErrorsColumn(): TreeTableColumnDef<ColumnMappingItem> {
   return {
     id: "errors",
     header: t`Errors`,
-    width: "auto",
     enableSorting: true,
     accessorFn: (item) => item.errors?.length ?? 0,
     cell: ({ row }) => {

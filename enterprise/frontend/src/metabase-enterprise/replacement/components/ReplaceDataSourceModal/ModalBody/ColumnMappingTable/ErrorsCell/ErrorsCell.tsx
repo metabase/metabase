@@ -1,11 +1,12 @@
+import type { ReactNode } from "react";
 import { jt, t } from "ttag";
 
-import { skipToken, useGetFieldQuery } from "metabase/api";
+import { Ellipsified } from "metabase/common/components/Ellipsified";
 import { Code } from "metabase/ui";
 import type {
-  Field,
   ReplaceSourceColumnInfo,
   ReplaceSourceErrorType,
+  ReplaceSourceFieldInfo,
 } from "metabase-types/api";
 
 type ErrorsCellProps = {
@@ -16,7 +17,7 @@ type ErrorsCellProps = {
 
 export function ErrorsCell({ source, target, errors }: ErrorsCellProps) {
   return (
-    <>
+    <Ellipsified>
       {errors.map((error) => (
         <ErrorMessage
           key={error}
@@ -25,7 +26,7 @@ export function ErrorsCell({ source, target, errors }: ErrorsCellProps) {
           error={error}
         />
       ))}
-    </>
+    </Ellipsified>
   );
 }
 
@@ -48,44 +49,18 @@ function ErrorMessage({ source, target, error }: ErrorMessageProps) {
     case "missing-foreign-key":
       return t`This column is not a foreign key, while the original column is.`;
     case "foreign-key-mismatch":
-      return (
-        <ForeignKeyMismatchError
-          sourceFkFieldId={source?.fk_target_field_id}
-          targetFkFieldId={target?.fk_target_field_id}
-        />
-      );
+      return source?.target != null && target?.target != null
+        ? jt`This foreign key references ${(<FieldInfo key="target" field={target.target} />)} while the original foreign key references ${(<FieldInfo key="source" field={source.target} />)}.`
+        : t`This foreign key references a different primary key than the original foreign key.`;
   }
-}
-
-type ForeignKeyMismatchErrorProps = {
-  sourceFkFieldId: number | null | undefined;
-  targetFkFieldId: number | null | undefined;
-};
-
-function ForeignKeyMismatchError({
-  sourceFkFieldId,
-  targetFkFieldId,
-}: ForeignKeyMismatchErrorProps) {
-  const { data: sourceFkField } = useGetFieldQuery(
-    sourceFkFieldId != null ? { id: sourceFkFieldId } : skipToken,
-  );
-  const { data: targetFkField } = useGetFieldQuery(
-    targetFkFieldId != null ? { id: targetFkFieldId } : skipToken,
-  );
-
-  if (sourceFkField != null && targetFkField != null) {
-    return jt`This foreign key references ${(<FieldInfo key="target" field={targetFkField} />)} while the original column references ${(<FieldInfo key="source" field={sourceFkField} />)}.`;
-  }
-
-  return t`This foreign key references a different primary key than the original column.`;
 }
 
 type FieldInfoProps = {
-  field: Field;
+  field: ReplaceSourceFieldInfo;
 };
 
 function FieldInfo({ field }: FieldInfoProps) {
-  const parts: string[] = [];
+  const parts: ReactNode[] = [];
   if (field.table != null) {
     if (field.table.schema != null) {
       parts.push(field.table.schema);
@@ -94,5 +69,5 @@ function FieldInfo({ field }: FieldInfoProps) {
   }
   parts.push(field.display_name);
 
-  return <Code>{parts.join(" / ")}</Code>;
+  return <strong>{parts.join(" / ")}</strong>;
 }
