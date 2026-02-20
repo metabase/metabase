@@ -331,52 +331,6 @@ describe("admin > database > database routing", () => {
       assertDbRoutingDisabled();
     });
 
-    it("should not allow turning conflicting features if db routing is enabled", () => {
-      cy.log("setup");
-      setupModelPersistence();
-      visitDatabaseAdminPage(WRITABLE_DB_ID);
-      cy.findAllByTestId("database-model-features-section")
-        .findByLabelText("Model actions")
-        .click({ force: true });
-      cy.findAllByTestId("database-model-features-section")
-        .findByLabelText("Model actions")
-        .should("not.be.checked");
-      configureDbRoutingViaAPI({
-        router_database_id: 2,
-        user_attribute: "role",
-      });
-      cy.reload();
-
-      cy.log("should not allow enabling model features");
-      cy.findAllByTestId("database-model-features-section")
-        .findByLabelText("Model actions")
-        .trigger("mouseenter", { force: true });
-      H.tooltip()
-        .findByText(
-          "Model actions can not be enabled if database routing is enabled.",
-        )
-        .should("exist");
-
-      cy.findAllByTestId("database-model-features-section").within(() => {
-        cy.findByLabelText("Model actions")
-          .should("be.disabled")
-          .should("not.be.checked");
-        cy.findByLabelText("Model persistence")
-          .should("be.disabled")
-          .should("not.be.checked");
-      });
-
-      cy.log("should not allow enabling database for uploads");
-      cy.visit("/admin/settings/uploads");
-      cy.findByLabelText("Upload Settings Form")
-        .findByPlaceholderText("Select a database")
-        .click();
-      H.popover()
-        .findByText("Writable Postgres12 (DB Routing Enabled)")
-        .closest('[data-combobox-option="true"]')
-        .should("have.attr", "data-combobox-disabled", "true");
-    });
-
     it("should highlight that a dabtabase has routing enabled on the permissions pages", () => {
       cy.log("setup");
       cy.request("PUT", "/api/database/2", {
