@@ -6,6 +6,7 @@ import type {
   ReplaceSourceEntry,
 } from "metabase-types/api";
 
+import { getEntityErrorMessage, getGenericErrorMessage } from "../../../utils";
 import type { EntityInfo } from "../types";
 
 import { EntitySection } from "./EntitySection";
@@ -59,7 +60,7 @@ export function ModalSidebar({
               onChange={onTargetChange}
             />
             {checkInfo != null && !checkInfo.success && (
-              <Text c="error">{t`This source is not compatible with the original source.`}</Text>
+              <Text c="error">{getErrorMessage(checkInfo)}</Text>
             )}
           </Stack>
         </EntitySection>
@@ -72,6 +73,13 @@ export function ModalSidebar({
       </Group>
     </Stack>
   );
+}
+
+function getErrorMessage(checkInfo: CheckReplaceSourceInfo | undefined) {
+  const errors = checkInfo?.errors ?? [];
+  return errors.length > 0
+    ? getEntityErrorMessage(errors[0])
+    : getGenericErrorMessage();
 }
 
 function getSubmitLabel(dependentsCount: number, disabled: boolean) {

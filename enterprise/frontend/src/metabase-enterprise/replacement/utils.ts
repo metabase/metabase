@@ -2,7 +2,11 @@ import { t } from "ttag";
 
 import type { ReplaceSourceErrorType } from "metabase-types/api";
 
-export function getSourceErrorMessage(error: ReplaceSourceErrorType): string {
+export function getGenericErrorMessage(): string {
+  return t`This data source is not compatible with the original data source.`;
+}
+
+export function getEntityErrorMessage(error: ReplaceSourceErrorType): string {
   switch (error) {
     case "same-source":
       return t`The data source are the same.`;
