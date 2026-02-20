@@ -162,8 +162,8 @@
 
 ;; TODO -- #19754 adds [[mt/remove-source-metadata]] that can be used here (once it gets merged)
 (defn- remove-metadata [m]
-  (lib.util.match/replace m
-    (_ :guard (every-pred map? :source-metadata))
+  (lib.util.match/replace-lite m
+    {:source-metadata _}
     (remove-metadata (dissoc &match :source-metadata))))
 
 (defn- apply-row-level-permissions [query]

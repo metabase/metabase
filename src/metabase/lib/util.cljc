@@ -523,7 +523,7 @@
         query     (fresh-uuids query (fn [old-uuid new-uuid]
                                        (vswap! remapping assoc! old-uuid new-uuid)))
         remapping (persistent! @remapping)]
-    (lib.util.match/replace query
+    (lib.util.match/replace-lite query
       [:aggregation opts old-uuid]
       [:aggregation opts (or (remapping old-uuid)
                              (throw (ex-info "Could not convert old :aggregation ref to new UUIDs"
