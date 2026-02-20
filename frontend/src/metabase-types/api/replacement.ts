@@ -23,13 +23,16 @@ export type ReplaceSourceColumnInfo = Pick<
   | "semantic_type"
 >;
 
+export const REPLACE_SOURCE_ERROR_TYPES = [
+  "missing-column",
+  "column-type-mismatch",
+  "missing-primary-key",
+  "extra-primary-key",
+  "missing-foreign-key",
+  "foreign-key-mismatch",
+] as const;
 export type ReplaceSourceErrorType =
-  | "missing-column"
-  | "column-type-mismatch"
-  | "missing-primary-key"
-  | "extra-primary-key"
-  | "missing-foreign-key"
-  | "foreign-key-mismatch";
+  (typeof REPLACE_SOURCE_ERROR_TYPES)[number];
 
 export type ReplaceSourceColumnMapping = {
   source?: ReplaceSourceColumnInfo;
