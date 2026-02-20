@@ -1,4 +1,3 @@
-import type { Location as HistoryLocation } from "history";
 import { useMemo } from "react";
 import {
   type Location as LocationV7,
@@ -6,9 +5,6 @@ import {
   useSearchParams as useSearchParamsV7,
 } from "react-router-dom";
 
-import { useRouter } from "metabase/router";
-
-import { USE_V7_LOCATION } from "./config";
 import { useNavigation } from "./useNavigation";
 
 /**
@@ -24,49 +20,10 @@ export interface CompatLocation extends LocationV7 {
   action: "PUSH" | "REPLACE" | "POP";
 }
 
-/**
- * Compatibility hook for accessing location that works with both React Router v3 and v7.
- *
- * During migration:
- * - When USE_V7_LOCATION is false, uses the custom useRouter hook (v3)
- * - When USE_V7_LOCATION is true, uses react-router-dom v7 useLocation
- *
- * The returned location object includes both v3-style `query` object
- * and v7-style properties for gradual migration.
- *
- * Usage:
- * ```tsx
- * const location = useCompatLocation();
- *
- * // Access pathname
- * console.log(location.pathname);
- *
- * // Access search params (v7 style - preferred)
- * const tab = location.searchParams.get('tab');
- *
- * // Access query params (v3 style - deprecated)
- * const tab = location.query.tab;
- * ```
- */
 export const useCompatLocation = (): CompatLocation => {
-  // Only call the appropriate hook based on which router is active
-  // We cannot call v7 hooks when there's no v7 RouterProvider context
-  if (USE_V7_LOCATION) {
-    // eslint-disable-next-line react-hooks/rules-of-hooks
-    return useLocationV7Compat();
-  }
-  // eslint-disable-next-line react-hooks/rules-of-hooks
-  return useLocationV3Compat();
-};
-
-/**
- * v7 implementation - uses useLocation and useSearchParams from react-router-dom
- */
-function useLocationV7Compat(): CompatLocation {
   const location = useLocationV7();
   const [searchParams] = useSearchParamsV7();
 
-  // Create v3-compatible query object from searchParams
   const query = useMemo(() => {
     const result: Record<string, string> = {};
     searchParams.forEach((value, key) => {
@@ -84,49 +41,10 @@ function useLocationV7Compat(): CompatLocation {
     }),
     [location, query, searchParams],
   );
-}
-
-/**
- * v3 implementation - uses the existing useRouter hook
- */
-function useLocationV3Compat(): CompatLocation {
-  const { location } = useRouter();
-
-  // Create URLSearchParams from v3 location
-  const searchParams = useMemo(() => {
-    const search = location?.search || "";
-    return new URLSearchParams(search);
-  }, [location?.search]);
-
-  // Create query object from search string
-  const query = useMemo(() => {
-    const result: Record<string, string> = {};
-    searchParams.forEach((value, key) => {
-      result[key] = value;
-    });
-    return result;
-  }, [searchParams]);
-
-  const v3Location = location as HistoryLocation | undefined;
-
-  return useMemo(
-    () => ({
-      pathname: v3Location?.pathname || "",
-      search: v3Location?.search || "",
-      hash: v3Location?.hash || "",
-      state: v3Location?.state ?? null,
-      key: v3Location?.key || "default",
-      query,
-      searchParams,
-      action: (v3Location?.action as "PUSH" | "REPLACE" | "POP") || "PUSH",
-    }),
-    [v3Location, query, searchParams],
-  );
-}
+};
 
 /**
  * Hook for accessing and updating search params.
- * Provides a unified API for both v3 and v7.
  *
  * Usage:
  * ```tsx

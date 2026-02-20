@@ -1,14 +1,12 @@
 import type { Location } from "history";
 import { useMemo } from "react";
+import { useParams } from "react-router-dom";
 import _ from "underscore";
 
 import { getAdminPaths } from "metabase/admin/app/selectors";
 import { Databases } from "metabase/entities/databases";
 import { connect } from "metabase/lib/redux";
-import {
-  useCompatLocation,
-  useCompatParams,
-} from "metabase/routing/compat";
+import { useCompatLocation } from "metabase/routing/compat";
 import { getIsNavbarOpen } from "metabase/selectors/app";
 import { getUser } from "metabase/selectors/user";
 import type { User } from "metabase-types/api";
@@ -32,7 +30,7 @@ const mapStateToProps = (state: State) => ({
 
 function Navbar({ isOpen, user, adminPaths }: NavbarProps) {
   const compatLocation = useCompatLocation();
-  const params = useCompatParams();
+  const params = useParams<{ slug?: string; pageId?: string }>();
 
   // Cast to v3 Location type for compatibility
   const location = compatLocation as unknown as Location;

@@ -1,40 +1,10 @@
 import { useParams as useParamsV7 } from "react-router-dom";
 
-import { useRouter } from "metabase/router";
-
-import { USE_V7_PARAMS } from "./config";
-
-/**
- * Compatibility hook for accessing route params that works with both React Router v3 and v7.
- *
- * During migration:
- * - When USE_V7_PARAMS is false, uses the custom useRouter hook (v3)
- * - When USE_V7_PARAMS is true, uses react-router-dom v7 useParams
- *
- * Usage:
- * ```tsx
- * // For route "/dashboard/:slug"
- * const params = useCompatParams<{ slug: string }>();
- * console.log(params.slug);
- *
- * // Or with destructuring
- * const { slug } = useCompatParams<{ slug: string }>();
- * ```
- */
 export function useCompatParams<
   T extends Record<string, string | undefined> = Record<
     string,
     string | undefined
   >,
 >(): T {
-  // Only call the appropriate hook based on which router is active
-  // We cannot call v7 hooks when there's no v7 RouterProvider context
-  if (USE_V7_PARAMS) {
-    // eslint-disable-next-line react-hooks/rules-of-hooks
-    return useParamsV7() as T;
-  }
-
-  // eslint-disable-next-line react-hooks/rules-of-hooks
-  const { params: v3Params } = useRouter();
-  return (v3Params || {}) as T;
+  return useParamsV7() as T;
 }

@@ -6,8 +6,8 @@ import { t } from "ttag";
 import { useOnClickOutside } from "metabase/common/hooks/use-on-click-outside";
 import { isWithinIframe } from "metabase/lib/dom";
 import { useSelector } from "metabase/lib/redux";
-import { useCompatLocation, useCompatRoutes } from "metabase/routing/compat";
-import type { CompatRoute } from "metabase/routing/compat/types";
+import { useRouter } from "metabase/router";
+import { useCompatLocation } from "metabase/routing/compat";
 import { getUser } from "metabase/selectors/user";
 import { Box, Card, Center, Icon, Overlay, Stack, rem } from "metabase/ui";
 
@@ -21,9 +21,9 @@ import { PaletteResults } from "./PaletteResults";
 export const Palette = () => {
   const isLoggedIn = useSelector((state) => !!getUser(state));
   const location = useCompatLocation();
-  const routes = useCompatRoutes();
+  const { routes } = useRouter();
 
-  const disableCommandPaletteForRoute = routes.some((route: CompatRoute) =>
+  const disableCommandPaletteForRoute = routes.some((route) =>
     Boolean(
       (route as { disableCommandPalette?: boolean }).disableCommandPalette,
     ),
