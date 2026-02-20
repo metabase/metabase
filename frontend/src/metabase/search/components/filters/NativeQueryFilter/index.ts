@@ -1,1 +1,0 @@
-export { NativeQueryFilter } from "./NativeQueryFilter";

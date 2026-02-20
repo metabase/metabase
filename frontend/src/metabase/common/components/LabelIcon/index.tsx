@@ -1,1 +1,0 @@
-export { LabelIcon } from "./LabelIcon";

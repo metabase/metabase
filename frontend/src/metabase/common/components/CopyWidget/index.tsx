@@ -1,1 +1,0 @@
-export { CopyWidget } from "./CopyWidget";

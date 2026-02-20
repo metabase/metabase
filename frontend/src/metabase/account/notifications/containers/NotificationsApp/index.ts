@@ -1,1 +1,0 @@
-export { NotificationsApp } from "./NotificationsApp";

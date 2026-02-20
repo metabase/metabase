@@ -1,1 +1,0 @@
-export { CancelationSection } from "./CancelationSection";

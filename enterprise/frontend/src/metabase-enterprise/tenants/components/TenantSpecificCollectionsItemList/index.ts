@@ -1,1 +1,0 @@
-export { TenantSpecificCollectionsItemList } from "./TenantSpecificCollectionsItemList";

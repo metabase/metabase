@@ -1,1 +1,0 @@
-export { IllustrationWidget } from "./IllustrationWidget";

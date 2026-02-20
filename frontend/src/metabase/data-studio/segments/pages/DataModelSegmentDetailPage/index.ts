@@ -1,1 +1,0 @@
-export { DataModelSegmentDetailPage } from "./DataModelSegmentDetailPage";

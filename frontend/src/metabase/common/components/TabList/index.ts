@@ -1,1 +1,0 @@
-export { TabList } from "./TabList";

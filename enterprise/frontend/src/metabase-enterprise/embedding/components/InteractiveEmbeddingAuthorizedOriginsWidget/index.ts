@@ -1,1 +1,0 @@
-export { InteractiveEmbeddingAuthorizedOriginsWidget } from "./InteractiveEmbeddingAuthorizedOriginsWidget";

@@ -1,6 +1,0 @@
-{:paths
- ["src" "resources"]
-
- ;; Spark depends on :hive-like abstract driver which defines dependencies.
- :deps
- {}}

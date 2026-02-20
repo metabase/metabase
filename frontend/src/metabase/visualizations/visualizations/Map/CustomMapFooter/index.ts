@@ -1,1 +1,0 @@
-export { CustomMapFooter } from "./CustomMapFooter";

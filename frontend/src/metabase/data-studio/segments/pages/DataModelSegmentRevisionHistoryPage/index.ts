@@ -1,1 +1,0 @@
-export { DataModelSegmentRevisionHistoryPage } from "./DataModelSegmentRevisionHistoryPage";

@@ -1,1 +1,0 @@
-export { ColorSettings } from "./ColorSettings";

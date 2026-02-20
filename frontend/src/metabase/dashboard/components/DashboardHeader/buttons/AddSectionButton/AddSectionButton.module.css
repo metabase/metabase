@@ -1,4 +1,0 @@
-/* We have to explicitly hit the data-hovered tag to override its styles on the default Mantine menu item */
-.AddSectionButton > button[data-hovered="true"] {
-  background-color: var(--mb-color-brand);
-}

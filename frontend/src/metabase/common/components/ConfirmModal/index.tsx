@@ -1,1 +1,0 @@
-export { ConfirmModal } from "./ConfirmModal";

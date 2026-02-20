@@ -1,1 +1,0 @@
-export { IconButtonWrapper } from "./IconButtonWrapper";

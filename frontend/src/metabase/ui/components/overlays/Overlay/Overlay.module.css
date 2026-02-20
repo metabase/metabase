@@ -1,4 +1,0 @@
-.root {
-  /* 'overlay' in the following line refers broadly to all floating items, not just Mantine Overlays */
-  z-index: var(--mb-overlay-z-index);
-}

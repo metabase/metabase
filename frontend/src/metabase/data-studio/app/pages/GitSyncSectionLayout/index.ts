@@ -1,1 +1,0 @@
-export { GitSyncSectionLayout } from "./GitSyncSectionLayout";

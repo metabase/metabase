@@ -1,9 +1,0 @@
-node_modules/
-.env
-cache.json
-*.log
-dist/
-version.properties
-version-info.json
-v*.html
-channels.html

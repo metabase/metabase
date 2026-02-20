@@ -1,1 +1,0 @@
-export { MappedFieldPicker } from "./MappedFieldPicker";

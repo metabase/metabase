@@ -1,1 +1,0 @@
-export { ColorInput } from "./ColorInput";

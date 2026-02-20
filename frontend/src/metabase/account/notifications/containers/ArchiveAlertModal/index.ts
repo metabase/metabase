@@ -1,1 +1,0 @@
-export { DeleteAlertModal } from "./DeleteAlertModal";

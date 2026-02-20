@@ -1,1 +1,0 @@
-export { MeasureRevisionHistoryPage } from "./MeasureRevisionHistoryPage";

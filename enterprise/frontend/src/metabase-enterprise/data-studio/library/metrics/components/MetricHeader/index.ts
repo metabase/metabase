@@ -1,1 +1,0 @@
-export { MetricHeader } from "./MetricHeader";

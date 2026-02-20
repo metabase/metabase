@@ -1,7 +1,0 @@
-const SDK_BUNDLE_PATH = "app";
-module.exports.SDK_BUNDLE_PATH = SDK_BUNDLE_PATH;
-
-const SDK_BUNDLE_FILENAME = "embedding-sdk.js";
-module.exports.SDK_BUNDLE_FILENAME = SDK_BUNDLE_FILENAME;
-
-module.exports.SDK_BUNDLE_FULL_PATH = `${SDK_BUNDLE_PATH}/${SDK_BUNDLE_FILENAME}`;

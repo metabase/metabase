@@ -1,1 +1,0 @@
-export { AdHocQuestionDescription } from "./AdHocQuestionDescription";

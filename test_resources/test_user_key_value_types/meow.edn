@@ -1,4 +1,0 @@
-[:map
- [:value [:maybe [:map
-                  [:key1 {:default "default"} :string]
-                  [:key2 :int]]]]]

@@ -1,1 +1,0 @@
-export { BrowseTables } from "./BrowseTables";

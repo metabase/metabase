@@ -1,1 +1,0 @@
-export { SegmentDetailPage } from "./SegmentDetailPage";

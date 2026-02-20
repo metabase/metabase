@@ -1,1 +1,0 @@
-export { QuestionAlertListModal } from "./QuestionAlertListModal";

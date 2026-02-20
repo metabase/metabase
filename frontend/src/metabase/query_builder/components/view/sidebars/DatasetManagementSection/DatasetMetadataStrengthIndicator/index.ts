@@ -1,1 +1,0 @@
-export { DatasetMetadataStrengthIndicator } from "./DatasetMetadataStrengthIndicator";

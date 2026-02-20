@@ -1,1 +1,0 @@
-export { NewSegmentPage } from "./NewSegmentPage";

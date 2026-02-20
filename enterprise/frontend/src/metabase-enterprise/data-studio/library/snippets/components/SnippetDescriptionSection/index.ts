@@ -1,1 +1,0 @@
-export { SnippetDescriptionSection } from "./SnippetDescriptionSection";

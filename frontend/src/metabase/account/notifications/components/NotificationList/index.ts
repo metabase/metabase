@@ -1,1 +1,0 @@
-export { NotificationList } from "./NotificationList";

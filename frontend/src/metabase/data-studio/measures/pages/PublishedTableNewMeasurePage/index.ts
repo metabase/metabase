@@ -1,1 +1,0 @@
-export { PublishedTableNewMeasurePage } from "./PublishedTableNewMeasurePage";

@@ -1,1 +1,0 @@
-export { DropdownSidebarFilter } from "./DropdownSidebarFilter";

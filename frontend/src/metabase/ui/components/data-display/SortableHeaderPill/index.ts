@@ -1,1 +1,0 @@
-export { SortableHeaderPill } from "./SortableHeaderPill";

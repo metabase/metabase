@@ -1,9 +1,0 @@
-.itemWrapper:hover {
-  .chevronDown {
-    visibility: visible;
-  }
-}
-
-.chevronDown {
-  visibility: hidden;
-}

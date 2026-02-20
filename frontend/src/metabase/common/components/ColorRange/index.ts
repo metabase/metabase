@@ -1,1 +1,0 @@
-export { ColorRange } from "./ColorRange";
