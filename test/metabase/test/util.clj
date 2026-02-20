@@ -215,8 +215,7 @@
    (fn [_] (default-timestamped
             {:creator_id (rasta-id)
              :definition {}
-             :name "Mock Measure"
-             :table_id (data/id :checkins)}))
+             :name "Mock Measure"}))
 
    :model/NativeQuerySnippet
    (fn [_] (default-timestamped
