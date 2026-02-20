@@ -333,8 +333,8 @@
           (is (= {:bad_cards [], :bad_transforms [], :success true}
                  response)))))))
 
-(deftest check-snippet-content-change-doest-not-break-cards-test
-  (testing "POST /api/ee/dependencies/check-snippet doesn't catch when a change would break a card, because native query validation is disabled"
+(deftest check-snippet-content-change-doest-break-cards-test
+  (testing "POST /api/ee/dependencies/check-snippet catches when a change would break a card"
     (mt/dataset test-data
       (mt/with-premium-features #{:dependencies}
         (mt/with-temp [:model/User user {:email "test@test.com"}
@@ -349,17 +349,17 @@
                                                                       :type :snippet
                                                                       :snippet-name snippet-name
                                                                       :snippet-id snippet-id}}))
-                  _card (card/create-card! {:name "Card using snippet"
-                                            :dataset_query native-query
-                                            :display :table
-                                            :visualization_settings {}}
-                                           user)
+                  card (card/create-card! {:name "Card using snippet"
+                                           :dataset_query native-query
+                                           :display :table
+                                           :visualization_settings {}}
+                                          user)
                   proposed-content "WHERE NONEXISTENT_COLUMN > 100"
                   response (mt/user-http-request :rasta :post 200 "ee/dependencies/check-snippet"
                                                  {:id snippet-id
                                                   :content proposed-content})]
-              (is (=? {:success true
-                       :bad_cards []
+              (is (=? {:success false
+                       :bad_cards [{:id (:id card)}]
                        :bad_transforms []}
                       response)))))))))
 
