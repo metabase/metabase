@@ -306,8 +306,8 @@
 
 (defn- parse-filter [filter-clause]
   ;; strip out all the filters against temporal fields. Those are handled separately, as intervals
-  (-> (driver-api/replace filter-clause
-        [_ [:field _ (_ :guard :temporal-unit)] & _]
+  (-> (driver-api/replace-lite filter-clause
+        [_ [:field _ {:temporal-unit (_ :guard identity)}] & _]
         nil)
       ;; TODO (Cam 8/18/25) -- I am 90% sure this is serving no useful purpose.
       #_{:clj-kondo/ignore [:deprecated-var]}
@@ -328,7 +328,7 @@
   "Adding `n` `:default` units doesn't make sense. So if an `:absoulte-datetime` has `:default` as its unit, add `n`
   milliseconds, because that is the smallest unit Druid supports."
   [clause n]
-  (driver-api/replace clause
+  (driver-api/replace-lite clause
     [:absolute-datetime t :default]
     [:absolute-datetime (u.date/add t :millisecond n) :millisecond]
 
@@ -703,7 +703,7 @@
             (update :query (partial merge-with concat) ag-clauses))))))
 
 (defn- deduplicate-aggregation-options [expression]
-  (driver-api/replace expression
+  (driver-api/replace-lite expression
     [:aggregation-options [:aggregation-options ag options-1] options-2]
     [:aggregation-options ag (merge options-1 options-2)]))
 
@@ -712,7 +712,7 @@
 
 (defn- add-expression-aggregation-output-names
   [expression]
-  (driver-api/replace expression
+  (driver-api/replace-lite expression
     [:aggregation-options ag options]
     (deduplicate-aggregation-options [:aggregation-options (add-expression-aggregation-output-names ag) options])
 
