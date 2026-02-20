@@ -3,7 +3,8 @@
   (:require
    [medley.core :as m]
    [metabase.lib-metric.ast.schema :as ast.schema]
-   [metabase.util.malli :as mu]))
+   [metabase.util.malli :as mu]
+   [metabase.util.performance :as perf]))
 
 (comment ast.schema/keep-me)
 
@@ -37,6 +38,7 @@
 
 (defmulti compile-filter-node
   "Compile filter AST node to MBQL filter clause."
+  {:arglists '([node mappings])}
   (fn [node _mappings] (:node/type node)))
 
 (defmethod compile-filter-node :filter/comparison
@@ -134,9 +136,9 @@
   (let [metadata (:metadata source)]
     (or
      ;; From metric dataset-query
-     (get-in metadata [:dataset-query :database])
+     (perf/get-in metadata [:dataset-query :database])
      ;; From measure definition
-     (get-in metadata [:definition :database])
+     (perf/get-in metadata [:definition :database])
      ;; Default fallback
      1)))
 
@@ -150,7 +152,7 @@
 (defn- compile-join-nodes
   "Compile AST join nodes to pMBQL join clauses."
   [join-nodes]
-  (mapv :mbql-join join-nodes))
+  (perf/mapv :mbql-join join-nodes))
 
 ;;; -------------------- Main Compilation --------------------
 
@@ -169,11 +171,11 @@
 
         ;; Compile breakouts from group-by
         breakouts (when (seq group-by)
-                    (mapv #(resolve-dimension-ref % mappings) group-by))
+                    (perf/mapv #(resolve-dimension-ref % mappings) group-by))
 
         ;; Build stage
         stage (cond-> {:lib/type     :mbql.stage/mbql
-                       :source-table (get-in source [:base-table :id])
+                       :source-table (perf/get-in source [:base-table :id])
                        :aggregation  [(compile-aggregation-node (:aggregation source))]}
                 (seq all-filters) (assoc :filters all-filters)
                 (seq breakouts)   (assoc :breakout breakouts)
@@ -193,7 +195,7 @@
   [{:keys [source mappings filter group-by]} {:keys [limit]}]
   (let [;; Stage 0: Data model
         stage-0 (cond-> {:lib/type     :mbql.stage/mbql
-                         :source-table (get-in source [:base-table :id])
+                         :source-table (perf/get-in source [:base-table :id])
                          :joins        (compile-join-nodes (:joins source))}
                   (:filters source)
                   (assoc :filters [(compile-filter-node (:filters source) mappings)]))
@@ -201,7 +203,7 @@
         ;; Stage 1: Analysis
         user-filters (when filter [(compile-filter-node filter mappings)])
         breakouts    (when (seq group-by)
-                       (mapv #(resolve-dimension-ref % mappings) group-by))
+                       (perf/mapv #(resolve-dimension-ref % mappings) group-by))
         stage-1      (cond-> {:lib/type    :mbql.stage/mbql
                               :aggregation [(compile-aggregation-node (:aggregation source))]}
                        (seq user-filters) (assoc :filters user-filters)

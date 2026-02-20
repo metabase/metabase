@@ -24,10 +24,6 @@
 (def ^:private projection-2 [:dimension {:lib/uuid uuid-2} "dim-b"])
 (def ^:private projection-3 [:dimension {:lib/uuid uuid-3} "dim-c"])
 
-(def ^:private typed-proj
-  "A typed-projection entry with all three projections."
-  {:type :metric :id 1 :projection [projection-1 projection-2 projection-3]})
-
 (def ^:private base-definition
   {:lib/type          :metric/definition
    :expression        [:metric {:lib/uuid expr-uuid} 1]

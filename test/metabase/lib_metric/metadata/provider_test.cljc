@@ -140,7 +140,7 @@
           metrics (lib.metadata.protocols/metadatas mp {:lib/type :metadata/metric :id #{4}})]
       (is (= 1 (count metrics)))
       (is (= 4 (:id (first metrics))))
-      (is (:archived (first metrics))))))
+      (is (true? (:archived (first metrics)))))))
 
 (deftest ^:parallel metadatas-routes-columns-to-db-provider-test
   (testing "metadatas should route column requests to the appropriate database provider"
@@ -172,7 +172,7 @@
   (testing "setting should return setting values"
     (let [mp (create-mock-provider)]
       (is (= "Test Site" (lib.metadata.protocols/setting mp :site-name)))
-      (is (= true (lib.metadata.protocols/setting mp :enable-nested-queries)))
+      (is (true? (lib.metadata.protocols/setting mp :enable-nested-queries)))
       (is (nil? (lib.metadata.protocols/setting mp :nonexistent-setting))))))
 
 (deftest ^:parallel database-provider-for-table-returns-provider-test
@@ -189,7 +189,7 @@
 
 ;;; -------------------------------------------------- Cache Tests --------------------------------------------------
 
-(deftest ^:parallel cached-metadatas-returns-cached-metrics-test
+(deftest cached-metadatas-returns-cached-metrics-test
   (testing "cached-metadatas should return metrics from cache"
     (let [mp (create-mock-provider)
           ;; First fetch to populate cache (metadatas stores in cache internally via fetcher)
@@ -205,7 +205,7 @@
     (let [mp (create-mock-provider)]
       (is (lib.metadata.protocols/has-cache? mp)))))
 
-(deftest ^:parallel clear-cache!-clears-cache-test
+(deftest clear-cache!-clears-cache-test
   (testing "clear-cache! should clear the cache"
     (let [mp (create-mock-provider)]
       (lib.metadata.protocols/store-metadata! mp {:id 1 :name "Test" :lib/type :metadata/metric})
@@ -213,7 +213,7 @@
       (lib.metadata.protocols/clear-cache! mp)
       (is (empty? (lib.metadata.protocols/cached-metadatas mp :metadata/metric [1]))))))
 
-(deftest ^:parallel cache-value!-and-cached-value-work-test
+(deftest cache-value!-and-cached-value-work-test
   (testing "cache-value! and cached-value should work for arbitrary values"
     (let [mp (create-mock-provider)]
       (lib.metadata.protocols/cache-value! mp :my-key {:some "value"})

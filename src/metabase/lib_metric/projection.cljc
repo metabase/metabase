@@ -5,11 +5,9 @@
    [metabase.lib-metric.definition :as lib-metric.definition]
    [metabase.lib-metric.dimension :as lib-metric.dimension]
    [metabase.lib-metric.schema :as lib-metric.schema]
-   [metabase.lib.binning :as lib.binning]
    [metabase.lib.options :as lib.options]
-   [metabase.lib.schema.binning :as lib.schema.binning]
    [metabase.lib.schema.temporal-bucketing :as lib.schema.temporal-bucketing]
-   [metabase.lib.temporal-bucket :as lib.temporal-bucket]
+   [metabase.util.i18n :as i18n]
    [metabase.util.malli :as mu]
    [metabase.util.performance :as perf]))
 
@@ -65,8 +63,8 @@
         dimensions  (case leaf-type
                       :metric  (lib-metric.dimension/dimensions-for-metric metadata-provider source-id)
                       :measure (lib-metric.dimension/dimensions-for-measure metadata-provider source-id))
-        typed-proj  (some #(when (and (= (:type %) leaf-type) (= (:id %) source-id)) %)
-                          (or projections []))
+        typed-proj  (perf/some #(when (and (= (:type %) leaf-type) (= (:id %) source-id)) %)
+                               (or projections []))
         flat-projs  (if typed-proj (:projection typed-proj) [])]
     (add-projection-positions dimensions flat-projs)))
 
@@ -80,10 +78,10 @@
         source-id      (:id source-metadata)
         dimension-ref  (lib.options/ensure-uuid [:dimension {} (:id dimension)])
         projections    (or (:projections definition) [])
-        existing-idx   (some (fn [[idx tp]]
-                               (when (and (= (:type tp) leaf-type) (= (:id tp) source-id))
-                                 idx))
-                             (map-indexed vector projections))]
+        existing-idx   (perf/some (fn [[idx tp]]
+                                    (when (and (= (:type tp) leaf-type) (= (:id tp) source-id))
+                                      idx))
+                                  (map-indexed vector projections))]
     (if existing-idx
       (update-in definition [:projections existing-idx :projection] conj dimension-ref)
       (update definition :projections (fnil conj [])
@@ -102,10 +100,10 @@
         dimension-ref (lib.options/ensure-uuid dimension-ref)
         projections   (or (:projections definition) [])
         ;; Find existing typed-projection entry for this source
-        existing-idx  (some (fn [[idx tp]]
-                              (when (and (= leaf-type (:type tp)) (= leaf-id (:id tp)))
-                                idx))
-                            (map-indexed vector projections))]
+        existing-idx  (perf/some (fn [[idx tp]]
+                                   (when (and (= leaf-type (:type tp)) (= leaf-id (:id tp)))
+                                     idx))
+                                 (map-indexed vector projections))]
     (if existing-idx
       ;; Append dim-ref to existing typed-projection's :projection vector
       (update-in definition [:projections existing-idx :projection] conj dimension-ref)
@@ -123,9 +121,59 @@
         dimension-id (if (map? projection-or-reference)
                        (:id projection-or-reference)
                        (projection-dimension-id projection-or-reference))]
-    (some #(when (= (:id %) dimension-id) %) dimensions)))
+    (perf/some #(when (= (:id %) dimension-id) %) dimensions)))
 
 ;;; -------------------------------------------------- Temporal Bucket Functions --------------------------------------------------
+
+(def ^:private hidden-bucketing-options
+  #{:millisecond :second :second-of-minute :year-of-era})
+
+(def ^:private time-bucket-options
+  (into []
+        (comp (remove hidden-bucketing-options)
+              (map (fn [unit]
+                     (cond-> {:lib/type :option/temporal-bucketing
+                              :unit unit}
+                       (= unit :hour) (assoc :default true)))))
+        lib.schema.temporal-bucketing/ordered-time-bucketing-units))
+
+(def ^:private date-bucket-options
+  (perf/mapv (fn [unit]
+               (cond-> {:lib/type :option/temporal-bucketing
+                        :unit unit}
+                 (= unit :day) (assoc :default true)))
+             lib.schema.temporal-bucketing/ordered-date-bucketing-units))
+
+(def ^:private datetime-bucket-options
+  (let [units (into [] (remove hidden-bucketing-options)
+                    lib.schema.temporal-bucketing/ordered-datetime-bucketing-units)]
+    (perf/mapv (fn [unit]
+                 (cond-> {:lib/type :option/temporal-bucketing
+                          :unit unit}
+                   (= unit :day) (assoc :default true)))
+               units)))
+
+(defn- mark-unit [options option-key unit]
+  (perf/mapv (fn [option]
+               (cond-> option
+                 (:default option)          (dissoc :default)
+                 (= (:unit option) unit)    (assoc option-key true)))
+             options))
+
+(defn- available-temporal-buckets-for-type
+  "Given a column type and nillable default-unit and selected-unit, return the appropriate bucket options."
+  [column-type default-unit selected-unit]
+  (let [options       (cond
+                        (isa? column-type :type/DateTime) datetime-bucket-options
+                        (isa? column-type :type/Date)     date-bucket-options
+                        (isa? column-type :type/Time)     time-bucket-options
+                        :else                             [])
+        fallback-unit (if (isa? column-type :type/Time) :hour :month)
+        default-unit  (or default-unit fallback-unit)]
+    (cond-> options
+      (= :inherited default-unit) (->> (perf/mapv #(dissoc % :default)))
+      default-unit  (mark-unit :default  default-unit)
+      selected-unit (mark-unit :selected selected-unit))))
 
 (mu/defn available-temporal-buckets :- [:sequential [:ref ::lib.schema.temporal-bucketing/option]]
   "Get available temporal buckets for a dimension based on its effective-type."
@@ -133,16 +181,12 @@
    dimension  :- ::lib-metric.schema/metadata-dimension]
   (let [effective-type (or (:effective-type dimension) (:base-type dimension))
         flat-projs    (lib-metric.definition/flat-projections (or (:projections definition) []))
-        ;; Find if this dimension already has a projection with a temporal unit
-        selected-unit (some (fn [proj]
-                              (when (= (:id dimension) (projection-dimension-id proj))
-                                (:temporal-unit (second proj))))
-                            flat-projs)]
+        selected-unit (perf/some (fn [proj]
+                                   (when (= (:id dimension) (projection-dimension-id proj))
+                                     (:temporal-unit (second proj))))
+                                 flat-projs)]
     (if (isa? effective-type :type/Temporal)
-      (lib.temporal-bucket/available-temporal-buckets-for-type
-       effective-type
-       :month  ;; default unit
-       selected-unit)
+      (available-temporal-buckets-for-type effective-type :month selected-unit)
       [])))
 
 (mu/defn temporal-bucket :- [:maybe ::lib.schema.temporal-bucketing/option]
@@ -170,40 +214,76 @@
 
 ;;; -------------------------------------------------- Binning Functions --------------------------------------------------
 
-(mu/defn available-binning-strategies :- [:maybe [:sequential [:ref ::lib.schema.binning/binning-option]]]
+(defn- default-auto-bin []
+  {:lib/type     :option/binning
+   :display-name (i18n/tru "Auto bin")
+   :default      true
+   :mbql         {:strategy :default}})
+
+(defn- numeric-binning-strategies []
+  (perf/mapv #(assoc % :lib/type :option/binning)
+             [(default-auto-bin)
+              {:display-name (i18n/tru "10 bins")  :mbql {:strategy :num-bins :num-bins 10}}
+              {:display-name (i18n/tru "50 bins")  :mbql {:strategy :num-bins :num-bins 50}}
+              {:display-name (i18n/tru "100 bins") :mbql {:strategy :num-bins :num-bins 100}}]))
+
+(defn- coordinate-binning-strategies []
+  (perf/mapv #(assoc % :lib/type :option/binning)
+             [(default-auto-bin)
+              {:display-name (i18n/tru "Bin every 0.1 degrees")   :mbql {:strategy :bin-width :bin-width 0.1}}
+              {:display-name (i18n/tru "Bin every 1 degree")      :mbql {:strategy :bin-width :bin-width 1.0}}
+              {:display-name (i18n/tru "Bin every 10 degrees")    :mbql {:strategy :bin-width :bin-width 10.0}}
+              {:display-name (i18n/tru "Bin every 20 degrees")    :mbql {:strategy :bin-width :bin-width 20.0}}
+              {:display-name (i18n/tru "Bin every 0.05 degrees")  :mbql {:strategy :bin-width :bin-width 0.05}}
+              {:display-name (i18n/tru "Bin every 0.01 degrees")  :mbql {:strategy :bin-width :bin-width 0.01}}
+              {:display-name (i18n/tru "Bin every 0.005 degrees") :mbql {:strategy :bin-width :bin-width 0.005}}]))
+
+(defn- binning=
+  "Given two binning values, check if they match."
+  [x y]
+  (let [binning-keys (case (:strategy x)
+                       :num-bins  [:strategy :num-bins]
+                       :bin-width [:strategy :bin-width]
+                       [:strategy])]
+    (= (perf/select-keys x binning-keys) (perf/select-keys y binning-keys))))
+
+(defn- strategy=
+  "Given a binning option and a column's current binning value, check if they match."
+  [binning-option column-binning]
+  (binning= (:mbql binning-option) column-binning))
+
+(mu/defn available-binning-strategies :- [:maybe [:sequential [:ref ::lib-metric.schema/binning-option]]]
   "Get available binning strategies for a dimension based on its type and sources."
   [definition :- ::lib-metric.schema/metric-definition
    dimension  :- ::lib-metric.schema/metadata-dimension]
   (let [effective-type (:effective-type dimension)
         semantic-type  (:semantic-type dimension)
         sources        (:sources dimension)
-        has-binning?   (and (seq sources) (some :field-id sources))
+        has-binning?   (and (seq sources) (perf/some :field-id sources))
         flat-projs     (lib-metric.definition/flat-projections (or (:projections definition) []))
-        existing       (some (fn [proj]
-                               (when (= (:id dimension) (projection-dimension-id proj))
-                                 (:binning (second proj))))
-                             flat-projs)
+        existing       (perf/some (fn [proj]
+                                    (when (= (:id dimension) (projection-dimension-id proj))
+                                      (:binning (second proj))))
+                                  flat-projs)
         strategies     (cond
                          (not has-binning?)
                          nil
 
-                         ;; Coordinate binning for lat/long
                          (isa? semantic-type :type/Coordinate)
-                         (lib.binning/coordinate-binning-strategies)
+                         (coordinate-binning-strategies)
 
-                         ;; Numeric binning for numbers (not relations)
                          (and (isa? effective-type :type/Number)
                               (not (isa? semantic-type :Relation/*)))
-                         (lib.binning/numeric-binning-strategies)
+                         (numeric-binning-strategies)
 
                          :else nil)]
     (when strategies
       (for [strategy strategies]
         (cond-> strategy
-          existing (dissoc :default)
-          (lib.binning/strategy= strategy existing) (assoc :selected true))))))
+          existing                     (dissoc :default)
+          (strategy= strategy existing) (assoc :selected true))))))
 
-(mu/defn binning :- [:maybe ::lib.schema.binning/binning]
+(mu/defn binning :- [:maybe ::lib-metric.schema/binning]
   "Get the current binning from a projection clause."
   [projection :- ::lib-metric.schema/dimension-or-reference]
   (:binning (second (lib-metric.dimension/reference projection))))
@@ -211,8 +291,8 @@
 (mu/defn with-binning :- ::lib-metric.schema/dimension-reference
   "Apply a binning strategy to a projection. Pass nil to remove binning."
   [projection :- ::lib-metric.schema/dimension-or-reference
-   binning-option :- [:maybe [:or ::lib.schema.binning/binning
-                              ::lib.schema.binning/binning-option]]]
+   binning-option :- [:maybe [:or ::lib-metric.schema/binning
+                              ::lib-metric.schema/binning-option]]]
   (let [binning-val (cond
                       (nil? binning-option) nil
                       (contains? binning-option :mbql) (:mbql binning-option)

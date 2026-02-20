@@ -13,7 +13,7 @@
 (defn- valid?
   "Check if a value is valid against a registered schema, with normalization."
   [schema-key value]
-  (mc/validate (mr/resolve-schema schema-key)
+  (mr/validate schema-key
                (mc/decode (mr/resolve-schema schema-key) value (mtx/transformer {:name :normalize}))))
 
 (defn- decode
@@ -78,10 +78,10 @@
 (deftest missing-uuid-on-reference-test
   (testing "Missing :lib/uuid on metric reference is invalid (without normalization)"
     ;; normalize-options-map adds :lib/uuid automatically, so we must test raw validation
-    (is (not (mc/validate (mr/resolve-schema ::lib-metric.schema/metric-math-expression)
+    (is (not (mr/validate ::lib-metric.schema/metric-math-expression
                           [:metric {} 42]))))
   (testing "Missing :lib/uuid on measure reference is invalid (without normalization)"
-    (is (not (mc/validate (mr/resolve-schema ::lib-metric.schema/metric-math-expression)
+    (is (not (mr/validate ::lib-metric.schema/metric-math-expression
                           [:measure {} 7])))))
 
 (deftest single-operand-arithmetic-test

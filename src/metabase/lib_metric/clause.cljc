@@ -4,7 +4,8 @@
    and :projections (as typed-projection entries with nested dimension references).
    Each clause has a :lib/uuid in its options map for identification."
   (:require
-   [metabase.lib.options :as lib.options]))
+   [metabase.lib.options :as lib.options]
+   [metabase.util.performance :as perf]))
 
 (defn- find-clause-location
   "Find a clause by its UUID in the definition's :filters or :projections.
@@ -15,17 +16,17 @@
    For projections: [:projections proj-idx :projection dim-idx]"
   [definition target-uuid]
   ;; Search filters: each entry is {:lib/uuid ... :filter <mbql-clause>}
-  (or (some (fn [[idx entry]]
-              (when (= target-uuid (lib.options/uuid (:filter entry)))
-                [:filters idx :filter]))
-            (map-indexed vector (:filters definition)))
+  (or (perf/some (fn [[idx entry]]
+                   (when (= target-uuid (lib.options/uuid (:filter entry)))
+                     [:filters idx :filter]))
+                 (map-indexed vector (:filters definition)))
       ;; Search projections: each entry is {:type ... :id ... :projection [dim-refs...]}
-      (some (fn [[proj-idx tp]]
-              (some (fn [[dim-idx dim-ref]]
-                      (when (= target-uuid (lib.options/uuid dim-ref))
-                        [:projections proj-idx :projection dim-idx]))
-                    (map-indexed vector (:projection tp))))
-            (map-indexed vector (:projections definition)))))
+      (perf/some (fn [[proj-idx tp]]
+                   (perf/some (fn [[dim-idx dim-ref]]
+                                (when (= target-uuid (lib.options/uuid dim-ref))
+                                  [:projections proj-idx :projection dim-idx]))
+                              (map-indexed vector (:projection tp))))
+                 (map-indexed vector (:projections definition)))))
 
 (defn replace-clause
   "Replace a clause in the definition with a new clause.
@@ -49,16 +50,14 @@
       (case (first path)
         :filters
         ;; Remove the entire instance-filter entry at [:filters idx]
-        (let [idx (second path)
-              v   (:filters definition)]
+        (let [idx (second path)]
           (update definition :filters
                   (fn [v]
                     (into (subvec v 0 idx) (subvec v (inc idx))))))
         :projections
         ;; Remove the dim-ref at [:projections proj-idx :projection dim-idx]
         (let [proj-idx (nth path 1)
-              dim-idx  (nth path 3)
-              proj-vec (get-in definition [:projections proj-idx :projection])]
+              dim-idx  (nth path 3)]
           (update-in definition [:projections proj-idx :projection]
                      (fn [v]
                        (into (subvec v 0 dim-idx) (subvec v (inc dim-idx)))))))
@@ -73,8 +72,8 @@
         target-uuid (lib.options/uuid target-clause)]
     (if-let [source-path (find-clause-location definition source-uuid)]
       (if-let [target-path (find-clause-location definition target-uuid)]
-        (let [source-val (get-in definition source-path)
-              target-val (get-in definition target-path)]
+        (let [source-val (perf/get-in definition source-path)
+              target-val (perf/get-in definition target-path)]
           (-> definition
               (assoc-in source-path target-val)
               (assoc-in target-path source-val)))

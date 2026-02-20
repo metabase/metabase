@@ -9,11 +9,9 @@
    [clojure.string :as str]
    [metabase.lib-metric.hierarchy :as hierarchy]
    [metabase.lib-metric.operators :as operators]
-   [metabase.lib.binning :as lib.binning]
-   [metabase.lib.dispatch :as lib.dispatch]
+   [metabase.lib.core :as lib]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
    [metabase.lib.schema.temporal-bucketing :as lib.schema.temporal-bucketing]
-   [metabase.lib.temporal-bucket :as lib.temporal-bucket]
    [metabase.util :as u]
    [metabase.util.i18n :as i18n]))
 
@@ -24,7 +22,7 @@
    for the given entity. Dispatches on `:lib/type` of `x`."
   {:arglists '([definition x])}
   (fn [_definition x]
-    (lib.dispatch/dispatch-value x))
+    (lib/dispatch-value x))
   :hierarchy hierarchy/hierarchy)
 
 ;;; -------------------------------------------------- Default Implementation --------------------------------------------------
@@ -111,7 +109,7 @@
   [_definition bucket]
   (let [unit (:unit bucket)]
     {:short-name (u/qualified-name unit)
-     :display-name (lib.temporal-bucket/describe-temporal-unit unit)
+     :display-name (lib/describe-temporal-unit unit)
      :default (boolean (:default bucket))
      :selected (boolean (:selected bucket))
      :is-temporal-extraction (and (contains? lib.schema.temporal-bucketing/datetime-extraction-units unit)
@@ -121,7 +119,7 @@
   [_definition bucket]
   (let [unit (:unit bucket)]
     {:short-name (u/qualified-name unit)
-     :display-name (lib.temporal-bucket/describe-temporal-unit unit)
+     :display-name (lib/describe-temporal-unit unit)
      :default (boolean (:default bucket))
      :selected (boolean (:selected bucket))
      :is-temporal-extraction (and (contains? lib.schema.temporal-bucketing/datetime-extraction-units unit)
@@ -129,9 +127,26 @@
 
 ;;; -------------------------------------------------- Binning Strategy --------------------------------------------------
 
+(defn- format-number-simple
+  "Format a number for display. Integers as whole numbers, decimals as-is."
+  [n]
+  (str (if (zero? (rem n 1))
+         (int n)
+         n)))
+
+(defn- binning-display-name
+  "Generate display name for binning options, given a dimension (or nil)."
+  [{:keys [bin-width num-bins strategy]} dimension]
+  (case strategy
+    :num-bins  (i18n/trun "{0} bin" "{0} bins" num-bins)
+    :bin-width (str (format-number-simple bin-width)
+                    (when (isa? (:semantic-type dimension) :type/Coordinate)
+                      "\u00B0"))
+    :default   (i18n/tru "Auto binned")))
+
 (defmethod display-info-method :binning-strategy
   [_definition strategy]
-  {:display-name (lib.binning/binning-display-name strategy nil)
+  {:display-name (binning-display-name strategy nil)
    :default (boolean (:default strategy))
    :selected (boolean (:selected strategy))})
 
@@ -245,7 +260,7 @@
               (display-info-method definition x)
               (catch #?(:clj Throwable :cljs js/Error) e
                 (throw (ex-info (i18n/tru "Error calculating display info for {0}: {1}"
-                                          (lib.dispatch/dispatch-value x)
+                                          (lib/dispatch-value x)
                                           (ex-message e))
                                 {:definition definition :x x}
                                 e)))))]

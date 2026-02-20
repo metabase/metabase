@@ -13,7 +13,8 @@
 
    All categories derive from ::filter-operator for display-info compatibility."
   (:require
-   [metabase.lib-metric.hierarchy :as hierarchy]))
+   [metabase.lib-metric.hierarchy :as hierarchy]
+   [metabase.util.performance :as perf]))
 
 ;;; -------------------------------------------------- Operator Categories --------------------------------------------------
 
@@ -124,17 +125,17 @@
 (defn display-name
   "Get the display name for an operator. Falls back to the operator name if not found."
   [op]
-  (get-in operator-metadata [op :display-name] (name op)))
+  (perf/get-in operator-metadata [op :display-name] (name op)))
 
 (defn arity
   "Get the arity for an operator. Returns 1 as default if not found."
   [op]
-  (get-in operator-metadata [op :arity] 1))
+  (perf/get-in operator-metadata [op :arity] 1))
 
 (defn ast-node-type
   "Get the AST node type for an operator."
   [op]
-  (get-in operator-metadata [op :ast-node-type]))
+  (perf/get-in operator-metadata [op :ast-node-type]))
 
 ;;; -------------------------------------------------- Operators by Dimension Type --------------------------------------------------
 

@@ -7,7 +7,6 @@
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.metrics.core :as metrics]
-   [metabase.metrics.dimension :as metrics.dimension]
    [metabase.models.interface :as mi]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
@@ -151,7 +150,7 @@
                                   [:id            ms/PositiveInt]
                                   [:dimension-key ms/UUIDString]]]
   (let [measure (hydrated-measure id)]
-    (metrics.dimension/dimension-values
+    (metrics/dimension-values
      (:dimensions measure)
      (:dimension_mappings measure)
      dimension-key)))
@@ -166,7 +165,7 @@
                                   [:dimension-key ms/UUIDString]]
    {:keys [query]}            :- [:map [:query ms/NonBlankString]]]
   (let [measure (hydrated-measure id)]
-    (metrics.dimension/dimension-search-values
+    (metrics/dimension-search-values
      (:dimensions measure)
      (:dimension_mappings measure)
      dimension-key
@@ -182,7 +181,7 @@
                                   [:dimension-key ms/UUIDString]]
    {:keys [value]}             :- [:map [:value :string]]]
   (let [measure (hydrated-measure id)]
-    (metrics.dimension/dimension-remapped-value
+    (metrics/dimension-remapped-value
      (:dimensions measure)
      (:dimension_mappings measure)
      dimension-key

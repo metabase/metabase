@@ -7,7 +7,6 @@
    [metabase.lib-metric.core :as lib-metric]
    [metabase.lib-metric.schema :as lib-metric.schema]
    [metabase.metrics.core :as metrics]
-   [metabase.metrics.dimension :as metrics.dimension]
    [metabase.query-processor :as qp]
    [metabase.query-processor.streaming :as qp.streaming]
    [metabase.server.core :as server]
@@ -259,7 +258,7 @@
                                   [:id            ms/PositiveInt]
                                   [:dimension-key ms/UUIDString]]]
   (let [metric (hydrated-metric id)]
-    (metrics.dimension/dimension-values
+    (metrics/dimension-values
      (:dimensions metric)
      (:dimension_mappings metric)
      dimension-key)))
@@ -274,7 +273,7 @@
                                   [:dimension-key ms/UUIDString]]
    {:keys [query]}            :- [:map [:query ms/NonBlankString]]]
   (let [metric (hydrated-metric id)]
-    (metrics.dimension/dimension-search-values
+    (metrics/dimension-search-values
      (:dimensions metric)
      (:dimension_mappings metric)
      dimension-key
@@ -290,7 +289,7 @@
                                   [:dimension-key ms/UUIDString]]
    {:keys [value]}             :- [:map [:value :string]]]
   (let [metric (hydrated-metric id)]
-    (metrics.dimension/dimension-remapped-value
+    (metrics/dimension-remapped-value
      (:dimensions metric)
      (:dimension_mappings metric)
      dimension-key

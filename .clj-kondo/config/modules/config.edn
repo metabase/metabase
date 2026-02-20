@@ -793,8 +793,11 @@
   lib-metric
   {:team "UX West"
    :api  #{metabase.lib-metric.core
-           metabase.lib-metirc.schema}
+           metabase.lib-metric.schema}
    :uses #{lib
+           lib-be
+           settings
+           types
            util}}
 
   llm
@@ -847,6 +850,7 @@
            lib
            lib-be
            lib-metric
+           metrics
            models
            permissions
            remote-sync
@@ -855,9 +859,12 @@
 
   metrics
   {:team "UX West"
-   :api  #{metabase.metrics.api}
+   :api  #{metabase.metrics.api
+           metabase.metrics.core}
    :uses #{api
            collections
+           lib
+           lib-be
            lib-metric
            parameters
            query-processor
@@ -1136,6 +1143,7 @@
            events
            lib
            lib-be
+           metrics
            models
            parameters
            permissions

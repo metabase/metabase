@@ -76,7 +76,7 @@
                       :measure (dimension/dimensions-for-measure provider leaf-id)
                       [])
         inst-filters (definition/filters definition)
-        flat-filters (mapv :filter inst-filters)
+        flat-filters (perf/mapv :filter inst-filters)
         positions    (build-filter-positions flat-filters)]
     (perf/mapv
      (fn [dim]
@@ -99,7 +99,7 @@
                         [])
         inst-filters  (filterv #(= (:lib/uuid %) leaf-uuid)
                                (definition/filters definition))
-        flat-filters  (mapv :filter inst-filters)
+        flat-filters  (perf/mapv :filter inst-filters)
         positions     (build-filter-positions flat-filters)]
     (perf/mapv
      (fn [dim]
@@ -134,15 +134,15 @@
   [definition dimension-id]
   (let [provider   (:metadata-provider definition)
         leaves     (definition/expression-leaves (:expression definition))]
-    (some (fn [leaf]
-            (let [dims (case (definition/expression-leaf-type leaf)
-                         :metric  (dimension/dimensions-for-metric
-                                   provider (definition/expression-leaf-id leaf))
-                         :measure (dimension/dimensions-for-measure
-                                   provider (definition/expression-leaf-id leaf))
-                         [])]
-              (some #(when (= (:id %) dimension-id) %) dims)))
-          leaves)))
+    (perf/some (fn [leaf]
+                 (let [dims (case (definition/expression-leaf-type leaf)
+                              :metric  (dimension/dimensions-for-metric
+                                        provider (definition/expression-leaf-id leaf))
+                              :measure (dimension/dimensions-for-measure
+                                        provider (definition/expression-leaf-id leaf))
+                              [])]
+                   (perf/some #(when (= (:id %) dimension-id) %) dims)))
+               leaves)))
 
 ;;; -------------------------------------------------- Default Filters (is-null/not-null) --------------------------------------------------
 
@@ -387,7 +387,7 @@
                              :between [(nth filter-clause 3) (nth filter-clause 4)]
                              [(nth filter-clause 3)])
                     ;; Determine if values include time component
-                    has-time (some value-has-time? values)]
+                    has-time (perf/some value-has-time? values)]
                 {:operator  operator
                  :dimension dimension
                  :values    values

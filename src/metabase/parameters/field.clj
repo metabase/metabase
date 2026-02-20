@@ -15,6 +15,8 @@
   (:import
    (java.text NumberFormat)))
 
+(set! *warn-on-reflection* true)
+
 (defn follow-fks
   "Automatically follow the target IDs in an FK `field` until we reach the PK it points to, and return that. For
   non-FK Fields, returns them as-is. For example, with the Sample Database:

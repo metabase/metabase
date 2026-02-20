@@ -1,5 +1,7 @@
 (ns metabase.lib-metric.ast.walk
-  "Functions for walking and transforming AST nodes.")
+  "Functions for walking and transforming AST nodes."
+  (:require
+   [metabase.util.performance :as perf]))
 
 (defn node?
   "Returns true if x is an AST node (map with :node/type key)."
@@ -35,7 +37,7 @@
 
      ;; Compound filter nodes with :children
      (#{:filter/and :filter/or} (:node/type ast))
-     (update ast :children #(mapv inner %))
+     (update ast :children #(perf/mapv inner %))
 
      ;; Negation filter with single :child
      (= :filter/not (:node/type ast))
@@ -51,9 +53,9 @@
      (cond-> ast
        (:filter ast)     (update :filter inner)
        (:source ast)     (update :source inner)
-       (:group-by ast)   (update :group-by #(mapv inner %))
-       (:dimensions ast) (update :dimensions #(mapv inner %))
-       (:mappings ast)   (update :mappings #(mapv inner %)))
+       (:group-by ast)   (update :group-by #(perf/mapv inner %))
+       (:dimensions ast) (update :dimensions #(perf/mapv inner %))
+       (:mappings ast)   (update :mappings #(perf/mapv inner %)))
 
      ;; Source nodes with filters
      (#{:source/metric :source/measure} (:node/type ast))

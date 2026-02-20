@@ -79,13 +79,6 @@
   (when (and obj (js-in k obj))
     (gobject/get obj k)))
 
-(defn- get-prop
-  "Get a property from an object that may be either a CLJS map or a JS Proxy.
-   Tries CLJS keyword access first, then falls back to JS property access."
-  [obj cljs-key js-key]
-  (or (get obj cljs-key)
-      (gobject/get obj js-key)))
-
 (defn- build-table->db-id
   "Build a map of table-id -> database-id from the tables in metadata."
   [metadata]
@@ -386,7 +379,7 @@
   [js-key]
   (-> js-key
       (str/replace #"([a-z])([A-Z])" "$1-$2")
-      str/lower-case
+      u/lower-case-en
       keyword))
 
 (defn- js-options->cljs-options

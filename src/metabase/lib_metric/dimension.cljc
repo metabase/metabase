@@ -51,8 +51,8 @@
                    (:lib/source column)      (assoc :lib/source (:lib/source column))
                    (pos-int? (:id column))   (assoc :sources [(cond-> {:type :field, :field-id (:id column)}
                                                                 (let [fp (:fingerprint column)]
-                                                                  (and (get-in fp [:type :type/Number :min])
-                                                                       (get-in fp [:type :type/Number :max])))
+                                                                  (and (perf/get-in fp [:type :type/Number :min])
+                                                                       (perf/get-in fp [:type :type/Number :max])))
                                                                 (assoc :binning true))])
                    has-field-values          (assoc :has-field-values has-field-values)
                    group                     (assoc :group group))
@@ -108,7 +108,7 @@
                    group-cols  (lib/columns-group-columns col-group)]
                (->> group-cols
                     (remove #(= :source/expressions (:lib/source %)))
-                    (mapv #(column->computed-pair % group-desc))))))
+                    (perf/mapv #(column->computed-pair % group-desc))))))
           col-groups)))
 
 ;;; ------------------------------------------------- Dimension Normalization -------------------------------------------------
@@ -125,7 +125,7 @@
    Handles JSON round-trip artifacts like string enum values in :sources and :status."
   [dim]
   (cond-> dim
-    (seq (:sources dim)) (update :sources #(mapv normalize-dimension-source %))
+    (seq (:sources dim)) (update :sources #(perf/mapv normalize-dimension-source %))
     (string? (:status dim)) (update :status keyword)
     (string? (:has-field-values dim)) (update :has-field-values keyword)))
 

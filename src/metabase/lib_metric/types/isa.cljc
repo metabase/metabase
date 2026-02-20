@@ -1,7 +1,7 @@
 (ns metabase.lib-metric.types.isa
   "Type predicate functions for lib-metric dimensions.
    Simpler implementation than metabase.lib.types.isa."
-  (:refer-clojure :exclude [boolean?])
+  (:refer-clojure :exclude [boolean? string?])
   (:require
    [metabase.lib-metric.types.constants :as constants]
    [metabase.types.core]

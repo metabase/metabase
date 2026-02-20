@@ -79,7 +79,7 @@
 (deftest list-metric-hydrates-collection-test
   (testing "GET /api/metric hydrates collection information"
     (mt/with-temp [:model/Collection collection {:name "Test Collection"}
-                   :model/Card       metric     {:name          "Metric in Collection"
+                   :model/Card       _metric    {:name          "Metric in Collection"
                                                  :type          :metric
                                                  :collection_id (:id collection)
                                                  :dataset_query (mt/mbql-query venues {:aggregation [[:count]]})}]

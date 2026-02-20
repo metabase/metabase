@@ -7,7 +7,7 @@
   (:require
    [honey.sql.helpers :as sql.helpers]
    [medley.core :as m]
-   [metabase.lib-be.metadata.jvm :as jvm]
+   [metabase.lib-be.core :as lib-be]
    [metabase.lib-metric.metadata.provider :as provider]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
    [metabase.settings.core :as setting]
@@ -144,7 +144,7 @@
   []
   (let [table->db (table->database-id)
         db-provider-fn (memoize/lru
-                        jvm/application-database-metadata-provider
+                        lib-be/application-database-metadata-provider
                         :lru/threshold 50)]
     (provider/metric-context-metadata-provider
      fetch-metrics

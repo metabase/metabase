@@ -1,14 +1,53 @@
 (ns metabase.lib-metric.schema
   "Malli schemas for metric dimensions, dimension-mappings, and dimension-references."
+  (:refer-clojure :exclude [some])
   (:require
-   [metabase.lib.schema.binning :as lib.schema.binning]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.ref :as lib.schema.ref]
    [metabase.lib.schema.temporal-bucketing :as lib.schema.temporal-bucketing]
-   [metabase.util.malli.registry :as mr]))
+   [metabase.util.malli.registry :as mr]
+   [metabase.util.performance :refer [some]]))
 
 (comment lib.schema.ref/keep-me)
+
+;;; ------------------------------------------------- Binning -------------------------------------------------
+;;; Duplicated from metabase.lib.schema.binning to avoid depending on a non-public lib namespace.
+
+(mr/def ::binning-strategy
+  [:enum
+   {:decode/normalize lib.schema.common/normalize-keyword}
+   :bin-width :default :num-bins])
+
+(mr/def ::binning
+  "Schema for `:binning` options passed to a `:dimension` clause."
+  [:and
+   [:map
+    {:decode/normalize lib.schema.common/normalize-map}
+    [:strategy [:ref ::binning-strategy]]]
+   [:multi {:dispatch (fn [x]
+                        (keyword (some #(get x %) [:strategy "strategy"])))
+            :error/fn (fn [{:keys [value]} _]
+                        (str "Invalid binning strategy" (pr-str value)))}
+    [:default   [:map
+                 [:strategy [:= :default]]]]
+    [:bin-width [:map
+                 [:strategy  [:= :bin-width]]
+                 [:bin-width [:ref ::lib.schema.common/positive-number]]]]
+    [:num-bins  [:map
+                 [:strategy [:= :num-bins]]
+                 [:num-bins pos-int?]]]]])
+
+(mr/def ::binning-option
+  "Schema for a binning option as presented to the UI."
+  [:map
+   [:lib/type [:= :option/binning]]
+   [:display-name :string]
+   [:mbql [:maybe ::binning]]
+   [:default {:optional true} :boolean]
+   [:selected {:optional true} :boolean]])
+
+;;; -----------------------------------------------------------------------------------------------------------------
 
 (mr/def ::dimension-id
   "UUID string identifying a dimension."
@@ -63,7 +102,7 @@
    [:effective-type {:optional true} [:maybe ::lib.schema.common/base-type]]
    [:semantic-type  {:optional true} [:maybe ::lib.schema.common/semantic-or-relation-type]]
    [:temporal-unit  {:optional true} [:maybe ::lib.schema.temporal-bucketing/unit]]
-   [:binning        {:optional true} [:maybe ::lib.schema.binning/binning]]])
+   [:binning        {:optional true} [:maybe ::binning]]])
 
 (mr/def ::dimension-reference
   "Dimension reference clause [:dimension opts uuid].
@@ -72,7 +111,7 @@
    {:decode/normalize (fn [x]
                         (when (and (sequential? x)
                                    (= 3 (count x)))
-                          (let [[tag opts dimension-id] x]
+                          (let [[_tag opts dimension-id] x]
                             [:dimension
                              (or opts {})
                              dimension-id])))}

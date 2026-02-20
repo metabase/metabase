@@ -2,10 +2,20 @@
   "Core namespace for metrics functionality including dimension hydration.
    Contains persistence multimethod and orchestration logic."
   (:require
-   [metabase.lib-be.metadata.jvm :as lib-be.metadata]
+   [metabase.lib-be.core :as lib-be]
    [metabase.lib-metric.core :as lib-metric]
    [metabase.lib.core :as lib]
+   [metabase.metrics.dimension :as metrics.dimension]
+   [metabase.util.namespaces :as shared.ns]
    [toucan2.core :as t2]))
+
+;;; ------------------------------------------------- Re-exports from metrics.dimension --------------------------------
+
+(shared.ns/import-fns
+ [metrics.dimension
+  dimension-values
+  dimension-search-values
+  dimension-remapped-value])
 
 ;;; ------------------------------------------------- Query Utilities -------------------------------------------------
 
@@ -14,7 +24,7 @@
    `database-id` is the ID of the database, `query-map` is the dataset_query or definition."
   [database-id query-map]
   (try
-    (let [mp    (lib-be.metadata/application-database-metadata-provider database-id)
+    (let [mp    (lib-be/application-database-metadata-provider database-id)
           query (lib/query mp query-map)
           agg   (->> (lib/returned-columns query)
                      (filter #(= (:lib/source %) :source/aggregations))

@@ -3,12 +3,11 @@
   (:require
    [metabase.lib-metric.dimension :as lib-metric.dimension]
    [metabase.lib-metric.operators :as operators]
-   [metabase.lib.aggregation :as lib.aggregation]
-   [metabase.lib.filter :as lib.filter]
-   [metabase.lib.join :as lib.join]
+   [metabase.lib.core :as lib]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
    [metabase.lib.query :as lib.query]
-   [metabase.lib.util :as lib.util]))
+   [metabase.lib.util :as lib.util]
+   [metabase.util.performance :as perf]))
 
 ;;; -------------------- Helper Functions --------------------
 
@@ -110,11 +109,11 @@
         ;; Compound filters
         (= :and operator)
         {:node/type :filter/and
-         :children  (mapv mbql-filter->ast-filter args)}
+         :children  (perf/mapv mbql-filter->ast-filter args)}
 
         (= :or operator)
         {:node/type :filter/or
-         :children  (mapv mbql-filter->ast-filter args)}
+         :children  (perf/mapv mbql-filter->ast-filter args)}
 
         (= :not operator)
         {:node/type :filter/not
@@ -152,7 +151,7 @@
            :operator  operator
            :dimension (dimension-ref->ast-dimension-ref dimension-ref)
            :value     value
-           :options   (select-keys opts [:case-sensitive])})
+           :options   (perf/select-keys opts [:case-sensitive])})
 
         ;; Null filters
         (operators/nullary? operator)
@@ -191,7 +190,7 @@
     (if (= 1 (count filters))
       (mbql-filter->ast-filter (first filters))
       {:node/type :filter/and
-       :children  (mapv mbql-filter->ast-filter filters)})))
+       :children  (perf/mapv mbql-filter->ast-filter filters)})))
 
 ;;; -------------------- Aggregation Construction --------------------
 
@@ -234,26 +233,26 @@
    Returns nil if no filters, a single filter/mbql node if one filter,
    or a filter/and node containing filter/mbql nodes if multiple."
   [pmbql-query]
-  (when-let [filters (lib.filter/filters pmbql-query)]
+  (when-let [filters (lib/filters pmbql-query)]
     (if (= 1 (count filters))
       (mbql-clause->filter-mbql-node (first filters))
       {:node/type :filter/and
-       :children  (mapv mbql-clause->filter-mbql-node filters)})))
+       :children  (perf/mapv mbql-clause->filter-mbql-node filters)})))
 
 (defn- extract-source-joins
   "Extract joins from pMBQL query and convert to AST join nodes."
   [pmbql-query]
-  (when-let [joins (lib.join/joins pmbql-query -1)]
-    (mapv (fn [join]
-            {:node/type :ast/join
-             :mbql-join join})
-          joins)))
+  (when-let [joins (lib/joins pmbql-query -1)]
+    (perf/mapv (fn [join]
+                 {:node/type :ast/join
+                  :mbql-join join})
+               joins)))
 
 (defn- pmbql-query->source-node
   "Parse pMBQL query into source node structure using lib functions."
   [source-type id metadata pmbql-query]
   (let [table-id      (lib.util/source-table-id pmbql-query)
-        aggregation   (first (lib.aggregation/aggregations pmbql-query))
+        aggregation   (first (lib/aggregations pmbql-query))
         source-filter (extract-source-filters pmbql-query)
         source-joins  (extract-source-joins pmbql-query)]
     (cond-> {:node/type   source-type
@@ -321,16 +320,16 @@
                                        (map :filter))
                                  (or filters []))
         ;; Extract flat projections for this leaf's type/id
-        leaf-projections   (some #(when (and (= leaf-type (:type %)) (= leaf-id (:id %)))
-                                    (:projection %))
-                                 (or projections []))
+        leaf-projections   (perf/some #(when (and (= leaf-type (:type %)) (= leaf-id (:id %)))
+                                         (:projection %))
+                                      (or projections []))
         ;; Convert filters and projections to AST nodes
         ast-filter         (when (seq leaf-filters) (mbql-filters->ast-filter leaf-filters))
-        ast-group-by       (when (seq leaf-projections) (mapv dimension-ref->ast-dimension-ref leaf-projections))]
+        ast-group-by       (when (seq leaf-projections) (perf/mapv dimension-ref->ast-dimension-ref leaf-projections))]
     {:node/type         :ast/root
      :source            (pmbql-query->source-node source-type leaf-id metadata pmbql-query)
-     :dimensions        (mapv dimension-node (or dimensions []))
-     :mappings          (mapv dimension-mapping-node (or dimension-mappings []))
+     :dimensions        (perf/mapv dimension-node (or dimensions []))
+     :mappings          (perf/mapv dimension-mapping-node (or dimension-mappings []))
      :filter            ast-filter
      :group-by          (or ast-group-by [])
      :metadata-provider metadata-provider}))

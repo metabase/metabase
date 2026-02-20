@@ -283,7 +283,7 @@
           clause (lib-metric.filter/boolean-filter-clause parts)]
       (is (= := (first clause)))
       (is (= [:dimension {} "00000000-0000-0000-0000-000000000003"] (nth clause 2)))
-      (is (= true (nth clause 3))))))
+      (is (true? (nth clause 3))))))
 
 (deftest ^:parallel boolean-filter-clause-is-null-test
   (testing "boolean-filter-clause creates is-null clause"
@@ -429,7 +429,7 @@
       (let [opts (second clause)]
         (is (= :week (:offset-unit opts)))
         (is (= -1 (:offset-value opts)))
-        (is (= true (:include-current opts)))))))
+        (is (true? (:include-current opts)))))))
 
 (deftest ^:parallel exclude-date-filter-clause-day-of-week-test
   (testing "exclude-date-filter-clause creates exclude by day-of-week"

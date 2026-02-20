@@ -52,7 +52,7 @@
 
 (defn- route-card-metadata
   "Route card metadata request. Cards can span databases, so we need to handle this specially."
-  [table->db-fn db-provider-fn {id-set :id, :as metadata-spec}]
+  [_table->db-fn _db-provider-fn {_id-set :id, :as _metadata-spec}]
   ;; Cards are trickier - they have database_id, not table_id
   ;; For now, if we have specific card IDs, try to fetch from each known database
   ;; This is a limitation - we'd need a card->database mapping to do this efficiently

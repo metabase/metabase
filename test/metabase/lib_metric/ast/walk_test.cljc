@@ -139,13 +139,13 @@
 
 (deftest ^:parallel prewalk-test
   (testing "visits nodes before children"
-    (let [visited (atom [])
-          _       (ast.walk/prewalk
-                   (fn [node]
-                     (when (ast.walk/node? node)
-                       (swap! visited conj (:node/type node)))
-                     node)
-                   sample-ast)]
+    (let [visited (atom [])]
+      (ast.walk/prewalk
+       (fn [node]
+         (when (ast.walk/node? node)
+           (swap! visited conj (:node/type node)))
+         node)
+       sample-ast)
       ;; Root should be first
       (is (= :ast/root (first @visited))))))
 
@@ -188,8 +188,7 @@
                   #(assoc % :marked true)
                   sample-ast)]
       ;; All dimension refs should be marked
-      (let [refs (ast.walk/collect-dimension-refs result)]
-        (is (every? :marked refs))))))
+      (is (every? :marked (ast.walk/collect-dimension-refs result))))))
 
 ;;; -------------------------------------------------- Finding --------------------------------------------------
 

@@ -323,12 +323,14 @@
 ;;; |                                       Dimension Endpoint Tests                                                 |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(defn- hydrate-measure [measure-id]
+(defn- hydrate-measure
   "Fetch measure via API to hydrate dimensions."
+  [measure-id]
   (mt/user-http-request :crowberto :get 200 (str "measure/" measure-id)))
 
-(defn- find-dimension-by-name [measure column-name]
+(defn- find-dimension-by-name
   "Find a dimension by column name from hydrated measure."
+  [measure column-name]
   (some #(when (= column-name (:name %)) %) (:dimensions measure)))
 
 (deftest dimension-values-test
