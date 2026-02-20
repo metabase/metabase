@@ -11,12 +11,12 @@ import type {
 
 import { getErrorLabel } from "../../../utils";
 
-type ColumnCellProps = {
+type ColumnInfoCellProps = {
   column?: ReplaceSourceColumnInfo;
   errors?: ReplaceSourceErrorType[];
 };
 
-export function ColumnCell({ column, errors }: ColumnCellProps) {
+export function ColumnInfoCell({ column, errors }: ColumnInfoCellProps) {
   return (
     <Group gap="sm" wrap="nowrap">
       {column != null && <ColumnSection column={column} />}

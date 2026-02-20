@@ -3,7 +3,7 @@ import type { ReplaceSourceColumnMapping } from "metabase-types/api";
 
 import type { EntityInfo } from "../../types";
 
-import { ColumnCell } from "./ColumnCell";
+import { ColumnInfoCell } from "./ColumnInfoCell";
 import type { ColumnMappingItem } from "./types";
 
 function getEntityName(entityInfo: EntityInfo | undefined): string {
@@ -43,7 +43,7 @@ function getSourceColumn(
     accessorFn: (item) => item.source?.display_name,
     cell: ({ row }) => {
       const item = row.original;
-      return <ColumnCell column={item.source} />;
+      return <ColumnInfoCell column={item.source} />;
     },
   };
 }
@@ -60,7 +60,7 @@ function getTargetColumn(
     accessorFn: (item) => item.target?.display_name,
     cell: ({ row }) => {
       const item = row.original;
-      return <ColumnCell column={item.target} errors={item.errors} />;
+      return <ColumnInfoCell column={item.target} errors={item.errors} />;
     },
   };
 }
