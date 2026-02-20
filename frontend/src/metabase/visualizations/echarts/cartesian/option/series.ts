@@ -412,7 +412,7 @@ export const buildEChartsStackLabelOptions = (
         return "";
       }
 
-      if (showPercentages && stackModel != null) {
+      if (showPercentages) {
         // Calculate stack total (sum of absolute values of all series in the stack)
         let stackTotal = 0;
         for (const stackDataKey of stackModel.seriesKeys) {
