@@ -22,6 +22,7 @@ interface DownloadAndAssertParams {
   dashboardId?: number;
   enableFormatting?: boolean;
   pivoting?: "pivoted" | "non-pivoted";
+  assertStatusCode?: number;
   /** Assert that parameters in request body match expected values */
   assertParameters?: any[];
   waitForDismiss?: boolean;
@@ -70,6 +71,7 @@ export function downloadAndAssert({
   isEmbed = false,
   enableFormatting = true,
   pivoting,
+  assertStatusCode,
   assertParameters,
   waitForDismiss = true,
 }: DownloadAndAssertParams) {
@@ -170,7 +172,9 @@ export function downloadAndAssert({
   });
 
   cy.wait("@fileDownload").then(({ response }) => {
-    expect(response?.statusCode).to.eq(200);
+    if (assertStatusCode) {
+      expect(response?.statusCode).to.eq(assertStatusCode);
+    }
 
     if (waitForDismiss) {
       ensureDownloadStatusDismissed();

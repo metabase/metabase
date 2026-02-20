@@ -87,6 +87,7 @@ describe(
             isDashboard: false,
             isEmbed: true,
             enableFormatting: true,
+            assertStatusCode: 200,
             waitForDismiss: false,
             fileType: "csv",
             downloadUrl: "/api/embed/card/*/query/csv*",
