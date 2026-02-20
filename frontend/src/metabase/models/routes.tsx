@@ -9,9 +9,8 @@ import {
 import ActionCreatorModal from "metabase/actions/containers/ActionCreatorModal/ActionCreatorModal";
 import { ModelDetailPage } from "metabase/detail-view/pages/ModelDetailPage/ModelDetailPage";
 import ModelActions from "metabase/models/containers/ModelActions/ModelActions";
-import { createModalRoute } from "metabase/routing/compat";
+import { createModalRoute, useCompatParams } from "metabase/routing/compat";
 import { ModalRouteWrapper } from "metabase/routing/compat/ModalRouteWrapper";
-import { useCompatParams } from "metabase/routing/compat/useCompatParams";
 
 const ModelActionsWithRouteProps = () => {
   const params = useCompatParams<{ slug?: string }>();

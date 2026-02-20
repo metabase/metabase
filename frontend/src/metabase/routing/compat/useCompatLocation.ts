@@ -8,19 +8,21 @@ import {
 import { useNavigation } from "./useNavigation";
 
 /**
- * Extended location type that includes both v3 and v7 properties
- * for backward compatibility during migration.
+ * Location shape used throughout the app.
+ * It extends Router's location with query helpers.
  */
-export interface CompatLocation extends LocationV7 {
-  // v3-style query object (deprecated, use searchParams instead)
+export interface RouterLocation extends LocationV7 {
+  // Query object for legacy call sites.
   query: Record<string, string>;
-  // v7-style URLSearchParams
+  // URLSearchParams for modern call sites.
   searchParams: URLSearchParams;
-  // v3-style action (for compatibility)
+  // Kept for legacy compatibility.
   action: "PUSH" | "REPLACE" | "POP";
 }
 
-export const useCompatLocation = (): CompatLocation => {
+export type CompatLocation = RouterLocation;
+
+export const useLocationWithQuery = (): RouterLocation => {
   const location = useLocationV7();
   const [searchParams] = useSearchParamsV7();
 
@@ -43,6 +45,8 @@ export const useCompatLocation = (): CompatLocation => {
   );
 };
 
+export const useCompatLocation = useLocationWithQuery;
+
 /**
  * Hook for accessing and updating search params.
  *
@@ -57,11 +61,11 @@ export const useCompatLocation = (): CompatLocation => {
  * setSearchParams({ tab: 'settings' });
  * ```
  */
-export const useCompatSearchParams = (): [
+export const useSearchParamsWithNavigation = (): [
   URLSearchParams,
   (params: Record<string, string | undefined>) => void,
 ] => {
-  const location = useCompatLocation();
+  const location = useLocationWithQuery();
   const { replace } = useNavigation();
 
   const setSearchParams = (params: Record<string, string | undefined>) => {
@@ -85,3 +89,5 @@ export const useCompatSearchParams = (): [
 
   return [location.searchParams, setSearchParams];
 };
+
+export const useCompatSearchParams = useSearchParamsWithNavigation;

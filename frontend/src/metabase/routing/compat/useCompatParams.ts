@@ -1,6 +1,6 @@
 import { useParams as useParamsV7 } from "react-router-dom";
 
-export function useCompatParams<
+export function useRouteParams<
   T extends Record<string, string | undefined> = Record<
     string,
     string | undefined
@@ -8,3 +8,5 @@ export function useCompatParams<
 >(): T {
   return useParamsV7() as T;
 }
+
+export const useCompatParams = useRouteParams;

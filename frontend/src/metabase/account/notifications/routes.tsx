@@ -1,8 +1,11 @@
 import type { Location } from "history";
 import { Outlet, type RouteObject } from "react-router-dom";
 
-import { createModalRoute, useCompatLocation } from "metabase/routing/compat";
-import { useCompatParams } from "metabase/routing/compat/useCompatParams";
+import {
+  createModalRoute,
+  useCompatLocation,
+  useCompatParams,
+} from "metabase/routing/compat";
 
 import { HelpModal } from "./components/HelpModal";
 import { DeleteAlertModal } from "./containers/ArchiveAlertModal";
