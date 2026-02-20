@@ -1097,3 +1097,52 @@
         (is (str/includes? (:content (first result)) "Product"))
         (is (str/includes? (:content (first result)) "Widget"))
         (is (str/includes? (:content (first result)) "$100")))))
+
+;; -------------------------------- PUT /slack/settings Tests --------------------------------
+
+(deftest put-slack-settings-test
+  (mt/with-premium-features #{:metabot-v3 :sso-slack}
+    (let [creds {:slack-connect-client-id "id"
+                 :slack-connect-client-secret "secret"
+                 :metabot-slack-signing-secret "signing"}
+          clear {:slack-connect-client-id nil
+                 :slack-connect-client-secret nil
+                 :metabot-slack-signing-secret nil}]
+      (testing "set all credentials"
+        (mt/with-temporary-setting-values [sso-settings/slack-connect-client-id nil
+                                           sso-settings/slack-connect-client-secret nil
+                                           metabot.settings/metabot-slack-signing-secret nil]
+          (is (= {:ok true} (mt/user-http-request :crowberto :put 200 "ee/metabot-v3/slack/settings" creds)))
+          (is (every? some? [(sso-settings/slack-connect-client-id)
+                             (sso-settings/slack-connect-client-secret)
+                             (metabot.settings/metabot-slack-signing-secret)]))
+          (is (true? (sso-settings/slack-connect-enabled)))))
+
+      (testing "clear all credentials"
+        (mt/with-temporary-setting-values [sso-settings/slack-connect-client-id "x"
+                                           sso-settings/slack-connect-client-secret "x"
+                                           metabot.settings/metabot-slack-signing-secret "x"]
+          (is (= {:ok true} (mt/user-http-request :crowberto :put 200 "ee/metabot-v3/slack/settings" clear)))
+          (is (every? nil? [(sso-settings/slack-connect-client-id)
+                            (sso-settings/slack-connect-client-secret)
+                            (metabot.settings/metabot-slack-signing-secret)]))
+          (is (false? (sso-settings/slack-connect-enabled)))))
+
+      (testing "partial credentials returns 400"
+        (doseq [partial [(assoc creds :slack-connect-client-id nil)
+                         (assoc creds :slack-connect-client-secret nil)
+                         (assoc creds :metabot-slack-signing-secret nil)]]
+          (is (= "Must provide client id, client secret and signing secret together."
+                 (mt/user-http-request :crowberto :put 400 "ee/metabot-v3/slack/settings" partial)))))
+
+      (testing "non-admin returns 403"
+        (is (= "You don't have permissions to do that."
+               (mt/user-http-request :rasta :put 403 "ee/metabot-v3/slack/settings" creds))))))
+
+  (testing "setting values without metabot-v3 feature returns 402"
+    (mt/with-premium-features #{:sso-slack}
+      (is (= "Metabot feature is not enabled."
+             (mt/user-http-request :crowberto :put 402 "ee/metabot-v3/slack/settings"
+                                   {:slack-connect-client-id "id"
+                                    :slack-connect-client-secret "secret"
+                                    :metabot-slack-signing-secret "signing"}))))))
