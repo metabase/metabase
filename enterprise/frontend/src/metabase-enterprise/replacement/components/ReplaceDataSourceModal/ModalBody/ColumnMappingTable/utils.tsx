@@ -1,9 +1,13 @@
+import { t } from "ttag";
+
 import type { TreeTableColumnDef } from "metabase/ui";
 import type { ReplaceSourceColumnMapping } from "metabase-types/api";
 
+import { getErrorListLabel } from "../../../../utils";
 import type { EntityInfo } from "../../types";
 
 import { ColumnInfoCell } from "./ColumnInfoCell";
+import { ErrorsCell } from "./ErrorsCell";
 import type { ColumnMappingItem } from "./types";
 
 function getEntityName(entityInfo: EntityInfo | undefined): string {
@@ -63,8 +67,26 @@ function getTargetColumn(
     cell: ({ row }) => {
       const item = row.original;
       return item.target != null ? (
-        <ColumnInfoCell column={item.target} errors={item.errors} />
+        <ColumnInfoCell column={item.target} />
       ) : null;
+    },
+  };
+}
+
+function getErrorsColumn(): TreeTableColumnDef<ColumnMappingItem> {
+  return {
+    id: "errors",
+    header: t`Errors`,
+    width: "auto",
+    maxAutoWidth: 300,
+    enableSorting: true,
+    accessorFn: (item) => getErrorListLabel(item.errors ?? []),
+    cell: ({ row }) => {
+      const { errors } = row.original;
+      if (errors == null || errors.length === 0) {
+        return null;
+      }
+      return <ErrorsCell errors={errors} />;
     },
   };
 }
@@ -83,7 +105,11 @@ export function getColumns(
     getTargetColumnCount(columnMappings),
   );
 
-  return [getSourceColumn(sourceHeader), getTargetColumn(targetHeader)];
+  return [
+    getSourceColumn(sourceHeader),
+    getTargetColumn(targetHeader),
+    getErrorsColumn(),
+  ];
 }
 
 export function getRows(

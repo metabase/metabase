@@ -5,16 +5,20 @@ import type { ReplaceSourceErrorType } from "metabase-types/api";
 export function getErrorLabel(error: ReplaceSourceErrorType): string {
   switch (error) {
     case "missing-column":
-      return t`Column not found.`;
+      return t`No matching column.`;
     case "column-type-mismatch":
-      return t`Column type mismatch.`;
+      return t`Different column type.`;
     case "missing-primary-key":
-      return t`Primary key not found.`;
+      return t`No matching primary key.`;
     case "extra-primary-key":
       return t`Extra primary key.`;
     case "missing-foreign-key":
-      return t`Foreign key not found`;
+      return t`No matching foreign key.`;
     case "foreign-key-mismatch":
-      return t`Foreign key mismatch`;
+      return t`Different foreign key target.`;
   }
+}
+
+export function getErrorListLabel(errors: ReplaceSourceErrorType[]): string {
+  return errors.map(getErrorLabel).join(", ");
 }
