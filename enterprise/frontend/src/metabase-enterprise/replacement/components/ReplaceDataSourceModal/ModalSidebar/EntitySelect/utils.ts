@@ -9,6 +9,7 @@ import type {
   Table,
 } from "metabase-types/api";
 
+import { isSameEntity } from "../../../../utils";
 import type { EntityInfo } from "../../types";
 
 import type { EntityDisplayInfo } from "./types";
@@ -40,13 +41,25 @@ function getPickerItemDatabaseId(item: OmniPickerItem): DatabaseId | undefined {
 
 export function getIsPickerItemDisabled(
   databaseId: DatabaseId | undefined,
+  disabledEntry: ReplaceSourceEntry | undefined,
 ): ((item: OmniPickerItem) => boolean) | undefined {
-  if (databaseId == null) {
+  if (databaseId == null && disabledEntry == null) {
     return undefined;
   }
   return (item: OmniPickerItem) => {
-    const itemDatabaseId = getPickerItemDatabaseId(item);
-    return itemDatabaseId != null && itemDatabaseId !== databaseId;
+    const entry = getSelectedValue(item);
+    if (
+      entry != null &&
+      disabledEntry != null &&
+      isSameEntity(entry, disabledEntry)
+    ) {
+      return true;
+    }
+    if (databaseId != null) {
+      const itemDatabaseId = getPickerItemDatabaseId(item);
+      return itemDatabaseId != null && itemDatabaseId !== databaseId;
+    }
+    return false;
   };
 }
 

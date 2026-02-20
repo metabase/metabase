@@ -23,6 +23,15 @@ export function getEntityInfo(
   }
 }
 
+export function getEntityEntry(entry: EntityInfo): ReplaceSourceEntry {
+  switch (entry.type) {
+    case "table":
+      return { id: Number(entry.table.id), type: "table" };
+    case "card":
+      return { id: entry.card.id, type: "card" };
+  }
+}
+
 export function getEntityDatabaseId(entry: EntityInfo): DatabaseId | undefined {
   switch (entry.type) {
     case "table":

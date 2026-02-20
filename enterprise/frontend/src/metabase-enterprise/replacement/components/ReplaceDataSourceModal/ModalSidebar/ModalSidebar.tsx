@@ -8,7 +8,7 @@ import type {
 
 import { getEntityErrorMessage, getGenericErrorMessage } from "../../../utils";
 import type { EntityInfo } from "../types";
-import { getEntityDatabaseId } from "../utils";
+import { getEntityDatabaseId, getEntityEntry } from "../utils";
 
 import { EntitySection } from "./EntitySection";
 import { EntitySelect } from "./EntitySelect";
@@ -35,6 +35,8 @@ export function ModalSidebar({
   onSubmit,
   onCancel,
 }: ModalSidebarProps) {
+  const sourceEntry =
+    sourceInfo != null ? getEntityEntry(sourceInfo) : undefined;
   const sourceDatabaseId =
     sourceInfo != null ? getEntityDatabaseId(sourceInfo) : undefined;
   const errorMessage = getErrorMessage(checkInfo);
@@ -63,6 +65,7 @@ export function ModalSidebar({
               label={t`Replace it with this data source`}
               description={t`It must be based on the same database and include all columns from the original data source.`}
               databaseId={sourceDatabaseId}
+              disabledEntry={sourceEntry}
               onChange={onTargetChange}
             />
             {errorMessage && (

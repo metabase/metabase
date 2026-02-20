@@ -31,6 +31,7 @@ type EntitySelectProps = {
   description: string;
   placeholder?: string;
   databaseId?: DatabaseId;
+  disabledEntry?: ReplaceSourceEntry;
   onChange: (entry: ReplaceSourceEntry) => void;
 };
 
@@ -40,12 +41,13 @@ export function EntitySelect({
   description,
   placeholder = t`Pick a table, model, or saved question`,
   databaseId,
+  disabledEntry,
   onChange,
 }: EntitySelectProps) {
   const [isPickerOpen, { open: openPicker, close: closePicker }] =
     useDisclosure(false);
   const displayInfo = getEntityDisplayInfo(entityInfo);
-  const isDisabledItem = getIsPickerItemDisabled(databaseId);
+  const isDisabledItem = getIsPickerItemDisabled(databaseId, disabledEntry);
 
   const handleItemSelect = (item: OmniPickerItem) => {
     const entry = getSelectedValue(item);
