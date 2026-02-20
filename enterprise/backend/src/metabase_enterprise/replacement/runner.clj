@@ -36,7 +36,7 @@
    ;; sources aren't the same
    (assert (not= old-source new-source))
    ;; sources are swappable
-   (assert (empty? (source/check-replace-source old-source new-source)))
+   (assert (:success (source/check-replace-source old-source new-source)))
 
    (let [transitive (usages/transitive-usages old-source)
          direct     (usages/direct-usages     old-source)]

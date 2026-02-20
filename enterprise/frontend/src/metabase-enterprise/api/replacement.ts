@@ -45,7 +45,7 @@ export const replacementApi = EnterpriseApi.injectEndpoints({
     getReplaceSourceRun: builder.query<ReplaceSourceRun, ReplaceSourceRunId>({
       query: (id) => ({
         method: "GET",
-        url: `/api/ee/replacement/run/${id}`,
+        url: `/api/ee/replacement/runs/${id}`,
       }),
       providesTags: (run) => (run ? provideReplaceSourceRunTags(run) : []),
     }),
