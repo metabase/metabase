@@ -3,6 +3,7 @@ import { push } from "react-router-redux";
 import { t } from "ttag";
 
 import { ForwardRefLink } from "metabase/common/components/Link";
+import { trackMetricCreateStarted } from "metabase/data-studio/analytics";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { PLUGIN_SNIPPET_FOLDERS } from "metabase/plugins";
@@ -54,6 +55,7 @@ export const CreateMenu = ({
           collectionId: metricCollectionId,
         })}
         leftSection={<FixedSizeIcon name="metric" />}
+        onClickCapture={() => trackMetricCreateStarted("data_studio_library")}
       >
         {t`Metric`}
       </Menu.Item>
