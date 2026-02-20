@@ -8,12 +8,14 @@ import S from "./TabPanel.module.css";
 
 type TabPanelProps = {
   selectedTab: TabType;
+  canReplace: boolean;
   dependentsCount: number;
   onTabChange: (tab: TabType) => void;
 };
 
 export function TabPanel({
   selectedTab,
+  canReplace,
   dependentsCount,
   onTabChange,
 }: TabPanelProps) {
@@ -28,7 +30,7 @@ export function TabPanel({
       <Tabs value={selectedTab} onChange={handleChange}>
         <Tabs.List className={S.tabs}>
           <Tabs.Tab value="column-mappings">{t`Column comparison`}</Tabs.Tab>
-          {dependentsCount > 0 && (
+          {canReplace && (
             <Tabs.Tab value="dependents">
               {getDependentsTabLabel(dependentsCount)}
             </Tabs.Tab>

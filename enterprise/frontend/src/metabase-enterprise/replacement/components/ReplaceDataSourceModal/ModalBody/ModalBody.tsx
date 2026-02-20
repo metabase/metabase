@@ -14,6 +14,7 @@ type ModalBodyProps = {
   sourceInfo: EntityInfo | undefined;
   targetInfo: EntityInfo | undefined;
   selectedTab: TabType;
+  canReplace: boolean;
   dependents: DependencyNode[];
   columnMappings: ReplaceSourceColumnMapping[];
   onTabChange: (tab: TabType) => void;
@@ -23,6 +24,7 @@ export function ModalBody({
   sourceInfo,
   targetInfo,
   selectedTab,
+  canReplace,
   dependents,
   columnMappings,
   onTabChange,
@@ -39,6 +41,7 @@ export function ModalBody({
     <Flex flex={1} direction="column" bg="background-secondary">
       <TabPanel
         selectedTab={selectedTab}
+        canReplace={canReplace}
         dependentsCount={dependents.length}
         onTabChange={onTabChange}
       />
