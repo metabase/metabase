@@ -323,7 +323,11 @@ const getEmbedQuestionParams = (
   type: string,
   exportParams: ExportParams,
 ): DownloadQueryResultsParams => {
-  const params = new URLSearchParams(window.location.search);
+  const params = isEmbeddingSdk()
+    ? // For SDK/EmbedJS we must not read params from location search as in both cases
+      // additional params are not supported by a public endpoint
+      null
+    : new URLSearchParams(window.location.search);
 
   const convertSearchParamsToObject = (params: URLSearchParams) => {
     const object: Record<string, string | string[]> = {};
@@ -345,7 +349,9 @@ const getEmbedQuestionParams = (
     method: "GET",
     url: Urls.embedCard(token, type),
     params: new URLSearchParams({
-      parameters: JSON.stringify(convertSearchParamsToObject(params)),
+      parameters: params
+        ? JSON.stringify(convertSearchParamsToObject(params))
+        : "",
       ..._.mapObject(exportParams, (value) => String(value)),
     }),
   };
