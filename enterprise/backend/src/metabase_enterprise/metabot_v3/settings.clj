@@ -74,4 +74,3 @@
   :feature :metabot-v3
   []
   (unobfuscated-metabot-slack-signing-secret))
-

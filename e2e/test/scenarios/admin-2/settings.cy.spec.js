@@ -270,16 +270,12 @@ describe("scenarios > admin > settings", () => {
   describe(" > slack settings", () => {
     it("should present the form and display errors", () => {
       cy.visit("/admin/settings/slack");
-      cy.findByTestId("admin-layout-content")
-        .findByText("Connect to Slack")
-        .click();
 
-      H.modal().findByText("Metabase on Slack");
+      cy.findByRole("main").findByText("Create a Slack app and connect to it.");
 
       cy.findByLabelText(/Slack Bot User OAuth Token/i).type("xoxb");
-      cy.button("Save changes").click();
-
-      H.modal().findByText(/invalid token/i);
+      cy.button("Connect").click();
+      cy.findByRole("main").findByText(/invalid token/i);
     });
   });
 });
