@@ -135,6 +135,37 @@ describe("SlackSetup", () => {
     ).toBeInTheDocument();
   });
 
+  it("should show docs link when slack app is not working", async () => {
+    await setup({ configured: true, isValid: false });
+    expect(screen.getByText("See our docs")).toBeInTheDocument();
+  });
+
+  it("should disable submit button when token is empty", async () => {
+    await setup();
+    const submitButton = screen.getByRole("button", { name: "Connect" });
+    expect(submitButton).toBeDisabled();
+  });
+
+  it("should have correct download link for app icon", async () => {
+    await setup({ configured: true });
+    const downloadLink = screen.getByRole("link", {
+      name: "Download App Icon",
+    });
+    expect(downloadLink).toHaveAttribute(
+      "href",
+      "/app/assets/img/metabot-slackbot.png",
+    );
+  });
+
+  it("should show link to Slack app settings", async () => {
+    await setup({ configured: true });
+    const link = screen.getByRole("link", { name: "Basic Information" });
+    expect(link).toHaveAttribute(
+      "href",
+      expect.stringMatching(/^https:\/\/api\.slack\.com\/apps/),
+    );
+  });
+
   it("should allow disconnecting the slack connection", async () => {
     await setup({ configured: true });
 
