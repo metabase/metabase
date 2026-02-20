@@ -28,18 +28,20 @@
    [:semantic_type  [:maybe :string]]])
 
 (def ^:private error-type-enum
-  [:enum :missing-column :column-type-mismatch :missing-primary-key :extra-primary-key :missing-foreign-key :foreign-key-mismatch])
+  [:enum :same-source :cycle-detected :database-mismatch
+   :missing-column :column-type-mismatch :missing-primary-key :extra-primary-key :missing-foreign-key :foreign-key-mismatch])
 
 (mr/def ::column-mapping
   [:map
-   [:source {:optional true} ::column]
-   [:target {:optional true} ::column]
+   [:source [:maybe ::column]]
+   [:target [:maybe ::column]]
    [:errors {:optional true} [:sequential error-type-enum]]])
 
 (mr/def ::check-replace-source-response
   [:map
    [:success         :boolean]
-   [:column_mappings [:sequential ::column-mapping]]])
+   [:errors          {:optional true} [:sequential error-type-enum]]
+   [:column_mappings {:optional true} [:sequential ::column-mapping]]])
 
 (api.macros/defendpoint :post "/check-replace-source" :- ::check-replace-source-response
   "Check whether a source entity can be replaced by a target entity. Returns compatibility
@@ -76,7 +78,7 @@
                 [target_entity_type target_entity_id])]
     (when-not (:success result)
       (throw (ex-info "Sources are not replaceable" {:status-code 400
-                                                     :column_mappings (:column_mappings result)}))))
+                                                     :errors (:errors result)}))))
   (let [user-id api/*current-user-id*
         work-fn (fn [runner]
                   (replacement.runner/run-swap

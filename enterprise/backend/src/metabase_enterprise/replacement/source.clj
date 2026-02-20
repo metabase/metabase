@@ -1,6 +1,7 @@
 (ns metabase-enterprise.replacement.source
   (:require
    [medley.core :as m]
+   [metabase-enterprise.replacement.usages :as usages]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
@@ -108,30 +109,47 @@
                (:fk-target-field-id new-col)))
     (conj :foreign-key-mismatch)))
 
-(defn check-replace-source
-  "Check whether `old-source` can be replaced by `new-source`. Returns a map with
-  `:success` and `:column_mappings` — a sequence of column mapping entries pairing source
-  and target columns with per-entry errors.
-  Arguments match `swap-source`: each is a `[entity-type entity-id]` pair."
-  [[old-type old-id] [new-type new-id]]
-  (let [{source-mp :mp old-source :source} (fetch-source old-type old-id)
-        {target-mp :mp new-source :source} (fetch-source new-type new-id)
-        ;; TODO (Alex P 2026-02-13): Perhaps filtering out remaps should go into the lib
-        old-cols    (into [] (remove :remapped-from) (lib/returned-columns (lib/query source-mp old-source)))
+(defn- check-column-mappings
+  "Build column mappings between old and new source columns."
+  [source-mp old-source target-mp new-source]
+  (let [old-cols    (into [] (remove :remapped-from) (lib/returned-columns (lib/query source-mp old-source)))
         new-cols    (into [] (remove :remapped-from) (lib/returned-columns (lib/query target-mp new-source)))
         old-by-name (m/index-by column-match-key old-cols)
         new-by-name (m/index-by column-match-key new-cols)
         all-names   (distinct (concat (map column-match-key old-cols)
-                                      (map column-match-key new-cols)))
-        all-mappings (mapv (fn [col-name]
-                             (let [old-col (get old-by-name col-name)
-                                   new-col (get new-by-name col-name)
-                                   errors  (when old-col (column-errors old-col new-col))]
-                               (cond-> {}
-                                 old-col      (assoc :source (format-column old-col))
-                                 new-col      (assoc :target (format-column new-col))
-                                 (seq errors) (assoc :errors errors))))
-                           all-names)
-        has-errors?     (boolean (some :errors all-mappings))]
-    {:success         (not has-errors?)
-     :column_mappings all-mappings}))
+                                      (map column-match-key new-cols)))]
+    (mapv (fn [col-name]
+            (let [old-col (get old-by-name col-name)
+                  new-col (get new-by-name col-name)
+                  errors  (when old-col (column-errors old-col new-col))]
+              (cond-> {:source nil :target nil}
+                old-col      (assoc :source (format-column old-col))
+                new-col      (assoc :target (format-column new-col))
+                (seq errors) (assoc :errors errors))))
+          all-names)))
+
+(defn check-replace-source
+  "Check whether `old-source` can be replaced by `new-source`. Returns a map with
+  `:success`, `:errors` (unique top-level error types), and `:column_mappings`.
+  Arguments match `swap-source`: each is a `[entity-type entity-id]` pair."
+  [[old-type old-id :as old-ref] [new-type new-id :as new-ref]]
+  (if (= old-ref new-ref)
+    {:success false
+     :errors  [:same-source]}
+    (let [{source-mp :mp old-source :source
+           source-db :database-id}      (fetch-source old-type old-id)
+          {target-mp :mp new-source :source
+           target-db :database-id}      (fetch-source new-type new-id)
+          top-errors     (cond-> []
+                           (not= source-db target-db)
+                           (conj :database-mismatch)
+
+                           (some #(= new-ref %) (usages/transitive-usages old-ref))
+                           (conj :cycle-detected))
+          ;; TODO (Alex P 2026-02-13): Perhaps filtering out remaps should go into the lib
+          mappings       (check-column-mappings source-mp old-source target-mp new-source)
+          column-errors  (into [] (distinct) (mapcat :errors mappings))
+          all-errors     (into top-errors column-errors)]
+      (cond-> {:success (empty? all-errors)}
+        (seq all-errors) (assoc :errors all-errors)
+        (seq mappings)   (assoc :column_mappings mappings)))))
