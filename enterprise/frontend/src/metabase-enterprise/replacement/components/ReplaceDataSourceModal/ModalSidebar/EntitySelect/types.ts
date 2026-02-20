@@ -1,6 +1,4 @@
-import type { IconName } from "metabase/ui";
-
 export type EntityDisplayInfo = {
-  icon: IconName;
+  name: string;
   breadcrumbs: string[];
 };

@@ -5,7 +5,7 @@ import {
   EntityPickerModal,
   type OmniPickerItem,
 } from "metabase/common/components/Pickers";
-import { Button, Icon, Input } from "metabase/ui";
+import { Box, Button, Icon, Input } from "metabase/ui";
 import type { ReplaceSourceEntry } from "metabase-types/api";
 
 import type { EntityInfo } from "../../types";
@@ -16,6 +16,7 @@ import {
   SOURCE_PICKER_MODELS,
   SOURCE_PICKER_OPTIONS,
 } from "./constants";
+import type { EntityDisplayInfo } from "./types";
 import {
   getEntityDisplayInfo,
   getPickerValue,
@@ -51,12 +52,13 @@ export function EntitySelect({
       <Button
         className={S.button}
         onClick={openPicker}
-        leftSection={
-          displayInfo != null && <Icon c="brand" name={displayInfo.icon} />
-        }
         rightSection={<Icon name="chevrondown" />}
       >
-        {displayInfo?.breadcrumbs.join(" / ") ?? placeholder}
+        {displayInfo ? (
+          <ButtonContent displayInfo={displayInfo} />
+        ) : (
+          placeholder
+        )}
       </Button>
       {isPickerOpen && (
         <EntityPickerModal
@@ -70,5 +72,23 @@ export function EntitySelect({
         />
       )}
     </Input.Wrapper>
+  );
+}
+
+type ButtonContentProps = {
+  displayInfo: EntityDisplayInfo;
+};
+
+function ButtonContent({ displayInfo }: ButtonContentProps) {
+  return (
+    <span>
+      {displayInfo.breadcrumbs.map((breadcrumb, index) => (
+        <Box key={index} component="span" fw="normal">
+          <span>{breadcrumb}</span>
+          <span> / </span>
+        </Box>
+      ))}
+      <span>{displayInfo.name}</span>
+    </span>
   );
 }

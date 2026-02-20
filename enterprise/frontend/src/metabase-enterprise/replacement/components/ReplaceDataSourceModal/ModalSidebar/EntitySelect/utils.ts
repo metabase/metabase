@@ -50,10 +50,9 @@ function getTableEntityInfo(table: Table): EntityDisplayInfo {
   if (table.schema != null) {
     breadcrumbs.push(table.schema);
   }
-  breadcrumbs.push(table.display_name);
 
   return {
-    icon: "database",
+    name: table.display_name,
     breadcrumbs,
   };
 }
@@ -61,24 +60,25 @@ function getTableEntityInfo(table: Table): EntityDisplayInfo {
 function getCardEntityInfo(card: Card): EntityDisplayInfo {
   if (card.document != null) {
     return {
-      icon: "document",
-      breadcrumbs: [card.document.name, card.name],
+      name: card.name,
+      breadcrumbs: [card.document.name],
     };
   }
   if (card.dashboard != null) {
     return {
-      icon: "dashboard",
-      breadcrumbs: [card.dashboard.name, card.name],
+      name: card.name,
+      breadcrumbs: [card.dashboard.name],
     };
   }
   if (card.collection != null) {
     return {
-      icon: "collection",
-      breadcrumbs: [card.collection.name, card.name],
+      name: card.name,
+      breadcrumbs: [card.collection.name],
     };
   }
+
   return {
-    icon: "table2",
-    breadcrumbs: [card.name],
+    name: card.name,
+    breadcrumbs: [],
   };
 }
