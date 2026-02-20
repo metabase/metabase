@@ -1508,3 +1508,33 @@
                                   [:segment (:id segment)])))
               (is (contains? (set (usages/transitive-usages [:table (mt/id :orders_b)]))
                              [:segment (:id segment)])))))))))
+
+(deftest measure-swap-test
+  (mt/with-premium-features #{:dependencies}
+    (mt/dataset source-swap
+      (mt/with-test-user :crowberto
+        (let [selector (fn [q] (-> q :stages (get 0) :aggregation first last))
+              mp (mt/metadata-provider)]
+          (mt/with-temp [:model/Measure measure
+                         {:table_id (mt/id :orders_a)
+                          :definition (-> (lib/query mp (lib.metadata/table mp (mt/id :orders_a)))
+                                          (lib/aggregate (lib/sum (lib.metadata/field mp (mt/id :orders_a :id)))))}]
+            (events/publish-event! :event/measure-create {:object measure :user-id (mt/user->id :crowberto)})
+            (is (lib/field-ref-id (selector (:definition measure))))
+            ;; sanity check that dependencies works
+            (is (contains? (set (usages/transitive-usages [:table (mt/id :orders_a)]))
+                           [:measure (:id measure)]))
+            (is (not (contains? (set (usages/transitive-usages [:table (mt/id :orders_b)]))
+                                [:measure (:id measure)])))
+            (field-refs/upgrade! [:measure (:id measure)])
+            (source-swap/swap! [:measure (:id measure)]
+                               [:table (mt/id :orders_a)]
+                               [:table (mt/id :orders_b)])
+            (let [measure' (t2/select-one :model/Measure (:id measure))]
+              (is (lib/field-ref-name (selector (:definition measure'))))
+              (is (= (mt/id :orders_b) (:table_id measure')))
+              (is (= (mt/id :orders_b) (-> measure' :definition :stages (get 0) :source-table)))
+              (is (not (contains? (set (usages/transitive-usages [:table (mt/id :orders_a)]))
+                                  [:measure (:id measure)])))
+              (is (contains? (set (usages/transitive-usages [:table (mt/id :orders_b)]))
+                             [:measure (:id measure)])))))))))

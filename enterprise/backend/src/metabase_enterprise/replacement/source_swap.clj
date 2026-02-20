@@ -77,9 +77,31 @@
         (events/publish-event! :event/segment-update
                                {:object (merge segment changes) :user-id (:id @api/*current-user*)})))))
 
+(defn- measure-swap!
+  [[entity-type entity-id] old-source new-source]
+  (assert (= :measure entity-type))
+  (let [measure (t2/select-one :model/Measure entity-id)]
+    (assert (some? measure))
+    (let [query (:definition measure)
+          new-query (update-query query old-source new-source {})
+          table  (:table_id measure)
+          table' (ultimate-table-id query new-source)
+          changes (cond-> {}
+                    (not= query new-query)
+                    (assoc :definition new-query)
+
+                    (= table (ultimate-table-id query old-source))
+                    (assoc :table_id table'))]
+      ;; no changes, so don't update
+      (when (seq changes)
+        (t2/update! :model/Measure entity-id changes)
+        (events/publish-event! :event/measure-update
+                               {:object (merge measure changes) :user-id (:id @api/*current-user*)})))))
+
 (defn swap!
   [[entity-type _entity-id :as entity] old-source new-source]
   (case entity-type
     :card      (card-swap!      entity old-source new-source)
     :transform (transform-swap! entity old-source new-source)
-    :segment   (segment-swap!   entity old-source new-source)))
+    :segment   (segment-swap!   entity old-source new-source)
+    :measure   (measure-swap!   entity old-source new-source)))
