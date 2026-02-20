@@ -7,7 +7,7 @@ import {
   type OmniPickerItem,
 } from "metabase/common/components/Pickers";
 import { Box, Button, Icon, Input } from "metabase/ui";
-import type { ReplaceSourceEntry } from "metabase-types/api";
+import type { DatabaseId, ReplaceSourceEntry } from "metabase-types/api";
 
 import type { EntityInfo } from "../../types";
 
@@ -20,6 +20,7 @@ import {
 import type { EntityDisplayInfo } from "./types";
 import {
   getEntityDisplayInfo,
+  getIsPickerItemDisabled,
   getPickerValue,
   getSelectedValue,
 } from "./utils";
@@ -29,6 +30,8 @@ type EntitySelectProps = {
   label: string;
   description: string;
   placeholder?: string;
+  databaseId?: DatabaseId;
+  disabledEntry?: ReplaceSourceEntry;
   onChange: (entry: ReplaceSourceEntry) => void;
 };
 
@@ -37,15 +40,21 @@ export function EntitySelect({
   label,
   description,
   placeholder = t`Pick a table, model, or saved question`,
+  databaseId,
+  disabledEntry,
   onChange,
 }: EntitySelectProps) {
   const [isPickerOpen, { open: openPicker, close: closePicker }] =
     useDisclosure(false);
   const displayInfo = getEntityDisplayInfo(entityInfo);
+  const isDisabledItem = getIsPickerItemDisabled(databaseId, disabledEntry);
 
   const handleItemSelect = (item: OmniPickerItem) => {
-    onChange(getSelectedValue(item));
-    closePicker();
+    const entry = getSelectedValue(item);
+    if (entry != null) {
+      onChange(entry);
+      closePicker();
+    }
   };
 
   return (
@@ -69,6 +78,7 @@ export function EntitySelect({
           value={getPickerValue(entityInfo)}
           options={SOURCE_PICKER_OPTIONS}
           recentsContext={RECENTS_CONTEXT}
+          isDisabledItem={isDisabledItem}
           onChange={handleItemSelect}
           onClose={closePicker}
         />

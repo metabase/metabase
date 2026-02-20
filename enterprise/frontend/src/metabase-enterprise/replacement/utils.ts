@@ -2,8 +2,16 @@ import { t } from "ttag";
 
 import type {
   ReplaceSourceColumnErrorType,
+  ReplaceSourceEntry,
   ReplaceSourceErrorType,
 } from "metabase-types/api";
+
+export function isSameEntity(
+  entry1: ReplaceSourceEntry,
+  entry2: ReplaceSourceEntry,
+): boolean {
+  return entry1.id === entry2.id && entry1.type === entry2.type;
+}
 
 export function getGenericErrorMessage(): string {
   return t`This data source isn't compatible.`;
