@@ -142,13 +142,13 @@
    Calls body-fn with a map containing tracking atoms:
    {:post-calls, :delete-calls, :image-calls, :generate-png-calls, :generate-adhoc-png-calls,
     :generate-card-output-calls, :generate-adhoc-output-calls, :ephemeral-calls,
-    :ai-request-calls, :fake-png-bytes}"
+    :ai-request-calls, :fake-png-bytes, :stream-calls, :append-text-calls, :stop-stream-calls}"
   [{:keys [ai-text data-parts user-id]
     :or   {data-parts []
            user-id    ::default}}
    body-fn]
-  (let [post-calls               (atom [])
-        delete-calls             (atom [])
+  (let [post-calls                  (atom [])
+        delete-calls                (atom [])
         image-calls                 (atom [])
         generate-png-calls          (atom [])
         generate-adhoc-png-calls    (atom [])
@@ -156,6 +156,9 @@
         generate-adhoc-output-calls (atom [])
         ephemeral-calls             (atom [])
         ai-request-calls            (atom [])
+        stream-calls                (atom [])
+        append-text-calls           (atom [])
+        stop-stream-calls           (atom [])
         fake-png-bytes              (byte-array [0x89 0x50 0x4E 0x47])
         mock-user-id                (cond
                                       (= user-id ::default) (mt/user->id :rasta)
@@ -168,10 +171,15 @@
        slackbot/fetch-thread         (constantly {:ok true, :messages []})
        ;; Mock Slack streaming APIs
        slackbot/start-stream         (fn [_ opts]
+                                       (swap! stream-calls conj opts)
                                        {:stream_ts "stream123" :channel (:channel opts) :thread_ts (:thread_ts opts)})
        slackbot/append-stream        (constantly {:ok true})
-       slackbot/append-markdown-text (constantly {:ok true})
-       slackbot/stop-stream          (constantly {:ok true})
+       slackbot/append-markdown-text (fn [_ _channel _stream-ts text]
+                                       (swap! append-text-calls conj text)
+                                       {:ok true})
+       slackbot/stop-stream          (fn [_ channel stream-ts]
+                                       (swap! stop-stream-calls conj {:channel channel :stream_ts stream-ts})
+                                       {:ok true})
        slackbot/post-message (fn [_ msg]
                                (swap! post-calls conj msg)
                                {:ok true
@@ -225,6 +233,9 @@
                 :generate-adhoc-output-calls generate-adhoc-output-calls
                 :ephemeral-calls             ephemeral-calls
                 :ai-request-calls            ai-request-calls
+                :stream-calls                stream-calls
+                :append-text-calls           append-text-calls
+                :stop-stream-calls           stop-stream-calls
                 :fake-png-bytes              fake-png-bytes}))))
 
 (deftest edited-message-ignored-test
@@ -255,7 +266,7 @@
                   (is (= 0 (count @ephemeral-calls))))))))))))
 
 (deftest user-message-triggers-response-test
-  (testing "POST /events with user message triggers AI response via Slack"
+  (testing "POST /events with user message triggers AI response via Slack streaming"
     (with-slackbot-setup
       (let [mock-ai-text "Here is your answer"
             event-body {:type "event_callback"
@@ -268,21 +279,25 @@
                                 :channel_type "im"}}]
         (with-slackbot-mocks
           {:ai-text mock-ai-text}
-          (fn [{:keys [post-calls delete-calls]}]
+          (fn [{:keys [stream-calls append-text-calls stop-stream-calls]}]
             (let [response (mt/client :post 200 "ee/metabot-v3/slack/events"
                                       (slack-request-options event-body)
                                       event-body)]
               (is (= "ok" response))
-              (u/poll {:thunk #(>= (count @post-calls) 2)
+              ;; Wait for streaming to complete
+              (u/poll {:thunk #(>= (count @stop-stream-calls) 1)
                        :done? true?
                        :timeout-ms 5000})
-              (is (= "_Thinking..._" (:text (first @post-calls))))
-              (is (= mock-ai-text (:text (second @post-calls))))
-              (is (= 1 (count @delete-calls)))
-              (is (= "_Thinking..._" (get-in (first @delete-calls) [:message :text]))))))))))
+              (testing "stream was started"
+                (is (= 1 (count @stream-calls)))
+                (is (= "C123" (:channel (first @stream-calls)))))
+              (testing "AI response was streamed"
+                (is (some #(= mock-ai-text %) @append-text-calls)))
+              (testing "stream was stopped"
+                (is (= 1 (count @stop-stream-calls)))))))))))
 
 (deftest app-mention-triggers-response-test
-  (testing "POST /events with app_mention triggers AI response"
+  (testing "POST /events with app_mention triggers AI response via streaming"
     (with-slackbot-setup
       (let [mock-ai-text "Here is your answer"
             event-body {:type "event_callback"
@@ -294,17 +309,22 @@
                                 :event_ts "1234567890.000001"}}]
         (with-slackbot-mocks
           {:ai-text mock-ai-text}
-          (fn [{:keys [post-calls delete-calls]}]
+          (fn [{:keys [stream-calls append-text-calls stop-stream-calls]}]
             (let [response (mt/client :post 200 "ee/metabot-v3/slack/events"
                                       (slack-request-options event-body)
                                       event-body)]
               (is (= "ok" response))
-              (u/poll {:thunk #(>= (count @post-calls) 2)
+              ;; Wait for streaming to complete
+              (u/poll {:thunk #(>= (count @stop-stream-calls) 1)
                        :done? true?
                        :timeout-ms 5000})
-              (is (= "_Thinking..._" (:text (first @post-calls))))
-              (is (= mock-ai-text (:text (second @post-calls))))
-              (is (= 1 (count @delete-calls))))))))))
+              (testing "stream was started"
+                (is (= 1 (count @stream-calls)))
+                (is (= "C123" (:channel (first @stream-calls)))))
+              (testing "AI response was streamed"
+                (is (some #(= mock-ai-text %) @append-text-calls)))
+              (testing "stream was stopped"
+                (is (= 1 (count @stop-stream-calls)))))))))))
 
 (deftest streaming-request-args-test
   (testing "POST /events passes correct arguments to streaming-request-with-callback"
@@ -369,22 +389,23 @@
         (with-slackbot-mocks
           {:ai-text mock-ai-text
            :data-parts mock-data-parts}
-          (fn [{:keys [post-calls delete-calls image-calls generate-card-output-calls fake-png-bytes]}]
+          (fn [{:keys [stream-calls append-text-calls stop-stream-calls image-calls generate-card-output-calls fake-png-bytes]}]
             (let [response (mt/client :post 200 "ee/metabot-v3/slack/events"
                                       (slack-request-options event-body)
                                       event-body)]
               (is (= "ok" response))
 
-              ;; Wait for text messages AND image uploads
-              (u/poll {:thunk #(and (>= (count @post-calls) 2)
+              ;; Wait for streaming to complete AND image uploads
+              (u/poll {:thunk #(and (>= (count @stop-stream-calls) 1)
                                     (>= (count @image-calls) 2))
                        :done? true?
                        :timeout-ms 5000})
 
-              (testing "text message flow works"
-                (is (= "_Thinking..._" (:text (first @post-calls))))
-                (is (= mock-ai-text (:text (second @post-calls))))
-                (is (= 1 (count @delete-calls))))
+              (testing "streaming message flow works"
+                (is (= 1 (count @stream-calls)))
+                (is (= "C456" (:channel (first @stream-calls))))
+                (is (some #(= mock-ai-text %) @append-text-calls))
+                (is (= 1 (count @stop-stream-calls))))
 
               (testing "output generation called for each static_viz"
                 (is (= 2 (count @generate-card-output-calls)))
@@ -516,8 +537,9 @@
   (testing "POST /events with adhoc_viz executes query and uploads PNG"
     (with-slackbot-setup
       (let [mock-ai-text    "Here's your data"
+            ;; Note: :type uses string "query" because JSON round-trip converts keywords to strings
             mock-query      {:database 1
-                             :type     :query
+                             :type     "query"
                              :query    {:source-table 2}}
             mock-data-parts [{:type  "adhoc_viz"
                               :value {:query   mock-query
@@ -534,14 +556,14 @@
         (with-slackbot-mocks
           {:ai-text    mock-ai-text
            :data-parts mock-data-parts}
-          (fn [{:keys [post-calls image-calls generate-adhoc-output-calls fake-png-bytes]}]
+          (fn [{:keys [stop-stream-calls image-calls generate-adhoc-output-calls fake-png-bytes]}]
             (let [response (mt/client :post 200 "ee/metabot-v3/slack/events"
                                       (slack-request-options event-body)
                                       event-body)]
               (is (= "ok" response))
 
-              ;; Wait for text messages AND image upload
-              (u/poll {:thunk      #(and (>= (count @post-calls) 2)
+              ;; Wait for streaming to complete AND image upload
+              (u/poll {:thunk      #(and (>= (count @stop-stream-calls) 1)
                                          (>= (count @image-calls) 1))
                        :done?      true?
                        :timeout-ms 5000})
@@ -561,7 +583,8 @@
 (deftest adhoc-viz-default-display-test
   (testing "POST /events with adhoc_viz uses :table when display not specified"
     (with-slackbot-setup
-      (let [mock-query      {:database 1 :type :query :query {:source-table 2}}
+      ;; Note: :type uses string "query" because JSON round-trip converts keywords to strings
+      (let [mock-query      {:database 1 :type "query" :query {:source-table 2}}
             mock-data-parts [{:type  "adhoc_viz"
                               :value {:query mock-query}}] ;; no :display
             event-body      {:type  "event_callback"
@@ -575,12 +598,13 @@
         (with-slackbot-mocks
           {:ai-text    "Here's your table"
            :data-parts mock-data-parts}
-          (fn [{:keys [generate-adhoc-output-calls post-calls]}]
+          (fn [{:keys [generate-adhoc-output-calls stop-stream-calls post-calls]}]
             (mt/client :post 200 "ee/metabot-v3/slack/events"
                        (slack-request-options event-body)
                        event-body)
-            ;; Wait for text message and table rendering (table output uses post, not image upload)
-            (u/poll {:thunk      #(>= (count @post-calls) 3) ;; thinking + response + table
+            ;; Wait for streaming to complete and table rendering (table output uses post after stream)
+            (u/poll {:thunk      #(and (>= (count @stop-stream-calls) 1)
+                                       (>= (count @post-calls) 1))
                      :done?      true?
                      :timeout-ms 5000})
             (testing "display defaults to :table"
@@ -589,7 +613,8 @@
 (deftest mixed-viz-types-test
   (testing "POST /events handles both static_viz and adhoc_viz in same response"
     (with-slackbot-setup
-      (let [mock-query      {:database 1 :type :query :query {:source-table 2}}
+      ;; Note: :type uses string "query" because JSON round-trip converts keywords to strings
+      (let [mock-query      {:database 1 :type "query" :query {:source-table 2}}
             mock-data-parts [{:type "static_viz" :value {:entity_id 101}}
                              {:type "adhoc_viz" :value {:query mock-query :display "line"}}
                              {:type "static_viz" :value {:entity_id 202}}]
@@ -681,19 +706,19 @@
           (fn [{:keys [upload-calls]}]
             (with-slackbot-mocks
               {:ai-text "CSV uploads are not enabled on this Metabase instance."}
-              (fn [{:keys [post-calls]}]
+              (fn [{:keys [stop-stream-calls append-text-calls]}]
                 (let [response (mt/client :post 200 "ee/metabot-v3/slack/events"
                                           (slack-request-options event-body)
                                           event-body)]
                   (is (= "ok" response))
-                  (u/poll {:thunk #(>= (count @post-calls) 2)
+                  (u/poll {:thunk #(>= (count @stop-stream-calls) 1)
                            :done? true?
                            :timeout-ms 5000})
                   (testing "no upload was attempted"
                     (is (= 0 (count @upload-calls))))
                   (testing "AI responds with error message"
-                    (is (= "CSV uploads are not enabled on this Metabase instance."
-                           (:text (second @post-calls))))))))))))))
+                    (is (some #(= "CSV uploads are not enabled on this Metabase instance." %)
+                              @append-text-calls))))))))))))
 
 (deftest csv-upload-success-test
   (testing "POST /events with successful CSV upload"
@@ -719,12 +744,12 @@
           (fn [{:keys [upload-calls download-calls]}]
             (with-slackbot-mocks
               {:ai-text "Your CSV has been uploaded successfully as a model."}
-              (fn [{:keys [post-calls]}]
+              (fn [{:keys [stop-stream-calls append-text-calls]}]
                 (let [response (mt/client :post 200 "ee/metabot-v3/slack/events"
                                           (slack-request-options event-body)
                                           event-body)]
                   (is (= "ok" response))
-                  (u/poll {:thunk #(>= (count @post-calls) 2)
+                  (u/poll {:thunk #(>= (count @stop-stream-calls) 1)
                            :done? true?
                            :timeout-ms 5000})
                   (testing "file was downloaded from Slack"
@@ -735,8 +760,8 @@
                     (let [call (first @upload-calls)]
                       (is (= "sales_data.csv" (:filename call)))))
                   (testing "AI responds with success message"
-                    (is (= "Your CSV has been uploaded successfully as a model."
-                           (:text (second @post-calls))))))))))))))
+                    (is (some #(= "Your CSV has been uploaded successfully as a model." %)
+                              @append-text-calls))))))))))))
 
 (deftest csv-upload-non-csv-skipped-test
   (testing "POST /events with non-CSV file is skipped"
@@ -760,12 +785,12 @@
           (fn [{:keys [upload-calls download-calls]}]
             (with-slackbot-mocks
               {:ai-text "Only CSV files can be uploaded."}
-              (fn [{:keys [post-calls]}]
+              (fn [{:keys [stop-stream-calls append-text-calls]}]
                 (let [response (mt/client :post 200 "ee/metabot-v3/slack/events"
                                           (slack-request-options event-body)
                                           event-body)]
                   (is (= "ok" response))
-                  (u/poll {:thunk #(>= (count @post-calls) 2)
+                  (u/poll {:thunk #(>= (count @stop-stream-calls) 1)
                            :done? true?
                            :timeout-ms 5000})
                   (testing "no download was attempted"
@@ -773,8 +798,8 @@
                   (testing "no upload was attempted"
                     (is (= 0 (count @upload-calls))))
                   (testing "AI responds explaining PDF not supported"
-                    (is (= "Only CSV files can be uploaded."
-                           (:text (second @post-calls))))))))))))))
+                    (is (some #(= "Only CSV files can be uploaded." %)
+                              @append-text-calls))))))))))))
 
 (deftest csv-upload-non-csv-no-text-test
   (testing "POST /events with non-CSV file and no text responds directly without AI"
@@ -854,12 +879,12 @@
           (fn [{:keys [upload-calls download-calls]}]
             (with-slackbot-mocks
               {:ai-text "Uploaded 2 files, skipped 1 non-CSV file."}
-              (fn [{:keys [post-calls]}]
+              (fn [{:keys [stop-stream-calls]}]
                 (let [response (mt/client :post 200 "ee/metabot-v3/slack/events"
                                           (slack-request-options event-body)
                                           event-body)]
                   (is (= "ok" response))
-                  (u/poll {:thunk #(>= (count @post-calls) 2)
+                  (u/poll {:thunk #(>= (count @stop-stream-calls) 1)
                            :done? true?
                            :timeout-ms 5000})
                   (testing "only CSV/TSV files were downloaded"
@@ -893,12 +918,12 @@
           (fn [{:keys [upload-calls download-calls]}]
             (with-slackbot-mocks
               {:ai-text "The file exceeds the 1GB size limit."}
-              (fn [{:keys [post-calls]}]
+              (fn [{:keys [stop-stream-calls]}]
                 (let [response (mt/client :post 200 "ee/metabot-v3/slack/events"
                                           (slack-request-options event-body)
                                           event-body)]
                   (is (= "ok" response))
-                  (u/poll {:thunk #(>= (count @post-calls) 2)
+                  (u/poll {:thunk #(>= (count @stop-stream-calls) 1)
                            :done? true?
                            :timeout-ms 5000})
                   (testing "file was not downloaded due to size"
@@ -929,19 +954,19 @@
           (fn [{:keys [upload-calls]}]
             (with-slackbot-mocks
               {:ai-text "You don't have permission to upload files."}
-              (fn [{:keys [post-calls]}]
+              (fn [{:keys [stop-stream-calls append-text-calls]}]
                 (let [response (mt/client :post 200 "ee/metabot-v3/slack/events"
                                           (slack-request-options event-body)
                                           event-body)]
                   (is (= "ok" response))
-                  (u/poll {:thunk #(>= (count @post-calls) 2)
+                  (u/poll {:thunk #(>= (count @stop-stream-calls) 1)
                            :done? true?
                            :timeout-ms 5000})
                   (testing "no upload was attempted"
                     (is (= 0 (count @upload-calls))))
                   (testing "AI responds with permission error"
-                    (is (= "You don't have permission to upload files."
-                           (:text (second @post-calls))))))))))))))
+                    (is (some #(= "You don't have permission to upload files." %)
+                              @append-text-calls))))))))))))
 
 (deftest csv-file-detection-test
   (testing "csv-file? correctly identifies CSV/TSV files"
