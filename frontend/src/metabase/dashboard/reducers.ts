@@ -211,9 +211,6 @@ const dashcards = createReducer(
             if (!("action" in dashcard) || dashcard.action?.id !== action.id) {
               return;
             }
-            if (!dashcard.action) {
-              return;
-            }
             Object.assign(dashcard.action, action, {
               database_enabled_actions:
                 dashcard.action.database_enabled_actions || false,
