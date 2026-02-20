@@ -9,14 +9,12 @@ export function getGenericErrorMessage(): string {
   return t`This data source isn't compatible.`;
 }
 
-export function getEntityErrorMessage(error: ReplaceSourceErrorType): string {
+export function getEntityErrorMessage(
+  error: ReplaceSourceErrorType,
+): string | null {
   switch (error) {
-    case "same-source":
-      return t`The data sources are the same.`;
     case "cycle-detected":
       return t`The replacement data source can't be based on the original data source.`;
-    case "database-mismatch":
-      return t`This data source is in a different database than the original data source.`;
     case "missing-column":
       return "This data source does not include all columns from the original data source.";
     case "column-type-mismatch":
@@ -29,6 +27,9 @@ export function getEntityErrorMessage(error: ReplaceSourceErrorType): string {
       return "This data source does not have a foreign key, while the original data source does.";
     case "foreign-key-mismatch":
       return "This data source has a foreign key that references a different primary key than the original data source.";
+    case "same-source":
+    case "database-mismatch":
+      return getGenericErrorMessage();
   }
 }
 
