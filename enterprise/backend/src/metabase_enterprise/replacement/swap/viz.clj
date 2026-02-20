@@ -3,7 +3,6 @@
    [clojure.walk]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
-   [metabase.lib.query :as lib.query]
    [metabase.models.visualization-settings :as vs]
    [toucan2.core :as t2]))
 
@@ -23,10 +22,10 @@
   [mp [source-type source-id]]
   (case source-type
     :card
-    (lib.query/query mp (lib.metadata/card mp source-id))
+    (lib/query mp (lib.metadata/card mp source-id))
 
     :table
-    (lib.query/query mp (lib.metadata/table mp source-id))))
+    (lib/query mp (lib.metadata/table mp source-id))))
 
 (defn- swap-field-ref
   [field-ref mp old-source new-source]
