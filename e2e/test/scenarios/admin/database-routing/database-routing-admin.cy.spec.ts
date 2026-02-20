@@ -519,7 +519,7 @@ describe("admin > database > database routing", () => {
           modelsSection().within(() => {
             cy.findByLabelText("Model actions").should("be.disabled");
             cy.findByText(
-              "Model actions cannot be enabled when database routing is enabled.",
+              "Model actions can't be enabled when database routing is enabled.",
             )
               .scrollIntoView()
               .should("be.visible");
@@ -556,7 +556,7 @@ describe("admin > database > database routing", () => {
           modelsSection().within(() => {
             cy.findByLabelText("Model persistence").should("be.disabled");
             cy.findByText(
-              "Model persistence cannot be enabled when database routing is enabled.",
+              "Model persistence can't be enabled when database routing is enabled.",
             )
               .scrollIntoView()
               .should("be.visible");
@@ -592,7 +592,7 @@ describe("admin > database > database routing", () => {
           workspacesSection().within(() => {
             cy.findByLabelText("Enable workspaces").should("be.disabled");
             cy.findByText(
-              "Workspaces cannot be enabled when database routing is enabled.",
+              "Workspaces can't be enabled when database routing is enabled.",
             )
               .scrollIntoView()
               .should("be.visible");
@@ -629,7 +629,7 @@ describe("admin > database > database routing", () => {
           tableEditingSection().within(() => {
             cy.findByLabelText("Editable tables").should("be.disabled");
             cy.findByText(
-              "Table editing cannot be enabled when database routing is enabled.",
+              "Table editing can't be enabled when database routing is enabled.",
             )
               .scrollIntoView()
               .should("be.visible");

@@ -126,7 +126,7 @@ export function AdminDatabaseTableEditingSection({
 
       {databaseHasRouting && (
         <Alert variant="light" color="info" icon={<Icon name="info" />} mb="md">
-          {t`Table editing cannot be enabled when database routing is enabled.`}
+          {t`Table editing can't be enabled when database routing is enabled.`}
         </Alert>
       )}
     </DatabaseInfoSection>

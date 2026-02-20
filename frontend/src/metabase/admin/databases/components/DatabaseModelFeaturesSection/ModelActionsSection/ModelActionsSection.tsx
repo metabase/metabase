@@ -59,7 +59,7 @@ export function ModelActionsSection({
             icon={<Icon name="info" />}
             mb="md"
           >
-            {t`Model actions cannot be enabled when database routing is enabled.`}
+            {t`Model actions can't be enabled when database routing is enabled.`}
           </Alert>
         </Box>
       )}

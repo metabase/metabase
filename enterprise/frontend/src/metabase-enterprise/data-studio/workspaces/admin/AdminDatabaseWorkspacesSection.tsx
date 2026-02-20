@@ -187,7 +187,7 @@ export function AdminDatabaseWorkspacesSection({
             icon={<Icon name="info" />}
             mb="md"
           >
-            {t`Workspaces cannot be enabled when database routing is enabled.`}
+            {t`Workspaces can't be enabled when database routing is enabled.`}
           </Alert>
         )}
       </Stack>
