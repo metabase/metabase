@@ -1,10 +1,11 @@
 import { setupRunInspectorQueryEndpoint } from "__support__/server-mocks/transform";
 import { renderWithProviders, screen } from "__support__/ui";
 import type {
-  TriggeredAlert,
-  TriggeredDrillLens,
-} from "metabase-lib/transforms-inspector";
-import type { InspectorCard, InspectorSection } from "metabase-types/api";
+  InspectorAlertTrigger,
+  InspectorCard,
+  InspectorDrillLensTrigger,
+  InspectorSection,
+} from "metabase-types/api";
 import {
   createMockColumn,
   createMockDataset,
@@ -34,7 +35,7 @@ const scalarCard2 = createMockInspectorCard({
   display: "scalar",
 });
 
-const mockAlerts: TriggeredAlert[] = [
+const mockAlerts: InspectorAlertTrigger[] = [
   {
     id: "alert-1",
     severity: "warning",
@@ -49,7 +50,7 @@ const mockAlerts: TriggeredAlert[] = [
   },
 ];
 
-const mockDrillLenses: TriggeredDrillLens[] = [
+const mockDrillLenses: InspectorDrillLensTrigger[] = [
   {
     lens_id: "drill-lens-1",
     reason: "missing values",
@@ -69,13 +70,16 @@ const defaultSections: InspectorSection[] = [
 function setup({
   sections = defaultSections,
   cardsBySection = { "section-1": [scalarCard1, scalarCard2] },
-  alertsByCardId = {} satisfies Record<string, TriggeredAlert[]>,
-  drillLensesByCardId = {} satisfies Record<string, TriggeredDrillLens[]>,
+  alertsByCardId = {} satisfies Record<string, InspectorAlertTrigger[]>,
+  drillLensesByCardId = {} satisfies Record<
+    string,
+    InspectorDrillLensTrigger[]
+  >,
 }: {
   sections?: InspectorSection[];
   cardsBySection?: Record<string, InspectorCard[]>;
-  alertsByCardId?: Record<string, TriggeredAlert[]>;
-  drillLensesByCardId?: Record<string, TriggeredDrillLens[]>;
+  alertsByCardId?: Record<string, InspectorAlertTrigger[]>;
+  drillLensesByCardId?: Record<string, InspectorDrillLensTrigger[]>;
 } = {}) {
   const lensId = "lens-1";
   setupRunInspectorQueryEndpoint(
