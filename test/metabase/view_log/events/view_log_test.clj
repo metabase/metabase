@@ -281,7 +281,8 @@
   (mt/with-premium-features #{:audit-app}
     (testing "Viewing an embedding logs the correct view log event."
       (embed-test/with-embedding-enabled-and-new-secret-key!
-        (mt/with-temp [:model/Card card {:enable_embedding true}]
+        (mt/with-temp [:model/Card card {:enable_embedding true
+                                         :dataset_query (mt/mbql-query venues {:limit 1})}]
           (testing "GET /api/embed/card/:token/query"
             (client/client :get 202 (str (embed-test/card-url card) "/query"))
             (is (partial= {:model "card", :model_id (:id card), :has_access true}
