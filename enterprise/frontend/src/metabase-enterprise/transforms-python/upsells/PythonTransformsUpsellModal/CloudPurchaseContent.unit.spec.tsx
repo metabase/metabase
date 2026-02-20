@@ -2,7 +2,7 @@ import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 
 import { setupPropertiesEndpoints } from "__support__/server-mocks";
-import { renderWithProviders, screen, waitFor } from "__support__/ui";
+import { renderWithProviders, screen } from "__support__/ui";
 import {
   createMockSettings,
   createMockTokenFeatures,
@@ -22,7 +22,6 @@ const setup = ({
   pythonPrice?: number;
 }) => {
   const handleModalClose = jest.fn();
-  const onError = jest.fn();
 
   const settings = createMockSettings({
     "token-status": {
@@ -44,7 +43,6 @@ const setup = ({
       billingPeriod="yearly"
       handleModalClose={handleModalClose}
       isTrialFlow={isTrialFlow}
-      onError={onError}
       pythonPrice={pythonPrice}
     />,
     {
@@ -52,7 +50,7 @@ const setup = ({
     },
   );
 
-  return { handleModalClose, onError };
+  return { handleModalClose };
 };
 
 describe("CloudPurchaseContent", () => {
@@ -102,19 +100,5 @@ describe("CloudPurchaseContent", () => {
     expect(
       screen.getByText("Setting up Python transforms, please wait"),
     ).toBeInTheDocument();
-  });
-
-  it("calls onError when the purchase request fails", async () => {
-    fetchMock.post("path:/api/ee/cloud-add-ons/transforms-advanced", 500);
-
-    const { onError } = setup({ isTrialFlow: false, pythonPrice: 250 });
-
-    await userEvent.click(
-      screen.getByRole("button", { name: "Confirm purchase" }),
-    );
-
-    await waitFor(() => {
-      expect(onError).toHaveBeenCalled();
-    });
   });
 });

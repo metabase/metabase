@@ -2,7 +2,6 @@ import type { ComponentType, Context, ReactNode } from "react";
 import { createContext } from "react";
 
 import type { OmniPickerItem } from "metabase/common/components/Pickers";
-import type { BillingPeriod } from "metabase/data-studio/upsells/types";
 import {
   NotFoundPlaceholder,
   PluginPlaceholder,
@@ -11,7 +10,6 @@ import type Question from "metabase-lib/v1/Question";
 import type {
   CheckDependenciesResponse,
   GetDependencyGraphRequest,
-  ICloudAddOnProduct,
   PythonTransformSourceDraft,
   Transform,
   UpdateSnippetRequest,
@@ -23,16 +21,9 @@ export type TransformPickerItem = OmniPickerItem & {
   model: "transform";
 };
 
-export type TransformPickerProps = {
-  value: TransformPickerItem | undefined;
-  onItemSelect: (transform: TransformPickerItem) => void;
-};
-
 export type TransformsPlugin = {
   isEnabled: boolean;
   TransformsUpsellPage: ComponentType;
-  CloudPurchaseContent: ComponentType<CloudPurchaseContentProps>;
-  useTransformsBilling: () => TransformsBillingData;
 };
 
 export type PythonTransformEditorUiOptions = {
@@ -66,14 +57,9 @@ export type PythonTransformSourceValidationResult = {
   errorMessage?: string;
 };
 
-export type PythonTransformsUpsellModalProps = {
-  isOpen: boolean;
-  onClose: () => void;
-};
-
 export type PythonTransformsPlugin = {
   isEnabled: boolean;
-  getPythonLibraryRoutes: () => ReactNode;
+  getPythonTransformsRoutes: () => ReactNode;
   getPythonSourceValidationResult: (
     source: PythonTransformSourceDraft,
   ) => PythonTransformSourceValidationResult;
@@ -152,48 +138,16 @@ function useCheckDependencies<TChange>({
   };
 }
 
-export type CloudPurchaseContentProps = {
-  billingPeriod: BillingPeriod;
-  handleModalClose: VoidFunction;
-  isTrialFlow: boolean;
-  onError: VoidFunction;
-  pythonPrice: number;
-};
-
-export type TransformsBillingData = {
-  error: unknown;
-  isLoading: boolean;
-  billingPeriodMonths: number | undefined;
-  basicTransformsAddOn: ICloudAddOnProduct | undefined;
-  advancedTransformsAddOn: ICloudAddOnProduct | undefined;
-  hadTransforms: boolean;
-  isOnTrial: boolean;
-  trialEndDate: string | undefined;
-  hasBasicTransforms: boolean;
-};
-
 const getDefaultPluginTransforms = (): TransformsPlugin => ({
   isEnabled: true, // transforms are enabled by default in OSS
   TransformsUpsellPage: PluginPlaceholder,
-  CloudPurchaseContent: PluginPlaceholder,
-  useTransformsBilling: () => ({
-    error: null,
-    isLoading: false,
-    billingPeriodMonths: undefined,
-    basicTransformsAddOn: undefined,
-    advancedTransformsAddOn: undefined,
-    hadTransforms: false,
-    isOnTrial: false,
-    trialEndDate: undefined,
-    hasBasicTransforms: true,
-  }),
 });
 
 export const PLUGIN_TRANSFORMS = getDefaultPluginTransforms();
 
 const getDefaultPluginTransformsPython = (): PythonTransformsPlugin => ({
   isEnabled: false,
-  getPythonLibraryRoutes: () => null,
+  getPythonTransformsRoutes: () => null,
   getPythonSourceValidationResult: () => ({ isValid: true }),
   TransformEditor: PluginPlaceholder,
   SourceSection: PluginPlaceholder,
