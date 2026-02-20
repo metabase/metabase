@@ -5,7 +5,7 @@ import _ from "underscore";
 import { skipToken } from "metabase/api";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { useToast } from "metabase/common/hooks";
-import type { CompatParams } from "metabase/routing/compat/types";
+import type { RouteParams } from "metabase/routing/compat/types";
 import { Modal } from "metabase/ui";
 import {
   useGetTenantQuery,
@@ -17,7 +17,7 @@ import { TenantForm } from "../../components/TenantForm";
 
 interface EditUserModalProps {
   onClose: () => void;
-  params: CompatParams;
+  params: RouteParams;
 }
 
 export const EditTenantModal = ({ params, onClose }: EditUserModalProps) => {

@@ -7,7 +7,7 @@ import PublicApp from "metabase/public/containers/PublicApp";
 import { PublicDocument } from "metabase/public/containers/PublicDocument";
 import { PublicOrEmbeddedDashboardPage } from "metabase/public/containers/PublicOrEmbeddedDashboard";
 import { PublicOrEmbeddedQuestion } from "metabase/public/containers/PublicOrEmbeddedQuestion";
-import { useCompatLocation, useCompatParams } from "metabase/routing/compat";
+import { useLocationWithQuery, useRouteParams } from "metabase/routing/compat";
 import type { EntityToken } from "metabase-types/api/entity";
 
 const PublicAppWithOutlet = () => (
@@ -17,13 +17,13 @@ const PublicAppWithOutlet = () => (
 );
 
 const PublicActionWithRouteProps = () => {
-  const params = useCompatParams<{ uuid?: string }>();
+  const params = useRouteParams<{ uuid?: string }>();
   return <PublicAction params={{ uuid: params.uuid ?? "" }} />;
 };
 
 const PublicQuestionWithRouteProps = () => {
-  const params = useCompatParams<{ uuid?: string }>();
-  const location = useCompatLocation();
+  const params = useRouteParams<{ uuid?: string }>();
+  const location = useLocationWithQuery();
 
   return (
     <PublicOrEmbeddedQuestion
@@ -34,8 +34,8 @@ const PublicQuestionWithRouteProps = () => {
 };
 
 const PublicDocumentWithRouteProps = () => {
-  const params = useCompatParams<{ uuid?: string }>();
-  const location = useCompatLocation();
+  const params = useRouteParams<{ uuid?: string }>();
+  const location = useLocationWithQuery();
 
   return (
     <PublicDocument

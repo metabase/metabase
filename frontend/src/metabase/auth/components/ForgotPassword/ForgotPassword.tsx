@@ -3,7 +3,7 @@ import { t } from "ttag";
 
 import { Button } from "metabase/common/components/Button";
 import { useDispatch, useSelector } from "metabase/lib/redux";
-import { useCompatLocation } from "metabase/routing/compat";
+import { useLocationWithQuery } from "metabase/routing/compat";
 
 import { forgotPassword } from "../../actions";
 import { getIsEmailConfigured, getIsLdapEnabled } from "../../selectors";
@@ -21,7 +21,7 @@ import {
 type ViewType = "form" | "disabled" | "success";
 
 export const ForgotPassword = (): JSX.Element => {
-  const location = useCompatLocation();
+  const location = useLocationWithQuery();
   const isEmailConfigured = useSelector(getIsEmailConfigured);
   const isLdapEnabled = useSelector(getIsLdapEnabled);
   const canResetPassword = isEmailConfigured && !isLdapEnabled;

@@ -3,8 +3,8 @@ import { Outlet, type RouteObject } from "react-router-dom";
 
 import {
   createModalRoute,
-  useCompatLocation,
-  useCompatParams,
+  useLocationWithQuery,
+  useRouteParams,
 } from "metabase/routing/compat";
 
 import { HelpModal } from "./components/HelpModal";
@@ -25,8 +25,8 @@ const DeleteAlertModalWithRouteProps = ({
 }: {
   onClose: () => void;
 }) => {
-  const params = useCompatParams<{ alertId?: string }>();
-  const location = useCompatLocation();
+  const params = useRouteParams<{ alertId?: string }>();
+  const location = useLocationWithQuery();
 
   return (
     <DeleteAlertModal
@@ -46,8 +46,8 @@ const ArchivePulseModalWithRouteProps = ({
 }: {
   onClose: () => void;
 }) => {
-  const params = useCompatParams<{ pulseId?: string }>();
-  const location = useCompatLocation();
+  const params = useRouteParams<{ pulseId?: string }>();
+  const location = useLocationWithQuery();
 
   return (
     <ArchivePulseModal
@@ -63,7 +63,7 @@ const UnsubscribeAlertModalWithRouteProps = ({
 }: {
   onClose: () => void;
 }) => {
-  const params = useCompatParams<{ alertId?: string }>();
+  const params = useRouteParams<{ alertId?: string }>();
   return <UnsubscribeAlertModal params={params} onClose={onClose} />;
 };
 
@@ -72,7 +72,7 @@ const UnsubscribePulseModalWithRouteProps = ({
 }: {
   onClose: () => void;
 }) => {
-  const params = useCompatParams<{ pulseId?: string }>();
+  const params = useRouteParams<{ pulseId?: string }>();
   return <UnsubscribePulseModal params={params} onClose={onClose} />;
 };
 

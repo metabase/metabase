@@ -9,11 +9,11 @@ import {
 import ActionCreatorModal from "metabase/actions/containers/ActionCreatorModal/ActionCreatorModal";
 import { ModelDetailPage } from "metabase/detail-view/pages/ModelDetailPage/ModelDetailPage";
 import ModelActions from "metabase/models/containers/ModelActions/ModelActions";
-import { createModalRoute, useCompatParams } from "metabase/routing/compat";
+import { createModalRoute, useRouteParams } from "metabase/routing/compat";
 import { ModalRouteWrapper } from "metabase/routing/compat/ModalRouteWrapper";
 
 const ModelActionsWithRouteProps = () => {
-  const params = useCompatParams<{ slug?: string }>();
+  const params = useRouteParams<{ slug?: string }>();
 
   return (
     <ModelActions params={{ slug: params.slug ?? "" }}>
@@ -23,7 +23,7 @@ const ModelActionsWithRouteProps = () => {
 };
 
 const ModelDetailPageWithRouteProps = () => {
-  const params = useCompatParams<{ slug?: string; rowId?: string }>();
+  const params = useRouteParams<{ slug?: string; rowId?: string }>();
   return (
     <ModelDetailPage
       params={{
@@ -39,7 +39,7 @@ const ActionCreatorModalWithRouteProps = ({
 }: {
   onClose: () => void;
 }) => {
-  const params = useCompatParams<{ slug?: string; actionId?: string }>();
+  const params = useRouteParams<{ slug?: string; actionId?: string }>();
 
   return (
     <ActionCreatorModal

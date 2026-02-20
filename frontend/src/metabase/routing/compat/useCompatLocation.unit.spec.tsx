@@ -1,7 +1,10 @@
 import { renderHook } from "@testing-library/react";
 import { useLocation, useSearchParams } from "react-router-dom";
 
-import { useCompatLocation, useCompatSearchParams } from "./useCompatLocation";
+import {
+  useLocationWithQuery,
+  useSearchParamsWithNavigation,
+} from "./useCompatLocation";
 import { useNavigation } from "./useNavigation";
 
 jest.mock("react-router-dom", () => {
@@ -21,7 +24,7 @@ const useLocationMock = jest.mocked(useLocation);
 const useSearchParamsMock = jest.mocked(useSearchParams);
 const useNavigationMock = jest.mocked(useNavigation);
 
-describe("useCompatLocation", () => {
+describe("useLocationWithQuery", () => {
   beforeEach(() => {
     useLocationMock.mockReturnValue({
       pathname: "/question/1",
@@ -37,7 +40,7 @@ describe("useCompatLocation", () => {
   });
 
   it("exposes both query object and searchParams", () => {
-    const { result } = renderHook(() => useCompatLocation());
+    const { result } = renderHook(() => useLocationWithQuery());
 
     expect(result.current.query.tab).toBe("query");
     expect(result.current.query.mode).toBe("edit");
@@ -53,7 +56,7 @@ describe("useCompatLocation", () => {
       navigate: jest.fn(),
     });
 
-    const { result } = renderHook(() => useCompatSearchParams());
+    const { result } = renderHook(() => useSearchParamsWithNavigation());
     const [, setSearchParams] = result.current;
 
     setSearchParams({ tab: "metadata", mode: undefined });

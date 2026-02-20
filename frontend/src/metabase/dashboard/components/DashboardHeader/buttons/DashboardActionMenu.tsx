@@ -11,7 +11,7 @@ import { useDispatch, useSelector } from "metabase/lib/redux";
 import { DashboardSubscriptionMenuItem } from "metabase/notifications/NotificationsActionsMenu/DashboardSubscriptionMenuItem";
 import { useRegisterShortcut } from "metabase/palette/hooks/useRegisterShortcut";
 import { PLUGIN_MODERATION } from "metabase/plugins";
-import { useCompatLocation } from "metabase/routing/compat";
+import { useLocationWithQuery } from "metabase/routing/compat";
 import { Icon, Menu } from "metabase/ui";
 
 type DashboardActionMenuProps = {
@@ -27,7 +27,7 @@ export const DashboardActionMenu = ({
   canEdit,
   openSettingsSidebar,
 }: DashboardActionMenuProps) => {
-  const location = useCompatLocation();
+  const location = useLocationWithQuery();
   const { dashboard, isFullscreen, onFullscreenChange, onChangeLocation } =
     useDashboardContext();
   const [opened, setOpened] = useState(false);

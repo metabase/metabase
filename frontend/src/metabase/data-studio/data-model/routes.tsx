@@ -9,7 +9,7 @@ import { DataModelSegmentDependenciesPage } from "metabase/data-studio/segments/
 import { DataModelSegmentDetailPage } from "metabase/data-studio/segments/pages/DataModelSegmentDetailPage";
 import { DataModelSegmentRevisionHistoryPage } from "metabase/data-studio/segments/pages/DataModelSegmentRevisionHistoryPage";
 import { PLUGIN_DEPENDENCIES } from "metabase/plugins";
-import { IsAdminGuard, useCompatParams } from "metabase/routing/compat";
+import { IsAdminGuard, useRouteParams } from "metabase/routing/compat";
 
 import { DataModel } from "./pages/DataModel";
 
@@ -24,12 +24,12 @@ type DataModelParams = {
 };
 
 const DataModelWithRouteProps = () => {
-  const params = useCompatParams<DataModelParams>();
+  const params = useRouteParams<DataModelParams>();
   return <DataModel params={params} />;
 };
 
 const DataModelNewSegmentPageWithRouteProps = () => {
-  const params = useCompatParams<DataModelParams>();
+  const params = useRouteParams<DataModelParams>();
   return (
     <DataModelNewSegmentPage
       params={{
@@ -42,7 +42,7 @@ const DataModelNewSegmentPageWithRouteProps = () => {
 };
 
 const DataModelSegmentDetailPageWithRouteProps = () => {
-  const params = useCompatParams<DataModelParams>();
+  const params = useRouteParams<DataModelParams>();
   return (
     <DataModelSegmentDetailPage
       params={{
@@ -56,7 +56,7 @@ const DataModelSegmentDetailPageWithRouteProps = () => {
 };
 
 const DataModelSegmentRevisionHistoryPageWithRouteProps = () => {
-  const params = useCompatParams<DataModelParams>();
+  const params = useRouteParams<DataModelParams>();
   return (
     <DataModelSegmentRevisionHistoryPage
       params={{
@@ -70,7 +70,7 @@ const DataModelSegmentRevisionHistoryPageWithRouteProps = () => {
 };
 
 const DataModelSegmentDependenciesPageWithRouteProps = () => {
-  const params = useCompatParams<DataModelParams>();
+  const params = useRouteParams<DataModelParams>();
   return (
     <DataModelSegmentDependenciesPage
       params={{
@@ -84,7 +84,7 @@ const DataModelSegmentDependenciesPageWithRouteProps = () => {
 };
 
 const DataModelNewMeasurePageWithRouteProps = () => {
-  const params = useCompatParams<DataModelParams>();
+  const params = useRouteParams<DataModelParams>();
   return (
     <DataModelNewMeasurePage
       params={{
@@ -97,7 +97,7 @@ const DataModelNewMeasurePageWithRouteProps = () => {
 };
 
 const DataModelMeasureDetailPageWithRouteProps = () => {
-  const params = useCompatParams<DataModelParams>();
+  const params = useRouteParams<DataModelParams>();
   return (
     <DataModelMeasureDetailPage
       params={{
@@ -111,7 +111,7 @@ const DataModelMeasureDetailPageWithRouteProps = () => {
 };
 
 const DataModelMeasureRevisionHistoryPageWithRouteProps = () => {
-  const params = useCompatParams<DataModelParams>();
+  const params = useRouteParams<DataModelParams>();
   return (
     <DataModelMeasureRevisionHistoryPage
       params={{
@@ -125,7 +125,7 @@ const DataModelMeasureRevisionHistoryPageWithRouteProps = () => {
 };
 
 const DataModelMeasureDependenciesPageWithRouteProps = () => {
-  const params = useCompatParams<DataModelParams>();
+  const params = useRouteParams<DataModelParams>();
   return (
     <DataModelMeasureDependenciesPage
       params={{

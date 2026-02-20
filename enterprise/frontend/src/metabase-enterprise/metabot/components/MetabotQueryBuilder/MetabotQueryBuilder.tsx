@@ -8,7 +8,7 @@ import _ from "underscore";
 
 import { MetabotLogo } from "metabase/common/components/MetabotLogo";
 import { MetabotPromptInput } from "metabase/metabot/components/MetabotPromptInput";
-import { useCompatLocation, useNavigation } from "metabase/routing/compat";
+import { useLocationWithQuery, useNavigation } from "metabase/routing/compat";
 import {
   Box,
   Button,
@@ -130,7 +130,7 @@ export const MetabotQueryBuilder = () => {
     [setVisible],
   );
 
-  const location = useCompatLocation();
+  const location = useLocationWithQuery();
   const previousPathname = usePrevious(location.pathname);
 
   useEffect(

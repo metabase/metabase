@@ -12,9 +12,9 @@ import { useDispatch, useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { addUndo } from "metabase/redux/undo";
 import {
-  useCompatLocation,
-  useCompatParams,
+  useLocationWithQuery,
   useNavigation,
+  useRouteParams,
 } from "metabase/routing/compat";
 import { getUserIsAdmin } from "metabase/selectors/user";
 
@@ -28,8 +28,8 @@ interface MoveQuestionsIntoDashboardsModalProps {
 export const MoveQuestionsIntoDashboardsModal = ({
   onClose: handleClose,
 }: MoveQuestionsIntoDashboardsModalProps) => {
-  const location = useCompatLocation();
-  const params = useCompatParams<{ slug: string }>();
+  const location = useLocationWithQuery();
+  const params = useRouteParams<{ slug: string }>();
   const { replace } = useNavigation();
   const collectionId = Urls.extractCollectionId(params.slug);
   const isAdmin = useSelector(getUserIsAdmin);

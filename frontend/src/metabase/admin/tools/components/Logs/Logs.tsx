@@ -11,7 +11,7 @@ import { AnsiLogs } from "metabase/common/components/AnsiLogs";
 import { Option, Select } from "metabase/common/components/Select";
 import { useUrlState } from "metabase/common/hooks/use-url-state";
 import { openSaveDialog } from "metabase/lib/dom";
-import { useCompatLocation, useNavigation } from "metabase/routing/compat";
+import { useLocationWithQuery, useNavigation } from "metabase/routing/compat";
 import { Button, Flex, Icon, TextInput } from "metabase/ui";
 
 import { LogsContainer, LogsContent } from "./Logs.styled";
@@ -38,7 +38,7 @@ export const Logs = ({
   pollingDurationMs = DEFAULT_POLLING_DURATION_MS,
 }: LogsProps) => {
   const { push } = useNavigation();
-  const location = useCompatLocation();
+  const location = useLocationWithQuery();
   const [{ process, query }, { patchUrlState }] = useUrlState(
     location,
     urlStateConfig,

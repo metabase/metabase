@@ -61,7 +61,7 @@ import {
   IsAdminGuard,
   UserCanAccessSettingsGuard,
   createModalRoute,
-  useCompatLocation,
+  useLocationWithQuery,
 } from "metabase/routing/compat";
 import { getSetting } from "metabase/selectors/settings";
 import { getTokenFeature } from "metabase/setup";
@@ -109,7 +109,7 @@ const PerformanceAppWithOutlet = () => (
 );
 
 const ToolsAppWithOutlet = () => {
-  const location = useCompatLocation();
+  const location = useLocationWithQuery();
 
   return (
     <ToolsApp location={location as unknown as Location}>
@@ -214,7 +214,7 @@ const JobTriggersModalWithParams = ({ onClose }: { onClose: () => void }) => {
 };
 
 const DataModelV1WithRouteProps = () => {
-  const location = useCompatLocation();
+  const location = useLocationWithQuery();
   const params = useParams<{
     databaseId?: string;
     schemaId?: string;

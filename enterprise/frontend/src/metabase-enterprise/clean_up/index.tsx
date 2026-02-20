@@ -9,8 +9,8 @@ import * as Urls from "metabase/lib/urls";
 import { PLUGIN_COLLECTIONS } from "metabase/plugins";
 import {
   createModalRoute,
-  useCompatLocation,
-  useCompatParams,
+  useLocationWithQuery,
+  useRouteParams,
 } from "metabase/routing/compat";
 import { Badge, Icon, Menu } from "metabase/ui";
 import { useListStaleCollectionItemsQuery } from "metabase-enterprise/api/collection";
@@ -25,8 +25,8 @@ const CleanupCollectionModalWithRouteProps = ({
 }: {
   onClose: () => void;
 }) => {
-  const params = useCompatParams<{ slug?: string }>();
-  const location = useCompatLocation();
+  const params = useRouteParams<{ slug?: string }>();
+  const location = useLocationWithQuery();
 
   return (
     <CleanupCollectionModal

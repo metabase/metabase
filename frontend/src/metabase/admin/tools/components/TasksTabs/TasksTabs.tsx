@@ -1,7 +1,7 @@
 import { t } from "ttag";
 
 import * as Urls from "metabase/lib/urls";
-import { useCompatLocation, useNavigation } from "metabase/routing/compat";
+import { useLocationWithQuery, useNavigation } from "metabase/routing/compat";
 import { Flex, Icon, Tabs, Title, Tooltip } from "metabase/ui";
 
 import {
@@ -19,7 +19,7 @@ type TasksTabsProps = {
 };
 
 export const TasksTabs = ({ children }: TasksTabsProps) => {
-  const location = useCompatLocation();
+  const location = useLocationWithQuery();
   const tabs: TabConfig[] = [
     { value: Urls.adminToolsTasksList(), label: t`Tasks` },
     { value: Urls.adminToolsTasksRuns(), label: t`Runs` },

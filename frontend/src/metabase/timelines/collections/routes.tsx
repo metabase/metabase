@@ -6,8 +6,8 @@ import type { RouteObject } from "react-router-dom";
 import { ModalRoute } from "metabase/hoc/ModalRoute";
 import {
   createModalRoute,
-  useCompatLocation,
-  useCompatParams,
+  useLocationWithQuery,
+  useRouteParams,
 } from "metabase/routing/compat";
 
 import DeleteEventModal from "./containers/DeleteEventModal";
@@ -27,8 +27,8 @@ import type { ModalParams } from "./types";
 
 const withTimelineModalRouteProps = (Component: React.ComponentType<any>) => {
   return function TimelineModalRoute({ onClose }: { onClose: () => void }) {
-    const params = useCompatParams<Record<string, string | undefined>>();
-    const location = useCompatLocation();
+    const params = useRouteParams<Record<string, string | undefined>>();
+    const location = useLocationWithQuery();
 
     return (
       <Component

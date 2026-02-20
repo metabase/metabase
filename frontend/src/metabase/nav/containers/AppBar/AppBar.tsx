@@ -8,7 +8,7 @@ import { Collections } from "metabase/entities/collections";
 import { connect, useSelector } from "metabase/lib/redux";
 import { PLUGIN_METABOT } from "metabase/plugins";
 import { closeNavbar, toggleNavbar } from "metabase/redux/app";
-import { useCompatLocation } from "metabase/routing/compat";
+import { useLocationWithQuery } from "metabase/routing/compat";
 import type { RouterProps } from "metabase/selectors/app";
 import {
   getDetailViewState,
@@ -32,7 +32,7 @@ import AppBarComponent from "../../components/AppBar";
  * This replaces the withRouter HOC pattern.
  */
 function AppBarContainer() {
-  const compatLocation = useCompatLocation();
+  const compatLocation = useLocationWithQuery();
 
   // Cast to v3 Location type for selector compatibility
   const location = compatLocation as unknown as Location;

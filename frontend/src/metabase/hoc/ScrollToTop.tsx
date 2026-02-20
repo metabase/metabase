@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 import { useEffect, useRef } from "react";
 
-import { useCompatLocation } from "metabase/routing/compat";
+import { useLocationWithQuery } from "metabase/routing/compat";
 
 interface ScrollToTopProps {
   children: ReactNode;
@@ -14,7 +14,7 @@ interface ScrollToTopProps {
  * hook-based approach that works with both React Router v3 and v7.
  */
 function ScrollToTop({ children }: ScrollToTopProps) {
-  const location = useCompatLocation();
+  const location = useLocationWithQuery();
   const prevPathname = useRef(location.pathname);
 
   useEffect(() => {

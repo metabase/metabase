@@ -1,12 +1,12 @@
 import type { RouteObject } from "react-router-dom";
 import { useMount } from "react-use";
 
-import { useCompatLocation, useNavigation } from "metabase/routing/compat";
+import { useLocationWithQuery, useNavigation } from "metabase/routing/compat";
 import { useMetabotAgent } from "metabase-enterprise/metabot/hooks";
 
 const MetabotQuickLinkRedirect = () => {
   const { replace } = useNavigation();
-  const location = useCompatLocation();
+  const location = useLocationWithQuery();
   const { submitInput } = useMetabotAgent("omnibot");
   const prompt = String(location.query?.q ?? "");
 

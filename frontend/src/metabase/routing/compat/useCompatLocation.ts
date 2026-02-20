@@ -20,8 +20,6 @@ export interface RouterLocation extends LocationV7 {
   action: "PUSH" | "REPLACE" | "POP";
 }
 
-export type CompatLocation = RouterLocation;
-
 export const useLocationWithQuery = (): RouterLocation => {
   const location = useLocationV7();
   const [searchParams] = useSearchParamsV7();
@@ -45,14 +43,12 @@ export const useLocationWithQuery = (): RouterLocation => {
   );
 };
 
-export const useCompatLocation = useLocationWithQuery;
-
 /**
  * Hook for accessing and updating search params.
  *
  * Usage:
  * ```tsx
- * const [searchParams, setSearchParams] = useCompatSearchParams();
+ * const [searchParams, setSearchParams] = useSearchParamsWithNavigation();
  *
  * // Read a param
  * const tab = searchParams.get('tab');
@@ -89,5 +85,3 @@ export const useSearchParamsWithNavigation = (): [
 
   return [location.searchParams, setSearchParams];
 };
-
-export const useCompatSearchParams = useSearchParamsWithNavigation;

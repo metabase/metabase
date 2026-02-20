@@ -1,13 +1,13 @@
 import type { Location } from "history";
 import type { RouteObject } from "react-router-dom";
 
-import { useCompatLocation, useCompatParams } from "metabase/routing/compat";
+import { useLocationWithQuery, useRouteParams } from "metabase/routing/compat";
 
 import { EditTableDataContainer } from "./table-edit/EditTableDataContainer";
 
 const EditTableDataContainerWithRouteProps = () => {
-  const location = useCompatLocation();
-  const params = useCompatParams<{
+  const location = useLocationWithQuery();
+  const params = useRouteParams<{
     dbId?: string;
     tableId?: string;
     objectId?: string;

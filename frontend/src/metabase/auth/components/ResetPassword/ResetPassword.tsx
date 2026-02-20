@@ -7,9 +7,9 @@ import { Link } from "metabase/common/components/Link";
 import { useToast } from "metabase/common/hooks/use-toast";
 import { useDispatch } from "metabase/lib/redux";
 import {
-  useCompatLocation,
-  useCompatParams,
+  useLocationWithQuery,
   useNavigation,
+  useRouteParams,
 } from "metabase/routing/compat";
 
 import { resetPassword, validatePassword } from "../../actions";
@@ -26,8 +26,8 @@ type ResetPasswordQueryParams = {
 };
 
 export const ResetPassword = (): JSX.Element | null => {
-  const params = useCompatParams<ResetPasswordQueryParams>();
-  const location = useCompatLocation();
+  const params = useRouteParams<ResetPasswordQueryParams>();
+  const location = useLocationWithQuery();
   const { replace } = useNavigation();
   const token = params.token ?? "";
   const redirectUrl = location.query?.redirect;

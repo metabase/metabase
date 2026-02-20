@@ -4,7 +4,7 @@ import { Outlet, type RouteObject } from "react-router-dom";
 import { PublicNotFound } from "metabase/public/components/PublicNotFound";
 import PublicApp from "metabase/public/containers/PublicApp";
 import { PublicOrEmbeddedQuestion } from "metabase/public/containers/PublicOrEmbeddedQuestion";
-import { useCompatLocation, useCompatParams } from "metabase/routing/compat";
+import { useLocationWithQuery, useRouteParams } from "metabase/routing/compat";
 import type { EntityToken } from "metabase-types/api/entity";
 
 import { PublicOrEmbeddedDashboardPage } from "./public/containers/PublicOrEmbeddedDashboard";
@@ -16,8 +16,8 @@ const PublicAppWithOutlet = () => (
 );
 
 const EmbeddedQuestionWithRouteProps = () => {
-  const params = useCompatParams<{ token?: string }>();
-  const location = useCompatLocation();
+  const params = useRouteParams<{ token?: string }>();
+  const location = useLocationWithQuery();
 
   return (
     <PublicOrEmbeddedQuestion

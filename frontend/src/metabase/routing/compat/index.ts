@@ -1,12 +1,9 @@
 export {
   useLocationWithQuery,
-  useCompatLocation,
   useSearchParamsWithNavigation,
-  useCompatSearchParams,
   type RouterLocation,
-  type CompatLocation,
 } from "./useCompatLocation";
-export { useRouteParams, useCompatParams } from "./useCompatParams";
+export { useRouteParams } from "./useCompatParams";
 export { useNavigation } from "./useNavigation";
 
 // Route Guards for v7

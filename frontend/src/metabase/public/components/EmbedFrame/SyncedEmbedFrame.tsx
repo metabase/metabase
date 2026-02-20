@@ -1,5 +1,5 @@
 import { useEmbedFrameOptions } from "metabase/public/hooks";
-import { useCompatLocation } from "metabase/routing/compat";
+import { useLocationWithQuery } from "metabase/routing/compat";
 
 import type { EmbedFrameProps } from "./EmbedFrame";
 import { EmbedFrame } from "./EmbedFrame";
@@ -8,7 +8,7 @@ export const SyncedEmbedFrame = ({
   children,
   ...embedFrameProps
 }: Partial<EmbedFrameProps>) => {
-  const location = useCompatLocation();
+  const location = useLocationWithQuery();
   const { background, bordered, hide_parameters, theme, titled } =
     useEmbedFrameOptions({ location });
 

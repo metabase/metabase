@@ -18,7 +18,7 @@ import { modelToUrl } from "metabase/lib/urls";
 import { RecentsList } from "metabase/nav/components/search/RecentsList";
 import { SearchResultsDropdown } from "metabase/nav/components/search/SearchResultsDropdown";
 import { zoomInRow } from "metabase/query_builder/actions";
-import { useCompatLocation, useNavigation } from "metabase/routing/compat";
+import { useLocationWithQuery, useNavigation } from "metabase/routing/compat";
 import type { WrappedResult } from "metabase/search/types";
 import {
   getFiltersFromLocation,
@@ -46,7 +46,7 @@ type OwnProps = {
 };
 
 function SearchBarView({ onSearchActive, onSearchInactive }: OwnProps) {
-  const location = useCompatLocation();
+  const location = useLocationWithQuery();
   const { push } = useNavigation();
   const isTypeaheadEnabled = useSelector((state) =>
     getSetting(state, "search-typeahead-enabled"),

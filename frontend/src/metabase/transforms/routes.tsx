@@ -4,7 +4,7 @@ import {
   PLUGIN_DEPENDENCIES,
   PLUGIN_TRANSFORMS_PYTHON,
 } from "metabase/plugins";
-import { useCompatLocation, useCompatParams } from "metabase/routing/compat";
+import { useLocationWithQuery, useRouteParams } from "metabase/routing/compat";
 
 import { JobListPage } from "./pages/JobListPage";
 import { JobPage } from "./pages/JobPage";
@@ -24,36 +24,36 @@ import { TransformSettingsPage } from "./pages/TransformSettingsPage";
 import { TransformTopNavLayout } from "./pages/TransformTopNavLayout";
 
 const RunListPageWithRouteProps = () => {
-  const location = useCompatLocation();
+  const location = useLocationWithQuery();
   return <RunListPage location={location} />;
 };
 
 const JobPageWithRouteProps = () => {
-  const params = useCompatParams<{ jobId?: string }>();
+  const params = useRouteParams<{ jobId?: string }>();
   return <JobPage params={{ jobId: params.jobId ?? "" }} />;
 };
 
 const NewCardTransformPageWithRouteProps = () => {
-  const params = useCompatParams<{ cardId?: string }>();
+  const params = useRouteParams<{ cardId?: string }>();
   return <NewCardTransformPage params={{ cardId: params.cardId ?? "" }} />;
 };
 
 const TransformQueryPageWithRouteProps = () => {
-  const params = useCompatParams<{ transformId?: string }>();
+  const params = useRouteParams<{ transformId?: string }>();
   return (
     <TransformQueryPage params={{ transformId: params.transformId ?? "" }} />
   );
 };
 
 const TransformRunPageWithRouteProps = () => {
-  const params = useCompatParams<{ transformId?: string }>();
+  const params = useRouteParams<{ transformId?: string }>();
   return (
     <TransformRunPage params={{ transformId: params.transformId ?? "" }} />
   );
 };
 
 const TransformSettingsPageWithRouteProps = () => {
-  const params = useCompatParams<{ transformId?: string }>();
+  const params = useRouteParams<{ transformId?: string }>();
   return (
     <TransformSettingsPage params={{ transformId: params.transformId ?? "" }} />
   );

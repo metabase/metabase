@@ -3,7 +3,7 @@ import { t } from "ttag";
 import { useListTaskRunsQuery } from "metabase/api";
 import { PaginationControls } from "metabase/common/components/PaginationControls";
 import { useUrlState } from "metabase/common/hooks/use-url-state";
-import { useCompatLocation } from "metabase/routing/compat";
+import { useLocationWithQuery } from "metabase/routing/compat";
 import { Flex } from "metabase/ui";
 
 import { TaskRunTypePicker } from "../RunTypePicker";
@@ -17,7 +17,7 @@ import { PAGE_SIZE } from "./constants";
 import { urlStateConfig } from "./utils";
 
 export const TaskRunsPage = () => {
-  const location = useCompatLocation();
+  const location = useLocationWithQuery();
   const [
     {
       page,

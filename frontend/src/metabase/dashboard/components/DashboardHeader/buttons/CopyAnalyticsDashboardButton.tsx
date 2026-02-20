@@ -2,10 +2,10 @@ import { t } from "ttag";
 
 import { Button } from "metabase/common/components/Button";
 import { Link } from "metabase/common/components/Link";
-import { useCompatLocation } from "metabase/routing/compat";
+import { useLocationWithQuery } from "metabase/routing/compat";
 
 export const CopyAnalyticsDashboardButton = () => {
-  const location = useCompatLocation();
+  const location = useLocationWithQuery();
 
   return (
     <Button

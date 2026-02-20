@@ -7,7 +7,7 @@ import {
   useUpdateUserMutation,
 } from "metabase/api";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
-import type { CompatParams } from "metabase/routing/compat/types";
+import type { RouteParams } from "metabase/routing/compat/types";
 import { Modal } from "metabase/ui";
 import type { User } from "metabase-types/api";
 
@@ -15,7 +15,7 @@ import { UserForm } from "../../forms/UserForm";
 
 interface EditUserModalProps {
   onClose: () => void;
-  params: CompatParams;
+  params: RouteParams;
   external?: boolean;
 }
 

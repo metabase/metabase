@@ -14,7 +14,7 @@ import type {
   FormLocation,
 } from "metabase/databases/types";
 import { useDispatch } from "metabase/lib/redux";
-import { useCompatLocation } from "metabase/routing/compat";
+import { useLocationWithQuery } from "metabase/routing/compat";
 import { Text } from "metabase/ui";
 import type {
   DatabaseData,
@@ -55,7 +55,7 @@ export const DatabaseEditConnectionForm = ({
   formLocation: Extract<FormLocation, "admin" | "full-page">;
 }) => {
   const dispatch = useDispatch();
-  const location = useCompatLocation();
+  const location = useLocationWithQuery();
 
   const [isDirty, setIsDirty] = useState(false);
 

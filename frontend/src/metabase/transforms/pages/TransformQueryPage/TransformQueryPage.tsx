@@ -21,7 +21,7 @@ import {
   PLUGIN_TRANSFORMS_PYTHON,
 } from "metabase/plugins";
 import { getInitialUiState } from "metabase/querying/editor/components/QueryEditor";
-import { useCompatLocation, useNavigation } from "metabase/routing/compat";
+import { useLocationWithQuery, useNavigation } from "metabase/routing/compat";
 import { useTransformPermissions } from "metabase/transforms/hooks/use-transform-permissions";
 import { Box, Center, Group, Icon } from "metabase/ui";
 import type {
@@ -52,7 +52,7 @@ type TransformQueryPageProps = {
 };
 
 export function TransformQueryPage({ params }: TransformQueryPageProps) {
-  const location = useCompatLocation();
+  const location = useLocationWithQuery();
   const transformId = Urls.extractEntityId(params.transformId);
   const {
     data: transform,

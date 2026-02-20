@@ -5,12 +5,9 @@ export type RouterRoute = {
   [key: string]: unknown;
 };
 
-export type CompatRoute = RouterRoute;
-export type CompatPlainRoute = CompatRoute;
 export type PlainRoute = RouterRoute;
 
 export type RouteParams = Record<string, string | undefined>;
-export type CompatParams = RouteParams;
 
 export type RouterAdapter = {
   setRouteLeaveHook: (
@@ -18,5 +15,3 @@ export type RouterAdapter = {
     hook: (location?: Location) => boolean | undefined,
   ) => () => void;
 };
-
-export type CompatInjectedRouter = RouterAdapter;

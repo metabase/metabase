@@ -8,5 +8,3 @@ export function useRouteParams<
 >(): T {
   return useParamsV7() as T;
 }
-
-export const useCompatParams = useRouteParams;

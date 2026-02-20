@@ -19,13 +19,13 @@ import { PaletteShortcutsModal } from "metabase/palette/components/PaletteShortc
 import { useRegisterShortcut } from "metabase/palette/hooks/useRegisterShortcut";
 import type { SdkIframeEmbedSetupModalProps } from "metabase/plugins";
 import { closeModal, setOpenModal } from "metabase/redux/ui";
-import { useCompatLocation, useNavigation } from "metabase/routing/compat";
+import { useLocationWithQuery, useNavigation } from "metabase/routing/compat";
 import { getCurrentOpenModalState } from "metabase/selectors/ui";
 import type { WritebackAction } from "metabase-types/api";
 
 export const NewModals = () => {
   const { pathname } = useLocation();
-  const location = useCompatLocation();
+  const location = useLocationWithQuery();
   const { push } = useNavigation();
   const { id: currentNewModalId, props: currentNewModalProps } = useSelector(
     getCurrentOpenModalState,

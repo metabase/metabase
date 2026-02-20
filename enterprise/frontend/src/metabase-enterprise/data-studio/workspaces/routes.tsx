@@ -1,12 +1,12 @@
 import type { RouteObject } from "react-router-dom";
 
-import { useCompatParams } from "metabase/routing/compat";
+import { useRouteParams } from "metabase/routing/compat";
 
 import { WorkspaceListPage } from "./pages/WorkspaceListPage/WorkspaceListPage";
 import { WorkspacePage } from "./pages/WorkspacePage/WorkspacePage";
 
 const WorkspacePageWithRouteProps = () => {
-  const params = useCompatParams<{ workspaceId?: string }>();
+  const params = useRouteParams<{ workspaceId?: string }>();
   return <WorkspacePage params={{ workspaceId: params.workspaceId ?? "" }} />;
 };
 
