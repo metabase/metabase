@@ -13,6 +13,7 @@ type ModalSidebarProps = {
   sourceInfo: EntityInfo | undefined;
   targetInfo: EntityInfo | undefined;
   dependentsCount: number;
+  isChecking: boolean;
   canReplace: boolean;
   onSourceChange: (sourceEntry: ReplaceSourceEntry) => void;
   onTargetChange: (targetEntry: ReplaceSourceEntry) => void;
@@ -24,6 +25,7 @@ export function ModalSidebar({
   sourceInfo,
   targetInfo,
   dependentsCount,
+  isChecking,
   canReplace,
   onSourceChange,
   onTargetChange,
@@ -52,6 +54,11 @@ export function ModalSidebar({
             description={t`It must be based on the same database and include all columns from the original data source.`}
             onChange={onTargetChange}
           />
+          {!isChecking && !canReplace && (
+            <Text c="error" mt="md">
+              {t`This source is not compatible with the original source.`}
+            </Text>
+          )}
         </EntitySection>
       </Stack>
       <Group mt="auto" justify="flex-end" wrap="nowrap">

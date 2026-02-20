@@ -60,9 +60,10 @@ function ModalContent({
   const { data: dependents = [] } = useListNodeDependentsQuery(
     getDependentsRequest(sourceEntry),
   );
-  const { data: checkInfo } = useCheckReplaceSourceQuery(
-    getCheckReplaceSourceRequest(sourceEntry, targetEntry),
-  );
+  const { data: checkInfo, isFetching: isChecking } =
+    useCheckReplaceSourceQuery(
+      getCheckReplaceSourceRequest(sourceEntry, targetEntry),
+    );
 
   const sourceInfo = getEntityInfo(sourceEntry, sourceTable, sourceCard);
   const targetInfo = getEntityInfo(targetEntry, targetTable, targetCard);
@@ -77,6 +78,7 @@ function ModalContent({
         sourceInfo={sourceInfo}
         targetInfo={targetInfo}
         dependentsCount={dependents.length}
+        isChecking={isChecking}
         canReplace={canReplace}
         onSourceChange={setSourceEntry}
         onTargetChange={setTargetEntry}
