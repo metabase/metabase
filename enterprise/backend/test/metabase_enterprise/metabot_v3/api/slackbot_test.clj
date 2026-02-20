@@ -6,6 +6,7 @@
    [clojure.test :refer :all]
    [metabase-enterprise.metabot-v3.api.slackbot :as slackbot]
    [metabase-enterprise.metabot-v3.api.slackbot.query :as slackbot.query]
+   [metabase-enterprise.metabot-v3.client :as metabot-v3.client]
    [metabase-enterprise.metabot-v3.settings :as metabot.settings]
    [metabase-enterprise.sso.settings :as sso-settings]
    [metabase.premium-features.core :as premium-features]
@@ -163,7 +164,14 @@
     (mt/with-dynamic-fn-redefs
       [slackbot/slack-id->user-id (constantly mock-user-id)
        slackbot/get-bot-user-id (constantly "UBOT123")
-       slackbot/fetch-thread (constantly {:ok true, :messages []})
+       slackbot/auth-test            (constantly {:ok true :user_id "UBOT123" :team_id "T123"})
+       slackbot/fetch-thread         (constantly {:ok true, :messages []})
+       ;; Mock Slack streaming APIs
+       slackbot/start-stream         (fn [_ opts]
+                                       {:stream_ts "stream123" :channel (:channel opts) :thread_ts (:thread_ts opts)})
+       slackbot/append-stream        (constantly {:ok true})
+       slackbot/append-markdown-text (constantly {:ok true})
+       slackbot/stop-stream          (constantly {:ok true})
        slackbot/post-message (fn [_ msg]
                                (swap! post-calls conj msg)
                                {:ok true
@@ -176,9 +184,19 @@
        slackbot/delete-message (fn [_ msg]
                                  (swap! delete-calls conj msg)
                                  {:ok true})
-       slackbot/make-ai-request (fn [& args]
-                                  (swap! ai-request-calls conj args)
-                                  {:text ai-text :data-parts data-parts})
+       ;; Mock the streaming client - returns AISDK-formatted lines
+       metabot-v3.client/streaming-request-with-callback
+       (fn [opts]
+         (swap! ai-request-calls conj opts)
+         ;; Generate AISDK-format lines from text and data-parts
+         (let [text-lines (when ai-text [(str "0:" (json/encode ai-text))])
+               data-lines (map #(str "2:" (json/encode %)) data-parts)
+               mock-lines (vec (concat text-lines data-lines))]
+           ;; Call on-line callback for each line if provided
+           (when-let [on-line (:on-line opts)]
+             (doseq [line mock-lines]
+               (on-line line)))
+           mock-lines))
        slackbot/generate-card-png        (fn [card-id & _opts]
                                            (swap! generate-png-calls conj card-id)
                                            fake-png-bytes)
@@ -288,8 +306,8 @@
               (is (= mock-ai-text (:text (second @post-calls))))
               (is (= 1 (count @delete-calls))))))))))
 
-(deftest make-ai-request-args-test
-  (testing "POST /events passes correct arguments to make-ai-request"
+(deftest streaming-request-args-test
+  (testing "POST /events passes correct arguments to streaming-request-with-callback"
     (with-slackbot-setup
       (doseq [[desc event-body]
               [["DM message"
@@ -312,20 +330,23 @@
         (testing desc
           (with-slackbot-mocks
             {:ai-text "response"}
-            (fn [{:keys [ai-request-calls post-calls]}]
+            (fn [{:keys [ai-request-calls]}]
               (mt/client :post 200 "ee/metabot-v3/slack/events"
                          (slack-request-options event-body)
                          event-body)
-              (u/poll {:thunk #(>= (count @post-calls) 2)
+              (u/poll {:thunk #(= 1 (count @ai-request-calls))
                        :done? true?
                        :timeout-ms 5000})
               (is (= 1 (count @ai-request-calls)))
-              (let [[conversation-id prompt thread bot-user-id channel-id] (first @ai-request-calls)]
-                (is (re-matches #"[0-9a-f-]{36}" conversation-id))
-                (is (map? thread))
-                (is (= "UBOT123" bot-user-id))
-                (is (= prompt (get-in event-body [:event :text])))
-                (is (= channel-id (get-in event-body [:event :channel])))))))))))
+              (let [opts (first @ai-request-calls)]
+                (is (re-matches #"[0-9a-f-]{36}" (:conversation-id opts)))
+                (is (map? (:context opts)))
+                (is (= (get-in event-body [:event :channel])
+                       (get-in opts [:context :slack_channel_id])))
+                (is (= (get-in event-body [:event :text])
+                       (get-in opts [:message :content])))
+                (is (vector? (:history opts)))
+                (is (fn? (:on-line opts)))))))))))
 
 (deftest user-message-with-visualizations-test
   (testing "POST /events with visualizations uploads multiple images to Slack"
