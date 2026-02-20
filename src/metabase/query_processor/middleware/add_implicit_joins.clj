@@ -190,8 +190,8 @@
   (let [fk-field-info->join-alias (construct-fk-field-info->join-alias query path stage)]
     (letfn [(update-legacy-field-ref [field-ref]
               ;; field ref should be a LEGACY field ref.
-              (lib.util.match/replace field-ref
-                [:field id-or-name (opts :guard (every-pred :source-field (complement :join-alias)))]
+              (lib.util.match/replace-lite field-ref
+                [:field id-or-name (opts :guard (and (:source-field opts) (not (:join-alias opts))))]
                 (let [join-alias (fk-field-info->join-alias (field-opts->fk-field-info query opts))]
                   (if (some? join-alias)
                     [:field id-or-name (assoc opts :join-alias join-alias)]
@@ -208,8 +208,8 @@
    path  :- ::lib.walk/path
    stage :- ::lib.schema/stage]
   (or (when-let [fk-field-info->join-alias (not-empty (construct-fk-field-info->join-alias query path stage))]
-        (let [stage' (lib.util.match/replace stage
-                       [:field (opts :guard (every-pred :source-field (complement :join-alias))) id-or-name]
+        (let [stage' (lib.util.match/replace-lite stage
+                       [:field (opts :guard (and (:source-field opts) (not (:join-alias opts)))) id-or-name]
                        (if-not (some #{:lib/stage-metadata} &parents)
                          (let [join-alias (or (fk-field-info->join-alias (field-opts->fk-field-info query opts))
                                               (throw (ex-info (tru "Cannot find matching FK Table ID for FK Field {0}"

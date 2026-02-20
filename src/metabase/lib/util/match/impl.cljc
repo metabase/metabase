@@ -85,6 +85,11 @@
   [coll cnt]
   (= (count coll) cnt))
 
+(defn count>=
+  "Return true if collection `coll` has `cnt` elements or more."
+  [coll cnt]
+  (>= (count coll) cnt))
+
 (defn wrap-nil
   "If `value` is nil, return `::wrapped-nil`, otherwise return `value`."
   [value]
@@ -118,3 +123,21 @@
                 (when-some [match (match-fn v (maybe-add-to-parents clause-parents (when (keyword? fst) fst)))]
                   (reduced match))))
             nil form)))
+
+(defn replace-lite-in-collection
+  "Internal impl for `replace-lite`. Recursively replace values in a collection using a `replace-fn`."
+  [replace-fn form clause-parents]
+  (cond
+    (map? form)
+    (reduce-kv (fn [form k v]
+                 (let [repl (replace-fn v (maybe-add-to-parents clause-parents k))]
+                   (cond-> form
+                     (not (identical? v form)) (assoc k repl))))
+               form form)
+
+    (sequential? form)
+    (mapv #(let [fst (first form)]
+             (replace-fn % (maybe-add-to-parents clause-parents (when (keyword? fst) fst))))
+          form)
+
+    :else form))

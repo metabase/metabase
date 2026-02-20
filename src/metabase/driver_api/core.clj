@@ -110,6 +110,7 @@
  lib.util.match/match-lite
  lib.util.match/match-many
  lib.util.match/replace
+ lib.util.match/replace-lite
  lib/truncate-alias
  lib/->legacy-MBQL
  lib/->metadata-provider
