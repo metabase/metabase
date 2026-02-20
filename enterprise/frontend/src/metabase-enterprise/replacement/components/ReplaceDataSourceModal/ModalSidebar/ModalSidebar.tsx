@@ -19,6 +19,7 @@ type ModalSidebarProps = {
   targetInfo: EntityInfo | undefined;
   checkInfo: CheckReplaceSourceInfo | undefined;
   dependentsCount: number;
+  canReplace: boolean;
   onSourceChange: (sourceEntry: ReplaceSourceEntry) => void;
   onTargetChange: (targetEntry: ReplaceSourceEntry) => void;
   onSubmit: () => void;
@@ -30,6 +31,7 @@ export function ModalSidebar({
   targetInfo,
   checkInfo,
   dependentsCount,
+  canReplace,
   onSourceChange,
   onTargetChange,
   onSubmit,
@@ -40,8 +42,6 @@ export function ModalSidebar({
   const sourceDatabaseId =
     sourceInfo != null ? getEntityDatabaseId(sourceInfo) : undefined;
   const errorMessage = getErrorMessage(checkInfo);
-  const submitDisabled =
-    checkInfo == null || !checkInfo.success || dependentsCount === 0;
 
   return (
     <Stack className={S.sidebar} px="xl" pt="xl" pb="lg" gap="lg" maw="32rem">
@@ -78,8 +78,8 @@ export function ModalSidebar({
       </Stack>
       <Group mt="auto" justify="flex-end" wrap="nowrap">
         <Button onClick={onCancel}>{t`Cancel`}</Button>
-        <Button variant="filled" disabled={submitDisabled} onClick={onSubmit}>
-          {getSubmitLabel(dependentsCount, submitDisabled)}
+        <Button variant="filled" disabled={!canReplace} onClick={onSubmit}>
+          {getSubmitLabel(dependentsCount, canReplace)}
         </Button>
       </Group>
     </Stack>
@@ -97,8 +97,8 @@ function getErrorMessage(checkInfo: CheckReplaceSourceInfo | undefined) {
     : getGenericErrorMessage();
 }
 
-function getSubmitLabel(dependentsCount: number, disabled: boolean) {
-  if (disabled) {
+function getSubmitLabel(dependentsCount: number, canReplace: boolean) {
+  if (!canReplace) {
     return t`Replace data source`;
   }
   return ngettext(

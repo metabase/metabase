@@ -13,3 +13,5 @@ export type CardEntityInfo = {
 };
 
 export type EntityInfo = TableEntityInfo | CardEntityInfo;
+
+export type TabType = "column-mappings" | "dependents";

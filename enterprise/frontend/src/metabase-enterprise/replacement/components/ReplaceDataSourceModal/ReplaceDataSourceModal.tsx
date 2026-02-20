@@ -1,5 +1,5 @@
 import { useDisclosure } from "@mantine/hooks";
-import { useState } from "react";
+import { useLayoutEffect, useState } from "react";
 
 import { useGetCardQuery, useGetTableQuery } from "metabase/api";
 import { useToast } from "metabase/common/hooks";
@@ -14,6 +14,7 @@ import type { ReplaceSourceEntry } from "metabase-types/api";
 import { ConfirmAndProgressModal } from "./ConfirmAndProgressModal";
 import { ModalBody } from "./ModalBody";
 import { ModalSidebar } from "./ModalSidebar";
+import type { TabType } from "./types";
 import {
   getCardRequest,
   getCheckReplaceSourceRequest,
@@ -57,6 +58,7 @@ function ModalContent({
 }: ModalContentProps) {
   const [sourceEntry, setSourceEntry] = useState(initialSource);
   const [targetEntry, setTargetEntry] = useState(initialTarget);
+  const [selectedTab, setSelectedTab] = useState<TabType>("column-mappings");
   const [isConfirming, { open: openConfirmation, close: closeConfirmation }] =
     useDisclosure();
 
@@ -75,6 +77,14 @@ function ModalContent({
   const sourceInfo = getEntityInfo(sourceEntry, sourceTable, sourceCard);
   const targetInfo = getEntityInfo(targetEntry, targetTable, targetCard);
   const columnMappings = checkInfo?.column_mappings ?? [];
+  const canReplace =
+    checkInfo != null && checkInfo.success && dependents.length > 0;
+
+  useLayoutEffect(() => {
+    if (!canReplace && selectedTab === "dependents") {
+      setSelectedTab("column-mappings");
+    }
+  }, [selectedTab, canReplace]);
 
   const handleReplaceSuccess = () => {
     sendToast({ message: getSuccessMessage(dependents.length), icon: "check" });
@@ -94,6 +104,7 @@ function ModalContent({
         targetInfo={targetInfo}
         checkInfo={checkInfo}
         dependentsCount={dependents.length}
+        canReplace={canReplace}
         onSourceChange={setSourceEntry}
         onTargetChange={setTargetEntry}
         onSubmit={openConfirmation}
@@ -102,7 +113,11 @@ function ModalContent({
       <ModalBody
         sourceInfo={sourceInfo}
         targetInfo={targetInfo}
+        selectedTab={selectedTab}
+        dependents={dependents}
+        canReplace={canReplace}
         columnMappings={columnMappings}
+        onTabChange={setSelectedTab}
       />
       {sourceEntry != null && targetEntry != null && (
         <ConfirmAndProgressModal
