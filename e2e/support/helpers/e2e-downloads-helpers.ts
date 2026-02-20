@@ -24,6 +24,7 @@ interface DownloadAndAssertParams {
   pivoting?: "pivoted" | "non-pivoted";
   /** Assert that parameters in request body match expected values */
   assertParameters?: any[];
+  waitForDismiss?: boolean;
 }
 
 export interface DownloadRequestData {
@@ -70,6 +71,7 @@ export function downloadAndAssert({
   enableFormatting = true,
   pivoting,
   assertParameters,
+  waitForDismiss = true,
 }: DownloadAndAssertParams) {
   const { method, endpoint } = downloadUrl
     ? { method: downloadMethod, endpoint: downloadUrl }
@@ -167,8 +169,12 @@ export function downloadAndAssert({
     cy.findByTestId("download-results-button").click();
   });
 
-  cy.wait("@fileDownload").then(() => {
-    ensureDownloadStatusDismissed();
+  cy.wait("@fileDownload").then(({ response }) => {
+    expect(response?.statusCode).to.eq(200);
+
+    if (waitForDismiss) {
+      ensureDownloadStatusDismissed();
+    }
   });
 }
 

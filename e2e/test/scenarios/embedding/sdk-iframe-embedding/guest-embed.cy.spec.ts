@@ -60,6 +60,42 @@ describe(
       });
     });
 
+    it("allows to download a static question as CSV", () => {
+      cy.get("@questionId").then(async (questionId) => {
+        const token = await getSignedJwtForResource({
+          resourceId: questionId as unknown as number,
+          resourceType: "question",
+        });
+
+        const frame = H.loadSdkIframeEmbedTestPage({
+          metabaseConfig: { isGuest: true },
+          elements: [
+            {
+              component: "metabase-question",
+              attributes: {
+                token,
+                "with-downloads": true,
+              },
+            },
+          ],
+        });
+
+        cy.wait("@getCardQuery");
+
+        frame.within(() => {
+          H.downloadAndAssert({
+            isDashboard: false,
+            isEmbed: true,
+            enableFormatting: true,
+            waitForDismiss: false,
+            fileType: "csv",
+            downloadUrl: "/api/embed/card/*/query/csv*",
+            downloadMethod: "GET",
+          });
+        });
+      });
+    });
+
     it("shows an error for a component without guest embed support", () => {
       const frame = H.loadSdkIframeEmbedTestPage({
         metabaseConfig: { isGuest: true },
