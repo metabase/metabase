@@ -87,13 +87,8 @@ const addGroupsToMapping = (mappingName, groups) => {
 
   groups.forEach((group) => {
     popover().within(() => {
-      cy.findByText(group).click();
-
-      cy.findByText(group)
-        .closest("[data-element-id=list-section]")
-        .within(() => {
-          cy.icon("check");
-        });
+      cy.findByLabelText(group).click();
+      cy.findByLabelText(group).should("be.checked");
     });
   });
 

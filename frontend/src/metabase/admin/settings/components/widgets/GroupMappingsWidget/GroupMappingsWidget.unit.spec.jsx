@@ -22,24 +22,23 @@ const setup = ({
   clearGroupMember = jest.fn(),
   deleteGroup = jest.fn(),
   updateSetting = jest.fn(),
-  onSuccess = jest.fn(),
-  setting = { key: "key", value: true },
+  settingKey = "ldap-group-sync",
+  initialSyncEnabled = true,
   groups = defaultGroups,
 } = {}) => {
   render(
     <FormProvider
-      initialValues={{ [setting.key]: setting.value }}
+      initialValues={{ [settingKey]: initialSyncEnabled }}
       onSubmit={() => {}}
     >
       <GroupMappingsWidgetView
         allGroups={groups}
         mappings={mappings}
         mappingSetting={mappingSetting}
-        setting={setting}
+        settingKey={settingKey}
         clearGroupMember={clearGroupMember}
         deleteGroup={deleteGroup}
         updateSetting={updateSetting}
-        onSuccess={onSuccess}
       />
     </FormProvider>,
   );
@@ -66,11 +65,9 @@ describe("GroupMappingsWidgetView", () => {
       const aboutMappingsElement = await screen.findByText("About mappings");
       await userEvent.hover(aboutMappingsElement);
 
-      expect(
-        await screen.findByText(
-          /Mappings allow Metabase to automatically add and remove users from groups based on the membership information provided by the directory server\. If a group isn‘t mapped, its membership won‘t be synced\./,
-        ),
-      ).toBeInTheDocument();
+      expect(await screen.findByRole("tooltip")).toHaveTextContent(
+        /Mappings allow Metabase to automatically add and remove users from groups based on the membership information provided by the directory server/,
+      );
     });
   });
 
@@ -79,7 +76,8 @@ describe("GroupMappingsWidgetView", () => {
       setup({
         mappingSetting: "jwt-group-mappings",
         mappings: {},
-        setting: { key: "jwt-group-sync", value: true },
+        settingKey: "jwt-group-sync",
+        initialSyncEnabled: true,
       });
 
       expect(
@@ -93,7 +91,8 @@ describe("GroupMappingsWidgetView", () => {
       setup({
         mappingSetting: "jwt-group-mappings",
         mappings: {},
-        setting: { key: "jwt-group-sync", value: false },
+        settingKey: "jwt-group-sync",
+        initialSyncEnabled: false,
       });
 
       expect(
