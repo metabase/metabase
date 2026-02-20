@@ -1,7 +1,7 @@
 import { useMemo } from "react";
 
 import { Divider, Flex } from "metabase/ui";
-import type { MetricDefinition } from "metabase-lib/metric";
+import type { DimensionMetadata, MetricDefinition } from "metabase-lib/metric";
 import type { TemporalUnit } from "metabase-types/api";
 
 import type {
@@ -31,6 +31,7 @@ type MetricControlsProps = {
   displayType: MetricsViewerDisplayType;
   tabType: MetricsViewerTabType;
   dimensionFilter?: DimensionFilterValue;
+  allFilterDimensions?: DimensionMetadata[];
   onDisplayTypeChange: (displayType: MetricsViewerDisplayType) => void;
   onDimensionFilterChange: (value: DimensionFilterValue | undefined) => void;
   onTemporalUnitChange: (unit: TemporalUnit | undefined) => void;
@@ -42,6 +43,7 @@ export function MetricControls({
   displayType,
   tabType,
   dimensionFilter,
+  allFilterDimensions,
   onDisplayTypeChange,
   onDimensionFilterChange,
   onTemporalUnitChange,
@@ -85,6 +87,7 @@ export function MetricControls({
             filterDimension={projectionInfo.filterDimension}
             filter={projectionInfo.filter}
             dimensionFilter={dimensionFilter}
+            allFilterDimensions={allFilterDimensions}
             onChange={onDimensionFilterChange}
           />
         </>

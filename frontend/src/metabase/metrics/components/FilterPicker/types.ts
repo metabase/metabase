@@ -12,6 +12,7 @@ export type FilterPickerWidgetProps = {
   filter?: LibMetric.FilterClause;
   isNew?: boolean;
   readOnly?: boolean;
+  allFilterDimensions?: LibMetric.DimensionMetadata[];
   onSelect: (filter: LibMetric.FilterClause) => void;
   onBack?: () => void;
   onClear?: () => void;

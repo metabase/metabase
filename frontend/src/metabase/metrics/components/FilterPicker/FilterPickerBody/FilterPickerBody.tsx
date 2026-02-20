@@ -15,6 +15,7 @@ interface FilterPickerBodyProps {
   filter?: LibMetric.FilterClause;
   isNew?: boolean;
   readOnly?: boolean;
+  allFilterDimensions?: LibMetric.DimensionMetadata[];
   onSelect: (filter: LibMetric.FilterClause) => void;
   onBack?: () => void;
   onClear?: () => void;
@@ -26,6 +27,7 @@ export function FilterPickerBody({
   filter,
   isNew,
   readOnly,
+  allFilterDimensions,
   onSelect,
   onBack,
   onClear,
@@ -43,6 +45,7 @@ export function FilterPickerBody({
         filter={filter}
         isNew={isNew}
         readOnly={readOnly}
+        allFilterDimensions={allFilterDimensions}
         onSelect={onSelect}
         onBack={onBack}
         onClear={onClear}

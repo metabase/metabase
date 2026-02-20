@@ -24,6 +24,7 @@ export function NumberFilterPicker({
   filter,
   isNew,
   readOnly,
+  allFilterDimensions,
   onSelect,
   onBack,
   onClear,
@@ -88,6 +89,7 @@ export function NumberFilterPicker({
           values={values}
           valueCount={valueCount}
           hasMultipleValues={hasMultipleValues}
+          allFilterDimensions={allFilterDimensions}
           onChange={setValues}
         />
         <FilterPickerFooter isNew={isNew} isValid={isValid} onClear={onClear} />
@@ -102,6 +104,7 @@ interface NumberValueInputProps {
   values: NumberOrEmptyValue[];
   valueCount: number;
   hasMultipleValues?: boolean;
+  allFilterDimensions?: LibMetric.DimensionMetadata[];
   onChange: (values: NumberOrEmptyValue[]) => void;
 }
 
@@ -111,6 +114,7 @@ function NumberValueInput({
   values,
   valueCount,
   hasMultipleValues,
+  allFilterDimensions,
   onChange,
 }: NumberValueInputProps) {
   if (hasMultipleValues) {
@@ -120,6 +124,7 @@ function NumberValueInput({
           definition={definition}
           dimension={dimension}
           values={values.filter(isNotNull)}
+          allFilterDimensions={allFilterDimensions}
           autoFocus
           comboboxProps={COMBOBOX_PROPS}
           onChange={onChange}

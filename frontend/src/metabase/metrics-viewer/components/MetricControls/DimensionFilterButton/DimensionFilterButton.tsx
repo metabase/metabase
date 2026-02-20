@@ -86,6 +86,7 @@ type DimensionFilterButtonProps = {
   filterDimension: DimensionMetadata;
   filter?: FilterClause;
   dimensionFilter?: DimensionFilterValue;
+  allFilterDimensions?: DimensionMetadata[];
   onChange: (value: DimensionFilterValue | undefined) => void;
 };
 
@@ -94,6 +95,7 @@ export function DimensionFilterButton({
   filterDimension,
   filter,
   dimensionFilter,
+  allFilterDimensions,
   onChange,
 }: DimensionFilterButtonProps) {
   const [isOpen, setIsOpen] = useState(false);
@@ -159,6 +161,7 @@ export function DimensionFilterButton({
           dimension={filterDimension}
           filter={reconstructedFilter}
           isNew={!reconstructedFilter}
+          allFilterDimensions={allFilterDimensions}
           onSelect={handleSelect}
           onClear={reconstructedFilter ? handleClear : undefined}
         />

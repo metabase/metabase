@@ -30,6 +30,7 @@ type FilterValuePickerProps<T> = {
   dimension: LibMetric.DimensionMetadata;
   values: T[];
   autoFocus?: boolean;
+  allFilterDimensions?: LibMetric.DimensionMetadata[];
   comboboxProps?: ComboboxProps;
   onChange: (newValues: T[]) => void;
 };
@@ -39,16 +40,36 @@ type FilterValuePickerOwnProps = {
   dimension: LibMetric.DimensionMetadata;
   values: string[];
   autoFocus?: boolean;
+  allFilterDimensions?: LibMetric.DimensionMetadata[];
   comboboxProps?: ComboboxProps;
   parseValue?: (rawValue: string) => string | null;
   onChange: (newValues: string[]) => void;
 };
+
+function canListAllFilterDimensions(
+  definition: LibMetric.MetricDefinition,
+  dimension: LibMetric.DimensionMetadata,
+  allFilterDimensions: LibMetric.DimensionMetadata[] | undefined,
+): boolean {
+  const ownInfo = LibMetric.dimensionValuesInfo(definition, dimension);
+  if (!ownInfo.canListValues) {
+    return false;
+  }
+  if (!allFilterDimensions || allFilterDimensions.length <= 1) {
+    return true;
+  }
+  const first = allFilterDimensions[0];
+  return allFilterDimensions.every((other) =>
+    LibMetric.isSameSource(first, other),
+  );
+}
 
 function FilterValuePicker({
   definition,
   dimension,
   values,
   autoFocus,
+  allFilterDimensions,
   comboboxProps,
   parseValue,
   onChange,
@@ -61,7 +82,12 @@ function FilterValuePicker({
     [definition, dimension],
   );
 
-  const { canListValues, canSearchValues, canRemapValues } = dimensionInfo;
+  const canListValues = useMemo(
+    () =>
+      canListAllFilterDimensions(definition, dimension, allFilterDimensions),
+    [definition, dimension, allFilterDimensions],
+  );
+  const { canSearchValues, canRemapValues } = dimensionInfo;
 
   const useGetFieldValues = ({
     skip,

@@ -25,6 +25,7 @@ export function CoordinateFilterPicker({
   filter,
   isNew,
   readOnly,
+  allFilterDimensions,
   onSelect,
   onBack,
   onClear,
@@ -102,6 +103,7 @@ export function CoordinateFilterPicker({
           values={values}
           valueCount={valueCount}
           hasMultipleValues={hasMultipleValues}
+          allFilterDimensions={allFilterDimensions}
           onChange={setValues}
         />
         <FilterPickerFooter isNew={isNew} isValid={isValid} onClear={onClear} />
@@ -116,6 +118,7 @@ interface CoordinateValueInputProps {
   values: NumberOrEmptyValue[];
   valueCount: number;
   hasMultipleValues?: boolean;
+  allFilterDimensions?: LibMetric.DimensionMetadata[];
   onChange: (values: NumberOrEmptyValue[]) => void;
 }
 
@@ -125,6 +128,7 @@ function CoordinateValueInput({
   values,
   valueCount,
   hasMultipleValues,
+  allFilterDimensions,
   onChange,
 }: CoordinateValueInputProps) {
   if (hasMultipleValues) {
@@ -134,6 +138,7 @@ function CoordinateValueInput({
           definition={definition}
           dimension={dimension}
           values={values.filter(isNotNull)}
+          allFilterDimensions={allFilterDimensions}
           autoFocus
           comboboxProps={COMBOBOX_PROPS}
           onChange={onChange}

@@ -22,6 +22,7 @@ export function StringFilterPicker({
   filter,
   isNew,
   readOnly,
+  allFilterDimensions,
   onSelect,
   onBack,
   onClear,
@@ -86,6 +87,7 @@ export function StringFilterPicker({
           dimension={dimension}
           values={values}
           type={type}
+          allFilterDimensions={allFilterDimensions}
           onChange={setValues}
         />
         <FilterPickerFooter isNew={isNew} isValid={isValid} onClear={onClear}>
@@ -106,6 +108,7 @@ interface StringValueInputProps {
   dimension: LibMetric.DimensionMetadata;
   values: string[];
   type: OperatorType;
+  allFilterDimensions?: LibMetric.DimensionMetadata[];
   onChange: (values: string[]) => void;
 }
 
@@ -114,6 +117,7 @@ function StringValueInput({
   dimension,
   values,
   type,
+  allFilterDimensions,
   onChange,
 }: StringValueInputProps) {
   if (type === "exact") {
@@ -123,6 +127,7 @@ function StringValueInput({
           definition={definition}
           dimension={dimension}
           values={values}
+          allFilterDimensions={allFilterDimensions}
           comboboxProps={COMBOBOX_PROPS}
           autoFocus
           onChange={onChange}

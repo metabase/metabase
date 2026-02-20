@@ -18,6 +18,7 @@ import type {
 } from "../../../types/viewer-state";
 import { MetricsViewerClickActionsMode } from "../../../utils/MetricsViewerClickActionsMode";
 import type { DimensionFilterValue } from "../../../utils/metrics";
+import { getProjectionInfo } from "../../../utils/metrics";
 import {
   buildDimensionItemsFromDefinitions,
   buildRawSeriesFromDefinitions,
@@ -118,6 +119,21 @@ export function MetricsViewerTabContent({
     }
     return null;
   }, [definitions, tab.dimensionMapping, modifiedDefinitions]);
+
+  const allFilterDimensions = useMemo(() => {
+    const filterDimensions: DimensionMetadata[] = [];
+    for (const sourceId of getObjectKeys(tab.dimensionMapping)) {
+      const modDef = modifiedDefinitions.get(sourceId);
+      if (!modDef) {
+        continue;
+      }
+      const projInfo = getProjectionInfo(modDef);
+      if (projInfo.filterDimension) {
+        filterDimensions.push(projInfo.filterDimension);
+      }
+    }
+    return filterDimensions;
+  }, [tab.dimensionMapping, modifiedDefinitions]);
 
   const handleDimensionChange = useCallback(
     (itemId: string | number, dimension: DimensionMetadata) => {
@@ -238,6 +254,7 @@ export function MetricsViewerTabContent({
             displayType={tab.display}
             tabType={tab.type}
             dimensionFilter={tab.projectionConfig.dimensionFilter}
+            allFilterDimensions={allFilterDimensions}
             onDisplayTypeChange={handleDisplayTypeChange}
             onDimensionFilterChange={handleDimensionFilterChange}
             onTemporalUnitChange={handleTemporalUnitChange}
