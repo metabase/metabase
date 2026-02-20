@@ -1,13 +1,16 @@
 import { t } from "ttag";
 
+import { Ellipsified } from "metabase/common/components/Ellipsified";
 import type { TreeTableColumnDef } from "metabase/ui";
-import type { ReplaceSourceColumnMapping } from "metabase-types/api";
+import type {
+  ReplaceSourceColumnErrorType,
+  ReplaceSourceColumnMapping,
+} from "metabase-types/api";
 
-import { getErrorListLabel } from "../../../../utils";
+import { getColumnErrorMessage } from "../../../../utils";
 import type { EntityInfo } from "../../types";
 
-import { ColumnInfoCell } from "./ColumnInfoCell";
-import { ErrorsCell } from "./ErrorsCell";
+import { NameCell } from "./NameCell";
 import type { ColumnMappingItem } from "./types";
 
 function getEntityName(entityInfo: EntityInfo | undefined): string {
@@ -42,14 +45,14 @@ function getSourceColumn(
     id: "source",
     header,
     width: "auto",
-    maxAutoWidth: 520,
     enableSorting: true,
     accessorFn: (item) => item.source?.display_name,
     cell: ({ row }) => {
       const item = row.original;
-      return item.source != null ? (
-        <ColumnInfoCell column={item.source} />
-      ) : null;
+      if (item.source == null) {
+        return null;
+      }
+      return <NameCell column={item.source} />;
     },
   };
 }
@@ -61,32 +64,38 @@ function getTargetColumn(
     id: "target",
     header,
     width: "auto",
-    maxAutoWidth: 520,
     enableSorting: true,
     accessorFn: (item) => item.target?.display_name,
     cell: ({ row }) => {
       const item = row.original;
-      return item.target != null ? (
-        <ColumnInfoCell column={item.target} />
-      ) : null;
+      if (item.target == null) {
+        return null;
+      }
+      return <NameCell column={item.target} />;
     },
   };
 }
 
-function getErrorsColumn(): TreeTableColumnDef<ColumnMappingItem> {
+function getErrorMessage(errors: ReplaceSourceColumnErrorType[]) {
+  const messages = errors
+    .map(getColumnErrorMessage)
+    .filter((message) => message != null);
+  return messages.length > 0 ? messages.join(" ") : null;
+}
+
+function getDetailsColumn(): TreeTableColumnDef<ColumnMappingItem> {
   return {
     id: "errors",
-    header: t`Errors`,
-    width: "auto",
-    maxAutoWidth: 300,
+    header: t`Details`,
     enableSorting: true,
-    accessorFn: (item) => getErrorListLabel(item.errors ?? []),
+    accessorFn: (item) => getErrorMessage(item.errors ?? []),
     cell: ({ row }) => {
       const { errors } = row.original;
-      if (errors == null || errors.length === 0) {
+      const message = getErrorMessage(errors ?? []);
+      if (message == null) {
         return null;
       }
-      return <ErrorsCell errors={errors} />;
+      return <Ellipsified>{message}</Ellipsified>;
     },
   };
 }
@@ -108,7 +117,7 @@ export function getColumns(
   return [
     getSourceColumn(sourceHeader),
     getTargetColumn(targetHeader),
-    getErrorsColumn(),
+    getDetailsColumn(),
   ];
 }
 

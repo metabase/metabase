@@ -6,11 +6,11 @@ import { FixedSizeIcon, Group } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import type { ReplaceSourceColumnInfo } from "metabase-types/api";
 
-type ColumnInfoCellProps = {
+type NameCellProps = {
   column: ReplaceSourceColumnInfo;
 };
 
-export function ColumnInfoCell({ column }: ColumnInfoCellProps) {
+export function NameCell({ column }: NameCellProps) {
   const icon = useMemo(() => {
     return getColumnIcon(Lib.legacyColumnTypeInfo(column));
   }, [column]);
@@ -18,7 +18,7 @@ export function ColumnInfoCell({ column }: ColumnInfoCellProps) {
   return (
     <Group gap="sm" wrap="nowrap">
       <FixedSizeIcon name={icon} />
-      <Ellipsified>{column.display_name}</Ellipsified>
+      <Ellipsified>{column.name}</Ellipsified>
     </Group>
   );
 }

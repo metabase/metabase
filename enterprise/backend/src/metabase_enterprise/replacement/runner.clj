@@ -33,17 +33,12 @@
   ([old-source :- ::source/source-ref
     new-source :- ::source/source-ref
     progress]
-   ;; sources aren't the same
-   (assert (not= old-source new-source))
-   ;; sources are swappable
-   (assert (empty? (source/check-replace-source old-source new-source)))
+   (assert (:success (source/check-replace-source old-source new-source)))
 
    (let [transitive (usages/transitive-usages old-source)
          direct     (usages/direct-usages     old-source)]
      (execute/set-total! progress (+ (count transitive)
                                      (count direct)))
-     ;; no cycles
-     (assert (not (some #(= new-source %) transitive)))
 
      ;; phase 1: Upgrade all field refs
      (doseq [entity transitive]

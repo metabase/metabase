@@ -1,4 +1,5 @@
 import type { CardId } from "./card";
+import type { Field } from "./field";
 import type { ConcreteTableId } from "./table";
 
 export type ReplaceSourceEntityId = ConcreteTableId | CardId;
@@ -12,15 +13,23 @@ export type ReplaceSourceEntry = {
   type: ReplaceSourceEntityType;
 };
 
-export type ReplaceSourceColumnInfo = {
-  name: string;
-  display_name: string;
-  base_type: string;
-  effective_type: string;
-  semantic_type: string | null;
-};
+export type ReplaceSourceColumnInfo = Pick<
+  Field,
+  | "id"
+  | "name"
+  | "display_name"
+  | "base_type"
+  | "effective_type"
+  | "semantic_type"
+>;
 
 export type ReplaceSourceErrorType =
+  | "same-source"
+  | "cycle-detected"
+  | "database-mismatch"
+  | ReplaceSourceColumnErrorType;
+
+export type ReplaceSourceColumnErrorType =
   | "missing-column"
   | "column-type-mismatch"
   | "missing-primary-key"
@@ -29,14 +38,15 @@ export type ReplaceSourceErrorType =
   | "foreign-key-mismatch";
 
 export type ReplaceSourceColumnMapping = {
-  source?: ReplaceSourceColumnInfo;
-  target?: ReplaceSourceColumnInfo;
-  errors?: ReplaceSourceErrorType[];
+  source: ReplaceSourceColumnInfo | null;
+  target: ReplaceSourceColumnInfo | null;
+  errors?: ReplaceSourceColumnErrorType[];
 };
 
 export type CheckReplaceSourceInfo = {
   success: boolean;
-  column_mappings: ReplaceSourceColumnMapping[];
+  errors?: ReplaceSourceErrorType[];
+  column_mappings?: ReplaceSourceColumnMapping[];
 };
 
 export type ReplaceSourceRunId = number;

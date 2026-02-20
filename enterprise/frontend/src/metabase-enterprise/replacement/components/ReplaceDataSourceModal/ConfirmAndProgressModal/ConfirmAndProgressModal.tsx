@@ -32,6 +32,16 @@ export function ConfirmAndProgressModal({
   const [runId, setRunId] = useState<ReplaceSourceRunId>();
   const isStarted = runId != null;
 
+  const handleReplaceSuccess = () => {
+    setRunId(undefined);
+    onReplaceSuccess();
+  };
+
+  const handleReplaceFailure = () => {
+    setRunId(undefined);
+    onReplaceFailure();
+  };
+
   return (
     <Modal
       title={getTitle(dependentsCount, isStarted)}
@@ -49,8 +59,8 @@ export function ConfirmAndProgressModal({
       ) : (
         <ProgressModalContent
           runId={runId}
-          onReplaceSuccess={onReplaceSuccess}
-          onReplaceFailure={onReplaceFailure}
+          onReplaceSuccess={handleReplaceSuccess}
+          onReplaceFailure={handleReplaceFailure}
         />
       )}
     </Modal>
