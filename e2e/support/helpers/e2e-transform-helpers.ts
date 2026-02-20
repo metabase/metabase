@@ -3,6 +3,7 @@ import type {
   Collection,
   CollectionId,
   PythonTransformTableAliases,
+  SchemaName,
   TransformId,
   TransformRun,
   TransformRunStatus,
@@ -255,7 +256,7 @@ export function createAndRunSqlTransform({
 }: {
   sourceQuery: string;
   targetTable: string;
-  targetSchema: string;
+  targetSchema: SchemaName;
   tagIds?: TransformTagId[];
   sourceCheckpointStrategy?: TransformSourceCheckpointStrategy;
   name?: string;
