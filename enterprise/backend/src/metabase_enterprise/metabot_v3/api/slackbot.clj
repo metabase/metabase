@@ -862,7 +862,8 @@
          thread-ts   (:thread_ts message-ctx)
 
          ;; Lazily start the stream when we have content
-         stream-state  (atom nil)  ; {:stream_ts :channel} once started
+         ;; Using volatile! since callbacks are invoked sequentially from a single thread
+         stream-state  (volatile! nil)  ; {:stream_ts :channel} once started
 
          ensure-stream! (fn []
                           (when-not @stream-state
@@ -871,15 +872,15 @@
                                                                :team_id   team-id
                                                                :user_id   user-id})]
                               (when (:stream_ts stream)
-                                (reset! stream-state stream)))))
+                                (vreset! stream-state stream)))))
 
          ;; Track state for streaming updates
-         tool-id->name (atom {})  ; Track tool names for completion updates
+         tool-id->name (volatile! {})  ; Track tool names for completion updates
 
          ;; Text batching to reduce Slack API calls
-         text-buffer      (atom (StringBuilder.))
-         last-flush-timer (atom (u/start-timer))
-         last-flushed     (atom "")  ; Track last flushed text for newline logic
+         text-buffer      (volatile! (StringBuilder.))
+         last-flush-timer (volatile! (u/start-timer))
+         last-flushed     (volatile! "")  ; Track last flushed text for newline logic
 
          flush-text!     (fn []
                            (let [text (str @text-buffer)]
@@ -887,9 +888,9 @@
                                (ensure-stream!)
                                (when-let [{:keys [stream_ts channel]} @stream-state]
                                  (append-markdown-text client channel stream_ts text)
-                                 (reset! last-flushed text)))
-                             (reset! text-buffer (StringBuilder.))
-                             (reset! last-flush-timer (u/start-timer))))
+                                 (vreset! last-flushed text)))
+                             (vreset! text-buffer (StringBuilder.))
+                             (vreset! last-flush-timer (u/start-timer))))
 
          ;; Callbacks for streaming
          on-text       (fn [text]
@@ -906,7 +907,7 @@
                          ;; Flush any pending text before showing tool status
                          (flush-text!)
                          (ensure-stream!)
-                         (swap! tool-id->name assoc id name)
+                         (vswap! tool-id->name assoc id name)
                          (when-let [{:keys [stream_ts channel]} @stream-state]
                            ;; Add newline before tool status if text doesn't end with one
                            (when (and (seq @last-flushed)
@@ -929,7 +930,7 @@
                                               :status "complete"}])
                              ;; Add newline after tool completion for clean text flow
                              (append-markdown-text client channel stream_ts "\n")))
-                         (swap! tool-id->name dissoc id))]
+                         (vswap! tool-id->name dissoc id))]
 
      ;; Use streaming with lazy initialization
      (try
@@ -974,12 +975,12 @@
            (post-message client (merge message-ctx {:text "I wasn't able to generate a response. Please try again."}))))
        (catch Exception e
          (log/error e "[slackbot] Error in streaming response")
-           ;; Clean up stream gracefully if it was started
+         ;; Clean up stream gracefully if it was started
          (when-let [{:keys [stream_ts channel]} @stream-state]
            (try
              (stop-stream client channel stream_ts)
              (catch Exception _)))
-           ;; Re-throw to let outer handler deal with it
+         ;; Re-throw to let outer handler deal with it
          (throw e))))))
 
 (defn- send-auth-link
