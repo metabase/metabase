@@ -570,6 +570,7 @@
         ;; you're by definition allowed to run it without a perms check anyway
         (request/as-admin
           (let [action (api/check-404 (actions/select-action :public_uuid uuid :archived false))]
+            (actions/check-actions-enabled! action)
             (analytics/track-event! :snowplow/action
                                     {:event     :action-executed
                                      :source    :public_form
