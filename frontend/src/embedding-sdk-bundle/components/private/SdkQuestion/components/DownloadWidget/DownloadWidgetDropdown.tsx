@@ -1,3 +1,5 @@
+import { t } from "ttag";
+
 import { Center, Icon, Popover, type PopoverProps } from "metabase/ui";
 
 import { useSdkQuestionContext } from "../../context";
@@ -32,6 +34,7 @@ export const DownloadWidgetDropdown = ({
     >
       <Popover.Target>
         <ToolbarButton
+          aria-label={t`Download results`}
           isHighlighted={false}
           variant="default"
           px="sm"
