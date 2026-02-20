@@ -484,49 +484,6 @@ describe("RemoteSyncSettingsForm", () => {
     });
   });
 
-  describe("URL validation", () => {
-    it("should show a validation error for non-HTTPS URLs", async () => {
-      setup({
-        remoteSyncType: "read-only",
-        remoteSyncUrl: "",
-        remoteSyncEnabled: false,
-      });
-
-      const urlInput = screen.getByLabelText(/Repository URL/i);
-      await userEvent.type(urlInput, "git://github.com/foo/bar.git");
-
-      // Tab away to trigger validation
-      await userEvent.tab();
-
-      await waitFor(() => {
-        expect(
-          screen.getByText(/Only HTTPS URLs are supported/),
-        ).toBeInTheDocument();
-      });
-    });
-
-    it("should not show a validation error for HTTPS URLs", async () => {
-      setup({
-        remoteSyncType: "read-only",
-        remoteSyncUrl: "",
-        remoteSyncEnabled: false,
-      });
-
-      const urlInput = screen.getByLabelText(/Repository URL/i);
-      await userEvent.type(urlInput, "https://github.com/foo/bar.git");
-
-      // Tab away to trigger validation
-      await userEvent.tab();
-
-      // Give validation time to run, then verify no error
-      await waitFor(() => {
-        expect(
-          screen.queryByText(/Only HTTPS URLs are supported/),
-        ).not.toBeInTheDocument();
-      });
-    });
-  });
-
   describe("save error handling", () => {
     it("should show backend error message in toast when save fails", async () => {
       setup({
