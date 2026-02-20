@@ -85,7 +85,7 @@ function getErrorMessage(checkInfo: CheckReplaceSourceInfo | undefined) {
   }
 
   const errors = checkInfo.errors ?? [];
-  return errors.length > 0
+  return errors.length === 1
     ? getEntityErrorMessage(errors[0])
     : getGenericErrorMessage();
 }
