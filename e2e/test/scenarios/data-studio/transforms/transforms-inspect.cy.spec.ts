@@ -1,5 +1,5 @@
 import { WRITABLE_DB_ID } from "e2e/support/cypress_data";
-import type { JoinStrategy, TransformId } from "metabase-types/api";
+import type { JoinStrategy, SchemaName, TransformId } from "metabase-types/api";
 
 const { H } = cy;
 
@@ -366,9 +366,9 @@ function createAndRunMbqlJoinTransform({
   name: string;
   targetTable: string;
   sourceTable?: string;
-  sourceSchema: string | undefined;
+  sourceSchema: SchemaName | undefined;
   joinTable?: string;
-  joinSchema?: string;
+  joinSchema?: SchemaName;
   joinStrategy?: JoinStrategy;
 }): Cypress.Chainable<{ transformId: TransformId }> {
   return H.cypressWaitAll([
