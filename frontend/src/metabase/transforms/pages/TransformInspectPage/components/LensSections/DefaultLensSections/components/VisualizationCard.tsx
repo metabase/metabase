@@ -63,7 +63,7 @@ export const VisualizationCard = ({
   const getHref = questionUrl ? () => questionUrl : undefined;
 
   const onChangeCardAndRun = questionUrl
-    ? () => window.open(questionUrl, "_blank")
+    ? () => Urls.openInNewTab(questionUrl)
     : undefined;
 
   return (
