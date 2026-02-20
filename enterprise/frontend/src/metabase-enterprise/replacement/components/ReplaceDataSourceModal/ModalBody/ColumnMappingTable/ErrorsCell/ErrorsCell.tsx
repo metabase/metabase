@@ -38,6 +38,8 @@ type ErrorMessageProps = {
 
 function ErrorMessage({ source, target, error }: ErrorMessageProps) {
   switch (error) {
+    case "missing-column":
+      return t`Missing column.`;
     case "column-type-mismatch":
       return source?.database_type != null && target?.database_type != null
         ? jt`This column is ${(<Code key="target">{target.database_type}</Code>)} while the original column is ${(<Code key="source">{source.database_type}</Code>)}.`
