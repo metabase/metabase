@@ -214,9 +214,9 @@
         (doseq [sort-direction [:asc :desc]]
           (testing (str sort-direction)
             (let [response (mt/user-http-request :crowberto :get 200 "transform/run"
-                                                 :sort_column "transform-name"
-                                                 :sort_direction sort-direction
-                                                 :transform_ids [transform-a-id transform-b-id])]
+                                                 :sort-column "transform-name"
+                                                 :sort-direction sort-direction
+                                                 :transform-ids [transform-a-id transform-b-id])]
               (is (= (cond-> [run-a-id run-b-id]
                        (= sort-direction :desc) reverse)
                      (->> response :data (map :id)))))))))))
@@ -231,9 +231,9 @@
         (doseq [sort-direction [:asc :desc]]
           (testing (str sort-direction)
             (let [response (mt/user-http-request :crowberto :get 200 "transform/run"
-                                                 :sort_column "transform-name"
-                                                 :sort_direction sort-direction
-                                                 :transform_ids [transform-1-id transform-2-id])]
+                                                 :sort-column "transform-name"
+                                                 :sort-direction sort-direction
+                                                 :transform-ids [transform-1-id transform-2-id])]
               (is (= (cond-> [run-1-id run-2-id]
                        (= sort-direction :desc) reverse)
                      (->> response :data (map :id)))))))))))
@@ -249,9 +249,9 @@
         (doseq [sort-direction [:asc :desc]]
           (testing (str sort-direction)
             (let [response (mt/user-http-request :crowberto :get 200 "transform/run"
-                                                 :sort_column "start-time"
-                                                 :sort_direction sort-direction
-                                                 :transform_ids [transform-id])]
+                                                 :sort-column "start-time"
+                                                 :sort-direction sort-direction
+                                                 :transform-ids [transform-id])]
               (is (= (cond-> [earlier-run-id later-run-id]
                        (= sort-direction :desc) reverse)
                      (->> response :data (map :id)))))))))))
@@ -267,9 +267,9 @@
         (doseq [sort-direction [:asc :desc]]
           (testing (str sort-direction)
             (let [response (mt/user-http-request :crowberto :get 200 "transform/run"
-                                                 :sort_column "end-time"
-                                                 :sort_direction sort-direction
-                                                 :transform_ids [transform-id])]
+                                                 :sort-column "end-time"
+                                                 :sort-direction sort-direction
+                                                 :transform-ids [transform-id])]
               (is (= (cond-> [earlier-run-id later-run-id]
                        (= sort-direction :desc) reverse)
                      (->> response :data (map :id)))))))))))
@@ -284,9 +284,9 @@
         (doseq [sort-direction [:asc :desc]]
           (testing (str sort-direction)
             (let [response (mt/user-http-request :crowberto :get 200 "transform/run"
-                                                 :sort_column "run-method"
-                                                 :sort_direction sort-direction
-                                                 :transform_ids [transform-id])]
+                                                 :sort-column "run-method"
+                                                 :sort-direction sort-direction
+                                                 :transform-ids [transform-id])]
               (is (= (cond-> [manual-run-id schedule-run-id]
                        (= sort-direction :desc) reverse)
                      (->> response :data (map :id)))))))))))
@@ -306,9 +306,9 @@
         (doseq [sort-direction [:asc :desc]]
           (testing (str sort-direction)
             (let [response (mt/user-http-request :crowberto :get 200 "transform/run"
-                                                 :sort_column "status"
-                                                 :sort_direction sort-direction
-                                                 :transform_ids [transform-id])]
+                                                 :sort-column "status"
+                                                 :sort-direction sort-direction
+                                                 :transform-ids [transform-id])]
               (is (= (cond-> [canceled-run-id canceling-run-id failed-run-id
                               in-progress-run-id success-run-id timeout-run-id]
                        (= sort-direction :desc) reverse)
@@ -332,9 +332,9 @@
         (doseq [sort-direction [:asc :desc]]
           (testing (str sort-direction)
             (let [response (mt/user-http-request :crowberto :get 200 "transform/run"
-                                                 :sort_column "transform-tags"
-                                                 :sort_direction sort-direction
-                                                 :transform_ids [transform-a-id transform-b-id])]
+                                                 :sort-column "transform-tags"
+                                                 :sort-direction sort-direction
+                                                 :transform-ids [transform-a-id transform-b-id])]
               (is (= (cond-> [run-a-id run-b-id]
                        (= sort-direction :desc) reverse)
                      (->> response :data (map :id)))))))))))
@@ -389,9 +389,9 @@
         (doseq [sort-direction [:asc :desc]]
           (testing (str sort-direction)
             (let [response (mt/user-http-request :crowberto :get 200 "transform/run"
-                                                 :sort_column "transform-tags"
-                                                 :sort_direction sort-direction
-                                                 :transform_ids [transform-daily-id transform-hourly-id
+                                                 :sort-column "transform-tags"
+                                                 :sort-direction sort-direction
+                                                 :transform-ids [transform-daily-id transform-hourly-id
                                                                  transform-monthly-id transform-weekly-id])]
               (is (= (cond-> [daily-run-id hourly-run-id monthly-run-id weekly-run-id]
                        (= sort-direction :desc) reverse)
@@ -406,7 +406,7 @@
                      :model/TransformRun {run-in-collection-id :id} {:transform_id transform-in-collection-id}
                      :model/TransformRun {run-in-root-id :id} {:transform_id transform-in-root-id}]
         (let [response (mt/user-http-request :crowberto :get 200 "transform/run"
-                                             :transform_ids [transform-in-collection-id
+                                             :transform-ids [transform-in-collection-id
                                                              transform-in-root-id])
               runs-by-id (m/index-by :id (:data response))]
           (testing "transform in explicit collection has that collection hydrated"
