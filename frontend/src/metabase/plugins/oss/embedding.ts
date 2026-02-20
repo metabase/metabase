@@ -3,7 +3,7 @@ import type { ReactNode } from "react";
 import type { DataSourceSelectorProps } from "metabase/embedding-sdk/types/components/data-picker";
 import type { TableId } from "metabase-types/api";
 import type { State } from "metabase-types/store";
-import type { ModularEmbeddingEntityType } from "metabase-types/store/embedding-data-picker";
+import type { EmbeddingEntityType } from "metabase-types/store/embedding-data-picker";
 
 export interface SimpleDataPickerProps {
   filterByDatabaseId: number | null;
@@ -11,7 +11,7 @@ export interface SimpleDataPickerProps {
   isInitiallyOpen: boolean;
   triggerElement: ReactNode;
   setSourceTableFn: (tableId: TableId) => void;
-  entityTypes: ModularEmbeddingEntityType[];
+  entityTypes: EmbeddingEntityType[];
 }
 
 const getDefaultPluginEmbedding = () => ({
