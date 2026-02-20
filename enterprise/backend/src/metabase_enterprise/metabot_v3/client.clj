@@ -131,6 +131,38 @@
     (close []
       (.close ^Closeable (:http-client response)))))
 
+(defn- open-ai-stream!
+  "Make a streaming request to the AI service. Returns the HTTP response.
+   Caller is responsible for reading from the response body and closing it."
+  [{:keys [context message history profile-id conversation-id session-id state]}]
+  (premium-features/assert-has-feature :metabot-v3 "MetaBot")
+  (let [url      (ai-url "/v2/agent/stream")
+        body     {:messages        (conj (vec history) message)
+                  :context         context
+                  :conversation_id conversation-id
+                  :profile_id      profile-id
+                  :user_id         api/*current-user-id*
+                  :state           state}
+        _        (metabot-v3.context/log body :llm.log/be->llm)
+        _        (log/debugf "V2 request to AI Proxy:\n%s" (u/pprint-to-str body))
+        options  (cond-> {:headers          {"Accept"                    "text/event-stream"
+                                             "Content-Type"              "application/json;charset=UTF-8"
+                                             "x-metabase-instance-token" (premium-features/premium-embedding-token)
+                                             "x-metabase-session-token"  session-id
+                                             "x-metabase-url"            (system/site-url)
+                                             "Connection"                "close"}
+                          :body             (->json-bytes body)
+                          :throw-exceptions false
+                          :as               :stream
+                          :decompress-body  false}
+                   *debug* (assoc :debug true))
+        response (post! url options)]
+    (metabot-v3.context/log (:body response) :llm.log/llm->be)
+    (log/debugf "Response from AI Proxy:\n%s" (u/pprint-to-str (select-keys response #{:body :status :headers})))
+    (when-not (#{200 202} (:status response))
+      (check-response! response body))
+    response))
+
 (mu/defn streaming-request :- :any
   "Make a streaming V2 request to the AI Service
 
@@ -147,7 +179,7 @@
    Response chunks are encoded in the format understood by the frontend and AI Service, Clojure backend doesn't
    know anything about it and just shuttles them over.
    "
-  [{:keys [context message history profile-id conversation-id session-id state on-complete]}
+  [{:keys [on-complete] :as opts}
    :- [:map
        [:context :map]
        [:message ::metabot-v3.client.schema/message]
@@ -157,46 +189,12 @@
        [:session-id :string]
        [:state :map]
        [:on-complete {:optional true} [:function [:=> [:cat :any] :any]]]]]
-  (premium-features/assert-has-feature :metabot-v3 "MetaBot")
   (try
-    (let [url      (ai-url "/v2/agent/stream")
-          body     {:messages        (conj (vec history) message)
-                    :context         context
-                    :conversation_id conversation-id
-                    :profile_id      profile-id
-                    :user_id         api/*current-user-id*
-                    :state           state}
-          _        (metabot-v3.context/log body :llm.log/be->llm)
-          _        (log/debugf "V2 request to AI Proxy:\n%s" (u/pprint-to-str body))
-          options  (cond-> {:headers          {"Accept"                    "text/event-stream"
-                                               "Content-Type"              "application/json;charset=UTF-8"
-                                               "x-metabase-instance-token" (premium-features/premium-embedding-token)
-                                               "x-metabase-session-token"  session-id
-                                               "x-metabase-url"            (system/site-url)
-                                               ;; close conn so it's not reused so that when we use
-                                               ;; `quick-closing-body` there are no weird problems
-                                               "Connection"                "close"}
-                            :body             (->json-bytes body)
-                            :throw-exceptions false
-                            :as :stream
-                            ;; Don't compress streaming responses - adds latency and breaks
-                            ;; cancellation when streams are incomplete
-                            :decompress-body  false}
-                     *debug* (assoc :debug true))
-          response (post! url options)
-          lines    (when on-complete
-                     (atom []))
-          ;; NOTE: this atom is unused right now, but we potentially might put its value in database (see
-          ;; `on-complete`) to indicate which requests were canceled in flight
+    (let [response (open-ai-stream! opts)
+          lines    (when on-complete (atom []))
           canceled (atom nil)]
-      (metabot-v3.context/log (:body response) :llm.log/llm->be)
-      (log/debugf "Response from AI Proxy:\n%s" (u/pprint-to-str (select-keys response #{:body :status :headers})))
-      (when-not (#{200 202} (:status response))
-        (check-response! response body))
       (sr/streaming-response {:content-type "text/event-stream; charset=utf-8"} [os canceled-chan]
-        ;; see `quick-closing-body` docs and see `Connection` header supporting this behavior
         (with-open [^BufferedReader response-reader (io/reader (quick-closing-body response))]
-          ;; Response from the AI Service will send response parts separated by newline
           (loop [^String line (.readLine response-reader)]
             (cond
               (nil? line)             nil
@@ -208,28 +206,25 @@
                   (swap! lines conj line))
                 (try
                   (doto os
-                    ;; `line-seq` strips newlines, so we need to append it back.
                     (.write (.getBytes line "UTF-8"))
                     (.write (.getBytes "\n"))
-                    ;; Immediately flush so it feels fluid on the frontend
                     (.flush))
                   (catch EofException _
                     (reset! canceled true)
                     (log/debug "Request cancelled, through exception")))
                 (when-not @canceled
-                  ;; `recur` cannot be inside of `try`, so we have to signal stop somehow
                   (recur (.readLine response-reader)))))))
         (when on-complete
           (on-complete @lines))))
     (catch Throwable e
       (throw (ex-info (format "Error in request to AI Proxy: %s" (ex-message e)) {} e)))))
 
-(mu/defn streaming-request-with-callback
+(mu/defn streaming-request-with-callback :- [:sequential :string]
   "Make a streaming V2 request to the AI Service, invoking a callback for each line.
    Unlike `streaming-request`, this doesn't return a StreamingResponse - it processes
    the stream internally and calls `on-line` for each line as it arrives.
    Returns the collected lines when complete."
-  [{:keys [context message history profile-id conversation-id session-id state on-line]}
+  [{:keys [on-line] :as opts}
    :- [:map
        [:context :map]
        [:message ::metabot-v3.client.schema/message]
@@ -239,42 +234,13 @@
        [:session-id :string]
        [:state :map]
        [:on-line {:optional true} [:function [:=> [:cat :string] :any]]]]]
-  (premium-features/assert-has-feature :metabot-v3 "MetaBot")
-  (let [url      (ai-url "/v2/agent/stream")
-        body     {:messages        (conj (vec history) message)
-                  :context         context
-                  :conversation_id conversation-id
-                  :profile_id      profile-id
-                  :user_id         api/*current-user-id*
-                  :state           state}
-        _        (metabot-v3.context/log body :llm.log/be->llm)
-        _        (log/debugf "V2 streaming request to AI Proxy:\n%s" (u/pprint-to-str body))
-        options  (cond-> {:headers          {"Accept"                    "text/event-stream"
-                                             "Content-Type"              "application/json;charset=UTF-8"
-                                             "x-metabase-instance-token" (premium-features/premium-embedding-token)
-                                             "x-metabase-session-token"  session-id
-                                             "x-metabase-url"            (system/site-url)
-                                             "Connection"                "close"}
-                          :body             (->json-bytes body)
-                          :throw-exceptions false
-                          :as               :stream
-                          :decompress-body  false}
-                   *debug* (assoc :debug true))
-        response (post! url options)
+  (let [response (open-ai-stream! opts)
         lines    (atom [])]
-    (metabot-v3.context/log (:body response) :llm.log/llm->be)
-    (log/debugf "Response from AI Proxy:\n%s" (u/pprint-to-str (select-keys response #{:body :status :headers})))
-    (when-not (#{200 202} (:status response))
-      (check-response! response body))
     (with-open [^BufferedReader response-reader (io/reader (quick-closing-body response))]
       (loop [^String line (.readLine response-reader)]
         (when line
           (swap! lines conj line)
-          (when on-line
-            (try
-              (on-line line)
-              (catch Exception e
-                (log/warnf e "Error in streaming callback for line: %s" line))))
+          (when on-line (on-line line))
           (recur (.readLine response-reader)))))
     @lines))
 
