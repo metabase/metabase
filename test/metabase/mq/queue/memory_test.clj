@@ -3,8 +3,7 @@
    [clojure.test :refer :all]
    [metabase.mq.queue.backend :as q.backend]
    [metabase.mq.queue.memory :as q.memory]
-   [metabase.mq.queue.test-util :as qt]
-   [metabase.util.queue :as u.queue])
+   [metabase.mq.queue.test-util :as qt])
   (:import (clojure.lang ExceptionInfo)))
 
 (set! *warn-on-reflection* true)
@@ -14,7 +13,7 @@
   "Creates a queue in *queues* without starting a listener thread.
   For backend-level tests that need to test publish/queue-length without consumption."
   [queue-name]
-  (swap! q.memory/*queues* assoc queue-name (u.queue/delay-queue)))
+  (swap! q.memory/*queues* assoc queue-name (q.memory/delay-queue)))
 
 (deftest publish-test
   (qt/with-memory-queue

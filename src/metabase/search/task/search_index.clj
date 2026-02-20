@@ -3,12 +3,13 @@
    [clojurewerkz.quartzite.jobs :as jobs]
    [clojurewerkz.quartzite.schedule.simple :as simple]
    [clojurewerkz.quartzite.triggers :as triggers]
+   [metabase.analytics.core :as analytics]
    [metabase.app-db.cluster-lock :as cluster-lock]
+   [metabase.mq.core :as mq]
    [metabase.search.core :as search]
    [metabase.search.ingestion :as ingestion]
    [metabase.startup.core :as startup]
-   [metabase.task.core :as task]
-   [metabase.util.queue :as queue])
+   [metabase.task.core :as task])
   (:import
    (java.time Instant)
    (java.util Date)
@@ -60,8 +61,15 @@
                        (simple/repeat-forever))))]
     (task/schedule-task! job trigger)))
 
-(defmethod queue/init-listener! ::SearchIndexUpdate [_]
-  (ingestion/start-listener!))
+(defmethod startup/def-startup-logic! ::SearchIndexListener [_]
+  (when (search/supports-index?)
+    (mq/listen! ingestion/queue-name
+                (fn [{:keys [message]}]
+                  (try
+                    (ingestion/bulk-ingest! message)
+                    (catch Exception e
+                      (analytics/inc! :metabase-search/index-error)
+                      (throw e)))))))
 
 (comment
   (task/job-exists? reindex-job-key)

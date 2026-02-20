@@ -1,5 +1,6 @@
 (ns metabase.search.ingestion
   (:require
+   [clojure.edn :as edn]
    [clojure.string :as str]
    [honey.sql.helpers :as sql.helpers]
    [medley.core :as m]
@@ -7,32 +8,20 @@
    [metabase.analytics.prometheus :as prometheus]
    [metabase.app-db.core :as mdb]
    [metabase.lib-be.core :as lib-be]
+   [metabase.mq.core :as mq]
    [metabase.search.engine :as search.engine]
    [metabase.search.spec :as search.spec]
    [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.performance :as perf]
-   [metabase.util.queue :as queue]
    [toucan2.core :as t2]
-   [toucan2.realize :as t2.realize])
-  (:import
-   (java.util.concurrent DelayQueue)))
+   [toucan2.realize :as t2.realize]))
 
 (set! *warn-on-reflection* true)
 
-;; Currently we use a single queue, even if multiple engines are enabled, but may want to revisit this.
-(defonce ^:private ^DelayQueue queue (queue/delay-queue))
-
-;; Perhaps this config move up somewhere more visible? Conversely, we may want to specialize it per engine.
-
-(def ^:private message-delay-ms
-  "The time a message should wait before coming off the queue.
-  This delay exists to ensure the data is fully committed before indexing."
-  100)
-
-(def ^:private listener-name
-  "The name of the listener that consumes the queue"
-  "search-index-update")
+(def queue-name
+  "The name of the persistent queue used for search index updates."
+  :queue/search-index-update)
 
 (def max-searchable-value-length
   "The maximum length of a searchable value. This is mostly driven by postgresql max-lengths on tsvector columns.
@@ -268,12 +257,20 @@
 
        :and (first (keep (partial extract-model-and-id model) values))))))
 
+(defn- deserialize-where-clause
+  "Deserialize a where-clause that may have been EDN-encoded for safe JSON round-tripping."
+  [where-clause]
+  (if (string? where-clause)
+    (edn/read-string where-clause)
+    where-clause))
+
 (defn bulk-ingest!
   "Process the given search model updates."
   [updates]
   (lib-be/with-metadata-provider-cache
     (if (seq (search.engine/active-engines))
-      (let [documents (->> (for [[search-model where-clauses] (u/group-by first second updates)]
+      (let [updates  (mapv (fn [[model where]] [model (deserialize-where-clause where)]) updates)
+            documents (->> (for [[search-model where-clauses] (u/group-by first second updates)]
                              (spec-index-reducible search-model (into [:or] (distinct where-clauses))))
                            ;; init collection is only for clj-kondo, as we know that the list is non-empty
                            (reduce u/rconcat [])
@@ -290,44 +287,15 @@
         (update! documents to-delete))
       {})))
 
-(defn- track-queue-size! []
-  (analytics/set! :metabase-search/queue-size (.size queue)))
-
-(defn- index-worker-exists? []
-  (queue/listener-exists? listener-name))
-
 (defn ingest-maybe-async!
   "Update or create any search index entries related to the given updates.
-  Will be async if the worker exists, otherwise it will be done synchronously on the calling thread.
-  Can also be forced to run synchronously for testing."
-  ([updates]
-   (ingest-maybe-async! updates (or *force-sync* (not (index-worker-exists?)))))
-  ([updates sync?]
-   (when-not *disable-updates*
-     (if sync?
-       (bulk-ingest! updates)
-       (do
-         (doseq [update updates]
-           (log/trace "Queuing update" update)
-           (queue/put-with-delay! queue message-delay-ms update))
-         (track-queue-size!)
-         true)))))
-
-(defn start-listener!
-  "Starts the ingestion listener on the queue"
-  []
-  (when (seq (search.engine/active-engines))
-    (queue/listen! listener-name queue bulk-ingest!
-                   {:success-handler     (fn [_result _duration _]
-                                           (track-queue-size!))
-                    :err-handler        (fn [err _]
-                                          (log/error err "Error indexing search entries")
-                                          (analytics/inc! :metabase-search/index-error)
-                                          (track-queue-size!))
-                    ;; Note that each message can correspond to multiple documents,
-                    ;; for example there would be 1 message for updating all
-                    ;; the tables within a given database when it is renamed.
-                    ;; Messages can also correspond to zero documents,
-                    ;; such as when updating a table that is marked as not visible.
-                    :max-batch-messages 50
-                    :max-next-ms       100})))
+  Will be async unless *force-sync* is true."
+  [updates]
+  (when-not *disable-updates*
+    (if *force-sync*
+      (bulk-ingest! updates)
+      ;; Serialize where-clauses as EDN strings so they survive JSON round-tripping
+      ;; through the appdb queue (keywords would otherwise become strings).
+      (let [serialized (mapv (fn [[model where]] [model (pr-str where)]) updates)]
+        (mq/with-queue queue-name [q]
+          (mq/put q serialized))))))

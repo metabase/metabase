@@ -7,6 +7,7 @@
    [metabase.app-db.core :as mdb]
    [metabase.config.core :as config]
    [metabase.events.core :as events]
+   [metabase.mq.core :as mq]
    [metabase.search.appdb.index :as search.index]
    [metabase.search.appdb.scoring :as search.scoring]
    [metabase.search.appdb.specialization.postgres :as specialization.postgres]
@@ -26,8 +27,7 @@
    [methodical.core :as methodical]
    [toucan2.core :as t2])
   (:import
-   (java.time OffsetDateTime)
-   (java.util Queue)))
+   (java.time OffsetDateTime)))
 
 ;; Register the multimethods for each specialization
 (comment
@@ -148,7 +148,7 @@
   (try
     (when (setting/string->boolean (:mb-experimental-search-block-on-queue env/env))
       ;; wait for a bit for the queue to be drained
-      (let [pending-updates #(.size ^Queue @#'search.ingestion/queue)]
+      (let [pending-updates #(mq/queue-length search.ingestion/queue-name)]
         (when-not (u/poll {:thunk       pending-updates
                            :done?       zero?
                            :timeout-ms  2000

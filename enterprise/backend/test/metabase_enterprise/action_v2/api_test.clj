@@ -7,19 +7,17 @@
    [flatland.ordered.map :refer [ordered-map]]
    [metabase-enterprise.action-v2.api]
    [metabase-enterprise.action-v2.coerce :as coerce]
-   [metabase-enterprise.action-v2.data-editing :as data-editing]
    [metabase-enterprise.action-v2.test-util :as action-v2.tu]
    [metabase.actions.test-util :as actions.tu]
    [metabase.driver :as driver]
    [metabase.driver.sql-jdbc :as sql-jdbc]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
+   [metabase.mq.queue.test-util :as qt]
    [metabase.query-processor :as qp]
    [metabase.test :as mt]
    [metabase.test.data.sql :as sql.tx]
    [metabase.warehouse-schema.models.field-values :as field-values]
-   [toucan2.core :as t2])
-  (:import
-   (java.util.concurrent ArrayBlockingQueue)))
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
@@ -532,40 +530,26 @@
   (mt/with-premium-features #{actions-feature-flag}
     (mt/test-drivers (mt/normal-drivers-with-feature :actions/data-editing)
       (action-v2.tu/with-test-tables! [table-id [{:id 'auto-inc-type, :n [:text]} {:primary-key [:id]}]]
-        (let [field-id         (t2/select-one-fn :id :model/Field :table_id table-id :name "n")
-              _                (t2/update! :model/Field {:id field-id} {:semantic_type "type/Category"})
-              field-values     #(vec (:values (field-values/get-latest-full-field-values field-id)))
-              test-queue       (ArrayBlockingQueue. 100)
-              create!          #(action-v2.tu/create-rows! table-id %)
-              update!          #(action-v2.tu/update-rows! table-id %)
-              process-queue!   (fn []
-                                 (when-let [field-ids (.poll test-queue)]
-                                   (#'data-editing/batch-invalidate-field-values! [field-ids])
-                                   (recur)))]
-          (binding [data-editing/*field-value-invalidate-queue* test-queue]
+        (let [field-id     (t2/select-one-fn :id :model/Field :table_id table-id :name "n")
+              _            (t2/update! :model/Field {:id field-id} {:semantic_type "type/Category"})
+              field-values #(vec (:values (field-values/get-latest-full-field-values field-id)))
+              create!      #(action-v2.tu/create-rows! table-id %)
+              update!      #(action-v2.tu/update-rows! table-id %)]
+          (qt/with-sync-queue
             (is (= [] (field-values)))
 
             (create! [{:n "a"}])
-            (is (pos? (.size test-queue)))
-            (process-queue!)
             (is (= ["a"] (field-values)))
 
             (create! [{:n "b"} {:n "c"}])
-            (is (pos? (.size test-queue)))
-            (process-queue!)
             (is (= ["a" "b" "c"] (field-values)))
 
             (update! [{:id 2, :n "d"}])
-            (is (pos? (.size test-queue)))
-            (process-queue!)
             (is (= ["a" "c" "d"] (field-values)))
 
+            ;; Creating a duplicate value should not trigger invalidation
             (create! [{:n "a"}])
-            (is (zero? (.size test-queue)))
-            (process-queue!)
             (update! [{:id 1, :n "e"}])
-            (is (pos? (.size test-queue)))
-            (process-queue!)
             (is (= ["a" "c" "d" "e"] (field-values)))))))))
 
 (deftest execute-form-built-in-table-action-test

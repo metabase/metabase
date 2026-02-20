@@ -9,6 +9,7 @@
   :type       :integer
   :default    5
   :visibility :internal
+  :encryption :no
   :export?    false)
 
 (defsetting queue-backend
@@ -16,6 +17,7 @@
   :type       :string
   :default    "appdb"
   :visibility :internal
+  :encryption :no
   :export?    false)
 
 (defsetting topic-backend
@@ -27,4 +29,5 @@
                       "postgres"
                       "memory")))
   :visibility :internal
+  :encryption :no
   :export?    false)

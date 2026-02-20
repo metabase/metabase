@@ -17,7 +17,6 @@
    [metabase.lib.schema.test-spec :as lib.schema.test-spec]
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.search.core :as search]
-   [metabase.search.ingestion :as search.ingestion]
    [metabase.util.date-2 :as u.date]
    [metabase.util.files :as u.files]
    [metabase.util.json :as json]
@@ -26,7 +25,6 @@
    [toucan2.core :as t2])
   (:import
    (com.mchange.v2.c3p0 PoolBackedDataSource)
-   (java.util Queue)
    (java.util.concurrent.locks ReentrantReadWriteLock)))
 
 (set! *warn-on-reflection* true)
@@ -137,7 +135,6 @@
                              [:name ms/NonBlankString]]]
   ;; reset the system clock, in case `/set-time` was called without cleanup
   (alter-var-root #'java-time.clock/*clock* (constantly nil))
-  (.clear ^Queue @#'search.ingestion/queue)
   (restore-snapshot! snapshot-name)
   (search/reindex! {:async? false})
   nil)

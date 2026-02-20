@@ -8,25 +8,20 @@
    [metabase.api.common :as api]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.mq.core :as mq]
    [metabase.query-processor :as qp]
    ;; legacy usage -- don't do things like this going forward
    ^{:clj-kondo/ignore [:deprecated-namespace :discouraged-namespace]} [metabase.query-processor.store :as qp.store]
+   [metabase.startup.core :as startup]
    [metabase.util :as u]
-   [metabase.util.queue :as queue]
    [metabase.warehouse-schema.models.field-values :as field-values]
-   [toucan2.core :as t2])
-  (:import
-   (java.util.concurrent ArrayBlockingQueue)))
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
-(def ^:private ^ArrayBlockingQueue global-field-value-invalidate-queue
-  "Queue used to recalculate the field values for updated columns in the background."
-  (ArrayBlockingQueue. 1000))
-
-(def ^:dynamic *field-value-invalidate-queue*
-  "A layer of indirection on the actual [[field-value-invalidation-queue]], for testing."
-  nil)
+(def queue-name
+  "The name of the persistent queue used for field value invalidation."
+  :queue/field-value-invalidation)
 
 (defn- batch-invalidate-field-values!
   "Recalculate the field values for the given fields."
@@ -34,9 +29,10 @@
   (->> (t2/select :model/Field :id [:in (into #{} cat field-batches)])
        (run! field-values/create-or-update-full-field-values!)))
 
-(defmethod queue/init-listener! ::FieldValueInvalidation [_]
-  (queue/listen! "field-value-invalidate" global-field-value-invalidate-queue batch-invalidate-field-values!
-                 {:max-batch-messages 10, :max-next-ms 10}))
+(defmethod startup/def-startup-logic! ::FieldValueInvalidation [_]
+  (mq/listen! queue-name
+              (fn [{:keys [message]}]
+                (batch-invalidate-field-values! message))))
 
 (defn select-table-pk-fields
   "Given a table-id, return the :model/Field instances corresponding to its PK columns. Do not assume any ordering."
@@ -148,8 +144,8 @@
                           (apply concat))]
     ;; Note that for now we only rescan field values when values are *added* and not when they are *removed*.
     (when (seq stale-fields)
-      (let [^ArrayBlockingQueue queue (or *field-value-invalidate-queue* global-field-value-invalidate-queue)]
-        (.offer queue stale-fields)))))
+      (mq/with-queue queue-name [q]
+        (mq/put q [stale-fields])))))
 
 ;; TODO this is fairly dirty, would be cleaner to map from db values to de-coerced values via middleware
 ;;      invalidation could perhaps be done in response to effect, or in middleware (to dedupe for chained actions)

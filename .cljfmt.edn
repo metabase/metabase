@@ -301,7 +301,6 @@
   metabase.util.malli/with                                                                    [[:default]]
   metabase.util.malli/with-api-error-message                                                  [[:default]]
   metabase.util.namespaces/import-fns                                                         [[:default]]
-  metabase.util.queue-test/await-test-while                                                   [[:block 1]]
   metabase.util/auto-retry                                                                    [[:block 1]]
   metabase.util/case-enum                                                                     [[:block 1]]
   metabase.util/for-map                                                                       [[:block 1]]

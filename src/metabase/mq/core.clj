@@ -23,6 +23,7 @@
    [metabase.mq.queue.backend :as q.backend]
    [metabase.mq.queue.impl :as q.impl]
    [metabase.mq.queue.memory :as q.memory]
+   [metabase.mq.queue.sync :as q.sync]
    [metabase.mq.topic.backend :as topic.backend]
    [metabase.mq.topic.impl :as topic.impl]
    [metabase.mq.topic.memory :as topic.memory]
@@ -34,6 +35,7 @@
 (comment
   q.appdb/keep-me
   q.memory/keep-me
+  q.sync/keep-me
   topic.memory/keep-me
   topic.postgres/keep-me)
 
@@ -43,6 +45,7 @@
 
  [q.impl
   listen!
+  queue-length
   with-queue
   stop-listening!]
 
