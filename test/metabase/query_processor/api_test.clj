@@ -376,6 +376,19 @@
                     (mt/user-http-request :rasta :post "dataset"
                                           (mt/mbql-query venues {:limit 1}))))))))
 
+(deftest blocked-database-permissions-test
+  (testing "POST /api/dataset should return an error when the user has blocked view-data permissions on the database (OSS)"
+    (mt/with-premium-features #{}
+      (mt/with-temp-copy-of-db
+        (mt/with-no-data-perms-for-all-users!
+          (perms/set-database-permission! (perms/all-users-group) (mt/id) :perms/view-data :blocked)
+          (perms/set-database-permission! (perms/all-users-group) (mt/id) :perms/create-queries :no)
+          (is (malli= [:map
+                       [:status [:= "failed"]]
+                       [:error  [:= "You do not have permissions to run this query."]]]
+                      (mt/user-http-request :rasta :post "dataset"
+                                            (mt/mbql-query venues {:limit 1})))))))))
+
 (deftest api-card-join-permissions-test
   (testing "POST /api/dataset should error for card join permission violations"
     (mt/with-non-admin-groups-no-root-collection-perms
