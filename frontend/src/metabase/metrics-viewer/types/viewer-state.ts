@@ -78,7 +78,7 @@ export function getInitialMetricsViewerTabLayout(
   const { supportsMultipleSeries } = DISPLAY_TYPE_REGISTRY[displayType];
   return {
     split: !supportsMultipleSeries,
-    spacing: 3,
+    spacing: 0,
   };
 }
 

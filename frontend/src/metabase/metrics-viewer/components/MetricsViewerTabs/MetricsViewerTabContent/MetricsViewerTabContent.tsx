@@ -264,6 +264,7 @@ export function MetricsViewerTabContent({
             displayType={tab.display}
             value={tab.layout}
             onChange={handleLayoutChange}
+            seriesCount={rawSeries.length}
           />
         </Flex>
       )}
