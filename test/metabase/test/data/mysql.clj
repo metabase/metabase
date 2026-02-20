@@ -1,6 +1,7 @@
 (ns metabase.test.data.mysql
   "Code for creating / destroying a MySQL database from a `DatabaseDefinition`."
   (:require
+   [clojure.java.jdbc :as jdbc]
    [clojure.string :as str]
    [metabase.test.data.impl.get-or-create :as test.data.impl.get-or-create]
    [metabase.test.data.interface :as tx]
