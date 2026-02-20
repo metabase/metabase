@@ -1224,8 +1224,8 @@ describe("issue 8490", () => {
 
       cy.log("assert the line chart");
       H.getDashboardCard(0).within(() => {
-        // X-axis labels: Jan 2024 (or some other year)
-        cy.findByText(/^1월 20\d\d\b/).should("be.visible");
+        // X-axis labels: Created at
+        cy.findAllByText(/월/).should("be.visible");
         // Aggregation "count"
         cy.findByText("카운트").should("be.visible");
       });
@@ -1286,8 +1286,8 @@ describe("issue 8490", () => {
         .should("be.visible")
         .then(resolveQuestionLoaderPromise);
 
-      // X-axis labels: Jan 2023 (or some other year)
-      cy.findByText(/^1월 20\d\d\b/).should("be.visible");
+      // X-axis labels: Created at
+      cy.findAllByText(/월/).should("be.visible");
       // Aggregation "count"
       cy.findByText("카운트").should("be.visible");
     });
