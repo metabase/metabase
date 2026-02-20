@@ -48,7 +48,7 @@ runs:
       run: |
         cd temp/base-ref-src
         bun install
-        SKIP_MAIN_APP=true MB_EDITION=${{ inputs.edition }} bun run build-release
+        MB_EDITION=${{ inputs.edition }} bun run build-release
     - name: Compare sizes and set output
       id: compare
       shell: bash
