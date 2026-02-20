@@ -11,7 +11,7 @@ export const SlackConfiguration = () => {
   const bugReportingEnabled = useSetting("bug-reporting-enabled") ?? false;
   const { data: appInfo } = useGetSlackAppInfoQuery();
 
-  const iconUrl = "/app/assets/img/metabot-slack-icon.png";
+  const iconUrl = "/app/assets/img/metabot-slackbot.png";
   const basicInfoUrl = appInfo?.app_id
     ? `https://api.slack.com/apps/${appInfo.app_id}/general#edit`
     : `https://api.slack.com/apps`;
@@ -33,6 +33,7 @@ export const SlackConfiguration = () => {
           w={80}
           h={80}
           bdrs="sm"
+          bd="1px solid var(--mb-color-border)"
         />
         <Stack gap="sm" align="flex-start">
           <Button
