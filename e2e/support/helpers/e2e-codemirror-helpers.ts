@@ -1,4 +1,4 @@
-import { metaKey } from "./e2e-boolean-helpers";
+import { metaKey } from "./e2e-browser-helpers";
 
 type TypeOptions = {
   delay?: number;
