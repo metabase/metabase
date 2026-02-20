@@ -3824,6 +3824,19 @@
               (is (mi/can-read? card)))
             (is (= [[1] [2]] (mt/rows (process-query))))))))))
 
+(deftest blocked-database-permissions-card-query-test
+  (testing "POST /api/card/:id/query should return an error when the user has blocked view-data permissions on the database (OSS)"
+    (mt/with-premium-features #{}
+      (mt/with-temp-copy-of-db
+        (mt/with-no-data-perms-for-all-users!
+          (data-perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/view-data :blocked)
+          (data-perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/create-queries :no)
+          (mt/with-temp [:model/Card {card-id :id} {:dataset_query (mt/mbql-query venues {:limit 1})}]
+            (is (malli= [:map
+                         [:status [:= "failed"]]
+                         [:error_type [:= "missing-required-permissions"]]]
+                        (mt/user-http-request :rasta :post 403 (format "card/%d/query" card-id))))))))))
+
 (defn- native-card-with-template-tags []
   {:dataset_query
    {:type     :native
