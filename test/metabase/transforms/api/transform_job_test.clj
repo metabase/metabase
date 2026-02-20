@@ -115,26 +115,26 @@
                 (let [response (mt/user-http-request :lucky :get 200 "transform-job")]
                   (is (= our-job-ids (returned-job-ids response)))))
               (testing "filtering by tag_ids"
-                (let [response (mt/user-http-request :lucky :get 200 "transform-job" :tag_ids [t2-id])]
+                (let [response (mt/user-http-request :lucky :get 200 "transform-job" :tag-ids [t2-id])]
                   (is (=? [{:schedule "0 0 0 * * ?"
                             :tag_ids [t2-id]
                             :name "Job 3"
                             :id j3-id}]
                           (returned-jobs response)))))
               (testing "filtering by last_run_start_time"
-                (let [response (mt/user-http-request :lucky :get 200 "transform-job" :last_run_start_time "2025-08-26~")]
+                (let [response (mt/user-http-request :lucky :get 200 "transform-job" :last-run-start-time "2025-08-26~")]
                   (is (= #{j2-id} (returned-job-ids response)))))
               (testing "filtering by last_run_statuses"
-                (let [response (mt/user-http-request :lucky :get 200 "transform-job" :last_run_statuses ["started" "succeeded"])]
+                (let [response (mt/user-http-request :lucky :get 200 "transform-job" :last-run-statuses ["started" "succeeded"])]
                   (is (= #{j2-id} (returned-job-ids response)))))
               (testing "filtering by last_run_end_time without scheduled job"
-                (let [response (mt/user-http-request :lucky :get 200 "transform-job" :next_run_start_time "2025-08-26~")]
+                (let [response (mt/user-http-request :lucky :get 200 "transform-job" :next-run-start-time "2025-08-26~")]
                   (is (= #{} (returned-job-ids response)))))
               (testing "filtering by last_run_end_time with scheduled job"
                 (mt/with-temp-scheduler!
                   (transforms.schedule/initialize-job! {:id j1-id, :schedule at-5-second-schedule})
                   (try
-                    (let [response (mt/user-http-request :lucky :get 200 "transform-job" :next_run_start_time "2025-08-27~")]
+                    (let [response (mt/user-http-request :lucky :get 200 "transform-job" :next-run-start-time "2025-08-27~")]
                       (is (=? [{:id j1-id
                                 :last_run {:job_id j1-id
                                            :run_method "cron"

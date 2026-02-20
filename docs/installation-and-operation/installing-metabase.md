@@ -53,7 +53,7 @@ See [Upgrading Metabase](upgrading-metabase.md).
 
 We currently do not distribute Metabase on AWS Marketplace or Azure Marketplace.
 
-Metabase doesn't have an officially supported helm chart.
+Metabase doesn't have an officially supported Helm chart.
 
 ## Connect with a Metabase Expert
 
