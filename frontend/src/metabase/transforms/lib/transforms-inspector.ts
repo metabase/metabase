@@ -1,6 +1,5 @@
 import * as INSPECTOR from "cljs/metabase.transforms_inspector.js";
 import type {
-  CardId,
   InspectorAlertTrigger,
   InspectorCard,
   InspectorCardId,
@@ -9,6 +8,7 @@ import type {
   InspectorLens,
   InspectorLensId,
   InspectorVisitedFields,
+  RowValues,
   VisualizationDisplay,
 } from "metabase-types/api";
 
@@ -33,13 +33,13 @@ export const interestingFields = (
 
 export const evaluateTriggers = (
   lens: InspectorLens,
-  cardsStats: Record<CardId, CardStats>,
+  cardsStats: Record<InspectorCardId, CardStats>,
 ): TriggerResult => INSPECTOR.evaluateTriggers(lens, cardsStats);
 
 export const computeCardStats = (
   lensId: InspectorLensId,
   card: InspectorCard,
-  rows: unknown[][] | undefined,
+  rows: RowValues[] | undefined,
 ): CardStats | null => INSPECTOR.computeCardResult(lensId, card, rows ?? []);
 
 export type DegeneracyResult = {
@@ -50,5 +50,5 @@ export type DegeneracyResult = {
 export const isDegenerate = (
   cardId: InspectorCardId,
   displayType: VisualizationDisplay,
-  cardsStats: Record<string, CardStats>,
+  cardsStats: Record<InspectorCardId, CardStats>,
 ): DegeneracyResult => INSPECTOR.isDegenerate(cardId, displayType, cardsStats);

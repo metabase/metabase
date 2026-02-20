@@ -308,14 +308,6 @@ export type QueryComplexity = {
   reason: string;
 };
 
-type FieldStatsGeneric = "distinct_count" | "nil_percent";
-type FieldStatsNumeric = "min" | "max" | "avg" | "q1" | "q3";
-type FieldStatsTemporal = "earliest" | "latest";
-export type FieldStats =
-  | FieldStatsGeneric
-  | FieldStatsNumeric
-  | FieldStatsTemporal;
-
 export type InspectorFieldStats = {
   distinct_count?: number;
   nil_percent?: number;
@@ -436,6 +428,7 @@ type InspectorCardMetadata = {
   group_id?: string;
   group_role?: "input" | "output";
   group_order?: number;
+  field_id?: number;
 };
 
 export type InspectorCard = {
@@ -452,14 +445,13 @@ export type InspectorCard = {
 
 export type InspectorSummaryHighlight = {
   label: string;
-  value?: unknown;
+  value?: string | number;
   card_id?: InspectorCardId;
 };
 
 export type InspectorLensSummary = {
   text?: string;
   highlights?: InspectorSummaryHighlight[];
-  alerts?: unknown[];
 };
 
 // open schema with name key always present
@@ -505,4 +497,11 @@ export type GetInspectorLensRequest = {
 export type MetabotSuggestedTransform = SuggestedTransform & {
   active: boolean;
   suggestionId: string; // internal unique identifier for marking active/inactive
+};
+
+export type RunInspectorQueryRequest = {
+  transformId: TransformId;
+  lensId: InspectorLensId;
+  query: DatasetQuery;
+  lensParams?: unknown;
 };

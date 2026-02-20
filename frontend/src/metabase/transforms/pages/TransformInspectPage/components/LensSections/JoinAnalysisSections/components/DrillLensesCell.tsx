@@ -1,13 +1,13 @@
-import { t } from "ttag";
+import { c } from "ttag";
 
 import { trackTransformInspectDrillLensClicked } from "metabase/transforms/analytics";
-import type { LensHandle } from "metabase/transforms/pages/TransformInspectPage/types";
 import { Flex } from "metabase/ui";
 import type {
   InspectorDrillLensTrigger,
   TransformId,
 } from "metabase-types/api";
 
+import type { LensHandle } from "../../../../types";
 import { DrillButton } from "../../../DrillButton";
 import { getLensKey, toLensHandle } from "../../../LensNavigator/utils";
 
@@ -42,7 +42,8 @@ export const DrillLensesCell = ({
               navigateToLens(lensHandle);
             }}
           >
-            {t`Inspect`} {drillLens.reason ?? drillLens.lens_id}
+            {c("Button to inspect a specific aspect of a data join")
+              .t`Inspect ${drillLens.reason ?? drillLens.lens_id}`}
           </DrillButton>
         );
       })}

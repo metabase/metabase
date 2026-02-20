@@ -14,15 +14,6 @@ export type CardGroup = {
 type CardGroupWithScore = CardGroup & {
   topScore: number;
 };
-
-const parseTitleParts = (title: string): { field: string; table?: string } => {
-  const match = title.match(/^(.+?)\s*\(([^)]+)\)$/);
-  if (match) {
-    return { field: match[1], table: match[2] };
-  }
-  return { field: title };
-};
-
 export function sortGroupsByScore(
   groups: CardGroup[],
   sources: InspectorSource[],
@@ -32,9 +23,10 @@ export function sortGroupsByScore(
   const scoredFields = interestingFields(allFields, visitedFields);
   const groupsWithScore = groups.map((g) => {
     const topScore = g.inputCards.reduce((maxScore, card) => {
-      const { field } = parseTitleParts(card.title);
-      const score =
-        scoredFields.find((f) => f.name === field)?.interestingness.score ?? 0;
+      const scoredField = scoredFields.find(
+        (f) => f.id === card.metadata.field_id,
+      );
+      const score = scoredField?.interestingness.score ?? 0;
       return Math.max(maxScore, score);
     }, 0);
     return { ...g, topScore };

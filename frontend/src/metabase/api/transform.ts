@@ -3,17 +3,16 @@ import type {
   CheckQueryComplexityRequest,
   CreateTransformRequest,
   Dataset,
-  DatasetQuery,
   ExtractColumnsFromQueryRequest,
   ExtractColumnsFromQueryResponse,
   GetInspectorLensRequest,
   InspectorDiscoveryResponse,
   InspectorLens,
-  InspectorLensId,
   ListTransformRunsRequest,
   ListTransformRunsResponse,
   ListTransformsRequest,
   QueryComplexity,
+  RunInspectorQueryRequest,
   RunTransformResponse,
   Transform,
   TransformId,
@@ -241,15 +240,7 @@ export const transformApi = Api.injectEndpoints({
       }),
       providesTags: provideInspectorLensTags,
     }),
-    runInspectorQuery: builder.query<
-      Dataset,
-      {
-        transformId: TransformId;
-        lensId: InspectorLensId;
-        query: DatasetQuery;
-        lensParams?: unknown;
-      }
-    >({
+    runInspectorQuery: builder.query<Dataset, RunInspectorQueryRequest>({
       query: ({ transformId, lensId, query, lensParams }) => ({
         method: "POST",
         url: `/api/transform/${transformId}/inspect/${lensId}/query`,

@@ -46,7 +46,6 @@ export const LensContent = ({
   const {
     data: lens,
     isLoading,
-    isFetching,
     error,
   } = useGetInspectorLensQuery({
     transformId: transform.id,
@@ -89,13 +88,10 @@ export const LensContent = ({
     [lens],
   );
 
-  if (isLoading || isFetching || error || !lens) {
+  if (isLoading || error || !lens) {
     return (
       <Center h={200}>
-        <LoadingAndErrorWrapper
-          loading={isLoading || isFetching}
-          error={error}
-        />
+        <LoadingAndErrorWrapper loading={isLoading} error={error} />
       </Center>
     );
   }

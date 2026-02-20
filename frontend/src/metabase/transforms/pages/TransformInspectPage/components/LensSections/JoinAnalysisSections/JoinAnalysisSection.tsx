@@ -115,8 +115,8 @@ export const JoinAnalysisSection = ({ cards }: JoinAnalysisSectionProps) => {
           width: "auto",
           cell: ({ row }) => (
             <JoinStepStatCell
-              cardStats={row.original.cardStats}
-              statKey="output_count"
+              value={row.original.cardStats?.["output_count"]}
+              isLoading={!row.original.cardStats}
             />
           ),
         },
@@ -126,8 +126,8 @@ export const JoinAnalysisSection = ({ cards }: JoinAnalysisSectionProps) => {
           width: "auto",
           cell: ({ row }) => (
             <JoinStepStatCell
-              cardStats={row.original.cardStats}
-              statKey="matched_count"
+              value={row.original.cardStats?.["matched_count"]}
+              isLoading={!row.original.cardStats}
             />
           ),
         },

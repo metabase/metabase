@@ -73,7 +73,7 @@ export function RunSection({ transform, readOnly, noTitle }: RunSectionProps) {
   return (
     <TitleSection
       label={t`Run this transform`}
-      description={t`This transform will be run whenever the jobs it belongs are scheduled.`}
+      description={t`This transform will be run whenever the jobs it belongs to are scheduled.`}
     >
       {content}
     </TitleSection>

@@ -1,18 +1,16 @@
 import { Loader, Text } from "metabase/ui";
 
-import type { CardStats } from "../../../../types";
-
 type JoinStepStatCellProps = {
-  cardStats: CardStats | undefined;
-  statKey: string;
+  value: undefined | unknown;
+  isLoading: boolean;
 };
 
 export const JoinStepStatCell = ({
-  cardStats,
-  statKey,
+  value,
+  isLoading,
 }: JoinStepStatCellProps) => {
-  if (!cardStats) {
+  if (isLoading) {
     return <Loader size="xs" />;
   }
-  return <Text fw={500}>{cardStats?.[statKey]?.toString() ?? "-"}</Text>;
+  return <Text fw={500}>{value?.toString() ?? "-"}</Text>;
 };
