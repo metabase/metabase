@@ -14,26 +14,26 @@ export const GitSyncSetupMenuItem = (props: GitSyncSetupMenuItemProps) => {
   const { isNavbarOpened, onClick } = props;
   const isAdmin = useSelector(getUserIsAdmin);
   const isRemoteSyncEnabled = useSetting("remote-sync-enabled");
-  // Only show the "Set up Git Sync" menu item when user is admin and remote sync is not yet enabled
+  // Only show the "Set up remote sync" menu item when user is admin and remote sync is not yet enabled
   const isVisible = isAdmin && !isRemoteSyncEnabled;
 
   if (isVisible) {
     return (
       <Tooltip
-        label={t`Set up git sync`}
+        label={t`Set up remote sync`}
         position="right"
         openDelay={TOOLTIP_OPEN_DELAY}
         disabled={isNavbarOpened}
       >
         <UnstyledButton
-          aria-label={t`Set up git sync`}
+          aria-label={t`Set up remote sync`}
           bdrs="md"
           className={S.tab}
           onClick={onClick}
           p="0.5rem"
         >
           <FixedSizeIcon name="gear" className={S.icon} />
-          {isNavbarOpened && <Text lh="sm">{t`Set up git sync`}</Text>}
+          {isNavbarOpened && <Text lh="sm">{t`Set up remote sync`}</Text>}
         </UnstyledButton>
       </Tooltip>
     );

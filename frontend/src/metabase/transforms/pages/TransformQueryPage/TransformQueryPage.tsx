@@ -9,6 +9,7 @@ import {
   useGetTransformQuery,
   useUpdateTransformMutation,
 } from "metabase/api";
+import { getErrorMessage } from "metabase/api/utils";
 import { EmptyState } from "metabase/common/components/EmptyState/EmptyState";
 import { LeaveRouteConfirmModal } from "metabase/common/components/LeaveConfirmModal";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
@@ -74,6 +75,8 @@ export function TransformQueryPage({ params, route }: TransformQueryPageProps) {
 
   return (
     <TransformQueryPageBody
+      // Add key so the ui state gets reset when switching between edit and view
+      key={route.path}
       transform={transform}
       databases={transformsDatabases}
       route={route}
@@ -132,7 +135,12 @@ function TransformQueryPageBody({
     onSave: async (request) => {
       const { error } = await updateTransform(request);
       if (error) {
-        sendErrorToast(t`Failed to update transform query`);
+        const message = getErrorMessage(error);
+        sendErrorToast(
+          message
+            ? t`Failed to update transform query: ${message}`
+            : t`Failed to update transform query`,
+        );
       } else {
         sendSuccessToast(t`Transform query updated`);
 

@@ -1,7 +1,7 @@
 (ns ^:mb/driver-tests metabase-enterprise.workspaces.drivers-test
   (:require
    [clojure.test :refer :all]
-   [metabase.driver :as driver]
+   [metabase.driver.connection.workspaces :as driver.w]
    [metabase.test :as mt]))
 
 (deftest drivers-support-workspaces-has-to-support-db-swapping-test
@@ -13,7 +13,7 @@
                           (catch Exception _e
                             true)))]
       (testing "db is swapped if being executed inside a macros"
-        (driver/with-swapped-connection-details (mt/id) {:user "unicorn"}
+        (driver.w/with-swapped-connection-details (mt/id) {:user "unicorn"}
           (is (db-swapped?))))
 
       (testing "sanity check that it's not swapped outside of the macros"

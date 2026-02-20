@@ -77,6 +77,11 @@
         (str "[$" currency-identifier "]" base-string)
         (str "[$" currency-identifier "] " base-string))
 
+      "narrowSymbol"
+      (if (currency/supports-symbol? currency-code)
+        (str "[$" currency-identifier "]" base-string)
+        (str "[$" currency-identifier "] " base-string))
+
       "code"
       (str "[$" currency-identifier "] " base-string)
 
