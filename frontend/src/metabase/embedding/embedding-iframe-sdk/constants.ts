@@ -125,3 +125,9 @@ export const DISABLE_UPDATE_FOR_KEYS = [
 ] as const satisfies AllowedEmbedSettingKey[];
 
 export const METABASE_CONFIG_IS_PROXY_FIELD_NAME = "__isProxy";
+
+/**
+ * Used to allow parallel loading of EmbedJS iframes
+ */
+export const EMBED_JS_IFRAME_IDENTIFIER_QUERY_PARAMETER_NAME =
+  "embed-js-identifier";
