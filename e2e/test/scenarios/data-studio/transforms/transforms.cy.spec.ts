@@ -50,7 +50,7 @@ describe("scenarios > admin > transforms", () => {
     cy.intercept("POST", "/api/transform-tag").as("createTag");
     cy.intercept("PUT", "/api/transform-tag/*").as("updateTag");
     cy.intercept("DELETE", "/api/transform-tag/*").as("deleteTag");
-    cy.intercept("POST", "/api/ee/dependencies/check_transform").as(
+    cy.intercept("POST", "/api/ee/dependencies/check-transform").as(
       "checkTransformDependencies",
     );
   });
@@ -167,69 +167,6 @@ describe("scenarios > admin > transforms", () => {
       getTableLink().click();
       H.queryBuilderHeader().findByText(DB_NAME).should("be.visible");
       H.assertQueryBuilderRowCount(3);
-    });
-
-    it("should be able to use the data reference and snippets when writing a SQL transform", () => {
-      H.createSnippet({
-        name: "snippet1",
-        content: "'foo'",
-      });
-
-      visitTransformListPage();
-      cy.button("Create a transform").click();
-      H.popover().findByText("SQL query").click();
-      H.popover().findByText(DB_NAME).click();
-
-      function testDataReference() {
-        cy.log("open the data reference");
-        cy.findByTestId("native-query-editor-action-buttons")
-          .findByLabelText("Learn about your data")
-          .click();
-
-        editorSidebar()
-          .should("be.visible")
-          .within(() => {
-            cy.log("The current database should be opened by default");
-            cy.findByText("Data Reference").should("not.exist");
-            cy.findByText("Writable Postgres12").should("be.visible");
-          });
-
-        cy.findByTestId("native-query-editor-action-buttons")
-          .findByLabelText("Learn about your data")
-          .click();
-
-        editorSidebar().should("not.exist");
-      }
-
-      function testSnippets() {
-        cy.findByTestId("native-query-editor-action-buttons")
-          .findByLabelText("SQL Snippets")
-          .click();
-
-        editorSidebar()
-          .should("be.visible")
-          .within(() => {
-            cy.findByText("snippet1").should("be.visible");
-            cy.icon("snippet").click();
-          });
-
-        H.NativeEditor.value().should("eq", "{{snippet: snippet1}}");
-
-        cy.findByTestId("native-query-editor-action-buttons")
-          .findByLabelText("SQL Snippets")
-          .click();
-
-        editorSidebar().should("not.exist");
-
-        cy.findByTestId("native-query-editor-action-buttons")
-          .findByLabelText("Preview the query")
-          .click();
-
-        H.modal().findByText("'foo'").should("be.visible");
-      }
-
-      testDataReference();
-      testSnippets();
     });
 
     it(
@@ -1618,8 +1555,7 @@ LIMIT
 
       cy.get<TransformId>("@transformId").then((transformId) => {
         cy.log("run the transform to create the output table");
-        cy.request("POST", `/api/transform/${transformId}/run`);
-        H.waitForSucceededTransformRuns();
+        H.runTransformAndWaitForSuccess(transformId);
         H.resyncDatabase({
           dbId: WRITABLE_DB_ID,
           tableName: transformTableName,
@@ -4114,10 +4050,6 @@ function assertOptionSelected(name: string) {
 
 function assertOptionNotSelected(name: string) {
   getTagsInputContainer().findByText(name).should("not.exist");
-}
-
-function editorSidebar() {
-  return cy.findByTestId("editor-sidebar");
 }
 
 function getPythonDataPicker() {

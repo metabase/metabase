@@ -167,6 +167,7 @@ export const NativeQueryEditor = forwardRef<
     },
     toggleDataReference,
     toggleSnippetSidebar,
+    toggleTemplateTagsEditor,
     topBarInnerContent,
   } = props;
   const isRemoteSyncReadOnly = useSelector(
@@ -308,6 +309,7 @@ export const NativeQueryEditor = forwardRef<
           toggleEditor={toggleEditor}
           toggleDataReference={toggleDataReference}
           toggleSnippetSidebar={toggleSnippetSidebar}
+          toggleTemplateTagsEditor={toggleTemplateTagsEditor}
           setParameterValue={setParameterValue}
           setDatasetQuery={setDatasetQuery}
           onFormatQuery={handleFormatQuery}
