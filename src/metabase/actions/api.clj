@@ -228,7 +228,7 @@
    _query-params
    {:keys [parameters], :as _body} :- [:maybe [:map
                                                [:parameters {:optional true} [:maybe [:map-of :keyword any?]]]]]]
-  (let [{:keys [type] :as action} (api/check-404 (actions.models/select-action :id id :archived false))]
+  (let [{:keys [type] :as action} (api/read-check (actions.models/select-action :id id :archived false))]
     (analytics/track-event! :snowplow/action
                             {:event     :action-executed
                              :source    :model_detail

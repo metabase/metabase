@@ -2326,7 +2326,7 @@ describe("scenarios > dashboard > parameters", () => {
       H.getDashboardCard(1).within(() => {
         H.filterWidget({ isEditing: true })
           .contains("Category 1")
-          .should("exist")
+          .should("be.visible")
           .click();
       });
 
