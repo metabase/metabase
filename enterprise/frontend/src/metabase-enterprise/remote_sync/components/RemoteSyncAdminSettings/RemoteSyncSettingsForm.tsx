@@ -146,6 +146,60 @@ export const RemoteSyncSettingsForm = (props: RemoteSyncSettingsFormProps) => {
     modalContent: disableConfirmationModal,
   } = useConfirmation();
 
+  const initialValues = useMemo(() => {
+    const values = REMOTE_SYNC_SCHEMA.cast(settingValues, {
+      stripUnknown: true,
+    });
+    const tokenValue =
+      settingDetails?.[TOKEN_KEY]?.value ?? settingValues?.[TOKEN_KEY];
+
+    // Build initial collection sync map from server data
+    const collectionSyncMap: Record<number, boolean> = {};
+
+    // For modal variant during first-time setup, default library to checked
+    const shouldDefaultToChecked = isModalVariant && !isRemoteSyncEnabled;
+
+    // Add library collection
+    if (libraryCollection) {
+      collectionSyncMap[libraryCollection.id] = shouldDefaultToChecked
+        ? true
+        : (libraryCollection.is_remote_synced ?? false);
+    }
+
+    // Add top-level collections (excluding personal)
+    topLevelCollectionsData?.data
+      ?.filter((c) => !c.personal_owner_id)
+      .forEach((collection) => {
+        collectionSyncMap[collection.id] = collection.is_remote_synced ?? false;
+      });
+
+    // Add tenant collections
+    tenantCollectionsData?.data?.forEach((collection) => {
+      collectionSyncMap[collection.id] = collection.is_remote_synced ?? false;
+    });
+
+    return {
+      ...values,
+      [TOKEN_KEY]: tokenValue,
+      [COLLECTIONS_KEY]: collectionSyncMap,
+      // For modal variant during first-time setup, default transforms to checked (if enabled)
+      [TRANSFORMS_KEY]:
+        shouldDefaultToChecked && PLUGIN_TRANSFORMS.isEnabled
+          ? true
+          : values[TRANSFORMS_KEY],
+      // For modal variant when library doesn't exist, default to wanting to create and sync it
+      [SYNC_LIBRARY_PENDING_KEY]: shouldDefaultToChecked && !libraryCollection,
+    };
+  }, [
+    settingValues,
+    settingDetails,
+    libraryCollection,
+    topLevelCollectionsData,
+    tenantCollectionsData,
+    isModalVariant,
+    isRemoteSyncEnabled,
+  ]);
+
   const handleSubmit = useCallback(
     async (values: RemoteSyncSettingsFormState) => {
       const didBranchChange =
@@ -171,7 +225,18 @@ export const RemoteSyncSettingsForm = (props: RemoteSyncSettingsFormProps) => {
         }
       }
 
-      // Don't send collections when in read-only mode
+      // Only include collections whose sync state actually changed
+      const initialCollections = initialValues[COLLECTIONS_KEY] ?? {};
+      const changedCollections: Record<number, boolean> = {};
+      for (const [idStr, desired] of Object.entries(collectionsMap)) {
+        const id = Number(idStr);
+        if (initialCollections[id] !== desired) {
+          changedCollections[id] = desired;
+        }
+      }
+      const hasCollectionChanges = Object.keys(changedCollections).length > 0;
+
+      // Don't send collections when in read-only mode or when nothing changed
       // Also filter out the sync-library-pending key as it's not a real setting
       const isReadOnly = values[TYPE_KEY] === "read-only";
       const settingsToSave: RemoteSyncConfigurationSettings = {
@@ -182,10 +247,10 @@ export const RemoteSyncSettingsForm = (props: RemoteSyncSettingsFormProps) => {
         [BRANCH_KEY]: values[BRANCH_KEY],
         [AUTO_IMPORT_KEY]: values[AUTO_IMPORT_KEY],
         [TRANSFORMS_KEY]: values[TRANSFORMS_KEY],
-        ...(isReadOnly
+        ...(isReadOnly || !hasCollectionChanges
           ? {}
           : {
-              [COLLECTIONS_KEY]: collectionsMap,
+              [COLLECTIONS_KEY]: changedCollections,
             }),
       };
 
@@ -246,6 +311,7 @@ export const RemoteSyncSettingsForm = (props: RemoteSyncSettingsFormProps) => {
     },
     [
       settingValues,
+      initialValues,
       updateRemoteSyncSettings,
       isModalVariant,
       libraryCollection,
@@ -280,60 +346,6 @@ export const RemoteSyncSettingsForm = (props: RemoteSyncSettingsFormProps) => {
       },
     });
   }, [updateRemoteSyncSettings, sendToast, showDisableConfirmation]);
-
-  const initialValues = useMemo(() => {
-    const values = REMOTE_SYNC_SCHEMA.cast(settingValues, {
-      stripUnknown: true,
-    });
-    const tokenValue =
-      settingDetails?.[TOKEN_KEY]?.value ?? settingValues?.[TOKEN_KEY];
-
-    // Build initial collection sync map from server data
-    const collectionSyncMap: Record<number, boolean> = {};
-
-    // For modal variant during first-time setup, default library to checked
-    const shouldDefaultToChecked = isModalVariant && !isRemoteSyncEnabled;
-
-    // Add library collection
-    if (libraryCollection) {
-      collectionSyncMap[libraryCollection.id] = shouldDefaultToChecked
-        ? true
-        : (libraryCollection.is_remote_synced ?? false);
-    }
-
-    // Add top-level collections (excluding personal)
-    topLevelCollectionsData?.data
-      ?.filter((c) => !c.personal_owner_id)
-      .forEach((collection) => {
-        collectionSyncMap[collection.id] = collection.is_remote_synced ?? false;
-      });
-
-    // Add tenant collections
-    tenantCollectionsData?.data?.forEach((collection) => {
-      collectionSyncMap[collection.id] = collection.is_remote_synced ?? false;
-    });
-
-    return {
-      ...values,
-      [TOKEN_KEY]: tokenValue,
-      [COLLECTIONS_KEY]: collectionSyncMap,
-      // For modal variant during first-time setup, default transforms to checked (if enabled)
-      [TRANSFORMS_KEY]:
-        shouldDefaultToChecked && PLUGIN_TRANSFORMS.isEnabled
-          ? true
-          : values[TRANSFORMS_KEY],
-      // For modal variant when library doesn't exist, default to wanting to create and sync it
-      [SYNC_LIBRARY_PENDING_KEY]: shouldDefaultToChecked && !libraryCollection,
-    };
-  }, [
-    settingValues,
-    settingDetails,
-    libraryCollection,
-    topLevelCollectionsData,
-    tenantCollectionsData,
-    isModalVariant,
-    isRemoteSyncEnabled,
-  ]);
 
   // eslint-disable-next-line metabase/no-unconditional-metabase-links-render -- This links only shows for admins.
   const { url: docsUrl } = useDocsUrl(
