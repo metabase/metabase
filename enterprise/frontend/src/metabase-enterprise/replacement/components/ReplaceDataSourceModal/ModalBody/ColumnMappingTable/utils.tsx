@@ -3,11 +3,10 @@ import { t } from "ttag";
 import type { TreeTableColumnDef } from "metabase/ui";
 import type { ReplaceSourceColumnMapping } from "metabase-types/api";
 
-import { getErrorListLabel } from "../../../../utils";
 import type { EntityInfo } from "../../types";
 
-import { ColumnInfoCell } from "./ColumnInfoCell";
 import { ErrorsCell } from "./ErrorsCell";
+import { NameCell } from "./NameCell";
 import type { ColumnMappingItem } from "./types";
 
 function getEntityName(entityInfo: EntityInfo | undefined): string {
@@ -42,14 +41,11 @@ function getSourceColumn(
     id: "source",
     header,
     width: "auto",
-    maxAutoWidth: 520,
     enableSorting: true,
     accessorFn: (item) => item.source?.display_name,
     cell: ({ row }) => {
       const item = row.original;
-      return item.source != null ? (
-        <ColumnInfoCell column={item.source} />
-      ) : null;
+      return item.source != null ? <NameCell column={item.source} /> : null;
     },
   };
 }
@@ -61,14 +57,11 @@ function getTargetColumn(
     id: "target",
     header,
     width: "auto",
-    maxAutoWidth: 520,
     enableSorting: true,
     accessorFn: (item) => item.target?.display_name,
     cell: ({ row }) => {
       const item = row.original;
-      return item.target != null ? (
-        <ColumnInfoCell column={item.target} />
-      ) : null;
+      return item.target != null ? <NameCell column={item.target} /> : null;
     },
   };
 }
@@ -78,15 +71,14 @@ function getErrorsColumn(): TreeTableColumnDef<ColumnMappingItem> {
     id: "errors",
     header: t`Errors`,
     width: "auto",
-    maxAutoWidth: 300,
     enableSorting: true,
-    accessorFn: (item) => getErrorListLabel(item.errors ?? []),
+    accessorFn: (item) => item.errors?.length ?? 0,
     cell: ({ row }) => {
-      const { errors } = row.original;
+      const { source, target, errors } = row.original;
       if (errors == null || errors.length === 0) {
         return null;
       }
-      return <ErrorsCell errors={errors} />;
+      return <ErrorsCell source={source} target={target} errors={errors} />;
     },
   };
 }
