@@ -112,7 +112,7 @@
    [:node/type [:= :filter/comparison]]
    [:operator [:enum := :!= :< :<= :> :>=]]
    [:dimension ::dimension-ref-node]
-   [:value :any]])
+   [:values [:sequential :any]]])
 
 (mr/def ::filter-between
   "Between filter for range checks."
@@ -146,6 +146,17 @@
    [:dimension ::dimension-ref-node]
    [:values [:sequential :any]]])
 
+(mr/def ::filter-inside
+  "Geographic bounding-box filter."
+  [:map
+   [:node/type [:= :filter/inside]]
+   [:lat-dimension ::dimension-ref-node]
+   [:lon-dimension ::dimension-ref-node]
+   [:north :any]
+   [:east :any]
+   [:south :any]
+   [:west :any]])
+
 (mr/def ::filter-temporal
   "Temporal filter for time-based operations."
   [:map
@@ -153,7 +164,9 @@
    [:operator [:enum :time-interval :relative-time-interval]]
    [:dimension ::dimension-ref-node]
    [:value int?]
-   [:unit keyword?]])
+   [:unit keyword?]
+   [:offset-value {:optional true} [:maybe int?]]
+   [:offset-unit {:optional true} [:maybe keyword?]]])
 
 (mr/def ::filter-mbql
   "Raw MBQL filter clause passthrough for source filters."
@@ -167,6 +180,7 @@
   [:or
    ::filter-comparison
    ::filter-between
+   ::filter-inside
    ::filter-string
    ::filter-null
    ::filter-in

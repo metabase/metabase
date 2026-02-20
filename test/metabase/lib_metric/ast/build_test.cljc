@@ -207,7 +207,7 @@
         (is (= :filter/comparison (:node/type result)))
         (is (= op (:operator result)))
         (is (= uuid-1 (get-in result [:dimension :dimension-id])))
-        (is (= 42 (:value result)))))))
+        (is (= [42] (:values result)))))))
 
 (deftest ^:parallel mbql-filter->ast-filter-between-test
   (testing "converts between filter"
@@ -216,6 +216,18 @@
       (is (= uuid-1 (get-in result [:dimension :dimension-id])))
       (is (= 10 (:min result)))
       (is (= 100 (:max result))))))
+
+(deftest ^:parallel mbql-filter->ast-filter-inside-test
+  (testing "converts inside filter"
+    (let [result (ast.build/mbql-filter->ast-filter
+                  [:inside {} [:dimension {} uuid-1] [:dimension {} uuid-2] 40.0 -73.0 39.0 -74.0])]
+      (is (= :filter/inside (:node/type result)))
+      (is (= uuid-1 (get-in result [:lat-dimension :dimension-id])))
+      (is (= uuid-2 (get-in result [:lon-dimension :dimension-id])))
+      (is (= 40.0 (:north result)))
+      (is (= -73.0 (:east result)))
+      (is (= 39.0 (:south result)))
+      (is (= -74.0 (:west result))))))
 
 (deftest ^:parallel mbql-filter->ast-filter-string-test
   (testing "converts string filters"
@@ -251,7 +263,18 @@
       (is (= :filter/temporal (:node/type result)))
       (is (= :time-interval (:operator result)))
       (is (= -30 (:value result)))
-      (is (= :day (:unit result))))))
+      (is (= :day (:unit result)))
+      (is (nil? (:offset-value result)))))
+
+  (testing "converts relative-time-interval filter with offsets"
+    (let [result (ast.build/mbql-filter->ast-filter
+                  [:relative-time-interval {} [:dimension {} uuid-1] -7 "day" -1 "month"])]
+      (is (= :filter/temporal (:node/type result)))
+      (is (= :relative-time-interval (:operator result)))
+      (is (= -7 (:value result)))
+      (is (= :day (:unit result)))
+      (is (= -1 (:offset-value result)))
+      (is (= :month (:offset-unit result))))))
 
 (deftest ^:parallel mbql-filter->ast-filter-compound-test
   (testing "converts and filter"

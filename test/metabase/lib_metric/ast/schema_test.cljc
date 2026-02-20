@@ -132,19 +132,19 @@
   (let [dim-ref {:node/type :ast/dimension-ref :dimension-id uuid-1}]
     (testing "valid comparison filters"
       (are [node] (nil? (me/humanize (mr/explain ::ast.schema/filter-comparison node)))
-        {:node/type :filter/comparison :operator := :dimension dim-ref :value "Electronics"}
-        {:node/type :filter/comparison :operator :!= :dimension dim-ref :value 100}
-        {:node/type :filter/comparison :operator :< :dimension dim-ref :value 50}
-        {:node/type :filter/comparison :operator :<= :dimension dim-ref :value 50}
-        {:node/type :filter/comparison :operator :> :dimension dim-ref :value 0}
-        {:node/type :filter/comparison :operator :>= :dimension dim-ref :value 0}))
+        {:node/type :filter/comparison :operator := :dimension dim-ref :values ["Electronics"]}
+        {:node/type :filter/comparison :operator :!= :dimension dim-ref :values [100]}
+        {:node/type :filter/comparison :operator :< :dimension dim-ref :values [50]}
+        {:node/type :filter/comparison :operator :<= :dimension dim-ref :values [50]}
+        {:node/type :filter/comparison :operator :> :dimension dim-ref :values [0]}
+        {:node/type :filter/comparison :operator :>= :dimension dim-ref :values [0]}))
     (testing "invalid comparison filters"
       (testing "invalid operator"
         (is (some? (me/humanize (mr/explain ::ast.schema/filter-comparison
                                             {:node/type :filter/comparison
                                              :operator  :invalid
                                              :dimension dim-ref
-                                             :value     1}))))))))
+                                             :values    [1]}))))))))
 
 (deftest ^:parallel filter-between-test
   (let [dim-ref {:node/type :ast/dimension-ref :dimension-id uuid-1}]
@@ -158,6 +158,27 @@
                                             {:node/type :filter/between
                                              :dimension dim-ref
                                              :max       100}))))))))
+
+(deftest ^:parallel filter-inside-test
+  (let [dim-ref-a {:node/type :ast/dimension-ref :dimension-id uuid-1}
+        dim-ref-b {:node/type :ast/dimension-ref :dimension-id uuid-2}]
+    (testing "valid inside filter"
+      (is (nil? (me/humanize (mr/explain ::ast.schema/filter-inside
+                                          {:node/type     :filter/inside
+                                           :lat-dimension dim-ref-a
+                                           :lon-dimension dim-ref-b
+                                           :north         40.0
+                                           :east          -73.0
+                                           :south         39.0
+                                           :west          -74.0})))))
+    (testing "invalid inside filter - missing lon-dimension"
+      (is (some? (me/humanize (mr/explain ::ast.schema/filter-inside
+                                          {:node/type     :filter/inside
+                                           :lat-dimension dim-ref-a
+                                           :north         40.0
+                                           :east          -73.0
+                                           :south         39.0
+                                           :west          -74.0})))))))
 
 (deftest ^:parallel filter-string-test
   (let [dim-ref {:node/type :ast/dimension-ref :dimension-id uuid-1}]
@@ -205,6 +226,13 @@
          :dimension dim-ref
          :value     -30
          :unit      :day}
+        {:node/type    :filter/temporal
+         :operator     :relative-time-interval
+         :dimension    dim-ref
+         :value        -7
+         :unit         :day
+         :offset-value -1
+         :offset-unit  :month}
         {:node/type :filter/temporal
          :operator  :relative-time-interval
          :dimension dim-ref
@@ -213,8 +241,8 @@
 
 (deftest ^:parallel filter-compound-test
   (let [dim-ref {:node/type :ast/dimension-ref :dimension-id uuid-1}
-        filter-a {:node/type :filter/comparison :operator := :dimension dim-ref :value 1}
-        filter-b {:node/type :filter/comparison :operator :> :dimension dim-ref :value 0}]
+        filter-a {:node/type :filter/comparison :operator := :dimension dim-ref :values [1]}
+        filter-b {:node/type :filter/comparison :operator :> :dimension dim-ref :values [0]}]
     (testing "valid compound filters"
       (are [node] (nil? (me/humanize (mr/explain ::ast.schema/filter-node node)))
         {:node/type :filter/and :children [filter-a filter-b]}
@@ -279,7 +307,7 @@
          :filter     {:node/type :filter/comparison
                       :operator  :=
                       :dimension {:node/type :ast/dimension-ref :dimension-id uuid-1}
-                      :value     "test"}
+                      :values    ["test"]}
          :group-by   [{:node/type :ast/dimension-ref :dimension-id uuid-1}]}))
     (testing "invalid root AST"
       (testing "missing source"

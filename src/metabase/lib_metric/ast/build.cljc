@@ -122,11 +122,11 @@
 
         ;; Comparison filters
         (operators/comparison? operator)
-        (let [[dimension-ref value] args]
+        (let [[dimension-ref & values] args]
           {:node/type :filter/comparison
            :operator  operator
            :dimension (dimension-ref->ast-dimension-ref dimension-ref)
-           :value     value})
+           :values    (vec values)})
 
         ;; Range filters (between, inside)
         (operators/range? operator)
@@ -171,12 +171,14 @@
 
         ;; Temporal filters
         (operators/temporal? operator)
-        (let [[dimension-ref value unit] args]
-          {:node/type :filter/temporal
-           :operator  operator
-           :dimension (dimension-ref->ast-dimension-ref dimension-ref)
-           :value     value
-           :unit      (keyword unit)})
+        (let [[dimension-ref value unit offset-value offset-unit] args]
+          (cond-> {:node/type :filter/temporal
+                   :operator  operator
+                   :dimension (dimension-ref->ast-dimension-ref dimension-ref)
+                   :value     value
+                   :unit      (keyword unit)}
+            offset-value (assoc :offset-value offset-value
+                                :offset-unit (keyword offset-unit))))
 
         :else
         (throw (ex-info "Unsupported filter operator" {:operator operator :clause mbql-clause}))))))

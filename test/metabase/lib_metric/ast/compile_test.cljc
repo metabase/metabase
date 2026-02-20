@@ -132,7 +132,7 @@
                                {:node/type :filter/comparison
                                 :operator  :=
                                 :dimension dim-ref-1
-                                :value     "Electronics"})
+                                :values    ["Electronics"]})
         result          (ast.compile/compile-to-mbql ast-with-filter)
         filter          (first (get-in result [:stages 0 :filters]))]
     (is (= := (first filter)))
@@ -203,6 +203,25 @@
     (is (= "x" (nth filter 3)))
     (is (= "y" (nth filter 4)))))
 
+(deftest ^:parallel compile-inside-filter-test
+  (let [ast-with-filter (assoc sample-ast :filter
+                               {:node/type     :filter/inside
+                                :lat-dimension dim-ref-1
+                                :lon-dimension dim-ref-2
+                                :north         40.0
+                                :east          -73.0
+                                :south         39.0
+                                :west          -74.0})
+        result          (ast.compile/compile-to-mbql ast-with-filter)
+        filter          (first (get-in result [:stages 0 :filters]))]
+    (is (= :inside (first filter)))
+    (is (= :field (first (nth filter 2))))
+    (is (= :field (first (nth filter 3))))
+    (is (= 40.0 (nth filter 4)))
+    (is (= -73.0 (nth filter 5)))
+    (is (= 39.0 (nth filter 6)))
+    (is (= -74.0 (nth filter 7)))))
+
 (deftest ^:parallel compile-temporal-filter-test
   (let [ast-with-filter (assoc sample-ast :filter
                                {:node/type :filter/temporal
@@ -216,9 +235,26 @@
     (is (= -30 (nth filter 3)))
     (is (= :day (nth filter 4)))))
 
+(deftest ^:parallel compile-relative-time-interval-filter-test
+  (let [ast-with-filter (assoc sample-ast :filter
+                               {:node/type    :filter/temporal
+                                :operator     :relative-time-interval
+                                :dimension    dim-ref-1
+                                :value        -7
+                                :unit         :day
+                                :offset-value -1
+                                :offset-unit  :month})
+        result          (ast.compile/compile-to-mbql ast-with-filter)
+        filter          (first (get-in result [:stages 0 :filters]))]
+    (is (= :relative-time-interval (first filter)))
+    (is (= -7 (nth filter 3)))
+    (is (= :day (nth filter 4)))
+    (is (= -1 (nth filter 5)))
+    (is (= :month (nth filter 6)))))
+
 (deftest ^:parallel compile-and-filter-test
-  (let [filter-a        {:node/type :filter/comparison :operator := :dimension dim-ref-1 :value "a"}
-        filter-b        {:node/type :filter/comparison :operator :> :dimension dim-ref-2 :value 10}
+  (let [filter-a        {:node/type :filter/comparison :operator := :dimension dim-ref-1 :values ["a"]}
+        filter-b        {:node/type :filter/comparison :operator :> :dimension dim-ref-2 :values [10]}
         ast-with-filter (assoc sample-ast :filter
                                {:node/type :filter/and
                                 :children  [filter-a filter-b]})
@@ -230,8 +266,8 @@
     (is (= :> (first (nth filter 3))))))
 
 (deftest ^:parallel compile-or-filter-test
-  (let [filter-a        {:node/type :filter/comparison :operator := :dimension dim-ref-1 :value "a"}
-        filter-b        {:node/type :filter/comparison :operator := :dimension dim-ref-1 :value "b"}
+  (let [filter-a        {:node/type :filter/comparison :operator := :dimension dim-ref-1 :values ["a"]}
+        filter-b        {:node/type :filter/comparison :operator := :dimension dim-ref-1 :values ["b"]}
         ast-with-filter (assoc sample-ast :filter
                                {:node/type :filter/or
                                 :children  [filter-a filter-b]})
@@ -240,7 +276,7 @@
     (is (= :or (first filter)))))
 
 (deftest ^:parallel compile-not-filter-test
-  (let [filter-a        {:node/type :filter/comparison :operator := :dimension dim-ref-1 :value "exclude"}
+  (let [filter-a        {:node/type :filter/comparison :operator := :dimension dim-ref-1 :values ["exclude"]}
         ast-with-filter (assoc sample-ast :filter
                                {:node/type :filter/not
                                 :child     filter-a})
@@ -345,7 +381,7 @@
                                     {:node/type :filter/comparison
                                      :operator  :=
                                      :dimension fk-dim-ref
-                                     :value     "Widgets"})
+                                     :values    ["Widgets"]})
           result             (ast.compile/compile-to-mbql ast-with-fk-filter)
           filter-clause      (first (get-in result [:stages 0 :filters]))
           field-ref          (nth filter-clause 2)]
@@ -367,7 +403,7 @@
                                      :children  [{:node/type :filter/comparison
                                                   :operator  :=
                                                   :dimension dim-ref-1
-                                                  :value     "Electronics"}
+                                                  :values    ["Electronics"]}
                                                  {:node/type :filter/temporal
                                                   :operator  :time-interval
                                                   :dimension dim-ref-2
@@ -402,7 +438,7 @@
                                {:node/type :filter/comparison
                                 :operator  :=
                                 :dimension unknown-dim-ref
-                                :value     "value"})]
+                                :values    ["value"]})]
     (testing "throws when dimension cannot be resolved"
       (is (thrown-with-msg? #?(:clj clojure.lang.ExceptionInfo :cljs ExceptionInfo)
                             #"Unable to resolve dimension"
@@ -414,7 +450,7 @@
   (let [source-filter {:node/type :filter/comparison
                        :operator  :=
                        :dimension dim-ref-1
-                       :value     "source-value"}
+                       :values    ["source-value"]}
         ast-with-source-filter (assoc-in sample-ast [:source :filters] source-filter)
         result                 (ast.compile/compile-to-mbql ast-with-source-filter)
         filters                (get-in result [:stages 0 :filters])]
@@ -427,11 +463,11 @@
   (let [source-filter {:node/type :filter/comparison
                        :operator  :=
                        :dimension dim-ref-1
-                       :value     "source-value"}
+                       :values    ["source-value"]}
         user-filter   {:node/type :filter/comparison
                        :operator  :>
                        :dimension dim-ref-2
-                       :value     100}
+                       :values    [100]}
         ast           (-> sample-ast
                           (assoc-in [:source :filters] source-filter)
                           (assoc :filter user-filter))
@@ -495,7 +531,7 @@
         user-filter   {:node/type :filter/comparison
                        :operator  :=
                        :dimension dim-ref-1
-                       :value     "Electronics"}
+                       :values    ["Electronics"]}
         ast           (-> ast-with-joins
                           (assoc-in [:source :filters] source-filter)
                           (assoc :filter user-filter))

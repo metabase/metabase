@@ -20,7 +20,7 @@
   {:node/type :filter/comparison
    :operator  operator
    :dimension dim-ref
-   :value     value})
+   :values    [value]})
 
 (defn- string-filter
   "Create a string filter node for testing."
@@ -79,7 +79,7 @@
 (deftest ^:parallel node?-test
   (testing "returns true for AST nodes"
     (is (ast.walk/node? {:node/type :ast/root}))
-    (is (ast.walk/node? {:node/type :filter/comparison :operator := :dimension dim-ref-1 :value 1}))
+    (is (ast.walk/node? {:node/type :filter/comparison :operator := :dimension dim-ref-1 :values [1]}))
     (is (ast.walk/node? {:node/type :ast/column :id 1})))
 
   (testing "returns false for non-nodes"
@@ -222,14 +222,14 @@
     (let [placeholder {:node/type :filter/comparison
                        :operator  :=
                        :dimension dim-ref-1
-                       :value     "REPLACED"}
+                       :values    ["REPLACED"]}
           result      (ast.walk/replace-node
                        #(and (= :filter/comparison (:node/type %))
                              (= := (:operator %)))
                        placeholder
                        sample-ast)]
       ;; filter-a had := operator, should be replaced
-      (is (= "REPLACED" (get-in result [:filter :children 0 :value]))))))
+      (is (= ["REPLACED"] (get-in result [:filter :children 0 :values]))))))
 
 (deftest ^:parallel remove-filters-test
   (testing "removes matching filters from and"

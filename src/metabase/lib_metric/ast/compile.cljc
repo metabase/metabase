@@ -40,10 +40,10 @@
   (fn [node _mappings] (:node/type node)))
 
 (defmethod compile-filter-node :filter/comparison
-  [{:keys [operator dimension value]} mappings]
-  [operator {:lib/uuid (random-uuid-str)}
-   (resolve-dimension-ref dimension mappings)
-   value])
+  [{:keys [operator dimension values]} mappings]
+  (into [operator {:lib/uuid (random-uuid-str)}
+         (resolve-dimension-ref dimension mappings)]
+        values))
 
 (defmethod compile-filter-node :filter/between
   [{:keys [dimension min max]} mappings]
@@ -68,11 +68,19 @@
          (resolve-dimension-ref dimension mappings)]
         values))
 
+(defmethod compile-filter-node :filter/inside
+  [{:keys [lat-dimension lon-dimension north east south west]} mappings]
+  [:inside {:lib/uuid (random-uuid-str)}
+   (resolve-dimension-ref lat-dimension mappings)
+   (resolve-dimension-ref lon-dimension mappings)
+   north east south west])
+
 (defmethod compile-filter-node :filter/temporal
-  [{:keys [operator dimension value unit]} mappings]
-  [operator {:lib/uuid (random-uuid-str)}
-   (resolve-dimension-ref dimension mappings)
-   value unit])
+  [{:keys [operator dimension value unit offset-value offset-unit]} mappings]
+  (cond-> [operator {:lib/uuid (random-uuid-str)}
+           (resolve-dimension-ref dimension mappings)
+           value unit]
+    offset-value (conj offset-value offset-unit)))
 
 (defmethod compile-filter-node :filter/and
   [{:keys [children]} mappings]
