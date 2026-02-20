@@ -1,4 +1,5 @@
 import { useDisclosure } from "@mantine/hooks";
+import { Fragment } from "react";
 import { t } from "ttag";
 
 import {
@@ -51,8 +52,9 @@ export function EntitySelect({
     <Input.Wrapper label={label} description={description}>
       <Button
         className={S.button}
-        onClick={openPicker}
         rightSection={<Icon name="chevrondown" />}
+        fw="normal"
+        onClick={openPicker}
       >
         {displayInfo ? (
           <ButtonContent displayInfo={displayInfo} />
@@ -83,12 +85,14 @@ function ButtonContent({ displayInfo }: ButtonContentProps) {
   return (
     <span>
       {displayInfo.breadcrumbs.map((breadcrumb, index) => (
-        <Box key={index} component="span" fw="normal">
+        <Fragment key={index}>
           <span>{breadcrumb}</span>
           <span> / </span>
-        </Box>
+        </Fragment>
       ))}
-      <span>{displayInfo.name}</span>
+      <Box component="span" fw="bold">
+        {displayInfo.name}
+      </Box>
     </span>
   );
 }

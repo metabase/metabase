@@ -6,9 +6,9 @@ import type {
   ReplaceSourceEntry,
 } from "metabase-types/api";
 
-import { getEntityErrorMessage, getGenericErrorMessage } from "../../../utils";
 import type { EntityInfo } from "../types";
 
+import { EntityErrors } from "./EntityErrors";
 import { EntitySection } from "./EntitySection";
 import { EntitySelect } from "./EntitySelect";
 import S from "./ModalSidebar.module.css";
@@ -34,7 +34,6 @@ export function ModalSidebar({
   onSubmit,
   onCancel,
 }: ModalSidebarProps) {
-  const error = checkInfo != null && !checkInfo.success;
   const disabled =
     checkInfo == null || !checkInfo.success || dependentsCount === 0;
 
@@ -54,18 +53,14 @@ export function ModalSidebar({
           />
         </EntitySection>
         <EntitySection icon="find_replace">
-          <Stack gap="sm">
+          <Stack>
             <EntitySelect
               entityInfo={targetInfo}
               label={t`Replace it with this data source`}
               description={t`It must be based on the same database and include all columns from the original data source.`}
               onChange={onTargetChange}
             />
-            {error && (
-              <Text c="error" size="sm">
-                {getErrorMessage(checkInfo)}
-              </Text>
-            )}
+            <EntityErrors errors={checkInfo?.errors ?? []} />
           </Stack>
         </EntitySection>
       </Stack>
@@ -77,13 +72,6 @@ export function ModalSidebar({
       </Group>
     </Stack>
   );
-}
-
-function getErrorMessage(checkInfo: CheckReplaceSourceInfo | undefined) {
-  const errors = checkInfo?.errors ?? [];
-  return errors.length > 0
-    ? getEntityErrorMessage(errors[0])
-    : getGenericErrorMessage();
 }
 
 function getSubmitLabel(dependentsCount: number, disabled: boolean) {

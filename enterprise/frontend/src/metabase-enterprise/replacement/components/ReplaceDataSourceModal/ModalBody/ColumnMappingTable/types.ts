@@ -1,11 +1,11 @@
 import type {
+  ReplaceSourceColumnErrorType,
   ReplaceSourceColumnInfo,
-  ReplaceSourceErrorType,
 } from "metabase-types/api";
 
 export type ColumnMappingItem = {
   id: number;
-  source?: ReplaceSourceColumnInfo;
-  target?: ReplaceSourceColumnInfo;
-  errors?: ReplaceSourceErrorType[];
+  source: ReplaceSourceColumnInfo | null;
+  target: ReplaceSourceColumnInfo | null;
+  errors?: ReplaceSourceColumnErrorType[];
 };

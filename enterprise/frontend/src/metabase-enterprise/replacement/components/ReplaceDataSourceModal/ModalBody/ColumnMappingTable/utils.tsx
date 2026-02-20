@@ -3,8 +3,8 @@ import { t } from "ttag";
 import { Ellipsified } from "metabase/common/components/Ellipsified";
 import type { TreeTableColumnDef } from "metabase/ui";
 import type {
+  ReplaceSourceColumnErrorType,
   ReplaceSourceColumnMapping,
-  ReplaceSourceErrorType,
 } from "metabase-types/api";
 
 import { getColumnErrorMessage } from "../../../../utils";
@@ -76,8 +76,11 @@ function getTargetColumn(
   };
 }
 
-function getErrorMessage(errors: ReplaceSourceErrorType[]): string {
-  return errors.map(getColumnErrorMessage).join(" ");
+function getErrorMessage(errors: ReplaceSourceColumnErrorType[]) {
+  const visibleErrors = errors.filter((error) => error !== "missing-column");
+  return visibleErrors.length > 0
+    ? visibleErrors.map(getColumnErrorMessage).join(" ")
+    : null;
 }
 
 function getErrorsColumn(): TreeTableColumnDef<ColumnMappingItem> {
@@ -88,10 +91,11 @@ function getErrorsColumn(): TreeTableColumnDef<ColumnMappingItem> {
     accessorFn: (item) => getErrorMessage(item.errors ?? []),
     cell: ({ row }) => {
       const { errors } = row.original;
-      if (errors == null || errors.length === 0) {
+      const errorMessage = getErrorMessage(errors ?? []);
+      if (errorMessage == null) {
         return null;
       }
-      return <Ellipsified>{getErrorMessage(errors)}</Ellipsified>;
+      return <Ellipsified>{errorMessage}</Ellipsified>;
     },
   };
 }

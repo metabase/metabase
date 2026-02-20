@@ -18,7 +18,7 @@ export function NameCell({ column }: NameCellProps) {
   return (
     <Group gap="sm" wrap="nowrap">
       <FixedSizeIcon name={icon} />
-      <Ellipsified>{column.display_name}</Ellipsified>
+      <Ellipsified>{column.name}</Ellipsified>
     </Group>
   );
 }
