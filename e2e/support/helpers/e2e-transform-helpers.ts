@@ -272,7 +272,6 @@ export function createAndRunSqlTransform({
     visitTransform: false,
     wrapId: false,
   }).then(({ body: transform }) => {
-    cy.log("transform", JSON.stringify(transform.id));
     cy.request("POST", `/api/transform/${transform.id}/run`);
     waitForSucceededTransformRuns();
 
