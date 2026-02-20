@@ -8,6 +8,7 @@ import type {
   InspectorLens,
   InspectorLensId,
   InspectorVisitedFields,
+  VisualizationDisplay,
 } from "metabase-types/api";
 
 type TriggerResult = {
@@ -47,6 +48,6 @@ export type DegeneracyResult = {
 
 export const isDegenerate = (
   cardId: InspectorCardId,
-  displayType: string,
+  displayType: VisualizationDisplay,
   cardsStats: Record<string, CardStats>,
 ): DegeneracyResult => INSPECTOR.isDegenerate(cardId, displayType, cardsStats);
