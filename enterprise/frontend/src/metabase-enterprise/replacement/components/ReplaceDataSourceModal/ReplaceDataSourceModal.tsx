@@ -1,6 +1,8 @@
+import { useDisclosure } from "@mantine/hooks";
 import { useState } from "react";
 
 import { useGetCardQuery, useGetTableQuery } from "metabase/api";
+import { useToast } from "metabase/common/hooks";
 import type { ReplaceDataSourceModalProps } from "metabase/plugins";
 import { Flex, Modal } from "metabase/ui";
 import {
@@ -9,6 +11,7 @@ import {
 } from "metabase-enterprise/api";
 import type { ReplaceSourceEntry } from "metabase-types/api";
 
+import { ConfirmAndProgressModal } from "./ConfirmAndProgressModal";
 import { ModalBody } from "./ModalBody";
 import { ModalSidebar } from "./ModalSidebar";
 import {
@@ -16,6 +19,8 @@ import {
   getCheckReplaceSourceRequest,
   getDependentsRequest,
   getEntityInfo,
+  getFailureMessage,
+  getSuccessMessage,
   getTableRequest,
 } from "./utils";
 
@@ -52,6 +57,8 @@ function ModalContent({
 }: ModalContentProps) {
   const [sourceEntry, setSourceEntry] = useState(initialSource);
   const [targetEntry, setTargetEntry] = useState(initialTarget);
+  const [isConfirming, { open: openConfirmation, close: closeConfirmation }] =
+    useDisclosure();
 
   const { data: sourceTable } = useGetTableQuery(getTableRequest(sourceEntry));
   const { data: sourceCard } = useGetCardQuery(getCardRequest(sourceEntry));
@@ -63,12 +70,22 @@ function ModalContent({
   const { data: checkInfo } = useCheckReplaceSourceQuery(
     getCheckReplaceSourceRequest(sourceEntry, targetEntry),
   );
+  const [sendToast] = useToast();
 
   const sourceInfo = getEntityInfo(sourceEntry, sourceTable, sourceCard);
   const targetInfo = getEntityInfo(targetEntry, targetTable, targetCard);
   const columnMappings = checkInfo?.column_mappings ?? [];
 
-  const handleSubmit = () => {};
+  const handleReplaceSuccess = () => {
+    sendToast({ message: getSuccessMessage(dependents.length), icon: "check" });
+    closeConfirmation();
+    onClose();
+  };
+
+  const handleReplaceFailure = () => {
+    sendToast({ message: getFailureMessage(), icon: "warning" });
+    closeConfirmation();
+  };
 
   return (
     <Flex h="100%">
@@ -79,7 +96,7 @@ function ModalContent({
         dependentsCount={dependents.length}
         onSourceChange={setSourceEntry}
         onTargetChange={setTargetEntry}
-        onSubmit={handleSubmit}
+        onSubmit={openConfirmation}
         onCancel={onClose}
       />
       <ModalBody
@@ -87,6 +104,17 @@ function ModalContent({
         targetInfo={targetInfo}
         columnMappings={columnMappings}
       />
+      {sourceEntry != null && targetEntry != null && (
+        <ConfirmAndProgressModal
+          sourceEntry={sourceEntry}
+          targetEntry={targetEntry}
+          dependentsCount={dependents.length}
+          opened={isConfirming}
+          onReplaceSuccess={handleReplaceSuccess}
+          onReplaceFailure={handleReplaceFailure}
+          onClose={closeConfirmation}
+        />
+      )}
     </Flex>
   );
 }

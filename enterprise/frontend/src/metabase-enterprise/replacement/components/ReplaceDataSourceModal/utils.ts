@@ -1,3 +1,5 @@
+import { msgid, ngettext, t } from "ttag";
+
 import { skipToken } from "metabase/api";
 import type { Card, ReplaceSourceEntry, Table } from "metabase-types/api";
 
@@ -42,4 +44,16 @@ export function getCheckReplaceSourceRequest(
     target_entity_id: targetEntry.id,
     target_entity_type: targetEntry.type,
   };
+}
+
+export function getSuccessMessage(dependentsCount: number) {
+  return ngettext(
+    msgid`Updated ${dependentsCount} item`,
+    msgid`Updated ${dependentsCount} items`,
+    dependentsCount,
+  );
+}
+
+export function getFailureMessage() {
+  return t`Failed to replace data source`;
 }
