@@ -18,8 +18,8 @@ interface NewEventModalProps {
 }
 
 const timelineProps = {
-  id: (state: State, props: NewEventModalProps) =>
-    Urls.extractEntityId(props.params.timelineId),
+  id: (state: State, { params }: NewEventModalProps) =>
+    Urls.extractEntityId(params.timelineId),
   query: { include: "events" },
   LoadingAndErrorWrapper,
 };

@@ -3,8 +3,8 @@ import { parse as parseUrl } from "url";
 import type { LocationDescriptor } from "history";
 
 import { isEqualCard } from "metabase/lib/card";
+import { pushPath, replacePath } from "metabase/lib/navigation";
 import { createThunkAction } from "metabase/lib/redux";
-import { routerActions } from "metabase/routing/compat/react-router-redux";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 import { isAdHocModelOrMetricQuestion } from "metabase-lib/v1/metadata/utils/models";
@@ -128,9 +128,9 @@ export const updateUrl = createThunkAction(
 
       try {
         if (replaceState) {
-          dispatch(routerActions.replace(locationDescriptor));
+          replacePath(locationDescriptor);
         } else {
-          dispatch(routerActions.push(locationDescriptor));
+          pushPath(locationDescriptor);
         }
       } catch (e) {
         // saving the location state can exceed the session storage quota (metabase#25312)

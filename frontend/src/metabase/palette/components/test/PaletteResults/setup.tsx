@@ -4,13 +4,13 @@ import _ from "underscore";
 
 import { setupEnterprisePlugins } from "__support__/enterprise";
 import {
-  Route,
   setupDatabasesEndpoints,
   setupRecentViewsEndpoints,
   setupSearchEndpoints,
 } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
 import {
+  Route,
   type WithRouterProps,
   renderWithProviders,
   withRouter,

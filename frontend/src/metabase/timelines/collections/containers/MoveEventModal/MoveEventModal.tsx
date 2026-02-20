@@ -23,15 +23,15 @@ const timelinesProps = {
 };
 
 const timelineEventProps = {
-  id: (state: State, props: MoveEventModalProps) =>
-    Urls.extractEntityId(props.params.timelineEventId),
+  id: (state: State, { params }: MoveEventModalProps) =>
+    Urls.extractEntityId(params.timelineEventId),
   entityAlias: "event",
   LoadingAndErrorWrapper,
 };
 
 const collectionProps = {
-  id: (state: State, props: MoveEventModalProps) =>
-    Urls.extractCollectionId(props.params.slug),
+  id: (state: State, { params }: MoveEventModalProps) =>
+    Urls.extractCollectionId(params.slug),
   LoadingAndErrorWrapper,
 };
 

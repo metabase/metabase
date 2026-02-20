@@ -9,22 +9,26 @@ import { Link as RouterLink } from "react-router-dom";
 import { focusOutlineStyle } from "metabase/common/style/input";
 import { doNotForwardProps } from "metabase/common/utils/doNotForwardProps";
 
-type LinkVariantProp = { variant?: "default" | "brand" | "brandBold" };
+type LinkVariantProp = {
+  variant?: "default" | "brand" | "brandBold";
+  disabled?: boolean;
+};
 import { type LinkToWithQuery, normalizeTo } from "./utils";
 
 type RouterLinkProps = Omit<ComponentProps<typeof RouterLink>, "to"> & {
   to: LinkToWithQuery;
+  disabled?: boolean;
 };
 
 const QueryAwareRouterLink = forwardRef<HTMLAnchorElement, RouterLinkProps>(
-  function QueryAwareRouterLink({ to, ...props }, ref) {
+  function QueryAwareRouterLink({ to, disabled: _disabled, ...props }, ref) {
     return <RouterLink {...props} ref={ref} to={normalizeTo(to)} />;
   },
 );
 
 export const LinkRoot = styled(
   QueryAwareRouterLink,
-  doNotForwardProps("variant"),
+  doNotForwardProps("variant", "disabled"),
 )<LinkVariantProp>`
   opacity: ${(props) => (props.disabled ? "0.4" : "")};
   pointer-events: ${(props) => (props.disabled ? "none" : "")};

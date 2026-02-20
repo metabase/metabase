@@ -16,14 +16,14 @@ interface DeleteEventModalProps {
 }
 
 const timelineProps = {
-  id: (state: State, props: DeleteEventModalProps) =>
-    Urls.extractEntityId(props.params.timelineId),
+  id: (state: State, { params }: DeleteEventModalProps) =>
+    Urls.extractEntityId(params.timelineId),
   query: { include: "events" },
 };
 
 const timelineEventProps = {
-  id: (state: State, props: DeleteEventModalProps) =>
-    Urls.extractEntityId(props.params.timelineEventId),
+  id: (state: State, { params }: DeleteEventModalProps) =>
+    Urls.extractEntityId(params.timelineEventId),
   entityAlias: "event",
 };
 

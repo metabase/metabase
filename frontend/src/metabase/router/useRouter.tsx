@@ -1,5 +1,5 @@
 import type { LocationDescriptor } from "history";
-import { useContext, useEffect, useMemo, useRef } from "react";
+import { useEffect, useMemo, useRef } from "react";
 import {
   useLocation,
   useMatches,
@@ -7,12 +7,7 @@ import {
   useParams,
 } from "react-router-dom";
 
-import { USE_REACT_ROUTER_V7 } from "metabase/routing/compat";
-
-import { RouterContext } from "./RouterProvider";
-
 export const useRouter = () => {
-  const ctx = useContext(RouterContext);
   const navigate = useNavigate();
   const location = useLocation();
   const params = useParams<Record<string, string | undefined>>();
@@ -41,18 +36,17 @@ export const useRouter = () => {
     listenersRef.current.forEach((listener) => listener(compatLocation));
   }, [compatLocation]);
 
-  if (ctx) {
-    return ctx;
-  }
+  const routes = matches.map((match) => {
+    const route = (match as { route?: Record<string, unknown> }).route;
+    if (route) {
+      return {
+        ...route,
+        path: typeof route.path === "string" ? route.path : match.pathname,
+      };
+    }
 
-  if (!USE_REACT_ROUTER_V7) {
-    throw new Error("useRouter must be used inside <RouterProvider>");
-  }
-
-  const routes = matches.map(({ route }) => ({
-    ...route,
-    path: route.path ?? "",
-  }));
+    return { path: match.pathname };
+  });
 
   const toLocationDescriptor = (nextLocation: LocationDescriptor) => {
     if (typeof nextLocation === "string") {

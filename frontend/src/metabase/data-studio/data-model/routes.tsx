@@ -9,9 +9,134 @@ import { DataModelSegmentDependenciesPage } from "metabase/data-studio/segments/
 import { DataModelSegmentDetailPage } from "metabase/data-studio/segments/pages/DataModelSegmentDetailPage";
 import { DataModelSegmentRevisionHistoryPage } from "metabase/data-studio/segments/pages/DataModelSegmentRevisionHistoryPage";
 import { PLUGIN_DEPENDENCIES } from "metabase/plugins";
-import { IsAdmin } from "metabase/route-guards";
+import { IsAdminGuard, useCompatParams } from "metabase/routing/compat";
 
 import { DataModel } from "./pages/DataModel";
+
+type DataModelParams = {
+  databaseId?: string;
+  schemaId?: string;
+  tableId?: string;
+  tab?: string;
+  fieldId?: string;
+  segmentId?: string;
+  measureId?: string;
+};
+
+const DataModelWithRouteProps = () => {
+  const params = useCompatParams<DataModelParams>();
+  return <DataModel params={params} />;
+};
+
+const DataModelNewSegmentPageWithRouteProps = () => {
+  const params = useCompatParams<DataModelParams>();
+  return (
+    <DataModelNewSegmentPage
+      params={{
+        databaseId: params.databaseId ?? "",
+        schemaId: params.schemaId ?? "",
+        tableId: params.tableId ?? "",
+      }}
+    />
+  );
+};
+
+const DataModelSegmentDetailPageWithRouteProps = () => {
+  const params = useCompatParams<DataModelParams>();
+  return (
+    <DataModelSegmentDetailPage
+      params={{
+        databaseId: params.databaseId ?? "",
+        schemaId: params.schemaId ?? "",
+        tableId: params.tableId ?? "",
+        segmentId: params.segmentId ?? "",
+      }}
+    />
+  );
+};
+
+const DataModelSegmentRevisionHistoryPageWithRouteProps = () => {
+  const params = useCompatParams<DataModelParams>();
+  return (
+    <DataModelSegmentRevisionHistoryPage
+      params={{
+        databaseId: params.databaseId ?? "",
+        schemaId: params.schemaId ?? "",
+        tableId: params.tableId ?? "",
+        segmentId: params.segmentId ?? "",
+      }}
+    />
+  );
+};
+
+const DataModelSegmentDependenciesPageWithRouteProps = () => {
+  const params = useCompatParams<DataModelParams>();
+  return (
+    <DataModelSegmentDependenciesPage
+      params={{
+        databaseId: params.databaseId ?? "",
+        schemaId: params.schemaId ?? "",
+        tableId: params.tableId ?? "",
+        segmentId: params.segmentId ?? "",
+      }}
+    />
+  );
+};
+
+const DataModelNewMeasurePageWithRouteProps = () => {
+  const params = useCompatParams<DataModelParams>();
+  return (
+    <DataModelNewMeasurePage
+      params={{
+        databaseId: params.databaseId ?? "",
+        schemaId: params.schemaId ?? "",
+        tableId: params.tableId ?? "",
+      }}
+    />
+  );
+};
+
+const DataModelMeasureDetailPageWithRouteProps = () => {
+  const params = useCompatParams<DataModelParams>();
+  return (
+    <DataModelMeasureDetailPage
+      params={{
+        databaseId: params.databaseId ?? "",
+        schemaId: params.schemaId ?? "",
+        tableId: params.tableId ?? "",
+        measureId: params.measureId ?? "",
+      }}
+    />
+  );
+};
+
+const DataModelMeasureRevisionHistoryPageWithRouteProps = () => {
+  const params = useCompatParams<DataModelParams>();
+  return (
+    <DataModelMeasureRevisionHistoryPage
+      params={{
+        databaseId: params.databaseId ?? "",
+        schemaId: params.schemaId ?? "",
+        tableId: params.tableId ?? "",
+        measureId: params.measureId ?? "",
+      }}
+    />
+  );
+};
+
+const DataModelMeasureDependenciesPageWithRouteProps = () => {
+  const params = useCompatParams<DataModelParams>();
+  return (
+    <DataModelMeasureDependenciesPage
+      params={{
+        databaseId: params.databaseId ?? "",
+        schemaId: params.schemaId ?? "",
+        tableId: params.tableId ?? "",
+        measureId: params.measureId ?? "",
+      }}
+    />
+  );
+};
 
 export function getDataStudioMetadataRoutes() {
   return null;
@@ -19,38 +144,38 @@ export function getDataStudioMetadataRoutes() {
 
 export function getDataStudioMetadataRouteObjects(): RouteObject[] {
   return [
-    { index: true, element: <DataModel /> },
-    { path: "database", element: <DataModel /> },
-    { path: "database/:databaseId", element: <DataModel /> },
+    { index: true, element: <DataModelWithRouteProps /> },
+    { path: "database", element: <DataModelWithRouteProps /> },
+    { path: "database/:databaseId", element: <DataModelWithRouteProps /> },
     {
       path: "database/:databaseId/schema/:schemaId",
-      element: <DataModel />,
+      element: <DataModelWithRouteProps />,
     },
     {
       path: "database/:databaseId/schema/:schemaId/table/:tableId",
-      element: <DataModel />,
+      element: <DataModelWithRouteProps />,
     },
     {
       path: "database/:databaseId/schema/:schemaId/table/:tableId/segments/new",
       element: (
-        <IsAdmin>
-          <DataModelNewSegmentPage />
-        </IsAdmin>
+        <IsAdminGuard>
+          <DataModelNewSegmentPageWithRouteProps />
+        </IsAdminGuard>
       ),
     },
     {
       path: "database/:databaseId/schema/:schemaId/table/:tableId/segments/:segmentId",
-      element: <DataModelSegmentDetailPage />,
+      element: <DataModelSegmentDetailPageWithRouteProps />,
     },
     {
       path: "database/:databaseId/schema/:schemaId/table/:tableId/segments/:segmentId/revisions",
-      element: <DataModelSegmentRevisionHistoryPage />,
+      element: <DataModelSegmentRevisionHistoryPageWithRouteProps />,
     },
     ...(PLUGIN_DEPENDENCIES.isEnabled
       ? [
           {
             path: "database/:databaseId/schema/:schemaId/table/:tableId/segments/:segmentId/dependencies",
-            element: <DataModelSegmentDependenciesPage />,
+            element: <DataModelSegmentDependenciesPageWithRouteProps />,
             children: [
               {
                 index: true,
@@ -63,24 +188,24 @@ export function getDataStudioMetadataRouteObjects(): RouteObject[] {
     {
       path: "database/:databaseId/schema/:schemaId/table/:tableId/measures/new",
       element: (
-        <IsAdmin>
-          <DataModelNewMeasurePage />
-        </IsAdmin>
+        <IsAdminGuard>
+          <DataModelNewMeasurePageWithRouteProps />
+        </IsAdminGuard>
       ),
     },
     {
       path: "database/:databaseId/schema/:schemaId/table/:tableId/measures/:measureId",
-      element: <DataModelMeasureDetailPage />,
+      element: <DataModelMeasureDetailPageWithRouteProps />,
     },
     {
       path: "database/:databaseId/schema/:schemaId/table/:tableId/measures/:measureId/revisions",
-      element: <DataModelMeasureRevisionHistoryPage />,
+      element: <DataModelMeasureRevisionHistoryPageWithRouteProps />,
     },
     ...(PLUGIN_DEPENDENCIES.isEnabled
       ? [
           {
             path: "database/:databaseId/schema/:schemaId/table/:tableId/measures/:measureId/dependencies",
-            element: <DataModelMeasureDependenciesPage />,
+            element: <DataModelMeasureDependenciesPageWithRouteProps />,
             children: [
               {
                 index: true,
@@ -92,11 +217,11 @@ export function getDataStudioMetadataRouteObjects(): RouteObject[] {
       : []),
     {
       path: "database/:databaseId/schema/:schemaId/table/:tableId/:tab",
-      element: <DataModel />,
+      element: <DataModelWithRouteProps />,
     },
     {
       path: "database/:databaseId/schema/:schemaId/table/:tableId/:tab/:fieldId",
-      element: <DataModel />,
+      element: <DataModelWithRouteProps />,
     },
     {
       path: "database/:databaseId/schema/:schemaId/table/:tableId/settings",

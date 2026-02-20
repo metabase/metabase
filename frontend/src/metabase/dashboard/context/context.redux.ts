@@ -1,4 +1,5 @@
 import { bindActionCreators } from "@reduxjs/toolkit";
+import type { LocationDescriptor } from "history";
 import type { ConnectedProps } from "react-redux";
 
 import { deletePermanently } from "metabase/archive/actions";
@@ -54,8 +55,8 @@ import {
   selectTab,
   undoDeleteTab,
 } from "metabase/dashboard/actions/tabs";
+import { pushPath } from "metabase/lib/navigation";
 import { connect } from "metabase/lib/redux";
-import { routerActions } from "metabase/routing/compat/react-router-redux";
 import { getIsEmbeddingIframe } from "metabase/selectors/embed";
 import {
   canManageSubscriptions,
@@ -177,8 +178,7 @@ const dispatchActionCreators = {
 
 export const mapDispatchToProps = (dispatch: any) => ({
   ...bindActionCreators(dispatchActionCreators, dispatch),
-  onChangeLocation: (location: string) =>
-    dispatch(routerActions.push(location)),
+  onChangeLocation: (location: LocationDescriptor) => pushPath(location),
 });
 
 export const connector = connect(mapStateToProps, mapDispatchToProps, null, {

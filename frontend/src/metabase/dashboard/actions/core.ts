@@ -1,6 +1,6 @@
 import { createAction } from "@reduxjs/toolkit";
 
-import { routerActions } from "metabase/routing/compat/react-router-redux";
+import { pushPath } from "metabase/lib/navigation";
 import { getLocation } from "metabase/selectors/routing";
 import type {
   DashCardId,
@@ -25,7 +25,7 @@ export const setEditingDashboard = (dashboard: Dashboard | null) => {
     if (dashboard === null) {
       const location = getLocation(getState());
       const locationWithoutEditHash = { ...location, hash: "" };
-      dispatch(routerActions.push(locationWithoutEditHash));
+      pushPath(locationWithoutEditHash);
     }
 
     dispatch({

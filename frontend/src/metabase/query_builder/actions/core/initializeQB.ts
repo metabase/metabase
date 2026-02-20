@@ -5,6 +5,7 @@ import type { LocationDescriptorObject } from "history";
 import { Questions } from "metabase/entities/questions";
 import { Snippets } from "metabase/entities/snippets";
 import { deserializeCardFromUrl } from "metabase/lib/card";
+import { replacePath } from "metabase/lib/navigation";
 import { isNotNull } from "metabase/lib/types";
 import * as Urls from "metabase/lib/urls";
 import {
@@ -13,7 +14,6 @@ import {
 } from "metabase/query_builder/selectors";
 import { loadMetadataForCard } from "metabase/questions/actions";
 import { setErrorPage } from "metabase/redux/app";
-import { routerActions } from "metabase/routing/compat/react-router-redux";
 import { getMetadata } from "metabase/selectors/metadata";
 import { canUserCreateQueries, getUser } from "metabase/selectors/user";
 import * as Lib from "metabase-lib";
@@ -300,7 +300,7 @@ async function handleQBInit(
 
   if (uiControls.queryBuilderMode === "notebook") {
     if (!canUserCreateQueries(getState())) {
-      dispatch(routerActions.replace(Urls.unauthorized()));
+      replacePath(Urls.unauthorized());
       return;
     }
   }

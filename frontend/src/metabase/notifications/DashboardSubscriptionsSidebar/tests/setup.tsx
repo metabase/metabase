@@ -90,7 +90,7 @@ type SetupOpts = {
   dashcards?: DashboardCard[];
   parameters?: UiParameter[];
   isEmbeddingSdk?: boolean;
-  setSharing?: (sharing: boolean) => void;
+  setSharing?: (sharing: boolean) => (dispatch: unknown) => void;
   pulses?: (Partial<DashboardSubscription> & { id: number })[];
   currentUser?: {
     firstName: string;

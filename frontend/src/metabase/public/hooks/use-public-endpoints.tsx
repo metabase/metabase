@@ -8,8 +8,8 @@ export const usePublicEndpoints = ({
   uuid,
   token,
 }: {
-  uuid: EntityUuid;
-  token: EntityToken;
+  uuid: EntityUuid | null;
+  token: EntityToken | null;
 }) => {
   useMount(() => {
     if (uuid) {

@@ -23,23 +23,23 @@ export {
 
 export const getUser = (state, props) => state.currentUser;
 
-export const getSegmentId = (state, props) =>
-  Number.parseInt(props.params.segmentId);
+export const getSegmentId = (state, { params }) =>
+  Number.parseInt(params.segmentId);
 export const getSegment = createSelector(
   [getSegmentId, getSegments],
   (segmentId, segments) => segments[segmentId] || { id: segmentId },
 );
 
-export const getDatabaseId = (state, props) =>
-  Number.parseInt(props.params.databaseId);
+export const getDatabaseId = (state, { params }) =>
+  Number.parseInt(params.databaseId);
 
 export const getDatabase = createSelector(
   [getDatabaseId, getDatabases],
   (databaseId, databases) => databases[databaseId] || { id: databaseId },
 );
 
-export const getTableId = (state, props) =>
-  Number.parseInt(props.params.tableId);
+export const getTableId = (state, { params }) =>
+  Number.parseInt(params.tableId);
 // export const getTableId = (state, props) => Number.parseInt(props.params.tableId);
 export const getTablesByDatabase = createSelector(
   [getTables, getDatabase],
@@ -63,8 +63,8 @@ export const getTable = createSelector(
         : {},
 );
 
-export const getFieldId = (state, props) =>
-  Number.parseInt(props.params.fieldId);
+export const getFieldId = (state, { params }) =>
+  Number.parseInt(params.fieldId);
 export const getFieldsByTable = createSelector(
   [getTable, getFields],
   (table, fields) =>

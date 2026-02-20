@@ -125,7 +125,6 @@ export function setup({
       path="/"
       component={() => (
         <SegmentDetailPage
-          route={{ path: "/" } as never}
           segment={segment}
           tabUrls={tabUrls}
           breadcrumbs={

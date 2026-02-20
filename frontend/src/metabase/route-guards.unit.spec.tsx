@@ -72,9 +72,9 @@ function setupRouteGuard(opts: {
     wrapperDisplayName: "testing",
     redirectPath: "/test",
     allowRedirectBack: false,
-    redirectAction: (path: string) => () => ({
+    redirectAction: (location: any) => ({
       type: "TEST_REDIRECT_REPLACE",
-      payload: path,
+      payload: typeof location === "string" ? location : location?.pathname,
     }),
     ...opts,
   });

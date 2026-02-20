@@ -1,14 +1,9 @@
 import type { Location } from "history";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback } from "react";
 import {
   useBlocker as useBlockerV7,
   useLocation as useLocationV7,
 } from "react-router-dom";
-
-import { USE_REACT_ROUTER_V7 } from "./config";
-import type { CompatInjectedRouter, CompatRoute } from "./types";
-import { useRouterContext } from "./useCompatRoutes";
-import { useNavigation } from "./useNavigation";
 
 interface UseBlockNavigationInput {
   /**
@@ -19,14 +14,6 @@ interface UseBlockNavigationInput {
    * Optional function to determine if navigation to a location should be allowed
    */
   isLocationAllowed?: (location: Location | undefined) => boolean;
-  /**
-   * For v3: The router object from withRouter
-   */
-  router?: CompatInjectedRouter;
-  /**
-   * For v3: The current route from withRouter
-   */
-  route?: CompatRoute;
 }
 
 interface UseBlockNavigationResult {
@@ -77,22 +64,8 @@ interface UseBlockNavigationResult {
 export function useBlockNavigation({
   isEnabled,
   isLocationAllowed,
-  router,
-  route,
 }: UseBlockNavigationInput): UseBlockNavigationResult {
-  // Only call the appropriate hook based on which router is active
-  // We cannot call v7 hooks when there's no v7 RouterProvider context
-  if (USE_REACT_ROUTER_V7) {
-    // eslint-disable-next-line react-hooks/rules-of-hooks
-    return useBlockNavigationV7({ isEnabled, isLocationAllowed });
-  }
-  // eslint-disable-next-line react-hooks/rules-of-hooks
-  return useBlockNavigationV3({
-    isEnabled,
-    isLocationAllowed,
-    router,
-    route,
-  });
+  return useBlockNavigationV7({ isEnabled, isLocationAllowed });
 }
 
 /**
@@ -139,88 +112,7 @@ function useBlockNavigationV7({
   return {
     isBlocked: blocker.state === "blocked",
     nextLocation,
-    proceed: () => blocker.proceed?.(),
-    cancel: () => blocker.reset?.(),
-  };
-}
-
-/**
- * v3 implementation using setRouteLeaveHook
- */
-function useBlockNavigationV3({
-  isEnabled,
-  isLocationAllowed,
-  router: routerProp,
-  route: routeProp,
-}: UseBlockNavigationInput): UseBlockNavigationResult {
-  const { push, replace, goBack } = useNavigation();
-  const routerContext = useRouterContext();
-
-  // Use props if provided, otherwise fall back to context
-  const router = routerProp ?? routerContext.router;
-  const route = routeProp ?? routerContext.route;
-
-  const [nextLocation, setNextLocation] = useState<Location | undefined>();
-  const [isBlocked, setIsBlocked] = useState(false);
-  const [shouldProceed, setShouldProceed] = useState(false);
-
-  const cancel = useCallback(() => {
-    setIsBlocked(false);
-    setNextLocation(undefined);
-  }, []);
-
-  const proceed = useCallback(() => {
-    setShouldProceed(true);
-  }, []);
-
-  // Set up the route leave hook
-  useEffect(() => {
-    if (!router || !route) {
-      return;
-    }
-
-    const removeLeaveHook = router.setRouteLeaveHook(
-      route,
-      (location?: Location) => {
-        if (
-          location &&
-          isEnabled &&
-          !shouldProceed &&
-          !isLocationAllowed?.(location)
-        ) {
-          setIsBlocked(true);
-          setNextLocation(location);
-          return false;
-        }
-        return undefined;
-      },
-    );
-
-    return removeLeaveHook;
-  }, [router, route, isEnabled, shouldProceed, isLocationAllowed]);
-
-  // Handle proceeding with navigation
-  useEffect(() => {
-    if (shouldProceed && nextLocation) {
-      const action = nextLocation.action;
-      if (action === "POP") {
-        goBack();
-      } else if (action === "PUSH") {
-        push(nextLocation);
-      } else if (action === "REPLACE") {
-        replace(nextLocation);
-      }
-      // Reset state
-      setShouldProceed(false);
-      setIsBlocked(false);
-      setNextLocation(undefined);
-    }
-  }, [shouldProceed, nextLocation, push, replace, goBack]);
-
-  return {
-    isBlocked,
-    nextLocation,
-    proceed,
-    cancel,
+    proceed: useCallback(() => blocker.proceed?.(), [blocker]),
+    cancel: useCallback(() => blocker.reset?.(), [blocker]),
   };
 }

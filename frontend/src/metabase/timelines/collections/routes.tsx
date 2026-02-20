@@ -27,13 +27,13 @@ import type { ModalParams } from "./types";
 
 const withTimelineModalRouteProps = (Component: React.ComponentType<any>) => {
   return function TimelineModalRoute({ onClose }: { onClose: () => void }) {
-    const params = useCompatParams<ModalParams>();
+    const params = useCompatParams<Record<string, string | undefined>>();
     const location = useCompatLocation();
 
     return (
       <Component
         onClose={onClose}
-        params={params as ModalParams}
+        params={params as unknown as ModalParams}
         location={location as unknown as Location}
       />
     );

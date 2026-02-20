@@ -44,6 +44,7 @@ export const setup = ({
 }: SetupOpts = {}) => {
   const settings = mockSettings({ "token-features": tokenFeatures });
   const onCancel = jest.fn();
+  const onSubmit = jest.fn();
 
   // Create a parent collection with the specified namespace if provided
   const parentCollection = parentCollectionNamespace
@@ -76,6 +77,7 @@ export const setup = ({
 
   renderWithProviders(
     <CreateCollectionForm
+      onSubmit={onSubmit}
       onCancel={onCancel}
       showAuthorityLevelPicker={showAuthorityLevelPicker}
       collectionId={parentCollectionNamespace !== undefined ? 1 : undefined}

@@ -2,7 +2,7 @@ import Cookies from "js-cookie";
 
 import { logout, refreshSession } from "metabase/auth/actions";
 import { isSameOrSiteUrlOrigin } from "metabase/lib/dom";
-import { routerActions } from "metabase/routing/compat/react-router-redux";
+import { replacePath } from "metabase/lib/navigation";
 
 export const SESSION_KEY = "metabase.TIMEOUT";
 export const COOKIE_POOLING_TIMEOUT = 3000;
@@ -33,7 +33,7 @@ export const createSessionMiddleware = (
       const redirectUrl = getRedirectUrl();
 
       if (wasLoggedIn && !!redirectUrl) {
-        store.dispatch(routerActions.replace(redirectUrl));
+        replacePath(redirectUrl);
       }
 
       intervalId = setInterval(async () => {
@@ -46,7 +46,7 @@ export const createSessionMiddleware = (
             await store.dispatch(refreshSession())?.unwrap();
 
             if (redirectUrl !== null) {
-              store.dispatch(routerActions.replace(redirectUrl));
+              replacePath(redirectUrl);
             }
           } else {
             const url = location.pathname + location.search + location.hash;

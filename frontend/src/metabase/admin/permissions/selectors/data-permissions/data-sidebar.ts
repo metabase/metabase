@@ -37,9 +37,9 @@ type DataSidebarProps = {
 
 const getRouteParams = (
   _state: State,
-  props: { params: RawDataRouteParams },
+  { params }: { params: RawDataRouteParams },
 ) => {
-  const { databaseId, schemaName, tableId } = props.params;
+  const { databaseId, schemaName, tableId } = params;
   return {
     databaseId,
     schemaName,

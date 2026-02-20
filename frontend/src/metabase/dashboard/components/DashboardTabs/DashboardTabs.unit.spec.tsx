@@ -186,8 +186,10 @@ function createMockRouter(): InjectedRouter {
     createPath: jest.fn(),
     createHref: jest.fn(),
     isActive: jest.fn(),
-    // @ts-expect-error missing type definition
-    listen: jest.fn().mockReturnValue(jest.fn()),
+    listen: jest.fn((handler: (location: Location) => void) => {
+      void handler;
+      return jest.fn();
+    }),
   };
 }
 

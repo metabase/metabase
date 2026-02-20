@@ -1,5 +1,6 @@
 import cx from "classnames";
-import type { PropsWithChildren } from "react";
+import type { Location } from "history";
+import type { PropsWithChildren, ReactNode } from "react";
 import { useState } from "react";
 
 import ErrorBoundary from "metabase/ErrorBoundary";
@@ -48,7 +49,10 @@ interface DashboardAppProps extends PropsWithChildren {
   dashboardId?: DashboardId;
 }
 
-type DashboardAppInnerProps = Pick<DashboardAppProps, "location" | "children">;
+type DashboardAppInnerProps = {
+  location: Location;
+  children?: ReactNode;
+};
 
 function DashboardAppInner({ location, children }: DashboardAppInnerProps) {
   useDashboardLocationSync({ location });
@@ -85,6 +89,7 @@ export const DashboardApp = ({
   children,
 }: DashboardAppProps) => {
   const { location, params, router } = useRouter();
+  const dashboardLocation = location as unknown as Location;
   const dispatch = useDispatch();
   const { replace } = useNavigation();
 
@@ -95,7 +100,7 @@ export const DashboardApp = ({
     _dashboardId || (Urls.extractEntityId(params.slug) as DashboardId);
 
   useRegisterDashboardMetabotContext();
-  useDashboardUrlQuery(router, location);
+  useDashboardUrlQuery(router as any, dashboardLocation);
 
   const extractHashOption = async (
     key: string,
@@ -149,11 +154,11 @@ export const DashboardApp = ({
   };
 
   const { autoScrollToDashcardId, reportAutoScrolledToDashcard } =
-    useAutoScrollToDashcard(location);
+    useAutoScrollToDashcard(dashboardLocation);
 
   // Prevent rendering the dashboard app if the route is out of sync
   // metabase#65500
-  if (!isRouteInSync(location.pathname)) {
+  if (!isRouteInSync(dashboardLocation.pathname)) {
     return null;
   }
 
@@ -176,7 +181,9 @@ export const DashboardApp = ({
         }}
         dashboardActions={DASHBOARD_APP_ACTIONS}
       >
-        <DashboardAppInner location={location}>{children}</DashboardAppInner>
+        <DashboardAppInner location={dashboardLocation}>
+          {children}
+        </DashboardAppInner>
       </DashboardContextProvider>
     </ErrorBoundary>
   );

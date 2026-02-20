@@ -23,7 +23,7 @@ import {
 } from "metabase/plugins";
 import { getUserIsAdmin } from "metabase/selectors/user";
 import { Box, Divider, Flex } from "metabase/ui";
-import type { DatabaseId, Database as DatabaseType } from "metabase-types/api";
+import type { DatabaseData, DatabaseId } from "metabase-types/api";
 
 import { DatabaseConnectionInfoSection } from "../components/DatabaseConnectionInfoSection";
 import { DatabaseDangerZoneSection } from "../components/DatabaseDangerZoneSection";
@@ -34,9 +34,7 @@ import { deleteDatabase, updateDatabase } from "../database";
 interface DatabaseEditAppProps {
   children: React.ReactNode;
   params: { databaseId: string };
-  updateDatabase: (
-    database: { id: DatabaseId } & Partial<DatabaseType>,
-  ) => Promise<void>;
+  updateDatabase: (database: DatabaseData) => Promise<any>;
   deleteDatabase: (databaseId: DatabaseId) => Promise<void>;
 }
 
@@ -110,7 +108,7 @@ function DatabaseEditAppInner({
                   <DatabaseModelFeaturesSection
                     database={database}
                     isModelPersistenceEnabled={isModelPersistenceEnabled}
-                    updateDatabase={updateDatabase}
+                    updateDatabase={updateDatabase as any}
                   />
 
                   <PLUGIN_DATABASE_REPLICATION.DatabaseReplicationSection
@@ -120,13 +118,13 @@ function DatabaseEditAppInner({
                   <PLUGIN_TABLE_EDITING.AdminDatabaseTableEditingSection
                     database={database}
                     settingsAvailable={settingsAvailable?.settings}
-                    updateDatabase={updateDatabase}
+                    updateDatabase={updateDatabase as any}
                   />
 
                   <PLUGIN_WORKSPACES.AdminDatabaseWorkspacesSection
                     database={database}
                     settingsAvailable={settingsAvailable?.settings}
-                    updateDatabase={updateDatabase}
+                    updateDatabase={updateDatabase as any}
                   />
 
                   <PLUGIN_DB_ROUTING.DatabaseRoutingSection

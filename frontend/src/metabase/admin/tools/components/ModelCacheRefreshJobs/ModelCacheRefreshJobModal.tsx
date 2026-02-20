@@ -86,8 +86,8 @@ function ModelCacheRefreshJobModalInner({
 export const ModelCacheRefreshJobModal = _.compose(
   connect(null, mapDispatchToProps),
   PersistedModels.load({
-    id: (state: unknown, props: ModelCacheRefreshJobModalOwnProps) =>
-      props.params.jobId,
+    id: (state: unknown, { params }: ModelCacheRefreshJobModalOwnProps) =>
+      params.jobId,
     loadingAndErrorWrapper: false,
   }),
 )(ModelCacheRefreshJobModalInner);

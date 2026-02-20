@@ -7,8 +7,8 @@ import { P, match } from "ts-pattern";
 import _ from "underscore";
 
 import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
+import { pushPath } from "metabase/lib/navigation";
 import { addUndo } from "metabase/redux/undo";
-import { routerActions } from "metabase/routing/compat/react-router-redux";
 import { getIsWorkspace } from "metabase/selectors/routing";
 import { getUser } from "metabase/selectors/user";
 import {
@@ -351,7 +351,7 @@ export const sendAgentRequest = createAsyncThunk<
                 dispatch(setNavigateToPath(part.value));
 
                 if (!isEmbeddingSdk() && !isWorkspace) {
-                  dispatch(routerActions.push(part.value));
+                  pushPath(part.value);
                 }
               })
               .with({ type: "transform_suggestion" }, ({ value }) => {

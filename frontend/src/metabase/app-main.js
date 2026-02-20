@@ -6,10 +6,10 @@ import _ from "underscore";
 
 import { init } from "metabase/app";
 import api from "metabase/lib/api";
+import { pushPath } from "metabase/lib/navigation";
 import { mainReducers } from "metabase/reducers-main";
 import { setErrorPage } from "metabase/redux/app";
 import { clearCurrentUser } from "metabase/redux/user";
-import { routerActions } from "metabase/routing/compat/react-router-redux";
 import { createRoutes as getRoutesV7 } from "metabase/routing/routes";
 
 // If any of these receives a 403, we should display the "not authorized" page.
@@ -37,7 +37,7 @@ init(mainReducers, getRoutesV7, (store) => {
     }
 
     store.dispatch(clearCurrentUser());
-    store.dispatch(routerActions.push("/auth/login"));
+    pushPath("/auth/login");
   });
 
   // received a 403 response

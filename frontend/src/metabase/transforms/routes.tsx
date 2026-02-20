@@ -1,9 +1,10 @@
-import type { RouteObject } from "react-router-dom";
+import { Outlet, type RouteObject } from "react-router-dom";
 
 import {
   PLUGIN_DEPENDENCIES,
   PLUGIN_TRANSFORMS_PYTHON,
 } from "metabase/plugins";
+import { useCompatLocation, useCompatParams } from "metabase/routing/compat";
 
 import { JobListPage } from "./pages/JobListPage";
 import { JobPage } from "./pages/JobPage";
@@ -22,6 +23,42 @@ import { TransformRunPage } from "./pages/TransformRunPage";
 import { TransformSettingsPage } from "./pages/TransformSettingsPage";
 import { TransformTopNavLayout } from "./pages/TransformTopNavLayout";
 
+const RunListPageWithRouteProps = () => {
+  const location = useCompatLocation();
+  return <RunListPage location={location} />;
+};
+
+const JobPageWithRouteProps = () => {
+  const params = useCompatParams<{ jobId?: string }>();
+  return <JobPage params={{ jobId: params.jobId ?? "" }} />;
+};
+
+const NewCardTransformPageWithRouteProps = () => {
+  const params = useCompatParams<{ cardId?: string }>();
+  return <NewCardTransformPage params={{ cardId: params.cardId ?? "" }} />;
+};
+
+const TransformQueryPageWithRouteProps = () => {
+  const params = useCompatParams<{ transformId?: string }>();
+  return (
+    <TransformQueryPage params={{ transformId: params.transformId ?? "" }} />
+  );
+};
+
+const TransformRunPageWithRouteProps = () => {
+  const params = useCompatParams<{ transformId?: string }>();
+  return (
+    <TransformRunPage params={{ transformId: params.transformId ?? "" }} />
+  );
+};
+
+const TransformSettingsPageWithRouteProps = () => {
+  const params = useCompatParams<{ transformId?: string }>();
+  return (
+    <TransformSettingsPage params={{ transformId: params.transformId ?? "" }} />
+  );
+};
+
 export function getDataStudioTransformRoutes() {
   return null;
 }
@@ -30,8 +67,12 @@ export function getDataStudioTransformRouteObjects(): RouteObject[] {
   return [
     {
       path: "runs",
-      element: <TransformTopNavLayout />,
-      children: [{ index: true, element: <RunListPage /> }],
+      element: (
+        <TransformTopNavLayout>
+          <Outlet />
+        </TransformTopNavLayout>
+      ),
+      children: [{ index: true, element: <RunListPageWithRouteProps /> }],
     },
     {
       index: true,
@@ -39,17 +80,26 @@ export function getDataStudioTransformRouteObjects(): RouteObject[] {
     },
     { path: "jobs", element: <JobListPage /> },
     { path: "jobs/new", element: <NewJobPage /> },
-    { path: "jobs/:jobId", element: <JobPage /> },
+    { path: "jobs/:jobId", element: <JobPageWithRouteProps /> },
     { path: "new/query", element: <NewQueryTransformPage /> },
     { path: "new/native", element: <NewNativeTransformPage /> },
-    { path: "new/card/:cardId", element: <NewCardTransformPage /> },
+    {
+      path: "new/card/:cardId",
+      element: <NewCardTransformPageWithRouteProps />,
+    },
     ...(PLUGIN_TRANSFORMS_PYTHON.isEnabled
       ? [{ path: "new/python", element: <NewPythonTransformPage /> }]
       : []),
-    { path: ":transformId", element: <TransformQueryPage /> },
-    { path: ":transformId/edit", element: <TransformQueryPage /> },
-    { path: ":transformId/run", element: <TransformRunPage /> },
-    { path: ":transformId/settings", element: <TransformSettingsPage /> },
+    { path: ":transformId", element: <TransformQueryPageWithRouteProps /> },
+    {
+      path: ":transformId/edit",
+      element: <TransformQueryPageWithRouteProps />,
+    },
+    { path: ":transformId/run", element: <TransformRunPageWithRouteProps /> },
+    {
+      path: ":transformId/settings",
+      element: <TransformSettingsPageWithRouteProps />,
+    },
     ...(PLUGIN_DEPENDENCIES.isEnabled
       ? [
           {

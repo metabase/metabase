@@ -97,7 +97,7 @@ const DashboardMoveToast = ({
 export const DashboardMoveModalConnected = _.compose(
   connect(null, mapDispatchToProps),
   Dashboards.load({
-    id: (_state: State, props: { params: { slug: string } }) =>
-      Urls.extractCollectionId(props.params.slug),
+    id: (_state: State, { params }: { params: { slug: string } }) =>
+      Urls.extractCollectionId(params.slug),
   }),
 )(DashboardMoveModal);

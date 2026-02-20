@@ -125,7 +125,11 @@ const DatabasePageWithParams = () => {
 
 const DatabaseEditAppWithParams = () => {
   const params = useParams<{ databaseId: string }>();
-  return <DatabaseEditApp params={{ databaseId: params.databaseId ?? "" }} />;
+  return (
+    <DatabaseEditApp params={{ databaseId: params.databaseId ?? "" }}>
+      <Outlet />
+    </DatabaseEditApp>
+  );
 };
 
 const SegmentAppWithParams = () => {
@@ -209,6 +213,19 @@ const JobTriggersModalWithParams = ({ onClose }: { onClose: () => void }) => {
   );
 };
 
+const DataModelV1WithRouteProps = () => {
+  const location = useCompatLocation();
+  const params = useParams<{
+    databaseId?: string;
+    schemaId?: string;
+    tableId?: string;
+    fieldId?: string;
+    section?: string;
+  }>();
+
+  return <DataModelV1 location={location} params={params} />;
+};
+
 const RedirectToAllowedSettingsV7 = () => {
   const adminItems = useSelector(getAdminPaths) ?? [];
 
@@ -265,7 +282,14 @@ export function getAdminRouteObjects(store: Store<State>): RouteObject[] {
               path: "databases",
               element: <AdminSectionGuard routeKey="databases" />,
               children: [
-                { index: true, element: <DatabaseListApp /> },
+                {
+                  index: true,
+                  element: (
+                    <DatabaseListApp>
+                      <Outlet />
+                    </DatabaseListApp>
+                  ),
+                },
                 {
                   path: "create",
                   element: (
@@ -286,19 +310,22 @@ export function getAdminRouteObjects(store: Store<State>): RouteObject[] {
               element: <AdminSectionGuard routeKey="data-model" />,
               children: [
                 { index: true, element: <Navigate to="database" replace /> },
-                { path: "database", element: <DataModelV1 /> },
-                { path: "database/:databaseId", element: <DataModelV1 /> },
+                { path: "database", element: <DataModelV1WithRouteProps /> },
+                {
+                  path: "database/:databaseId",
+                  element: <DataModelV1WithRouteProps />,
+                },
                 {
                   path: "database/:databaseId/schema/:schemaId",
-                  element: <DataModelV1 />,
+                  element: <DataModelV1WithRouteProps />,
                 },
                 {
                   path: "database/:databaseId/schema/:schemaId/table/:tableId",
-                  element: <DataModelV1 />,
+                  element: <DataModelV1WithRouteProps />,
                 },
                 {
                   path: "database/:databaseId/schema/:schemaId/table/:tableId/field/:fieldId",
-                  element: <DataModelV1 />,
+                  element: <DataModelV1WithRouteProps />,
                 },
                 { path: "segments", element: <SegmentListApp /> },
                 {

@@ -34,9 +34,9 @@ type RevisionHistoryAppInnerProps = RevisionHistoryAppOwnProps &
 
 const mapStateToProps = (
   state: State,
-  props: RevisionHistoryAppOwnProps,
+  { params }: RevisionHistoryAppOwnProps,
 ): RevisionHistoryAppStateProps => ({
-  id: props.params.id,
+  id: params.id,
   revisions: getRevisions(state),
   user: checkNotNull(getCurrentUser(state)),
 });

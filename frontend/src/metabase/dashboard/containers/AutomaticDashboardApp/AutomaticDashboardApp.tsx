@@ -1,4 +1,5 @@
 import cx from "classnames";
+import type { Location } from "history";
 import { dissoc } from "icepick";
 import { useEffect, useState } from "react";
 import { t } from "ttag";
@@ -213,11 +214,12 @@ const AutomaticDashboardAppInner = () => {
 
 export const AutomaticDashboardApp = () => {
   const { router, location, params } = useRouter();
-  useDashboardUrlQuery(router, location);
+  const dashboardLocation = location as unknown as Location;
+  useDashboardUrlQuery(router as any, dashboardLocation);
 
   const dispatch = useDispatch();
 
-  const dashboardId = `/auto/dashboard/${params.splat}${location.hash.replace(/^#?/, "?")}`;
+  const dashboardId = `/auto/dashboard/${params.splat ?? ""}${dashboardLocation.hash.replace(/^#?/, "?")}`;
 
   return (
     <DashboardContextProvider

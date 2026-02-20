@@ -5,11 +5,7 @@ import { getAdminPaths } from "metabase/admin/app/selectors";
 import { getCanAccessOnboardingPage } from "metabase/home/selectors";
 import { isSameOrSiteUrlOrigin } from "metabase/lib/dom";
 import { useSelector } from "metabase/lib/redux";
-import {
-  PLUGIN_DATA_STUDIO,
-  PLUGIN_FEATURE_LEVEL_PERMISSIONS,
-  PLUGIN_TRANSFORMS,
-} from "metabase/plugins";
+import { PLUGIN_FEATURE_LEVEL_PERMISSIONS } from "metabase/plugins";
 import { getSetting } from "metabase/selectors/settings";
 import type { State } from "metabase-types/store";
 
@@ -155,7 +151,13 @@ export function UserCanAccessDataModelGuard({ children }: GuardProps) {
  * Guard that requires user to have access to data studio
  */
 export function UserCanAccessDataStudioGuard({ children }: GuardProps) {
-  const canAccess = useSelector(PLUGIN_DATA_STUDIO.canAccessDataStudio);
+  const canAccess = useSelector((state: State) => {
+    if (getIsEmbeddingIframe(state)) {
+      return false;
+    }
+    const user = state.currentUser;
+    return !!(user?.is_superuser || user?.is_data_analyst);
+  });
 
   if (!canAccess) {
     return <Navigate to="/unauthorized" replace />;
@@ -168,7 +170,10 @@ export function UserCanAccessDataStudioGuard({ children }: GuardProps) {
  * Guard that requires user to have access to transforms
  */
 export function UserCanAccessTransformsGuard({ children }: GuardProps) {
-  const canAccess = useSelector(PLUGIN_TRANSFORMS.canAccessTransforms);
+  const canAccess = useSelector((state: State) => {
+    const user = state.currentUser;
+    return !!(user?.is_superuser || user?.permissions?.can_access_transforms);
+  });
 
   if (!canAccess) {
     return <Navigate to="/unauthorized" replace />;

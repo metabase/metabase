@@ -9,13 +9,135 @@ import { PublishedTableSegmentDependenciesPage } from "metabase/data-studio/segm
 import { PublishedTableSegmentDetailPage } from "metabase/data-studio/segments/pages/PublishedTableSegmentDetailPage";
 import { PublishedTableSegmentRevisionHistoryPage } from "metabase/data-studio/segments/pages/PublishedTableSegmentRevisionHistoryPage";
 import { PLUGIN_DEPENDENCIES } from "metabase/plugins";
-import { IsAdmin } from "metabase/route-guards";
+import { IsAdminGuard, useCompatParams } from "metabase/routing/compat";
 
 import { TableDependenciesPage } from "./pages/TableDependenciesPage";
 import { TableFieldsPage } from "./pages/TableFieldsPage";
 import { TableMeasuresPage } from "./pages/TableMeasuresPage";
 import { TableOverviewPage } from "./pages/TableOverviewPage";
 import { TableSegmentsPage } from "./pages/TableSegmentsPage";
+
+type TableRouteParams = {
+  tableId?: string;
+  fieldId?: string;
+  segmentId?: string;
+  measureId?: string;
+};
+
+const TableOverviewPageWithRouteProps = () => {
+  const params = useCompatParams<TableRouteParams>();
+  return <TableOverviewPage params={{ tableId: params.tableId ?? "" }} />;
+};
+
+const TableFieldsPageWithRouteProps = () => {
+  const params = useCompatParams<TableRouteParams>();
+  return (
+    <TableFieldsPage
+      params={{ tableId: params.tableId ?? "", fieldId: params.fieldId }}
+    />
+  );
+};
+
+const TableSegmentsPageWithRouteProps = () => {
+  const params = useCompatParams<TableRouteParams>();
+  return <TableSegmentsPage params={{ tableId: params.tableId ?? "" }} />;
+};
+
+const PublishedTableNewSegmentPageWithRouteProps = () => {
+  const params = useCompatParams<TableRouteParams>();
+  return (
+    <PublishedTableNewSegmentPage params={{ tableId: params.tableId ?? "" }} />
+  );
+};
+
+const PublishedTableSegmentDetailPageWithRouteProps = () => {
+  const params = useCompatParams<TableRouteParams>();
+  return (
+    <PublishedTableSegmentDetailPage
+      params={{
+        tableId: params.tableId ?? "",
+        segmentId: params.segmentId ?? "",
+      }}
+    />
+  );
+};
+
+const PublishedTableSegmentRevisionHistoryPageWithRouteProps = () => {
+  const params = useCompatParams<TableRouteParams>();
+  return (
+    <PublishedTableSegmentRevisionHistoryPage
+      params={{
+        tableId: params.tableId ?? "",
+        segmentId: params.segmentId ?? "",
+      }}
+    />
+  );
+};
+
+const PublishedTableSegmentDependenciesPageWithRouteProps = () => {
+  const params = useCompatParams<TableRouteParams>();
+  return (
+    <PublishedTableSegmentDependenciesPage
+      params={{
+        tableId: params.tableId ?? "",
+        segmentId: params.segmentId ?? "",
+      }}
+    />
+  );
+};
+
+const TableMeasuresPageWithRouteProps = () => {
+  const params = useCompatParams<TableRouteParams>();
+  return <TableMeasuresPage params={{ tableId: params.tableId ?? "" }} />;
+};
+
+const PublishedTableNewMeasurePageWithRouteProps = () => {
+  const params = useCompatParams<TableRouteParams>();
+  return (
+    <PublishedTableNewMeasurePage params={{ tableId: params.tableId ?? "" }} />
+  );
+};
+
+const PublishedTableMeasureDetailPageWithRouteProps = () => {
+  const params = useCompatParams<TableRouteParams>();
+  return (
+    <PublishedTableMeasureDetailPage
+      params={{
+        tableId: params.tableId ?? "",
+        measureId: params.measureId ?? "",
+      }}
+    />
+  );
+};
+
+const PublishedTableMeasureRevisionHistoryPageWithRouteProps = () => {
+  const params = useCompatParams<TableRouteParams>();
+  return (
+    <PublishedTableMeasureRevisionHistoryPage
+      params={{
+        tableId: params.tableId ?? "",
+        measureId: params.measureId ?? "",
+      }}
+    />
+  );
+};
+
+const PublishedTableMeasureDependenciesPageWithRouteProps = () => {
+  const params = useCompatParams<TableRouteParams>();
+  return (
+    <PublishedTableMeasureDependenciesPage
+      params={{
+        tableId: params.tableId ?? "",
+        measureId: params.measureId ?? "",
+      }}
+    />
+  );
+};
+
+const TableDependenciesPageWithRouteProps = () => {
+  const params = useCompatParams<TableRouteParams>();
+  return <TableDependenciesPage params={{ tableId: params.tableId ?? "" }} />;
+};
 
 export function getDataStudioTableRoutes() {
   return null;
@@ -26,31 +148,39 @@ export function getDataStudioTableRouteObjects(): RouteObject[] {
     {
       path: "tables",
       children: [
-        { path: ":tableId", element: <TableOverviewPage /> },
-        { path: ":tableId/fields", element: <TableFieldsPage /> },
-        { path: ":tableId/fields/:fieldId", element: <TableFieldsPage /> },
-        { path: ":tableId/segments", element: <TableSegmentsPage /> },
+        { path: ":tableId", element: <TableOverviewPageWithRouteProps /> },
+        { path: ":tableId/fields", element: <TableFieldsPageWithRouteProps /> },
+        {
+          path: ":tableId/fields/:fieldId",
+          element: <TableFieldsPageWithRouteProps />,
+        },
+        {
+          path: ":tableId/segments",
+          element: <TableSegmentsPageWithRouteProps />,
+        },
         {
           path: ":tableId/segments/new",
           element: (
-            <IsAdmin>
-              <PublishedTableNewSegmentPage />
-            </IsAdmin>
+            <IsAdminGuard>
+              <PublishedTableNewSegmentPageWithRouteProps />
+            </IsAdminGuard>
           ),
         },
         {
           path: ":tableId/segments/:segmentId",
-          element: <PublishedTableSegmentDetailPage />,
+          element: <PublishedTableSegmentDetailPageWithRouteProps />,
         },
         {
           path: ":tableId/segments/:segmentId/revisions",
-          element: <PublishedTableSegmentRevisionHistoryPage />,
+          element: <PublishedTableSegmentRevisionHistoryPageWithRouteProps />,
         },
         ...(PLUGIN_DEPENDENCIES.isEnabled
           ? [
               {
                 path: ":tableId/segments/:segmentId/dependencies",
-                element: <PublishedTableSegmentDependenciesPage />,
+                element: (
+                  <PublishedTableSegmentDependenciesPageWithRouteProps />
+                ),
                 children: [
                   {
                     index: true,
@@ -60,28 +190,33 @@ export function getDataStudioTableRouteObjects(): RouteObject[] {
               } satisfies RouteObject,
             ]
           : []),
-        { path: ":tableId/measures", element: <TableMeasuresPage /> },
+        {
+          path: ":tableId/measures",
+          element: <TableMeasuresPageWithRouteProps />,
+        },
         {
           path: ":tableId/measures/new",
           element: (
-            <IsAdmin>
-              <PublishedTableNewMeasurePage />
-            </IsAdmin>
+            <IsAdminGuard>
+              <PublishedTableNewMeasurePageWithRouteProps />
+            </IsAdminGuard>
           ),
         },
         {
           path: ":tableId/measures/:measureId",
-          element: <PublishedTableMeasureDetailPage />,
+          element: <PublishedTableMeasureDetailPageWithRouteProps />,
         },
         {
           path: ":tableId/measures/:measureId/revisions",
-          element: <PublishedTableMeasureRevisionHistoryPage />,
+          element: <PublishedTableMeasureRevisionHistoryPageWithRouteProps />,
         },
         ...(PLUGIN_DEPENDENCIES.isEnabled
           ? [
               {
                 path: ":tableId/measures/:measureId/dependencies",
-                element: <PublishedTableMeasureDependenciesPage />,
+                element: (
+                  <PublishedTableMeasureDependenciesPageWithRouteProps />
+                ),
                 children: [
                   {
                     index: true,
@@ -95,7 +230,7 @@ export function getDataStudioTableRouteObjects(): RouteObject[] {
           ? [
               {
                 path: ":tableId/dependencies",
-                element: <TableDependenciesPage />,
+                element: <TableDependenciesPageWithRouteProps />,
                 children: [
                   {
                     index: true,

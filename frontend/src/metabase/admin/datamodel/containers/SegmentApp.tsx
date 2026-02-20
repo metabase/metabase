@@ -130,7 +130,8 @@ function CreateSegmentForm({
 type SegmentAppInnerProps = SegmentAppOwnProps & SegmentAppDispatchProps;
 
 function SegmentAppInner(props: SegmentAppInnerProps) {
-  if (props.params.id) {
+  const { params } = props;
+  if (params.id) {
     return <UpdateSegmentForm {...props} />;
   }
 

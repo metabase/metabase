@@ -109,8 +109,9 @@ function ModelActions({
   );
 }
 
-function getModelId(state: State, props: OwnProps) {
-  return Urls.extractEntityId(props.params.slug);
+function getModelId(state: State, { params }: OwnProps) {
+  const { slug } = params;
+  return Urls.extractEntityId(slug);
 }
 
 // eslint-disable-next-line import/no-default-export -- deprecated usage
@@ -118,8 +119,8 @@ export default _.compose(
   Questions.load({ id: getModelId, entityAlias: "model" }),
   Databases.loadList(),
   Actions.loadList({
-    query: (state: State, props: OwnProps) => ({
-      "model-id": getModelId(state, props),
+    query: (state: State, ownProps: OwnProps) => ({
+      "model-id": getModelId(state, ownProps),
     }),
   }),
   connect<null, DispatchProps, OwnProps & EntityLoadersProps, State>(

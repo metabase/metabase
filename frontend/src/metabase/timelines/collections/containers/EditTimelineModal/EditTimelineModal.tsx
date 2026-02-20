@@ -16,8 +16,8 @@ interface EditTimelineModalProps {
 }
 
 const timelineProps = {
-  id: (state: State, props: EditTimelineModalProps) =>
-    Urls.extractEntityId(props.params.timelineId),
+  id: (state: State, { params }: EditTimelineModalProps) =>
+    Urls.extractEntityId(params.timelineId),
   query: { include: "events" },
   LoadingAndErrorWrapper,
 };

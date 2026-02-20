@@ -17,15 +17,15 @@ interface EditEventModalProps {
 }
 
 const timelineProps = {
-  id: (state: State, props: EditEventModalProps) =>
-    Urls.extractEntityId(props.params.timelineId),
+  id: (state: State, { params }: EditEventModalProps) =>
+    Urls.extractEntityId(params.timelineId),
   query: { include: "events" },
   LoadingAndErrorWrapper,
 };
 
 const timelineEventProps = {
-  id: (state: State, props: EditEventModalProps) =>
-    Urls.extractEntityId(props.params.timelineEventId),
+  id: (state: State, { params }: EditEventModalProps) =>
+    Urls.extractEntityId(params.timelineEventId),
   entityAlias: "event",
   LoadingAndErrorWrapper,
 };

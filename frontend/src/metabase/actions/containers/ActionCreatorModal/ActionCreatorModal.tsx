@@ -85,8 +85,9 @@ function ActionCreatorModal({
   );
 }
 
-function getModelId(state: State, props: OwnProps) {
-  return Urls.extractEntityId(props.params.slug);
+function getModelId(state: State, { params }: OwnProps) {
+  const { slug } = params;
+  return Urls.extractEntityId(slug);
 }
 
 // eslint-disable-next-line import/no-default-export -- deprecated usage

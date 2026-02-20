@@ -41,16 +41,20 @@ export const EntityIdRedirect = ({
 
   const paramsWithValues: ParamWithValue[] = useMemo(() => {
     // add the value from the params or the query
-    return parametersToTranslate.map((config) => {
-      const value = match(config.type)
-        .with("param", () => params[config.name])
-        .with("search", () => location.query[config.name])
-        .exhaustive();
-      return {
-        ...config,
-        value,
-      };
-    });
+    return parametersToTranslate
+      .map((config) => {
+        const value = match(config.type)
+          .with("param", () => params[config.name])
+          .with("search", () => location.query[config.name])
+          .exhaustive();
+        return value == null
+          ? undefined
+          : {
+              ...config,
+              value,
+            };
+      })
+      .filter((config): config is ParamWithValue => config != null);
   }, [parametersToTranslate, params, location.query]);
 
   const entityIdsToTranslate = useMemo(() => {

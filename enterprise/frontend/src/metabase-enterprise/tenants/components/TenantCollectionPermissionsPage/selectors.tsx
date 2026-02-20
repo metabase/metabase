@@ -51,15 +51,15 @@ export const getIsTenantDirty = createSelector(
 
 export const getCurrentTenantCollectionId = (
   _state: State,
-  props: CollectionIdProps,
+  { params }: CollectionIdProps,
 ) => {
-  if (props.params.collectionId == null) {
+  if (params.collectionId == null) {
     return undefined;
   }
 
-  return props.params.collectionId === ROOT_COLLECTION.id
+  return params.collectionId === ROOT_COLLECTION.id
     ? ROOT_COLLECTION.id
-    : parseInt(String(props.params.collectionId));
+    : parseInt(String(params.collectionId));
 };
 
 const getTenantRootCollectionTreeItem = () => {

@@ -4,10 +4,10 @@ import type { ComponentType } from "react";
 import { useEffect, useRef } from "react";
 import { Navigate, Outlet, type RouteObject } from "react-router-dom";
 
-import App from "metabase/App.tsx";
+import App from "metabase/App";
 import { getAccountRouteObjects } from "metabase/account/routes";
 import CollectionPermissionsModal from "metabase/admin/permissions/components/CollectionPermissionsModal/CollectionPermissionsModal";
-import { getAdminRouteObjects } from "metabase/admin/routes-v7";
+import { getAdminRouteObjects } from "metabase/admin/routes";
 import { ForgotPassword } from "metabase/auth/components/ForgotPassword";
 import { Login } from "metabase/auth/components/Login";
 import { Logout } from "metabase/auth/components/Logout";
@@ -87,7 +87,7 @@ const AppWithRouteProps = () => {
   const location = useCompatLocation();
 
   return (
-    <App location={location as unknown as Location}>
+    <App location={location as unknown as Location} onError={() => undefined}>
       <Outlet />
     </App>
   );
@@ -168,6 +168,11 @@ const QueryBuilderWithRouteProps = () => {
   return (
     <QueryBuilder location={location as unknown as Location} params={params} />
   );
+};
+
+const NewModelOptionsWithRouteProps = () => {
+  const location = useCompatLocation();
+  return <NewModelOptions location={location as unknown as Location} />;
 };
 
 const BrowseSchemasWithParams = () => {
@@ -586,7 +591,7 @@ export function createRoutes(store: Store): RouteObject[] {
                   path: "/model",
                   children: [
                     { index: true, element: <QueryBuilderWithRouteProps /> },
-                    { path: "new", element: <NewModelOptions /> },
+                    { path: "new", element: <NewModelOptionsWithRouteProps /> },
                     { path: "query", element: <QueryBuilderWithRouteProps /> },
                     {
                       path: "metabot",

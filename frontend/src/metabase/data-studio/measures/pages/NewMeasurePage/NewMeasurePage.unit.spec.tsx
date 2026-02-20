@@ -24,7 +24,6 @@ function setup({ table }: SetupOpts) {
       path="/"
       component={() => (
         <NewMeasurePage
-          route={{ path: "/" } as never}
           table={table}
           breadcrumbs={<div />}
           getSuccessUrl={() => "/success"}

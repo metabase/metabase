@@ -108,7 +108,6 @@ export function useDashboardUrlQuery(router: RouterLike, location: Location) {
   ]);
 
   useEffect(() => {
-    // @ts-expect-error missing type declaration
     const unsubscribe = router.listen((nextLocation) => {
       const isSamePath = nextLocation.pathname === location.pathname;
       if (!isSamePath) {

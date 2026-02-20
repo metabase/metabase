@@ -97,7 +97,9 @@ export const TaskDetailsPage = ({ params }: TaskDetailsPageProps) => {
               href={Urls.adminToolsTaskRunDetails(task.run_id)}
               onClick={(event) => {
                 event.preventDefault();
-                push(Urls.adminToolsTaskRunDetails(task.run_id));
+                if (task.run_id != null) {
+                  push(Urls.adminToolsTaskRunDetails(task.run_id));
+                }
               }}
             >
               {t`Go to the corresponding run`}

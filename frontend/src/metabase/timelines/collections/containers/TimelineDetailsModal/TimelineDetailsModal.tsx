@@ -18,15 +18,15 @@ interface TimelineDetailsModalProps {
 }
 
 const timelineProps = {
-  id: (state: State, props: TimelineDetailsModalProps) =>
-    Urls.extractEntityId(props.params.timelineId),
+  id: (state: State, { params }: TimelineDetailsModalProps) =>
+    Urls.extractEntityId(params.timelineId),
   query: { include: "events" },
   LoadingAndErrorWrapper,
 };
 
 const timelinesProps = {
-  query: (state: State, props: TimelineDetailsModalProps) => ({
-    collectionId: Urls.extractCollectionId(props.params.slug),
+  query: (state: State, { params }: TimelineDetailsModalProps) => ({
+    collectionId: Urls.extractCollectionId(params.slug),
     include: "events",
   }),
   LoadingAndErrorWrapper,

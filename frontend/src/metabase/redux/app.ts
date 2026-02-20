@@ -9,11 +9,10 @@ import {
   openInBlankWindow,
   shouldOpenInBlankWindow,
 } from "metabase/lib/dom";
+import { pushPath } from "metabase/lib/navigation";
 import { combineReducers, handleActions } from "metabase/lib/redux";
-import { routerActions } from "metabase/routing/compat/react-router-redux";
 import type {
   DetailViewState,
-  Dispatch,
   TempStorage,
   TempStorageKey,
   TempStorageValue,
@@ -50,11 +49,11 @@ export function resetErrorPage() {
   };
 }
 
-export const openUrl = (url: string) => (dispatch: Dispatch) => {
+export const openUrl = (url: string) => () => {
   if (shouldOpenInBlankWindow(url)) {
     openInBlankWindow(url);
   } else {
-    dispatch(routerActions.push(url));
+    pushPath(url);
   }
 };
 

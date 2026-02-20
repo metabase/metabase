@@ -19,7 +19,7 @@ import type { User } from "metabase-types/api";
 import { clearTemporaryPassword } from "../people";
 import { getUserTemporaryPassword } from "../selectors";
 
-interface UserPasswordResetModalProps {
+interface UserPasswordResetModalInnerProps {
   clearTemporaryPassword: () => void;
   onClose: () => void;
   user: User;
@@ -33,7 +33,7 @@ const UserPasswordResetModalInner = ({
   onClose,
   temporaryPassword,
   user,
-}: UserPasswordResetModalProps) => {
+}: UserPasswordResetModalInnerProps) => {
   useUnmount(() => {
     clearTemporaryPassword();
   });
@@ -95,8 +95,11 @@ interface UserPasswordResetModalProps {
   onClose: () => void;
 }
 
-export const UserPasswordResetModal = (props: UserPasswordResetModalProps) => {
-  const userId = parseInt(props.params.userId);
+export const UserPasswordResetModal = ({
+  params,
+  ...props
+}: UserPasswordResetModalProps) => {
+  const userId = parseInt(params.userId);
 
   const dispatch = useDispatch();
 

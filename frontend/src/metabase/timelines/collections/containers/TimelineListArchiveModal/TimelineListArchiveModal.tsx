@@ -17,8 +17,8 @@ interface TimelineListArchiveModalProps {
 }
 
 const timelineProps = {
-  query: (state: State, props: TimelineListArchiveModalProps) => ({
-    collectionId: Urls.extractCollectionId(props.params.slug),
+  query: (state: State, { params }: TimelineListArchiveModalProps) => ({
+    collectionId: Urls.extractCollectionId(params.slug),
     archived: true,
     include: "events",
   }),
@@ -26,8 +26,8 @@ const timelineProps = {
 };
 
 const collectionProps = {
-  id: (state: State, props: TimelineListArchiveModalProps) =>
-    Urls.extractCollectionId(props.params.slug),
+  id: (state: State, { params }: TimelineListArchiveModalProps) =>
+    Urls.extractCollectionId(params.slug),
   LoadingAndErrorWrapper,
 };
 

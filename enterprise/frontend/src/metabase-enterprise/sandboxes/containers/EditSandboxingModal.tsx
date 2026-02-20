@@ -28,7 +28,7 @@ import type { GroupTableAccessPolicyParams, SandboxesState } from "../types";
 
 interface EditSandboxingModalContainerProps {
   policy: GroupTableAccessPolicy;
-  attributes: UserAttributeKey[];
+  attributes: UserAttributeKey[] | null;
   params: GroupTableAccessPolicyParams;
   location: Location;
   route: any;

@@ -7,6 +7,7 @@ import { useOnClickOutside } from "metabase/common/hooks/use-on-click-outside";
 import { isWithinIframe } from "metabase/lib/dom";
 import { useSelector } from "metabase/lib/redux";
 import { useCompatLocation, useCompatRoutes } from "metabase/routing/compat";
+import type { CompatRoute } from "metabase/routing/compat/types";
 import { getUser } from "metabase/selectors/user";
 import { Box, Card, Center, Icon, Overlay, Stack, rem } from "metabase/ui";
 
@@ -22,8 +23,10 @@ export const Palette = () => {
   const location = useCompatLocation();
   const routes = useCompatRoutes();
 
-  const disableCommandPaletteForRoute = routes.some(
-    (route: { disableCommandPalette?: boolean }) => route.disableCommandPalette,
+  const disableCommandPaletteForRoute = routes.some((route: CompatRoute) =>
+    Boolean(
+      (route as { disableCommandPalette?: boolean }).disableCommandPalette,
+    ),
   );
 
   useCommandPaletteBasicActions({ location, isLoggedIn });

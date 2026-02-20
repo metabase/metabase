@@ -1,7 +1,7 @@
 import type { ComponentType } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 
-import Modal from "metabase/common/components/Modal";
+import { Modal } from "metabase/common/components/Modal";
 import MetabaseSettings from "metabase/lib/settings";
 
 interface ComposedModalProps {

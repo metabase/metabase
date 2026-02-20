@@ -17,8 +17,8 @@ interface NewTimelineModalProps {
 }
 
 const collectionProps = {
-  id: (state: State, props: NewTimelineModalProps) =>
-    Urls.extractCollectionId(props.params.slug),
+  id: (state: State, { params }: NewTimelineModalProps) =>
+    Urls.extractCollectionId(params.slug),
   LoadingAndErrorWrapper,
 };
 

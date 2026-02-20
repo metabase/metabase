@@ -27,7 +27,8 @@ class ArchiveDashboardModal extends Component {
   }
 
   archive = async () => {
-    const dashboardId = Urls.extractEntityId(this.props.params.slug);
+    const { params } = this.props;
+    const dashboardId = Urls.extractEntityId(params.slug);
     this.setState({ loading: true });
     await this.props.setDashboardArchived(dashboardId);
     this.setState({ loading: false });
@@ -72,7 +73,7 @@ function withRouterParams(Component) {
 export const ArchiveDashboardModalConnected = _.compose(
   connect(null, mapDispatchToProps),
   Dashboards.load({
-    id: (state, props) => Urls.extractCollectionId(props.params.slug),
+    id: (state, { params }) => Urls.extractCollectionId(params.slug),
   }),
   Collections.load({
     id: (state, props) => props.dashboard && props.dashboard.collection_id,

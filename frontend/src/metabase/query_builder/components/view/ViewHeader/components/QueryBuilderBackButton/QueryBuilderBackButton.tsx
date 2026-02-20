@@ -1,4 +1,3 @@
-import type { HTMLAttributes } from "react";
 import { t } from "ttag";
 
 import { Link } from "metabase/common/components/Link";
@@ -20,8 +19,7 @@ export type QueryBuilderBackButtonProps = {
     model: CollectionItemModel;
     name: string;
   };
-} & ActionIconProps &
-  HTMLAttributes<HTMLButtonElement>;
+} & ActionIconProps;
 
 export function QueryBuilderBackButton({
   noLink,

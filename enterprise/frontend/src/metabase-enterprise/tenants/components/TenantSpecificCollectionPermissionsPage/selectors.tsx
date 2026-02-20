@@ -51,16 +51,16 @@ export const getIsTenantSpecificDirty = createSelector(
 
 export const getCurrentTenantSpecificCollectionId = (
   _state: State,
-  props: CollectionIdProps,
+  { params }: CollectionIdProps,
 ) => {
-  if (props.params.collectionId == null) {
+  if (params.collectionId == null) {
     return undefined;
   }
 
   // collectionId comes from the route param and is either "root" or a numeric string
-  return props.params.collectionId === ROOT_COLLECTION.id
+  return params.collectionId === ROOT_COLLECTION.id
     ? ROOT_COLLECTION.id
-    : parseInt(String(props.params.collectionId));
+    : parseInt(String(params.collectionId));
 };
 
 const getTenantSpecificRootCollectionTreeItem = () => {

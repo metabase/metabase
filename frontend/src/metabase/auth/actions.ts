@@ -4,13 +4,13 @@ import { getIn } from "icepick";
 import { deleteSession, initiateSLO } from "metabase/lib/auth";
 import { isSmallScreen, reload } from "metabase/lib/dom";
 import { loadLocalization } from "metabase/lib/i18n";
+import { pushPath } from "metabase/lib/navigation";
 import { createAsyncThunk } from "metabase/lib/redux";
 import MetabaseSettings from "metabase/lib/settings";
 import * as Urls from "metabase/lib/urls";
 import { openNavbar } from "metabase/redux/app";
 import { refreshSiteSettings } from "metabase/redux/settings";
 import { clearCurrentUser, refreshCurrentUser } from "metabase/redux/user";
-import { routerActions } from "metabase/routing/compat/react-router-redux";
 import { getSetting } from "metabase/selectors/settings";
 import { getUser } from "metabase/selectors/user";
 import { SessionApi, UtilApi } from "metabase/services";
@@ -122,7 +122,7 @@ export const logout = createAsyncThunk(
         dispatch(clearCurrentUser());
         await dispatch(refreshLocale()).unwrap();
 
-        dispatch(routerActions.push(Urls.login()));
+        pushPath(Urls.login());
         reload(); // clears redux state and browser caches
       }
     } catch (error) {

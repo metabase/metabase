@@ -22,6 +22,8 @@ import type { ResponsiveProps } from "metabase/common/components/ItemsTable/util
 import { MarkdownPreview } from "metabase/common/components/MarkdownPreview";
 import { Bookmarks } from "metabase/entities/bookmarks";
 import { Questions } from "metabase/entities/questions";
+import { pushPath } from "metabase/lib/navigation";
+import { useDispatch } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { useNavigation } from "metabase/routing/compat";
 import {
@@ -375,7 +377,7 @@ function MenuCell({ metric }: { metric?: MetricResult }) {
         title: t`Open collection`,
         icon: "folder",
         action() {
-          dispatch(push(Urls.collection(metric.collection)));
+          pushPath(Urls.collection(metric.collection));
         },
       });
     }

@@ -11,7 +11,7 @@ import {
 import type { History, Location } from "history";
 import { createMemoryHistory as createMemoryHistoryBase } from "history";
 import { KBarProvider } from "kbar";
-import type * as React from "react";
+import * as React from "react";
 import { useMemo } from "react";
 import { DragDropContextProvider } from "react-dnd";
 import HTML5Backend from "react-dnd-html5-backend";
@@ -74,7 +74,7 @@ export type InjectedRouter = {
   createPath: (location: { pathname?: string; search?: string }) => string;
   createHref: (location: { pathname?: string; search?: string }) => string;
   isActive: (path: string) => boolean;
-  listen: (listener: () => void) => () => void;
+  listen: (listener: (location: Location) => void) => () => void;
 };
 
 export type WithRouterProps = {
@@ -123,7 +123,7 @@ function createInjectedRouter(
     createHref: (location) =>
       `${location.pathname ?? ""}${location.search ?? ""}`,
     isActive: (path) => window.location.pathname === path,
-    listen: () => () => undefined,
+    listen: (_listener) => () => undefined,
   };
 }
 
@@ -138,7 +138,8 @@ export function createMemoryHistory(
       const location = update?.location ?? update;
       listener(withLocationQuery(location));
     })) as LegacyHistory["listen"];
-  history.getCurrentLocation = () => withLocationQuery(history.location);
+  history.getCurrentLocation = () =>
+    withLocationQuery((history as unknown as { location: Location }).location);
   return history;
 }
 
@@ -331,7 +332,7 @@ export function Router({
 }) {
   return (
     <HistoryProvider history={history}>
-      <HistoryRouter history={history}>
+      <HistoryRouter history={history as any}>
         <LegacyRouteRenderer>{children}</LegacyRouteRenderer>
       </HistoryRouter>
     </HistoryProvider>

@@ -1,8 +1,5 @@
 import { useMatches as useMatchesV7 } from "react-router-dom";
 
-import { useRouter } from "metabase/router";
-
-import { USE_REACT_ROUTER_V7 } from "./config";
 import type {
   CompatInjectedRouter,
   CompatPlainRoute,
@@ -35,12 +32,7 @@ interface RouterContextResult {
  * Use useBlocker from react-router-dom instead.
  */
 export function useRouterContext(): RouterContextResult {
-  if (USE_REACT_ROUTER_V7) {
-    // eslint-disable-next-line react-hooks/rules-of-hooks
-    return useRouterContextV7();
-  }
-  // eslint-disable-next-line react-hooks/rules-of-hooks
-  return useRouterContextV3();
+  return useRouterContextV7();
 }
 
 function useRouterContextV7(): RouterContextResult {
@@ -55,19 +47,6 @@ function useRouterContextV7(): RouterContextResult {
     router: undefined,
     route: undefined,
     routes,
-  };
-}
-
-function useRouterContextV3(): RouterContextResult {
-  const { router, routes } = useRouter();
-
-  // The innermost route is the last one in the routes array
-  const route = routes?.[routes.length - 1] as CompatRoute | undefined;
-
-  return {
-    router,
-    route,
-    routes: routes || [],
   };
 }
 

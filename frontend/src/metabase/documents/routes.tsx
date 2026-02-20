@@ -7,7 +7,8 @@ import { DocumentPage } from "./components/DocumentPage";
 export const DocumentPageOuter = (
   props: ComponentProps<typeof DocumentPage>,
 ) => {
-  const { entityId } = props.params;
+  const { params } = props;
+  const { entityId } = params;
   const documentId = entityId === "new" ? "new" : extractEntityId(entityId);
 
   // Remounts DocumentPage when navigating to a different document.

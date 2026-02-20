@@ -1,4 +1,4 @@
-import type { Location, LocationDescriptor } from "history";
+import type { LocationDescriptor } from "history";
 import * as React from "react";
 import { Route, useLocation, useNavigate, useParams } from "react-router-dom";
 
@@ -11,7 +11,10 @@ type IRoute = {
   path: string;
 };
 
-export const getParentPath = (route: IRoute, location: Location) => {
+export const getParentPath = (
+  route: IRoute,
+  location: { pathname: string },
+) => {
   // If instance has a custom url we need to exclude its subpath
   const siteUrlSegments = (MetabaseSettings.get("site-url") ?? "").split("/");
   const subPath = siteUrlSegments.slice(3).join("/");
@@ -36,18 +39,15 @@ export const getParentPath = (route: IRoute, location: Location) => {
   return fullPathSegments.join("/");
 };
 
-export type ComposedModalProps<
-  P extends RouteParams = RouteParams,
-  Q = unknown,
-> = {
+export type ComposedModalProps<P extends RouteParams = RouteParams, Q = any> = {
   params: P;
-  location: Location<Q>;
+  location: Q;
   onClose: () => void;
 };
 
 const ModalWithRoute = (
   route: IRoute,
-  ComposedModal: React.ComponentType<ComposedModalProps>,
+  ComposedModal: React.ComponentType<any>,
   modalProps = {},
   noWrap = false,
 ) => {
@@ -57,7 +57,7 @@ const ModalWithRoute = (
     const navigate = useNavigate();
 
     const onClose = React.useCallback(() => {
-      const parentPath = getParentPath(route, location as Location);
+      const parentPath = getParentPath(route, location as { pathname: string });
       navigate(parentPath as LocationDescriptor);
     }, [location, navigate]);
 
@@ -91,14 +91,14 @@ const ModalWithRoute = (
 // but they must accept the full ComposedModalProps shape.
 type ModalComponentProps = {
   params: RouteParams;
-  location: Location;
+  location: any;
   onClose: () => void;
 };
 
 interface ModalRouteProps {
   path: string;
   modal: React.ComponentType<ModalComponentProps>;
-  modalProps?: unknown;
+  modalProps?: Record<string, unknown>;
   noWrap?: boolean;
 }
 

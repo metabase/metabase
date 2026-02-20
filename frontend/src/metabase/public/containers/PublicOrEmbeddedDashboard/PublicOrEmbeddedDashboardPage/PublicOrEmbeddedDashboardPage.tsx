@@ -1,3 +1,5 @@
+import type { Location } from "history";
+
 import { PublicOrEmbeddedDashCardMenu } from "metabase/dashboard/components/DashCard/PublicOrEmbeddedDashCardMenu";
 import { DASHBOARD_DISPLAY_ACTIONS } from "metabase/dashboard/components/DashboardHeader/DashboardHeaderButtonRow/constants";
 import { useDashboardLocationSync } from "metabase/dashboard/containers/DashboardApp/use-dashboard-location-sync";
@@ -19,8 +21,9 @@ import { PublicOrEmbeddedDashboardView } from "../PublicOrEmbeddedDashboardView"
 
 const PublicOrEmbeddedDashboardPageInner = () => {
   const { location, router } = useRouter();
-  useDashboardLocationSync({ location });
-  useDashboardUrlQuery(router, location);
+  const dashboardLocation = location as unknown as Location;
+  useDashboardLocationSync({ location: dashboardLocation });
+  useDashboardUrlQuery(router as any, dashboardLocation);
 
   return <PublicOrEmbeddedDashboardView />;
 };
@@ -28,16 +31,16 @@ const PublicOrEmbeddedDashboardPageInner = () => {
 export const PublicOrEmbeddedDashboardPage = () => {
   const dispatch = useDispatch();
   const { location, params } = useRouter();
+  const dashboardLocation = location as unknown as Location;
 
   const { uuid, token } = params;
 
-  const parameterQueryParams = location.query;
+  const parameterQueryParams = dashboardLocation.query;
 
-  const dashboardId = uuid || token;
+  const dashboardId = uuid ?? token;
+  usePublicEndpoints({ uuid: uuid ?? null, token: token ?? null });
 
-  usePublicEndpoints({ uuid, token });
-
-  useSetEmbedFont({ location });
+  useSetEmbedFont({ location: dashboardLocation });
 
   const {
     background,
@@ -47,16 +50,19 @@ export const PublicOrEmbeddedDashboardPage = () => {
     locale,
     hide_parameters,
     theme,
-  } = useEmbedFrameOptions({ location });
+  } = useEmbedFrameOptions({ location: dashboardLocation });
 
   const canWhitelabel = useSelector(getCanWhitelabel);
+  if (!dashboardId) {
+    return null;
+  }
 
   return (
     <LocaleProvider
       locale={canWhitelabel ? locale : undefined}
       shouldWaitForLocale
     >
-      <EmbeddingEntityContextProvider uuid={uuid} token={token}>
+      <EmbeddingEntityContextProvider uuid={uuid ?? null} token={token ?? null}>
         <DashboardContextProvider
           dashboardId={dashboardId}
           hideParameters={hide_parameters}

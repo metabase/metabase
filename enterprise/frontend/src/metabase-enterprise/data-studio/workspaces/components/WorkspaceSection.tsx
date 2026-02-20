@@ -276,7 +276,7 @@ function WorkspaceItem({
       to={Urls.dataStudioWorkspace(workspace.id)}
       p="0.75rem"
       bdrs="md"
-      name={workspace.name}
+      aria-label={workspace.name}
     >
       <Flex align="flex-start" justify="space-between" gap="xs">
         <Stack gap="xs" style={{ flex: 1, minWidth: 0 }}>

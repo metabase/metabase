@@ -92,9 +92,9 @@ type RouteParamsSelectorParameters = {
 
 const getRouteParams = (
   _state: State,
-  props: RouteParamsSelectorParameters,
+  { params }: RouteParamsSelectorParameters,
 ) => {
-  const { databaseId, schemaName, tableId } = props.params;
+  const { databaseId, schemaName, tableId } = params;
   return {
     databaseId,
     schemaName,
@@ -110,9 +110,9 @@ const getOriginalDataPermissions = (state: State) =>
 
 const getGroupRouteParams = (
   _state: State,
-  props: { params: RawGroupRouteParams },
+  { params }: { params: RawGroupRouteParams },
 ) => {
-  const { groupId, databaseId, schemaName } = props.params;
+  const { groupId, databaseId, schemaName } = params;
   return {
     groupId: groupId != null ? parseInt(groupId) : undefined,
     databaseId: databaseId != null ? parseInt(databaseId) : undefined,
@@ -146,8 +146,11 @@ const getFilterPlaceholder = (
   }
 };
 
-const getGroup = (state: State, props: { params: RawGroupRouteParams }) => {
-  const groupId = props.params.groupId;
+const getGroup = (
+  state: State,
+  { params }: { params: RawGroupRouteParams },
+) => {
+  const groupId = params.groupId;
 
   if (!groupId) {
     return null;

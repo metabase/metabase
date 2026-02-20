@@ -1,19 +1,18 @@
 import type { Location } from "history";
-import { type PropsWithChildren, createContext } from "react";
+import { createContext } from "react";
 import type { createBrowserRouter } from "react-router-dom";
-import {
-  unstable_HistoryRouter as HistoryRouter,
-  RouterProvider as RouterProviderV7,
-} from "react-router-dom";
+import { RouterProvider as RouterProviderV7 } from "react-router-dom";
 
-import { useHistory } from "metabase/history";
-import type { InjectedRouter, PlainRoute } from "metabase/routing/compat/types";
+import type {
+  CompatInjectedRouter,
+  CompatPlainRoute,
+} from "metabase/routing/compat/types";
 
 type RouterContextType = {
-  router: InjectedRouter;
+  router: CompatInjectedRouter;
   location: Location;
   params: Record<string, string | undefined>;
-  routes: PlainRoute[];
+  routes: CompatPlainRoute[];
 };
 
 export const RouterContext = createContext<RouterContextType | null>(null);
@@ -36,15 +35,10 @@ type RouterProviderProps = {
  * - Uses RouterProvider from react-router-dom
  * - Expects a router instance created by createBrowserRouter
  */
-export const RouterProvider = ({
-  children,
-  routerV7,
-}: PropsWithChildren<RouterProviderProps>) => {
-  const { history } = useHistory();
-
-  if (routerV7) {
-    return <RouterProviderV7 router={routerV7} />;
+export const RouterProvider = ({ routerV7 }: RouterProviderProps) => {
+  if (!routerV7) {
+    throw new Error("RouterProvider requires a v7 router instance");
   }
 
-  return <HistoryRouter history={history}>{children}</HistoryRouter>;
+  return <RouterProviderV7 router={routerV7} />;
 };
