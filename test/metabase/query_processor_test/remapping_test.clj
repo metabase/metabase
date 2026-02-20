@@ -232,13 +232,6 @@
                                              (lib.tu/merged-mock-metadata-provider
                                               {:fields [{:id                 (mt/id :users :created_by)
                                                          :fk-target-field-id (mt/id :users :id)}]}))
-          ;; old
-          #_(is (= ["Dwight Gresham" "Shad Ferdynand" "Kfir Caj" "Plato Yeshua"]
-                   (->> (mt/run-mbql-query users
-                          {:order-by [[:asc $name]]
-                           :limit    4})
-                        mt/rows
-                        (map last))))
           (let [results (mt/run-mbql-query users
                           {:order-by [[:asc $name]]
                            :limit    4})]
