@@ -4,7 +4,7 @@ import { initializePlugins } from "sdk-ee-plugins";
 import { initializePlugin as initializeEmbeddingIframeSdkPlugin } from "./embedding_iframe_sdk";
 import { initializeHandleLinkPlugin } from "./embedding_iframe_sdk/handle-link";
 
-// Sdk plugins plugins
+// Sdk plugins
 initializePlugins();
 
 // EAJS specific plugins and overrides
