@@ -98,6 +98,13 @@
     (when (not= definition definition')
       (t2/update! :model/Segment segment-id {:definition definition'}))))
 
+(defn- measure-upgrade-field-refs!
+  [measure-id]
+  (let [definition  (t2/select-one-fn :definition :model/Measure measure-id)
+        definition' (lib/upgrade-field-refs definition)]
+    (when (not= definition definition')
+      (t2/update! :model/Measure measure-id {:definition definition'}))))
+
 (defn upgrade!
   [[entity-type entity-id]]
   (case entity-type
@@ -109,6 +116,9 @@
 
     :segment
     (segment-upgrade-field-refs! entity-id)
+
+    :measure
+    (measure-upgrade-field-refs! entity-id)
 
     :dashboard
     :do-nothing))
