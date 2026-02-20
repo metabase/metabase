@@ -1,6 +1,7 @@
 (ns metabase.test.data.mysql
   "Code for creating / destroying a MySQL database from a `DatabaseDefinition`."
   (:require
+   [clojure.java.jdbc :as jdbc]
    [clojure.string :as str]
    [metabase.test.data.impl.get-or-create :as test.data.impl.get-or-create]
    [metabase.test.data.interface :as tx]
@@ -61,6 +62,19 @@
   [_driver _dbdef _tabledef]
   ;; load data all at once
   nil)
+
+(defmethod load-data/do-insert! :mysql
+  [driver conn table-identifier rows]
+  (if-not load-data/*disable-fk-checks*
+    ((get-method load-data/do-insert! :sql-jdbc/test-extensions) driver conn table-identifier rows)
+    ;; Disable FK checks during insert to allow self-referencing FK rows in the same batch
+    ;; (MySQL 9.6+ enforces FK constraints row-by-row during bulk INSERT)
+    (do
+      (jdbc/execute! {:connection conn} ["SET FOREIGN_KEY_CHECKS = 0"])
+      (try
+        ((get-method load-data/do-insert! :sql-jdbc/test-extensions) driver conn table-identifier rows)
+        (finally
+          (jdbc/execute! {:connection conn} ["SET FOREIGN_KEY_CHECKS = 1"]))))))
 
 (defmethod sql.tx/pk-sql-type :mysql [_] "INTEGER NOT NULL AUTO_INCREMENT")
 
