@@ -24,18 +24,21 @@
    [:display_name   :string]
    [:base_type      :string]
    [:effective_type :string]
-   [:semantic_type  [:maybe :string]]
-   [:description    [:maybe :string]]])
+   [:semantic_type  [:maybe :string]]])
 
-(mr/def ::error
+(def ^:private error-type-enum
+  [:enum :missing-column :column-type-mismatch :missing-primary-key :extra-primary-key :missing-foreign-key :foreign-key-mismatch])
+
+(mr/def ::column-mapping
   [:map
-   [:type    [:enum :missing-column :column-type-mismatch :missing-primary-key :extra-primary-key :missing-foreign-key :foreign-key-mismatch]]
-   [:columns [:sequential ::column]]])
+   [:source {:optional true} ::column]
+   [:target {:optional true} ::column]
+   [:errors {:optional true} [:sequential error-type-enum]]])
 
 (mr/def ::check-replace-source-response
   [:map
-   [:success :boolean]
-   [:errors  {:optional true} [:sequential ::error]]])
+   [:success         :boolean]
+   [:column_mappings [:sequential ::column-mapping]]])
 
 (api.macros/defendpoint :post "/check-replace-source" :- ::check-replace-source-response
   "Check whether a source entity can be replaced by a target entity. Returns compatibility
@@ -49,12 +52,9 @@
        [:source_entity_type entity-type-enum]
        [:target_entity_id   ms/PositiveInt]
        [:target_entity_type entity-type-enum]]]
-  (let [errors (replacement.source/check-replace-source
-                [source_entity_type source_entity_id]
-                [target_entity_type target_entity_id])]
-    (if (empty? errors)
-      {:success true}
-      {:success false :errors errors})))
+  (replacement.source/check-replace-source
+   [source_entity_type source_entity_id]
+   [target_entity_type target_entity_id]))
 
 (api.macros/defendpoint :post "/replace-source" :- [:map
                                                     [:status [:= 202]] ;; throws to return 409
@@ -70,12 +70,12 @@
        [:source_entity_type entity-type-enum]
        [:target_entity_id   ms/PositiveInt]
        [:target_entity_type entity-type-enum]]]
-  (let [errors (replacement.source/check-replace-source
+  (let [result (replacement.source/check-replace-source
                 [source_entity_type source_entity_id]
                 [target_entity_type target_entity_id])]
-    (when (seq errors)
+    (when-not (:success result)
       (throw (ex-info "Sources are not replaceable" {:status-code 400
-                                                     :errors errors}))))
+                                                     :column_mappings (:column_mappings result)}))))
   (let [user-id api/*current-user-id*
         work-fn (fn [runner]
                   (replacement.runner/run-swap

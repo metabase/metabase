@@ -1,148 +1,45 @@
-import { msgid, ngettext, t } from "ttag";
-
 import { skipToken } from "metabase/api";
-import type {
-  CheckReplaceSourceResponse,
-  DependencyNode,
-  ReplaceSourceEntry,
-} from "metabase-types/api";
+import type { Card, ReplaceSourceEntry, Table } from "metabase-types/api";
 
-import { DEPENDENT_TYPES } from "./constants";
-import type { EmptyStateType, TabInfo, TabType, ValidationInfo } from "./types";
+import type { EntityInfo } from "./types";
 
-export function getTabs(
-  nodes: DependencyNode[] | undefined,
-  checkInfo: CheckReplaceSourceResponse | undefined,
-): TabInfo[] {
-  const tabs: TabInfo[] = [];
-  if (nodes == null || nodes.length === 0) {
-    return [];
+export function getEntityInfo(
+  entry: ReplaceSourceEntry | undefined,
+  table: Table | undefined,
+  card: Card | undefined,
+): EntityInfo | undefined {
+  if (entry?.type === "table" && entry.id === table?.id) {
+    return { type: "table", table };
   }
-
-  tabs.push({ type: "descendants", nodes: nodes });
-  if (checkInfo?.errors != null) {
-    tabs.push(
-      ...checkInfo.errors.map((error) => ({ type: error.type, error })),
-    );
+  if (entry?.type === "card" && entry.id === card?.id) {
+    return { type: "card", card };
   }
-  return tabs;
 }
 
-export function shouldResetTab(
-  tabs: TabInfo[],
-  selectedTabType: TabType | undefined,
-) {
-  return tabs.length === 0
-    ? selectedTabType == null
-    : !tabs.some((tab) => tab.type === selectedTabType);
+export function getTableRequest(entry: ReplaceSourceEntry | undefined) {
+  return entry != null && entry.type === "table" ? { id: entry.id } : skipToken;
 }
 
-export function getDescendantsRequest(source: ReplaceSourceEntry | undefined) {
-  if (source == null) {
-    return skipToken;
-  }
-  return {
-    id: source.id,
-    type: source.type,
-    dependent_types: DEPENDENT_TYPES,
-  };
+export function getCardRequest(entry: ReplaceSourceEntry | undefined) {
+  return entry != null && entry.type === "card" ? { id: entry.id } : skipToken;
+}
+
+export function getDependentsRequest(entry: ReplaceSourceEntry | undefined) {
+  return entry != null ? { id: entry.id, type: entry.type } : skipToken;
 }
 
 export function getCheckReplaceSourceRequest(
-  source: ReplaceSourceEntry | undefined,
-  target: ReplaceSourceEntry | undefined,
+  sourceEntry: ReplaceSourceEntry | undefined,
+  targetEntry: ReplaceSourceEntry | undefined,
 ) {
-  if (source == null || target == null) {
+  if (sourceEntry == null || targetEntry == null) {
     return skipToken;
   }
-  return {
-    source_entity_id: source.id,
-    source_entity_type: source.type,
-    target_entity_id: target.id,
-    target_entity_type: target.type,
-  };
-}
-
-export function getValidationInfo(
-  source: ReplaceSourceEntry | undefined,
-  target: ReplaceSourceEntry | undefined,
-  nodes: DependencyNode[] | undefined,
-  checkInfo: CheckReplaceSourceResponse | undefined,
-): ValidationInfo {
-  if (source == null) {
-    return {
-      isValid: false,
-      errorMessage: t`Pick the original source data source`,
-    };
-  }
-
-  if (target == null) {
-    return {
-      isValid: false,
-      errorMessage: t`Pick the replacement data source`,
-    };
-  }
-
-  if (source.id === target.id && source.type === target.type) {
-    return {
-      isValid: false,
-      errorMessage: t`The original and replacement data sources cannot be the same`,
-    };
-  }
-
-  if (nodes == null) {
-    return {
-      isValid: false,
-      errorMessage: t`Fetching dependencies for the original source data source`,
-    };
-  }
-
-  if (nodes.length === 0) {
-    return {
-      isValid: false,
-      errorMessage: t`No queries found using the original source data source`,
-    };
-  }
-
-  if (checkInfo == null) {
-    return {
-      isValid: false,
-      errorMessage: t`Checking for compatibility between the original and replacement data sources`,
-    };
-  }
-
-  if (!checkInfo.success) {
-    return {
-      isValid: false,
-      errorMessage: t`The original and replacement data sources are not compatible`,
-    };
-  }
 
   return {
-    isValid: true,
+    source_entity_id: sourceEntry.id,
+    source_entity_type: sourceEntry.type,
+    target_entity_id: targetEntry.id,
+    target_entity_type: targetEntry.type,
   };
-}
-
-export function getSubmitLabel(
-  nodes: DependencyNode[] | undefined,
-  validationInfo: ValidationInfo,
-): string {
-  if (nodes == null || !validationInfo.isValid) {
-    return t`Replace data source`;
-  }
-
-  return ngettext(
-    msgid`Replace data source in ${nodes.length} item`,
-    `Replace data source in ${nodes.length} items`,
-    nodes.length,
-  );
-}
-
-export function getEmptyStateType(
-  nodes: DependencyNode[] | undefined,
-): EmptyStateType {
-  if (nodes != null && nodes.length === 0) {
-    return "no-dependents";
-  }
-  return "default";
 }

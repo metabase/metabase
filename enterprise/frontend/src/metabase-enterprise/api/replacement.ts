@@ -1,5 +1,5 @@
 import type {
-  CheckReplaceSourceResponse,
+  CheckReplaceSourceInfo,
   ReplaceSourceRequest,
   ReplaceSourceResponse,
   ReplaceSourceRun,
@@ -17,7 +17,7 @@ import {
 export const replacementApi = EnterpriseApi.injectEndpoints({
   endpoints: (builder) => ({
     checkReplaceSource: builder.query<
-      CheckReplaceSourceResponse,
+      CheckReplaceSourceInfo,
       ReplaceSourceRequest
     >({
       query: (body) => ({

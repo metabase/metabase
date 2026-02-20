@@ -18,63 +18,25 @@ export type ReplaceSourceColumnInfo = {
   base_type: string;
   effective_type: string;
   semantic_type: string | null;
-  description: string | null;
 };
 
-export type MissingColumnReplaceSourceError = {
-  type: "missing-column";
-  columns: ReplaceSourceColumnInfo[];
+export type ReplaceSourceErrorType =
+  | "missing-column"
+  | "column-type-mismatch"
+  | "missing-primary-key"
+  | "extra-primary-key"
+  | "missing-foreign-key"
+  | "foreign-key-mismatch";
+
+export type ReplaceSourceColumnMapping = {
+  source?: ReplaceSourceColumnInfo;
+  target?: ReplaceSourceColumnInfo;
+  errors?: ReplaceSourceErrorType[];
 };
 
-export type ColumnTypeMismatchReplaceSourceError = {
-  type: "column-type-mismatch";
-  columns: ReplaceSourceColumnInfo[];
-};
-
-export type MissingPrimaryKeyReplaceSourceError = {
-  type: "missing-primary-key";
-  columns: ReplaceSourceColumnInfo[];
-};
-
-export type ExtraPrimaryKeyReplaceSourceError = {
-  type: "extra-primary-key";
-  columns: ReplaceSourceColumnInfo[];
-};
-
-export type MissingForeignKeyReplaceSourceError = {
-  type: "missing-foreign-key";
-  columns: ReplaceSourceColumnInfo[];
-};
-
-export type ForeignKeyMismatchReplaceSourceError = {
-  type: "foreign-key-mismatch";
-  columns: ReplaceSourceColumnInfo[];
-};
-
-export type ReplaceSourceError =
-  | MissingColumnReplaceSourceError
-  | ColumnTypeMismatchReplaceSourceError
-  | MissingPrimaryKeyReplaceSourceError
-  | ExtraPrimaryKeyReplaceSourceError
-  | MissingForeignKeyReplaceSourceError
-  | ForeignKeyMismatchReplaceSourceError;
-
-export type ReplaceSourceErrorType = ReplaceSourceError["type"];
-
-export type ReplaceSourceRequest = {
-  source_entity_id: ReplaceSourceEntityId;
-  source_entity_type: ReplaceSourceEntityType;
-  target_entity_id: ReplaceSourceEntityId;
-  target_entity_type: ReplaceSourceEntityType;
-};
-
-export type CheckReplaceSourceResponse = {
+export type CheckReplaceSourceInfo = {
   success: boolean;
-  errors?: ReplaceSourceError[] | null;
-};
-
-export type ReplaceSourceResponse = {
-  run_id: ReplaceSourceRunId;
+  column_mappings: ReplaceSourceColumnMapping[];
 };
 
 export type ReplaceSourceRunId = number;
@@ -90,4 +52,15 @@ export type ReplaceSourceRun = {
   status: ReplaceSourceRunStatus;
   progress: number;
   start_time: string;
+};
+
+export type ReplaceSourceRequest = {
+  source_entity_id: ReplaceSourceEntityId;
+  source_entity_type: ReplaceSourceEntityType;
+  target_entity_id: ReplaceSourceEntityId;
+  target_entity_type: ReplaceSourceEntityType;
+};
+
+export type ReplaceSourceResponse = {
+  run_id: ReplaceSourceRunId;
 };

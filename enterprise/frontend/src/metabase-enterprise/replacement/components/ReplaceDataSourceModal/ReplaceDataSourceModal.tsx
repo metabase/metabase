@@ -1,26 +1,22 @@
-import { useDisclosure } from "@mantine/hooks";
-import { useLayoutEffect, useMemo, useState } from "react";
+import { useState } from "react";
 
+import { useGetCardQuery, useGetTableQuery } from "metabase/api";
 import type { ReplaceDataSourceModalProps } from "metabase/plugins";
-import { Flex, FocusTrap, Modal } from "metabase/ui";
+import { Flex, Modal } from "metabase/ui";
 import {
   useCheckReplaceSourceQuery,
   useListNodeDependentsQuery,
 } from "metabase-enterprise/api";
+import type { ReplaceSourceEntry } from "metabase-types/api";
 
 import { ModalBody } from "./ModalBody";
-import { ModalFooter } from "./ModalFooter";
-import { ModalHeader } from "./ModalHeader";
-import { ReplaceModal } from "./ReplaceModal";
-import type { TabType } from "./types";
+import { ModalSidebar } from "./ModalSidebar";
 import {
+  getCardRequest,
   getCheckReplaceSourceRequest,
-  getDescendantsRequest,
-  getEmptyStateType,
-  getSubmitLabel,
-  getTabs,
-  getValidationInfo,
-  shouldResetTab,
+  getDependentsRequest,
+  getEntityInfo,
+  getTableRequest,
 } from "./utils";
 
 export function ReplaceDataSourceModal({
@@ -33,7 +29,6 @@ export function ReplaceDataSourceModal({
     <Modal.Root opened={isOpened} fullScreen onClose={onClose}>
       <Modal.Overlay />
       <Modal.Content>
-        <FocusTrap.InitialFocus />
         <ModalContent
           initialSource={initialSource}
           initialTarget={initialTarget}
@@ -45,8 +40,8 @@ export function ReplaceDataSourceModal({
 }
 
 type ModalContentProps = {
-  initialSource: ReplaceDataSourceModalProps["initialSource"];
-  initialTarget: ReplaceDataSourceModalProps["initialTarget"];
+  initialSource: ReplaceSourceEntry | undefined;
+  initialTarget: ReplaceSourceEntry | undefined;
   onClose: () => void;
 };
 
@@ -55,73 +50,44 @@ function ModalContent({
   initialTarget,
   onClose,
 }: ModalContentProps) {
-  const [source, setSource] = useState(initialSource);
-  const [target, setTarget] = useState(initialTarget);
-  const [selectedTabType, setSelectedTabType] = useState<TabType>();
+  const [sourceEntry, setSourceEntry] = useState(initialSource);
+  const [targetEntry, setTargetEntry] = useState(initialTarget);
 
-  const { data: nodes } = useListNodeDependentsQuery(
-    getDescendantsRequest(source),
+  const { data: sourceTable } = useGetTableQuery(getTableRequest(sourceEntry));
+  const { data: sourceCard } = useGetCardQuery(getCardRequest(sourceEntry));
+  const { data: targetTable } = useGetTableQuery(getTableRequest(targetEntry));
+  const { data: targetCard } = useGetCardQuery(getCardRequest(targetEntry));
+  const { data: dependents = [] } = useListNodeDependentsQuery(
+    getDependentsRequest(sourceEntry),
   );
   const { data: checkInfo } = useCheckReplaceSourceQuery(
-    getCheckReplaceSourceRequest(source, target),
+    getCheckReplaceSourceRequest(sourceEntry, targetEntry),
   );
-  const [isConfirming, { open: openConfirmation, close: closeConfirmation }] =
-    useDisclosure();
 
-  const tabs = useMemo(() => {
-    return getTabs(nodes, checkInfo);
-  }, [nodes, checkInfo]);
+  const sourceInfo = getEntityInfo(sourceEntry, sourceTable, sourceCard);
+  const targetInfo = getEntityInfo(targetEntry, targetTable, targetCard);
+  const columnMappings = checkInfo?.column_mappings ?? [];
+  const canReplace = checkInfo?.success ?? false;
 
-  const selectedTab = useMemo(() => {
-    return tabs.find((tab) => tab.type === selectedTabType);
-  }, [tabs, selectedTabType]);
-
-  const validationInfo = useMemo(() => {
-    return getValidationInfo(source, target, nodes, checkInfo);
-  }, [source, target, nodes, checkInfo]);
-
-  const submitLabel = useMemo(() => {
-    return getSubmitLabel(nodes, validationInfo);
-  }, [nodes, validationInfo]);
-
-  useLayoutEffect(() => {
-    if (shouldResetTab(tabs, selectedTabType)) {
-      setSelectedTabType(tabs[0]?.type);
-    }
-  }, [tabs, selectedTabType]);
+  const handleSubmit = () => {};
 
   return (
-    <>
-      <Flex h="100%" direction="column">
-        <ModalHeader
-          source={source}
-          target={target}
-          tabs={tabs}
-          selectedTabType={selectedTabType}
-          onSourceChange={setSource}
-          onTargetChange={setTarget}
-          onTabChange={setSelectedTabType}
-        />
-        <ModalBody
-          selectedTab={selectedTab}
-          emptyStateType={getEmptyStateType(nodes)}
-        />
-        <ModalFooter
-          submitLabel={submitLabel}
-          validationInfo={validationInfo}
-          onReplace={openConfirmation}
-          onClose={onClose}
-        />
-      </Flex>
-      {source != null && target != null && (
-        <ReplaceModal
-          source={source}
-          target={target}
-          isOpened={isConfirming}
-          onDone={onClose}
-          onClose={closeConfirmation}
-        />
-      )}
-    </>
+    <Flex h="100%">
+      <ModalSidebar
+        sourceInfo={sourceInfo}
+        targetInfo={targetInfo}
+        dependentsCount={dependents.length}
+        canReplace={canReplace}
+        onSourceChange={setSourceEntry}
+        onTargetChange={setTargetEntry}
+        onSubmit={handleSubmit}
+        onCancel={onClose}
+      />
+      <ModalBody
+        sourceInfo={sourceInfo}
+        targetInfo={targetInfo}
+        columnMappings={columnMappings}
+      />
+    </Flex>
   );
 }
