@@ -1,6 +1,5 @@
 import dayjs from "dayjs";
 
-import type { SpecificDatePickerValue } from "metabase/querying/common/types";
 import type { ClickAction, ClickObject } from "metabase/visualizations/types";
 import * as LibMetric from "metabase-lib/metric";
 import type { CardId, DatetimeUnit, TemporalUnit } from "metabase-types/api";
@@ -10,6 +9,8 @@ import type {
   MetricsViewerDefinitionEntry,
   MetricsViewerTabState,
 } from "../types/viewer-state";
+
+import type { DimensionFilterValue } from "./metrics";
 
 import { findDimensionById } from ".";
 
@@ -92,8 +93,12 @@ function getZoomInTimeSeriesAction({
   if (typeof dimensionValue !== "string") {
     return;
   }
-  const filter = getFilterForDateAndUnit(dimensionValue, currentTemporalUnit);
-  if (!filter) {
+  const dimensionFilter = getDimensionFilterForDateAndUnit(
+    dimensionValue,
+    currentTemporalUnit,
+    nextTemporalUnit,
+  );
+  if (!dimensionFilter) {
     return;
   }
   return {
@@ -108,7 +113,7 @@ function getZoomInTimeSeriesAction({
         projectionConfig: {
           ...tab.projectionConfig,
           temporalUnit: nextTemporalUnit,
-          filter,
+          dimensionFilter,
         },
       });
       closePopover();
@@ -122,19 +127,20 @@ function isValidTemporalUnit(unit?: DatetimeUnit): unit is TemporalUnit {
   );
 }
 
-function getFilterForDateAndUnit(
+function getDimensionFilterForDateAndUnit(
   date: string,
   unit: TemporalUnit,
-): SpecificDatePickerValue | undefined {
+  nextUnit: TemporalUnit,
+): DimensionFilterValue | undefined {
   const d = dayjs(date);
   if (!d.isValid()) {
     return undefined;
   }
   return {
-    type: "specific",
+    type: "specific-date",
     operator: "between",
     values: [d.startOf(unit).toDate(), d.endOf(unit).toDate()],
-    hasTime: unit === "hour" || unit === "minute",
+    hasTime: nextUnit === "hour" || nextUnit === "minute",
   };
 }
 
