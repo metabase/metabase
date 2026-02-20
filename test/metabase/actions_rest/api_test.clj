@@ -220,7 +220,7 @@
                       (let [response (mt/user-http-request :crowberto :post "action" action)
                             url      (format "action/%s/execute" (:id response))
                             params   {:parameters {:id 1 :source "Twitter"}}]
-                        (is (=? {:message "You don't have permissions to do that."}
+                        (is (=? "You don't have permissions to do that."
                                 (mt/user-http-request :rasta :post 403 url params)))
                         (is (= {:rows-affected 1} (mt/user-http-request :crowberto :post 200 url params)))))))))))))))
 
@@ -544,6 +544,29 @@
                                         :post 400
                                         (format "action/%s/execute" action-id)
                                         {:parameters {:id 1 :name "European"}})))))))))
+
+(deftest execute-action-permission-test
+  (mt/test-drivers (mt/normal-drivers-with-feature :actions)
+    (mt/with-actions-test-data-and-actions-enabled
+      (mt/with-actions [_ {:type :model :dataset_query (mt/mbql-query categories)
+                           :collection_id (:id (collection/user->personal-collection (mt/user->id :crowberto)))}
+                        {query-action-id :action-id}  (assoc unshared-action-opts :type :query)
+                        {implicit-action-id :action-id} (assoc unshared-action-opts :type :implicit :kind "row/update")]
+        (testing "User without read permissions cannot execute a query action"
+          (is (= "You don't have permissions to do that."
+                 (mt/user-http-request :rasta :post 403
+                                       (format "action/%d/execute" query-action-id)
+                                       {:parameters {:id 1 :name "European"}}))))
+        (testing "User without read permissions cannot execute an implicit action"
+          (is (= "You don't have permissions to do that."
+                 (mt/user-http-request :rasta :post 403
+                                       (format "action/%d/execute" implicit-action-id)
+                                       {:parameters {:id 1 :name "European"}}))))
+        (testing "Admin can still execute actions"
+          (is (=? {:rows-affected 1}
+                  (mt/user-http-request :crowberto :post 200
+                                        (format "action/%d/execute" query-action-id)
+                                        {:parameters {:id 1 :name "European"}}))))))))
 
 (deftest parameter-ignore-test
   (mt/with-actions-test-data-tables #{"users"}
