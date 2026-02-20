@@ -1,5 +1,4 @@
 import { useEffect } from "react";
-import { Link } from "react-router";
 import { t } from "ttag";
 
 import { trackUpsellViewed } from "metabase/admin/upsells/components/analytics";
@@ -78,7 +77,7 @@ export function PythonTransformsUpsellModal({
               <Stack gap="md" pb="md" pt="sm">
                 {bulletPoints.map((point) => (
                   <Flex direction="row" gap="sm" key={point}>
-                    <Center w={24} h={24}>
+                    <Center w={24} h={24} flex="0 0 auto">
                       <Icon name="check_filled" size={16} c="text-brand" />
                     </Center>
                     <Text c="text-secondary" lh="lg">
@@ -152,7 +151,7 @@ function SelfHostedStorePurchaseLink() {
   const storeUrl = useStoreUrl("account/transforms");
 
   return (
-    <Button component={Link} to={storeUrl} variant="primary">
+    <Button component="a" href={storeUrl} variant="primary">
       {t`Go to your store account to purchase`}
     </Button>
   );
