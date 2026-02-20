@@ -43,11 +43,6 @@ export const getSeriesColors = (
     }
   }
 
-  const colorOverride = settings["color_override"];
-  if (colorOverride) {
-    assignments[seriesVizSettingsKeys[0]] = colorOverride;
-  }
-
   return getColorsForValues(
     seriesVizSettingsKeys,
     assignments,

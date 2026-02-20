@@ -4,6 +4,8 @@ import { getColorsForValues } from "metabase/lib/colors/charts";
 import { NULL_DISPLAY_VALUE } from "metabase/lib/constants";
 import { formatValue } from "metabase/lib/formatting";
 import { isEmpty } from "metabase/lib/validate";
+import { getColorplethColorScale } from "metabase/visualizations/components/ChoroplethMap";
+import { getSeriesVizSettingsKey } from "metabase/visualizations/echarts/cartesian/model/series";
 import { MAX_SERIES } from "metabase/visualizations/lib/utils";
 import type { DimensionMetadata, MetricDefinition } from "metabase-lib/metric";
 import * as LibMetric from "metabase-lib/metric";
@@ -14,6 +16,7 @@ import type {
   RowValue,
   RowValues,
   SingleSeries,
+  VisualizationDisplay,
   VisualizationSettings,
 } from "metabase-types/api";
 
@@ -168,30 +171,46 @@ function splitByBreakout(
     seriesRows.push(rowColumnIndexes.map((i) => row[i]) as RowValues);
   }
 
-  return breakoutValues.map((breakoutValue, i) => ({
-    ...series,
-    card: {
-      ...card,
-      id: nextSyntheticCardId(),
-      name: [
-        seriesCount > 1 && card.name,
-        formatValue(
-          isEmpty(breakoutValue) ? NULL_DISPLAY_VALUE : breakoutValue,
-          { column: cols[seriesColumnIndex] },
-        ),
-      ]
-        .filter(Boolean)
-        .join(": "),
-      visualization_settings: {
-        color_override: sourceColors?.[i],
+  return breakoutValues.map((breakoutValue, i) => {
+    const name = [
+      seriesCount > 1 && card.name,
+      formatValue(isEmpty(breakoutValue) ? NULL_DISPLAY_VALUE : breakoutValue, {
+        column: cols[seriesColumnIndex],
+      }),
+    ]
+      .filter(Boolean)
+      .join(": ");
+
+    const seriesKey = getSeriesVizSettingsKey(
+      cols[metricColumnIndexes[0]],
+      false,
+      true,
+      1,
+      null,
+      name,
+    );
+
+    return {
+      ...series,
+      card: {
+        ...card,
+        id: nextSyntheticCardId(),
+        name,
+        visualization_settings: {
+          ...computeColorVizSettings({
+            displayType: card.display,
+            seriesKey,
+            color: sourceColors?.[i] as string,
+          }),
+        },
       },
-    },
-    data: {
-      ...data,
-      rows: breakoutRowsByValue.get(breakoutValue)!,
-      cols: rowColumnIndexes.map((i) => cols[i]),
-    },
-  }));
+      data: {
+        ...data,
+        rows: breakoutRowsByValue.get(breakoutValue)!,
+        cols: rowColumnIndexes.map((i) => cols[i]),
+      },
+    };
+  });
 }
 
 function createSeriesCard(
@@ -267,13 +286,26 @@ export function buildRawSeriesFromDefinitions(
       return [];
     }
 
+    const name = getDefinitionName(entry.definition);
+
+    const seriesKey = getSeriesVizSettingsKey(
+      result.data.cols[1], // TODO: There is almost certainly be a better way to do this
+      false,
+      true,
+      1,
+      null,
+      name as string,
+    );
+
     const singleSeries: SingleSeries = {
-      card: createSeriesCard(
-        cardId,
-        getDefinitionName(entry.definition),
-        tab.display,
-        { ...vizSettings, color_override: sourceColors[entry.id]?.[0] },
-      ),
+      card: createSeriesCard(cardId, name, tab.display, {
+        ...vizSettings,
+        ...computeColorVizSettings({
+          displayType: tab.display,
+          seriesKey,
+          color: sourceColors[entry.id]?.[0] as string,
+        }),
+      }),
       data: result.data,
     };
 
@@ -282,6 +314,7 @@ export function buildRawSeriesFromDefinitions(
     }
 
     const projCount = LibMetric.projections(modDef).length;
+
     if (projCount > 1) {
       return splitByBreakout(
         singleSeries,
@@ -300,6 +333,30 @@ export function buildRawSeriesFromDefinitions(
       sourceColors[entry.id],
     );
   });
+}
+
+function computeColorVizSettings({
+  displayType,
+  seriesKey,
+  color,
+}: {
+  displayType: VisualizationDisplay;
+  seriesKey: string;
+  color: string;
+}): Partial<Pick<VisualizationSettings, "series_settings" | "map.colors">> {
+  if (displayType === "map") {
+    return {
+      "map.colors": getColorplethColorScale(color),
+    };
+  } else {
+    return {
+      series_settings: {
+        [seriesKey]: {
+          color,
+        },
+      },
+    };
+  }
 }
 
 function computeAvailableOptions(
