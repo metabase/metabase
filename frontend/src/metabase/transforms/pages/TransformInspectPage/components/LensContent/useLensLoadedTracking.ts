@@ -1,11 +1,13 @@
 import { useCallback, useRef } from "react";
 
 import { trackTransformInspectLensLoaded } from "metabase/transforms/analytics";
-import type { InspectorLensId, TransformId } from "metabase-types/api";
+import type { TransformId } from "metabase-types/api";
+
+import type { LensKey } from "../../types";
 
 export const useLensLoadedTracking = (
   transformId: TransformId,
-  lensId: InspectorLensId,
+  lensKey: LensKey,
 ) => {
   const lensStartTimeRef = useRef<number>(Date.now());
   const hasCalledRef = useRef(false);
@@ -17,10 +19,10 @@ export const useLensLoadedTracking = (
     hasCalledRef.current = true;
     trackTransformInspectLensLoaded({
       transformId,
-      lensId,
+      lensKey,
       durationMs: Date.now() - lensStartTimeRef.current,
     });
-  }, [transformId, lensId]);
+  }, [transformId, lensKey]);
 
   return handleAllCardsLoaded;
 };

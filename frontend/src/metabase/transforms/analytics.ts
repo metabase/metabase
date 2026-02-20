@@ -6,6 +6,8 @@ import type {
   TransformJobId,
 } from "metabase-types/api";
 
+import type { LensKey } from "./pages/TransformInspectPage/types";
+
 export function trackTransformTriggerManualRun({
   transformId,
 }: {
@@ -70,17 +72,17 @@ export function trackTransformRunTagsUpdated({
 
 export function trackTransformInspectLensLoaded({
   transformId,
-  lensId,
+  lensKey,
   durationMs,
 }: {
   transformId: TransformId;
-  lensId: InspectorLensId;
+  lensKey: LensKey;
   durationMs: number;
 }) {
   trackSimpleEvent({
     event: "transform_inspect_lens_loaded",
     target_id: transformId,
-    event_detail: lensId,
+    event_detail: lensKey,
     duration_ms: durationMs,
   });
 }

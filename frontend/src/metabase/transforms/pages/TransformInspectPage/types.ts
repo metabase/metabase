@@ -4,3 +4,6 @@ export type { LensHandle } from "metabase/api/tags/utils";
 export type { CardStats } from "metabase/transforms/lib/transforms-inspector";
 
 export type RouteParams = { transformId: string; lensId?: InspectorLensId };
+
+// Lens ID concatenated with params
+export type LensKey = string;
