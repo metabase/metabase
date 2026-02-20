@@ -14,6 +14,7 @@ import type { ReplaceSourceEntry } from "metabase-types/api";
 import { ConfirmAndProgressModal } from "./ConfirmAndProgressModal";
 import { ModalBody } from "./ModalBody";
 import { ModalSidebar } from "./ModalSidebar";
+import type { TabType } from "./types";
 import {
   getCardRequest,
   getCheckReplaceSourceRequest,
@@ -57,6 +58,7 @@ function ModalContent({
 }: ModalContentProps) {
   const [sourceEntry, setSourceEntry] = useState(initialSource);
   const [targetEntry, setTargetEntry] = useState(initialTarget);
+  const [selectedTab, setSelectedTab] = useState<TabType>("column-mappings");
   const [isConfirming, { open: openConfirmation, close: closeConfirmation }] =
     useDisclosure();
 
@@ -102,7 +104,10 @@ function ModalContent({
       <ModalBody
         sourceInfo={sourceInfo}
         targetInfo={targetInfo}
+        selectedTab={selectedTab}
+        dependents={dependents}
         columnMappings={columnMappings}
+        onTabChange={setSelectedTab}
       />
       {sourceEntry != null && targetEntry != null && (
         <ConfirmAndProgressModal
