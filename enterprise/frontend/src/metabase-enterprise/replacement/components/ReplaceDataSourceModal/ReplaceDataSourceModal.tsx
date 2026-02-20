@@ -2,7 +2,7 @@ import { useState } from "react";
 
 import { useGetCardQuery, useGetTableQuery } from "metabase/api";
 import type { ReplaceDataSourceModalProps } from "metabase/plugins";
-import { Flex, FocusTrap, Modal } from "metabase/ui";
+import { Flex, Modal } from "metabase/ui";
 import {
   useCheckReplaceSourceQuery,
   useListNodeDependentsQuery,
@@ -29,7 +29,6 @@ export function ReplaceDataSourceModal({
     <Modal.Root opened={isOpened} fullScreen onClose={onClose}>
       <Modal.Overlay />
       <Modal.Content>
-        <FocusTrap.InitialFocus />
         <ModalContent
           initialSource={initialSource}
           initialTarget={initialTarget}
@@ -71,7 +70,7 @@ function ModalContent({
   const handleSubmit = () => {};
 
   return (
-    <Flex>
+    <Flex h="100%">
       <ModalSidebar
         sourceInfo={sourceInfo}
         targetInfo={targetInfo}

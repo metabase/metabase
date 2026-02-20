@@ -10,7 +10,7 @@ type EntitySectionProps = {
 export function EntitySection({ icon, children }: EntitySectionProps) {
   return (
     <Card px="md" py="lg" withBorder shadow="none">
-      <Group wrap="nowrap">
+      <Group align="start" wrap="nowrap">
         <Box p="sm" bg="background-brand" bdrs="md">
           <FixedSizeIcon c="brand" name={icon} />
         </Box>
