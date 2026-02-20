@@ -1182,6 +1182,8 @@ describe("issue 8490", () => {
     cy.findByTestId("embed-frame").findByText("로딩...").should("be.visible");
   });
 
+  // TRIGGER CI
+
   it("static embeddings should respect `#locale` hash parameter (metabase#8490, metabase#50182)", () => {
     cy.log("test a static embedded dashboard");
     const {
