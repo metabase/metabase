@@ -6,7 +6,8 @@
    [metabase.lib-metric.operators :as operators]
    [metabase.lib-metric.types.isa :as types.isa]
    [metabase.lib.options :as lib.options]
-   [metabase.util.performance :as perf]))
+   [metabase.util.performance :as perf]
+   [metabase.util.time :as u.time]))
 
 (defn leading-dimension-ref
   "Extract the dimension UUID from a filter clause's leading argument.
@@ -339,12 +340,13 @@
 (defn specific-date-filter-clause
   "Create a specific date filter clause from parts.
    Parts: {:operator :keyword, :dimension dimension, :values [date-string], :has-time boolean}"
-  [{:keys [operator dimension values]}]
-  (lib.options/ensure-uuid
-   (case operator
-     :between [:between {} (dimension-ref dimension) (first values) (second values)]
-     ;; Standard operators: =, >, <
-     [operator {} (dimension-ref dimension) (first values)])))
+  [{:keys [operator dimension values has-time]}]
+  (let [values (mapv #(u.time/format-date-for-filter % has-time) values)]
+    (lib.options/ensure-uuid
+     (case operator
+       :between [:between {} (dimension-ref dimension) (first values) (second values)]
+       ;; Standard operators: =, >, <
+       [operator {} (dimension-ref dimension) (first values)]))))
 
 (defn- value-has-time?
   "Check if a date value includes a time component.
@@ -493,12 +495,13 @@
   "Create a time filter clause from parts.
    Parts: {:operator :keyword, :dimension dimension, :values [time-string]}"
   [{:keys [operator dimension values]}]
-  (lib.options/ensure-uuid
-   (case operator
-     (:is-null :not-null) [operator {} (dimension-ref dimension)]
-     :between             [:between {} (dimension-ref dimension) (first values) (second values)]
+  (let [values (mapv #(u.time/format-for-base-type % :type/Time) values)]
+    (lib.options/ensure-uuid
+     (case operator
+       (:is-null :not-null) [operator {} (dimension-ref dimension)]
+       :between             [:between {} (dimension-ref dimension) (first values) (second values)]
      ;; Standard operators: >, <
-     [operator {} (dimension-ref dimension) (first values)])))
+       [operator {} (dimension-ref dimension) (first values)]))))
 
 (defn time-filter-parts
   "Extract time filter parts from an MBQL clause.
@@ -506,19 +509,21 @@
   [definition filter-clause]
   (when (and (vector? filter-clause)
              (>= (count filter-clause) 3))
-    (let [operator (first filter-clause)]
-      (when (#{:> :< :between :is-null :not-null} operator)
-        (when-let [dim-id (leading-dimension-ref filter-clause)]
-          (when-let [dimension (find-dimension-by-id definition dim-id)]
-            ;; Check if this is specifically a time filter (not date/datetime)
-            (when (types.isa/time? dimension)
-              (case operator
-                (:is-null :not-null) {:operator  operator
-                                      :dimension dimension
-                                      :values    []}
-                :between             {:operator  operator
-                                      :dimension dimension
-                                      :values    [(nth filter-clause 3) (nth filter-clause 4)]}
-                {:operator  operator
-                 :dimension dimension
-                 :values    [(nth filter-clause 3)]}))))))))
+    (let [operator (first filter-clause)
+          parts (when (#{:> :< :between :is-null :not-null} operator)
+                  (when-let [dim-id (leading-dimension-ref filter-clause)]
+                    (when-let [dimension (find-dimension-by-id definition dim-id)]
+                      ;; Check if this is specifically a time filter (not date/datetime)
+                      (when (types.isa/time? dimension)
+                        (case operator
+                          (:is-null :not-null) {:operator  operator
+                                                :dimension dimension
+                                                :values    []}
+                          :between             {:operator  operator
+                                                :dimension dimension
+                                                :values    [(nth filter-clause 3) (nth filter-clause 4)]}
+                          {:operator  operator
+                           :dimension dimension
+                           :values    [(nth filter-clause 3)]})))))]
+      (when parts
+        (update parts :values (fn [values] (mapv u.time/coerce-to-time values)))))))

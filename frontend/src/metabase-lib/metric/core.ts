@@ -1,3 +1,5 @@
+import dayjs, { type Dayjs } from "dayjs";
+
 import * as LibMetric from "cljs/metabase.lib_metric.js";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
 import type {
@@ -302,17 +304,24 @@ export function excludeDateFilterParts(
 }
 
 export function timeFilterClause(parts: TimeFilterParts): FilterClause {
-  return LibMetric.timeFilterClause(parts) as FilterClause;
+  return LibMetric.timeFilterClause({
+    ...parts,
+    values: parts.values.map((value) => dayjs(value)),
+  }) as FilterClause;
 }
 
 export function timeFilterParts(
   definition: MetricDefinition,
   filterClause: FilterClause,
 ): TimeFilterParts | null {
-  return LibMetric.timeFilterParts(
-    definition,
-    filterClause,
-  ) as TimeFilterParts | null;
+  const filterParts = LibMetric.timeFilterParts(definition, filterClause);
+  if (!filterParts) {
+    return null;
+  }
+  return {
+    ...filterParts,
+    values: filterParts.values.map((value: Dayjs) => value.toDate()),
+  };
 }
 
 export function defaultFilterClause(parts: DefaultFilterParts): FilterClause {

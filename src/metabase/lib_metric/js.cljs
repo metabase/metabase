@@ -17,7 +17,8 @@
    [metabase.lib.field :as lib.field]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
    [metabase.util :as u]
-   [metabase.util.memoize :as memoize]))
+   [metabase.util.memoize :as memoize]
+   [metabase.util.time :as u.time]))
 
 ;; =============================================================================
 ;; CLJS -> JS Conversion Utilities
@@ -526,7 +527,9 @@
   "Extract specific date filter parts from a clause.
    Returns {operator, dimension, values, hasTime} or null."
   [definition filter-clause]
-  (filter-parts-cljs->js (lib-metric.filter/specific-date-filter-parts definition filter-clause)))
+  (-> (lib-metric.filter/specific-date-filter-parts definition filter-clause)
+      (update :values (fn [values] (mapv (comp u.time/dayjs-utc->local-date u.time/coerce-to-timestamp) values)))
+      filter-parts-cljs->js))
 
 (defn ^:export relativeDateFilterClause
   "Create a relative date filter clause from parts.
