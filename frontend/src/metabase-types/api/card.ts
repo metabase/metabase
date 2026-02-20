@@ -6,6 +6,7 @@ import type { IconName } from "metabase/ui";
 import type { PieRow } from "metabase/visualizations/echarts/pie/model/types";
 import type { EntityToken, EntityUuid } from "metabase-types/api/entity";
 
+import type { ClickBehavior } from "./click-behavior";
 import type { Collection, CollectionId, LastEditInfo } from "./collection";
 import type {
   DashCardId,
@@ -238,6 +239,7 @@ export interface ColumnSettings {
   column_title?: string;
   number_separators?: string;
   currency?: string;
+  click_behavior?: ClickBehavior;
 
   // some options are untyped
   [key: string]: any;

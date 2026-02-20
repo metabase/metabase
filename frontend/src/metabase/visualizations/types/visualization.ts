@@ -1,5 +1,4 @@
-import type { ReactNode } from "react";
-import type React from "react";
+import type { ComponentType, ReactNode } from "react";
 
 import type { OptionsType } from "metabase/lib/formatting/types";
 import type { IconName, IconProps } from "metabase/ui";
@@ -19,6 +18,7 @@ import type {
   Card,
   Dashboard,
   DashboardCard,
+  DashboardId,
   DatasetColumn,
   DatasetData,
   RawSeries,
@@ -43,7 +43,7 @@ export interface Padding {
 }
 
 export type Formatter = (value: unknown, options?: OptionsType) => string;
-export type TableCellFormatter = (value: RowValue) => React.ReactNode;
+export type TableCellFormatter = (value: RowValue) => ReactNode;
 
 export type ColorGetter = (colorName: string) => string;
 
@@ -91,6 +91,7 @@ export type OnChangeCardAndRunOpts = {
 export type OnChangeCardAndRun = (opts: OnChangeCardAndRunOpts) => void;
 
 export type ColumnSettings = OptionsType & {
+  _column_title_full?: string;
   "pivot_table.column_show_totals"?: boolean;
   text_align?: "left" | "middle" | "right";
   [key: string]: unknown;
@@ -184,7 +185,7 @@ export interface VisualizationProps {
    * Items that will be shown in a menu when the title is clicked.
    * Used for visualizer cards to jump to underlying questions
    */
-  titleMenuItems?: React.ReactNode;
+  titleMenuItems?: ReactNode;
 }
 
 export type VisualizationPassThroughProps = {
@@ -229,7 +230,7 @@ export type VisualizationPassThroughProps = {
    * Items that will be shown in a menu when the title is clicked.
    * Used for visualizer cards to jump to underlying questions
    */
-  titleMenuItems?: React.ReactNode[];
+  titleMenuItems?: ReactNode[];
 
   // frontend/src/metabase/visualizations/components/ChartSettings/ChartSettingsVisualization/ChartSettingsVisualization.tsx
   isSettings?: boolean;
@@ -237,7 +238,7 @@ export type VisualizationPassThroughProps = {
   /**
    * Extra buttons to be shown in the table footer (if the visualization is a table)
    */
-  tableFooterExtraButtons?: React.ReactNode;
+  tableFooterExtraButtons?: ReactNode;
 
   /**
    * Props used for Audit Table visualization
@@ -251,7 +252,7 @@ export type VisualizationPassThroughProps = {
 export type ColumnSettingDefinition<TValue, TProps = unknown> = {
   title?: string;
   hint?: string;
-  widget?: string | React.ComponentType<any>;
+  widget?: string | ComponentType<any>;
   default?: TValue;
   props?: TProps;
   inline?: boolean;
@@ -267,30 +268,69 @@ export type ColumnSettingDefinition<TValue, TProps = unknown> = {
   ) => TProps;
 };
 
+export type SettingsExtra = {
+  enableEntityNavigation?: boolean;
+  transformedSeries?: RawSeries | TransformedSeries;
+  dashboardId?: DashboardId;
+  series?: Series;
+  // [key: string]: unknown;
+};
+
 export type VisualizationSettingDefinition<TValue, TProps = void> = {
   section?: string;
   title?: string;
   group?: string;
-  widget?: string | React.ComponentType<TProps>;
-  isValid?: (series: Series, settings: VisualizationSettings) => boolean;
-  getHidden?: (series: Series, settings: VisualizationSettings) => boolean;
-  getDefault?: (series: Series, settings: VisualizationSettings) => TValue;
-  getValue?: (series: Series, settings: VisualizationSettings) => TValue;
-  getDisabled?: (series: Series, settings: VisualizationSettings) => TValue;
+  widget?: string | ComponentType<TProps>;
+  isValid?: (
+    series: Series | DatasetColumn, // TODO: make it generic
+    settings: ComputedVisualizationSettings,
+    extra?: SettingsExtra,
+  ) => boolean;
+  hidden?: boolean;
+  getHidden?: (
+    object: Series | DatasetColumn, // TODO: make it generic
+    settings: ComputedVisualizationSettings,
+    extra?: SettingsExtra,
+  ) => boolean;
+  getDefault?: (
+    object: Series | DatasetColumn, // TODO: make it generic
+    settings: ComputedVisualizationSettings,
+    extra?: SettingsExtra,
+  ) => TValue;
+  getValue?: (
+    object: Series | DatasetColumn, // TODO: make it generic
+    settings: ComputedVisualizationSettings,
+    extra?: SettingsExtra,
+  ) => TValue;
+  getDisabled?: (
+    object: Series | DatasetColumn, // TODO: make it generic
+    settings: ComputedVisualizationSettings,
+    extra?: SettingsExtra,
+  ) => boolean;
+  getSection?: (
+    object: Series | DatasetColumn, // TODO: make it generic
+    settings: ComputedVisualizationSettings,
+    extra?: SettingsExtra,
+  ) => string;
   disabled?: boolean;
   default?: TValue;
   marginBottom?: string;
-  getMarginBottom?: (series: Series, settings: VisualizationSettings) => string;
+  getMarginBottom?: (
+    object: Series | DatasetColumn, // TODO: make it generic
+    settings: ComputedVisualizationSettings,
+    extra?: SettingsExtra,
+  ) => string;
   persistDefault?: boolean;
   inline?: boolean;
   props?: TProps;
   getProps?: (
-    series: Series,
-    vizSettings: VisualizationSettings,
+    object: Series | DatasetColumn, // TODO: make it generic
+    vizSettings: ComputedVisualizationSettings,
     onChange: (value: TValue) => void,
-    extra: unknown,
-    onChangeSettings: (value: Record<string, any>) => void,
+    extra: SettingsExtra,
+    onChangeSettings: (value: Partial<VisualizationSettings>) => void,
   ) => TProps;
+  onUpdate?: (value: TValue, extra: SettingsExtra) => void;
   readDependencies?: string[];
   writeDependencies?: string[];
   eraseDependencies?: string[];
@@ -311,7 +351,7 @@ export type VisualizationGridSize = {
 };
 
 // TODO: add component property for the react component instead of the intersection
-export type Visualization = React.ComponentType<
+export type Visualization = ComponentType<
   Omit<VisualizationProps, "width" | "height"> & {
     width?: number | null;
     height?: number | null;
