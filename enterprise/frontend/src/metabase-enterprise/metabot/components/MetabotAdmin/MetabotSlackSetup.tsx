@@ -1,4 +1,5 @@
 import { useDisclosure } from "@mantine/hooks";
+import { useEffect, useState } from "react";
 import { P, match } from "ts-pattern";
 import { c, t } from "ttag";
 import * as Yup from "yup";
@@ -139,16 +140,21 @@ export function MetabotSlackSetup() {
     handleClose();
   };
 
+  const [shouldPollAppInfo, setShouldPollAppInfo] = useState(false);
   const { data: manifest } = useGetSlackManifestQuery();
   const { data: appInfo } = useGetSlackAppInfoQuery(undefined, {
     skip: !isSlackTokenValid,
+    pollingInterval: shouldPollAppInfo ? 10 * 1000 : 0,
   });
 
   const hasMissingScopes = (appInfo?.scopes?.missing?.length ?? 0) > 0;
   const notification = match({ isEncryptionEnabled, hasMissingScopes })
     .with({ isEncryptionEnabled: false }, () => "encryption" as const)
-    .with({ hasMissingScopes: false }, () => "scopes" as const)
+    .with({ hasMissingScopes: true }, () => "scopes" as const)
     .otherwise(() => null);
+  useEffect(() => {
+    setShouldPollAppInfo(notification === "scopes");
+  }, [notification]);
 
   // eslint-disable-next-line metabase/no-unconditional-metabase-links-render -- admin only page
   const { url: encryptionDocsUrl } = useDocsUrl(
@@ -174,32 +180,21 @@ export function MetabotSlackSetup() {
             <MissingScopesAlert manifest={manifest} appInfo={appInfo} />
           )}
 
-          {notification === null && isConfigured && (
-            <BasicAdminSettingInput
-              name="slack-connect-enabled"
-              inputType="boolean"
-              value={isEnabled}
-              switchLabel={t`Let people chat with Metabot`}
-              onChange={(next) =>
-                updateEnabledSetting({
-                  key: "slack-connect-enabled",
-                  value: !!next,
-                })
-              }
-            />
-          )}
-
           {match({ notification, isConfigured })
-            .with({ notification: P.string }, () => null)
-            .with({ isConfigured: false }, () => (
-              <MetabotSlackSettingsForm
-                appInfo={appInfo}
-                values={values}
-                isConfigured={isConfigured}
-              />
-            ))
             .with({ isConfigured: true }, () => (
               <>
+                <BasicAdminSettingInput
+                  name="slack-connect-enabled"
+                  inputType="boolean"
+                  value={isEnabled}
+                  switchLabel={t`Let people chat with Metabot`}
+                  onChange={(next) =>
+                    updateEnabledSetting({
+                      key: "slack-connect-enabled",
+                      value: !!next,
+                    })
+                  }
+                />
                 <ConnectionDetails>
                   <MetabotSlackSettingsForm
                     appInfo={appInfo}
@@ -211,6 +206,14 @@ export function MetabotSlackSetup() {
                   <Button c="danger" onClick={handleOpen}>{t`Remove`}</Button>
                 </Flex>
               </>
+            ))
+            .with({ notification: P.string }, () => null)
+            .with({ isConfigured: false }, () => (
+              <MetabotSlackSettingsForm
+                appInfo={appInfo}
+                values={values}
+                isConfigured={isConfigured}
+              />
             ))
             .exhaustive()}
         </Stack>
