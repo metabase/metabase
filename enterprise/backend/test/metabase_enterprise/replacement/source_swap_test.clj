@@ -6,6 +6,7 @@
    [metabase-enterprise.replacement.field-refs :as field-refs]
    [metabase-enterprise.replacement.source-swap :as source-swap]
    [metabase-enterprise.replacement.swap.native :as swap.native]
+   [metabase-enterprise.replacement.usages :as usages]
    [metabase.events.core :as events]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
@@ -226,7 +227,7 @@
         (mt/with-temp [:model/Card {card-id :id} {:dataset_query
                                                   (lib/native-query mp "SELECT * FROM {{#777}}")}]
           (let [before (t2/select-one :model/Card :id card-id)]
-            (source-swap/swap-native-card-source! card-id 999 888)
+            (source-swap/swap! [:card card-id] [:card 999] [:card 888])
             (let [after (t2/select-one :model/Card :id card-id)]
               (is (= (:dataset_query before) (:dataset_query after))))))))))
 
@@ -1477,3 +1478,33 @@
                     (catch Exception e
                       (is (nil? (.getMessage e)))
                       (is (= [] (:dataset_query card))))))))))))))
+
+(deftest segment-swap-test
+  (mt/with-premium-features #{:dependencies}
+    (mt/dataset source-swap
+      (mt/with-test-user :crowberto
+        (let [selector (fn [q] (-> q :stages (get 0) :filters first last))
+              mp (mt/metadata-provider)]
+          (mt/with-temp [:model/Segment segment
+                         {:table_id (mt/id :orders_a)
+                          :definition (-> (lib/query mp (lib.metadata/table mp (mt/id :orders_a)))
+                                          (lib/filter (lib/< 2 (lib.metadata/field mp (mt/id :orders_a :id)))))}]
+            (events/publish-event! :event/segment-create {:object segment :user-id (mt/user->id :crowberto)})
+            (is (lib/field-ref-id (selector (:definition segment))))
+            ;; sanity check that dependencies works
+            (is (contains? (set (usages/transitive-usages [:table (mt/id :orders_a)]))
+                           [:segment (:id segment)]))
+            (is (not (contains? (set (usages/transitive-usages [:table (mt/id :orders_b)]))
+                                [:segment (:id segment)])))
+            (field-refs/upgrade! [:segment (:id segment)])
+            (source-swap/swap! [:segment (:id segment)]
+                               [:table (mt/id :orders_a)]
+                               [:table (mt/id :orders_b)])
+            (let [segment' (t2/select-one :model/Segment (:id segment))]
+              (is (lib/field-ref-name (selector (:definition segment'))))
+              (is (= (mt/id :orders_b) (:table_id segment')))
+              (is (= (mt/id :orders_b) (-> segment' :definition :stages (get 0) :source-table)))
+              (is (not (contains? (set (usages/transitive-usages [:table (mt/id :orders_a)]))
+                                  [:segment (:id segment)])))
+              (is (contains? (set (usages/transitive-usages [:table (mt/id :orders_b)]))
+                             [:segment (:id segment)])))))))))
