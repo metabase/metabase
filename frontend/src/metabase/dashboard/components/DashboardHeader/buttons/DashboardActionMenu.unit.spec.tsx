@@ -5,6 +5,7 @@ import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
 import { setupNotificationChannelsEndpoints } from "__support__/server-mocks/pulse";
 import { mockSettings } from "__support__/settings";
 import { renderWithProviders, screen } from "__support__/ui";
+import { getIsSharing } from "metabase/dashboard/selectors";
 import { MockDashboardContext } from "metabase/public/containers/PublicOrEmbeddedDashboard/mock-context";
 import type { ChannelApiResponse, User } from "metabase-types/api";
 import {
@@ -56,7 +57,7 @@ const setup = ({
     slack: { configured: hasSlackSetup },
   } as ChannelApiResponse["channels"]);
 
-  renderWithProviders(
+  const { store } = renderWithProviders(
     <Route
       path="*"
       component={() => (
@@ -115,6 +116,8 @@ const setup = ({
       },
     },
   );
+
+  return { store };
 };
 
 const openMenu = () => {
@@ -136,6 +139,17 @@ describe("DashboardActionMenu", () => {
         setup({ isAdmin: true, hasEmailSetup: true, hasSlackSetup: true });
         await openMenu();
         expect(await screen.findByText("Subscriptions")).toBeInTheDocument();
+      });
+
+      it("should toggle the subscriptions sidebar on click", async () => {
+        const { store } = setup({ isAdmin: true });
+        expect(getIsSharing(store.getState())).toBe(false);
+        await openMenu();
+        await userEvent.click(await screen.findByText("Subscriptions"));
+        expect(getIsSharing(store.getState())).toBe(true);
+        await openMenu();
+        await userEvent.click(await screen.findByText("Subscriptions"));
+        expect(getIsSharing(store.getState())).toBe(false);
       });
 
       it("should not show the subscriptions menu item if there are no data cards", async () => {
