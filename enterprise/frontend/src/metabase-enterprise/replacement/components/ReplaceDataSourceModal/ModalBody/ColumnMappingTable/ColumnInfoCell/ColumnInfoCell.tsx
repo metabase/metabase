@@ -9,7 +9,7 @@ import type {
   ReplaceSourceErrorType,
 } from "metabase-types/api";
 
-import { getErrorLabel } from "../../../utils";
+import { getErrorLabel } from "../../../../../utils";
 
 type ColumnInfoCellProps = {
   column?: ReplaceSourceColumnInfo;
