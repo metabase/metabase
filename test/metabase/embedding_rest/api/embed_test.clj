@@ -862,7 +862,7 @@
         (is (= {:status     "failed"
                 :error      "An error occurred while running the query."
                 :error_type "invalid-query"}
-               (client/client :get 202 (dashcard-url dashcard))))))))
+               (client/client :get 400 (dashcard-url dashcard))))))))
 
 (deftest check-that-the-dashcard-endpoint-doesn-t-work-if-embedding-isn-t-enabled
   (mt/with-temporary-setting-values [enable-embedding false]

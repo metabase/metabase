@@ -304,8 +304,8 @@
     (let [;; any strings will work here (must be shorter than 254 chars), but these are semi-relaistic:
           client-string (mt/random-name)
           version-string (str "1." (rand-int 1000) "." (rand-int 1000))]
-      (mt/with-temp [:model/Database {database-id :id} {}
-                     :model/Card card-1 {:name "Card 1" :database_id database-id}]
+      (mt/with-temp [:model/Card card-1 {:name "Card 1"
+                                         :dataset_query (mt/mbql-query venues {:limit 1})}]
         (mt/with-premium-features #{:audit-app}
           (mt/user-http-request :crowberto :post 202 (str "card/" (u/the-id card-1) "/query")
                                 {:request-options {:headers {"x-metabase-client" client-string
@@ -2620,7 +2620,8 @@
 
 (deftest ^:parallel download-response-headers-test
   (testing "Make sure CSV/etc. download requests come back with the correct headers"
-    (mt/with-temp [:model/Card card {:name "My Awesome Card"}]
+    (mt/with-temp [:model/Card card {:name "My Awesome Card"
+                                     :dataset_query (mt/mbql-query venues {:limit 1})}]
       (is (= {"Cache-Control"       "max-age=0, no-cache, must-revalidate, proxy-revalidate"
               "Content-Disposition" "attachment; filename=\"my_awesome_card_<timestamp>.csv\""
               "Content-Type"        "text/csv"
