@@ -127,7 +127,7 @@
 
 (defenterprise transform-stats
   "Stats for Transforms"
-  metabase.transforms.core
+  metabase-enterprise.transforms.core
   []
   {:transform-native-runs         0
    :transform-python-runs         0
