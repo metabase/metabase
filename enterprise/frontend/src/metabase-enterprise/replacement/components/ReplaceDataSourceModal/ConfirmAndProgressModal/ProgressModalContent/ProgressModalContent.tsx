@@ -10,12 +10,14 @@ const POLLING_INTERVAL = 1000;
 
 type ProgressModalContentProps = {
   runId: ReplaceSourceRunId;
-  onDone: (run: ReplaceSourceRun) => void;
+  onReplaceSuccess: () => void;
+  onReplaceFailure: () => void;
 };
 
 export function ProgressModalContent({
   runId,
-  onDone,
+  onReplaceSuccess,
+  onReplaceFailure,
 }: ProgressModalContentProps) {
   const { data: run } = useGetReplaceSourceRunQuery(runId, {
     pollingInterval: POLLING_INTERVAL,
@@ -24,9 +26,13 @@ export function ProgressModalContent({
 
   useEffect(() => {
     if (run != null && run.status !== "started") {
-      onDone(run);
+      if (run.status === "succeeded") {
+        onReplaceSuccess();
+      } else {
+        onReplaceFailure();
+      }
     }
-  }, [run, onDone]);
+  }, [run, onReplaceSuccess, onReplaceFailure]);
 
   return (
     <Stack gap="sm">

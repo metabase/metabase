@@ -11,8 +11,7 @@ import type {
 type ConfirmModalContentProps = {
   source: ReplaceSourceEntry;
   target: ReplaceSourceEntry;
-  itemsCount: number;
-  disabled: boolean;
+  dependentsCount: number;
   onSubmit: (runId: ReplaceSourceRunId) => void;
   onCancel: () => void;
 };
@@ -20,8 +19,7 @@ type ConfirmModalContentProps = {
 export function ConfirmModalContent({
   source,
   target,
-  itemsCount,
-  disabled,
+  dependentsCount,
   onSubmit,
   onCancel,
 }: ConfirmModalContentProps) {
@@ -47,13 +45,8 @@ export function ConfirmModalContent({
               <FormErrorMessage />
             </Box>
             <Button onClick={onCancel}>{t`Go back`}</Button>
-            <Button
-              type="submit"
-              variant="filled"
-              color="error"
-              disabled={disabled}
-            >
-              {getSubmitLabel(itemsCount)}
+            <Button type="submit" variant="filled" color="error">
+              {getSubmitLabel(dependentsCount)}
             </Button>
           </Group>
         </Stack>
@@ -62,10 +55,10 @@ export function ConfirmModalContent({
   );
 }
 
-function getSubmitLabel(itemsCount: number): string {
+function getSubmitLabel(dependentsCount: number): string {
   return ngettext(
-    msgid`Replace data source in ${itemsCount} item`,
-    `Replace data source in ${itemsCount} items`,
-    itemsCount,
+    msgid`Replace data source in ${dependentsCount} item`,
+    `Replace data source in ${dependentsCount} items`,
+    dependentsCount,
   );
 }

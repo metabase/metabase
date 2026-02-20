@@ -1,4 +1,4 @@
-import { t } from "ttag";
+import { msgid, ngettext, t } from "ttag";
 
 import { Button, Group, Stack, Text, Title } from "metabase/ui";
 import type { ReplaceSourceEntry } from "metabase-types/api";
@@ -9,6 +9,8 @@ import { EntitySelect } from "./EntitySelect";
 type ModalSidebarProps = {
   source: ReplaceSourceEntry | undefined;
   target: ReplaceSourceEntry | undefined;
+  dependentsCount: number;
+  canReplace: boolean;
   onSourceChange: (source: ReplaceSourceEntry) => void;
   onTargetChange: (target: ReplaceSourceEntry) => void;
   onSubmit: () => void;
@@ -18,6 +20,8 @@ type ModalSidebarProps = {
 export function ModalSidebar({
   source,
   target,
+  dependentsCount,
+  canReplace,
   onSourceChange,
   onTargetChange,
   onSubmit,
@@ -34,7 +38,7 @@ export function ModalSidebar({
           <EntitySelect
             value={source}
             label={t`Find all occurrences of this data source`}
-            description={t`We’ll look for every query in your instance that uses this data source.`}
+            description={t`We'll look for every query in your instance that uses this data source.`}
             onChange={onSourceChange}
           />
         </EntitySection>
@@ -50,9 +54,21 @@ export function ModalSidebar({
       <Group mt="auto" justify="flex-end" wrap="nowrap">
         <Button onClick={onCancel}>{t`Cancel`}</Button>
         <Button variant="filled" onClick={onSubmit}>
-          {t`Replace data source`}
+          {getSubmitLabel(dependentsCount, canReplace)}
         </Button>
       </Group>
     </Stack>
+  );
+}
+
+function getSubmitLabel(dependentsCount: number, canReplace: boolean): string {
+  if (!canReplace) {
+    return t`Replace data source`;
+  }
+
+  return ngettext(
+    msgid`Replace data source in ${dependentsCount} item`,
+    `Replace data source in ${dependentsCount} items`,
+    dependentsCount,
   );
 }

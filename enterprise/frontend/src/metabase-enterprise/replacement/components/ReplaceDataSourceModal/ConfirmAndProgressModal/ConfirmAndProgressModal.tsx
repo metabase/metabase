@@ -1,11 +1,9 @@
 import { useState } from "react";
 import { msgid, ngettext, t } from "ttag";
 
-import { useToast } from "metabase/common/hooks";
 import { Modal } from "metabase/ui";
 import type {
   ReplaceSourceEntry,
-  ReplaceSourceRun,
   ReplaceSourceRunId,
 } from "metabase-types/api";
 
@@ -15,43 +13,28 @@ import { ProgressModalContent } from "./ProgressModalContent";
 type ConfirmAndProgressModalProps = {
   source: ReplaceSourceEntry;
   target: ReplaceSourceEntry;
-  itemsCount: number;
+  dependentsCount: number;
   opened: boolean;
-  onDone: () => void;
+  onReplaceSuccess: () => void;
+  onReplaceFailure: () => void;
   onClose: () => void;
 };
 
 export function ConfirmAndProgressModal({
   source,
   target,
-  itemsCount,
+  dependentsCount,
   opened,
-  onDone,
+  onReplaceSuccess,
+  onReplaceFailure,
   onClose,
 }: ConfirmAndProgressModalProps) {
   const [runId, setRunId] = useState<ReplaceSourceRunId>();
-  const [sendToast] = useToast();
-
   const isStarted = runId != null;
-
-  const handleDone = (run: ReplaceSourceRun) => {
-    if (run.status === "succeeded") {
-      sendToast({
-        message: getSuccessMessage(itemsCount),
-        icon: "check",
-      });
-    } else {
-      sendToast({
-        message: getErrorMessage(),
-        icon: "warning",
-      });
-    }
-    onDone();
-  };
 
   return (
     <Modal
-      title={getTitle(itemsCount, isStarted)}
+      title={getTitle(dependentsCount, isStarted)}
       opened={opened}
       onClose={onClose}
     >
@@ -59,37 +42,28 @@ export function ConfirmAndProgressModal({
         <ConfirmModalContent
           source={source}
           target={target}
-          itemsCount={itemsCount}
-          disabled={runId != null}
+          dependentsCount={dependentsCount}
           onSubmit={setRunId}
           onCancel={onClose}
         />
       ) : (
-        <ProgressModalContent runId={runId} onDone={handleDone} />
+        <ProgressModalContent
+          runId={runId}
+          onReplaceSuccess={onReplaceSuccess}
+          onReplaceFailure={onReplaceFailure}
+        />
       )}
     </Modal>
   );
 }
 
-function getTitle(itemsCount: number, isStarted: boolean) {
+function getTitle(dependentsCount: number, isStarted: boolean) {
   if (isStarted) {
     return t`Replacing data sources…`;
   }
   return ngettext(
-    msgid`Really replace the data source in this ${itemsCount} item?`,
-    `Really replace the data sources in these ${itemsCount} items?`,
-    itemsCount,
+    msgid`Really replace the data source in this ${dependentsCount} item?`,
+    `Really replace the data sources in these ${dependentsCount} items?`,
+    dependentsCount,
   );
-}
-
-function getSuccessMessage(itemsCount: number): string {
-  return ngettext(
-    msgid`Updated ${itemsCount} item`,
-    `Updated ${itemsCount} items`,
-    itemsCount,
-  );
-}
-
-function getErrorMessage(): string {
-  return t`Failed to replace a data source`;
 }
