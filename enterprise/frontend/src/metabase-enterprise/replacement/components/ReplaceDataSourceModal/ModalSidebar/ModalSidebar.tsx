@@ -34,7 +34,9 @@ export function ModalSidebar({
   onSubmit,
   onCancel,
 }: ModalSidebarProps) {
-  const disabled = !checkInfo?.success || dependentsCount === 0;
+  const error = checkInfo != null && !checkInfo.success;
+  const disabled =
+    checkInfo == null || !checkInfo.success || dependentsCount === 0;
 
   return (
     <Stack className={S.sidebar} px="xl" pt="xl" pb="lg" gap="lg" maw="32rem">
@@ -59,8 +61,10 @@ export function ModalSidebar({
               description={t`It must be based on the same database and include all columns from the original data source.`}
               onChange={onTargetChange}
             />
-            {checkInfo != null && !checkInfo.success && (
-              <Text c="error">{getErrorMessage(checkInfo)}</Text>
+            {error && (
+              <Text c="error" size="sm">
+                {getErrorMessage(checkInfo)}
+              </Text>
             )}
           </Stack>
         </EntitySection>
