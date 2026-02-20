@@ -835,15 +835,17 @@
   "Respond to an incoming user slack message, dispatching based on channel_type or subtype"
   [client :- SlackClient
    event  :- SlackKnownMessageEvent]
-  (when-let [user-id (require-authenticated-slack-user! client event)]
-    (let [channel-type (:channel_type event)
-          subtype (:subtype event)]
-      (cond
-        (= subtype "file_share")   (process-message-file-share client event user-id)
-        (= channel-type "im")      (process-message-im client event user-id)
-        (= channel-type "channel") nil
-        :else                      (log/warnf "[slackbot] Unhandled message type: channel_type=%s subtype=%s"
-                                              channel-type subtype))))
+  ;; Early return for plain channel messages (without @mention) - we only respond in DMs or to file shares
+  (when-not (and (= (:channel_type event) "channel")
+                 (not= (:subtype event) "file_share"))
+    (when-let [user-id (require-authenticated-slack-user! client event)]
+      (let [channel-type (:channel_type event)
+            subtype (:subtype event)]
+        (cond
+          (= subtype "file_share")   (process-message-file-share client event user-id)
+          (= channel-type "im")      (process-message-im client event user-id)
+          :else                      (log/warnf "[slackbot] Unhandled message type: channel_type=%s subtype=%s"
+                                                channel-type subtype)))))
   nil)
 
 (mu/defn- process-app-mention :- :nil

@@ -1025,6 +1025,56 @@
         (testing "returns nil when no AuthIdentity exists"
           (is (nil? (#'slackbot/slack-id->user-id slack-id))))))))
 
+(deftest channel-message-without-mention-no-auth-test
+  (testing "POST /events with channel message (no @mention) from unlinked user should NOT send auth message"
+    (with-slackbot-setup
+      (let [event-body {:type "event_callback"
+                        :event {:type "message"
+                                :text "Hello everyone!"
+                                :user "U-UNKNOWN-USER"
+                                :channel "C123"
+                                :ts "1234567890.000001"
+                                :event_ts "1234567890.000001"
+                                :channel_type "channel"}}]
+        (with-slackbot-mocks
+          {:ai-text "Should not be called"
+           :user-id ::no-user}
+          (fn [{:keys [post-calls ephemeral-calls]}]
+            (let [response (mt/client :post 200 "ee/metabot-v3/slack/events"
+                                      (slack-request-options event-body)
+                                      event-body)]
+              (is (= "ok" response))
+              ;; Give a moment for any async processing
+              (Thread/sleep 500)
+              (testing "no regular messages posted"
+                (is (= 0 (count @post-calls))))
+              (testing "no ephemeral auth messages sent"
+                (is (= 0 (count @ephemeral-calls)))))))))))
+
+(deftest channel-message-without-mention-linked-user-test
+  (testing "POST /events with channel message from linked user should be silently ignored"
+    (with-slackbot-setup
+      (let [event-body {:type "event_callback"
+                        :event {:type "message"
+                                :text "Hello team!"
+                                :user "U123"
+                                :channel "C123"
+                                :ts "1234567890.000001"
+                                :event_ts "1234567890.000001"
+                                :channel_type "channel"}}]
+        (with-slackbot-mocks
+          {:ai-text "Should not be called"}
+          (fn [{:keys [post-calls ephemeral-calls]}]
+            (let [response (mt/client :post 200 "ee/metabot-v3/slack/events"
+                                      (slack-request-options event-body)
+                                      event-body)]
+              (is (= "ok" response))
+              (Thread/sleep 500)
+              (testing "no messages posted"
+                (is (= 0 (count @post-calls))))
+              (testing "no ephemeral messages"
+                (is (= 0 (count @ephemeral-calls)))))))))))
+
 ;; NOTE: Table block extraction disabled due to hallucinations - see slackbot.clj
 #_(deftest thread->history-includes-table-blocks-test
     (testing "thread->history includes table block content in assistant messages"

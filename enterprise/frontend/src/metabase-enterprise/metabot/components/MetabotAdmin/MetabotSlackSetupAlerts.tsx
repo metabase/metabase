@@ -5,8 +5,7 @@ import {
   ButtonLink,
   ExternalLink,
 } from "metabase/common/components/ExternalLink";
-import { Markdown } from "metabase/common/components/Markdown";
-import { Alert, Group, Icon, Stack } from "metabase/ui";
+import { Alert, Group, Icon, Stack, Text } from "metabase/ui";
 
 import S from "./MetabotSlackSetup.module.css";
 
@@ -25,11 +24,15 @@ export function MissingScopesAlert({
       : "https://api.slack.com/apps";
 
   return (
-    <Alert color="brand" title={t`Metabot needs more Slack permissions`}>
-      <Stack gap="md">
-        <Markdown>
+    <Alert
+      color="brand"
+      title={t`Metabot needs more Slack permissions`}
+      styles={{ label: { fontSize: "var(--mantine-font-size-md)" } }}
+    >
+      <Stack gap="md" mt="sm">
+        <Text>
           {t`Your Slack app is missing OAuth scopes required for Metabot. Copy the updated manifest and paste it in your Slack app settings. You will need to re-install your application to your workspace after.`}
-        </Markdown>
+        </Text>
         <Group gap="md">
           <CopyButton
             value={JSON.stringify(manifest, null, 2)}
@@ -61,10 +64,13 @@ export function EncryptionRequiredAlert({
     <Alert
       color="brand"
       title={t`You must enable encryption for your instance in order to use this feature`}
+      styles={{ label: { fontSize: "var(--mantine-font-size-md)" } }}
     >
-      <ExternalLink
-        href={docsUrl}
-      >{t`Learn how to enable encryption`}</ExternalLink>
+      <Text mt="sm">
+        <ExternalLink
+          href={docsUrl}
+        >{t`Learn how to enable encryption`}</ExternalLink>
+      </Text>
     </Alert>
   );
 }

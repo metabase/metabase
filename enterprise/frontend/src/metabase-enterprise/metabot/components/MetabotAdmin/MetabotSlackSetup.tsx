@@ -1,11 +1,10 @@
 import { useDisclosure } from "@mantine/hooks";
-import { useMemo } from "react";
-import { match } from "ts-pattern";
+import { P, match } from "ts-pattern";
 import { c, t } from "ttag";
 import * as Yup from "yup";
 
+import { SettingsSection } from "metabase/admin/components/SettingsSection";
 import { BasicAdminSettingInput } from "metabase/admin/settings/components/widgets/AdminSettingInput";
-import { SetupSection } from "metabase/admin/settings/slack/SlackSetupSection";
 import {
   useGetSlackAppInfoQuery,
   useGetSlackManifestQuery,
@@ -20,27 +19,102 @@ import {
   FormSubmitButton,
   FormTextInput,
 } from "metabase/forms";
-import { Button, Flex, Stack, Text } from "metabase/ui";
+import * as Errors from "metabase/lib/errors";
+import { Accordion, Button, Flex, Stack, Text } from "metabase/ui";
 import { useUpdateMetabotSlackSettingsMutation } from "metabase-enterprise/api/metabot";
+import type { SlackAppInfo } from "metabase-types/api/slack";
 
 import {
   EncryptionRequiredAlert,
   MissingScopesAlert,
 } from "./MetabotSlackSetupAlerts";
 
+const VALIDATION_SCHEMA = Yup.object({
+  "slack-connect-client-id": Yup.string().required(Errors.required),
+  "slack-connect-client-secret": Yup.string().required(Errors.required),
+  "metabot-slack-signing-secret": Yup.string().required(Errors.required),
+});
+
+type MetabotSlackSettingsFormValues = {
+  "slack-connect-client-id": string | null | undefined;
+  "slack-connect-client-secret": string | null | undefined;
+  "metabot-slack-signing-secret": string | null | undefined;
+};
+
+const MetabotSlackSettingsForm = ({
+  appInfo,
+  values,
+  isConfigured,
+}: {
+  appInfo?: SlackAppInfo;
+  values: MetabotSlackSettingsFormValues;
+  isConfigured: boolean;
+}) => {
+  const [updateMetabotSlackSettings] = useUpdateMetabotSlackSettingsMutation();
+
+  const basicInfoUrl = appInfo?.app_id
+    ? `https://api.slack.com/apps/${appInfo.app_id}/general`
+    : `https://api.slack.com/apps`;
+
+  const basicInfoLink = (
+    <ExternalLink key="link" href={basicInfoUrl}>
+      {t`Basic Information`}
+    </ExternalLink>
+  );
+
+  return (
+    <Stack gap="sm">
+      <Text c="text-secondary">
+        {c("{0} is a link that says 'Basic Information'.")
+          .jt`You'll find this in your Slack app's ${basicInfoLink} settings.`}
+      </Text>
+      <FormProvider
+        initialValues={{
+          "slack-connect-client-id": values["slack-connect-client-id"] ?? "",
+          "slack-connect-client-secret":
+            values["slack-connect-client-secret"] ?? "",
+          "metabot-slack-signing-secret":
+            values["metabot-slack-signing-secret"] ?? "",
+        }}
+        validationSchema={VALIDATION_SCHEMA}
+        onSubmit={updateMetabotSlackSettings}
+        enableReinitialize
+      >
+        <Form>
+          <Stack gap="sm">
+            <FormTextInput
+              name="slack-connect-client-id"
+              label={t`Client ID`}
+              placeholder="123456789012.123456789012"
+              disabled={isConfigured}
+            />
+            <FormTextInput
+              name="slack-connect-client-secret"
+              label={t`Client Secret`}
+              placeholder="xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+              disabled={isConfigured}
+            />
+            <FormTextInput
+              name="metabot-slack-signing-secret"
+              label={t`Signing Secret`}
+              placeholder="xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+              disabled={isConfigured}
+            />
+            {!isConfigured && (
+              <Flex justify="flex-end" mt="md">
+                <FormSubmitButton label={t`Save changes`} variant="filled" />
+              </Flex>
+            )}
+          </Stack>
+        </Form>
+      </FormProvider>
+    </Stack>
+  );
+};
+
 export function MetabotSlackSetup() {
   const isSlackTokenValid = useSetting("slack-token-valid?") ?? false;
   const isEncryptionEnabled = useSetting("encryption-enabled");
-
-  const VALIDATION_SCHEMA = useMemo(
-    () =>
-      Yup.object({
-        "slack-connect-client-id": Yup.string().required(t`Required`),
-        "slack-connect-client-secret": Yup.string().required(t`Required`),
-        "metabot-slack-signing-secret": Yup.string().required(t`Required`),
-      }),
-    [],
-  );
 
   const { values } = useAdminSettings([
     "slack-connect-client-id",
@@ -53,7 +127,6 @@ export function MetabotSlackSetup() {
     useAdminSetting("slack-connect-enabled");
 
   const [updateMetabotSlackSettings] = useUpdateMetabotSlackSettingsMutation();
-
   const [isOpened, { open: handleOpen, close: handleClose }] =
     useDisclosure(false);
 
@@ -74,7 +147,7 @@ export function MetabotSlackSetup() {
   const hasMissingScopes = (appInfo?.scopes?.missing?.length ?? 0) > 0;
   const notification = match({ isEncryptionEnabled, hasMissingScopes })
     .with({ isEncryptionEnabled: false }, () => "encryption" as const)
-    .with({ hasMissingScopes: true }, () => "scopes" as const)
+    .with({ hasMissingScopes: false }, () => "scopes" as const)
     .otherwise(() => null);
 
   // eslint-disable-next-line metabase/no-unconditional-metabase-links-render -- admin only page
@@ -82,23 +155,17 @@ export function MetabotSlackSetup() {
     "operations-guide/encrypting-database-details-at-rest",
   );
 
-  const basicInfoUrl = appInfo?.app_id
-    ? `https://api.slack.com/apps/${appInfo.app_id}/general`
-    : `https://api.slack.com/apps`;
-
-  const basicInfoLink = (
-    <ExternalLink key="link" href={basicInfoUrl}>
-      {t`Basic Information`}
-    </ExternalLink>
-  );
+  if (!isSlackTokenValid) {
+    return null;
+  }
 
   return (
     <>
-      <SetupSection
-        title={t`3. Give your Slack App the full power of Metabot`}
-        isDisabled={!isSlackTokenValid}
+      <SettingsSection
+        title={t`Natural language questions in Slack`}
+        description={t`Add a few more details to unlock the full power of Metabot in Slack.`}
       >
-        <Stack gap="md">
+        <Stack gap="lg">
           {notification === "encryption" && (
             <EncryptionRequiredAlert docsUrl={encryptionDocsUrl} />
           )}
@@ -108,81 +175,46 @@ export function MetabotSlackSetup() {
           )}
 
           {notification === null && isConfigured && (
-            <Stack gap="xs">
-              <Text fw="bold">{t`Let people chat with Metabot`}</Text>
-              <BasicAdminSettingInput
-                name="slack-connect-enabled"
-                inputType="boolean"
-                value={isEnabled}
-                onChange={(next) =>
-                  updateEnabledSetting({
-                    key: "slack-connect-enabled",
-                    value: !!next,
-                  })
-                }
-              />
-            </Stack>
+            <BasicAdminSettingInput
+              name="slack-connect-enabled"
+              inputType="boolean"
+              value={isEnabled}
+              switchLabel={t`Let people chat with Metabot`}
+              onChange={(next) =>
+                updateEnabledSetting({
+                  key: "slack-connect-enabled",
+                  value: !!next,
+                })
+              }
+            />
           )}
 
-          {notification === null && (
-            <Stack gap="sm">
-              <Text c="text-secondary">{c(
-                "{0} is a link that says 'Basic Information'.",
-              )
-                .jt`You'll find this in your Slack app's ${basicInfoLink} settings.`}</Text>
-              <FormProvider
-                initialValues={{
-                  "slack-connect-client-id":
-                    values["slack-connect-client-id"] ?? "",
-                  "slack-connect-client-secret":
-                    values["slack-connect-client-secret"] ?? "",
-                  "metabot-slack-signing-secret":
-                    values["metabot-slack-signing-secret"] ?? "",
-                }}
-                validationSchema={VALIDATION_SCHEMA}
-                onSubmit={updateMetabotSlackSettings}
-                enableReinitialize
-              >
-                <Form>
-                  <Stack gap="sm">
-                    <FormTextInput
-                      name="slack-connect-client-id"
-                      label={t`Client ID`}
-                      placeholder="123456789012.123456789012"
-                      disabled={isConfigured}
-                    />
-                    <FormTextInput
-                      name="slack-connect-client-secret"
-                      label={t`Client Secret`}
-                      placeholder="xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
-                      disabled={isConfigured}
-                    />
-                    <FormTextInput
-                      name="metabot-slack-signing-secret"
-                      label={t`Signing Secret`}
-                      placeholder="xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
-                      disabled={isConfigured}
-                    />
-                    <Flex justify="flex-end" mt="md">
-                      {isConfigured ? (
-                        <Button
-                          c="danger"
-                          onClick={handleOpen}
-                        >{t`Clear Metabot settings`}</Button>
-                      ) : (
-                        <FormSubmitButton
-                          label={t`Save changes`}
-                          variant="filled"
-                        />
-                      )}
-                    </Flex>
-                  </Stack>
-                </Form>
-              </FormProvider>
-            </Stack>
-          )}
+          {match({ notification, isConfigured })
+            .with({ notification: P.string }, () => null)
+            .with({ isConfigured: false }, () => (
+              <MetabotSlackSettingsForm
+                appInfo={appInfo}
+                values={values}
+                isConfigured={isConfigured}
+              />
+            ))
+            .with({ isConfigured: true }, () => (
+              <>
+                <ConnectionDetails>
+                  <MetabotSlackSettingsForm
+                    appInfo={appInfo}
+                    values={values}
+                    isConfigured={isConfigured}
+                  />
+                </ConnectionDetails>
+                <Flex justify="flex-end">
+                  <Button c="danger" onClick={handleOpen}>{t`Remove`}</Button>
+                </Flex>
+              </>
+            ))
+            .exhaustive()}
         </Stack>
-      </SetupSection>
+      </SettingsSection>
       <ConfirmModal
         opened={isOpened}
         onClose={handleClose}
@@ -192,5 +224,20 @@ export function MetabotSlackSetup() {
         onConfirm={handleRemove}
       />
     </>
+  );
+}
+
+function ConnectionDetails({ children }: { children: React.ReactNode }) {
+  return (
+    <Accordion variant="contained" radius="md">
+      <Accordion.Item value="connection">
+        <Accordion.Control>{t`View connection details`}</Accordion.Control>
+        <Accordion.Panel>
+          <Stack pt="md" pb="sm">
+            {children}
+          </Stack>
+        </Accordion.Panel>
+      </Accordion.Item>
+    </Accordion>
   );
 }

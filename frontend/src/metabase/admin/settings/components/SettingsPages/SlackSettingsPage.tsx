@@ -1,13 +1,9 @@
 import { t } from "ttag";
 
-import {
-  SettingsPageWrapper,
-  SettingsSection,
-} from "metabase/admin/components/SettingsSection";
+import { SettingsPageWrapper } from "metabase/admin/components/SettingsSection";
 import { PLUGIN_METABOT } from "metabase/plugins";
 import { Icon } from "metabase/ui";
 
-import { SlackConfiguration } from "../../slack/SlackConfiguration";
 import { SlackSetup } from "../../slack/SlackSetup";
 
 export const SlackSettingsPage = () => {
@@ -20,11 +16,8 @@ export const SlackSettingsPage = () => {
           </>
         }
       >
-        <SettingsSection>
-          <SlackSetup />
-          <SlackConfiguration />
-          <PLUGIN_METABOT.MetabotSlackSetup />
-        </SettingsSection>
+        <SlackSetup />
+        <PLUGIN_METABOT.MetabotSlackSetup />
       </SettingsPageWrapper>
     </>
   );
