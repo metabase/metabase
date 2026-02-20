@@ -12,11 +12,11 @@ export type ReplaceSourceEntry = {
   type: ReplaceSourceEntityType;
 };
 
-export type ReplaceSourceColumn = {
+export type ReplaceSourceColumnInfo = {
   name: string;
   display_name: string;
   base_type: string;
-  effective_type: string | null;
+  effective_type: string;
   semantic_type: string | null;
 };
 
@@ -28,10 +28,10 @@ export type ReplaceSourceErrorType =
   | "missing-foreign-key"
   | "foreign-key-mismatch";
 
-export type ReplaceSourceColumnInfo = {
-  source: ReplaceSourceColumn | null;
-  target: ReplaceSourceColumn | null;
-  errors: ReplaceSourceErrorType[] | null;
+export type ReplaceSourceColumnMapping = {
+  source?: ReplaceSourceColumnInfo;
+  target?: ReplaceSourceColumnInfo;
+  errors?: ReplaceSourceErrorType[];
 };
 
 export type ReplaceSourceRunId = number;
@@ -58,7 +58,7 @@ export type ReplaceSourceRequest = {
 
 export type CheckReplaceSourceResponse = {
   success: boolean;
-  columns: ReplaceSourceColumnInfo[];
+  column_mappings: ReplaceSourceColumnMapping[];
 };
 
 export type ReplaceSourceResponse = {

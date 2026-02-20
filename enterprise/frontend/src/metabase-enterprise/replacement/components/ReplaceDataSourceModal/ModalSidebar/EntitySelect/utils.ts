@@ -2,18 +2,23 @@ import type {
   OmniPickerItem,
   OmniPickerValue,
 } from "metabase/common/components/Pickers";
-import type { IconName } from "metabase/ui";
 import type { Card, ReplaceSourceEntry, Table } from "metabase-types/api";
 
+import type { EntityInfo } from "../../types";
+
+import type { EntityDisplayInfo } from "./types";
+
 export function getPickerValue(
-  table: Table | undefined,
-  card: Card | undefined,
+  entityInfo: EntityInfo | undefined,
 ): OmniPickerValue | undefined {
-  if (table != null) {
-    return { id: table.id, model: "table" };
+  if (entityInfo?.type === "table") {
+    return { id: entityInfo.table.id, model: "table" };
   }
-  if (card != null) {
-    return { id: card.id, model: card.type === "model" ? "dataset" : "card" };
+  if (entityInfo?.type === "card") {
+    return {
+      id: entityInfo.card.id,
+      model: entityInfo.card.type === "model" ? "dataset" : "card",
+    };
   }
   return undefined;
 }
@@ -25,26 +30,19 @@ export function getSelectedValue(item: OmniPickerItem): ReplaceSourceEntry {
   };
 }
 
-export type SourceInfo = {
-  icon: IconName;
-  breadcrumbs: string[];
-};
-
-export function getSourceInfo(
-  value: ReplaceSourceEntry | undefined,
-  table: Table | undefined,
-  card: Card | undefined,
-): SourceInfo | undefined {
-  if (value?.type === "table" && value.id === table?.id) {
-    return getTableSourceInfo(table);
+export function getEntityDisplayInfo(
+  entityInfo: EntityInfo | undefined,
+): EntityDisplayInfo | undefined {
+  if (entityInfo?.type === "table") {
+    return getTableEntityInfo(entityInfo.table);
   }
-  if (value?.type === "card" && value.id === card?.id) {
-    return getCardSourceInfo(card);
+  if (entityInfo?.type === "card") {
+    return getCardEntityInfo(entityInfo.card);
   }
   return undefined;
 }
 
-function getTableSourceInfo(table: Table): SourceInfo {
+function getTableEntityInfo(table: Table): EntityDisplayInfo {
   const breadcrumbs: string[] = [];
   if (table.db != null) {
     breadcrumbs.push(table.db.name);
@@ -60,7 +58,7 @@ function getTableSourceInfo(table: Table): SourceInfo {
   };
 }
 
-function getCardSourceInfo(card: Card): SourceInfo {
+function getCardEntityInfo(card: Card): EntityDisplayInfo {
   if (card.document != null) {
     return {
       icon: "document",

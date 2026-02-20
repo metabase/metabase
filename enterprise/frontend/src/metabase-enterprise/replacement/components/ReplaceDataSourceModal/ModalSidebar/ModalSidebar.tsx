@@ -1,27 +1,25 @@
-import { msgid, ngettext, t } from "ttag";
+import { t } from "ttag";
 
 import { Button, Group, Stack, Text, Title } from "metabase/ui";
 import type { ReplaceSourceEntry } from "metabase-types/api";
+
+import type { EntityInfo } from "../types";
 
 import { EntitySection } from "./EntitySection";
 import { EntitySelect } from "./EntitySelect";
 
 type ModalSidebarProps = {
-  source: ReplaceSourceEntry | undefined;
-  target: ReplaceSourceEntry | undefined;
-  dependentsCount: number;
-  canReplace: boolean;
-  onSourceChange: (source: ReplaceSourceEntry) => void;
-  onTargetChange: (target: ReplaceSourceEntry) => void;
+  sourceInfo: EntityInfo | undefined;
+  targetInfo: EntityInfo | undefined;
+  onSourceChange: (sourceEntry: ReplaceSourceEntry) => void;
+  onTargetChange: (targetEntry: ReplaceSourceEntry) => void;
   onSubmit: () => void;
   onCancel: () => void;
 };
 
 export function ModalSidebar({
-  source,
-  target,
-  dependentsCount,
-  canReplace,
+  sourceInfo,
+  targetInfo,
   onSourceChange,
   onTargetChange,
   onSubmit,
@@ -36,7 +34,7 @@ export function ModalSidebar({
       <Stack gap="lg">
         <EntitySection icon="search">
           <EntitySelect
-            value={source}
+            entityInfo={sourceInfo}
             label={t`Find all occurrences of this data source`}
             description={t`We'll look for every query in your instance that uses this data source.`}
             onChange={onSourceChange}
@@ -44,7 +42,7 @@ export function ModalSidebar({
         </EntitySection>
         <EntitySection icon="find_replace">
           <EntitySelect
-            value={target}
+            entityInfo={targetInfo}
             label={t`Replace it with this data source`}
             description={t`It must be based on the same database and include all columns from the original data source.`}
             onChange={onTargetChange}
@@ -54,21 +52,9 @@ export function ModalSidebar({
       <Group mt="auto" justify="flex-end" wrap="nowrap">
         <Button onClick={onCancel}>{t`Cancel`}</Button>
         <Button variant="filled" onClick={onSubmit}>
-          {getSubmitLabel(dependentsCount, canReplace)}
+          {t`Replace data source`}
         </Button>
       </Group>
     </Stack>
-  );
-}
-
-function getSubmitLabel(dependentsCount: number, canReplace: boolean): string {
-  if (!canReplace) {
-    return t`Replace data source`;
-  }
-
-  return ngettext(
-    msgid`Replace data source in ${dependentsCount} item`,
-    `Replace data source in ${dependentsCount} items`,
-    dependentsCount,
   );
 }

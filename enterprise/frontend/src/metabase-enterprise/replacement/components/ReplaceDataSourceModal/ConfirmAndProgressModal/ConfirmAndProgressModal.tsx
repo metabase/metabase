@@ -11,8 +11,8 @@ import { ConfirmModalContent } from "./ConfirmModalContent";
 import { ProgressModalContent } from "./ProgressModalContent";
 
 type ConfirmAndProgressModalProps = {
-  source: ReplaceSourceEntry;
-  target: ReplaceSourceEntry;
+  sourceEntry: ReplaceSourceEntry;
+  targetEntry: ReplaceSourceEntry;
   dependentsCount: number;
   opened: boolean;
   onReplaceSuccess: () => void;
@@ -21,8 +21,8 @@ type ConfirmAndProgressModalProps = {
 };
 
 export function ConfirmAndProgressModal({
-  source,
-  target,
+  sourceEntry,
+  targetEntry,
   dependentsCount,
   opened,
   onReplaceSuccess,
@@ -40,8 +40,8 @@ export function ConfirmAndProgressModal({
     >
       {runId == null ? (
         <ConfirmModalContent
-          source={source}
-          target={target}
+          sourceEntry={sourceEntry}
+          targetEntry={targetEntry}
           dependentsCount={dependentsCount}
           onSubmit={setRunId}
           onCancel={onClose}

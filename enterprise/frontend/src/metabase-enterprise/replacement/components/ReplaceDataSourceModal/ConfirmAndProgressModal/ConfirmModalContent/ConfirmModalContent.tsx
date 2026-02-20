@@ -9,16 +9,16 @@ import type {
 } from "metabase-types/api";
 
 type ConfirmModalContentProps = {
-  source: ReplaceSourceEntry;
-  target: ReplaceSourceEntry;
+  sourceEntry: ReplaceSourceEntry;
+  targetEntry: ReplaceSourceEntry;
   dependentsCount: number;
   onSubmit: (runId: ReplaceSourceRunId) => void;
   onCancel: () => void;
 };
 
 export function ConfirmModalContent({
-  source,
-  target,
+  sourceEntry,
+  targetEntry,
   dependentsCount,
   onSubmit,
   onCancel,
@@ -27,10 +27,10 @@ export function ConfirmModalContent({
 
   const handleSubmit = async () => {
     const response = await replaceSource({
-      source_entity_id: source.id,
-      source_entity_type: source.type,
-      target_entity_id: target.id,
-      target_entity_type: target.type,
+      source_entity_id: sourceEntry.id,
+      source_entity_type: sourceEntry.type,
+      target_entity_id: targetEntry.id,
+      target_entity_type: targetEntry.type,
     }).unwrap();
     onSubmit(response.run_id);
   };

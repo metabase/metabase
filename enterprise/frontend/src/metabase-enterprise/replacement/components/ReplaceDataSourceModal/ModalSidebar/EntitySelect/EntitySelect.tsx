@@ -1,7 +1,6 @@
 import { useDisclosure } from "@mantine/hooks";
 import { t } from "ttag";
 
-import { skipToken, useGetCardQuery, useGetTableQuery } from "metabase/api";
 import {
   EntityPickerModal,
   type OmniPickerItem,
@@ -9,24 +8,30 @@ import {
 import { Button, Icon, Input } from "metabase/ui";
 import type { ReplaceSourceEntry } from "metabase-types/api";
 
+import type { EntityInfo } from "../../types";
+
 import S from "./EntitySelect.module.css";
 import {
   RECENTS_CONTEXT,
   SOURCE_PICKER_MODELS,
   SOURCE_PICKER_OPTIONS,
 } from "./constants";
-import { getPickerValue, getSelectedValue, getSourceInfo } from "./utils";
+import {
+  getEntityDisplayInfo,
+  getPickerValue,
+  getSelectedValue,
+} from "./utils";
 
 type EntitySelectProps = {
-  value: ReplaceSourceEntry | undefined;
+  entityInfo: EntityInfo | undefined;
   label: string;
   description: string;
   placeholder?: string;
-  onChange: (value: ReplaceSourceEntry) => void;
+  onChange: (entry: ReplaceSourceEntry) => void;
 };
 
 export function EntitySelect({
-  value,
+  entityInfo,
   label,
   description,
   placeholder = t`Pick a table, model, or saved question`,
@@ -34,13 +39,7 @@ export function EntitySelect({
 }: EntitySelectProps) {
   const [isPickerOpen, { open: openPicker, close: closePicker }] =
     useDisclosure(false);
-  const { data: table } = useGetTableQuery(
-    value?.type === "table" ? { id: value.id } : skipToken,
-  );
-  const { data: card } = useGetCardQuery(
-    value?.type === "card" ? { id: value.id } : skipToken,
-  );
-  const sourceInfo = getSourceInfo(value, table, card);
+  const displayInfo = getEntityDisplayInfo(entityInfo);
 
   const handleItemSelect = (item: OmniPickerItem) => {
     onChange(getSelectedValue(item));
@@ -53,17 +52,17 @@ export function EntitySelect({
         className={S.button}
         onClick={openPicker}
         leftSection={
-          sourceInfo != null && <Icon c="brand" name={sourceInfo.icon} />
+          displayInfo != null && <Icon c="brand" name={displayInfo.icon} />
         }
         rightSection={<Icon name="chevrondown" />}
       >
-        {sourceInfo?.breadcrumbs.join(" / ") ?? placeholder}
+        {displayInfo?.breadcrumbs.join(" / ") ?? placeholder}
       </Button>
       {isPickerOpen && (
         <EntityPickerModal
           title={t`Select a data source`}
           models={SOURCE_PICKER_MODELS}
-          value={getPickerValue(table, card)}
+          value={getPickerValue(entityInfo)}
           options={SOURCE_PICKER_OPTIONS}
           recentsContext={RECENTS_CONTEXT}
           onChange={handleItemSelect}

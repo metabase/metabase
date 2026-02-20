@@ -1,148 +1,20 @@
-import { msgid, ngettext, t } from "ttag";
+import { t } from "ttag";
 
-import { skipToken } from "metabase/api";
-import type {
-  CheckReplaceSourceResponse,
-  DependencyNode,
-  ReplaceSourceEntry,
-} from "metabase-types/api";
+import type { ReplaceSourceErrorType } from "metabase-types/api";
 
-import { DEPENDENT_TYPES } from "./constants";
-import type { EmptyStateType, TabInfo, TabType, ValidationInfo } from "./types";
-
-export function getTabs(
-  nodes: DependencyNode[] | undefined,
-  checkInfo: CheckReplaceSourceResponse | undefined,
-): TabInfo[] {
-  const tabs: TabInfo[] = [];
-  if (nodes == null || nodes.length === 0) {
-    return [];
+export function getErrorLabel(error: ReplaceSourceErrorType): string {
+  switch (error) {
+    case "missing-column":
+      return t`Column not found`;
+    case "column-type-mismatch":
+      return t`Column type mismatch`;
+    case "missing-primary-key":
+      return t`Primary key not found`;
+    case "extra-primary-key":
+      return t`Extra primary key`;
+    case "missing-foreign-key":
+      return t`Foreign key not found`;
+    case "foreign-key-mismatch":
+      return t`Foreign key mismatch`;
   }
-
-  tabs.push({ type: "descendants", nodes: nodes });
-  if (checkInfo?.errors != null) {
-    tabs.push(
-      ...checkInfo.errors.map((error) => ({ type: error.type, error })),
-    );
-  }
-  return tabs;
-}
-
-export function shouldResetTab(
-  tabs: TabInfo[],
-  selectedTabType: TabType | undefined,
-) {
-  return tabs.length === 0
-    ? selectedTabType == null
-    : !tabs.some((tab) => tab.type === selectedTabType);
-}
-
-export function getDescendantsRequest(source: ReplaceSourceEntry | undefined) {
-  if (source == null) {
-    return skipToken;
-  }
-  return {
-    id: source.id,
-    type: source.type,
-    dependent_types: DEPENDENT_TYPES,
-  };
-}
-
-export function getCheckReplaceSourceRequest(
-  source: ReplaceSourceEntry | undefined,
-  target: ReplaceSourceEntry | undefined,
-) {
-  if (source == null || target == null) {
-    return skipToken;
-  }
-  return {
-    source_entity_id: source.id,
-    source_entity_type: source.type,
-    target_entity_id: target.id,
-    target_entity_type: target.type,
-  };
-}
-
-export function getValidationInfo(
-  source: ReplaceSourceEntry | undefined,
-  target: ReplaceSourceEntry | undefined,
-  nodes: DependencyNode[] | undefined,
-  checkInfo: CheckReplaceSourceResponse | undefined,
-): ValidationInfo {
-  if (source == null) {
-    return {
-      isValid: false,
-      errorMessage: t`Pick the original source data source`,
-    };
-  }
-
-  if (target == null) {
-    return {
-      isValid: false,
-      errorMessage: t`Pick the replacement data source`,
-    };
-  }
-
-  if (source.id === target.id && source.type === target.type) {
-    return {
-      isValid: false,
-      errorMessage: t`The original and replacement data sources cannot be the same`,
-    };
-  }
-
-  if (nodes == null) {
-    return {
-      isValid: false,
-      errorMessage: t`Fetching dependencies for the original source data source`,
-    };
-  }
-
-  if (nodes.length === 0) {
-    return {
-      isValid: false,
-      errorMessage: t`No queries found using the original source data source`,
-    };
-  }
-
-  if (checkInfo == null) {
-    return {
-      isValid: false,
-      errorMessage: t`Checking for compatibility between the original and replacement data sources`,
-    };
-  }
-
-  if (!checkInfo.success) {
-    return {
-      isValid: false,
-      errorMessage: t`The original and replacement data sources are not compatible`,
-    };
-  }
-
-  return {
-    isValid: true,
-  };
-}
-
-export function getSubmitLabel(
-  nodes: DependencyNode[] | undefined,
-  validationInfo: ValidationInfo,
-): string {
-  if (nodes == null || !validationInfo.isValid) {
-    return t`Replace data source`;
-  }
-
-  return ngettext(
-    msgid`Replace data source in ${nodes.length} item`,
-    `Replace data source in ${nodes.length} items`,
-    nodes.length,
-  );
-}
-
-export function getEmptyStateType(
-  nodes: DependencyNode[] | undefined,
-): EmptyStateType {
-  if (nodes != null && nodes.length === 0) {
-    return "no-dependents";
-  }
-  return "default";
 }
