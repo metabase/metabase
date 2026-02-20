@@ -18,6 +18,7 @@ export type FieldTreeNode = {
   fieldCount?: number;
   baseType?: string;
   stats?: InspectorFieldStats;
+  original?: InspectorField;
   children?: FieldTreeNode[];
 };
 

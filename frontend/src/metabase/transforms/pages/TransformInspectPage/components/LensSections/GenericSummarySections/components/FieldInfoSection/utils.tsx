@@ -1,5 +1,4 @@
 import type { CellContext } from "@tanstack/react-table";
-import { P, match } from "ts-pattern";
 import { c, t } from "ttag";
 
 import { getFormattedTime } from "metabase/common/components/DateTime";
@@ -11,6 +10,12 @@ import {
   Text,
   type TreeTableColumnDef,
 } from "metabase/ui";
+import {
+  isDate,
+  isDateWithoutTime,
+  isNumeric,
+  isString,
+} from "metabase-lib/v1/types/utils/isa";
 import type { InspectorField } from "metabase-types/api";
 
 import type { FieldTreeNode, TableWithFields } from "./types";
@@ -30,6 +35,7 @@ export function buildTableNodes(tables: TableWithFields[]): FieldTreeNode[] {
         fieldName: field.display_name ?? field.name,
         baseType: formatType(field),
         stats: field.stats,
+        original: field,
       })),
     };
   });
@@ -123,40 +129,40 @@ function getNilPercent(node: FieldTreeNode) {
 }
 
 function gerRangeAndAverages(node: FieldTreeNode) {
-  const { stats, baseType } = node;
-
-  if (!stats) {
+  if (!node.stats) {
     return "";
   }
 
-  const { avg, min, max, earliest, latest } = stats;
+  const { avg, min, max, earliest, latest } = node.stats;
 
-  return match(baseType)
-    .with(P.string.regex(/DateTime|Date|Time/), () => {
-      if (earliest === undefined || latest === undefined) {
-        return null;
-      }
-      const isDateOnly = baseType === "Date";
-      const unit = isDateOnly ? "day" : undefined;
-      return `${getFormattedTime(earliest, unit)} – ${getFormattedTime(latest, unit)}`;
-    })
-    .with(P.string.regex(/Integer|Float|Decimal|Number/), () => {
-      if (min === undefined || max === undefined) {
-        return "";
-      }
-      const range = `${formatNumber(min)} – ${formatNumber(max)}`;
-      if (avg != null) {
-        return c("{0} represents range and {1} average)")
-          .t`${range} (${formatNumber(avg)} avg)`;
-      }
-      return range;
-    })
-    .with(P.string.regex(/Text|String/), () => {
-      if (avg === undefined) {
-        return "";
-      }
-      const avgRounded = Math.round(avg);
-      return `${avgRounded} character avg.`;
-    })
-    .otherwise(() => "");
+  if (isNumeric(node.original)) {
+    if (min === undefined || max === undefined) {
+      return "";
+    }
+    const range = `${formatNumber(min)} – ${formatNumber(max)}`;
+    if (avg != null) {
+      return c("{0} represents range and {1} average)")
+        .t`${range} (${formatNumber(avg)} avg)`;
+    }
+    return range;
+  }
+
+  if (isDate(node.original)) {
+    if (earliest === undefined || latest === undefined) {
+      return null;
+    }
+    const isDateOnly = isDateWithoutTime(node.original);
+    const unit = isDateOnly ? "day" : undefined;
+    return `${getFormattedTime(earliest, unit)} – ${getFormattedTime(latest, unit)}`;
+  }
+
+  if (isString(node.original)) {
+    if (avg === undefined) {
+      return "";
+    }
+    const avgRounded = Math.round(avg);
+    return `${avgRounded} character avg.`;
+  }
+
+  return "";
 }

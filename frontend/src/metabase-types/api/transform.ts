@@ -330,32 +330,11 @@ export type InspectorFieldStats = {
   latest?: string;
 };
 
-export const TEMPORAL_BASE_TYPES = [
-  "type/DateTime",
-  "type/DateTimeWithLocalTZ",
-  "type/DateTimeWithTZ",
-  "type/DateTimeWithZoneID",
-  "type/DateTimeWithZoneOffset",
-  "type/Date",
-  "type/Time",
-  "type/TimeWithTZ",
-] as const;
-
-export const NUMERIC_BASE_TYPES = [
-  "type/Integer",
-  "type/BigInteger",
-  "type/Float",
-  "type/Decimal",
-  "type/Number",
-] as const;
-
 export type InspectorField = {
   id?: number;
   name: string;
   display_name?: string;
-  base_type?:
-    | (typeof TEMPORAL_BASE_TYPES)[number]
-    | (typeof NUMERIC_BASE_TYPES)[number];
+  base_type?: string;
   semantic_type?: string;
   stats?: InspectorFieldStats;
 };
