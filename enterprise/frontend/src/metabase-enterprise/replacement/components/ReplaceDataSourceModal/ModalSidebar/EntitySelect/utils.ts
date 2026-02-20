@@ -2,7 +2,12 @@ import type {
   OmniPickerItem,
   OmniPickerValue,
 } from "metabase/common/components/Pickers";
-import type { Card, ReplaceSourceEntry, Table } from "metabase-types/api";
+import type {
+  Card,
+  DatabaseId,
+  ReplaceSourceEntry,
+  Table,
+} from "metabase-types/api";
 
 import type { EntityInfo } from "../../types";
 
@@ -23,11 +28,42 @@ export function getPickerValue(
   return undefined;
 }
 
-export function getSelectedValue(item: OmniPickerItem): ReplaceSourceEntry {
-  return {
-    id: Number(item.id),
-    type: item.model === "table" ? "table" : "card",
+function getPickerItemDatabaseId(item: OmniPickerItem): DatabaseId | undefined {
+  if (item.model === "database") {
+    return item.id;
+  }
+  if ("database_id" in item) {
+    return item.database_id;
+  }
+  return undefined;
+}
+
+export function getIsPickerItemDisabled(
+  isEntryDisabled: (
+    entry: ReplaceSourceEntry,
+    databaseId: DatabaseId,
+  ) => boolean,
+): (item: OmniPickerItem) => boolean {
+  return (item: OmniPickerItem) => {
+    const entry = getSelectedValue(item);
+    const databaseId = getPickerItemDatabaseId(item);
+    if (entry == null || databaseId == null) {
+      return false;
+    }
+    return isEntryDisabled(entry, databaseId);
   };
+}
+
+export function getSelectedValue(
+  item: OmniPickerItem,
+): ReplaceSourceEntry | undefined {
+  if (item.model === "table") {
+    return { id: Number(item.id), type: "table" };
+  }
+  if (item.model === "card" || item.model === "dataset") {
+    return { id: Number(item.id), type: "card" };
+  }
+  return undefined;
 }
 
 export function getEntityDisplayInfo(
