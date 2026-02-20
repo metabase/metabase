@@ -1,5 +1,6 @@
 import * as INSPECTOR from "cljs/metabase.transforms_inspector.js";
 import type {
+  CardId,
   InspectorAlertTrigger,
   InspectorCard,
   InspectorCardId,
@@ -32,7 +33,7 @@ export const interestingFields = (
 
 export const evaluateTriggers = (
   lens: InspectorLens,
-  cardsStats: Record<string, CardStats>,
+  cardsStats: Record<CardId, CardStats>,
 ): TriggerResult => INSPECTOR.evaluateTriggers(lens, cardsStats);
 
 export const computeCardStats = (
