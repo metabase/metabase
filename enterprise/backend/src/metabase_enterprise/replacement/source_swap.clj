@@ -3,6 +3,7 @@
    [metabase-enterprise.replacement.swap.mbql :as swap.mbql]
    [metabase-enterprise.replacement.swap.native :as swap.native]
    [metabase-enterprise.replacement.swap.viz :as swap.viz]
+   [metabase-enterprise.replacement.usages :as usages]
    [metabase.events.core :as events]
    [metabase.lib.core :as lib]
    [metabase.util.malli :as mu]
@@ -32,18 +33,18 @@
   (case entity-type
     :card (let [card (t2/select-one :model/Card :id entity-id)]
             (when-let [query (:dataset_query card)]
-              (let [new-query (-> query swap.mbql/normalize-query (update-query old-source new-source {}))
+              (let [new-query (update-query query old-source new-source {})
                     updated   (assoc card :dataset_query new-query)]
-                (t2/update! :model/Card entity-id {:dataset_query new-query})
-                (swap.viz/update-dashcards-column-settings! entity-id new-query old-source new-source)
-                ;; TODO: not sure we really want this code to have to know about dependency tracking
-                ;; TODO: publishing this event twice per update seems bad
-                (events/publish-event! :event/card-dependency-backfill
-                                       {:object updated}))))
-    ;; TODO (eric 2026-02-13): Convert field refs in query.
+                (when (not= query new-query)
+                  (t2/update! :model/Card entity-id {:dataset_query new-query})
+                  (swap.viz/update-dashcards-column-settings! entity-id new-query old-source new-source)
+                  ;; TODO: not sure we really want this code to have to know about dependency tracking
+                  ;; TODO: publishing this event twice per update seems bad
+                  (events/publish-event! :event/card-dependency-backfill
+                                         {:object updated})))))
     :transform (let [transform (t2/select-one :model/Transform :id entity-id)]
                  (when-let [query (get-in transform [:source :query])]
-                   (let [new-query (-> query swap.mbql/normalize-query (update-query old-source new-source {}))]
+                   (let [new-query (update-query query old-source new-source {})]
                      (when (not= query new-query)
                        (t2/update! :model/Transform entity-id
                                    {:source (assoc (:source transform) :query new-query)})))))
@@ -63,8 +64,19 @@
    Returns {:swapped [...]} with the list of entities that were updated."
   [old-source :- ::source-ref
    new-source :- ::source-ref]
-  #_(let [found-usages (usages/usages old-source)]
-      (t2/with-transaction [_conn]
-        (doseq [[entity-type entity-id] found-usages]
-          (update-entity entity-type entity-id old-source new-source)))
-      {:swapped (vec found-usages)}))
+  (let [found-usages (usages/transitive-usages old-source)]
+    (t2/with-transaction [_conn]
+      (doseq [[entity-type entity-id] found-usages]
+        (update-entity entity-type entity-id old-source new-source)))
+    {:swapped (vec found-usages)}))
+
+(defn swap-native-card-source!
+  "Updates a single card's native query, replacing references to `old-card-id`
+   with `new-card-id` in both the query text and template tags. Persists the
+   change and publishes a dependency-backfill event."
+  [card-id old-card-id new-card-id]
+  (update-entity :card card-id [:card old-card-id] [:card new-card-id]))
+
+(defn swap!
+  [[entity-type entity-id] old-source new-source]
+  (case entity-type))

@@ -3467,6 +3467,104 @@ databaseChangeLog:
             path: instance_analytics_views/tasks/v4/h2-tasks.sql
             relativeToChangelogFile: true
 
+  - changeSet:
+      id: v59.2026-02-18T12:00:00
+      author: bcm
+      comment: Create source_replacement_run table to track async source replacement executions
+      changes:
+        - createTable:
+            tableName: source_replacement_run
+            remarks: Table to track source replacement executions and their status
+            columns:
+              - column:
+                  name: id
+                  type: int
+                  remarks: Unique ID
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: source_entity_type
+                  type: varchar(50)
+                  remarks: "Type of the source entity (card or table)"
+                  constraints:
+                    nullable: false
+              - column:
+                  name: source_entity_id
+                  type: int
+                  remarks: "ID of the source entity"
+                  constraints:
+                    nullable: false
+              - column:
+                  name: target_entity_type
+                  type: varchar(50)
+                  remarks: "Type of the target entity (card or table)"
+                  constraints:
+                    nullable: false
+              - column:
+                  name: target_entity_id
+                  type: int
+                  remarks: "ID of the target entity"
+                  constraints:
+                    nullable: false
+              - column:
+                  name: status
+                  type: varchar(50)
+                  remarks: "Current status (started, succeeded, failed, canceled, timeout)"
+                  constraints:
+                    nullable: false
+              - column:
+                  name: is_active
+                  type: ${boolean.type}
+                  remarks: "True only for currently running replacements, null for completed"
+                  constraints:
+                    nullable: true
+              - column:
+                  name: progress
+                  type: float
+                  remarks: "Progress from 0.0 to 1.0"
+                  constraints:
+                    nullable: true
+              - column:
+                  name: message
+                  type: ${text.type}
+                  remarks: "Human-readable message; may contain error info"
+                  constraints:
+                    nullable: true
+              - column:
+                  name: user_id
+                  type: int
+                  remarks: "User who initiated the replacement"
+                  constraints:
+                    nullable: true
+                    referencedTableName: core_user
+                    referencedColumnNames: id
+                    foreignKeyName: fk_source_replacement_run_user_id
+              - column:
+                  name: start_time
+                  type: ${timestamp_type}
+                  remarks: "When the replacement started"
+                  defaultValueComputed: current_timestamp
+                  constraints:
+                    nullable: false
+              - column:
+                  name: end_time
+                  type: ${timestamp_type}
+                  remarks: "When the replacement completed (null if still running)"
+                  constraints:
+                    nullable: true
+
+  - changeSet:
+      id: v59.2026-02-18T12:00:01
+      author: bcm
+      comment: Enforce at most one active source replacement run cluster-wide
+      changes:
+        - addUniqueConstraint:
+            tableName: source_replacement_run
+            constraintName: idx_unique_active_source_replacement_run
+            columnNames: is_active
+
 
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 

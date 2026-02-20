@@ -59,7 +59,7 @@
                                                 :target_entity_id   (:id card-b)
                                                 :target_entity_type :card})]
             (is (false? (:success response)))
-            (is (some #(= "column-mismatch" (:type %)) (:errors response)))))))))
+            (is (some #(= "missing-column" (:type %)) (:errors response)))))))))
 
 (deftest check-replace-source-database-mismatch-test
   (testing "POST /api/ee/replacement/check-replace-source — database mismatch short-circuits"
@@ -81,7 +81,7 @@
                                                 :target_entity_id   (:id card-b)
                                                 :target_entity_type :card})]
             (is (false? (:success response)))
-            (is (some #(= "database-mismatch" (:type %)) (:errors response)))))))))
+            (is (some #(= "missing-column" (:type %)) (:errors response)))))))))
 
 (deftest check-replace-source-requires-premium-feature-test
   (testing "POST /api/ee/replacement/check-replace-source — requires :dependencies premium feature"
@@ -94,20 +94,21 @@
 
 ;;; ------------------------------------------------ replace-source ------------------------------------------------
 
-(deftest replace-source-returns-204-test
-  (testing "POST /api/ee/replacement/replace-source — returns 204 on success"
+(deftest replace-source-returns-202-test
+  (testing "POST /api/ee/replacement/replace-source — returns 202 with run_id"
     (mt/dataset test-data
       (mt/with-premium-features #{:dependencies}
         (mt/with-temp [:model/User user {:email "replacement-test@test.com"}]
-          (mt/with-model-cleanup [:model/Card :model/Dependency]
+          (mt/with-model-cleanup [:model/Card :model/Dependency :model/ReplacementRun]
             (let [old-source (card/create-card! (card-with-query "Old source" :products) user)
                   new-source (card/create-card! (card-with-query "New source" :products) user)
-                  _child     (card/create-card! (card-sourced-from "Child card" old-source) user)]
-              (mt/user-http-request :crowberto :post 204 "ee/replacement/replace-source"
-                                    {:source_entity_id   (:id old-source)
-                                     :source_entity_type :card
-                                     :target_entity_id   (:id new-source)
-                                     :target_entity_type :card}))))))))
+                  _child     (card/create-card! (card-sourced-from "Child card" old-source) user)
+                  response   (mt/user-http-request :crowberto :post 202 "ee/replacement/replace-source"
+                                                   {:source_entity_id   (:id old-source)
+                                                    :source_entity_type :card
+                                                    :target_entity_id   (:id new-source)
+                                                    :target_entity_type :card})]
+              (is (pos-int? (:run_id response))))))))))
 
 (deftest replace-source-incompatible-returns-400-test
   (testing "POST /api/ee/replacement/replace-source — incompatible sources return 400"
