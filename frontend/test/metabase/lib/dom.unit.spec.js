@@ -80,6 +80,7 @@ describe("getUrlTarget", () => {
 describe("open()", () => {
   beforeEach(async () => {
     await mockIsEmbeddingSdk();
+    // Ensure a clean store before each test
     ensureMetabaseProviderPropsStore().cleanup();
 
     mockSettings({
