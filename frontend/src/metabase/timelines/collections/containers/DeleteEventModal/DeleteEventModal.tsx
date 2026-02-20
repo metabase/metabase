@@ -1,4 +1,3 @@
-import { push } from "react-router-redux";
 import _ from "underscore";
 
 import { TimelineEvents } from "metabase/entities/timeline-events";
@@ -9,6 +8,7 @@ import DeleteEventModal from "metabase/timelines/common/components/DeleteEventMo
 import type { Timeline, TimelineEvent } from "metabase-types/api";
 import type { State } from "metabase-types/store";
 
+import { navigateToPath } from "../../navigation";
 import type { ModalParams } from "../../types";
 
 interface DeleteEventModalProps {
@@ -16,21 +16,21 @@ interface DeleteEventModalProps {
 }
 
 const timelineProps = {
-  id: (state: State, props: DeleteEventModalProps) =>
-    Urls.extractEntityId(props.params.timelineId),
+  id: (state: State, { params }: DeleteEventModalProps) =>
+    Urls.extractEntityId(params.timelineId),
   query: { include: "events" },
 };
 
 const timelineEventProps = {
-  id: (state: State, props: DeleteEventModalProps) =>
-    Urls.extractEntityId(props.params.timelineEventId),
+  id: (state: State, { params }: DeleteEventModalProps) =>
+    Urls.extractEntityId(params.timelineEventId),
   entityAlias: "event",
 };
 
 const mapDispatchToProps = (dispatch: any) => ({
   onSubmit: async (event: TimelineEvent, timeline: Timeline) => {
     await dispatch(TimelineEvents.actions.delete(event));
-    dispatch(push(Urls.timelineArchiveInCollection(timeline)));
+    navigateToPath(Urls.timelineArchiveInCollection(timeline));
   },
 });
 

@@ -1,4 +1,3 @@
-import { push } from "react-router-redux";
 import { t } from "ttag";
 import _ from "underscore";
 
@@ -19,6 +18,7 @@ import {
   PLUGIN_DATA_PERMISSIONS,
   PLUGIN_REDUCERS,
 } from "metabase/plugins";
+import { routerActions } from "metabase/routing/compat/react-router-redux";
 import { hasPremiumFeature } from "metabase-enterprise/settings";
 
 import sandboxingReducer from "./actions";
@@ -54,7 +54,7 @@ const getEditSegementedAccessUrl = (entityId, groupId, view) =>
     : getGroupViewSandboxModalUrl(entityId, groupId);
 
 const getEditSegmentedAccessPostAction = (entityId, groupId, view) =>
-  push(getEditSegementedAccessUrl(entityId, groupId, view));
+  routerActions.push(getEditSegementedAccessUrl(entityId, groupId, view));
 
 /**
  * Initialize sandboxes plugin features that depend on hasPremiumFeature.
@@ -83,7 +83,7 @@ export function initializePlugin() {
       iconColor: "brand",
       icon: "pencil",
       actionCreator: (entityId, groupId, view) =>
-        push(getEditSegementedAccessUrl(entityId, groupId, view)),
+        routerActions.push(getEditSegementedAccessUrl(entityId, groupId, view)),
     });
     PLUGIN_ADMIN_PERMISSIONS_TABLE_FIELDS_CONFIRMATIONS.push(
       (permissions, groupId, entityId, newValue) =>

@@ -1,5 +1,4 @@
 import fetchMock from "fetch-mock";
-import { Route } from "react-router";
 
 import {
   setupEnterpriseOnlyPlugin,
@@ -20,7 +19,7 @@ import {
 } from "__support__/server-mocks";
 import { setupWebhookChannelsEndpoint } from "__support__/server-mocks/channel";
 import { mockSettings } from "__support__/settings";
-import { renderWithProviders, screen } from "__support__/ui";
+import { Route, renderWithProviders, screen } from "__support__/ui";
 import { getSettingsRoutes } from "metabase/admin/settingsRoutes";
 import type { TokenFeature, TokenFeatures } from "metabase-types/api";
 import {

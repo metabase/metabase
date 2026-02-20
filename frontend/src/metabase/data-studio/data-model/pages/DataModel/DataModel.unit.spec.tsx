@@ -1,6 +1,5 @@
 import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
-import { IndexRedirect, Link, Redirect, Route } from "react-router";
 
 import {
   setupCardDataset,
@@ -17,6 +16,10 @@ import {
   setupUsersEndpoints,
 } from "__support__/server-mocks";
 import {
+  IndexRedirect,
+  Link,
+  Redirect,
+  Route,
   mockGetBoundingClientRect,
   renderWithProviders,
   screen,

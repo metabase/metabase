@@ -1,11 +1,11 @@
 import { useState } from "react";
-import { push } from "react-router-redux";
 import { t } from "ttag";
 
 import { ForwardRefLink } from "metabase/common/components/Link";
-import { useDispatch, useSelector } from "metabase/lib/redux";
+import { useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { PLUGIN_SNIPPET_FOLDERS } from "metabase/plugins";
+import { useNavigation } from "metabase/routing/compat";
 import {
   canUserCreateNativeQueries,
   canUserCreateQueries,
@@ -23,7 +23,7 @@ export const CreateMenu = ({
   metricCollectionId?: CollectionId;
   canWriteToMetricCollection?: boolean;
 }) => {
-  const dispatch = useDispatch();
+  const { push } = useNavigation();
   const [modal, setModal] = useState<"snippet-folder" | "publish-table">();
   const closeModal = () => setModal(undefined);
 
@@ -104,7 +104,7 @@ export const CreateMenu = ({
       <PublishTableModal
         opened={modal === "publish-table"}
         onClose={closeModal}
-        onPublished={(table) => dispatch(push(Urls.dataStudioTable(table.id)))}
+        onPublished={(table) => push(Urls.dataStudioTable(table.id))}
       />
     </>
   );

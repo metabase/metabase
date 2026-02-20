@@ -1,5 +1,4 @@
 import { type MouseEvent, useCallback, useState } from "react";
-import { push } from "react-router-redux";
 import { t } from "ttag";
 
 import { getCollectionName } from "metabase/collections/utils";
@@ -18,8 +17,8 @@ import { Columns } from "metabase/common/components/ItemsTable/Columns";
 import type { ResponsiveProps } from "metabase/common/components/ItemsTable/utils";
 import { MarkdownPreview } from "metabase/common/components/MarkdownPreview";
 import { getIcon } from "metabase/lib/icon";
-import { useDispatch } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
+import { useNavigation } from "metabase/routing/compat";
 import { FixedSizeIcon, Flex, Icon, Repeat, Skeleton } from "metabase/ui";
 import type { SortingOptions } from "metabase-types/api";
 
@@ -158,7 +157,7 @@ function preventDefault(event: MouseEvent) {
 }
 
 const ModelRow = ({ model }: { model?: ModelResult }) => {
-  const dispatch = useDispatch();
+  const { push } = useNavigation();
 
   const handleClick = useCallback(
     (event: MouseEvent) => {
@@ -185,10 +184,10 @@ const ModelRow = ({ model }: { model?: ModelResult }) => {
       if ((event.ctrlKey || event.metaKey) && event.button === 0) {
         Urls.openInNewTab(subpathSafeUrl);
       } else {
-        dispatch(push(url));
+        push(url);
       }
     },
-    [model, dispatch],
+    [model, push],
   );
 
   return (

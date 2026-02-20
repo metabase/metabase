@@ -1,4 +1,3 @@
-import { push } from "react-router-redux";
 import _ from "underscore";
 
 import { Collections } from "metabase/entities/collections";
@@ -10,6 +9,7 @@ import type { State } from "metabase-types/store";
 
 import LoadingAndErrorWrapper from "../../components/LoadingAndErrorWrapper";
 import TimelineListModal from "../../components/TimelineListModal";
+import { navigateToPath } from "../../navigation";
 import type { ModalParams } from "../../types";
 
 interface TimelineListArchiveModalProps {
@@ -17,8 +17,8 @@ interface TimelineListArchiveModalProps {
 }
 
 const timelineProps = {
-  query: (state: State, props: TimelineListArchiveModalProps) => ({
-    collectionId: Urls.extractCollectionId(props.params.slug),
+  query: (state: State, { params }: TimelineListArchiveModalProps) => ({
+    collectionId: Urls.extractCollectionId(params.slug),
     archived: true,
     include: "events",
   }),
@@ -26,8 +26,8 @@ const timelineProps = {
 };
 
 const collectionProps = {
-  id: (state: State, props: TimelineListArchiveModalProps) =>
-    Urls.extractCollectionId(props.params.slug),
+  id: (state: State, { params }: TimelineListArchiveModalProps) =>
+    Urls.extractCollectionId(params.slug),
   LoadingAndErrorWrapper,
 };
 
@@ -40,7 +40,7 @@ const mapDispatchToProps = (dispatch: any) => ({
     await dispatch(Timelines.actions.setArchived(event, false));
   },
   onGoBack: (collection: Collection) => {
-    dispatch(push(Urls.timelinesInCollection(collection)));
+    navigateToPath(Urls.timelinesInCollection(collection));
   },
 });
 

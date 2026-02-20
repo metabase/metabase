@@ -1,15 +1,14 @@
 import type { ReactNode } from "react";
 import { useCallback, useEffect, useRef, useState } from "react";
-import type { Route } from "react-router";
-import { push } from "react-router-redux";
 import { t } from "ttag";
 
 import { useCreateMeasureMutation } from "metabase/api";
 import { LeaveRouteConfirmModal } from "metabase/common/components/LeaveConfirmModal";
 import { PageContainer } from "metabase/data-studio/common/components/PageContainer";
 import { getDatasetQueryPreviewUrl } from "metabase/data-studio/common/utils/get-dataset-query-preview-url";
-import { useDispatch, useSelector } from "metabase/lib/redux";
+import { useSelector } from "metabase/lib/redux";
 import { useMetadataToasts } from "metabase/metadata/hooks";
+import { useNavigation } from "metabase/routing/compat";
 import { getMetadataWithHiddenTables } from "metabase/selectors/metadata";
 import { Button } from "metabase/ui";
 import * as Lib from "metabase-lib";
@@ -21,19 +20,17 @@ import { useMeasureQuery } from "../../hooks/use-measure-query";
 import { createInitialQueryForTable } from "../../utils/measure-query";
 
 type NewMeasurePageProps = {
-  route: Route;
   table: Table;
   breadcrumbs: ReactNode;
   getSuccessUrl: (measure: Measure) => string;
 };
 
 export function NewMeasurePage({
-  route,
   table,
   breadcrumbs,
   getSuccessUrl,
 }: NewMeasurePageProps) {
-  const dispatch = useDispatch();
+  const { push } = useNavigation();
   const metadata = useSelector(getMetadataWithHiddenTables);
   const { sendSuccessToast, sendErrorToast } = useMetadataToasts();
 
@@ -100,9 +97,9 @@ export function NewMeasurePage({
 
   useEffect(() => {
     if (savedMeasure) {
-      dispatch(push(getSuccessUrl(savedMeasure)));
+      push(getSuccessUrl(savedMeasure));
     }
-  }, [savedMeasure, dispatch, getSuccessUrl]);
+  }, [savedMeasure, push, getSuccessUrl]);
 
   return (
     <PageContainer data-testid="new-measure-page" gap="xl">
@@ -129,7 +126,7 @@ export function NewMeasurePage({
         onQueryChange={setQuery}
         onDescriptionChange={setDescription}
       />
-      <LeaveRouteConfirmModal route={route} isEnabled={isDirty && !isSaving} />
+      <LeaveRouteConfirmModal isEnabled={isDirty && !isSaving} />
     </PageContainer>
   );
 }

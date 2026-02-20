@@ -1,5 +1,6 @@
+import { bindActionCreators } from "@reduxjs/toolkit";
+import type { LocationDescriptor } from "history";
 import type { ConnectedProps } from "react-redux";
-import { push } from "react-router-redux";
 
 import { deletePermanently } from "metabase/archive/actions";
 import {
@@ -54,6 +55,7 @@ import {
   selectTab,
   undoDeleteTab,
 } from "metabase/dashboard/actions/tabs";
+import { pushPath } from "metabase/lib/navigation";
 import { connect } from "metabase/lib/redux";
 import { getIsEmbeddingIframe } from "metabase/selectors/embed";
 import {
@@ -121,7 +123,7 @@ export const mapStateToProps = (state: State) => ({
   isEmbeddingIframe: getIsEmbeddingIframe(state),
 });
 
-export const mapDispatchToProps = {
+const dispatchActionCreators = {
   initialize,
   cancelFetchDashboardCardData,
   addCardToDashboard,
@@ -159,7 +161,6 @@ export const mapDispatchToProps = {
   hideAddParameterPopover,
   fetchDashboard,
   fetchDashboardCardData,
-  onChangeLocation: push,
   reset,
   closeDashboard,
   setArchivedDashboard,
@@ -174,6 +175,11 @@ export const mapDispatchToProps = {
   selectTab,
   undoDeleteTab,
 };
+
+export const mapDispatchToProps = (dispatch: any) => ({
+  ...bindActionCreators(dispatchActionCreators, dispatch),
+  onChangeLocation: (location: LocationDescriptor) => pushPath(location),
+});
 
 export const connector = connect(mapStateToProps, mapDispatchToProps, null, {
   forwardRef: true,

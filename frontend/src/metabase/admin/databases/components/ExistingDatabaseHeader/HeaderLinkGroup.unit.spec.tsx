@@ -1,6 +1,4 @@
-import { Route } from "react-router";
-
-import { renderWithProviders, screen } from "__support__/ui";
+import { Route, renderWithProviders, screen } from "__support__/ui";
 import { browseDatabase } from "metabase/lib/urls";
 import type { Database } from "metabase-types/api";
 import { createMockDatabase } from "metabase-types/api/mocks";

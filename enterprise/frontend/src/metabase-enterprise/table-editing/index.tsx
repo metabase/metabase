@@ -2,7 +2,7 @@ import { PLUGIN_TABLE_EDITING } from "metabase/plugins";
 import { hasPremiumFeature } from "metabase-enterprise/settings";
 
 import { AdminDatabaseTableEditingSection } from "./admin/AdminDatabaseTableEditingSection";
-import { getRoutes } from "./routes";
+import { getRouteObjects, getRoutes } from "./routes";
 import { isDatabaseTableEditingEnabled } from "./settings";
 import { getTableEditUrl } from "./urls";
 
@@ -15,6 +15,7 @@ export function initializePlugin() {
     PLUGIN_TABLE_EDITING.isDatabaseTableEditingEnabled =
       isDatabaseTableEditingEnabled;
     PLUGIN_TABLE_EDITING.getRoutes = getRoutes;
+    PLUGIN_TABLE_EDITING.getRouteObjects = getRouteObjects;
     PLUGIN_TABLE_EDITING.getTableEditUrl = getTableEditUrl;
     PLUGIN_TABLE_EDITING.AdminDatabaseTableEditingSection =
       AdminDatabaseTableEditingSection;

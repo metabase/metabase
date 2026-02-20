@@ -1,5 +1,4 @@
 import { useEffect, useMemo } from "react";
-import { Link } from "react-router";
 import { t } from "ttag";
 
 import { SettingsSection } from "metabase/admin/components/SettingsSection";
@@ -9,6 +8,7 @@ import { useSetting } from "metabase/common/hooks";
 import { useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { PLUGIN_TENANTS } from "metabase/plugins";
+import { useNavigation } from "metabase/routing/compat";
 import { getUser, getUserIsAdmin } from "metabase/selectors/user";
 import { Box, Button, Flex, Group, Tabs, Title } from "metabase/ui";
 
@@ -34,6 +34,7 @@ export function PeopleListingApp({
   showInviteButton?: boolean;
   noResultsMessage?: string;
 }) {
+  const { push } = useNavigation();
   const isAdmin = useSelector(getUserIsAdmin);
   const currentUser = useSelector(getUser);
   const isUsingTenants = useSetting("use-tenants");
@@ -134,9 +135,14 @@ export function PeopleListingApp({
 
               {buttonText && (
                 <Box>
-                  <Link to={external ? Urls.newTenantUser() : Urls.newUser()}>
-                    <Button variant="filled">{buttonText}</Button>
-                  </Link>
+                  <Button
+                    variant="filled"
+                    onClick={() =>
+                      push(external ? Urls.newTenantUser() : Urls.newUser())
+                    }
+                  >
+                    {buttonText}
+                  </Button>
                 </Box>
               )}
             </Group>

@@ -1,11 +1,8 @@
-import type { Location, LocationDescriptor } from "history";
-import { Component } from "react";
+import type { LocationDescriptor } from "history";
 import * as React from "react";
-import { Route } from "react-router";
-import { push } from "react-router-redux";
+import { Route, useLocation, useNavigate, useParams } from "react-router-dom";
 
 import { Modal } from "metabase/common/components/Modal";
-import { connect } from "metabase/lib/redux";
 import MetabaseSettings from "metabase/lib/settings";
 
 type RouteParams = Record<string, string | undefined>;
@@ -14,7 +11,10 @@ type IRoute = {
   path: string;
 };
 
-export const getParentPath = (route: IRoute, location: Location) => {
+export const getParentPath = (
+  route: IRoute,
+  location: { pathname: string },
+) => {
   // If instance has a custom url we need to exclude its subpath
   const siteUrlSegments = (MetabaseSettings.get("site-url") ?? "").split("/");
   const subPath = siteUrlSegments.slice(3).join("/");
@@ -39,53 +39,51 @@ export const getParentPath = (route: IRoute, location: Location) => {
   return fullPathSegments.join("/");
 };
 
-export type ComposedModalProps<
-  P extends RouteParams = RouteParams,
-  Q = unknown,
-> = {
+export type ComposedModalProps<P extends RouteParams = RouteParams, Q = any> = {
   params: P;
-  location: Location<Q>;
+  location: Q;
   onClose: () => void;
 };
 
-interface WrappedModalRouteProps {
-  route: IRoute;
-  params: RouteParams;
-  location: Location;
-  onChangeLocation: (nextLocation: LocationDescriptor) => void;
-}
-
 const ModalWithRoute = (
-  ComposedModal: React.ComponentType<ComposedModalProps>,
+  route: IRoute,
+  ComposedModal: React.ComponentType<any>,
   modalProps = {},
   noWrap = false,
 ) => {
-  class ModalRouteComponent extends Component<WrappedModalRouteProps> {
-    static displayName: string = `ModalWithRoute[${
-      ComposedModal.displayName || ComposedModal.name
-    }]`;
+  function ModalRouteComponent() {
+    const params = useParams<RouteParams>();
+    const location = useLocation();
+    const navigate = useNavigate();
 
-    onClose = () => {
-      const { location, route } = this.props;
+    const onClose = React.useCallback(() => {
+      const parentPath = getParentPath(route, location as { pathname: string });
+      navigate(parentPath as LocationDescriptor);
+    }, [location, navigate]);
 
-      const parentPath = getParentPath(route, location);
-      this.props.onChangeLocation(parentPath);
+    const composedModalProps = {
+      ...modalProps,
+      params,
+      location,
+      onClose,
     };
 
-    render() {
-      if (noWrap) {
-        return <ComposedModal {...this.props} onClose={this.onClose} />;
-      }
-
-      return (
-        <Modal {...modalProps} onClose={this.onClose}>
-          <ComposedModal {...this.props} onClose={this.onClose} />
-        </Modal>
-      );
+    if (noWrap) {
+      return <ComposedModal {...composedModalProps} />;
     }
+
+    return (
+      <Modal {...modalProps} onClose={onClose}>
+        <ComposedModal {...composedModalProps} />
+      </Modal>
+    );
   }
 
-  return connect(null, { onChangeLocation: push })(ModalRouteComponent);
+  ModalRouteComponent.displayName = `ModalWithRoute[${
+    ComposedModal.displayName || ComposedModal.name
+  }]`;
+
+  return ModalRouteComponent;
 };
 
 // Base props that any modal rendered by ModalRoute must accept.
@@ -93,37 +91,27 @@ const ModalWithRoute = (
 // but they must accept the full ComposedModalProps shape.
 type ModalComponentProps = {
   params: RouteParams;
-  location: Location;
+  location: any;
   onClose: () => void;
 };
 
 interface ModalRouteProps {
   path: string;
   modal: React.ComponentType<ModalComponentProps>;
-  modalProps?: unknown;
+  modalProps?: Record<string, unknown>;
   noWrap?: boolean;
 }
 
-// react-router Route wrapper that handles routed modals
-class _ModalRoute extends Route {
-  static createRouteFromReactElement(element: React.ReactElement) {
-    const { modal, modalProps, noWrap } = element.props;
-
-    if (modal) {
-      element = React.cloneElement(element, {
-        component: ModalWithRoute(modal, modalProps, noWrap),
-      });
-
-      // @ts-expect-error - Route.createRouteFromReactElement is not typed
-      return Route.createRouteFromReactElement(element);
-    } else {
-      throw new Error("`modal` property is missing from ModalRoute");
-    }
+export const ModalRoute = ({
+  path,
+  modal,
+  modalProps,
+  noWrap = false,
+}: ModalRouteProps) => {
+  if (!modal) {
+    throw new Error("`modal` property is missing from ModalRoute");
   }
-}
 
-// Casting ModalRoute as there's no way to properly type its props
-// ModalRoute extends react-router's Route which is not generic,
-// so it's impossible to extend Route's props.
-export const ModalRoute =
-  _ModalRoute as unknown as React.ComponentType<ModalRouteProps>;
+  const Component = ModalWithRoute({ path }, modal, modalProps, noWrap);
+  return <Route path={path} element={<Component />} />;
+};

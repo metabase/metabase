@@ -1,7 +1,5 @@
 import type { Location } from "history";
 import { useEffect, useMemo } from "react";
-import type { InjectedRouter } from "react-router";
-import { push, replace } from "react-router-redux";
 import { usePrevious } from "react-use";
 import _ from "underscore";
 
@@ -9,6 +7,7 @@ import { useSetting } from "metabase/common/hooks";
 import { IS_EMBED_PREVIEW } from "metabase/lib/embed";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
+import { useNavigation } from "metabase/routing/compat";
 import { getParameterValuesBySlug } from "metabase-lib/v1/parameters/utils/parameter-values";
 
 import { selectTab } from "../actions";
@@ -20,10 +19,11 @@ import {
 } from "../selectors";
 import { createTabSlug } from "../utils";
 
-export function useDashboardUrlQuery(
-  router: InjectedRouter,
-  location: Location,
-) {
+type RouterLike = {
+  listen: (handler: (location: Location) => void) => () => void;
+};
+
+export function useDashboardUrlQuery(router: RouterLike, location: Location) {
   const dashboardId = useSelector((state) => getDashboard(state)?.id);
   const tabs = useSelector(getTabs);
   const selectedTab = useSelector(getSelectedTab);
@@ -31,6 +31,7 @@ export function useDashboardUrlQuery(
   const siteUrl = useSetting("site-url");
 
   const dispatch = useDispatch();
+  const navigation = useNavigation();
 
   const parameterValuesBySlug = useMemo(
     () => getParameterValuesBySlug(parameters),
@@ -90,8 +91,11 @@ export function useDashboardUrlQuery(
         previousQueryParams?.tab &&
         queryParams.tab !== previousQueryParams.tab;
 
-      const action = isDashboardTabChange ? push : replace;
-      dispatch(action({ ...location, query: nextQuery }));
+      if (isDashboardTabChange) {
+        navigation.push({ ...location, query: nextQuery });
+      } else {
+        navigation.replace({ ...location, query: nextQuery });
+      }
     }
   }, [
     dashboardId,
@@ -100,10 +104,10 @@ export function useDashboardUrlQuery(
     location,
     siteUrl,
     dispatch,
+    navigation,
   ]);
 
   useEffect(() => {
-    // @ts-expect-error missing type declaration
     const unsubscribe = router.listen((nextLocation) => {
       const isSamePath = nextLocation.pathname === location.pathname;
       if (!isSamePath) {

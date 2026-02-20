@@ -1,8 +1,6 @@
-import { Route } from "react-router";
-
 import { setupEnterprisePlugins } from "__support__/enterprise";
 import { mockSettings } from "__support__/settings";
-import { renderWithProviders, screen } from "__support__/ui";
+import { Route, renderWithProviders, screen } from "__support__/ui";
 import {
   createMockTokenFeatures,
   createMockUser,

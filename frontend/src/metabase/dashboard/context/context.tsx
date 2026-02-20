@@ -235,20 +235,22 @@ const DashboardContextProviderInner = forwardRef(
           setError(null);
 
           initialize({ clearCache: !effectiveIsNavigatingBackToDashboard });
-          fetchDashboard({
-            dashId: token ?? dashboardId,
-            queryParams: parameterQueryParams,
-            options: {
-              clearCache: !effectiveIsNavigatingBackToDashboard,
-              preserveParameters: effectiveIsNavigatingBackToDashboard,
-            },
-          })
-            .then((result) => {
+          Promise.resolve(
+            fetchDashboard({
+              dashId: token ?? dashboardId,
+              queryParams: parameterQueryParams,
+              options: {
+                clearCache: !effectiveIsNavigatingBackToDashboard,
+                preserveParameters: effectiveIsNavigatingBackToDashboard,
+              },
+            }) as any,
+          )
+            .then((result: any) => {
               if (isFailedFetchDashboardResult(result)) {
                 handleError(result.payload);
               }
             })
-            .catch((err) => handleError(err));
+            .catch((err: unknown) => handleError(err));
         }
       },
       [

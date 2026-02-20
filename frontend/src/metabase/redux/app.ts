@@ -3,17 +3,16 @@ import {
   createAction,
   createSlice,
 } from "@reduxjs/toolkit";
-import { LOCATION_CHANGE, push } from "react-router-redux";
 
 import {
   isSmallScreen,
   openInBlankWindow,
   shouldOpenInBlankWindow,
 } from "metabase/lib/dom";
+import { pushPath } from "metabase/lib/navigation";
 import { combineReducers, handleActions } from "metabase/lib/redux";
 import type {
   DetailViewState,
-  Dispatch,
   TempStorage,
   TempStorageKey,
   TempStorageValue,
@@ -32,6 +31,8 @@ interface LocationChangeAction {
   };
 }
 
+const LOCATION_CHANGE = "@@router/LOCATION_CHANGE";
+
 const SET_ERROR_PAGE = "metabase/app/SET_ERROR_PAGE";
 export function setErrorPage(error: any) {
   console.error("Error:", error);
@@ -48,11 +49,11 @@ export function resetErrorPage() {
   };
 }
 
-export const openUrl = (url: string) => (dispatch: Dispatch) => {
+export const openUrl = (url: string) => () => {
   if (shouldOpenInBlankWindow(url)) {
     openInBlankWindow(url);
   } else {
-    dispatch(push(url));
+    pushPath(url);
   }
 };
 

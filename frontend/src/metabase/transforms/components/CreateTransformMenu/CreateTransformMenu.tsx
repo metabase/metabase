@@ -1,5 +1,4 @@
 import { useDisclosure } from "@mantine/hooks";
-import { push } from "react-router-redux";
 import { t } from "ttag";
 
 import { UpsellGem } from "metabase/admin/upsells/components/UpsellGem";
@@ -7,8 +6,9 @@ import { useListDatabasesQuery } from "metabase/api";
 import { QuestionPickerModal } from "metabase/common/components/Pickers";
 import { useHasTokenFeature } from "metabase/common/hooks";
 import { getIsHosted } from "metabase/databases/selectors";
-import { useDispatch, useSelector } from "metabase/lib/redux";
+import { useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
+import { useNavigation } from "metabase/routing/compat";
 import { getShouldShowPythonTransformsUpsell } from "metabase/transforms/selectors";
 import { PythonTransformsUpsellModal } from "metabase/transforms/upsells/components/PythonTransformsUpsellModal";
 import { Button, Center, Icon, Loader, Menu, Tooltip } from "metabase/ui";
@@ -19,7 +19,7 @@ import { CreateTransformCollectionModal } from "../CreateTransformCollectionModa
 import { shouldDisableItem } from "./utils";
 
 export const CreateTransformMenu = () => {
-  const dispatch = useDispatch();
+  const { push } = useNavigation();
   const [isPickerOpened, { open: openPicker, close: closePicker }] =
     useDisclosure();
   const [
@@ -48,7 +48,7 @@ export const CreateTransformMenu = () => {
   const handlePythonClick = () => {
     if (hasPythonTransformsFeature) {
       trackTransformCreate({ creationType: "python" });
-      dispatch(push(Urls.newPythonTransform()));
+      push(Urls.newPythonTransform());
     } else {
       openPythonUpsell();
     }
@@ -77,7 +77,7 @@ export const CreateTransformMenu = () => {
                 leftSection={<Icon name="notebook" />}
                 onClick={() => {
                   trackTransformCreate({ creationType: "query" });
-                  dispatch(push(Urls.newQueryTransform()));
+                  push(Urls.newQueryTransform());
                 }}
               >
                 {t`Query builder`}
@@ -86,7 +86,7 @@ export const CreateTransformMenu = () => {
                 leftSection={<Icon name="sql" />}
                 onClick={() => {
                   trackTransformCreate({ creationType: "native" });
-                  dispatch(push(Urls.newNativeTransform()));
+                  push(Urls.newNativeTransform());
                 }}
               >
                 {t`SQL query`}
@@ -130,7 +130,7 @@ export const CreateTransformMenu = () => {
           models={["card", "dataset"]}
           isDisabledItem={(item) => shouldDisableItem(item, databases?.data)}
           onChange={(item) => {
-            dispatch(push(Urls.newTransformFromCard(item.id)));
+            push(Urls.newTransformFromCard(item.id));
             closePicker();
           }}
           onClose={closePicker}

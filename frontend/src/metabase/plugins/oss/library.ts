@@ -1,5 +1,6 @@
 import type { BaseQueryFn, QueryDefinition } from "@reduxjs/toolkit/query";
 import type { ComponentType, ReactNode } from "react";
+import type { RouteObject } from "react-router-dom";
 
 import type { TagType } from "metabase/api/tags";
 import type { UseQuery } from "metabase/entities/containers/rtk-query/types/rtk";
@@ -43,6 +44,7 @@ export type UnpublishTablesModalProps = {
 type LibraryPlugin = {
   isEnabled: boolean;
   getDataStudioLibraryRoutes: () => ReactNode;
+  getDataStudioLibraryRouteObjects: () => RouteObject[];
   useGetLibraryCollection: (params?: { skip?: boolean }) => {
     data: undefined | LibraryCollection;
     isLoading: boolean;
@@ -69,6 +71,7 @@ type LibraryPlugin = {
 const getDefaultPluginLibrary = (): LibraryPlugin => ({
   isEnabled: false,
   getDataStudioLibraryRoutes: () => null,
+  getDataStudioLibraryRouteObjects: () => [],
   useGetLibraryCollection: () => ({ isLoading: false, data: undefined }),
   useGetLibraryChildCollectionByType: () => undefined,
   useGetResolvedLibraryCollection: () => ({

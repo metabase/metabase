@@ -1,4 +1,4 @@
-import { IndexRoute, Route } from "react-router";
+import type { RouteObject } from "react-router-dom";
 
 import { PublishedTableMeasureDependenciesPage } from "metabase/data-studio/measures/pages/PublishedTableMeasureDependenciesPage";
 import { PublishedTableMeasureDetailPage } from "metabase/data-studio/measures/pages/PublishedTableMeasureDetailPage";
@@ -9,7 +9,7 @@ import { PublishedTableSegmentDependenciesPage } from "metabase/data-studio/segm
 import { PublishedTableSegmentDetailPage } from "metabase/data-studio/segments/pages/PublishedTableSegmentDetailPage";
 import { PublishedTableSegmentRevisionHistoryPage } from "metabase/data-studio/segments/pages/PublishedTableSegmentRevisionHistoryPage";
 import { PLUGIN_DEPENDENCIES } from "metabase/plugins";
-import { IsAdmin } from "metabase/route-guards";
+import { IsAdminGuard, useRouteParams } from "metabase/routing/compat";
 
 import { TableDependenciesPage } from "./pages/TableDependenciesPage";
 import { TableFieldsPage } from "./pages/TableFieldsPage";
@@ -17,57 +17,230 @@ import { TableMeasuresPage } from "./pages/TableMeasuresPage";
 import { TableOverviewPage } from "./pages/TableOverviewPage";
 import { TableSegmentsPage } from "./pages/TableSegmentsPage";
 
-export function getDataStudioTableRoutes() {
+type TableRouteParams = {
+  tableId?: string;
+  fieldId?: string;
+  segmentId?: string;
+  measureId?: string;
+};
+
+const TableOverviewPageWithRouteProps = () => {
+  const params = useRouteParams<TableRouteParams>();
+  return <TableOverviewPage params={{ tableId: params.tableId ?? "" }} />;
+};
+
+const TableFieldsPageWithRouteProps = () => {
+  const params = useRouteParams<TableRouteParams>();
   return (
-    <Route path="tables">
-      <Route path=":tableId" component={TableOverviewPage} />
-      <Route path=":tableId/fields" component={TableFieldsPage} />
-      <Route path=":tableId/fields/:fieldId" component={TableFieldsPage} />
-      <Route path=":tableId/segments" component={TableSegmentsPage} />
-      <Route path=":tableId/segments/new" component={IsAdmin}>
-        <IndexRoute component={PublishedTableNewSegmentPage} />
-      </Route>
-      <Route
-        path=":tableId/segments/:segmentId"
-        component={PublishedTableSegmentDetailPage}
-      />
-      <Route
-        path=":tableId/segments/:segmentId/revisions"
-        component={PublishedTableSegmentRevisionHistoryPage}
-      />
-      {PLUGIN_DEPENDENCIES.isEnabled && (
-        <Route
-          path=":tableId/segments/:segmentId/dependencies"
-          component={PublishedTableSegmentDependenciesPage}
-        >
-          <IndexRoute component={PLUGIN_DEPENDENCIES.DependencyGraphPage} />
-        </Route>
-      )}
-      <Route path=":tableId/measures" component={TableMeasuresPage} />
-      <Route path=":tableId/measures/new" component={IsAdmin}>
-        <IndexRoute component={PublishedTableNewMeasurePage} />
-      </Route>
-      <Route
-        path=":tableId/measures/:measureId"
-        component={PublishedTableMeasureDetailPage}
-      />
-      <Route
-        path=":tableId/measures/:measureId/revisions"
-        component={PublishedTableMeasureRevisionHistoryPage}
-      />
-      {PLUGIN_DEPENDENCIES.isEnabled && (
-        <Route
-          path=":tableId/measures/:measureId/dependencies"
-          component={PublishedTableMeasureDependenciesPage}
-        >
-          <IndexRoute component={PLUGIN_DEPENDENCIES.DependencyGraphPage} />
-        </Route>
-      )}
-      {PLUGIN_DEPENDENCIES.isEnabled && (
-        <Route path=":tableId/dependencies" component={TableDependenciesPage}>
-          <IndexRoute component={PLUGIN_DEPENDENCIES.DependencyGraphPage} />
-        </Route>
-      )}
-    </Route>
+    <TableFieldsPage
+      params={{ tableId: params.tableId ?? "", fieldId: params.fieldId }}
+    />
   );
+};
+
+const TableSegmentsPageWithRouteProps = () => {
+  const params = useRouteParams<TableRouteParams>();
+  return <TableSegmentsPage params={{ tableId: params.tableId ?? "" }} />;
+};
+
+const PublishedTableNewSegmentPageWithRouteProps = () => {
+  const params = useRouteParams<TableRouteParams>();
+  return (
+    <PublishedTableNewSegmentPage params={{ tableId: params.tableId ?? "" }} />
+  );
+};
+
+const PublishedTableSegmentDetailPageWithRouteProps = () => {
+  const params = useRouteParams<TableRouteParams>();
+  return (
+    <PublishedTableSegmentDetailPage
+      params={{
+        tableId: params.tableId ?? "",
+        segmentId: params.segmentId ?? "",
+      }}
+    />
+  );
+};
+
+const PublishedTableSegmentRevisionHistoryPageWithRouteProps = () => {
+  const params = useRouteParams<TableRouteParams>();
+  return (
+    <PublishedTableSegmentRevisionHistoryPage
+      params={{
+        tableId: params.tableId ?? "",
+        segmentId: params.segmentId ?? "",
+      }}
+    />
+  );
+};
+
+const PublishedTableSegmentDependenciesPageWithRouteProps = () => {
+  const params = useRouteParams<TableRouteParams>();
+  return (
+    <PublishedTableSegmentDependenciesPage
+      params={{
+        tableId: params.tableId ?? "",
+        segmentId: params.segmentId ?? "",
+      }}
+    />
+  );
+};
+
+const TableMeasuresPageWithRouteProps = () => {
+  const params = useRouteParams<TableRouteParams>();
+  return <TableMeasuresPage params={{ tableId: params.tableId ?? "" }} />;
+};
+
+const PublishedTableNewMeasurePageWithRouteProps = () => {
+  const params = useRouteParams<TableRouteParams>();
+  return (
+    <PublishedTableNewMeasurePage params={{ tableId: params.tableId ?? "" }} />
+  );
+};
+
+const PublishedTableMeasureDetailPageWithRouteProps = () => {
+  const params = useRouteParams<TableRouteParams>();
+  return (
+    <PublishedTableMeasureDetailPage
+      params={{
+        tableId: params.tableId ?? "",
+        measureId: params.measureId ?? "",
+      }}
+    />
+  );
+};
+
+const PublishedTableMeasureRevisionHistoryPageWithRouteProps = () => {
+  const params = useRouteParams<TableRouteParams>();
+  return (
+    <PublishedTableMeasureRevisionHistoryPage
+      params={{
+        tableId: params.tableId ?? "",
+        measureId: params.measureId ?? "",
+      }}
+    />
+  );
+};
+
+const PublishedTableMeasureDependenciesPageWithRouteProps = () => {
+  const params = useRouteParams<TableRouteParams>();
+  return (
+    <PublishedTableMeasureDependenciesPage
+      params={{
+        tableId: params.tableId ?? "",
+        measureId: params.measureId ?? "",
+      }}
+    />
+  );
+};
+
+const TableDependenciesPageWithRouteProps = () => {
+  const params = useRouteParams<TableRouteParams>();
+  return <TableDependenciesPage params={{ tableId: params.tableId ?? "" }} />;
+};
+
+export function getDataStudioTableRoutes() {
+  return null;
+}
+
+export function getDataStudioTableRouteObjects(): RouteObject[] {
+  return [
+    {
+      path: "tables",
+      children: [
+        { path: ":tableId", element: <TableOverviewPageWithRouteProps /> },
+        { path: ":tableId/fields", element: <TableFieldsPageWithRouteProps /> },
+        {
+          path: ":tableId/fields/:fieldId",
+          element: <TableFieldsPageWithRouteProps />,
+        },
+        {
+          path: ":tableId/segments",
+          element: <TableSegmentsPageWithRouteProps />,
+        },
+        {
+          path: ":tableId/segments/new",
+          element: (
+            <IsAdminGuard>
+              <PublishedTableNewSegmentPageWithRouteProps />
+            </IsAdminGuard>
+          ),
+        },
+        {
+          path: ":tableId/segments/:segmentId",
+          element: <PublishedTableSegmentDetailPageWithRouteProps />,
+        },
+        {
+          path: ":tableId/segments/:segmentId/revisions",
+          element: <PublishedTableSegmentRevisionHistoryPageWithRouteProps />,
+        },
+        ...(PLUGIN_DEPENDENCIES.isEnabled
+          ? [
+              {
+                path: ":tableId/segments/:segmentId/dependencies",
+                element: (
+                  <PublishedTableSegmentDependenciesPageWithRouteProps />
+                ),
+                children: [
+                  {
+                    index: true,
+                    element: <PLUGIN_DEPENDENCIES.DependencyGraphPage />,
+                  },
+                ],
+              } satisfies RouteObject,
+            ]
+          : []),
+        {
+          path: ":tableId/measures",
+          element: <TableMeasuresPageWithRouteProps />,
+        },
+        {
+          path: ":tableId/measures/new",
+          element: (
+            <IsAdminGuard>
+              <PublishedTableNewMeasurePageWithRouteProps />
+            </IsAdminGuard>
+          ),
+        },
+        {
+          path: ":tableId/measures/:measureId",
+          element: <PublishedTableMeasureDetailPageWithRouteProps />,
+        },
+        {
+          path: ":tableId/measures/:measureId/revisions",
+          element: <PublishedTableMeasureRevisionHistoryPageWithRouteProps />,
+        },
+        ...(PLUGIN_DEPENDENCIES.isEnabled
+          ? [
+              {
+                path: ":tableId/measures/:measureId/dependencies",
+                element: (
+                  <PublishedTableMeasureDependenciesPageWithRouteProps />
+                ),
+                children: [
+                  {
+                    index: true,
+                    element: <PLUGIN_DEPENDENCIES.DependencyGraphPage />,
+                  },
+                ],
+              } satisfies RouteObject,
+            ]
+          : []),
+        ...(PLUGIN_DEPENDENCIES.isEnabled
+          ? [
+              {
+                path: ":tableId/dependencies",
+                element: <TableDependenciesPageWithRouteProps />,
+                children: [
+                  {
+                    index: true,
+                    element: <PLUGIN_DEPENDENCIES.DependencyGraphPage />,
+                  },
+                ],
+              } satisfies RouteObject,
+            ]
+          : []),
+      ],
+    },
+  ];
 }

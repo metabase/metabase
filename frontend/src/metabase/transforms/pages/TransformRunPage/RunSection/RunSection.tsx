@@ -1,5 +1,4 @@
 import { useDisclosure } from "@mantine/hooks";
-import { Link } from "react-router";
 import { usePrevious } from "react-use";
 import { t } from "ttag";
 
@@ -9,6 +8,7 @@ import {
   useUpdateTransformMutation,
 } from "metabase/api";
 import { ConfirmModal } from "metabase/common/components/ConfirmModal";
+import { Link } from "metabase/common/components/Link";
 import { isResourceNotFoundError } from "metabase/lib/errors";
 import { useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";

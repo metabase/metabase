@@ -1,8 +1,8 @@
 import type { ReactNode } from "react";
-import { Link } from "react-router";
 import { t } from "ttag";
 
 import { DateTime } from "metabase/common/components/DateTime";
+import { Link } from "metabase/common/components/Link";
 import CS from "metabase/css/core/index.css";
 import * as Urls from "metabase/lib/urls";
 import { getUserName } from "metabase/lib/user";

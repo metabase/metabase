@@ -1,6 +1,5 @@
-import { push } from "react-router-redux";
-
 import { getDashboard } from "metabase/dashboard/selectors";
+import { pushPath } from "metabase/lib/navigation";
 import { createThunkAction } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import type { Dashboard } from "metabase-types/api";
@@ -39,7 +38,7 @@ export const addDashboardQuestion = createThunkAction(
   (type: "native" | "notebook") => (dispatch, getState) => {
     const dashboard = getDashboard(getState());
     if (dashboard) {
-      dispatch(push(getNewQuestionUrl({ dashboard, type })));
+      pushPath(getNewQuestionUrl({ dashboard, type }));
     }
   },
 );

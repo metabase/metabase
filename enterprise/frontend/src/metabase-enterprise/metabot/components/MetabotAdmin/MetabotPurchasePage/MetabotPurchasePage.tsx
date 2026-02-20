@@ -1,5 +1,4 @@
 import type { ReactElement } from "react";
-import { IndexRoute, Redirect } from "react-router";
 import { t } from "ttag";
 
 import { SettingsPageWrapper } from "metabase/admin/components/SettingsSection";
@@ -12,10 +11,7 @@ import { MetabotPurchasePageForNonStoreUser } from "./MetabotPurchasePageForNonS
 import { MetabotPurchasePageForStoreUser } from "./MetabotPurchasePageForStoreUser";
 
 export function getAdminRoutes() {
-  return [
-    <IndexRoute key="index" component={MetabotPurchasePage} />,
-    <Redirect key="redirect" from="*" to="/admin/metabot" />,
-  ];
+  return [];
 }
 
 export function MetabotPurchasePage(): ReactElement {

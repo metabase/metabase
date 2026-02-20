@@ -1,5 +1,4 @@
 import { useEffect, useState } from "react";
-import { Link } from "react-router";
 import { t } from "ttag";
 
 import {
@@ -13,6 +12,7 @@ import {
 import { hasDbRoutingEnabled } from "metabase/admin/databases/utils";
 import { skipToken, useListUserAttributesQuery } from "metabase/api";
 import { getErrorMessage } from "metabase/api/utils";
+import { Link } from "metabase/common/components/Link";
 import { useSetting } from "metabase/common/hooks";
 import { useToast } from "metabase/common/hooks/use-toast";
 import { useSelector } from "metabase/lib/redux";

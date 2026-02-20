@@ -35,7 +35,8 @@ const getDefaultTitle = (namespace) =>
     : t`Permissions for this collection`;
 
 const mapStateToProps = (state, props) => {
-  const collectionId = Urls.extractCollectionId(props.params.slug);
+  const { params } = props;
+  const collectionId = Urls.extractCollectionId(params.slug);
   return {
     permissionEditor: getCollectionsPermissionEditor(state, {
       namespace: props.namespace,

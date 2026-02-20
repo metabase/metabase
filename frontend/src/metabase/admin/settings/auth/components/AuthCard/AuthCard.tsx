@@ -1,12 +1,12 @@
 import type { ReactNode } from "react";
 import { useCallback, useMemo, useState } from "react";
-import { Link } from "react-router";
 import { c, t } from "ttag";
 
 import { SettingsSection } from "metabase/admin/components/SettingsSection";
 import { useGetEnvVarDocsUrl } from "metabase/admin/settings/utils";
 import { ConfirmModal } from "metabase/common/components/ConfirmModal";
 import { isNotNull } from "metabase/lib/types";
+import { useNavigation } from "metabase/routing/compat";
 import { Anchor, Button, Text } from "metabase/ui";
 import type { SettingDefinition } from "metabase-types/api";
 
@@ -121,6 +121,7 @@ export const AuthCardBody = ({
   footer,
   children,
 }: AuthCardBodyProps) => {
+  const { push } = useNavigation();
   const badgeContent = badgeText ?? (isEnabled ? t`Active` : t`Paused`);
   const buttonLabel = buttonText ?? (isConfigured ? t`Edit` : t`Set up`);
 
@@ -140,9 +141,11 @@ export const AuthCardBody = ({
         {footer ? (
           footer
         ) : (
-          <Link to={`/admin/settings/authentication/${type}`}>
-            <Button>{buttonLabel}</Button>
-          </Link>
+          <Button
+            onClick={() => push(`/admin/settings/authentication/${type}`)}
+          >
+            {buttonLabel}
+          </Button>
         )}
       </CardRoot>
     </SettingsSection>

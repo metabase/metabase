@@ -1,26 +1,40 @@
-import { IndexRoute, Route } from "react-router";
+import type { RouteObject } from "react-router-dom";
 
 import { PLUGIN_DEPENDENCIES } from "metabase/plugins";
+import { useRouteParams } from "metabase/routing/compat";
 
 import { ArchivedSnippetsPage } from "./pages/ArchivedSnippetsPage";
 import { EditSnippetPage } from "./pages/EditSnippetPage";
 import { NewSnippetPage } from "./pages/NewSnippetPage";
 import { SnippetDependenciesPage } from "./pages/SnippetDependenciesPage";
 
+const EditSnippetPageWithRouteProps = () => {
+  const params = useRouteParams<{ snippetId?: string }>();
+  return <EditSnippetPage params={{ snippetId: params.snippetId ?? "" }} />;
+};
+
 export function getDataStudioSnippetRoutes() {
-  return (
-    <>
-      <Route path="snippets/new" component={NewSnippetPage} />
-      <Route path="snippets/archived" component={ArchivedSnippetsPage} />
-      <Route path="snippets/:snippetId" component={EditSnippetPage} />
-      {PLUGIN_DEPENDENCIES.isEnabled && (
-        <Route
-          path="snippets/:snippetId/dependencies"
-          component={SnippetDependenciesPage}
-        >
-          <IndexRoute component={PLUGIN_DEPENDENCIES.DependencyGraphPage} />
-        </Route>
-      )}
-    </>
-  );
+  return null;
+}
+
+export function getDataStudioSnippetRouteObjects(): RouteObject[] {
+  return [
+    { path: "snippets/new", element: <NewSnippetPage /> },
+    { path: "snippets/archived", element: <ArchivedSnippetsPage /> },
+    { path: "snippets/:snippetId", element: <EditSnippetPageWithRouteProps /> },
+    ...(PLUGIN_DEPENDENCIES.isEnabled
+      ? [
+          {
+            path: "snippets/:snippetId/dependencies",
+            element: <SnippetDependenciesPage />,
+            children: [
+              {
+                index: true,
+                element: <PLUGIN_DEPENDENCIES.DependencyGraphPage />,
+              },
+            ],
+          } satisfies RouteObject,
+        ]
+      : []),
+  ];
 }

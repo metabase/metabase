@@ -1,9 +1,9 @@
 import { parse as parseUrl } from "url";
 
 import type { LocationDescriptor } from "history";
-import { push, replace } from "react-router-redux";
 
 import { isEqualCard } from "metabase/lib/card";
+import { pushPath, replacePath } from "metabase/lib/navigation";
 import { createThunkAction } from "metabase/lib/redux";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
@@ -128,9 +128,9 @@ export const updateUrl = createThunkAction(
 
       try {
         if (replaceState) {
-          dispatch(replace(locationDescriptor));
+          replacePath(locationDescriptor);
         } else {
-          dispatch(push(locationDescriptor));
+          pushPath(locationDescriptor);
         }
       } catch (e) {
         // saving the location state can exceed the session storage quota (metabase#25312)

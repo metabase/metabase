@@ -5,7 +5,10 @@ import { hasPremiumFeature } from "metabase-enterprise/settings";
 import { CreateLibraryModal } from "./components/CreateLibraryModal";
 import { PublishTablesModal } from "./components/PublishTablesModal";
 import { UnpublishTablesModal } from "./components/UnpublishTablesModal";
-import { getDataStudioLibraryRoutes } from "./routes";
+import {
+  getDataStudioLibraryRouteObjects,
+  getDataStudioLibraryRoutes,
+} from "./routes";
 import {
   useGetLibraryChildCollectionByType,
   useGetLibraryCollection,
@@ -16,6 +19,8 @@ export function initializePlugin() {
   if (hasPremiumFeature("library")) {
     PLUGIN_LIBRARY.isEnabled = true;
     PLUGIN_LIBRARY.getDataStudioLibraryRoutes = getDataStudioLibraryRoutes;
+    PLUGIN_LIBRARY.getDataStudioLibraryRouteObjects =
+      getDataStudioLibraryRouteObjects;
     PLUGIN_LIBRARY.useGetLibraryCollection = useGetLibraryCollection;
     PLUGIN_LIBRARY.useGetLibraryChildCollectionByType =
       useGetLibraryChildCollectionByType;

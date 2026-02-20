@@ -1,10 +1,9 @@
-import { push } from "react-router-redux";
 import { t } from "ttag";
 
 import { Link } from "metabase/common/components/Link/Link";
 import { ToolbarButton } from "metabase/common/components/ToolbarButton";
-import { useDispatch } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
+import { useNavigation } from "metabase/routing/compat";
 import type { Collection } from "metabase-types/api";
 
 interface CollectionPermissionsProps {
@@ -14,7 +13,7 @@ interface CollectionPermissionsProps {
 export const CollectionPermissions = ({
   collection,
 }: CollectionPermissionsProps) => {
-  const dispatch = useDispatch();
+  const { push } = useNavigation();
   const url = `${Urls.collection(collection)}/permissions`;
 
   return (
@@ -26,7 +25,7 @@ export const CollectionPermissions = ({
         tooltipPosition="bottom"
         onClick={() => {
           // ToolbarButton has "e.preventDefault", so we have to navigate manually
-          dispatch(push(url));
+          push(url);
         }}
       />
     </Link>

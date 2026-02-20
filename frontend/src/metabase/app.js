@@ -30,8 +30,6 @@ import "metabase/lib/csp";
 import { createHistory } from "history";
 import { DragDropContextProvider } from "react-dnd";
 import { createRoot } from "react-dom/client";
-import { useRouterHistory } from "react-router";
-import { syncHistoryWithStore } from "react-router-redux";
 
 import { initializePlugins } from "ee-plugins";
 import { ModifiedBackend } from "metabase/common/components/dnd/ModifiedBackend";
@@ -43,6 +41,7 @@ import { MetabaseReduxProvider } from "metabase/lib/redux/custom-context";
 import MetabaseSettings from "metabase/lib/settings";
 import { PLUGIN_APP_INIT_FUNCTIONS, PLUGIN_METABOT } from "metabase/plugins";
 import { refreshSiteSettings } from "metabase/redux/settings";
+import { createAppRouterV7 } from "metabase/routing/compat";
 import { EmotionCacheProvider } from "metabase/styled-components/components/EmotionCacheProvider";
 import { GlobalStyles } from "metabase/styled-components/containers/GlobalStyles";
 import { ThemeProvider } from "metabase/ui";
@@ -57,17 +56,62 @@ const BASENAME = window.MetabaseRoot.replace(/\/+$/, "");
 
 api.basename = BASENAME;
 
-// eslint-disable-next-line react-hooks/rules-of-hooks
-const browserHistory = useRouterHistory(createHistory)({
+const browserHistory = createHistory({
   basename: BASENAME,
 });
 
 initializePlugins();
 
+const LOCATION_CHANGE = "@@router/LOCATION_CHANGE";
+
+const toQuery = (search) => {
+  if (!search) {
+    return {};
+  }
+
+  const normalizedSearch = search.startsWith("?") ? search.slice(1) : search;
+  const params = new URLSearchParams(normalizedSearch);
+  const query = {};
+
+  for (const [key, value] of params.entries()) {
+    query[key] = value;
+  }
+
+  return query;
+};
+
+const toLocationPayload = (location, action = "POP") => ({
+  pathname: location.pathname ?? window.location.pathname,
+  search: location.search ?? window.location.search,
+  hash: location.hash ?? window.location.hash,
+  state: location.state,
+  action,
+  key: location.key ?? "",
+  query: location.query ?? toQuery(location.search),
+});
+
+const syncHistoryToStore = (history, store) => {
+  const dispatchLocationChange = (location, action) => {
+    store.dispatch({
+      type: LOCATION_CHANGE,
+      payload: toLocationPayload(location, action),
+    });
+  };
+
+  const currentLocation =
+    history.getCurrentLocation?.() ?? history.location ?? window.location;
+  dispatchLocationChange(currentLocation, currentLocation.action ?? "POP");
+
+  return history.listen((location) => {
+    dispatchLocationChange(location, location.action ?? "POP");
+  });
+};
+
 function _init(reducers, getRoutes, callback) {
   const store = getStore(reducers, browserHistory);
   const routes = getRoutes(store);
-  const syncedHistory = syncHistoryWithStore(browserHistory, store);
+  const routerV7 = createAppRouterV7(routes, store);
+  syncHistoryToStore(browserHistory, store);
   const MetabotProvider = PLUGIN_METABOT.getMetabotProvider();
 
   createTracker(store);
@@ -83,8 +127,8 @@ function _init(reducers, getRoutes, callback) {
           <ThemeProvider>
             <GlobalStyles />
             <MetabotProvider>
-              <HistoryProvider history={syncedHistory}>
-                <RouterProvider>{routes}</RouterProvider>
+              <HistoryProvider history={browserHistory}>
+                <RouterProvider routerV7={routerV7} />
               </HistoryProvider>
             </MetabotProvider>
           </ThemeProvider>

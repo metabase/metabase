@@ -14,16 +14,16 @@ interface TimelineListModalProps {
 }
 
 const timelineProps = {
-  query: (state: State, props: TimelineListModalProps) => ({
-    collectionId: Urls.extractCollectionId(props.params.slug),
+  query: (state: State, { params }: TimelineListModalProps) => ({
+    collectionId: Urls.extractCollectionId(params.slug),
     include: "events",
   }),
   LoadingAndErrorWrapper,
 };
 
 const collectionProps = {
-  id: (state: State, props: TimelineListModalProps) =>
-    Urls.extractCollectionId(props.params.slug),
+  id: (state: State, { params }: TimelineListModalProps) =>
+    Urls.extractCollectionId(params.slug),
   LoadingAndErrorWrapper,
 };
 

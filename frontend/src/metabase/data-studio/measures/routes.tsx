@@ -1,4 +1,5 @@
-import { IndexRoute, Route } from "react-router";
+import type { ComponentType } from "react";
+import type { RouteObject } from "react-router-dom";
 
 import { PLUGIN_DEPENDENCIES } from "metabase/plugins";
 
@@ -7,20 +8,43 @@ import { MeasureDetailPage } from "./pages/MeasureDetailPage";
 import { MeasureRevisionHistoryPage } from "./pages/MeasureRevisionHistoryPage";
 import { NewMeasurePage } from "./pages/NewMeasurePage";
 
+const NewMeasurePageRoute = NewMeasurePage as unknown as ComponentType;
+const MeasureDetailPageRoute = MeasureDetailPage as unknown as ComponentType;
+const MeasureRevisionHistoryPageRoute =
+  MeasureRevisionHistoryPage as unknown as ComponentType;
+const MeasureDependenciesPageRoute =
+  MeasureDependenciesPage as unknown as ComponentType;
+
 export function getDataStudioMeasureRoutes() {
-  return (
-    <Route path="measures">
-      <Route path="new" component={NewMeasurePage} />
-      <Route path=":measureId" component={MeasureDetailPage} />
-      <Route path=":measureId/history" component={MeasureRevisionHistoryPage} />
-      {PLUGIN_DEPENDENCIES.isEnabled && (
-        <Route
-          path=":measureId/dependencies"
-          component={MeasureDependenciesPage}
-        >
-          <IndexRoute component={PLUGIN_DEPENDENCIES.DependencyGraphPage} />
-        </Route>
-      )}
-    </Route>
-  );
+  return null;
+}
+
+export function getDataStudioMeasureRouteObjects(): RouteObject[] {
+  return [
+    {
+      path: "measures",
+      children: [
+        { path: "new", element: <NewMeasurePageRoute /> },
+        { path: ":measureId", element: <MeasureDetailPageRoute /> },
+        {
+          path: ":measureId/history",
+          element: <MeasureRevisionHistoryPageRoute />,
+        },
+        ...(PLUGIN_DEPENDENCIES.isEnabled
+          ? [
+              {
+                path: ":measureId/dependencies",
+                element: <MeasureDependenciesPageRoute />,
+                children: [
+                  {
+                    index: true,
+                    element: <PLUGIN_DEPENDENCIES.DependencyGraphPage />,
+                  },
+                ],
+              },
+            ]
+          : []),
+      ],
+    },
+  ];
 }

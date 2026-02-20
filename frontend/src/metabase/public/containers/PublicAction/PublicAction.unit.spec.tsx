@@ -1,8 +1,8 @@
 import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
-import { Route } from "react-router";
 
 import {
+  Route,
   renderWithProviders,
   screen,
   waitFor,

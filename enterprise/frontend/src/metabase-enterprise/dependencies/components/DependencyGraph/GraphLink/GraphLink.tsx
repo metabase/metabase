@@ -1,6 +1,6 @@
 import cx from "classnames";
-import { Link } from "react-router";
 
+import { Link } from "metabase/common/components/Link";
 import CS from "metabase/css/core/index.css";
 import { Box, FixedSizeIcon, Group, type IconName } from "metabase/ui";
 

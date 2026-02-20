@@ -1,11 +1,11 @@
 import cx from "classnames";
 import PropTypes from "prop-types";
 import { memo } from "react";
-import { Link } from "react-router";
 import { t } from "ttag";
 
 import { Button } from "metabase/common/components/Button";
 import { Ellipsified } from "metabase/common/components/Ellipsified";
+import { Link } from "metabase/common/components/Link";
 import L from "metabase/common/components/List/List.module.css";
 import CS from "metabase/css/core/index.css";
 import { Icon, TextInputBlurChange } from "metabase/ui";

@@ -1,13 +1,13 @@
 import { type ReactNode, useState } from "react";
-import { push } from "react-router-redux";
 import { c, t } from "ttag";
 
 import { ForwardRefLink } from "metabase/common/components/Link";
-import { useDispatch, useSelector } from "metabase/lib/redux";
+import { useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { ArchiveCardModal } from "metabase/questions/components/ArchiveCardModal";
 import { CardCopyModal } from "metabase/questions/components/CardCopyModal";
 import { MoveCardModal } from "metabase/questions/components/MoveCardModal";
+import { useNavigation } from "metabase/routing/compat";
 import { getMetadata } from "metabase/selectors/metadata";
 import { ActionIcon, Icon, Menu } from "metabase/ui";
 import * as Lib from "metabase-lib";
@@ -118,18 +118,18 @@ type MetricModalProps = {
 };
 
 function MetricModal({ card, modalType, onClose }: MetricModalProps) {
-  const dispatch = useDispatch();
+  const { push } = useNavigation();
 
   const handleCopy = (newCard: Card) => {
-    dispatch(push(Urls.dataStudioMetric(newCard.id)));
+    push(Urls.dataStudioMetric(newCard.id));
   };
 
   const handleArchive = () => {
-    dispatch(push(Urls.dataStudioLibrary()));
+    push(Urls.dataStudioLibrary());
   };
 
   const handleUnarchive = () => {
-    dispatch(push(Urls.dataStudioMetric(card.id)));
+    push(Urls.dataStudioMetric(card.id));
   };
 
   switch (modalType) {

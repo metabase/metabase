@@ -1,6 +1,4 @@
 import { useCallback, useEffect, useMemo } from "react";
-import type { Route } from "react-router";
-import { push } from "react-router-redux";
 import { t } from "ttag";
 import _ from "underscore";
 
@@ -21,6 +19,7 @@ import type { CollectionIdProps } from "metabase/admin/permissions/selectors/col
 import { Collections } from "metabase/entities/collections";
 import { Groups } from "metabase/entities/groups";
 import { useDispatch, useSelector } from "metabase/lib/redux";
+import { useNavigation } from "metabase/routing/compat";
 import type { Collection, CollectionId, GroupId } from "metabase-types/api";
 
 import {
@@ -40,13 +39,12 @@ type UpdateCollectionPermissionParams = {
 
 type TenantSpecificCollectionPermissionsPageProps = {
   params: CollectionIdProps["params"];
-  route: Route;
 };
 
 function TenantSpecificCollectionPermissionsPageView({
   params,
-  route,
 }: TenantSpecificCollectionPermissionsPageProps) {
+  const { push } = useNavigation();
   const dispatch = useDispatch();
 
   const props = useMemo(() => ({ params }), [params]);
@@ -75,9 +73,9 @@ function TenantSpecificCollectionPermissionsPageView({
 
   const navigateToItem = useCallback(
     ({ id }: { id: CollectionId }) => {
-      dispatch(push(`/admin/permissions/tenant-specific-collections/${id}`));
+      push(`/admin/permissions/tenant-specific-collections/${id}`);
     },
-    [dispatch],
+    [push],
   );
 
   const updateCollectionPermission = useCallback(
@@ -128,7 +126,6 @@ function TenantSpecificCollectionPermissionsPageView({
     <PermissionsPageLayout
       tab="tenant-specific-collections"
       isDirty={isDirty}
-      route={route}
       onSave={savePermissions}
       onLoad={() => loadPermissions()}
       helpContent={<CollectionPermissionsHelp />}

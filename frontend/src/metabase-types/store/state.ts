@@ -1,8 +1,7 @@
-import type { RouterState } from "react-router-redux";
-
 import type { Api } from "metabase/api/api";
 import type { User } from "metabase-types/api";
 import type { DocumentsState } from "metabase-types/store/documents";
+import type { RouterState } from "metabase-types/store/routing";
 
 import type { AdminState } from "./admin";
 import type { AnalyticsExportState } from "./analytics-export";

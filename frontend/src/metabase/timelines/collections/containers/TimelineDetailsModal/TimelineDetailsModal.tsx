@@ -1,4 +1,3 @@
-import { push } from "react-router-redux";
 import _ from "underscore";
 
 import { TimelineEvents } from "metabase/entities/timeline-events";
@@ -10,6 +9,7 @@ import type { State } from "metabase-types/store";
 
 import LoadingAndErrorWrapper from "../../components/LoadingAndErrorWrapper";
 import TimelineDetailsModal from "../../components/TimelineDetailsModal";
+import { navigateToPath } from "../../navigation";
 import type { ModalParams } from "../../types";
 
 interface TimelineDetailsModalProps {
@@ -18,15 +18,15 @@ interface TimelineDetailsModalProps {
 }
 
 const timelineProps = {
-  id: (state: State, props: TimelineDetailsModalProps) =>
-    Urls.extractEntityId(props.params.timelineId),
+  id: (state: State, { params }: TimelineDetailsModalProps) =>
+    Urls.extractEntityId(params.timelineId),
   query: { include: "events" },
   LoadingAndErrorWrapper,
 };
 
 const timelinesProps = {
-  query: (state: State, props: TimelineDetailsModalProps) => ({
-    collectionId: Urls.extractCollectionId(props.params.slug),
+  query: (state: State, { params }: TimelineDetailsModalProps) => ({
+    collectionId: Urls.extractCollectionId(params.slug),
     include: "events",
   }),
   LoadingAndErrorWrapper,
@@ -41,7 +41,7 @@ const mapDispatchToProps = (dispatch: any) => ({
     await dispatch(TimelineEvents.actions.setArchived(event, true));
   },
   onGoBack: (timeline: Timeline) => {
-    dispatch(push(Urls.timelinesInCollection(timeline.collection)));
+    navigateToPath(Urls.timelinesInCollection(timeline.collection));
   },
 });
 

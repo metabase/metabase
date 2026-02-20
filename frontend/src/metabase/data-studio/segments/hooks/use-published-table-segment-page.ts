@@ -1,5 +1,4 @@
 import { useCallback, useMemo } from "react";
-import { push } from "react-router-redux";
 import { t } from "ttag";
 
 import {
@@ -8,8 +7,8 @@ import {
   useUpdateSegmentMutation,
 } from "metabase/api";
 import { useToast } from "metabase/common/hooks/use-toast";
-import { useDispatch } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
+import { useNavigation } from "metabase/routing/compat";
 
 import { useLoadTableWithMetadata } from "../../common/hooks/use-load-table-with-metadata";
 import type { SegmentTabUrls } from "../types";
@@ -22,7 +21,7 @@ type PublishedTableSegmentPageParams = {
 export function usePublishedTableSegmentPage(
   params: PublishedTableSegmentPageParams,
 ) {
-  const dispatch = useDispatch();
+  const { push } = useNavigation();
   const [sendToast] = useToast();
   const [updateSegment] = useUpdateSegmentMutation();
 
@@ -58,9 +57,9 @@ export function usePublishedTableSegmentPage(
       sendToast({ icon: "warning", message: t`Failed to remove segment` });
     } else {
       sendToast({ icon: "check", message: t`Segment removed` });
-      dispatch(push(Urls.dataStudioTableSegments(tableId)));
+      push(Urls.dataStudioTableSegments(tableId));
     }
-  }, [segment, tableId, updateSegment, dispatch, sendToast]);
+  }, [segment, tableId, updateSegment, push, sendToast]);
 
   const isLoading = isLoadingSegment || isLoadingTable;
   const error = segmentError ?? tableError;

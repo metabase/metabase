@@ -1,4 +1,4 @@
-import { type Dispatch, configureStore } from "@reduxjs/toolkit";
+import { configureStore } from "@reduxjs/toolkit";
 
 import { reducer as embeddingDataPickerReducer } from "../embedding-data-picker";
 
@@ -174,5 +174,5 @@ const createMockStore = () => {
       embeddingDataPicker: embeddingDataPickerReducer,
     },
   });
-  return store as typeof store & { dispatch: Dispatch };
+  return store as typeof store & { dispatch: (action: any) => any };
 };

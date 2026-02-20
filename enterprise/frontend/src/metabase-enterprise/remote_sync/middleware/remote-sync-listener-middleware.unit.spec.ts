@@ -32,7 +32,7 @@ interface TestState {
 }
 
 const createTestStore = (settingsOverrides: Record<string, unknown> = {}) => {
-  return configureStore({
+  const store = configureStore({
     reducer: combineReducers({
       remoteSyncPlugin: remoteSyncReducer,
       settings: settingsReducer,
@@ -59,6 +59,7 @@ const createTestStore = (settingsOverrides: Record<string, unknown> = {}) => {
         // and the test store's State type (test store uses simplified State)
         .concat(remoteSyncListenerMiddleware.middleware as any),
   });
+  return store as typeof store & { dispatch: (action: any) => any };
 };
 
 const waitForCondition = async (

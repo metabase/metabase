@@ -1,8 +1,8 @@
 import type { ReactNode } from "react";
-import { Link } from "react-router";
 import { match } from "ts-pattern";
 import { c, t } from "ttag";
 
+import { Link } from "metabase/common/components/Link";
 import { useSelector } from "metabase/lib/redux";
 import { getSubpathSafeUrl } from "metabase/lib/urls";
 import { getSetting } from "metabase/selectors/settings";

@@ -43,7 +43,6 @@ const BillingInfoValue = ({
     return (
       <BillingInternalLink
         to={internalLinkMap[lineItem.link]}
-        href={internalLinkMap[lineItem.link]}
         data-testid="test-link"
         {...props}
       >

@@ -2,15 +2,15 @@
 // MUST be imported BEFORE `react` and `react-dom`
 import "metabase-dev";
 
-import { push } from "react-router-redux";
 import _ from "underscore";
 
 import { init } from "metabase/app";
 import api from "metabase/lib/api";
+import { pushPath } from "metabase/lib/navigation";
 import { mainReducers } from "metabase/reducers-main";
 import { setErrorPage } from "metabase/redux/app";
 import { clearCurrentUser } from "metabase/redux/user";
-import { getRoutes } from "metabase/routes";
+import { createRoutes as getRoutesV7 } from "metabase/routing/routes";
 
 // If any of these receives a 403, we should display the "not authorized" page.
 const NOT_AUTHORIZED_TRIGGERS = [
@@ -21,7 +21,7 @@ const NOT_AUTHORIZED_TRIGGERS = [
   /\/api\/dataset$/,
 ];
 
-init(mainReducers, getRoutes, (store) => {
+init(mainReducers, getRoutesV7, (store) => {
   // received a 401 response
   api.on("401", (url) => {
     if (url.indexOf("/api/user/current") >= 0) {
@@ -37,7 +37,7 @@ init(mainReducers, getRoutes, (store) => {
     }
 
     store.dispatch(clearCurrentUser());
-    store.dispatch(push("/auth/login"));
+    pushPath("/auth/login");
   });
 
   // received a 403 response

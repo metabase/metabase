@@ -1,9 +1,7 @@
-import { type WithRouterProps, withRouter } from "react-router";
-import { push } from "react-router-redux";
 import { t } from "ttag";
 
-import { useDispatch } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
+import { useLocationWithQuery, useNavigation } from "metabase/routing/compat";
 import { Flex, Icon, Tabs, Title, Tooltip } from "metabase/ui";
 
 import {
@@ -16,23 +14,24 @@ type TabConfig = {
   label: string;
 };
 
-type TasksTabsProps = WithRouterProps & {
+type TasksTabsProps = {
   children: React.ReactNode;
 };
 
-const TasksTabsBase = ({ children, location }: TasksTabsProps) => {
+export const TasksTabs = ({ children }: TasksTabsProps) => {
+  const location = useLocationWithQuery();
   const tabs: TabConfig[] = [
     { value: Urls.adminToolsTasksList(), label: t`Tasks` },
     { value: Urls.adminToolsTasksRuns(), label: t`Runs` },
   ];
   const DEFAULT_TAB = tabs[0].value;
-  const dispatch = useDispatch();
+  const { push } = useNavigation();
   const activeTab =
     tabs.find(({ value }) => value === location.pathname)?.value ?? DEFAULT_TAB;
 
   const handleTabChange = (value: string | null) => {
     if (value) {
-      dispatch(push(value));
+      push(value);
     }
   };
 
@@ -61,5 +60,3 @@ const TasksTabsBase = ({ children, location }: TasksTabsProps) => {
     </SettingsPageWrapper>
   );
 };
-
-export const TasksTabs = withRouter(TasksTabsBase);

@@ -24,7 +24,8 @@ import {
 } from "./parameters";
 
 function setup({ routing, ...initialState }: State) {
-  return getStore(mainReducers, initialState);
+  const store = getStore(mainReducers, initialState);
+  return store as typeof store & { dispatch: (action: any) => any };
 }
 
 describe("setParameterType", () => {

@@ -1,9 +1,10 @@
-import { IndexRoute, Route } from "react-router";
+import { Outlet, type RouteObject } from "react-router-dom";
 
 import {
   PLUGIN_DEPENDENCIES,
   PLUGIN_TRANSFORMS_PYTHON,
 } from "metabase/plugins";
+import { useLocationWithQuery, useRouteParams } from "metabase/routing/compat";
 
 import { JobListPage } from "./pages/JobListPage";
 import { JobPage } from "./pages/JobPage";
@@ -22,37 +23,96 @@ import { TransformRunPage } from "./pages/TransformRunPage";
 import { TransformSettingsPage } from "./pages/TransformSettingsPage";
 import { TransformTopNavLayout } from "./pages/TransformTopNavLayout";
 
-export function getDataStudioTransformRoutes() {
+const RunListPageWithRouteProps = () => {
+  const location = useLocationWithQuery();
+  return <RunListPage location={location} />;
+};
+
+const JobPageWithRouteProps = () => {
+  const params = useRouteParams<{ jobId?: string }>();
+  return <JobPage params={{ jobId: params.jobId ?? "" }} />;
+};
+
+const NewCardTransformPageWithRouteProps = () => {
+  const params = useRouteParams<{ cardId?: string }>();
+  return <NewCardTransformPage params={{ cardId: params.cardId ?? "" }} />;
+};
+
+const TransformQueryPageWithRouteProps = () => {
+  const params = useRouteParams<{ transformId?: string }>();
   return (
-    <>
-      <Route path="runs" component={TransformTopNavLayout}>
-        <IndexRoute component={RunListPage} />
-      </Route>
-      <Route>
-        <IndexRoute component={TransformListPage} />
-        <Route path="jobs" component={JobListPage} />
-        <Route path="jobs/new" component={NewJobPage} />
-        <Route path="jobs/:jobId" component={JobPage} />
-        <Route path="new/query" component={NewQueryTransformPage} />
-        <Route path="new/native" component={NewNativeTransformPage} />
-        <Route path="new/card/:cardId" component={NewCardTransformPage} />
-        {PLUGIN_TRANSFORMS_PYTHON.isEnabled && (
-          <Route path="new/python" component={NewPythonTransformPage} />
-        )}
-        <Route path=":transformId" component={TransformQueryPage} />
-        <Route path=":transformId/edit" component={TransformQueryPage} />
-        <Route path=":transformId/run" component={TransformRunPage} />
-        <Route path=":transformId/settings" component={TransformSettingsPage} />
-        {PLUGIN_DEPENDENCIES.isEnabled && (
-          <Route
-            path=":transformId/dependencies"
-            component={TransformDependenciesPage}
-          >
-            <IndexRoute component={PLUGIN_DEPENDENCIES.DependencyGraphPage} />
-          </Route>
-        )}
-        {PLUGIN_TRANSFORMS_PYTHON.getPythonLibraryRoutes()}
-      </Route>
-    </>
+    <TransformQueryPage params={{ transformId: params.transformId ?? "" }} />
   );
+};
+
+const TransformRunPageWithRouteProps = () => {
+  const params = useRouteParams<{ transformId?: string }>();
+  return (
+    <TransformRunPage params={{ transformId: params.transformId ?? "" }} />
+  );
+};
+
+const TransformSettingsPageWithRouteProps = () => {
+  const params = useRouteParams<{ transformId?: string }>();
+  return (
+    <TransformSettingsPage params={{ transformId: params.transformId ?? "" }} />
+  );
+};
+
+export function getDataStudioTransformRoutes() {
+  return null;
+}
+
+export function getDataStudioTransformRouteObjects(): RouteObject[] {
+  return [
+    {
+      path: "runs",
+      element: (
+        <TransformTopNavLayout>
+          <Outlet />
+        </TransformTopNavLayout>
+      ),
+      children: [{ index: true, element: <RunListPageWithRouteProps /> }],
+    },
+    {
+      index: true,
+      element: <TransformListPage />,
+    },
+    { path: "jobs", element: <JobListPage /> },
+    { path: "jobs/new", element: <NewJobPage /> },
+    { path: "jobs/:jobId", element: <JobPageWithRouteProps /> },
+    { path: "new/query", element: <NewQueryTransformPage /> },
+    { path: "new/native", element: <NewNativeTransformPage /> },
+    {
+      path: "new/card/:cardId",
+      element: <NewCardTransformPageWithRouteProps />,
+    },
+    ...(PLUGIN_TRANSFORMS_PYTHON.isEnabled
+      ? [{ path: "new/python", element: <NewPythonTransformPage /> }]
+      : []),
+    { path: ":transformId", element: <TransformQueryPageWithRouteProps /> },
+    {
+      path: ":transformId/edit",
+      element: <TransformQueryPageWithRouteProps />,
+    },
+    { path: ":transformId/run", element: <TransformRunPageWithRouteProps /> },
+    {
+      path: ":transformId/settings",
+      element: <TransformSettingsPageWithRouteProps />,
+    },
+    ...(PLUGIN_DEPENDENCIES.isEnabled
+      ? [
+          {
+            path: ":transformId/dependencies",
+            element: <TransformDependenciesPage />,
+            children: [
+              {
+                index: true,
+                element: <PLUGIN_DEPENDENCIES.DependencyGraphPage />,
+              },
+            ],
+          } satisfies RouteObject,
+        ]
+      : []),
+  ];
 }

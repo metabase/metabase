@@ -7,8 +7,8 @@ import { setIsStaticEmbedding } from "metabase/embedding/config";
 
 import { init } from "./app";
 import { publicReducers } from "./reducers-public";
-import { getRoutes } from "./routes-embed";
+import { getEmbedRouteObjects } from "./routes-embed";
 
 setIsStaticEmbedding();
 
-init(publicReducers, getRoutes, () => {});
+init(publicReducers, getEmbedRouteObjects, () => {});

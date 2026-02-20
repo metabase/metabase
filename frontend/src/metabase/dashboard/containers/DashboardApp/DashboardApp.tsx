@@ -1,8 +1,7 @@
 import cx from "classnames";
-import type { PropsWithChildren } from "react";
+import type { Location } from "history";
+import type { PropsWithChildren, ReactNode } from "react";
 import { useState } from "react";
-import type { Route, WithRouterProps } from "react-router";
-import { replace } from "react-router-redux";
 
 import ErrorBoundary from "metabase/ErrorBoundary";
 import { isRouteInSync } from "metabase/common/hooks/is-route-in-sync";
@@ -36,6 +35,8 @@ import { parseHashOptions, stringifyHashOptions } from "metabase/lib/browser";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { setErrorPage } from "metabase/redux/app";
+import { useRouter } from "metabase/router";
+import { useNavigation } from "metabase/routing/compat";
 import type { DashboardId, Dashboard as IDashboard } from "metabase-types/api";
 
 import { useRegisterDashboardMetabotContext } from "../../hooks/use-register-dashboard-metabot-context";
@@ -44,22 +45,16 @@ import { getDocumentTitle, getFavicon } from "../../selectors";
 import { useDashboardLocationSync } from "./use-dashboard-location-sync";
 import { useSlowCardNotification } from "./use-slow-card-notification";
 
-interface DashboardAppProps
-  extends PropsWithChildren<WithRouterProps<{ slug: string }>> {
+interface DashboardAppProps extends PropsWithChildren {
   dashboardId?: DashboardId;
-  route: Route;
 }
 
-type DashboardAppInnerProps = Pick<
-  DashboardAppProps,
-  "location" | "route" | "children"
->;
+type DashboardAppInnerProps = {
+  location: Location;
+  children?: ReactNode;
+};
 
-function DashboardAppInner({
-  location,
-  route,
-  children,
-}: DashboardAppInnerProps) {
+function DashboardAppInner({ location, children }: DashboardAppInnerProps) {
   useDashboardLocationSync({ location });
   const pageFavicon = useSelector(getFavicon);
   useFavicon({ favicon: pageFavicon });
@@ -77,7 +72,7 @@ function DashboardAppInner({
   return (
     <>
       <div className={cx(CS.shrinkBelowContentSize, CS.fullHeight)}>
-        <DashboardLeaveConfirmationModal route={route} />
+        <DashboardLeaveConfirmationModal />
         <Dashboard />
         {/* For rendering modal urls */}
         {children}
@@ -90,14 +85,13 @@ export const DASHBOARD_APP_ACTIONS = ({ isEditing }: { isEditing: boolean }) =>
   isEditing ? DASHBOARD_EDITING_ACTIONS : DASHBOARD_VIEW_ACTIONS;
 
 export const DashboardApp = ({
-  location,
-  params,
-  router,
-  route,
   dashboardId: _dashboardId,
   children,
 }: DashboardAppProps) => {
+  const { location, params, router } = useRouter();
+  const dashboardLocation = location as unknown as Location;
   const dispatch = useDispatch();
+  const { replace } = useNavigation();
 
   const [error, setError] = useState<string>();
 
@@ -106,7 +100,7 @@ export const DashboardApp = ({
     _dashboardId || (Urls.extractEntityId(params.slug) as DashboardId);
 
   useRegisterDashboardMetabotContext();
-  useDashboardUrlQuery(router, location);
+  useDashboardUrlQuery(router as any, dashboardLocation);
 
   const extractHashOption = async (
     key: string,
@@ -144,7 +138,7 @@ export const DashboardApp = ({
         );
       }
       const hash = stringifyHashOptions(options);
-      await dispatch(replace({ ...location, hash: hash ? "#" + hash : "" }));
+      replace({ ...location, hash: hash ? "#" + hash : "" });
     } catch (error) {
       // 400: provided entity id format is invalid.
       if (
@@ -160,11 +154,11 @@ export const DashboardApp = ({
   };
 
   const { autoScrollToDashcardId, reportAutoScrolledToDashcard } =
-    useAutoScrollToDashcard(location);
+    useAutoScrollToDashcard(dashboardLocation);
 
   // Prevent rendering the dashboard app if the route is out of sync
   // metabase#65500
-  if (!isRouteInSync(location.pathname)) {
+  if (!isRouteInSync(dashboardLocation.pathname)) {
     return null;
   }
 
@@ -187,7 +181,7 @@ export const DashboardApp = ({
         }}
         dashboardActions={DASHBOARD_APP_ACTIONS}
       >
-        <DashboardAppInner location={location} route={route}>
+        <DashboardAppInner location={dashboardLocation}>
           {children}
         </DashboardAppInner>
       </DashboardContextProvider>

@@ -1,12 +1,11 @@
-import type { LocationDescriptor } from "history";
 import { useCallback } from "react";
-import { push } from "react-router-redux";
 import { t } from "ttag";
 
 import { useEscapeToCloseModal } from "metabase/common/hooks/use-escape-to-close-modal";
 import { Collections } from "metabase/entities/collections";
 import { connect } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
+import { useNavigation } from "metabase/routing/compat";
 import { Modal } from "metabase/ui";
 import type { Collection } from "metabase-types/api";
 import type { State } from "metabase-types/store";
@@ -22,7 +21,6 @@ interface CreateCollectionModalOwnProps
 }
 
 interface CreateCollectionModalDispatchProps {
-  onChangeLocation: (location: LocationDescriptor) => void;
   handleCreateCollection: (
     collection: CreateCollectionProperties,
   ) => Promise<Collection>;
@@ -31,17 +29,16 @@ interface CreateCollectionModalDispatchProps {
 type Props = CreateCollectionModalOwnProps & CreateCollectionModalDispatchProps;
 
 const mapDispatchToProps = {
-  onChangeLocation: push,
   handleCreateCollection: Collections.actions.create,
 };
 
 function CreateCollectionModal({
   onCreate,
-  onChangeLocation,
   onClose,
   handleCreateCollection,
   ...props
 }: Props) {
+  const { push } = useNavigation();
   const handleCreate = useCallback(
     async (values: CreateCollectionProperties) => {
       const action = await handleCreateCollection(values);
@@ -51,10 +48,10 @@ function CreateCollectionModal({
         onCreate(collection);
       } else {
         onClose();
-        onChangeLocation(Urls.collection(collection));
+        push(Urls.collection(collection));
       }
     },
-    [onCreate, onChangeLocation, onClose, handleCreateCollection],
+    [onCreate, onClose, handleCreateCollection, push],
   );
 
   useEscapeToCloseModal(onClose);

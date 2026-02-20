@@ -1,8 +1,8 @@
 // eslint-disable-next-line no-restricted-imports
 import styled from "@emotion/styled";
-import { Link } from "react-router";
 
 import { ExternalLink } from "metabase/common/components/ExternalLink";
+import { Link } from "metabase/common/components/Link";
 import type { ColorName } from "metabase/lib/colors/types";
 import { Icon } from "metabase/ui";
 import { color } from "metabase/ui/utils/colors";

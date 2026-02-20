@@ -1,6 +1,5 @@
 import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
-import { Route } from "react-router";
 
 import { callMockEvent } from "__support__/events";
 import {
@@ -19,6 +18,7 @@ import { setupNotificationChannelsEndpoints } from "__support__/server-mocks/pul
 import { mockSettings } from "__support__/settings";
 import { createMockEntitiesState } from "__support__/store";
 import {
+  Route,
   act,
   renderWithProviders,
   screen,

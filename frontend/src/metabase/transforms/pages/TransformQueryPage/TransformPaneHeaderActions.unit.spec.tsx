@@ -1,6 +1,4 @@
-import { Route } from "react-router";
-
-import { renderWithProviders, screen } from "__support__/ui";
+import { Route, renderWithProviders, screen } from "__support__/ui";
 import * as transformsUtils from "metabase/transforms/utils";
 import type { DraftTransformSource } from "metabase-types/api";
 import { createMockTransform } from "metabase-types/api/mocks";

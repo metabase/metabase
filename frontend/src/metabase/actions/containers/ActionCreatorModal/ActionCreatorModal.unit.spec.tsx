@@ -1,6 +1,5 @@
 import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
-import { Route } from "react-router";
 
 import {
   setupCardsEndpoints,
@@ -8,6 +7,7 @@ import {
   setupModelActionsEndpoints,
 } from "__support__/server-mocks";
 import {
+  Route,
   act,
   renderWithProviders,
   screen,

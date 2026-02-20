@@ -6,8 +6,6 @@ import type {
   KeyboardEvent as ReactKeyboardEvent,
 } from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { withRouter } from "react-router";
-import { push } from "react-router-redux";
 import { usePrevious } from "react-use";
 import { t } from "ttag";
 
@@ -20,7 +18,8 @@ import { modelToUrl } from "metabase/lib/urls";
 import { RecentsList } from "metabase/nav/components/search/RecentsList";
 import { SearchResultsDropdown } from "metabase/nav/components/search/SearchResultsDropdown";
 import { zoomInRow } from "metabase/query_builder/actions";
-import type { SearchAwareLocation, WrappedResult } from "metabase/search/types";
+import { useLocationWithQuery, useNavigation } from "metabase/routing/compat";
+import type { WrappedResult } from "metabase/search/types";
 import {
   getFiltersFromLocation,
   getSearchTextFromLocation,
@@ -41,18 +40,14 @@ import {
 
 const ALLOWED_SEARCH_FOCUS_ELEMENTS = new Set(["BODY", "A"]);
 
-type RouterProps = {
-  location: SearchAwareLocation;
-};
-
 type OwnProps = {
   onSearchActive?: () => void;
   onSearchInactive?: () => void;
 };
 
-type Props = RouterProps & OwnProps;
-
-function SearchBarView({ location, onSearchActive, onSearchInactive }: Props) {
+function SearchBarView({ onSearchActive, onSearchInactive }: OwnProps) {
+  const location = useLocationWithQuery();
+  const { push } = useNavigation();
   const isTypeaheadEnabled = useSelector((state) =>
     getSetting(state, "search-typeahead-enabled"),
   );
@@ -78,9 +73,8 @@ function SearchBarView({ location, onSearchActive, onSearchInactive }: Props) {
   const hasSearchText = searchText.trim().length > 0;
 
   const onChangeLocation = useCallback(
-    (nextLocation: LocationDescriptorObject | string) =>
-      dispatch(push(nextLocation)),
-    [dispatch],
+    (nextLocation: LocationDescriptorObject | string) => push(nextLocation),
+    [push],
   );
 
   const onInputContainerClick = useCallback(() => {
@@ -95,14 +89,15 @@ function SearchBarView({ location, onSearchActive, onSearchInactive }: Props) {
   const onSearchItemSelect = useCallback(
     (result: WrappedResult) => {
       // if we're already looking at the right model, don't navigate, just update the zoomed in row
-      const isSameModel = result?.model_id === location?.state?.cardId;
+      const locationState = location?.state as { cardId?: number } | null;
+      const isSameModel = result?.model_id === locationState?.cardId;
       if (isSameModel && result.model === "indexed-entity") {
         dispatch(zoomInRow({ objectId: result.id }));
       } else {
         onChangeLocation(modelToUrl(result));
       }
     },
-    [dispatch, onChangeLocation, location?.state?.cardId],
+    [dispatch, onChangeLocation, location?.state],
   );
 
   useOnClickOutside(container, setInactive);
@@ -231,7 +226,7 @@ function SearchBarView({ location, onSearchActive, onSearchInactive }: Props) {
   );
 }
 
-export const SearchBar = withRouter(SearchBarView);
+export const SearchBar = SearchBarView;
 
 // for some reason our unit test don't work if this is a name export ¯\_(ツ)_/¯
 // eslint-disable-next-line import/no-default-export

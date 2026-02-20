@@ -1,6 +1,4 @@
 import { useEffect, useLayoutEffect, useState } from "react";
-import type { Route, RouteProps } from "react-router";
-import { push } from "react-router-redux";
 import { useLatest } from "react-use";
 import { t } from "ttag";
 
@@ -14,7 +12,7 @@ import { EmptyState } from "metabase/common/components/EmptyState/EmptyState";
 import { LeaveRouteConfirmModal } from "metabase/common/components/LeaveConfirmModal";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { PageContainer } from "metabase/data-studio/common/components/PageContainer";
-import { useDispatch, useSelector } from "metabase/lib/redux";
+import { useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import {
@@ -23,6 +21,7 @@ import {
   PLUGIN_TRANSFORMS_PYTHON,
 } from "metabase/plugins";
 import { getInitialUiState } from "metabase/querying/editor/components/QueryEditor";
+import { useLocationWithQuery, useNavigation } from "metabase/routing/compat";
 import { useTransformPermissions } from "metabase/transforms/hooks/use-transform-permissions";
 import { Box, Center, Group, Icon } from "metabase/ui";
 import type {
@@ -50,10 +49,10 @@ type TransformQueryPageParams = {
 
 type TransformQueryPageProps = {
   params: TransformQueryPageParams;
-  route: RouteProps;
 };
 
-export function TransformQueryPage({ params, route }: TransformQueryPageProps) {
+export function TransformQueryPage({ params }: TransformQueryPageProps) {
+  const location = useLocationWithQuery();
   const transformId = Urls.extractEntityId(params.transformId);
   const {
     data: transform,
@@ -73,14 +72,16 @@ export function TransformQueryPage({ params, route }: TransformQueryPageProps) {
     return <LoadingAndErrorWrapper error={t`Transform not found.`} />;
   }
 
+  const isEditMode = !readOnly && location.pathname.includes("/edit");
+
   return (
     <TransformQueryPageBody
       // Add key so the ui state gets reset when switching between edit and view
-      key={route.path}
+      key={isEditMode ? "edit" : "view"}
       transform={transform}
       databases={transformsDatabases}
-      route={route}
       readOnly={readOnly}
+      isEditMode={isEditMode}
     />
   );
 }
@@ -88,15 +89,15 @@ export function TransformQueryPage({ params, route }: TransformQueryPageProps) {
 type TransformQueryPageBodyProps = {
   transform: Transform;
   databases: Database[];
-  route: RouteProps;
   readOnly?: boolean;
+  isEditMode: boolean;
 };
 
 function TransformQueryPageBody({
   transform,
   databases,
-  route,
   readOnly,
+  isEditMode,
 }: TransformQueryPageBodyProps) {
   const {
     source,
@@ -110,7 +111,7 @@ function TransformQueryPageBody({
     transformId: transform.id,
     initialSource: transform.source,
   });
-  const dispatch = useDispatch();
+  const { push } = useNavigation();
   const isRemoteSyncReadOnly = useSelector(
     PLUGIN_REMOTE_SYNC.getIsRemoteSyncReadOnly,
   );
@@ -118,8 +119,6 @@ function TransformQueryPageBody({
   const [updateTransform, { isLoading: isSaving }] =
     useUpdateTransformMutation();
   const { sendSuccessToast, sendErrorToast } = useMetadataToasts();
-  const isEditMode = !readOnly && !!route.path?.includes("/edit");
-
   useRegisterMetabotTransformContext(transform, source);
 
   const { confirmIfQueryIsComplex, modal } = useQueryComplexityChecks();
@@ -145,7 +144,7 @@ function TransformQueryPageBody({
         sendSuccessToast(t`Transform query updated`);
 
         if (isEditMode) {
-          dispatch(push(Urls.transform(transform.id)));
+          push(Urls.transform(transform.id));
         }
       }
     },
@@ -169,9 +168,9 @@ function TransformQueryPageBody({
   useEffect(() => {
     if (isEditMode && isRemoteSyncReadOnly) {
       // If remote sync is set up to read-only mode, user can't edit transforms
-      dispatch(push(Urls.transform(transform.id)));
+      push(Urls.transform(transform.id));
     }
-  }, [isRemoteSyncReadOnly, isEditMode, dispatch, transform.id]);
+  }, [isRemoteSyncReadOnly, isEditMode, push, transform.id]);
 
   const handleSave = async () => {
     if (!isCompleteSource(source)) {
@@ -189,7 +188,7 @@ function TransformQueryPageBody({
 
   const handleCancel = () => {
     if (isEditMode) {
-      dispatch(push(Urls.transform(transform.id)));
+      push(Urls.transform(transform.id));
     }
   };
 
@@ -276,7 +275,6 @@ function TransformQueryPageBody({
         />
       )}
       <LeaveRouteConfirmModal
-        route={route as Route}
         isEnabled={isDirty && !isSaving && !isCheckingDependencies}
         onConfirm={rejectProposed}
       />

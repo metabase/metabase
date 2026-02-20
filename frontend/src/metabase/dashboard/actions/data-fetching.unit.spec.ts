@@ -65,7 +65,7 @@ function setup({
     );
   });
 
-  return store;
+  return store as typeof store & { dispatch: (action: any) => any };
 }
 
 describe("fetchDashboard", () => {

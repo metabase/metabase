@@ -1,12 +1,11 @@
 import userEvent from "@testing-library/user-event";
-import { Route } from "react-router";
 
 import {
   setupBookmarksEndpoints,
   setupCommentEndpoints,
   setupDocumentEndpoints,
 } from "__support__/server-mocks";
-import { renderWithProviders, screen, waitFor } from "__support__/ui";
+import { Route, renderWithProviders, screen, waitFor } from "__support__/ui";
 import { createMockDocument } from "metabase-types/api/mocks";
 
 import { DocumentPage } from "./DocumentPage";

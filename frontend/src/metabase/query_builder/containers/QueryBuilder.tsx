@@ -2,8 +2,6 @@ import { useHotkeys } from "@mantine/hooks";
 import type { Location } from "history";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { ConnectedProps } from "react-redux";
-import type { Route, WithRouterProps } from "react-router";
-import { push } from "react-router-redux";
 import { useMount, usePrevious, useUnmount } from "react-use";
 import { t } from "ttag";
 import _ from "underscore";
@@ -20,6 +18,7 @@ import { Timelines } from "metabase/entities/timelines";
 import { usePageTitleWithLoadingTime } from "metabase/hooks/use-page-title";
 import { connect, useSelector } from "metabase/lib/redux";
 import { closeNavbar } from "metabase/redux/app";
+import { useNavigation } from "metabase/routing/compat";
 import { getIsNavbarOpen } from "metabase/selectors/app";
 import { getMetadata } from "metabase/selectors/metadata";
 import { getSetting } from "metabase/selectors/settings";
@@ -201,7 +200,6 @@ const mapStateToProps = (state: State, props: EntityListLoaderMergedProps) => {
 const mapDispatchToProps = {
   ...actions,
   closeNavbar,
-  onChangeLocation: push,
   createBookmark: (id: BookmarkId) =>
     Bookmarks.actions.create({ id, type: "card" }),
   deleteBookmark: (id: BookmarkId) =>
@@ -211,13 +209,17 @@ const mapDispatchToProps = {
 const connector = connect(mapStateToProps, mapDispatchToProps);
 type ReduxProps = ConnectedProps<typeof connector>;
 
+type QueryBuilderRouteProps = {
+  location: Location;
+  params: Record<string, string | undefined>;
+};
+
 type QueryBuilderInnerProps = ReduxProps &
-  WithRouterProps &
-  EntityListLoaderMergedProps & {
-    route: Route;
-  };
+  QueryBuilderRouteProps &
+  EntityListLoaderMergedProps;
 
 function QueryBuilderInner(props: QueryBuilderInnerProps) {
+  const { push } = useNavigation();
   useFavicon({ favicon: props.pageFavicon ?? null });
 
   const {
@@ -243,7 +245,6 @@ function QueryBuilderInner(props: QueryBuilderInnerProps) {
     isAdmin,
     isLoadingComplete,
     closeQB,
-    route,
     queryBuilderMode,
     didFirstNonTableChartGenerated,
     setDidFirstNonTableChartRender,
@@ -468,6 +469,7 @@ function QueryBuilderInner(props: QueryBuilderInnerProps) {
     <>
       <View
         {...props}
+        onChangeLocation={push}
         modal={uiControls.modal}
         recentlySaved={uiControls.recentlySaved}
         onOpenModal={openModal}
@@ -485,7 +487,6 @@ function QueryBuilderInner(props: QueryBuilderInnerProps) {
       <LeaveRouteConfirmModal
         isEnabled={shouldShowUnsavedChangesWarning && !isCallbackScheduled}
         isLocationAllowed={isLocationAllowed}
-        route={route}
       />
     </>
   );

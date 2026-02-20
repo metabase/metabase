@@ -1,4 +1,7 @@
-import { IndexRedirect, IndexRoute, Route } from "react-router";
+import type { RouteObject } from "react-router-dom";
+import { Navigate } from "react-router-dom";
+
+import { useLocationWithQuery } from "metabase/routing/compat";
 
 import {
   BrokenDependencyDiagnosticsPage,
@@ -6,19 +9,35 @@ import {
 } from "./pages/DependencyDiagnosticsPage";
 import { DependencyGraphPage } from "./pages/DependencyGraphPage";
 
+const BrokenDependencyListPageWithRouteProps = () => {
+  const location = useLocationWithQuery();
+  return <BrokenDependencyDiagnosticsPage location={location} />;
+};
+
+const UnreferencedDependencyListPageWithRouteProps = () => {
+  const location = useLocationWithQuery();
+  return <UnreferencedDependencyDiagnosticsPage location={location} />;
+};
+
 export function getDataStudioDependencyRoutes() {
-  return <IndexRoute component={DependencyGraphPage} />;
+  return null;
 }
 
 export function getDataStudioDependencyDiagnosticsRoutes() {
-  return (
-    <>
-      <IndexRedirect to="broken" />
-      <Route path="broken" component={BrokenDependencyDiagnosticsPage} />
-      <Route
-        path="unreferenced"
-        component={UnreferencedDependencyDiagnosticsPage}
-      />
-    </>
-  );
+  return null;
+}
+
+export function getDataStudioDependencyRouteObjects(): RouteObject[] {
+  return [{ index: true, element: <DependencyGraphPage /> }];
+}
+
+export function getDataStudioDependencyDiagnosticsRouteObjects(): RouteObject[] {
+  return [
+    { index: true, element: <Navigate to="broken" replace /> },
+    { path: "broken", element: <BrokenDependencyListPageWithRouteProps /> },
+    {
+      path: "unreferenced",
+      element: <UnreferencedDependencyListPageWithRouteProps />,
+    },
+  ];
 }

@@ -1,8 +1,6 @@
-import { Route } from "react-router";
-
 import { setupSchemaEndpoints } from "__support__/server-mocks";
 import { createMockEntitiesState } from "__support__/store";
-import { renderWithProviders, screen } from "__support__/ui";
+import { Route, renderWithProviders, screen } from "__support__/ui";
 import type { Table } from "metabase-types/api";
 import { createMockDatabase, createMockTable } from "metabase-types/api/mocks";
 import { createMockSettingsState } from "metabase-types/store/mocks";
@@ -26,7 +24,6 @@ function setup({ table }: SetupOpts) {
       path="/"
       component={() => (
         <NewMeasurePage
-          route={{ path: "/" } as never}
           table={table}
           breadcrumbs={<div />}
           getSuccessUrl={() => "/success"}

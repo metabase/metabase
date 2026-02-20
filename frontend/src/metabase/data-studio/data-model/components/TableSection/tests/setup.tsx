@@ -1,12 +1,10 @@
-import { Route } from "react-router";
-
 import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
 import {
   setupUserKeyValueEndpoints,
   setupUsersEndpoints,
 } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
-import { renderWithProviders } from "__support__/ui";
+import { Route, renderWithProviders } from "__support__/ui";
 import type { RouteParams } from "metabase/data-studio/data-model/pages/DataModel/types";
 import type { DataStudioTableMetadataTab } from "metabase/lib/urls";
 import type {

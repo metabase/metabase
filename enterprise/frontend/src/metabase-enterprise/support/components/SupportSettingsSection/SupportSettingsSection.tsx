@@ -1,11 +1,10 @@
-import { push } from "react-router-redux";
 import { t } from "ttag";
 
 import { SettingsSection } from "metabase/admin/components/SettingsSection";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { PaginationControls } from "metabase/common/components/PaginationControls";
-import { useDispatch } from "metabase/lib/redux";
 import { adminToolsGrantAccess } from "metabase/lib/urls";
+import { useNavigation } from "metabase/routing/compat";
 import { Box, Button, Flex, LoadingOverlay, Text, Title } from "metabase/ui";
 
 import { useAccessGrantsQuery } from "../../hooks/useAccessGrantsQuery";
@@ -13,7 +12,7 @@ import { useAccessGrantsQuery } from "../../hooks/useAccessGrantsQuery";
 import { AccessGrantList } from "./AccessGrantList";
 
 export function SupportSettingsSection() {
-  const dispatch = useDispatch();
+  const { push } = useNavigation();
   const {
     accessGrants,
     accessGrantsError,
@@ -50,7 +49,7 @@ export function SupportSettingsSection() {
         <Box pb="lg">
           <Button
             disabled={!!currentAccessGrant}
-            onClick={() => dispatch(push(adminToolsGrantAccess()))}
+            onClick={() => push(adminToolsGrantAccess())}
             variant="filled"
             title={
               currentAccessGrant

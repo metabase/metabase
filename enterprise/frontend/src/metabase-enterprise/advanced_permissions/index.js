@@ -1,4 +1,3 @@
-import { push } from "react-router-redux";
 import { t } from "ttag";
 
 import { DataPermissionValue } from "metabase/admin/permissions/types";
@@ -18,6 +17,7 @@ import {
   PLUGIN_DATA_PERMISSIONS,
   PLUGIN_REDUCERS,
 } from "metabase/plugins";
+import { routerActions } from "metabase/routing/compat/react-router-redux";
 import { hasPremiumFeature } from "metabase-enterprise/settings";
 
 import { ImpersonationModal } from "./components/ImpersonationModal";
@@ -152,7 +152,7 @@ export function initializePlugin() {
       iconColor: "warning",
       icon: "database",
       actionCreator: (entityId, groupId, view) =>
-        push(getEditImpersonationUrl(entityId, groupId, view)),
+        routerActions.push(getEditImpersonationUrl(entityId, groupId, view)),
     });
 
     PLUGIN_DATA_PERMISSIONS.upgradeViewPermissionsIfNeeded =

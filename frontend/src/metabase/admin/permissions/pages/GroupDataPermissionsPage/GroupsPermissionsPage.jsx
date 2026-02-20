@@ -1,7 +1,6 @@
 import { bindActionCreators } from "@reduxjs/toolkit";
 import PropTypes from "prop-types";
 import { Fragment, useCallback } from "react";
-import { push } from "react-router-redux";
 import { useAsync } from "react-use";
 import { t } from "ttag";
 import _ from "underscore";
@@ -9,6 +8,7 @@ import _ from "underscore";
 import { PermissionsEditorLegacyNoSelfServiceWarning } from "metabase/admin/permissions/components/PermissionsEditor/PermissionsEditorLegacyWarning";
 import { connect, useDispatch, useSelector } from "metabase/lib/redux";
 import { PLUGIN_ADVANCED_PERMISSIONS } from "metabase/plugins";
+import { useNavigation } from "metabase/routing/compat";
 import { getSetting } from "metabase/selectors/settings";
 import { PermissionsApi } from "metabase/services";
 import { Center, Loader } from "metabase/ui";
@@ -39,12 +39,6 @@ const mapDispatchToProps = (dispatch) => ({
   ...bindActionCreators(
     {
       updateDataPermission,
-      switchView: (entityType) =>
-        push(`/admin/permissions/data/${entityType}/`),
-      navigateToItem: (item) => push(`${GROUPS_BASE_PATH}/${item.id}`),
-      navigateToTableItem: (item, { groupId }) => {
-        return push(getGroupFocusPermissionsUrl(groupId, item.entityId));
-      },
     },
     dispatch,
   ),
@@ -79,14 +73,12 @@ function GroupsPermissionsPageInner({
   sidebar,
   params,
   children,
-  navigateToItem,
-  switchView,
-  navigateToTableItem,
   updateDataPermission,
   isEditorLoading,
   editorError,
 }) {
   const dispatch = useDispatch();
+  const { push } = useNavigation();
 
   const { loading: isLoading } = useAsync(async () => {
     if (params.groupId) {
@@ -109,23 +101,23 @@ function GroupsPermissionsPageInner({
 
   const handleEntityChange = useCallback(
     (entityType) => {
-      switchView(entityType);
+      push(`/admin/permissions/data/${entityType}/`);
     },
-    [switchView],
+    [push],
   );
 
   const handleSidebarItemSelect = useCallback(
     (item) => {
-      navigateToItem(item, params);
+      push(`${GROUPS_BASE_PATH}/${item.id}`);
     },
-    [navigateToItem, params],
+    [push],
   );
 
   const handleTableItemSelect = useCallback(
     (item) => {
-      navigateToTableItem(item, params);
+      push(getGroupFocusPermissionsUrl(params.groupId, item.entityId));
     },
-    [navigateToTableItem, params],
+    [params.groupId, push],
   );
 
   const handlePermissionChange = useCallback(
@@ -145,7 +137,7 @@ function GroupsPermissionsPageInner({
     dispatch(action.actionCreator(item.entityId, params.groupId, "group"));
   };
 
-  const handleBreadcrumbsItemSelect = (item) => dispatch(push(item.url));
+  const handleBreadcrumbsItemSelect = (item) => push(item.url);
 
   const showEmptyState = !permissionEditor && !isEditorLoading && !editorError;
   const showLegacyNoSelfServiceWarning =

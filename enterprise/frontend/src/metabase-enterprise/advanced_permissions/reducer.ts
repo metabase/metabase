@@ -1,6 +1,5 @@
 import type { PayloadAction } from "@reduxjs/toolkit";
 import { createAction, createSlice } from "@reduxjs/toolkit";
-import { push } from "react-router-redux";
 
 import {
   LOAD_DATA_PERMISSIONS,
@@ -16,6 +15,7 @@ import {
   DATABASES_BASE_PATH,
   GROUPS_BASE_PATH,
 } from "metabase/admin/permissions/utils/urls";
+import { routerActions } from "metabase/routing/compat/react-router-redux";
 import type { GroupId, Impersonation } from "metabase-types/api";
 
 export const getImpersonatedPostAction = (
@@ -24,10 +24,10 @@ export const getImpersonatedPostAction = (
   view: "database" | "group",
 ) =>
   view === "database"
-    ? push(
+    ? routerActions.push(
         `${DATABASES_BASE_PATH}/${entityId.databaseId}/impersonated/group/${groupId}`,
       )
-    : push(
+    : routerActions.push(
         `${GROUPS_BASE_PATH}/${groupId}/impersonated/database/${entityId.databaseId}`,
       );
 

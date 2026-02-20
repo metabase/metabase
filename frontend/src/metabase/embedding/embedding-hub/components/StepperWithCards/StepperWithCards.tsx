@@ -1,9 +1,9 @@
 import cx from "classnames";
 import type { ReactNode } from "react";
-import { Link } from "react-router";
 import { match } from "ts-pattern";
 import { t } from "ttag";
 
+import { Link } from "metabase/common/components/Link";
 import type { UtmProps } from "metabase/selectors/settings";
 import {
   Alert,

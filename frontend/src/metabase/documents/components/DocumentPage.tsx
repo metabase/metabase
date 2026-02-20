@@ -11,8 +11,6 @@ import {
   useRef,
   useState,
 } from "react";
-import type { Route } from "react-router";
-import { push, replace } from "react-router-redux";
 import { usePrevious, useUnmount } from "react-use";
 import useBeforeUnload from "react-use/lib/useBeforeUnload";
 import { t } from "ttag";
@@ -44,6 +42,7 @@ import { useDispatch, useSelector } from "metabase/lib/redux";
 import { extractEntityId } from "metabase/lib/urls";
 import * as Urls from "metabase/lib/urls";
 import { setErrorPage } from "metabase/redux/app";
+import { useNavigation } from "metabase/routing/compat";
 import { Box } from "metabase/ui";
 import type {
   Card,
@@ -88,7 +87,6 @@ import { EmbedQuestionSettingsSidebar } from "./EmbedQuestionSettingsSidebar";
 
 export const DocumentPage = ({
   params,
-  route,
   location,
   children,
 }: {
@@ -97,13 +95,13 @@ export const DocumentPage = ({
     childTargetId?: string;
   };
   location: Location;
-  route: Route;
   children?: ReactNode;
 }) => {
   const { entityId, childTargetId: paramsChildTargetId } = params;
   const previousLocationKey = usePrevious(location.key);
   const forceUpdate = useForceUpdate();
   const dispatch = useDispatch();
+  const { push, replace } = useNavigation();
   const selectedQuestionId = useSelector(getSelectedQuestionId);
   const selectedEmbedIndex = useSelector(getSelectedEmbedIndex);
   const draftCards = useSelector(getDraftCards);
@@ -347,7 +345,7 @@ export const DocumentPage = ({
                   const _document = response.data;
                   trackDocumentUpdated(_document);
                   scheduleNavigation(() => {
-                    dispatch(push(Urls.document(_document)));
+                    push(Urls.document(_document));
                   });
                 }
                 return response;
@@ -361,7 +359,7 @@ export const DocumentPage = ({
                 const _document = response.data;
                 trackDocumentCreated(_document);
                 scheduleNavigation(() => {
-                  dispatch(replace(Urls.document(_document)));
+                  replace(Urls.document(_document));
                 });
               }
               return response;
@@ -398,6 +396,8 @@ export const DocumentPage = ({
       createDocument,
       scheduleNavigation,
       dispatch,
+      push,
+      replace,
       sendToast,
     ],
   );
@@ -556,7 +556,7 @@ export const DocumentPage = ({
             onSaved={(document) => {
               setDuplicateModalMode(null);
               scheduleNavigation(() => {
-                dispatch(push(Urls.document(document)));
+                push(Urls.document(document));
               });
             }}
             entityObject={documentData}
@@ -589,10 +589,9 @@ export const DocumentPage = ({
 
         <LeaveRouteConfirmModal
           // `key` remounts this modal when navigating between different documents or to a new document.
-          // The `route` doesn't change in that scenario which prevents the modal from closing when you confirm you want to discard your changes.
+          // This prevents the modal from closing when you confirm you want to discard your changes.
           key={location.key}
           isEnabled={hasUnsavedChanges() && !isNavigationScheduled}
-          route={route}
           onOpenChange={(open) => {
             if (open) {
               trackDocumentUnsavedChangesWarningDisplayed(documentData);

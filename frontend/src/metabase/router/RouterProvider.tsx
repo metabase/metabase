@@ -1,46 +1,33 @@
-import type { History } from "history";
-import { type PropsWithChildren, createContext } from "react";
-import { Route, Router, type WithRouterProps, withRouter } from "react-router";
+import type { Location } from "history";
+import { createContext } from "react";
+import type { createBrowserRouter } from "react-router-dom";
+import { RouterProvider as RouterProviderV7 } from "react-router-dom";
 
-import { useHistory } from "metabase/history";
+import type { PlainRoute, RouterAdapter } from "metabase/routing/compat/types";
 
-type RouterContextType = WithRouterProps;
+type RouterContextType = {
+  router: RouterAdapter;
+  location: Location;
+  params: Record<string, string | undefined>;
+  routes: PlainRoute[];
+};
 
 export const RouterContext = createContext<RouterContextType | null>(null);
 
-const RouterContextProviderBase = ({
-  router,
-  location,
-  params,
-  routes,
-  children,
-}: PropsWithChildren<RouterContextType>) => {
-  return (
-    <RouterContext.Provider value={{ router, location, params, routes }}>
-      {children}
-    </RouterContext.Provider>
-  );
-};
-
-const RouterContextProvider = withRouter(RouterContextProviderBase);
-
 type RouterProviderProps = {
-  history?: History | undefined;
+  /**
+   * For v7: the router instance created by createBrowserRouter
+   */
+  routerV7?: ReturnType<typeof createBrowserRouter>;
 };
 
 /**
  * This provider encapsulates react-router initiation and puts router and routes references to the context
- * This is v3's only solution to provide a router and routes.
- * Without extra Route component it doesn't work.
- * Additionally, it provides the history reference
  */
-export const RouterProvider = ({
-  children,
-}: PropsWithChildren<RouterProviderProps>) => {
-  const { history } = useHistory();
-  return (
-    <Router history={history}>
-      <Route component={RouterContextProvider}>{children}</Route>
-    </Router>
-  );
+export const RouterProvider = ({ routerV7 }: RouterProviderProps) => {
+  if (!routerV7) {
+    throw new Error("RouterProvider requires a v7 router instance");
+  }
+
+  return <RouterProviderV7 router={routerV7} />;
 };

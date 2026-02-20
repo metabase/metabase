@@ -1,7 +1,4 @@
 import { useCallback, useEffect } from "react";
-import type { WithRouterProps } from "react-router";
-import { withRouter } from "react-router";
-import { push } from "react-router-redux";
 import { useLocation } from "react-use";
 
 import ActionCreator from "metabase/actions/containers/ActionCreator";
@@ -22,25 +19,28 @@ import { PaletteShortcutsModal } from "metabase/palette/components/PaletteShortc
 import { useRegisterShortcut } from "metabase/palette/hooks/useRegisterShortcut";
 import type { SdkIframeEmbedSetupModalProps } from "metabase/plugins";
 import { closeModal, setOpenModal } from "metabase/redux/ui";
+import { useLocationWithQuery, useNavigation } from "metabase/routing/compat";
 import { getCurrentOpenModalState } from "metabase/selectors/ui";
 import type { WritebackAction } from "metabase-types/api";
 
-export const NewModals = withRouter((props: WithRouterProps) => {
+export const NewModals = () => {
   const { pathname } = useLocation();
+  const location = useLocationWithQuery();
+  const { push } = useNavigation();
   const { id: currentNewModalId, props: currentNewModalProps } = useSelector(
     getCurrentOpenModalState,
   );
   const dispatch = useDispatch();
   const collectionId = useSelector((state) =>
-    Collections.selectors.getInitialCollectionId(state, props),
+    Collections.selectors.getInitialCollectionId(state, { location }),
   );
 
   const handleActionCreated = useCallback(
     (action: WritebackAction) => {
       const nextLocation = Urls.modelDetail({ id: action.model_id }, "actions");
-      dispatch(push(nextLocation));
+      push(nextLocation);
     },
-    [dispatch],
+    [push],
   );
 
   const handleModalClose = useCallback(() => {
@@ -127,4 +127,4 @@ export const NewModals = withRouter((props: WithRouterProps) => {
         />
       );
   }
-});
+};

@@ -3,8 +3,8 @@ import { flexRender } from "@tanstack/react-table";
 import cx from "classnames";
 import type { MouseEvent } from "react";
 import { memo, useMemo } from "react";
-import { Link } from "react-router";
 
+import { Link } from "metabase/common/components/Link";
 import { Flex } from "metabase/ui";
 
 import { ExpandButton } from "../ExpandButton";

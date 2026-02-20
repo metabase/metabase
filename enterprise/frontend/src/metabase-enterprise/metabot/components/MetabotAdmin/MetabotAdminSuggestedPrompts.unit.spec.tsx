@@ -1,5 +1,4 @@
 import _userEvent from "@testing-library/user-event";
-import { Route } from "react-router";
 
 import {
   setupMetabotPromptSuggestionsEndpoint,
@@ -7,7 +6,7 @@ import {
   setupRegenerateMetabotPromptSuggestionsEndpoint,
   setupRemoveMetabotPromptSuggestionEndpoint,
 } from "__support__/server-mocks/metabot";
-import { renderWithProviders, screen, waitFor } from "__support__/ui";
+import { Route, renderWithProviders, screen, waitFor } from "__support__/ui";
 import { FIXED_METABOT_IDS } from "metabase-enterprise/metabot/constants";
 import type { SuggestedMetabotPrompt } from "metabase-types/api";
 

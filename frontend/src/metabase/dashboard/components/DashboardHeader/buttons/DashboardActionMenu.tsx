@@ -1,8 +1,7 @@
-import { type MouseEvent, forwardRef, useState } from "react";
-import { Link, type LinkProps, withRouter } from "react-router";
-import type { WithRouterProps } from "react-router/lib/withRouter";
+import { type MouseEvent, useState } from "react";
 import { c, t } from "ttag";
 
+import { ForwardRefLink } from "metabase/common/components/Link";
 import { ToolbarButton } from "metabase/common/components/ToolbarButton";
 import { setSharing as setDashboardSubscriptionSidebarOpen } from "metabase/dashboard/actions";
 import { useDashboardContext } from "metabase/dashboard/context/context";
@@ -12,6 +11,7 @@ import { useDispatch, useSelector } from "metabase/lib/redux";
 import { DashboardSubscriptionMenuItem } from "metabase/notifications/NotificationsActionsMenu/DashboardSubscriptionMenuItem";
 import { useRegisterShortcut } from "metabase/palette/hooks/useRegisterShortcut";
 import { PLUGIN_MODERATION } from "metabase/plugins";
+import { useLocationWithQuery } from "metabase/routing/compat";
 import { Icon, Menu } from "metabase/ui";
 
 type DashboardActionMenuProps = {
@@ -21,23 +21,13 @@ type DashboardActionMenuProps = {
   openSettingsSidebar: () => void;
 };
 
-// Fixes this bug: https://github.com/mantinedev/mantine/issues/5571#issue-2082430353
-// Hover states get weird when using Link directly. Since Link does not take the standard
-// `ref` prop, we have to manually forward it to the correct prop name to make hover work as expected.
-const ForwardRefLink = forwardRef((props: LinkProps, ref) => (
-  // @ts-expect-error - innerRef not in prop types but it is a valid prop. docs can be found here: https://github.com/remix-run/react-router/blob/v3.2.6/docs/API.md#innerref
-  <Link {...props} innerRef={ref} />
-));
-// @ts-expect-error - must set a displayName + this works
-ForwardRefLink.displayName = "ForwardRefLink";
-
-const DashboardActionMenuInner = ({
+export const DashboardActionMenu = ({
   canResetFilters,
   onResetFilters,
   canEdit,
-  location,
   openSettingsSidebar,
-}: DashboardActionMenuProps & WithRouterProps) => {
+}: DashboardActionMenuProps) => {
+  const location = useLocationWithQuery();
   const { dashboard, isFullscreen, onFullscreenChange, onChangeLocation } =
     useDashboardContext();
   const [opened, setOpened] = useState(false);
@@ -162,5 +152,3 @@ const DashboardActionMenuInner = ({
     </Menu>
   );
 };
-
-export const DashboardActionMenu = withRouter(DashboardActionMenuInner);

@@ -1,6 +1,5 @@
 import cx from "classnames";
 import type { ReactNode } from "react";
-import { push } from "react-router-redux";
 import { t } from "ttag";
 
 import {
@@ -12,7 +11,7 @@ import { Ellipsified } from "metabase/common/components/Ellipsified";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import AdminS from "metabase/css/admin.module.css";
 import CS from "metabase/css/core/index.css";
-import { useDispatch } from "metabase/lib/redux";
+import { useNavigation } from "metabase/routing/compat";
 import { Flex, Stack } from "metabase/ui";
 import type { Job } from "metabase-types/api";
 
@@ -35,10 +34,10 @@ interface JobsTableProps {
 }
 
 const JobsTable = ({ jobs }: JobsTableProps) => {
-  const dispatch = useDispatch();
+  const { push } = useNavigation();
 
   const onClickJob = (job: Job) => {
-    dispatch(push(`/admin/tools/jobs/${job.key}`));
+    push(`/admin/tools/jobs/${job.key}`);
   };
 
   return (

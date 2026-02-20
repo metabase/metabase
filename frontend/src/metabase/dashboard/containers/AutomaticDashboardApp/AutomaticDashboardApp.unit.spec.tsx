@@ -1,5 +1,4 @@
 import userEvent from "@testing-library/user-event";
-import { Route } from "react-router";
 
 import {
   setupAutoDashboardEndpoints,
@@ -7,6 +6,7 @@ import {
 } from "__support__/server-mocks";
 import { createMockEntitiesState } from "__support__/store";
 import {
+  Route,
   renderWithProviders,
   screen,
   waitForLoaderToBeRemoved,

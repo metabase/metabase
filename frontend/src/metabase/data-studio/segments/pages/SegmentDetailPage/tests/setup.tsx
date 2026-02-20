@@ -1,5 +1,3 @@
-import { Route } from "react-router";
-
 import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
 import {
   setupSchemaEndpoints,
@@ -7,7 +5,7 @@ import {
 } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
 import { createMockEntitiesState } from "__support__/store";
-import { renderWithProviders } from "__support__/ui";
+import { Route, renderWithProviders } from "__support__/ui";
 import { DataModelSegmentBreadcrumbs } from "metabase/data-studio/segments/components/SegmentBreadcrumbs";
 import { SegmentDetailPage } from "metabase/data-studio/segments/pages/SegmentDetailPage";
 import { checkNotNull } from "metabase/lib/types";
@@ -127,7 +125,6 @@ export function setup({
       path="/"
       component={() => (
         <SegmentDetailPage
-          route={{ path: "/" } as never}
           segment={segment}
           tabUrls={tabUrls}
           breadcrumbs={

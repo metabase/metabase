@@ -1,4 +1,4 @@
-import { Route } from "react-router";
+import type { RouteObject } from "react-router-dom";
 
 import type { MetabotContext as MetabotContextType } from "metabase/metabot";
 import { PLUGIN_METABOT, PLUGIN_REDUCERS } from "metabase/plugins";
@@ -14,7 +14,7 @@ import MetabotThinkingStyles from "./components/MetabotChat/MetabotThinking.modu
 import { MetabotDataStudioButton } from "./components/MetabotDataStudioButton";
 import { MetabotDataStudioSidebar } from "./components/MetabotDataStudioSidebar";
 import { MetabotQueryBuilder } from "./components/MetabotQueryBuilder";
-import { getMetabotQuickLinks } from "./components/MetabotQuickLinks";
+import { getMetabotQuickLinkRouteObjects } from "./components/MetabotQuickLinks";
 import { getNewMenuItemAIExploration } from "./components/NewMenuItemAIExploration";
 import { MetabotContext, MetabotProvider, defaultContext } from "./context";
 import { useMetabotSQLSuggestion as useMetabotSQLSuggestionEE } from "./hooks";
@@ -51,10 +51,16 @@ export function initializePlugin() {
       getMetabotVisible,
       // routes
       getAdminRoutes,
-      getMetabotRoutes: getMetabotQuickLinks,
-      getMetabotQueryBuilderRoute: () => (
-        <Route path="ask" component={MetabotQueryBuilder} />
-      ),
+      getMetabotRoutes: () => null,
+      getMetabotRouteObjects: getMetabotQuickLinkRouteObjects,
+      getMetabotQueryBuilderRoute: () => null,
+      getMetabotQueryBuilderRouteObjects: () =>
+        [
+          {
+            path: "ask",
+            element: <MetabotQueryBuilder />,
+          },
+        ] as RouteObject[],
       // components
       Metabot,
       MetabotChat,

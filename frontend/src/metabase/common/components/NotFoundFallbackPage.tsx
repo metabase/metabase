@@ -1,33 +1,32 @@
 import type { LocationDescriptor } from "history";
-import { replace } from "react-router-redux";
 import { useMount } from "react-use";
 
 import { NotFound } from "metabase/common/components/ErrorPages";
 import { connect } from "metabase/lib/redux";
 import { refreshCurrentUser } from "metabase/redux/user";
+import { useNavigation } from "metabase/routing/compat";
 
 type DispatchProps = {
   refreshCurrentUser: () => any;
-  onChangeLocation: (location: LocationDescriptor) => void;
 };
 
-type Props = DispatchProps;
+type Props = DispatchProps & {
+  onChangeLocation?: (location: LocationDescriptor) => void;
+};
 
 const mapDispatchToProps = {
   refreshCurrentUser,
-  onChangeLocation: replace,
 };
 
-const NotFoundFallbackPageInner = ({
-  refreshCurrentUser,
-  onChangeLocation,
-}: Props) => {
+const NotFoundFallbackPageInner = ({ refreshCurrentUser }: Props) => {
+  const { replace } = useNavigation();
+
   useMount(() => {
     async function refresh() {
       const result = await refreshCurrentUser();
       const isSignedIn = !result.error;
       if (!isSignedIn) {
-        onChangeLocation("/auth/login");
+        replace("/auth/login");
       }
     }
     refresh();

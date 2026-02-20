@@ -1,8 +1,7 @@
 import userEvent from "@testing-library/user-event";
-import { Route } from "react-router";
 
 import { mockSettings } from "__support__/settings";
-import { renderWithProviders, screen } from "__support__/ui";
+import { Route, renderWithProviders, screen } from "__support__/ui";
 import { dataStudioArchivedSnippets } from "metabase/lib/urls";
 import type { EnterpriseSettings } from "metabase-types/api";
 import { createMockUser } from "metabase-types/api/mocks";

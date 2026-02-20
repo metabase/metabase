@@ -1,6 +1,4 @@
 import { useMemo, useState } from "react";
-import type { Route } from "react-router";
-import { push } from "react-router-redux";
 import { t } from "ttag";
 
 import { SettingsSection } from "metabase/admin/components/SettingsSection";
@@ -13,8 +11,8 @@ import { LeaveRouteConfirmModal } from "metabase/common/components/LeaveConfirmM
 import { DelayedLoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper/DelayedLoadingAndErrorWrapper";
 import { DatabaseForm } from "metabase/databases/components/DatabaseForm";
 import type { DatabaseFormConfig } from "metabase/databases/types";
-import { useDispatch } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
+import { useNavigation } from "metabase/routing/compat";
 import { Box, Flex, ScrollArea, Title } from "metabase/ui";
 import type { Database, DatabaseData } from "metabase-types/api";
 
@@ -34,12 +32,10 @@ type WritableConnectionInfoPageParams = {
 
 type WritableConnectionInfoPageProps = {
   params: WritableConnectionInfoPageParams;
-  route: Route;
 };
 
 export function WritableConnectionInfoPage({
   params,
-  route,
 }: WritableConnectionInfoPageProps) {
   const databaseId = Urls.extractEntityId(params.databaseId);
   const {
@@ -52,34 +48,32 @@ export function WritableConnectionInfoPage({
     return <DelayedLoadingAndErrorWrapper loading={isLoading} error={error} />;
   }
 
-  return <WritableConnectionInfoPageBody database={database} route={route} />;
+  return <WritableConnectionInfoPageBody database={database} />;
 }
 
 type WritableConnectionInfoPageBodyProps = {
   database: Database;
-  route: Route;
 };
 
 function WritableConnectionInfoPageBody({
   database,
-  route,
 }: WritableConnectionInfoPageBodyProps) {
+  const { push } = useNavigation();
   const title = getTitle(database);
   const initialValues = useMemo(() => getInitialValues(database), [database]);
   const [isDirty, setIsDirty] = useState(false);
   const [updateDatabase, { isLoading: isSaving }] = useUpdateDatabaseMutation();
-  const dispatch = useDispatch();
 
   const handleSubmit = async (newValues: DatabaseData) => {
     await updateDatabase({
       id: database.id,
       write_data_details: getSubmitDetails(newValues),
     }).unwrap();
-    dispatch(push(Urls.viewDatabase(database.id)));
+    push(Urls.viewDatabase(database.id));
   };
 
   const handleCancel = () => {
-    dispatch(push(Urls.viewDatabase(database.id)));
+    push(Urls.viewDatabase(database.id));
   };
 
   return (
@@ -108,7 +102,7 @@ function WritableConnectionInfoPageBody({
           </SettingsSection>
         </Box>
       </Box>
-      <LeaveRouteConfirmModal isEnabled={isDirty && !isSaving} route={route} />
+      <LeaveRouteConfirmModal isEnabled={isDirty && !isSaving} />
     </Flex>
   );
 }

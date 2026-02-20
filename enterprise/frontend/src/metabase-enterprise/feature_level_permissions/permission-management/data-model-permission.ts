@@ -1,4 +1,3 @@
-import { push } from "react-router-redux";
 import { t } from "ttag";
 
 import { Messages } from "metabase/admin/permissions/constants/messages";
@@ -23,6 +22,7 @@ import {
   getTablesPermission,
 } from "metabase/admin/permissions/utils/graph";
 import { getGroupFocusPermissionsUrl } from "metabase/admin/permissions/utils/urls";
+import { routerActions } from "metabase/routing/compat/react-router-redux";
 import type { Group, GroupsPermissions } from "metabase-types/api";
 
 export const DATA_MODEL_PERMISSION_OPTIONS = {
@@ -162,7 +162,7 @@ export const buildDataModelPermission = (
     postActions: hasChildEntities
       ? {
           controlled: () =>
-            push(getGroupFocusPermissionsUrl(groupId, entityId)),
+            routerActions.push(getGroupFocusPermissionsUrl(groupId, entityId)),
         }
       : undefined,
   };

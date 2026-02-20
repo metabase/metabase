@@ -1,9 +1,9 @@
 import { renderHook } from "@testing-library/react";
 import type { PropsWithChildren } from "react";
-import { Route } from "react-router";
 
 import { mockSettings } from "__support__/settings";
 import {
+  Route,
   renderHookWithProviders,
   renderWithProviders,
   screen,

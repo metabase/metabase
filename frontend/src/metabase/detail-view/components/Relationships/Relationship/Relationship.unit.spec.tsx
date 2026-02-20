@@ -1,11 +1,14 @@
 import { screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
-import { Route } from "react-router";
 
 import { setupCardDataset } from "__support__/server-mocks";
 import { createMockEntitiesState } from "__support__/store";
-import { renderWithProviders, waitForLoaderToBeRemoved } from "__support__/ui";
+import {
+  Route,
+  renderWithProviders,
+  waitForLoaderToBeRemoved,
+} from "__support__/ui";
 import type { Table } from "metabase-types/api";
 import { createMockForeignKey } from "metabase-types/api/mocks";
 import {

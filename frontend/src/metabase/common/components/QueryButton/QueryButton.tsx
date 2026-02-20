@@ -1,7 +1,7 @@
 import cx from "classnames";
 import { memo } from "react";
-import { Link } from "react-router";
 
+import { Link } from "metabase/common/components/Link";
 import CS from "metabase/css/core/index.css";
 import type { IconName } from "metabase/ui";
 import { Icon } from "metabase/ui";

@@ -1,8 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
-import { replace } from "react-router-redux";
 
-import { useDispatch } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
+import { useNavigation } from "metabase/routing/compat";
 
 import type { RouteParams } from "../../pages/DataModel/types";
 
@@ -19,7 +18,7 @@ export function RouterTablePicker({
   setOnUpdateCallback,
   ...props
 }: Props) {
-  const dispatch = useDispatch();
+  const { replace } = useNavigation();
   const [value, setValue] = useState(props);
   const {
     databaseId: propDatabaseId,
@@ -30,9 +29,9 @@ export function RouterTablePicker({
   const onChange = useCallback(
     (value: TreePath) => {
       setValue(value);
-      dispatch(replace(Urls.dataStudioData(value)));
+      replace(Urls.dataStudioData(value));
     },
-    [dispatch],
+    [replace],
   );
 
   useEffect(() => {

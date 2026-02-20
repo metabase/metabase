@@ -1,7 +1,6 @@
 import { combineReducers } from "@reduxjs/toolkit";
 import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
-import { Route } from "react-router";
 
 import {
   setupDatabaseEndpoints,
@@ -10,6 +9,7 @@ import {
   setupUserAttributesEndpoint,
 } from "__support__/server-mocks";
 import {
+  Route,
   renderWithProviders,
   screen,
   waitFor,

@@ -1,9 +1,9 @@
 import { useEffect, useMemo, useState } from "react";
-import type { WithRouterProps } from "react-router";
 import { match } from "ts-pattern";
 
 import { NotFound } from "metabase/common/components/ErrorPages";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
+import { useRouter } from "metabase/router";
 import {
   type BaseEntityId,
   isBaseEntityID,
@@ -29,30 +29,32 @@ type ParamWithValue = {
   resourceType: ResourceType;
 };
 
-export type EntityIdRedirectProps = WithRouterProps & {
+export type EntityIdRedirectProps = {
   parametersToTranslate: ParamConfig[];
 };
 
 export const EntityIdRedirect = ({
   parametersToTranslate = [],
-  router,
-  params,
-  location,
 }: EntityIdRedirectProps) => {
+  const { router, params, location } = useRouter();
   const currentUrl = location.pathname + location.search;
 
   const paramsWithValues: ParamWithValue[] = useMemo(() => {
     // add the value from the params or the query
-    return parametersToTranslate.map((config) => {
-      const value = match(config.type)
-        .with("param", () => params[config.name])
-        .with("search", () => location.query[config.name])
-        .exhaustive();
-      return {
-        ...config,
-        value,
-      };
-    });
+    return parametersToTranslate
+      .map((config) => {
+        const value = match(config.type)
+          .with("param", () => params[config.name])
+          .with("search", () => location.query[config.name])
+          .exhaustive();
+        return value == null
+          ? undefined
+          : {
+              ...config,
+              value,
+            };
+      })
+      .filter((config): config is ParamWithValue => config != null);
   }, [parametersToTranslate, params, location.query]);
 
   const entityIdsToTranslate = useMemo(() => {
@@ -140,11 +142,8 @@ function handleResults({
 export function createEntityIdRedirect(config: {
   parametersToTranslate: ParamConfig[];
 }) {
-  const Component = (props: WithRouterProps) => (
-    <EntityIdRedirect
-      {...props}
-      parametersToTranslate={config.parametersToTranslate}
-    />
+  const Component = () => (
+    <EntityIdRedirect parametersToTranslate={config.parametersToTranslate} />
   );
 
   return Component;

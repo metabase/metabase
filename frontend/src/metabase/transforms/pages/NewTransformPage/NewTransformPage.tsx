@@ -1,11 +1,10 @@
 import { useDisclosure } from "@mantine/hooks";
 import { useMemo, useState } from "react";
-import { Link, type Route } from "react-router";
-import { push } from "react-router-redux";
 import { t } from "ttag";
 
 import { skipToken, useGetCardQuery } from "metabase/api";
 import { LeaveRouteConfirmModal } from "metabase/common/components/LeaveConfirmModal";
+import { Link } from "metabase/common/components/Link";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { DataStudioBreadcrumbs } from "metabase/data-studio/common/components/DataStudioBreadcrumbs";
 import { PageContainer } from "metabase/data-studio/common/components/PageContainer";
@@ -14,10 +13,11 @@ import {
   PaneHeaderActions,
   PaneHeaderInput,
 } from "metabase/data-studio/common/components/PaneHeader";
-import { useDispatch, useSelector } from "metabase/lib/redux";
+import { useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { PLUGIN_TRANSFORMS_PYTHON } from "metabase/plugins";
 import { getInitialUiState } from "metabase/querying/editor/components/QueryEditor";
+import { useNavigation } from "metabase/routing/compat";
 import { getMetadata } from "metabase/selectors/metadata";
 import { useTransformPermissions } from "metabase/transforms/hooks/use-transform-permissions";
 import { Box, Center } from "metabase/ui";
@@ -45,10 +45,9 @@ import {
 
 type NewTransformPageProps = {
   initialSource: DraftTransformSource;
-  route: Route;
 };
 
-function NewTransformPage({ initialSource, route }: NewTransformPageProps) {
+function NewTransformPage({ initialSource }: NewTransformPageProps) {
   const {
     transformsDatabases,
     isLoadingDatabases: isLoading,
@@ -67,7 +66,6 @@ function NewTransformPage({ initialSource, route }: NewTransformPageProps) {
     <NewTransformPageBody
       initialSource={initialSource}
       databases={transformsDatabases}
-      route={route}
     />
   );
 }
@@ -75,13 +73,11 @@ function NewTransformPage({ initialSource, route }: NewTransformPageProps) {
 type NewTransformPageBodyProps = {
   initialSource: DraftTransformSource;
   databases: Database[];
-  route: Route;
 };
 
 function NewTransformPageBody({
   initialSource,
   databases,
-  route,
 }: NewTransformPageBodyProps) {
   const {
     source,
@@ -97,7 +93,7 @@ function NewTransformPageBody({
   const metadata = useSelector(getMetadata);
   const [isModalOpened, { open: openModal, close: closeModal }] =
     useDisclosure();
-  const dispatch = useDispatch();
+  const { push } = useNavigation();
   useRegisterMetabotTransformContext(undefined, source);
 
   const validationResult = useMemo(() => {
@@ -107,11 +103,11 @@ function NewTransformPageBody({
   }, [source, metadata]);
 
   const handleCreate = (transform: Transform) => {
-    dispatch(push(Urls.transform(transform.id)));
+    push(Urls.transform(transform.id));
   };
 
   const handleCancel = () => {
-    dispatch(push(Urls.transformList()));
+    push(Urls.transformList());
   };
 
   return (
@@ -193,7 +189,6 @@ function NewTransformPageBody({
         />
       )}
       <LeaveRouteConfirmModal
-        route={route}
         isEnabled={isDirty && !isModalOpened}
         onConfirm={rejectProposed}
       />
@@ -201,31 +196,19 @@ function NewTransformPageBody({
   );
 }
 
-type NewQueryTransformPageProps = {
-  route: Route;
-};
-
-export function NewQueryTransformPage({ route }: NewQueryTransformPageProps) {
+export function NewQueryTransformPage() {
   const initialSource = useMemo(() => getInitialQuerySource(), []);
-  return <NewTransformPage initialSource={initialSource} route={route} />;
+  return <NewTransformPage initialSource={initialSource} />;
 }
 
-type NewNativeTransformPageProps = {
-  route: Route;
-};
-
-export function NewNativeTransformPage({ route }: NewNativeTransformPageProps) {
+export function NewNativeTransformPage() {
   const initialSource = useMemo(() => getInitialNativeSource(), []);
-  return <NewTransformPage initialSource={initialSource} route={route} />;
+  return <NewTransformPage initialSource={initialSource} />;
 }
 
-type NewPythonTransformPageProps = {
-  route: Route;
-};
-
-export function NewPythonTransformPage({ route }: NewPythonTransformPageProps) {
+export function NewPythonTransformPage() {
   const initialSource = useMemo(() => getInitialPythonSource(), []);
-  return <NewTransformPage initialSource={initialSource} route={route} />;
+  return <NewTransformPage initialSource={initialSource} />;
 }
 
 type NewCardTransformPageParams = {
@@ -234,13 +217,9 @@ type NewCardTransformPageParams = {
 
 type NewCardTransformPageProps = {
   params: NewCardTransformPageParams;
-  route: Route;
 };
 
-export function NewCardTransformPage({
-  params,
-  route,
-}: NewCardTransformPageProps) {
+export function NewCardTransformPage({ params }: NewCardTransformPageProps) {
   const cardId = Urls.extractEntityId(params.cardId);
   const {
     data: card,
@@ -261,5 +240,5 @@ export function NewCardTransformPage({
     );
   }
 
-  return <NewTransformPage initialSource={initialSource} route={route} />;
+  return <NewTransformPage initialSource={initialSource} />;
 }

@@ -1,6 +1,4 @@
 import { useCallback, useEffect } from "react";
-import type { Route } from "react-router";
-import { push } from "react-router-redux";
 import { t } from "ttag";
 import _ from "underscore";
 
@@ -8,6 +6,7 @@ import { CollectionPermissionsHelp } from "metabase/admin/permissions/components
 import { Collections } from "metabase/entities/collections";
 import { Groups } from "metabase/entities/groups";
 import { connect, useSelector } from "metabase/lib/redux";
+import { useNavigation } from "metabase/routing/compat";
 import type {
   Collection,
   CollectionId,
@@ -44,8 +43,6 @@ import {
 const mapDispatchToProps = {
   initialize: initializeCollectionPermissions,
   loadPermissions: loadCollectionPermissions,
-  navigateToItem: ({ id }: { id: CollectionId }) =>
-    push(`/admin/permissions/collections/${id}`),
   updateCollectionPermission,
   savePermissions: saveCollectionPermissions,
 };
@@ -72,7 +69,6 @@ type CollectionPermissionsPageProps = {
   sidebar: CollectionSidebarType;
   permissionEditor: CollectionPermissionEditorType;
   collection: Collection;
-  navigateToItem: (item: any) => void;
   updateCollectionPermission: ({
     groupId,
     collection,
@@ -83,7 +79,6 @@ type CollectionPermissionsPageProps = {
   savePermissions: () => void;
   loadPermissions: () => void;
   initialize: () => void;
-  route: Route;
 };
 
 function CollectionsPermissionsPageView({
@@ -94,10 +89,9 @@ function CollectionsPermissionsPageView({
   savePermissions,
   loadPermissions,
   updateCollectionPermission,
-  navigateToItem,
   initialize,
-  route,
 }: CollectionPermissionsPageProps) {
+  const { push } = useNavigation();
   const originalPermissionsState = useSelector(
     ({ admin }) => admin.permissions.originalCollectionPermissions,
   );
@@ -128,13 +122,17 @@ function CollectionsPermissionsPageView({
     <PermissionsPageLayout
       tab="collections"
       isDirty={isDirty}
-      route={route}
       onSave={savePermissions}
       onLoad={() => loadPermissions()}
       helpContent={<CollectionPermissionsHelp />}
       key={collection?.id}
     >
-      <PermissionsSidebar {...sidebar} onSelect={navigateToItem} />
+      <PermissionsSidebar
+        {...sidebar}
+        onSelect={(item: { id: CollectionId }) =>
+          push(`/admin/permissions/collections/${item.id}`)
+        }
+      />
 
       {!permissionEditor && (
         <PermissionsEditorEmptyState

@@ -1,12 +1,11 @@
-import { push } from "react-router-redux";
 import { t } from "ttag";
 
 import { useCreateUserMutation } from "metabase/api";
-import { useDispatch } from "metabase/lib/redux";
 import { generatePassword } from "metabase/lib/security";
 import MetabaseSettings from "metabase/lib/settings";
 import * as Urls from "metabase/lib/urls";
 import { PLUGIN_TENANTS } from "metabase/plugins";
+import { useNavigation } from "metabase/routing/compat";
 import { Modal } from "metabase/ui";
 import type { User as UserType } from "metabase-types/api";
 
@@ -21,7 +20,7 @@ export const NewUserModal = ({
   onClose,
   external = false,
 }: NewUserModalProps) => {
-  const dispatch = useDispatch();
+  const { push } = useNavigation();
 
   const [createUser] = useCreateUserMutation();
 
@@ -37,7 +36,7 @@ export const NewUserModal = ({
         : { password: generatePassword() }),
     }).unwrap();
 
-    dispatch(push(Urls.newUserSuccess(user)));
+    push(Urls.newUserSuccess(user));
   };
 
   // Use plugin-provided title for external users, fallback to default

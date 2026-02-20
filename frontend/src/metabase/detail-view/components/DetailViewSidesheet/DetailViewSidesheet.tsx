@@ -1,6 +1,5 @@
 import { useWindowEvent } from "@mantine/hooks";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Link } from "react-router";
 import { t } from "ttag";
 
 import { ActionExecuteModal } from "metabase/actions/containers/ActionExecuteModal";
@@ -12,6 +11,7 @@ import {
 } from "metabase/api";
 import { EntityMenu } from "metabase/common/components/EntityMenu";
 import { NotFound } from "metabase/common/components/ErrorPages";
+import { Link } from "metabase/common/components/Link";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { Modal } from "metabase/common/components/Modal";
 import {

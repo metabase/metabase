@@ -1,6 +1,4 @@
 import { useCallback, useState } from "react";
-import type { Route } from "react-router";
-import { push } from "react-router-redux";
 import _ from "underscore";
 
 import { LeaveRouteConfirmModal } from "metabase/common/components/LeaveConfirmModal";
@@ -8,6 +6,7 @@ import { useCallbackEffect } from "metabase/common/hooks/use-callback-effect";
 import { Segments } from "metabase/entities/segments";
 import { Tables } from "metabase/entities/tables";
 import { connect } from "metabase/lib/redux";
+import { useNavigation } from "metabase/routing/compat";
 import type { Segment } from "metabase-types/api";
 import type { State } from "metabase-types/store";
 
@@ -17,19 +16,16 @@ type SegmentAppOwnProps = {
   params: {
     id: string;
   };
-  route: Route;
 };
 
 type SegmentAppDispatchProps = {
   createSegment: (segment: Partial<Segment>) => Promise<Segment>;
   updateSegment: (segment: Partial<Segment>) => Promise<Segment>;
-  onChangeLocation: (path: string) => void;
 };
 
 const mapDispatchToProps: SegmentAppDispatchProps = {
   createSegment: Segments.actions.create,
   updateSegment: Segments.actions.update,
-  onChangeLocation: push,
 };
 
 type UpdateSegmentFormInnerProps = SegmentAppOwnProps &
@@ -41,11 +37,10 @@ type UpdateSegmentFormInnerProps = SegmentAppOwnProps &
   };
 
 function UpdateSegmentFormInner({
-  route,
   segment,
   updateSegment,
-  onChangeLocation,
 }: UpdateSegmentFormInnerProps) {
+  const { push } = useNavigation();
   const [isDirty, setIsDirty] = useState(false);
 
   const handleSubmit = useCallback(
@@ -54,12 +49,12 @@ function UpdateSegmentFormInner({
 
       try {
         await updateSegment(segmentValues);
-        onChangeLocation("/admin/datamodel/segments");
+        push("/admin/datamodel/segments");
       } catch {
         setIsDirty(isDirty);
       }
     },
-    [updateSegment, isDirty, onChangeLocation],
+    [updateSegment, isDirty, push],
   );
 
   return (
@@ -70,7 +65,7 @@ function UpdateSegmentFormInner({
         onSubmit={handleSubmit}
       />
 
-      <LeaveRouteConfirmModal isEnabled={isDirty} route={route} />
+      <LeaveRouteConfirmModal isEnabled={isDirty} />
     </>
   );
 }
@@ -92,10 +87,9 @@ type CreateSegmentFormProps = SegmentAppOwnProps & SegmentAppDispatchProps;
 
 function CreateSegmentForm({
   createSegment,
-  route,
-  onChangeLocation,
   ...props
 }: CreateSegmentFormProps) {
+  const { push } = useNavigation();
   const [isDirty, setIsDirty] = useState(false);
 
   /**
@@ -111,13 +105,13 @@ function CreateSegmentForm({
       scheduleCallback(async () => {
         try {
           await createSegment(segment);
-          onChangeLocation("/admin/datamodel/segments");
+          push("/admin/datamodel/segments");
         } catch {
           setIsDirty(isDirty);
         }
       });
     },
-    [scheduleCallback, createSegment, isDirty, onChangeLocation],
+    [scheduleCallback, createSegment, isDirty, push],
   );
 
   return (
@@ -128,7 +122,7 @@ function CreateSegmentForm({
         onSubmit={handleSubmit}
       />
 
-      <LeaveRouteConfirmModal isEnabled={isDirty} route={route} />
+      <LeaveRouteConfirmModal isEnabled={isDirty} />
     </>
   );
 }
@@ -136,7 +130,8 @@ function CreateSegmentForm({
 type SegmentAppInnerProps = SegmentAppOwnProps & SegmentAppDispatchProps;
 
 function SegmentAppInner(props: SegmentAppInnerProps) {
-  if (props.params.id) {
+  const { params } = props;
+  if (params.id) {
     return <UpdateSegmentForm {...props} />;
   }
 

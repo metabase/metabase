@@ -1,5 +1,4 @@
-import { Link } from "react-router";
-
+import { Link } from "metabase/common/components/Link";
 import * as Urls from "metabase/lib/urls";
 import type { Table } from "metabase-types/api";
 

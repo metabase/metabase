@@ -1,5 +1,4 @@
 import { createAction, createReducer } from "@reduxjs/toolkit";
-import { push } from "react-router-redux";
 
 import { Databases } from "metabase/entities/databases";
 import { combineReducers } from "metabase/lib/redux";
@@ -58,7 +57,6 @@ export const deleteDatabase = function (databaseId: DatabaseId) {
     try {
       dispatch(DELETE_DATABASE_STARTED({ databaseId }));
       await dispatch(Databases.actions.delete({ id: databaseId }));
-      dispatch(push("/admin/databases/"));
 
       dispatch(DELETE_DATABASE({ databaseId }));
     } catch (error) {

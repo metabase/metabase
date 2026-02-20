@@ -1,6 +1,5 @@
 import PropTypes from "prop-types";
 import { useCallback, useMemo } from "react";
-import { push } from "react-router-redux";
 import { jt, t } from "ttag";
 import _ from "underscore";
 
@@ -12,6 +11,7 @@ import { NoObjectError } from "metabase/common/components/errors/NoObjectError";
 import { Search } from "metabase/entities/search";
 import { usePageTitle } from "metabase/hooks/use-page-title";
 import { useDispatch } from "metabase/lib/redux";
+import { useNavigation } from "metabase/routing/compat";
 import { SearchSidebar } from "metabase/search/components/SearchSidebar";
 import {
   SearchContextTypes,
@@ -40,6 +40,7 @@ const getPageFromLocation = (location) => {
 
 function SearchApp({ location }) {
   const dispatch = useDispatch();
+  const { push } = useNavigation();
 
   usePageTitle(t`Search`);
 
@@ -67,8 +68,8 @@ function SearchApp({ location }) {
   };
 
   const onChangeLocation = useCallback(
-    (nextLocation) => dispatch(push(nextLocation)),
-    [dispatch],
+    (nextLocation) => push(nextLocation),
+    [push],
   );
 
   const onFilterChange = useCallback(

@@ -1,10 +1,9 @@
 import type { Location, Query } from "history";
 import { useCallback, useEffect, useState } from "react";
-import { push, replace } from "react-router-redux";
 import { useEffectOnce, useLatest } from "react-use";
 
 import { useDebouncedValue } from "metabase/common/hooks/use-debounced-value";
-import { useDispatch } from "metabase/lib/redux";
+import { useNavigation } from "metabase/routing/compat";
 
 type BaseState = Record<string, unknown>;
 
@@ -27,7 +26,7 @@ export function useUrlState<State extends BaseState>(
   location: Location,
   { parse, serialize }: UrlStateConfig<State>,
 ): [State, UrlStateActions<State>] {
-  const dispatch = useDispatch();
+  const { push, replace } = useNavigation();
   const [state, setState] = useState(parse(location.query));
   const urlState = useDebouncedValue(state, URL_UPDATE_DEBOUNCE_DELAY);
 
@@ -38,16 +37,16 @@ export function useUrlState<State extends BaseState>(
   const updateUrl = useCallback(
     (state: State) => {
       const newLocation = { ...location, query: serialize(state) };
-      dispatch(push(newLocation));
+      push(newLocation);
     },
-    [dispatch, location, serialize],
+    [push, location, serialize],
   );
 
   const updateUrlRef = useLatest(updateUrl);
 
   useEffectOnce(function cleanInvalidQueryParams() {
     const newLocation = { ...location, query: serialize(urlState) };
-    dispatch(replace(newLocation));
+    replace(newLocation);
   });
 
   useEffect(() => {

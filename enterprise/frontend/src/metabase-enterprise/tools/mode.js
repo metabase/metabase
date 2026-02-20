@@ -1,7 +1,7 @@
-import { push } from "react-router-redux";
 import { t } from "ttag";
 
 import { question } from "metabase/lib/urls";
+import { routerActions } from "metabase/routing/compat/react-router-redux";
 
 const CARD_ID_ROW_IDX = 0;
 
@@ -18,7 +18,7 @@ const ErrorDrill = ({ clicked }) => {
       title: t`View this`,
       default: true,
       action() {
-        return push(question({ id: cardId }));
+        return routerActions.push(question({ id: cardId }));
       },
     },
   ];

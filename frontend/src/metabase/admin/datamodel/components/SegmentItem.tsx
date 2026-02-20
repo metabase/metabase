@@ -1,7 +1,6 @@
-import { Link } from "react-router";
-
 import * as Urls from "metabase/lib/urls";
 import { TableBreadcrumbs } from "metabase/metadata/components";
+import { useNavigation } from "metabase/routing/compat";
 import { Box, Flex, Group, Icon } from "metabase/ui";
 import type { Segment } from "metabase-types/api";
 
@@ -15,13 +14,20 @@ interface Props {
 }
 
 export const SegmentItem = ({ segment, onRetire, readOnly }: Props) => {
+  const { push } = useNavigation();
   const canEdit = !!onRetire;
 
   return (
     <tr>
       <Box component="td" className={S.cell} p="sm">
         {canEdit ? (
-          <Link to={Urls.dataModelSegment(segment.id)}>
+          <a
+            href={Urls.dataModelSegment(segment.id)}
+            onClick={(event) => {
+              event.preventDefault();
+              push(Urls.dataModelSegment(segment.id));
+            }}
+          >
             <Group display="inline-flex" gap="sm" wrap="nowrap">
               <Box
                 color="text-secondary"
@@ -33,7 +39,7 @@ export const SegmentItem = ({ segment, onRetire, readOnly }: Props) => {
                 {segment.name}
               </Box>
             </Group>
-          </Link>
+          </a>
         ) : (
           <Group display="inline-flex" gap="sm" wrap="nowrap">
             <Icon name="segment" c="text-secondary" flex="0 0 auto" />

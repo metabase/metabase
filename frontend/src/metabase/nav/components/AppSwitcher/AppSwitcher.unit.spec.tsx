@@ -1,10 +1,15 @@
 import userEvent from "@testing-library/user-event";
 import dayjs from "dayjs";
-import { Route } from "react-router";
 
 import { setupBugReportingDetailsEndpoint } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
-import { renderWithProviders, screen, waitFor, within } from "__support__/ui";
+import {
+  Route,
+  renderWithProviders,
+  screen,
+  waitFor,
+  within,
+} from "__support__/ui";
 import type { HelpLinkSetting } from "metabase-types/api";
 import {
   createMockMetabaseInfo,

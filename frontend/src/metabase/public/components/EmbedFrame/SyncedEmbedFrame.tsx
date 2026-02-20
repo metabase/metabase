@@ -1,16 +1,14 @@
-import type { WithRouterProps } from "react-router";
-import { withRouter } from "react-router";
-
 import { useEmbedFrameOptions } from "metabase/public/hooks";
+import { useLocationWithQuery } from "metabase/routing/compat";
 
 import type { EmbedFrameProps } from "./EmbedFrame";
 import { EmbedFrame } from "./EmbedFrame";
 
-const SyncedEmbedFrameInner = ({
-  location,
+export const SyncedEmbedFrame = ({
   children,
   ...embedFrameProps
-}: Partial<EmbedFrameProps> & WithRouterProps) => {
+}: Partial<EmbedFrameProps>) => {
+  const location = useLocationWithQuery();
   const { background, bordered, hide_parameters, theme, titled } =
     useEmbedFrameOptions({ location });
 
@@ -27,7 +25,3 @@ const SyncedEmbedFrameInner = ({
     </EmbedFrame>
   );
 };
-
-export const SyncedEmbedFrame = withRouter<Partial<EmbedFrameProps>>(
-  SyncedEmbedFrameInner,
-);

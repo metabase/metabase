@@ -1,6 +1,6 @@
-import { Link } from "react-router";
 import { t } from "ttag";
 
+import { Link } from "metabase/common/components/Link";
 import { useSelector } from "metabase/lib/redux";
 import { dataStudioArchivedSnippets } from "metabase/lib/urls";
 import { getUserIsAdmin } from "metabase/selectors/user";

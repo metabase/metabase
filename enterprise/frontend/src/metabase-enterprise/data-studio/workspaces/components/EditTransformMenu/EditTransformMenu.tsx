@@ -1,13 +1,12 @@
 import { useMemo } from "react";
-import { Link } from "react-router";
-import { push } from "react-router-redux";
 import { t } from "ttag";
 
-import { useDispatch } from "metabase/lib/redux";
+import { ForwardRefLink } from "metabase/common/components/Link";
 import * as Urls from "metabase/lib/urls";
 import { transformEdit } from "metabase/lib/urls";
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import type { EditTransformMenuProps } from "metabase/plugins/oss/database";
+import { useNavigation } from "metabase/routing/compat";
 import {
   Box,
   Button,
@@ -29,7 +28,7 @@ import { getCheckoutDisabledMessage } from "metabase-enterprise/data-studio/work
 import type { DatabaseId, Transform } from "metabase-types/api";
 
 export function EditTransformMenu({ transform }: EditTransformMenuProps) {
-  const dispatch = useDispatch();
+  const { push } = useNavigation();
   const { sendErrorToast } = useMetadataToasts();
 
   const sourceDatabaseId = getTransformDatabaseId(transform);
@@ -98,7 +97,7 @@ export function EditTransformMenu({ transform }: EditTransformMenuProps) {
     id: number;
     name?: string;
   }) => {
-    dispatch(push(Urls.dataStudioWorkspace(workspace.id, transform.id)));
+    push(Urls.dataStudioWorkspace(workspace.id, transform.id));
   };
 
   const handleCreateWorkspace = async ({
@@ -116,7 +115,7 @@ export function EditTransformMenu({ transform }: EditTransformMenuProps) {
         database_id: Number(databaseId),
       }).unwrap();
 
-      dispatch(push(Urls.dataStudioWorkspace(workspace.id, transform.id)));
+      push(Urls.dataStudioWorkspace(workspace.id, transform.id));
     } catch (error) {
       sendErrorToast(t`Failed to create workspace`);
     }
@@ -137,7 +136,7 @@ export function EditTransformMenu({ transform }: EditTransformMenuProps) {
       </Menu.Target>
       <Menu.Dropdown>
         <Menu.Item
-          component={Link}
+          component={ForwardRefLink}
           to={transformEdit(transform.id)}
           leftSection={<Icon name="pencil" />}
         >

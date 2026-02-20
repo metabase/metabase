@@ -1,5 +1,4 @@
 import { useEffect, useMemo, useState } from "react";
-import { push } from "react-router-redux";
 import { useDebounce } from "react-use";
 import { t } from "ttag";
 
@@ -19,6 +18,7 @@ import {
   ResultsFooter,
   SearchResultsList,
 } from "metabase/nav/components/search/SearchResults/SearchResults.styled";
+import { useNavigation } from "metabase/routing/compat";
 import { SearchResult } from "metabase/search/components/SearchResult/SearchResult";
 import { SearchContextTypes } from "metabase/search/constants";
 import type { SearchFilters } from "metabase/search/types";
@@ -65,6 +65,7 @@ export const SearchResults = ({
   isSearchBar = false,
 }: SearchResultsProps) => {
   const dispatch = useDispatch();
+  const { push } = useNavigation();
 
   const [debouncedSearchText, setDebouncedSearchText] = useState<string>();
 
@@ -120,7 +121,7 @@ export const SearchResults = ({
       if (onEntitySelect) {
         onEntitySelect(Search.wrapEntity(item, dispatch));
       } else if (item && modelToUrl(item)) {
-        dispatch(push(modelToUrl(item)));
+        push(modelToUrl(item));
       }
     }
   };

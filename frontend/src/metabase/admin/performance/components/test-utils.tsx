@@ -1,5 +1,3 @@
-import { Route } from "react-router";
-
 import {
   setupEnterpriseOnlyPlugin,
   setupEnterprisePlugins,
@@ -11,7 +9,13 @@ import {
 import { setupPerformanceEndpoints } from "__support__/server-mocks/performance";
 import { mockSettings } from "__support__/settings";
 import { createMockEntitiesState } from "__support__/store";
-import { act, fireEvent, renderWithProviders, screen } from "__support__/ui";
+import {
+  Route,
+  act,
+  fireEvent,
+  renderWithProviders,
+  screen,
+} from "__support__/ui";
 import type { TokenFeatures } from "metabase-types/api";
 import { CacheDurationUnit } from "metabase-types/api";
 import {

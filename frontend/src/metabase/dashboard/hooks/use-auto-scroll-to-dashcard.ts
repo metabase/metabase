@@ -1,9 +1,8 @@
 import type { LocationDescriptorObject } from "history";
 import { useCallback, useMemo } from "react";
-import { replace } from "react-router-redux";
 
 import { parseHashOptions, stringifyHashOptions } from "metabase/lib/browser";
-import { useDispatch } from "metabase/lib/redux";
+import { useNavigation } from "metabase/routing/compat";
 import type { DashCardId } from "metabase-types/api";
 
 export interface UseAutoScrollToDashcardResult {
@@ -14,7 +13,7 @@ export interface UseAutoScrollToDashcardResult {
 export const useAutoScrollToDashcard = (
   location: LocationDescriptorObject,
 ): UseAutoScrollToDashcardResult => {
-  const dispatch = useDispatch();
+  const { replace } = useNavigation();
 
   const hashOptions = useMemo(() => {
     if (!location.hash) {
@@ -34,14 +33,12 @@ export const useAutoScrollToDashcard = (
     // if the dashcard is unmounted then remounted
     const { scrollTo, ...restHashOptions } = hashOptions;
     const hash = stringifyHashOptions(restHashOptions);
-    dispatch(
-      replace({
-        pathname: location.pathname,
-        search: location.search,
-        hash: hash ? "#" + hash : "",
-      }),
-    );
-  }, [hashOptions, dispatch, location.pathname, location.search]);
+    replace({
+      pathname: location.pathname,
+      search: location.search,
+      hash: hash ? "#" + hash : "",
+    });
+  }, [hashOptions, replace, location.pathname, location.search]);
 
   return {
     autoScrollToDashcardId,

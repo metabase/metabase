@@ -1,8 +1,8 @@
 import FakeTimers from "@sinonjs/fake-timers";
 import Cookie from "js-cookie";
-import { replace } from "react-router-redux";
 
 import { logout, refreshSession } from "metabase/auth/actions";
+import { routerActions } from "metabase/routing/compat/react-router-redux";
 
 import {
   COOKIE_POOLING_TIMEOUT,
@@ -15,8 +15,10 @@ jest.mock("metabase/auth/actions", () => ({
   logout: jest.fn(),
   refreshSession: jest.fn(() => Promise.resolve()),
 }));
-jest.mock("react-router-redux", () => ({
-  replace: jest.fn(),
+jest.mock("metabase/routing/compat/react-router-redux", () => ({
+  routerActions: {
+    replace: jest.fn((url) => ({ type: "ROUTER_REPLACE", payload: url })),
+  },
 }));
 
 let clock;
@@ -136,8 +138,13 @@ describe("createSessionMiddleware", () => {
       handleAction(actionStub);
       clock.tick(COOKIE_POOLING_TIMEOUT);
 
-      expect(dispatchMock).toHaveBeenCalled();
-      expect(replace).toHaveBeenCalledWith("/question/1?query=5#hash");
+      expect(dispatchMock).toHaveBeenCalledWith({
+        type: "ROUTER_REPLACE",
+        payload: "/question/1?query=5#hash",
+      });
+      expect(routerActions.replace).toHaveBeenCalledWith(
+        "/question/1?query=5#hash",
+      );
     });
   });
 
@@ -166,7 +173,13 @@ describe("createSessionMiddleware", () => {
       // wait for the refreshSession to resolve
       await Promise.resolve();
 
-      expect(replace).toHaveBeenCalledWith("/question/1?query=5#hash");
+      expect(dispatchMock).toHaveBeenCalledWith({
+        type: "ROUTER_REPLACE",
+        payload: "/question/1?query=5#hash",
+      });
+      expect(routerActions.replace).toHaveBeenCalledWith(
+        "/question/1?query=5#hash",
+      );
     });
   });
 });

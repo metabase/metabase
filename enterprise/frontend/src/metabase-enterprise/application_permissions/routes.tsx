@@ -1,10 +1,4 @@
-import { Route } from "react-router";
-
-import ApplicationPermissionsPage from "./pages/ApplicationPermissionsPage";
-
-const getRoutes = () => (
-  <Route path="application" component={ApplicationPermissionsPage} />
-);
+const getRoutes = () => null;
 
 // eslint-disable-next-line import/no-default-export -- deprecated usage
 export default getRoutes;

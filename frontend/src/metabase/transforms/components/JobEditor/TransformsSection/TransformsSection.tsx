@@ -1,13 +1,12 @@
 import type { Row } from "@tanstack/react-table";
 import { useCallback, useMemo } from "react";
-import { push } from "react-router-redux";
 import { t } from "ttag";
 
 import { useListTransformJobTransformsQuery } from "metabase/api";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import CS from "metabase/css/core/index.css";
-import { useDispatch } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
+import { useNavigation } from "metabase/routing/compat";
 import { Card, TreeTable, useTreeTableInstance } from "metabase/ui";
 import type { Transform, TransformJobId } from "metabase-types/api";
 
@@ -51,13 +50,13 @@ type TransformTableProps = {
 
 export function TransformTable({ transforms }: TransformTableProps) {
   const columns = useMemo(() => getColumns(), []);
-  const dispatch = useDispatch();
+  const { push } = useNavigation();
 
   const handleRowActivate = useCallback(
     (row: Row<Transform>) => {
-      dispatch(push(Urls.transform(row.original.id)));
+      push(Urls.transform(row.original.id));
     },
-    [dispatch],
+    [push],
   );
 
   const treeTableInstance = useTreeTableInstance<Transform>({

@@ -1,4 +1,4 @@
-import type { WithRouterProps } from "react-router";
+import type { Location } from "history";
 
 import { useDashboardContext } from "metabase/dashboard/context";
 import { useLocationSync } from "metabase/dashboard/hooks";
@@ -6,7 +6,9 @@ import type { RefreshPeriod } from "metabase/dashboard/types";
 
 export const useDashboardLocationSync = ({
   location,
-}: Pick<WithRouterProps, "location">) => {
+}: {
+  location: Location;
+}) => {
   const {
     refreshPeriod,
     onRefreshPeriodChange,

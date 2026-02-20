@@ -1,5 +1,4 @@
 import { useLayoutEffect, useState } from "react";
-import type { Route } from "react-router";
 import { t } from "ttag";
 
 import { LeaveRouteConfirmModal } from "metabase/common/components/LeaveConfirmModal";
@@ -23,7 +22,6 @@ import S from "./PythonLibraryEditorPage.module.css";
 
 type PythonLibraryEditorPageProps = {
   params: Urls.TransformPythonLibraryParams;
-  route: Route;
 };
 
 const EMPTY_LIBRARY_SOURCE = `
@@ -35,7 +33,6 @@ const EMPTY_LIBRARY_SOURCE = `
 
 export function PythonLibraryEditorPage({
   params,
-  route,
 }: PythonLibraryEditorPageProps) {
   const { path } = params;
   const [source, setSource] = useState(EMPTY_LIBRARY_SOURCE);
@@ -127,7 +124,7 @@ export function PythonLibraryEditorPage({
           />
         </Card>
       </PageContainer>
-      <LeaveRouteConfirmModal route={route} isEnabled={isDirty} />
+      <LeaveRouteConfirmModal isEnabled={isDirty} />
     </>
   );
 }

@@ -1,9 +1,8 @@
-import { Route } from "react-router";
 import _ from "underscore";
 
 import { mockSettings } from "__support__/settings";
 import { createMockEntitiesState } from "__support__/store";
-import { renderWithProviders, screen, within } from "__support__/ui";
+import { Route, renderWithProviders, screen, within } from "__support__/ui";
 import { modelIconMap } from "metabase/lib/icon";
 import { convertSavedQuestionToVirtualTable } from "metabase-lib/v1/metadata/utils/saved-questions";
 import type { Card, NormalizedTable } from "metabase-types/api";

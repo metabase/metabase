@@ -3,6 +3,7 @@ import type { BaseQueryFn } from "@reduxjs/toolkit/query";
 import type { TypedUseLazyQuery } from "@reduxjs/toolkit/src/query/react/buildHooks";
 import type { ComponentType } from "react";
 import React from "react";
+import type { RouteObject } from "react-router-dom";
 
 import type { MetabotContext } from "metabase/metabot";
 import { PluginPlaceholder } from "metabase/plugins/components/PluginPlaceholder";
@@ -79,6 +80,8 @@ type PluginMetabotType = {
   getAdminRoutes: (() => JSX.Element[]) | null;
   getMetabotRoutes: () => React.ReactElement | null;
   getMetabotQueryBuilderRoute: () => React.ReactElement | null;
+  getMetabotRouteObjects: () => RouteObject[];
+  getMetabotQueryBuilderRouteObjects: () => RouteObject[];
   getNewMenuItemAIExploration: (
     hasDataAccess: boolean,
     collectionId?: CollectionId,
@@ -169,6 +172,8 @@ const getDefaultPluginMetabot = (): PluginMetabotType => ({
   getAdminRoutes: null,
   getMetabotRoutes: () => null,
   getMetabotQueryBuilderRoute: () => null,
+  getMetabotRouteObjects: () => [],
+  getMetabotQueryBuilderRouteObjects: () => [],
   getNewMenuItemAIExploration: () => undefined,
   getMetabotVisible: () => false,
   MetabotAppBarButton: PluginPlaceholder,

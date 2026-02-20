@@ -1,6 +1,5 @@
 import cx from "classnames";
 import { useMemo } from "react";
-import { Link } from "react-router";
 import { t } from "ttag";
 
 import AdminS from "metabase/css/admin.module.css";
@@ -8,6 +7,7 @@ import CS from "metabase/css/core/index.css";
 import { FormMessage } from "metabase/forms";
 import { isSyncCompleted } from "metabase/lib/syncing";
 import { PLUGIN_FEATURE_LEVEL_PERMISSIONS } from "metabase/plugins";
+import { useNavigation } from "metabase/routing/compat";
 import { Button, Flex, Loader, UnstyledButton } from "metabase/ui";
 import type { Database, Engine } from "metabase-types/api";
 
@@ -38,6 +38,7 @@ export const DatabaseList = ({
   deletionError,
   isAdmin,
 }: DatabaseListProps) => {
+  const { push } = useNavigation();
   const error = deletionError || addSampleDatabaseError;
 
   const hasSampleDatabase = useMemo(() => {
@@ -53,8 +54,7 @@ export const DatabaseList = ({
             {isAdmin && (
               <Button
                 variant="filled"
-                component={Link}
-                to="/admin/databases/create"
+                onClick={() => push("/admin/databases/create")}
               >{t`Add database`}</Button>
             )}
           </Flex>
@@ -86,12 +86,16 @@ export const DatabaseList = ({
                         {!isSyncCompleted(database) && (
                           <Loader size="xs" mr="sm" />
                         )}
-                        <Link
-                          to={"/admin/databases/" + database.id}
+                        <a
+                          href={`/admin/databases/${database.id}`}
                           className={cx(CS.textBold, CS.link)}
+                          onClick={(event) => {
+                            event.preventDefault();
+                            push(`/admin/databases/${database.id}`);
+                          }}
                         >
                           {database.name}
-                        </Link>
+                        </a>
                       </Flex>
                     </td>
                     <td>

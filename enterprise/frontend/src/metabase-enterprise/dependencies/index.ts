@@ -10,7 +10,9 @@ import { useCheckTransformDependencies } from "./hooks/use-check-transform-depen
 import { useGetDependenciesCount } from "./hooks/use-get-dependencies-count";
 import { DependencyGraphPage } from "./pages/DependencyGraphPage";
 import {
+  getDataStudioDependencyDiagnosticsRouteObjects,
   getDataStudioDependencyDiagnosticsRoutes,
+  getDataStudioDependencyRouteObjects,
   getDataStudioDependencyRoutes,
 } from "./routes";
 
@@ -22,8 +24,12 @@ export function initializePlugin() {
     PLUGIN_DEPENDENCIES.isEnabled = true;
     PLUGIN_DEPENDENCIES.getDataStudioDependencyRoutes =
       getDataStudioDependencyRoutes;
+    PLUGIN_DEPENDENCIES.getDataStudioDependencyRouteObjects =
+      getDataStudioDependencyRouteObjects;
     PLUGIN_DEPENDENCIES.getDataStudioDependencyDiagnosticsRoutes =
       getDataStudioDependencyDiagnosticsRoutes;
+    PLUGIN_DEPENDENCIES.getDataStudioDependencyDiagnosticsRouteObjects =
+      getDataStudioDependencyDiagnosticsRouteObjects;
     PLUGIN_DEPENDENCIES.DependencyGraphPage = DependencyGraphPage;
     PLUGIN_DEPENDENCIES.CheckDependenciesForm = CheckDependenciesForm;
     PLUGIN_DEPENDENCIES.CheckDependenciesModal = CheckDependenciesModal;

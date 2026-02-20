@@ -16,8 +16,8 @@ interface MoveTimelineModalProps {
 }
 
 const timelineProps = {
-  id: (state: State, props: MoveTimelineModalProps) =>
-    Urls.extractEntityId(props.params.timelineId),
+  id: (state: State, { params }: MoveTimelineModalProps) =>
+    Urls.extractEntityId(params.timelineId),
   query: { include: "events" },
   LoadingAndErrorWrapper,
 };

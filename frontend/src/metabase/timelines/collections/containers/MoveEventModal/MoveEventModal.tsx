@@ -1,4 +1,3 @@
-import { push } from "react-router-redux";
 import _ from "underscore";
 
 import { Collections } from "metabase/entities/collections";
@@ -11,6 +10,7 @@ import type { Timeline, TimelineEvent } from "metabase-types/api";
 import type { State } from "metabase-types/store";
 
 import LoadingAndErrorWrapper from "../../components/LoadingAndErrorWrapper";
+import { navigateToPath } from "../../navigation";
 import type { ModalParams } from "../../types";
 
 interface MoveEventModalProps {
@@ -23,15 +23,15 @@ const timelinesProps = {
 };
 
 const timelineEventProps = {
-  id: (state: State, props: MoveEventModalProps) =>
-    Urls.extractEntityId(props.params.timelineEventId),
+  id: (state: State, { params }: MoveEventModalProps) =>
+    Urls.extractEntityId(params.timelineEventId),
   entityAlias: "event",
   LoadingAndErrorWrapper,
 };
 
 const collectionProps = {
-  id: (state: State, props: MoveEventModalProps) =>
-    Urls.extractCollectionId(props.params.slug),
+  id: (state: State, { params }: MoveEventModalProps) =>
+    Urls.extractCollectionId(params.slug),
   LoadingAndErrorWrapper,
 };
 
@@ -42,7 +42,7 @@ const mapDispatchToProps = (dispatch: any) => ({
     oldTimeline: Timeline,
   ) => {
     await dispatch(TimelineEvents.actions.setTimeline(event, newTimeline));
-    dispatch(push(Urls.timelineInCollection(oldTimeline)));
+    navigateToPath(Urls.timelineInCollection(oldTimeline));
   },
 });
 

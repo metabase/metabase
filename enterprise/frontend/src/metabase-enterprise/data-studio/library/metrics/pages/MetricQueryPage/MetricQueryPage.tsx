@@ -1,5 +1,4 @@
 import { useLayoutEffect, useMemo, useState } from "react";
-import type { Route } from "react-router";
 import { useLatest } from "react-use";
 import { t } from "ttag";
 
@@ -31,10 +30,9 @@ type MetricQueryPageParams = {
 
 type MetricQueryPageProps = {
   params: MetricQueryPageParams;
-  route: Route;
 };
 
-export function MetricQueryPage({ params, route }: MetricQueryPageProps) {
+export function MetricQueryPage({ params }: MetricQueryPageProps) {
   const cardId = Urls.extractEntityId(params.cardId);
   const { card, isLoading, error } = useLoadCardWithMetadata(cardId);
 
@@ -46,15 +44,14 @@ export function MetricQueryPage({ params, route }: MetricQueryPageProps) {
     );
   }
 
-  return <MetricQueryPageBody card={card} route={route} />;
+  return <MetricQueryPageBody card={card} />;
 }
 
 type MetricQueryPageBodyProps = {
   card: CardType;
-  route: Route;
 };
 
-function MetricQueryPageBody({ card, route }: MetricQueryPageBodyProps) {
+function MetricQueryPageBody({ card }: MetricQueryPageBodyProps) {
   const metadata = useSelector(getMetadata);
   const [datasetQuery, setDatasetQuery] = useState(card.dataset_query);
   const [uiState, setUiState] = useState(getInitialUiState);
@@ -163,7 +160,6 @@ function MetricQueryPageBody({ card, route }: MetricQueryPageBodyProps) {
         />
       )}
       <LeaveRouteConfirmModal
-        route={route}
         isEnabled={isDirty && !isSaving && !isCheckingDependencies}
       />
     </>

@@ -1,30 +1,33 @@
-import { Route } from "react-router";
-import { replace } from "react-router-redux";
+import type { RouteObject } from "react-router-dom";
 import { useMount } from "react-use";
 
-import { useDispatch } from "metabase/lib/redux";
+import { useLocationWithQuery, useNavigation } from "metabase/routing/compat";
 import { useMetabotAgent } from "metabase-enterprise/metabot/hooks";
 
-export const getMetabotQuickLinks = () => {
-  return (
-    <Route
-      key="metabot"
-      path="metabot/new"
-      component={(props) => {
-        const { submitInput } = useMetabotAgent("omnibot");
-        const prompt = String(props.location.query?.q ?? "");
-        const dispatch = useDispatch();
+const MetabotQuickLinkRedirect = () => {
+  const { replace } = useNavigation();
+  const location = useLocationWithQuery();
+  const { submitInput } = useMetabotAgent("omnibot");
+  const prompt = String(location.query?.q ?? "");
 
-        useMount(() => {
-          dispatch(replace("/"));
+  useMount(() => {
+    replace("/");
 
-          if (prompt) {
-            submitInput(prompt, { focusInput: true });
-          }
-        });
+    if (prompt) {
+      submitInput(prompt, { focusInput: true });
+    }
+  });
 
-        return null;
-      }}
-    />
-  );
+  return null;
 };
+
+export const getMetabotQuickLinks = () => {
+  return null;
+};
+
+export const getMetabotQuickLinkRouteObjects = (): RouteObject[] => [
+  {
+    path: "metabot/new",
+    element: <MetabotQuickLinkRedirect />,
+  },
+];

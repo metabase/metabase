@@ -1,9 +1,9 @@
 import { Fragment } from "react";
-import { Route } from "react-router";
 
 import { setupEnterprisePlugins } from "__support__/enterprise";
 import { mockSettings } from "__support__/settings";
 import {
+  Route,
   renderHookWithProviders,
   renderWithProviders,
   screen,

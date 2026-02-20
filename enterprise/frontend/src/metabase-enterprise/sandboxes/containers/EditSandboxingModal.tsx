@@ -1,13 +1,12 @@
 import type { Location } from "history";
 import { useEffect } from "react";
-import { withRouter } from "react-router";
-import { push } from "react-router-redux";
-import _ from "underscore";
 
 import { useListUserAttributesQuery } from "metabase/api";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { getParentPath } from "metabase/hoc/ModalRoute";
 import { connect } from "metabase/lib/redux";
+import { useRouter } from "metabase/router";
+import { useNavigation } from "metabase/routing/compat";
 import {
   getGroupTableAccessPolicy,
   getPolicyRequestState,
@@ -29,8 +28,7 @@ import type { GroupTableAccessPolicyParams, SandboxesState } from "../types";
 
 interface EditSandboxingModalContainerProps {
   policy: GroupTableAccessPolicy;
-  attributes: UserAttributeKey[];
-  push: (path: string) => void;
+  attributes: UserAttributeKey[] | null;
   params: GroupTableAccessPolicyParams;
   location: Location;
   route: any;
@@ -43,9 +41,13 @@ interface EditSandboxingModalContainerProps {
   ) => void;
 }
 
+type EditSandboxingModalInnerProps = EditSandboxingModalContainerProps & {
+  route: any;
+  location: Location;
+};
+
 const EditSandboxingModalContainer = ({
   policy,
-  push,
   params,
   location,
   route,
@@ -54,7 +56,9 @@ const EditSandboxingModalContainer = ({
   policyRequestState,
   updatePolicy,
   updateTableSandboxingPermission,
-}: EditSandboxingModalContainerProps) => {
+}: EditSandboxingModalInnerProps) => {
+  const { push } = useNavigation();
+
   useEffect(() => {
     fetchPolicy(params);
     fetchUserAttributes();
@@ -103,15 +107,29 @@ const mapStateToProps = (
 });
 
 const mapDispatchToProps = {
-  push,
   fetchPolicy,
   updatePolicy,
   fetchUserAttributes,
   updateTableSandboxingPermission,
 };
 
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default _.compose(
-  withRouter,
-  connect(mapStateToProps, mapDispatchToProps),
+const ConnectedEditSandboxingModalContainer = connect(
+  mapStateToProps,
+  mapDispatchToProps,
 )(EditSandboxingModalContainer);
+
+const EditSandboxingModalContainerWithRouter = (props: any) => {
+  const { routes, location } = useRouter();
+  const route = routes[routes.length - 1];
+
+  return (
+    <ConnectedEditSandboxingModalContainer
+      {...props}
+      route={route}
+      location={location}
+    />
+  );
+};
+
+// eslint-disable-next-line import/no-default-export -- deprecated usage
+export default EditSandboxingModalContainerWithRouter;

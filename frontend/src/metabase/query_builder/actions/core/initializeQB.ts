@@ -1,11 +1,11 @@
 import querystring from "querystring";
 
 import type { LocationDescriptorObject } from "history";
-import { replace } from "react-router-redux";
 
 import { Questions } from "metabase/entities/questions";
 import { Snippets } from "metabase/entities/snippets";
 import { deserializeCardFromUrl } from "metabase/lib/card";
+import { replacePath } from "metabase/lib/navigation";
 import { isNotNull } from "metabase/lib/types";
 import * as Urls from "metabase/lib/urls";
 import {
@@ -300,7 +300,7 @@ async function handleQBInit(
 
   if (uiControls.queryBuilderMode === "notebook") {
     if (!canUserCreateQueries(getState())) {
-      dispatch(replace(Urls.unauthorized()));
+      replacePath(Urls.unauthorized());
       return;
     }
   }

@@ -1,7 +1,5 @@
 import type { ReactNode } from "react";
 import { useCallback } from "react";
-import type { Route } from "react-router";
-import { push } from "react-router-redux";
 import { t } from "ttag";
 
 import {
@@ -20,6 +18,7 @@ import { useToggle } from "metabase/common/hooks/use-toggle";
 import CS from "metabase/css/core/index.css";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import { updateUserSetting } from "metabase/redux/settings";
+import { useNavigation } from "metabase/routing/compat";
 import type { IconName } from "metabase/ui";
 import {
   Group,
@@ -57,7 +56,6 @@ type PermissionsPageLayoutProps = {
   saveError?: string;
   clearSaveError?: () => void;
   navigateToLocation?: (location: string) => void;
-  route: Route;
   navigateToTab?: (tab: string) => void;
   helpContent?: ReactNode;
   showSplitPermsModal?: boolean;
@@ -78,7 +76,6 @@ export function PermissionsPageLayout({
   isDirty,
   onSave,
   onLoad,
-  route,
   helpContent,
   showSplitPermsModal: _showSplitPermsModal = false,
 }: PermissionsPageLayoutProps) {
@@ -90,9 +87,10 @@ export function PermissionsPageLayout({
 
   const isHelpReferenceOpen = useSelector(getIsHelpReferenceOpen);
   const dispatch = useDispatch();
+  const { push } = useNavigation();
 
   const navigateToTab = (tab: PermissionsPageTab) =>
-    dispatch(push(`/admin/permissions/${tab}`));
+    push(`/admin/permissions/${tab}`);
 
   const clearSaveError = () => {
     dispatch(clearPermissionsSaveError());
@@ -121,7 +119,7 @@ export function PermissionsPageLayout({
           />
         )}
 
-        <LeaveRouteConfirmModal isEnabled={Boolean(isDirty)} route={route} />
+        <LeaveRouteConfirmModal isEnabled={Boolean(isDirty)} />
 
         <ConfirmModal
           opened={saveError != null}

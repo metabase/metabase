@@ -1,8 +1,6 @@
 /* eslint-disable react/prop-types */
 import { dissoc } from "icepick";
 import { useState } from "react";
-import { withRouter } from "react-router";
-import { replace } from "react-router-redux";
 import { t } from "ttag";
 import _ from "underscore";
 
@@ -11,6 +9,8 @@ import EntityCopyModal from "metabase/entities/containers/EntityCopyModal";
 import { Dashboards } from "metabase/entities/dashboards";
 import { connect } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
+import { useRouter } from "metabase/router";
+import { useNavigation } from "metabase/routing/compat";
 
 import { getDashboardComplete } from "../selectors";
 
@@ -27,7 +27,6 @@ const mapStateToProps = (state, props) => {
 
 const mapDispatchToProps = {
   copyDashboard: Dashboards.actions.copy,
-  onReplaceLocation: replace,
 };
 
 const getTitle = (dashboard, isShallowCopy) => {
@@ -42,13 +41,13 @@ const getTitle = (dashboard, isShallowCopy) => {
 
 const DashboardCopyModal = ({
   onClose,
-  onReplaceLocation,
   copyDashboard,
   dashboard,
   initialCollectionId,
-  params,
   ...props
 }) => {
+  const { replace } = useNavigation();
+  const { params } = useRouter();
   const [isShallowCopy, setIsShallowCopy] = useState(true);
   const dashboardIdFromSlug = Urls.extractEntityId(params.slug);
 
@@ -71,7 +70,7 @@ const DashboardCopyModal = ({
         await copyDashboard({ id: dashboardIdFromSlug }, dissoc(object, "id"))
       }
       onClose={onClose}
-      onSaved={(dashboard) => onReplaceLocation(Urls.dashboard(dashboard))}
+      onSaved={(dashboard) => replace(Urls.dashboard(dashboard))}
       {...props}
       onValuesChange={handleValuesChange}
     />
@@ -79,6 +78,5 @@ const DashboardCopyModal = ({
 };
 
 export const DashboardCopyModalConnected = _.compose(
-  withRouter,
   connect(mapStateToProps, mapDispatchToProps),
 )(DashboardCopyModal);

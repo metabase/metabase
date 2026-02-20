@@ -1,15 +1,14 @@
 import type { ReactNode } from "react";
 import { useCallback, useEffect, useRef, useState } from "react";
-import type { Route } from "react-router";
-import { push } from "react-router-redux";
 import { t } from "ttag";
 
 import { useCreateSegmentMutation } from "metabase/api";
 import { LeaveRouteConfirmModal } from "metabase/common/components/LeaveConfirmModal";
 import { PageContainer } from "metabase/data-studio/common/components/PageContainer";
 import { getDatasetQueryPreviewUrl } from "metabase/data-studio/common/utils/get-dataset-query-preview-url";
-import { useDispatch, useSelector } from "metabase/lib/redux";
+import { useSelector } from "metabase/lib/redux";
 import { useMetadataToasts } from "metabase/metadata/hooks";
+import { useNavigation } from "metabase/routing/compat";
 import { getMetadataWithHiddenTables } from "metabase/selectors/metadata";
 import { Button } from "metabase/ui";
 import * as Lib from "metabase-lib";
@@ -21,19 +20,17 @@ import { useSegmentQuery } from "../../hooks/use-segment-query";
 import { createInitialQueryForTable } from "../../utils/segment-query";
 
 type NewSegmentPageProps = {
-  route: Route;
   table: Table;
   breadcrumbs: ReactNode;
   getSuccessUrl: (segment: Segment) => string;
 };
 
 export function NewSegmentPage({
-  route,
   table,
   breadcrumbs,
   getSuccessUrl,
 }: NewSegmentPageProps) {
-  const dispatch = useDispatch();
+  const { push } = useNavigation();
   const metadata = useSelector(getMetadataWithHiddenTables);
   const { sendSuccessToast, sendErrorToast } = useMetadataToasts();
 
@@ -96,9 +93,9 @@ export function NewSegmentPage({
 
   useEffect(() => {
     if (savedSegment) {
-      dispatch(push(getSuccessUrl(savedSegment)));
+      push(getSuccessUrl(savedSegment));
     }
-  }, [savedSegment, dispatch, getSuccessUrl]);
+  }, [savedSegment, push, getSuccessUrl]);
 
   return (
     <PageContainer data-testid="new-segment-page" gap="xl">
@@ -125,7 +122,7 @@ export function NewSegmentPage({
         onQueryChange={setQuery}
         onDescriptionChange={setDescription}
       />
-      <LeaveRouteConfirmModal route={route} isEnabled={isDirty && !isSaving} />
+      <LeaveRouteConfirmModal isEnabled={isDirty && !isSaving} />
     </PageContainer>
   );
 }

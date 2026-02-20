@@ -1,10 +1,10 @@
 import cx from "classnames";
 import type { MouseEvent } from "react";
-import { Link } from "react-router";
 import { t } from "ttag";
 
 import { EditableText } from "metabase/common/components/EditableText";
 import { Ellipsified } from "metabase/common/components/Ellipsified";
+import { Link } from "metabase/common/components/Link";
 import { getColumnIcon } from "metabase/common/utils/columns";
 import { Box, Card, Flex, Group, Icon, rem } from "metabase/ui";
 import * as Lib from "metabase-lib";

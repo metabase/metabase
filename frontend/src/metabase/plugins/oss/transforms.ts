@@ -1,5 +1,6 @@
 import type { ComponentType, Context, ReactNode } from "react";
 import { createContext } from "react";
+import type { RouteObject } from "react-router-dom";
 
 import type { OmniPickerItem } from "metabase/common/components/Pickers";
 import type { BillingPeriod } from "metabase/data-studio/upsells/types";
@@ -89,6 +90,8 @@ type DependenciesPlugin = {
   isEnabled: boolean;
   getDataStudioDependencyRoutes: () => ReactNode;
   getDataStudioDependencyDiagnosticsRoutes: () => ReactNode;
+  getDataStudioDependencyRouteObjects: () => RouteObject[];
+  getDataStudioDependencyDiagnosticsRouteObjects: () => RouteObject[];
   DependencyGraphPage: ComponentType;
   DependencyGraphPageContext: Context<DependencyGraphPageContextType>;
   CheckDependenciesForm: ComponentType<CheckDependenciesFormProps>;
@@ -209,6 +212,8 @@ const getDefaultPluginDependencies = (): DependenciesPlugin => ({
   isEnabled: false,
   getDataStudioDependencyRoutes: () => null,
   getDataStudioDependencyDiagnosticsRoutes: () => null,
+  getDataStudioDependencyRouteObjects: () => [],
+  getDataStudioDependencyDiagnosticsRouteObjects: () => [],
   DependencyGraphPage: PluginPlaceholder,
   DependencyGraphPageContext: createContext({}),
   CheckDependenciesForm: PluginPlaceholder,

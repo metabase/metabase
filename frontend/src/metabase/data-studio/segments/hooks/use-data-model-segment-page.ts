@@ -1,5 +1,4 @@
 import { useCallback, useMemo } from "react";
-import { push } from "react-router-redux";
 import { t } from "ttag";
 
 import {
@@ -7,9 +6,9 @@ import {
   useGetSegmentQuery,
   useUpdateSegmentMutation,
 } from "metabase/api";
-import { useDispatch } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { useMetadataToasts } from "metabase/metadata/hooks";
+import { useNavigation } from "metabase/routing/compat";
 import { getSchemaName } from "metabase-lib/v1/metadata/utils/schema";
 
 import { useLoadTableWithMetadata } from "../../common/hooks/use-load-table-with-metadata";
@@ -23,7 +22,7 @@ type DataModelSegmentPageParams = {
 };
 
 export function useDataModelSegmentPage(params: DataModelSegmentPageParams) {
-  const dispatch = useDispatch();
+  const { push } = useNavigation();
   const { sendSuccessToast, sendErrorToast } = useMetadataToasts();
   const [updateSegment] = useUpdateSegmentMutation();
 
@@ -61,15 +60,13 @@ export function useDataModelSegmentPage(params: DataModelSegmentPageParams) {
       sendErrorToast(t`Failed to remove segment`);
     } else {
       sendSuccessToast(t`Segment removed`);
-      dispatch(
-        push(
-          Urls.dataStudioData({
-            databaseId,
-            schemaName,
-            tableId,
-            tab: "segments",
-          }),
-        ),
+      push(
+        Urls.dataStudioData({
+          databaseId,
+          schemaName,
+          tableId,
+          tab: "segments",
+        }),
       );
     }
   }, [
@@ -78,7 +75,7 @@ export function useDataModelSegmentPage(params: DataModelSegmentPageParams) {
     schemaName,
     databaseId,
     updateSegment,
-    dispatch,
+    push,
     sendSuccessToast,
     sendErrorToast,
   ]);

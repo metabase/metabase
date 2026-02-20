@@ -12,7 +12,6 @@ import {
 } from "@tiptap/react";
 import cx from "classnames";
 import { useMemo } from "react";
-import { push } from "react-router-redux";
 import { t } from "ttag";
 
 import { useListCommentsQuery } from "metabase/api/comment";
@@ -24,9 +23,10 @@ import {
 } from "metabase/documents/selectors";
 import { getListCommentsQuery } from "metabase/documents/utils/api";
 import { isWithinIframe } from "metabase/lib/dom";
-import { useDispatch, useSelector } from "metabase/lib/redux/hooks";
+import { useSelector } from "metabase/lib/redux/hooks";
 import { DropZone } from "metabase/rich_text_editing/tiptap/extensions/shared/dnd/DropZone";
 import { useDndHelpers } from "metabase/rich_text_editing/tiptap/extensions/shared/dnd/use-dnd-helpers";
+import { useNavigation } from "metabase/routing/compat";
 import { Box } from "metabase/ui";
 
 import { CommentsButton } from "../../components/CommentsButton";
@@ -140,6 +140,7 @@ const SupportingTextComponent = ({
   node,
   selected,
 }: NodeViewProps) => {
+  const { push } = useNavigation();
   const childTargetId = useSelector(getChildTargetId);
   const document = useSelector(getCurrentDocument);
   const { data: commentsData } = useListCommentsQuery(
@@ -159,8 +160,6 @@ const SupportingTextComponent = ({
   const commentsPath = document
     ? `/document/${document.id}/comments/${_id}`
     : "";
-  const dispatch = useDispatch();
-
   const canWrite = editor.options.editable;
 
   const { isBeingDragged, dragState, setDragState, handleDragOver, dragElRef } =
@@ -250,12 +249,10 @@ const SupportingTextComponent = ({
             unresolvedCommentsCount={unresolvedCommentsCount}
             onClick={(e) => {
               e.preventDefault();
-              dispatch(
-                push(
-                  unresolvedCommentsCount > 0
-                    ? commentsPath
-                    : `${commentsPath}?new=true`,
-                ),
+              push(
+                unresolvedCommentsCount > 0
+                  ? commentsPath
+                  : `${commentsPath}?new=true`,
               );
             }}
           />

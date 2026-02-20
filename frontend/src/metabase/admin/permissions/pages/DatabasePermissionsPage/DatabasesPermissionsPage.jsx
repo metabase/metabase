@@ -1,7 +1,6 @@
 import { bindActionCreators } from "@reduxjs/toolkit";
 import PropTypes from "prop-types";
 import { Fragment, useCallback } from "react";
-import { push } from "react-router-redux";
 import { useAsync } from "react-use";
 import { t } from "ttag";
 import _ from "underscore";
@@ -9,6 +8,7 @@ import _ from "underscore";
 import { PermissionsEditorLegacyNoSelfServiceWarning } from "metabase/admin/permissions/components/PermissionsEditor/PermissionsEditorLegacyWarning";
 import { connect, useDispatch, useSelector } from "metabase/lib/redux";
 import { PLUGIN_ADVANCED_PERMISSIONS } from "metabase/plugins";
+import { useNavigation } from "metabase/routing/compat";
 import { getSetting } from "metabase/selectors/settings";
 import { PermissionsApi } from "metabase/services";
 import { Center, Loader } from "metabase/ui";
@@ -39,10 +39,6 @@ const mapDispatchToProps = (dispatch) => ({
   ...bindActionCreators(
     {
       updateDataPermission,
-      switchView: (entityType) => push(`/admin/permissions/data/${entityType}`),
-      navigateToDatabaseList: () => push(DATABASES_BASE_PATH),
-      navigateToItem: (item) =>
-        push(getDatabaseFocusPermissionsUrl(item.entityId)),
     },
     dispatch,
   ),
@@ -76,14 +72,12 @@ function DatabasesPermissionsPageInner({
   sidebar,
   params,
   children,
-  navigateToItem,
-  navigateToDatabaseList,
-  switchView,
   updateDataPermission,
   isSidebarLoading,
   sidebarError,
 }) {
   const dispatch = useDispatch();
+  const { push } = useNavigation();
   const permissionEditor = useSelector((state) =>
     getGroupsDataPermissionEditor(state, { params }),
   );
@@ -106,9 +100,9 @@ function DatabasesPermissionsPageInner({
 
   const handleEntityChange = useCallback(
     (entityType) => {
-      switchView(entityType);
+      push(`/admin/permissions/data/${entityType}`);
     },
-    [switchView],
+    [push],
   );
 
   const handlePermissionChange = useCallback(
@@ -128,7 +122,7 @@ function DatabasesPermissionsPageInner({
     dispatch(action.actionCreator(item.entityId, item.id, "database"));
   };
 
-  const handleBreadcrumbsItemSelect = (item) => dispatch(push(item.url));
+  const handleBreadcrumbsItemSelect = (item) => push(item.url);
 
   const showLegacyNoSelfServiceWarning =
     PLUGIN_ADVANCED_PERMISSIONS.shouldShowViewDataColumn &&
@@ -140,8 +134,10 @@ function DatabasesPermissionsPageInner({
         {...sidebar}
         error={sidebarError}
         isLoading={isSidebarLoading}
-        onSelect={navigateToItem}
-        onBack={params.databaseId == null ? null : navigateToDatabaseList}
+        onSelect={(item) => push(getDatabaseFocusPermissionsUrl(item.entityId))}
+        onBack={
+          params.databaseId == null ? null : () => push(DATABASES_BASE_PATH)
+        }
         onEntityChange={handleEntityChange}
       />
       {isLoading && (

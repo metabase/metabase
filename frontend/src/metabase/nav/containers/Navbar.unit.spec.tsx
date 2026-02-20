@@ -1,6 +1,5 @@
 import type { Store } from "@reduxjs/toolkit";
 import fetchMock from "fetch-mock";
-import { Route } from "react-router";
 
 import {
   setupCollectionItemsEndpoint,
@@ -11,6 +10,7 @@ import {
   setupSettingEndpoint,
 } from "__support__/server-mocks";
 import {
+  Route,
   renderWithProviders,
   screen,
   waitForLoaderToBeRemoved,

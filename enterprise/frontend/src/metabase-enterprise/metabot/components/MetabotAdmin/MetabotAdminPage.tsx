@@ -1,7 +1,5 @@
 import { useDisclosure } from "@mantine/hooks";
 import { useEffect, useMemo } from "react";
-import { IndexRoute, Route } from "react-router";
-import { push } from "react-router-redux";
 import { P, match } from "ts-pattern";
 import { c, jt, t } from "ttag";
 import _ from "underscore";
@@ -20,7 +18,7 @@ import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErr
 import { CollectionPickerModal } from "metabase/common/components/Pickers/CollectionPicker";
 import { useToast } from "metabase/common/hooks";
 import { getIcon } from "metabase/lib/icon";
-import { useDispatch } from "metabase/lib/redux";
+import { useNavigation } from "metabase/routing/compat";
 import {
   Box,
   Button,
@@ -50,10 +48,7 @@ import { MetabotPromptSuggestionPane } from "./MetabotAdminSuggestedPrompts";
 import { useMetabotIdPath } from "./utils";
 
 export function getAdminRoutes() {
-  return [
-    <IndexRoute key="index" component={MetabotAdminPage} />,
-    <Route key="route" path=":metabotId" component={MetabotAdminPage} />,
-  ];
+  return [];
 }
 
 export function MetabotAdminPage() {
@@ -118,9 +113,9 @@ export function MetabotAdminPage() {
 }
 
 function MetabotNavPane() {
+  const { push } = useNavigation();
   const { data, isLoading } = useListMetabotsQuery();
   const metabotId = useMetabotIdPath();
-  const dispatch = useDispatch();
 
   const metabots = useMemo(() => _.sortBy(data?.items ?? [], "id"), [data]);
 
@@ -128,9 +123,9 @@ function MetabotNavPane() {
     const hasMetabotId = metabots?.some((metabot) => metabot.id === metabotId);
 
     if (!hasMetabotId && metabots?.length) {
-      dispatch(push(`/admin/metabot/${metabots[0]?.id}`));
+      push(`/admin/metabot/${metabots[0]?.id}`);
     }
-  }, [metabots, metabotId, dispatch]);
+  }, [metabots, metabotId, push]);
 
   if (isLoading || !data) {
     return null;

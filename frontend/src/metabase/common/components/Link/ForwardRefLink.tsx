@@ -1,14 +1,20 @@
 // Fixes this bug: https://github.com/mantinedev/mantine/issues/5571#issue-2082430353
 // Hover states get weird when using Link directly. Since Link does not take the standard
-
+// `ref` prop, we have to manually forward it to `innerRef`.
+import type { ComponentProps } from "react";
 import { forwardRef } from "react";
-import { Link, type LinkProps } from "react-router";
+import { Link as RouterLink } from "react-router-dom";
 
-// `ref` prop, we have to manually forward it to the correct prop name to make hover work as expected.
-export const ForwardRefLink = forwardRef(function _ForwardRefLink(
-  props: LinkProps,
-  ref,
-) {
-  // @ts-expect-error - innerRef not in prop types but it is a valid prop. docs can be found here: https://github.com/remix-run/react-router/blob/v3.2.6/docs/API.md#innerref
-  return <Link {...props} innerRef={ref} />;
+import type { LinkToWithQuery } from "./utils";
+import { normalizeTo } from "./utils";
+
+type ForwardRefLinkProps = Omit<ComponentProps<typeof RouterLink>, "to"> & {
+  to: LinkToWithQuery;
+};
+
+export const ForwardRefLink = forwardRef<
+  HTMLAnchorElement,
+  ForwardRefLinkProps
+>(function ForwardRefLink(props, ref) {
+  return <RouterLink {...props} ref={ref} to={normalizeTo(props.to)} />;
 });

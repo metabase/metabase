@@ -1,11 +1,12 @@
 import type { Location } from "history";
 import { useMemo } from "react";
-import { withRouter } from "react-router";
+import { useParams } from "react-router-dom";
 import _ from "underscore";
 
 import { getAdminPaths } from "metabase/admin/app/selectors";
 import { Databases } from "metabase/entities/databases";
 import { connect } from "metabase/lib/redux";
+import { useLocationWithQuery } from "metabase/routing/compat";
 import { getIsNavbarOpen } from "metabase/selectors/app";
 import { getUser } from "metabase/selectors/user";
 import type { User } from "metabase-types/api";
@@ -18,8 +19,6 @@ import MainNavbar from "./MainNavbar";
 type NavbarProps = {
   isOpen: boolean;
   user: User;
-  location: Location;
-  params: Record<string, unknown>;
   adminPaths: AdminPath[];
 };
 
@@ -29,7 +28,13 @@ const mapStateToProps = (state: State) => ({
   adminPaths: getAdminPaths(state),
 });
 
-function Navbar({ isOpen, user, location, params, adminPaths }: NavbarProps) {
+function Navbar({ isOpen, user, adminPaths }: NavbarProps) {
+  const compatLocation = useLocationWithQuery();
+  const params = useParams<{ slug?: string; pageId?: string }>();
+
+  // Cast to v3 Location type for compatibility
+  const location = compatLocation as unknown as Location;
+
   const isAdminApp = useMemo(
     () => location.pathname.startsWith("/admin/"),
     [location.pathname],
@@ -51,6 +56,5 @@ export default _.compose(
   Databases.loadList({
     loadingAndErrorWrapper: false,
   }),
-  withRouter,
   connect(mapStateToProps),
 )(Navbar);

@@ -29,7 +29,8 @@ const getDatabaseId = (props, { includeVirtual } = {}) => {
 };
 
 const getSchemaName = (props) => {
-  return props.schemaName || props.params.schemaName;
+  const { params } = props;
+  return props.schemaName || params.schemaName;
 };
 
 const getReloadInterval = (_state, _props, tables = []) =>

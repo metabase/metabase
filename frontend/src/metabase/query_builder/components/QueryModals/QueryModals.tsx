@@ -1,5 +1,4 @@
 import { useCallback } from "react";
-import { push } from "react-router-redux";
 import { t } from "ttag";
 import _ from "underscore";
 
@@ -22,6 +21,7 @@ import { MODAL_TYPES } from "metabase/query_builder/constants";
 import { getQuestionWithoutComposing } from "metabase/query_builder/selectors";
 import { ArchiveCardModal } from "metabase/questions/components/ArchiveCardModal";
 import { MoveCardModal } from "metabase/questions/components/MoveCardModal";
+import { useNavigation } from "metabase/routing/compat";
 import EditEventModal from "metabase/timelines/questions/containers/EditEventModal";
 import MoveEventModal from "metabase/timelines/questions/containers/MoveEventModal";
 import NewEventModal from "metabase/timelines/questions/containers/NewEventModal";
@@ -67,6 +67,7 @@ export function QueryModals({
   originalQuestion,
   onChangeLocation,
 }: QueryModalsProps) {
+  const { push } = useNavigation();
   const dispatch = useDispatch();
   const [sendToast] = useToast();
 
@@ -115,9 +116,9 @@ export function QueryModals({
         { id: dashboardId, name: "", ...question.dashboard(), ...dashboard },
         { editMode: true, scrollToDashcard: dashcard?.id, tabId },
       );
-      dispatch(push(url));
+      push(url);
     },
-    [dispatch],
+    [dispatch, push],
   );
 
   const handleSaveModalCreate = useCallback(

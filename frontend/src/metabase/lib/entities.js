@@ -390,8 +390,10 @@ export function createEntity(def) {
 
   // OBJECT SELECTORS
 
-  const getEntityId = (state, props) =>
-    (props.params && props.params.entityId) || props.entityId;
+  const getEntityId = (state, props) => {
+    const { params, entityId } = props || {};
+    return params?.entityId || entityId;
+  };
 
   const getObject = createCachedSelector(
     [getEntities, getEntityId],

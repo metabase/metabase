@@ -1,11 +1,10 @@
 import { useCallback } from "react";
-import { push } from "react-router-redux";
 import { t } from "ttag";
 
 import type { SdkCollectionId } from "embedding-sdk-bundle/types";
 import { useEscapeToCloseModal } from "metabase/common/hooks/use-escape-to-close-modal";
-import { useDispatch } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
+import { useNavigation } from "metabase/routing/compat";
 import { Modal, type ModalProps } from "metabase/ui";
 import type { CollectionId, Dashboard } from "metabase-types/api";
 
@@ -26,17 +25,17 @@ export const CreateDashboardModal = ({
   onCreate,
   onClose,
 }: CreateDashboardModalProps & Omit<ModalProps, "onClose">) => {
-  const dispatch = useDispatch();
+  const { push } = useNavigation();
   const handleCreate = useCallback(
     (dashboard: Dashboard) => {
       if (typeof onCreate === "function") {
         onCreate(dashboard);
       } else {
         onClose?.();
-        dispatch(push(Urls.dashboard(dashboard, { editMode: true })));
+        push(Urls.dashboard(dashboard, { editMode: true }));
       }
     },
-    [onCreate, onClose, dispatch],
+    [onCreate, onClose, push],
   );
 
   useEscapeToCloseModal(onClose);

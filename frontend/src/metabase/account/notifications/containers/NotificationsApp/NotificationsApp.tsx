@@ -4,19 +4,16 @@ import { useMemo } from "react";
 import type { NotificationListItem } from "metabase/account/notifications/types";
 import { skipToken, useListNotificationsQuery } from "metabase/api";
 import { Pulses } from "metabase/entities/pulses";
-import { useDispatch, useSelector } from "metabase/lib/redux";
+import { useSelector } from "metabase/lib/redux";
 import { parseTimestamp } from "metabase/lib/time-dayjs";
+import { useNavigation } from "metabase/routing/compat";
 import {
   canManageSubscriptions as canManageSubscriptionsSelector,
   getUser,
 } from "metabase/selectors/user";
 import type { DashboardSubscription } from "metabase-types/api";
 
-import {
-  navigateToArchive,
-  navigateToHelp,
-  navigateToUnsubscribe,
-} from "../../actions";
+import { getArchivePath, getHelpPath, getUnsubscribePath } from "../../actions";
 import { NotificationList } from "../../components/NotificationList";
 
 interface NotificationsAppProps {
@@ -30,8 +27,7 @@ const NotificationsAppInner = ({
 }: NotificationsAppProps): JSX.Element | null => {
   const user = useSelector(getUser);
   const canManageSubscriptions = useSelector(canManageSubscriptionsSelector);
-
-  const dispatch = useDispatch();
+  const { push } = useNavigation();
 
   const { data: questionNotifications = [] } = useListNotificationsQuery(
     user
@@ -61,11 +57,11 @@ const NotificationsAppInner = ({
     );
   }, [pulses, questionNotifications]);
 
-  const onHelp = () => dispatch(navigateToHelp());
+  const onHelp = () => push(getHelpPath());
   const onUnsubscribe = ({ item, type }: NotificationListItem) =>
-    dispatch(navigateToUnsubscribe(item, type));
+    push(getUnsubscribePath(item, type));
   const onArchive = ({ item, type }: NotificationListItem) =>
-    dispatch(navigateToArchive(item, type));
+    push(getArchivePath(item, type));
 
   if (!user) {
     return null;

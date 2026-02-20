@@ -1,4 +1,3 @@
-import { push } from "react-router-redux";
 import _ from "underscore";
 
 import { Collections } from "metabase/entities/collections";
@@ -10,6 +9,7 @@ import type { Timeline } from "metabase-types/api";
 import type { State } from "metabase-types/store";
 
 import LoadingAndErrorWrapper from "../../components/LoadingAndErrorWrapper";
+import { navigateToPath } from "../../navigation";
 import type { ModalParams } from "../../types";
 
 interface NewTimelineModalProps {
@@ -17,8 +17,8 @@ interface NewTimelineModalProps {
 }
 
 const collectionProps = {
-  id: (state: State, props: NewTimelineModalProps) =>
-    Urls.extractCollectionId(props.params.slug),
+  id: (state: State, { params }: NewTimelineModalProps) =>
+    Urls.extractCollectionId(params.slug),
   LoadingAndErrorWrapper,
 };
 
@@ -27,7 +27,7 @@ const mapDispatchToProps = (dispatch: any) => ({
     const action = Timelines.actions.create(values);
     const response = await dispatch(action);
     const timeline = Timelines.HACK_getObjectFromAction(response);
-    dispatch(push(Urls.timelineInCollection(timeline)));
+    navigateToPath(Urls.timelineInCollection(timeline));
   },
 });
 

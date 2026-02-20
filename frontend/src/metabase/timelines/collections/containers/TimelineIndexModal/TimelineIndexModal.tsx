@@ -11,8 +11,8 @@ interface TimelineIndexModalProps {
 }
 
 const timelineProps = {
-  query: (state: State, props: TimelineIndexModalProps) => ({
-    collectionId: Urls.extractCollectionId(props.params.slug),
+  query: (state: State, { params }: TimelineIndexModalProps) => ({
+    collectionId: Urls.extractCollectionId(params.slug),
     include: "events",
   }),
   LoadingAndErrorWrapper,

@@ -1,5 +1,4 @@
 import cx from "classnames";
-import { push } from "react-router-redux";
 import { t } from "ttag";
 import _ from "underscore";
 
@@ -10,8 +9,8 @@ import { SortableColumnHeader } from "metabase/common/components/ItemsTable/Base
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import AdminS from "metabase/css/admin.module.css";
 import CS from "metabase/css/core/index.css";
-import { useDispatch } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
+import { useNavigation } from "metabase/routing/compat";
 import { Box, Flex } from "metabase/ui";
 import type {
   Database,
@@ -42,10 +41,10 @@ export const TasksTable = ({
   // index databases by id for lookup
   const databaseByID: Record<number, Database> = _.indexBy(databases, "id");
   const showLoadingAndErrorWrapper = isLoading || error != null;
-  const dispatch = useDispatch();
+  const { push } = useNavigation();
 
   const onClickTask = (task: Task) => {
-    dispatch(push(Urls.adminToolsTaskDetails(task.id)));
+    push(Urls.adminToolsTaskDetails(task.id));
   };
 
   return (

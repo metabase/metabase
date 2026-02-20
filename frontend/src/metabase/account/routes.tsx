@@ -1,28 +1,40 @@
 import type { Store } from "@reduxjs/toolkit";
 import type { ComponentType } from "react";
-import { IndexRedirect, Route } from "react-router";
+import { Navigate, Outlet, type RouteObject } from "react-router-dom";
 
 import type { State } from "metabase-types/store";
 
 import AccountApp from "./app/containers/AccountApp";
 import LoginHistoryApp from "./login-history/containers/LoginHistoryApp";
-import { getNotificationRoutes } from "./notifications/routes";
+import { getNotificationRouteObjects } from "./notifications/routes";
 import UserPasswordApp from "./password/containers/UserPasswordApp";
 import UserProfileApp from "./profile/containers/UserProfileApp";
 
+const AccountAppWithOutlet = () => (
+  <AccountApp>
+    <Outlet />
+  </AccountApp>
+);
+
 export const getAccountRoutes = (
   _store: Store<State>,
-  IsAuthenticated: ComponentType,
+  _IsAuthenticated: ComponentType,
 ) => {
-  return (
-    <Route path="/account" component={IsAuthenticated}>
-      <Route component={AccountApp}>
-        <IndexRedirect to="profile" />
-        <Route path="profile" component={UserProfileApp} />
-        <Route path="password" component={UserPasswordApp} />
-        <Route path="login-history" component={LoginHistoryApp} />
-        {getNotificationRoutes()}
-      </Route>
-    </Route>
-  );
+  return null;
 };
+
+export function getAccountRouteObjects(): RouteObject[] {
+  return [
+    {
+      path: "/account",
+      element: <AccountAppWithOutlet />,
+      children: [
+        { index: true, element: <Navigate to="profile" replace /> },
+        { path: "profile", element: <UserProfileApp /> },
+        { path: "password", element: <UserPasswordApp /> },
+        { path: "login-history", element: <LoginHistoryApp /> },
+        ...getNotificationRouteObjects(),
+      ],
+    },
+  ];
+}

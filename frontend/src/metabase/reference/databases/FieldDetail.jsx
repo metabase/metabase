@@ -1,8 +1,8 @@
 /* eslint "react/prop-types": "warn" */
+import { bindActionCreators } from "@reduxjs/toolkit";
 import cx from "classnames";
 import { useFormik } from "formik";
 import PropTypes from "prop-types";
-import { push } from "react-router-redux";
 import { t } from "ttag";
 
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
@@ -16,6 +16,7 @@ import EditableReferenceHeader from "metabase/reference/components/EditableRefer
 import FieldTypeDetail from "metabase/reference/components/FieldTypeDetail";
 import UsefulQuestions from "metabase/reference/components/UsefulQuestions";
 import * as actions from "metabase/reference/reference";
+import { useNavigation } from "metabase/routing/compat";
 
 import {
   getDatabase,
@@ -85,12 +86,16 @@ const mapStateToProps = (state, props) => {
   };
 };
 
-const mapDispatchToProps = {
-  ...metadataActions,
-  ...actions,
-  onSubmit: actions.rUpdateFieldDetail,
-  onChangeLocation: push,
-};
+const mapDispatchToProps = (dispatch) => ({
+  ...bindActionCreators(
+    {
+      ...metadataActions,
+      ...actions,
+      onSubmit: actions.rUpdateFieldDetail,
+    },
+    dispatch,
+  ),
+});
 
 const propTypes = {
   style: PropTypes.object.isRequired,
@@ -126,6 +131,7 @@ const FieldDetail = (props) => {
     metadata,
     onSubmit,
   } = props;
+  const { push } = useNavigation();
 
   const {
     isSubmitting,
@@ -136,7 +142,11 @@ const FieldDetail = (props) => {
   } = useFormik({
     initialValues: {},
     onSubmit: (fields) =>
-      onSubmit(fields, { ...props, resetForm: handleReset }),
+      onSubmit(fields, {
+        ...props,
+        onChangeLocation: push,
+        resetForm: handleReset,
+      }),
   });
 
   const getFormField = (name) => ({

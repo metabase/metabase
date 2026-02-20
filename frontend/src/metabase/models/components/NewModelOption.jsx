@@ -1,8 +1,8 @@
 /* eslint-disable react/prop-types */
 import cx from "classnames";
 import { Component } from "react";
-import { Link } from "react-router";
 
+import { Link } from "metabase/common/components/Link";
 import CS from "metabase/css/core/index.css";
 
 import S from "./NewModelOption.module.css";

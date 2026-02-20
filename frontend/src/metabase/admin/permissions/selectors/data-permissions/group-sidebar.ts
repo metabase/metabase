@@ -11,9 +11,9 @@ import { getOrderedGroups } from "./groups";
 
 const getGroupRouteParams = (
   _state: State,
-  props: { params: RawGroupRouteParams },
+  { params }: { params: RawGroupRouteParams },
 ) => {
-  const { groupId, databaseId, schemaName } = props.params;
+  const { groupId, databaseId, schemaName } = params;
   return {
     groupId: groupId != null ? parseInt(groupId) : null,
     databaseId,

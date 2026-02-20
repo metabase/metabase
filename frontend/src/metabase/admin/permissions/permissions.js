@@ -1,5 +1,4 @@
 import { assocIn, getIn, merge } from "icepick";
-import { push } from "react-router-redux";
 import { t } from "ttag";
 import { isBoolean } from "underscore";
 
@@ -35,6 +34,15 @@ import {
   getModifiedGroupsPermissionsGraphParts,
   mergeGroupsPermissionsUpdates,
 } from "./utils/graph/partial-updates";
+
+const navigateToPath = (path) => {
+  if (window.location.pathname + window.location.search === path) {
+    return;
+  }
+
+  window.history.pushState({}, "", path);
+  window.dispatchEvent(new PopStateEvent("popstate"));
+};
 
 const INITIALIZE_DATA_PERMISSIONS =
   "metabase/admin/permissions/INITIALIZE_DATA_PERMISSIONS";
@@ -128,8 +136,8 @@ export const NAVIGATE_TO_GRANULAR_PERMISSIONS =
   "metabase/admin/permissions/NAVIGATE_TO_GRANULAR_PERMISSIONS";
 export const navigateToGranularPermissions = createThunkAction(
   NAVIGATE_TO_GRANULAR_PERMISSIONS,
-  (groupId, entityId) => (dispatch) => {
-    dispatch(push(getGroupFocusPermissionsUrl(groupId, entityId)));
+  (groupId, entityId) => () => {
+    navigateToPath(getGroupFocusPermissionsUrl(groupId, entityId));
   },
 );
 

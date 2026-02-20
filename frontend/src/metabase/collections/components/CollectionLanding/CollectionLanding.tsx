@@ -1,11 +1,10 @@
 import type { ReactNode } from "react";
 import { useEffect } from "react";
-import { replace } from "react-router-redux";
 
 import { useGetCollectionQuery } from "metabase/api";
-import { useDispatch } from "metabase/lib/redux";
 import { isNotNull } from "metabase/lib/types";
 import { extractCollectionId } from "metabase/lib/urls";
+import { useNavigation } from "metabase/routing/compat";
 
 import { CollectionContent } from "../CollectionContent";
 
@@ -22,7 +21,7 @@ const CollectionLanding = ({
   params: { slug },
   children,
 }: CollectionLandingProps) => {
-  const dispatch = useDispatch();
+  const { replace } = useNavigation();
   const { data: trashCollection } = useGetCollectionQuery({ id: "trash" });
 
   const collectionId = extractCollectionId(slug);
@@ -37,10 +36,10 @@ const CollectionLanding = ({
         trashCollection.id === collectionId;
 
       if (isTrashSlug || isTrashCollectionId) {
-        dispatch(replace("/trash"));
+        replace("/trash");
       }
     },
-    [dispatch, slug, trashCollection?.id, collectionId],
+    [replace, slug, trashCollection?.id, collectionId],
   );
 
   if (!isNotNull(collectionId)) {

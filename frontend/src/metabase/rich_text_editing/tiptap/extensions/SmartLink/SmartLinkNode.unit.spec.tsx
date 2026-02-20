@@ -1,6 +1,4 @@
 import type { NodeViewProps } from "@tiptap/react";
-import { createMemoryHistory } from "history";
-import { Route, Router, useRouterHistory } from "react-router";
 
 import {
   setupCardEndpoints,
@@ -10,7 +8,15 @@ import {
   setupDocumentEndpoints,
   setupTableEndpoints,
 } from "__support__/server-mocks";
-import { renderWithProviders, screen, waitFor } from "__support__/ui";
+import {
+  Route,
+  Router,
+  createMemoryHistory,
+  renderWithProviders,
+  screen,
+  useRouterHistory,
+  waitFor,
+} from "__support__/ui";
 import {
   createMockCard,
   createMockCollection,
@@ -178,10 +184,10 @@ describe("SmartLink", () => {
 
       setupDashboardEndpoints(dashboard);
 
-      const historyWithBasename = useRouterHistory(createMemoryHistory)({
+      const historyWithBasename = useRouterHistory(createMemoryHistory as any)({
         basename: "/subpath",
         entries: ["/"],
-      });
+      } as any);
 
       const props = createProps("dashboard", dashboard);
       renderWithProviders(
@@ -209,9 +215,9 @@ describe("SmartLink", () => {
 
       setupDashboardEndpoints(dashboard);
 
-      const historyNoBasename = useRouterHistory(createMemoryHistory)({
+      const historyNoBasename = useRouterHistory(createMemoryHistory as any)({
         entries: ["/"],
-      });
+      } as any);
 
       const props = createProps("dashboard", dashboard);
       renderWithProviders(

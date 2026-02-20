@@ -1,8 +1,7 @@
-import { push } from "react-router-redux";
 import { t } from "ttag";
 
-import { useDispatch } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
+import { useNavigation } from "metabase/routing/compat";
 import { Modal } from "metabase/ui";
 
 import { DestinationDatabasesList } from "../DestinationDatabasesList";
@@ -14,11 +13,10 @@ export const DestinationDatabasesModal = ({
 }: {
   params: { databaseId: string };
 }) => {
+  const { push } = useNavigation();
   const primaryDbId = parseInt(params.databaseId, 10);
-
-  const dispatch = useDispatch();
   const handleCloseModal = () => {
-    dispatch(push(Urls.viewDatabase(primaryDbId)));
+    push(Urls.viewDatabase(primaryDbId));
   };
 
   return (

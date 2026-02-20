@@ -1,7 +1,11 @@
-import { Route } from "react-router";
+import type { RouteObject } from "react-router-dom";
 
 import { GlossaryPage } from "./pages/GlossaryPage";
 
 export function getDataStudioGlossaryRoutes() {
-  return <Route path="glossary" component={GlossaryPage} />;
+  return null;
+}
+
+export function getDataStudioGlossaryRouteObjects(): RouteObject[] {
+  return [{ path: "glossary", element: <GlossaryPage /> }];
 }
