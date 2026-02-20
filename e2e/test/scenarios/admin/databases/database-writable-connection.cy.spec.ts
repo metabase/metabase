@@ -409,7 +409,7 @@ function performUpload() {
       return cy.request({
         url: "/api/upload/csv",
         method: "POST",
-        // failOnStatusCode: false,
+        failOnStatusCode: false,
         headers: {
           "content-type": "multipart/form-data",
         },
