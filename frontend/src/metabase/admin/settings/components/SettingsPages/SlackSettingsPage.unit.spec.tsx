@@ -1,6 +1,7 @@
 import {
   setupPropertiesEndpoints,
   setupSettingsEndpoints,
+  setupSlackAppInfoEndpoint,
   setupSlackManifestEndpoint,
 } from "__support__/server-mocks";
 import { setupWebhookChannelsEndpoint } from "__support__/server-mocks/channel";
@@ -33,6 +34,7 @@ const setup = async ({
     ),
   );
   setupSlackManifestEndpoint();
+  setupSlackAppInfoEndpoint();
   setupWebhookChannelsEndpoint();
 
   renderWithProviders(<SlackSettingsPage />, {
@@ -61,7 +63,7 @@ describe("SlackSettingsPage", () => {
     await setup({ slackAppToken: null });
 
     expect(
-      screen.getByText(/Follow these steps to connect to Slack/),
+      screen.getByText(/Create a Slack app and connect to it/),
     ).toBeInTheDocument();
   });
 });
