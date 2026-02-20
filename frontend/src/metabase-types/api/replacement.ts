@@ -1,4 +1,5 @@
 import type { CardId } from "./card";
+import type { Field } from "./field";
 import type { ConcreteTableId } from "./table";
 
 export type ReplaceSourceEntityId = ConcreteTableId | CardId;
@@ -12,13 +13,10 @@ export type ReplaceSourceEntry = {
   type: ReplaceSourceEntityType;
 };
 
-export type ReplaceSourceColumnInfo = {
-  name: string;
-  display_name: string;
-  base_type: string;
-  effective_type: string;
-  semantic_type: string | null;
-};
+export type ReplaceSourceColumnInfo = Pick<
+  Field,
+  "id" | "name" | "display_name" | "database_type" | "fk_target_field_id"
+>;
 
 export type ReplaceSourceErrorType =
   | "missing-column"

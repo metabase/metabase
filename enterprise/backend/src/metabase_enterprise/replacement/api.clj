@@ -20,11 +20,11 @@
 
 (mr/def ::column
   [:map
-   [:name           :string]
-   [:display_name   :string]
-   [:base_type      :string]
-   [:effective_type :string]
-   [:semantic_type  [:maybe :string]]])
+   [:id                 [:maybe pos-int?]]
+   [:name               :string]
+   [:display_name       :string]
+   [:database_type      [:maybe :string]]
+   [:fk_target_field_id [:maybe pos-int?]]])
 
 (def ^:private error-type-enum
   [:enum :missing-column :column-type-mismatch :missing-primary-key :extra-primary-key :missing-foreign-key :foreign-key-mismatch])

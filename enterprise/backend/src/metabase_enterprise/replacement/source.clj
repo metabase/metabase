@@ -4,7 +4,6 @@
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
-   [metabase.util :as u]
    [metabase.util.malli.registry :as mr]
    [toucan2.core :as t2]))
 
@@ -55,11 +54,11 @@
   (or (:lib/desired-column-alias col) (:name col)))
 
 (defn- format-column [col]
-  {:name           (column-match-key col)
-   :display_name   (or (:display-name col) "")
-   :base_type      (some-> (:base-type col) u/qualified-name)
-   :effective_type (some-> (:effective-type col) u/qualified-name)
-   :semantic_type  (some-> (:semantic-type col) u/qualified-name)})
+  {:id                 (:id col)
+   :name               (column-match-key col)
+   :display_name       (or (:display-name col) "")
+   :database_type      (:database-type col)
+   :fk_target_field_id (:fk-target-field-id col)})
 
 (defn- fetch-source
   "Fetch source metadata and its database ID."
