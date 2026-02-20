@@ -45,7 +45,8 @@
                                                 :target_entity_id   (:id card-b)
                                                 :target_entity_type :card})]
             (is (true? (:success response)))
-            (is (empty? (:errors response)))))))))
+            (is (seq (:column_mappings response)))
+            (is (not-any? :errors (:column_mappings response)))))))))
 
 (deftest check-replace-source-incompatible-test
   (testing "POST /api/ee/replacement/check-replace-source — incompatible cards (different tables)"
@@ -59,7 +60,8 @@
                                                 :target_entity_id   (:id card-b)
                                                 :target_entity_type :card})]
             (is (false? (:success response)))
-            (is (some #(= "missing-column" (:type %)) (:errors response)))))))))
+            (is (some #(some (fn [e] (= "missing-column" e)) %)
+                      (map :errors (:column_mappings response))))))))))
 
 (deftest check-replace-source-database-mismatch-test
   (testing "POST /api/ee/replacement/check-replace-source — database mismatch short-circuits"
@@ -81,7 +83,8 @@
                                                 :target_entity_id   (:id card-b)
                                                 :target_entity_type :card})]
             (is (false? (:success response)))
-            (is (some #(= "missing-column" (:type %)) (:errors response)))))))))
+            (is (some #(some (fn [e] (= "missing-column" e)) %)
+                      (map :errors (:column_mappings response)))))))))
 
 (deftest check-replace-source-requires-premium-feature-test
   (testing "POST /api/ee/replacement/check-replace-source — requires :dependencies premium feature"

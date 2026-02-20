@@ -43,7 +43,9 @@ function getSourceColumn(
     accessorFn: (item) => item.source?.display_name,
     cell: ({ row }) => {
       const item = row.original;
-      return <ColumnInfoCell column={item.source} />;
+      return item.source != null ? (
+        <ColumnInfoCell column={item.source} />
+      ) : null;
     },
   };
 }
@@ -60,7 +62,9 @@ function getTargetColumn(
     accessorFn: (item) => item.target?.display_name,
     cell: ({ row }) => {
       const item = row.original;
-      return <ColumnInfoCell column={item.target} errors={item.errors} />;
+      return item.target != null ? (
+        <ColumnInfoCell column={item.target} errors={item.errors} />
+      ) : null;
     },
   };
 }

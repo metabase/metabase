@@ -18,7 +18,7 @@ export function ModalBody({
   columnMappings,
 }: ModalBodyProps) {
   return (
-    <Flex flex={1} mih={0} p="lg" bg="background-secondary">
+    <Flex flex={1} direction="column" mih={0} p="lg" bg="background-secondary">
       {columnMappings.length === 0 ? (
         <EmptyState />
       ) : (

@@ -34,6 +34,11 @@ export type ReplaceSourceColumnMapping = {
   errors?: ReplaceSourceErrorType[];
 };
 
+export type CheckReplaceSourceInfo = {
+  success: boolean;
+  column_mappings: ReplaceSourceColumnMapping[];
+};
+
 export type ReplaceSourceRunId = number;
 
 export type ReplaceSourceRunStatus =
@@ -54,11 +59,6 @@ export type ReplaceSourceRequest = {
   source_entity_type: ReplaceSourceEntityType;
   target_entity_id: ReplaceSourceEntityId;
   target_entity_type: ReplaceSourceEntityType;
-};
-
-export type CheckReplaceSourceInfo = {
-  success: boolean;
-  column_mappings: ReplaceSourceColumnMapping[];
 };
 
 export type ReplaceSourceResponse = {
