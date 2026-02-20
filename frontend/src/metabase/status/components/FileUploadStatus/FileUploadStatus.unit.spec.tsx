@@ -1,6 +1,5 @@
 import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
-import { Route } from "react-router";
 
 import {
   setupBookmarksEndpoints,
@@ -13,6 +12,7 @@ import {
   setupSearchEndpoints,
 } from "__support__/server-mocks";
 import {
+  Route,
   act,
   renderWithProviders,
   screen,

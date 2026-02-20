@@ -1,10 +1,10 @@
-import { push } from "react-router-redux";
 import _ from "underscore";
 
 import CS from "metabase/css/core/index.css";
 import { isWithinIframe } from "metabase/lib/dom";
 import { IFRAMED_IN_SELF } from "metabase/lib/iframe";
 import { setInitialUrlOptions } from "metabase/redux/embed";
+import { routerActions } from "metabase/routing/compat/react-router-redux";
 
 // detect if this page is embedded in itself, i.e. it's a embed preview
 // will need to do something different if we ever embed metabase in itself for another reason
@@ -38,7 +38,7 @@ export function initializeEmbedding(store) {
     window.addEventListener("message", (e) => {
       if (e.source === window.parent && e.data.metabase) {
         if (e.data.metabase.type === "location") {
-          store.dispatch(push(e.data.metabase.location));
+          store.dispatch(routerActions.push(e.data.metabase.location));
         }
       }
     });

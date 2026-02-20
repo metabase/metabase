@@ -1,12 +1,11 @@
 import type { LocationDescriptorObject } from "history";
 import type { MouseEvent } from "react";
 import { useCallback } from "react";
-import { push } from "react-router-redux";
 
-import { useDispatch } from "metabase/lib/redux";
 import { isSyncCompleted } from "metabase/lib/syncing";
 import { modelToUrl } from "metabase/lib/urls";
 import { PLUGIN_MODERATION } from "metabase/plugins";
+import { useNavigation } from "metabase/routing/compat";
 import { trackSearchClick } from "metabase/search/analytics";
 import type { WrappedResult } from "metabase/search/types";
 import { Group, Icon, Loader } from "metabase/ui";
@@ -62,12 +61,11 @@ export function SearchResult({
   const isActive = isItemActive(result);
   const isLoading = isItemLoading(result);
 
-  const dispatch = useDispatch();
+  const { push } = useNavigation();
 
   const onChangeLocation = useCallback(
-    (nextLocation: LocationDescriptorObject | string) =>
-      dispatch(push(nextLocation)),
-    [dispatch],
+    (nextLocation: LocationDescriptorObject | string) => push(nextLocation),
+    [push],
   );
 
   const onXRayClick = (e: MouseEvent<HTMLButtonElement>) => {

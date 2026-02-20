@@ -7,8 +7,8 @@ import {
   useRef,
   useState,
 } from "react";
-import { Link } from "react-router";
 
+import { Link } from "metabase/common/components/Link";
 import * as Urls from "metabase/lib/urls";
 import { Box, Flex, Icon, Skeleton, rem } from "metabase/ui";
 

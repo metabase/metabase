@@ -10,7 +10,6 @@ import {
 } from "@tiptap/react";
 import cx from "classnames";
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { push } from "react-router-redux";
 import { t } from "ttag";
 
 import { useListCommentsQuery } from "metabase/api";
@@ -44,6 +43,7 @@ import { usePublicDocumentContext } from "metabase/public/contexts/PublicDocumen
 import { usePublicDocumentCardData } from "metabase/public/hooks/use-public-document-card-data";
 import { useDownloadData } from "metabase/query_builder/components/QuestionDownloadWidget/use-download-data";
 import { DropZone } from "metabase/rich_text_editing/tiptap/extensions/shared/dnd/DropZone";
+import { useNavigation } from "metabase/routing/compat";
 import { getMetadata } from "metabase/selectors/metadata";
 import { Box, Flex, Icon, Loader, Menu, Text, TextInput } from "metabase/ui";
 import { DocumentMode } from "metabase/visualizations/click-actions/modes/DocumentMode";
@@ -170,6 +170,7 @@ export const CardEmbedComponent = memo(
     getPos,
     deleteNode,
   }: NodeViewProps) => {
+    const { push } = useNavigation();
     const childTargetId = useSelector(getChildTargetId);
     const hoveredChildTargetId = useSelector(getHoveredChildTargetId);
     const document = useSelector(getCurrentDocument);
@@ -594,7 +595,7 @@ export const CardEmbedComponent = memo(
                           variant={isOpen ? "filled" : "default"}
                           unresolvedCommentsCount={unresolvedCommentsCount}
                           onClick={() => {
-                            dispatch(push(commentsPath));
+                            push(commentsPath);
                           }}
                         />
                       </Box>

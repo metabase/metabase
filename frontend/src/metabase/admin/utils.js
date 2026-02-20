@@ -1,10 +1,14 @@
 import PropTypes from "prop-types";
 import { useLayoutEffect } from "react";
-import { push, replace, routerActions } from "react-router-redux";
 import { connectedReduxRedirect } from "redux-auth-wrapper/history3/redirect";
 
 import { getAdminPaths } from "metabase/admin/app/selectors";
 import { MetabaseReduxContext, connect } from "metabase/lib/redux";
+import {
+  push,
+  replace,
+  routerActions,
+} from "metabase/routing/compat/react-router-redux";
 import { getSetting } from "metabase/selectors/settings";
 
 export const createAdminRouteGuard = (routeKey, Component) => {

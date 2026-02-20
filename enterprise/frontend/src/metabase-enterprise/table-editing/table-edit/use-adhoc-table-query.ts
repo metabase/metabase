@@ -1,10 +1,10 @@
 import type { Location } from "history";
 import { useCallback, useEffect, useMemo } from "react";
-import { push } from "react-router-redux";
 
 import { b64url_to_utf8, utf8_to_b64url } from "metabase/lib/encoding";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import { loadMetadataForTable } from "metabase/questions/actions";
+import { useNavigation } from "metabase/routing/compat";
 import { getMetadata } from "metabase/selectors/metadata";
 import * as Lib from "metabase-lib";
 import Question from "metabase-lib/v1/Question";
@@ -21,6 +21,7 @@ export const useAdHocTableQuery = ({
   databaseId,
   location,
 }: UseAdHocTableQueryProps) => {
+  const { push } = useNavigation();
   const metadata = useSelector(getMetadata);
   const dispatch = useDispatch();
 
@@ -72,14 +73,12 @@ export const useAdHocTableQuery = ({
       if (newFilters.length > 0 || newOrderBys.length > 0) {
         const searchParams = new URLSearchParams();
         searchParams.set("query", serializeQueryToUrl(Lib.toJsQuery(newQuery)));
-        dispatch(
-          push(`${window.location.pathname}?${searchParams.toString()}`),
-        );
+        push(`${window.location.pathname}?${searchParams.toString()}`);
       } else {
-        dispatch(push(window.location.pathname));
+        push(window.location.pathname);
       }
     },
-    [dispatch],
+    [push],
   );
 
   const tableQuery = useMemo(() => {

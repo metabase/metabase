@@ -1,6 +1,5 @@
 import dayjs from "dayjs";
 import fetchMock from "fetch-mock";
-import { Route } from "react-router";
 
 import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
 import {
@@ -15,6 +14,7 @@ import {
 import { mockSettings } from "__support__/settings";
 import { createMockEntitiesState } from "__support__/store";
 import {
+  Route,
   renderWithProviders,
   screen,
   waitForLoaderToBeRemoved,

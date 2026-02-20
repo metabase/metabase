@@ -1,6 +1,5 @@
 import type { ReactNode } from "react";
 import { useCallback } from "react";
-import { push } from "react-router-redux";
 import { t } from "ttag";
 
 import {
@@ -19,6 +18,7 @@ import { useToggle } from "metabase/common/hooks/use-toggle";
 import CS from "metabase/css/core/index.css";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import { updateUserSetting } from "metabase/redux/settings";
+import { useNavigation } from "metabase/routing/compat";
 import type { IconName } from "metabase/ui";
 import {
   Group,
@@ -87,9 +87,10 @@ export function PermissionsPageLayout({
 
   const isHelpReferenceOpen = useSelector(getIsHelpReferenceOpen);
   const dispatch = useDispatch();
+  const { push } = useNavigation();
 
   const navigateToTab = (tab: PermissionsPageTab) =>
-    dispatch(push(`/admin/permissions/${tab}`));
+    push(`/admin/permissions/${tab}`);
 
   const clearSaveError = () => {
     dispatch(clearPermissionsSaveError());

@@ -2,7 +2,6 @@
 import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 import type { ComponentPropsWithoutRef } from "react";
-import { IndexRoute, Route } from "react-router";
 
 import {
   setupAdhocQueryMetadataEndpoint,
@@ -26,6 +25,8 @@ import {
 } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
 import {
+  IndexRoute,
+  Route,
   renderWithProviders,
   screen,
   waitFor,

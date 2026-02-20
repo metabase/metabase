@@ -1,7 +1,6 @@
 import cx from "classnames";
 import type { PropsWithChildren } from "react";
 import { useState } from "react";
-import { replace } from "react-router-redux";
 
 import ErrorBoundary from "metabase/ErrorBoundary";
 import { isRouteInSync } from "metabase/common/hooks/is-route-in-sync";
@@ -36,6 +35,7 @@ import { useDispatch, useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { setErrorPage } from "metabase/redux/app";
 import { useRouter } from "metabase/router";
+import { useNavigation } from "metabase/routing/compat";
 import type { DashboardId, Dashboard as IDashboard } from "metabase-types/api";
 
 import { useRegisterDashboardMetabotContext } from "../../hooks/use-register-dashboard-metabot-context";
@@ -86,6 +86,7 @@ export const DashboardApp = ({
 }: DashboardAppProps) => {
   const { location, params, router } = useRouter();
   const dispatch = useDispatch();
+  const { replace } = useNavigation();
 
   const [error, setError] = useState<string>();
 
@@ -132,7 +133,7 @@ export const DashboardApp = ({
         );
       }
       const hash = stringifyHashOptions(options);
-      await dispatch(replace({ ...location, hash: hash ? "#" + hash : "" }));
+      replace({ ...location, hash: hash ? "#" + hash : "" });
     } catch (error) {
       // 400: provided entity id format is invalid.
       if (

@@ -1,6 +1,4 @@
-import { Route } from "react-router";
-
-import { renderWithProviders, screen } from "__support__/ui";
+import { Route, renderWithProviders, screen } from "__support__/ui";
 import type { FieldId, Table } from "metabase-types/api";
 import { createMockTable } from "metabase-types/api/mocks";
 

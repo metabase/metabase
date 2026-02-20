@@ -1,5 +1,4 @@
 import { useEffect, useLayoutEffect, useState } from "react";
-import { push } from "react-router-redux";
 import { useLatest } from "react-use";
 import { t } from "ttag";
 
@@ -12,7 +11,7 @@ import { EmptyState } from "metabase/common/components/EmptyState/EmptyState";
 import { LeaveRouteConfirmModal } from "metabase/common/components/LeaveConfirmModal";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { PageContainer } from "metabase/data-studio/common/components/PageContainer";
-import { useDispatch, useSelector } from "metabase/lib/redux";
+import { useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import {
@@ -21,7 +20,7 @@ import {
   PLUGIN_TRANSFORMS_PYTHON,
 } from "metabase/plugins";
 import { getInitialUiState } from "metabase/querying/editor/components/QueryEditor";
-import { useCompatLocation } from "metabase/routing/compat";
+import { useCompatLocation, useNavigation } from "metabase/routing/compat";
 import { useTransformPermissions } from "metabase/transforms/hooks/use-transform-permissions";
 import { Box, Center, Group, Icon } from "metabase/ui";
 import type {
@@ -107,7 +106,7 @@ function TransformQueryPageBody({
     transformId: transform.id,
     initialSource: transform.source,
   });
-  const dispatch = useDispatch();
+  const { push } = useNavigation();
   const isRemoteSyncReadOnly = useSelector(
     PLUGIN_REMOTE_SYNC.getIsRemoteSyncReadOnly,
   );
@@ -135,7 +134,7 @@ function TransformQueryPageBody({
         sendSuccessToast(t`Transform query updated`);
 
         if (isEditMode) {
-          dispatch(push(Urls.transform(transform.id)));
+          push(Urls.transform(transform.id));
         }
       }
     },
@@ -159,9 +158,9 @@ function TransformQueryPageBody({
   useEffect(() => {
     if (isEditMode && isRemoteSyncReadOnly) {
       // If remote sync is set up to read-only mode, user can't edit transforms
-      dispatch(push(Urls.transform(transform.id)));
+      push(Urls.transform(transform.id));
     }
-  }, [isRemoteSyncReadOnly, isEditMode, dispatch, transform.id]);
+  }, [isRemoteSyncReadOnly, isEditMode, push, transform.id]);
 
   const handleSave = async () => {
     if (!isCompleteSource(source)) {
@@ -179,7 +178,7 @@ function TransformQueryPageBody({
 
   const handleCancel = () => {
     if (isEditMode) {
-      dispatch(push(Urls.transform(transform.id)));
+      push(Urls.transform(transform.id));
     }
   };
 

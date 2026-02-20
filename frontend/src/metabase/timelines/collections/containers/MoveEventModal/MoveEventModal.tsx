@@ -1,4 +1,3 @@
-import { push } from "react-router-redux";
 import _ from "underscore";
 
 import { Collections } from "metabase/entities/collections";
@@ -11,6 +10,7 @@ import type { Timeline, TimelineEvent } from "metabase-types/api";
 import type { State } from "metabase-types/store";
 
 import LoadingAndErrorWrapper from "../../components/LoadingAndErrorWrapper";
+import { navigateToPath } from "../../navigation";
 import type { ModalParams } from "../../types";
 
 interface MoveEventModalProps {
@@ -42,7 +42,7 @@ const mapDispatchToProps = (dispatch: any) => ({
     oldTimeline: Timeline,
   ) => {
     await dispatch(TimelineEvents.actions.setTimeline(event, newTimeline));
-    dispatch(push(Urls.timelineInCollection(oldTimeline)));
+    navigateToPath(Urls.timelineInCollection(oldTimeline));
   },
 });
 

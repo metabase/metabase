@@ -1,5 +1,3 @@
-import { push } from "react-router-redux";
-
 import type { NotificationListItem } from "./types";
 
 const PREFIX = `/account/notifications`;
@@ -11,22 +9,20 @@ const TYPE_MAP: Record<ListItemType, string> = {
   pulse: "pulse",
 };
 
-export const navigateToUnsubscribe = (
+export const getUnsubscribePath = (
   item: { id: number },
   type: ListItemType,
 ) => {
-  return push(`${PREFIX}/${TYPE_MAP[type]}/${item.id}/unsubscribe`);
+  return `${PREFIX}/${TYPE_MAP[type]}/${item.id}/unsubscribe`;
 };
 
-export const navigateToArchive = (
+export const getArchivePath = (
   item: { id: number },
   type: ListItemType,
   hasUnsubscribed?: boolean,
 ) => {
   const query = hasUnsubscribed ? "?unsubscribed=true" : "";
-  return push(`${PREFIX}/${TYPE_MAP[type]}/${item.id}/archive${query}`);
+  return `${PREFIX}/${TYPE_MAP[type]}/${item.id}/archive${query}`;
 };
 
-export const navigateToHelp = () => {
-  return push(`${PREFIX}/help`);
-};
+export const getHelpPath = () => `${PREFIX}/help`;

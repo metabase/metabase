@@ -1,16 +1,20 @@
 import { VisualState, useKBar } from "kbar";
 import { useEffect } from "react";
-import { Route, type WithRouterProps, withRouter } from "react-router";
 import _ from "underscore";
 
 import { setupEnterprisePlugins } from "__support__/enterprise";
 import {
+  Route,
   setupDatabasesEndpoints,
   setupRecentViewsEndpoints,
   setupSearchEndpoints,
 } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
-import { renderWithProviders } from "__support__/ui";
+import {
+  type WithRouterProps,
+  renderWithProviders,
+  withRouter,
+} from "__support__/ui";
 import { getAdminPaths } from "metabase/admin/app/reducers";
 import { useCommandPalette } from "metabase/palette/hooks/useCommandPalette";
 import { useCommandPaletteBasicActions } from "metabase/palette/hooks/useCommandPaletteBasicActions";

@@ -1,5 +1,6 @@
-import { push } from "react-router-redux";
 import _ from "underscore";
+
+import { routerActions } from "metabase/routing/compat/react-router-redux";
 
 export const getColumnName = (column) => column.remapped_to || column.name;
 
@@ -55,7 +56,7 @@ const AuditDrill = ({ question, clicked }) => {
           default: true,
           action() {
             const url = columnNameToUrl[column.name](value, clicked);
-            return push(url);
+            return routerActions.push(url);
           },
         },
       ];
@@ -77,7 +78,7 @@ const AuditDrill = ({ question, clicked }) => {
           title: `View this`,
           default: true,
           action() {
-            return push(
+            return routerActions.push(
               `/admin/audit/query/${encodeURIComponent(String(value))}`,
             );
           },

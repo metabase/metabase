@@ -1,7 +1,7 @@
-import { type MouseEvent, forwardRef, useState } from "react";
-import { Link, type LinkProps } from "react-router";
+import { type MouseEvent, useState } from "react";
 import { c, t } from "ttag";
 
+import { ForwardRefLink } from "metabase/common/components/Link";
 import { ToolbarButton } from "metabase/common/components/ToolbarButton";
 import { useDashboardContext } from "metabase/dashboard/context/context";
 import { useRefreshDashboard } from "metabase/dashboard/hooks";
@@ -16,16 +16,6 @@ type DashboardActionMenuProps = {
   canEdit: boolean;
   openSettingsSidebar: () => void;
 };
-
-// Fixes this bug: https://github.com/mantinedev/mantine/issues/5571#issue-2082430353
-// Hover states get weird when using Link directly. Since Link does not take the standard
-// `ref` prop, we have to manually forward it to the correct prop name to make hover work as expected.
-const ForwardRefLink = forwardRef((props: LinkProps, ref) => (
-  // @ts-expect-error - innerRef not in prop types but it is a valid prop. docs can be found here: https://github.com/remix-run/react-router/blob/v3.2.6/docs/API.md#innerref
-  <Link {...props} innerRef={ref} />
-));
-// @ts-expect-error - must set a displayName + this works
-ForwardRefLink.displayName = "ForwardRefLink";
 
 export const DashboardActionMenu = ({
   canResetFilters,

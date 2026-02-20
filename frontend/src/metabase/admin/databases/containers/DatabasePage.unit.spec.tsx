@@ -1,9 +1,8 @@
 import { waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { Route } from "react-router";
 
 import { mockSettings } from "__support__/settings";
-import { renderWithProviders, screen } from "__support__/ui";
+import { Route, renderWithProviders, screen } from "__support__/ui";
 import { createMockEngines } from "metabase-types/api/mocks";
 import { createMockState } from "metabase-types/store/mocks";
 

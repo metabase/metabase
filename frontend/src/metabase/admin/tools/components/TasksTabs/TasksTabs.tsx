@@ -1,9 +1,7 @@
-import { push } from "react-router-redux";
 import { t } from "ttag";
 
-import { useDispatch } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
-import { useCompatLocation } from "metabase/routing/compat";
+import { useCompatLocation, useNavigation } from "metabase/routing/compat";
 import { Flex, Icon, Tabs, Title, Tooltip } from "metabase/ui";
 
 import {
@@ -27,13 +25,13 @@ export const TasksTabs = ({ children }: TasksTabsProps) => {
     { value: Urls.adminToolsTasksRuns(), label: t`Runs` },
   ];
   const DEFAULT_TAB = tabs[0].value;
-  const dispatch = useDispatch();
+  const { push } = useNavigation();
   const activeTab =
     tabs.find(({ value }) => value === location.pathname)?.value ?? DEFAULT_TAB;
 
   const handleTabChange = (value: string | null) => {
     if (value) {
-      dispatch(push(value));
+      push(value);
     }
   };
 

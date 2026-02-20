@@ -1,13 +1,18 @@
 import dayjs from "dayjs";
 import fetchMock from "fetch-mock";
-import { Route } from "react-router";
 
 import {
   setupCurrentAccessGrantEndpoint,
   setupListAccessGrantsEndpoint,
   setupListAccessGrantsEndpointWithError,
 } from "__support__/server-mocks";
-import { fireEvent, renderWithProviders, screen, within } from "__support__/ui";
+import {
+  Route,
+  fireEvent,
+  renderWithProviders,
+  screen,
+  within,
+} from "__support__/ui";
 import { createMockAccessGrant } from "metabase-types/api/mocks";
 
 import { GrantAccessModal } from "./GrantAccessModal";

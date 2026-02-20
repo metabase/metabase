@@ -1,8 +1,8 @@
 import { Fragment, useMemo } from "react";
-import { Link } from "react-router";
 import { t } from "ttag";
 
 import { useGetCardQuery, useGetTableQuery } from "metabase/api";
+import { Link } from "metabase/common/components/Link";
 import { useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { getMetadata } from "metabase/selectors/metadata";

@@ -1,4 +1,3 @@
-import { push } from "react-router-redux";
 import _ from "underscore";
 
 import { TimelineEvents } from "metabase/entities/timeline-events";
@@ -10,6 +9,7 @@ import type { Timeline, TimelineEvent } from "metabase-types/api";
 import type { State } from "metabase-types/store";
 
 import LoadingAndErrorWrapper from "../../components/LoadingAndErrorWrapper";
+import { navigateToPath } from "../../navigation";
 import type { ModalParams } from "../../types";
 
 interface EditEventModalProps {
@@ -34,13 +34,13 @@ const mapDispatchToProps = (dispatch: any) => ({
   onSubmit: async (event: TimelineEvent, timeline?: Timeline) => {
     await dispatch(TimelineEvents.actions.update(event));
     if (timeline) {
-      dispatch(push(Urls.timelineInCollection(timeline)));
+      navigateToPath(Urls.timelineInCollection(timeline));
     }
   },
   onArchive: async (event: TimelineEvent, timeline?: Timeline) => {
     await dispatch(TimelineEvents.actions.setArchived(event, true));
     if (timeline) {
-      dispatch(push(Urls.timelineInCollection(timeline)));
+      navigateToPath(Urls.timelineInCollection(timeline));
     }
   },
 });

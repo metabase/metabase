@@ -1,5 +1,4 @@
 import { Fragment } from "react";
-import { IndexRedirect, IndexRoute, Route } from "react-router";
 import { t } from "ttag";
 
 import { EditUserModal } from "metabase/admin/people/containers/EditUserModal";
@@ -25,6 +24,11 @@ import {
   PLUGIN_ADMIN_USER_MENU_ROUTES,
   PLUGIN_TENANTS,
 } from "metabase/plugins";
+import {
+  IndexRedirect,
+  IndexRoute,
+  Route,
+} from "metabase/routing/compat/react-router-v3";
 import { getIsTenantUser, getUserIsAdmin } from "metabase/selectors/user";
 import { getApplicationName } from "metabase/selectors/whitelabel";
 import { Box, Text } from "metabase/ui";

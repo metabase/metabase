@@ -1,6 +1,5 @@
 import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
-import { Route } from "react-router";
 import { dedent } from "ts-dedent";
 
 import {
@@ -9,6 +8,7 @@ import {
   setupPostLoggerAdjustmentEndpoint,
 } from "__support__/server-mocks";
 import {
+  Route,
   renderWithProviders,
   screen,
   waitForLoaderToBeRemoved,

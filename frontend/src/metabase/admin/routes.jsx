@@ -1,5 +1,4 @@
 import { Fragment } from "react";
-import { IndexRedirect, IndexRoute, Redirect, Route } from "react-router";
 import { t } from "ttag";
 
 import AdminApp from "metabase/admin/app/components/AdminApp";
@@ -49,6 +48,12 @@ import {
   PLUGIN_SUPPORT,
   PLUGIN_TENANTS,
 } from "metabase/plugins";
+import {
+  IndexRedirect,
+  IndexRoute,
+  Redirect,
+  Route,
+} from "metabase/routing/compat/react-router-v3";
 import { getTokenFeature } from "metabase/setup";
 
 import { ModelPersistenceConfiguration } from "./performance/components/ModelPersistenceConfiguration";

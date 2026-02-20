@@ -1,5 +1,4 @@
 import { type ComponentType, useEffect, useState } from "react";
-import { withRouter } from "react-router";
 import { t } from "ttag";
 import _ from "underscore";
 
@@ -151,6 +150,5 @@ function DatabaseEditAppInner({
 }
 
 export const DatabaseEditApp = _.compose(
-  withRouter,
   connect(undefined, mapDispatchToProps),
 )(DatabaseEditAppInner);

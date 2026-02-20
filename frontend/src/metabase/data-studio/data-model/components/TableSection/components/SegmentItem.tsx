@@ -1,6 +1,5 @@
-import { Link } from "react-router";
-
 import { Ellipsified } from "metabase/common/components/Ellipsified";
+import { Link } from "metabase/common/components/Link";
 import { Card, Flex, Icon, Stack, Text } from "metabase/ui";
 import type { Segment } from "metabase-types/api";
 

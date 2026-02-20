@@ -1,6 +1,5 @@
-import { Link } from "react-router";
-
 import { Ellipsified } from "metabase/common/components/Ellipsified";
+import { Link } from "metabase/common/components/Link";
 import type { ColorName } from "metabase/lib/colors/types";
 import type { IconName } from "metabase/ui";
 import { Card, Flex, Icon, Stack, Text } from "metabase/ui";

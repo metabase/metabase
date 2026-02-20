@@ -1,4 +1,4 @@
-import { IndexRoute, Route } from "react-router";
+import type { RouteObject } from "react-router-dom";
 
 import { PublishedTableMeasureDependenciesPage } from "metabase/data-studio/measures/pages/PublishedTableMeasureDependenciesPage";
 import { PublishedTableMeasureDetailPage } from "metabase/data-studio/measures/pages/PublishedTableMeasureDetailPage";
@@ -10,6 +10,7 @@ import { PublishedTableSegmentDetailPage } from "metabase/data-studio/segments/p
 import { PublishedTableSegmentRevisionHistoryPage } from "metabase/data-studio/segments/pages/PublishedTableSegmentRevisionHistoryPage";
 import { PLUGIN_DEPENDENCIES } from "metabase/plugins";
 import { IsAdmin } from "metabase/route-guards";
+import { IndexRoute, Route } from "metabase/routing/compat/react-router-v3";
 
 import { TableDependenciesPage } from "./pages/TableDependenciesPage";
 import { TableFieldsPage } from "./pages/TableFieldsPage";
@@ -70,4 +71,93 @@ export function getDataStudioTableRoutes() {
       )}
     </Route>
   );
+}
+
+export function getDataStudioTableRouteObjects(): RouteObject[] {
+  return [
+    {
+      path: "tables",
+      children: [
+        { path: ":tableId", element: <TableOverviewPage /> },
+        { path: ":tableId/fields", element: <TableFieldsPage /> },
+        { path: ":tableId/fields/:fieldId", element: <TableFieldsPage /> },
+        { path: ":tableId/segments", element: <TableSegmentsPage /> },
+        {
+          path: ":tableId/segments/new",
+          element: (
+            <IsAdmin>
+              <PublishedTableNewSegmentPage />
+            </IsAdmin>
+          ),
+        },
+        {
+          path: ":tableId/segments/:segmentId",
+          element: <PublishedTableSegmentDetailPage />,
+        },
+        {
+          path: ":tableId/segments/:segmentId/revisions",
+          element: <PublishedTableSegmentRevisionHistoryPage />,
+        },
+        ...(PLUGIN_DEPENDENCIES.isEnabled
+          ? [
+              {
+                path: ":tableId/segments/:segmentId/dependencies",
+                element: <PublishedTableSegmentDependenciesPage />,
+                children: [
+                  {
+                    index: true,
+                    element: <PLUGIN_DEPENDENCIES.DependencyGraphPage />,
+                  },
+                ],
+              } satisfies RouteObject,
+            ]
+          : []),
+        { path: ":tableId/measures", element: <TableMeasuresPage /> },
+        {
+          path: ":tableId/measures/new",
+          element: (
+            <IsAdmin>
+              <PublishedTableNewMeasurePage />
+            </IsAdmin>
+          ),
+        },
+        {
+          path: ":tableId/measures/:measureId",
+          element: <PublishedTableMeasureDetailPage />,
+        },
+        {
+          path: ":tableId/measures/:measureId/revisions",
+          element: <PublishedTableMeasureRevisionHistoryPage />,
+        },
+        ...(PLUGIN_DEPENDENCIES.isEnabled
+          ? [
+              {
+                path: ":tableId/measures/:measureId/dependencies",
+                element: <PublishedTableMeasureDependenciesPage />,
+                children: [
+                  {
+                    index: true,
+                    element: <PLUGIN_DEPENDENCIES.DependencyGraphPage />,
+                  },
+                ],
+              } satisfies RouteObject,
+            ]
+          : []),
+        ...(PLUGIN_DEPENDENCIES.isEnabled
+          ? [
+              {
+                path: ":tableId/dependencies",
+                element: <TableDependenciesPage />,
+                children: [
+                  {
+                    index: true,
+                    element: <PLUGIN_DEPENDENCIES.DependencyGraphPage />,
+                  },
+                ],
+              } satisfies RouteObject,
+            ]
+          : []),
+      ],
+    },
+  ];
 }

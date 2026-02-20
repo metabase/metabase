@@ -1,6 +1,5 @@
 import cx from "classnames";
 import { useEffect } from "react";
-import { push, replace } from "react-router-redux";
 import { jt, t } from "ttag";
 
 import { useGetUserQuery } from "metabase/api";
@@ -11,6 +10,7 @@ import { PasswordReveal } from "metabase/common/components/PasswordReveal";
 import CS from "metabase/css/core/index.css";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import { PLUGIN_TENANTS } from "metabase/plugins";
+import { useNavigation } from "metabase/routing/compat";
 import { getSetting, isSsoEnabled } from "metabase/selectors/settings";
 import { Box } from "metabase/ui";
 import type { User } from "metabase-types/api";
@@ -36,13 +36,10 @@ export function UserSuccessModal({ params }: UserSuccessModalProps) {
     getSetting(state, "enable-password-login"),
   );
   const dispatch = useDispatch();
+  const { push, replace } = useNavigation();
 
   const handleClose = () => {
-    dispatch(
-      isExternalUser
-        ? push("/admin/people/tenants/people")
-        : push("/admin/people"),
-    );
+    push(isExternalUser ? "/admin/people/tenants/people" : "/admin/people");
   };
 
   useEffect(() => {
@@ -53,9 +50,9 @@ export function UserSuccessModal({ params }: UserSuccessModalProps) {
 
   useEffect(() => {
     if (isExternalUser && !temporaryPassword) {
-      dispatch(replace("/admin/people/tenants/people"));
+      replace("/admin/people/tenants/people");
     }
-  }, [isExternalUser, temporaryPassword, dispatch]);
+  }, [isExternalUser, temporaryPassword, replace]);
 
   if (!user || isLoading || error != null) {
     return <LoadingAndErrorWrapper loading={isLoading} error={error} />;

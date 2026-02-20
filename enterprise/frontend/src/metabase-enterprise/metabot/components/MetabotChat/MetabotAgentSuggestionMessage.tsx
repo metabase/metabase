@@ -1,9 +1,7 @@
 import { unifiedMergeView } from "@codemirror/merge";
 import { useDisclosure } from "@mantine/hooks";
-import type { UnknownAction } from "@reduxjs/toolkit";
 import cx from "classnames";
 import { useMemo, useState } from "react";
-import { push } from "react-router-redux";
 import { useLocation, useMount } from "react-use";
 import { P, match } from "ts-pattern";
 import { t } from "ttag";
@@ -15,6 +13,7 @@ import { useDispatch, useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import EditorS from "metabase/query_builder/components/NativeQueryEditor/CodeMirrorEditor/CodeMirrorEditor.module.css";
+import { useNavigation } from "metabase/routing/compat";
 import { getMetadata } from "metabase/selectors/metadata";
 import { getIsWorkspace } from "metabase/selectors/routing";
 import {
@@ -107,6 +106,7 @@ export const AgentSuggestionMessage = ({
 }: {
   message: MetabotAgentEditSuggestionChatMessage;
 }) => {
+  const { push } = useNavigation();
   const dispatch = useDispatch();
   const metadata = useSelector(getMetadata);
   const isWorkspace = useSelector(getIsWorkspace);
@@ -177,7 +177,7 @@ export const AgentSuggestionMessage = ({
       return;
     }
 
-    dispatch(push(getTransformUrl(suggestedTransform)) as UnknownAction);
+    push(getTransformUrl(suggestedTransform));
   };
 
   return (

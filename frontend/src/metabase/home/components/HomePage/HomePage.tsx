@@ -1,5 +1,4 @@
 import { useEffect } from "react";
-import { replace } from "react-router-redux";
 import { t } from "ttag";
 
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
@@ -7,6 +6,7 @@ import { useHomepageDashboard } from "metabase/common/hooks/use-homepage-dashboa
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import { updateUserSetting } from "metabase/redux/settings";
 import { addUndo } from "metabase/redux/undo";
+import { useNavigation } from "metabase/routing/compat";
 import { getHasDismissedCustomHomePageToast } from "metabase/selectors/app";
 
 import { HomeContent } from "../HomeContent";
@@ -29,15 +29,14 @@ const useDashboardRedirect = () => {
   const { dashboardId, dashboard, isLoading } = useHomepageDashboard();
   const hasDismissedToast = useSelector(getHasDismissedCustomHomePageToast);
   const dispatch = useDispatch();
+  const { replace } = useNavigation();
 
   useEffect(() => {
     if (dashboardId && !isLoading && !dashboard?.archived) {
-      dispatch(
-        replace({
-          pathname: `/dashboard/${dashboardId}`,
-          state: { preserveNavbarState: true },
-        }),
-      );
+      replace({
+        pathname: `/dashboard/${dashboardId}`,
+        state: { preserveNavbarState: true },
+      });
 
       if (!hasDismissedToast) {
         dispatch(
@@ -63,6 +62,7 @@ const useDashboardRedirect = () => {
     dispatch,
     dashboard?.archived,
     isLoading,
+    replace,
   ]);
 
   return {

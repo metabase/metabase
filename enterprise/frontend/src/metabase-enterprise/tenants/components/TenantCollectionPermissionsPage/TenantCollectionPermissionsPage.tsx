@@ -1,5 +1,4 @@
 import { useCallback, useEffect } from "react";
-import { push } from "react-router-redux";
 import { t } from "ttag";
 import _ from "underscore";
 
@@ -24,6 +23,7 @@ import type {
 import { Collections } from "metabase/entities/collections";
 import { Groups } from "metabase/entities/groups";
 import { connect } from "metabase/lib/redux";
+import { useNavigation } from "metabase/routing/compat";
 import type { Collection, CollectionId, GroupId } from "metabase-types/api";
 import type { State } from "metabase-types/store";
 
@@ -38,8 +38,6 @@ import {
 const mapDispatchToProps = {
   initialize: initializeTenantCollectionPermissions,
   loadPermissions: loadTenantCollectionPermissions,
-  navigateToItem: ({ id }: { id: CollectionId }) =>
-    push(`/admin/permissions/tenant-collections/${id}`),
   updateCollectionPermission: updateTenantCollectionPermission,
   savePermissions: saveTenantCollectionPermissions,
 };
@@ -65,7 +63,6 @@ type TenantCollectionPermissionsPageProps = {
   sidebar: CollectionSidebarType;
   permissionEditor: CollectionPermissionEditorType;
   collection: Collection;
-  navigateToItem: (item: { id: CollectionId }) => void;
   updateCollectionPermission: ({
     groupId,
     collection,
@@ -86,9 +83,17 @@ function TenantCollectionPermissionsPageView({
   savePermissions,
   loadPermissions,
   updateCollectionPermission,
-  navigateToItem,
   initialize,
 }: TenantCollectionPermissionsPageProps) {
+  const { push } = useNavigation();
+
+  const navigateToItem = useCallback(
+    ({ id }: { id: CollectionId }) => {
+      push(`/admin/permissions/tenant-collections/${id}`);
+    },
+    [push],
+  );
+
   useEffect(() => {
     initialize();
   }, [initialize]);

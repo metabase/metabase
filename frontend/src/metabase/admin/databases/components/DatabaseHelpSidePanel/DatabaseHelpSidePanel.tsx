@@ -1,5 +1,4 @@
 import { useDisclosure } from "@mantine/hooks";
-import { Link } from "react-router";
 import { c, t } from "ttag";
 
 import { NewUserModal } from "metabase/admin/people/containers/NewUserModal";
@@ -71,11 +70,11 @@ export const DatabaseHelpSidePanel = ({ engineKey, onClose }: Props) => {
           <>
             <Button
               className={CS.link}
-              component={Link}
+              component="a"
+              href={fullDocsUrl}
               leftSection={<Icon name="reference" />}
               p={0}
               target="_blank"
-              to={fullDocsUrl}
               variant="subtle"
             >
               {t`Read the full docs`}
@@ -101,11 +100,11 @@ export const DatabaseHelpSidePanel = ({ engineKey, onClose }: Props) => {
           <>
             <Button
               className={CS.link}
-              component={Link}
+              component="a"
+              href={talkToExpertUrl}
               leftSection={<Icon name="person" />}
               p={0}
               target="_blank"
-              to={talkToExpertUrl}
               variant="subtle"
             >
               {t`Talk to an expert`}

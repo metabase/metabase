@@ -15,8 +15,6 @@ import type * as React from "react";
 import { useMemo } from "react";
 import { DragDropContextProvider } from "react-dnd";
 import HTML5Backend from "react-dnd-html5-backend";
-import { Route, useRouterHistory } from "react-router";
-import { routerMiddleware, routerReducer } from "react-router-redux";
 import _ from "underscore";
 
 import { Api } from "metabase/api";
@@ -27,6 +25,17 @@ import { MetabaseReduxProvider } from "metabase/lib/redux";
 import { makeMainReducers } from "metabase/reducers-main";
 import { publicReducers } from "metabase/reducers-public";
 import { RouterProvider } from "metabase/router";
+import {
+  IndexRedirect,
+  IndexRoute,
+  Link,
+  Redirect,
+  Route,
+  Router,
+  createMemoryHistory as createMemoryHistoryV3,
+  useRouterHistory,
+  withRouter,
+} from "metabase/routing/compat/react-router-v3";
 import { getMetabaseCssVariables } from "metabase/styled-components/theme/css-variables";
 import type { MantineThemeOverride } from "metabase/ui";
 import { ThemeProvider, useMantineTheme } from "metabase/ui";
@@ -37,10 +46,27 @@ import { createMockState } from "metabase-types/store/mocks";
 import { getStore } from "./entities-store";
 
 type ReducerValue = ReducerObject | Reducer;
+const LOCATION_CHANGE = "@@router/LOCATION_CHANGE";
 
 interface ReducerObject {
   [slice: string]: ReducerValue;
 }
+
+export {
+  createMemoryHistoryV3 as createMemoryHistory,
+  IndexRedirect,
+  IndexRoute,
+  Link,
+  Redirect,
+  Route,
+  Router,
+  useRouterHistory,
+  withRouter,
+};
+export type {
+  InjectedRouter,
+  WithRouterProps,
+} from "metabase/routing/compat/react-router-v3";
 
 export interface RenderWithProvidersOptions {
   // the mode changes the reducers and initial state to be used for
@@ -131,16 +157,7 @@ export function renderHookWithProviders<TProps, TResult>(
     customReducers,
     theme,
   });
-
-  const WrapperWithRoute = ({ children, ...props }: any) => {
-    return (
-      <Wrapper {...props}>
-        <Route path="/" component={() => <>{children}</>} />
-      </Wrapper>
-    );
-  };
-
-  const wrapper = withRouter ? WrapperWithRoute : Wrapper;
+  const wrapper = Wrapper;
 
   const renderHookReturn = renderHook(hook, { wrapper, ...renderHookOptions });
 
@@ -186,23 +203,40 @@ export function getTestStoreAndWrapper({
   }
 
   if (withRouter) {
-    Object.assign(reducers, { routing: routerReducer });
+    Object.assign(reducers, {
+      routing: (state = routing, action: any) =>
+        action?.type === LOCATION_CHANGE
+          ? {
+              ...state,
+              locationBeforeTransitions: action.payload,
+            }
+          : state,
+    });
     Object.assign(initialState, { routing });
   }
   if (customReducers) {
     reducers = { ...reducers, ...customReducers };
   }
 
-  const storeMiddleware = _.compact([
-    Api.middleware,
-    history && routerMiddleware(history),
-  ]);
+  const storeMiddleware = _.compact([Api.middleware]);
 
   const store = getStore(
     reducers,
     initialState,
     storeMiddleware,
   ) as unknown as Store<State>;
+
+  if (withRouter && history) {
+    history.listen((location) => {
+      store.dispatch({
+        type: LOCATION_CHANGE,
+        payload: {
+          ...location,
+          query: location.query ?? {},
+        },
+      });
+    });
+  }
 
   const wrapper = (props: any) => {
     return (

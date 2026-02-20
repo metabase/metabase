@@ -1,6 +1,5 @@
 import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
-import { push } from "react-router-redux";
 
 import {
   setupCollectionByIdEndpoint,
@@ -17,6 +16,7 @@ import {
   waitFor,
   within,
 } from "__support__/ui";
+import { useNavigation } from "metabase/routing/compat/useNavigation";
 import {
   createMockCollection,
   createMockRecentTableDatabaseInfo,
@@ -25,16 +25,16 @@ import {
 } from "metabase-types/api/mocks";
 import { createMockState } from "metabase-types/store/mocks";
 
-jest.mock("react-router-redux", () => ({
-  push: jest.fn(() => ({
-    type: "@@router/CALL_HISTORY_METHOD",
-    payload: { method: "push" },
-  })),
+jest.mock("metabase/routing/compat/useNavigation", () => ({
+  useNavigation: jest.fn(),
 }));
 
 import { EmbeddingHub } from "./EmbeddingHub";
 
-const mockPush = push as jest.MockedFunction<typeof push>;
+const mockPush = jest.fn();
+const mockUseNavigation = useNavigation as jest.MockedFunction<
+  typeof useNavigation
+>;
 
 const setup = ({ isAdmin = true, checklist = {} } = {}) => {
   mockGetBoundingClientRect();
@@ -90,6 +90,12 @@ const setup = ({ isAdmin = true, checklist = {} } = {}) => {
 describe("EmbeddingHub", () => {
   beforeEach(() => {
     mockPush.mockClear();
+    mockUseNavigation.mockReturnValue({
+      push: mockPush,
+      replace: jest.fn(),
+      goBack: jest.fn(),
+      navigate: jest.fn(),
+    });
   });
 
   it("opens AddDataModal when 'Connect a database' is clicked", async () => {

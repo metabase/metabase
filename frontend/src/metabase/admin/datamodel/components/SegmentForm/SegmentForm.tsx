@@ -1,7 +1,6 @@
 import type { FieldInputProps } from "formik";
 import { useFormik } from "formik";
 import { useEffect } from "react";
-import { Link } from "react-router";
 import { t } from "ttag";
 
 import {
@@ -13,6 +12,7 @@ import { FieldSet } from "metabase/common/components/FieldSet";
 import { useSelector } from "metabase/lib/redux";
 import { PLUGIN_REMOTE_SYNC } from "metabase/plugins";
 import { SegmentEditor } from "metabase/querying/segments/components/SegmentEditor";
+import { useNavigation } from "metabase/routing/compat";
 import { getMetadata } from "metabase/selectors/metadata";
 import { Alert } from "metabase/ui";
 import * as Lib from "metabase-lib";
@@ -161,12 +161,14 @@ interface SegmentFormActionsProps {
 const SegmentFormActions = ({
   isValid,
 }: SegmentFormActionsProps): JSX.Element => {
+  const { push } = useNavigation();
+
   return (
     <div>
       <FormSubmitButton type="submit" primary={isValid} disabled={!isValid}>
         {t`Save changes`}
       </FormSubmitButton>
-      <Button as={Link} to="/admin/datamodel/segments">
+      <Button onClick={() => push("/admin/datamodel/segments")}>
         {t`Cancel`}
       </Button>
     </div>

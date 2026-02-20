@@ -1,6 +1,4 @@
 import cx from "classnames";
-import { Link } from "react-router";
-import { push } from "react-router-redux";
 import { t } from "ttag";
 
 import { SettingsSection } from "metabase/admin/components/SettingsSection";
@@ -10,8 +8,8 @@ import { DateTime } from "metabase/common/components/DateTime";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import AdminS from "metabase/css/admin.module.css";
 import CS from "metabase/css/core/index.css";
-import { useDispatch } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
+import { useNavigation } from "metabase/routing/compat";
 import {
   Anchor,
   Box,
@@ -40,10 +38,10 @@ type TaskRunDetailsPageProps = {
 
 export const TaskRunDetailsPage = ({ params }: TaskRunDetailsPageProps) => {
   const { data: taskRun, error, isLoading } = useGetTaskRunQuery(params.runId);
-  const dispatch = useDispatch();
+  const { push } = useNavigation();
 
   const onClickTask = (task: Task) => {
-    dispatch(push(Urls.adminToolsTaskDetails(task.id)));
+    push(Urls.adminToolsTaskDetails(task.id));
   };
 
   if (!taskRun || error || isLoading) {
@@ -53,12 +51,18 @@ export const TaskRunDetailsPage = ({ params }: TaskRunDetailsPageProps) => {
   return (
     <SettingsSection>
       <Flex align="center" gap="sm">
-        <Link to={Urls.adminToolsTasksRuns()}>
+        <a
+          href={Urls.adminToolsTasksRuns()}
+          onClick={(event) => {
+            event.preventDefault();
+            push(Urls.adminToolsTasksRuns());
+          }}
+        >
           <Flex align="center" gap="xs" c="text-secondary">
             <Icon name="chevronleft" />
             {t`Back to Runs`}
           </Flex>
-        </Link>
+        </a>
       </Flex>
 
       <Grid>
@@ -80,12 +84,21 @@ export const TaskRunDetailsPage = ({ params }: TaskRunDetailsPageProps) => {
             <Flex gap="md" align="baseline">
               <Text fw="bold" w={120}>{t`Entity`}</Text>
               <Anchor
-                component={Link}
-                to={getEntityUrl(
+                href={getEntityUrl(
                   taskRun.entity_type,
                   taskRun.entity_id,
                   taskRun.entity_name,
                 )}
+                onClick={(event) => {
+                  event.preventDefault();
+                  push(
+                    getEntityUrl(
+                      taskRun.entity_type,
+                      taskRun.entity_id,
+                      taskRun.entity_name,
+                    ),
+                  );
+                }}
               >
                 {taskRun.entity_name ?? taskRun.entity_id}
               </Anchor>

@@ -2,12 +2,14 @@
 import { css } from "@emotion/react";
 // eslint-disable-next-line no-restricted-imports
 import styled from "@emotion/styled";
-import { Link, type LinkProps } from "react-router";
+import type { ComponentProps, FC } from "react";
 
 import { focusOutlineStyle } from "metabase/common/style/input";
 import { doNotForwardProps } from "metabase/common/utils/doNotForwardProps";
+import { Link } from "metabase/routing/compat/react-router-v3";
 
 type LinkVariantProp = { variant?: "default" | "brand" | "brandBold" };
+type RouterLinkProps = ComponentProps<typeof Link>;
 
 export const LinkRoot = styled(
   Link,
@@ -20,7 +22,7 @@ export const LinkRoot = styled(
   ${focusOutlineStyle("brand")};
 
   ${(props) => variants[props.variant ?? "default"] ?? ""}
-` as unknown as React.FC<LinkProps & LinkVariantProp>;
+` as unknown as FC<RouterLinkProps & LinkVariantProp>;
 
 const variants = {
   default: "",

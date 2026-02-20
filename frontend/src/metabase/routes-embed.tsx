@@ -1,8 +1,7 @@
-import { Route } from "react-router";
-
 import { PublicNotFound } from "metabase/public/components/PublicNotFound";
 import PublicApp from "metabase/public/containers/PublicApp";
 import { PublicOrEmbeddedQuestion } from "metabase/public/containers/PublicOrEmbeddedQuestion";
+import { Route } from "metabase/routing/compat/react-router-v3";
 
 import { PublicOrEmbeddedDashboardPage } from "./public/containers/PublicOrEmbeddedDashboard";
 

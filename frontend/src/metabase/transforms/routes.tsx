@@ -1,9 +1,10 @@
-import { IndexRoute, Route } from "react-router";
+import type { RouteObject } from "react-router-dom";
 
 import {
   PLUGIN_DEPENDENCIES,
   PLUGIN_TRANSFORMS_PYTHON,
 } from "metabase/plugins";
+import { IndexRoute, Route } from "metabase/routing/compat/react-router-v3";
 
 import { JobListPage } from "./pages/JobListPage";
 import { JobPage } from "./pages/JobPage";
@@ -55,4 +56,45 @@ export function getDataStudioTransformRoutes() {
       </Route>
     </>
   );
+}
+
+export function getDataStudioTransformRouteObjects(): RouteObject[] {
+  return [
+    {
+      path: "runs",
+      element: <TransformTopNavLayout />,
+      children: [{ index: true, element: <RunListPage /> }],
+    },
+    {
+      index: true,
+      element: <TransformListPage />,
+    },
+    { path: "jobs", element: <JobListPage /> },
+    { path: "jobs/new", element: <NewJobPage /> },
+    { path: "jobs/:jobId", element: <JobPage /> },
+    { path: "new/query", element: <NewQueryTransformPage /> },
+    { path: "new/native", element: <NewNativeTransformPage /> },
+    { path: "new/card/:cardId", element: <NewCardTransformPage /> },
+    ...(PLUGIN_TRANSFORMS_PYTHON.isEnabled
+      ? [{ path: "new/python", element: <NewPythonTransformPage /> }]
+      : []),
+    { path: ":transformId", element: <TransformQueryPage /> },
+    { path: ":transformId/edit", element: <TransformQueryPage /> },
+    { path: ":transformId/run", element: <TransformRunPage /> },
+    { path: ":transformId/settings", element: <TransformSettingsPage /> },
+    ...(PLUGIN_DEPENDENCIES.isEnabled
+      ? [
+          {
+            path: ":transformId/dependencies",
+            element: <TransformDependenciesPage />,
+            children: [
+              {
+                index: true,
+                element: <PLUGIN_DEPENDENCIES.DependencyGraphPage />,
+              },
+            ],
+          } satisfies RouteObject,
+        ]
+      : []),
+  ];
 }

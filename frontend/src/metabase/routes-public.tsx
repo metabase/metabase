@@ -1,11 +1,10 @@
-import { Route } from "react-router";
-
 import { PublicNotFound } from "metabase/public/components/PublicNotFound";
 import PublicAction from "metabase/public/containers/PublicAction";
 import PublicApp from "metabase/public/containers/PublicApp";
 import { PublicDocument } from "metabase/public/containers/PublicDocument";
 import { PublicOrEmbeddedDashboardPage } from "metabase/public/containers/PublicOrEmbeddedDashboard";
 import { PublicOrEmbeddedQuestion } from "metabase/public/containers/PublicOrEmbeddedQuestion";
+import { Route } from "metabase/routing/compat/react-router-v3";
 
 export const getRoutes = () => {
   return (

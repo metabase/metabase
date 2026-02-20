@@ -1,8 +1,8 @@
 import { useDisclosure } from "@mantine/hooks";
-import { Link } from "react-router";
 import { t } from "ttag";
 
 import { ConfirmModal } from "metabase/common/components/ConfirmModal";
+import { Link } from "metabase/common/components/Link";
 import { ActionIcon, Icon, Menu } from "metabase/ui";
 
 type MoreMenuProps = {

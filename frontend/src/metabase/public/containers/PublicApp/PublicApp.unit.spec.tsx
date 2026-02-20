@@ -1,9 +1,8 @@
 import userEvent from "@testing-library/user-event";
 import type { JSX } from "react";
-import { Route } from "react-router";
 
 import { mockSettings } from "__support__/settings";
-import { getIcon, renderWithProviders, screen } from "__support__/ui";
+import { Route, getIcon, renderWithProviders, screen } from "__support__/ui";
 import { SyncedEmbedFrame } from "metabase/public/components/EmbedFrame";
 import type { AppErrorDescriptor } from "metabase-types/store";
 import { createMockAppState } from "metabase-types/store/mocks";

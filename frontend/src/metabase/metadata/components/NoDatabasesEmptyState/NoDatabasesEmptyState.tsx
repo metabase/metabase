@@ -1,8 +1,8 @@
-import { Link } from "react-router";
 import { t } from "ttag";
 
 import EmptyDashboardBot from "assets/img/dashboard-empty.svg";
 import { EmptyState } from "metabase/common/components/EmptyState";
+import { Link } from "metabase/common/components/Link";
 import { Box, Button, Stack, rem } from "metabase/ui";
 
 export const NoDatabasesEmptyState = () => {

@@ -1,8 +1,6 @@
 /* eslint-disable react/prop-types */
 import PropTypes from "prop-types";
 import { Component } from "react";
-import { withRouter } from "react-router";
-import { push } from "react-router-redux";
 import { t } from "ttag";
 import _ from "underscore";
 
@@ -12,10 +10,10 @@ import { Collections } from "metabase/entities/collections";
 import { Dashboards } from "metabase/entities/dashboards";
 import { connect } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
+import { useRouter } from "metabase/router";
 
 const mapDispatchToProps = (dispatch) => ({
   setDashboardArchived: () => dispatch(setArchivedDashboard(true)),
-  push: (path) => dispatch(push(path)),
 });
 
 class ArchiveDashboardModal extends Component {
@@ -64,6 +62,13 @@ class ArchiveDashboardModal extends Component {
   }
 }
 
+function withRouterParams(Component) {
+  return function ArchiveDashboardModalWithRouterParams(props) {
+    const { params } = useRouter();
+    return <Component {...props} params={params} />;
+  };
+}
+
 export const ArchiveDashboardModalConnected = _.compose(
   connect(null, mapDispatchToProps),
   Dashboards.load({
@@ -73,5 +78,5 @@ export const ArchiveDashboardModalConnected = _.compose(
     id: (state, props) => props.dashboard && props.dashboard.collection_id,
     loadingAndErrorWrapper: false,
   }),
-  withRouter,
+  withRouterParams,
 )(ArchiveDashboardModal);

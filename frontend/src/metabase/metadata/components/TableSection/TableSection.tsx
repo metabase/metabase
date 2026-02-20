@@ -1,5 +1,4 @@
 import { memo, useState } from "react";
-import { Link } from "react-router";
 import { t } from "ttag";
 
 import {
@@ -7,6 +6,7 @@ import {
   useUpdateTableMutation,
 } from "metabase/api";
 import { EmptyState } from "metabase/common/components/EmptyState";
+import { Link } from "metabase/common/components/Link";
 import * as Urls from "metabase/lib/urls";
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import { getRawTableFieldId } from "metabase/metadata/utils/field";

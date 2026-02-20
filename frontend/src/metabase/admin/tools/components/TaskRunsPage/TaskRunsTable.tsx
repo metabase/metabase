@@ -1,5 +1,4 @@
 import cx from "classnames";
-import { push } from "react-router-redux";
 import { t } from "ttag";
 
 import { DateTime } from "metabase/common/components/DateTime";
@@ -7,8 +6,8 @@ import { Ellipsified } from "metabase/common/components/Ellipsified";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import AdminS from "metabase/css/admin.module.css";
 import CS from "metabase/css/core/index.css";
-import { useDispatch } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
+import { useNavigation } from "metabase/routing/compat";
 import { Box, Flex } from "metabase/ui";
 import type { TaskRun } from "metabase-types/api";
 
@@ -27,10 +26,10 @@ export const TaskRunsTable = ({
   taskRuns,
 }: TaskRunsTableProps) => {
   const showLoadingAndErrorWrapper = isLoading || error != null;
-  const dispatch = useDispatch();
+  const { push } = useNavigation();
 
   const onClickTaskRun = (taskRun: TaskRun) => {
-    dispatch(push(Urls.adminToolsTaskRunDetails(taskRun.id)));
+    push(Urls.adminToolsTaskRunDetails(taskRun.id));
   };
 
   return (

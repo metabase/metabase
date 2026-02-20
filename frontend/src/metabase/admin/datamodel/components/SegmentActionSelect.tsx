@@ -1,8 +1,8 @@
 import { useDisclosure } from "@mantine/hooks";
-import { Link } from "react-router";
 import { t } from "ttag";
 
 import * as Urls from "metabase/lib/urls";
+import { useNavigation } from "metabase/routing/compat";
 import { ActionIcon, Icon, Menu } from "metabase/ui";
 import type { Segment } from "metabase-types/api";
 
@@ -20,6 +20,7 @@ export function SegmentActionSelect({
   onRetire,
   readOnly,
 }: SegmentActionSelectProps) {
+  const { push } = useNavigation();
   const [modalOpened, { open: openModal, close: closeModal }] =
     useDisclosure(false);
 
@@ -33,13 +34,12 @@ export function SegmentActionSelect({
         </Menu.Target>
         <Menu.Dropdown p="sm">
           {!readOnly && (
-            <Menu.Item component={Link} to={Urls.dataModelSegment(object.id)}>
+            <Menu.Item onClick={() => push(Urls.dataModelSegment(object.id))}>
               {t`Edit Segment`}
             </Menu.Item>
           )}
           <Menu.Item
-            component={Link}
-            to={Urls.dataModelSegmentRevisions(object.id)}
+            onClick={() => push(Urls.dataModelSegmentRevisions(object.id))}
           >
             {t`Revision History`}
           </Menu.Item>

@@ -1,6 +1,5 @@
 import { useDisclosure } from "@mantine/hooks";
 import { useCallback, useMemo } from "react";
-import { push } from "react-router-redux";
 import { t } from "ttag";
 
 import { HACK_getParentCollectionFromEntityUpdateAction } from "metabase/archive/utils";
@@ -28,6 +27,7 @@ import { bookmarks as BookmarkEntity } from "metabase/entities";
 import { connect, useDispatch } from "metabase/lib/redux";
 import { entityForObject } from "metabase/lib/schema";
 import * as Urls from "metabase/lib/urls";
+import { useNavigation } from "metabase/routing/compat";
 import { getSetting } from "metabase/selectors/settings";
 import type Database from "metabase-lib/v1/metadata/Database";
 import type { Bookmark, Collection, CollectionItem } from "metabase-types/api";
@@ -86,6 +86,7 @@ function ActionMenu({
   deleteBookmark,
 }: ActionMenuProps & ActionMenuStateProps) {
   const dispatch = useDispatch();
+  const { push } = useNavigation();
   const [sendToast] = useToast();
   const [modalOpened, { open: openModal, close: closeModal }] = useDisclosure();
   const isBookmarked = bookmarks && getIsBookmarked(item, bookmarks);
@@ -152,9 +153,9 @@ function ActionMenu({
     sendToast({
       message: t`${item.name} has been restored.`,
       actionLabel: t`View`, // could be collection or dashboard
-      action: () => dispatch(push(redirect)),
+      action: () => push(redirect),
     });
-  }, [item, dispatch, sendToast]);
+  }, [item, dispatch, sendToast, push]);
 
   const handleDeletePermanently = useCallback(() => {
     const Entity = entityForObject(item);

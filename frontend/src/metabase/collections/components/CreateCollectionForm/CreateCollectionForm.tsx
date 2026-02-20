@@ -1,5 +1,4 @@
 import { useMemo, useState } from "react";
-import { withRouter } from "react-router";
 import { t } from "ttag";
 import _ from "underscore";
 import * as Yup from "yup";
@@ -162,7 +161,6 @@ function CreateCollectionForm({
 }
 
 // eslint-disable-next-line import/no-default-export -- deprecated usage
-export default _.compose(
-  withRouter,
-  connect(mapStateToProps, mapDispatchToProps),
-)(CreateCollectionForm);
+export default _.compose(connect(mapStateToProps, mapDispatchToProps))(
+  CreateCollectionForm,
+);

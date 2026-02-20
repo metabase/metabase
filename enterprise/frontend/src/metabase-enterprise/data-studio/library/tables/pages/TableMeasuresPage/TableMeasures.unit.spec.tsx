@@ -1,9 +1,7 @@
-import { Route } from "react-router";
-
 import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
 import type { ENTERPRISE_PLUGIN_NAME } from "__support__/enterprise-typed";
 import { mockSettings } from "__support__/settings";
-import { renderWithProviders, screen } from "__support__/ui";
+import { Route, renderWithProviders, screen } from "__support__/ui";
 import type {
   EnterpriseSettings,
   Table,

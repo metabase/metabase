@@ -1,9 +1,8 @@
 import { useDisclosure } from "@mantine/hooks";
 import { useState } from "react";
-import { push } from "react-router-redux";
 
 import { trackDependencyEntitySelected } from "metabase/data-studio/analytics";
-import { useDispatch } from "metabase/lib/redux";
+import { useNavigation } from "metabase/routing/compat";
 import { Card } from "metabase/ui";
 import type {
   DependencyEntry,
@@ -27,14 +26,14 @@ export function GraphEntryInput({
   isGraphFetching,
   getGraphUrl,
 }: GraphEntryInputProps) {
+  const { push } = useNavigation();
   const [searchModels, setSearchModels] =
     useState<SearchModel[]>(SEARCH_MODELS);
-  const dispatch = useDispatch();
   const [isPickerOpened, { open: openPicker, close: closePicker }] =
     useDisclosure();
 
   const handleEntryChange = (newEntry: DependencyEntry | undefined) => {
-    dispatch(push(getGraphUrl(newEntry)));
+    push(getGraphUrl(newEntry));
 
     if (newEntry) {
       trackDependencyEntitySelected({

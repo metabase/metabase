@@ -1,7 +1,6 @@
 import cx from "classnames";
 import type { Location } from "history";
 import { type ComponentType, type ReactNode, useState } from "react";
-import { push } from "react-router-redux";
 import { t } from "ttag";
 
 import { FieldSet } from "metabase/common/components/FieldSet";
@@ -9,6 +8,7 @@ import CS from "metabase/css/core/index.css";
 import { Tables } from "metabase/entities/tables";
 import { connect } from "metabase/lib/redux";
 import { DatabaseSchemaAndTableDataSelector } from "metabase/query_builder/components/DataSelector";
+import { useNavigation } from "metabase/routing/compat";
 import { Icon } from "metabase/ui";
 import type { ConcreteTableId, Segment, Table } from "metabase-types/api";
 import type { State } from "metabase-types/store";
@@ -19,7 +19,6 @@ type LocationWithQuery = Location<{
 
 type FilteredToUrlTableInnerProps = {
   location: LocationWithQuery;
-  push: (location: LocationWithQuery) => void;
   segments: Segment[];
 };
 
@@ -41,20 +40,18 @@ export function FilteredToUrlTable(
 ) {
   const Inner = ({
     location,
-    push,
     segments,
     ...props
   }: FilteredToUrlTableInnerProps) => {
+    const { push } = useNavigation();
     const [tableId, setTableIdState] = useState<ConcreteTableId | null>(() =>
       getTableIdFromLocation(location),
     );
 
     const setTableId = (newTableId: ConcreteTableId | null) => {
       setTableIdState(newTableId);
-      push({
-        ...location,
-        query: newTableId == null ? {} : { table: String(newTableId) },
-      });
+      const query = newTableId == null ? "" : `?table=${newTableId}`;
+      push(`${location.pathname}${query}`);
     };
 
     const filteredItems =
@@ -73,7 +70,7 @@ export function FilteredToUrlTable(
     return <ComposedComponent {...composedProps} />;
   };
 
-  return connect(null, { push })(Inner);
+  return connect()(Inner);
 }
 
 type TableSelectorInnerProps = {

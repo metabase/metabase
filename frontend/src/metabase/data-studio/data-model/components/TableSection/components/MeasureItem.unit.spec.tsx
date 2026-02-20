@@ -1,6 +1,4 @@
-import { Route } from "react-router";
-
-import { renderWithProviders, screen } from "__support__/ui";
+import { Route, renderWithProviders, screen } from "__support__/ui";
 import { createMockMeasure } from "metabase-types/api/mocks";
 
 import { MeasureItem } from "./MeasureItem";

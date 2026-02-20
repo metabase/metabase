@@ -1,7 +1,7 @@
-import { IndexRoute, Route } from "react-router";
 import { t } from "ttag";
 
 import { PLUGIN_DB_ROUTING } from "metabase/plugins";
+import { IndexRoute, Route } from "metabase/routing/compat/react-router-v3";
 import { hasPremiumFeature } from "metabase-enterprise/settings";
 
 import { DatabaseRoutingSection } from "./DatabaseRoutingSection";

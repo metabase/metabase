@@ -3,10 +3,10 @@ import cx from "classnames";
 import { getIn } from "icepick";
 import PropTypes from "prop-types";
 import { memo } from "react";
-import { Link } from "react-router";
 import { P, match } from "ts-pattern";
 import { t } from "ttag";
 
+import { Link } from "metabase/common/components/Link";
 import S from "metabase/common/components/List/List.module.css";
 import CS from "metabase/css/core/index.css";
 import { FIELD_SEMANTIC_TYPES_MAP } from "metabase/lib/core";

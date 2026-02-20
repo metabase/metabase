@@ -1,5 +1,4 @@
 import userEvent from "@testing-library/user-event";
-import { Route } from "react-router";
 
 import { callMockEvent } from "__support__/events";
 import {
@@ -12,6 +11,7 @@ import {
   setupSegmentsEndpoints,
 } from "__support__/server-mocks";
 import {
+  Route,
   act,
   mockGetBoundingClientRect,
   renderWithProviders,

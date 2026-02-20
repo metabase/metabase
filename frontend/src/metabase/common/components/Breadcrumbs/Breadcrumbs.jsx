@@ -1,9 +1,9 @@
 import cx from "classnames";
 import PropTypes from "prop-types";
 import { Component } from "react";
-import { Link } from "react-router";
 
 import { Ellipsified } from "metabase/common/components/Ellipsified";
+import { Link } from "metabase/common/components/Link";
 import { Icon } from "metabase/ui";
 
 import S from "./Breadcrumbs.module.css";

@@ -1,7 +1,5 @@
-import { Route } from "react-router";
-
 import { mockSettings } from "__support__/settings";
-import { renderWithProviders, screen, within } from "__support__/ui";
+import { Route, renderWithProviders, screen, within } from "__support__/ui";
 import { createMockTokenStatus } from "metabase-types/api/mocks";
 import { createMockState } from "metabase-types/store/mocks";
 

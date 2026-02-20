@@ -1,5 +1,4 @@
 import { useCallback, useMemo } from "react";
-import { push } from "react-router-redux";
 import { t } from "ttag";
 
 import {
@@ -8,8 +7,8 @@ import {
   useUpdateMeasureMutation,
 } from "metabase/api";
 import { useToast } from "metabase/common/hooks/use-toast";
-import { useDispatch } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
+import { useNavigation } from "metabase/routing/compat";
 
 import { useLoadTableWithMetadata } from "../../common/hooks/use-load-table-with-metadata";
 import type { MeasureTabUrls } from "../types";
@@ -22,7 +21,7 @@ type PublishedTableMeasurePageParams = {
 export function usePublishedTableMeasurePage(
   params: PublishedTableMeasurePageParams,
 ) {
-  const dispatch = useDispatch();
+  const { push } = useNavigation();
   const [sendToast] = useToast();
   const [updateMeasure] = useUpdateMeasureMutation();
 
@@ -58,9 +57,9 @@ export function usePublishedTableMeasurePage(
       sendToast({ icon: "warning", message: t`Failed to remove measure` });
     } else {
       sendToast({ icon: "check", message: t`Measure removed` });
-      dispatch(push(Urls.dataStudioTableMeasures(tableId)));
+      push(Urls.dataStudioTableMeasures(tableId));
     }
-  }, [measure, tableId, updateMeasure, dispatch, sendToast]);
+  }, [measure, tableId, updateMeasure, push, sendToast]);
 
   const isLoading = isLoadingMeasure || isLoadingTable;
   const error = measureError ?? tableError;

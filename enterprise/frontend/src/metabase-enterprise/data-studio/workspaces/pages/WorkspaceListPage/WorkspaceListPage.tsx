@@ -1,15 +1,14 @@
 import { useEffect, useMemo } from "react";
-import { replace } from "react-router-redux";
 import { t } from "ttag";
 
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
-import { useDispatch } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
+import { useNavigation } from "metabase/routing/compat";
 import { Box, Text, Title } from "metabase/ui";
 import { useGetWorkspacesQuery } from "metabase-enterprise/api";
 
 export function WorkspaceListPage() {
-  const dispatch = useDispatch();
+  const { replace } = useNavigation();
   const { data: workspacesData, error, isFetching } = useGetWorkspacesQuery();
 
   const workspaces = useMemo(
@@ -24,8 +23,8 @@ export function WorkspaceListPage() {
       return;
     }
 
-    dispatch(replace(Urls.dataStudioWorkspace(firstWorkspaceId)));
-  }, [dispatch, error, firstWorkspaceId]);
+    replace(Urls.dataStudioWorkspace(firstWorkspaceId));
+  }, [error, firstWorkspaceId, replace]);
 
   if (error) {
     return <LoadingAndErrorWrapper error={error} loading={false} />;

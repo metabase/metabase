@@ -1,12 +1,12 @@
 import type { Location, LocationDescriptor } from "history";
 import { Component } from "react";
 import * as React from "react";
-import { Route } from "react-router";
-import { push } from "react-router-redux";
 
 import { Modal } from "metabase/common/components/Modal";
 import { connect } from "metabase/lib/redux";
 import MetabaseSettings from "metabase/lib/settings";
+import { routerActions } from "metabase/routing/compat/react-router-redux";
+import { Route } from "metabase/routing/compat/react-router-v3";
 
 type RouteParams = Record<string, string | undefined>;
 
@@ -85,7 +85,9 @@ const ModalWithRoute = (
     }
   }
 
-  return connect(null, { onChangeLocation: push })(ModalRouteComponent);
+  return connect(null, {
+    onChangeLocation: routerActions.push,
+  })(ModalRouteComponent);
 };
 
 // Base props that any modal rendered by ModalRoute must accept.

@@ -1,6 +1,6 @@
-import { Link } from "react-router";
 import { t } from "ttag";
 
+import { Link } from "metabase/common/components/Link";
 import * as Urls from "metabase/lib/urls";
 import { Box, Group, Modal } from "metabase/ui";
 

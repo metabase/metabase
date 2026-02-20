@@ -2,17 +2,17 @@ import { useDisclosure } from "@mantine/hooks";
 import cx from "classnames";
 import dayjs from "dayjs";
 import { useCallback, useMemo, useState } from "react";
-import { push } from "react-router-redux";
 import { t } from "ttag";
 
 import { ConfirmModal } from "metabase/common/components/ConfirmModal/ConfirmModal";
 import { ForwardRefLink } from "metabase/common/components/Link";
 import S from "metabase/data-studio/app/pages/DataStudioLayout/DataStudioLayout.module.css";
 import type { MetabaseColorKey } from "metabase/lib/colors/types";
-import { useDispatch, useSelector } from "metabase/lib/redux";
+import { useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import type { WorkspacesSectionProps } from "metabase/plugins/oss/database";
+import { useNavigation } from "metabase/routing/compat";
 import { getLocation } from "metabase/selectors/routing";
 import {
   ActionIcon,
@@ -45,7 +45,7 @@ import type {
 const TOOLTIP_OPEN_DELAY = 700;
 
 export function WorkspacesSection({ showLabel }: WorkspacesSectionProps) {
-  const dispatch = useDispatch();
+  const { push } = useNavigation();
   const [isWorkspacesExpanded, setIsWorkspacesExpanded] = useState(true);
   const { pathname } = useSelector(getLocation);
   const { data: workspacesData, isLoading: areWorkspacesLoading } =
@@ -62,11 +62,11 @@ export function WorkspacesSection({ showLabel }: WorkspacesSectionProps) {
   const handleCreateWorkspace = useCallback(async () => {
     try {
       const workspace = await createWorkspace().unwrap();
-      dispatch(push(Urls.dataStudioWorkspace(workspace.id)));
+      push(Urls.dataStudioWorkspace(workspace.id));
     } catch (error) {
       sendErrorToast(t`Failed to create workspace`);
     }
-  }, [createWorkspace, dispatch, sendErrorToast]);
+  }, [createWorkspace, push, sendErrorToast]);
 
   const [archiveWorkspace] = useArchiveWorkspaceMutation();
   const [unarchiveWorkspace] = useUnarchiveWorkspaceMutation();
@@ -94,7 +94,7 @@ export function WorkspacesSection({ showLabel }: WorkspacesSectionProps) {
     try {
       await deleteWorkspace(id).unwrap();
       sendSuccessToast(t`Workspace deleted successfully`);
-      dispatch(push(Urls.dataStudioWorkspaceList()));
+      push(Urls.dataStudioWorkspaceList());
     } catch (error) {
       sendErrorToast(t`Failed to delete workspace`);
     }

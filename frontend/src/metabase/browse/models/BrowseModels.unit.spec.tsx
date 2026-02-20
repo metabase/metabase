@@ -1,12 +1,11 @@
 import userEvent from "@testing-library/user-event";
-import { Route } from "react-router";
 
 import {
   setupRecentViewsEndpoints,
   setupSearchEndpoints,
   setupSettingsEndpoints,
 } from "__support__/server-mocks";
-import { renderWithProviders, screen, within } from "__support__/ui";
+import { Route, renderWithProviders, screen, within } from "__support__/ui";
 import {
   createMockCollection,
   createMockSearchResult,

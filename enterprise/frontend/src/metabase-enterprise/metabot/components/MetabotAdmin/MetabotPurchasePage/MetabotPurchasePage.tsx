@@ -1,10 +1,10 @@
 import type { ReactElement } from "react";
-import { IndexRoute, Redirect } from "react-router";
 import { t } from "ttag";
 
 import { SettingsPageWrapper } from "metabase/admin/components/SettingsSection";
 import { AdminSettingsLayout } from "metabase/common/components/AdminLayout/AdminSettingsLayout";
 import { useSelector } from "metabase/lib/redux";
+import { IndexRoute, Redirect } from "metabase/routing/compat/react-router-v3";
 import { getStoreUsers } from "metabase/selectors/store-users";
 import { Text } from "metabase/ui";
 

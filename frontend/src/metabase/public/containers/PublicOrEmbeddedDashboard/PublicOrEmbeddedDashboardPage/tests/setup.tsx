@@ -1,12 +1,11 @@
 import fetchMock from "fetch-mock";
-import { Route } from "react-router";
 import _ from "underscore";
 
 import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
 import { setupDatabasesEndpoints } from "__support__/server-mocks";
 import { setupEmbedDashboardEndpoints } from "__support__/server-mocks/embed";
 import { mockSettings } from "__support__/settings";
-import { renderWithProviders, screen } from "__support__/ui";
+import { Route, renderWithProviders, screen } from "__support__/ui";
 import { registerStaticVisualizations } from "metabase/static-viz/register";
 import type {
   DashboardCard,

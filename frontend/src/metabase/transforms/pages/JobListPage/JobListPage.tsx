@@ -1,5 +1,4 @@
 import { useCallback, useMemo, useState } from "react";
-import { push } from "react-router-redux";
 import { t } from "ttag";
 
 import { useListTransformJobsQuery } from "metabase/api";
@@ -10,8 +9,8 @@ import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErr
 import { DataStudioBreadcrumbs } from "metabase/data-studio/common/components/DataStudioBreadcrumbs";
 import { PageContainer } from "metabase/data-studio/common/components/PageContainer";
 import { PaneHeader } from "metabase/data-studio/common/components/PaneHeader";
-import { useDispatch } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
+import { useNavigation } from "metabase/routing/compat";
 import { ListEmptyState } from "metabase/transforms/components/ListEmptyState";
 import type { TreeTableColumnDef } from "metabase/ui";
 import {
@@ -28,16 +27,16 @@ import {
 import type { TransformJob } from "metabase-types/api";
 
 export const JobListPage = () => {
-  const dispatch = useDispatch();
+  const { push } = useNavigation();
   const [searchQuery, setSearchQuery] = useState("");
 
   const { data: jobs = [], error, isLoading } = useListTransformJobsQuery({});
 
   const handleRowActivate = useCallback(
     (row: { original: TransformJob }) => {
-      dispatch(push(Urls.transformJob(row.original.id)));
+      push(Urls.transformJob(row.original.id));
     },
-    [dispatch],
+    [push],
   );
 
   const jobColumnDef = useMemo<TreeTableColumnDef<TransformJob>[]>(

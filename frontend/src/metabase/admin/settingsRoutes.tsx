@@ -1,4 +1,4 @@
-import { IndexRedirect, Route } from "react-router";
+import { Navigate, Outlet, type RouteObject } from "react-router-dom";
 
 import { AdminSettingsLayout } from "metabase/common/components/AdminLayout/AdminSettingsLayout";
 import { NotFound } from "metabase/common/components/ErrorPages";
@@ -7,6 +7,7 @@ import {
   PLUGIN_REMOTE_SYNC,
   PLUGIN_TRANSFORMS_PYTHON,
 } from "metabase/plugins";
+import { IndexRedirect, Route } from "metabase/routing/compat/react-router-v3";
 
 import { GoogleAuthForm } from "./settings/auth/components/GoogleAuthForm";
 import { SettingsLdapForm } from "./settings/components/SettingsLdapForm";
@@ -89,3 +90,72 @@ export const getSettingsRoutes = () => (
     <Route path="*" component={NotFound} />
   </Route>
 );
+
+const SettingsLayoutWithOutlet = () => (
+  <AdminSettingsLayout sidebar={<SettingsNav />}>
+    <Outlet />
+  </AdminSettingsLayout>
+);
+
+export const getSettingsRouteObjects = (): RouteObject[] => [
+  {
+    element: <SettingsLayoutWithOutlet />,
+    children: [
+      { index: true, element: <Navigate to="general" replace /> },
+      { path: "general", element: <GeneralSettingsPage /> },
+      { path: "updates", element: <UpdatesSettingsPage /> },
+      { path: "email", element: <EmailSettingsPage /> },
+      { path: "notifications", element: <NotificationSettingsPage /> },
+      {
+        path: "authentication",
+        element: <AuthenticationSettingsPage tab="authentication" />,
+      },
+      {
+        path: "authentication/user-provisioning",
+        element: <AuthenticationSettingsPage tab="user-provisioning" />,
+      },
+      {
+        path: "authentication/api-keys",
+        element: <AuthenticationSettingsPage tab="api-keys" />,
+      },
+      { path: "authentication/google", element: <GoogleAuthForm /> },
+      { path: "authentication/ldap", element: <SettingsLdapForm /> },
+      {
+        path: "authentication/saml",
+        element: <PLUGIN_AUTH_PROVIDERS.SettingsSAMLForm />,
+      },
+      {
+        path: "authentication/jwt",
+        element: <PLUGIN_AUTH_PROVIDERS.SettingsJWTForm />,
+      },
+      {
+        path: "remote-sync",
+        element: <PLUGIN_REMOTE_SYNC.RemoteSyncSettings />,
+      },
+      { path: "maps", element: <MapsSettingsPage /> },
+      { path: "localization", element: <LocalizationSettingsPage /> },
+      { path: "uploads", element: <UploadSettingsPage /> },
+      {
+        path: "python-runner",
+        element: <PLUGIN_TRANSFORMS_PYTHON.PythonRunnerSettingsPage />,
+      },
+      { path: "public-sharing", element: <PublicSharingSettingsPage /> },
+      { path: "license", element: <LicenseSettingsPage /> },
+      { path: "appearance", element: <AppearanceSettingsPage /> },
+      {
+        path: "whitelabel",
+        element: <AppearanceSettingsPage tab="branding" />,
+      },
+      {
+        path: "whitelabel/branding",
+        element: <AppearanceSettingsPage tab="branding" />,
+      },
+      {
+        path: "whitelabel/conceal-metabase",
+        element: <AppearanceSettingsPage tab="conceal-metabase" />,
+      },
+      { path: "cloud", element: <CloudSettingsPage /> },
+      { path: "*", element: <NotFound /> },
+    ],
+  },
+];

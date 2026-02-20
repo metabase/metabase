@@ -1,11 +1,10 @@
-import { push } from "react-router-redux";
 import { t } from "ttag";
 
 import { DeleteDatabaseModal } from "metabase/admin/databases/components/DeleteDatabaseModel/DeleteDatabaseModal";
 import { useDeleteDatabaseMutation, useGetDatabaseQuery } from "metabase/api";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
-import { useDispatch } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
+import { useNavigation } from "metabase/routing/compat";
 import { Modal } from "metabase/ui";
 
 export const RemoveDestinationDatabaseModal = ({
@@ -13,8 +12,7 @@ export const RemoveDestinationDatabaseModal = ({
 }: {
   params: { databaseId: string; destinationDatabaseId: string };
 }) => {
-  const dispatch = useDispatch();
-
+  const { push } = useNavigation();
   const dbId = parseInt(params.databaseId, 10);
   const destDbId = parseInt(params.destinationDatabaseId, 10);
 
@@ -22,7 +20,7 @@ export const RemoveDestinationDatabaseModal = ({
   const [deleteDatabase] = useDeleteDatabaseMutation();
 
   const handleCloseModal = () => {
-    dispatch(push(Urls.viewDatabase(dbId)));
+    push(Urls.viewDatabase(dbId));
   };
 
   const handleDelete = async () => {

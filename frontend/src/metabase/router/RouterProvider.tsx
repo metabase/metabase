@@ -1,16 +1,16 @@
 import type { History, Location } from "history";
 import { type PropsWithChildren, createContext } from "react";
-import {
-  type InjectedRouter,
-  type PlainRoute,
-  Route,
-  Router,
-} from "react-router";
 import type { createBrowserRouter } from "react-router-dom";
 import { RouterProvider as RouterProviderV7 } from "react-router-dom";
 
 import { useHistory } from "metabase/history";
 import { USE_REACT_ROUTER_V7 } from "metabase/routing/compat";
+import {
+  type InjectedRouter,
+  type PlainRoute,
+  Route,
+  Router,
+} from "metabase/routing/compat/react-router-v3";
 
 type RouterContextType = {
   router: InjectedRouter;

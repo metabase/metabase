@@ -1,4 +1,3 @@
-import { routerActions } from "react-router-redux";
 import { connectedReduxRedirect } from "redux-auth-wrapper/history3/redirect";
 
 import { getAdminPaths } from "metabase/admin/app/selectors";
@@ -6,6 +5,7 @@ import { canAccessDataStudio } from "metabase/data-studio/selectors";
 import { isSameOrSiteUrlOrigin } from "metabase/lib/dom";
 import { MetabaseReduxContext } from "metabase/lib/redux";
 import { PLUGIN_FEATURE_LEVEL_PERMISSIONS } from "metabase/plugins";
+import { routerActions } from "metabase/routing/compat/react-router-redux";
 import { getSetting } from "metabase/selectors/settings";
 import type { State } from "metabase-types/store";
 

@@ -1,4 +1,3 @@
-import { push } from "react-router-redux";
 import _ from "underscore";
 
 import { Collections } from "metabase/entities/collections";
@@ -10,6 +9,7 @@ import type { Collection, TimelineEvent } from "metabase-types/api";
 import type { State } from "metabase-types/store";
 
 import LoadingAndErrorWrapper from "../../components/LoadingAndErrorWrapper";
+import { navigateToPath } from "../../navigation";
 import type { ModalParams } from "../../types";
 
 interface NewEventWithTimelineModalProps {
@@ -27,7 +27,7 @@ const mapDispatchToProps = (dispatch: any) => ({
     const query = { collectionId: collection.id, include: "events" };
     await dispatch(Timelines.actions.createWithEvent(values, collection));
     await dispatch(Timelines.actions.fetchList(query));
-    dispatch(push(Urls.timelinesInCollection(collection)));
+    navigateToPath(Urls.timelinesInCollection(collection));
   },
 });
 

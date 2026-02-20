@@ -1,16 +1,12 @@
 import type { Query } from "history";
 import { KBarPortal, KBarSearch, VisualState, useKBar } from "kbar";
 import { useEffect, useRef } from "react";
-import type { PlainRoute } from "react-router";
 import { t } from "ttag";
 
 import { useOnClickOutside } from "metabase/common/hooks/use-on-click-outside";
 import { isWithinIframe } from "metabase/lib/dom";
 import { useSelector } from "metabase/lib/redux";
-import {
-  useCompatLocation,
-  useCompatRoutes,
-} from "metabase/routing/compat";
+import { useCompatLocation, useCompatRoutes } from "metabase/routing/compat";
 import { getUser } from "metabase/selectors/user";
 import { Box, Card, Center, Icon, Overlay, Stack, rem } from "metabase/ui";
 
@@ -27,8 +23,7 @@ export const Palette = () => {
   const routes = useCompatRoutes();
 
   const disableCommandPaletteForRoute = routes.some(
-    (route: PlainRoute & { disableCommandPalette?: boolean }) =>
-      route.disableCommandPalette,
+    (route: { disableCommandPalette?: boolean }) => route.disableCommandPalette,
   );
 
   useCommandPaletteBasicActions({ location, isLoggedIn });

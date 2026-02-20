@@ -1,172 +1,592 @@
-/**
- * React Router v7 Route Configuration (WIP)
- *
- * This file shows the STRUCTURE of the route configuration in v7 format.
- * It serves as a reference for the migration but is not yet functional
- * because existing components expect props from v3 routing (location, params, etc.).
- *
- * Migration steps for each route:
- * 1. Update the component to use hooks instead of props:
- *    - useLocation() instead of props.location
- *    - useParams() instead of props.params
- *    - useNavigate() instead of props.router.push
- * 2. Add the route to this file
- * 3. Test the route works correctly
- *
- * During migration, this file will be gradually built up to match routes.jsx.
- * Once complete, routes.jsx will be deprecated and removed.
- */
-
 import type { Store } from "@reduxjs/toolkit";
-import { Navigate, type RouteObject } from "react-router-dom";
+import type { Location } from "history";
+import type { ComponentType } from "react";
+import { useEffect, useRef } from "react";
+import { Navigate, Outlet, type RouteObject } from "react-router-dom";
 
-// These imports are commented out until the components are migrated
-// import App from "metabase/App";
-// import { Login } from "metabase/auth/components/Login";
-// etc.
+import App from "metabase/App.tsx";
+import CollectionPermissionsModal from "metabase/admin/permissions/components/CollectionPermissionsModal/CollectionPermissionsModal";
+import { getAdminRouteObjects } from "metabase/admin/routes-v7";
+import { ForgotPassword } from "metabase/auth/components/ForgotPassword";
+import { Login } from "metabase/auth/components/Login";
+import { Logout } from "metabase/auth/components/Logout";
+import { ResetPassword } from "metabase/auth/components/ResetPassword";
+import {
+  BrowseDatabases,
+  BrowseMetrics,
+  BrowseModels,
+  BrowseSchemas,
+  BrowseTables,
+} from "metabase/browse";
+import { ArchiveCollectionModal } from "metabase/collections/components/ArchiveCollectionModal";
+import CollectionLandingComponent from "metabase/collections/components/CollectionLanding";
+import { MoveCollectionModal } from "metabase/collections/components/MoveCollectionModal";
+import { TrashCollectionLanding } from "metabase/collections/components/TrashCollectionLanding";
+import { MoveQuestionsIntoDashboardsModal } from "metabase/common/components/MoveQuestionsIntoDashboardsModal";
+import { NotFoundFallbackPage } from "metabase/common/components/NotFoundFallbackPage";
+import { DashboardCopyModalConnected } from "metabase/dashboard/components/DashboardCopyModal";
+import { DashboardMoveModalConnected } from "metabase/dashboard/components/DashboardMoveModal";
+import { ArchiveDashboardModalConnected } from "metabase/dashboard/containers/ArchiveDashboardModal";
+import { AutomaticDashboardApp } from "metabase/dashboard/containers/AutomaticDashboardApp";
+import { DashboardApp } from "metabase/dashboard/containers/DashboardApp/DashboardApp";
+import { getDataStudioRouteObjects } from "metabase/data-studio/routes";
+import { TableDetailPage } from "metabase/detail-view/pages/TableDetailPage";
+import { HomePage } from "metabase/home/components/HomePage";
+import { Onboarding } from "metabase/home/components/Onboarding";
+import { trackPageView } from "metabase/lib/analytics";
+import { useDispatch, useSelector } from "metabase/lib/redux";
+import NewModelOptions from "metabase/models/containers/NewModelOptions";
+import { PLUGIN_LANDING_PAGE } from "metabase/plugins";
+import { QueryBuilder } from "metabase/query_builder/containers/QueryBuilder";
+import { loadCurrentUser } from "metabase/redux/user";
+import DatabaseDetailContainer from "metabase/reference/databases/DatabaseDetailContainer";
+import DatabaseListContainer from "metabase/reference/databases/DatabaseListContainer";
+import FieldDetailContainer from "metabase/reference/databases/FieldDetailContainer";
+import FieldListContainer from "metabase/reference/databases/FieldListContainer";
+import TableDetailContainer from "metabase/reference/databases/TableDetailContainer";
+import TableListContainer from "metabase/reference/databases/TableListContainer";
+import TableQuestionsContainer from "metabase/reference/databases/TableQuestionsContainer";
+import { GlossaryContainer } from "metabase/reference/glossary/GlossaryContainer";
+import SegmentDetailContainer from "metabase/reference/segments/SegmentDetailContainer";
+import SegmentFieldDetailContainer from "metabase/reference/segments/SegmentFieldDetailContainer";
+import SegmentFieldListContainer from "metabase/reference/segments/SegmentFieldListContainer";
+import SegmentListContainer from "metabase/reference/segments/SegmentListContainer";
+import SegmentQuestionsContainer from "metabase/reference/segments/SegmentQuestionsContainer";
+import SegmentRevisionsContainer from "metabase/reference/segments/SegmentRevisionsContainer";
+import { createEntityIdRedirect } from "metabase/routes-stable-id-aware";
+import SearchApp from "metabase/search/containers/SearchApp";
+import { getSetting } from "metabase/selectors/settings";
+import { Setup } from "metabase/setup/components/Setup";
+import type { State } from "metabase-types/store";
 
 import {
   IsAuthenticatedGuard,
   IsNotAuthenticatedGuard,
   UserCanAccessOnboardingGuard,
+  createModalRoute,
+  useCompatLocation,
+  useCompatParams,
 } from "./compat";
 
-/**
- * Route structure for React Router v7.
- *
- * This shows how the routes will be structured once components are migrated.
- * Each component needs to be updated to use hooks before it can be used here.
- *
- * Example of migrated component structure:
- *
- * ```tsx
- * // Before (v3 props):
- * function MyComponent({ location, params, router }) {
- *   const handleClick = () => router.push('/path');
- *   return <div>{params.id}</div>;
- * }
- *
- * // After (v7 hooks):
- * function MyComponent() {
- *   const location = useLocation();
- *   const params = useParams<{ id: string }>();
- *   const navigate = useNavigate();
- *   const handleClick = () => navigate('/path');
- *   return <div>{params.id}</div>;
- * }
- * ```
- */
-export function createRoutes(_store: Store): RouteObject[] {
-  // This is a placeholder structure showing how routes will be organized.
-  // Components need to be migrated before they can be used here.
+const AppWithRouteProps = () => {
+  const location = useCompatLocation();
 
+  return (
+    <App location={location as unknown as Location}>
+      <Outlet />
+    </App>
+  );
+};
+
+const SetupGuard = () => {
+  const hasUserSetup = useSelector((state: State) =>
+    getSetting(state, "has-user-setup"),
+  );
+
+  useEffect(() => {
+    trackPageView(window.location.pathname);
+  }, []);
+
+  if (hasUserSetup) {
+    return <Navigate to="/" replace />;
+  }
+
+  return <Setup />;
+};
+
+const AppBootstrap = () => {
+  const dispatch = useDispatch();
+  const location = useCompatLocation();
+  const previousPathRef = useRef<string | undefined>(undefined);
+
+  useEffect(() => {
+    dispatch(loadCurrentUser());
+  }, [dispatch]);
+
+  useEffect(() => {
+    if (previousPathRef.current !== location.pathname) {
+      trackPageView(location.pathname);
+      previousPathRef.current = location.pathname;
+    }
+  }, [location.pathname]);
+
+  return <Outlet />;
+};
+
+const HomeRoute = () => {
+  const page = PLUGIN_LANDING_PAGE.getLandingPage();
+
+  if (page && page !== "/") {
+    return (
+      <Navigate
+        to={{
+          pathname: page.startsWith("/") ? page : `/${page}`,
+        }}
+        state={{ preserveNavbarState: true }}
+        replace
+      />
+    );
+  }
+
+  return <HomePage />;
+};
+
+const SearchAppWithLocation = () => {
+  const location = useCompatLocation();
+  return <SearchApp location={location} />;
+};
+
+const CollectionLandingWithParams = () => {
+  const params = useCompatParams<{ slug?: string }>();
+
+  return (
+    <CollectionLandingComponent params={{ slug: params.slug ?? "" }}>
+      <Outlet />
+    </CollectionLandingComponent>
+  );
+};
+
+const QueryBuilderWithRouteProps = () => {
+  const location = useCompatLocation();
+  const params = useCompatParams<Record<string, string | undefined>>();
+
+  return (
+    <QueryBuilder location={location as unknown as Location} params={params} />
+  );
+};
+
+const BrowseSchemasWithParams = () => {
+  const params = useCompatParams<{ slug?: string }>();
+  return <BrowseSchemas params={params} />;
+};
+
+const BrowseTablesWithParams = () => {
+  const params = useCompatParams<{ dbId?: string; schemaName?: string }>();
+  return (
+    <BrowseTables params={params as { dbId: string; schemaName: string }} />
+  );
+};
+
+const TableDetailPageWithParams = () => {
+  const params = useCompatParams<{ tableId?: string; rowId?: string }>();
+  return (
+    <TableDetailPage params={params as { tableId: string; rowId: string }} />
+  );
+};
+
+const MoveCollectionModalWithParams = ({
+  onClose,
+}: {
+  onClose: () => void;
+}) => {
+  const params = useCompatParams<{ slug?: string }>();
+
+  return (
+    <MoveCollectionModal
+      onClose={onClose}
+      params={{ slug: params.slug ?? "" }}
+    />
+  );
+};
+
+const ArchiveCollectionModalWithParams = ({
+  onClose,
+}: {
+  onClose: () => void;
+}) => {
+  const params = useCompatParams<{ slug?: string }>();
+
+  return (
+    <ArchiveCollectionModal
+      onClose={onClose}
+      params={{ slug: params.slug ?? "" }}
+    />
+  );
+};
+
+const CollectionPermissionsModalWithParams = ({
+  onClose,
+}: {
+  onClose: () => void;
+}) => {
+  const params = useCompatParams<{ slug?: string }>();
+
+  return (
+    <CollectionPermissionsModal
+      onClose={onClose}
+      params={{ slug: params.slug ?? "" }}
+    />
+  );
+};
+
+function withLegacyRouteProps<T extends object>(Component: ComponentType<T>) {
+  return function LegacyRoutePropsWrapper() {
+    const location = useCompatLocation();
+    const params = useCompatParams<Record<string, string | undefined>>();
+
+    return (
+      <Component
+        {...({
+          location: location as unknown as Location,
+          params,
+        } as T)}
+      />
+    );
+  };
+}
+
+const LegacyBrowseDatabaseRedirect = () => {
+  const { dbId, slug } = useCompatParams<{ dbId?: string; slug?: string }>();
+  return <Navigate to={`/browse/databases/${dbId}-${slug}`} replace />;
+};
+
+const LegacyBrowseSchemaRedirect = () => {
+  const { dbId, schemaName } = useCompatParams<{
+    dbId?: string;
+    schemaName?: string;
+  }>();
+
+  return (
+    <Navigate to={`/browse/databases/${dbId}/schema/${schemaName}`} replace />
+  );
+};
+
+const QuestionEntityIdRedirect = createEntityIdRedirect({
+  parametersToTranslate: [
+    {
+      name: "entity_id",
+      resourceType: "card",
+      type: "param",
+    },
+  ],
+});
+
+const CollectionEntityIdRedirect = createEntityIdRedirect({
+  parametersToTranslate: [
+    {
+      name: "entity_id",
+      resourceType: "collection",
+      type: "param",
+    },
+  ],
+});
+
+const DashboardEntityIdRedirect = createEntityIdRedirect({
+  parametersToTranslate: [
+    {
+      name: "entity_id",
+      resourceType: "dashboard",
+      type: "param",
+    },
+    {
+      name: "tab",
+      resourceType: "dashboard-tab",
+      type: "search",
+    },
+  ],
+});
+
+const ReferenceDatabaseList = withLegacyRouteProps(DatabaseListContainer);
+const ReferenceDatabaseDetail = withLegacyRouteProps(DatabaseDetailContainer);
+const ReferenceTableList = withLegacyRouteProps(TableListContainer);
+const ReferenceTableDetail = withLegacyRouteProps(TableDetailContainer);
+const ReferenceFieldList = withLegacyRouteProps(FieldListContainer);
+const ReferenceFieldDetail = withLegacyRouteProps(FieldDetailContainer);
+const ReferenceTableQuestions = withLegacyRouteProps(TableQuestionsContainer);
+const ReferenceSegmentList = withLegacyRouteProps(SegmentListContainer);
+const ReferenceSegmentDetail = withLegacyRouteProps(SegmentDetailContainer);
+const ReferenceSegmentFieldList = withLegacyRouteProps(
+  SegmentFieldListContainer,
+);
+const ReferenceSegmentFieldDetail = withLegacyRouteProps(
+  SegmentFieldDetailContainer,
+);
+const ReferenceSegmentQuestions = withLegacyRouteProps(
+  SegmentQuestionsContainer,
+);
+const ReferenceSegmentRevisions = withLegacyRouteProps(
+  SegmentRevisionsContainer,
+);
+
+export function createRoutes(store: Store): RouteObject[] {
   return [
     {
-      // Root layout component (App)
-      // element: <App />,
+      element: <AppWithRouteProps />,
       children: [
-        // Setup route
         {
           path: "/setup",
-          // element: <SetupGuard><Setup /></SetupGuard>,
+          element: <SetupGuard />,
         },
+        { path: "/setup/embedding", element: <Navigate to="/setup" replace /> },
 
-        // Auth routes
         {
           path: "/auth",
+          element: <AppBootstrap />,
           children: [
             { index: true, element: <Navigate to="/auth/login" replace /> },
             {
               element: <IsNotAuthenticatedGuard />,
               children: [
-                { path: "login" /* element: <Login /> */ },
-                { path: "login/:provider" /* element: <Login /> */ },
+                { path: "login", element: <Login /> },
+                { path: "login/:provider", element: <Login /> },
               ],
             },
-            { path: "logout" /* element: <Logout /> */ },
-            { path: "forgot_password" /* element: <ForgotPassword /> */ },
-            { path: "reset_password/:token" /* element: <ResetPassword /> */ },
+            { path: "logout", element: <Logout /> },
+            { path: "forgot_password", element: <ForgotPassword /> },
+            { path: "reset_password/:token", element: <ResetPassword /> },
           ],
         },
 
-        // Main authenticated section
         {
-          element: <IsAuthenticatedGuard />,
+          element: <AppBootstrap />,
           children: [
-            // Home
-            { path: "/" /* element: <HomePage /> */ },
-
-            // Onboarding
             {
-              path: "/getting-started",
-              element: <UserCanAccessOnboardingGuard />,
-              children: [{ index: true /* element: <Onboarding /> */ }],
-            },
-
-            // Search
-            { path: "/search" /* element: <SearchApp /> */ },
-
-            // Collections with modal routes
-            {
-              path: "/collection/:slug",
-              // element: <CollectionLanding />,
+              element: <IsAuthenticatedGuard />,
               children: [
-                // createModalRoute("move", MoveCollectionModal, { noWrap: true }),
-                // createModalRoute("archive", ArchiveCollectionModal, { noWrap: true }),
-              ],
-            },
-
-            // Dashboards with modal routes
-            {
-              path: "/dashboard/:slug",
-              // element: <DashboardApp />,
-              children: [
-                // createModalRoute("move", DashboardMoveModal, { noWrap: true }),
-                // createModalRoute("copy", DashboardCopyModal, { noWrap: true }),
-                // createModalRoute("archive", ArchiveDashboardModal, { noWrap: true }),
-              ],
-            },
-
-            // Question/Query Builder
-            {
-              path: "/question",
-              children: [
-                { index: true /* element: <QueryBuilder /> */ },
-                { path: "notebook" /* element: <QueryBuilder /> */ },
-                { path: ":slug" /* element: <QueryBuilder /> */ },
-                { path: ":slug/notebook" /* element: <QueryBuilder /> */ },
-              ],
-            },
-
-            // Browse
-            {
-              path: "/browse",
-              children: [
+                { path: "/", element: <HomeRoute /> },
                 {
-                  index: true,
-                  element: <Navigate to="/browse/models" replace />,
+                  path: "/getting-started",
+                  element: <UserCanAccessOnboardingGuard />,
+                  children: [{ index: true, element: <Onboarding /> }],
                 },
-                { path: "metrics" /* element: <BrowseMetrics /> */ },
-                { path: "models" /* element: <BrowseModels /> */ },
-                { path: "databases" /* element: <BrowseDatabases /> */ },
-                { path: "databases/:slug" /* element: <BrowseSchemas /> */ },
+                { path: "/search", element: <SearchAppWithLocation /> },
+                { path: "/archive", element: <Navigate to="/trash" replace /> },
+                { path: "/trash", element: <TrashCollectionLanding /> },
                 {
-                  path: "databases/:dbId/schema/:schemaName",
-                  /* element: <BrowseTables /> */
+                  path: "/browse",
+                  children: [
+                    {
+                      index: true,
+                      element: <Navigate to="/browse/models" replace />,
+                    },
+                    { path: "metrics", element: <BrowseMetrics /> },
+                    { path: "models", element: <BrowseModels /> },
+                    { path: "databases", element: <BrowseDatabases /> },
+                    {
+                      path: "databases/:slug",
+                      element: <BrowseSchemasWithParams />,
+                    },
+                    {
+                      path: "databases/:dbId/schema/:schemaName",
+                      element: <BrowseTablesWithParams />,
+                    },
+                    {
+                      path: ":dbId-:slug",
+                      element: <LegacyBrowseDatabaseRedirect />,
+                    },
+                    {
+                      path: ":dbId/schema/:schemaName",
+                      element: <LegacyBrowseSchemaRedirect />,
+                    },
+                  ],
                 },
+                {
+                  path: "/table/:tableId/detail/:rowId",
+                  element: <TableDetailPageWithParams />,
+                },
+                {
+                  path: "/collection/entity/:entity_id",
+                  element: <CollectionEntityIdRedirect />,
+                },
+                {
+                  path: "/collection/:slug",
+                  element: <CollectionLandingWithParams />,
+                  children: [
+                    createModalRoute("move", MoveCollectionModalWithParams, {
+                      noWrap: true,
+                    }),
+                    createModalRoute(
+                      "archive",
+                      ArchiveCollectionModalWithParams,
+                      {
+                        noWrap: true,
+                      },
+                    ),
+                    createModalRoute(
+                      "permissions",
+                      CollectionPermissionsModalWithParams,
+                    ),
+                    createModalRoute(
+                      "move-questions-dashboard",
+                      MoveQuestionsIntoDashboardsModal,
+                    ),
+                  ],
+                },
+                {
+                  path: "/question",
+                  children: [
+                    {
+                      path: "entity/:entity_id",
+                      element: <QuestionEntityIdRedirect />,
+                    },
+                    { index: true, element: <QueryBuilderWithRouteProps /> },
+                    {
+                      path: "notebook",
+                      element: <QueryBuilderWithRouteProps />,
+                    },
+                    { path: ":slug", element: <QueryBuilderWithRouteProps /> },
+                    {
+                      path: ":slug/notebook",
+                      element: <QueryBuilderWithRouteProps />,
+                    },
+                    {
+                      path: ":slug/metabot",
+                      element: <QueryBuilderWithRouteProps />,
+                    },
+                    {
+                      path: ":slug/:objectId",
+                      element: <QueryBuilderWithRouteProps />,
+                    },
+                  ],
+                },
+                {
+                  path: "/model",
+                  children: [
+                    { index: true, element: <QueryBuilderWithRouteProps /> },
+                    { path: "new", element: <NewModelOptions /> },
+                    { path: "query", element: <QueryBuilderWithRouteProps /> },
+                    {
+                      path: "metabot",
+                      element: <QueryBuilderWithRouteProps />,
+                    },
+                    { path: ":slug", element: <QueryBuilderWithRouteProps /> },
+                    {
+                      path: ":slug/notebook",
+                      element: <QueryBuilderWithRouteProps />,
+                    },
+                    {
+                      path: ":slug/query",
+                      element: <QueryBuilderWithRouteProps />,
+                    },
+                    {
+                      path: ":slug/columns",
+                      element: <QueryBuilderWithRouteProps />,
+                    },
+                    {
+                      path: ":slug/metadata",
+                      element: <QueryBuilderWithRouteProps />,
+                    },
+                    {
+                      path: ":slug/metabot",
+                      element: <QueryBuilderWithRouteProps />,
+                    },
+                    {
+                      path: ":slug/:objectId",
+                      element: <QueryBuilderWithRouteProps />,
+                    },
+                  ],
+                },
+                {
+                  path: "/metric",
+                  children: [
+                    { index: true, element: <QueryBuilderWithRouteProps /> },
+                    {
+                      path: "notebook",
+                      element: <QueryBuilderWithRouteProps />,
+                    },
+                    { path: "query", element: <QueryBuilderWithRouteProps /> },
+                    { path: ":slug", element: <QueryBuilderWithRouteProps /> },
+                    {
+                      path: ":slug/notebook",
+                      element: <QueryBuilderWithRouteProps />,
+                    },
+                    {
+                      path: ":slug/query",
+                      element: <QueryBuilderWithRouteProps />,
+                    },
+                  ],
+                },
+                {
+                  path: "/dashboard/entity/:entity_id",
+                  element: <DashboardEntityIdRedirect />,
+                },
+                {
+                  path: "/dashboard/:slug",
+                  element: <DashboardApp />,
+                  children: [
+                    createModalRoute("move", DashboardMoveModalConnected, {
+                      noWrap: true,
+                    }),
+                    createModalRoute("copy", DashboardCopyModalConnected, {
+                      noWrap: true,
+                    }),
+                    createModalRoute(
+                      "archive",
+                      ArchiveDashboardModalConnected,
+                      {
+                        noWrap: true,
+                      },
+                    ),
+                  ],
+                },
+                {
+                  path: "/auto/dashboard/*",
+                  element: <AutomaticDashboardApp />,
+                },
+                {
+                  path: "/reference",
+                  children: [
+                    {
+                      index: true,
+                      element: <Navigate to="/reference/databases" replace />,
+                    },
+                    { path: "segments", element: <ReferenceSegmentList /> },
+                    {
+                      path: "segments/:segmentId",
+                      element: <ReferenceSegmentDetail />,
+                    },
+                    {
+                      path: "segments/:segmentId/fields",
+                      element: <ReferenceSegmentFieldList />,
+                    },
+                    {
+                      path: "segments/:segmentId/fields/:fieldId",
+                      element: <ReferenceSegmentFieldDetail />,
+                    },
+                    {
+                      path: "segments/:segmentId/questions",
+                      element: <ReferenceSegmentQuestions />,
+                    },
+                    {
+                      path: "segments/:segmentId/revisions",
+                      element: <ReferenceSegmentRevisions />,
+                    },
+                    { path: "databases", element: <ReferenceDatabaseList /> },
+                    {
+                      path: "databases/:databaseId",
+                      element: <ReferenceDatabaseDetail />,
+                    },
+                    {
+                      path: "databases/:databaseId/tables",
+                      element: <ReferenceTableList />,
+                    },
+                    {
+                      path: "databases/:databaseId/tables/:tableId",
+                      element: <ReferenceTableDetail />,
+                    },
+                    {
+                      path: "databases/:databaseId/tables/:tableId/fields",
+                      element: <ReferenceFieldList />,
+                    },
+                    {
+                      path: "databases/:databaseId/tables/:tableId/fields/:fieldId",
+                      element: <ReferenceFieldDetail />,
+                    },
+                    {
+                      path: "databases/:databaseId/tables/:tableId/questions",
+                      element: <ReferenceTableQuestions />,
+                    },
+                    { path: "glossary", element: <GlossaryContainer /> },
+                  ],
+                },
+                ...getAdminRouteObjects(store),
+                ...getDataStudioRouteObjects(),
               ],
-            },
-
-            // Admin routes (complex, will be migrated separately)
-            {
-              path: "/admin/*",
-              // Will use lazy loading for admin routes
             },
           ],
         },
 
-        // Catch-all for 404
-        { path: "*" /* element: <NotFoundFallbackPage /> */ },
+        { path: "*", element: <NotFoundFallbackPage /> },
       ],
     },
   ];

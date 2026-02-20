@@ -1,7 +1,5 @@
-import type { LocationDescriptor } from "history";
 import type * as React from "react";
 import { useEffect, useMemo, useState } from "react";
-import { replace } from "react-router-redux";
 import { useMount } from "react-use";
 import _ from "underscore";
 
@@ -15,6 +13,7 @@ import { connect } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import ModelActionsView from "metabase/models/components/ModelActions";
 import { loadMetadataForCard } from "metabase/questions/actions";
+import { useNavigation } from "metabase/routing/compat";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 import type Table from "metabase-lib/v1/metadata/Table";
@@ -36,7 +35,6 @@ type EntityLoadersProps = {
 type DispatchProps = {
   loadMetadataForCard: (card: Card) => void;
   fetchTableForeignKeys: (params: { id: Table["id"] }) => void;
-  onChangeLocation: (location: LocationDescriptor) => void;
 };
 
 type Props = OwnProps & EntityLoadersProps & DispatchProps;
@@ -44,7 +42,6 @@ type Props = OwnProps & EntityLoadersProps & DispatchProps;
 const mapDispatchToProps = {
   loadMetadataForCard,
   fetchTableForeignKeys: Tables.actions.fetchForeignKeys,
-  onChangeLocation: replace,
 };
 
 function ModelActions({
@@ -53,8 +50,8 @@ function ModelActions({
   children,
   loadMetadataForCard,
   fetchTableForeignKeys,
-  onChangeLocation,
 }: Props) {
+  const { replace } = useNavigation();
   const [hasFetchedTableMetadata, setHasFetchedTableMetadata] = useState(false);
 
   usePageTitle(model?.displayName() || "");
@@ -85,7 +82,7 @@ function ModelActions({
         loadMetadataForCard(card);
       }
     } else {
-      onChangeLocation(Urls.question(card));
+      replace(Urls.question(card));
     }
   });
 

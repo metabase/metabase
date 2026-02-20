@@ -1,9 +1,9 @@
 import { useCallback, useState } from "react";
-import { Link } from "react-router";
 import { t } from "ttag";
 
 import { useUpdateSnippetMutation } from "metabase/api";
 import { getErrorMessage } from "metabase/api/utils";
+import { Link } from "metabase/common/components/Link";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { SectionLayout } from "metabase/data-studio/app/components/SectionLayout";
 import { DataStudioBreadcrumbs } from "metabase/data-studio/common/components/DataStudioBreadcrumbs";

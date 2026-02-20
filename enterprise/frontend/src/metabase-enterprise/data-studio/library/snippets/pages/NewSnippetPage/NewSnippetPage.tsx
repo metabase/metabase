@@ -1,6 +1,5 @@
 import { sql } from "@codemirror/lang-sql";
 import { useEffect, useMemo, useState } from "react";
-import { push } from "react-router-redux";
 import { t } from "ttag";
 
 import { useCreateSnippetMutation } from "metabase/api";
@@ -18,9 +17,10 @@ import {
   PaneHeaderActions,
   PaneHeaderInput,
 } from "metabase/data-studio/common/components/PaneHeader";
-import { useDispatch, useSelector } from "metabase/lib/redux";
+import { useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { PLUGIN_REMOTE_SYNC, PLUGIN_SNIPPET_FOLDERS } from "metabase/plugins";
+import { useNavigation } from "metabase/routing/compat";
 import { Card, Flex, Stack } from "metabase/ui";
 import type {
   NativeQuerySnippet,
@@ -32,7 +32,7 @@ import S from "./NewSnippetPage.module.css";
 const SNIPPET_NAME_MAX_LENGTH = 254;
 
 export function NewSnippetPage() {
-  const dispatch = useDispatch();
+  const { push } = useNavigation();
   const [sendToast] = useToast();
   const [name, setName] = useState(t`New SQL snippet`);
   const [description, setDescription] = useState("");
@@ -69,9 +69,9 @@ export function NewSnippetPage() {
 
   useEffect(() => {
     if (savedSnippet) {
-      dispatch(push(Urls.dataStudioSnippet(savedSnippet.id)));
+      push(Urls.dataStudioSnippet(savedSnippet.id));
     }
-  }, [savedSnippet, dispatch]);
+  }, [savedSnippet, push]);
 
   const handleSave = async () => {
     if (!PLUGIN_SNIPPET_FOLDERS.isEnabled) {
@@ -82,7 +82,7 @@ export function NewSnippetPage() {
   };
 
   const handleCancel = () => {
-    dispatch(push(Urls.dataStudioLibrary()));
+    push(Urls.dataStudioLibrary());
   };
 
   const handleCollectionSelected = async (

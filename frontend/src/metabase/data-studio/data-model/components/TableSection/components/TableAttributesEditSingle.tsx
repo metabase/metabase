@@ -1,8 +1,8 @@
 import cx from "classnames";
-import { Link } from "react-router";
 import { t } from "ttag";
 
 import { useUpdateTableMutation } from "metabase/api";
+import { Link } from "metabase/common/components/Link";
 import * as Urls from "metabase/lib/urls";
 import {
   DataSourceInput,

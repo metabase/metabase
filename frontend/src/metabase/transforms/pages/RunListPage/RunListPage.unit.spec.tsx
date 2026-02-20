@@ -1,5 +1,4 @@
 import userEvent from "@testing-library/user-event";
-import { Route } from "react-router";
 
 import {
   setupListTransformRunsEndpoint,
@@ -7,6 +6,7 @@ import {
   setupListTransformsEndpoint,
 } from "__support__/server-mocks";
 import {
+  Route,
   mockGetBoundingClientRect,
   renderWithProviders,
   screen,

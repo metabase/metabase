@@ -1,5 +1,3 @@
-import { Route } from "react-router";
-
 import {
   setupDashboardEndpoints,
   setupDatabasesEndpoints,
@@ -7,7 +5,7 @@ import {
   setupRecentViewsEndpoints,
   setupSearchEndpoints,
 } from "__support__/server-mocks";
-import { renderWithProviders, screen } from "__support__/ui";
+import { Route, renderWithProviders, screen } from "__support__/ui";
 import type { DashboardId } from "metabase-types/api";
 import { createMockDashboard, createMockUser } from "metabase-types/api/mocks";
 import { createMockState } from "metabase-types/store/mocks";

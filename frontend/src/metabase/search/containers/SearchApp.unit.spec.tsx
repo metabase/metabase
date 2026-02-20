@@ -1,5 +1,4 @@
 import userEvent from "@testing-library/user-event";
-import { Route } from "react-router";
 
 import {
   setupCollectionByIdEndpoint,
@@ -9,6 +8,7 @@ import {
   setupUserRecipientsEndpoint,
 } from "__support__/server-mocks";
 import {
+  Route,
   renderWithProviders,
   screen,
   waitForLoaderToBeRemoved,

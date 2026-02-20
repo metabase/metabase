@@ -2,7 +2,6 @@ import { useDisclosure, useElementSize } from "@mantine/hooks";
 import cx from "classnames";
 import type { Location } from "history";
 import { useCallback, useLayoutEffect, useMemo, useState } from "react";
-import { replace } from "react-router-redux";
 import { t } from "ttag";
 
 import {
@@ -13,8 +12,8 @@ import {
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { DataStudioBreadcrumbs } from "metabase/data-studio/common/components/DataStudioBreadcrumbs";
 import { PaneHeader } from "metabase/data-studio/common/components/PaneHeader";
-import { useDispatch } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
+import { useNavigation } from "metabase/routing/compat";
 import { POLLING_INTERVAL } from "metabase/transforms/constants";
 import { Center, Flex, Stack } from "metabase/ui";
 import type { TransformRun, TransformRunId } from "metabase-types/api";
@@ -52,7 +51,7 @@ export function RunListPage({ location }: RunListPageProps) {
     TransformRunId | undefined
   >();
   const [isPolling, setIsPolling] = useState(false);
-  const dispatch = useDispatch();
+  const { replace } = useNavigation();
 
   const {
     data,
@@ -113,9 +112,9 @@ export function RunListPage({ location }: RunListPageProps) {
 
   const handleParamsChange = useCallback(
     (newParams: Urls.TransformRunListParams) => {
-      dispatch(replace(Urls.transformRunList(newParams)));
+      replace(Urls.transformRunList(newParams));
     },
-    [dispatch],
+    [replace],
   );
 
   const handleFilterOptionsChange = useCallback(

@@ -1,5 +1,3 @@
-import { Route } from "react-router";
-
 import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
 import {
   setupCardEndpoints,
@@ -9,7 +7,11 @@ import { setupPerformanceEndpoints } from "__support__/server-mocks/performance"
 import { setupModelPersistenceEndpoints } from "__support__/server-mocks/persist";
 import { mockSettings } from "__support__/settings";
 import { createMockEntitiesState } from "__support__/store";
-import { renderWithProviders, waitForLoaderToBeRemoved } from "__support__/ui";
+import {
+  Route,
+  renderWithProviders,
+  waitForLoaderToBeRemoved,
+} from "__support__/ui";
 import { checkNotNull } from "metabase/lib/types";
 import { getMetadata } from "metabase/selectors/metadata";
 import type { Card, Settings } from "metabase-types/api";

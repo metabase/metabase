@@ -1,8 +1,7 @@
-import { push } from "react-router-redux";
 import { t } from "ttag";
 
 import { DataPickerModal } from "metabase/common/components/Pickers/DataPicker";
-import { useDispatch } from "metabase/lib/redux";
+import { useNavigation } from "metabase/routing/compat";
 import type { TableId } from "metabase-types/api";
 
 interface EmbeddingHubXrayPickerModalProps {
@@ -14,10 +13,10 @@ export const EmbeddingHubXrayPickerModal = ({
   opened,
   onClose,
 }: EmbeddingHubXrayPickerModalProps) => {
-  const dispatch = useDispatch();
+  const { push } = useNavigation();
 
   function handleTableSelect(tableId: TableId) {
-    dispatch(push(`/auto/dashboard/table/${tableId}`));
+    push(`/auto/dashboard/table/${tableId}`);
   }
 
   if (!opened) {

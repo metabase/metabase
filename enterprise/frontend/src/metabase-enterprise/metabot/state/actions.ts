@@ -1,15 +1,14 @@
 import {
-  type UnknownAction,
   createAsyncThunk as createAsyncThunkOriginal,
   isRejected,
   nanoid,
 } from "@reduxjs/toolkit";
-import { push } from "react-router-redux";
 import { P, match } from "ts-pattern";
 import _ from "underscore";
 
 import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
 import { addUndo } from "metabase/redux/undo";
+import { routerActions } from "metabase/routing/compat/react-router-redux";
 import { getIsWorkspace } from "metabase/selectors/routing";
 import { getUser } from "metabase/selectors/user";
 import {
@@ -352,7 +351,7 @@ export const sendAgentRequest = createAsyncThunk<
                 dispatch(setNavigateToPath(part.value));
 
                 if (!isEmbeddingSdk() && !isWorkspace) {
-                  dispatch(push(part.value) as UnknownAction);
+                  dispatch(routerActions.push(part.value));
                 }
               })
               .with({ type: "transform_suggestion" }, ({ value }) => {

@@ -1,4 +1,3 @@
-import { Link } from "react-router";
 import { jt, t } from "ttag";
 
 import { useModalOpen } from "metabase/common/hooks/use-modal-open";
@@ -58,8 +57,8 @@ export const LegacyPermissionsModal = ({
         <Button
           variant="subtle"
           p={0}
-          component={Link}
-          to={docsUrl}
+          component="a"
+          href={docsUrl}
           target="_blank"
         >
           {t`Learn more`}

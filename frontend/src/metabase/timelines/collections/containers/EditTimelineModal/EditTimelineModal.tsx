@@ -1,4 +1,3 @@
-import { push } from "react-router-redux";
 import _ from "underscore";
 
 import { Timelines } from "metabase/entities/timelines";
@@ -9,6 +8,7 @@ import type { Timeline } from "metabase-types/api";
 import type { State } from "metabase-types/store";
 
 import LoadingAndErrorWrapper from "../../components/LoadingAndErrorWrapper";
+import { navigateToPath } from "../../navigation";
 import type { ModalParams } from "../../types";
 
 interface EditTimelineModalProps {
@@ -25,11 +25,11 @@ const timelineProps = {
 const mapDispatchToProps = (dispatch: any) => ({
   onSubmit: async (timeline: Timeline) => {
     await dispatch(Timelines.actions.update(timeline));
-    dispatch(push(Urls.timelineInCollection(timeline)));
+    navigateToPath(Urls.timelineInCollection(timeline));
   },
   onArchive: async (timeline: Timeline) => {
     await dispatch(Timelines.actions.setArchived(timeline, true));
-    dispatch(push(Urls.timelinesInCollection(timeline.collection)));
+    navigateToPath(Urls.timelinesInCollection(timeline.collection));
   },
 });
 

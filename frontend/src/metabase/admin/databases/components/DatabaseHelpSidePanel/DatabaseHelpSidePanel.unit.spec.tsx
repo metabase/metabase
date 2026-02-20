@@ -1,11 +1,10 @@
 import { act } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
-import { Route } from "react-router";
 
 import { setupEnterprisePlugins } from "__support__/enterprise";
 import { mockSettings } from "__support__/settings";
-import { renderWithProviders, screen, within } from "__support__/ui";
+import { Route, renderWithProviders, screen, within } from "__support__/ui";
 import type { EngineKey } from "metabase-types/api";
 import {
   createMockEngines,

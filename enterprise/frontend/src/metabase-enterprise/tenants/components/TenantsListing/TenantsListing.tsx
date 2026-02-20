@@ -1,5 +1,4 @@
 import { useMemo } from "react";
-import { push } from "react-router-redux";
 import { t } from "ttag";
 
 import { SearchFilter } from "metabase/admin/people/components/SearchFilter";
@@ -11,8 +10,8 @@ import { AdminContentTable } from "metabase/common/components/AdminContentTable"
 import { ForwardRefLink } from "metabase/common/components/Link";
 import { UserAvatar } from "metabase/common/components/UserAvatar";
 import CS from "metabase/css/core/index.css";
-import { useDispatch } from "metabase/lib/redux";
 import { regexpEscape } from "metabase/lib/string";
+import { useNavigation } from "metabase/routing/compat";
 import {
   Box,
   Button,
@@ -48,12 +47,12 @@ export const TenantsListing = ({
   children,
   hasNoTenants,
 }: TenantsListingProps) => {
-  const dispatch = useDispatch();
+  const { push } = useNavigation();
 
   const openNewTenantModal = () => {
     const param = hasNoTenants ? "?onboarding=true" : "";
 
-    dispatch(push(Urls.newTenant() + param));
+    push(Urls.newTenant() + param);
   };
 
   const filteredTenants = useMemo(() => {

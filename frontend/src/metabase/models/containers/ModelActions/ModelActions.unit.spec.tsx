@@ -1,6 +1,5 @@
 import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
-import { IndexRedirect, Route } from "react-router";
 
 import { createMockMetadata } from "__support__/metadata";
 import {
@@ -12,6 +11,8 @@ import {
   setupModelActionsEndpoints,
 } from "__support__/server-mocks";
 import {
+  IndexRedirect,
+  Route,
   renderWithProviders,
   screen,
   waitFor,

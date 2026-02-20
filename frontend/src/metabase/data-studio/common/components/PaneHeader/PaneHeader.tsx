@@ -1,8 +1,8 @@
 import type { ReactNode } from "react";
-import { Link } from "react-router";
 import { t } from "ttag";
 
 import { EditableText } from "metabase/common/components/EditableText";
+import { Link } from "metabase/common/components/Link";
 import { useSelector } from "metabase/lib/redux";
 import { AppSwitcher } from "metabase/nav/components/AppSwitcher";
 import { PLUGIN_METABOT } from "metabase/plugins";

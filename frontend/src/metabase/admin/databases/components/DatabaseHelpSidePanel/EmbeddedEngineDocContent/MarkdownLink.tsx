@@ -1,5 +1,4 @@
 import type { ComponentProps } from "react";
-import { Link } from "react-router";
 
 import CS from "metabase/css/core/index.css";
 import { useSelector } from "metabase/lib/redux";
@@ -10,9 +9,9 @@ export const MarkdownLink = ({ href, children }: ComponentProps<"a">) => {
   const parsedUrl = useSelector((state) => getParsedMDLinkUrl(state, href));
 
   return (
-    <Link to={parsedUrl} className={CS.link} target="_blank">
+    <a href={parsedUrl} className={CS.link} target="_blank" rel="noreferrer">
       {children}
-    </Link>
+    </a>
   );
 };
 

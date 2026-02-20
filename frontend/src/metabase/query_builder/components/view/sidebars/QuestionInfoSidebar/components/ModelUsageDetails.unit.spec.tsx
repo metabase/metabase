@@ -1,5 +1,4 @@
 import userEvent from "@testing-library/user-event";
-import { Route } from "react-router";
 
 import { createMockMetadata } from "__support__/metadata";
 import {
@@ -10,6 +9,7 @@ import {
   setupDatabasesEndpoints,
 } from "__support__/server-mocks";
 import {
+  Route,
   renderWithProviders,
   screen,
   waitForLoaderToBeRemoved,

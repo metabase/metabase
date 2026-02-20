@@ -1,7 +1,6 @@
 import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 import type { Location } from "history";
-import { Route } from "react-router";
 
 import {
   setupDatabasesEndpoints,
@@ -9,6 +8,7 @@ import {
   setupUniqueTasksEndpoint,
 } from "__support__/server-mocks";
 import {
+  Route,
   act,
   renderWithProviders,
   screen,

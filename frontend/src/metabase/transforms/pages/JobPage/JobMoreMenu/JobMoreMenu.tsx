@@ -1,10 +1,9 @@
 import { type MouseEvent, useState } from "react";
-import { push } from "react-router-redux";
 import { t } from "ttag";
 
-import { useDispatch } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { useMetadataToasts } from "metabase/metadata/hooks";
+import { useNavigation } from "metabase/routing/compat";
 import { ActionIcon, Icon, Menu } from "metabase/ui";
 import type { TransformJob } from "metabase-types/api";
 
@@ -69,11 +68,11 @@ type JobModalProps = {
 
 function JobModal({ job, modalType, onClose }: JobModalProps) {
   const { sendSuccessToast } = useMetadataToasts();
-  const dispatch = useDispatch();
+  const { push } = useNavigation();
 
   const handleDelete = () => {
     sendSuccessToast(t`Job deleted`);
-    dispatch(push(Urls.transformJobList()));
+    push(Urls.transformJobList());
     onClose();
   };
 

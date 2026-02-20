@@ -1,6 +1,5 @@
 import { screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { Route } from "react-router";
 
 import {
   setupCardEndpoints,
@@ -8,7 +7,7 @@ import {
   setupCollectionsEndpoints,
   setupDashboardEndpoints,
 } from "__support__/server-mocks";
-import { renderWithProviders } from "__support__/ui";
+import { Route, renderWithProviders } from "__support__/ui";
 import { DEFAULT_INTERACTIVE_EMBEDDING_OPTIONS } from "metabase/redux/embed";
 import type { Card } from "metabase-types/api";
 import {

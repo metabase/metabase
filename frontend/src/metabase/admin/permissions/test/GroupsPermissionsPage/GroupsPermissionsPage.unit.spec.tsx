@@ -1,6 +1,5 @@
 import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
-import { Route } from "react-router";
 
 import { callMockEvent } from "__support__/events";
 import {
@@ -9,6 +8,7 @@ import {
   setupPermissionsGraphEndpoints,
 } from "__support__/server-mocks";
 import {
+  Route,
   renderWithProviders,
   screen,
   waitForLoaderToBeRemoved,

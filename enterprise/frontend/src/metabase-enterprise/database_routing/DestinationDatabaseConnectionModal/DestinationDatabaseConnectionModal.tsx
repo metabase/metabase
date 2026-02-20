@@ -1,5 +1,4 @@
 import { useMemo } from "react";
-import { push, replace } from "react-router-redux";
 import { t } from "ttag";
 
 import { DatabaseEditConnectionForm } from "metabase/admin/databases/components/DatabaseEditConnectionForm";
@@ -11,6 +10,7 @@ import { usePageTitle } from "metabase/hooks/use-page-title";
 import { useDispatch } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { addUndo } from "metabase/redux/undo";
+import { useNavigation } from "metabase/routing/compat";
 import { Flex, Icon, Modal, Text } from "metabase/ui";
 import { useCreateDestinationDatabaseMutation } from "metabase-enterprise/api";
 import type { Database, DatabaseData } from "metabase-types/api";
@@ -25,6 +25,7 @@ export const DestinationDatabaseConnectionModal = ({
 }: {
   params: { databaseId: string; destinationDatabaseId?: string };
 }) => {
+  const { push, replace } = useNavigation();
   const dispatch = useDispatch();
 
   // eslint-disable-next-line metabase/no-unconditional-metabase-links-render -- Admin settings
@@ -56,9 +57,9 @@ export const DestinationDatabaseConnectionModal = ({
   const handleCloseModal = (method = "push") => {
     const dbId = parseInt(databaseId, 10);
     if (method === "push") {
-      dispatch(push(Urls.viewDatabase(dbId)));
+      push(Urls.viewDatabase(dbId));
     } else {
-      dispatch(replace(Urls.viewDatabase(dbId)));
+      replace(Urls.viewDatabase(dbId));
     }
   };
 

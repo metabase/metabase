@@ -1,5 +1,4 @@
 import userEvent from "@testing-library/user-event";
-import { Route } from "react-router";
 
 import {
   setupDatabasesEndpoints,
@@ -7,7 +6,7 @@ import {
   setupWorkspaceCheckoutEndpoint,
   setupWorkspacesEndpoint,
 } from "__support__/server-mocks";
-import { renderWithProviders, screen, waitFor } from "__support__/ui";
+import { Route, renderWithProviders, screen, waitFor } from "__support__/ui";
 import { hasPremiumFeature } from "metabase-enterprise/settings";
 import type { Transform } from "metabase-types/api";
 import {

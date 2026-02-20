@@ -1,7 +1,7 @@
 import userEvent from "@testing-library/user-event";
-import { Route } from "react-router";
 
 import {
+  Route,
   renderWithProviders,
   screen,
   getIcon as testGetIcon,

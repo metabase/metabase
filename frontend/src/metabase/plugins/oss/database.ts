@@ -1,4 +1,5 @@
 import type { ComponentType } from "react";
+import type { RouteObject } from "react-router-dom";
 
 import { PluginPlaceholder } from "metabase/plugins/components/PluginPlaceholder";
 import type Database from "metabase-lib/v1/metadata/Database";
@@ -72,6 +73,7 @@ const getDefaultPluginWorkspaces = () => ({
   }>,
   WorkspacesSection: PluginPlaceholder as ComponentType<WorkspacesSectionProps>,
   getDataStudioWorkspaceRoutes: () => null as React.ReactElement | null,
+  getDataStudioWorkspaceRouteObjects: () => [] as RouteObject[],
   EditTransformMenu: PluginPlaceholder as ComponentType<EditTransformMenuProps>,
 });
 

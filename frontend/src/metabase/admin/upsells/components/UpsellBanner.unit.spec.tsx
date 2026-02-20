@@ -1,11 +1,10 @@
 import userEvent from "@testing-library/user-event";
-import { Route } from "react-router";
 
 import {
   findRequests,
   setupUserKeyValueEndpoints,
 } from "__support__/server-mocks";
-import { renderWithProviders, screen, waitFor } from "__support__/ui";
+import { Route, renderWithProviders, screen, waitFor } from "__support__/ui";
 import { createMockUser } from "metabase-types/api/mocks";
 
 import { UpsellBanner, type UpsellBannerProps } from "./UpsellBanner";

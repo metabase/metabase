@@ -1,11 +1,11 @@
 import { useState } from "react";
-import { push } from "react-router-redux";
 import { c, t } from "ttag";
 
 import { ForwardRefLink } from "metabase/common/components/Link";
-import { useDispatch, useSelector } from "metabase/lib/redux";
+import { useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { PLUGIN_LIBRARY, PLUGIN_REMOTE_SYNC } from "metabase/plugins";
+import { useNavigation } from "metabase/routing/compat";
 import { ActionIcon, Icon, Menu } from "metabase/ui";
 import type { Table } from "metabase-types/api";
 
@@ -16,7 +16,7 @@ type TableMoreMenuProps = {
 };
 
 export function TableMoreMenu({ table }: TableMoreMenuProps) {
-  const dispatch = useDispatch();
+  const { push } = useNavigation();
   const [modalType, setModalType] = useState<TableModalType>();
   const remoteSyncReadOnly = useSelector(
     PLUGIN_REMOTE_SYNC.getIsRemoteSyncReadOnly,
@@ -24,7 +24,7 @@ export function TableMoreMenu({ table }: TableMoreMenuProps) {
 
   const handleUnpublish = () => {
     setModalType(undefined);
-    dispatch(push(Urls.dataStudioLibrary()));
+    push(Urls.dataStudioLibrary());
   };
 
   return (

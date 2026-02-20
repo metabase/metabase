@@ -1,6 +1,5 @@
-import { Route } from "react-router";
-
 import {
+  Route,
   fireEvent,
   render,
   renderWithProviders,

@@ -1,6 +1,5 @@
 /* istanbul ignore file */
 import fetchMock from "fetch-mock";
-import { Route } from "react-router";
 
 import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
 import {
@@ -9,7 +8,7 @@ import {
   setupUserKeyValueEndpoints,
 } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
-import { renderWithProviders, screen, waitFor } from "__support__/ui";
+import { Route, renderWithProviders, screen, waitFor } from "__support__/ui";
 import type {
   Collection,
   DashboardQuestionCandidate,

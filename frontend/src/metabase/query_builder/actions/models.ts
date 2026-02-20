@@ -1,8 +1,8 @@
-import { push } from "react-router-redux";
 import { createAction } from "redux-actions";
 import { t } from "ttag";
 
 import { addUndo } from "metabase/redux/undo";
+import { routerActions } from "metabase/routing/compat/react-router-redux";
 import type {
   DatasetEditorTab,
   Dispatch,
@@ -27,7 +27,7 @@ export const setDatasetEditorTab =
   };
 
 export const onCancelCreateNewModel = () => async (dispatch: Dispatch) => {
-  await dispatch(push("/"));
+  dispatch(routerActions.push("/"));
 };
 
 export const turnQuestionIntoModel =

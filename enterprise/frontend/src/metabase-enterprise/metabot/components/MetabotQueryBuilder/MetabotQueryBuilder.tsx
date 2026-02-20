@@ -1,16 +1,14 @@
 import { isFulfilled, isRejected } from "@reduxjs/toolkit";
 import cx from "classnames";
 import { useEffect, useState } from "react";
-import { push } from "react-router-redux";
 import { usePrevious } from "react-use";
 import { isMatching } from "ts-pattern";
 import { t } from "ttag";
 import _ from "underscore";
 
 import { MetabotLogo } from "metabase/common/components/MetabotLogo";
-import { useDispatch } from "metabase/lib/redux";
 import { MetabotPromptInput } from "metabase/metabot/components/MetabotPromptInput";
-import { useCompatLocation } from "metabase/routing/compat";
+import { useCompatLocation, useNavigation } from "metabase/routing/compat";
 import {
   Box,
   Button,
@@ -55,7 +53,7 @@ const responseHasNavigateTo = (action: SubmitInputResult) =>
   );
 
 export const MetabotQueryBuilder = () => {
-  const dispatch = useDispatch();
+  const { push } = useNavigation();
   const {
     setVisible,
     setProfileOverride,
@@ -110,14 +108,12 @@ export const MetabotQueryBuilder = () => {
     // to an empty notebook query and show the chat sidebar as it's
     // highly likely the chat contains a response asking for clarification
     if (!responseHasNavigateTo(action)) {
-      dispatch(
-        push(
-          Urls.newQuestion({
-            mode: "notebook",
-            creationType: "custom_question",
-            cardType: "question",
-          }),
-        ),
+      push(
+        Urls.newQuestion({
+          mode: "notebook",
+          creationType: "custom_question",
+          cardType: "question",
+        }),
       );
       setVisible(true);
     }

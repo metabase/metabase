@@ -1,6 +1,6 @@
-import { Link } from "react-router";
 import { t } from "ttag";
 
+import { Link } from "metabase/common/components/Link";
 import { useSetting } from "metabase/common/hooks";
 import { useSelector } from "metabase/lib/redux";
 import { getIsPaidPlan } from "metabase/selectors/settings";

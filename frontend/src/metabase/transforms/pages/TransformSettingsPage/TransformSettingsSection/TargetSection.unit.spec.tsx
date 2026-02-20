@@ -1,5 +1,3 @@
-import { Route } from "react-router";
-
 import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
 import type { ENTERPRISE_PLUGIN_NAME } from "__support__/enterprise-typed";
 import {
@@ -7,7 +5,7 @@ import {
   setupUsersEndpoints,
 } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
-import { renderWithProviders, screen } from "__support__/ui";
+import { Route, renderWithProviders, screen } from "__support__/ui";
 import * as Urls from "metabase/lib/urls";
 import type {
   EnterpriseSettings,

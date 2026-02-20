@@ -1,10 +1,8 @@
-import { Route } from "react-router";
-
 import {
   setupBillingEndpoints,
   setupPropertiesEndpoints,
 } from "__support__/server-mocks";
-import { renderWithProviders, screen, waitFor } from "__support__/ui";
+import { Route, renderWithProviders, screen, waitFor } from "__support__/ui";
 import {
   createMockSettings,
   createMockTokenFeatures,

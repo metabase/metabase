@@ -1,4 +1,3 @@
-import { push } from "react-router-redux";
 import _ from "underscore";
 
 import { TimelineEvents } from "metabase/entities/timeline-events";
@@ -10,6 +9,7 @@ import type { State } from "metabase-types/store";
 
 import LoadingAndErrorWrapper from "../../components/LoadingAndErrorWrapper";
 import TimelineDetailsModal from "../../components/TimelineDetailsModal";
+import { navigateToPath } from "../../navigation";
 import type { ModalParams } from "../../types";
 
 interface TimelineArchiveModalProps {
@@ -32,7 +32,7 @@ const mapDispatchToProps = (dispatch: any) => ({
     await dispatch(TimelineEvents.actions.setArchived(event, false));
   },
   onGoBack: (timeline: Timeline) => {
-    dispatch(push(Urls.timelineInCollection(timeline)));
+    navigateToPath(Urls.timelineInCollection(timeline));
   },
 });
 

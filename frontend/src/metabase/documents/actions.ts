@@ -1,13 +1,13 @@
-import { push } from "react-router-redux";
-
 import { NAVIGATE_TO_NEW_CARD } from "metabase/dashboard/actions";
 import { openUrl } from "metabase/redux/app";
 import type { Document } from "metabase-types/api";
 import type { Dispatch } from "metabase-types/store";
 
+import { navigateToPath } from "./navigation";
+
 export const navigateBackToDocument =
-  (documentId: number) => (dispatch: Dispatch) => {
-    dispatch(push(`/document/${documentId}`));
+  (documentId: number) => (_dispatch: Dispatch) => {
+    navigateToPath(`/document/${documentId}`);
   };
 
 export const navigateToCardFromDocument =

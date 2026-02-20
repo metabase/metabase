@@ -1,24 +1,28 @@
-import type { InjectedRouter, PlainRoute, Route } from "react-router";
 import { useMatches as useMatchesV7 } from "react-router-dom";
 
 import { useRouter } from "metabase/router";
 
 import { USE_REACT_ROUTER_V7 } from "./config";
+import type {
+  CompatInjectedRouter,
+  CompatPlainRoute,
+  CompatRoute,
+} from "./types";
 
 interface RouterContextResult {
   /**
    * The router object (v3 only, undefined in v7)
    */
-  router: InjectedRouter | undefined;
+  router: CompatInjectedRouter | undefined;
   /**
    * The current matched route (v3 only, undefined in v7)
    * This is the innermost matched route, used for setRouteLeaveHook
    */
-  route: Route | undefined;
+  route: CompatRoute | undefined;
   /**
    * All matched routes from root to current
    */
-  routes: PlainRoute[];
+  routes: CompatPlainRoute[];
 }
 
 /**
@@ -43,7 +47,7 @@ function useRouterContextV7(): RouterContextResult {
   const matches = useMatchesV7();
 
   // Convert v7 matches to v3-like routes structure
-  const routes: PlainRoute[] = matches.map((match) => ({
+  const routes: CompatPlainRoute[] = matches.map((match) => ({
     path: match.pathname,
   }));
 
@@ -58,7 +62,7 @@ function useRouterContextV3(): RouterContextResult {
   const { router, routes } = useRouter();
 
   // The innermost route is the last one in the routes array
-  const route = routes?.[routes.length - 1] as Route | undefined;
+  const route = routes?.[routes.length - 1] as CompatRoute | undefined;
 
   return {
     router,
@@ -79,7 +83,7 @@ function useRouterContextV3(): RouterContextResult {
  * const disableFeature = routes.some(r => r.disableFeature);
  * ```
  */
-export function useCompatRoutes(): PlainRoute[] {
+export function useCompatRoutes(): CompatPlainRoute[] {
   const { routes } = useRouterContext();
   return routes;
 }

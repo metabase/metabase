@@ -1,6 +1,5 @@
 import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
-import { IndexRedirect, Link, Route } from "react-router";
 
 import {
   setupCardDataset,
@@ -13,6 +12,9 @@ import {
   setupUnauthorizedFieldValuesEndpoints,
 } from "__support__/server-mocks";
 import {
+  IndexRedirect,
+  Link,
+  Route,
   mockGetBoundingClientRect,
   renderWithProviders,
   screen,

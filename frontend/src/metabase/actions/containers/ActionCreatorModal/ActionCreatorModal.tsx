@@ -1,6 +1,4 @@
-import type { LocationDescriptor } from "history";
 import { useEffect } from "react";
-import { replace } from "react-router-redux";
 import _ from "underscore";
 
 import { skipToken, useGetActionQuery } from "metabase/api";
@@ -8,6 +6,7 @@ import { Questions } from "metabase/entities/questions";
 import { connect } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { setErrorPage } from "metabase/redux/app";
+import { useNavigation } from "metabase/routing/compat";
 import type Question from "metabase-lib/v1/Question";
 import type { WritebackAction } from "metabase-types/api";
 import type { AppErrorDescriptor, State } from "metabase-types/store";
@@ -20,7 +19,6 @@ interface OwnProps {
     actionId?: string;
   };
   onClose: () => void;
-  onChangeLocation: (location: LocationDescriptor) => void;
 }
 
 interface EntityLoaderProps {
@@ -31,14 +29,12 @@ interface EntityLoaderProps {
 
 interface DispatchProps {
   setErrorPage: (error: AppErrorDescriptor) => void;
-  onChangeLocation: (location: LocationDescriptor) => void;
 }
 
 type ActionCreatorModalProps = OwnProps & EntityLoaderProps & DispatchProps;
 
 const mapDispatchToProps = {
   setErrorPage,
-  onChangeLocation: replace,
 };
 
 function ActionCreatorModal({
@@ -47,8 +43,8 @@ function ActionCreatorModal({
   loading: isModelLoading,
   onClose,
   setErrorPage,
-  onChangeLocation,
 }: ActionCreatorModalProps) {
+  const { replace } = useNavigation();
   const actionId = Urls.extractEntityId(params.actionId);
   const modelId = Urls.extractEntityId(params.slug);
   const databaseId = model.databaseId();
@@ -66,7 +62,7 @@ function ActionCreatorModal({
 
       if (notFound || action?.archived) {
         const nextLocation = Urls.modelDetail(model.card(), "actions");
-        onChangeLocation(nextLocation);
+        replace(nextLocation);
       } else if (hasModelMismatch) {
         setErrorPage({ status: 404 });
       }

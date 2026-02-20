@@ -1,5 +1,4 @@
 import { type MouseEvent, useCallback, useMemo, useState } from "react";
-import { push } from "react-router-redux";
 import { c, t } from "ttag";
 
 import {
@@ -23,8 +22,8 @@ import type { ResponsiveProps } from "metabase/common/components/ItemsTable/util
 import { MarkdownPreview } from "metabase/common/components/MarkdownPreview";
 import { Bookmarks } from "metabase/entities/bookmarks";
 import { Questions } from "metabase/entities/questions";
-import { useDispatch } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
+import { useNavigation } from "metabase/routing/compat";
 import {
   Button,
   FixedSizeIcon,
@@ -173,7 +172,7 @@ export function MetricsTable({
 }
 
 function MetricRow({ metric }: { metric?: MetricResult }) {
-  const dispatch = useDispatch();
+  const { push } = useNavigation();
 
   const handleClick = useCallback(
     (event: MouseEvent) => {
@@ -201,10 +200,10 @@ function MetricRow({ metric }: { metric?: MetricResult }) {
       if ((event.ctrlKey || event.metaKey) && event.button === 0) {
         Urls.openInNewTab(subpathSafeUrl);
       } else {
-        dispatch(push(url));
+        push(url);
       }
     },
-    [metric, dispatch],
+    [metric, push],
   );
 
   return (

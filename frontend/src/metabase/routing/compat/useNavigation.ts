@@ -5,9 +5,8 @@ import {
   type To,
   useNavigate as useNavigateV7,
 } from "react-router-dom";
-import { goBack, push, replace } from "react-router-redux";
 
-import { useDispatch } from "metabase/lib/redux";
+import { pushPath, replacePath } from "metabase/lib/navigation";
 
 import { USE_V7_NAVIGATION } from "./config";
 
@@ -95,45 +94,31 @@ function useNavigationV7(): NavigationActions {
 }
 
 function useNavigationV3(): NavigationActions {
-  const dispatch = useDispatch();
+  const pushAction = useCallback((path: LocationDescriptor | string) => {
+    pushPath(path);
+  }, []);
 
-  const pushAction = useCallback(
-    (path: LocationDescriptor | string) => {
-      dispatch(push(path));
-    },
-    [dispatch],
-  );
-
-  const replaceAction = useCallback(
-    (path: LocationDescriptor | string) => {
-      dispatch(replace(path));
-    },
-    [dispatch],
-  );
+  const replaceAction = useCallback((path: LocationDescriptor | string) => {
+    replacePath(path);
+  }, []);
 
   const goBackAction = useCallback(() => {
-    dispatch(goBack());
-  }, [dispatch]);
+    window.history.back();
+  }, []);
 
-  const navigate = useCallback(
-    (to: To | number, options?: NavigateOptions) => {
-      if (typeof to === "number") {
-        // Go back/forward by number
-        if (to === -1) {
-          dispatch(goBack());
-        }
-        // Note: v3 doesn't support go(n) for n != -1 easily
+  const navigate = useCallback((to: To | number, options?: NavigateOptions) => {
+    if (typeof to === "number") {
+      // Go back/forward by number
+      window.history.go(to);
+    } else {
+      const path = typeof to === "string" ? to : convertToV7Path(to);
+      if (options?.replace) {
+        replacePath(path);
       } else {
-        const path = typeof to === "string" ? to : convertToV7Path(to);
-        if (options?.replace) {
-          dispatch(replace(path));
-        } else {
-          dispatch(push(path));
-        }
+        pushPath(path);
       }
-    },
-    [dispatch],
-  );
+    }
+  }, []);
 
   return {
     push: pushAction,

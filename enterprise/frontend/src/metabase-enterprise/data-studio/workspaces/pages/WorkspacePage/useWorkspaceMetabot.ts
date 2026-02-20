@@ -1,5 +1,4 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { push } from "react-router-redux";
 import { t } from "ttag";
 
 import { useLazyGetTransformQuery } from "metabase/api";
@@ -7,6 +6,7 @@ import { useDispatch } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { useRegisterMetabotContextProvider } from "metabase/metabot";
 import { PLUGIN_METABOT } from "metabase/plugins";
+import { useNavigation } from "metabase/routing/compat";
 import { getIsWorkspace } from "metabase/selectors/routing";
 import { METABOT_PROFILE_OVERRIDES } from "metabase-enterprise/metabot/constants";
 import type {
@@ -86,6 +86,7 @@ export function useWorkspaceMetabot({
   setTab,
   handleNavigateToTransform,
 }: UseWorkspaceMetabotParams): UseWorkspaceMetabotReturn {
+  const { push } = useNavigation();
   const dispatch = useDispatch();
   const isWorkspace = useEnterpriseSelector(getIsWorkspace);
   const {
@@ -392,7 +393,7 @@ export function useWorkspaceMetabot({
       return;
     }
 
-    dispatch(push(navigateToPath));
+    push(navigateToPath);
     setNavigateToPath(null);
   }, [
     navigateToPath,
@@ -401,8 +402,8 @@ export function useWorkspaceMetabot({
     setActiveTab,
     setNavigateToPath,
     handleNavigateToTransform,
-    dispatch,
     isWorkspace,
+    push,
   ]);
 
   return {

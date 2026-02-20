@@ -1,4 +1,4 @@
-import { Route } from "react-router";
+import { Route } from "metabase/routing/compat/react-router-v3";
 
 import ApplicationPermissionsPage from "./pages/ApplicationPermissionsPage";
 

@@ -1,8 +1,7 @@
-import { push } from "react-router-redux";
-
 import { getAdminPaths } from "metabase/admin/app/selectors";
 import { permissionApi } from "metabase/api";
 import { createThunkAction } from "metabase/lib/redux";
+import { routerActions } from "metabase/routing/compat/react-router-redux";
 
 import {
   getRevokeManagerGroupsRedirect,
@@ -27,7 +26,7 @@ export const confirmDeleteMembership = createThunkAction(
         : getRevokeManagerGroupsRedirect(currentUserMemberships, adminPaths);
 
     if (redirectUrl) {
-      await dispatch(push(redirectUrl));
+      dispatch(routerActions.push(redirectUrl));
     }
   },
 );
@@ -49,7 +48,7 @@ export const confirmUpdateMembership = createThunkAction(
         : getRevokeManagerGroupsRedirect(currentUserMemberships, adminPaths);
 
     if (redirectUrl) {
-      await dispatch(push(redirectUrl));
+      dispatch(routerActions.push(redirectUrl));
     }
   },
 );
@@ -67,7 +66,7 @@ export const deleteGroup = createThunkAction(
     if (isLastGroup) {
       const adminPaths = getAdminPaths(getState());
       const redirectUrl = getRevokedAllGroupManagersPath(adminPaths);
-      await dispatch(push(redirectUrl));
+      dispatch(routerActions.push(redirectUrl));
     }
   },
 );

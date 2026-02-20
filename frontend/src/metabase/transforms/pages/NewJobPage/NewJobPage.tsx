@@ -1,5 +1,4 @@
 import { useMemo, useState } from "react";
-import { push } from "react-router-redux";
 import { t } from "ttag";
 import _ from "underscore";
 
@@ -9,9 +8,9 @@ import {
 } from "metabase/api";
 import { LeaveRouteConfirmModal } from "metabase/common/components/LeaveConfirmModal";
 import { PaneHeaderActions } from "metabase/data-studio/common/components/PaneHeader";
-import { useDispatch } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { useMetadataToasts } from "metabase/metadata/hooks";
+import { useNavigation } from "metabase/routing/compat";
 import type { ScheduleDisplayType, TransformTagId } from "metabase-types/api";
 
 import { JobEditor, type TransformJobInfo } from "../../components/JobEditor";
@@ -24,7 +23,7 @@ export function NewJobPage() {
     useCreateTransformJobMutation();
   const [fetchJob, { isFetching }] = useLazyGetTransformJobQuery();
   const { sendSuccessToast, sendErrorToast } = useMetadataToasts();
-  const dispatch = useDispatch();
+  const { push } = useNavigation();
   const isSaving = isCreating || isFetching;
 
   const handleNameChange = (name: string) => {
@@ -51,12 +50,12 @@ export function NewJobPage() {
       // prefetch the job to avoid the loader on the job details page
       await fetchJob(newJob.id);
       sendSuccessToast(t`New job created`);
-      dispatch(push(Urls.transformJob(newJob.id)));
+      push(Urls.transformJob(newJob.id));
     }
   };
 
   const handleCancel = () => {
-    dispatch(push(Urls.transformJobList()));
+    push(Urls.transformJobList());
   };
 
   return (

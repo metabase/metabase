@@ -1,11 +1,11 @@
 import type { ReactNode } from "react";
-import { Link } from "react-router";
 import { jt, t } from "ttag";
 
 import type {
   PermissionSubject,
   SpecialGroupType,
 } from "metabase/admin/permissions/types";
+import { Link } from "metabase/common/components/Link";
 import { getUser } from "metabase/selectors/user";
 import type { User } from "metabase-types/api";
 import type { AdminPathKey, State } from "metabase-types/store";

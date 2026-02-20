@@ -12,7 +12,6 @@ import {
 import classNames from "classnames";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { ResizableBox } from "react-resizable";
-import { replace } from "react-router-redux";
 import { useLocation } from "react-use";
 import { t } from "ttag";
 
@@ -22,9 +21,9 @@ import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErr
 import { ResizeHandle } from "metabase/common/components/ResizeHandle";
 import { Sortable } from "metabase/common/components/Sortable";
 import { PaneHeaderInput } from "metabase/data-studio/common/components/PaneHeader";
-import { useDispatch } from "metabase/lib/redux";
 import { checkNotNull } from "metabase/lib/types";
 import * as Urls from "metabase/lib/urls";
+import { useNavigation } from "metabase/routing/compat";
 import { NAME_MAX_LENGTH } from "metabase/transforms/constants";
 import {
   ActionIcon,
@@ -68,10 +67,10 @@ type WorkspacePageProps = {
 };
 
 function WorkspacePageContent({ params, transformId }: WorkspacePageProps) {
+  const { replace } = useNavigation();
   const pointerSensor = useSensor(PointerSensor, {
     activationConstraint: { distance: 10 },
   });
-  const dispatch = useDispatch();
   const workspaceId = parseInt(params.workspaceId, 10);
 
   const {
@@ -138,15 +137,9 @@ function WorkspacePageContent({ params, transformId }: WorkspacePageProps) {
       const parsedId = parseInt(transformId, 10);
       await handleNavigateToTransform(isNaN(parsedId) ? transformId : parsedId);
 
-      dispatch(replace(Urls.dataStudioWorkspace(workspaceId)));
+      replace(Urls.dataStudioWorkspace(workspaceId));
     })();
-  }, [
-    transformId,
-    isLoading,
-    workspaceId,
-    handleNavigateToTransform,
-    dispatch,
-  ]);
+  }, [transformId, isLoading, workspaceId, handleNavigateToTransform, replace]);
 
   const handleTabClose = useCallback(
     (event: React.MouseEvent, tab: WorkspaceTab, index: number) => {

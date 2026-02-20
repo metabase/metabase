@@ -1,10 +1,9 @@
 import { useCallback, useState } from "react";
-import { replace } from "react-router-redux";
 import { t } from "ttag";
 
-import { useDispatch } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { useMetadataToasts } from "metabase/metadata/hooks";
+import { useNavigation } from "metabase/routing/compat";
 import {
   useLazyGetWorkspaceTablesQuery,
   useMergeWorkspaceMutation,
@@ -38,7 +37,7 @@ export function useWorkspaceActions({
   workspaceTransforms,
   availableTransforms,
 }: UseWorkspaceActionsParams) {
-  const dispatch = useDispatch();
+  const { replace } = useNavigation();
   const { sendErrorToast, sendSuccessToast } = useMetadataToasts();
 
   const { addOpenedTab, addOpenedTransform, setActiveTransformRef } =
@@ -66,7 +65,7 @@ export function useWorkspaceActions({
           );
           return;
         }
-        dispatch(replace(Urls.transformList()));
+        replace(Urls.transformList());
         sendSuccessToast(
           t`Workspace '${response.workspace.name}' merged successfully`,
         );
@@ -75,7 +74,7 @@ export function useWorkspaceActions({
         throw error;
       }
     },
-    [workspaceId, mergeWorkspace, sendErrorToast, dispatch, sendSuccessToast],
+    [workspaceId, mergeWorkspace, replace, sendErrorToast, sendSuccessToast],
   );
 
   const handleWorkspaceNameChange = useCallback(

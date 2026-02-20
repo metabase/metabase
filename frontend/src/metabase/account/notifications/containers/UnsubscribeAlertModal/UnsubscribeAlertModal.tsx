@@ -1,6 +1,6 @@
 import { t } from "ttag";
 
-import { navigateToArchive } from "metabase/account/notifications/actions";
+import { getArchivePath } from "metabase/account/notifications/actions";
 import {
   skipToken,
   useGetNotificationQuery,
@@ -8,8 +8,9 @@ import {
 } from "metabase/api";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { useToast } from "metabase/common/hooks/use-toast";
-import { useDispatch, useSelector } from "metabase/lib/redux";
+import { useSelector } from "metabase/lib/redux";
 import { UnsubscribeConfirmModal } from "metabase/notifications/modals/UnsubscribeConfirmModal";
+import { useNavigation } from "metabase/routing/compat";
 import { getUser } from "metabase/selectors/user";
 import type { Notification, User } from "metabase-types/api";
 
@@ -28,8 +29,7 @@ export const UnsubscribeAlertModal = ({
 }: UnsubscribeAlertModalProps) => {
   const id = getAlertId(params?.alertId);
   const user = useSelector(getUser);
-
-  const dispatch = useDispatch();
+  const { push } = useNavigation();
   const [sendToast] = useToast();
 
   const {
@@ -55,7 +55,7 @@ export const UnsubscribeAlertModal = ({
 
     if (isCreator(alert, user)) {
       onClose();
-      dispatch(navigateToArchive(alert, "question-notification", true));
+      push(getArchivePath(alert, "question-notification", true));
     } else {
       onClose();
     }

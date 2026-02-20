@@ -1,5 +1,5 @@
 import { memo } from "react";
-import { Link } from "react-router";
+import { NavLink } from "react-router-dom";
 
 import { LabelIcon } from "../LabelIcon";
 import S from "../Sidebar.module.css";
@@ -20,15 +20,16 @@ const SidebarItemInner = ({
   onClick,
 }: SidebarItemProps) => (
   <li>
-    <Link
+    <NavLink
       to={href}
-      className={S.item}
-      activeClassName={S.selected}
+      className={({ isActive }) =>
+        isActive ? `${S.item} ${S.selected}` : S.item
+      }
       onClick={onClick}
     >
       <LabelIcon className={S.icon} icon={icon} />
       <span className={S.name}>{sidebar || name}</span>
-    </Link>
+    </NavLink>
   </li>
 );
 

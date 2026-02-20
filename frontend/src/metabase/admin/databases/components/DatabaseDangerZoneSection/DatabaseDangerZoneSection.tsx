@@ -5,6 +5,7 @@ import { DeleteDatabaseModal } from "metabase/admin/databases/components/DeleteD
 import { useDiscardDatabaseFieldValuesMutation } from "metabase/api";
 import { ConfirmModal } from "metabase/common/components/ConfirmModal";
 import { isSyncCompleted } from "metabase/lib/syncing";
+import { useNavigation } from "metabase/routing/compat";
 import { Button, Flex } from "metabase/ui";
 import type { Database, DatabaseId } from "metabase-types/api";
 
@@ -19,6 +20,7 @@ export const DatabaseDangerZoneSection = ({
   database: Database;
   deleteDatabase: (databaseId: DatabaseId) => Promise<void>;
 }) => {
+  const { push } = useNavigation();
   const [discardDatabaseFieldValues] = useDiscardDatabaseFieldValuesMutation();
 
   const [isSavedFieldsModalOpen, saveFieldsModal] = useDisclosure(false);
@@ -31,7 +33,9 @@ export const DatabaseDangerZoneSection = ({
   };
 
   const handleDeleteDatabase = async () => {
-    return deleteDatabase(database.id).then(() => deleteDbModal.close());
+    await deleteDatabase(database.id);
+    deleteDbModal.close();
+    push("/admin/databases/");
   };
 
   const hasCompletedSync = isSyncCompleted(database);

@@ -1,9 +1,9 @@
 import type { ReactNode } from "react";
-import { Link } from "react-router";
 import { t } from "ttag";
 
 import { useUpdateSnippetMutation } from "metabase/api";
 import { getErrorMessage } from "metabase/api/utils";
+import { Link } from "metabase/common/components/Link";
 import { useToast } from "metabase/common/hooks";
 import { DataStudioBreadcrumbs } from "metabase/data-studio/common/components/DataStudioBreadcrumbs";
 import {

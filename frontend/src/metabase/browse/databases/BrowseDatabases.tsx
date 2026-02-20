@@ -1,9 +1,9 @@
 import cx from "classnames";
-import { Link } from "react-router";
 import { t } from "ttag";
 
 import NoResults from "assets/img/no_results.svg";
 import { useListDatabasesQuery } from "metabase/api";
+import { Link } from "metabase/common/components/Link";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import CS from "metabase/css/core/index.css";
 import { getEngineLogo } from "metabase/databases/utils/engine";

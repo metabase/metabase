@@ -2,7 +2,8 @@
 import { css } from "@emotion/react";
 // eslint-disable-next-line no-restricted-imports
 import styled from "@emotion/styled";
-import { Link } from "react-router";
+
+import { Link } from "metabase/common/components/Link";
 interface Props {
   disabled?: boolean;
 }

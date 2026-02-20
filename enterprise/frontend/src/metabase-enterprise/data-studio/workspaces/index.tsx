@@ -4,7 +4,10 @@ import { hasPremiumFeature } from "metabase-enterprise/settings";
 import { AdminDatabaseWorkspacesSection } from "./admin/AdminDatabaseWorkspacesSection";
 import { EditTransformMenu } from "./components/EditTransformMenu";
 import { WorkspacesSection } from "./components/WorkspaceSection";
-import { getDataStudioWorkspaceRoutes } from "./routes";
+import {
+  getDataStudioWorkspaceRouteObjects,
+  getDataStudioWorkspaceRoutes,
+} from "./routes";
 
 export function initializePlugin() {
   if (hasPremiumFeature("workspaces")) {
@@ -14,6 +17,8 @@ export function initializePlugin() {
     PLUGIN_WORKSPACES.WorkspacesSection = WorkspacesSection;
     PLUGIN_WORKSPACES.getDataStudioWorkspaceRoutes =
       getDataStudioWorkspaceRoutes;
+    PLUGIN_WORKSPACES.getDataStudioWorkspaceRouteObjects =
+      getDataStudioWorkspaceRouteObjects;
     PLUGIN_WORKSPACES.EditTransformMenu = EditTransformMenu;
   }
 }

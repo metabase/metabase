@@ -1,7 +1,5 @@
-import { push } from "react-router-redux";
-
 import { DatabaseEngineList } from "metabase/databases/components/DatabaseEngineList";
-import { useDispatch } from "metabase/lib/redux";
+import { useNavigation } from "metabase/routing/compat";
 
 import { trackDatabaseSelect } from "../analytics";
 
@@ -12,11 +10,11 @@ export const DatabasesPanel = ({
 }: {
   canSeeContent: boolean;
 }) => {
-  const dispatch = useDispatch();
+  const { push } = useNavigation();
 
   const handleDatabaseSelect = (key: string) => {
     trackDatabaseSelect(key);
-    dispatch(push(`/admin/databases/create?engine=${key}`));
+    push(`/admin/databases/create?engine=${key}`);
   };
 
   return canSeeContent ? (

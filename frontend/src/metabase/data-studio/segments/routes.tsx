@@ -1,6 +1,7 @@
-import { IndexRoute, Route } from "react-router";
+import type { RouteObject } from "react-router-dom";
 
 import { PLUGIN_DEPENDENCIES } from "metabase/plugins";
+import { IndexRoute, Route } from "metabase/routing/compat/react-router-v3";
 
 import { NewSegmentPage } from "./pages/NewSegmentPage";
 import { SegmentDependenciesPage } from "./pages/SegmentDependenciesPage";
@@ -23,4 +24,31 @@ export function getDataStudioSegmentRoutes() {
       )}
     </Route>
   );
+}
+
+export function getDataStudioSegmentRouteObjects(): RouteObject[] {
+  return [
+    {
+      path: "segments",
+      children: [
+        { path: "new", element: <NewSegmentPage /> },
+        { path: ":segmentId", element: <SegmentDetailPage /> },
+        { path: ":segmentId/history", element: <SegmentRevisionHistoryPage /> },
+        ...(PLUGIN_DEPENDENCIES.isEnabled
+          ? [
+              {
+                path: ":segmentId/dependencies",
+                element: <SegmentDependenciesPage />,
+                children: [
+                  {
+                    index: true,
+                    element: <PLUGIN_DEPENDENCIES.DependencyGraphPage />,
+                  },
+                ],
+              },
+            ]
+          : []),
+      ],
+    },
+  ];
 }

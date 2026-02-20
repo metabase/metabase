@@ -1,8 +1,8 @@
-import { push } from "react-router-redux";
 import _ from "underscore";
 
 import { setParameterValuesFromQueryParams } from "metabase/dashboard/actions/parameters";
 import { open } from "metabase/lib/dom";
+import { routerActions } from "metabase/routing/compat/react-router-redux";
 
 export function performAction(
   action,
@@ -28,7 +28,7 @@ export function performAction(
     if (url) {
       open(url, {
         openInSameOrigin: (location) => {
-          dispatch(push(location));
+          dispatch(routerActions.push(location));
           dispatch(setParameterValuesFromQueryParams(location.query));
         },
         ignoreSiteUrl,

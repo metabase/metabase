@@ -1,12 +1,11 @@
 import { useDisclosure } from "@mantine/hooks";
 import type { Location } from "history";
 import { useMemo, useState } from "react";
-import { Link } from "react-router";
-import { push } from "react-router-redux";
 import { t } from "ttag";
 
 import { useGetDefaultCollectionId } from "metabase/collections/hooks";
 import { LeaveRouteConfirmModal } from "metabase/common/components/LeaveConfirmModal";
+import { Link } from "metabase/common/components/Link";
 import { DataStudioBreadcrumbs } from "metabase/data-studio/common/components/DataStudioBreadcrumbs";
 import { PageContainer } from "metabase/data-studio/common/components/PageContainer";
 import {
@@ -15,9 +14,10 @@ import {
   PaneHeaderInput,
 } from "metabase/data-studio/common/components/PaneHeader";
 import { getResultMetadata } from "metabase/data-studio/common/utils";
-import { useDispatch, useSelector } from "metabase/lib/redux";
+import { useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { getInitialUiState } from "metabase/querying/editor/components/QueryEditor";
+import { useNavigation } from "metabase/routing/compat";
 import { getMetadata } from "metabase/selectors/metadata";
 import { Card } from "metabase/ui";
 import * as Lib from "metabase-lib";
@@ -39,6 +39,7 @@ type NewMetricPageProps = {
 };
 
 export function NewMetricPage({ location }: NewMetricPageProps) {
+  const { push } = useNavigation();
   const metadata = useSelector(getMetadata);
   const [name, setName] = useState("");
   const [datasetQuery, setDatasetQuery] = useState(() =>
@@ -51,7 +52,6 @@ export function NewMetricPage({ location }: NewMetricPageProps) {
     location.query.collectionId,
   );
   const defaultCollectionId = useGetDefaultCollectionId();
-  const dispatch = useDispatch();
 
   const query = useMemo(
     () => getQuery(datasetQuery, metadata),
@@ -78,7 +78,7 @@ export function NewMetricPage({ location }: NewMetricPageProps) {
   );
 
   const handleCreate = (card: CardType) => {
-    dispatch(push(Urls.dataStudioMetric(card.id)));
+    push(Urls.dataStudioMetric(card.id));
   };
 
   const handleChangeQuery = (query: Lib.Query) => {
@@ -86,7 +86,7 @@ export function NewMetricPage({ location }: NewMetricPageProps) {
   };
 
   const handleCancel = () => {
-    dispatch(push(Urls.dataStudioLibrary()));
+    push(Urls.dataStudioLibrary());
   };
 
   return (

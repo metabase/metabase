@@ -1,5 +1,4 @@
 import { useEffect, useState } from "react";
-import { push } from "react-router-redux";
 import { t } from "ttag";
 
 import { permissionApi } from "metabase/api";
@@ -8,6 +7,7 @@ import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErr
 import { useToast } from "metabase/common/hooks";
 import { useConfirmation } from "metabase/common/hooks/use-confirmation";
 import { useDispatch } from "metabase/lib/redux";
+import { useNavigation } from "metabase/routing/compat";
 import { Button, Flex, Group, Modal, Radio, Stack, Text } from "metabase/ui";
 
 import S from "./EditUserStrategyModal.module.css";
@@ -19,6 +19,7 @@ interface EditUserStrategyModalProps {
 export const EditUserStrategyModal = ({
   onClose,
 }: EditUserStrategyModalProps) => {
+  const { push } = useNavigation();
   const dispatch = useDispatch();
 
   const { isLoading, error, value, updateSetting, refetch } =
@@ -91,7 +92,7 @@ export const EditUserStrategyModal = ({
       // This ensures `createTenantsRouteGuard` sees the updated setting.
       await refetch();
 
-      dispatch(push("/admin/people/tenants"));
+      push("/admin/people/tenants");
     }
   };
 

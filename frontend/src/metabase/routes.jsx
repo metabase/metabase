@@ -1,5 +1,3 @@
-import { IndexRedirect, IndexRoute, Redirect, Route } from "react-router";
-
 import App from "metabase/App.tsx";
 import { getAccountRoutes } from "metabase/account/routes";
 import CollectionPermissionsModal from "metabase/admin/permissions/components/CollectionPermissionsModal/CollectionPermissionsModal";
@@ -62,6 +60,12 @@ import SegmentFieldListContainer from "metabase/reference/segments/SegmentFieldL
 import SegmentListContainer from "metabase/reference/segments/SegmentListContainer";
 import SegmentQuestionsContainer from "metabase/reference/segments/SegmentQuestionsContainer";
 import SegmentRevisionsContainer from "metabase/reference/segments/SegmentRevisionsContainer";
+import {
+  IndexRedirect,
+  IndexRoute,
+  Redirect,
+  Route,
+} from "metabase/routing/compat/react-router-v3";
 import SearchApp from "metabase/search/containers/SearchApp";
 import { Setup } from "metabase/setup/components/Setup";
 import getCollectionTimelineRoutes from "metabase/timelines/collections/routes";

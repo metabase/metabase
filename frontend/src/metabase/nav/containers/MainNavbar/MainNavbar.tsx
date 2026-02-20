@@ -1,6 +1,4 @@
-import type { LocationDescriptor } from "history";
 import { useEffect, useMemo } from "react";
-import { push } from "react-router-redux";
 import _ from "underscore";
 
 import {
@@ -12,6 +10,7 @@ import { getDashboard } from "metabase/dashboard/selectors";
 import { connect } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { closeNavbar, openNavbar } from "metabase/redux/app";
+import { useNavigation } from "metabase/routing/compat";
 import Question from "metabase-lib/v1/Question";
 import type { CollectionId, Dashboard } from "metabase-types/api";
 import type { State } from "metabase-types/store";
@@ -40,9 +39,7 @@ interface StateProps {
   collectionId?: CollectionId;
 }
 
-interface DispatchProps extends MainNavbarDispatchProps {
-  onChangeLocation: (location: LocationDescriptor) => void;
-}
+type DispatchProps = MainNavbarDispatchProps;
 
 type Props = MainNavbarOwnProps &
   EntityLoaderProps &
@@ -64,7 +61,6 @@ function mapStateToProps(state: State, props: MainNavbarOwnProps) {
 const mapDispatchToProps = {
   openNavbar,
   closeNavbar,
-  onChangeLocation: push,
 };
 
 function MainNavbar({
@@ -76,9 +72,9 @@ function MainNavbar({
   dashboard,
   openNavbar,
   closeNavbar,
-  onChangeLocation,
   ...props
 }: Props) {
+  const { push } = useNavigation();
   const { currentData: card } = useGetCardQuery(
     questionId
       ? {
@@ -136,7 +132,7 @@ function MainNavbar({
           selectedItems={selectedItems}
           openNavbar={openNavbar}
           closeNavbar={closeNavbar}
-          onChangeLocation={onChangeLocation}
+          onChangeLocation={push}
           {...props}
         />
       </NavRoot>

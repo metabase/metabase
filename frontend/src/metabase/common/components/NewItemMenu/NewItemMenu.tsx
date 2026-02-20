@@ -1,4 +1,3 @@
-import { push } from "react-router-redux";
 import _ from "underscore";
 
 import { Databases } from "metabase/entities/databases";
@@ -29,7 +28,6 @@ const mapStateToProps = (
 
 const mapDispatchToProps = {
   onCloseNavbar: closeNavbar,
-  onChangeLocation: push,
 };
 
 export const NewItemMenu = _.compose(

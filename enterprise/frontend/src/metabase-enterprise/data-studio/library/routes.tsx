@@ -1,11 +1,24 @@
-import { IndexRoute, Route } from "react-router";
+import type { RouteObject } from "react-router-dom";
 
-import { getDataStudioSegmentRoutes } from "metabase/data-studio/segments/routes";
+import {
+  getDataStudioSegmentRouteObjects,
+  getDataStudioSegmentRoutes,
+} from "metabase/data-studio/segments/routes";
+import { IndexRoute, Route } from "metabase/routing/compat/react-router-v3";
 
 import { LibrarySectionLayout } from "./LibrarySectionLayout";
-import { getDataStudioMetricRoutes } from "./metrics/routes";
-import { getDataStudioSnippetRoutes } from "./snippets/routes";
-import { getDataStudioTableRoutes } from "./tables/routes";
+import {
+  getDataStudioMetricRouteObjects,
+  getDataStudioMetricRoutes,
+} from "./metrics/routes";
+import {
+  getDataStudioSnippetRouteObjects,
+  getDataStudioSnippetRoutes,
+} from "./snippets/routes";
+import {
+  getDataStudioTableRouteObjects,
+  getDataStudioTableRoutes,
+} from "./tables/routes";
 
 export const getDataStudioLibraryRoutes = () => {
   return (
@@ -17,4 +30,19 @@ export const getDataStudioLibraryRoutes = () => {
       {getDataStudioSnippetRoutes()}
     </Route>
   );
+};
+
+export const getDataStudioLibraryRouteObjects = (): RouteObject[] => {
+  return [
+    {
+      path: "library",
+      children: [
+        { index: true, element: <LibrarySectionLayout /> },
+        ...getDataStudioTableRouteObjects(),
+        ...getDataStudioMetricRouteObjects(),
+        ...getDataStudioSegmentRouteObjects(),
+        ...getDataStudioSnippetRouteObjects(),
+      ],
+    },
+  ];
 };

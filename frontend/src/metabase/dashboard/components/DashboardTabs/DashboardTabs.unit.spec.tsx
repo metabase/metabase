@@ -1,14 +1,14 @@
 import userEvent from "@testing-library/user-event";
 import type { Location } from "history";
+
+import type { InjectedRouter, WithRouterProps } from "__support__/ui";
 import {
-  type InjectedRouter,
   Link,
   Route,
-  type WithRouterProps,
+  renderWithProviders,
+  screen,
   withRouter,
-} from "react-router";
-
-import { renderWithProviders, screen } from "__support__/ui";
+} from "__support__/ui";
 import { INPUT_WRAPPER_TEST_ID } from "metabase/common/components/TabButton";
 import { getDefaultTab, resetTempTabId } from "metabase/dashboard/actions";
 import { useDashboardUrlQuery } from "metabase/dashboard/hooks/use-dashboard-url-query";

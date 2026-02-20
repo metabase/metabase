@@ -1,12 +1,11 @@
 import type { FormEvent, MouseEventHandler } from "react";
 import { useEffect, useRef, useState } from "react";
-import { push } from "react-router-redux";
 import { useAsync } from "react-use";
 import { jt, t } from "ttag";
 
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
-import { useDispatch } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
+import { useNavigation } from "metabase/routing/compat";
 import { MetabaseApi } from "metabase/services";
 import {
   Alert,
@@ -66,7 +65,7 @@ export const DeleteDatabaseModal = ({
   onDelete,
   ...props
 }: DeleteDatabaseModalProps) => {
-  const dispatch = useDispatch();
+  const { push } = useNavigation();
 
   const { value: usageInfo, loading } = useAsync(
     async () => await MetabaseApi.db_usage_info({ dbId: database.id }),
@@ -92,7 +91,7 @@ export const DeleteDatabaseModal = ({
   const handleEditConnectionDetailsClick: MouseEventHandler = (e) => {
     e.preventDefault();
     onClose();
-    dispatch(push(Urls.editDatabase(database.id)));
+    push(Urls.editDatabase(database.id));
   };
 
   const hasContent = usageInfo && hasContentInDatabase(usageInfo);

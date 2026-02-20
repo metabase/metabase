@@ -1,5 +1,4 @@
 import { memo, useCallback, useState } from "react";
-import { push } from "react-router-redux";
 import { t } from "ttag";
 
 import {
@@ -9,7 +8,7 @@ import {
 import { EmptyState } from "metabase/common/components/EmptyState";
 import { ForwardRefLink } from "metabase/common/components/Link";
 import { trackDependencyEntitySelected } from "metabase/data-studio/analytics";
-import { useDispatch, useSelector } from "metabase/lib/redux";
+import { useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import type { DataStudioTableMetadataTab } from "metabase/lib/urls/data-studio";
 import { dependencyGraph } from "metabase/lib/urls/dependencies";
@@ -27,6 +26,7 @@ import {
   PLUGIN_LIBRARY,
   PLUGIN_REMOTE_SYNC,
 } from "metabase/plugins";
+import { useNavigation } from "metabase/routing/compat";
 import {
   Box,
   Button,
@@ -96,7 +96,7 @@ const TableSectionBase = ({
     });
   };
 
-  const dispatch = useDispatch();
+  const { push } = useNavigation();
 
   const handleTabChange = useCallback(
     (tab: string | null) => {
@@ -104,18 +104,16 @@ const TableSectionBase = ({
         return;
       }
 
-      dispatch(
-        push(
-          Urls.dataStudioData({
-            databaseId: table.db_id,
-            schemaName: table.schema,
-            tableId: table.id,
-            tab,
-          }),
-        ),
+      push(
+        Urls.dataStudioData({
+          databaseId: table.db_id,
+          schemaName: table.schema,
+          tableId: table.id,
+          tab,
+        }),
       );
     },
-    [dispatch, table.db_id, table.schema, table.id],
+    [push, table.db_id, table.schema, table.id],
   );
 
   const handleNameChange = async (name: string) => {

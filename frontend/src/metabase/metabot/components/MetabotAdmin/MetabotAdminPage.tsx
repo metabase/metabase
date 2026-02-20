@@ -1,4 +1,3 @@
-import { IndexRoute, Redirect } from "react-router";
 import { t } from "ttag";
 
 import ErrorBoundary from "metabase/ErrorBoundary";
@@ -8,13 +7,12 @@ import {
 } from "metabase/admin/components/AdminNav";
 import { AdminSettingsLayout } from "metabase/common/components/AdminLayout/AdminSettingsLayout";
 import { PLUGIN_METABOT } from "metabase/plugins";
+import { IndexRoute, Redirect } from "metabase/routing/compat/react-router-v3";
 import { Flex } from "metabase/ui";
 
 import { MetabotSQLGenerationSettingsSection } from "./MetabotSQLGenerationSettingsSection";
 
 export function getAdminRoutes() {
-  // NOTE: weird cypress bundle error happens if this `getAdminRoutes` fn
-  // is imported into our ai plugin file as the default OSS implementation.
   return (
     PLUGIN_METABOT.getAdminRoutes?.() ?? [
       <IndexRoute key="index" component={MetabotAdminPage} />,
@@ -23,7 +21,7 @@ export function getAdminRoutes() {
   );
 }
 
-function MetabotAdminPage() {
+export function MetabotAdminPage() {
   return (
     <AdminSettingsLayout sidebar={<MetabotNavPane />}>
       <ErrorBoundary>

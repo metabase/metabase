@@ -1,7 +1,7 @@
-import { Link } from "react-router";
 import { t } from "ttag";
 
 import { trackDataReferenceClicked } from "metabase/collections/analytics";
+import { Link } from "metabase/common/components/Link";
 import { PLUGIN_UPLOAD_MANAGEMENT } from "metabase/plugins";
 import { Flex, Group, Icon, Text, Title } from "metabase/ui";
 

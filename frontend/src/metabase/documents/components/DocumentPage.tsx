@@ -11,7 +11,6 @@ import {
   useRef,
   useState,
 } from "react";
-import { push, replace } from "react-router-redux";
 import { usePrevious, useUnmount } from "react-use";
 import useBeforeUnload from "react-use/lib/useBeforeUnload";
 import { t } from "ttag";
@@ -43,6 +42,7 @@ import { useDispatch, useSelector } from "metabase/lib/redux";
 import { extractEntityId } from "metabase/lib/urls";
 import * as Urls from "metabase/lib/urls";
 import { setErrorPage } from "metabase/redux/app";
+import { useNavigation } from "metabase/routing/compat";
 import { Box } from "metabase/ui";
 import type {
   Card,
@@ -101,6 +101,7 @@ export const DocumentPage = ({
   const previousLocationKey = usePrevious(location.key);
   const forceUpdate = useForceUpdate();
   const dispatch = useDispatch();
+  const { push, replace } = useNavigation();
   const selectedQuestionId = useSelector(getSelectedQuestionId);
   const selectedEmbedIndex = useSelector(getSelectedEmbedIndex);
   const draftCards = useSelector(getDraftCards);
@@ -344,7 +345,7 @@ export const DocumentPage = ({
                   const _document = response.data;
                   trackDocumentUpdated(_document);
                   scheduleNavigation(() => {
-                    dispatch(push(Urls.document(_document)));
+                    push(Urls.document(_document));
                   });
                 }
                 return response;
@@ -358,7 +359,7 @@ export const DocumentPage = ({
                 const _document = response.data;
                 trackDocumentCreated(_document);
                 scheduleNavigation(() => {
-                  dispatch(replace(Urls.document(_document)));
+                  replace(Urls.document(_document));
                 });
               }
               return response;
@@ -395,6 +396,8 @@ export const DocumentPage = ({
       createDocument,
       scheduleNavigation,
       dispatch,
+      push,
+      replace,
       sendToast,
     ],
   );
@@ -553,7 +556,7 @@ export const DocumentPage = ({
             onSaved={(document) => {
               setDuplicateModalMode(null);
               scheduleNavigation(() => {
-                dispatch(push(Urls.document(document)));
+                push(Urls.document(document));
               });
             }}
             entityObject={documentData}

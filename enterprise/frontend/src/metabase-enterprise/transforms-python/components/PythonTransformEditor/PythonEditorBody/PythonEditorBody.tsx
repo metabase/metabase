@@ -1,13 +1,12 @@
 import { useCallback, useMemo, useState } from "react";
 import { ResizableBox } from "react-resizable";
-import { push } from "react-router-redux";
 import { useWindowSize } from "react-use";
 import { t } from "ttag";
 
 import { clickableTokens } from "metabase/common/components/CodeMirror";
-import { useDispatch } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { RunButtonWithTooltip } from "metabase/query_builder/components/RunButtonWithTooltip";
+import { useNavigation } from "metabase/routing/compat";
 import { Button, Flex, Icon, Stack, Tooltip } from "metabase/ui";
 
 import { SHARED_LIB_IMPORT_PATH } from "../../../constants";
@@ -54,10 +53,10 @@ export function PythonEditorBody({
   onAcceptProposed,
   onRejectProposed,
 }: PythonEditorBodyProps) {
+  const { push } = useNavigation();
   const [isResizing, setIsResizing] = useState(false);
   const showResizeHandle = isEditMode && withDebugger;
   const editorHeight = useInitialEditorHeight(isEditMode, showResizeHandle);
-  const dispatch = useDispatch();
 
   const navigateToCommonLibrary = useCallback(
     (e: MouseEvent) => {
@@ -68,10 +67,10 @@ export function PythonEditorBody({
       if (openInNewTab) {
         window.open(href, "_blank", "noopener,noreferrer");
       } else {
-        dispatch(push(href));
+        push(href);
       }
     },
-    [dispatch],
+    [push],
   );
 
   const clickableTokensExtension = useMemo(

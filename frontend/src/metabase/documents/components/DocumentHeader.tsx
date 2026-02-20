@@ -1,11 +1,11 @@
 import { useCallback, useState } from "react";
-import { Link } from "react-router";
 import { c, t } from "ttag";
 
 import {
   DateTime,
   getFormattedTime,
 } from "metabase/common/components/DateTime";
+import { Link } from "metabase/common/components/Link";
 import { useSetting } from "metabase/common/hooks";
 import CS from "metabase/css/core/index.css";
 import { isWithinIframe } from "metabase/lib/dom";

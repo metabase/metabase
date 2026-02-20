@@ -25,7 +25,7 @@
  * ```
  *
  * Migration Strategy:
- * 1. Replace direct imports from "react-router" and "react-router-redux" with these compat hooks
+ * 1. Replace direct imports from React Router packages with these compat hooks
  * 2. Replace withRouter HOC usage with these hooks
  * 3. Once all usages are migrated, flip the feature flags to use v7
  * 4. Remove the compat layer and use react-router-dom directly

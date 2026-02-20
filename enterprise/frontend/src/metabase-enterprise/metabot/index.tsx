@@ -1,7 +1,6 @@
-import { Route } from "react-router";
-
 import type { MetabotContext as MetabotContextType } from "metabase/metabot";
 import { PLUGIN_METABOT, PLUGIN_REDUCERS } from "metabase/plugins";
+import { Route } from "metabase/routing/compat/react-router-v3";
 import { useLazyMetabotGenerateContentQuery } from "metabase-enterprise/api";
 import { hasPremiumFeature } from "metabase-enterprise/settings";
 

@@ -1,8 +1,13 @@
 import fetchMock from "fetch-mock";
 import type { Location } from "history";
-import { Route } from "react-router";
 
-import { act, renderWithProviders, screen, waitFor } from "__support__/ui";
+import {
+  Route,
+  act,
+  renderWithProviders,
+  screen,
+  waitFor,
+} from "__support__/ui";
 import { UtilApi } from "metabase/services";
 import {
   createMockLocation,

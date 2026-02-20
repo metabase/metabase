@@ -1,12 +1,12 @@
 import type { Location } from "history";
 import { useCallback, useEffect, useState } from "react";
-import type { InjectedRouter, Route } from "react-router";
 import {
   useBlocker as useBlockerV7,
   useLocation as useLocationV7,
 } from "react-router-dom";
 
 import { USE_REACT_ROUTER_V7 } from "./config";
+import type { CompatInjectedRouter, CompatRoute } from "./types";
 import { useRouterContext } from "./useCompatRoutes";
 import { useNavigation } from "./useNavigation";
 
@@ -22,11 +22,11 @@ interface UseBlockNavigationInput {
   /**
    * For v3: The router object from withRouter
    */
-  router?: InjectedRouter;
+  router?: CompatInjectedRouter;
   /**
    * For v3: The current route from withRouter
    */
-  route?: Route;
+  route?: CompatRoute;
 }
 
 interface UseBlockNavigationResult {

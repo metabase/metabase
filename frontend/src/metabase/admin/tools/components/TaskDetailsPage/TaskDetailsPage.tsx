@@ -1,5 +1,4 @@
 import { useMemo } from "react";
-import { Link } from "react-router";
 import { t } from "ttag";
 import _ from "underscore";
 
@@ -10,6 +9,7 @@ import { DateTime } from "metabase/common/components/DateTime";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { openSaveDialog } from "metabase/lib/dom";
 import * as Urls from "metabase/lib/urls";
+import { useNavigation } from "metabase/routing/compat";
 import {
   Anchor,
   Box,
@@ -36,6 +36,7 @@ type TaskDetailsPageProps = {
 };
 
 export const TaskDetailsPage = ({ params }: TaskDetailsPageProps) => {
+  const { push } = useNavigation();
   const { data: task, error, isLoading } = useGetTaskQuery(params.taskId);
   const code = formatTaskDetails(task);
   const linesCount = useMemo(() => code.split("\n").length, [code]);
@@ -61,12 +62,18 @@ export const TaskDetailsPage = ({ params }: TaskDetailsPageProps) => {
   return (
     <SettingsSection>
       <Flex align="center" gap="sm">
-        <Link to={Urls.adminToolsTasksList()}>
+        <a
+          href={Urls.adminToolsTasksList()}
+          onClick={(event) => {
+            event.preventDefault();
+            push(Urls.adminToolsTasksList());
+          }}
+        >
           <Flex align="center" gap="xs" c="text-secondary">
             <Icon name="chevronleft" />
             {t`Back to Tasks`}
           </Flex>
-        </Link>
+        </a>
       </Flex>
 
       <Stack gap="sm">
@@ -87,8 +94,11 @@ export const TaskDetailsPage = ({ params }: TaskDetailsPageProps) => {
           <Flex gap="md" align="baseline">
             <Text fw="bold" w={120}>{t`Task run`}</Text>
             <Anchor
-              component={Link}
-              to={Urls.adminToolsTaskRunDetails(task.run_id)}
+              href={Urls.adminToolsTaskRunDetails(task.run_id)}
+              onClick={(event) => {
+                event.preventDefault();
+                push(Urls.adminToolsTaskRunDetails(task.run_id));
+              }}
             >
               {t`Go to the corresponding run`}
             </Anchor>

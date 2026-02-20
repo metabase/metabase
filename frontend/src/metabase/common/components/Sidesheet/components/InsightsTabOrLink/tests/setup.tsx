@@ -1,10 +1,12 @@
-import { Route } from "react-router";
-
 import { setupEnterprisePlugins } from "__support__/enterprise";
 import { setupAuditInfoEndpoint } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
 import { createMockEntitiesState } from "__support__/store";
-import { renderWithProviders, waitForLoaderToBeRemoved } from "__support__/ui";
+import {
+  Route,
+  renderWithProviders,
+  waitForLoaderToBeRemoved,
+} from "__support__/ui";
 import { Tabs } from "metabase/ui";
 import {
   createMockCollection,

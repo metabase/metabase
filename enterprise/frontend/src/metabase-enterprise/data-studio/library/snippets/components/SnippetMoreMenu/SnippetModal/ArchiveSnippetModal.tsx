@@ -1,12 +1,11 @@
-import { Link } from "react-router";
-import { push } from "react-router-redux";
 import { t } from "ttag";
 
 import { useUpdateSnippetMutation } from "metabase/api";
 import { getErrorMessage } from "metabase/api/utils";
+import { Link } from "metabase/common/components/Link";
 import { useToast } from "metabase/common/hooks";
-import { useDispatch } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
+import { useNavigation } from "metabase/routing/compat";
 import { Button, Group, Modal, Stack, Text } from "metabase/ui";
 import type { NativeQuerySnippet } from "metabase-types/api";
 
@@ -17,7 +16,7 @@ type ArchiveSnippetModalProps = {
 
 export function ArchiveSnippetModal(props: ArchiveSnippetModalProps) {
   const { snippet, onClose } = props;
-  const dispatch = useDispatch();
+  const { push } = useNavigation();
   const [updateSnippet, { isLoading }] = useUpdateSnippetMutation();
   const [sendToast] = useToast();
 
@@ -49,7 +48,7 @@ export function ArchiveSnippetModal(props: ArchiveSnippetModalProps) {
         ),
         icon: "check",
       });
-      dispatch(push(Urls.dataStudioLibrary()));
+      push(Urls.dataStudioLibrary());
       onClose();
     }
   };

@@ -1,6 +1,5 @@
 import type { Location } from "history";
 import { useCallback } from "react";
-import { push } from "react-router-redux";
 import { useAsyncFn, useMount } from "react-use";
 
 import { updateDataPermission } from "metabase/admin/permissions/permissions";
@@ -14,6 +13,7 @@ import { useDatabaseQuery } from "metabase/common/hooks";
 import { getParentPath } from "metabase/hoc/ModalRoute";
 import { useDispatch } from "metabase/lib/redux";
 import { useRouter } from "metabase/router";
+import { useNavigation } from "metabase/routing/compat";
 import { updateImpersonation } from "metabase-enterprise/advanced_permissions/reducer";
 import { getImpersonation } from "metabase-enterprise/advanced_permissions/selectors";
 import type {
@@ -44,6 +44,7 @@ const parseParams = (params: ImpersonationModalParams): ImpersonationParams => {
 };
 
 export const ImpersonationModal = ({ params }: ImpersonationModalProps) => {
+  const { push } = useNavigation();
   const { routes, location } = useRouter();
   const route = routes[routes.length - 1];
   const [
@@ -87,8 +88,8 @@ export const ImpersonationModal = ({ params }: ImpersonationModalProps) => {
   const parentPath = route ? getParentPath(route, location as Location) : "/";
 
   const close = useCallback(() => {
-    dispatch(push(parentPath));
-  }, [dispatch, parentPath]);
+    push(parentPath);
+  }, [parentPath, push]);
 
   const handleSave = useCallback(
     (attribute: UserAttributeKey) => {
@@ -120,8 +121,8 @@ export const ImpersonationModal = ({ params }: ImpersonationModalProps) => {
   );
 
   const handleCancel = useCallback(() => {
-    dispatch(push(parentPath));
-  }, [dispatch, parentPath]);
+    push(parentPath);
+  }, [parentPath, push]);
 
   useMount(() => {
     dispatch(fetchUserAttributes());
