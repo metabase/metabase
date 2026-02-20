@@ -349,9 +349,9 @@ const getEmbedQuestionParams = (
     method: "GET",
     url: Urls.embedCard(token, type),
     params: new URLSearchParams({
-      parameters: params
-        ? JSON.stringify(convertSearchParamsToObject(params))
-        : "",
+      ...(params && {
+        parameters: JSON.stringify(convertSearchParamsToObject(params)),
+      }),
       ..._.mapObject(exportParams, (value) => String(value)),
     }),
   };
