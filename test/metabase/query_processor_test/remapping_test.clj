@@ -14,6 +14,7 @@
    [metabase.query-processor.test-util :as qp.test-util]
    [metabase.test :as mt]
    [metabase.test.data.dataset-definitions :as defs]
+   [metabase.test.data.sql-jdbc.load-data :as load-data]
    [metabase.util.date-2 :as u.date]))
 
 (deftest ^:parallel basic-internal-remapping-test
@@ -220,19 +221,22 @@
   ;; `created_by` column which references the PK column in that same table. This tests that remapping table aliases are
   ;; handled correctly
   (mt/test-drivers (mt/normal-drivers-with-feature :left-join ::self-referencing-fks)
-    (mt/dataset test-data-self-referencing-user
-      (qp.store/with-metadata-provider (-> (lib.metadata.jvm/application-database-metadata-provider (mt/id))
-                                           (lib.tu/remap-metadata-provider (mt/id :users :created_by)
-                                                                           (mt/id :users :name))
-                                           (lib.tu/merged-mock-metadata-provider
-                                            {:fields [{:id                 (mt/id :users :created_by)
-                                                       :fk-target-field-id (mt/id :users :id)}]}))
-        (is (= ["Dwight Gresham" "Shad Ferdynand" "Kfir Caj" "Plato Yeshua"]
-               (->> (mt/run-mbql-query users
-                      {:order-by [[:asc $name]]
-                       :limit    4})
-                    mt/rows
-                    (map last))))))))
+    ;; MySQL 9.6+ enforces FK constraints row-by-row during bulk INSERT, so we need to disable FK checks
+    ;; when loading data for this self-referencing dataset
+    (binding [load-data/*disable-fk-checks* true]
+      (mt/dataset test-data-self-referencing-user
+        (qp.store/with-metadata-provider (-> (lib.metadata.jvm/application-database-metadata-provider (mt/id))
+                                             (lib.tu/remap-metadata-provider (mt/id :users :created_by)
+                                                                             (mt/id :users :name))
+                                             (lib.tu/merged-mock-metadata-provider
+                                              {:fields [{:id                 (mt/id :users :created_by)
+                                                         :fk-target-field-id (mt/id :users :id)}]}))
+          (is (= ["Dwight Gresham" "Shad Ferdynand" "Kfir Caj" "Plato Yeshua"]
+                 (->> (mt/run-mbql-query users
+                        {:order-by [[:asc $name]]
+                         :limit    4})
+                      mt/rows
+                      (map last)))))))))
 
 (defn- remappings-with-metadata
   [metadata]
