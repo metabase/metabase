@@ -39,6 +39,7 @@
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.lib.schema.order-by :as lib.schema.order-by]
    [metabase.lib.schema.ref :as lib.schema.ref]
+   [metabase.lib.schema.util :as lib.schema.util]
    [metabase.lib.walk :as lib.walk]
    [metabase.query-processor.middleware.large-int :as large-int]
    [metabase.query-processor.schema :as qp.schema]
@@ -214,7 +215,7 @@
                        (if-let [remapped-col (get field->remapped-col (simplify-ref-options field))]
                          [direction opts (lib/fresh-uuids remapped-col)]
                          order-by-clause)))
-                (distinct))
+                (m/distinct-by lib.schema.util/mbql-clause-distinct-key))
           order-by-clauses)))
 
 (mu/defn- add-fk-remaps-rewrite-breakout :- [:maybe ::lib.schema/breakouts]
@@ -227,7 +228,7 @@
                             [(lib/fresh-uuids remapped-col)
                              (lib/update-options a-ref assoc ::original-field-dimension-id new-field-dimension-id)]
                             [a-ref])))
-                (distinct))
+                (m/distinct-by lib.schema.util/mbql-clause-distinct-key))
           breakouts)))
 
 (mr/def ::query-and-remaps
@@ -250,7 +251,7 @@
     (let [existing-fields (add-fk-remaps-rewrite-existing-fields infos fields)]
       (into []
             (comp cat
-                  (m/distinct-by simplify-ref-options))
+                  (m/distinct-by lib.schema.util/mbql-clause-distinct-key))
             [existing-fields
              (map :new-field-clause infos)]))))
 
@@ -319,7 +320,7 @@
                                (update :new-field-clause      lib/with-join-alias (:alias join))))
               new-fields (into
                           []
-                          (m/distinct-by simplify-ref-options)
+                          (m/distinct-by lib.schema.util/mbql-clause-distinct-key)
                           (add-fk-remaps-to-fields infos fields))]
           (assoc join :fields new-fields))
         ;; there are no remaps to add, discard any changes that happen inside of the join (such as adding additional
