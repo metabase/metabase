@@ -27,12 +27,16 @@ const makeSource = (
 
 const makeGroup = (
   groupId: string,
-  inputTitles: string[],
+  inputFieldIds: number[],
   outputTitles: string[] = [],
 ): CardGroup => ({
   groupId,
-  inputCards: inputTitles.map((title, index) =>
-    createMockInspectorCard({ id: `${groupId}-in-${index}`, title }),
+  inputCards: inputFieldIds.map((fieldId, index) =>
+    createMockInspectorCard({
+      id: `${groupId}-in-${index}`,
+      title: `Card ${index}`,
+      metadata: { card_type: "table_count", dedup_key: [], field_id: fieldId },
+    }),
   ),
   outputCards: outputTitles.map((title, index) =>
     createMockInspectorCard({ id: `${groupId}-out-${index}`, title }),
@@ -47,10 +51,7 @@ describe("sortGroupsByScore", () => {
         { name: "Quantity", id: 5 },
       ]),
     ];
-    const groups = [
-      makeGroup("low", ["Quantity"]),
-      makeGroup("high", ["Revenue"]),
-    ];
+    const groups = [makeGroup("low", [5]), makeGroup("high", [10])];
 
     const result = sortGroupsByScore(groups, sources);
 
@@ -67,48 +68,31 @@ describe("sortGroupsByScore", () => {
         { name: "Discount", id: 8 },
       ]),
     ];
-    const groups = [makeGroup("mixed", ["Quantity", "Revenue", "Discount"])];
+    const groups = [makeGroup("mixed", [2, 10, 8])];
 
     const result = sortGroupsByScore(groups, sources);
 
     expect(result[0].topScore).toBe(10);
   });
 
-  it("assigns score 0 for cards whose titles don't match any field", () => {
+  it("assigns score 0 for cards whose field_id doesn't match any field", () => {
     const sources = [makeSource("orders", [{ name: "Revenue", id: 10 }])];
-    const groups = [makeGroup("unknown", ["NonExistentField"])];
+    const groups = [makeGroup("unknown", [999])];
 
     const result = sortGroupsByScore(groups, sources);
 
     expect(result[0].topScore).toBe(0);
   });
 
-  it("parses field name from title with table suffix like 'Revenue (Orders)'", () => {
-    const sources = [
-      makeSource("orders", [{ name: "Revenue", id: 10 }]),
-      makeSource("products", [{ name: "Price", id: 3 }]),
-    ];
-    const groups = [
-      makeGroup("products", ["Price (Products)"]),
-      makeGroup("orders", ["Revenue (Orders)"]),
-    ];
-
-    const result = sortGroupsByScore(groups, sources);
-
-    expect(result.map((g) => g.groupId)).toEqual(["orders", "products"]);
-    expect(result[0].topScore).toBe(10);
-    expect(result[1].topScore).toBe(3);
-  });
-
   it("preserves group data (inputCards, outputCards) in results", () => {
     const sources = [makeSource("orders", [{ name: "Revenue", id: 5 }])];
-    const groups = [makeGroup("g1", ["Revenue"], ["Output"])];
+    const groups = [makeGroup("g1", [5], ["Output"])];
 
     const result = sortGroupsByScore(groups, sources);
 
     expect(result[0].inputCards).toHaveLength(1);
     expect(result[0].outputCards).toHaveLength(1);
-    expect(result[0].inputCards[0].title).toBe("Revenue");
+    expect(result[0].inputCards[0].title).toBe("Card 0");
     expect(result[0].outputCards[0].title).toBe("Output");
   });
 });
