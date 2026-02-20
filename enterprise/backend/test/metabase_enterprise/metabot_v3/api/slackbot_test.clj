@@ -519,12 +519,19 @@
         (thunk)))))
 
 (deftest setup-complete-test
-  (let [request-body {:type "url_verification" :challenge "test-challenge"}
+  (let [request-body {:type "event_callback"
+                      :event {:type "message"
+                              :text "test"
+                              :user "U123"
+                              :channel "C123"
+                              :ts "1234567890.000001"
+                              :event_ts "1234567890.000001"
+                              :channel_type "im"}}
         post-events  #(mt/client :post %1 "ee/metabot-v3/slack/events"
                                  (slack-request-options request-body) request-body)]
     (testing "succeeds when all settings are configured"
       (do-with-setup-override! {}
-                               #(is (= "test-challenge" (post-events 200)))))
+                               #(is (= "ok" (post-events 200)))))
 
     (doseq [[desc override] [["sso-slack feature disabled"    {:sso-slack false}]
                              ["client-id missing"             {:client-id nil}]

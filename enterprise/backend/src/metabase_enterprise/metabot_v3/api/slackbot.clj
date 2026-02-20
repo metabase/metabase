@@ -509,6 +509,8 @@
 (defn- assert-valid-slack-req
   "Asserts that incoming Slack request has a valid signature."
   [request]
+  (when-not (metabot.settings/metabot-slack-signing-secret)
+    (throw (ex-info (str (tru "Slack integration is not fully configured.")) {:status-code 503})))
   (when-not (:slack/validated? request)
     (throw (ex-info (str (tru "Slack request signature is not valid.")) {:status-code 401}))))
 
@@ -904,8 +906,8 @@
                 (log/errorf e "[slackbot] Error processing message: %s" (ex-message e))))))
 
         :else
-        (log/debugf "[slackbot] Ignoring unhandled event type: %s" (:type event)))
-      ack-msg)))
+        (log/debugf "[slackbot] Ignoring unhandled event type: %s" (:type event)))))
+  ack-msg)
 
 ;; ----------------------- ROUTES --------------------------
 ;; NOTE: make sure to do premium-features/enable-metabot-v3? checks if you add new endpoints
