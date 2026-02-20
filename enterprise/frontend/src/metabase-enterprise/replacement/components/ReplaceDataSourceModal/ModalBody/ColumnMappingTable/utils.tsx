@@ -1,11 +1,15 @@
 import { t } from "ttag";
 
+import { Ellipsified } from "metabase/common/components/Ellipsified";
 import type { TreeTableColumnDef } from "metabase/ui";
-import type { ReplaceSourceColumnMapping } from "metabase-types/api";
+import type {
+  ReplaceSourceColumnMapping,
+  ReplaceSourceErrorType,
+} from "metabase-types/api";
 
+import { getColumnErrorMessage } from "../../../../utils";
 import type { EntityInfo } from "../../types";
 
-import { ErrorsCell } from "./ErrorsCell";
 import { NameCell } from "./NameCell";
 import type { ColumnMappingItem } from "./types";
 
@@ -45,7 +49,10 @@ function getSourceColumn(
     accessorFn: (item) => item.source?.display_name,
     cell: ({ row }) => {
       const item = row.original;
-      return item.source != null ? <NameCell column={item.source} /> : null;
+      if (item.source == null) {
+        return null;
+      }
+      return <NameCell column={item.source} />;
     },
   };
 }
@@ -61,9 +68,16 @@ function getTargetColumn(
     accessorFn: (item) => item.target?.display_name,
     cell: ({ row }) => {
       const item = row.original;
-      return item.target != null ? <NameCell column={item.target} /> : null;
+      if (item.target == null) {
+        return null;
+      }
+      return <NameCell column={item.target} />;
     },
   };
+}
+
+function getErrorMessage(errors: ReplaceSourceErrorType[]): string {
+  return errors.map(getColumnErrorMessage).join(" ");
 }
 
 function getErrorsColumn(): TreeTableColumnDef<ColumnMappingItem> {
@@ -71,13 +85,13 @@ function getErrorsColumn(): TreeTableColumnDef<ColumnMappingItem> {
     id: "errors",
     header: t`Errors`,
     enableSorting: true,
-    accessorFn: (item) => item.errors?.length ?? 0,
+    accessorFn: (item) => getErrorMessage(item.errors ?? []),
     cell: ({ row }) => {
       const { errors } = row.original;
       if (errors == null || errors.length === 0) {
         return null;
       }
-      return <ErrorsCell errors={errors} />;
+      return <Ellipsified>{getErrorMessage(errors)}</Ellipsified>;
     },
   };
 }

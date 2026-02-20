@@ -24,6 +24,9 @@ export type ReplaceSourceColumnInfo = Pick<
 >;
 
 export const REPLACE_SOURCE_ERROR_TYPES = [
+  "same-source",
+  "cycle-detected",
+  "database-mismatch",
   "missing-column",
   "column-type-mismatch",
   "missing-primary-key",
@@ -35,14 +38,15 @@ export type ReplaceSourceErrorType =
   (typeof REPLACE_SOURCE_ERROR_TYPES)[number];
 
 export type ReplaceSourceColumnMapping = {
-  source?: ReplaceSourceColumnInfo;
-  target?: ReplaceSourceColumnInfo;
+  source: ReplaceSourceColumnInfo | null;
+  target: ReplaceSourceColumnInfo | null;
   errors?: ReplaceSourceErrorType[];
 };
 
 export type CheckReplaceSourceInfo = {
   success: boolean;
-  column_mappings: ReplaceSourceColumnMapping[];
+  errors?: ReplaceSourceErrorType[];
+  column_mappings?: ReplaceSourceColumnMapping[];
 };
 
 export type ReplaceSourceRunId = number;
