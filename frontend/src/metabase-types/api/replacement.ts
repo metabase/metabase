@@ -1,6 +1,6 @@
 import type { CardId } from "./card";
 import type { Field } from "./field";
-import type { ConcreteTableId, Table } from "./table";
+import type { ConcreteTableId } from "./table";
 
 export type ReplaceSourceEntityId = ConcreteTableId | CardId;
 
@@ -13,24 +13,15 @@ export type ReplaceSourceEntry = {
   type: ReplaceSourceEntityType;
 };
 
-export type ReplaceSourceTableInfo = Pick<
-  Table,
-  "id" | "name" | "display_name" | "schema"
->;
-
-export type ReplaceSourceFieldInfo = Pick<
-  Field,
-  "id" | "name" | "display_name"
-> & {
-  table?: ReplaceSourceTableInfo;
-};
-
 export type ReplaceSourceColumnInfo = Pick<
   Field,
-  "id" | "name" | "display_name" | "database_type" | "fk_target_field_id"
-> & {
-  target?: ReplaceSourceFieldInfo;
-};
+  | "id"
+  | "name"
+  | "display_name"
+  | "base_type"
+  | "effective_type"
+  | "semantic_type"
+>;
 
 export type ReplaceSourceErrorType =
   | "missing-column"

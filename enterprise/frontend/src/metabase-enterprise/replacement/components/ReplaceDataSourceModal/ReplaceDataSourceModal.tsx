@@ -60,15 +60,13 @@ function ModalContent({
   const { data: dependents = [] } = useListNodeDependentsQuery(
     getDependentsRequest(sourceEntry),
   );
-  const { data: checkInfo, isFetching: isChecking } =
-    useCheckReplaceSourceQuery(
-      getCheckReplaceSourceRequest(sourceEntry, targetEntry),
-    );
+  const { data: checkInfo } = useCheckReplaceSourceQuery(
+    getCheckReplaceSourceRequest(sourceEntry, targetEntry),
+  );
 
   const sourceInfo = getEntityInfo(sourceEntry, sourceTable, sourceCard);
   const targetInfo = getEntityInfo(targetEntry, targetTable, targetCard);
   const columnMappings = checkInfo?.column_mappings ?? [];
-  const canReplace = checkInfo?.success ?? false;
 
   const handleSubmit = () => {};
 
@@ -77,9 +75,8 @@ function ModalContent({
       <ModalSidebar
         sourceInfo={sourceInfo}
         targetInfo={targetInfo}
+        checkInfo={checkInfo}
         dependentsCount={dependents.length}
-        isChecking={isChecking}
-        canReplace={canReplace}
         onSourceChange={setSourceEntry}
         onTargetChange={setTargetEntry}
         onSubmit={handleSubmit}

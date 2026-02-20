@@ -53,31 +53,13 @@
 (defn- column-match-key [col]
   (or (:lib/desired-column-alias col) (:name col)))
 
-(defn- format-table [mp table-id]
-  (when table-id
-    (when-let [table (lib.metadata/table mp table-id)]
-      {:id           (:id table)
-       :name         (:name table)
-       :display_name (or (:display-name table) "")
-       :schema       (:schema table)})))
-
-(defn- format-field [mp field]
-  (cond-> {:id           (:id field)
-           :name         (or (:name field) "")
-           :display_name (or (:display-name field) "")}
-    (:table-id field)
-    (assoc :table (format-table mp (:table-id field)))))
-
-(defn- format-column [mp col]
-  (let [fk-target-id (:fk-target-field-id col)]
-    (cond-> {:id                 (:id col)
-             :name               (column-match-key col)
-             :display_name       (or (:display-name col) "")
-             :database_type      (:database-type col)
-             :fk_target_field_id fk-target-id}
-      fk-target-id
-      (assoc :target (when-let [fk-field (lib.metadata/field mp fk-target-id)]
-                       (format-field mp fk-field))))))
+(defn- format-column [col]
+  {:id             (:id col)
+   :name           (column-match-key col)
+   :display_name   (or (:display-name col) "")
+   :base_type      (some-> (:base-type col) name)
+   :effective_type (some-> (:effective-type col) name)
+   :semantic_type  (some-> (:semantic-type col) name)})
 
 (defn- fetch-source
   "Fetch source metadata and its database ID."
@@ -145,8 +127,8 @@
                                    new-col (get new-by-name col-name)
                                    errors  (when old-col (column-errors old-col new-col))]
                                (cond-> {}
-                                 old-col      (assoc :source (format-column source-mp old-col))
-                                 new-col      (assoc :target (format-column target-mp new-col))
+                                 old-col      (assoc :source (format-column old-col))
+                                 new-col      (assoc :target (format-column new-col))
                                  (seq errors) (assoc :errors errors))))
                            all-names)
         has-errors?     (boolean (some :errors all-mappings))]

@@ -1,7 +1,10 @@
 import { msgid, ngettext, t } from "ttag";
 
 import { Button, Group, Stack, Text, Title } from "metabase/ui";
-import type { ReplaceSourceEntry } from "metabase-types/api";
+import type {
+  CheckReplaceSourceInfo,
+  ReplaceSourceEntry,
+} from "metabase-types/api";
 
 import type { EntityInfo } from "../types";
 
@@ -12,9 +15,8 @@ import S from "./ModalSidebar.module.css";
 type ModalSidebarProps = {
   sourceInfo: EntityInfo | undefined;
   targetInfo: EntityInfo | undefined;
+  checkInfo: CheckReplaceSourceInfo | undefined;
   dependentsCount: number;
-  isChecking: boolean;
-  canReplace: boolean;
   onSourceChange: (sourceEntry: ReplaceSourceEntry) => void;
   onTargetChange: (targetEntry: ReplaceSourceEntry) => void;
   onSubmit: () => void;
@@ -24,14 +26,15 @@ type ModalSidebarProps = {
 export function ModalSidebar({
   sourceInfo,
   targetInfo,
+  checkInfo,
   dependentsCount,
-  isChecking,
-  canReplace,
   onSourceChange,
   onTargetChange,
   onSubmit,
   onCancel,
 }: ModalSidebarProps) {
+  const disabled = !checkInfo?.success || dependentsCount === 0;
+
   return (
     <Stack className={S.sidebar} px="xl" pt="xl" pb="lg" gap="lg" maw="32rem">
       <Stack gap="sm">
@@ -48,31 +51,31 @@ export function ModalSidebar({
           />
         </EntitySection>
         <EntitySection icon="find_replace">
-          <EntitySelect
-            entityInfo={targetInfo}
-            label={t`Replace it with this data source`}
-            description={t`It must be based on the same database and include all columns from the original data source.`}
-            onChange={onTargetChange}
-          />
-          {!isChecking && !canReplace && (
-            <Text c="error" mt="md">
-              {t`This source is not compatible with the original source.`}
-            </Text>
-          )}
+          <Stack gap="sm">
+            <EntitySelect
+              entityInfo={targetInfo}
+              label={t`Replace it with this data source`}
+              description={t`It must be based on the same database and include all columns from the original data source.`}
+              onChange={onTargetChange}
+            />
+            {checkInfo != null && !checkInfo.success && (
+              <Text c="error">{t`This source is not compatible with the original source.`}</Text>
+            )}
+          </Stack>
         </EntitySection>
       </Stack>
       <Group mt="auto" justify="flex-end" wrap="nowrap">
         <Button onClick={onCancel}>{t`Cancel`}</Button>
-        <Button variant="filled" disabled={!canReplace} onClick={onSubmit}>
-          {getSubmitLabel(dependentsCount, canReplace)}
+        <Button variant="filled" disabled={disabled} onClick={onSubmit}>
+          {getSubmitLabel(dependentsCount, disabled)}
         </Button>
       </Group>
     </Stack>
   );
 }
 
-function getSubmitLabel(dependentsCount: number, canReplace: boolean) {
-  if (dependentsCount === 0 || !canReplace) {
+function getSubmitLabel(dependentsCount: number, disabled: boolean) {
+  if (disabled) {
     return t`Replace data source`;
   }
   return ngettext(

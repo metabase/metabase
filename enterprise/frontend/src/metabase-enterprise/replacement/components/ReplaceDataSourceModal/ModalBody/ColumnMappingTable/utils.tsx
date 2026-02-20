@@ -73,11 +73,11 @@ function getErrorsColumn(): TreeTableColumnDef<ColumnMappingItem> {
     enableSorting: true,
     accessorFn: (item) => item.errors?.length ?? 0,
     cell: ({ row }) => {
-      const { source, target, errors } = row.original;
+      const { errors } = row.original;
       if (errors == null || errors.length === 0) {
         return null;
       }
-      return <ErrorsCell source={source} target={target} errors={errors} />;
+      return <ErrorsCell errors={errors} />;
     },
   };
 }
