@@ -82,11 +82,14 @@
      ;; some forms don't get converted to keywords, so hack it
      (if (and (vector? form)
               (= "dimension" (first form)))
-       (let [dim (-> form
-                     (update 0 keyword)
-                     (update-in [1 0] keyword)
-                     (update-in [1 1 :base-type] keyword))]
-         (swap-target dim mp old-source new-source))
+       (try
+         (let [dim (-> form
+                       (update 0 keyword)
+                       (update-in [1 0] keyword)
+                       (update-in [1 2 :base-type] keyword))]
+           (swap-target dim mp old-source new-source))
+         (catch Exception _
+           form))
        form))
    column-settings))
 

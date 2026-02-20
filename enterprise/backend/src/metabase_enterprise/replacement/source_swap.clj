@@ -16,10 +16,7 @@
     source-id
 
     :card
-    (or (:table-id (lib.metadata/card mp source-id))
-        (throw (ex-info "Cannot find ulimate card for source"
-                        {:source-type source-type
-                         :source-id   source-id})))))
+    (:table-id (lib.metadata/card mp source-id))))
 
 (defn- update-query [query old-source new-source id-updates]
   (cond-> query
@@ -45,16 +42,23 @@
   (let [card (t2/select-one :model/Card :id entity-id)]
     (assert (some? card))
     (let [query (:dataset_query card)
-          new-query (update-query query old-source new-source {})
-          updated   (assoc card :dataset_query new-query)]
+          query' (update-query query old-source new-source {})
+          changes (cond-> {}
+                    (not= query query')
+                    (assoc :dataset_query query')
+
+                    (= (:table_id card) (ultimate-table-id query old-source))
+                    (assoc :table_id    (ultimate-table-id query new-source)))]
       ;; no changes, so don't update
-      (when (not= query new-query)
-        (t2/update! :model/Card entity-id {:dataset_query new-query})
+      (when (seq changes)
+        (t2/update! :model/Card entity-id changes)
         ;; TODO: not sure we really want this code to have to know about dependency tracking
         ;; TODO: publishing this event twice per update seems bad
-        (events/publish-event! :event/card-dependency-backfill
-                               {:object updated}))
-      (swap.viz/dashboard-card-update-field-refs! entity-id new-query old-source new-source))))
+        (events/publish-event! :event/card-update
+                               {:object (merge card changes)
+                                :user-id (:id @api/*current-user*)
+                                :previous-object card}))
+      (swap.viz/dashboard-card-update-field-refs! entity-id query' old-source new-source))))
 
 (defn- segment-swap!
   [[entity-type entity-id] old-source new-source]
