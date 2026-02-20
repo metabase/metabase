@@ -3,20 +3,20 @@ import { Navigate } from "react-router-dom";
 
 import { useCompatLocation } from "metabase/routing/compat";
 
-import { DependencyGraphPage } from "./pages/DependencyGraphPage";
 import {
-  BrokenDependencyListPage,
-  UnreferencedDependencyListPage,
-} from "./pages/DependencyListPage";
+  BrokenDependencyDiagnosticsPage,
+  UnreferencedDependencyDiagnosticsPage,
+} from "./pages/DependencyDiagnosticsPage";
+import { DependencyGraphPage } from "./pages/DependencyGraphPage";
 
 const BrokenDependencyListPageWithRouteProps = () => {
   const location = useCompatLocation();
-  return <BrokenDependencyListPage location={location} />;
+  return <BrokenDependencyDiagnosticsPage location={location} />;
 };
 
 const UnreferencedDependencyListPageWithRouteProps = () => {
   const location = useCompatLocation();
-  return <UnreferencedDependencyListPage location={location} />;
+  return <UnreferencedDependencyDiagnosticsPage location={location} />;
 };
 
 export function getDataStudioDependencyRoutes() {

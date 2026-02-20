@@ -3,12 +3,13 @@ import { P, match } from "ts-pattern";
 import { c, t } from "ttag";
 
 import { Link } from "metabase/common/components/Link";
-import { useHasEmailSetup } from "metabase/common/hooks";
+import { useDocsUrl, useHasEmailSetup } from "metabase/common/hooks";
 import type {
   MetabaseColors,
   MetabaseThemePreset,
 } from "metabase/embedding-sdk/theme";
 import {
+  Anchor,
   Card,
   Checkbox,
   Divider,
@@ -21,6 +22,7 @@ import {
 
 import { UPSELL_CAMPAIGN_BEHAVIOR } from "../analytics";
 import { useSdkIframeEmbedSetupContext } from "../context";
+import { getBehaviorDocsUrlParams } from "../utils/get-behavior-docs-url-params";
 
 import { ColorCustomizationSection } from "./Appearance/ColorCustomizationSection";
 import { SimpleThemeSwitcherSection } from "./Appearance/SimpleThemeSwitcherSection";
@@ -44,6 +46,12 @@ const BehaviorSection = () => {
   const { isSimpleEmbedFeatureAvailable, settings, updateSettings } =
     useSdkIframeEmbedSetupContext();
   const hasEmailSetup = useHasEmailSetup();
+
+  const behaviorDocsParams = getBehaviorDocsUrlParams(settings);
+  // eslint-disable-next-line metabase/no-unconditional-metabase-links-render -- Only admins can see the EmbedJS Wizard
+  const { url: behaviorDocsUrl } = useDocsUrl(behaviorDocsParams?.page ?? "", {
+    anchor: behaviorDocsParams?.anchor,
+  });
 
   const behaviorSection = useMemo(() => {
     return match(settings)
@@ -253,9 +261,27 @@ const BehaviorSection = () => {
 
   return (
     <Card p="md">
-      <Text size="lg" fw="bold" mb="md">
-        {t`Behavior`}
-      </Text>
+      <Flex align="center" justify="space-between" gap="xs" mb="md">
+        <Text size="lg" fw="bold">
+          {t`Behavior`}
+        </Text>
+        {!!behaviorDocsParams?.page && (
+          <Anchor
+            data-testid="behavior-docs-link"
+            href={behaviorDocsUrl}
+            target="_blank"
+            rel="noreferrer"
+            c="brand"
+            lh={1}
+          >
+            <Icon
+              name="book_open"
+              size={16}
+              tooltip={t`See all properties in the docs`}
+            />
+          </Anchor>
+        )}
+      </Flex>
 
       {behaviorSection}
     </Card>

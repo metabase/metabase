@@ -3,8 +3,12 @@ import { c, t } from "ttag";
 
 import { ForwardRefLink } from "metabase/common/components/Link";
 import { ToolbarButton } from "metabase/common/components/ToolbarButton";
+import { setSharing as setDashboardSubscriptionSidebarOpen } from "metabase/dashboard/actions";
 import { useDashboardContext } from "metabase/dashboard/context/context";
 import { useRefreshDashboard } from "metabase/dashboard/hooks";
+import { getIsSharing as getIsDashboardSubscriptionSidebarOpen } from "metabase/dashboard/selectors";
+import { useDispatch, useSelector } from "metabase/lib/redux";
+import { DashboardSubscriptionMenuItem } from "metabase/notifications/NotificationsActionsMenu/DashboardSubscriptionMenuItem";
 import { useRegisterShortcut } from "metabase/palette/hooks/useRegisterShortcut";
 import { PLUGIN_MODERATION } from "metabase/plugins";
 import { useCompatLocation } from "metabase/routing/compat";
@@ -27,6 +31,7 @@ export const DashboardActionMenu = ({
   const { dashboard, isFullscreen, onFullscreenChange, onChangeLocation } =
     useDashboardContext();
   const [opened, setOpened] = useState(false);
+  const dispatch = useDispatch();
 
   const { refreshDashboard } = useRefreshDashboard({
     dashboardId: dashboard?.id ?? null,
@@ -37,6 +42,15 @@ export const DashboardActionMenu = ({
     dashboard ?? undefined,
     refreshDashboard,
   );
+
+  const isDashboardSubscriptionSidebarOpen = useSelector(
+    getIsDashboardSubscriptionSidebarOpen,
+  );
+
+  const toggleSubscriptionSidebar = () =>
+    dispatch(
+      setDashboardSubscriptionSidebarOpen(!isDashboardSubscriptionSidebarOpen),
+    );
 
   // solely for the dependency list below, so we don't ever have an undefined
   const pathname = location?.pathname ?? "";
@@ -78,6 +92,11 @@ export const DashboardActionMenu = ({
             {t`Reset all filters`}
           </Menu.Item>
         )}
+
+        <DashboardSubscriptionMenuItem
+          dashboard={dashboard}
+          onClick={toggleSubscriptionSidebar}
+        />
 
         <Menu.Item
           leftSection={<Icon name="expand" />}

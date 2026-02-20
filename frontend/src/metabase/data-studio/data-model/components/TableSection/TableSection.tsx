@@ -263,11 +263,9 @@ const TableSectionBase = ({
                 entry: { id: Number(table.id), type: "table" },
               })}
               p="sm"
+              w="2.5rem"
+              flex="0 1 auto"
               leftSection={<Icon name="dependencies" />}
-              style={{
-                flexGrow: 0,
-                width: 40,
-              }}
               aria-label={t`Dependency graph`}
               onClickCapture={registerDependencyGraphTrackingEvent}
               onAuxClick={registerDependencyGraphTrackingEvent}

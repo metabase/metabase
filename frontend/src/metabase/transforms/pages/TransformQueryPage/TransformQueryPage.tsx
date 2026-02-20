@@ -7,6 +7,7 @@ import {
   useGetTransformQuery,
   useUpdateTransformMutation,
 } from "metabase/api";
+import { getErrorMessage } from "metabase/api/utils";
 import { EmptyState } from "metabase/common/components/EmptyState/EmptyState";
 import { LeaveRouteConfirmModal } from "metabase/common/components/LeaveConfirmModal";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
@@ -71,12 +72,16 @@ export function TransformQueryPage({ params }: TransformQueryPageProps) {
     return <LoadingAndErrorWrapper error={t`Transform not found.`} />;
   }
 
+  const isEditMode = !readOnly && location.pathname.includes("/edit");
+
   return (
     <TransformQueryPageBody
+      // Add key so the ui state gets reset when switching between edit and view
+      key={isEditMode ? "edit" : "view"}
       transform={transform}
       databases={transformsDatabases}
       readOnly={readOnly}
-      isEditMode={!readOnly && location.pathname.includes("/edit")}
+      isEditMode={isEditMode}
     />
   );
 }
@@ -129,7 +134,12 @@ function TransformQueryPageBody({
     onSave: async (request) => {
       const { error } = await updateTransform(request);
       if (error) {
-        sendErrorToast(t`Failed to update transform query`);
+        const message = getErrorMessage(error);
+        sendErrorToast(
+          message
+            ? t`Failed to update transform query: ${message}`
+            : t`Failed to update transform query`,
+        );
       } else {
         sendSuccessToast(t`Transform query updated`);
 
