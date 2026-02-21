@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { msgid, ngettext, t } from "ttag";
 
 import { Modal } from "metabase/ui";
@@ -15,7 +15,7 @@ type ConfirmAndProgressModalProps = {
   targetEntry: ReplaceSourceEntry;
   dependentsCount: number;
   opened: boolean;
-  onReplaceSuccess: () => void;
+  onReplaceSuccess: (originalDependentsCount: number) => void;
   onReplaceFailure: () => void;
   onClose: () => void;
 };
@@ -23,18 +23,19 @@ type ConfirmAndProgressModalProps = {
 export function ConfirmAndProgressModal({
   sourceEntry,
   targetEntry,
-  dependentsCount,
+  dependentsCount: initialDependentsCount,
   opened,
   onReplaceSuccess,
   onReplaceFailure,
   onClose,
 }: ConfirmAndProgressModalProps) {
   const [runId, setRunId] = useState<ReplaceSourceRunId>();
+  const { current: dependentsCount } = useRef(initialDependentsCount);
   const isStarted = runId != null;
 
   const handleReplaceSuccess = () => {
     setRunId(undefined);
-    onReplaceSuccess();
+    onReplaceSuccess(dependentsCount);
   };
 
   const handleReplaceFailure = () => {

@@ -94,8 +94,7 @@ function ModalContent({
     }
   }, [selectedTab, canReplace]);
 
-  const handleReplaceSuccess = () => {
-    const dependentsCount = dependents?.length ?? 0;
+  const handleReplaceSuccess = (dependentsCount: number) => {
     sendToast({ message: getSuccessMessage(dependentsCount), icon: "check" });
     closeConfirmation();
     onClose();
