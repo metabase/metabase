@@ -125,8 +125,8 @@
   [model thunk]
   (let [labels {:model model :source "agent"}
         timer  (u/start-timer)]
-    (prometheus/inc! :metabase-metabot/llm-requests labels)
     (loop [attempt 1]
+      (prometheus/inc! :metabase-metabot/llm-requests labels)
       (let [result (try
                      {:ok (thunk)}
                      (catch Exception e

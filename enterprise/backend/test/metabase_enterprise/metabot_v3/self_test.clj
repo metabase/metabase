@@ -519,7 +519,7 @@
                                     (throw (ex-info "rate limited" {:status 429}))
                                     (reduce rf init (test-util/mock-llm-response [{:type :start :id "m1"}]))))))]
                 (run! identity (self/call-llm "test-model" nil [] {}))))
-            (is (== 1 (mt/metric-value system :metabase-metabot/llm-requests labels)))
+            (is (== 3 (mt/metric-value system :metabase-metabot/llm-requests labels)))
             (is (== 2 (mt/metric-value system :metabase-metabot/llm-retries labels)))
             (is (== 0 (mt/metric-value system :metabase-metabot/llm-errors
                                        (assoc labels :error-type "ExceptionInfo"))))
