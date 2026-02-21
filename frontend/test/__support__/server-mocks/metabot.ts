@@ -96,3 +96,7 @@ export function setupRegenerateMetabotPromptSuggestionsEndpoint(
     options,
   );
 }
+
+export function setupMetabotSlackSettingsEndpoint() {
+  fetchMock.put("path:/api/ee/metabot-v3/slack/settings", { ok: true });
+}
