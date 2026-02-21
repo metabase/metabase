@@ -16,6 +16,7 @@ import { ModalBody } from "./ModalBody";
 import { ModalSidebar } from "./ModalSidebar";
 import type { TabType } from "./types";
 import {
+  canReplaceSource,
   getCardRequest,
   getCheckReplaceSourceRequest,
   getDependentsRequest,
@@ -61,6 +62,7 @@ function ModalContent({
   const [selectedTab, setSelectedTab] = useState<TabType>("column-mappings");
   const [isConfirming, { open: openConfirmation, close: closeConfirmation }] =
     useDisclosure();
+  const [sendToast] = useToast();
 
   const { currentData: sourceTable } = useGetTableQuery(
     getTableRequest(sourceEntry),
@@ -80,16 +82,11 @@ function ModalContent({
   const { currentData: checkInfo } = useCheckReplaceSourceQuery(
     getCheckReplaceSourceRequest(sourceEntry, targetEntry),
   );
-  const [sendToast] = useToast();
 
   const sourceItem = getEntityItem(sourceEntry, sourceTable, sourceCard);
   const targetItem = getEntityItem(targetEntry, targetTable, targetCard);
   const columnMappings = checkInfo?.column_mappings;
-  const canReplace =
-    checkInfo != null &&
-    checkInfo.success &&
-    dependents != null &&
-    dependents.length > 0;
+  const canReplace = canReplaceSource(checkInfo, dependents);
 
   useLayoutEffect(() => {
     if (!canReplace && selectedTab === "dependents") {

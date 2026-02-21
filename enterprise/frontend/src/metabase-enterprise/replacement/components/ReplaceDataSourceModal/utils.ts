@@ -1,7 +1,13 @@
 import { msgid, ngettext, t } from "ttag";
 
 import { skipToken } from "metabase/api";
-import type { Card, ReplaceSourceEntry, Table } from "metabase-types/api";
+import type {
+  Card,
+  CheckReplaceSourceInfo,
+  DependencyNode,
+  ReplaceSourceEntry,
+  Table,
+} from "metabase-types/api";
 
 import type { EntityItem } from "./types";
 
@@ -52,6 +58,18 @@ export function getCheckReplaceSourceRequest(
     target_entity_id: targetEntry.id,
     target_entity_type: targetEntry.type,
   };
+}
+
+export function canReplaceSource(
+  checkInfo: CheckReplaceSourceInfo | undefined,
+  dependents: DependencyNode[] | undefined,
+) {
+  return (
+    checkInfo != null &&
+    checkInfo.success &&
+    dependents != null &&
+    dependents.length > 0
+  );
 }
 
 export function getSuccessMessage(dependentsCount: number) {

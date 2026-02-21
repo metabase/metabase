@@ -41,7 +41,7 @@ export function ModalSidebar({
   const targetError = getTargetError(checkInfo);
 
   return (
-    <Stack className={S.sidebar} px="xl" pt="xl" pb="lg" gap="lg" maw="32rem">
+    <Stack className={S.sidebar} px="xl" pt="xl" pb="lg" gap="lg" maw="35rem">
       <Stack gap="sm">
         <Title order={2}>{t`Find and replace a data source`}</Title>
         <Text>{t`This lets you change the data source used in queries in bulk. `}</Text>
@@ -82,7 +82,7 @@ function getSourceDatabaseId(item: EntityItem | undefined) {
 
 function getSourceError(dependentsCount: number | undefined) {
   if (dependentsCount === 0) {
-    return t`Nothing uses this table, so there's nothing to replace.`;
+    return t`Nothing uses this data source, so there's nothing to replace.`;
   }
 }
 
