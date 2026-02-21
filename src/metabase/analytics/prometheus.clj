@@ -544,7 +544,8 @@
    (prometheus/histogram :metabase-metabot/llm-duration-ms
                          {:description "LLM request duration (ms)"
                           :labels [:model :source]
-                          :buckets [500 1000 2000 5000 10000 20000 30000 60000 120000]})
+                          ;; 100 ms -> 2 minutes
+                          :buckets [100 500 1000 2000 5000 10000 20000 30000 60000 120000]})
    (prometheus/counter :metabase-metabot/llm-input-tokens
                        {:description "LLM input tokens"
                         :labels [:model :source]})
