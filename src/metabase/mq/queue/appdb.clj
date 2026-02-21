@@ -4,6 +4,7 @@
    [metabase.analytics.prometheus :as analytics]
    [metabase.models.interface :as mi]
    [metabase.mq.queue.backend :as q.backend]
+   [metabase.mq.queue.impl :as q.impl]
    [metabase.mq.settings :as mq.settings]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
@@ -20,7 +21,7 @@
 
 (defn- fetch!
   "Fetches the next pending message from any of the listening queues.
-  Returns a map with :batch-id, :queue, and :messages keys, or nil if no messages are available.
+  Returns a map with :bundle-id, :queue, and :messages keys, or nil if no messages are available.
   Marks the fetched message as 'processing' within the same transaction."
   []
   (when (seq @listening-queues)
@@ -28,26 +29,26 @@
       (when-let [row (t2/query-one
                       conn
                       {:select   [:*]
-                       :from     [:queue_message_batch]
+                       :from     [:queue_message_bundle]
                        :where    [:and
                                   [:in :queue_name (map name @listening-queues)]
                                   [:= :status "pending"]]
                        :order-by [[:id :asc]]
                        :limit    1
                        :for      [:update :skip-locked]})]
-        (t2/update! :queue_message_batch
+        (t2/update! :queue_message_bundle
                     (:id row)
                     {:status_heartbeat (mi/now)
                      :status           "processing"
                      :owner            owner-id})
-        {:batch-id (:id row)
-         :queue    (keyword "queue" (:queue_name row))
-         :messages (json/decode (:messages row))}))))
+        {:bundle-id (:id row)
+         :queue     (keyword "queue" (:queue_name row))
+         :messages  (json/decode (:messages row))}))))
 
-;;; ------------------------------------------- Failed Batch Cleanup -------------------------------------------
+;;; ------------------------------------------- Failed Bundle Cleanup -------------------------------------------
 
 (def ^:private cleanup-max-age-ms
-  "Failed batches older than this are eligible for cleanup (1 week)."
+  "Failed bundles older than this are eligible for cleanup (1 week)."
   (* 7 24 60 60 1000))
 
 (def ^:private cleanup-interval-ms
@@ -58,26 +59,26 @@
   "Holds the background future running the cleanup loop, or nil if not started."
   (atom nil))
 
-(defn- cleanup-failed-batches!
-  "Deletes all failed `queue_message_batch` rows older than [[cleanup-max-age-ms]]."
+(defn- cleanup-failed-bundles!
+  "Deletes all failed `queue_message_bundle` rows older than [[cleanup-max-age-ms]]."
   []
   (let [threshold (Timestamp/from (.minusMillis (Instant/now) cleanup-max-age-ms))
-        deleted   (t2/delete! :queue_message_batch :status "failed" :status_heartbeat [:< threshold])]
+        deleted   (t2/delete! :queue_message_bundle :status "failed" :status_heartbeat [:< threshold])]
     (when (pos? deleted)
-      (log/infof "Cleaned up %d failed queue batches" deleted))
+      (log/infof "Cleaned up %d failed queue bundles" deleted))
     deleted))
 
 (defn- start-cleanup-loop!
-  "Starts a background loop that periodically runs [[cleanup-failed-batches!]]."
+  "Starts a background loop that periodically runs [[cleanup-failed-bundles!]]."
   []
   (future
     (try
       (loop []
         (when @cleanup-future
           (try
-            (cleanup-failed-batches!)
+            (cleanup-failed-bundles!)
             (catch Exception e
-              (log/error e "Error during queue failed batch cleanup")))
+              (log/error e "Error during queue failed bundle cleanup")))
           (Thread/sleep (long cleanup-interval-ms))
           (recur)))
       (catch InterruptedException _
@@ -88,6 +89,14 @@
 (def ^:private error-backoff-ms
   "Backoff time after an unexpected error in the polling loop."
   5000)
+
+(defn- process-bundle!
+  "Fetches a bundle and delivers it to the shared accumulation layer.
+  Return true if there was a bundle available. False if not"
+  []
+  (when-let [{:keys [bundle-id queue messages]} (fetch!)]
+    (q.impl/deliver-bundle! :queue.backend/appdb queue bundle-id messages)
+    true))
 
 (defn- start-polling!
   "Starts the background polling process if not already running."
@@ -106,10 +115,8 @@
                   (loop []
                     (when (seq @listening-queues)
                       (try
-                        (if-let [result (fetch!)]
-                          (do
-                            (log/info "Processing messages" {:queue (:queue result) :count (count (:messages result))})
-                            (q.backend/handle! :queue.backend/appdb (:queue result) (:batch-id result) (:messages result)))
+                        (if (process-bundle!)
+                          nil ;; delivered a bundle, loop immediately to fetch more
                           (Thread/sleep 2000))
                         (catch InterruptedException e (throw e))
                         (catch Exception e
@@ -147,45 +154,45 @@
 (defmethod q.backend/queue-length :queue.backend/appdb
   [_ queue]
   (or
-   (t2/select-one-fn :num [:queue_message_batch [[:count :*] :num]] :queue_name (name queue))
+   (t2/select-one-fn :num [:queue_message_bundle [[:count :*] :num]] :queue_name (name queue))
    0))
 
 (defmethod q.backend/publish! :queue.backend/appdb
   [_ queue messages]
   (t2/with-transaction [_conn]
-    (t2/insert! :queue_message_batch
+    (t2/insert! :queue_message_bundle
                 {:queue_name (name queue)
                  :messages   (json/encode messages)})))
 
-(defmethod q.backend/batch-successful! :queue.backend/appdb
-  [_ _queue-name batch-id]
-  (let [deleted (t2/delete! :queue_message_batch batch-id)]
+(defmethod q.backend/bundle-successful! :queue.backend/appdb
+  [_ _queue-name bundle-id]
+  (let [deleted (t2/delete! :queue_message_bundle bundle-id)]
     (when (= 0 deleted)
-      (log/warnf "Message %d was already deleted from the queue. Likely error in concurrency handling" batch-id))))
+      (log/warnf "Message %d was already deleted from the queue. Likely error in concurrency handling" bundle-id))))
 
-(defmethod q.backend/batch-failed! :queue.backend/appdb
-  [_ queue-name batch-id]
-  (let [row     (t2/select-one :queue_message_batch :id batch-id :owner owner-id)
+(defmethod q.backend/bundle-failed! :queue.backend/appdb
+  [_ queue-name bundle-id]
+  (let [row     (t2/select-one :queue_message_bundle :id bundle-id :owner owner-id)
         updated (when row
                   (if (>= (inc (:failures row)) (mq.settings/queue-max-retries))
                     (do
-                      (log/warnf "Message %d has reached max failures (%d), marking as failed" batch-id (mq.settings/queue-max-retries))
-                      (analytics/inc! :metabase-mq/queue-batch-permanent-failures {:queue (name queue-name)})
-                      (t2/update! :queue_message_batch
-                                  {:id    batch-id
+                      (log/warnf "Message %d has reached max failures (%d), marking as failed" bundle-id (mq.settings/queue-max-retries))
+                      (analytics/inc! :metabase-mq/queue-bundle-permanent-failures {:queue (name queue-name)})
+                      (t2/update! :queue_message_bundle
+                                  {:id    bundle-id
                                    :owner owner-id}
                                   {:status           "failed"
                                    :failures         [:+ :failures 1]
                                    :status_heartbeat (mi/now)
                                    :owner            nil}))
                     (do
-                      (analytics/inc! :metabase-mq/queue-batch-retries {:queue (name queue-name)})
-                      (t2/update! :queue_message_batch
-                                  {:id    batch-id
+                      (analytics/inc! :metabase-mq/queue-bundle-retries {:queue (name queue-name)})
+                      (t2/update! :queue_message_bundle
+                                  {:id    bundle-id
                                    :owner owner-id}
                                   {:status           "pending"
                                    :failures         [:+ :failures 1]
                                    :status_heartbeat (mi/now)
                                    :owner            nil}))))]
     (when (and row (= 0 updated))
-      (log/warnf "Message %d was not found in the queue. Likely error in concurrency handling" batch-id))))
+      (log/warnf "Message %d was not found in the queue. Likely error in concurrency handling" bundle-id))))

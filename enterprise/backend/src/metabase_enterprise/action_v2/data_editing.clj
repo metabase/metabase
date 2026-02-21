@@ -30,9 +30,10 @@
        (run! field-values/create-or-update-full-field-values!)))
 
 (defmethod startup/def-startup-logic! ::FieldValueInvalidation [_]
-  (mq/listen! queue-name
-              (fn [{:keys [message]}]
-                (batch-invalidate-field-values! message))))
+  (mq/batch-listen! queue-name
+                    (fn [messages]
+                      (batch-invalidate-field-values! (into [] cat messages)))
+                    {:max-batch-messages 10 :max-next-ms 10}))
 
 (defn select-table-pk-fields
   "Given a table-id, return the :model/Field instances corresponding to its PK columns. Do not assume any ordering."

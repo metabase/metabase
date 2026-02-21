@@ -63,13 +63,14 @@
 
 (defmethod startup/def-startup-logic! ::SearchIndexListener [_]
   (when (search/supports-index?)
-    (mq/listen! ingestion/queue-name
-                (fn [{:keys [message]}]
-                  (try
-                    (ingestion/bulk-ingest! message)
-                    (catch Exception e
-                      (analytics/inc! :metabase-search/index-error)
-                      (throw e)))))))
+    (mq/batch-listen! ingestion/queue-name
+                      (fn [messages]
+                        (try
+                          (run! ingestion/bulk-ingest! messages)
+                          (catch Exception e
+                            (analytics/inc! :metabase-search/index-error)
+                            (throw e))))
+                      {:max-batch-messages 50 :max-next-ms 100})))
 
 (comment
   (task/job-exists? reindex-job-key)

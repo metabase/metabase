@@ -2,6 +2,7 @@
   "Initializes the mq subsystem at startup."
   (:require
    [metabase.mq.queue.backend :as q.backend]
+   [metabase.mq.queue.impl :as q.impl]
    [metabase.mq.settings :as mq.settings]
    [metabase.mq.topic.backend :as topic.backend]
    [metabase.startup.core :as startup]
@@ -13,4 +14,5 @@
     (alter-var-root #'q.backend/*backend* (constantly queue-be))
     (alter-var-root #'topic.backend/*backend* (constantly topic-be))
     (log/infof "Queue backend set to %s" queue-be)
-    (log/infof "Topic backend set to %s" topic-be)))
+    (log/infof "Topic backend set to %s" topic-be)
+    (q.impl/start-message-manager!)))

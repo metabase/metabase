@@ -45,6 +45,7 @@
 
  [q.impl
   listen!
+  batch-listen!
   queue-length
   with-queue
   stop-listening!]
@@ -59,13 +60,15 @@
   clears handler registries, then delegates to backends for infrastructure cleanup."
   []
   ;; Stop all queue listeners and clear handlers
-  (doseq [queue-name (keys @q.backend/*handlers*)]
+  (doseq [queue-name (keys @q.impl/*handlers*)]
     (q.backend/stop-listening! q.backend/*backend* queue-name))
-  (reset! q.backend/*handlers* {})
+  (reset! q.impl/*handlers* {})
   ;; Unsubscribe all topic subscribers and clear handlers
   (doseq [topic-name (keys @topic.backend/*handlers*)]
     (topic.backend/unsubscribe! topic.backend/*backend* topic-name))
   (reset! topic.backend/*handlers* {})
+  ;; Stop the background message manager
+  (q.impl/stop-message-manager!)
   ;; Backend-specific infrastructure cleanup
   (q.backend/shutdown! q.backend/*backend*)
   (topic.backend/shutdown! topic.backend/*backend*))
