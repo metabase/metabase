@@ -11,7 +11,7 @@
   border: 1px solid var(--mb-color-border);
   color: var(--mb-color-text-primary);
   cursor: pointer;
-  font-weight: bold;
+  font-weight: var(--mb-font-weight-bold, bold);
   font-family: var(--mb-default-font-family), sans-serif;
   border-radius: var(--default-button-border-radius);
   transition: all 200ms linear;

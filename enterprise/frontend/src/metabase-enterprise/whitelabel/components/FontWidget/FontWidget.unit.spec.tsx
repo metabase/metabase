@@ -127,9 +127,11 @@ describe("FontWidget", () => {
       await setup("Custom…");
       const filesTable = screen.getByTestId("font-files-widget");
       const inputs = within(filesTable).getAllByRole("textbox");
-      expect(inputs).toHaveLength(3);
+      // 3 rows × (weight input + URL input) = 6; URL inputs are at indices 1, 3, 5
+      expect(inputs).toHaveLength(6);
+      const [regularUrl, boldUrl, heavyUrl] = [inputs[1], inputs[3], inputs[5]];
 
-      await userEvent.type(inputs[0], "https://example.com/regular.ttf");
+      await userEvent.type(regularUrl, "https://example.com/regular.ttf");
       await userEvent.tab();
       await expectPuts(1);
       const body1 = await getLastPutBody();
@@ -143,12 +145,17 @@ describe("FontWidget", () => {
         ],
       });
 
-      await userEvent.type(inputs[1], "https://example.com/bold.woff");
+      await userEvent.type(boldUrl, "https://example.com/bold.woff");
       await userEvent.tab();
       await expectPuts(2);
       const body2 = await getLastPutBody();
       expect(body2).toEqual({
         value: [
+          {
+            src: "https://example.com/regular.ttf",
+            fontWeight: 400,
+            fontFormat: "truetype",
+          },
           {
             src: "https://example.com/bold.woff",
             fontWeight: 700,
@@ -157,12 +164,22 @@ describe("FontWidget", () => {
         ],
       });
 
-      await userEvent.type(inputs[2], "https://example.com/superbold.woff2");
+      await userEvent.type(heavyUrl, "https://example.com/superbold.woff2");
       await userEvent.tab();
       await expectPuts(3);
       const body3 = await getLastPutBody();
       expect(body3).toEqual({
         value: [
+          {
+            src: "https://example.com/regular.ttf",
+            fontWeight: 400,
+            fontFormat: "truetype",
+          },
+          {
+            src: "https://example.com/bold.woff",
+            fontWeight: 700,
+            fontFormat: "woff",
+          },
           {
             src: "https://example.com/superbold.woff2",
             fontWeight: 900,
@@ -203,9 +220,9 @@ describe("FontWidget", () => {
 
       const filesTable = screen.getByTestId("font-files-widget");
       const inputs = within(filesTable).getAllByRole("textbox");
-
-      expect(inputs).toHaveLength(3);
-      await userEvent.clear(inputs[0]);
+      // URL inputs are at indices 1, 3, 5; clear first row's URL (index 1)
+      expect(inputs).toHaveLength(6);
+      await userEvent.clear(inputs[1]);
       await userEvent.tab();
 
       await expectPuts(1);
@@ -218,9 +235,10 @@ describe("FontWidget", () => {
       await setup("Custom…");
       const filesTable = screen.getByTestId("font-files-widget");
       const inputs = within(filesTable).getAllByRole("textbox");
-      expect(inputs).toHaveLength(3);
+      expect(inputs).toHaveLength(6);
+      const regularUrlInput = inputs[1];
 
-      await userEvent.type(inputs[0], url);
+      await userEvent.type(regularUrlInput, url);
       await userEvent.tab();
       await expectPuts(1);
       const body1 = await getLastPutBody();
@@ -240,9 +258,10 @@ describe("FontWidget", () => {
       await setup("Custom…");
       const filesTable = screen.getByTestId("font-files-widget");
       const inputs = within(filesTable).getAllByRole("textbox");
-      expect(inputs).toHaveLength(3);
+      expect(inputs).toHaveLength(6);
+      const regularUrlInput = inputs[1];
 
-      await userEvent.type(inputs[0], url);
+      await userEvent.type(regularUrlInput, url);
       await userEvent.tab();
       await expectPuts(1);
       const body1 = await getLastPutBody();
