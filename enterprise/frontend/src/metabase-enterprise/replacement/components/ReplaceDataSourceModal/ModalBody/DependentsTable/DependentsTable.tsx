@@ -20,7 +20,7 @@ export function DependentsTable({ dependents }: DependentsTableProps) {
   });
 
   return (
-    <Card flex="0 1 auto" mih={0} miw={0} p={0} shadow="none" withBorder>
+    <Card flex="0 1 auto" miw={0} mih={0} p={0} shadow="none" withBorder>
       <TreeTable instance={treeTableInstance} />
     </Card>
   );

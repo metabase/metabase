@@ -45,6 +45,8 @@ function getSourceColumn(
     id: "source",
     header,
     width: "auto",
+    minWidth: 100,
+    maxAutoWidth: 520,
     enableSorting: true,
     accessorFn: (item) => item.source?.display_name,
     cell: ({ row }) => {
@@ -64,6 +66,8 @@ function getTargetColumn(
     id: "target",
     header,
     width: "auto",
+    minWidth: 100,
+    maxAutoWidth: 520,
     enableSorting: true,
     accessorFn: (item) => item.target?.display_name,
     cell: ({ row }) => {
@@ -87,6 +91,9 @@ function getDetailsColumn(): TreeTableColumnDef<ColumnMappingItem> {
   return {
     id: "errors",
     header: t`Details`,
+    width: "auto",
+    minWidth: 100,
+    maxAutoWidth: 520,
     enableSorting: true,
     accessorFn: (item) => getErrorMessage(item.errors ?? []),
     cell: ({ row }) => {

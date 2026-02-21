@@ -39,14 +39,14 @@ export function ModalBody({
   }
 
   return (
-    <Flex flex={1} direction="column" bg="background-secondary">
+    <Flex flex={1} direction="column" miw={0} mih={0} bg="background-secondary">
       <TabPanel
         selectedTab={selectedTab}
         canReplace={canReplace}
         dependentsCount={dependents.length}
         onTabChange={onTabChange}
       />
-      <Flex flex={1} direction="column" p="lg" mih={0} miw={0}>
+      <Flex flex={1} direction="column" p="lg" miw={0} mih={0}>
         {selectedTab === "column-mappings" && (
           <ColumnComparisonTable
             sourceItem={sourceItem}
