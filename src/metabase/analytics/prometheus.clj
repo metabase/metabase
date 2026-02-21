@@ -564,7 +564,12 @@
    (prometheus/histogram :metabase-metabot/agent-iterations
                          {:description "Iterations per agent run"
                           :labels [:profile-id]
-                          :buckets [1 2 3 5 7 10 15 20 30 40]})])
+                          :buckets [1 2 3 5 7 10 15 20 30 40]})
+   (prometheus/histogram :metabase-metabot/agent-duration-ms
+                         {:description "Full agent loop duration (ms)"
+                          :labels [:profile-id]
+                          ;; 100ms -> 10 minutes
+                          :buckets [100 500 1000 5000 10000 30000 60000 120000 300000 600000]})])
 
 (defn- quartz-collectors
   []

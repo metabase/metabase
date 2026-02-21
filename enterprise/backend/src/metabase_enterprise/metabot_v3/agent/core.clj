@@ -427,19 +427,22 @@
                           :profile-id profile-id
                           :msg-count  (count (:messages opts))}
           (prometheus/inc! :metabase-metabot/agent-requests labels)
-          (binding [*debug-log* (when debug? (atom []))]
-            (try
-              (let [{:keys [result iteration]} (->> (initial-loop-state (init-agent opts) rf init (atom {}))
-                                                    (iterate loop-step)
-                                                    (drop-while #(= :continue (:status %)))
-                                                    first)]
-                (prometheus/observe! :metabase-metabot/agent-iterations labels iteration)
-                ;; Emit debug log as a data part if debug mode was active
-                (if (and debug? (seq @*debug-log*))
-                  (rf result (debug-log-part @*debug-log*))
-                  result))
-              (catch Exception e
-                (prometheus/inc! :metabase-metabot/agent-errors labels)
-                (when-not (:api-error (ex-data e))
-                  (log/error e "Agent loop error"))
-                (rf init (error-part e))))))))))
+          (let [start-ms (u/start-timer)]
+            (binding [*debug-log* (when debug? (atom []))]
+              (try
+                (let [{:keys [result iteration]} (->> (initial-loop-state (init-agent opts) rf init (atom {}))
+                                                      (iterate loop-step)
+                                                      (drop-while #(= :continue (:status %)))
+                                                      first)]
+                  (prometheus/observe! :metabase-metabot/agent-iterations labels iteration)
+                  ;; Emit debug log as a data part if debug mode was active
+                  (if (and debug? (seq @*debug-log*))
+                    (rf result (debug-log-part @*debug-log*))
+                    result))
+                (catch Exception e
+                  (prometheus/inc! :metabase-metabot/agent-errors labels)
+                  (when-not (:api-error (ex-data e))
+                    (log/error e "Agent loop error"))
+                  (rf init (error-part e)))
+                (finally
+                  (prometheus/observe! :metabase-metabot/agent-duration-ms labels (u/since-ms start-ms)))))))))))
