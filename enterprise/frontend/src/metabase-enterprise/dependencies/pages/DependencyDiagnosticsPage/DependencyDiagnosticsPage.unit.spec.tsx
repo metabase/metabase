@@ -76,7 +76,7 @@ function setup({
   }
 
   setupUserKeyValueEndpoints({
-    namespace: "dependency_list",
+    namespace: "dependency_diagnostics",
     key: mode,
     value: lastUsedParams,
   });

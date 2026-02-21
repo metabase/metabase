@@ -32,7 +32,11 @@ const meta = {
 
     "dataPickerProps.entityTypes": {
       control: "check",
-      options: ["model", "table"] satisfies SdkQuestionProps["entityTypes"],
+      options: [
+        "model",
+        "table",
+        "question",
+      ] satisfies SdkQuestionProps["entityTypes"],
     },
 
     // Display options

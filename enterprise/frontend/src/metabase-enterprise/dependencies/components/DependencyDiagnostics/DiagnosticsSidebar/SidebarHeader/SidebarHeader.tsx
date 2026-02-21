@@ -6,16 +6,16 @@ import CS from "metabase/css/core/index.css";
 import { trackDependencyEntitySelected } from "metabase/data-studio/analytics";
 import * as Urls from "metabase/lib/urls";
 import { ActionIcon, Anchor, FixedSizeIcon, Group, Tooltip } from "metabase/ui";
-import type { DependencyListMode } from "metabase-enterprise/dependencies/components/DependencyList/types";
 import type { DependencyNode } from "metabase-types/api";
 
 import { TOOLTIP_OPEN_DELAY_MS } from "../../../../constants";
 import { getNodeLabel, getNodeLink } from "../../../../utils";
+import type { DependencyDiagnosticsMode } from "../../types";
 
 import S from "./SidebarHeader.module.css";
 
 type SidebarHeaderProps = {
-  mode: DependencyListMode;
+  mode: DependencyDiagnosticsMode;
   node: DependencyNode;
   onClose: () => void;
 };

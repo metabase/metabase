@@ -3468,6 +3468,31 @@ databaseChangeLog:
             relativeToChangelogFile: true
 
   - changeSet:
+      id: v59.2026-02-16T18:00:00
+      author: galdre
+      comment: Add write_data_details column to metabase_database for PRO-86 separate write connections
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - columnExists:
+                tableName: metabase_database
+                columnName: write_data_details
+      changes:
+        - addColumn:
+            tableName: metabase_database
+            columns:
+              - column:
+                  name: write_data_details
+                  type: ${text.type}
+                  remarks: Encrypted JSON containing connection details for write operations (transforms, etc.)
+                  constraints:
+                    nullable: true
+      rollback:
+        - dropColumn:
+            tableName: metabase_database
+            columnName: write_data_details
+
+  - changeSet:
       id: v59.2026-02-18T12:00:00
       author: bcm
       comment: Create source_replacement_run table to track async source replacement executions
@@ -3564,7 +3589,6 @@ databaseChangeLog:
             tableName: source_replacement_run
             constraintName: idx_unique_active_source_replacement_run
             columnNames: is_active
-
 
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 

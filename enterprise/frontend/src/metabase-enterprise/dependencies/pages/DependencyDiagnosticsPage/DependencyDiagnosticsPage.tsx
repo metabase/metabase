@@ -40,7 +40,7 @@ function DependencyDiagnosticsPage({
     isLoading: isLoadingParams,
     setValue: setLastUsedParams,
   } = useUserKeyValue({
-    namespace: "dependency_list",
+    namespace: "dependency_diagnostics",
     key: mode,
   });
 
