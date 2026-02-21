@@ -7,6 +7,7 @@ import type {
 import type { EntityInfo, TabType } from "../types";
 
 import { ColumnComparisonTable } from "./ColumnMappingTable";
+import { DependentsTable } from "./DependentsTable";
 import { EmptyState } from "./EmptyState";
 import { TabPanel } from "./TabPanel";
 
@@ -46,11 +47,16 @@ export function ModalBody({
         onTabChange={onTabChange}
       />
       <Flex flex={1} direction="column" p="lg" mih={0} miw={0}>
-        <ColumnComparisonTable
-          sourceInfo={sourceInfo}
-          targetInfo={targetInfo}
-          columnMappings={columnMappings}
-        />
+        {selectedTab === "column-mappings" && (
+          <ColumnComparisonTable
+            sourceInfo={sourceInfo}
+            targetInfo={targetInfo}
+            columnMappings={columnMappings}
+          />
+        )}
+        {selectedTab === "dependents" && (
+          <DependentsTable dependents={dependents} />
+        )}
       </Flex>
     </Flex>
   );
