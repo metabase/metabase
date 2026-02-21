@@ -49,6 +49,24 @@ Adding a question to a dashboard does not save the question to the dashboard.
 
 If a question is saved to your personal collection, you'll only be able to add that question to dashboards _in_ your personal collection. If you want to add the question to a dashboard in a public collection, you'll need to move your question out of your personal collection.
 
+
+### When should you save to a dashboard vs a collection?
+
+Use this quick guide:
+
+**Save directly to a dashboard if:**
+- The question is only relevant to that dashboard.
+- You don’t plan to reuse it elsewhere.
+- You want to keep it local and simple.
+
+**Save to a collection if:**
+- You may reuse the question in multiple dashboards.
+- You want others to find and use it.
+- You want better organization and discoverability.
+
+**Tip:** If you’re unsure, save to a collection first. You can always add it to dashboards later.
+
+
 ## Adding headings or descriptions with text cards
 
 Another neat thing you can do is add heading and text cards to your dashboards. Text cards allow you to include descriptions, explanations, notes, or even images and GIFs to your dashboards. You can also use text cards to create separations between sections of charts in your dashboards, or include links to other dashboards, questions, or websites.
