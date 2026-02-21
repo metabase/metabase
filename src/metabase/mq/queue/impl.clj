@@ -53,7 +53,7 @@
           (handler msg))
         (doseq [batch (partition-all max-batch-messages messages)]
           (handler (vec batch))))
-      (log/info "Handled queue messages" {:queue queue-name :bundle-ids bundle-ids :count (count messages)})
+      (log/debug "Handled queue messages" {:queue queue-name :bundle-ids bundle-ids :count (count messages)})
       (run! (fn [bid] (q.backend/bundle-successful! (get bundle-backends bid) queue-name bid)) bundle-ids)
       (analytics/inc! :metabase-mq/queue-bundles-handled {:queue (name queue-name) :status "success"})
       (catch Exception e
@@ -184,7 +184,12 @@
 (defmacro with-queue
   "Runs the body with the ability to add messages to the given queue.
   Messages are buffered and only published if the body completes successfully.
-  If an exception occurs, no messages are published and the exception is rethrown."
+  If an exception occurs, no messages are published and the exception is rethrown.
+
+  NOTE: Publishing is best-effort and not transactional with the application database.
+  If the caller's DB transaction commits but `publish!` subsequently fails, the queue
+  message will be lost. Callers that need stronger guarantees should publish within
+  the same DB transaction or use an idempotent retry strategy."
   [queue-name [queue-binding] & body]
   `(let [buffer# (atom [])
          ~queue-binding (reify mq.impl/MessageBuffer

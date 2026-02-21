@@ -64,11 +64,13 @@
 ;;; ------------------------------------------- Automatic Periodic Cleanup -------------------------------------------
 
 (def ^:private cleanup-max-age-ms
-  "Messages older than this are eligible for cleanup (1 hour)."
+  "Messages older than this are eligible for cleanup.
+  Currently 1 hour (3600000ms). Not yet configurable at runtime."
   (* 60 60 1000))
 
 (def ^:private cleanup-interval-ms
-  "How often the cleanup loop runs (10 mins)."
+  "How often the cleanup loop runs.
+  Currently 10 minutes (600000ms). Not yet configurable at runtime."
   (* 10 60 1000))
 
 (def ^:private cleanup-future

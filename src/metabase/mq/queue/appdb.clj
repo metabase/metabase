@@ -48,11 +48,13 @@
 ;;; ------------------------------------------- Failed Bundle Cleanup -------------------------------------------
 
 (def ^:private cleanup-max-age-ms
-  "Failed bundles older than this are eligible for cleanup (1 week)."
+  "Failed bundles older than this are eligible for cleanup.
+  Currently 1 week (604800000ms). Not yet configurable at runtime."
   (* 7 24 60 60 1000))
 
 (def ^:private cleanup-interval-ms
-  "How often the cleanup loop runs (1 day)."
+  "How often the cleanup loop runs.
+  Currently 1 day (86400000ms). Not yet configurable at runtime."
   (* 24 60 60 1000))
 
 (def ^:private cleanup-future
@@ -136,8 +138,9 @@
     (reset! cleanup-future nil)
     (.cancel f true)
     (log/info "Queue cleanup loop stopped"))
-  (when-let [^Future f @background-process]
-    (.cancel f true)
+  (when-let [f @background-process]
+    (when (instance? Future f)
+      (.cancel ^Future f true))
     (reset! background-process nil))
   (log/info "Shut down appdb queue backend"))
 
@@ -166,7 +169,7 @@
 
 (defmethod q.backend/bundle-successful! :queue.backend/appdb
   [_ _queue-name bundle-id]
-  (let [deleted (t2/delete! :queue_message_bundle bundle-id)]
+  (let [deleted (t2/delete! :queue_message_bundle :id bundle-id :owner owner-id)]
     (when (= 0 deleted)
       (log/warnf "Message %d was already deleted from the queue. Likely error in concurrency handling" bundle-id))))
 

@@ -78,5 +78,6 @@
   (when-let [{:keys [^java.util.concurrent.Future future]} (get @*subscriptions* topic-name)]
     (.cancel future true)
     (swap! *subscriptions* dissoc topic-name)
+    (swap! *topics* dissoc topic-name)
     (log/infof "Memory unsubscribed from topic %s" (name topic-name))))
 

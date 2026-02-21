@@ -176,10 +176,11 @@
     (locking listener-state
       (when-not (:running? @listener-state)
         (let [conn (open-connection)]
-          (reset! listener-state {:connection    conn
-                                  :running?      true
-                                  :channels      #{}
-                                  :channel->topic {}})
+          (reset! listener-state {:connection     conn
+                                  :running?       true
+                                  :channels       #{}
+                                  :channel->topic {}
+                                  :thread         nil})
           (let [thread (start-listener-thread! listener-state)]
             (swap! listener-state assoc :thread thread)))))))
 
@@ -234,6 +235,7 @@
     (swap! listener-state assoc :running? false)
     (try (.close connection) (catch Exception _))
     (when thread
+      (.interrupt thread)
       (.join thread 5000))
     (reset! listener-state nil)
     (log/info "postgres listener stopped")))

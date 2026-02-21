@@ -171,6 +171,8 @@
           (analytics/inc! :metabase-mq/queue-bundle-permanent-failures {:queue (name queue-name)}))
         ;; Retry asynchronously with a new bundle-id carrying the accumulated failure count.
         ;; We call handle! directly rather than re-queuing, so the failure count is preserved.
+        ;; Note: this future is untracked — if the JVM shuts down during retry, it will be lost.
+        ;; Acceptable for the test-only memory backend.
         (do
           (analytics/inc! :metabase-mq/queue-bundle-retries {:queue (name queue-name)})
           (future
