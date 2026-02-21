@@ -17,36 +17,17 @@ export function getGenericErrorMessage(): string {
   return t`This data source isn't compatible.`;
 }
 
-export function getEntityErrorMessage(
-  error: ReplaceSourceErrorType,
-): string | null {
+export function getEntityErrorMessage(error: ReplaceSourceErrorType): string {
   switch (error) {
     case "cycle-detected":
       return t`The replacement data source can't be based on the original data source.`;
-    case "missing-column":
-      return "This data source does not include all columns from the original data source.";
-    case "column-type-mismatch":
-      return "This data source includes columns with different data types than the original data source.";
-    case "missing-primary-key":
-      return "This data source does not have a primary key, while the original data source does.";
-    case "extra-primary-key":
-      return "This data source has a primary key, while the original data source does not.";
-    case "missing-foreign-key":
-      return "This data source does not have a foreign key, while the original data source does.";
-    case "foreign-key-mismatch":
-      return "This data source has a foreign key that references a different primary key than the original data source.";
-    case "same-source":
-    case "database-mismatch":
-      return getGenericErrorMessage();
   }
 }
 
 export function getColumnErrorMessage(
   error: ReplaceSourceColumnErrorType,
-): string | null {
+): string {
   switch (error) {
-    case "missing-column":
-      return null;
     case "column-type-mismatch":
       return t`This column has a different data type than the original column.`;
     case "missing-primary-key":

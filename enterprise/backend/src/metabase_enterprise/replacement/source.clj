@@ -121,11 +121,12 @@
     (mapv (fn [col-name]
             (let [old-col (get old-by-name col-name)
                   new-col (get new-by-name col-name)
-                  errors  (when old-col (column-errors old-col new-col))]
+                  errors  (when old-col
+                            (not-empty (into [] (remove #{:missing-column}) (column-errors old-col new-col))))]
               (cond-> {:source nil :target nil}
-                old-col      (assoc :source (format-column old-col))
-                new-col      (assoc :target (format-column new-col))
-                (seq errors) (assoc :errors errors))))
+                old-col (assoc :source (format-column old-col))
+                new-col (assoc :target (format-column new-col))
+                errors  (assoc :errors errors))))
           all-names)))
 
 (defn check-replace-source
@@ -134,22 +135,21 @@
   Arguments match `swap-source`: each is a `[entity-type entity-id]` pair."
   [[old-type old-id :as old-ref] [new-type new-id :as new-ref]]
   (if (= old-ref new-ref)
-    {:success false
-     :errors  [:same-source]}
+    {:success false}
     (let [{source-mp :mp old-source :source
            source-db :database-id}      (fetch-source old-type old-id)
           {target-mp :mp new-source :source
            target-db :database-id}      (fetch-source new-type new-id)
-          top-errors     (cond-> []
-                           (not= source-db target-db)
-                           (conj :database-mismatch)
-
-                           (some #(= new-ref %) (usages/transitive-usages old-ref))
-                           (conj :cycle-detected))
+          db-mismatch?   (not= source-db target-db)
+          cycle?         (some #(= new-ref %) (usages/transitive-usages old-ref))
           ;; TODO (Alex P 2026-02-13): Perhaps filtering out remaps should go into the lib
           mappings       (check-column-mappings source-mp old-source target-mp new-source)
-          column-errors  (into [] (distinct) (mapcat :errors mappings))
-          all-errors     (into top-errors column-errors)]
-      (cond-> {:success (empty? all-errors)}
-        (seq all-errors) (assoc :errors all-errors)
-        (seq mappings)   (assoc :column_mappings mappings)))))
+          has-missing?   (some (fn [m] (and (:source m) (nil? (:target m)))) mappings)
+          has-col-errors? (seq (mapcat :errors mappings))
+          success?       (not (or db-mismatch? cycle? has-missing? has-col-errors?))
+          ;; Only report :cycle-detected in top-level errors
+          reported-errors (cond-> []
+                            cycle? (conj :cycle-detected))]
+      (cond-> {:success success?}
+        (seq reported-errors) (assoc :errors reported-errors)
+        (seq mappings)        (assoc :column_mappings mappings)))))

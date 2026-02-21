@@ -28,12 +28,10 @@
    [:semantic_type  [:maybe :string]]])
 
 (def ^:private column-error-type-enum
-  [:enum :missing-column :column-type-mismatch :missing-primary-key :extra-primary-key :missing-foreign-key :foreign-key-mismatch])
+  [:enum :column-type-mismatch :missing-primary-key :extra-primary-key :missing-foreign-key :foreign-key-mismatch])
 
 (def ^:private error-type-enum
-  [:or
-   [:enum :same-source :cycle-detected :database-mismatch]
-   column-error-type-enum])
+  [:enum :cycle-detected])
 
 (mr/def ::column-mapping
   [:map

@@ -23,14 +23,9 @@ export type ReplaceSourceColumnInfo = Pick<
   | "semantic_type"
 >;
 
-export type ReplaceSourceErrorType =
-  | "same-source"
-  | "cycle-detected"
-  | "database-mismatch"
-  | ReplaceSourceColumnErrorType;
+export type ReplaceSourceErrorType = "cycle-detected";
 
 export type ReplaceSourceColumnErrorType =
-  | "missing-column"
   | "column-type-mismatch"
   | "missing-primary-key"
   | "extra-primary-key"

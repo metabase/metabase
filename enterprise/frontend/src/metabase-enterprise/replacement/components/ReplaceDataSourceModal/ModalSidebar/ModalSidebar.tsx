@@ -41,7 +41,7 @@ export function ModalSidebar({
     sourceInfo != null ? getEntityEntry(sourceInfo) : undefined;
   const sourceDatabaseId =
     sourceInfo != null ? getEntityDatabaseId(sourceInfo) : undefined;
-  const errorMessage = getErrorMessage(checkInfo);
+  const errorMessage = getTargetErrorMessage(checkInfo);
 
   return (
     <Stack className={S.sidebar} px="xl" pt="xl" pb="lg" gap="lg" maw="32rem">
@@ -86,7 +86,7 @@ export function ModalSidebar({
   );
 }
 
-function getErrorMessage(checkInfo: CheckReplaceSourceInfo | undefined) {
+function getTargetErrorMessage(checkInfo: CheckReplaceSourceInfo | undefined) {
   if (checkInfo == null || checkInfo.success) {
     return null;
   }
