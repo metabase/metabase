@@ -463,12 +463,17 @@
                                  {:profile-id "internal"})))
       (is (== 2 (mt/metric-value system :metabase-metabot/llm-requests
                                  {:model "anthropic/claude-haiku-4-5"
-                                  :source "agent"}))))
+                                  :source "agent"})))
+      (is (== 1 (:count (mt/metric-value system :metabase-metabot/agent-duration-ms
+                                         {:profile-id "internal"}))))
+      (is (pos? (:sum (mt/metric-value system :metabase-metabot/agent-duration-ms
+                                       {:profile-id "internal"})))))
 
     ;; clear! is much faster than a new mt/with-prometheus-system!
     (prometheus/clear! :metabase-metabot/agent-requests)
     (prometheus/clear! :metabase-metabot/agent-iterations)
     (prometheus/clear! :metabase-metabot/agent-errors)
+    (prometheus/clear! :metabase-metabot/agent-duration-ms)
     (prometheus/clear! :metabase-metabot/llm-requests)
 
     (testing "records agent-errors on failure"
@@ -487,4 +492,8 @@
                                  {:profile-id "internal"})))
       (is (== 1 (mt/metric-value system :metabase-metabot/llm-requests
                                  {:model "anthropic/claude-haiku-4-5"
-                                  :source "agent"}))))))
+                                  :source "agent"})))
+      (is (== 1 (:count (mt/metric-value system :metabase-metabot/agent-duration-ms
+                                         {:profile-id "internal"}))))
+      (is (pos? (:sum (mt/metric-value system :metabase-metabot/agent-duration-ms
+                                       {:profile-id "internal"})))))))
