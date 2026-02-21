@@ -170,7 +170,7 @@
       (log/errorf "Unexpected transport type encountered in `canceled?`: %s" transport-type))
     (swap! *reported-types conj transport-type)))
 
-(defn- canceled?
+(defn canceled?
   "Check whether the HTTP request has been canceled by the client.
 
   This function attempts to read a single byte from the underlying TCP socket; if the request is canceled, `.read`

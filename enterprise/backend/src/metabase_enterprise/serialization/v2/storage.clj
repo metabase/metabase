@@ -1,5 +1,6 @@
 (ns metabase-enterprise.serialization.v2.storage
   (:require
+   [clojure.core.async :as a]
    [clojure.java.io :as io]
    [clojure.string :as str]
    [metabase-enterprise.serialization.dump :refer [spit-yaml!]]
@@ -43,25 +44,29 @@
       (spit-yaml! (io/file root-dir "settings.yaml") as-map))))
 
 (defn store!
-  "Helper for storing a serialized database to a tree of YAML files."
-  [stream root-dir]
-  (let [settings (atom [])
-        report   (atom {:seen [] :errors []})
-        opts     (-> (serdes/storage-base-context)
-                     (assoc :root-dir root-dir))]
-    (doseq [entity stream]
-      (when (Thread/interrupted)
-        (throw (InterruptedException. "Serialization export interrupted")))
-      (cond
-        (instance? Exception entity)
-        (swap! report update :errors conj entity)
+  "Helper for storing a serialized database to a tree of YAML files.
+  Accepts an optional `canceled-chan` (core.async channel) that signals when the HTTP request has been canceled."
+  ([stream root-dir]
+   (store! stream root-dir nil))
+  ([stream root-dir canceled-chan]
+   (let [settings (atom [])
+         report   (atom {:seen [] :errors []})
+         opts     (-> (serdes/storage-base-context)
+                      (assoc :root-dir root-dir))]
+     (doseq [entity stream]
+       (when (and canceled-chan (a/poll! canceled-chan))
+         (throw (ex-info "Serialization export canceled by client" {:canceled true})))
+       (cond
+         (instance? Exception entity)
+         (swap! report update :errors conj entity)
 
-        (-> entity :serdes/meta last :model (= "Setting"))
-        (swap! settings conj entity)
+         (-> entity :serdes/meta last :model (= "Setting"))
+         (swap! settings conj entity)
 
-        :else
-        (swap! report update :seen conj (store-entity! opts entity))))
-    (when (seq @settings)
-      (store-settings! opts @settings)
-      (swap! report update :seen conj [{:model "Setting"}]))
-    @report))
+         :else
+         (swap! report update :seen conj (store-entity! opts entity))))
+     (when (seq @settings)
+       (store-settings! opts @settings)
+       (swap! report update :seen conj [{:model "Setting"}]))
+     @report)))
+

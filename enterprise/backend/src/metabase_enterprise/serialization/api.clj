@@ -1,5 +1,6 @@
 (ns metabase-enterprise.serialization.api
   (:require
+   [clojure.core.async :as a]
    [clojure.java.io :as io]
    [clojure.string :as str]
    [java-time.api :as t]
@@ -14,6 +15,7 @@
    [metabase.appearance.core :as appearance]
    [metabase.logger.core :as logger]
    [metabase.models.serialization :as serdes]
+   [metabase.server.streaming-response :as streaming-response]
    [metabase.util :as u]
    [metabase.util.compress :as u.compress]
    [metabase.util.date-2 :as u.date]
@@ -65,7 +67,7 @@
 
 ;;; Logic
 
-(defn- serialize&pack ^File [{:keys [dirname full-stacktrace] :as opts}]
+(defn- serialize&pack ^File [{:keys [dirname full-stacktrace] :as opts} & [canceled-chan]]
   (let [dirname  (or dirname
                      (format "%s-%s"
                              (u/slugify (appearance/site-name))
@@ -80,7 +82,7 @@
                    (try                 ; try/catch inside logging to log errors
                      (let [report (serdes/with-cache
                                     (-> (extract/extract opts)
-                                        (storage/store! path)))]
+                                        (storage/store! path canceled-chan)))]
                        ;; not removing dumped yamls immediately to save some time before response
                        (u.compress/tgz path dst)
                        report)
@@ -118,7 +120,8 @@
 (defn- unpack&import [^File file & [{:keys [size
                                             continue-on-error
                                             full-stacktrace
-                                            reindex?]}]]
+                                            reindex?
+                                            canceled-chan]}]]
   (let [dst      (io/file parent-dir (u.random/random-name))
         log-file (io/file dst "import.log")
         err      (atom nil)
@@ -142,7 +145,8 @@
                        (serdes/with-cache
                          (-> (v2.ingest/ingest-yaml (.getPath path))
                              (v2.load/load-metabase! {:continue-on-error continue-on-error
-                                                      :reindex?          reindex?}))))
+                                                      :reindex?          reindex?
+                                                      :canceled-chan     canceled-chan}))))
                      (catch Exception e
                        (reset! err e)
                        (if full-stacktrace
@@ -200,9 +204,13 @@
        [:field_values      {:default false} (mu/with ms/BooleanValue {:description "Serialize cached field values"})]
        [:database_secrets  {:default false} (mu/with ms/BooleanValue {:description "Serialize details how to connect to each db"})]
        [:continue_on_error {:default false} (mu/with ms/BooleanValue {:description "Do not break execution on errors"})]
-       [:full_stacktrace   {:default false} (mu/with ms/BooleanValue {:description "Show full stacktraces in the logs"})]]]
+       [:full_stacktrace   {:default false} (mu/with ms/BooleanValue {:description "Show full stacktraces in the logs"})]]
+   _body
+   {servlet-request :servlet-request, :as _request}]
   (api/check-superuser)
   (let [start              (System/nanoTime)
+        canceled-chan       (a/promise-chan)
+        finished-chan       (a/promise-chan)
         opts               {:targets                  (mapv #(vector "Collection" %)
                                                             collection)
                             :no-collections           (and (empty? collection)
@@ -213,37 +221,51 @@
                             :include-database-secrets include-database-secrets?
                             :dirname                  dirname
                             :continue-on-error        continue-on-error?
-                            :full-stacktrace          full-stacktrace?}
-        {:keys [archive
-                log-file
-                report
-                status
-                error-message
-                callback]} (serialize&pack opts)]
-    (analytics/track-event! :snowplow/serialization
-                            {:event           :serialization
-                             :direction       "export"
-                             :source          "api"
-                             :duration_ms     (int (/ (- (System/nanoTime) start) 1e6))
-                             :count           (count (:seen report))
-                             :error_count     (count (:errors report))
-                             :collection      (str/join "," (map str collection))
-                             :all_collections (and (empty? collection)
-                                                   (not (:no-collections opts)))
-                             :data_model      (not (:no-data-model opts))
-                             :settings        (not (:no-settings opts))
-                             :field_values    (:include-field-values opts)
-                             :secrets         (:include-database-secrets opts)
-                             :success         (boolean archive)
-                             :error_message   error-message})
-    (if archive
-      {:status  200
-       :headers {"Content-Type"        "application/gzip"
-                 "Content-Disposition" (format "attachment; filename=\"%s\"" (.getName ^File archive))}
-       :body    (on-response! archive callback)}
-      {:status  (or status 500)
-       :headers {"Content-Type" "text/plain"}
-       :body    (on-response! log-file callback)})))
+                            :full-stacktrace          full-stacktrace?}]
+    ;; Start an async loop that polls for client disconnection
+    (when servlet-request
+      (a/go-loop []
+        (let [timeout-ch (a/timeout 1000)
+              [_ port]   (a/alts! [timeout-ch finished-chan])]
+          (when (= port timeout-ch)
+            (if (streaming-response/canceled? servlet-request)
+              (a/>! canceled-chan ::request-canceled)
+              (recur))))))
+    (try
+      (let [{:keys [archive
+                    log-file
+                    report
+                    status
+                    error-message
+                    callback]} (serialize&pack opts canceled-chan)]
+        (analytics/track-event! :snowplow/serialization
+                                {:event           :serialization
+                                 :direction       "export"
+                                 :source          "api"
+                                 :duration_ms     (int (/ (- (System/nanoTime) start) 1e6))
+                                 :count           (count (:seen report))
+                                 :error_count     (count (:errors report))
+                                 :collection      (str/join "," (map str collection))
+                                 :all_collections (and (empty? collection)
+                                                       (not (:no-collections opts)))
+                                 :data_model      (not (:no-data-model opts))
+                                 :settings        (not (:no-settings opts))
+                                 :field_values    (:include-field-values opts)
+                                 :secrets         (:include-database-secrets opts)
+                                 :success         (boolean archive)
+                                 :error_message   error-message})
+        (if archive
+          {:status  200
+           :headers {"Content-Type"        "application/gzip"
+                     "Content-Disposition" (format "attachment; filename=\"%s\"" (.getName ^File archive))}
+           :body    (on-response! archive callback)}
+          {:status  (or status 500)
+           :headers {"Content-Type" "text/plain"}
+           :body    (on-response! log-file callback)}))
+      (finally
+        (a/>!! finished-chan :done)
+        (a/close! finished-chan)
+        (a/close! canceled-chan)))))
 
 ;; TODO (Cam 10/28/25) -- fix this endpoint so it uses kebab-case for query parameters for consistency with the rest
 ;; of the REST API
@@ -274,42 +296,59 @@
        ;;      for now, we let users opt out, in case they're indexing a lot, so they can only reindex on the last step
        [:reindex           {:default true}  (mu/with ms/BooleanValue {:description "Rebuild the search index afterwards"})]]
    _body
-   {{:strs [file]} :multipart-params, :as _request} :- [:map
+   {{:strs [file]} :multipart-params, servlet-request :servlet-request, :as _request} :- [:map
                                                         [:multipart-params
                                                          [:map
                                                           ["file" (mu/with ms/File {:description ".tgz with serialization data"})]]]]]
   (api/check-superuser)
   (try
     (let [start              (System/nanoTime)
-          {:keys [log-file
-                  status
-                  error-message
-                  report
-                  callback]} (unpack&import (:tempfile file)
-                                            {:size              (:size file)
-                                             :continue-on-error continue-on-error?
-                                             :full-stacktrace   full-stacktrace?
-                                             :reindex?          reindex-search?})
-          imported           (into (sorted-set) (map (comp :model last)) (:seen report))]
-      (analytics/track-event! :snowplow/serialization
-                              {:event         :serialization
-                               :direction     "import"
-                               :source        "api"
-                               :duration_ms   (int (/ (- (System/nanoTime) start) 1e6))
-                               :models        (str/join "," imported)
-                               :count         (if (contains? imported "Setting")
-                                                (inc (count (remove #(= "Setting" (:model (first %))) (:seen report))))
-                                                (count (:seen report)))
-                               :error_count   (count (:errors report))
-                               :success       (not error-message)
-                               :error_message error-message})
-      (if error-message
-        {:status  (or status 500)
-         :headers {"Content-Type" "text/plain"}
-         :body    (on-response! log-file callback)}
-        {:status  200
-         :headers {"Content-Type" "text/plain"}
-         :body    (on-response! log-file callback)}))
+          canceled-chan       (a/promise-chan)
+          finished-chan       (a/promise-chan)]
+      ;; Start an async loop that polls for client disconnection
+      (when servlet-request
+        (a/go-loop []
+          (let [timeout-ch (a/timeout 1000)
+                [_ port]   (a/alts! [timeout-ch finished-chan])]
+            (when (= port timeout-ch)
+              (if (streaming-response/canceled? servlet-request)
+                (a/>! canceled-chan ::request-canceled)
+                (recur))))))
+      (try
+        (let [{:keys [log-file
+                      status
+                      error-message
+                      report
+                      callback]} (unpack&import (:tempfile file)
+                                                {:size              (:size file)
+                                                 :continue-on-error continue-on-error?
+                                                 :full-stacktrace   full-stacktrace?
+                                                 :reindex?          reindex-search?
+                                                 :canceled-chan     canceled-chan})
+              imported           (into (sorted-set) (map (comp :model last)) (:seen report))]
+          (analytics/track-event! :snowplow/serialization
+                                  {:event         :serialization
+                                   :direction     "import"
+                                   :source        "api"
+                                   :duration_ms   (int (/ (- (System/nanoTime) start) 1e6))
+                                   :models        (str/join "," imported)
+                                   :count         (if (contains? imported "Setting")
+                                                    (inc (count (remove #(= "Setting" (:model (first %))) (:seen report))))
+                                                    (count (:seen report)))
+                                   :error_count   (count (:errors report))
+                                   :success       (not error-message)
+                                   :error_message error-message})
+          (if error-message
+            {:status  (or status 500)
+             :headers {"Content-Type" "text/plain"}
+             :body    (on-response! log-file callback)}
+            {:status  200
+             :headers {"Content-Type" "text/plain"}
+             :body    (on-response! log-file callback)}))
+        (finally
+          (a/>!! finished-chan :done)
+          (a/close! finished-chan)
+          (a/close! canceled-chan))))
     (finally
       (io/delete-file (:tempfile file)))))
 

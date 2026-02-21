@@ -70,7 +70,7 @@
     (doHandle [_ ^Request base-request ^HttpServletRequest request ^HttpServletResponse response]
       (let [^AsyncContext context (doto (.startAsync request)
                                     (.setTimeout timeout))
-            request-map           (servlet/build-request-map request)
+            request-map           (assoc (servlet/build-request-map request) :servlet-request request)
             raise                 (fn raise [^Throwable e]
                                     (log/error e "Unexpected exception in endpoint")
                                     (try

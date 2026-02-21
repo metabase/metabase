@@ -10,6 +10,7 @@
    [metabase.models.serialization :as serdes]
    [metabase.search.core :as search]
    [metabase.search.test-util :as search.tu]
+   [metabase.server.streaming-response :as streaming-response]
    [metabase.test :as mt]
    [metabase.util.compress :as u.compress]
    [metabase.util.random :as u.random]
@@ -498,23 +499,28 @@
       (run! io/delete-file (reverse (file-seq dst))))))
 
 (deftest export-cancellation-test
-  (testing "Export stops when the request thread is interrupted (simulates HTTP cancellation)"
+  (testing "Export stops when the client disconnects (simulates HTTP cancellation via socket polling)"
     (with-serialization-test-data! [coll _dash _card]
-      (mt/with-dynamic-fn-redefs [serdes/extract-one (let [orig (mt/dynamic-value serdes/extract-one)]
-                                                       (fn [model-name opts instance]
-                                                         ;; Interrupt the current thread to simulate HTTP request cancellation
-                                                         (.interrupt (Thread/currentThread))
-                                                         (orig model-name opts instance)))]
-        (binding [api.serialization/*additive-logging* false]
-          (let [res (mt/user-http-request :crowberto :post 500 "ee/serialization/export"
-                                          :collection (:id coll) :data_model false :settings false)
-                log (slurp (io/input-stream res))]
-            (testing "Export returns error response"
-              (is (re-find #"(?i)interrupt" log)
-                  "Log should contain interruption-related message"))
-            (testing "Snowplow failure event was sent"
-              (is (=? {"event"     "serialization"
-                       "direction" "export"
-                       "source"    "api"
-                       "success"   false}
-                      (->> (snowplow-test/pop-event-data-and-user-id!) last :data))))))))))
+      ;; Simulate client disconnect: canceled? returns true after serialization starts
+      (let [started? (atom false)]
+        (mt/with-dynamic-fn-redefs [serdes/extract-one          (let [orig (mt/dynamic-value serdes/extract-one)]
+                                                                   (fn [model-name opts instance]
+                                                                     (reset! started? true)
+                                                                     (orig model-name opts instance)))
+                                    streaming-response/canceled? (fn [_request]
+                                                                   ;; Return true once extraction has started,
+                                                                   ;; signaling that the client has disconnected
+                                                                   @started?)]
+          (binding [api.serialization/*additive-logging* false]
+            (let [res (mt/user-http-request :crowberto :post 500 "ee/serialization/export"
+                                            :collection (:id coll) :data_model false :settings false)
+                  log (slurp (io/input-stream res))]
+              (testing "Export returns error response"
+                (is (re-find #"(?i)cancel" log)
+                    "Log should contain cancellation-related message"))
+              (testing "Snowplow failure event was sent"
+                (is (=? {"event"     "serialization"
+                         "direction" "export"
+                         "source"    "api"
+                         "success"   false}
+                        (->> (snowplow-test/pop-event-data-and-user-id!) last :data)))))))))))
