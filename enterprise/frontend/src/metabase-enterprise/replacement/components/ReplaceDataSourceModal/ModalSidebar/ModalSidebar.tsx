@@ -17,7 +17,7 @@ type ModalSidebarProps = {
   sourceItem: EntityItem | undefined;
   targetItem: EntityItem | undefined;
   checkInfo: CheckReplaceSourceInfo | undefined;
-  dependentsCount: number;
+  dependentsCount: number | undefined;
   canReplace: boolean;
   onSourceChange: (sourceEntry: ReplaceSourceEntry) => void;
   onTargetChange: (targetEntry: ReplaceSourceEntry) => void;
@@ -36,10 +36,9 @@ export function ModalSidebar({
   onSubmit,
   onCancel,
 }: ModalSidebarProps) {
-  const sourceDatabaseId =
-    sourceItem != null ? getSourceDatabaseId(sourceItem) : undefined;
-  const targetErrorMessage =
-    checkInfo != null ? getTargetErrorMessage(checkInfo) : undefined;
+  const sourceDatabaseId = getSourceDatabaseId(sourceItem);
+  const sourceError = getSourceError(dependentsCount);
+  const targetError = getTargetError(checkInfo);
 
   return (
     <Stack className={S.sidebar} px="xl" pt="xl" pb="lg" gap="lg" maw="32rem">
@@ -48,7 +47,7 @@ export function ModalSidebar({
         <Text>{t`This lets you change the data source used in queries in bulk. `}</Text>
       </Stack>
       <Stack gap="lg">
-        <EntitySection icon="search">
+        <EntitySection icon="search" error={sourceError}>
           <EntitySelect
             selectedItem={sourceItem}
             label={t`Find all occurrences of this data source`}
@@ -56,22 +55,15 @@ export function ModalSidebar({
             onChange={onSourceChange}
           />
         </EntitySection>
-        <EntitySection icon="find_replace">
-          <Stack gap="sm">
-            <EntitySelect
-              selectedItem={targetItem}
-              label={t`Replace it with this data source`}
-              description={t`It must be based on the same database and include all columns from the original data source.`}
-              databaseId={sourceDatabaseId}
-              disabledItem={sourceItem}
-              onChange={onTargetChange}
-            />
-            {targetErrorMessage && (
-              <Text c="error" size="sm">
-                {targetErrorMessage}
-              </Text>
-            )}
-          </Stack>
+        <EntitySection icon="find_replace" error={targetError}>
+          <EntitySelect
+            selectedItem={targetItem}
+            label={t`Replace it with this data source`}
+            description={t`It must be based on the same database and include all columns from the original data source.`}
+            databaseId={sourceDatabaseId}
+            disabledItem={sourceItem}
+            onChange={onTargetChange}
+          />
         </EntitySection>
       </Stack>
       <Group mt="auto" justify="flex-end" wrap="nowrap">
@@ -84,13 +76,19 @@ export function ModalSidebar({
   );
 }
 
-function getSourceDatabaseId(item: EntityItem) {
-  return item.type === "table" ? item.data?.db_id : item.data?.database_id;
+function getSourceDatabaseId(item: EntityItem | undefined) {
+  return item?.type === "table" ? item.data?.db_id : item?.data?.database_id;
 }
 
-function getTargetErrorMessage(checkInfo: CheckReplaceSourceInfo) {
-  if (checkInfo.success) {
-    return null;
+function getSourceError(dependentsCount: number | undefined) {
+  if (dependentsCount === 0) {
+    return t`Nothing uses this table, so there's nothing to replace.`;
+  }
+}
+
+function getTargetError(checkInfo: CheckReplaceSourceInfo | undefined) {
+  if (checkInfo == null || checkInfo.success) {
+    return undefined;
   }
 
   const errors = checkInfo.errors ?? [];
@@ -99,8 +97,11 @@ function getTargetErrorMessage(checkInfo: CheckReplaceSourceInfo) {
     : getGenericErrorMessage();
 }
 
-function getSubmitLabel(dependentsCount: number, canReplace: boolean) {
-  if (!canReplace) {
+function getSubmitLabel(
+  dependentsCount: number | undefined,
+  canReplace: boolean,
+) {
+  if (dependentsCount == null || !canReplace) {
     return t`Replace data source`;
   }
   return ngettext(

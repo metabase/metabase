@@ -62,23 +62,34 @@ function ModalContent({
   const [isConfirming, { open: openConfirmation, close: closeConfirmation }] =
     useDisclosure();
 
-  const { data: sourceTable } = useGetTableQuery(getTableRequest(sourceEntry));
-  const { data: sourceCard } = useGetCardQuery(getCardRequest(sourceEntry));
-  const { data: targetTable } = useGetTableQuery(getTableRequest(targetEntry));
-  const { data: targetCard } = useGetCardQuery(getCardRequest(targetEntry));
-  const { data: dependents = [] } = useListNodeDependentsQuery(
+  const { currentData: sourceTable } = useGetTableQuery(
+    getTableRequest(sourceEntry),
+  );
+  const { currentData: sourceCard } = useGetCardQuery(
+    getCardRequest(sourceEntry),
+  );
+  const { currentData: targetTable } = useGetTableQuery(
+    getTableRequest(targetEntry),
+  );
+  const { currentData: targetCard } = useGetCardQuery(
+    getCardRequest(targetEntry),
+  );
+  const { currentData: dependents } = useListNodeDependentsQuery(
     getDependentsRequest(sourceEntry),
   );
-  const { data: checkInfo } = useCheckReplaceSourceQuery(
+  const { currentData: checkInfo } = useCheckReplaceSourceQuery(
     getCheckReplaceSourceRequest(sourceEntry, targetEntry),
   );
   const [sendToast] = useToast();
 
   const sourceItem = getEntityItem(sourceEntry, sourceTable, sourceCard);
   const targetItem = getEntityItem(targetEntry, targetTable, targetCard);
-  const columnMappings = checkInfo?.column_mappings ?? [];
+  const columnMappings = checkInfo?.column_mappings;
   const canReplace =
-    checkInfo != null && checkInfo.success && dependents.length > 0;
+    checkInfo != null &&
+    checkInfo.success &&
+    dependents != null &&
+    dependents.length > 0;
 
   useLayoutEffect(() => {
     if (!canReplace && selectedTab === "dependents") {
@@ -87,7 +98,8 @@ function ModalContent({
   }, [selectedTab, canReplace]);
 
   const handleReplaceSuccess = () => {
-    sendToast({ message: getSuccessMessage(dependents.length), icon: "check" });
+    const dependentsCount = dependents?.length ?? 0;
+    sendToast({ message: getSuccessMessage(dependentsCount), icon: "check" });
     closeConfirmation();
     onClose();
   };
@@ -103,7 +115,7 @@ function ModalContent({
         sourceItem={sourceItem}
         targetItem={targetItem}
         checkInfo={checkInfo}
-        dependentsCount={dependents.length}
+        dependentsCount={dependents?.length}
         canReplace={canReplace}
         onSourceChange={setSourceEntry}
         onTargetChange={setTargetEntry}
@@ -119,11 +131,11 @@ function ModalContent({
         columnMappings={columnMappings}
         onTabChange={setSelectedTab}
       />
-      {sourceEntry != null && targetEntry != null && (
+      {sourceEntry != null && targetEntry != null && dependents != null && (
         <ConfirmAndProgressModal
           sourceEntry={sourceEntry}
           targetEntry={targetEntry}
-          dependentsCount={dependents.length}
+          dependentsCount={dependents?.length}
           opened={isConfirming}
           onReplaceSuccess={handleReplaceSuccess}
           onReplaceFailure={handleReplaceFailure}

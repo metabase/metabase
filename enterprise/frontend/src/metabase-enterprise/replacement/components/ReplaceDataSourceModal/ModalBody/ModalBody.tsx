@@ -16,8 +16,8 @@ type ModalBodyProps = {
   targetItem: EntityItem | undefined;
   selectedTab: TabType;
   canReplace: boolean;
-  dependents: DependencyNode[];
-  columnMappings: ReplaceSourceColumnMapping[];
+  dependents: DependencyNode[] | undefined;
+  columnMappings: ReplaceSourceColumnMapping[] | undefined;
   onTabChange: (tab: TabType) => void;
 };
 
@@ -26,8 +26,8 @@ export function ModalBody({
   targetItem,
   selectedTab,
   canReplace,
-  dependents,
-  columnMappings,
+  dependents = [],
+  columnMappings = [],
   onTabChange,
 }: ModalBodyProps) {
   if (columnMappings.length === 0) {
