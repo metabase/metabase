@@ -1,43 +1,28 @@
 import { msgid, ngettext, t } from "ttag";
 
 import { skipToken } from "metabase/api";
-import type {
-  Card,
-  DatabaseId,
-  ReplaceSourceEntry,
-  Table,
-} from "metabase-types/api";
+import type { Card, ReplaceSourceEntry, Table } from "metabase-types/api";
 
-import type { EntityInfo } from "./types";
+import type { EntityItem } from "./types";
 
-export function getEntityInfo(
+export function getEntityItem(
   entry: ReplaceSourceEntry | undefined,
   table: Table | undefined,
   card: Card | undefined,
-): EntityInfo | undefined {
-  if (entry?.type === "table" && entry.id === table?.id) {
-    return { type: "table", table };
+): EntityItem | undefined {
+  if (entry?.type === "table") {
+    return {
+      id: entry.id,
+      type: "table",
+      data: table?.id === entry.id ? table : undefined,
+    };
   }
-  if (entry?.type === "card" && entry.id === card?.id) {
-    return { type: "card", card };
-  }
-}
-
-export function getEntityEntry(entry: EntityInfo): ReplaceSourceEntry {
-  switch (entry.type) {
-    case "table":
-      return { id: Number(entry.table.id), type: "table" };
-    case "card":
-      return { id: entry.card.id, type: "card" };
-  }
-}
-
-export function getEntityDatabaseId(entry: EntityInfo): DatabaseId | undefined {
-  switch (entry.type) {
-    case "table":
-      return entry.table.db_id;
-    case "card":
-      return entry.card.database_id;
+  if (entry?.type === "card") {
+    return {
+      id: entry.id,
+      type: "card",
+      data: card?.id === entry.id ? card : undefined,
+    };
   }
 }
 

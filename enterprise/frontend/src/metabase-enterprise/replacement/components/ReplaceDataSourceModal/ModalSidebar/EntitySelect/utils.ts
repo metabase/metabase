@@ -10,20 +10,18 @@ import type {
 } from "metabase-types/api";
 
 import { isSameEntity } from "../../../../utils";
-import type { EntityInfo } from "../../types";
+import type { EntityItem } from "../../types";
 
-import type { EntityDisplayInfo } from "./types";
+import type { EntityItemInfo } from "./types";
 
-export function getPickerValue(
-  entityInfo: EntityInfo | undefined,
-): OmniPickerValue | undefined {
-  if (entityInfo?.type === "table") {
-    return { id: entityInfo.table.id, model: "table" };
+export function getPickerValue(item: EntityItem): OmniPickerValue | undefined {
+  if (item.type === "table") {
+    return { id: item.id, model: "table" };
   }
-  if (entityInfo?.type === "card") {
+  if (item.type === "card") {
     return {
-      id: entityInfo.card.id,
-      model: entityInfo.card.type === "model" ? "dataset" : "card",
+      id: item.id,
+      model: item.data?.type === "model" ? "dataset" : "card",
     };
   }
   return undefined;
@@ -41,17 +39,17 @@ function getPickerItemDatabaseId(item: OmniPickerItem): DatabaseId | undefined {
 
 export function getIsPickerItemDisabled(
   databaseId: DatabaseId | undefined,
-  disabledEntry: ReplaceSourceEntry | undefined,
+  disabledItem: EntityItem | undefined,
 ): ((item: OmniPickerItem) => boolean) | undefined {
-  if (databaseId == null && disabledEntry == null) {
+  if (databaseId == null && disabledItem == null) {
     return undefined;
   }
   return (item: OmniPickerItem) => {
-    const entry = getSelectedValue(item);
+    const entityItem = getEntityItem(item);
     if (
-      entry != null &&
-      disabledEntry != null &&
-      isSameEntity(entry, disabledEntry)
+      entityItem != null &&
+      disabledItem != null &&
+      isSameEntity(entityItem, disabledItem)
     ) {
       return true;
     }
@@ -63,7 +61,7 @@ export function getIsPickerItemDisabled(
   };
 }
 
-export function getSelectedValue(
+export function getEntityItem(
   item: OmniPickerItem,
 ): ReplaceSourceEntry | undefined {
   if (item.model === "table") {
@@ -75,19 +73,19 @@ export function getSelectedValue(
   return undefined;
 }
 
-export function getEntityDisplayInfo(
-  entityInfo: EntityInfo | undefined,
-): EntityDisplayInfo | undefined {
-  if (entityInfo?.type === "table") {
-    return getTableEntityInfo(entityInfo.table);
+export function getEntityItemInfo(
+  item: EntityItem,
+): EntityItemInfo | undefined {
+  if (item.type === "table" && item.data != null) {
+    return getTableEntityItemInfo(item.data);
   }
-  if (entityInfo?.type === "card") {
-    return getCardEntityInfo(entityInfo.card);
+  if (item.type === "card" && item.data != null) {
+    return getCardEntityItemInfo(item.data);
   }
   return undefined;
 }
 
-function getTableEntityInfo(table: Table): EntityDisplayInfo {
+function getTableEntityItemInfo(table: Table): EntityItemInfo {
   const breadcrumbs: string[] = [];
   if (table.db != null) {
     breadcrumbs.push(table.db.name);
@@ -102,28 +100,18 @@ function getTableEntityInfo(table: Table): EntityDisplayInfo {
   };
 }
 
-function getCardEntityInfo(card: Card): EntityDisplayInfo {
+function getCardEntityItemInfo(card: Card): EntityItemInfo {
+  const breadcrumbs: string[] = [];
   if (card.document != null) {
-    return {
-      name: card.name,
-      breadcrumbs: [card.document.name],
-    };
-  }
-  if (card.dashboard != null) {
-    return {
-      name: card.name,
-      breadcrumbs: [card.dashboard.name],
-    };
-  }
-  if (card.collection != null) {
-    return {
-      name: card.name,
-      breadcrumbs: [card.collection.name],
-    };
+    breadcrumbs.push(card.document.name);
+  } else if (card.dashboard != null) {
+    breadcrumbs.push(card.dashboard.name);
+  } else if (card.collection != null) {
+    breadcrumbs.push(card.collection.name);
   }
 
   return {
     name: card.name,
-    breadcrumbs: [],
+    breadcrumbs,
   };
 }

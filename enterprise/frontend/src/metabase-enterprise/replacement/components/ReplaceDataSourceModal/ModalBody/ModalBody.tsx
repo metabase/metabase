@@ -4,7 +4,7 @@ import type {
   ReplaceSourceColumnMapping,
 } from "metabase-types/api";
 
-import type { EntityInfo, TabType } from "../types";
+import type { EntityItem, TabType } from "../types";
 
 import { ColumnComparisonTable } from "./ColumnMappingTable";
 import { DependentsTable } from "./DependentsTable";
@@ -12,8 +12,8 @@ import { EmptyState } from "./EmptyState";
 import { TabPanel } from "./TabPanel";
 
 type ModalBodyProps = {
-  sourceInfo: EntityInfo | undefined;
-  targetInfo: EntityInfo | undefined;
+  sourceItem: EntityItem | undefined;
+  targetItem: EntityItem | undefined;
   selectedTab: TabType;
   canReplace: boolean;
   dependents: DependencyNode[];
@@ -22,8 +22,8 @@ type ModalBodyProps = {
 };
 
 export function ModalBody({
-  sourceInfo,
-  targetInfo,
+  sourceItem,
+  targetItem,
   selectedTab,
   canReplace,
   dependents,
@@ -49,8 +49,8 @@ export function ModalBody({
       <Flex flex={1} direction="column" p="lg" mih={0} miw={0}>
         {selectedTab === "column-mappings" && (
           <ColumnComparisonTable
-            sourceInfo={sourceInfo}
-            targetInfo={targetInfo}
+            sourceItem={sourceItem}
+            targetItem={targetItem}
             columnMappings={columnMappings}
           />
         )}

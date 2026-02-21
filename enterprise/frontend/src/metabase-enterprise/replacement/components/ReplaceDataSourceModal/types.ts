@@ -1,17 +1,18 @@
-import type { Card, Table } from "metabase-types/api";
+import type { Card, CardId, ConcreteTableId, Table } from "metabase-types/api";
 
-export type EntityInfoType = "table" | "card";
-
-export type TableEntityInfo = {
+export type TableEntityItem = {
+  id: ConcreteTableId;
   type: "table";
-  table: Table;
+  data?: Table;
 };
 
-export type CardEntityInfo = {
+export type CardEntityItem = {
+  id: CardId;
   type: "card";
-  card: Card;
+  data?: Card;
 };
 
-export type EntityInfo = TableEntityInfo | CardEntityInfo;
+export type EntityItem = TableEntityItem | CardEntityItem;
+export type EntityItemType = EntityItem["type"];
 
 export type TabType = "column-mappings" | "dependents";

@@ -8,12 +8,12 @@ import type {
 } from "metabase-types/api";
 
 import { getColumnErrorMessage } from "../../../../utils";
-import type { EntityInfo } from "../../types";
+import type { EntityItem } from "../../types";
 
 import { NameCell } from "./NameCell";
 import type { ColumnMappingItem } from "./types";
 
-function getEntityName(entityInfo: EntityInfo | undefined): string {
+function getEntityName(entityInfo: EntityItem | undefined): string {
   if (entityInfo?.type === "table") {
     return entityInfo.table.display_name;
   } else if (entityInfo?.type === "card") {
@@ -101,16 +101,16 @@ function getDetailsColumn(): TreeTableColumnDef<ColumnMappingItem> {
 }
 
 export function getColumns(
-  sourceInfo: EntityInfo | undefined,
-  targetInfo: EntityInfo | undefined,
+  sourceItem: EntityItem | undefined,
+  targetItem: EntityItem | undefined,
   columnMappings: ReplaceSourceColumnMapping[],
 ): TreeTableColumnDef<ColumnMappingItem>[] {
   const sourceHeader = getEntityHeader(
-    getEntityName(sourceInfo),
+    getEntityName(sourceItem),
     getSourceColumnCount(columnMappings),
   );
   const targetHeader = getEntityHeader(
-    getEntityName(targetInfo),
+    getEntityName(targetItem),
     getTargetColumnCount(columnMappings),
   );
 

@@ -19,7 +19,7 @@ import {
   getCardRequest,
   getCheckReplaceSourceRequest,
   getDependentsRequest,
-  getEntityInfo,
+  getEntityItem,
   getFailureMessage,
   getSuccessMessage,
   getTableRequest,
@@ -74,8 +74,8 @@ function ModalContent({
   );
   const [sendToast] = useToast();
 
-  const sourceInfo = getEntityInfo(sourceEntry, sourceTable, sourceCard);
-  const targetInfo = getEntityInfo(targetEntry, targetTable, targetCard);
+  const sourceItem = getEntityItem(sourceEntry, sourceTable, sourceCard);
+  const targetItem = getEntityItem(targetEntry, targetTable, targetCard);
   const columnMappings = checkInfo?.column_mappings ?? [];
   const canReplace =
     checkInfo != null && checkInfo.success && dependents.length > 0;
@@ -100,8 +100,8 @@ function ModalContent({
   return (
     <Flex h="100%">
       <ModalSidebar
-        sourceInfo={sourceInfo}
-        targetInfo={targetInfo}
+        sourceItem={sourceItem}
+        targetItem={targetItem}
         checkInfo={checkInfo}
         dependentsCount={dependents.length}
         canReplace={canReplace}
@@ -111,8 +111,8 @@ function ModalContent({
         onCancel={onClose}
       />
       <ModalBody
-        sourceInfo={sourceInfo}
-        targetInfo={targetInfo}
+        sourceItem={sourceItem}
+        targetItem={targetItem}
         selectedTab={selectedTab}
         dependents={dependents}
         canReplace={canReplace}

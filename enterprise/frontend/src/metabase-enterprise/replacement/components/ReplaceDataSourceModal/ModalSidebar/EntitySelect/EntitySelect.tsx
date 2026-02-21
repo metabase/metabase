@@ -9,7 +9,7 @@ import {
 import { Box, Button, Icon, Input } from "metabase/ui";
 import type { DatabaseId, ReplaceSourceEntry } from "metabase-types/api";
 
-import type { EntityInfo } from "../../types";
+import type { EntityItem } from "../../types";
 
 import S from "./EntitySelect.module.css";
 import {
@@ -17,40 +17,44 @@ import {
   SOURCE_PICKER_MODELS,
   SOURCE_PICKER_OPTIONS,
 } from "./constants";
-import type { EntityDisplayInfo } from "./types";
+import type { EntityItemInfo } from "./types";
 import {
-  getEntityDisplayInfo,
+  getEntityItem,
+  getEntityItemInfo,
   getIsPickerItemDisabled,
   getPickerValue,
-  getSelectedValue,
 } from "./utils";
 
 type EntitySelectProps = {
-  entityInfo: EntityInfo | undefined;
+  selectedItem: EntityItem | undefined;
   label: string;
   description: string;
   placeholder?: string;
   databaseId?: DatabaseId;
-  disabledEntry?: ReplaceSourceEntry;
+  disabledItem?: EntityItem;
   onChange: (entry: ReplaceSourceEntry) => void;
 };
 
 export function EntitySelect({
-  entityInfo,
+  selectedItem,
   label,
   description,
   placeholder = t`Pick a table, model, or saved question`,
   databaseId,
-  disabledEntry,
+  disabledItem,
   onChange,
 }: EntitySelectProps) {
   const [isPickerOpen, { open: openPicker, close: closePicker }] =
     useDisclosure(false);
-  const displayInfo = getEntityDisplayInfo(entityInfo);
-  const isDisabledItem = getIsPickerItemDisabled(databaseId, disabledEntry);
+  const sourceInfo =
+    selectedItem != null ? getEntityItemInfo(selectedItem) : undefined;
+  const isDisabledItem =
+    disabledItem != null
+      ? getIsPickerItemDisabled(databaseId, disabledItem)
+      : undefined;
 
   const handleItemSelect = (item: OmniPickerItem) => {
-    const entry = getSelectedValue(item);
+    const entry = getEntityItem(item);
     if (entry != null) {
       onChange(entry);
       closePicker();
@@ -65,17 +69,15 @@ export function EntitySelect({
         fw="normal"
         onClick={openPicker}
       >
-        {displayInfo ? (
-          <ButtonContent displayInfo={displayInfo} />
-        ) : (
-          placeholder
-        )}
+        {sourceInfo ? <ButtonContent displayInfo={sourceInfo} /> : placeholder}
       </Button>
       {isPickerOpen && (
         <EntityPickerModal
           title={t`Select a data source`}
           models={SOURCE_PICKER_MODELS}
-          value={getPickerValue(entityInfo)}
+          value={
+            selectedItem != null ? getPickerValue(selectedItem) : undefined
+          }
           options={SOURCE_PICKER_OPTIONS}
           recentsContext={RECENTS_CONTEXT}
           isDisabledItem={isDisabledItem}
@@ -88,7 +90,7 @@ export function EntitySelect({
 }
 
 type ButtonContentProps = {
-  displayInfo: EntityDisplayInfo;
+  displayInfo: EntityItemInfo;
 };
 
 function ButtonContent({ displayInfo }: ButtonContentProps) {

@@ -7,16 +7,15 @@ import type {
 } from "metabase-types/api";
 
 import { getEntityErrorMessage, getGenericErrorMessage } from "../../../utils";
-import type { EntityInfo } from "../types";
-import { getEntityDatabaseId, getEntityEntry } from "../utils";
+import type { EntityItem } from "../types";
 
 import { EntitySection } from "./EntitySection";
 import { EntitySelect } from "./EntitySelect";
 import S from "./ModalSidebar.module.css";
 
 type ModalSidebarProps = {
-  sourceInfo: EntityInfo | undefined;
-  targetInfo: EntityInfo | undefined;
+  sourceItem: EntityItem | undefined;
+  targetItem: EntityItem | undefined;
   checkInfo: CheckReplaceSourceInfo | undefined;
   dependentsCount: number;
   canReplace: boolean;
@@ -27,8 +26,8 @@ type ModalSidebarProps = {
 };
 
 export function ModalSidebar({
-  sourceInfo,
-  targetInfo,
+  sourceItem,
+  targetItem,
   checkInfo,
   dependentsCount,
   canReplace,
@@ -37,11 +36,10 @@ export function ModalSidebar({
   onSubmit,
   onCancel,
 }: ModalSidebarProps) {
-  const sourceEntry =
-    sourceInfo != null ? getEntityEntry(sourceInfo) : undefined;
   const sourceDatabaseId =
-    sourceInfo != null ? getEntityDatabaseId(sourceInfo) : undefined;
-  const errorMessage = getTargetErrorMessage(checkInfo);
+    sourceItem != null ? getSourceDatabaseId(sourceItem) : undefined;
+  const targetErrorMessage =
+    checkInfo != null ? getTargetErrorMessage(checkInfo) : undefined;
 
   return (
     <Stack className={S.sidebar} px="xl" pt="xl" pb="lg" gap="lg" maw="32rem">
@@ -52,7 +50,7 @@ export function ModalSidebar({
       <Stack gap="lg">
         <EntitySection icon="search">
           <EntitySelect
-            entityInfo={sourceInfo}
+            selectedItem={sourceItem}
             label={t`Find all occurrences of this data source`}
             description={t`We'll look for every query in your instance that uses this data source.`}
             onChange={onSourceChange}
@@ -61,16 +59,16 @@ export function ModalSidebar({
         <EntitySection icon="find_replace">
           <Stack gap="sm">
             <EntitySelect
-              entityInfo={targetInfo}
+              selectedItem={targetItem}
               label={t`Replace it with this data source`}
               description={t`It must be based on the same database and include all columns from the original data source.`}
               databaseId={sourceDatabaseId}
-              disabledEntry={sourceEntry}
+              disabledItem={sourceItem}
               onChange={onTargetChange}
             />
-            {errorMessage && (
+            {targetErrorMessage && (
               <Text c="error" size="sm">
-                {errorMessage}
+                {targetErrorMessage}
               </Text>
             )}
           </Stack>
@@ -86,8 +84,12 @@ export function ModalSidebar({
   );
 }
 
-function getTargetErrorMessage(checkInfo: CheckReplaceSourceInfo | undefined) {
-  if (checkInfo == null || checkInfo.success) {
+function getSourceDatabaseId(item: EntityItem) {
+  return item.type === "table" ? item.data?.db_id : item.data?.database_id;
+}
+
+function getTargetErrorMessage(checkInfo: CheckReplaceSourceInfo) {
+  if (checkInfo.success) {
     return null;
   }
 
