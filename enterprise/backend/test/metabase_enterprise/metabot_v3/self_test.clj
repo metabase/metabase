@@ -504,6 +504,7 @@
                                      (assoc labels :error-type "ExceptionInfo"))))
           (is (pos? (:sum (mt/metric-value system :metabase-metabot/llm-duration-ms labels)))))
 
+        ;; mt/with-prometheus-system! is slow, so clear! metrics between tests rather than creating a fresh system
         (prometheus/clear! :metabase-metabot/llm-requests)
         (prometheus/clear! :metabase-metabot/llm-duration-ms)
 
@@ -551,4 +552,17 @@
             (run! identity (self/call-llm "test-model" nil [] {})))
           (is (== 1 (mt/metric-value system :metabase-metabot/llm-requests labels)))
           (is (== 1 (mt/metric-value system :metabase-metabot/llm-errors
-                                     (assoc labels :error-type "llm-sse-error")))))))))
+                                     (assoc labels :error-type "llm-sse-error")))))
+
+        (testing "reports token usage metrics on :usage parts"
+          (with-redefs [openrouter/openrouter
+                        (constantly (test-util/mock-llm-response
+                                     [{:type  :start
+                                       :id    "m1"}
+                                      {:type  :usage
+                                       :usage {:promptTokens 100 :completionTokens 25}
+                                       :model "test-model"}]))]
+            (run! identity (self/call-llm "test-model" nil [] {})))
+          (is (== 100 (mt/metric-value system :metabase-metabot/llm-input-tokens labels)))
+          (is (==  25 (mt/metric-value system :metabase-metabot/llm-output-tokens labels)))
+          (is (== 125 (:sum (mt/metric-value system :metabase-metabot/llm-tokens-per-call labels)))))))))

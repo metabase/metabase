@@ -399,32 +399,3 @@
            (into [] (#'api/combine-text-parts-xf)
                  [{:type :text, :text "solo"}])))))
 
-;;; ===================== Prometheus Metrics Tests =====================
-
-(deftest native-agent-streaming-token-metrics-test
-  (testing "native agent streaming reports token usage to Prometheus"
-    (mt/with-premium-features #{:metabot-v3}
-      (mt/with-prometheus-system! [_ system]
-        (mt/with-temporary-setting-values [metabot.settings/use-native-agent true]
-          (with-redefs [openrouter/openrouter (fn [_]
-                                                (mut/mock-llm-response
-                                                 [{:type  :start
-                                                   :id    "msg-1"}
-                                                  {:type  :text
-                                                   :text  "Hello!"}
-                                                  {:type  :usage
-                                                   :usage {:promptTokens 100 :completionTokens 25}
-                                                   :model "test-model"
-                                                   :id    "msg-1"}]))]
-            (mt/with-model-cleanup [:model/MetabotMessage
-                                    [:model/MetabotConversation :created_at]]
-              (mt/user-http-request :rasta :post 202 "ee/metabot-v3/agent-streaming"
-                                    {:message         "Test token metrics"
-                                     :context         {}
-                                     :conversation_id (str (random-uuid))
-                                     :history         []
-                                     :state           {}}))))
-        (let [labels {:model "test-model" :source "agent"}]
-          (is (== 100 (mt/metric-value system :metabase-metabot/llm-input-tokens labels)))
-          (is (==  25 (mt/metric-value system :metabase-metabot/llm-output-tokens labels)))
-          (is (== 125 (:sum (mt/metric-value system :metabase-metabot/llm-tokens-per-call labels)))))))))
