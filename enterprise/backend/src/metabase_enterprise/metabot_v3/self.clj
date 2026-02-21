@@ -121,6 +121,21 @@
                              :error-type "llm-sse-error"}))
          part)))
 
+(defn- report-token-usage-xf
+  "Transducer that reports prometheus metrics for :usage parts in the aisdk stream."
+  [model]
+  (map (fn [part]
+         (when (= (:type part) :usage)
+           (let [usage      (:usage part)
+                 part-model (or (:model part) model)
+                 labels     {:model part-model :source "agent"}
+                 prompt     (:promptTokens usage 0)
+                 completion (:completionTokens usage 0)]
+             (prometheus/inc! :metabase-metabot/llm-input-tokens labels prompt)
+             (prometheus/inc! :metabase-metabot/llm-output-tokens labels completion)
+             (prometheus/observe! :metabase-metabot/llm-tokens-per-call labels (+ prompt completion))))
+         part)))
+
 (defn- with-retries
   "Execute `(thunk)` with retry logic for transient LLM errors.
   Retries up to `max-llm-retries` attempts with exponential backoff.
@@ -176,7 +191,8 @@
           make-source (fn []
                         (eduction (comp (core/tool-executor-xf tools)
                                         (core/lite-aisdk-xf)
-                                        (report-aisdk-errors-xf model))
+                                        (report-aisdk-errors-xf model)
+                                        (report-token-usage-xf model))
                                   (stream-fn opts)))]
       (reify clojure.lang.IReduceInit
         (reduce [_ rf init]
