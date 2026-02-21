@@ -141,11 +141,11 @@
   Retries up to `max-llm-retries` attempts with exponential backoff.
   Records prometheus metrics with `model` as a label."
   [model thunk]
-  (let [labels {:model model :source "agent"}
-        timer  (u/start-timer)]
+  (let [labels {:model model :source "agent"}]
     (loop [attempt 1]
       (prometheus/inc! :metabase-metabot/llm-requests labels)
-      (let [result (try
+      (let [timer  (u/start-timer)
+            result (try
                      {:ok (thunk)}
                      (catch Exception e
                        (if (and (< attempt max-llm-retries)
@@ -160,13 +160,13 @@
                            {:retry delay})
                          (do (prometheus/inc! :metabase-metabot/llm-errors
                                               (assoc labels :error-type (.getSimpleName (class e))))
-                             (prometheus/observe! :metabase-metabot/llm-duration-ms labels (u/since-ms timer))
-                             (throw e)))))]
+                             (throw e))))
+                     (finally
+                       (prometheus/observe! :metabase-metabot/llm-duration-ms labels (u/since-ms timer))))]
         (if-let [delay (:retry result)]
           (do (Thread/sleep ^long delay)
               (recur (inc attempt)))
-          (do (prometheus/observe! :metabase-metabot/llm-duration-ms labels (u/since-ms timer))
-              (:ok result)))))))
+          (:ok result))))))
 
 (defn call-llm
   "Call an LLM and stream processed parts.
