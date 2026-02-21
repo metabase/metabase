@@ -15,9 +15,9 @@ import type { ColumnMappingItem } from "./types";
 
 function getEntityName(entityInfo: EntityItem | undefined): string {
   if (entityInfo?.type === "table") {
-    return entityInfo.table.display_name;
+    return entityInfo.data?.display_name ?? "";
   } else if (entityInfo?.type === "card") {
-    return entityInfo.card.name;
+    return entityInfo.data?.name ?? "";
   }
   return "";
 }
