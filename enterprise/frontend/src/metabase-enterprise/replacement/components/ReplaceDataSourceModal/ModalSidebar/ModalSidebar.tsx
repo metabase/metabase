@@ -41,7 +41,15 @@ export function ModalSidebar({
   const targetError = getTargetError(checkInfo);
 
   return (
-    <Stack className={S.sidebar} px="xl" pt="xl" pb="lg" gap="lg" maw="35rem">
+    <Stack
+      className={S.sidebar}
+      flex="0 0 auto"
+      w="35rem"
+      px="xl"
+      pt="xl"
+      pb="lg"
+      gap="lg"
+    >
       <Stack gap="sm">
         <Title order={2}>{t`Find and replace a data source`}</Title>
         <Text>{t`This lets you change the data source used in queries in bulk. `}</Text>
