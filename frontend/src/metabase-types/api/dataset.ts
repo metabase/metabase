@@ -211,7 +211,8 @@ export type TemplateTagType =
   | "boolean"
   | "temporal-unit"
   | "dimension"
-  | "snippet";
+  | "snippet"
+  | "table";
 
 export interface TemplateTag {
   id: TemplateTagId;
@@ -235,6 +236,9 @@ export interface TemplateTag {
   // Field filter specific
   "widget-type"?: string;
   options?: ParameterOptions;
+
+  // Table specific
+  "table-id"?: TableId;
 }
 
 export type TemplateTags = Record<TemplateTagName, TemplateTag>;

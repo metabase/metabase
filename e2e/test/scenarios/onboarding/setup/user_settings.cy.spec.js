@@ -313,7 +313,7 @@ describe("user > settings", () => {
 
         cy.findByTestId("viz-type-button").click();
         cy.findByTestId("sidebar-left")
-          .findByText("Other charts")
+          .findByText("More charts")
           .then(($text) => {
             cy.wrap(win.getComputedStyle($text[0]).color).should(
               "eq",
@@ -345,7 +345,7 @@ describe("user > settings", () => {
 
         cy.findByTestId("viz-type-button").click();
         cy.findByTestId("sidebar-left")
-          .findByText("Other charts")
+          .findByText("More charts")
           .then(($text) => {
             cy.wrap(win.getComputedStyle($text[0]).color).should(
               "eq",

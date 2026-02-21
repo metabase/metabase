@@ -76,7 +76,7 @@
               :id                           (mt/id :orders :product_id)
               :lib/desired-column-alias     "Orders__PRODUCT_ID"
               :display-name                 "Orders → Product ID"
-              :source-alias                 "Orders"}
+              :lib/original-join-alias      "Orders"}
              {:metabase.lib.join/join-alias "Orders"
               :lib/type                     :metadata/column
               :base-type                    :type/Integer
@@ -86,7 +86,7 @@
               :effective-type               :type/Integer
               :lib/desired-column-alias     "Orders__sum"
               :display-name                 "Orders → Sum of Quantity"
-              :source-alias                 "Orders"}]
+              :lib/original-join-alias      "Orders"}]
             (binding [lib.metadata.calculation/*display-name-style* :long]
               (lib.metadata.calculation/returned-columns mlv2-query))))))
 
@@ -269,3 +269,30 @@
               (lib.metadata/table mp (:id buyer))))
       (is (=? {:database-partitioned true}
               (lib.metadata/field mp (:id buyer-id)))))))
+
+(deftest ^:parallel instance->metadata-normalize-column-test
+  (testing "instance->metadata should normalize column metadata"
+    (let [legacy-col {:active                                            true
+                      :base_type                                         :type/BigInteger
+                      :database_type                                     "BIGINT"
+                      :display_name                                      "ID"
+                      :effective_type                                    :type/BigInteger
+                      :field_ref                                         [:field 760 nil]
+                      :id                                                760
+                      :lib/deduplicated-name                             "ID"
+                      :lib/desired-column-alias                          "ID"
+                      :lib/original-display-name                         "ID"
+                      :lib/original-name                                 "ID"
+                      :lib/source                                        :source/table-defaults
+                      :lib/source-column-alias                           "ID"
+                      :metabase.lib.query/transformation-added-base-type true
+                      :name                                              "ID"
+                      :position                                          0
+                      :semantic_type                                     :type/PK
+                      :source                                            :fields
+                      :table_id                                          227
+                      :visibility_type                                   :normal}
+          metadata   (lib.metadata.jvm/instance->metadata legacy-col :metadata/column)]
+      (is (mr/validate ::lib.schema.metadata/column metadata))
+      (is (not (:field-ref metadata))
+          "Legacy keys like :field_ref/:field-ref should have been removed"))))

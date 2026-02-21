@@ -37,11 +37,7 @@ export function getPieDimensions(settings: ComputedVisualizationSettings) {
 }
 
 export function getDefaultPieColumns(rawSeries: RawSeries) {
-  const { dimensions, metrics } = getDefaultDimensionsAndMetrics(
-    rawSeries,
-    3,
-    1,
-  );
+  const { dimensions, metrics } = getDefaultDimensionsAndMetrics(rawSeries, 3);
   return {
     dimension: dimensions,
     metric: metrics[0],

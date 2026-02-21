@@ -136,12 +136,12 @@
 
 (defn- conn-pool-bean-diag-info [acc ^ObjectName jmx-bean]
   ;; We should not be using specific driver implementations
-  (let [pool-var (requiring-resolve 'metabase.driver.sql-jdbc.connection/database-id->connection-pool)]
+  (let [pool-var (requiring-resolve 'metabase.driver.sql-jdbc.connection/pool-cache-key->connection-pool)]
     ;; Using this `locking` is non-obvious but absolutely required to avoid the deadlock inside c3p0 implementation. The
     ;; act of JMX attribute reading first locks a DynamicPooledDataSourceManagerMBean object, and then a
     ;; PoolBackedDataSource object. Conversely, the act of creating a pool (with
     ;; com.mchange.v2.c3p0.DataSources/pooledDataSource) first locks PoolBackedDataSource and then
-    ;; DynamicPooledDataSourceManagerMBean. We have to lock a common monitor (which `database-id->connection-pool` is)
+    ;; DynamicPooledDataSourceManagerMBean. We have to lock a common monitor (which `pool-cache-key->connection-pool` is)
     ;; to prevent the deadlock. Hopefully.
     ;; Issue against c3p0: https://github.com/swaldman/c3p0/issues/95
     (locking @pool-var
@@ -265,7 +265,7 @@
                        {:description "Number of times this instance converted a card's MBQL 4 to 5 and `clean` made a real change"})
    (prometheus/gauge :metabase-database/status
                      {:description "Does a given database using driver pass a health check."
-                      :labels [:driver :healthy :reason]})
+                      :labels [:driver :healthy :reason :connection-type]})
    (prometheus/counter :metabase-query-processor/query
                        {:description "Did a query run by a specific driver succeed or fail"
                         :labels [:driver :status]})
@@ -500,7 +500,37 @@
                         :labels [:status]})
    (prometheus/counter :metabase-token-check/attempt
                        {:description "Total number of token checks. Includes a status label."
-                        :labels [:status]})])
+                        :labels [:status]})
+   ;; Write-connection telemetry
+   (prometheus/counter :metabase-db-connection/write-op
+                       {:description "JDBC connection pool acquisitions by connection type (default or write-data)."
+                        :labels [:connection-type]})
+   (prometheus/counter :metabase-db-connection/type-resolved
+                       {:description "Write-data details resolved by effective-details (driver-agnostic). Only incremented when write-data-details are genuinely used, not on fallback or workspace swap."
+                        :labels [:connection-type]})
+   ;; SQL parsing metrics
+   (prometheus/counter :metabase-sql-parsing/context-timeouts
+                       {:description "Number of Python/GraalVM SQL parsing execution timeouts."})
+   (prometheus/counter :metabase-sql-parsing/context-acquisitions
+                       {:description "Number of Python contexts acquired from the pool."})
+   (prometheus/counter :metabase-sql-parsing/context-creations
+                       {:description "Number of new Python contexts created."})
+   (prometheus/counter :metabase-sql-parsing/context-disposals-expired
+                       {:description "Number of Python contexts disposed due to TTL expiry."})
+   ;; SQL tools operation metrics
+   (prometheus/counter :metabase-sql-tools/operations-total
+                       {:description "Total number of sql-tools operations started."
+                        :labels [:parser :operation]})
+   (prometheus/counter :metabase-sql-tools/operations-completed
+                       {:description "Number of sql-tools operations completed successfully."
+                        :labels [:parser :operation]})
+   (prometheus/counter :metabase-sql-tools/operations-failed
+                       {:description "Number of sql-tools operations that threw an exception."
+                        :labels [:parser :operation]})
+   (prometheus/histogram :metabase-sql-tools/operation-duration-ms
+                         {:description "Duration in milliseconds of sql-tools operations."
+                          :labels [:parser :operation]
+                          :buckets [1 5 10 25 50 100 250 500 1000 2500 5000 10000 30000]})])
 
 (defn- quartz-collectors
   []

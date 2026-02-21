@@ -2,6 +2,7 @@ import * as Lib from "metabase-lib";
 import {
   ORDERS_ID,
   PEOPLE_ID,
+  PRODUCTS,
   PRODUCTS_ID,
 } from "metabase-types/api/mocks/presets";
 
@@ -472,6 +473,162 @@ describe("createTestQuery", () => {
       });
 
       expect(Lib.currentLimit(query, 0)).toBe(LIMIT);
+    });
+  });
+});
+
+describe("createTestNativeQuery", () => {
+  it.each(["text", "number", "date", "boolean"] as const)(
+    "should create a native query with a %s tag",
+    (type) => {
+      const queryText = "SELECT * FROM ORDERS WHERE ID = {{x}} ";
+      const query = Lib.createTestNativeQuery(SAMPLE_PROVIDER, {
+        query: queryText,
+        templateTags: {
+          x: {
+            type,
+          },
+        },
+      });
+
+      expect(Lib.rawNativeQuery(query)).toBe(queryText);
+      expect(Lib.templateTags(query)).toEqual({
+        x: {
+          id: expect.any(String),
+          type,
+          name: "x",
+          "display-name": "X",
+        },
+      });
+    },
+  );
+
+  it("should create a native query with a dimension template tag", () => {
+    const queryText = "SELECT * FROM ORDERS WHERE {{x}}";
+    const query = Lib.createTestNativeQuery(SAMPLE_PROVIDER, {
+      query: queryText,
+      templateTags: {
+        x: {
+          type: "dimension",
+          dimension: PRODUCTS.CATEGORY,
+        },
+      },
+    });
+
+    expect(Lib.rawNativeQuery(query)).toBe(queryText);
+    expect(Lib.templateTags(query)).toEqual({
+      x: {
+        id: expect.any(String),
+        type: "dimension",
+        name: "x",
+        "display-name": "X",
+        dimension: ["field", PRODUCTS.CATEGORY, { "base-type": "type/Text" }],
+        "widget-type": "text",
+      },
+    });
+  });
+
+  it("should create a native query with a temporal unit template tag", () => {
+    const queryText = "SELECT * FROM ORDERS WHERE {{x}}";
+    const query = Lib.createTestNativeQuery(SAMPLE_PROVIDER, {
+      query: queryText,
+      templateTags: {
+        x: {
+          type: "temporal-unit",
+          dimension: PRODUCTS.CREATED_AT,
+        },
+      },
+    });
+
+    expect(Lib.rawNativeQuery(query)).toBe(queryText);
+    expect(Lib.templateTags(query)).toEqual({
+      x: {
+        id: expect.any(String),
+        type: "temporal-unit",
+        name: "x",
+        "display-name": "X",
+        dimension: [
+          "field",
+          PRODUCTS.CREATED_AT,
+          { "base-type": "type/DateTime" },
+        ],
+      },
+    });
+  });
+
+  it("should create a native query with a snippet tag", () => {
+    const queryText = "SELECT * FROM ORDERS WHERE {{snippet: foo}}";
+    const query = Lib.createTestNativeQuery(SAMPLE_PROVIDER, {
+      query: queryText,
+      templateTags: {
+        "snippet: foo": {
+          type: "snippet",
+          "snippet-id": 12,
+        },
+      },
+    });
+
+    expect(Lib.rawNativeQuery(query)).toBe(queryText);
+    expect(Lib.templateTags(query)).toEqual({
+      "snippet: foo": {
+        id: expect.any(String),
+        type: "snippet",
+        name: "snippet: foo",
+        "snippet-id": 12,
+        "snippet-name": "foo",
+        "display-name": "Snippet: Foo",
+      },
+    });
+  });
+
+  it("should create a native query with a card tag", () => {
+    const queryText = "SELECT * FROM ORDERS WHERE {{#1-users}}";
+    const query = Lib.createTestNativeQuery(SAMPLE_PROVIDER, {
+      query: queryText,
+      templateTags: {
+        "#1-users": {
+          type: "card",
+        },
+      },
+    });
+
+    expect(Lib.rawNativeQuery(query)).toBe(queryText);
+    expect(Lib.templateTags(query)).toEqual({
+      "#1-users": {
+        id: expect.any(String),
+        type: "card",
+        name: "#1-users",
+        "display-name": "#1 Users",
+        "card-id": 1,
+      },
+    });
+  });
+
+  it("should add default, required properties", () => {
+    const queryText = "SELECT * FROM ORDERS WHERE ID = {{x}} ";
+    const query = Lib.createTestNativeQuery(SAMPLE_PROVIDER, {
+      query: queryText,
+      templateTags: {
+        x: {
+          type: "text",
+          default: "CA",
+          required: true,
+          "widget-type": "string/contains",
+        },
+      },
+    });
+
+    expect(Lib.rawNativeQuery(query)).toBe(queryText);
+    expect(Lib.templateTags(query)).toEqual({
+      x: {
+        id: expect.any(String),
+        type: "text",
+        name: "x",
+        required: true,
+        default: "CA",
+        "widget-type": "string/contains",
+        "display-name": "X",
+      },
     });
   });
 });

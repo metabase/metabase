@@ -242,7 +242,7 @@ describe("extract action", () => {
       H.openOrdersTable({ limit: 1 });
       extractColumnAndCheck({
         column: "Created At",
-        option: "Tag in der Woche",
+        option: "Wochentag",
         value: "Dienstag",
         extraction: "Auszug Tag, Monat…",
       });

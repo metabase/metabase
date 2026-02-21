@@ -3,8 +3,8 @@ import { c, t } from "ttag";
 import { CollapseSection } from "metabase/common/components/CollapseSection";
 import { useUserSetting } from "metabase/common/hooks";
 import { useSelector } from "metabase/lib/redux";
+import { getEntityTypes } from "metabase/redux/embedding-data-picker";
 import { getIsEmbeddingIframe } from "metabase/selectors/embed";
-import { getEntityTypes } from "metabase/selectors/embedding-data-picker";
 import { ActionIcon, Icon, Tooltip } from "metabase/ui";
 
 import { PaddedSidebarLink, SidebarHeading } from "../MainNavbar.styled";

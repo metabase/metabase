@@ -61,13 +61,24 @@ export interface RemoteSyncSettingsResponse {
 export const setupRemoteSyncSettingsEndpoint = ({
   success = true,
   task_id,
-}: Partial<RemoteSyncSettingsResponse> = {}) => {
+  error,
+}: Partial<RemoteSyncSettingsResponse> & {
+  error?: { status: number; message: string };
+} = {}) => {
   fetchMock.removeRoute("remote-sync-settings");
-  fetchMock.put(
-    "path:/api/ee/remote-sync/settings",
-    { success, ...(task_id !== undefined && { task_id }) },
-    { name: "remote-sync-settings" },
-  );
+  if (error) {
+    fetchMock.put(
+      "path:/api/ee/remote-sync/settings",
+      { status: error.status, body: { message: error.message } },
+      { name: "remote-sync-settings" },
+    );
+  } else {
+    fetchMock.put(
+      "path:/api/ee/remote-sync/settings",
+      { success, ...(task_id !== undefined && { task_id }) },
+      { name: "remote-sync-settings" },
+    );
+  }
 };
 
 /**
@@ -86,6 +97,29 @@ export const setupRemoteSyncImportEndpoint = ({
 };
 
 /**
+ * Setup the remote-sync cancel task endpoint
+ */
+export const setupRemoteSyncCancelTaskEndpoint = ({
+  status = 200,
+  body = {},
+  delay = 0,
+}: { status?: number; body?: any; delay?: number } = {}) => {
+  fetchMock.removeRoute("remote-sync-cancel-task");
+  if (status === 200) {
+    fetchMock.post("path:/api/ee/remote-sync/current-task/cancel", body, {
+      name: "remote-sync-cancel-task",
+      delay,
+    });
+  } else {
+    fetchMock.post(
+      "path:/api/ee/remote-sync/current-task/cancel",
+      { status, body },
+      { name: "remote-sync-cancel-task", delay },
+    );
+  }
+};
+
+/**
  * Setup all remote-sync endpoints at once
  */
 export const setupRemoteSyncEndpoints = ({
@@ -101,7 +135,9 @@ export const setupRemoteSyncEndpoints = ({
   changedCollections?: Record<number, boolean>;
   hasRemoteChanges?: boolean;
   hasRemoteChangesDelay?: number;
-  settingsResponse?: Partial<RemoteSyncSettingsResponse>;
+  settingsResponse?: Partial<RemoteSyncSettingsResponse> & {
+    error?: { status: number; message: string };
+  };
 } = {}) => {
   setupRemoteSyncBranchesEndpoint(branches);
   setupRemoteSyncDirtyEndpoint({ dirty, changedCollections });
