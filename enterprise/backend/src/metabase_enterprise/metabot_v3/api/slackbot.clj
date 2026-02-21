@@ -523,8 +523,6 @@
         (sso-settings/slack-connect-client-id)
         (sso-settings/slack-connect-client-secret)
         (metabot.settings/metabot-slack-signing-secret)
-        ;; TODO: we need to factor in this or make it always true if metabot-v3 is enabled?
-        ;; (metabase-enterprise.sso.settings/slack-connect-enabled)
         (channel.settings/unobfuscated-slack-app-token)
         (encryption/default-encryption-enabled?))))
 
