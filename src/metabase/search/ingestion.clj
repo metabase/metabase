@@ -205,10 +205,6 @@
        (filter some?)
        (reduce + 0)))
 
-(def ^:dynamic *force-sync*
-  "Force ingestion to happen immediately, on the same thread."
-  false)
-
 (def ^:dynamic *disable-updates*
   "Used by tests to disable updates, for example when testing migrations, where the schema is wrong."
   false)
@@ -289,13 +285,11 @@
 
 (defn ingest-maybe-async!
   "Update or create any search index entries related to the given updates.
-  Will be async unless *force-sync* is true."
+  Enqueues updates for async processing via the persistent queue."
   [updates]
   (when-not *disable-updates*
-    (if *force-sync*
-      (bulk-ingest! updates)
-      ;; Serialize where-clauses as EDN strings so they survive JSON round-tripping
-      ;; through the appdb queue (keywords would otherwise become strings).
-      (let [serialized (mapv (fn [[model where]] [model (pr-str where)]) updates)]
-        (mq/with-queue queue-name [q]
-          (mq/put q serialized))))))
+    ;; Serialize where-clauses as EDN strings so they survive JSON round-tripping
+    ;; through the appdb queue (keywords would otherwise become strings).
+    (let [serialized (mapv (fn [[model where]] [model (pr-str where)]) updates)]
+      (mq/with-queue queue-name [q]
+        (mq/put q serialized)))))

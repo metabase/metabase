@@ -11,7 +11,6 @@
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.normalize :as lib.normalize]
-   [metabase.search.ingestion :as search.ingestion]
    [metabase.search.test-util :as search.tu]
    [metabase.session.models.session :as session.models]
    [metabase.test :as mt]
@@ -289,14 +288,13 @@
 
 (deftest search-test
   (with-agent-api-setup!
-    (binding [search.ingestion/*force-sync* true]
-      (search.tu/with-new-search-if-available-otherwise-legacy
-        (mt/with-temp [:model/Table _ {:name "AgentSearchTestTable"}]
-          (testing "Returns search results for term queries"
-            (is (=? {:data        [{:type "table" :name "AgentSearchTestTable"}]
-                     :total_count 1}
-                    (agent-client :rasta :post 200 "agent/v1/search"
-                                  {:term_queries ["AgentSearchTestTable"]})))))))))
+    (search.tu/with-new-search-if-available-otherwise-legacy
+      (mt/with-temp [:model/Table _ {:name "AgentSearchTestTable"}]
+        (testing "Returns search results for term queries"
+          (is (=? {:data        [{:type "table" :name "AgentSearchTestTable"}]
+                   :total_count 1}
+                  (agent-client :rasta :post 200 "agent/v1/search"
+                                {:term_queries ["AgentSearchTestTable"]}))))))))
 
 (defn- decode-query
   "Decode a base64-encoded query response to a Clojure map, then normalize it so lib functions work."
@@ -475,14 +473,13 @@
 
 (deftest search-finds-metrics-test
   (with-agent-api-setup!
-    (binding [search.ingestion/*force-sync* true]
-      (search.tu/with-new-search-if-available-otherwise-legacy
-        (mt/with-temp [:model/Card _metric {:name          "AgentSearchTestMetric"
-                                            :type          :metric
-                                            :database_id   (mt/id)
-                                            :dataset_query (orders-count-query)}]
-          (testing "Returns metrics in search results"
-            (is (=? {:data        [{:type "metric" :name "AgentSearchTestMetric"}]
-                     :total_count 1}
-                    (agent-client :rasta :post 200 "agent/v1/search"
-                                  {:term_queries ["AgentSearchTestMetric"]})))))))))
+    (search.tu/with-new-search-if-available-otherwise-legacy
+      (mt/with-temp [:model/Card _metric {:name          "AgentSearchTestMetric"
+                                          :type          :metric
+                                          :database_id   (mt/id)
+                                          :dataset_query (orders-count-query)}]
+        (testing "Returns metrics in search results"
+          (is (=? {:data        [{:type "metric" :name "AgentSearchTestMetric"}]
+                   :total_count 1}
+                  (agent-client :rasta :post 200 "agent/v1/search"
+                                {:term_queries ["AgentSearchTestMetric"]}))))))))

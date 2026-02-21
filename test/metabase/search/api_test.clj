@@ -18,7 +18,6 @@
    [metabase.search.appdb.index :as search.index]
    [metabase.search.config :as search.config]
    [metabase.search.core :as search]
-   [metabase.search.ingestion :as search.ingestion]
    [metabase.search.test-util :as search.tu]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
@@ -36,8 +35,7 @@
 
 (def ^:private default-collection {:id false :name nil :authority_level nil :type nil})
 
-(use-fixtures :each (fn [thunk] (binding [search.ingestion/*force-sync* true]
-                                  (search.tu/with-new-search-if-available-otherwise-legacy (thunk)))))
+(use-fixtures :each (fn [thunk] (search.tu/with-new-search-if-available-otherwise-legacy (thunk))))
 
 (def ^:private default-search-row
   {:archived                   false

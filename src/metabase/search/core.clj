@@ -133,8 +133,7 @@
 (defn reindex!
   "Populate a new index, and make it active. Simultaneously updates the current index.
   Returns a future that will complete when the reindexing is done.
-  Respects `search.ingestion/*force-sync*` and waits for the future if it's true.
-  Alternately, if `:async?` is false, it will also run synchronously."
+  If `:async?` is false, it will run synchronously."
   [& {:keys [async?] :or {async? true} :as opts}]
   (let [f (fn []
             (try
@@ -143,7 +142,7 @@
                 (log/error e "Reindex failed")
                 (analytics/inc! :metabase-search/index-error)
                 (throw e))))]
-    (if (or search.ingestion/*force-sync* (not async?))
+    (if (not async?)
       (doto (promise) (deliver (f)))
       (future (f)))))
 

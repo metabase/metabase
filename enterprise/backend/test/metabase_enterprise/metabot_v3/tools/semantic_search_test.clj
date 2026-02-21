@@ -19,9 +19,9 @@
   `(mt/with-additional-premium-features #{:semantic-search}
      (when (search.engine/supported-engine? :search.engine/semantic)
        (semantic.tu/with-mock-embeddings ~mock-embeddings
-         (binding [search.ingestion/*disable-updates* false
-                   search.ingestion/*force-sync* true]
-           ~@body)))))
+         (binding [search.ingestion/*disable-updates* false]
+           (search.tu/with-sync-search-indexing
+             ~@body))))))
 
 (defmacro with-and-without-semantic-search! [mock-embeddings & body]
   `(do ~@body (with-semantic-search-if-available! ~mock-embeddings ~@body)))

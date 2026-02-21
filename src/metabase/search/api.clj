@@ -6,12 +6,10 @@
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.api.open-api :as open-api]
-   [metabase.config.core :as config]
    [metabase.permissions.core :as perms]
    [metabase.request.core :as request]
    [metabase.search.config :as search.config]
    [metabase.search.core :as search]
-   [metabase.search.ingestion :as ingestion]
    [metabase.search.settings :as search.settings]
    [metabase.search.task.search-index :as task.search-index]
    [metabase.task.core :as task]
@@ -88,8 +86,7 @@
   []
   (api/check-superuser)
   (if (search/supports-index?)
-    ;; The job appears to wait on the main thread when run from tests, so, unfortunately, testing this branch is hard.
-    (if (and (task/job-exists? task.search-index/reindex-job-key) (or (not ingestion/*force-sync*) config/is-test?))
+    (if (task/job-exists? task.search-index/reindex-job-key)
       (do (task/trigger-now! task.search-index/reindex-job-key) {:message "task triggered"})
       (do (search/reindex!) {:message "reindex triggered"}))
 

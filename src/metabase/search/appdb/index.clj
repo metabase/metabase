@@ -12,7 +12,6 @@
    [metabase.search.appdb.specialization.postgres :as postgres]
    [metabase.search.config :as search.config]
    [metabase.search.engine :as search.engine]
-   [metabase.search.ingestion :as search.ingestion]
    [metabase.search.models.search-index-metadata :as search-index-metadata]
    [metabase.search.spec :as search.spec]
    [metabase.util :as u]
@@ -291,7 +290,7 @@
         (log/warnf "Unable to find table %s and no longer tracking it as pending", table)
         (swap! *indexes* assoc :pending nil))))
 
-  (let [reindexing? (and (= :search/reindexing context) (not search.ingestion/*force-sync*))
+  (let [reindexing? (= :search/reindexing context)
         do-writes   (fn []
                       (let [active-table    (active-table)
                             entries          (map document->entry documents)
@@ -384,12 +383,10 @@
               (swap! *indexes* assoc :pending nil))
             (maybe-create-pending!)
             (activate-table!))]
-    (if search.ingestion/*force-sync*
-      (reset-logic)
-      ;; Creates and tracks tables with a unique transaction so the empty tables are available to other threads
-      ;; even while the initial startup and data load may be happening
-      (t2/with-connection [_ (mdb/data-source)]
-        (reset-logic)))))
+    ;; Creates and tracks tables with a unique transaction so the empty tables are available to other threads
+    ;; even while the initial startup and data load may be happening
+    (t2/with-connection [_ (mdb/data-source)]
+      (reset-logic))))
 
 (defn ensure-ready!
   "Ensure the index is ready to be populated. Return false if it was already ready."
