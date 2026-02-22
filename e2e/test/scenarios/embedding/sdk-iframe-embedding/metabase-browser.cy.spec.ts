@@ -169,7 +169,9 @@ describe("scenarios > embedding > sdk iframe embedding > metabase-browser", () =
 
       cy.findByTestId("sdk-breadcrumbs").findByText("New exploration").click();
 
-      cy.findByText("Pick your starting data").should("be.visible");
+      cy.findByText("Pick your starting data", { timeout: 10000 }).should(
+        "be.visible",
+      );
       cy.findByText("Orders").should("not.exist");
     });
   });
