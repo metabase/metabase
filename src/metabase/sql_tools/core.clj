@@ -7,6 +7,7 @@
    Note: Implementation namespaces (macaw.core, sqlglot.core) are loaded via
    metabase.sql-tools.init to avoid circular dependencies."
   (:require
+   [metabase.sql-tools.common :as common]
    [metabase.sql-tools.interface :as interface]
    [metabase.sql-tools.metrics :as metrics]
    [metabase.sql-tools.settings :as sql-tools.settings]
@@ -66,7 +67,10 @@
   replace-names-impl
   referenced-tables-raw-impl
   simple-query?-impl
-  add-into-clause-impl])
+  add-into-clause-impl]
+ [common
+  resolve-field
+  find-table-or-transform])
 
 (defn parser-backend
   "Get current value of sql-tools-parser-backend."
