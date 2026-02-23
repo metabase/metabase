@@ -273,10 +273,11 @@ export type SettingsExtra = {
   transformedSeries?: RawSeries | TransformedSeries;
   dashboardId?: DashboardId;
   series?: Series;
-  // [key: string]: unknown;
+  settings?: VisualizationSettings;
+  // [key: string]: unknown; // TODO
 };
 
-export type VisualizationSettingDefinition<T, TValue, TProps = void> = {
+export type VisualizationSettingDefinition<T, TValue, TProps> = {
   section?: string;
   title?: string;
   group?: string;
@@ -340,7 +341,7 @@ export type VisualizationSettingDefinition<T, TValue, TProps = void> = {
 };
 
 export type VisualizationSettingsDefinitions = {
-  [key: string]: VisualizationSettingDefinition<unknown, unknown>;
+  [key: string]: VisualizationSettingDefinition<unknown, unknown, unknown>;
 };
 
 export type VisualizationGridSize = {

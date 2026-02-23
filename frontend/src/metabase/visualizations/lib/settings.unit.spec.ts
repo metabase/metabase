@@ -6,10 +6,9 @@ import {
   getComputedSettings,
   getSettingsWidgets,
 } from "metabase/visualizations/lib/settings";
-import { createMockColumn } from "metabase-types/api/mocks";
 
 describe("settings framework", () => {
-  const mockObject = createMockColumn();
+  const mockObject = "[mockObject]";
 
   describe("getComputedSettings", () => {
     it("should return stored settings for setting definitions", () => {
@@ -174,7 +173,7 @@ describe("settings framework", () => {
         getClickBehaviorSettings({
           column_settings: {
             col1: {
-              click_behavior: { type: "action" },
+              click_behavior: { type: "action", actionType: "insert" },
               not_click_behavior: { type: "another stub" },
             },
           },

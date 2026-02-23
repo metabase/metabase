@@ -26,6 +26,7 @@ import type {
 } from "metabase/visualizations/types";
 import type Question from "metabase-lib/v1/Question";
 import type { ColumnSettings, VisualizationSettings } from "metabase-types/api";
+import { isObject } from "metabase-types/guards";
 
 const WIDGETS: Record<string, React.ComponentType<any>> = {
   input: ChartSettingInput,
@@ -42,7 +43,7 @@ const WIDGETS: Record<string, React.ComponentType<any>> = {
   multiselect: ChartSettingMultiSelect,
 };
 
-export function getComputedSettings<T extends object>(
+export function getComputedSettings<T>(
   settingsDefs: VisualizationSettingsDefinitions,
   object: T,
   storedSettings: VisualizationSettings,
@@ -78,7 +79,7 @@ export function getComputedSettings<T extends object>(
   return computedSettings;
 }
 
-function getComputedSetting<T extends object>(
+function getComputedSetting<T>(
   computedSettings: ComputedVisualizationSettings,
   settingDefs: VisualizationSettingsDefinitions,
   settingId: keyof ComputedVisualizationSettings,
@@ -151,13 +152,11 @@ function getComputedSetting<T extends object>(
   computedSettings[settingId] = undefined;
 }
 
-function isObjectWithRaw<T extends object>(
-  object: T,
-): object is T & { _raw?: T } {
-  return "_raw" in object;
+function isObjectWithRaw<T>(object: T): object is T & { _raw?: T } {
+  return isObject(object) && "_raw" in object;
 }
 
-export function getSettingsWidgets<T extends object>(
+export function getSettingsWidgets<T>(
   settingDefs: VisualizationSettingsDefinitions,
   storedSettings: VisualizationSettings,
   computedSettings: ComputedVisualizationSettings,
@@ -183,7 +182,7 @@ export function getSettingsWidgets<T extends object>(
     .filter((widget) => widget.widget);
 }
 
-function getSettingWidget<T extends object, TValue, TProps>(
+function getSettingWidget<T, TValue, TProps>(
   settingDefs: VisualizationSettingsDefinitions,
   settingId: keyof ComputedVisualizationSettings,
   storedSettings: VisualizationSettings,
@@ -194,7 +193,7 @@ function getSettingWidget<T extends object, TValue, TProps>(
     question?: Question,
   ) => void,
   extra: SettingsExtra = {},
-) {
+): VisualizationSettingDefinition<T, TValue, TProps> {
   const settingDefUntyped = settingDefs[settingId] ?? {};
   const settingDef = settingDefUntyped as VisualizationSettingDefinition<
     T,
