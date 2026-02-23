@@ -81,7 +81,7 @@ describe("scenarios > filters > sql filters > field filter > Date", () => {
     });
   });
 
-  it.only("when set through the filter widget", () => {
+  it("when set through the filter widget", () => {
     dateFilters.forEach(([subType, { value, representativeResult }]) => {
       cy.log(`Make sure it works for ${subType.toUpperCase()}`);
 
@@ -94,8 +94,20 @@ describe("scenarios > filters > sql filters > field filter > Date", () => {
       SQLFilter.runQuery();
 
       cy.findByTestId("query-visualization-root").within(() => {
-        // Scroll to ensure target element is rendered due to table virtualization
-        H.tableInteractiveScrollContainer().scrollTo(0, 300);
+        const findWithScroll = (text, pos = 0) => {
+          cy.get("body").then(($body) => {
+            if ($body.find(`:contains("${text}")`).length > 0) {
+              return;
+            }
+            if (pos > 3000) {
+              return;
+            }
+            H.tableInteractiveScrollContainer().scrollTo(0, pos + 300);
+            cy.wait(200);
+            findWithScroll(text, pos + 300);
+          });
+        };
+        findWithScroll(representativeResult);
         cy.findByText(representativeResult);
       });
     });
@@ -119,10 +131,20 @@ describe("scenarios > filters > sql filters > field filter > Date", () => {
       SQLFilter.runQuery();
 
       cy.findByTestId("query-visualization-root").within(() => {
-        // Scroll to ensure target element is rendered due to table virtualization
-        cy.wait(500);
-        H.tableInteractiveScrollContainer().scrollTo(0, 800);
-        cy.wait(500);
+        const findWithScroll = (text, pos = 0) => {
+          cy.get("body").then(($body) => {
+            if ($body.find(`:contains("${text}")`).length > 0) {
+              return;
+            }
+            if (pos > 3000) {
+              return;
+            }
+            H.tableInteractiveScrollContainer().scrollTo(0, pos + 300);
+            cy.wait(200);
+            findWithScroll(text, pos + 300);
+          });
+        };
+        findWithScroll(representativeResult);
         cy.findByText(representativeResult);
       });
     });
