@@ -141,7 +141,7 @@
        (connection-flavor conn)
        (database-flavor db))))
 
-(mu/defn- mariadb-connection?
+(mu/defn- mariadb-connection?  :- :boolean
   "Returns true if the database is MariaDB."
   [conn :- (lib.schema.common/instance-of-class Connection)]
   (= (connection-flavor conn) "MariaDB"))
