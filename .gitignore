@@ -92,7 +92,6 @@ coverage-summary.json
 junit.xml
 pom.xml
 pom.xml.asc
-profiles.clj
 target/checksum.txt
 xcshareddata
 xcuserdata
@@ -171,4 +170,3 @@ CLAUDE.local.md
 /resources/python-sources/sqlglot/
 /resources/python-sources/sqlglot-*.dist-info/
 __pycache__/
-
