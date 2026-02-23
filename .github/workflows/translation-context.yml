@@ -1,7 +1,6 @@
 name: Crowdin Context Harvester
 
 on:
-  push: # TEMPORARY - FOR TESTING ONLY
   workflow_dispatch:
   schedule:
     - cron: "30 6 * * 2" # Tuesday at 06:30 UTC, one hour after translation-update.yml
