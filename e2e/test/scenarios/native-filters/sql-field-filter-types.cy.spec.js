@@ -81,7 +81,7 @@ describe("scenarios > filters > sql filters > field filter > Date", () => {
     });
   });
 
-  it.only("when set through the filter widget", () => {
+  it("when set through the filter widget", () => {
     dateFilters.forEach(([subType, { value, representativeResult }]) => {
       cy.log(`Make sure it works for ${subType.toUpperCase()}`);
 
@@ -96,7 +96,6 @@ describe("scenarios > filters > sql filters > field filter > Date", () => {
       cy.findByTestId("query-visualization-root").within(() => {
         // Scroll to ensure target element is rendered due to table virtualization
         H.tableInteractiveScrollContainer().scrollTo(0, 300);
-        cy.wait(500);
         cy.findByText(representativeResult);
       });
     });
