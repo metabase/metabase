@@ -60,10 +60,11 @@
 (defn- upgrade-field-refs-in-stage
   [query stage-number]
   (let [stage (lib.util/query-stage query stage-number)
-        visible-columns (when ((some-fn :fields :filters :expressions :aggregation :breakout) stage)
+        visible-columns (when ((some-fn :fields :filters :expressions :aggregation :breakout :order-by) stage)
                           (lib.metadata.calculation/visible-columns query stage-number)))
-        orderable-columns (when (:order-by stage)
-                            (lib.order-by/orderable-columns query stage-number))]
+        orderable-columns (if ((some-fn :aggregation :breakout) stage)
+                            (lib.order-by/orderable-columns query stage-number)
+                            visible-columns)]
     (-> stage
       (u/update-some :fields upgrade-field-refs-in-clauses query stage-number visible-columns)
       (u/update-some :joins upgrade-field-refs-in-join query stage-number visible-columns)
