@@ -784,8 +784,8 @@
 
                           :TOOL_CALL
                           (when on-tool-start
-                            (on-tool-start {:id   (:toolCallId content)
-                                            :name (:toolName content)}))
+                            (on-tool-start {:id        (:toolCallId content)
+                                            :tool-name (:toolName content)}))
 
                           :TOOL_RESULT
                           (when on-tool-end
