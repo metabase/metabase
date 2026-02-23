@@ -91,6 +91,15 @@
       (str/replace mb-start-re "[[")
       (str/replace mb-stop-re "]]")))
 
+(defn- card-slug
+  "Generate a slug for a card name, matching the frontend `slugg` library behavior.
+   Collapses consecutive hyphens and trims leading/trailing hyphens."
+  [card-name]
+  (-> (u/slugify card-name)
+      (str/replace "_" "-")
+      (str/replace #"-{2,}" "-")
+      (str/replace #"^-|-$" "")))
+
 ;;; ====================== Table Tag Helpers ======================
 ;;;
 ;;; Table tags are `:type :table` template tags like {{my_table}} where
@@ -177,8 +186,8 @@
    Returns {:sql new-sql :template-tags new-tags}."
   [sql template-tags old-table-id new-card-id new-card-name]
   (let [table-tags   (find-table-tags template-tags old-table-id)
-        card-slug    (-> (u/slugify new-card-name) (str/replace "_" "-"))
-        card-tag-key (str "#" new-card-id "-" card-slug)]
+        slug         (card-slug new-card-name)
+        card-tag-key (str "#" new-card-id "-" slug)]
     (if (empty? table-tags)
       {:sql sql :template-tags template-tags}
       ;; Replace each table tag with a card tag
@@ -295,9 +304,8 @@
         sql            (get-in query [:stages 0 :native])
         template-tags  (get-in query [:stages 0 :template-tags])
         ;; Generate card tag with slug
-        card-slug      (-> (u/slugify (:name new-card))
-                           (str/replace "_" "-"))
-        card-tag       (str "#" new-card-id "-" card-slug)
+        slug           (card-slug (:name new-card))
+        card-tag       (str "#" new-card-id "-" slug)
         card-ref       (str "{{" card-tag "}}")
         ;; 1. Replace raw SQL table name with card reference
         old-spec       (cond-> {:table (:name old-table)}
@@ -370,11 +378,11 @@
         database    (t2/select-one :model/Database :id (:database_id old-card))
         _driver     (:engine database)
         sql         (get-in query [:stages 0 :native])
-        parsed      (params.parse/parse sql)
         ;; Use schema-qualified name when the target table has a schema
         table-ref   (if (:schema new-table)
                       (str (:schema new-table) "." (:name new-table))
                       (:name new-table))
+        parsed      (params.parse/parse sql)
         new-sql     (replace-card-refs-with-table parsed old-card-id table-ref)
         old-tag-key (find-tag-by-card-id (get-in query [:stages 0 :template-tags]) old-card-id)]
     (cond-> query
@@ -387,8 +395,7 @@
   [tags old-card-id new-card-id new-card-name]
   (let [old-tag (str "#" old-card-id)
         new-slug (when new-card-name
-                   (-> (u/slugify new-card-name)
-                       (str/replace "_" "-")))]
+                   (card-slug new-card-name))]
     (reduce-kv
      (fn [acc k v]
        (if (= (:card-id v) old-card-id)
@@ -414,8 +421,7 @@
   [parsed old-card-id new-card-id new-card-name]
   (let [old-tag (str "#" old-card-id)
         new-slug (when new-card-name
-                   (-> (u/slugify new-card-name)
-                       (str/replace "_" "-")))]
+                   (card-slug new-card-name))]
     (apply str
            (for [token parsed]
              (cond
@@ -474,3 +480,4 @@
     [:card :table]  (replace-card-with-table-in-native query old-source-id new-source-id)
     ;; No-op for unknown combinations
     query))
+
