@@ -162,6 +162,148 @@
                        lib/visible-columns
                        (map #(lib/display-info base -1 %))))))))))
 
+(deftest ^:parallel nested-field-display-name-via-model-test
+  (testing "Nested field display names should not be doubled when querying a model (#QUE-XXXX)"
+    (let [;; Build a model whose result-metadata has the nested display-names (simulating what the QP produces)
+          model-id        100
+          model-card      {:lib/type        :metadata/card
+                           :id              model-id
+                           :database-id     (meta/id)
+                           :name            "Model with nested fields"
+                           :type            :model
+                           :dataset-query   {:database (meta/id)
+                                             :type     :query
+                                             :query    {:source-table (meta/id :venues)}}
+                           ;; result-metadata mimics what the QP stores: display-name is already
+                           ;; the nested form, and :name is the dotted form
+                           :result-metadata [{:lib/type     :metadata/column
+                                              :id           (grandparent-parent-child-id :grandparent)
+                                              :table-id     (meta/id :venues)
+                                              :name         "grandparent"
+                                              :display-name "Grandparent"
+                                              :base-type    :type/Text}
+                                             {:lib/type     :metadata/column
+                                              :id           (grandparent-parent-child-id :parent)
+                                              :table-id     (meta/id :venues)
+                                              :name         "grandparent.parent"
+                                              :display-name "Grandparent: Parent"
+                                              :base-type    :type/Text}
+                                             {:lib/type     :metadata/column
+                                              :id           (grandparent-parent-child-id :child)
+                                              :table-id     (meta/id :venues)
+                                              :name         "grandparent.parent.child"
+                                              :display-name "Grandparent: Parent: Child"
+                                              :base-type    :type/Text}]}
+          mp              (lib/composed-metadata-provider
+                           grandparent-parent-child-metadata-provider
+                           (lib.tu/mock-metadata-provider {:cards [model-card]}))
+          query           (lib/query mp (lib.metadata/card mp model-id))
+          cols            (lib/visible-columns query)
+          display-names   (mapv #(lib/display-name query %) cols)]
+      (testing "display-name should NOT include the parent prefix twice"
+        (is (= ["Grandparent"
+                "Grandparent: Parent"
+                "Grandparent: Parent: Child"]
+               display-names)))
+      (testing "display-info should also be correct"
+        (is (=? [{:display-name "Grandparent"}
+                 {:display-name "Grandparent: Parent"}
+                 {:display-name "Grandparent: Parent: Child"}]
+                (mapv #(lib/display-info query %) cols)))))))
+
+(deftest ^:parallel nested-field-display-name-via-saved-question-test
+  (testing "Nested field display names should not be doubled when querying a saved question"
+    (let [card-id         101
+          card            {:lib/type        :metadata/card
+                           :id              card-id
+                           :database-id     (meta/id)
+                           :name            "Question with nested fields"
+                           :type            :question
+                           :dataset-query   {:database (meta/id)
+                                             :type     :query
+                                             :query    {:source-table (meta/id :venues)}}
+                           :result-metadata [{:lib/type     :metadata/column
+                                              :id           (grandparent-parent-child-id :grandparent)
+                                              :table-id     (meta/id :venues)
+                                              :name         "grandparent"
+                                              :display-name "Grandparent"
+                                              :base-type    :type/Text}
+                                             {:lib/type     :metadata/column
+                                              :id           (grandparent-parent-child-id :parent)
+                                              :table-id     (meta/id :venues)
+                                              :name         "grandparent.parent"
+                                              :display-name "Grandparent: Parent"
+                                              :base-type    :type/Text}
+                                             {:lib/type     :metadata/column
+                                              :id           (grandparent-parent-child-id :child)
+                                              :table-id     (meta/id :venues)
+                                              :name         "grandparent.parent.child"
+                                              :display-name "Grandparent: Parent: Child"
+                                              :base-type    :type/Text}]}
+          mp              (lib/composed-metadata-provider
+                           grandparent-parent-child-metadata-provider
+                           (lib.tu/mock-metadata-provider {:cards [card]}))
+          query           (lib/query mp (lib.metadata/card mp card-id))
+          cols            (lib/visible-columns query)
+          display-names   (mapv #(lib/display-name query %) cols)]
+      (testing "display-name should NOT include the parent prefix twice"
+        (is (= ["Grandparent"
+                "Grandparent: Parent"
+                "Grandparent: Parent: Child"]
+               display-names))))))
+
+(deftest ^:parallel nested-field-display-name-returned-columns-test
+  (testing "returned-columns should produce correct nested display names when using lib/display-name"
+    (let [base  (lib/query grandparent-parent-child-metadata-provider (meta/table-metadata :venues))
+          cols  (lib/returned-columns base)]
+      (is (= ["Grandparent: Parent: Child"
+              "Grandparent"
+              "Grandparent: Parent"]
+             (mapv #(lib/display-name base %) cols))))))
+
+(deftest ^:parallel nested-field-display-name-via-model-with-leaf-display-names-test
+  (testing "model with leaf display-names in result-metadata (matching QP output) should still nest correctly"
+    (let [model-id        102
+          ;; This simulates what happens in practice: the QP stores leaf display-names in
+          ;; result-metadata, not the nested form
+          model-card      {:lib/type        :metadata/card
+                           :id              model-id
+                           :database-id     (meta/id)
+                           :name            "Model with nested fields (leaf display-names)"
+                           :type            :model
+                           :dataset-query   {:database (meta/id)
+                                             :type     :query
+                                             :query    {:source-table (meta/id :venues)}}
+                           :result-metadata [{:lib/type     :metadata/column
+                                              :id           (grandparent-parent-child-id :grandparent)
+                                              :table-id     (meta/id :venues)
+                                              :name         "grandparent"
+                                              :display-name "Grandparent"
+                                              :base-type    :type/Text}
+                                             {:lib/type     :metadata/column
+                                              :id           (grandparent-parent-child-id :parent)
+                                              :table-id     (meta/id :venues)
+                                              :name         "grandparent.parent"
+                                              :display-name "Parent"
+                                              :base-type    :type/Text}
+                                             {:lib/type     :metadata/column
+                                              :id           (grandparent-parent-child-id :child)
+                                              :table-id     (meta/id :venues)
+                                              :name         "grandparent.parent.child"
+                                              :display-name "Child"
+                                              :base-type    :type/Text}]}
+          mp              (lib/composed-metadata-provider
+                           grandparent-parent-child-metadata-provider
+                           (lib.tu/mock-metadata-provider {:cards [model-card]}))
+          query           (lib/query mp (lib.metadata/card mp model-id))
+          cols            (lib/visible-columns query)
+          display-names   (mapv #(lib/display-name query %) cols)]
+      (testing "display-names should be correctly nested"
+        (is (= ["Grandparent"
+                "Grandparent: Parent"
+                "Grandparent: Parent: Child"]
+               display-names))))))
+
 (deftest ^:parallel joined-field-display-name-test
   (let [query (-> (lib/query meta/metadata-provider (meta/table-metadata :venues))
                   (lib/join (lib/join-clause (meta/table-metadata :categories)

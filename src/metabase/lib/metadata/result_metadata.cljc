@@ -396,6 +396,16 @@
         (lib.field.util/add-source-and-desired-aliases-xform query)
         cols))
 
+(defn- add-nested-display-names
+  "Compute nested display-names for columns with `:parent-id`. Raw field metadata from the metadata provider has leaf
+  display-names (e.g. \"Child\"), but QP results should have the full nested path (e.g. \"Grandparent: Parent: Child\")."
+  [query cols]
+  (mapv (fn [col]
+          (if (:parent-id col)
+            (assoc col :display-name (lib.metadata.calculation/display-name query -1 col))
+            col))
+        cols))
+
 (mu/defn- add-extra-metadata :- [:sequential ::kebab-cased-map]
   "Add extra metadata to the [[lib/returned-columns]] that only comes back with QP results metadata."
   [query        :- ::lib.schema/query
@@ -423,6 +433,7 @@
            deduplicate-names
            (add-legacy-field-refs query)
            (merge-model-metadata query)
+           (add-nested-display-names query)
            (add-source-and-desired-aliases query)))))
 
 (defn- add-unit [col]
