@@ -163,17 +163,51 @@
         (validates? mp driver 18 empty?))
       (testing "Card reference expanded to subquery - invalid column"
         (validates? mp driver 19
-                    #{(lib/missing-column-error "DESCRIPTION")}))
+                    #{(merge (lib/missing-column-error "DESCRIPTION")
+                             {:source-entity-type :card
+                              :source-entity-id   1})}))
       (testing "Card reference with alias - valid column"
         (validates? mp driver 20 empty?))
       (testing "Card reference with alias - invalid column"
         (validates? mp driver 21
-                    #{(lib/missing-column-error "PASSWORD")}))
+                    #{(merge (lib/missing-column-error "PASSWORD")
+                             {:source-entity-type :card
+                              :source-entity-id   1})}))
       (testing "Wildcard selection from card reference"
         (validates? mp driver 22 empty?))
       (testing "Invalid column from aliased card"
         (validates? mp driver 23
-                    #{(lib/missing-column-error "LATITUDE")})))))
+                    #{(merge (lib/missing-column-error "LATITUDE")
+                             {:source-entity-type :card
+                              :source-entity-id   1})})))))
+
+(deftest ^:parallel validate-card-reference-multi-card-test
+  (testing "Source attribution with multiple card references"
+    (let [mp (deps.tu/default-metadata-provider)
+          driver (:engine (lib.metadata/database mp))]
+      (testing "Multi-card query, unqualified - source is unknown"
+        (validates? mp driver 24
+                    #{(merge (lib/missing-column-error "BAD")
+                             {:source-entity-type :unknown})}))
+      (testing "Multi-card query, qualified - source attributed to specific card"
+        (validates? mp driver 25
+                    #{(merge (lib/missing-column-error "BAD")
+                             {:source-entity-type :card
+                              :source-entity-id   1})})))))
+
+(deftest ^:parallel validate-card-reference-mixed-table-card-test
+  (testing "Source attribution with mixed table and card references"
+    (let [mp (deps.tu/default-metadata-provider)
+          driver (:engine (lib.metadata/database mp))]
+      (testing "Mixed table+card, unqualified - source is unknown"
+        (validates? mp driver 26
+                    #{(merge (lib/missing-column-error "BAD")
+                             {:source-entity-type :unknown})}))
+      (testing "Mixed table+card, qualified to table - source attributed to table"
+        (validates? mp driver 27
+                    #{(merge (lib/missing-column-error "BAD")
+                             {:source-entity-type :table
+                              :source-entity-id   (meta/id :products)})})))))
 
 (defn- check-result-metadata [driver mp query expected]
   (is (=? (normalize-result-metadata expected)

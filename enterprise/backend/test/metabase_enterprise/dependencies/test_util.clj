@@ -121,5 +121,13 @@
                        {:id    22
                         :query "SELECT * FROM {{#1}}"}
                        {:id    23
-                        :query "SELECT p.LATITUDE FROM {{#1}} AS p"}])
+                        :query "SELECT p.LATITUDE FROM {{#1}} AS p"}
+                       {:id    24
+                        :query "SELECT BAD FROM {{#1}} AS c1 JOIN {{#2}} AS c2 ON c1.ID = c2.ID"}
+                       {:id    25
+                        :query "SELECT c1.BAD FROM {{#1}} AS c1 JOIN {{#2}} AS c2 ON c1.ID = c2.ID"}
+                       {:id    26
+                        :query "SELECT BAD FROM products JOIN {{#1}} AS c1 ON products.ID = c1.ID"}
+                       {:id    27
+                        :query "SELECT products.BAD FROM products JOIN {{#1}} AS c1 ON products.ID = c1.ID"}])
       :snippets snippets})))
