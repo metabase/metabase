@@ -273,12 +273,13 @@ export type SettingsExtra = {
   enableEntityNavigation?: boolean;
   transformedSeries?: RawSeries | TransformedSeries;
   dashboardId?: DashboardId;
+  isDashboard?: boolean;
   series?: Series;
   settings?: VisualizationSettings;
   // [key: string]: unknown; // TODO
 };
 
-export type VisualizationSettingDefinition<T, TValue, TProps> = {
+export type VisualizationSettingDefinition<T, TValue, TProps extends object> = {
   section?: string;
   title?: string;
   group?: string;
@@ -341,8 +342,12 @@ export type VisualizationSettingDefinition<T, TValue, TProps> = {
   useRawSeries?: boolean;
 };
 
-export type VisualizationSettingsDefinitions = {
-  [key: string]: VisualizationSettingDefinition<unknown, unknown, unknown>;
+export type VisualizationSettingsDefinitions<
+  T = unknown,
+  TValue = unknown,
+  TProps extends object = object,
+> = {
+  [key: string]: VisualizationSettingDefinition<T, TValue, TProps>;
 };
 
 export type VisualizationGridSize = {

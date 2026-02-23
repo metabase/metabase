@@ -2,7 +2,7 @@ import { ChartNestedSettingSeriesMultiple } from "./ChartNestedSettingSeriesMult
 import type { ChartNestedSettingsSeriesSingleProps } from "./ChartNestedSettingSeriesSingle";
 import ChartNestedSettingSeriesSingle from "./ChartNestedSettingSeriesSingle";
 
-interface ChartNestedSettingSeriesProps
+export interface ChartNestedSettingSeriesProps
   extends ChartNestedSettingsSeriesSingleProps {
   isDashboard: boolean;
 }

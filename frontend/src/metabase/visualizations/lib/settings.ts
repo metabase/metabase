@@ -48,7 +48,7 @@ const WIDGETS: Record<string, React.ComponentType<any>> = {
 };
 
 export function getComputedSettings<T>(
-  settingsDefs: VisualizationSettingsDefinitions,
+  settingsDefs: VisualizationSettingsDefinitions<T>,
   object: T,
   storedSettings: VisualizationSettings,
   extra: SettingsExtra = {},
@@ -85,7 +85,7 @@ export function getComputedSettings<T>(
 
 function getComputedSetting<T>(
   computedSettings: ComputedVisualizationSettings,
-  settingDefs: VisualizationSettingsDefinitions,
+  settingDefs: VisualizationSettingsDefinitions<T>,
   settingId: VisualizationSettingKey,
   object: T,
   storedSettings: VisualizationSettings,
@@ -186,7 +186,7 @@ export function getSettingsWidgets<T>(
     .filter((widget) => widget.widget);
 }
 
-function getSettingWidget<T, TValue, TProps>(
+function getSettingWidget<T, TValue, TProps extends object>(
   settingDefs: VisualizationSettingsDefinitions,
   settingId: VisualizationSettingKey,
   storedSettings: VisualizationSettings,

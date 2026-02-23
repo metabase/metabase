@@ -1,17 +1,24 @@
 import { t } from "ttag";
 import _ from "underscore";
 
+import type { ChartNestedSettingSeriesProps } from "metabase/visualizations/components/settings/ChartNestedSettingSeries";
 import { chartSettingNestedSettings } from "metabase/visualizations/components/settings/ChartSettingNestedSettings";
 import type {
   ComputedVisualizationSettings,
   SettingsExtra,
+  VisualizationSettingDefinition,
   VisualizationSettingsDefinitions,
 } from "metabase/visualizations/types";
-import type { Series, VisualizationSettings } from "metabase-types/api";
+import type {
+  Series,
+  VisualizationSettingKey,
+  VisualizationSettings,
+} from "metabase-types/api";
 
 import { getComputedSettings, getSettingsWidgets } from "../settings";
 
-export interface NestedSettingsOptions<T> {
+export interface NestedSettingsOptions<T, TValue, TProps extends object>
+  extends VisualizationSettingDefinition<T, TValue, TProps> {
   objectName?: string;
   getObjects: (series: Series, settings: VisualizationSettings) => T[];
   getObjectKey: (object: T) => string;
@@ -22,9 +29,9 @@ export interface NestedSettingsOptions<T> {
   getSettingDefinitionsForObject: (
     series: Series,
     object: T,
-  ) => VisualizationSettingsDefinitions;
+  ) => VisualizationSettingsDefinitions<T>;
   getInheritedSettingsForObject?: (object: T) => VisualizationSettings;
-  component: React.ComponentType<Record<string, unknown>>;
+  component: React.ComponentType<ChartNestedSettingSeriesProps>;
   getExtraProps?: (
     series: Series,
     settings: VisualizationSettings,
@@ -33,8 +40,8 @@ export interface NestedSettingsOptions<T> {
   ) => Record<string, unknown>;
 }
 
-export function nestedSettings<T>(
-  id: string,
+export function nestedSettings<T, TValue, TProps extends object>(
+  id: VisualizationSettingKey,
   {
     objectName = "object",
     getObjects,
@@ -44,7 +51,7 @@ export function nestedSettings<T>(
     getInheritedSettingsForObject = () => ({}),
     component,
     ...def
-  }: NestedSettingsOptions<T>,
+  }: NestedSettingsOptions<T, TValue, TProps>,
 ): ComputedVisualizationSettings {
   function getComputedSettingsForObject(
     series: Series,
