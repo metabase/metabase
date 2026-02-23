@@ -14,12 +14,10 @@
         options (lib/parameter-target-dimension-options target)
         filterable-columns (lib/filterable-columns query (:stage-number options))
         matching-column (lib/find-matching-column query (:stage-number options) field-ref filterable-columns)]
-    (when (nil? matching-column)
-      (throw (ex-info "Could not find matching column for parameter mapping."
-                      {:query query
-                       :parameter-mapping target})))
+    (if (nil? matching-column)
+      target
       ;; TODO (eric 2026-02-18): Probably shouldn't build one of these from scratch outside of lib
-    [:dimension (-> matching-column lib/ref) options]))
+      [:dimension (-> matching-column lib/ref) options])))
 
 (defn- upgrade-legacy-target
   [target query]
@@ -27,12 +25,10 @@
         options (lib/parameter-target-dimension-options target)
         filterable-columns (lib/filterable-columns query (:stage-number options))
         matching-column (lib/find-matching-column query (:stage-number options) field-ref filterable-columns)]
-    (when (nil? matching-column)
-      (throw (ex-info "Could not find matching column for parameter mapping."
-                      {:query query
-                       :parameter-mapping target})))
+    (if (nil? matching-column)
+      target
       ;; TODO (eric 2026-02-18): Probably shouldn't build one of these from scratch outside of lib
-    [:dimension (-> matching-column lib/ref lib/->legacy-MBQL) options]))
+      [:dimension (-> matching-column lib/ref lib/->legacy-MBQL) options])))
 
 (defn- upgrade-column-settings-keys
   "Given a card's dataset_query (pMBQL) and a column_settings map (from visualization_settings),
