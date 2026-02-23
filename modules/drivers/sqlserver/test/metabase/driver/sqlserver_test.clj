@@ -26,7 +26,8 @@
    [metabase.test.util.timezone :as test.tz]
    [metabase.util.date-2 :as u.date]
    [metabase.util.honey-sql-2 :as h2x]
-   [next.jdbc]))
+   [next.jdbc]
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
@@ -756,6 +757,19 @@
                 {:filter [:expression "NameEquals" {:base-type                      :type/Boolean
                                                     driver-api/qp.add.source-table  driver-api/qp.add.none
                                                     driver-api/qp.add.desired-alias nil}]})))))))
+
+(mt/defdataset ^:private bigint-identity-data
+  [["bigint_identity_test"
+    [{:field-name "id", :base-type {:native "BIGINT IDENTITY(1,1)"}, :pk? true}
+     {:field-name "name", :base-type :type/Text}]
+    []]])
+
+(deftest bigint-identity-base-type-test
+  (testing "BIGINT IDENTITY columns should sync as :type/BigInteger, not :type/* (#68631)"
+    (mt/test-driver :sqlserver
+      (mt/dataset bigint-identity-data
+        (is (= :type/BigInteger
+               (t2/select-one-fn :base_type :model/Field (mt/id :bigint_identity_test :id))))))))
 
 (deftest ^:parallel type->database-type-test
   (testing "type->database-type multimethod returns correct SQL Server types"
