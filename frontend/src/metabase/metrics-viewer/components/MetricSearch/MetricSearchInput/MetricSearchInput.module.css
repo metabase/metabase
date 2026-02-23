@@ -1,0 +1,21 @@
+.inputWrapper {
+  cursor: text;
+}
+
+.inputField {
+  background: transparent;
+  border: none;
+  padding: 0;
+  height: auto;
+  min-height: unset;
+  font-size: var(--mb-default-font-size);
+}
+
+.inputField::placeholder {
+  color: var(--mb-color-text-tertiary);
+}
+
+.dropdown {
+  z-index: 100;
+  overflow-y: auto;
+}

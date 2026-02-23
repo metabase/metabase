@@ -1,0 +1,7 @@
+.root {
+  cursor: pointer;
+  background-color: var(--mb-color-background-primary);
+  border: 1px solid
+    color-mix(in srgb, var(--mb-color-filter) 40%, var(--mb-color-white));
+  border-radius: 0.75rem;
+}

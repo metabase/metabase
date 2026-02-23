@@ -4,10 +4,6 @@ import { t } from "ttag";
 
 import { isNotNull } from "metabase/lib/types";
 import { BigIntNumberInput } from "metabase/querying/common/components/BigIntNumberInput";
-import {
-  type NumberOrEmptyValue,
-  useCoordinateFilter,
-} from "metabase/querying/filters/hooks/use-coordinate-filter";
 import { Box, Flex, Stack, Text } from "metabase/ui";
 import * as Lib from "metabase-lib";
 
@@ -19,6 +15,7 @@ import { COMBOBOX_PROPS, WIDTH } from "../constants";
 import type { FilterChangeOpts, FilterPickerWidgetProps } from "../types";
 
 import { CoordinateColumnPicker } from "./CoordinateColumnPicker";
+import { type NumberOrEmptyValue, useCoordinateFilter } from "./hooks";
 
 export function CoordinateFilterPicker({
   autoFocus,

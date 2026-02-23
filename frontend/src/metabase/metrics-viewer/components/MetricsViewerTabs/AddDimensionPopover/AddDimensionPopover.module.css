@@ -1,0 +1,17 @@
+.addButton {
+  align-self: center;
+  margin-left: var(--mantine-spacing-xs);
+  color: var(--mb-color-text-medium);
+}
+
+.addButton:hover {
+  color: var(--mb-color-text-dark);
+}
+
+.dropdown {
+  overflow: hidden;
+}
+
+.dimensionPicker {
+  color: var(--mb-color-brand);
+}

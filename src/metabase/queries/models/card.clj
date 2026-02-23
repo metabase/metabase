@@ -25,6 +25,7 @@
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.lib.schema.template-tag :as lib.schema.template-tag]
    [metabase.lib.types.isa :as lib.types]
+   [metabase.metrics.core :as metrics]
    [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
    [metabase.parameters.core :as parameters]
@@ -99,6 +100,58 @@
   (fn [_card target-schema-version]
     target-schema-version))
 
+;;; ------------------------------------------------- Dimension Transforms -------------------------------------------------
+
+(defn- normalize-dimension
+  "Normalize a dimension after JSON parsing, converting string values to keywords."
+  [dim]
+  (cond-> dim
+    (:status dim)         (update :status keyword)
+    (:effective-type dim) (update :effective-type keyword)
+    (:semantic-type dim)  (update :semantic-type keyword)
+    (:sources dim)        (update :sources (fn [srcs] (mapv #(update % :type keyword) srcs)))))
+
+(defn- normalize-target-ref
+  "Normalize a target ref after JSON parsing. Converts [\"field\" {...} id] to [:field {...} id]."
+  [[clause-type opts & rest]]
+  (into [(keyword clause-type)
+         (cond-> opts
+           (:base-type opts)      (update :base-type keyword)
+           (:effective-type opts) (update :effective-type keyword))]
+        rest))
+
+(defn- normalize-dimension-mapping
+  "Normalize a dimension mapping after JSON parsing."
+  [mapping]
+  (-> mapping
+      (update :type keyword)
+      (update :target normalize-target-ref)))
+
+(def ^:private transform-dimensions
+  "Transform for dimensions column. Handles JSON serialization/deserialization."
+  {:in mi/json-in
+   :out (fn [dims]
+          (some->> dims
+                   mi/json-out-with-keywordization
+                   (mapv normalize-dimension)))})
+
+(def ^:private transform-dimension-mappings
+  "Transform for dimension_mappings column. Handles JSON serialization/deserialization."
+  {:in mi/json-in
+   :out (fn [mappings]
+          (some->> mappings
+                   mi/json-out-with-keywordization
+                   (mapv normalize-dimension-mapping)))})
+
+;;; ------------------------------------------------- Metric Dimension Persistence --------------------------------------------------
+
+(defmethod metrics/save-dimensions! :metadata/metric
+  [metric dimensions dimension-mappings]
+  (when-let [metric-id (:id metric)]
+    (t2/update! :model/Card metric-id
+                {:dimensions         dimensions
+                 :dimension_mappings dimension-mappings})))
+
 (t2/deftransforms :model/Card
   {:dataset_query          lib-be/transform-query
    :display                mi/transform-keyword
@@ -108,7 +161,9 @@
    :visualization_settings mi/transform-visualization-settings
    :parameters             parameters/transform-parameters
    :parameter_mappings     parameters/transform-parameter-mappings
-   :type                   mi/transform-keyword})
+   :type                   mi/transform-keyword
+   :dimensions             transform-dimensions
+   :dimension_mappings     transform-dimension-mappings})
 
 (doto :model/Card
   (derive :metabase/model)
@@ -1285,6 +1340,8 @@
           :cache_ttl
           ;; dependencies aren't serialized, so the version of dependency analysis done shouldn't be serialized
           :dependency_analysis_version
+          ;; dimensions are computed from the query and reconciled on read, not serialized
+          :dimensions :dimension_mappings
           ;; temporary column to power rollback from v57 to v56; we can remove it in v58
           :legacy_query]
    :transform

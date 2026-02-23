@@ -1,0 +1,47 @@
+.popoverTarget {
+  cursor: pointer;
+}
+
+.dropdown {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.listSection {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+}
+
+.searchSection {
+  border-bottom: 1px solid var(--mb-color-border);
+}
+
+.dimensionList {
+  max-width: 100%;
+  color: var(--mb-color-brand);
+}
+
+.accordionItem {
+  &:not(:last-child) {
+    border-bottom: 1px solid var(--mb-color-border);
+  }
+}
+
+.accordionControl {
+  padding-block: 14px;
+  cursor: pointer;
+}
+
+.accordionControlExpanded {
+  padding-bottom: 6px;
+}
+
+.accordionHeader {
+  padding-block: 14px;
+}
+
+.accordionHeaderExpanded {
+  padding-bottom: 6px;
+}

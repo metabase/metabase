@@ -1,0 +1,699 @@
+import dayjs, { type Dayjs } from "dayjs";
+
+import * as LibMetric from "cljs/metabase.lib_metric.js";
+import type Metadata from "metabase-lib/v1/metadata/Metadata";
+import type {
+  JsMetricDefinition,
+  MeasureId,
+  MetricId,
+} from "metabase-types/api";
+
+import type {
+  BinningStrategy,
+  BinningStrategyDisplayInfo,
+  BooleanFilterParts,
+  Clause,
+  ClauseDisplayInfo,
+  CoordinateFilterParts,
+  DefaultFilterParts,
+  DimensionDisplayInfo,
+  DimensionMetadata,
+  DimensionValuesInfo,
+  DisplayInfo,
+  Displayable,
+  ExcludeDateFilterParts,
+  FilterClause,
+  FilterParts,
+  MeasureDisplayInfo,
+  MeasureMetadata,
+  MetadataProvider,
+  MetadataProviderable,
+  MetricDefinition,
+  MetricDisplayInfo,
+  MetricMetadata,
+  NumberFilterParts,
+  ProjectionClause,
+  RelativeDateFilterParts,
+  SourceInstance,
+  SpecificDateFilterParts,
+  StringFilterParts,
+  TemporalBucket,
+  TemporalBucketDisplayInfo,
+  TimeFilterParts,
+} from "./types";
+
+export function metadataProvider(jsMetadata: Metadata): MetadataProvider {
+  return LibMetric.metadataProvider(jsMetadata) as MetadataProvider;
+}
+
+export function metricMetadata(
+  metadataProvider: MetadataProviderable,
+  metricId: MetricId,
+): MetricMetadata | null {
+  return LibMetric.metricMetadata(
+    metadataProvider,
+    metricId,
+  ) as MetricMetadata | null;
+}
+
+export function measureMetadata(
+  metadataProvider: MetadataProviderable,
+  measureId: MeasureId,
+): MeasureMetadata | null {
+  return LibMetric.measureMetadata(
+    metadataProvider,
+    measureId,
+  ) as MeasureMetadata | null;
+}
+
+export function fromMetricMetadata(
+  metadataProvider: MetadataProviderable,
+  metricMetadata: MetricMetadata,
+): MetricDefinition {
+  return LibMetric.fromMetricMetadata(
+    metadataProvider,
+    metricMetadata,
+  ) as MetricDefinition;
+}
+
+export function fromMeasureMetadata(
+  metadataProvider: MetadataProviderable,
+  measureMetadata: MeasureMetadata,
+): MetricDefinition {
+  return LibMetric.fromMeasureMetadata(
+    metadataProvider,
+    measureMetadata,
+  ) as MetricDefinition;
+}
+
+export function fromJsMetricDefinition(
+  metadataProvider: MetadataProviderable,
+  jsDefinition: JsMetricDefinition,
+): MetricDefinition {
+  return LibMetric.fromJsMetricDefinition(
+    metadataProvider,
+    jsDefinition,
+  ) as MetricDefinition;
+}
+
+export function toJsMetricDefinition(
+  definition: MetricDefinition,
+): JsMetricDefinition {
+  return LibMetric.toJsMetricDefinition(definition) as JsMetricDefinition;
+}
+
+export function sourceMetricId(definition: MetricDefinition): MetricId | null {
+  return LibMetric.sourceMetricId(definition) as MetricId | null;
+}
+
+export function sourceMetricMetadata(
+  definition: MetricDefinition,
+): MetricMetadata | null {
+  const metricId = sourceMetricId(definition);
+  return metricId != null ? metricMetadata(definition, metricId) : null;
+}
+
+export function sourceMeasureId(
+  definition: MetricDefinition,
+): MeasureId | null {
+  return LibMetric.sourceMeasureId(definition) as MeasureId | null;
+}
+
+export function sourceMeasureMetadata(
+  definition: MetricDefinition,
+): MeasureMetadata | null {
+  const measureId = sourceMeasureId(definition);
+  return measureId != null ? measureMetadata(definition, measureId) : null;
+}
+
+export function sourceMetricOrMeasureMetadata(
+  definition: MetricDefinition,
+): MetricMetadata | MeasureMetadata | null {
+  return sourceMetricMetadata(definition) ?? sourceMeasureMetadata(definition);
+}
+
+export function sourceInstances(
+  definition: MetricDefinition,
+): SourceInstance[] {
+  return LibMetric.sourceInstances(definition) as SourceInstance[];
+}
+
+export function filters(definition: MetricDefinition): FilterClause[];
+export function filters(
+  definition: MetricDefinition,
+  sourceInstance: SourceInstance,
+): FilterClause[];
+export function filters(
+  definition: MetricDefinition,
+  sourceInstance?: SourceInstance,
+): FilterClause[] {
+  if (sourceInstance !== undefined) {
+    return LibMetric.filters(definition, sourceInstance) as FilterClause[];
+  }
+  return LibMetric.filters(definition) as FilterClause[];
+}
+
+export function filterableDimensions(
+  definition: MetricDefinition,
+): DimensionMetadata[];
+export function filterableDimensions(
+  definition: MetricDefinition,
+  sourceInstance: SourceInstance,
+): DimensionMetadata[];
+export function filterableDimensions(
+  definition: MetricDefinition,
+  sourceInstance?: SourceInstance,
+): DimensionMetadata[] {
+  if (sourceInstance !== undefined) {
+    return LibMetric.filterableDimensions(
+      definition,
+      sourceInstance,
+    ) as DimensionMetadata[];
+  }
+  return LibMetric.filterableDimensions(definition) as DimensionMetadata[];
+}
+
+export function filter(
+  definition: MetricDefinition,
+  filterClause: FilterClause,
+): MetricDefinition;
+export function filter(
+  definition: MetricDefinition,
+  filterClause: FilterClause,
+  sourceInstance: SourceInstance,
+): MetricDefinition;
+export function filter(
+  definition: MetricDefinition,
+  filterClause: FilterClause,
+  sourceInstance?: SourceInstance,
+): MetricDefinition {
+  if (sourceInstance !== undefined) {
+    return LibMetric.filter(
+      definition,
+      filterClause,
+      sourceInstance,
+    ) as MetricDefinition;
+  }
+  return LibMetric.filter(definition, filterClause) as MetricDefinition;
+}
+
+export function stringFilterClause(parts: StringFilterParts): FilterClause {
+  return LibMetric.stringFilterClause(parts) as FilterClause;
+}
+
+export function stringFilterParts(
+  definition: MetricDefinition,
+  filterClause: FilterClause,
+): StringFilterParts | null {
+  return LibMetric.stringFilterParts(
+    definition,
+    filterClause,
+  ) as StringFilterParts | null;
+}
+
+export function numberFilterClause(parts: NumberFilterParts): FilterClause {
+  return LibMetric.numberFilterClause(parts) as FilterClause;
+}
+
+export function numberFilterParts(
+  definition: MetricDefinition,
+  filterClause: FilterClause,
+): NumberFilterParts | null {
+  return LibMetric.numberFilterParts(
+    definition,
+    filterClause,
+  ) as NumberFilterParts | null;
+}
+
+export function coordinateFilterClause(
+  parts: CoordinateFilterParts,
+): FilterClause {
+  return LibMetric.coordinateFilterClause(parts) as FilterClause;
+}
+
+export function coordinateFilterParts(
+  definition: MetricDefinition,
+  filterClause: FilterClause,
+): CoordinateFilterParts | null {
+  return LibMetric.coordinateFilterParts(
+    definition,
+    filterClause,
+  ) as CoordinateFilterParts | null;
+}
+
+export function booleanFilterClause(parts: BooleanFilterParts): FilterClause {
+  return LibMetric.booleanFilterClause(parts) as FilterClause;
+}
+
+export function booleanFilterParts(
+  definition: MetricDefinition,
+  filterClause: FilterClause,
+): BooleanFilterParts | null {
+  return LibMetric.booleanFilterParts(
+    definition,
+    filterClause,
+  ) as BooleanFilterParts | null;
+}
+
+export function specificDateFilterClause(
+  parts: SpecificDateFilterParts,
+): FilterClause {
+  return LibMetric.specificDateFilterClause(parts) as FilterClause;
+}
+
+export function specificDateFilterParts(
+  definition: MetricDefinition,
+  filterClause: FilterClause,
+): SpecificDateFilterParts | null {
+  return LibMetric.specificDateFilterParts(
+    definition,
+    filterClause,
+  ) as SpecificDateFilterParts | null;
+}
+
+export function relativeDateFilterClause(
+  parts: RelativeDateFilterParts,
+): FilterClause {
+  return LibMetric.relativeDateFilterClause(parts) as FilterClause;
+}
+
+export function relativeDateFilterParts(
+  definition: MetricDefinition,
+  filterClause: FilterClause,
+): RelativeDateFilterParts | null {
+  return LibMetric.relativeDateFilterParts(
+    definition,
+    filterClause,
+  ) as RelativeDateFilterParts | null;
+}
+
+export function excludeDateFilterClause(
+  parts: ExcludeDateFilterParts,
+): FilterClause {
+  return LibMetric.excludeDateFilterClause(parts) as FilterClause;
+}
+
+export function excludeDateFilterParts(
+  definition: MetricDefinition,
+  filterClause: FilterClause,
+): ExcludeDateFilterParts | null {
+  return LibMetric.excludeDateFilterParts(
+    definition,
+    filterClause,
+  ) as ExcludeDateFilterParts | null;
+}
+
+export function timeFilterClause(parts: TimeFilterParts): FilterClause {
+  return LibMetric.timeFilterClause({
+    ...parts,
+    values: parts.values.map((value) => dayjs(value)),
+  }) as FilterClause;
+}
+
+export function timeFilterParts(
+  definition: MetricDefinition,
+  filterClause: FilterClause,
+): TimeFilterParts | null {
+  const filterParts = LibMetric.timeFilterParts(definition, filterClause);
+  if (!filterParts) {
+    return null;
+  }
+  return {
+    ...filterParts,
+    values: filterParts.values.map((value: Dayjs) => value.toDate()),
+  };
+}
+
+export function defaultFilterClause(parts: DefaultFilterParts): FilterClause {
+  return LibMetric.defaultFilterClause(parts) as FilterClause;
+}
+
+export function defaultFilterParts(
+  definition: MetricDefinition,
+  filterClause: FilterClause,
+): DefaultFilterParts | null {
+  return LibMetric.defaultFilterParts(
+    definition,
+    filterClause,
+  ) as DefaultFilterParts | null;
+}
+
+export function filterParts(
+  definition: MetricDefinition,
+  filterClause: FilterClause,
+): FilterParts | null {
+  return (
+    stringFilterParts(definition, filterClause) ??
+    numberFilterParts(definition, filterClause) ??
+    coordinateFilterParts(definition, filterClause) ??
+    booleanFilterParts(definition, filterClause) ??
+    specificDateFilterParts(definition, filterClause) ??
+    relativeDateFilterParts(definition, filterClause) ??
+    excludeDateFilterParts(definition, filterClause) ??
+    timeFilterParts(definition, filterClause) ??
+    defaultFilterParts(definition, filterClause)
+  );
+}
+
+export function projections(definition: MetricDefinition): ProjectionClause[];
+export function projections(
+  definition: MetricDefinition,
+  sourceMeta: MetricMetadata | MeasureMetadata,
+): ProjectionClause[];
+export function projections(
+  definition: MetricDefinition,
+  sourceMeta?: MetricMetadata | MeasureMetadata,
+): ProjectionClause[] {
+  if (sourceMeta !== undefined) {
+    return LibMetric.projections(definition, sourceMeta) as ProjectionClause[];
+  }
+  return LibMetric.projections(definition) as ProjectionClause[];
+}
+
+export function projectionableDimensions(
+  definition: MetricDefinition,
+): DimensionMetadata[];
+export function projectionableDimensions(
+  definition: MetricDefinition,
+  sourceMeta: MetricMetadata | MeasureMetadata,
+): DimensionMetadata[];
+export function projectionableDimensions(
+  definition: MetricDefinition,
+  sourceMeta?: MetricMetadata | MeasureMetadata,
+): DimensionMetadata[] {
+  if (sourceMeta !== undefined) {
+    return LibMetric.projectionableDimensions(
+      definition,
+      sourceMeta,
+    ) as DimensionMetadata[];
+  }
+  return LibMetric.projectionableDimensions(definition) as DimensionMetadata[];
+}
+
+export function dimensionReference(
+  dimension: DimensionMetadata,
+): ProjectionClause {
+  return LibMetric.dimensionReference(dimension) as ProjectionClause;
+}
+
+export function project(
+  definition: MetricDefinition,
+  dimensionRef: ProjectionClause,
+): MetricDefinition;
+export function project(
+  definition: MetricDefinition,
+  dimensionRef: ProjectionClause,
+  sourceMeta: MetricMetadata | MeasureMetadata,
+): MetricDefinition;
+export function project(
+  definition: MetricDefinition,
+  dimensionRef: ProjectionClause,
+  sourceMeta?: MetricMetadata | MeasureMetadata,
+): MetricDefinition {
+  if (sourceMeta !== undefined) {
+    return LibMetric.project(
+      definition,
+      dimensionRef,
+      sourceMeta,
+    ) as MetricDefinition;
+  }
+  return LibMetric.project(definition, dimensionRef) as MetricDefinition;
+}
+
+export function projectionDimension(
+  definition: MetricDefinition,
+  dimension: ProjectionClause | DimensionMetadata,
+): DimensionMetadata | null {
+  return LibMetric.projectionDimension(
+    definition,
+    dimension,
+  ) as DimensionMetadata | null;
+}
+
+export function replaceClause(
+  definition: MetricDefinition,
+  targetClause: Clause,
+  newClause: Clause,
+): MetricDefinition {
+  return LibMetric.replaceClause(
+    definition,
+    targetClause,
+    newClause,
+  ) as MetricDefinition;
+}
+
+export function removeClause(
+  definition: MetricDefinition,
+  clause: Clause,
+): MetricDefinition {
+  return LibMetric.removeClause(definition, clause) as MetricDefinition;
+}
+
+export function swapClauses(
+  definition: MetricDefinition,
+  sourceClause: Clause,
+  targetClause: Clause,
+): MetricDefinition {
+  return LibMetric.swapClauses(
+    definition,
+    sourceClause,
+    targetClause,
+  ) as MetricDefinition;
+}
+
+export function temporalBucket(
+  projection: Clause | DimensionMetadata,
+): TemporalBucket | null {
+  return LibMetric.temporalBucket(projection) as TemporalBucket | null;
+}
+
+export function availableTemporalBuckets(
+  definition: MetricDefinition,
+  dimension: DimensionMetadata,
+): TemporalBucket[] {
+  return LibMetric.availableTemporalBuckets(
+    definition,
+    dimension,
+  ) as TemporalBucket[];
+}
+
+export function isTemporalBucketable(
+  definition: MetricDefinition,
+  dimension: DimensionMetadata,
+): boolean {
+  return availableTemporalBuckets(definition, dimension).length > 0;
+}
+
+export function withTemporalBucket(
+  projection: Clause | DimensionMetadata,
+  bucket: TemporalBucket | null,
+): ProjectionClause {
+  return LibMetric.withTemporalBucket(projection, bucket) as ProjectionClause;
+}
+
+export function withDefaultTemporalBucket(
+  definition: MetricDefinition,
+  projection: ProjectionClause,
+): ProjectionClause {
+  const dimension = projectionDimension(definition, projection);
+  if (!dimension) {
+    return projection;
+  }
+  const bucket = defaultTemporalBucket(definition, dimension);
+  return bucket ? withTemporalBucket(projection, bucket) : projection;
+}
+
+export function defaultTemporalBucket(
+  definition: MetricDefinition,
+  dimension: DimensionMetadata,
+): TemporalBucket | null {
+  const buckets = availableTemporalBuckets(definition, dimension);
+  const bucket = buckets.find((b) => displayInfo(definition, b).default);
+
+  return bucket ?? null;
+}
+
+export function binning(
+  projection: Clause | DimensionMetadata,
+): BinningStrategy | null {
+  return LibMetric.binning(projection) as BinningStrategy | null;
+}
+
+export function availableBinningStrategies(
+  definition: MetricDefinition,
+  dimension: DimensionMetadata,
+): BinningStrategy[] {
+  return LibMetric.availableBinningStrategies(
+    definition,
+    dimension,
+  ) as BinningStrategy[];
+}
+
+export function isBinnable(
+  definition: MetricDefinition,
+  dimension: DimensionMetadata,
+): boolean {
+  return availableBinningStrategies(definition, dimension).length > 0;
+}
+
+export function withBinning(
+  projection: Clause | DimensionMetadata,
+  binningStrategy: BinningStrategy | null,
+): ProjectionClause {
+  return LibMetric.withBinning(projection, binningStrategy) as ProjectionClause;
+}
+
+export function withDefaultBinning(
+  definition: MetricDefinition,
+  projection: ProjectionClause,
+): ProjectionClause {
+  const dimension = projectionDimension(definition, projection);
+  if (!dimension) {
+    return projection;
+  }
+  const strategies = availableBinningStrategies(definition, dimension);
+  const defaultStrategy = strategies.find(
+    (strategy) => displayInfo(definition, strategy).default,
+  );
+  return defaultStrategy
+    ? withBinning(projection, defaultStrategy)
+    : projection;
+}
+
+type TypeFn = (dimension: DimensionMetadata) => boolean;
+
+export const isBoolean: TypeFn = (dimension) => {
+  return LibMetric.isBoolean(dimension) as boolean;
+};
+
+export const isCoordinate: TypeFn = (dimension) => {
+  return LibMetric.isCoordinate(dimension) as boolean;
+};
+
+export const isTemporal: TypeFn = (dimension) => {
+  return LibMetric.isTemporal(dimension) as boolean;
+};
+
+export const isDateOrDateTime: TypeFn = (dimension) => {
+  return LibMetric.isDateOrDateTime(dimension) as boolean;
+};
+
+export const isForeignKey: TypeFn = (dimension) => {
+  return LibMetric.isForeignKey(dimension) as boolean;
+};
+
+export const isLocation: TypeFn = (dimension) => {
+  return LibMetric.isLocation(dimension) as boolean;
+};
+
+export const isLatitude: TypeFn = (dimension) => {
+  return LibMetric.isLatitude(dimension) as boolean;
+};
+
+export const isLongitude: TypeFn = (dimension) => {
+  return LibMetric.isLongitude(dimension) as boolean;
+};
+
+export const isNumeric: TypeFn = (dimension) => {
+  return LibMetric.isNumeric(dimension) as boolean;
+};
+
+export const isPrimaryKey: TypeFn = (dimension) => {
+  return LibMetric.isPrimaryKey(dimension) as boolean;
+};
+
+export const isStringLike: TypeFn = (dimension) => {
+  return LibMetric.isStringLike(dimension) as boolean;
+};
+
+export const isStringOrStringLike: TypeFn = (dimension) => {
+  return LibMetric.isStringOrStringLike(dimension) as boolean;
+};
+
+export const isTime: TypeFn = (dimension) => {
+  return LibMetric.isTime(dimension) as boolean;
+};
+
+export const isCategory: TypeFn = (dimension) => {
+  return LibMetric.isCategory(dimension) as boolean;
+};
+
+export const isID: TypeFn = (dimension) => {
+  return LibMetric.isID(dimension) as boolean;
+};
+
+export const isURL: TypeFn = (dimension) => {
+  return LibMetric.isURL(dimension) as boolean;
+};
+
+export const isEntityName: TypeFn = (dimension) => {
+  return LibMetric.isEntityName(dimension) as boolean;
+};
+
+export const isTitle: TypeFn = (dimension) => {
+  return LibMetric.isTitle(dimension) as boolean;
+};
+
+export const isState: TypeFn = (dimension) => {
+  return LibMetric.isState(dimension) as boolean;
+};
+
+export const isCountry: TypeFn = (dimension) => {
+  return LibMetric.isCountry(dimension) as boolean;
+};
+
+export const isCity: TypeFn = (dimension) => {
+  return LibMetric.isCity(dimension) as boolean;
+};
+
+export function displayInfo(
+  definition: MetricDefinition,
+  metric: MetricMetadata,
+): MetricDisplayInfo;
+export function displayInfo(
+  definition: MetricDefinition,
+  measure: MeasureMetadata,
+): MeasureDisplayInfo;
+export function displayInfo(
+  definition: MetricDefinition,
+  clause: Clause,
+): ClauseDisplayInfo;
+export function displayInfo(
+  definition: MetricDefinition,
+  dimension: DimensionMetadata,
+): DimensionDisplayInfo;
+export function displayInfo(
+  definition: MetricDefinition,
+  temporalBucket: TemporalBucket,
+): TemporalBucketDisplayInfo;
+export function displayInfo(
+  definition: MetricDefinition,
+  binningStrategy: BinningStrategy,
+): BinningStrategyDisplayInfo;
+export function displayInfo(
+  definition: MetricDefinition,
+  filterParts: Displayable,
+): DisplayInfo;
+export function displayInfo(
+  definition: MetricDefinition,
+  source: Displayable,
+): DisplayInfo {
+  return LibMetric.displayInfo(definition, source) as DisplayInfo;
+}
+
+export function dimensionValuesInfo(
+  definition: MetricDefinition,
+  dimension: DimensionMetadata,
+): DimensionValuesInfo {
+  return LibMetric.dimensionValuesInfo(
+    definition,
+    dimension,
+  ) as DimensionValuesInfo;
+}
+
+export function isSameSource(
+  dimension1: DimensionMetadata,
+  dimension2: DimensionMetadata,
+): boolean {
+  return LibMetric.isSameSource(dimension1, dimension2) as boolean;
+}

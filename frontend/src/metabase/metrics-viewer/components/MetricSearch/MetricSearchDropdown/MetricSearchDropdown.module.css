@@ -1,0 +1,7 @@
+.searchInputWrapper {
+  border-bottom: 1px solid var(--mb-color-border);
+}
+
+.resultsContainer {
+  overflow-y: auto;
+}

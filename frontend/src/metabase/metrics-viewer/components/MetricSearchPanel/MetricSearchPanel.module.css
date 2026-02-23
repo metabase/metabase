@@ -1,0 +1,28 @@
+.container {
+  border: 1px solid var(--mb-color-border);
+  border-radius: var(--mantine-radius-lg);
+  background: var(--mb-color-background-primary);
+  transition: border-color 150ms ease;
+}
+
+.container:focus-within {
+  border-color: var(--mb-color-brand);
+}
+
+.filterPillsSection {
+  background-color: color-mix(
+    in srgb,
+    var(--mb-color-filter) 5%,
+    var(--mb-color-white)
+  );
+  border-radius: 0 0 var(--mantine-radius-lg) var(--mantine-radius-lg);
+}
+
+.filterButtonWithCount {
+  border-top-right-radius: 0;
+  border-bottom-right-radius: 0;
+}
+
+.filterButtonAttachment {
+  border-left: 1px solid var(--mb-color-filter);
+}

@@ -280,15 +280,23 @@ export const canBrush = (
   series: RawSeries,
   settings: ComputedVisualizationSettings,
   onChangeCardAndRun?: OnChangeCardAndRun | null,
+  onBrush?: ((range: { start: number; end: number }) => void) | null,
 ) => {
-  const hasCombinedCards = series.length > 1;
   const hasBrushableDimension =
     settings["graph.x_axis.scale"] != null &&
     !["ordinal", "histogram"].includes(settings["graph.x_axis.scale"]);
 
+  if (!hasBrushableDimension) {
+    return false;
+  }
+
+  if (onBrush) {
+    return true;
+  }
+
+  const hasCombinedCards = series.length > 1;
   return (
     !!onChangeCardAndRun &&
-    hasBrushableDimension &&
     !hasCombinedCards &&
     (!isNative(series[0].card) || isSavedCard(series[0].card)) &&
     !isRemappedToString(series) &&

@@ -114,6 +114,7 @@ const RowChartVisualization = ({
   width: outerWidth,
   height: outerHeight,
   getHref,
+  hideLegend,
 }: VisualizationProps) => {
   const formatColumnValue = useMemo(() => {
     return getColumnValueFormatter();
@@ -273,7 +274,7 @@ const RowChartVisualization = ({
 
   const hasBreakout =
     settings["graph.dimensions"] && settings["graph.dimensions"]?.length > 1;
-  const hasLegend = series.length > 1 || hasBreakout;
+  const hasLegend = !hideLegend && (series.length > 1 || hasBreakout);
 
   return (
     <RowVisualizationRoot className={className} isQueryBuilder={isQueryBuilder}>

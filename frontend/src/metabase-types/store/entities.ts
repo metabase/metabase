@@ -7,6 +7,7 @@ import type {
   NormalizedField,
   NormalizedIndexedEntity,
   NormalizedMeasure,
+  NormalizedMetric,
   NormalizedNativeQuerySnippet,
   NormalizedSchema,
   NormalizedSegment,
@@ -25,6 +26,7 @@ export interface EntitiesState {
   fields: Record<string, NormalizedField>;
   segments: Record<string, NormalizedSegment>;
   measures: Record<string, NormalizedMeasure>;
+  metrics: Record<string, NormalizedMetric>;
   indexedEntities: Record<string, NormalizedIndexedEntity>;
   snippets: Record<string, NormalizedNativeQuerySnippet>;
   questions: Record<string, NormalizedCard>;

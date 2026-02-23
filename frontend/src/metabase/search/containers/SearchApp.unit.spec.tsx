@@ -38,6 +38,7 @@ const TYPE_FILTER_LABELS: Record<EnabledSearchModel, string> = {
   dataset: "Model",
   table: "Table",
   card: "Question",
+  measure: "Measure",
   metric: "Metric",
   action: "Action",
   "indexed-entity": "Indexed record",

@@ -2,10 +2,6 @@ import type { FormEvent } from "react";
 import { useMemo } from "react";
 import { t } from "ttag";
 
-import {
-  type TimeValue,
-  useTimeFilter,
-} from "metabase/querying/filters/hooks/use-time-filter";
 import { Box, Flex, Text, TimeInput } from "metabase/ui";
 import * as Lib from "metabase-lib";
 
@@ -14,6 +10,8 @@ import { FilterPickerFooter } from "../FilterPickerFooter";
 import { FilterPickerHeader } from "../FilterPickerHeader";
 import { WIDTH } from "../constants";
 import type { FilterChangeOpts, FilterPickerWidgetProps } from "../types";
+
+import { type TimeValue, useTimeFilter } from "./hooks";
 
 export function TimeFilterPicker({
   autoFocus,

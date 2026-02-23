@@ -202,6 +202,26 @@
                  :definition  map?}
                 (mt/user-http-request :rasta :get 200 (format "measure/%d" id))))))))
 
+(deftest fetch-measure-saves-dimensions-on-read-test
+  (testing "GET /api/measure/:id saves dimensions and dimension_mappings to the database"
+    (mt/with-temp [:model/Measure {:keys [id]} {:creator_id (mt/user->id :crowberto)
+                                                :table_id   (mt/id :venues)
+                                                :definition (pmbql-measure-definition (mt/id :venues) (mt/id :venues :price))}]
+      (testing "no dimensions saved initially"
+        (let [initial-measure (t2/select-one :model/Measure :id id)]
+          (is (nil? (:dimensions initial-measure)))
+          (is (nil? (:dimension_mappings initial-measure)))))
+      (testing "response contains dimensions with active status"
+        (mt/with-full-data-perms-for-all-users!
+          (let [response (mt/user-http-request :rasta :get 200 (format "measure/%d" id))]
+            (is (seq (:dimensions response)))
+            (is (seq (:dimension_mappings response)))
+            (is (every? #(= "status/active" (:status %)) (:dimensions response))))))
+      (testing "dimensions persisted to database"
+        (let [updated-measure (t2/select-one :model/Measure :id id)]
+          (is (seq (:dimensions updated-measure)))
+          (is (seq (:dimension_mappings updated-measure))))))))
+
 (deftest list-test
   (testing "GET /api/measure/"
     (mt/with-temp [:model/Measure {id-1 :id} {:name       "Measure 1"
@@ -294,15 +314,68 @@
                               {:name       "Venue Count"
                                :table_id   (mt/id :venues)
                                :definition (mbql4-fragment-definition (mt/id :venues) [[:count]])})
-            ;; Query using the measure
-            measure-query {:database (mt/id)
-                           :type     :query
-                           :query    {:source-table (mt/id :venues)
-                                      :aggregation  [[:measure measure-id]]}}
-            ;; Equivalent direct query
-            direct-query  {:database (mt/id)
-                           :type     :query
-                           :query    {:source-table (mt/id :venues)
-                                      :aggregation  [[:count]]}}]
+            measure-query (mt/mbql-query venues {:aggregation [[:measure measure-id]]})
+            direct-query  (mt/mbql-query venues {:aggregation [[:count]]})]
         (is (= (mt/rows (qp/process-query direct-query))
                (mt/rows (qp/process-query measure-query))))))))
+
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                       Dimension Endpoint Tests                                                 |
+;;; +----------------------------------------------------------------------------------------------------------------+
+
+(defn- hydrate-measure
+  "Fetch measure via API to hydrate dimensions."
+  [measure-id]
+  (mt/user-http-request :crowberto :get 200 (str "measure/" measure-id)))
+
+(defn- find-dimension-by-name
+  "Find a dimension by column name from hydrated measure."
+  [measure column-name]
+  (some #(when (= column-name (:name %)) %) (:dimensions measure)))
+
+(deftest dimension-values-test
+  (testing "GET /api/measure/:id/dimension/:dimension-key/values"
+    (mt/with-temp [:model/Measure {:keys [id]} {:creator_id (mt/user->id :crowberto)
+                                                :table_id   (mt/id :venues)
+                                                :definition (pmbql-measure-definition (mt/id :venues) (mt/id :venues :price))}]
+      (mt/with-full-data-perms-for-all-users!
+        (let [hydrated  (hydrate-measure id)
+              price-dim (find-dimension-by-name hydrated "PRICE")]
+          (when price-dim
+            (let [response (mt/user-http-request :rasta :get 200
+                                                 (format "measure/%d/dimension/%s/values" id (:id price-dim)))]
+              (is (contains? response :values))
+              (is (contains? response :field_id))
+              (is (contains? response :has_more_values))
+              ;; Price values are 1, 2, 3, 4
+              (is (seq (:values response))))))))))
+
+(deftest dimension-search-test
+  (testing "GET /api/measure/:id/dimension/:dimension-key/search"
+    (mt/with-temp [:model/Measure {:keys [id]} {:creator_id (mt/user->id :crowberto)
+                                                :table_id   (mt/id :venues)
+                                                :definition (pmbql-measure-definition (mt/id :venues) (mt/id :venues :price))}]
+      (mt/with-full-data-perms-for-all-users!
+        (let [hydrated (hydrate-measure id)
+              name-dim (find-dimension-by-name hydrated "NAME")]
+          (when name-dim
+            (let [response (mt/user-http-request :rasta :get 200
+                                                 (format "measure/%d/dimension/%s/search" id (:id name-dim))
+                                                 :query "Red")]
+              ;; Should return matching venue names
+              (is (sequential? response)))))))))
+
+(deftest dimension-remapping-test
+  (testing "GET /api/measure/:id/dimension/:dimension-key/remapping"
+    (mt/with-temp [:model/Measure {:keys [id]} {:creator_id (mt/user->id :crowberto)
+                                                :table_id   (mt/id :venues)
+                                                :definition (pmbql-measure-definition (mt/id :venues) (mt/id :venues :price))}]
+      (mt/with-full-data-perms-for-all-users!
+        (let [hydrated  (hydrate-measure id)
+              price-dim (find-dimension-by-name hydrated "PRICE")]
+          (when price-dim
+            (let [response (mt/user-http-request :rasta :get 200
+                                                 (format "measure/%d/dimension/%s/remapping" id (:id price-dim))
+                                                 :value "2")]
+              ;; Should return [value] or [value, display-name]
+              (is (= [2] response)))))))))
