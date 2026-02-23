@@ -168,9 +168,7 @@
       {:stream_ts (:ts response)
        :channel   (:channel response)
        :thread_ts thread_ts}
-      (do
-        (log/warnf "[slackbot] start-stream failed: %s" (:error response))
-        nil))))
+      (log/warnf "[slackbot] start-stream failed: %s" (:error response)))))
 
 (defn- append-stream
   "Append chunks to an active stream.
@@ -191,8 +189,7 @@
   (append-stream client channel stream-ts [{:type "markdown_text" :text text}]))
 
 (defn- stop-stream
-  "Stop a stream and finalize it into a regular message.
-   Optionally include final blocks (e.g., feedback buttons)."
+  "Stop a stream and finalize it into a regular message."
   ([client channel stream-ts]
    (stop-stream client channel stream-ts nil))
   ([client channel stream-ts blocks]
@@ -733,8 +730,8 @@
              (post-image client content filename channel thread-ts))))
 
 ;; -------------------- STREAMING AI RESPONSES ---------------------------
-;; This section implements progressive streaming of AI responses to Slack
-;; using Slack's chat streaming API (startStream/appendStream/stopStream).
+;; This section implements progressive streaming of AI responses to Slack using Slack's chat streaming API
+;; (startStream/appendStream/stopStream).
 
 (def ^:private tool-friendly-names
   "Map of tool names to user-friendly gerund descriptions for slackbot profile tools."
@@ -749,11 +746,6 @@
   [tool-name]
   (get tool-friendly-names tool-name "Thinking"))
 
-;; -------------------- TEXT BATCHING --------------------
-;; Batch text chunks to reduce Slack API call frequency.
-;; The ai-service already buffers markdown links, so we just need to
-;; accumulate text and flush periodically.
-
 (def ^:private text-batch-interval-ms
   "Minimum time between text flushes to Slack (ms)."
   100)
@@ -761,16 +753,6 @@
 (def ^:private min-text-batch-size
   "Minimum characters to accumulate before considering a flush."
   50)
-
-(defn- parse-aisdk-line
-  "Parse a single AI SDK line into type and content.
-   Returns [type content] or nil if unparseable."
-  [line]
-  (when (and line (>= (count line) 2))
-    (let [prefix (subs line 0 2)
-          type   (get metabot-v3.util/prefix-type prefix)]
-      (when type
-        [type (json/decode (subs line 2) true)]))))
 
 (defn- make-streaming-ai-request
   "Make a streaming AI request with callbacks for each message type.
@@ -790,12 +772,13 @@
         thread-history (thread->history thread bot-user-id)
         history        (into (vec thread-history) extra-history)
         ;; Accumulators for building final response
-        all-text       (atom (StringBuilder.))
-        data-parts     (atom [])
+        ;; Using volatile! since callbacks are invoked sequentially from a single thread
+        all-text       (volatile! (StringBuilder.))
+        data-parts     (volatile! [])
         ;; Track tool calls in progress
-        active-tools   (atom {})
+        active-tools   (volatile! {})
         handle-line    (fn [line]
-                         (when-let [[type content] (parse-aisdk-line line)]
+                         (when-let [[type content] (metabot-v3.util/parse-aisdk-line line)]
                            (case type
                              :TEXT
                              (do
@@ -822,8 +805,7 @@
                              :DATA
                              (swap! data-parts conj (assoc content :_type :DATA))
 
-                             ;; Ignore other types for now
-                             nil)))
+                             (log/infof "Ignoring AI SDK line of type %s" type))))
 
         lines          (metabot-v3.client/streaming-request-with-callback
                         {:context         (metabot-v3.context/create-context
@@ -843,6 +825,101 @@
      :data-parts (->> (metabot-v3.util/aisdk->messages :assistant lines)
                       (filter #(= (:_type %) :DATA)))}))
 
+(defn- send-visualizations
+  "Send visualization data-parts as separate Slack messages after the stream ends."
+  [client channel thread-ts data-parts]
+  (let [vizs (filter #(#{"static_viz" "adhoc_viz"} (:type %)) data-parts)]
+    (doseq [{:keys [type value]} vizs]
+      (try
+        (case type
+          "static_viz"
+          (let [card-id  (or (:entity_id value)
+                             (throw (ex-info "static_viz missing entity_id" {:value value})))
+                output   (generate-card-output card-id)
+                filename (str "chart-" card-id)]
+            (send-viz-output client channel thread-ts output filename))
+
+          "adhoc_viz"
+          (let [query    (or (:query value)
+                             (throw (ex-info "adhoc_viz missing query" {:value value})))
+                display  (or (some-> (:display value) keyword) :table)
+                output   (slackbot.query/generate-adhoc-output query :display display)
+                filename (str "adhoc-" (System/currentTimeMillis))]
+            (send-viz-output client channel thread-ts output filename)))
+        (catch Exception e
+          (log/errorf e "Failed to generate visualization for %s" type))))))
+
+(defn- make-streaming-callbacks
+  "Create streaming callback functions and associated control functions.
+   Returns a map with:
+   - `:on-text`, `:on-tool-start`, `:on-tool-end` — callbacks for [[make-streaming-ai-request]]
+   - `:flush-text!` — flush any buffered text to the stream
+   - `:stream-state` — volatile holding `{:stream_ts :channel}` once started, nil before"
+  [client {:keys [channel thread-ts team-id user-id]}]
+  (let [stream-state     (volatile! nil)
+        tool-id->name    (volatile! {})
+        text-buffer      (volatile! (StringBuilder.))
+        last-flush-timer (volatile! (u/start-timer))
+        last-flushed     (volatile! "")
+
+        ensure-stream! (fn []
+                         (when (nil? @stream-state)
+                           (let [stream (start-stream client {:channel   channel
+                                                              :thread_ts thread-ts
+                                                              :team_id   team-id
+                                                              :user_id   user-id})]
+                             (vreset! stream-state
+                                      (if (:stream_ts stream) stream :failed)))))
+
+        flush-text! (fn []
+                      (let [text (str @text-buffer)]
+                        (when (seq text)
+                          (ensure-stream!)
+                          (when-let [{:keys [stream_ts channel]} @stream-state]
+                            (append-markdown-text client channel stream_ts text)
+                            (vreset! last-flushed text)))
+                        (vreset! text-buffer (StringBuilder.))
+                        (vreset! last-flush-timer (u/start-timer))))
+
+        on-text (fn [text]
+                  (when (seq text)
+                    (.append ^StringBuilder @text-buffer text)
+                    (let [buffer-size (.length ^StringBuilder @text-buffer)
+                          elapsed-ms  (u/since-ms @last-flush-timer)]
+                      (when (or (>= buffer-size min-text-batch-size)
+                                (>= elapsed-ms text-batch-interval-ms))
+                        (flush-text!)))))
+
+        on-tool-start (fn [{:keys [id tool-name]}]
+                        (flush-text!)
+                        (ensure-stream!)
+                        (vswap! tool-id->name assoc id tool-name)
+                        (when-let [{:keys [stream_ts channel]} @stream-state]
+                          (when (and (seq @last-flushed)
+                                     (not (str/ends-with? @last-flushed "\n")))
+                            (append-markdown-text client channel stream_ts "\n"))
+                          (append-stream client channel stream_ts
+                                         [{:type   "task_update"
+                                           :id     id
+                                           :title  (tool-name->friendly tool-name)
+                                           :status "in_progress"}])))
+
+        on-tool-end (fn [{:keys [id]}]
+                      (when-let [{:keys [stream_ts channel]} @stream-state]
+                        (let [tool-name (get @tool-id->name id)]
+                          (append-stream client channel stream_ts
+                                         [{:type   "task_update"
+                                           :id     id
+                                           :title  (tool-name->friendly tool-name)
+                                           :status "complete"}])
+                          (append-markdown-text client channel stream_ts "\n")))
+                      (vswap! tool-id->name dissoc id))]
+    {:on-text       on-text
+     :on-tool-start on-tool-start
+     :on-tool-end   on-tool-end
+     :flush-text!   flush-text!
+     :stream-state  stream-state}))
+
 (defn- send-streaming-metabot-response
   "Send a metabot response using Slack's streaming API for progressive updates.
    Shows tool execution status and streams text as it arrives."
@@ -854,133 +931,39 @@
                          (update :messages #(remove (fn [m] (= (:ts m) (:ts event))) %)))
          auth-info   (auth-test client)
          bot-user-id (:user_id auth-info)
-         team-id     (:team_id auth-info)
-         user-id     (:user event)
          channel-id  (:channel event)
          message-ctx (event->reply-context event)
          channel     (:channel message-ctx)
          thread-ts   (:thread_ts message-ctx)
 
-         ;; Lazily start the stream when we have content
-         ;; Using volatile! since callbacks are invoked sequentially from a single thread
-         stream-state  (volatile! nil)  ; {:stream_ts :channel} once started
-
-         ensure-stream! (fn []
-                          (when-not @stream-state
-                            (let [stream (start-stream client {:channel   channel
-                                                               :thread_ts thread-ts
-                                                               :team_id   team-id
-                                                               :user_id   user-id})]
-                              (when (:stream_ts stream)
-                                (vreset! stream-state stream)))))
-
-         ;; Track state for streaming updates
-         tool-id->name (volatile! {})  ; Track tool names for completion updates
-
-         ;; Text batching to reduce Slack API calls
-         text-buffer      (volatile! (StringBuilder.))
-         last-flush-timer (volatile! (u/start-timer))
-         last-flushed     (volatile! "")  ; Track last flushed text for newline logic
-
-         flush-text!     (fn []
-                           (let [text (str @text-buffer)]
-                             (when (seq text)
-                               (ensure-stream!)
-                               (when-let [{:keys [stream_ts channel]} @stream-state]
-                                 (append-markdown-text client channel stream_ts text)
-                                 (vreset! last-flushed text)))
-                             (vreset! text-buffer (StringBuilder.))
-                             (vreset! last-flush-timer (u/start-timer))))
-
-         ;; Callbacks for streaming
-         on-text       (fn [text]
-                         ;; Accumulate text and flush based on time/size thresholds
-                         (when (seq text)
-                           (.append ^StringBuilder @text-buffer text)
-                           (let [buffer-size (.length ^StringBuilder @text-buffer)
-                                 elapsed-ms  (u/since-ms @last-flush-timer)]
-                             (when (or (>= buffer-size min-text-batch-size)
-                                       (>= elapsed-ms text-batch-interval-ms))
-                               (flush-text!)))))
-
-         on-tool-start (fn [{:keys [id name]}]
-                         ;; Flush any pending text before showing tool status
-                         (flush-text!)
-                         (ensure-stream!)
-                         (vswap! tool-id->name assoc id name)
-                         (when-let [{:keys [stream_ts channel]} @stream-state]
-                           ;; Add newline before tool status if text doesn't end with one
-                           (when (and (seq @last-flushed)
-                                      (not (str/ends-with? @last-flushed "\n")))
-                             (append-markdown-text client channel stream_ts "\n"))
-                           (append-stream client channel stream_ts
-                                          [{:type   "task_update"
-                                            :id     id
-                                            :title  (tool-name->friendly name)
-                                            :status "in_progress"}])))
-
-         on-tool-end   (fn [{:keys [id]}]
-                         ;; Mark task as complete, including title
-                         (when-let [{:keys [stream_ts channel]} @stream-state]
-                           (let [name (get @tool-id->name id)]
-                             (append-stream client channel stream_ts
-                                            [{:type   "task_update"
-                                              :id     id
-                                              :title  (tool-name->friendly name)
-                                              :status "complete"}])
-                             ;; Add newline after tool completion for clean text flow
-                             (append-markdown-text client channel stream_ts "\n")))
-                         (vswap! tool-id->name dissoc id))]
-
-     ;; Use streaming with lazy initialization
+         {:keys [on-text on-tool-start on-tool-end flush-text! stream-state]}
+         (make-streaming-callbacks client {:channel   channel
+                                           :thread-ts thread-ts
+                                           :team-id   (:team_id auth-info)
+                                           :user-id   (:user event)})]
      (try
-       (let [{:keys [_text data-parts]} (make-streaming-ai-request
-                                         (str (random-uuid))
-                                         prompt
-                                         thread
-                                         bot-user-id
-                                         channel-id
-                                         extra-history
-                                         {:on-text       on-text
-                                          :on-tool-start on-tool-start
-                                          :on-tool-end   on-tool-end})]
-         ;; Flush any remaining text before stopping the stream
+       (let [{:keys [data-parts]} (make-streaming-ai-request
+                                   (str (random-uuid))
+                                   prompt
+                                   thread
+                                   bot-user-id
+                                   channel-id
+                                   extra-history
+                                   {:on-text       on-text
+                                    :on-tool-start on-tool-start
+                                    :on-tool-end   on-tool-end})]
          (flush-text!)
-         ;; Stop the stream if it was started, or fall back to non-streaming
          (if-let [{:keys [stream_ts channel]} @stream-state]
            (do
              (stop-stream client channel stream_ts)
-             ;; Send visualizations as separate messages (can't be streamed)
-             (let [vizs (filter #(#{"static_viz" "adhoc_viz"} (:type %)) data-parts)]
-               (doseq [{:keys [type value]} vizs]
-                 (try
-                   (case type
-                     "static_viz"
-                     (let [card-id  (or (:entity_id value)
-                                        (throw (ex-info "static_viz missing entity_id" {:value value})))
-                           output   (generate-card-output card-id)
-                           filename (str "chart-" card-id)]
-                       (send-viz-output client channel thread-ts output filename))
-
-                     "adhoc_viz"
-                     (let [query    (or (:query value)
-                                        (throw (ex-info "adhoc_viz missing query" {:value value})))
-                           display  (or (some-> (:display value) keyword) :table)
-                           output   (slackbot.query/generate-adhoc-output query :display display)
-                           filename (str "adhoc-" (System/currentTimeMillis))]
-                       (send-viz-output client channel thread-ts output filename)))
-                   (catch Exception e
-                     (log/errorf e "Failed to generate visualization for %s" type))))))
-           ;; Stream was never started (no content received)
+             (send-visualizations client channel thread-ts data-parts))
            (post-message client (merge message-ctx {:text "I wasn't able to generate a response. Please try again."}))))
        (catch Exception e
          (log/error e "[slackbot] Error in streaming response")
-         ;; Clean up stream gracefully if it was started
          (when-let [{:keys [stream_ts channel]} @stream-state]
            (try
              (stop-stream client channel stream_ts)
              (catch Exception _)))
-         ;; Re-throw to let outer handler deal with it
          (throw e))))))
 
 (defn- send-auth-link
