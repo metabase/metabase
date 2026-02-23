@@ -14,7 +14,7 @@
    [toucan2.core :as t2])
   (:import
    (java.util TimeZone)
-   (org.quartz CronTrigger DisallowConcurrentExecution TriggerKey)))
+   (org.quartz CronTrigger DisallowConcurrentExecution JobExecutionContext TriggerKey)))
 
 (set! *warn-on-reflection* true)
 
@@ -158,8 +158,13 @@
 (task/defjob ^{:doc "Triggers that send a notification for a subscription."}
   SendNotification
   [context]
-  (let [{:strs [subscription-id]} (qc/from-job-data context)]
-    (send-notification* subscription-id)))
+  (let [{:strs [subscription-id]} (qc/from-job-data context)
+        fire-instance-id          (.getFireInstanceId ^JobExecutionContext context)
+        scheduler-instance-id     (.. ^JobExecutionContext context getScheduler getSchedulerInstanceId)]
+    (log/with-context {:quartz-fire-instance-id   fire-instance-id
+                       :quartz-scheduler-instance scheduler-instance-id}
+      (log/infof "SendNotification fired for subscription %d" subscription-id)
+      (send-notification* subscription-id))))
 
 (defn init-send-notification-triggers!
   "Initialize all notification subscription triggers.
