@@ -10,7 +10,7 @@ import { getPieChartOption } from "metabase/visualizations/echarts/pie/option";
 import Watermark from "../../watermark.svg?component";
 import type { StaticChartProps } from "../StaticVisualization";
 
-import { getPieChartLegend } from "./legend";
+import { getPieChartLegend, getPieChartLegendHeight } from "./legend";
 
 export function PieChart({
   rawSeries,
@@ -18,6 +18,9 @@ export function PieChart({
   settings,
   isStorybook,
   hasDevWatermark = false,
+  width: providedWidth,
+  height: providedHeight,
+  fitLegendWithinHeight = false,
 }: StaticChartProps) {
   const chartModel = getPieChartModel(
     rawSeries,
@@ -26,24 +29,60 @@ export function PieChart({
     renderingContext,
   );
   const formatters = getPieChartFormatters(chartModel, settings);
+
+  const useConstrainedMode =
+    fitLegendWithinHeight && providedWidth != null && providedHeight != null;
+  const effectiveWidth = useConstrainedMode
+    ? providedWidth
+    : DIMENSIONS.maxSideLength;
+
+  let pieSideLength: number;
+  let legendHeight: number;
+  let Legend: () => JSX.Element;
+
+  if (useConstrainedMode) {
+    legendHeight = getPieChartLegendHeight(
+      chartModel,
+      formatters,
+      settings,
+      effectiveWidth,
+    );
+    pieSideLength = Math.max(
+      Math.min(
+        providedHeight - DIMENSIONS.padding.legend - legendHeight,
+        effectiveWidth,
+      ),
+      50,
+    );
+    ({ Legend } = getPieChartLegend(
+      chartModel,
+      formatters,
+      settings,
+      effectiveWidth,
+      pieSideLength + DIMENSIONS.padding.legend,
+    ));
+  } else {
+    pieSideLength = DIMENSIONS.maxSideLength;
+    ({ legendHeight, Legend } = getPieChartLegend(
+      chartModel,
+      formatters,
+      settings,
+    ));
+  }
+
   const option = getPieChartOption(
     chartModel,
     formatters,
     settings,
     renderingContext,
-    DIMENSIONS.maxSideLength,
-  );
-  const { legendHeight, Legend } = getPieChartLegend(
-    chartModel,
-    formatters,
-    settings,
+    pieSideLength,
   );
 
   const chart = init(null, null, {
     renderer: "svg",
     ssr: true,
-    width: DIMENSIONS.maxSideLength,
-    height: DIMENSIONS.maxSideLength,
+    width: pieSideLength,
+    height: pieSideLength,
   });
   chart.setOption(option);
   const chartSvg = sanitizeSvgForBatik(
@@ -51,9 +90,10 @@ export function PieChart({
     isStorybook ?? false,
   );
 
-  const height =
-    DIMENSIONS.maxSideLength + DIMENSIONS.padding.legend + legendHeight;
-  const width = DIMENSIONS.maxSideLength;
+  const height = useConstrainedMode
+    ? providedHeight
+    : DIMENSIONS.maxSideLength + DIMENSIONS.padding.legend + legendHeight;
+  const width = effectiveWidth;
 
   return (
     <svg xmlns="http://www.w3.org/2000/svg" width={width} height={height}>

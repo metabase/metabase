@@ -62,6 +62,7 @@ export const StaticRowChart = ({
   width = WIDTH,
   height = HEIGHT,
   hasDevWatermark = false,
+  fitLegendWithinHeight = false,
 }: StaticChartProps) => {
   const data = extractRemappedColumns(
     rawSeries[0].data,
@@ -103,7 +104,12 @@ export const StaticRowChart = ({
   });
 
   const legendHeight = legend != null ? legend.height + CHART_PADDING : 0;
-  const fullChartHeight = height + legendHeight;
+  const chartHeight = fitLegendWithinHeight
+    ? Math.max(height - legendHeight, 100)
+    : height;
+  const fullChartHeight = fitLegendWithinHeight
+    ? Math.max(height, chartHeight + legendHeight)
+    : height + legendHeight;
 
   return (
     <svg
@@ -123,7 +129,7 @@ export const StaticRowChart = ({
       <Group top={legendHeight}>
         <RowChart
           width={width}
-          height={height}
+          height={chartHeight}
           data={groupedData}
           trimData={trimData}
           series={series}

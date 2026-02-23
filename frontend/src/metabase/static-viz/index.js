@@ -149,6 +149,9 @@ export function RenderChart(rawSeries, dashcardSettings, options) {
       rawSeries={rawSeriesWithRemappings}
       renderingContext={renderingContext}
       hasDevWatermark={hasDevWatermark}
+      width={options.width}
+      height={options.height}
+      fitLegendWithinHeight={options.fitLegendWithinHeight}
     />,
   );
 }

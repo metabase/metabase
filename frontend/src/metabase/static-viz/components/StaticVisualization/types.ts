@@ -12,4 +12,5 @@ export interface StaticChartProps {
   height?: number;
   isStorybook?: boolean;
   hasDevWatermark?: boolean;
+  fitLegendWithinHeight?: boolean;
 }

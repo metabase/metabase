@@ -29,6 +29,7 @@ import type { Document } from "metabase-types/api";
 import { DocumentPublicLinkPopover } from "../../embedding/components/PublicLinkPopover";
 import { trackDocumentPrint } from "../analytics";
 import { DOCUMENT_TITLE_MAX_LENGTH } from "../constants";
+import { downloadDocumentAsPdf } from "../utils/pdf-download";
 
 import S from "./DocumentHeader.module.css";
 
@@ -82,6 +83,20 @@ export const DocumentHeader = ({
   const handlePrint = useCallback(() => {
     window.print();
     trackDocumentPrint(document);
+  }, [document]);
+
+  const [isDownloadingPdf, setIsDownloadingPdf] = useState(false);
+
+  const handleDownloadPdf = useCallback(async () => {
+    if (!document?.id) {
+      return;
+    }
+    setIsDownloadingPdf(true);
+    try {
+      await downloadDocumentAsPdf(document.id, document.name);
+    } finally {
+      setIsDownloadingPdf(false);
+    }
   }, [document]);
 
   return (
@@ -195,6 +210,15 @@ export const DocumentHeader = ({
                 onClick={handlePrint}
               >
                 {t`Print Document`}
+              </Menu.Item>
+              <Menu.Item
+                leftSection={<Icon name="download" />}
+                onClick={handleDownloadPdf}
+                disabled={isDownloadingPdf}
+              >
+                {isDownloadingPdf
+                  ? t`Downloading PDF...`
+                  : t`Download as PDF`}
               </Menu.Item>
               {!isNewDocument && (
                 <>

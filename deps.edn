@@ -85,6 +85,8 @@
                                              :git/sha "ffc4edc482c057cd9412c62f018a41e9140c618b"
                                              :git/url "https://github.com/eerohele/pp"}
   io.github.metabase/macaw                  {:mvn/version "0.2.33"}             ; Parse native SQL queries
+  io.github.openhtmltopdf/openhtmltopdf-pdfbox {:mvn/version "1.1.37"}          ; XHTML+CSS → PDF rendering via PDFBox
+  io.github.openhtmltopdf/openhtmltopdf-svg-support {:mvn/version "1.1.37"}     ; SVG support for openhtmltopdf (reuses Batik)
   io.netty/netty-codec-http                 {:mvn/version "4.2.9.Final"}        ; override of transitive dep from aws s3
   io.prometheus/simpleclient_hotspot        {:mvn/version "0.16.0"}             ; prometheus jvm collector
   junegunn/grouper                          {:mvn/version "0.1.1"}              ; Batch processing helper
