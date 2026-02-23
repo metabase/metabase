@@ -73,9 +73,11 @@
 (defn- update-field-ids-in-clauses
   "Updates the field IDs in the clauses using the provided mapping."
   [clauses field-id-mapping]
-  (mapv (fn [clause]
-          (walk-field-refs clause #(update-field-id-in-ref % field-id-mapping)))
-        clauses))
+  (if (keyword? clauses)
+    clauses
+    (mapv (fn [clause]
+            (walk-field-refs clause #(update-field-id-in-ref % field-id-mapping)))
+          clauses)))
 
 (defn- update-source-table-or-card
   "Updates the source table or card in the stage."
