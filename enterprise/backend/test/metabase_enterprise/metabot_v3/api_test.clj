@@ -398,4 +398,3 @@
     (is (= [{:type :text, :text "solo"}]
            (into [] (#'api/combine-text-parts-xf)
                  [{:type :text, :text "solo"}])))))
-
