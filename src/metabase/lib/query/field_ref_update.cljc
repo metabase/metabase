@@ -90,7 +90,10 @@
   [join old-source new-source field-id-mapping]
   (-> join
       (update-source-table-or-card old-source new-source)
-      (u/update-some :fields update-field-ids-in-clauses field-id-mapping)
+      (u/update-some :fields (fn [fields]
+                               (if (keyword? fields)
+                                 fields
+                                 (update-field-ids-in-clauses fields field-id-mapping))))
       (u/update-some :conditions update-field-ids-in-clauses field-id-mapping)))
 
 (defn- update-source-and-field-ids-in-joins

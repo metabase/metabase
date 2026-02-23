@@ -24,8 +24,8 @@
     ;; Un-upgraded should use ids (pos-int)
     (is (lib/field-ref-id (selector q-table)))
     (is (lib/field-ref-id (selector q-card)))
-    ;; Upgraded depends
-    (is (lib/field-ref-name (selector q-table-upgraded)))
+    ;; Table-based refs stay id-based; card-based refs get upgraded to name-based
+    (is (lib/field-ref-id (selector q-table-upgraded)))
     (is (lib/field-ref-name (selector q-card-upgraded)))
     ;; Compiled query should be the same
     (is (= (qp.compile/compile q-table)
@@ -52,8 +52,8 @@
     ;; Un-upgraded should use ids (pos-int)
     (is (lib/field-ref-id (selector q-table)))
     (is (lib/field-ref-id (selector q-card)))
-    ;; Upgraded depends
-    (is (lib/field-ref-name (selector q-table-upgraded)))
+    ;; Table-based refs stay id-based; card-based refs get upgraded to name-based
+    (is (lib/field-ref-id (selector q-table-upgraded)))
     (is (lib/field-ref-name (selector q-card-upgraded)))
     ;; Compiled query should be the same
     (is (= (qp.compile/compile q-table)
@@ -80,8 +80,8 @@
     ;; Un-upgraded should use ids (pos-int)
     (is (lib/field-ref-id (selector q-table)))
     (is (lib/field-ref-id (selector q-card)))
-    ;; Upgraded depends
-    (is (lib/field-ref-name (selector q-table-upgraded)))
+    ;; Table-based refs stay id-based; card-based refs get upgraded to name-based
+    (is (lib/field-ref-id (selector q-table-upgraded)))
     (is (lib/field-ref-name (selector q-card-upgraded)))
     ;; Compiled query should be the same
     (is (= (qp.compile/compile q-table)
@@ -108,8 +108,8 @@
     ;; Un-upgraded should use ids (pos-int)
     (is (lib/field-ref-id (selector q-table)))
     (is (lib/field-ref-id (selector q-card)))
-    ;; Upgraded depends
-    (is (lib/field-ref-name (selector q-table-upgraded)))
+    ;; Table-based refs stay id-based; card-based refs get upgraded to name-based
+    (is (lib/field-ref-id (selector q-table-upgraded)))
     (is (lib/field-ref-name (selector q-card-upgraded)))
     ;; Compiled query should be the same
     (is (= (qp.compile/compile q-table)
@@ -136,8 +136,8 @@
     ;; Un-upgraded should use ids (pos-int)
     (is (lib/field-ref-id (selector q-table)))
     (is (lib/field-ref-id (selector q-card)))
-    ;; Upgraded depends
-    (is (lib/field-ref-name (selector q-table-upgraded)))
+    ;; Table-based refs stay id-based; card-based refs get upgraded to name-based
+    (is (lib/field-ref-id (selector q-table-upgraded)))
     (is (lib/field-ref-name (selector q-card-upgraded)))
     ;; Compiled query should be the same
     (is (= (qp.compile/compile q-table)
@@ -161,17 +161,17 @@
                                                        :database-id (meta/id)
                                                        :name        "PRODUCTS+"
                                                        :type        :model}]})
-        q-table (-> (lib/query mp (lib.metadata/table mp (meta/id :orders)))
-                    (lib/join (lib/join-clause (lib.metadata/table mp (meta/id :products))
-                                               [(lib/= (lib.metadata/field mp (meta/id :orders :product-id))
-                                                       (lib.metadata/field mp (meta/id :products :id)))])))
-        q-table-upgraded (lib/upgrade-field-refs q-table)
+        q-table-table (-> (lib/query mp (lib.metadata/table mp (meta/id :orders)))
+                          (lib/join (lib/join-clause (lib.metadata/table mp (meta/id :products))
+                                                     [(lib/= (lib.metadata/field mp (meta/id :orders :product-id))
+                                                             (lib.metadata/field mp (meta/id :products :id)))])))
+        q-table-table-upgraded (lib/upgrade-field-refs q-table-table)
         ;; join card x table
-        q-card  (-> (lib/query mp (lib.metadata/card mp 1))
-                    (lib/join (lib/join-clause (lib.metadata/table mp (meta/id :products))
-                                               [(lib/= (lib.metadata/field mp (meta/id :orders :product-id))
-                                                       (lib.metadata/field mp (meta/id :products :id)))])))
-        q-card-upgraded (lib/upgrade-field-refs q-card)
+        q-card-table  (-> (lib/query mp (lib.metadata/card mp 1))
+                          (lib/join (lib/join-clause (lib.metadata/table mp (meta/id :products))
+                                                     [(lib/= (lib.metadata/field mp (meta/id :orders :product-id))
+                                                             (lib.metadata/field mp (meta/id :products :id)))])))
+        q-card-table-upgraded (lib/upgrade-field-refs q-card-table)
         ;; join card x card
         q-card-card  (-> (lib/query mp (lib.metadata/card mp 1))
                          (lib/join (lib/join-clause (lib.metadata/card mp 2)
@@ -179,25 +179,27 @@
                                                             (lib.metadata/field mp (meta/id :products :id)))])))
         q-card-card-upgraded (lib/upgrade-field-refs q-card-card)]
     ;; Un-upgraded should use ids (pos-int)
-    (is (lib/field-ref-id (selector-right q-table)))
-    (is (lib/field-ref-id (selector-left  q-table)))
-    (is (lib/field-ref-id (selector-right q-card)))
-    (is (lib/field-ref-id (selector-left  q-card)))
+    (is (lib/field-ref-id (selector-right q-table-table)))
+    (is (lib/field-ref-id (selector-left  q-table-table)))
+    (is (lib/field-ref-id (selector-right q-card-table)))
+    (is (lib/field-ref-id (selector-left  q-card-table)))
     (is (lib/field-ref-id (selector-right q-card-card)))
     (is (lib/field-ref-id (selector-left  q-card-card)))
-    ;; Upgraded depends
-    (is (lib/field-ref-name (selector-left q-table-upgraded)))
-    (is (lib/field-ref-name (selector-left q-card-upgraded)))
+    ;; Table-based refs stay id-based; card-based refs get upgraded to name-based
+    ;; LHS: table source stays id-based, card source gets upgraded
+    (is (lib/field-ref-id (selector-left q-table-table-upgraded)))
+    (is (lib/field-ref-name (selector-left q-card-table-upgraded)))
     (is (lib/field-ref-name (selector-left q-card-card-upgraded)))
-    (is (lib/field-ref-name (selector-right q-table-upgraded)))
-    (is (lib/field-ref-name (selector-right q-card-upgraded)))
+    ;; RHS: join target table fields stay id-based; join target card fields get upgraded to name-based
+    (is (lib/field-ref-id (selector-right q-table-table-upgraded)))
+    (is (lib/field-ref-id (selector-right q-card-table-upgraded)))
     (is (lib/field-ref-name (selector-right q-card-card-upgraded)))
     ;; Compiled query should be the same
-    (is (= (qp.compile/compile q-table)
-           (qp.compile/compile q-table-upgraded)))
+    (is (= (qp.compile/compile q-table-table)
+           (qp.compile/compile q-table-table-upgraded)))
     ;; (eric): I thought the queries below should compile to the same as the queries above, but it appears that table
     ;; vs card are different
-    (is (= (qp.compile/compile q-card)
-           (qp.compile/compile q-card-upgraded)))
+    (is (= (qp.compile/compile q-card-table)
+           (qp.compile/compile q-card-table-upgraded)))
     (is (= (qp.compile/compile q-card-card)
            (qp.compile/compile q-card-card-upgraded)))))
