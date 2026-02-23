@@ -18,7 +18,7 @@ import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErr
 import { CollectionPickerModal } from "metabase/common/components/Pickers/CollectionPicker";
 import { useToast } from "metabase/common/hooks";
 import { getIcon } from "metabase/lib/icon";
-import { useNavigation } from "metabase/routing/compat";
+import { useNavigation } from "metabase/routing";
 import {
   Box,
   Button,

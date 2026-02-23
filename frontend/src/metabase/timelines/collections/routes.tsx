@@ -2,13 +2,10 @@ import type { Location } from "history";
 import type React from "react";
 import { Fragment } from "react";
 import type { RouteObject } from "react-router-dom";
+import { useLocation, useParams } from "react-router-dom";
 
 import { ModalRoute } from "metabase/hoc/ModalRoute";
-import {
-  createModalRoute,
-  useLocationWithQuery,
-  useRouteParams,
-} from "metabase/routing/compat";
+import { createModalRoute } from "metabase/routing";
 
 import DeleteEventModal from "./containers/DeleteEventModal";
 import DeleteTimelineModal from "./containers/DeleteTimelineModal";
@@ -27,8 +24,8 @@ import type { ModalParams } from "./types";
 
 const withTimelineModalRouteProps = (Component: React.ComponentType<any>) => {
   return function TimelineModalRoute({ onClose }: { onClose: () => void }) {
-    const params = useRouteParams<Record<string, string | undefined>>();
-    const location = useLocationWithQuery();
+    const params = useParams<Record<string, string | undefined>>();
+    const location = useLocation();
 
     return (
       <Component

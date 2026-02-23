@@ -10,7 +10,7 @@ import { DataStudioBreadcrumbs } from "metabase/data-studio/common/components/Da
 import { PageContainer } from "metabase/data-studio/common/components/PageContainer";
 import { PaneHeader } from "metabase/data-studio/common/components/PaneHeader";
 import * as Urls from "metabase/lib/urls";
-import { useNavigation } from "metabase/routing/compat";
+import { useNavigation } from "metabase/routing";
 import { ListEmptyState } from "metabase/transforms/components/ListEmptyState";
 import type { TreeTableColumnDef } from "metabase/ui";
 import {

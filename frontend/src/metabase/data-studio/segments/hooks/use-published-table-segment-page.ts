@@ -8,7 +8,7 @@ import {
 } from "metabase/api";
 import { useToast } from "metabase/common/hooks/use-toast";
 import * as Urls from "metabase/lib/urls";
-import { useNavigation } from "metabase/routing/compat";
+import { useNavigation } from "metabase/routing";
 
 import { useLoadTableWithMetadata } from "../../common/hooks/use-load-table-with-metadata";
 import type { SegmentTabUrls } from "../types";

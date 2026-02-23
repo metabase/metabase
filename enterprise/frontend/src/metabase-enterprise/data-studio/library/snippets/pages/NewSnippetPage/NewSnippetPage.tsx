@@ -20,7 +20,7 @@ import {
 import { useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { PLUGIN_REMOTE_SYNC, PLUGIN_SNIPPET_FOLDERS } from "metabase/plugins";
-import { useNavigation } from "metabase/routing/compat";
+import { useNavigation } from "metabase/routing";
 import { Card, Flex, Stack } from "metabase/ui";
 import type {
   NativeQuerySnippet,

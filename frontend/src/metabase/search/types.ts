@@ -1,4 +1,3 @@
-import type { Location } from "history";
 import type { ComponentType } from "react";
 
 import type { SearchFilterKeys } from "metabase/search/constants";
@@ -43,9 +42,13 @@ export type SearchQueryParamValue = string | string[] | null | undefined;
 export type URLSearchFilterQueryParams = Partial<
   Record<FilterTypeKeys, SearchQueryParamValue>
 >;
-export type SearchAwareLocation = Location<
-  { q?: string } & URLSearchFilterQueryParams
->;
+export type SearchAwareLocation = {
+  pathname: string;
+  search?: string;
+  query?:
+    | ({ q?: string } & URLSearchFilterQueryParams)
+    | Record<string, unknown>;
+};
 
 export type SearchFilters = Partial<SearchFilterPropTypes>;
 

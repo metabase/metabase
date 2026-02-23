@@ -1,4 +1,3 @@
-import type { Location } from "history";
 import { t } from "ttag";
 
 import {
@@ -17,7 +16,7 @@ type DeleteAlertModalProps = {
   params: {
     alertId?: string;
   };
-  location: Location<{ unsubscribed?: boolean }>;
+  location: { search: string };
   onClose: () => void;
 };
 
@@ -30,7 +29,9 @@ export const DeleteAlertModal = ({
 
   const [sendToast] = useToast();
 
-  const hasUnsubscribed = location.query?.unsubscribed;
+  const hasUnsubscribed = new URLSearchParams(location.search).has(
+    "unsubscribed",
+  );
 
   const {
     data: notification,

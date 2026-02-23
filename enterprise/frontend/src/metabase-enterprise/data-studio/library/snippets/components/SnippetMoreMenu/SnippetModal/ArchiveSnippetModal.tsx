@@ -5,7 +5,7 @@ import { getErrorMessage } from "metabase/api/utils";
 import { Link } from "metabase/common/components/Link";
 import { useToast } from "metabase/common/hooks";
 import * as Urls from "metabase/lib/urls";
-import { useNavigation } from "metabase/routing/compat";
+import { useNavigation } from "metabase/routing";
 import { Button, Group, Modal, Stack, Text } from "metabase/ui";
 import type { NativeQuerySnippet } from "metabase-types/api";
 

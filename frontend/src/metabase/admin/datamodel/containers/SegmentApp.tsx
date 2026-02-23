@@ -6,7 +6,7 @@ import { useCallbackEffect } from "metabase/common/hooks/use-callback-effect";
 import { Segments } from "metabase/entities/segments";
 import { Tables } from "metabase/entities/tables";
 import { connect } from "metabase/lib/redux";
-import { useNavigation } from "metabase/routing/compat";
+import { useNavigation } from "metabase/routing";
 import type { Segment } from "metabase-types/api";
 import type { State } from "metabase-types/store";
 

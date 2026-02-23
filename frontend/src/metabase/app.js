@@ -41,7 +41,7 @@ import { MetabaseReduxProvider } from "metabase/lib/redux/custom-context";
 import MetabaseSettings from "metabase/lib/settings";
 import { PLUGIN_APP_INIT_FUNCTIONS, PLUGIN_METABOT } from "metabase/plugins";
 import { refreshSiteSettings } from "metabase/redux/settings";
-import { createAppRouterV7 } from "metabase/routing/compat";
+import { createAppRouterV7 } from "metabase/routing";
 import { EmotionCacheProvider } from "metabase/styled-components/components/EmotionCacheProvider";
 import { GlobalStyles } from "metabase/styled-components/containers/GlobalStyles";
 import { ThemeProvider } from "metabase/ui";

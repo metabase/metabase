@@ -2,7 +2,7 @@ import { t } from "ttag";
 
 import { isSyncInProgress } from "metabase/lib/syncing";
 import { browseDatabase } from "metabase/lib/urls";
-import { useNavigation } from "metabase/routing/compat";
+import { useNavigation } from "metabase/routing";
 import { Button, Flex, Icon } from "metabase/ui";
 import type { Database } from "metabase-types/api";
 

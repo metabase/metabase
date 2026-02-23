@@ -21,7 +21,7 @@ import {
   getTablesPermission,
 } from "metabase/admin/permissions/utils/graph";
 import { getGroupFocusPermissionsUrl } from "metabase/admin/permissions/utils/urls";
-import { routerActions } from "metabase/routing/compat/react-router-redux";
+import { pushPath } from "metabase/lib/navigation";
 import type { Group, GroupsPermissions } from "metabase-types/api";
 
 const getTooltipMessage = (isAdmin: boolean, isBlockedAccess: boolean) => {
@@ -170,8 +170,8 @@ export const buildDownloadPermission = (
     ],
     postActions: hasChildEntities
       ? {
-          controlled: () =>
-            routerActions.push(getGroupFocusPermissionsUrl(groupId, entityId)),
+          controlled: () => () =>
+            pushPath(getGroupFocusPermissionsUrl(groupId, entityId)),
         }
       : undefined,
   };

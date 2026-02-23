@@ -1,5 +1,5 @@
 import { DatabaseEngineList } from "metabase/databases/components/DatabaseEngineList";
-import { useNavigation } from "metabase/routing/compat";
+import { useNavigation } from "metabase/routing";
 
 import { trackDatabaseSelect } from "../analytics";
 

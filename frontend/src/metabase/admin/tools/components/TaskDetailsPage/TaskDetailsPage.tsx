@@ -9,7 +9,7 @@ import { DateTime } from "metabase/common/components/DateTime";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { openSaveDialog } from "metabase/lib/dom";
 import * as Urls from "metabase/lib/urls";
-import { useNavigation } from "metabase/routing/compat";
+import { useNavigation } from "metabase/routing";
 import {
   Anchor,
   Box,

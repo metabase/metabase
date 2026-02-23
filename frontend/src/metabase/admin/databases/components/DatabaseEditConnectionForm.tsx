@@ -1,5 +1,6 @@
 import { updateIn } from "icepick";
 import { type ComponentType, useState } from "react";
+import { useLocation } from "react-router-dom";
 import { t } from "ttag";
 import _ from "underscore";
 
@@ -14,7 +15,6 @@ import type {
   FormLocation,
 } from "metabase/databases/types";
 import { useDispatch } from "metabase/lib/redux";
-import { useLocationWithQuery } from "metabase/routing/compat";
 import { Text } from "metabase/ui";
 import type {
   DatabaseData,
@@ -55,7 +55,7 @@ export const DatabaseEditConnectionForm = ({
   formLocation: Extract<FormLocation, "admin" | "full-page">;
 }) => {
   const dispatch = useDispatch();
-  const location = useLocationWithQuery();
+  const location = useLocation();
 
   const [isDirty, setIsDirty] = useState(false);
 

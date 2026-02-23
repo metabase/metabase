@@ -13,7 +13,7 @@ import Detail from "metabase/reference/components/Detail";
 import { EditHeader } from "metabase/reference/components/EditHeader";
 import EditableReferenceHeader from "metabase/reference/components/EditableReferenceHeader";
 import * as actions from "metabase/reference/reference";
-import { useNavigation } from "metabase/routing/compat";
+import { useNavigation } from "metabase/routing";
 
 import {
   getDatabase,

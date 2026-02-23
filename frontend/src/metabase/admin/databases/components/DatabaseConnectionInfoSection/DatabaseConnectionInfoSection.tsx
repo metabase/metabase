@@ -10,7 +10,7 @@ import { ActionButton } from "metabase/common/components/ActionButton";
 import { Tables } from "metabase/entities/tables";
 import { useDispatch } from "metabase/lib/redux";
 import { isSyncCompleted } from "metabase/lib/syncing";
-import { useNavigation } from "metabase/routing/compat";
+import { useNavigation } from "metabase/routing";
 import { Button, Flex, Tooltip } from "metabase/ui";
 import type { Database } from "metabase-types/api";
 

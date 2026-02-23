@@ -6,7 +6,7 @@ import { CollectionPermissionsHelp } from "metabase/admin/permissions/components
 import { Collections } from "metabase/entities/collections";
 import { Groups } from "metabase/entities/groups";
 import { connect, useSelector } from "metabase/lib/redux";
-import { useNavigation } from "metabase/routing/compat";
+import { useNavigation } from "metabase/routing";
 import type {
   Collection,
   CollectionId,

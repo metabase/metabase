@@ -11,7 +11,7 @@ import { NoObjectError } from "metabase/common/components/errors/NoObjectError";
 import { Search } from "metabase/entities/search";
 import { usePageTitle } from "metabase/hooks/use-page-title";
 import { useDispatch } from "metabase/lib/redux";
-import { useNavigation } from "metabase/routing/compat";
+import { useNavigation } from "metabase/routing";
 import { SearchSidebar } from "metabase/search/components/SearchSidebar";
 import {
   SearchContextTypes,
@@ -32,10 +32,9 @@ import {
 import { Box, Group, Paper, Text } from "metabase/ui";
 
 const getPageFromLocation = (location) => {
-  const maybePage = location.query?.page
-    ? parseInt(location.query.page, 10)
-    : 0;
-  return maybePage || 0;
+  const maybePage = new URLSearchParams(location.search ?? "").get("page");
+  const parsedPage = maybePage ? parseInt(maybePage, 10) : 0;
+  return parsedPage || 0;
 };
 
 function SearchApp({ location }) {

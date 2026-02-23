@@ -3,7 +3,7 @@ import { skipToken } from "@reduxjs/toolkit/query/react";
 import { useGetSubscriptionQuery, useUnsubscribeMutation } from "metabase/api";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { useSelector } from "metabase/lib/redux";
-import { useNavigation } from "metabase/routing/compat";
+import { useNavigation } from "metabase/routing";
 import { getUser } from "metabase/selectors/user";
 
 import { getArchivePath } from "../../actions";

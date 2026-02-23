@@ -10,7 +10,7 @@ import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErr
 import { useToast } from "metabase/common/hooks/use-toast";
 import { useSelector } from "metabase/lib/redux";
 import { UnsubscribeConfirmModal } from "metabase/notifications/modals/UnsubscribeConfirmModal";
-import { useNavigation } from "metabase/routing/compat";
+import { useNavigation } from "metabase/routing";
 import { getUser } from "metabase/selectors/user";
 import type { Notification, User } from "metabase-types/api";
 

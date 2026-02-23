@@ -1,11 +1,16 @@
-import type { Location, Query } from "history";
+import type { Query } from "history";
 import { useCallback, useEffect, useState } from "react";
 import { useEffectOnce, useLatest } from "react-use";
 
 import { useDebouncedValue } from "metabase/common/hooks/use-debounced-value";
-import { useNavigation } from "metabase/routing/compat";
+import { useNavigation } from "metabase/routing";
 
 type BaseState = Record<string, unknown>;
+type UrlStateLocation = {
+  pathname: string;
+  search: string;
+  hash?: string;
+};
 
 export type UrlStateConfig<State extends BaseState> = {
   parse: (query: Query) => State;
@@ -19,15 +24,25 @@ type UrlStateActions<State extends BaseState> = {
 export const URL_UPDATE_DEBOUNCE_DELAY = 300;
 
 /**
- * Once we migrate to react-router 6 we should be able to replace this custom hook
- * with something more sophisticated, like https://github.com/asmyshlyaev177/state-in-url
+ * Parse URL search string into the legacy Query object shape.
  */
+function toQuery(search: string): Query {
+  const searchParams = new URLSearchParams(search);
+  const query: Query = {};
+
+  searchParams.forEach((value, key) => {
+    query[key] = value;
+  });
+
+  return query;
+}
+
 export function useUrlState<State extends BaseState>(
-  location: Location,
+  location: UrlStateLocation,
   { parse, serialize }: UrlStateConfig<State>,
 ): [State, UrlStateActions<State>] {
   const { push, replace } = useNavigation();
-  const [state, setState] = useState(parse(location.query));
+  const [state, setState] = useState(parse(toQuery(location.search ?? "")));
   const urlState = useDebouncedValue(state, URL_UPDATE_DEBOUNCE_DELAY);
 
   const patchUrlState = useCallback((patch: Partial<State>) => {
@@ -36,7 +51,23 @@ export function useUrlState<State extends BaseState>(
 
   const updateUrl = useCallback(
     (state: State) => {
-      const newLocation = { ...location, query: serialize(state) };
+      const nextQuery = new URLSearchParams(
+        Object.entries(serialize(state)).reduce<Record<string, string>>(
+          (acc, [key, value]) => {
+            if (value != null) {
+              acc[key] = String(value);
+            }
+            return acc;
+          },
+          {},
+        ),
+      );
+      const search = nextQuery.toString();
+      const newLocation = {
+        pathname: location.pathname,
+        search: search ? `?${search}` : "",
+        hash: location.hash,
+      };
       push(newLocation);
     },
     [push, location, serialize],
@@ -45,7 +76,23 @@ export function useUrlState<State extends BaseState>(
   const updateUrlRef = useLatest(updateUrl);
 
   useEffectOnce(function cleanInvalidQueryParams() {
-    const newLocation = { ...location, query: serialize(urlState) };
+    const nextQuery = new URLSearchParams(
+      Object.entries(serialize(urlState)).reduce<Record<string, string>>(
+        (acc, [key, value]) => {
+          if (value != null) {
+            acc[key] = String(value);
+          }
+          return acc;
+        },
+        {},
+      ),
+    );
+    const search = nextQuery.toString();
+    const newLocation = {
+      pathname: location.pathname,
+      search: search ? `?${search}` : "",
+      hash: location.hash,
+    };
     replace(newLocation);
   });
 

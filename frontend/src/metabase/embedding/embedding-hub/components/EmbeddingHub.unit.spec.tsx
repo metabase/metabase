@@ -16,7 +16,7 @@ import {
   waitFor,
   within,
 } from "__support__/ui";
-import { useNavigation } from "metabase/routing/compat/useNavigation";
+import { useNavigation } from "metabase/routing/useNavigation";
 import {
   createMockCollection,
   createMockRecentTableDatabaseInfo,
@@ -25,7 +25,7 @@ import {
 } from "metabase-types/api/mocks";
 import { createMockState } from "metabase-types/store/mocks";
 
-jest.mock("metabase/routing/compat/useNavigation", () => ({
+jest.mock("metabase/routing/useNavigation", () => ({
   useNavigation: jest.fn(),
 }));
 

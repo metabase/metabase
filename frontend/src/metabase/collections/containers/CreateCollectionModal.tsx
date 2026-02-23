@@ -5,7 +5,7 @@ import { useEscapeToCloseModal } from "metabase/common/hooks/use-escape-to-close
 import { Collections } from "metabase/entities/collections";
 import { connect } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
-import { useNavigation } from "metabase/routing/compat";
+import { useNavigation } from "metabase/routing";
 import { Modal } from "metabase/ui";
 import type { Collection } from "metabase-types/api";
 import type { State } from "metabase-types/store";

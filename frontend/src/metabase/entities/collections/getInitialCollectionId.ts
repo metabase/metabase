@@ -37,7 +37,12 @@ function byCollectionUrlId(state: State, { params, location }: Props) {
 }
 
 function byCollectionQueryParameter(state: State, { location }: Props) {
-  return location && location.query && location.query.collectionId;
+  if (!location) {
+    return undefined;
+  }
+
+  const searchParams = new URLSearchParams(location.search);
+  return searchParams.get("collectionId") ?? undefined;
 }
 
 const getInitialCollectionId = createSelector(

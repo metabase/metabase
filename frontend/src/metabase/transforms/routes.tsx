@@ -1,10 +1,14 @@
-import { Outlet, type RouteObject } from "react-router-dom";
+import {
+  Outlet,
+  type RouteObject,
+  useLocation,
+  useParams,
+} from "react-router-dom";
 
 import {
   PLUGIN_DEPENDENCIES,
   PLUGIN_TRANSFORMS_PYTHON,
 } from "metabase/plugins";
-import { useLocationWithQuery, useRouteParams } from "metabase/routing/compat";
 
 import { JobListPage } from "./pages/JobListPage";
 import { JobPage } from "./pages/JobPage";
@@ -24,36 +28,36 @@ import { TransformSettingsPage } from "./pages/TransformSettingsPage";
 import { TransformTopNavLayout } from "./pages/TransformTopNavLayout";
 
 const RunListPageWithRouteProps = () => {
-  const location = useLocationWithQuery();
+  const location = useLocation();
   return <RunListPage location={location} />;
 };
 
 const JobPageWithRouteProps = () => {
-  const params = useRouteParams<{ jobId?: string }>();
+  const params = useParams<{ jobId?: string }>();
   return <JobPage params={{ jobId: params.jobId ?? "" }} />;
 };
 
 const NewCardTransformPageWithRouteProps = () => {
-  const params = useRouteParams<{ cardId?: string }>();
+  const params = useParams<{ cardId?: string }>();
   return <NewCardTransformPage params={{ cardId: params.cardId ?? "" }} />;
 };
 
 const TransformQueryPageWithRouteProps = () => {
-  const params = useRouteParams<{ transformId?: string }>();
+  const params = useParams<{ transformId?: string }>();
   return (
     <TransformQueryPage params={{ transformId: params.transformId ?? "" }} />
   );
 };
 
 const TransformRunPageWithRouteProps = () => {
-  const params = useRouteParams<{ transformId?: string }>();
+  const params = useParams<{ transformId?: string }>();
   return (
     <TransformRunPage params={{ transformId: params.transformId ?? "" }} />
   );
 };
 
 const TransformSettingsPageWithRouteProps = () => {
-  const params = useRouteParams<{ transformId?: string }>();
+  const params = useParams<{ transformId?: string }>();
   return (
     <TransformSettingsPage params={{ transformId: params.transformId ?? "" }} />
   );

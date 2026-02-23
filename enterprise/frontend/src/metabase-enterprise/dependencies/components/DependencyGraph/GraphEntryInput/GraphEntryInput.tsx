@@ -2,7 +2,7 @@ import { useDisclosure } from "@mantine/hooks";
 import { useState } from "react";
 
 import { trackDependencyEntitySelected } from "metabase/data-studio/analytics";
-import { useNavigation } from "metabase/routing/compat";
+import { useNavigation } from "metabase/routing";
 import { Card } from "metabase/ui";
 import type {
   DependencyEntry,

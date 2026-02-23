@@ -4,16 +4,16 @@ import {
   Outlet,
   Route as RouterRoute,
   Routes,
+  useParams,
 } from "react-router-dom";
 
 import ActionCreatorModal from "metabase/actions/containers/ActionCreatorModal/ActionCreatorModal";
 import { ModelDetailPage } from "metabase/detail-view/pages/ModelDetailPage/ModelDetailPage";
 import ModelActions from "metabase/models/containers/ModelActions/ModelActions";
-import { createModalRoute, useRouteParams } from "metabase/routing/compat";
-import { ModalRouteWrapper } from "metabase/routing/compat/ModalRouteWrapper";
+import { ModalRouteWrapper, createModalRoute } from "metabase/routing";
 
 const ModelActionsWithRouteProps = () => {
-  const params = useRouteParams<{ slug?: string }>();
+  const params = useParams<{ slug?: string }>();
 
   return (
     <ModelActions params={{ slug: params.slug ?? "" }}>
@@ -23,7 +23,7 @@ const ModelActionsWithRouteProps = () => {
 };
 
 const ModelDetailPageWithRouteProps = () => {
-  const params = useRouteParams<{ slug?: string; rowId?: string }>();
+  const params = useParams<{ slug?: string; rowId?: string }>();
   return (
     <ModelDetailPage
       params={{
@@ -39,7 +39,7 @@ const ActionCreatorModalWithRouteProps = ({
 }: {
   onClose: () => void;
 }) => {
-  const params = useRouteParams<{ slug?: string; actionId?: string }>();
+  const params = useParams<{ slug?: string; actionId?: string }>();
 
   return (
     <ActionCreatorModal

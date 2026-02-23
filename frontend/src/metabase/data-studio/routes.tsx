@@ -12,14 +12,14 @@ import {
 import {
   CanAccessDataStudioGuard,
   UserCanAccessDataModelGuard,
-} from "metabase/routing/compat";
+} from "metabase/routing";
 import { getDataStudioTransformRouteObjects } from "metabase/transforms/routes";
 import { canAccessTransforms } from "metabase/transforms/selectors";
 
 import { DataSectionLayout } from "./app/pages/DataSectionLayout";
 import { DataStudioLayout } from "./app/pages/DataStudioLayout";
-import { DependencyDiagnosticsSectionLayout } from "./app/pages/DependencyDiagnosticsSectionLayout";
 import { DependenciesSectionLayout } from "./app/pages/DependenciesSectionLayout";
+import { DependencyDiagnosticsSectionLayout } from "./app/pages/DependencyDiagnosticsSectionLayout";
 import { GitSyncSectionLayout } from "./app/pages/GitSyncSectionLayout";
 import { TransformsSectionLayout } from "./app/pages/TransformsSectionLayout";
 import { WorkspacesSectionLayout } from "./app/pages/WorkspacesSectionLayout";
@@ -81,41 +81,41 @@ export function getDataStudioRouteObjects(): RouteObject[] {
               : [{ path: "library", element: <LibraryUpsellPage /> }]),
             ...(PLUGIN_WORKSPACES.isEnabled
               ? [
-                {
-                  path: "workspaces",
-                  element: <WorkspacesSectionLayout />,
-                  children:
-                    PLUGIN_WORKSPACES.getDataStudioWorkspaceRouteObjects(),
-                } satisfies RouteObject,
-              ]
+                  {
+                    path: "workspaces",
+                    element: <WorkspacesSectionLayout />,
+                    children:
+                      PLUGIN_WORKSPACES.getDataStudioWorkspaceRouteObjects(),
+                  } satisfies RouteObject,
+                ]
               : []),
             ...(PLUGIN_DEPENDENCIES.isEnabled
               ? [
-                {
-                  path: "dependencies",
-                  element: <DependenciesSectionLayout />,
-                  children:
-                    PLUGIN_DEPENDENCIES.getDataStudioDependencyRouteObjects(),
-                } satisfies RouteObject,
-              ]
+                  {
+                    path: "dependencies",
+                    element: <DependenciesSectionLayout />,
+                    children:
+                      PLUGIN_DEPENDENCIES.getDataStudioDependencyRouteObjects(),
+                  } satisfies RouteObject,
+                ]
               : [
-                { path: "dependencies", element: <DependenciesUpsellPage /> },
-              ]),
+                  { path: "dependencies", element: <DependenciesUpsellPage /> },
+                ]),
             ...(PLUGIN_DEPENDENCIES.isEnabled
               ? [
-                {
-                  path: "dependency-diagnostics",
-                  element: <DependencyDiagnosticsSectionLayout />,
-                  children:
-                    PLUGIN_DEPENDENCIES.getDataStudioDependencyDiagnosticsRouteObjects(),
-                } satisfies RouteObject,
-              ]
+                  {
+                    path: "dependency-diagnostics",
+                    element: <DependencyDiagnosticsSectionLayout />,
+                    children:
+                      PLUGIN_DEPENDENCIES.getDataStudioDependencyDiagnosticsRouteObjects(),
+                  } satisfies RouteObject,
+                ]
               : [
-                {
-                  path: "dependency-diagnostics",
-                  element: <DependencyDiagnosticsUpsellPage />,
-                },
-              ]),
+                  {
+                    path: "dependency-diagnostics",
+                    element: <DependencyDiagnosticsUpsellPage />,
+                  },
+                ]),
             { path: "git-sync", element: <GitSyncSectionLayout /> },
           ],
         },

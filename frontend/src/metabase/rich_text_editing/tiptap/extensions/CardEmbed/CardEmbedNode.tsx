@@ -43,7 +43,7 @@ import { usePublicDocumentContext } from "metabase/public/contexts/PublicDocumen
 import { usePublicDocumentCardData } from "metabase/public/hooks/use-public-document-card-data";
 import { useDownloadData } from "metabase/query_builder/components/QuestionDownloadWidget/use-download-data";
 import { DropZone } from "metabase/rich_text_editing/tiptap/extensions/shared/dnd/DropZone";
-import { useNavigation } from "metabase/routing/compat";
+import { useNavigation } from "metabase/routing";
 import { getMetadata } from "metabase/selectors/metadata";
 import { Box, Flex, Icon, Loader, Menu, Text, TextInput } from "metabase/ui";
 import { DocumentMode } from "metabase/visualizations/click-actions/modes/DocumentMode";

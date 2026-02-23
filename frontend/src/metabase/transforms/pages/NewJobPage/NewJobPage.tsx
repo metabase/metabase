@@ -10,7 +10,7 @@ import { LeaveRouteConfirmModal } from "metabase/common/components/LeaveConfirmM
 import { PaneHeaderActions } from "metabase/data-studio/common/components/PaneHeader";
 import * as Urls from "metabase/lib/urls";
 import { useMetadataToasts } from "metabase/metadata/hooks";
-import { useNavigation } from "metabase/routing/compat";
+import { useNavigation } from "metabase/routing";
 import type { ScheduleDisplayType, TransformTagId } from "metabase-types/api";
 
 import { JobEditor, type TransformJobInfo } from "../../components/JobEditor";

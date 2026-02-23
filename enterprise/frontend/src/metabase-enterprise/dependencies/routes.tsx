@@ -1,7 +1,5 @@
 import type { RouteObject } from "react-router-dom";
-import { Navigate } from "react-router-dom";
-
-import { useLocationWithQuery } from "metabase/routing/compat";
+import { Navigate, useLocation } from "react-router-dom";
 
 import {
   BrokenDependencyDiagnosticsPage,
@@ -10,12 +8,12 @@ import {
 import { DependencyGraphPage } from "./pages/DependencyGraphPage";
 
 const BrokenDependencyListPageWithRouteProps = () => {
-  const location = useLocationWithQuery();
+  const location = useLocation();
   return <BrokenDependencyDiagnosticsPage location={location} />;
 };
 
 const UnreferencedDependencyListPageWithRouteProps = () => {
-  const location = useLocationWithQuery();
+  const location = useLocation();
   return <UnreferencedDependencyDiagnosticsPage location={location} />;
 };
 

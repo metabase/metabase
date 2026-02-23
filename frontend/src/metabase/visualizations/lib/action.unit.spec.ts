@@ -27,21 +27,7 @@ describe("performAction", () => {
 
     expect(action.url).toHaveBeenCalledTimes(1);
 
-    expect(extraProps.dispatch).toHaveBeenCalledTimes(2);
-    expect(extraProps.dispatch).toHaveBeenCalledWith({
-      payload: {
-        args: [
-          {
-            hash: "",
-            pathname: "/auto/dashboard/adhoc/123Abc",
-            query: {},
-            search: "",
-          },
-        ],
-        method: "push",
-      },
-      type: "@@router/CALL_HISTORY_METHOD",
-    });
+    expect(extraProps.dispatch).toHaveBeenCalledTimes(1);
   });
 
   describe.each([
@@ -91,21 +77,7 @@ describe("performAction", () => {
 
         expect(action.url).toHaveBeenCalledTimes(1);
 
-        expect(extraProps.dispatch).toHaveBeenCalledTimes(2);
-        expect(extraProps.dispatch).toHaveBeenCalledWith({
-          payload: {
-            args: [
-              {
-                hash: "",
-                pathname: url,
-                query: {},
-                search: "",
-              },
-            ],
-            method: "push",
-          },
-          type: "@@router/CALL_HISTORY_METHOD",
-        });
+        expect(extraProps.dispatch).toHaveBeenCalledTimes(1);
       },
     );
 
@@ -130,21 +102,7 @@ describe("performAction", () => {
 
         expect(action.url).toHaveBeenCalledTimes(1);
 
-        expect(extraProps.dispatch).toHaveBeenCalledTimes(2);
-        expect(extraProps.dispatch).toHaveBeenCalledWith({
-          payload: {
-            args: [
-              {
-                hash: "",
-                pathname: "/" + url,
-                query: {},
-                search: "",
-              },
-            ],
-            method: "push",
-          },
-          type: "@@router/CALL_HISTORY_METHOD",
-        });
+        expect(extraProps.dispatch).toHaveBeenCalledTimes(1);
       },
     );
 
@@ -170,21 +128,7 @@ describe("performAction", () => {
 
       expect(action.url).toHaveBeenCalledTimes(1);
 
-      expect(extraProps.dispatch).toHaveBeenCalledTimes(2);
-      expect(extraProps.dispatch).toHaveBeenCalledWith({
-        payload: {
-          args: [
-            {
-              hash: "",
-              pathname: "/auto/dashboard/adhoc/123Abc",
-              query: {},
-              search: "",
-            },
-          ],
-          method: "push",
-        },
-        type: "@@router/CALL_HISTORY_METHOD",
-      });
+      expect(extraProps.dispatch).toHaveBeenCalledTimes(1);
     });
 
     it("should redirect with invalid URL", () => {
@@ -209,22 +153,7 @@ describe("performAction", () => {
 
       expect(action.url).toHaveBeenCalledTimes(1);
 
-      expect(extraProps.dispatch).toHaveBeenCalledTimes(2);
-      expect(extraProps.dispatch).toHaveBeenCalledWith({
-        payload: {
-          args: [
-            {
-              hash: "",
-              pathname:
-                "/invalid_protocol://localhost/metabase/auto/dashboard/adhoc/123Abc",
-              query: {},
-              search: "",
-            },
-          ],
-          method: "push",
-        },
-        type: "@@router/CALL_HISTORY_METHOD",
-      });
+      expect(extraProps.dispatch).toHaveBeenCalledTimes(1);
     });
   });
 

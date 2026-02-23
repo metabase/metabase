@@ -1,5 +1,3 @@
-import type { Location } from "history";
-
 import * as Urls from "metabase/lib/urls";
 import {
   DEPENDENCY_GROUP_TYPES,
@@ -9,6 +7,10 @@ import {
 } from "metabase-types/api";
 
 import type { DependencyDiagnosticsMode } from "../../components/DependencyDiagnostics/types";
+
+type SearchLocation = {
+  search: string;
+};
 
 export function getPageUrl(
   mode: DependencyDiagnosticsMode,
@@ -20,8 +22,9 @@ export function getPageUrl(
 }
 
 export function parseUrlParams(
-  location: Location,
+  location: SearchLocation,
 ): Urls.DependencyDiagnosticsParams {
+  const queryParams = Object.fromEntries(new URLSearchParams(location.search));
   const {
     page,
     query,
@@ -29,7 +32,7 @@ export function parseUrlParams(
     "include-personal-collections": includePersonalCollections,
     "sort-column": sortColumn,
     "sort-direction": sortDirection,
-  } = location.query;
+  } = queryParams;
 
   return {
     page: Urls.parseNumberParam(page),
@@ -72,6 +75,6 @@ export function getUserParams(
   };
 }
 
-export function isEmptyParams(location: Location): boolean {
-  return Object.values(location.query).every((value) => value == null);
+export function isEmptyParams(location: SearchLocation): boolean {
+  return new URLSearchParams(location.search).toString().length === 0;
 }

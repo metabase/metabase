@@ -1,5 +1,3 @@
-import type { Location } from "history";
-
 import * as Urls from "metabase/lib/urls";
 import {
   SORT_DIRECTIONS,
@@ -13,9 +11,14 @@ import type {
   TransformRunSortOptions,
 } from "./types";
 
+type SearchLocation = {
+  search: string;
+};
+
 export function getParsedParams(
-  location: Location,
+  location: SearchLocation,
 ): Urls.TransformRunListParams {
+  const query = Object.fromEntries(new URLSearchParams(location.search));
   const {
     page,
     statuses,
@@ -26,7 +29,7 @@ export function getParsedParams(
     "run-methods": runMethods,
     "sort-column": sortColumn,
     "sort-direction": sortDirection,
-  } = location.query;
+  } = query;
 
   return {
     page: Urls.parseNumberParam(page),

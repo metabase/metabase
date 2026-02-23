@@ -4,7 +4,7 @@ import { t } from "ttag";
 import type { SdkCollectionId } from "embedding-sdk-bundle/types";
 import { useEscapeToCloseModal } from "metabase/common/hooks/use-escape-to-close-modal";
 import * as Urls from "metabase/lib/urls";
-import { useNavigation } from "metabase/routing/compat";
+import { useNavigation } from "metabase/routing";
 import { Modal, type ModalProps } from "metabase/ui";
 import type { CollectionId, Dashboard } from "metabase-types/api";
 

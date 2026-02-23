@@ -1,7 +1,7 @@
 import type { RouteObject } from "react-router-dom";
+import { useParams } from "react-router-dom";
 
 import { PLUGIN_DEPENDENCIES } from "metabase/plugins";
-import { useRouteParams } from "metabase/routing/compat";
 
 import { ArchivedSnippetsPage } from "./pages/ArchivedSnippetsPage";
 import { EditSnippetPage } from "./pages/EditSnippetPage";
@@ -9,7 +9,7 @@ import { NewSnippetPage } from "./pages/NewSnippetPage";
 import { SnippetDependenciesPage } from "./pages/SnippetDependenciesPage";
 
 const EditSnippetPageWithRouteProps = () => {
-  const params = useRouteParams<{ snippetId?: string }>();
+  const params = useParams<{ snippetId?: string }>();
   return <EditSnippetPage params={{ snippetId: params.snippetId ?? "" }} />;
 };
 

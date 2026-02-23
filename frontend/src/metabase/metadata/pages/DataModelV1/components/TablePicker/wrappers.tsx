@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 
 import { useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
-import { useNavigation } from "metabase/routing/compat";
+import { useNavigation } from "metabase/routing";
 import { getLocation } from "metabase/selectors/routing";
 
 import { TablePicker } from "./components";

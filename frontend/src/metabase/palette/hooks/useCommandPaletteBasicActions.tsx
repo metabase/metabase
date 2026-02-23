@@ -17,7 +17,7 @@ import {
   setOpenModal,
   setOpenModalWithProps,
 } from "metabase/redux/ui";
-import { useNavigation } from "metabase/routing/compat";
+import { useNavigation } from "metabase/routing";
 import { getHasDatabaseWithActionsEnabled } from "metabase/selectors/data";
 import {
   canUserCreateNativeQueries,

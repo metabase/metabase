@@ -7,7 +7,7 @@ import { useSetting } from "metabase/common/hooks";
 import { IS_EMBED_PREVIEW } from "metabase/lib/embed";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
-import { useNavigation } from "metabase/routing/compat";
+import { useNavigation } from "metabase/routing";
 import { getParameterValuesBySlug } from "metabase-lib/v1/parameters/utils/parameter-values";
 
 import { selectTab } from "../actions";
@@ -20,7 +20,9 @@ import {
 import { createTabSlug } from "../utils";
 
 type RouterLike = {
-  listen: (handler: (location: Location) => void) => () => void;
+  listen: (
+    handler: (location: { pathname: string; search: string }) => void,
+  ) => () => void;
 };
 
 export function useDashboardUrlQuery(router: RouterLike, location: Location) {
@@ -77,7 +79,9 @@ export function useDashboardUrlQuery(router: RouterLike, location: Location) {
       return;
     }
 
-    const currentQuery = location?.query ?? {};
+    const currentQuery = Object.fromEntries(
+      new URLSearchParams(location.search),
+    );
 
     const nextQueryParams = toLocationQuery(queryParams);
     const currentQueryParams = _.omit(currentQuery, ...QUERY_PARAMS_ALLOW_LIST);
@@ -91,10 +95,16 @@ export function useDashboardUrlQuery(router: RouterLike, location: Location) {
         previousQueryParams?.tab &&
         queryParams.tab !== previousQueryParams.tab;
 
+      const nextLocation = {
+        pathname: location.pathname,
+        hash: location.hash,
+        query: nextQuery,
+      };
+
       if (isDashboardTabChange) {
-        navigation.push({ ...location, query: nextQuery });
+        navigation.push(nextLocation);
       } else {
-        navigation.replace({ ...location, query: nextQuery });
+        navigation.replace(nextLocation);
       }
     }
   }, [
@@ -128,8 +138,8 @@ export function useDashboardUrlQuery(router: RouterLike, location: Location) {
 
 const QUERY_PARAMS_ALLOW_LIST = ["objectId"];
 
-function parseTabId(location: Location) {
-  const slug = location.query?.tab;
+function parseTabId(location: { search: string }) {
+  const slug = new URLSearchParams(location.search).get("tab");
   if (typeof slug === "string" && slug.length > 0) {
     const id = parseInt(slug, 10);
     return Number.isSafeInteger(id) ? id : null;

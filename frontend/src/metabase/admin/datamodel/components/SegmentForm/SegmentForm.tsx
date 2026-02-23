@@ -12,7 +12,7 @@ import { FieldSet } from "metabase/common/components/FieldSet";
 import { useSelector } from "metabase/lib/redux";
 import { PLUGIN_REMOTE_SYNC } from "metabase/plugins";
 import { SegmentEditor } from "metabase/querying/segments/components/SegmentEditor";
-import { useNavigation } from "metabase/routing/compat";
+import { useNavigation } from "metabase/routing";
 import { getMetadata } from "metabase/selectors/metadata";
 import { Alert } from "metabase/ui";
 import * as Lib from "metabase-lib";

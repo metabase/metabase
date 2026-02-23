@@ -2,10 +2,6 @@ import { combineReducers, configureStore } from "@reduxjs/toolkit";
 
 import { Api } from "metabase/api";
 import { PLUGIN_REDUX_MIDDLEWARES } from "metabase/plugins";
-import {
-  CALL_HISTORY_METHOD,
-  handleCallHistoryMethod,
-} from "metabase/routing/compat/react-router-redux";
 
 const LOCATION_CHANGE = "@@router/LOCATION_CHANGE";
 
@@ -56,14 +52,6 @@ export function getStore(reducers, _history, initialState) {
     [Api.reducerPath]: Api.reducer,
   });
 
-  const routerMiddleware = () => (next) => (action) => {
-    if (action?.type === CALL_HISTORY_METHOD) {
-      handleCallHistoryMethod(action);
-    }
-
-    return next(action);
-  };
-
   return configureStore({
     reducer,
     preloadedState: initialState,
@@ -71,10 +59,6 @@ export function getStore(reducers, _history, initialState) {
       getDefaultMiddleware({
         immutableCheck: false,
         serializableCheck: false,
-      }).concat([
-        routerMiddleware,
-        Api.middleware,
-        ...PLUGIN_REDUX_MIDDLEWARES,
-      ]),
+      }).concat([Api.middleware, ...PLUGIN_REDUX_MIDDLEWARES]),
   });
 }

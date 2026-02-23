@@ -4,7 +4,7 @@ import { useMount } from "react-use";
 import { NotFound } from "metabase/common/components/ErrorPages";
 import { connect } from "metabase/lib/redux";
 import { refreshCurrentUser } from "metabase/redux/user";
-import { useNavigation } from "metabase/routing/compat";
+import { useNavigation } from "metabase/routing";
 
 type DispatchProps = {
   refreshCurrentUser: () => any;

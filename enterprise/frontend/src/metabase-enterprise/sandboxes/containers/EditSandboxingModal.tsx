@@ -6,7 +6,7 @@ import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErr
 import { getParentPath } from "metabase/hoc/ModalRoute";
 import { connect } from "metabase/lib/redux";
 import { useRouter } from "metabase/router";
-import { useNavigation } from "metabase/routing/compat";
+import { useNavigation } from "metabase/routing";
 import {
   getGroupTableAccessPolicy,
   getPolicyRequestState,

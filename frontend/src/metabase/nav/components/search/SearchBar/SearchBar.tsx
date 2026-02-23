@@ -6,6 +6,7 @@ import type {
   KeyboardEvent as ReactKeyboardEvent,
 } from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useLocation, useNavigationType } from "react-router-dom";
 import { usePrevious } from "react-use";
 import { t } from "ttag";
 
@@ -18,8 +19,8 @@ import { modelToUrl } from "metabase/lib/urls";
 import { RecentsList } from "metabase/nav/components/search/RecentsList";
 import { SearchResultsDropdown } from "metabase/nav/components/search/SearchResultsDropdown";
 import { zoomInRow } from "metabase/query_builder/actions";
-import { useLocationWithQuery, useNavigation } from "metabase/routing/compat";
-import type { WrappedResult } from "metabase/search/types";
+import { useNavigation } from "metabase/routing";
+import type { SearchAwareLocation, WrappedResult } from "metabase/search/types";
 import {
   getFiltersFromLocation,
   getSearchTextFromLocation,
@@ -46,19 +47,21 @@ type OwnProps = {
 };
 
 function SearchBarView({ onSearchActive, onSearchInactive }: OwnProps) {
-  const location = useLocationWithQuery();
+  const location = useLocation();
+  const searchAwareLocation = location as unknown as SearchAwareLocation;
+  const navigationType = useNavigationType();
   const { push } = useNavigation();
   const isTypeaheadEnabled = useSelector((state) =>
     getSetting(state, "search-typeahead-enabled"),
   );
 
   const [searchText, setSearchText] = useState<string>(
-    getSearchTextFromLocation(location),
+    getSearchTextFromLocation(searchAwareLocation),
   );
 
   const searchFilters = useMemo(
-    () => getFiltersFromLocation(location),
-    [location],
+    () => getFiltersFromLocation(searchAwareLocation),
+    [searchAwareLocation],
   );
 
   const [isActive, { turnOn: setActive, turnOff: setInactive }] =
@@ -133,19 +136,21 @@ function SearchBarView({ onSearchActive, onSearchInactive }: OwnProps) {
 
   useEffect(() => {
     if (previousLocation?.pathname !== location.pathname) {
-      setSearchText(getSearchTextFromLocation(location));
+      setSearchText(getSearchTextFromLocation(searchAwareLocation));
     }
-  }, [previousLocation, location]);
+  }, [previousLocation, location, searchAwareLocation]);
 
   useEffect(() => {
-    if (previousLocation !== location && location.action !== "REPLACE") {
+    if (previousLocation !== location && navigationType !== "REPLACE") {
       // deactivate search when page changes
       setInactive();
     }
-  }, [previousLocation, location, setInactive]);
+  }, [previousLocation, location, navigationType, setInactive]);
 
   const goToSearchApp = useCallback(() => {
-    const shouldPersistFilters = isSearchPageLocation(previousLocation);
+    const shouldPersistFilters = isSearchPageLocation(
+      previousLocation as SearchAwareLocation | undefined,
+    );
     const filters = shouldPersistFilters ? searchFilters : {};
 
     const query = {

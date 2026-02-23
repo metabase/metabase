@@ -1,5 +1,4 @@
 import { useDisclosure } from "@mantine/hooks";
-import type { Location } from "history";
 import { useMemo, useState } from "react";
 import { t } from "ttag";
 
@@ -17,7 +16,7 @@ import { getResultMetadata } from "metabase/data-studio/common/utils";
 import { useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { getInitialUiState } from "metabase/querying/editor/components/QueryEditor";
-import { useNavigation } from "metabase/routing/compat";
+import { useNavigation } from "metabase/routing";
 import { getMetadata } from "metabase/selectors/metadata";
 import { Card } from "metabase/ui";
 import * as Lib from "metabase-lib";
@@ -35,7 +34,7 @@ type NewMetricPageQuery = {
 };
 
 type NewMetricPageProps = {
-  location: Location<NewMetricPageQuery>;
+  location: { search: string };
 };
 
 export function NewMetricPage({ location }: NewMetricPageProps) {
@@ -48,8 +47,11 @@ export function NewMetricPage({ location }: NewMetricPageProps) {
   const [uiState, setUiState] = useState(getInitialUiState);
   const [isModalOpened, { open: openModal, close: closeModal }] =
     useDisclosure();
+  const queryParams = Object.fromEntries(
+    new URLSearchParams(location.search),
+  ) as NewMetricPageQuery;
   const initialCollectionId = Urls.extractCollectionId(
-    location.query.collectionId,
+    queryParams.collectionId,
   );
   const defaultCollectionId = useGetDefaultCollectionId();
 

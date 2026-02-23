@@ -10,7 +10,7 @@ import { Dashboards } from "metabase/entities/dashboards";
 import { connect } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { useRouter } from "metabase/router";
-import { useNavigation } from "metabase/routing/compat";
+import { useNavigation } from "metabase/routing";
 
 import { getDashboardComplete } from "../selectors";
 

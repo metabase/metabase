@@ -26,7 +26,7 @@ import { isWithinIframe } from "metabase/lib/dom";
 import { useSelector } from "metabase/lib/redux/hooks";
 import { DropZone } from "metabase/rich_text_editing/tiptap/extensions/shared/dnd/DropZone";
 import { useDndHelpers } from "metabase/rich_text_editing/tiptap/extensions/shared/dnd/use-dnd-helpers";
-import { useNavigation } from "metabase/routing/compat";
+import { useNavigation } from "metabase/routing";
 import { Box } from "metabase/ui";
 
 import { CommentsButton } from "../../components/CommentsButton";

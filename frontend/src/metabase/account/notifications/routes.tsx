@@ -1,11 +1,11 @@
-import type { Location } from "history";
-import { Outlet, type RouteObject } from "react-router-dom";
-
 import {
-  createModalRoute,
-  useLocationWithQuery,
-  useRouteParams,
-} from "metabase/routing/compat";
+  Outlet,
+  type RouteObject,
+  useLocation,
+  useParams,
+} from "react-router-dom";
+
+import { createModalRoute } from "metabase/routing";
 
 import { HelpModal } from "./components/HelpModal";
 import { DeleteAlertModal } from "./containers/ArchiveAlertModal";
@@ -25,19 +25,11 @@ const DeleteAlertModalWithRouteProps = ({
 }: {
   onClose: () => void;
 }) => {
-  const params = useRouteParams<{ alertId?: string }>();
-  const location = useLocationWithQuery();
+  const params = useParams<{ alertId?: string }>();
+  const location = useLocation();
 
   return (
-    <DeleteAlertModal
-      params={params}
-      location={
-        location as unknown as Location<{
-          unsubscribed?: boolean;
-        }>
-      }
-      onClose={onClose}
-    />
+    <DeleteAlertModal params={params} location={location} onClose={onClose} />
   );
 };
 
@@ -46,15 +38,11 @@ const ArchivePulseModalWithRouteProps = ({
 }: {
   onClose: () => void;
 }) => {
-  const params = useRouteParams<{ pulseId?: string }>();
-  const location = useLocationWithQuery();
+  const params = useParams<{ pulseId?: string }>();
+  const location = useLocation();
 
   return (
-    <ArchivePulseModal
-      params={params}
-      location={location as unknown as Location}
-      onClose={onClose}
-    />
+    <ArchivePulseModal params={params} location={location} onClose={onClose} />
   );
 };
 
@@ -63,7 +51,7 @@ const UnsubscribeAlertModalWithRouteProps = ({
 }: {
   onClose: () => void;
 }) => {
-  const params = useRouteParams<{ alertId?: string }>();
+  const params = useParams<{ alertId?: string }>();
   return <UnsubscribeAlertModal params={params} onClose={onClose} />;
 };
 
@@ -72,7 +60,7 @@ const UnsubscribePulseModalWithRouteProps = ({
 }: {
   onClose: () => void;
 }) => {
-  const params = useRouteParams<{ pulseId?: string }>();
+  const params = useParams<{ pulseId?: string }>();
   return <UnsubscribePulseModal params={params} onClose={onClose} />;
 };
 

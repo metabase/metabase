@@ -7,7 +7,7 @@ import CS from "metabase/css/core/index.css";
 import { FormMessage } from "metabase/forms";
 import { isSyncCompleted } from "metabase/lib/syncing";
 import { PLUGIN_FEATURE_LEVEL_PERMISSIONS } from "metabase/plugins";
-import { useNavigation } from "metabase/routing/compat";
+import { useNavigation } from "metabase/routing";
 import { Button, Flex, Loader, UnstyledButton } from "metabase/ui";
 import type { Database, Engine } from "metabase-types/api";
 

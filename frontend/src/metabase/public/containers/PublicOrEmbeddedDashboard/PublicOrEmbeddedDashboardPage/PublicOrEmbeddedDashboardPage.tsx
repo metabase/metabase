@@ -1,4 +1,5 @@
 import type { Location } from "history";
+import { useSearchParams } from "react-router-dom";
 
 import { PublicOrEmbeddedDashCardMenu } from "metabase/dashboard/components/DashCard/PublicOrEmbeddedDashCardMenu";
 import { DASHBOARD_DISPLAY_ACTIONS } from "metabase/dashboard/components/DashboardHeader/DashboardHeaderButtonRow/constants";
@@ -28,14 +29,25 @@ const PublicOrEmbeddedDashboardPageInner = () => {
   return <PublicOrEmbeddedDashboardView />;
 };
 
+const searchParamsToQuery = (
+  searchParams: URLSearchParams,
+): Record<string, string> => {
+  const result: Record<string, string> = {};
+  searchParams.forEach((value, key) => {
+    result[key] = value;
+  });
+  return result;
+};
+
 export const PublicOrEmbeddedDashboardPage = () => {
   const dispatch = useDispatch();
   const { location, params } = useRouter();
+  const [searchParams] = useSearchParams();
   const dashboardLocation = location as unknown as Location;
 
   const { uuid, token } = params;
 
-  const parameterQueryParams = dashboardLocation.query;
+  const parameterQueryParams = searchParamsToQuery(searchParams);
 
   const dashboardId = uuid ?? token;
   usePublicEndpoints({ uuid: uuid ?? null, token: token ?? null });

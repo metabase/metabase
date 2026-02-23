@@ -23,7 +23,7 @@ import { Sortable } from "metabase/common/components/Sortable";
 import { PaneHeaderInput } from "metabase/data-studio/common/components/PaneHeader";
 import { checkNotNull } from "metabase/lib/types";
 import * as Urls from "metabase/lib/urls";
-import { useNavigation } from "metabase/routing/compat";
+import { useNavigation } from "metabase/routing";
 import { NAME_MAX_LENGTH } from "metabase/transforms/constants";
 import {
   ActionIcon,

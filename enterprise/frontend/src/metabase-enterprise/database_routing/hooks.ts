@@ -1,6 +1,6 @@
 import { useEffect } from "react";
 
-import { useNavigation } from "metabase/routing/compat";
+import { useNavigation } from "metabase/routing";
 import * as Urls from "metabase-enterprise/urls";
 import type { Database } from "metabase-types/api";
 

@@ -226,21 +226,8 @@ describe("dashboard actions", () => {
       setEditingDashboard(null)(dispatch, getState);
 
       expect(dispatch).toHaveBeenCalledWith({
-        payload: {
-          args: [
-            {
-              action: "POP",
-              hash: "",
-              key: "",
-              pathname: "/dashboard/1",
-              query: {},
-              search: "",
-              state: undefined,
-            },
-          ],
-          method: "push",
-        },
-        type: "@@router/CALL_HISTORY_METHOD",
+        payload: null,
+        type: "metabase/dashboard/SET_EDITING_DASHBOARD",
       });
     });
   });

@@ -15,21 +15,16 @@ import {
   DATABASES_BASE_PATH,
   GROUPS_BASE_PATH,
 } from "metabase/admin/permissions/utils/urls";
-import { routerActions } from "metabase/routing/compat/react-router-redux";
+import { pushPath } from "metabase/lib/navigation";
 import type { GroupId, Impersonation } from "metabase-types/api";
 
-export const getImpersonatedPostAction = (
-  entityId: EntityId,
-  groupId: GroupId,
-  view: "database" | "group",
-) =>
-  view === "database"
-    ? routerActions.push(
-        `${DATABASES_BASE_PATH}/${entityId.databaseId}/impersonated/group/${groupId}`,
-      )
-    : routerActions.push(
-        `${GROUPS_BASE_PATH}/${groupId}/impersonated/database/${entityId.databaseId}`,
-      );
+export const getImpersonatedPostAction =
+  (entityId: EntityId, groupId: GroupId, view: "database" | "group") => () =>
+    pushPath(
+      view === "database"
+        ? `${DATABASES_BASE_PATH}/${entityId.databaseId}/impersonated/group/${groupId}`
+        : `${GROUPS_BASE_PATH}/${groupId}/impersonated/database/${entityId.databaseId}`,
+    );
 
 const UPDATE_IMPERSONATION =
   "metabase-enterprise/advanced-permissions/UPDATE_IMPERSONATION";

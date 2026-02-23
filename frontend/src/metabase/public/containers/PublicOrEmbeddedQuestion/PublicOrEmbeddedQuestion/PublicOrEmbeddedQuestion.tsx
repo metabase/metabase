@@ -80,7 +80,7 @@ export const PublicOrEmbeddedQuestion = ({
       );
       const parameterValuesById = getParameterValuesByIdFromQueryParams(
         parameters,
-        location.query,
+        Object.fromEntries(new URLSearchParams(location.search)),
       );
 
       setCard(card);

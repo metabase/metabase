@@ -2,6 +2,7 @@ import cx from "classnames";
 import type { Location } from "history";
 import type { PropsWithChildren, ReactNode } from "react";
 import { useState } from "react";
+import { useSearchParams } from "react-router-dom";
 
 import ErrorBoundary from "metabase/ErrorBoundary";
 import { isRouteInSync } from "metabase/common/hooks/is-route-in-sync";
@@ -36,7 +37,7 @@ import { useDispatch, useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { setErrorPage } from "metabase/redux/app";
 import { useRouter } from "metabase/router";
-import { useNavigation } from "metabase/routing/compat";
+import { useNavigation } from "metabase/routing";
 import type { DashboardId, Dashboard as IDashboard } from "metabase-types/api";
 
 import { useRegisterDashboardMetabotContext } from "../../hooks/use-register-dashboard-metabot-context";
@@ -84,18 +85,29 @@ function DashboardAppInner({ location, children }: DashboardAppInnerProps) {
 export const DASHBOARD_APP_ACTIONS = ({ isEditing }: { isEditing: boolean }) =>
   isEditing ? DASHBOARD_EDITING_ACTIONS : DASHBOARD_VIEW_ACTIONS;
 
+const searchParamsToQuery = (
+  searchParams: URLSearchParams,
+): Record<string, string> => {
+  const result: Record<string, string> = {};
+  searchParams.forEach((value, key) => {
+    result[key] = value;
+  });
+  return result;
+};
+
 export const DashboardApp = ({
   dashboardId: _dashboardId,
   children,
 }: DashboardAppProps) => {
   const { location, params, router } = useRouter();
+  const [searchParams] = useSearchParams();
   const dashboardLocation = location as unknown as Location;
   const dispatch = useDispatch();
   const { replace } = useNavigation();
 
   const [error, setError] = useState<string>();
 
-  const parameterQueryParams = location.query;
+  const parameterQueryParams = searchParamsToQuery(searchParams);
   const dashboardId =
     _dashboardId || (Urls.extractEntityId(params.slug) as DashboardId);
 

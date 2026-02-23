@@ -36,7 +36,7 @@ describe("getSearchTextFromLocation", () => {
   it("should return the search text when on the search page", () => {
     const location = {
       pathname: "/search",
-      query: { q: "test" },
+      search: "?q=test",
     };
     expect(getSearchTextFromLocation(location as SearchAwareLocation)).toBe(
       "test",
@@ -46,9 +46,7 @@ describe("getSearchTextFromLocation", () => {
   it("should return an empty string when not on the search page", () => {
     const location = {
       pathname: "/collection/root",
-      query: {
-        q: "test",
-      },
+      search: "?q=test",
     };
     expect(getSearchTextFromLocation(location as SearchAwareLocation)).toBe("");
   });
@@ -58,9 +56,7 @@ describe("getFiltersFromLocation", () => {
   it("should return the filters when on the search page", () => {
     const location = {
       pathname: "/search",
-      query: {
-        [SearchFilterKeys.Type]: ["app", "database"],
-      },
+      search: `?${SearchFilterKeys.Type}=app&${SearchFilterKeys.Type}=database`,
     };
     expect(getFiltersFromLocation(location as SearchAwareLocation)).toEqual({
       [SearchFilterKeys.Type]: ["app", "database"],
@@ -70,9 +66,7 @@ describe("getFiltersFromLocation", () => {
   it("should return an empty object when on a non-search page", () => {
     const location = {
       pathname: "/collection/root",
-      query: {
-        [SearchFilterKeys.Type]: ["app", "database"],
-      },
+      search: `?${SearchFilterKeys.Type}=app&${SearchFilterKeys.Type}=database`,
     };
     expect(getFiltersFromLocation(location as SearchAwareLocation)).toEqual({});
   });
@@ -80,14 +74,9 @@ describe("getFiltersFromLocation", () => {
   it("should return only the filters that exist in SearchFilterKeys", () => {
     const location = {
       pathname: "/search",
-      query: {
-        [SearchFilterKeys.Type]: ["app", "database"],
-        someOtherFilter: [1, 2, 3],
-      },
+      search: `?${SearchFilterKeys.Type}=app&${SearchFilterKeys.Type}=database&someOtherFilter=1`,
     };
-    // using `any` here since location.query doesn't match the query
-    // of SearchAwareLocation
-    expect(getFiltersFromLocation(location as any)).toEqual({
+    expect(getFiltersFromLocation(location as SearchAwareLocation)).toEqual({
       [SearchFilterKeys.Type]: ["app", "database"],
     });
   });

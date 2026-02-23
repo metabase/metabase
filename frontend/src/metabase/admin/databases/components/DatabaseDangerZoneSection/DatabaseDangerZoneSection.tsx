@@ -5,7 +5,7 @@ import { DeleteDatabaseModal } from "metabase/admin/databases/components/DeleteD
 import { useDiscardDatabaseFieldValuesMutation } from "metabase/api";
 import { ConfirmModal } from "metabase/common/components/ConfirmModal";
 import { isSyncCompleted } from "metabase/lib/syncing";
-import { useNavigation } from "metabase/routing/compat";
+import { useNavigation } from "metabase/routing";
 import { Button, Flex } from "metabase/ui";
 import type { Database, DatabaseId } from "metabase-types/api";
 

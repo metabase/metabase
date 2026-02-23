@@ -1,13 +1,13 @@
-import type { Query } from "history";
+import type { Location, Query } from "history";
 import { KBarPortal, KBarSearch, VisualState, useKBar } from "kbar";
-import { useEffect, useRef } from "react";
+import { useEffect, useMemo, useRef } from "react";
+import { useLocation, useSearchParams } from "react-router-dom";
 import { t } from "ttag";
 
 import { useOnClickOutside } from "metabase/common/hooks/use-on-click-outside";
 import { isWithinIframe } from "metabase/lib/dom";
 import { useSelector } from "metabase/lib/redux";
 import { useRouter } from "metabase/router";
-import { useLocationWithQuery } from "metabase/routing/compat";
 import { getUser } from "metabase/selectors/user";
 import { Box, Card, Center, Icon, Overlay, Stack, rem } from "metabase/ui";
 
@@ -17,11 +17,32 @@ import { useCommandPaletteBasicActions } from "../hooks/useCommandPaletteBasicAc
 import S from "./Palette.module.css";
 import { PaletteResults } from "./PaletteResults";
 
+const searchParamsToQuery = (
+  searchParams: URLSearchParams,
+): Record<string, string> => {
+  const result: Record<string, string> = {};
+  searchParams.forEach((value, key) => {
+    result[key] = value;
+  });
+  return result;
+};
+
 /** Command palette */
 export const Palette = () => {
   const isLoggedIn = useSelector((state) => !!getUser(state));
-  const location = useLocationWithQuery();
+  const location = useLocation();
+  const [searchParams] = useSearchParams();
   const { routes } = useRouter();
+
+  const locationQuery = useMemo(
+    () => searchParamsToQuery(searchParams) as Query,
+    [searchParams],
+  );
+
+  const locationWithQuery = useMemo(
+    () => ({ ...location, query: locationQuery }),
+    [location, locationQuery],
+  );
 
   const disableCommandPaletteForRoute = routes.some((route) =>
     Boolean(
@@ -29,7 +50,10 @@ export const Palette = () => {
     ),
   );
 
-  useCommandPaletteBasicActions({ location, isLoggedIn });
+  useCommandPaletteBasicActions({
+    location: locationWithQuery as Location & { query: Record<string, string> },
+    isLoggedIn,
+  });
 
   const { query } = useKBar();
   const disabled =
@@ -42,10 +66,7 @@ export const Palette = () => {
     <KBarPortal>
       <Overlay backgroundOpacity={0.5}>
         <Center pt="10vh">
-          <PaletteContainer
-            disabled={disabled}
-            locationQuery={location.query}
-          />
+          <PaletteContainer disabled={disabled} locationQuery={locationQuery} />
         </Center>
       </Overlay>
     </KBarPortal>

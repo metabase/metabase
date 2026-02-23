@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo } from "react";
 import { b64url_to_utf8, utf8_to_b64url } from "metabase/lib/encoding";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import { loadMetadataForTable } from "metabase/questions/actions";
-import { useNavigation } from "metabase/routing/compat";
+import { useNavigation } from "metabase/routing";
 import { getMetadata } from "metabase/selectors/metadata";
 import * as Lib from "metabase-lib";
 import Question from "metabase-lib/v1/Question";
@@ -13,7 +13,7 @@ import type { OpaqueDatasetQuery } from "metabase-types/api";
 type UseAdHocTableQueryProps = {
   tableId: number;
   databaseId: number;
-  location: Location<{ query?: string }>;
+  location: Location;
 };
 
 export const useAdHocTableQuery = ({
@@ -25,13 +25,10 @@ export const useAdHocTableQuery = ({
   const metadata = useSelector(getMetadata);
   const dispatch = useDispatch();
 
-  const queryParam = useMemo(
-    () =>
-      location.query?.query
-        ? deserializeQueryFromUrl(location.query.query)
-        : null,
-    [location.query.query],
-  );
+  const queryParam = useMemo(() => {
+    const queryFromSearch = new URLSearchParams(location.search).get("query");
+    return queryFromSearch ? deserializeQueryFromUrl(queryFromSearch) : null;
+  }, [location.search]);
 
   const metadataProvider = useMemo(
     () => Lib.metadataProvider(databaseId, metadata),

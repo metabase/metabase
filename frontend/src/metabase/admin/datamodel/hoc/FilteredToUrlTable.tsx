@@ -8,7 +8,7 @@ import CS from "metabase/css/core/index.css";
 import { Tables } from "metabase/entities/tables";
 import { connect } from "metabase/lib/redux";
 import { DatabaseSchemaAndTableDataSelector } from "metabase/query_builder/components/DataSelector";
-import { useNavigation } from "metabase/routing/compat";
+import { useNavigation } from "metabase/routing";
 import { Icon } from "metabase/ui";
 import type { ConcreteTableId, Segment, Table } from "metabase-types/api";
 import type { State } from "metabase-types/store";

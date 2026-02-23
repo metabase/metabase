@@ -6,6 +6,7 @@ import {
   type RouteObject,
   useParams,
 } from "react-router-dom";
+import { useLocation } from "react-router-dom";
 
 import AdminApp from "metabase/admin/app/components/AdminApp";
 import { getAdminPaths } from "metabase/admin/app/selectors";
@@ -61,8 +62,7 @@ import {
   IsAdminGuard,
   UserCanAccessSettingsGuard,
   createModalRoute,
-  useLocationWithQuery,
-} from "metabase/routing/compat";
+} from "metabase/routing";
 import { getSetting } from "metabase/selectors/settings";
 import { getTokenFeature } from "metabase/setup";
 import type { State } from "metabase-types/store";
@@ -109,7 +109,7 @@ const PerformanceAppWithOutlet = () => (
 );
 
 const ToolsAppWithOutlet = () => {
-  const location = useLocationWithQuery();
+  const location = useLocation();
 
   return (
     <ToolsApp location={location as unknown as Location}>
@@ -214,7 +214,7 @@ const JobTriggersModalWithParams = ({ onClose }: { onClose: () => void }) => {
 };
 
 const DataModelV1WithRouteProps = () => {
-  const location = useLocationWithQuery();
+  const location = useLocation();
   const params = useParams<{
     databaseId?: string;
     schemaId?: string;
@@ -223,7 +223,9 @@ const DataModelV1WithRouteProps = () => {
     section?: string;
   }>();
 
-  return <DataModelV1 location={location} params={params} />;
+  return (
+    <DataModelV1 location={location as unknown as Location} params={params} />
+  );
 };
 
 const RedirectToAllowedSettingsV7 = () => {

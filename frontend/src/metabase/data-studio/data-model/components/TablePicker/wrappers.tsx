@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 
 import * as Urls from "metabase/lib/urls";
-import { useNavigation } from "metabase/routing/compat";
+import { useNavigation } from "metabase/routing";
 
 import type { RouteParams } from "../../pages/DataModel/types";
 

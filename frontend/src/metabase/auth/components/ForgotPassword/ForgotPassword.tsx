@@ -1,9 +1,9 @@
 import { useCallback, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import { t } from "ttag";
 
 import { Button } from "metabase/common/components/Button";
 import { useDispatch, useSelector } from "metabase/lib/redux";
-import { useLocationWithQuery } from "metabase/routing/compat";
 
 import { forgotPassword } from "../../actions";
 import { getIsEmailConfigured, getIsLdapEnabled } from "../../selectors";
@@ -21,11 +21,11 @@ import {
 type ViewType = "form" | "disabled" | "success";
 
 export const ForgotPassword = (): JSX.Element => {
-  const location = useLocationWithQuery();
+  const [searchParams] = useSearchParams();
   const isEmailConfigured = useSelector(getIsEmailConfigured);
   const isLdapEnabled = useSelector(getIsLdapEnabled);
   const canResetPassword = isEmailConfigured && !isLdapEnabled;
-  const initialEmail = location.query?.email;
+  const initialEmail = searchParams.get("email") ?? undefined;
 
   const [view, setView] = useState<ViewType>(
     canResetPassword ? "form" : "disabled",

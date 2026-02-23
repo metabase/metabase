@@ -6,6 +6,7 @@ import {
   getGroupFocusPermissionsUrl,
 } from "metabase/admin/permissions/utils/urls";
 import { ModalRoute } from "metabase/hoc/ModalRoute";
+import { pushPath } from "metabase/lib/navigation";
 import {
   PLUGIN_ADMIN_PERMISSIONS_DATABASE_ACTIONS,
   PLUGIN_ADMIN_PERMISSIONS_DATABASE_GROUP_ROUTES,
@@ -17,7 +18,6 @@ import {
   PLUGIN_DATA_PERMISSIONS,
   PLUGIN_REDUCERS,
 } from "metabase/plugins";
-import { routerActions } from "metabase/routing/compat/react-router-redux";
 import { hasPremiumFeature } from "metabase-enterprise/settings";
 
 import { ImpersonationModal } from "./components/ImpersonationModal";
@@ -151,8 +151,8 @@ export function initializePlugin() {
       label: t`Edit Impersonated`,
       iconColor: "warning",
       icon: "database",
-      actionCreator: (entityId, groupId, view) =>
-        routerActions.push(getEditImpersonationUrl(entityId, groupId, view)),
+      actionCreator: (entityId, groupId, view) => () =>
+        pushPath(getEditImpersonationUrl(entityId, groupId, view)),
     });
 
     PLUGIN_DATA_PERMISSIONS.upgradeViewPermissionsIfNeeded =

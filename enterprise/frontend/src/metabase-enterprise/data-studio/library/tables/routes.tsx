@@ -1,4 +1,5 @@
 import type { RouteObject } from "react-router-dom";
+import { useParams } from "react-router-dom";
 
 import { PublishedTableMeasureDependenciesPage } from "metabase/data-studio/measures/pages/PublishedTableMeasureDependenciesPage";
 import { PublishedTableMeasureDetailPage } from "metabase/data-studio/measures/pages/PublishedTableMeasureDetailPage";
@@ -9,7 +10,7 @@ import { PublishedTableSegmentDependenciesPage } from "metabase/data-studio/segm
 import { PublishedTableSegmentDetailPage } from "metabase/data-studio/segments/pages/PublishedTableSegmentDetailPage";
 import { PublishedTableSegmentRevisionHistoryPage } from "metabase/data-studio/segments/pages/PublishedTableSegmentRevisionHistoryPage";
 import { PLUGIN_DEPENDENCIES } from "metabase/plugins";
-import { IsAdminGuard, useRouteParams } from "metabase/routing/compat";
+import { IsAdminGuard } from "metabase/routing";
 
 import { TableDependenciesPage } from "./pages/TableDependenciesPage";
 import { TableFieldsPage } from "./pages/TableFieldsPage";
@@ -25,12 +26,12 @@ type TableRouteParams = {
 };
 
 const TableOverviewPageWithRouteProps = () => {
-  const params = useRouteParams<TableRouteParams>();
+  const params = useParams<TableRouteParams>();
   return <TableOverviewPage params={{ tableId: params.tableId ?? "" }} />;
 };
 
 const TableFieldsPageWithRouteProps = () => {
-  const params = useRouteParams<TableRouteParams>();
+  const params = useParams<TableRouteParams>();
   return (
     <TableFieldsPage
       params={{ tableId: params.tableId ?? "", fieldId: params.fieldId }}
@@ -39,19 +40,19 @@ const TableFieldsPageWithRouteProps = () => {
 };
 
 const TableSegmentsPageWithRouteProps = () => {
-  const params = useRouteParams<TableRouteParams>();
+  const params = useParams<TableRouteParams>();
   return <TableSegmentsPage params={{ tableId: params.tableId ?? "" }} />;
 };
 
 const PublishedTableNewSegmentPageWithRouteProps = () => {
-  const params = useRouteParams<TableRouteParams>();
+  const params = useParams<TableRouteParams>();
   return (
     <PublishedTableNewSegmentPage params={{ tableId: params.tableId ?? "" }} />
   );
 };
 
 const PublishedTableSegmentDetailPageWithRouteProps = () => {
-  const params = useRouteParams<TableRouteParams>();
+  const params = useParams<TableRouteParams>();
   return (
     <PublishedTableSegmentDetailPage
       params={{
@@ -63,7 +64,7 @@ const PublishedTableSegmentDetailPageWithRouteProps = () => {
 };
 
 const PublishedTableSegmentRevisionHistoryPageWithRouteProps = () => {
-  const params = useRouteParams<TableRouteParams>();
+  const params = useParams<TableRouteParams>();
   return (
     <PublishedTableSegmentRevisionHistoryPage
       params={{
@@ -75,7 +76,7 @@ const PublishedTableSegmentRevisionHistoryPageWithRouteProps = () => {
 };
 
 const PublishedTableSegmentDependenciesPageWithRouteProps = () => {
-  const params = useRouteParams<TableRouteParams>();
+  const params = useParams<TableRouteParams>();
   return (
     <PublishedTableSegmentDependenciesPage
       params={{
@@ -87,19 +88,19 @@ const PublishedTableSegmentDependenciesPageWithRouteProps = () => {
 };
 
 const TableMeasuresPageWithRouteProps = () => {
-  const params = useRouteParams<TableRouteParams>();
+  const params = useParams<TableRouteParams>();
   return <TableMeasuresPage params={{ tableId: params.tableId ?? "" }} />;
 };
 
 const PublishedTableNewMeasurePageWithRouteProps = () => {
-  const params = useRouteParams<TableRouteParams>();
+  const params = useParams<TableRouteParams>();
   return (
     <PublishedTableNewMeasurePage params={{ tableId: params.tableId ?? "" }} />
   );
 };
 
 const PublishedTableMeasureDetailPageWithRouteProps = () => {
-  const params = useRouteParams<TableRouteParams>();
+  const params = useParams<TableRouteParams>();
   return (
     <PublishedTableMeasureDetailPage
       params={{
@@ -111,7 +112,7 @@ const PublishedTableMeasureDetailPageWithRouteProps = () => {
 };
 
 const PublishedTableMeasureRevisionHistoryPageWithRouteProps = () => {
-  const params = useRouteParams<TableRouteParams>();
+  const params = useParams<TableRouteParams>();
   return (
     <PublishedTableMeasureRevisionHistoryPage
       params={{
@@ -123,7 +124,7 @@ const PublishedTableMeasureRevisionHistoryPageWithRouteProps = () => {
 };
 
 const PublishedTableMeasureDependenciesPageWithRouteProps = () => {
-  const params = useRouteParams<TableRouteParams>();
+  const params = useParams<TableRouteParams>();
   return (
     <PublishedTableMeasureDependenciesPage
       params={{
@@ -135,7 +136,7 @@ const PublishedTableMeasureDependenciesPageWithRouteProps = () => {
 };
 
 const TableDependenciesPageWithRouteProps = () => {
-  const params = useRouteParams<TableRouteParams>();
+  const params = useParams<TableRouteParams>();
   return <TableDependenciesPage params={{ tableId: params.tableId ?? "" }} />;
 };
 

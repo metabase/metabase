@@ -1,5 +1,6 @@
 import { QueryStatus } from "@reduxjs/toolkit/query";
 import { useEffect } from "react";
+import { useLocation, useParams } from "react-router-dom";
 import { t } from "ttag";
 
 import {
@@ -11,11 +12,7 @@ import { useUserAcknowledgement } from "metabase/common/hooks/use-user-acknowled
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { addUndo } from "metabase/redux/undo";
-import {
-  useLocationWithQuery,
-  useNavigation,
-  useRouteParams,
-} from "metabase/routing/compat";
+import { useNavigation } from "metabase/routing";
 import { getUserIsAdmin } from "metabase/selectors/user";
 
 import { ConfirmMoveDashboardQuestionCandidatesModal } from "./ConfirmMoveDashboardQuestionCandidatesModal";
@@ -28,8 +25,8 @@ interface MoveQuestionsIntoDashboardsModalProps {
 export const MoveQuestionsIntoDashboardsModal = ({
   onClose: handleClose,
 }: MoveQuestionsIntoDashboardsModalProps) => {
-  const location = useLocationWithQuery();
-  const params = useRouteParams<{ slug: string }>();
+  const location = useLocation();
+  const params = useParams<{ slug: string }>();
   const { replace } = useNavigation();
   const collectionId = Urls.extractCollectionId(params.slug);
   const isAdmin = useSelector(getUserIsAdmin);

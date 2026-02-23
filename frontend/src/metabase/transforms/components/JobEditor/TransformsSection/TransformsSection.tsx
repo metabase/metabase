@@ -6,7 +6,7 @@ import { useListTransformJobTransformsQuery } from "metabase/api";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import CS from "metabase/css/core/index.css";
 import * as Urls from "metabase/lib/urls";
-import { useNavigation } from "metabase/routing/compat";
+import { useNavigation } from "metabase/routing";
 import { Card, TreeTable, useTreeTableInstance } from "metabase/ui";
 import type { Transform, TransformJobId } from "metabase-types/api";
 

@@ -6,7 +6,7 @@ import { t } from "ttag";
 import { clickableTokens } from "metabase/common/components/CodeMirror";
 import * as Urls from "metabase/lib/urls";
 import { RunButtonWithTooltip } from "metabase/query_builder/components/RunButtonWithTooltip";
-import { useNavigation } from "metabase/routing/compat";
+import { useNavigation } from "metabase/routing";
 import { Button, Flex, Icon, Stack, Tooltip } from "metabase/ui";
 
 import { SHARED_LIB_IMPORT_PATH } from "../../../constants";

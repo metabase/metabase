@@ -1,4 +1,5 @@
 import { useEffect, useLayoutEffect, useState } from "react";
+import { useLocation } from "react-router-dom";
 import { useLatest } from "react-use";
 import { t } from "ttag";
 
@@ -21,7 +22,7 @@ import {
   PLUGIN_TRANSFORMS_PYTHON,
 } from "metabase/plugins";
 import { getInitialUiState } from "metabase/querying/editor/components/QueryEditor";
-import { useLocationWithQuery, useNavigation } from "metabase/routing/compat";
+import { useNavigation } from "metabase/routing";
 import { useTransformPermissions } from "metabase/transforms/hooks/use-transform-permissions";
 import { Box, Center, Group, Icon } from "metabase/ui";
 import type {
@@ -52,7 +53,7 @@ type TransformQueryPageProps = {
 };
 
 export function TransformQueryPage({ params }: TransformQueryPageProps) {
-  const location = useLocationWithQuery();
+  const location = useLocation();
   const transformId = Urls.extractEntityId(params.transformId);
   const {
     data: transform,

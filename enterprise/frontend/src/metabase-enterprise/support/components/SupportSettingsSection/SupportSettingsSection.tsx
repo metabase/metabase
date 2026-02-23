@@ -4,7 +4,7 @@ import { SettingsSection } from "metabase/admin/components/SettingsSection";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { PaginationControls } from "metabase/common/components/PaginationControls";
 import { adminToolsGrantAccess } from "metabase/lib/urls";
-import { useNavigation } from "metabase/routing/compat";
+import { useNavigation } from "metabase/routing";
 import { Box, Button, Flex, LoadingOverlay, Text, Title } from "metabase/ui";
 
 import { useAccessGrantsQuery } from "../../hooks/useAccessGrantsQuery";

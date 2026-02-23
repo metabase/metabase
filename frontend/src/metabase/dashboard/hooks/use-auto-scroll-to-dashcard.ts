@@ -2,7 +2,7 @@ import type { LocationDescriptorObject } from "history";
 import { useCallback, useMemo } from "react";
 
 import { parseHashOptions, stringifyHashOptions } from "metabase/lib/browser";
-import { useNavigation } from "metabase/routing/compat";
+import { useNavigation } from "metabase/routing";
 import type { DashCardId } from "metabase-types/api";
 
 export interface UseAutoScrollToDashcardResult {

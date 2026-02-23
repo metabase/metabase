@@ -3,7 +3,7 @@ import { t } from "ttag";
 
 import * as Urls from "metabase/lib/urls";
 import { useMetadataToasts } from "metabase/metadata/hooks";
-import { useNavigation } from "metabase/routing/compat";
+import { useNavigation } from "metabase/routing";
 import {
   useLazyGetWorkspaceTablesQuery,
   useMergeWorkspaceMutation,

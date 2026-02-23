@@ -1,10 +1,10 @@
+import { useParams, useSearchParams } from "react-router-dom";
 import { t } from "ttag";
 import _ from "underscore";
 
 import { usePageTitle } from "metabase/hooks/use-page-title";
 import { useSelector } from "metabase/lib/redux";
 import type { AuthProvider } from "metabase/plugins/types";
-import { useLocationWithQuery, useRouteParams } from "metabase/routing/compat";
 import { getApplicationName } from "metabase/selectors/whitelabel";
 import { Box, Divider } from "metabase/ui";
 
@@ -17,11 +17,11 @@ type LoginQueryParams = {
 };
 
 export const Login = (): JSX.Element => {
-  const params = useRouteParams<LoginQueryParams>();
-  const location = useLocationWithQuery();
+  const params = useParams<LoginQueryParams>();
+  const [searchParams] = useSearchParams();
   const providers = useSelector(getAuthProviders);
   const selection = getSelectedProvider(providers, params?.provider);
-  const redirectUrl = location.query?.redirect;
+  const redirectUrl = searchParams.get("redirect") ?? undefined;
   const applicationName = useSelector(getApplicationName);
 
   usePageTitle(t`Login`);

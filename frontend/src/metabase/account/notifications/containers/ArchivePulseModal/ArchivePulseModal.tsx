@@ -1,5 +1,4 @@
 import { skipToken } from "@reduxjs/toolkit/query/react";
-import type { Location } from "history";
 
 import {
   useGetSubscriptionQuery,
@@ -14,7 +13,7 @@ import { getPulseId } from "../../selectors";
 
 type ArchivePulseModalProps = {
   params: { pulseId?: string };
-  location: Location;
+  location: { search: string };
   onClose: () => void;
 };
 
@@ -50,7 +49,7 @@ export function ArchivePulseModal({
       item={pulse}
       type="pulse"
       user={user}
-      hasUnsubscribed={Boolean(location.query?.unsubscribed)}
+      hasUnsubscribed={new URLSearchParams(location.search).has("unsubscribed")}
       onArchive={handleArchive}
       onClose={onClose}
     />

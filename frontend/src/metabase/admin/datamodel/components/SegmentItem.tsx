@@ -1,6 +1,6 @@
 import * as Urls from "metabase/lib/urls";
 import { TableBreadcrumbs } from "metabase/metadata/components";
-import { useNavigation } from "metabase/routing/compat";
+import { useNavigation } from "metabase/routing";
 import { Box, Flex, Group, Icon } from "metabase/ui";
 import type { Segment } from "metabase-types/api";
 

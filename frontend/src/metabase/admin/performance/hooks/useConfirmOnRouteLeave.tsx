@@ -1,6 +1,6 @@
 import { useEffect, useRef } from "react";
 
-import { useBlockNavigation } from "metabase/routing/compat";
+import { useBlockNavigation } from "metabase/routing";
 
 type Props = {
   shouldConfirm: boolean;

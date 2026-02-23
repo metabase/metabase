@@ -5,7 +5,7 @@ import { omit } from "underscore";
 
 import { parseHashOptions, stringifyHashOptions } from "metabase/lib/browser";
 import { isNullOrUndefined } from "metabase/lib/types";
-import { useNavigation } from "metabase/routing/compat";
+import { useNavigation } from "metabase/routing";
 
 type SYNCED_KEY = "refresh" | "fullscreen";
 

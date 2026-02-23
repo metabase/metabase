@@ -3,7 +3,7 @@ import { createContext } from "react";
 import type { createBrowserRouter } from "react-router-dom";
 import { RouterProvider as RouterProviderV7 } from "react-router-dom";
 
-import type { PlainRoute, RouterAdapter } from "metabase/routing/compat/types";
+import type { PlainRoute, RouterAdapter } from "metabase/routing/types";
 
 type RouterContextType = {
   router: RouterAdapter;

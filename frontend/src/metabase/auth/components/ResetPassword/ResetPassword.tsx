@@ -1,4 +1,5 @@
 import { useCallback } from "react";
+import { useParams, useSearchParams } from "react-router-dom";
 import { t } from "ttag";
 
 import { useGetPasswordResetTokenStatusQuery } from "metabase/api";
@@ -6,11 +7,7 @@ import { Button } from "metabase/common/components/Button";
 import { Link } from "metabase/common/components/Link";
 import { useToast } from "metabase/common/hooks/use-toast";
 import { useDispatch } from "metabase/lib/redux";
-import {
-  useLocationWithQuery,
-  useNavigation,
-  useRouteParams,
-} from "metabase/routing/compat";
+import { useNavigation } from "metabase/routing";
 
 import { resetPassword, validatePassword } from "../../actions";
 import type { ResetPasswordData } from "../../types";
@@ -26,12 +23,12 @@ type ResetPasswordQueryParams = {
 };
 
 export const ResetPassword = (): JSX.Element | null => {
-  const params = useRouteParams<ResetPasswordQueryParams>();
-  const location = useLocationWithQuery();
+  const params = useParams<ResetPasswordQueryParams>();
+  const [searchParams] = useSearchParams();
   const { replace } = useNavigation();
   const token = params.token ?? "";
-  const redirectUrl = location.query?.redirect;
-  const email = location.query?.email;
+  const redirectUrl = searchParams.get("redirect") ?? undefined;
+  const email = searchParams.get("email") ?? undefined;
   const dispatch = useDispatch();
   const [sendToast] = useToast();
   const { data: status, isLoading } =

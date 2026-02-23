@@ -1,5 +1,5 @@
 import { useCallback, useEffect } from "react";
-import { useLocation } from "react-use";
+import { useLocation } from "react-router-dom";
 
 import ActionCreator from "metabase/actions/containers/ActionCreator";
 import { UpgradeModal } from "metabase/admin/upsells/components/UpgradeModal";
@@ -19,13 +19,13 @@ import { PaletteShortcutsModal } from "metabase/palette/components/PaletteShortc
 import { useRegisterShortcut } from "metabase/palette/hooks/useRegisterShortcut";
 import type { SdkIframeEmbedSetupModalProps } from "metabase/plugins";
 import { closeModal, setOpenModal } from "metabase/redux/ui";
-import { useLocationWithQuery, useNavigation } from "metabase/routing/compat";
+import { useNavigation } from "metabase/routing";
 import { getCurrentOpenModalState } from "metabase/selectors/ui";
 import type { WritebackAction } from "metabase-types/api";
 
 export const NewModals = () => {
-  const { pathname } = useLocation();
-  const location = useLocationWithQuery();
+  const location = useLocation();
+  const { pathname } = location;
   const { push } = useNavigation();
   const { id: currentNewModalId, props: currentNewModalProps } = useSelector(
     getCurrentOpenModalState,

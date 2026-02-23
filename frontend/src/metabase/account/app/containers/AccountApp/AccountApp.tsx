@@ -1,8 +1,9 @@
 import type { Path } from "history";
 import type { ReactNode } from "react";
+import { useLocation } from "react-router-dom";
 
 import { useSelector } from "metabase/lib/redux";
-import { useLocationWithQuery, useNavigation } from "metabase/routing/compat";
+import { useNavigation } from "metabase/routing";
 import { getUser } from "metabase/selectors/user";
 
 import AccountLayout from "../../components/AccountLayout";
@@ -14,7 +15,7 @@ interface AccountAppProps {
 // eslint-disable-next-line import/no-default-export -- deprecated usage
 export default function AccountApp({ children }: AccountAppProps) {
   const user = useSelector(getUser);
-  const location = useLocationWithQuery();
+  const location = useLocation();
   const { push } = useNavigation();
 
   return (

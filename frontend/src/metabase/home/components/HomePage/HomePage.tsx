@@ -6,7 +6,7 @@ import { useHomepageDashboard } from "metabase/common/hooks/use-homepage-dashboa
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import { updateUserSetting } from "metabase/redux/settings";
 import { addUndo } from "metabase/redux/undo";
-import { useNavigation } from "metabase/routing/compat";
+import { useNavigation } from "metabase/routing";
 import { getHasDismissedCustomHomePageToast } from "metabase/selectors/app";
 
 import { HomeContent } from "../HomeContent";

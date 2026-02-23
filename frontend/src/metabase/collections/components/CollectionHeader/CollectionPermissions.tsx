@@ -3,7 +3,7 @@ import { t } from "ttag";
 import { Link } from "metabase/common/components/Link/Link";
 import { ToolbarButton } from "metabase/common/components/ToolbarButton";
 import * as Urls from "metabase/lib/urls";
-import { useNavigation } from "metabase/routing/compat";
+import { useNavigation } from "metabase/routing";
 import type { Collection } from "metabase-types/api";
 
 interface CollectionPermissionsProps {

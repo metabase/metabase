@@ -1,8 +1,15 @@
 import type { Store } from "@reduxjs/toolkit";
 import type { Location } from "history";
 import type { ComponentType } from "react";
-import { useEffect, useRef } from "react";
-import { Navigate, Outlet, type RouteObject } from "react-router-dom";
+import { useEffect, useMemo, useRef } from "react";
+import {
+  Navigate,
+  Outlet,
+  type RouteObject,
+  useLocation,
+  useNavigationType,
+  useParams,
+} from "react-router-dom";
 
 import App from "metabase/App";
 import { getAccountRouteObjects } from "metabase/account/routes";
@@ -73,18 +80,40 @@ import { Setup } from "metabase/setup/components/Setup";
 import { getRouteObjects as getCollectionTimelineRouteObjects } from "metabase/timelines/collections/routes";
 import type { State } from "metabase-types/store";
 
+import { createModalRoute } from "./ModalRouteWrapper";
 import {
   IsAdminGuard,
   IsAuthenticatedGuard,
   IsNotAuthenticatedGuard,
   UserCanAccessOnboardingGuard,
-  createModalRoute,
-  useLocationWithQuery,
-  useRouteParams,
-} from "./compat";
+} from "./RouteGuards";
+
+function useLegacyLocation(): Location {
+  const location = useLocation();
+  const navigationType = useNavigationType();
+
+  const query = useMemo(() => {
+    const query: Record<string, string> = {};
+    const searchParams = new URLSearchParams(location.search);
+    searchParams.forEach((value, key) => {
+      query[key] = value;
+    });
+    return query;
+  }, [location.search]);
+
+  return useMemo(
+    () =>
+      ({
+        ...location,
+        query,
+        action: navigationType,
+      }) as unknown as Location,
+    [location, navigationType, query],
+  );
+}
 
 const AppWithRouteProps = () => {
-  const location = useLocationWithQuery();
+  const location = useLegacyLocation();
 
   return (
     <App location={location as unknown as Location} onError={() => undefined}>
@@ -111,7 +140,7 @@ const SetupGuard = () => {
 
 const AppBootstrap = () => {
   const dispatch = useDispatch();
-  const location = useLocationWithQuery();
+  const location = useLocation();
   const previousPathRef = useRef<string | undefined>(undefined);
 
   useEffect(() => {
@@ -147,12 +176,12 @@ const HomeRoute = () => {
 };
 
 const SearchAppWithLocation = () => {
-  const location = useLocationWithQuery();
+  const location = useLegacyLocation();
   return <SearchApp location={location} />;
 };
 
 const CollectionLandingWithParams = () => {
-  const params = useRouteParams<{ slug?: string }>();
+  const params = useParams<{ slug?: string }>();
 
   return (
     <CollectionLandingComponent params={{ slug: params.slug ?? "" }}>
@@ -162,8 +191,8 @@ const CollectionLandingWithParams = () => {
 };
 
 const QueryBuilderWithRouteProps = () => {
-  const location = useLocationWithQuery();
-  const params = useRouteParams<Record<string, string | undefined>>();
+  const location = useLegacyLocation();
+  const params = useParams<Record<string, string | undefined>>();
 
   return (
     <QueryBuilder location={location as unknown as Location} params={params} />
@@ -171,32 +200,32 @@ const QueryBuilderWithRouteProps = () => {
 };
 
 const NewModelOptionsWithRouteProps = () => {
-  const location = useLocationWithQuery();
+  const location = useLegacyLocation();
   return <NewModelOptions location={location as unknown as Location} />;
 };
 
 const BrowseSchemasWithParams = () => {
-  const params = useRouteParams<{ slug?: string }>();
+  const params = useParams<{ slug?: string }>();
   return <BrowseSchemas params={params} />;
 };
 
 const BrowseTablesWithParams = () => {
-  const params = useRouteParams<{ dbId?: string; schemaName?: string }>();
+  const params = useParams<{ dbId?: string; schemaName?: string }>();
   return (
     <BrowseTables params={params as { dbId: string; schemaName: string }} />
   );
 };
 
 const TableDetailPageWithParams = () => {
-  const params = useRouteParams<{ tableId?: string; rowId?: string }>();
+  const params = useParams<{ tableId?: string; rowId?: string }>();
   return (
     <TableDetailPage params={params as { tableId: string; rowId: string }} />
   );
 };
 
 const DocumentPageOuterWithRouteProps = () => {
-  const location = useLocationWithQuery();
-  const params = useRouteParams<{ entityId?: string }>();
+  const location = useLegacyLocation();
+  const params = useParams<{ entityId?: string }>();
 
   return (
     <DocumentPageOuter
@@ -211,7 +240,7 @@ const CommentsSidesheetWithRouteProps = ({
 }: {
   onClose: () => void;
 }) => {
-  const params = useRouteParams<{ childTargetId?: string }>();
+  const params = useParams<{ childTargetId?: string }>();
 
   return (
     <CommentsSidesheet
@@ -222,12 +251,12 @@ const CommentsSidesheetWithRouteProps = ({
 };
 
 const UnsubscribePageWithLocation = () => {
-  const location = useLocationWithQuery();
+  const location = useLegacyLocation();
   return <UnsubscribePage location={location as unknown as Location} />;
 };
 
 const TenantUsersPersonalCollectionListWithParams = () => {
-  const params = useRouteParams<{ tenantId?: string }>();
+  const params = useParams<{ tenantId?: string }>();
 
   return (
     <PLUGIN_TENANTS.TenantUsersPersonalCollectionList
@@ -243,7 +272,7 @@ const TenantSpecificRouteGuard = () => (
 );
 
 const LegacyQuestionRedirect = () => {
-  const location = useLocationWithQuery();
+  const location = useLocation();
 
   return (
     <Navigate to={{ pathname: "/question", hash: location.hash }} replace />
@@ -251,8 +280,8 @@ const LegacyQuestionRedirect = () => {
 };
 
 const LegacyCardRedirect = () => {
-  const location = useLocationWithQuery();
-  const params = useRouteParams<{ slug?: string }>();
+  const location = useLocation();
+  const params = useParams<{ slug?: string }>();
 
   return (
     <Navigate
@@ -266,7 +295,7 @@ const LegacyCardRedirect = () => {
 };
 
 const LegacyDashRedirect = () => {
-  const params = useRouteParams<{ dashboardId?: string }>();
+  const params = useParams<{ dashboardId?: string }>();
 
   return <Navigate to={`/dashboard/${params.dashboardId ?? ""}`} replace />;
 };
@@ -276,7 +305,7 @@ const MoveCollectionModalWithParams = ({
 }: {
   onClose: () => void;
 }) => {
-  const params = useRouteParams<{ slug?: string }>();
+  const params = useParams<{ slug?: string }>();
 
   return (
     <MoveCollectionModal
@@ -291,7 +320,7 @@ const ArchiveCollectionModalWithParams = ({
 }: {
   onClose: () => void;
 }) => {
-  const params = useRouteParams<{ slug?: string }>();
+  const params = useParams<{ slug?: string }>();
 
   return (
     <ArchiveCollectionModal
@@ -306,7 +335,7 @@ const CollectionPermissionsModalWithParams = ({
 }: {
   onClose: () => void;
 }) => {
-  const params = useRouteParams<{ slug?: string }>();
+  const params = useParams<{ slug?: string }>();
 
   return (
     <CollectionPermissionsModal
@@ -318,8 +347,8 @@ const CollectionPermissionsModalWithParams = ({
 
 function withLegacyRouteProps<T extends object>(Component: ComponentType<T>) {
   return function LegacyRoutePropsWrapper() {
-    const location = useLocationWithQuery();
-    const params = useRouteParams<Record<string, string | undefined>>();
+    const location = useLegacyLocation();
+    const params = useParams<Record<string, string | undefined>>();
 
     return (
       <Component
@@ -333,12 +362,12 @@ function withLegacyRouteProps<T extends object>(Component: ComponentType<T>) {
 }
 
 const LegacyBrowseDatabaseRedirect = () => {
-  const { dbId, slug } = useRouteParams<{ dbId?: string; slug?: string }>();
+  const { dbId, slug } = useParams<{ dbId?: string; slug?: string }>();
   return <Navigate to={`/browse/databases/${dbId}-${slug}`} replace />;
 };
 
 const LegacyBrowseSchemaRedirect = () => {
-  const { dbId, schemaName } = useRouteParams<{
+  const { dbId, schemaName } = useParams<{
     dbId?: string;
     schemaName?: string;
   }>();

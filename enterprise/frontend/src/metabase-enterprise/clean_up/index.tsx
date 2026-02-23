@@ -1,4 +1,5 @@
 import type { Location } from "history";
+import { useLocation, useParams } from "react-router-dom";
 import { t } from "ttag";
 
 import { skipToken, useListCollectionItemsQuery } from "metabase/api";
@@ -7,11 +8,7 @@ import { UserHasSeen } from "metabase/common/components/UserHasSeen/UserHasSeen"
 import { ModalRoute } from "metabase/hoc/ModalRoute";
 import * as Urls from "metabase/lib/urls";
 import { PLUGIN_COLLECTIONS } from "metabase/plugins";
-import {
-  createModalRoute,
-  useLocationWithQuery,
-  useRouteParams,
-} from "metabase/routing/compat";
+import { createModalRoute } from "metabase/routing";
 import { Badge, Icon, Menu } from "metabase/ui";
 import { useListStaleCollectionItemsQuery } from "metabase-enterprise/api/collection";
 import { hasPremiumFeature } from "metabase-enterprise/settings";
@@ -25,8 +22,8 @@ const CleanupCollectionModalWithRouteProps = ({
 }: {
   onClose: () => void;
 }) => {
-  const params = useRouteParams<{ slug?: string }>();
-  const location = useLocationWithQuery();
+  const params = useParams<{ slug?: string }>();
+  const location = useLocation();
 
   return (
     <CleanupCollectionModal

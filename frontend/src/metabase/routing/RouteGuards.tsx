@@ -6,10 +6,9 @@ import { getCanAccessOnboardingPage } from "metabase/home/selectors";
 import { isSameOrSiteUrlOrigin } from "metabase/lib/dom";
 import { useSelector } from "metabase/lib/redux";
 import { PLUGIN_FEATURE_LEVEL_PERMISSIONS } from "metabase/plugins";
+import { getIsEmbeddingIframe } from "metabase/selectors/embed";
 import { getSetting } from "metabase/selectors/settings";
 import type { State } from "metabase-types/store";
-
-import { getIsEmbeddingIframe } from "../../selectors/embed";
 
 interface GuardProps {
   children?: ReactNode;

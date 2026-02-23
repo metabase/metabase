@@ -4,7 +4,7 @@ import { useEffect } from "react";
 import { useGetCollectionQuery } from "metabase/api";
 import { isNotNull } from "metabase/lib/types";
 import { extractCollectionId } from "metabase/lib/urls";
-import { useNavigation } from "metabase/routing/compat";
+import { useNavigation } from "metabase/routing";
 
 import { CollectionContent } from "../CollectionContent";
 

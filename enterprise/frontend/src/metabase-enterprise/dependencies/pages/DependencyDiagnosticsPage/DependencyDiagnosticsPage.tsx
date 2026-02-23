@@ -1,9 +1,8 @@
-import type { Location } from "history";
 import { useEffect, useMemo, useRef } from "react";
 
 import { useUserKeyValue } from "metabase/common/hooks/use-user-key-value";
 import type * as Urls from "metabase/lib/urls";
-import { useNavigation } from "metabase/routing/compat";
+import { useNavigation } from "metabase/routing";
 
 import { DependencyDiagnostics } from "../../components/DependencyDiagnostics";
 import type {
@@ -20,7 +19,7 @@ import {
 } from "./utils";
 
 type DependencyDiagnosticsPageProps = {
-  location: Location;
+  location: { search: string };
 };
 
 type DependencyDiagnosticsPageOwnProps = DependencyDiagnosticsPageProps & {

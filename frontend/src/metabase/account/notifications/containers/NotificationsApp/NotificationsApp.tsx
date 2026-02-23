@@ -6,7 +6,7 @@ import { skipToken, useListNotificationsQuery } from "metabase/api";
 import { Pulses } from "metabase/entities/pulses";
 import { useSelector } from "metabase/lib/redux";
 import { parseTimestamp } from "metabase/lib/time-dayjs";
-import { useNavigation } from "metabase/routing/compat";
+import { useNavigation } from "metabase/routing";
 import {
   canManageSubscriptions as canManageSubscriptionsSelector,
   getUser,

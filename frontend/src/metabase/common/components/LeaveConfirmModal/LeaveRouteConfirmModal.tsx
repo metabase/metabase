@@ -2,7 +2,7 @@ import type { Location } from "history";
 import { useEffect } from "react";
 import { usePrevious } from "react-use";
 
-import { useBlockNavigation } from "metabase/routing/compat";
+import { useBlockNavigation } from "metabase/routing";
 
 import { LeaveConfirmModal } from "./LeaveConfirmModal";
 

@@ -1,7 +1,7 @@
 import { t } from "ttag";
 
 import * as Urls from "metabase/lib/urls";
-import { useNavigation } from "metabase/routing/compat";
+import { useNavigation } from "metabase/routing";
 import { Modal } from "metabase/ui";
 
 import { DestinationDatabasesList } from "../DestinationDatabasesList";

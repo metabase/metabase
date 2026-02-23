@@ -1,7 +1,8 @@
+import { useLocation } from "react-router-dom";
+
 import { useListDatabasesQuery, useListTasksQuery } from "metabase/api";
 import { PaginationControls } from "metabase/common/components/PaginationControls";
 import { useUrlState } from "metabase/common/hooks/use-url-state";
-import { useLocationWithQuery } from "metabase/routing/compat";
 import { Flex } from "metabase/ui";
 
 import { TaskPicker } from "../TaskPicker";
@@ -14,7 +15,7 @@ import { urlStateConfig } from "./utils";
 const PAGE_SIZE = 50;
 
 export const TaskListPage = () => {
-  const location = useLocationWithQuery();
+  const location = useLocation();
   const [
     { page, sort_column, sort_direction, status, task },
     { patchUrlState },

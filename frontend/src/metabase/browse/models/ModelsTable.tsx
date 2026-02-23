@@ -18,7 +18,7 @@ import type { ResponsiveProps } from "metabase/common/components/ItemsTable/util
 import { MarkdownPreview } from "metabase/common/components/MarkdownPreview";
 import { getIcon } from "metabase/lib/icon";
 import * as Urls from "metabase/lib/urls";
-import { useNavigation } from "metabase/routing/compat";
+import { useNavigation } from "metabase/routing";
 import { FixedSizeIcon, Flex, Icon, Repeat, Skeleton } from "metabase/ui";
 import type { SortingOptions } from "metabase-types/api";
 

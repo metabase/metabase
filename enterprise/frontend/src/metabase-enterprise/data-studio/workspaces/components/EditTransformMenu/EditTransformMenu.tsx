@@ -6,7 +6,7 @@ import * as Urls from "metabase/lib/urls";
 import { transformEdit } from "metabase/lib/urls";
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import type { EditTransformMenuProps } from "metabase/plugins/oss/database";
-import { useNavigation } from "metabase/routing/compat";
+import { useNavigation } from "metabase/routing";
 import {
   Box,
   Button,

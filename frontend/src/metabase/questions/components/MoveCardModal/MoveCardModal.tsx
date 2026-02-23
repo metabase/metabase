@@ -19,7 +19,7 @@ import { useDispatch } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { API_UPDATE_QUESTION } from "metabase/query_builder/actions";
 import { addUndo } from "metabase/redux/undo";
-import { useNavigation } from "metabase/routing/compat";
+import { useNavigation } from "metabase/routing";
 import { Box, Icon, Radio, Title } from "metabase/ui";
 import type { Card } from "metabase-types/api";
 

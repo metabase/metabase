@@ -12,7 +12,7 @@ import { useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import type { WorkspacesSectionProps } from "metabase/plugins/oss/database";
-import { useNavigation } from "metabase/routing/compat";
+import { useNavigation } from "metabase/routing";
 import { getLocation } from "metabase/selectors/routing";
 import {
   ActionIcon,

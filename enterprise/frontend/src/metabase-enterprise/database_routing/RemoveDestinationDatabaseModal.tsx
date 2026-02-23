@@ -4,7 +4,7 @@ import { DeleteDatabaseModal } from "metabase/admin/databases/components/DeleteD
 import { useDeleteDatabaseMutation, useGetDatabaseQuery } from "metabase/api";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import * as Urls from "metabase/lib/urls";
-import { useNavigation } from "metabase/routing/compat";
+import { useNavigation } from "metabase/routing";
 import { Modal } from "metabase/ui";
 
 export const RemoveDestinationDatabaseModal = ({

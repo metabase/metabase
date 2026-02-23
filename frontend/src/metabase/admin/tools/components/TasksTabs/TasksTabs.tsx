@@ -1,7 +1,8 @@
+import { useLocation } from "react-router-dom";
 import { t } from "ttag";
 
 import * as Urls from "metabase/lib/urls";
-import { useLocationWithQuery, useNavigation } from "metabase/routing/compat";
+import { useNavigation } from "metabase/routing";
 import { Flex, Icon, Tabs, Title, Tooltip } from "metabase/ui";
 
 import {
@@ -19,7 +20,7 @@ type TasksTabsProps = {
 };
 
 export const TasksTabs = ({ children }: TasksTabsProps) => {
-  const location = useLocationWithQuery();
+  const location = useLocation();
   const tabs: TabConfig[] = [
     { value: Urls.adminToolsTasksList(), label: t`Tasks` },
     { value: Urls.adminToolsTasksRuns(), label: t`Runs` },

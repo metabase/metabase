@@ -7,7 +7,7 @@ import {
   useUpdateUserMutation,
 } from "metabase/api";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
-import type { RouteParams } from "metabase/routing/compat/types";
+import type { RouteParams } from "metabase/routing/types";
 import { Modal } from "metabase/ui";
 import type { User } from "metabase-types/api";
 

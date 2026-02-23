@@ -1,7 +1,5 @@
 import _ from "underscore";
 
-import { routerActions } from "metabase/routing/compat/react-router-redux";
-
 export const getColumnName = (column) => column.remapped_to || column.name;
 
 export const getRowValuesByColumns = (row, cols) =>
@@ -54,9 +52,8 @@ const AuditDrill = ({ question, clicked }) => {
           name: "detail",
           title: `View this`,
           default: true,
-          action() {
-            const url = columnNameToUrl[column.name](value, clicked);
-            return routerActions.push(url);
+          url() {
+            return columnNameToUrl[column.name](value, clicked);
           },
         },
       ];
@@ -77,10 +74,8 @@ const AuditDrill = ({ question, clicked }) => {
           name: "detail",
           title: `View this`,
           default: true,
-          action() {
-            return routerActions.push(
-              `/admin/audit/query/${encodeURIComponent(String(value))}`,
-            );
+          url() {
+            return `/admin/audit/query/${encodeURIComponent(String(value))}`;
           },
         },
       ];

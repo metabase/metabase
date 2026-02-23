@@ -1,7 +1,7 @@
 import type { RouteObject } from "react-router-dom";
+import { useLocation, useParams } from "react-router-dom";
 
 import { PLUGIN_CACHING, PLUGIN_DEPENDENCIES } from "metabase/plugins";
-import { useLocationWithQuery, useRouteParams } from "metabase/routing/compat";
 
 import { MetricDependenciesPage } from "./pages/MetricDependenciesPage";
 import { MetricOverviewPage } from "./pages/MetricOverviewPage";
@@ -9,27 +9,27 @@ import { MetricQueryPage } from "./pages/MetricQueryPage";
 import { NewMetricPage } from "./pages/NewMetricPage";
 
 const NewMetricPageWithRouteProps = () => {
-  const location = useLocationWithQuery();
+  const location = useLocation();
   return <NewMetricPage location={location} />;
 };
 
 const MetricOverviewPageWithRouteProps = () => {
-  const params = useRouteParams<{ cardId?: string }>();
+  const params = useParams<{ cardId?: string }>();
   return <MetricOverviewPage params={{ cardId: params.cardId ?? "" }} />;
 };
 
 const MetricQueryPageWithRouteProps = () => {
-  const params = useRouteParams<{ cardId?: string }>();
+  const params = useParams<{ cardId?: string }>();
   return <MetricQueryPage params={{ cardId: params.cardId ?? "" }} />;
 };
 
 const MetricDependenciesPageWithRouteProps = () => {
-  const params = useRouteParams<{ cardId?: string }>();
+  const params = useParams<{ cardId?: string }>();
   return <MetricDependenciesPage params={{ cardId: params.cardId ?? "" }} />;
 };
 
 const MetricCachingPageWithRouteProps = () => {
-  const params = useRouteParams<{ cardId?: string }>();
+  const params = useParams<{ cardId?: string }>();
   return (
     <PLUGIN_CACHING.MetricCachingPage
       params={{ cardId: params.cardId ?? "" }}

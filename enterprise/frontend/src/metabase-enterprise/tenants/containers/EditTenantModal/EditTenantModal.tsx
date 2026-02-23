@@ -5,7 +5,7 @@ import _ from "underscore";
 import { skipToken } from "metabase/api";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { useToast } from "metabase/common/hooks";
-import type { RouteParams } from "metabase/routing/compat/types";
+import type { RouteParams } from "metabase/routing/types";
 import { Modal } from "metabase/ui";
 import {
   useGetTenantQuery,

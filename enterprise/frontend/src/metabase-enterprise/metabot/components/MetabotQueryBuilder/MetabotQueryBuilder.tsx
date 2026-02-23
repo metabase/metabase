@@ -1,6 +1,7 @@
 import { isFulfilled, isRejected } from "@reduxjs/toolkit";
 import cx from "classnames";
 import { useEffect, useState } from "react";
+import { useLocation } from "react-router-dom";
 import { usePrevious } from "react-use";
 import { isMatching } from "ts-pattern";
 import { t } from "ttag";
@@ -8,7 +9,7 @@ import _ from "underscore";
 
 import { MetabotLogo } from "metabase/common/components/MetabotLogo";
 import { MetabotPromptInput } from "metabase/metabot/components/MetabotPromptInput";
-import { useLocationWithQuery, useNavigation } from "metabase/routing/compat";
+import { useNavigation } from "metabase/routing";
 import {
   Box,
   Button,
@@ -130,7 +131,7 @@ export const MetabotQueryBuilder = () => {
     [setVisible],
   );
 
-  const location = useLocationWithQuery();
+  const location = useLocation();
   const previousPathname = usePrevious(location.pathname);
 
   useEffect(

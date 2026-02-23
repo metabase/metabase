@@ -11,7 +11,7 @@ import { useAdHocTableQuery } from "./use-adhoc-table-query";
 type Props = {
   tableId: number;
   databaseId: number;
-  location: Location<{ query?: string }>;
+  location: Location;
 };
 
 export type TableDataGetColumnSortDirection = (

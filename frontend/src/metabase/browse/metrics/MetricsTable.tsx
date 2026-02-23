@@ -25,7 +25,7 @@ import { Questions } from "metabase/entities/questions";
 import { pushPath } from "metabase/lib/navigation";
 import { useDispatch } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
-import { useNavigation } from "metabase/routing/compat";
+import { useNavigation } from "metabase/routing";
 import {
   Button,
   FixedSizeIcon,

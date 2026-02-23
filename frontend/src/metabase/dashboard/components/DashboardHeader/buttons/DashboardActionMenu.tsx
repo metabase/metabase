@@ -1,4 +1,5 @@
 import { type MouseEvent, useState } from "react";
+import { useLocation, useSearchParams } from "react-router-dom";
 import { c, t } from "ttag";
 
 import { ForwardRefLink } from "metabase/common/components/Link";
@@ -11,7 +12,6 @@ import { useDispatch, useSelector } from "metabase/lib/redux";
 import { DashboardSubscriptionMenuItem } from "metabase/notifications/NotificationsActionsMenu/DashboardSubscriptionMenuItem";
 import { useRegisterShortcut } from "metabase/palette/hooks/useRegisterShortcut";
 import { PLUGIN_MODERATION } from "metabase/plugins";
-import { useLocationWithQuery } from "metabase/routing/compat";
 import { Icon, Menu } from "metabase/ui";
 
 type DashboardActionMenuProps = {
@@ -21,13 +21,25 @@ type DashboardActionMenuProps = {
   openSettingsSidebar: () => void;
 };
 
+const searchParamsToQuery = (
+  searchParams: URLSearchParams,
+): Record<string, string> => {
+  const result: Record<string, string> = {};
+  searchParams.forEach((value, key) => {
+    result[key] = value;
+  });
+  return result;
+};
+
 export const DashboardActionMenu = ({
   canResetFilters,
   onResetFilters,
   canEdit,
   openSettingsSidebar,
 }: DashboardActionMenuProps) => {
-  const location = useLocationWithQuery();
+  const location = useLocation();
+  const [searchParams] = useSearchParams();
+  const parameterQueryParams = searchParamsToQuery(searchParams);
   const { dashboard, isFullscreen, onFullscreenChange, onChangeLocation } =
     useDashboardContext();
   const [opened, setOpened] = useState(false);
@@ -35,7 +47,7 @@ export const DashboardActionMenu = ({
 
   const { refreshDashboard } = useRefreshDashboard({
     dashboardId: dashboard?.id ?? null,
-    parameterQueryParams: location?.query,
+    parameterQueryParams,
   });
 
   const moderationItems = PLUGIN_MODERATION.useDashboardMenuItems(
@@ -53,7 +65,7 @@ export const DashboardActionMenu = ({
     );
 
   // solely for the dependency list below, so we don't ever have an undefined
-  const pathname = location?.pathname ?? "";
+  const pathname = location.pathname ?? "";
   useRegisterShortcut(
     [
       {
@@ -127,7 +139,7 @@ export const DashboardActionMenu = ({
             <Menu.Item
               leftSection={<Icon name="move" />}
               component={ForwardRefLink}
-              to={`${location?.pathname}/move`}
+              to={`${location.pathname}/move`}
             >{c("A verb, not a noun").t`Move`}</Menu.Item>
           </>
         )}
@@ -135,7 +147,7 @@ export const DashboardActionMenu = ({
         <Menu.Item
           leftSection={<Icon name="clone" />}
           component={ForwardRefLink}
-          to={`${location?.pathname}/copy`}
+          to={`${location.pathname}/copy`}
         >{c("A verb, not a noun").t`Duplicate`}</Menu.Item>
 
         {canEdit && (
@@ -144,7 +156,7 @@ export const DashboardActionMenu = ({
             <Menu.Item
               leftSection={<Icon name="trash" />}
               component={ForwardRefLink}
-              to={`${location?.pathname}/archive`}
+              to={`${location.pathname}/archive`}
             >{t`Move to trash`}</Menu.Item>
           </>
         )}

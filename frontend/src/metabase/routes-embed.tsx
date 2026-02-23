@@ -1,10 +1,14 @@
 import type { Location } from "history";
-import { Outlet, type RouteObject } from "react-router-dom";
+import {
+  Outlet,
+  type RouteObject,
+  useLocation,
+  useParams,
+} from "react-router-dom";
 
 import { PublicNotFound } from "metabase/public/components/PublicNotFound";
 import PublicApp from "metabase/public/containers/PublicApp";
 import { PublicOrEmbeddedQuestion } from "metabase/public/containers/PublicOrEmbeddedQuestion";
-import { useLocationWithQuery, useRouteParams } from "metabase/routing/compat";
 import type { EntityToken } from "metabase-types/api/entity";
 
 import { PublicOrEmbeddedDashboardPage } from "./public/containers/PublicOrEmbeddedDashboard";
@@ -16,8 +20,8 @@ const PublicAppWithOutlet = () => (
 );
 
 const EmbeddedQuestionWithRouteProps = () => {
-  const params = useRouteParams<{ token?: string }>();
-  const location = useLocationWithQuery();
+  const params = useParams<{ token?: string }>();
+  const location = useLocation();
 
   return (
     <PublicOrEmbeddedQuestion

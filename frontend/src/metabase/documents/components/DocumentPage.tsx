@@ -42,7 +42,7 @@ import { useDispatch, useSelector } from "metabase/lib/redux";
 import { extractEntityId } from "metabase/lib/urls";
 import * as Urls from "metabase/lib/urls";
 import { setErrorPage } from "metabase/redux/app";
-import { useNavigation } from "metabase/routing/compat";
+import { useNavigation } from "metabase/routing";
 import { Box } from "metabase/ui";
 import type {
   Card,

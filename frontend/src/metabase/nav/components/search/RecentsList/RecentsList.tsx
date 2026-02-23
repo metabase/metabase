@@ -1,7 +1,7 @@
 import { useListRecentsQuery } from "metabase/api";
 import { getName } from "metabase/lib/name";
 import { RecentsListContent } from "metabase/nav/components/search/RecentsList/RecentsListContent";
-import { useNavigation } from "metabase/routing/compat";
+import { useNavigation } from "metabase/routing";
 import { Paper } from "metabase/ui";
 import type {
   RecentContexts,

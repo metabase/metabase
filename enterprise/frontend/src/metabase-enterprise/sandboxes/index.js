@@ -7,6 +7,7 @@ import {
   getGroupFocusPermissionsUrl,
 } from "metabase/admin/permissions/utils/urls";
 import { ModalRoute } from "metabase/hoc/ModalRoute";
+import { pushPath } from "metabase/lib/navigation";
 import {
   PLUGIN_ADMIN_PERMISSIONS_TABLE_FIELDS_ACTIONS,
   PLUGIN_ADMIN_PERMISSIONS_TABLE_FIELDS_CONFIRMATIONS,
@@ -18,7 +19,6 @@ import {
   PLUGIN_DATA_PERMISSIONS,
   PLUGIN_REDUCERS,
 } from "metabase/plugins";
-import { routerActions } from "metabase/routing/compat/react-router-redux";
 import { hasPremiumFeature } from "metabase-enterprise/settings";
 
 import sandboxingReducer from "./actions";
@@ -53,8 +53,8 @@ const getEditSegementedAccessUrl = (entityId, groupId, view) =>
     ? getDatabaseViewSandboxModalUrl(entityId, groupId)
     : getGroupViewSandboxModalUrl(entityId, groupId);
 
-const getEditSegmentedAccessPostAction = (entityId, groupId, view) =>
-  routerActions.push(getEditSegementedAccessUrl(entityId, groupId, view));
+const getEditSegmentedAccessPostAction = (entityId, groupId, view) => () =>
+  pushPath(getEditSegementedAccessUrl(entityId, groupId, view));
 
 /**
  * Initialize sandboxes plugin features that depend on hasPremiumFeature.
@@ -82,8 +82,8 @@ export function initializePlugin() {
       label: t`Edit row and column security`,
       iconColor: "brand",
       icon: "pencil",
-      actionCreator: (entityId, groupId, view) =>
-        routerActions.push(getEditSegementedAccessUrl(entityId, groupId, view)),
+      actionCreator: (entityId, groupId, view) => () =>
+        pushPath(getEditSegementedAccessUrl(entityId, groupId, view)),
     });
     PLUGIN_ADMIN_PERMISSIONS_TABLE_FIELDS_CONFIRMATIONS.push(
       (permissions, groupId, entityId, newValue) =>
