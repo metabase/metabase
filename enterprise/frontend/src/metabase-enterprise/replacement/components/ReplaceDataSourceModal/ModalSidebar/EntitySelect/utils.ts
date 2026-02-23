@@ -2,15 +2,10 @@ import type {
   OmniPickerItem,
   OmniPickerValue,
 } from "metabase/common/components/Pickers";
-import type {
-  Card,
-  DatabaseId,
-  ReplaceSourceEntry,
-  Table,
-} from "metabase-types/api";
+import type { DatabaseId, ReplaceSourceEntry } from "metabase-types/api";
 
 import { isSameEntity } from "../../../../utils";
-import type { EntityItem } from "../../types";
+import type { CardEntityData, EntityItem, TableEntityData } from "../../types";
 
 import type { EntityItemInfo } from "./types";
 
@@ -87,7 +82,7 @@ export function getEntityItemInfo(
   return undefined;
 }
 
-function getTableEntityItemInfo(table: Table): EntityItemInfo {
+function getTableEntityItemInfo(table: TableEntityData): EntityItemInfo {
   const breadcrumbs: string[] = [];
   if (table.db != null) {
     breadcrumbs.push(table.db.name);
@@ -102,7 +97,7 @@ function getTableEntityItemInfo(table: Table): EntityItemInfo {
   };
 }
 
-function getCardEntityItemInfo(card: Card): EntityItemInfo {
+function getCardEntityItemInfo(card: CardEntityData): EntityItemInfo {
   const breadcrumbs: string[] = [];
   if (card.document != null) {
     breadcrumbs.push(card.document.name);
