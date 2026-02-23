@@ -129,7 +129,8 @@
   [x metadata-provider :- ::lib.schema.metadata/metadata-provider]
   (if-let [field-ids (lib.util.match/match-many x
                        [:field
-                        (_opts :guard (and (map? _opts) (not (and (:base-type _opts) (:effective-type _opts)))))
+                        (:and {:base-type base-type, :effective-type effective-type}
+                              (_ :guard (not (and base-type effective-type))))
                         (id :guard (and (integer? id) (pos? id)))]
                        (when-not (some #{:mbql/stage-metadata} &parents)
                          id))]
@@ -137,21 +138,20 @@
     (do (lib.metadata/bulk-metadata metadata-provider :metadata/column field-ids)
         (lib.util.match/replace-lite x
           [:field
-           (options :guard (and (map? options) (not (and (:base-type options)
-                                                         (:effective-type options)))))
+           (:and {:base-type base-type, :effective-type effective-type}
+                 (_ :guard (not (and base-type effective-type))))
            (id :guard pos-int?)]
           (if (some #{:mbql/stage-metadata} &parents)
             &match
             (update &match 1 merge
                    ;; TODO: For brush filters, query with different base type as in metadata is sent from FE. In that
                    ;;       case no change is performed. Find a way how to handle this properly!
-                    (when-not (and (some? (:base-type options))
-                                   (not= (:base-type options)
-                                         (:base-type (lib.metadata/field metadata-provider id))))
+                    (when-not (and base-type
+                                   (not= base-type (:base-type (lib.metadata/field metadata-provider id))))
                      ;; Following key is used to track which base-types we added during `query` call. It is used in
                      ;; [[metabase.lib.convert/options->legacy-MBQL]] to remove those, so query after conversion
                      ;; as legacy -> pmbql -> legacy looks closer to the original.
-                      (merge (when-not (contains? options :base-type)
+                      (merge (when-not base-type
                                {:lib/transformation-added-base-type true})
                              (-> (lib.metadata/field metadata-provider id)
                                  (select-keys [:base-type :effective-type]))))))))
@@ -231,8 +231,8 @@
                        (add-types-to-fields metadata-provider)
                        (lib.util.match/replace-lite
                          [:expression
-                          (opts :guard (and (map? opts) (not (and (:base-type opts)
-                                                                  (:effective-type opts)))))
+                          (:and {:base-type base-type, :effective-type effective-type}
+                                (opts :guard (not (and base-type effective-type))))
                           expression-name]
                          (let [found-ref (try
                                            (m/remove-vals

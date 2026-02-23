@@ -234,6 +234,11 @@
     {:type :or
      :clauses (rest pattern)}
 
+    ;; (:and ...) pattern
+    (and (seq? pattern) (= (first pattern) :and) (>= (count pattern) 2))
+    {:type :and
+     :clauses (rest pattern)}
+
     ;; Vector pattern
     (vector? pattern)
     (let [[main-parts rest-parts] (vec (split-with (complement #{'&}) pattern))
@@ -278,16 +283,21 @@
                                                              `metabase.lib.util.match.impl/count=) s cnt)
                                                      {:depends-on s})))
                 (when rest-part
-                  (process-pattern rest-part (list `drop cnt s) bindings conditions false)))
+                  (process-pattern rest-part `(into [] (drop ~cnt) ~s) bindings conditions false)))
       :map (let [s (if (symbol? value) value (gensym "map"))]
              (vswap! bindings conj [s `(metabase.lib.util.match.impl/map! ~value)])
              (run! (fn [[k v]]
-                     (vswap! conditions conj (with-meta (list `contains? s k) {:depends-on s}))
-                     (process-pattern v (list `get s k) bindings conditions false))
+                     (case v
+                       _ (vswap! conditions conj (with-meta (list `contains? s k) {:depends-on s}))
+                       &truthy (do (vswap! conditions conj (with-meta (list `get s k) {:depends-on s})))
+                       &falsey (do (vswap! conditions conj (with-meta `(not (get ~s ~k)) {:depends-on s})))
+                       (process-pattern v (list `get s k) bindings conditions false)))
                    (:map parsed)))
       :or (let [or-clauses (:clauses parsed)
                 new-body (process-clauses (mapv vector (:clauses parsed) (repeat (count or-clauses) @return)) value nil)]
             (vreset! return (with-meta new-body {:nil-wrapped true})))
+      :and (let [and-clauses (:clauses parsed)]
+             (run! (fn [and-clause] (process-pattern and-clause value bindings conditions return)) and-clauses))
       :guard (let [s (:symbol parsed)
                    s (if (= s '_) (gensym "_") s)
                    ;; Treat symbol, keyword, or set predicates as functions to be called, and thus transform them

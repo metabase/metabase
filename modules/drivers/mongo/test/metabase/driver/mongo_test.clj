@@ -676,7 +676,7 @@
              (->> (magic/automagic-analysis (t2/select-one :model/Field :id (mt/id :venues :price)) {})
                   :dashcards
                   (mapcat (comp :breakout :query :dataset_query :card)))
-             [:field _ (_ :guard :binning)] true))))))
+             [:field _ {:binning &truthy}] true))))))
 
 (deftest no-values-test
   (mt/test-driver :mongo

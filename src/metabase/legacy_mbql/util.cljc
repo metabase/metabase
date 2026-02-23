@@ -384,7 +384,7 @@
   [m]
   #_{:clj-kondo/ignore [:deprecated-var]}
   (lib.util.match/replace-lite m
-    [clause field & (args :guard (some (partial = [:relative-datetime :current]) args))]
+    [clause field & (args :guard (some #{[:relative-datetime :current]} args))]
     (let [temporal-unit (or (lib.util.match/match-lite field
                               [:field _ {:temporal-unit temporal-unit}] temporal-unit)
                             :default)]
