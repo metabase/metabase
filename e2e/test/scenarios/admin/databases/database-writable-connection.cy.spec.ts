@@ -27,7 +27,7 @@ const READ_ONLY_USER: DatabaseCredentials = {
 const DATABASE_NAME = WRITABLE_DB_CONFIG.mysql.connection.database;
 const TRANSFORM_TABLE_NAME = "transform_table";
 
-const TABLE_NAME = "ORDERS";
+const USER_TABLE_NAME = "ORDERS";
 
 describe("scenarios > admin > databases > writable connection", () => {
   beforeEach(() => {
@@ -40,6 +40,7 @@ describe("scenarios > admin > databases > writable connection", () => {
 
   afterEach(() => {
     dropUser(READ_ONLY_USER);
+    dropTable(USER_TABLE_NAME);
     dropTable(TRANSFORM_TABLE_NAME);
   });
 
@@ -184,7 +185,7 @@ function createTransform({ tagIds = [] }: { tagIds?: TransformTagId[] } = {}) {
         database: WRITABLE_DB_ID,
         type: "native",
         native: {
-          query: `SELECT * FROM ${TABLE_NAME} LIMIT 5`,
+          query: `SELECT * FROM ${USER_TABLE_NAME} LIMIT 5`,
         },
       },
     },
@@ -219,8 +220,8 @@ function dropTable(tableName: string) {
 
 function setupTableData() {
   queryDB(`
-    CREATE TABLE IF NOT EXISTS ${TABLE_NAME} (id INT, name VARCHAR(255));
-    INSERT INTO ${TABLE_NAME} VALUES (1, 'Row 1'), (2, 'Row 2'), (3, 'Row 3');
+    CREATE TABLE IF NOT EXISTS ${USER_TABLE_NAME} (id INT, name VARCHAR(255));
+    INSERT INTO ${USER_TABLE_NAME} VALUES (1, 'Row 1'), (2, 'Row 2'), (3, 'Row 3');
   `).then(() => H.resyncDatabase({ dbId: WRITABLE_DB_ID }));
 }
 
@@ -281,7 +282,7 @@ function removeWritableConnection() {
 function createModel() {
   return H.createTestNativeQuery({
     database: WRITABLE_DB_ID,
-    query: `SELECT * FROM ${TABLE_NAME}`,
+    query: `SELECT * FROM ${USER_TABLE_NAME}`,
   }).then((dataset_query) =>
     H.createCard({
       name: "Test model",
@@ -304,7 +305,7 @@ function createModelWithAction() {
           database: WRITABLE_DB_ID,
           type: "native",
           native: {
-            query: `DELETE FROM ${TABLE_NAME} WHERE id = 1`,
+            query: `DELETE FROM ${USER_TABLE_NAME} WHERE id = 1`,
           },
         },
       }),
@@ -336,21 +337,23 @@ function enableTableEditing() {
 }
 
 function performTableEdit() {
-  return H.getTableId({ databaseId: WRITABLE_DB_ID, name: TABLE_NAME }).then(
-    (tableId) =>
-      cy.request({
-        failOnStatusCode: false,
-        method: "POST",
-        url: "/api/ee/action-v2/execute-bulk",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          action: "data-grid.row/create",
-          scope: { "table-id": tableId },
-          inputs: [{ ID: 42 }],
-        }),
+  return H.getTableId({
+    databaseId: WRITABLE_DB_ID,
+    name: USER_TABLE_NAME,
+  }).then((tableId) =>
+    cy.request({
+      failOnStatusCode: false,
+      method: "POST",
+      url: "/api/ee/action-v2/execute-bulk",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        action: "data-grid.row/create",
+        scope: { "table-id": tableId },
+        inputs: [{ ID: 42 }],
       }),
+    }),
   );
 }
 
