@@ -76,16 +76,6 @@
           (walk-field-refs clause #(update-field-id-in-ref % field-id-mapping)))
         clauses))
 
-(defn- update-field-ids-in-join
-  "Updates the field IDs in the join conditions using the provided mapping."
-  [join field-id-mapping]
-  (u/update-some join :conditions update-field-ids-in-clauses field-id-mapping))
-
-(defn- update-field-ids-in-joins
-  "Updates the field IDs in all joins using the provided mapping."
-  [joins field-id-mapping]
-  (mapv #(update-field-ids-in-join % field-id-mapping) joins))
-
 (defn- update-source-table-or-card
   "Updates the source table or card in the stage."
   [{:keys [source-table source-card], :as stage}
@@ -95,13 +85,26 @@
     (and (= old-source-type :table) (= old-source-id source-table)) (assoc :source-table new-source-id)
     (and (= old-source-type :card) (= old-source-id source-card)) (assoc :source-card new-source-id)))
 
+(defn- update-source-and-field-ids-in-join
+  "Updates the source table or card and field IDs in the join conditions using the provided mapping."
+  [join old-source new-source field-id-mapping]
+  (-> join
+      (update-source-table-or-card old-source new-source)
+      (u/update-some :fields update-field-ids-in-clauses field-id-mapping)
+      (u/update-some :conditions update-field-ids-in-clauses field-id-mapping)))
+
+(defn- update-source-and-field-ids-in-joins
+  "Updates the field IDs in all joins using the provided mapping."
+  [joins old-source new-source field-id-mapping]
+  (mapv #(update-source-and-field-ids-in-join % old-source new-source field-id-mapping) joins))
+
 (defn- update-field-ids-in-stage
   "Updates the field IDs in the stage using the provided mapping."
   [query stage-number old-source new-source field-id-mapping]
   (-> (lib.util/query-stage query stage-number)
       (update-source-table-or-card old-source new-source)
       (u/update-some :fields update-field-ids-in-clauses field-id-mapping)
-      (u/update-some :joins update-field-ids-in-joins field-id-mapping)
+      (u/update-some :joins update-source-and-field-ids-in-joins old-source new-source field-id-mapping)
       (u/update-some :expressions update-field-ids-in-clauses field-id-mapping)
       (u/update-some :filters update-field-ids-in-clauses field-id-mapping)
       (u/update-some :aggregation update-field-ids-in-clauses field-id-mapping)

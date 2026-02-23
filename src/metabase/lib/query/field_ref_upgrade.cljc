@@ -32,7 +32,9 @@
 
 (defn- upgrade-field-refs-in-join
   [query stage-number join columns]
-  (u/update-some join :conditions upgrade-field-refs-in-clauses query stage-number columns))
+  (-> join
+      (u/update-some :fields upgrade-field-refs-in-clauses query stage-number columns)
+      (u/update-some :conditions upgrade-field-refs-in-clauses query stage-number columns)))
 
 (defn- upgrade-field-refs-in-joins
   [query stage-number joins columns]
