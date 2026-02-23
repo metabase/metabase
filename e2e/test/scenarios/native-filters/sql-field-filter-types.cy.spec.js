@@ -96,6 +96,7 @@ describe("scenarios > filters > sql filters > field filter > Date", () => {
       cy.findByTestId("query-visualization-root").within(() => {
         // Scroll to ensure target element is rendered due to table virtualization
         H.tableInteractiveScrollContainer().scrollTo(0, 300);
+        cy.wait(500);
         cy.findByText(representativeResult);
       });
     });
