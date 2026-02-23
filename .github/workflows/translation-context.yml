@@ -29,6 +29,7 @@ jobs:
             --croql='not (context contains "✨ AI Context")' \
             --output="csv" \
             --concurrency=10
+      # TODO: Switch the output to crowdin
       - name: Display CSV content
         run: |
           echo "=== Crowdin Context CSV ==="
@@ -39,4 +40,3 @@ jobs:
           name: crowdin-context
           path: crowdin-context.csv
           retention-days: 1
-
