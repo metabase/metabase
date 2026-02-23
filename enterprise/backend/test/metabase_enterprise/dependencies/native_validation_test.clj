@@ -292,7 +292,7 @@
                (deps.native-validation/validate-native-query
                 driver
                 (fake-query mp "select bad from products")))))
-      (testing "multi-table query - source is unknown"
+      (testing "multi-table query, unqualified - source is unknown"
         (is (= (normalize-error-names driver
                                       #{{:type               :missing-column
                                          :name               "bad"
@@ -300,6 +300,24 @@
                (deps.native-validation/validate-native-query
                 driver
                 (fake-query mp "select bad from products join orders on products.id = orders.product_id")))))
+      (testing "multi-table query, qualified - source attributed to specific table"
+        (is (= (normalize-error-names driver
+                                      #{{:type               :missing-column
+                                         :name               "bad"
+                                         :source-entity-type :table
+                                         :source-entity-id   (meta/id :products)}})
+               (deps.native-validation/validate-native-query
+                driver
+                (fake-query mp "select products.bad from products join orders on products.id = orders.product_id")))))
+      (testing "multi-table query, qualified with alias - source attributed to specific table"
+        (is (= (normalize-error-names driver
+                                      #{{:type               :missing-column
+                                         :name               "bad"
+                                         :source-entity-type :table
+                                         :source-entity-id   (meta/id :products)}})
+               (deps.native-validation/validate-native-query
+                driver
+                (fake-query mp "select p.bad from products p join orders o on p.id = o.product_id")))))
       (testing "no errors - returns empty set"
         (is (= #{}
                (deps.native-validation/validate-native-query
