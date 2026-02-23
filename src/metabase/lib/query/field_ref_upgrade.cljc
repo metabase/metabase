@@ -1,6 +1,5 @@
 (ns metabase.lib.query.field-ref-upgrade
   (:require
-   ;; allowed since this is needed to convert legacy queries to MBQL 5
    [metabase.lib.breakout :as lib.breakout]
    [metabase.lib.equality :as lib.equality]
    [metabase.lib.expression :as lib.expression]
@@ -77,6 +76,7 @@
 (defn upgrade-field-refs
   "Upgrades all the field refs in the query."
   [query]
-  (update query :stages #(vec (map-indexed (fn [i _]
-                                             (upgrade-field-refs-in-stage query i))
+  (update query :stages #(vec (map-indexed (fn [stage-number _]
+                                             (upgrade-field-refs-in-stage query stage-number))
                                            %))))
+                                           

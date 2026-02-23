@@ -46,3 +46,4 @@
       (let [swapped (lib.util/update-query-stage query stage-number do-swap source-path target-path source-clause target-clause)]
         (lib.remove-replace/update-stale-references swapped stage-number query))
       query)))
+

@@ -1,7 +1,8 @@
-(ns metabase.lib.query.field-ref-update
+(ns metabase.lib.query.field-ref-upgrade
   (:require
-   ;; allowed since this is needed to convert legacy queries to MBQL 5
+   [metabase.lib.util :as lib.util]
    [metabase.lib.walk :as lib.walk]
+   [metabase.util :as u]
    [metabase.util.i18n :as i18n]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
@@ -9,26 +10,23 @@
    [metabase.util.performance :refer [some select-keys mapv empty? #?(:clj for)]]
    [weavejester.dependency :as dep]))
 
-(defn- source-type->stage-key
-  [source-type]
-  (case source-type
-    :card :source-card
-    :table :source-table))
+(defn- update-source-table-or-card
+  [{:keys [source-table source-card], :as stage}
+   [old-source-type old-source-id, :as _old-source]
+   [new-source-type new-source-alias new-source-id, :as _new-source]]
+  (cond-> stage
+    (and (= old-source-type :table) (= old-source-id source-table)) (assoc :source-table new-source-id)
+    (and (= old-source-type :card) (= old-source-id source-card)) (assoc :source-card new-source-id)))
 
-(defn- update-stage-source-type
-  [stage _query [old-source-type old-source-id] [new-source-type new-source-id]]
-  (let [old-key (source-type->stage-key old-source-type)
-        new-key (source-type->stage-key new-source-type)]
-    (cond-> stage
-      (= (old-key stage) old-source-id)
-      (->
-       (dissoc :source-table :source-card)
-       (assoc new-key new-source-id)))))
+(defn- update-stage
+  [query stage-number]
+  (-> (lib.util/query-stage query stage-number)
+      (update-source-table-or-card old-source new-source)
+      (u/update-some :joins (fn [joins] (mapv #(update-source-table-or-card % old-source new-source) joins)))))
 
 (defn update-field-refs
-  "Walk all stages and joins in a query, replacing old source references with new ones."
+  "Updates the qeury to use the new source table or card."
   [query old-source new-source]
-  (lib.walk/walk
-   query
-   (fn [query _path-type _path stage-or-join]
-     (update-stage-source-type stage-or-join query old-source new-source))))
+  (update query :stages #(vec (map-indexed (fn [stage-number _]
+                                             (update-stage query stage-number))
+                                           %))))
