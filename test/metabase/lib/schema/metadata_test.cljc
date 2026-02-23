@@ -7,7 +7,8 @@
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.lib.test-metadata :as meta]
-   [metabase.util :as u]))
+   [metabase.util :as u]
+   [metabase.util.malli.registry :as mr]))
 
 (deftest ^:parallel normalize-column-metadata-test
   (let [col {"active"                                          true
@@ -146,16 +147,28 @@
   (testing "Old long-namespaced keys in stored result_metadata should be renamed to :lib/* equivalents"
     (let [base    {:name "X", :lib/type :metadata/column, :base-type :type/*}
           renames @#'lib.schema.common/deprecated-lib-key-renames]
-      (are [old-key value] (= (assoc base (renames old-key) value)
-                              (lib/normalize ::lib.schema.metadata/column {old-key value, :name "X"}))
+      (are [old-key value] (let [normalized (lib/normalize ::lib.schema.metadata/column {old-key value, :name "X"})]
+                             (is (= (assoc base (renames old-key) value)
+                                    normalized))
+                             (is (mr/validate ::lib.schema.metadata/column normalized)))
         :metabase.lib.join/join-alias                      "Products"
         :metabase.lib.field/temporal-unit                  :month
         :metabase.lib.field/binning                        {:strategy :default, :num-bins 10}
         :metabase.lib.field/original-effective-type        :type/Text
         :metabase.lib.field/simple-display-name            "Category: Name"
-        :metabase.lib.query/transformation-added-base-type :type/Integer)
+        :metabase.lib.query/transformation-added-base-type true)
 
       (testing "new key already present takes precedence"
         (is (= (assoc base :lib/temporal-unit :year)
                (lib/normalize ::lib.schema.metadata/column
-                              {:name "X", :metabase.lib.field/temporal-unit :month, :lib/temporal-unit :year})))))))
+                              {:name "X", :metabase.lib.field/temporal-unit :month, :lib/temporal-unit :year}))))
+
+      (testing "old keys are disallowed by the schema"
+        (are [old-key value] (not (mr/validate ::lib.schema.metadata/column
+                                               (assoc base old-key value)))
+          :metabase.lib.join/join-alias                      "Products"
+          :metabase.lib.field/temporal-unit                  :month
+          :metabase.lib.field/binning                        {:strategy :default, :num-bins 10}
+          :metabase.lib.field/original-effective-type        :type/Text
+          :metabase.lib.field/simple-display-name            "Category: Name"
+          :metabase.lib.query/transformation-added-base-type true)))))

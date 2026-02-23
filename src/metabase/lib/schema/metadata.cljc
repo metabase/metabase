@@ -389,7 +389,9 @@
     ;; name in the display name pipeline, before join alias, binning, and temporal bucketing decorations are added.
     ;; This is distinct from `:lib/original-display-name`, which for a nested field stores just the leaf name
     ;; (e.g. `"Child"`) — both may coexist on the same column.
-    [:metabase.lib.field/simple-display-name {:optional true} [:maybe ::lib.schema.common/non-blank-string]]
+    [:lib/simple-display-name {:optional true} [:maybe ::lib.schema.common/non-blank-string]]
+    [:lib/original-effective-type {:optional true} [:maybe ::lib.schema.common/base-type]]
+    [:lib/transformation-added-base-type {:optional true} [:maybe :boolean]]
     ;; If temporal bucketing or binning happened in a previous stage, they are propagated as the keys below.
     ;; `:inherited-temporal-unit` signals that this column was already bucketed upstream, so the default temporal
     ;; unit becomes `:inherited` rather than a type-based default like `:month`, preventing double-bucketing.
@@ -513,13 +515,16 @@
    [:ref ::lib.schema.common/kebab-cased-map]
    [:ref ::column.validate-for-source]
    (lib.schema.common/disallowed-keys
-    {:binning           ":binning is deprecated; use :lib/binning instead"
-     :field-ref         ":field-ref is deprecated. For QP result metadata, use :metabase.lib.metadata.result-metadata/field-ref"
-     :ident             ":ident is deprecated and should not be included in column metadata"
-     :model/inner-ident ":model/inner_ident (normalized to :model/inner-ident) is deprecated and should not be included in column metadata"
-     :source            ":source is deprecated; use :lib/source instead. For QP result metadata, use :metabase.lib.metadata.result-metadata/source"
-     :source-alias      ":source-alias is deprecated; use :lib/join-alias or :lib/original-join-alias instead"
-     :unit              ":unit is deprecated; use :lib/temporal-unit instead"})])
+    (into {:binning           ":binning is deprecated; use :lib/binning instead"
+           :field-ref         ":field-ref is deprecated. For QP result metadata, use :metabase.lib.metadata.result-metadata/field-ref"
+           :ident             ":ident is deprecated and should not be included in column metadata"
+           :model/inner-ident ":model/inner_ident (normalized to :model/inner-ident) is deprecated and should not be included in column metadata"
+           :source            ":source is deprecated; use :lib/source instead. For QP result metadata, use :metabase.lib.metadata.result-metadata/source"
+           :source-alias      ":source-alias is deprecated; use :lib/join-alias or :lib/original-join-alias instead"
+           :unit              ":unit is deprecated; use :lib/temporal-unit instead"}
+          (map (fn [[old-key new-key]]
+                 [old-key (str old-key " is deprecated; use " new-key " instead")]))
+          lib.schema.common/deprecated-lib-key-renames))])
 
 (mr/def ::persisted-info.definition
   "Definition spec for a cached table."

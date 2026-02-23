@@ -85,4 +85,14 @@
         (is (= [:field (assoc base-opts :lib/original-effective-type :type/Integer) 123]
                (lib/normalize [:field {:lib/uuid                                   id
                                        :metabase.lib.field/original-effective-type :type/Text
-                                       :lib/original-effective-type                :type/Integer} 123])))))))
+                                       :lib/original-effective-type                :type/Integer} 123]))))
+
+      (testing "old keys are disallowed by the schema"
+        (are [old-key value] (not (mr/validate :mbql.clause/field
+                                               [:field (assoc base-opts old-key value) 123]))
+          :metabase.lib.join/join-alias                      "Products"
+          :metabase.lib.field/temporal-unit                  :month
+          :metabase.lib.field/binning                        {:strategy :default, :num-bins 10}
+          :metabase.lib.field/original-effective-type        :type/Text
+          :metabase.lib.field/simple-display-name            "Category: Name"
+          :metabase.lib.query/transformation-added-base-type :type/Integer)))))

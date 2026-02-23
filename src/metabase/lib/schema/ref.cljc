@@ -146,7 +146,10 @@
      ;; Not produced by MLv2 code; new queries will not contain this key.
      [:original-temporal-unit {:optional true} [:ref ::temporal-bucketing/unit]]]]
    (common/disallowed-keys
-    {:strategy ":binning keys like :strategy are not allowed at the top level of :field options."})
+    (into {:strategy ":binning keys like :strategy are not allowed at the top level of :field options."}
+          (map (fn [[old-key new-key]]
+                 [old-key (str old-key " is deprecated; use " new-key " instead")]))
+          common/deprecated-lib-key-renames))
    ;; If `:base-type` is specified, the `:temporal-unit` must make sense, e.g. no bucketing by `:year`for a
    ;; `:type/Time` column.
    [:fn
