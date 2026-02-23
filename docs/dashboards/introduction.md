@@ -52,17 +52,14 @@ If a question is saved to your personal collection, you'll only be able to add t
 
 ### When should you save to a dashboard vs a collection?
 
-Use this quick guide:
-
 **Save directly to a dashboard if:**
 - The question is only relevant to that dashboard.
 - You don’t plan to reuse it elsewhere.
-- You want to keep it local and simple.
+- You don’t need to manage it independently in a collection.
 
 **Save to a collection if:**
 - You may reuse the question in multiple dashboards.
 - You want others to find and use it.
-- You want better organization and discoverability.
 
 **Tip:** If you’re unsure, save to a collection first. You can always add it to dashboards later.
 
