@@ -106,7 +106,7 @@ export function NotebookStep({
   const canRevert = step.revert != null && !readOnly;
 
   return (
-    <Collapse in={isExpanded} transitionDuration={300}>
+    <Collapse in={isExpanded} transitionDuration={300} keepMounted>
       <Box
         className={cx(CS.hoverParent, CS.hoverVisibility, S.StepRoot)}
         data-testid={step.testID}
