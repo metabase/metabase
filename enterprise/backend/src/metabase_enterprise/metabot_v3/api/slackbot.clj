@@ -70,11 +70,11 @@
 (defn- slack-get
   "GET from slack"
   [client endpoint params]
-  (-> (http/get (str "https://slack.com/api" endpoint)
-                {:headers {"Authorization" (str "Bearer " (:token client))}
-                 :query-params params})
-      :body
-      (json/decode true)))
+  (let [response (http/get (str "https://slack.com/api" endpoint)
+                           {:headers {"Authorization" (str "Bearer " (:token client))}
+                            :query-params params})]
+    {:body (json/decode (:body response) true)
+     :headers (:headers response)}))
 
 (defn- slack-post-json
   "POST to slack."
@@ -134,10 +134,10 @@
   ([client message]
    (fetch-thread client message 50))
   ([client message limit]
-   (slack-get client "/conversations.replies"
-              {:channel (:channel message)
-               :ts (or (:thread_ts message) (:ts message))
-               :limit limit})))
+   (:body (slack-get client "/conversations.replies"
+                     {:channel (:channel message)
+                      :ts (or (:thread_ts message) (:ts message))
+                      :limit limit}))))
 
 (defn- get-upload-url
   "Get a URL we can upload to"
