@@ -171,9 +171,8 @@
       (log/warnf "[slackbot] start-stream failed: %s" (:error response)))))
 
 (defn- append-stream
-  "Append chunks to an active stream.
-   chunk-type is one of: :markdown_text, :task_update, :plan_update
-   chunk-data is the content for that chunk type."
+  "Append chunks to an active stream. Each chunk is a map with :type and type-specific keys,
+   e.g. {:type \"markdown_text\" :text \"...\"} or {:type \"task_update\" :id \"...\" :title \"...\" :status \"...\"}."
   [client channel stream-ts chunks]
   (let [payload  {:channel channel
                   :ts      stream-ts
@@ -771,41 +770,31 @@
         capabilities   (compute-capabilities)
         thread-history (thread->history thread bot-user-id)
         history        (into (vec thread-history) extra-history)
-        ;; Accumulators for building final response
-        ;; Using volatile! since callbacks are invoked sequentially from a single thread
-        all-text       (volatile! (StringBuilder.))
-        data-parts     (volatile! [])
-        ;; Track tool calls in progress
-        active-tools   (volatile! {})
-        handle-line    (fn [line]
-                         (when-let [[type content] (metabot-v3.util/parse-aisdk-line line)]
-                           (case type
-                             :TEXT
-                             (do
-                               ;; Accumulate all text for final response
-                               (.append ^StringBuilder @all-text content)
-                               ;; Pass text directly - ai-service already buffers markdown links
-                               (when (and on-text (seq content))
-                                 (on-text content)))
+        ;; Accumulate all text for final response.
+        ;; Using volatile! since callbacks are invoked sequentially from a single thread.
+        all-text    (volatile! (StringBuilder.))
+        handle-line (fn [line]
+                      (when-let [[type content] (metabot-v3.util/parse-aisdk-line line)]
+                        (case type
+                          :TEXT
+                          (do
+                            (.append ^StringBuilder @all-text content)
+                            (when (and on-text (seq content))
+                              (on-text content)))
 
-                             :TOOL_CALL
-                             (let [tool-id   (:toolCallId content)
-                                   tool-name (:toolName content)]
-                               (swap! active-tools assoc tool-id {:name tool-name :start-time (System/currentTimeMillis)})
-                               (when on-tool-start
-                                 (on-tool-start {:id tool-id :name tool-name})))
+                          :TOOL_CALL
+                          (when on-tool-start
+                            (on-tool-start {:id   (:toolCallId content)
+                                            :name (:toolName content)}))
 
-                             :TOOL_RESULT
-                             (let [tool-id (:toolCallId content)
-                                   result  (:result content)]
-                               (swap! active-tools dissoc tool-id)
-                               (when on-tool-end
-                                 (on-tool-end {:id tool-id :result result})))
+                          :TOOL_RESULT
+                          (when on-tool-end
+                            (on-tool-end {:id     (:toolCallId content)
+                                          :result (:result content)}))
 
-                             :DATA
-                             (swap! data-parts conj (assoc content :_type :DATA))
+                          :DATA nil ;; collected from full lines below
 
-                             (log/infof "Ignoring AI SDK line of type %s" type))))
+                          (log/infof "Ignoring AI SDK line of type %s" type))))
 
         lines          (metabot-v3.client/streaming-request-with-callback
                         {:context         (metabot-v3.context/create-context
@@ -963,7 +952,8 @@
          (when-let [{:keys [stream_ts channel]} @stream-state]
            (try
              (stop-stream client channel stream_ts)
-             (catch Exception _)))
+             (catch Exception e
+               (log/debugf e "[slackbot] Failed to stop stream during error cleanup"))))
          (throw e))))))
 
 (defn- send-auth-link
