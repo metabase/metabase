@@ -3,7 +3,7 @@ import type { UiParameter } from "metabase-lib/v1/parameters/types";
 
 import type { CardId } from "./card";
 import type { DatabaseId } from "./database";
-import type { TemplateTags, TemporalUnit } from "./dataset";
+import type { TemplateTag, TemplateTags, TemporalUnit } from "./dataset";
 import type { FieldId } from "./field";
 import type { SegmentId } from "./segment";
 import type { TableId } from "./table";
@@ -482,7 +482,7 @@ export type TestLiteralSpec = {
 export type TestOperatorSpec = {
   type: "operator";
   operator: string;
-  args: TestExpressionSpec[];
+  args?: TestExpressionSpec[];
 };
 
 export type TestTemporalBucketSpec = {
@@ -544,5 +544,21 @@ export type TestQuerySpec = {
 };
 
 export type TestQuerySpecWithDatabase = TestQuerySpec & {
+  database: DatabaseId;
+};
+
+export type TestTemplateTag = Pick<TemplateTag, "type"> &
+  Partial<Omit<TemplateTag, "dimension" | "type">> & {
+    dimension?: TableId;
+  };
+
+export type TestTemplateTags = Record<string, TestTemplateTag>;
+
+export type TestNativeQuerySpec = {
+  query: string;
+  templateTags?: TestTemplateTags;
+};
+
+export type TestNativeQuerySpecWithDatabase = TestNativeQuerySpec & {
   database: DatabaseId;
 };

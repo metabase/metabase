@@ -90,7 +90,7 @@ describe("admin > database > database routing", () => {
       });
       dbRoutingSection().within(() => {
         cy.findByText("Destination DB 1");
-        cy.findByTestId("destination-db-health-info").realHover();
+        cy.findByTestId("database-connection-health-info").realHover();
       });
       H.tooltip().should("contain.text", "Connected");
 

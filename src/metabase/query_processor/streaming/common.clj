@@ -103,6 +103,12 @@
         ;; Fall back to using code if symbol isn't supported on the Metabase frontend
         currency-code)
 
+      "narrowSymbol"
+      (if (currency/supports-symbol? currency-code)
+        (get-in currency/currency [(keyword currency-code) :symbol_native])
+        ;; Fall back to using code if symbol_native isn't supported on the Metabase frontend
+        currency-code)
+
       "code"
       currency-code
 

@@ -1,12 +1,14 @@
 (ns metabase.lib.drill-thru.column-filter-test
   (:require
    #?@(:cljs ([metabase.test-runner.assert-exprs.approximately-equal]))
+   [clojure.set :as set]
    [clojure.test :refer [deftest is testing use-fixtures]]
    [medley.core :as m]
    [metabase.lib.core :as lib]
    [metabase.lib.drill-thru.test-util :as lib.drill-thru.tu]
    [metabase.lib.drill-thru.test-util.canned :as canned]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]))
 
@@ -265,22 +267,28 @@
                 (lib/drill-thru query -1 nil drill "=" (lib/relative-datetime :current :day))))))))
 
 (deftest ^:parallel column-filter-join-alias-test
-  (testing "an input column with `:source-alias` and no `:join-alias` should work properly (#36861)"
+  (testing "an input column with `:source-alias` and no `:metabase.lib.join/join-alias` should work properly (#36861)"
     (let [query     (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
                         (lib/join (lib/join-clause (meta/table-metadata :products)
                                                    [(lib/= (meta/field-metadata :orders :product-id)
                                                            (meta/field-metadata :products :id))])))
           columns   (lib/returned-columns query)
           category  (-> (m/find-first #(= (:name %) "CATEGORY") columns)
-                        (dissoc :join-alias :metabase.lib.join/join-alias :lib/source))
+                        (set/rename-keys {:metabase.lib.join/join-alias :source-alias})
+                        (dissoc :join-alias :metabase.lib.join/join-alias :lib/original-join-alias :lib/source)
+                        (->> (lib/normalize ::lib.schema.metadata/column)))
           context   {:column     category
                      :column-ref (lib/ref category)
                      :value      nil}
           drills    (lib/available-drill-thrus query -1 context)
           colfilter (m/find-first #(= (:type %) :drill-thru/column-filter) drills)]
-      (is (= "Products" (:source-alias category)))
-      (is (= "Products" (-> context :column-ref second :join-alias)))
-      (is (some? (:column colfilter))))))
+      (is (= "Products" (:lib/original-join-alias category))
+          "legacy :source-alias should have been renamed to :lib/original-join-alias")
+      (is (nil? (-> context :column-ref second :join-alias))
+          "Should NOT be propagated to generated field ref")
+      (is (=? {:column some?}
+              colfilter)
+          "Should still suggest column filter drill"))))
 
 (deftest ^:parallel string-pk-filters-test
   (testing "string PKs and FKs should be returned as filterable columns (#40665)"

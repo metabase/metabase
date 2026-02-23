@@ -62,6 +62,173 @@ is_rosetta_installed() {
     arch -x86_64 /usr/bin/true 2>/dev/null
 }
 
+# =============================================================================
+# Build Tools Detection and Installation
+# =============================================================================
+
+# Check if Xcode Command Line Tools are installed (macOS)
+is_xcode_clt_installed() {
+    # xcode-select -p returns the path if CLT is installed, fails otherwise
+    xcode-select -p &>/dev/null
+}
+
+# Check if build-essential (or equivalent) is installed (Linux)
+is_build_tools_installed_linux() {
+    # Check for gcc and make as proxies for build tools
+    has_tool gcc && has_tool make
+}
+
+# Detect Linux distribution family
+detect_linux_distro() {
+    if [ -f /etc/os-release ]; then
+        . /etc/os-release
+        case "$ID" in
+            ubuntu|debian|linuxmint|pop) echo "debian" ;;
+            fedora|rhel|centos|rocky|alma) echo "redhat" ;;
+            arch|manjaro|endeavouros) echo "arch" ;;
+            opensuse*|sles) echo "suse" ;;
+            *) echo "unknown" ;;
+        esac
+    elif [ -f /etc/debian_version ]; then
+        echo "debian"
+    elif [ -f /etc/redhat-release ]; then
+        echo "redhat"
+    else
+        echo "unknown"
+    fi
+}
+
+# Install Xcode Command Line Tools (macOS)
+install_xcode_clt() {
+    if is_xcode_clt_installed; then
+        print_success "Xcode Command Line Tools are installed"
+        return 0
+    fi
+
+    print_warning "Xcode Command Line Tools are not installed"
+    echo ""
+    echo "      These tools provide compilers (clang, gcc) and build utilities"
+    echo "      required for compiling native extensions in development tools."
+    echo ""
+
+    if ask_yes_no "Install Xcode Command Line Tools?" "y"; then
+        print_info "Installing Xcode Command Line Tools..."
+        echo "      A system dialog will appear. Please follow the prompts."
+        echo ""
+
+        # Trigger the CLT installer - this opens a GUI dialog
+        xcode-select --install 2>/dev/null || true
+
+        # Wait for the user to complete the installation
+        echo ""
+        print_info "Waiting for installation to complete..."
+        echo "      Please complete the installation in the dialog that appeared."
+        echo ""
+
+        # Poll until installation completes or user gives up
+        local max_attempts=60  # 10 minutes max (60 * 10 seconds)
+        local attempt=0
+        printf "      "
+        while ! is_xcode_clt_installed; do
+            attempt=$((attempt + 1))
+            if [ $attempt -ge $max_attempts ]; then
+                echo ""
+                print_error "Xcode Command Line Tools installation timed out"
+                echo "      Please install manually with: xcode-select --install"
+                return 1
+            fi
+            # Show progress dot every 10 seconds
+            printf "."
+            sleep 10
+        done
+        echo ""
+
+        print_success "Xcode Command Line Tools installed successfully"
+    else
+        print_warning "Skipped Xcode Command Line Tools installation"
+        echo "      Some tools may fail to compile without build tools."
+        echo "      Install manually with: xcode-select --install"
+    fi
+}
+
+# Install build tools on Linux
+install_build_tools_linux() {
+    if is_build_tools_installed_linux; then
+        print_success "Build tools (gcc, make) are installed"
+        return 0
+    fi
+
+    print_warning "Build tools are not installed"
+    echo ""
+    echo "      Build tools (gcc, make, etc.) are required for compiling"
+    echo "      native extensions in development tools."
+    echo ""
+
+    local distro=$(detect_linux_distro)
+    local install_cmd=""
+    local package_name=""
+
+    case "$distro" in
+        debian)
+            package_name="build-essential"
+            install_cmd="sudo apt-get update && sudo apt-get install -y build-essential"
+            ;;
+        redhat)
+            package_name="Development Tools"
+            if has_tool dnf; then
+                install_cmd="sudo dnf groupinstall -y 'Development Tools'"
+            else
+                install_cmd="sudo yum groupinstall -y 'Development Tools'"
+            fi
+            ;;
+        arch)
+            package_name="base-devel"
+            install_cmd="sudo pacman -S --needed --noconfirm base-devel"
+            ;;
+        suse)
+            package_name="devel_basis"
+            install_cmd="sudo zypper install -y -t pattern devel_basis"
+            ;;
+        *)
+            print_warning "Unknown Linux distribution"
+            echo "      Please install build tools (gcc, make, etc.) manually."
+            return 0
+            ;;
+    esac
+
+    echo "      Package: $package_name"
+    echo "      Command: $install_cmd"
+    echo ""
+
+    if ask_yes_no "Install build tools?" "y"; then
+        print_info "Installing build tools..."
+        if eval "$install_cmd"; then
+            print_success "Build tools installed successfully"
+        else
+            print_error "Failed to install build tools"
+            echo "      Please install manually with: $install_cmd"
+            return 1
+        fi
+    else
+        print_warning "Skipped build tools installation"
+        echo "      Some tools may fail to compile without build tools."
+    fi
+}
+
+# Main function to install build tools based on OS
+install_build_tools() {
+    local os=$(detect_os)
+
+    case "$os" in
+        macos)
+            install_xcode_clt
+            ;;
+        linux)
+            install_build_tools_linux
+            ;;
+    esac
+}
+
 # Install Rosetta 2 for running x86_64 binaries on Apple Silicon
 install_rosetta() {
     local os=$(detect_os)
@@ -426,8 +593,8 @@ main() {
     print_header "Metabase Development Environment Setup"
 
     echo "This script will:"
-    echo "  1. Check prerequisites"
-    echo -e "${DIM}     - Checks your OS, shell, curl installed, etc. ${NC}"
+    echo "  1. Check prerequisites and install build tools"
+    echo -e "${DIM}     - Checks OS, shell, curl; installs Xcode CLT (Mac) or build-essential (Linux)${NC}"
     echo "  2. Install/update mise"
     echo -e "${DIM}     - Installs if needed or checks for updates${NC}"
     echo "  3. Configure shell integration (with your permission)"
@@ -442,7 +609,7 @@ main() {
     ask_yes_no "Are you ready?" "y" || exit 1
 
     # Check prerequisites
-    print_step "1. Check prerequisites"
+    print_step "1. Check prerequisites and build tools"
 
     local os=$(detect_os)
     local arch=$(detect_arch)
@@ -468,6 +635,9 @@ main() {
         exit 1
     fi
     print_success "curl is available"
+
+    # Install build tools (Xcode CLT on macOS, build-essential on Linux)
+    install_build_tools
 
     # Install Rosetta 2 if needed (macOS ARM64 only)
     install_rosetta

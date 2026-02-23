@@ -107,7 +107,10 @@
  lib.types.isa/temporal?
  lib.util.match/match
  lib.util.match/match-one
+ lib.util.match/match-lite
+ lib.util.match/match-many
  lib.util.match/replace
+ lib.util.match/replace-lite
  lib/truncate-alias
  lib/->legacy-MBQL
  lib/->metadata-provider
@@ -115,6 +118,7 @@
  lib/match-and-normalize-tag-name
  lib/missing-column-error
  lib/missing-table-alias-error
+ lib/native-query-table-references
  lib/normalize
  lib/order-by-clause
  lib/query-from-legacy-inner-query

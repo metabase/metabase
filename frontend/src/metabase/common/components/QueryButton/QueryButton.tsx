@@ -3,29 +3,28 @@ import { memo } from "react";
 import { Link } from "react-router";
 
 import CS from "metabase/css/core/index.css";
-import { Icon, type IconName } from "metabase/ui";
+import type { IconName } from "metabase/ui";
+import { Icon } from "metabase/ui";
 
 import S from "./QueryButton.module.css";
 
-type QueryButtonProps = {
+interface QueryButtonProps {
   className?: string;
-  icon: IconName;
   text: string;
-  onClick?: () => void;
-  link?: string;
-};
+  icon: IconName;
+  iconClass?: string;
+  link: string;
+}
 
 const QueryButtonInner = ({
   className,
   text,
   icon,
-  onClick,
-  link = "",
+  link,
 }: QueryButtonProps) => (
   <div className={className}>
     <Link
       className={cx(S.queryButton, CS.bgLightHover, CS.px1, CS.rounded)}
-      onClick={onClick}
       to={link}
     >
       <Icon name={icon} />

@@ -14,7 +14,7 @@ import { QuestionAlertModalProvider } from "embedding-sdk-bundle/components/priv
 import { useExtractResourceIdFromJwtToken } from "embedding-sdk-bundle/hooks/private/use-extract-resource-id-from-jwt-token";
 import { useLoadQuestion } from "embedding-sdk-bundle/hooks/private/use-load-question";
 import { useSetupContentTranslations } from "embedding-sdk-bundle/hooks/private/use-setup-content-translations";
-import { useSdkDispatch, useSdkSelector } from "embedding-sdk-bundle/store";
+import { useSdkSelector } from "embedding-sdk-bundle/store";
 import {
   getError,
   getIsGuestEmbed,
@@ -29,7 +29,7 @@ import {
   useCreateQuestion,
 } from "metabase/query_builder/containers/use-create-question";
 import { useSaveQuestion } from "metabase/query_builder/containers/use-save-question";
-import { setEntityTypes } from "metabase/redux/embedding-data-picker";
+import { EmbeddingDataPickerContextProvider } from "metabase/querying/notebook/components/NotebookDataPicker/EmbeddingDataPicker/context";
 import { getEmbeddingMode } from "metabase/visualizations/click-actions/lib/modes";
 import { EmbeddingSdkMode } from "metabase/visualizations/click-actions/modes/EmbeddingSdkMode";
 import type { ClickActionModeGetter } from "metabase/visualizations/types";
@@ -62,6 +62,7 @@ export const SdkQuestionProvider = ({
   onRun,
   isSaveEnabled = true,
   entityTypes,
+  dataPicker,
   targetCollection,
   initialSqlParameters,
   hiddenParameters,
@@ -257,12 +258,6 @@ export const SdkQuestionProvider = ({
     }
   }, [questionId, question, navigation]);
 
-  const dispatch = useSdkDispatch();
-
-  useEffect(() => {
-    dispatch(setEntityTypes(entityTypes));
-  }, [dispatch, entityTypes]);
-
   if (isGuestEmbed && isNewQuestion) {
     return (
       <SdkError
@@ -283,7 +278,12 @@ export const SdkQuestionProvider = ({
     <SdkQuestionContext.Provider value={questionContext}>
       <EmbeddingEntityContextProvider uuid={null} token={token}>
         <QuestionAlertModalProvider>
-          {children}
+          <EmbeddingDataPickerContextProvider
+            dataPicker={dataPicker}
+            entityTypes={entityTypes}
+          >
+            {children}
+          </EmbeddingDataPickerContextProvider>
           <SdkQuestionAlertListModal />
         </QuestionAlertModalProvider>
       </EmbeddingEntityContextProvider>
