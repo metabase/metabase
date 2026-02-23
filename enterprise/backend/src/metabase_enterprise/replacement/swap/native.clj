@@ -3,6 +3,7 @@
    [clojure.string :as str]
    [metabase.driver.common.parameters :as params]
    [metabase.driver.common.parameters.parse :as params.parse]
+   [metabase.driver.sql.util :as sql.u]
    [metabase.lib.parameters.parse :as lib.params.parse]
    [metabase.lib.parameters.parse.types :as lib.params.parse.types]
    [metabase.sql-tools.core :as sql-tools]
@@ -388,12 +389,12 @@
   (let [new-table   (t2/select-one :model/Table :id new-table-id)
         old-card    (t2/select-one :model/Card :id old-card-id)
         database    (t2/select-one :model/Database :id (:database_id old-card))
-        _driver     (:engine database)
+        driver      (:engine database)
         sql         (get-in query [:stages 0 :native])
-        ;; Use schema-qualified name when the target table has a schema
+        ;; Use schema-qualified, properly quoted table name
         table-ref   (if (:schema new-table)
-                      (str (:schema new-table) "." (:name new-table))
-                      (:name new-table))
+                      (sql.u/quote-name driver :table (:schema new-table) (:name new-table))
+                      (sql.u/quote-name driver :table (:name new-table)))
         parsed      (params.parse/parse sql)
         new-sql     (replace-card-refs-with-table parsed old-card-id table-ref)
         old-tag-key (find-tag-by-card-id (get-in query [:stages 0 :template-tags]) old-card-id)]
