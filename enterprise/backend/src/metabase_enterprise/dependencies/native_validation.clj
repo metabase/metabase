@@ -8,6 +8,7 @@
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.query-processor.compile :as qp.compile]
+   [metabase.sql-tools.common :as sql-tools.common]
    [metabase.sql-tools.core :as sql-tools]
    [metabase.util.malli :as mu]))
 
@@ -130,7 +131,7 @@
   "Map a SQL table spec {:table name, :schema schema} to a Metabase table ID.
    Returns table ID or nil if not found."
   [driver mp table-spec]
-  (:table (sql-tools/find-table-or-transform
+  (:table (sql-tools.common/find-table-or-transform
            driver
            (lib.metadata/tables mp)
            (lib.metadata/transforms mp)
@@ -189,7 +190,7 @@
         {:keys [used-fields returned-fields errors]} (sql-tools/field-references driver sql)
         check-fields (fn [fields]
                        (mapcat (fn [col-spec]
-                                 (->> (sql-tools/resolve-field driver mp col-spec)
+                                 (->> (sql-tools.common/resolve-field driver mp col-spec)
                                       (keep :error)
                                       (map (partial enrich-error driver mp card-columns col-spec))))
                                fields))]
