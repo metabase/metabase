@@ -103,13 +103,19 @@
               (str "Expected syntax-error or empty set, got: " result))))
       (testing "bad table wildcard"
         ;; Normalize expected value using driver conventions (H2 uppercases, Postgres lowercases)
-        (is (= (normalize-error-names driver #{(lib/missing-table-alias-error "products")})
+        (is (= (normalize-error-names driver
+                                      #{(merge (lib/missing-table-alias-error "products")
+                                               {:source-entity-type :table
+                                                :source-entity-id   (meta/id :orders)})})
                (deps.native-validation/validate-native-query
                 driver
                 (fake-query mp "select products.* from orders")))))
       (testing "bad col reference"
         ;; Normalize expected value using driver conventions (H2 uppercases, Postgres lowercases)
-        (is (= (normalize-error-names driver #{(lib/missing-column-error "bad")})
+        (is (= (normalize-error-names driver
+                                      #{(merge (lib/missing-column-error "bad")
+                                               {:source-entity-type :table
+                                                :source-entity-id   (meta/id :products)})})
                (deps.native-validation/validate-native-query
                 driver
                 (fake-query mp "select bad from products"))))))))
@@ -131,15 +137,23 @@
       (testing "Valid query - selecting existing columns from subquery"
         (validates? mp driver 10 empty?))
       (testing "Invalid query - selecting non-existent column from subquery"
-        (validates? mp driver 11 #{(lib/missing-column-error "CATEGORY")})
-        (validates? mp driver 12 #{(lib/missing-column-error "CATEGORY")}))
+        (validates? mp driver 11 #{(merge (lib/missing-column-error "CATEGORY")
+                                          {:source-entity-type :table
+                                           :source-entity-id   (meta/id :people)})})
+        (validates? mp driver 12 #{(merge (lib/missing-column-error "CATEGORY")
+                                          {:source-entity-type :table
+                                           :source-entity-id   (meta/id :people)})}))
       (testing "Nested subqueries"
         (validates? mp driver 13 empty?)
-        (validates? mp driver 14 #{(lib/missing-column-error "CATEGORY")}))
+        (validates? mp driver 14 #{(merge (lib/missing-column-error "CATEGORY")
+                                          {:source-entity-type :table
+                                           :source-entity-id   (meta/id :people)})}))
       (testing "SELECT * from subquery expands to subquery columns"
         (validates? mp driver 15 empty?)
         (validates? mp driver 16 empty?)
-        (validates? mp driver 17 #{(lib/missing-column-error "EMAIL")})))))
+        (validates? mp driver 17 #{(merge (lib/missing-column-error "EMAIL")
+                                          {:source-entity-type :table
+                                           :source-entity-id   (meta/id :people)})})))))
 
 (deftest ^:parallel validate-card-reference-after-expansion-test
   (testing "Validation of queries after card references have been expanded"
@@ -264,3 +278,30 @@
          driver mp
          "this is not a query"
          [])))))
+
+(deftest ^:parallel validate-native-query-source-attribution-test
+  (testing "errors include source entity info for table-only queries"
+    (let [mp     (deps.tu/default-metadata-provider)
+          driver (:engine (lib.metadata/database mp))]
+      (testing "single table query - error attributed to that table"
+        (is (= (normalize-error-names driver
+                                      #{{:type               :missing-column
+                                         :name               "bad"
+                                         :source-entity-type :table
+                                         :source-entity-id   (meta/id :products)}})
+               (deps.native-validation/validate-native-query
+                driver
+                (fake-query mp "select bad from products")))))
+      (testing "multi-table query - source is unknown"
+        (is (= (normalize-error-names driver
+                                      #{{:type               :missing-column
+                                         :name               "bad"
+                                         :source-entity-type :unknown}})
+               (deps.native-validation/validate-native-query
+                driver
+                (fake-query mp "select bad from products join orders on products.id = orders.product_id")))))
+      (testing "no errors - returns empty set"
+        (is (= #{}
+               (deps.native-validation/validate-native-query
+                driver
+                (fake-query mp "select * from products"))))))))
