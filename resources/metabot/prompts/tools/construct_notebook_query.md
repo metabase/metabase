@@ -119,7 +119,8 @@ When filtering date/time fields, specify which component to filter on - e.g. giv
   - Must use `segment_id` field: `{"filter_type": "segment", "segment_id": 10}`
   - Preferred over custom filters when available for business consistency
 - **Multi-value filters (`multi_value`):** Use for operations that support multiple values (combined with OR).
-  - Allowed operations: `equals`, `not-equals`, `starts-with`, `ends-with`, `contains`, `does-not-contain`
+  - Allowed operations: `equals`, `not-equals`, `starts-with`, `ends-with`, `contains`, `string-not-contains`
+  - Alias accepted: `does-not-contain`
   - Must use `values` list (even for single values like operation `equals 'USA'`, use `values: ["USA"]`)
 - **Single-value filters (`single_value`):** Use for comparison operations that require exactly one value.
   - Allowed operations: `greater-than`, `greater-than-or-equal`, `less-than`, `less-than-or-equal`

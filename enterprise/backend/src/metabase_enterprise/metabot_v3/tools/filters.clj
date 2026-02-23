@@ -1,6 +1,7 @@
 (ns metabase-enterprise.metabot-v3.tools.filters
   (:require
    [buddy.core.codecs :as codecs]
+   [clojure.string :as str]
    [metabase-enterprise.metabot-v3.agent.streaming :as streaming]
    [metabase-enterprise.metabot-v3.tools.instructions :as instructions]
    [metabase-enterprise.metabot-v3.tools.util :as metabot-v3.tools.u]
@@ -197,16 +198,19 @@
 
   See also [[decode-temporal-filter]] for the raw (pre-normalization) variant
   used in Malli schema decode transforms."
-  [{:keys [value values bucket] :as llm-filter}]
+  [{:keys [value values lower-value upper-value bucket] :as llm-filter}]
   (if-let [spec (extraction-bucket-specs bucket)]
     ;; Extraction bucket — coerce and validate values
     (let [coerce-val #(coerce-extraction-value % spec bucket)]
       (cond-> llm-filter
-        value  (update :value coerce-val)
-        values (update :values (partial mapv coerce-val))))
+        (contains? llm-filter :value)       (update :value coerce-val)
+        (contains? llm-filter :values)      (update :values (partial mapv coerce-val))
+        (contains? llm-filter :lower-value) (update :lower-value coerce-val)
+        (contains? llm-filter :upper-value) (update :upper-value coerce-val)))
     ;; Truncation bucket — validate values aren't numeric nonsense
     (if (truncation-buckets bucket)
-      (do (doseq [v (or values (some-> value vector))]
+      (do (doseq [v (concat (or values [])
+                            (remove nil? [value lower-value upper-value]))]
             (validate-truncation-value v bucket))
           llm-filter)
       ;; No bucket or unknown — pass through
@@ -228,15 +232,31 @@
         bucket-kw  (when bucket-str (keyword bucket-str))]
     (if-not bucket-kw
       m
-      (let [v-key    (if (contains? m "value") "value" :value)
-            vs-key   (if (contains? m "values") "values" :values)
+      (let [v-key     (cond
+                        (contains? m "value") "value"
+                        (contains? m :value) :value)
+            vs-key    (cond
+                        (contains? m "values") "values"
+                        (contains? m :values) :values)
+            lower-key (cond
+                        (contains? m "lower_value") "lower_value"
+                        (contains? m :lower_value) :lower_value
+                        (contains? m :lower-value) :lower-value)
+            upper-key (cond
+                        (contains? m "upper_value") "upper_value"
+                        (contains? m :upper_value) :upper_value
+                        (contains? m :upper-value) :upper-value)
             as-norm  {:bucket bucket-kw
-                      :value  (get m v-key)
-                      :values (get m vs-key)}
+                      :value  (when v-key (get m v-key))
+                      :values (when vs-key (get m vs-key))
+                      :lower-value (when lower-key (get m lower-key))
+                      :upper-value (when upper-key (get m upper-key))}
             coerced  (coerce-and-validate-temporal-filter as-norm)]
         (cond-> m
-          (get m v-key)  (assoc v-key  (:value coerced))
-          (get m vs-key) (assoc vs-key (:values coerced)))))))
+          v-key     (assoc v-key (:value coerced))
+          vs-key    (assoc vs-key (:values coerced))
+          lower-key (assoc lower-key (:lower-value coerced))
+          upper-key (assoc upper-key (:upper-value coerced)))))))
 
 (def ^:private temporal-extraction-operations
   "Operations that extract an integer component from a date/datetime field (e.g. month 1-12).
@@ -260,12 +280,13 @@
 
   Skips validation for temporal extraction operations (e.g. `month-equals`, `year-equals`)
   because those operations explicitly expect small integer values."
-  [{:keys [value values bucket operation column] :as llm-filter}]
+  [{:keys [value values lower-value upper-value bucket operation column] :as llm-filter}]
   (when (and (nil? bucket)
              column
              (lib.types.isa/temporal? column)
              (not (temporal-extraction-operations operation)))
-    (doseq [v (or values (some-> value vector))]
+    (doseq [v (concat (or values [])
+                      (remove nil? [value lower-value upper-value]))]
       (when (and (number? v) (or (neg? v) (< v 100)))
         (agent-error!
          (str "Filter value " v " is not valid for a date/datetime field. "
@@ -302,6 +323,9 @@
     (= :compound (:filter-kind llm-filter))
     (let [{:keys [operator filters]} llm-filter
           clauses (mapv #(build-filter-clause query %) filters)]
+      (when (empty? clauses)
+        (throw (ex-info "Compound filter requires at least one nested filter"
+                        {:agent-error? true :status-code 400})))
       (case operator
         :and (apply lib/and clauses)
         :or  (apply lib/or clauses)
@@ -310,7 +334,9 @@
 
     ;; Between filter
     (= :between (:filter-kind llm-filter))
-    (let [llm-filter (coerce-and-validate-temporal-filter llm-filter)
+    (let [llm-filter (-> llm-filter
+                         coerce-and-validate-temporal-filter
+                         validate-temporal-column-values)
           expr (filter-bucketed-column llm-filter)
           {:keys [lower-value upper-value]} llm-filter]
       (lib/between expr lower-value upper-value))
@@ -397,8 +423,7 @@
         field-id-prefix (metabot-v3.tools.u/card-field-id-prefix metric-id)
         visible-cols (lib/visible-columns base-query)
         resolve-visible-column #(metabot-v3.tools.u/resolve-column % field-id-prefix visible-cols)
-        ;; Separate segment filters from field filters before column resolution
-        resolved-filters (map #(if (:segment-id %) % (resolve-visible-column %)) filters)
+        resolved-filters (map #(resolve-filter-columns % resolve-visible-column) filters)
         query (as-> base-query $q
                 (reduce add-filter $q resolved-filters)
                 (reduce add-breakout
@@ -440,6 +465,14 @@
           last-aggregation-idx (dec (count query-aggregations))]
       (lib/order-by query (lib/aggregation-ref query last-aggregation-idx) sort-order))
     query))
+
+(defn- validate-percentile-value
+  [percentile-value]
+  (when-not (and (number? percentile-value)
+                 (<= 0 percentile-value 1))
+    (throw (ex-info (str "percentile_value must be a number between 0 and 1, got: " percentile-value)
+                    {:agent-error? true :status-code 400})))
+  percentile-value)
 
 (defn- build-conditional-aggregation
   "Build a conditional aggregation (count-where, sum-where, distinct-where).
@@ -495,7 +528,7 @@
                            :median         (lib/median expr-ref)
                            :stddev         (lib/stddev expr-ref)
                            :var            (lib/var expr-ref)
-                           :percentile     (lib/percentile expr-ref (:percentile-value aggregation))
+                           :percentile     (lib/percentile expr-ref (validate-percentile-value (:percentile-value aggregation)))
                            :cum-sum        (lib/cum-sum expr-ref)
                            :share          (lib/share expr-ref)
                            (throw (ex-info (str "Unsupported aggregation function for expression: " func)
@@ -517,7 +550,7 @@
                                :median         (lib/median expr)
                                :stddev         (lib/stddev expr)
                                :var            (lib/var expr)
-                               :percentile     (lib/percentile expr (:percentile-value aggregation))
+                               :percentile     (lib/percentile expr (validate-percentile-value (:percentile-value aggregation)))
                                :cum-sum        (lib/cum-sum expr)
                                :cum-count      (lib/cum-count)
                                :share          (lib/share expr)
@@ -543,13 +576,65 @@
                    aggregation
                    (resolve-visible-column aggregation))]
     ;; Then, resolve condition columns for conditional aggregations
-    (if-let [condition (:condition resolved)]
+    (if (:condition resolved)
       (update resolved :condition #(resolve-filter-columns % resolve-visible-column))
       resolved)))
 
 (defn- expression?
   [expr-or-column]
   (vector? expr-or-column))
+
+(def ^:private datetime-units
+  #{:year :quarter :month :week :day :hour :minute :second})
+
+(defn- expression-error!
+  [op msg]
+  (throw (ex-info (str "Invalid expression '" (name op) "': " msg)
+                  {:agent-error? true :status-code 400})))
+
+(defn- ensure-arg-count!
+  [op args n]
+  (when-not (= n (count args))
+    (expression-error! op (str "expected " n " argument(s), got " (count args)))))
+
+(defn- ensure-min-arg-count!
+  [op args n]
+  (when (< (count args) n)
+    (expression-error! op (str "expected at least " n " argument(s), got " (count args)))))
+
+(defn- validate-expression-definition!
+  [op args {:keys [unit start exponent]}]
+  (case op
+    (:add :subtract :multiply :divide :concat :coalesce)
+    (ensure-min-arg-count! op args 2)
+
+    (:abs :round :ceil :floor :sqrt :log :exp :upper :lower :trim :length
+          :get-year :get-month :get-day :get-hour :get-minute :get-second :get-quarter :get-day-of-week)
+    (ensure-arg-count! op args 1)
+
+    :substring
+    (do
+      (ensure-arg-count! op args 1)
+      (when-not (some? start)
+        (expression-error! op "requires 'start'")))
+
+    :power
+    (do
+      (when-not (<= 1 (count args) 2)
+        (expression-error! op (str "expected 1-2 arguments, got " (count args))))
+      (when-not (or (some? exponent) (some? (second args)))
+        (expression-error! op "requires either 'exponent' or a second argument")))
+
+    (:datetime-add :datetime-subtract)
+    (do
+      (ensure-arg-count! op args 2)
+      (let [unit-kw (some-> unit keyword)]
+        (when-not (contains? datetime-units unit-kw)
+          (expression-error! op (str "requires valid 'unit' (one of "
+                                     (str/join ", " (sort (map name datetime-units)))
+                                     ")")))))
+
+    nil))
 
 (defn- add-fields
   [query projection]
@@ -589,7 +674,7 @@
                               resolve-visible-column)
                         fields)
         resolved-aggregations (map (partial resolve-aggregation-column resolve-visible-column) aggregations)
-        resolved-filters (map #(if (:segment-id %) % (resolve-visible-column %)) filters)
+        resolved-filters (map #(resolve-filter-columns % resolve-visible-column) filters)
         reduce-query (fn [query f coll] (reduce f query coll))
         query (-> base-query
                   (reduce-query (fn [query [expr-or-column expr-name]]
@@ -664,6 +749,7 @@
         args (mapv resolve-arg (:arguments expr-def))
         ;; Operation may be keyword (after normalize-ai-args) or string (direct call)
         op (keyword (:operation expr-def))]
+    (validate-expression-definition! op args expr-def)
     (case op
       ;; Binary math operations
       :add      (apply lib/+ args)
@@ -744,6 +830,9 @@
   (if (= :compound (:filter-kind post-filter))
     ;; Compound post-filter with AND/OR
     (let [clauses (mapv #(build-post-filter-clause aggregation-cols %) (:filters post-filter))]
+      (when (empty? clauses)
+        (throw (ex-info "Compound post-filter requires at least one nested filter"
+                        {:agent-error? true :status-code 400})))
       (case (:operator post-filter)
         :and (apply lib/and clauses)
         :or  (apply lib/or clauses)
@@ -847,10 +936,11 @@
                   (reduce-query add-aggregation all-aggregations)
                   (reduce-query add-breakout (map resolve-visible-column group-by))
                   (reduce-query add-order-by (map resolve-order-by-column order-by))
-                  (add-limit limit)
                   ;; Add post-aggregation filters (creates new stage if needed)
                   ;; Pass number of breakouts so we can offset aggregation_index correctly
-                  (add-post-filters post-filters (count group-by)))
+                  (add-post-filters post-filters (count group-by))
+                  ;; Limit must apply after post-filters to preserve HAVING semantics.
+                  (add-limit limit))
         query-id (u/generate-nano-id)
         query-field-id-prefix (metabot-v3.tools.u/query-field-id-prefix query-id)
         returned-cols (lib/returned-columns query)]
@@ -930,7 +1020,8 @@
   (try
     (let [[filter-field-id-prefix base] (base-query data-source)
           returned-cols (lib/returned-columns base)
-          query (reduce add-filter base (map #(metabot-v3.tools.u/resolve-column % filter-field-id-prefix returned-cols) filters))
+          resolve-column #(metabot-v3.tools.u/resolve-column % filter-field-id-prefix returned-cols)
+          query (reduce add-filter base (map #(resolve-filter-columns % resolve-column) filters))
           query-id (u/generate-nano-id)
           query-field-id-prefix (metabot-v3.tools.u/query-field-id-prefix query-id)]
       {:structured-output
