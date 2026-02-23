@@ -6,8 +6,9 @@ import { checkNotNull } from "metabase/lib/types";
 import { getMetadata } from "metabase/selectors/metadata";
 import * as Lib from "metabase-lib";
 import {
-  createQuery as _createQuery,
+  DEFAULT_TEST_QUERY,
   columnFinder,
+  createMetadataProvider,
 } from "metabase-lib/test-helpers";
 import { TYPE } from "metabase-lib/v1/types/constants";
 import { createMockField, createMockSegment } from "metabase-types/api/mocks";
@@ -124,9 +125,10 @@ export const storeInitialState = createMockState({
 });
 
 export const metadata = getMetadata(storeInitialState);
+const provider = createMetadataProvider({ metadata });
 
 export function createQuery() {
-  return _createQuery({ metadata });
+  return Lib.createTestQuery(provider, DEFAULT_TEST_QUERY);
 }
 
 export function createFilteredQuery(

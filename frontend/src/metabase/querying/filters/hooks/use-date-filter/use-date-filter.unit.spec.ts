@@ -3,17 +3,16 @@ import { renderHook } from "@testing-library/react";
 import type { DatePickerValue } from "metabase/querying/common/types";
 import * as Lib from "metabase-lib";
 import {
-  SAMPLE_DATABASE,
+  DEFAULT_TEST_QUERY,
   SAMPLE_PROVIDER,
   columnFinder,
-  createQuery,
 } from "metabase-lib/test-helpers";
 import { ORDERS_ID } from "metabase-types/api/mocks/presets";
 
 import { useDateFilter } from "./use-date-filter";
 
 describe("useDateFilter", () => {
-  const defaultQuery = createQuery();
+  const defaultQuery = Lib.createTestQuery(SAMPLE_PROVIDER, DEFAULT_TEST_QUERY);
   const stageIndex = 0;
   const availableColumns = Lib.filterableColumns(defaultQuery, stageIndex);
   const defaultColumn = columnFinder(defaultQuery, availableColumns)(

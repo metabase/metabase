@@ -4,11 +4,7 @@ import { createMockMetadata } from "__support__/metadata";
 import { createMockEntitiesState } from "__support__/store";
 import { renderWithProviders, screen } from "__support__/ui";
 import * as Lib from "metabase-lib";
-import {
-  SAMPLE_DATABASE,
-  SAMPLE_PROVIDER,
-  createQuery,
-} from "metabase-lib/test-helpers";
+import { DEFAULT_TEST_QUERY, SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
 import Question from "metabase-lib/v1/Question";
 import { createMockCard } from "metabase-types/api/mocks";
 import {
@@ -30,7 +26,10 @@ const metadata = createMockMetadata({
 
 type SetupOpts = Partial<ComponentProps<typeof NotebookStepList>>;
 
-function setup(opts: SetupOpts = {}, query: Lib.Query = createQuery()) {
+function setup(
+  opts: SetupOpts = {},
+  query: Lib.Query = Lib.createTestQuery(SAMPLE_PROVIDER, DEFAULT_TEST_QUERY),
+) {
   const database = createSampleDatabase();
   const reportTimezone = "UTC";
   const question = new Question(createMockCard(), metadata).setQuery(query);

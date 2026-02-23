@@ -10,6 +10,7 @@ import type {
   DatasetQuery,
   RowValue,
   TableId,
+  TestQuerySpec,
 } from "metabase-types/api";
 import {
   ORDERS_ID,
@@ -35,6 +36,14 @@ export function createMetadataProvider({
 }: MetadataProviderOpts = {}) {
   return Lib.metadataProvider(databaseId, metadata);
 }
+
+export const DEFAULT_TEST_QUERY: TestQuerySpec = {
+  stages: [
+    {
+      source: { type: "table", id: ORDERS_ID },
+    },
+  ],
+};
 
 export const DEFAULT_QUERY: DatasetQuery = {
   database: SAMPLE_DATABASE.id,

@@ -4,7 +4,11 @@ import { testDataset } from "__support__/testDataset";
 import { screen, within } from "__support__/ui";
 import * as Urls from "metabase/lib/urls";
 import * as Lib from "metabase-lib";
-import { createQuery, getJoinQueryHelpers } from "metabase-lib/test-helpers";
+import {
+  DEFAULT_TEST_QUERY,
+  SAMPLE_PROVIDER,
+  getJoinQueryHelpers,
+} from "metabase-lib/test-helpers";
 import type { BaseEntityId } from "metabase-types/api";
 import {
   createMockCard,
@@ -278,7 +282,8 @@ describe("QuestionInfoSidebar", () => {
 });
 
 function getJoinedQuery() {
-  const query = createQuery();
+  const query = Lib.createTestQuery(SAMPLE_PROVIDER, DEFAULT_TEST_QUERY);
+
   const {
     table,
     defaultStrategy,

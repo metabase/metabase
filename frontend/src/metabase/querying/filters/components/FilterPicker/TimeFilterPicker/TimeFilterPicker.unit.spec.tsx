@@ -4,12 +4,9 @@ import dayjs from "dayjs";
 import { renderWithProviders, screen, within } from "__support__/ui";
 import { checkNotNull } from "metabase/lib/types";
 import * as Lib from "metabase-lib";
+import { DEFAULT_TEST_QUERY, SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
 
-import {
-  createQuery,
-  createQueryWithTimeFilter,
-  findTimeColumn,
-} from "../test-utils";
+import { createQueryWithTimeFilter, findTimeColumn } from "../test-utils";
 
 import { TimeFilterPicker } from "./TimeFilterPicker";
 
@@ -40,7 +37,7 @@ type SetupOpts = {
 };
 
 function setup({
-  query = createQuery(),
+  query = Lib.createTestQuery(SAMPLE_PROVIDER, DEFAULT_TEST_QUERY),
   column = findTimeColumn(query),
   filter,
   withAddButton = false,

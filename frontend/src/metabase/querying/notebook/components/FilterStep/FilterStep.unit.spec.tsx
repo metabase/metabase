@@ -1,18 +1,28 @@
 import { renderWithProviders, screen } from "__support__/ui";
 import * as Lib from "metabase-lib";
-import { columnFinder, createQuery } from "metabase-lib/test-helpers";
+import { SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
+import { ORDERS_ID } from "metabase-types/api/mocks/presets";
 
 import { createMockNotebookStep } from "../../test-utils";
 
 import { FilterStep } from "./FilterStep";
 
 function createQueryWithFilter() {
-  const initialQuery = createQuery();
-  const columns = Lib.filterableColumns(initialQuery, 0);
-  const findColumn = columnFinder(initialQuery, columns);
-  const totalColumn = findColumn("ORDERS", "TOTAL");
-  const clause = Lib.expressionClause(">", [totalColumn, 20], null);
-  const query = Lib.filter(initialQuery, 0, clause);
+  const query = Lib.createTestQuery(SAMPLE_PROVIDER, {
+    stages: [
+      {
+        source: { type: "table", id: ORDERS_ID },
+        filters: [
+          {
+            type: "operator",
+            operator: ">",
+            args: [{ type: "column", sourceName: "ORDERS", name: "TOTAL" }],
+          },
+        ],
+      },
+    ],
+  });
+
   const [filter] = Lib.filters(query, 0);
   return { query, filter };
 }

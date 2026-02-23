@@ -5,20 +5,14 @@ import { createMockMetadata } from "__support__/metadata";
 import { createMockEntitiesState } from "__support__/store";
 import { renderWithProviders, screen } from "__support__/ui";
 import * as Lib from "metabase-lib";
-import {
-  SAMPLE_DATABASE,
-  SAMPLE_PROVIDER,
-  createQuery,
-} from "metabase-lib/test-helpers";
+import { DEFAULT_TEST_QUERY, SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
 import {
   COMMON_DATABASE_FEATURES,
   createMockCard,
 } from "metabase-types/api/mocks";
 import {
-  ORDERS,
   ORDERS_ID,
-  SAMPLE_DB_ID,
   createOrdersTable,
   createPeopleTable,
   createProductsTable,
@@ -69,38 +63,46 @@ function createQueryWithMaxAggregation() {
 }
 
 function createQueryWithInlineExpression() {
-  return createQuery({
-    query: {
-      database: SAMPLE_DB_ID,
-      type: "query",
-      query: {
-        aggregation: [
-          [
-            "aggregation-options",
-            ["avg", ["field", ORDERS.QUANTITY, null]],
-            { name: "Avg Q", "display-name": "Avg Q" },
-          ],
+  return Lib.createTestQuery(SAMPLE_PROVIDER, {
+    stages: [
+      {
+        source: {
+          type: "table",
+          id: ORDERS_ID,
+        },
+        aggregations: [
+          {
+            name: "Avg Q",
+            value: {
+              type: "operator",
+              operator: "avg",
+              args: [
+                { type: "column", name: "QUANTITY", sourceName: "ORDERS" },
+              ],
+            },
+          },
         ],
       },
-    },
+    ],
   });
 }
 
 function createQueryWithInlineExpressionWithOperator() {
-  return createQuery({
-    query: {
-      database: SAMPLE_DB_ID,
-      type: "query",
-      query: {
-        aggregation: [
-          [
-            "aggregation-options",
-            ["count"],
-            { name: "My count", "display-name": "My count" },
-          ],
+  return Lib.createTestQuery(SAMPLE_PROVIDER, {
+    stages: [
+      {
+        source: { type: "table", id: ORDERS_ID },
+        aggregations: [
+          {
+            name: "My count",
+            value: {
+              type: "operator",
+              operator: "count",
+            },
+          },
         ],
       },
-    },
+    ],
   });
 }
 
@@ -141,7 +143,7 @@ function setup({
     }),
   }),
   metadata = createMetadata(),
-  query = createQuery({ metadata }),
+  query = Lib.createTestQuery(SAMPLE_PROVIDER, DEFAULT_TEST_QUERY),
   allowCustomExpressions,
 }: SetupOpts = {}) {
   const stageIndex = 0;

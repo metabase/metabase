@@ -1,11 +1,5 @@
 import * as Lib from "metabase-lib";
-import {
-  SAMPLE_DATABASE,
-  SAMPLE_METADATA,
-  SAMPLE_PROVIDER,
-  columnFinder,
-  createQuery,
-} from "metabase-lib/test-helpers";
+import { SAMPLE_METADATA, SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
 import type { Series } from "metabase-types/api";
 import {
   createMockCard,
@@ -435,19 +429,31 @@ describe("syncVizSettings", () => {
 describe("syncVizSettingsWithQuery", () => {
   describe("table.columns", () => {
     it("should handle adding new columns with column.name changes", () => {
-      const baseQuery = createQuery();
-      const stageIndex = -1;
-      const availableColumns = Lib.visibleColumns(baseQuery, stageIndex);
-      const findColumn = columnFinder(baseQuery, availableColumns);
-      const oldQuery = Lib.withFields(baseQuery, stageIndex, [
-        findColumn("ORDERS", "ID"),
-        findColumn("PEOPLE", "ID"),
-      ]);
-      const newQuery = Lib.withFields(baseQuery, stageIndex, [
-        findColumn("ORDERS", "ID"),
-        findColumn("PRODUCTS", "ID"),
-        findColumn("PEOPLE", "ID"),
-      ]);
+      const oldQuery = Lib.createTestQuery(SAMPLE_PROVIDER, {
+        stages: [
+          {
+            source: { type: "table", id: ORDERS_ID },
+            fields: [
+              { type: "column", name: "ID", sourceName: "ORDERS" },
+              { type: "column", name: "ID", sourceName: "PEOPLE" },
+            ],
+          },
+        ],
+      });
+
+      const newQuery = Lib.createTestQuery(SAMPLE_PROVIDER, {
+        stages: [
+          {
+            source: { type: "table", id: ORDERS_ID },
+            fields: [
+              { type: "column", name: "ID", sourceName: "ORDERS" },
+              { type: "column", name: "ID", sourceName: "PRODUCTS" },
+              { type: "column", name: "ID", sourceName: "PEOPLE" },
+            ],
+          },
+        ],
+      });
+
       const oldSettings = createMockVisualizationSettings({
         "table.columns": [
           createMockTableColumnOrderSetting({
@@ -486,11 +492,11 @@ describe("syncVizSettingsWithQuery", () => {
               {
                 type: "operator",
                 operator: "sum",
-                args: [{ type: "column", name: "TOTAL", sourceName: "Orders" }],
+                args: [{ type: "column", name: "TOTAL", sourceName: "ORDERS" }],
               },
             ],
             breakouts: [
-              { type: "column", name: "CREATED_AT", sourceName: "Orders" },
+              { type: "column", name: "CREATED_AT", sourceName: "ORDERS" },
             ],
           },
         ],
@@ -503,18 +509,18 @@ describe("syncVizSettingsWithQuery", () => {
               {
                 type: "operator",
                 operator: "sum",
-                args: [{ type: "column", name: "TOTAL", sourceName: "Orders" }],
+                args: [{ type: "column", name: "TOTAL", sourceName: "ORDERS" }],
               },
               {
                 type: "operator",
                 operator: "sum",
                 args: [
-                  { type: "column", name: "SUBTOTAL", sourceName: "Orders" },
+                  { type: "column", name: "SUBTOTAL", sourceName: "ORDERS" },
                 ],
               },
             ],
             breakouts: [
-              { type: "column", name: "CREATED_AT", sourceName: "Orders" },
+              { type: "column", name: "CREATED_AT", sourceName: "ORDERS" },
             ],
           },
         ],

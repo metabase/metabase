@@ -1,5 +1,5 @@
-import * as Lib from "metabase-lib";
 import { createMockMetadata } from "__support__/metadata";
+import * as Lib from "metabase-lib";
 import type { Field, Table } from "metabase-types/api";
 import { createMockField, createMockTable } from "metabase-types/api/mocks";
 import {
@@ -8,7 +8,7 @@ import {
   createSampleDatabase,
 } from "metabase-types/api/mocks/presets";
 
-import { createQuery, createMetadataProvider } from "../test-helpers";
+import { DEFAULT_TEST_QUERY, createMetadataProvider } from "../test-helpers";
 
 import { defaultDisplay } from "./display";
 
@@ -61,7 +61,7 @@ describe("defaultDisplay", () => {
   });
 
   it("returns 'table' display for queries with no aggregations and no breakouts", () => {
-    const query = createQuery();
+    const query = Lib.createTestQuery(SAMPLE_PROVIDER, DEFAULT_TEST_QUERY);
 
     expect(defaultDisplay(query)).toEqual({ display: "table" });
   });

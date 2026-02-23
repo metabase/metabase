@@ -3,10 +3,9 @@ import userEvent from "@testing-library/user-event";
 import { renderWithProviders, screen } from "__support__/ui";
 import * as Lib from "metabase-lib";
 import {
-  SAMPLE_DATABASE,
+  DEFAULT_TEST_QUERY,
   SAMPLE_METADATA,
   SAMPLE_PROVIDER,
-  createQuery,
 } from "metabase-lib/test-helpers";
 import Question from "metabase-lib/v1/Question";
 import { createMockCard } from "metabase-types/api/mocks";
@@ -18,7 +17,9 @@ interface SetupOpts {
   query?: Lib.Query;
 }
 
-function setup({ query = createQuery() }: SetupOpts = {}) {
+function setup({
+  query = Lib.createTestQuery(SAMPLE_PROVIDER, DEFAULT_TEST_QUERY),
+}: SetupOpts = {}) {
   const question = new Question(createMockCard(), SAMPLE_METADATA).setQuery(
     query,
   );

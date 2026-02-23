@@ -2,11 +2,7 @@ import userEvent from "@testing-library/user-event";
 
 import { renderWithProviders, screen, within } from "__support__/ui";
 import * as Lib from "metabase-lib";
-import {
-  SAMPLE_DATABASE,
-  SAMPLE_PROVIDER,
-  createQuery,
-} from "metabase-lib/test-helpers";
+import { DEFAULT_TEST_QUERY, SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
 import { ORDERS_ID } from "metabase-types/api/mocks/presets";
 
 import { createMockNotebookStep } from "../../test-utils";
@@ -17,7 +13,9 @@ interface SetupOpts {
   query?: Lib.Query;
 }
 
-function setup({ query = createQuery() }: SetupOpts = {}) {
+function setup({
+  query = Lib.createTestQuery(SAMPLE_PROVIDER, DEFAULT_TEST_QUERY),
+}: SetupOpts = {}) {
   const updateQuery = jest.fn();
 
   const step = createMockNotebookStep({

@@ -1,11 +1,16 @@
 import { checkNotNull } from "metabase/lib/types";
 import * as Lib from "metabase-lib";
 
-import { columnFinder, createQuery, findTemporalBucket } from "./test-helpers";
+import {
+  DEFAULT_TEST_QUERY,
+  SAMPLE_PROVIDER,
+  columnFinder,
+  findTemporalBucket,
+} from "./test-helpers";
 
 describe("breakout", () => {
   describe("add breakout", () => {
-    const query = createQuery();
+    const query = Lib.createTestQuery(SAMPLE_PROVIDER, DEFAULT_TEST_QUERY);
     const findBreakoutableColumn = columnFinder(
       query,
       Lib.breakoutableColumns(query, 0),
@@ -27,7 +32,7 @@ describe("breakout", () => {
     });
 
     it("should preserve breakout positions between v1-v2 roundtrip", () => {
-      const query = createQuery();
+      const query = Lib.createTestQuery(SAMPLE_PROVIDER, DEFAULT_TEST_QUERY);
       const taxColumn = findBreakoutableColumn("ORDERS", "TAX");
       const nextQuery = Lib.breakout(query, 0, taxColumn);
       const nextQueryColumns = Lib.breakoutableColumns(nextQuery, 0);
@@ -40,9 +45,10 @@ describe("breakout", () => {
         breakoutPositions: [0],
       });
 
-      const roundtripQuery = createQuery({
-        query: Lib.toJsQuery(nextQuery),
-      });
+      const roundtripQuery = Lib.fromJsQuery(
+        SAMPLE_PROVIDER,
+        Lib.toJsQuery(nextQuery),
+      );
       const roundtripQueryColumns = Lib.breakoutableColumns(roundtripQuery, 0);
       const roundtripTaxColumn = columnFinder(
         roundtripQuery,
@@ -98,7 +104,7 @@ describe("breakout", () => {
   });
 
   describe("replace breakout", () => {
-    const query = createQuery();
+    const query = Lib.createTestQuery(SAMPLE_PROVIDER, DEFAULT_TEST_QUERY);
     const findBreakoutableColumn = columnFinder(
       query,
       Lib.breakoutableColumns(query, 0),
@@ -127,7 +133,7 @@ describe("breakout", () => {
   });
 
   describe("remove breakout", () => {
-    const query = createQuery();
+    const query = Lib.createTestQuery(SAMPLE_PROVIDER, DEFAULT_TEST_QUERY);
     const findBreakoutableColumn = columnFinder(
       query,
       Lib.breakoutableColumns(query, 0),

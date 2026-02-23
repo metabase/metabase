@@ -3,7 +3,7 @@ import { useState } from "react";
 
 import { renderWithProviders, screen, waitFor, within } from "__support__/ui";
 import * as Lib from "metabase-lib";
-import { SAMPLE_PROVIDER, createQuery } from "metabase-lib/test-helpers";
+import { DEFAULT_TEST_QUERY, SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
 import { createMockCard } from "metabase-types/api/mocks";
 import { ORDERS_ID } from "metabase-types/api/mocks/presets";
 import {
@@ -70,7 +70,10 @@ function createQueryWithBreakoutsForSameColumn() {
 }
 
 async function setup({
-  query: initialQuery = createQuery(),
+  query: initialQuery = Lib.createTestQuery(
+    SAMPLE_PROVIDER,
+    DEFAULT_TEST_QUERY,
+  ),
   withDefaultAggregation = true,
 }: SetupOpts = {}) {
   const onQueryChange = jest.fn();
@@ -197,7 +200,7 @@ describe("SummarizeSidebar", () => {
   });
 
   it("should list breakoutable columns", async () => {
-    const query = createQuery();
+    const query = Lib.createTestQuery(SAMPLE_PROVIDER, DEFAULT_TEST_QUERY);
     const columns = Lib.breakoutableColumns(query, -1);
     await setup({ query });
 

@@ -2,9 +2,9 @@ import { createMockMetadata } from "__support__/metadata";
 import { checkNotNull } from "metabase/lib/types";
 import * as Lib from "metabase-lib";
 import {
-  SAMPLE_DATABASE,
+  DEFAULT_TEST_QUERY,
   SAMPLE_PROVIDER,
-  createQuery,
+  createMetadataProvider,
 } from "metabase-lib/test-helpers";
 import Question from "metabase-lib/v1/Question";
 import type Database from "metabase-lib/v1/metadata/Database";
@@ -55,10 +55,14 @@ const metadata = createMockMetadata({
 
 const db = metadata.database(SAMPLE_DB_ID) as Database;
 const productsTable = metadata.table(PRODUCTS_ID) as Table;
+const provider = createMetadataProvider({
+  databaseId: db.id,
+  metadata,
+});
 
-const queryOrders = createQuery();
+const queryOrders = Lib.createTestQuery(provider, DEFAULT_TEST_QUERY);
 
-const queryNonDateBreakout = Lib.createTestQuery(SAMPLE_PROVIDER, {
+const queryNonDateBreakout = Lib.createTestQuery(provider, {
   stages: [
     {
       source: { type: "table", id: ORDERS_ID },

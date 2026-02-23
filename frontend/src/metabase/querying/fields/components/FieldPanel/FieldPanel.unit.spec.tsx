@@ -3,11 +3,7 @@ import { useState } from "react";
 
 import { renderWithProviders, screen } from "__support__/ui";
 import * as Lib from "metabase-lib";
-import {
-  SAMPLE_DATABASE,
-  SAMPLE_PROVIDER,
-  createQuery,
-} from "metabase-lib/test-helpers";
+import { DEFAULT_TEST_QUERY, SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
 import { ORDERS_ID, PRODUCTS_ID } from "metabase-types/api/mocks/presets";
 
 import { FieldPanel } from "./FieldPanel";
@@ -30,7 +26,10 @@ type SetupOpts = {
   stageIndex?: number;
 };
 
-function setup({ query = createQuery(), stageIndex = -1 }: SetupOpts = {}) {
+function setup({
+  query = Lib.createTestQuery(SAMPLE_PROVIDER, DEFAULT_TEST_QUERY),
+  stageIndex = -1,
+}: SetupOpts = {}) {
   renderWithProviders(<Test query={query} stageIndex={stageIndex} />);
 }
 
@@ -120,7 +119,11 @@ describe("QueryColumnPicker", () => {
   });
 
   it("should not allow to remove the last column from the data source via group", async () => {
-    setup({ query: Lib.withDifferentTable(createQuery(), PRODUCTS_ID) });
+    const query = Lib.createTestQuery(SAMPLE_PROVIDER, {
+      stages: [{ source: { type: "table", id: PRODUCTS_ID } }],
+    });
+    setup({ query });
+
     const [orderGroup, firstColumn, ...otherColumns] =
       screen.getAllByRole("checkbox");
     expect(orderGroup).toBeChecked();
@@ -361,12 +364,26 @@ describe("QueryColumnPicker", () => {
   });
 
   it("should not allow to remove custom columns", async () => {
-    const query = Lib.expression(
-      createQuery(),
-      -1,
-      "Custom",
-      Lib.expressionClause("+", [1, 2]),
-    );
+    const query = Lib.createTestQuery(SAMPLE_PROVIDER, {
+      stages: [
+        {
+          source: { type: "table", id: ORDERS_ID },
+          expressions: [
+            {
+              name: "Custom",
+              value: {
+                type: "operator",
+                operator: "+",
+                args: [
+                  { type: "literal", value: 1 },
+                  { type: "literal", value: 2 },
+                ],
+              },
+            },
+          ],
+        },
+      ],
+    });
     setup({ query });
     const [orderGroup, firstColumn] = screen.getAllByRole("checkbox");
     const customColumn = screen.getByRole("checkbox", { name: "Custom" });

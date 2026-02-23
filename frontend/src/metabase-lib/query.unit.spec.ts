@@ -8,10 +8,10 @@ import {
 
 import {
   DEFAULT_QUERY,
+  DEFAULT_TEST_QUERY,
   SAMPLE_DATABASE,
   SAMPLE_METADATA,
   SAMPLE_PROVIDER,
-  createQuery,
 } from "./test-helpers";
 
 describe("fromJsQuery", () => {
@@ -29,26 +29,36 @@ describe("fromJsQuery", () => {
 
 describe("toLegacyQuery", () => {
   it("should serialize a query", () => {
-    const query = createQuery();
+    const query = Lib.createTestQuery(SAMPLE_PROVIDER, DEFAULT_TEST_QUERY);
     expect(Lib.toLegacyQuery(query)).toEqual(DEFAULT_QUERY);
   });
 });
 
 describe("suggestedName", () => {
   it("should suggest a query name", () => {
-    const query = createQuery();
+    const query = Lib.createTestQuery(SAMPLE_PROVIDER, DEFAULT_TEST_QUERY);
     expect(Lib.suggestedName(query)).toBe("Orders");
   });
 });
 
 describe("stageIndexes", () => {
   it("should return stage indexes for a single-stage query", () => {
-    const query = createQuery();
+    const query = Lib.createTestQuery(SAMPLE_PROVIDER, DEFAULT_TEST_QUERY);
     expect(Lib.stageIndexes(query)).toEqual([0]);
   });
 
   it("should return stage indexes for a multi-stage query", () => {
-    const query = Lib.appendStage(Lib.appendStage(createQuery()));
+    const query = Lib.createTestQuery(SAMPLE_PROVIDER, {
+      stages: [
+        {
+          source: {
+            type: "table",
+            id: PRODUCTS_ID,
+          },
+        },
+        {},
+      ],
+    });
     expect(Lib.stageIndexes(query)).toEqual([0, 1, 2]);
   });
 });

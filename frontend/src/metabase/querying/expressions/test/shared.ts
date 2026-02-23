@@ -420,3 +420,7 @@ export const { fields, expressions, segments, metrics, measures } =
   findDimensions(query);
 
 export const sharedMetadata = metadata;
+export const sharedProvider = createMetadataProvider({
+  databaseId: database.id,
+  metadata,
+});
