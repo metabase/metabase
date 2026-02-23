@@ -61,13 +61,24 @@ export interface RemoteSyncSettingsResponse {
 export const setupRemoteSyncSettingsEndpoint = ({
   success = true,
   task_id,
-}: Partial<RemoteSyncSettingsResponse> = {}) => {
+  error,
+}: Partial<RemoteSyncSettingsResponse> & {
+  error?: { status: number; message: string };
+} = {}) => {
   fetchMock.removeRoute("remote-sync-settings");
-  fetchMock.put(
-    "path:/api/ee/remote-sync/settings",
-    { success, ...(task_id !== undefined && { task_id }) },
-    { name: "remote-sync-settings" },
-  );
+  if (error) {
+    fetchMock.put(
+      "path:/api/ee/remote-sync/settings",
+      { status: error.status, body: { message: error.message } },
+      { name: "remote-sync-settings" },
+    );
+  } else {
+    fetchMock.put(
+      "path:/api/ee/remote-sync/settings",
+      { success, ...(task_id !== undefined && { task_id }) },
+      { name: "remote-sync-settings" },
+    );
+  }
 };
 
 /**
@@ -124,7 +135,9 @@ export const setupRemoteSyncEndpoints = ({
   changedCollections?: Record<number, boolean>;
   hasRemoteChanges?: boolean;
   hasRemoteChangesDelay?: number;
-  settingsResponse?: Partial<RemoteSyncSettingsResponse>;
+  settingsResponse?: Partial<RemoteSyncSettingsResponse> & {
+    error?: { status: number; message: string };
+  };
 } = {}) => {
   setupRemoteSyncBranchesEndpoint(branches);
   setupRemoteSyncDirtyEndpoint({ dirty, changedCollections });

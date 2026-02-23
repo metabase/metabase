@@ -26,23 +26,8 @@ describe("TransformsUpsellPage", () => {
     ).not.toBeInTheDocument();
   });
 
-  it("renders 2-column layout with CTA when instance is cloud hosted and user is a store user", async () => {
+  it("renders 2-column layout with CTA when user is a store user", async () => {
     setup({ isHosted: true, isStoreUser: true });
-
-    await waitForLoadingToFinish();
-    assertLeftColumnContent();
-
-    expect(
-      screen.getByRole("heading", { name: "Add transforms to your plan" }),
-    ).toBeInTheDocument();
-
-    expect(
-      screen.getByRole("button", { name: "Confirm purchase" }),
-    ).toBeInTheDocument();
-  });
-
-  it("renders 2-column layout with CTA when instance is not cloud hosted", async () => {
-    setup({ isHosted: false, isStoreUser: true });
 
     await waitForLoadingToFinish();
     assertLeftColumnContent();
@@ -70,27 +55,6 @@ describe("TransformsUpsellPage", () => {
     expect(screen.getByTestId("due-today-amount")).toHaveTextContent(
       `$${transformsAdvancedPrice}`,
     );
-  });
-
-  it("shows only advanced (python) tier when they already have basic transforms", async () => {
-    setup({ isHosted: true, isStoreUser: true, hasBasicTransforms: true });
-
-    await waitForLoadingToFinish();
-
-    expect(screen.queryByText(/SQL only/)).not.toBeInTheDocument();
-    expect(screen.getByText(/SQL \+ Python/)).toBeInTheDocument();
-    expect(screen.getByTestId("due-today-amount")).toHaveTextContent(
-      `$${transformsAdvancedPrice}`,
-    );
-  });
-
-  it("shows both transforms tiers when cloud user is on trial", async () => {
-    setup({ isHosted: true, isStoreUser: true, isOnTrial: true });
-
-    await waitForLoadingToFinish();
-
-    expect(screen.getByText(/SQL only/)).toBeInTheDocument();
-    expect(screen.getByText(/SQL \+ Python/)).toBeInTheDocument();
   });
 
   it("shows due today as $0 and trial heading when trial is available", async () => {

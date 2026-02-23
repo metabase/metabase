@@ -33,8 +33,8 @@
         (f)))))
 
 (defn- remove-metadata [m]
-  (lib.util.match/replace m
-    (_ :guard (every-pred map? :source-metadata))
+  (lib.util.match/replace-lite m
+    {:source-metadata _}
     (remove-metadata (dissoc &match :source-metadata))))
 
 (mu/defn- apply-row-level-permissions [query :- ::lib.schema/query]
