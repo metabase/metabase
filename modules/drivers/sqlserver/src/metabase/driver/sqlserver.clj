@@ -128,7 +128,13 @@
     :varbinary        :type/*
     :varchar          :type/Text
     :xml              :type/*
-    (keyword "int identity") :type/Integer} column-type)) ; auto-incrementing integer (ie pk) field
+    ;; auto-incrementing integer (ie pk) field
+    (keyword "tinyint identity")  :type/Integer
+    (keyword "smallint identity") :type/Integer
+    (keyword "int identity")      :type/Integer
+    (keyword "bigint identity")   :type/BigInteger
+    (keyword "decimal identity")  :type/Decimal
+    (keyword "numeric identity")  :type/Decimal} column-type))
 
 (defmulti ^:private type->database-type
   "Internal type->database-type multimethod for SQL Server that dispatches on type."
