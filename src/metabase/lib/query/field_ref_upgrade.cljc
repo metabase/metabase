@@ -48,46 +48,30 @@
                             f))))
 
 (defn- upgrade-field-refs-in-clauses
-  [clauses query stage-number columns-fn]
-  (let [columns (columns-fn query stage-number)
-        ;; remove ids so we get name-based refs
-        columns (mapv #(dissoc % :id) columns)
-        upgrade (fn [field-ref]
-                  (upgrade-field-ref-by-columns query stage-number columns field-ref))]
-    (mapv (fn [fr] (walk-field-refs fr upgrade)) clauses)))
+  [clauses query stage-number columns]
+  (mapv (fn [clause] 
+          (walk-field-refs clause #(upgrade-field-ref-by-columns query stage-number columns %)))
+        clauses))
 
 (defn- upgrade-field-refs-in-join
-  [query stage-number join]
-  (if (:conditions join)
-    (let [lhs-columns (lib.join/join-condition-lhs-columns query stage-number join nil nil)
-          rhs-columns (lib.join/join-condition-rhs-columns query stage-number join nil nil)
-          columns (concat lhs-columns rhs-columns)
-          columns (mapv #(dissoc % :id) columns)]
-      (update join :conditions upgrade-field-refs-in-clauses query stage-number (constantly columns)))
-    join))
+  [query stage-number join columns]
+  (u/update-some join :conditions upgrade-field-refs-in-clauses query stage-number columns))
 
 (defn- upgrade-field-refs-in-stage
   [query stage-number]
-  (let [stage (lib.util/query-stage query stage-number)]
-    (cond-> stage
-      (:fields stage)
-      (update :fields      upgrade-field-refs-in-clauses query stage-number lib.field/fieldable-columns)
-
-      (:filters stage)
-      (update :filters     upgrade-field-refs-in-clauses query stage-number lib.filter/filterable-columns)
-
-      (:expressions stage)
-      (update :expressions upgrade-field-refs-in-clauses query stage-number lib.expression/expressionable-columns)
-
-      (:aggregation stage)
-      (update :aggregation upgrade-field-refs-in-clauses query stage-number lib.expression/expressionable-columns)
-
-      (:breakout stage)
-      (update :breakout    upgrade-field-refs-in-clauses query stage-number lib.breakout/breakoutable-columns)
-
-      (:joins stage)
-      (update :joins #(mapv (fn [join]
-                              (upgrade-field-refs-in-join query stage-number join)) %)))))
+  (let [stage (lib.util/query-stage query stage-number)
+        visible-columns (when ((some-fn :fields :filters :expressions :aggregation :breakout) stage)
+                          (lib.metadata.calculation/visible-columns query stage-number)))
+        orderable-columns (when (:order-by stage)
+                            (lib.order-by/orderable-columns query stage-number))]
+    (-> stage
+      (u/update-some :fields upgrade-field-refs-in-clauses query stage-number visible-columns)
+      (u/update-some :joins upgrade-field-refs-in-join query stage-number visible-columns)
+      (u/update-some :expressions upgrade-field-refs-in-clauses query stage-number visible-columns)
+      (u/update-some :filters upgrade-field-refs-in-clauses query stage-number visible-columns)
+      (u/update-some :aggregation upgrade-field-refs-in-clauses query stage-number visible-columns)
+      (u/update-some :breakout upgrade-field-refs-in-clauses query stage-number visible-columns)
+      (u/update-some :order-by upgrade-field-refs-in-clauses query stage-number orderable-columns)))
 
 (defn upgrade-field-refs
   "Upgrades all the field refs in the query."
