@@ -5,6 +5,7 @@
    [metabase-enterprise.replacement.source :as source]
    [metabase-enterprise.replacement.source-swap :as source-swap]
    [metabase-enterprise.replacement.usages :as usages]
+   [metabase.util.log :as log]
    [metabase.util.malli :as mu]))
 
 (def noop-progress
@@ -46,6 +47,15 @@
        (execute/advance! progress))
 
      ;; phase 2: Swap the sources
-     (doseq [entity direct]
-       (source-swap/swap! entity old-source new-source)
-       (execute/advance! progress)))))
+     (let [failures (atom [])]
+       (doseq [entity direct]
+         (try
+           (source-swap/swap! entity old-source new-source)
+           (catch Exception e
+             (log/warnf e "Failed to swap %s, continuing with next entity" entity)
+             (swap! failures conj {:entity entity
+                                   :error (ex-message e)
+                                   :e (pr-str e)})))
+         (execute/advance! progress))
+       (when (seq @failures)
+         {:failures @failures})))))
