@@ -2,7 +2,6 @@
   (:require
    [clj-http.client :as http]
    [clojure.java.io :as io]
-   [clojure.set :as set]
    [clojure.string :as str]
    [java-time.api :as t]
    [medley.core :as m]
@@ -79,7 +78,7 @@
           (catch Throwable e
             (throw (ex-info (.getMessage e) (merge (ex-data e) {:url url}) e))))))))
 
-(defn- GET
+(defn GET
   "Make a GET request to the Slack API."
   [endpoint & {:as query-params}]
   (do-slack-request http/get endpoint {:query-params query-params}))
@@ -95,38 +94,6 @@
   (let [{::keys [headers]} (GET "auth.test")
         {:strs [x-oauth-scopes]} headers]
     (set (str/split x-oauth-scopes #","))))
-
-(defn app-info
-  "Returns the team_id, scopes, and app_id (requires users:read scope) from Slack's API.
-   Returns nil values if Slack is not configured or the info isn't available."
-  []
-  (if-not (channel.settings/slack-configured?)
-    {:app_id nil :team_id nil :scopes nil}
-    (let [auth-response (GET "auth.test")
-          team-id       (:team_id auth-response)
-          bot-id        (:bot_id auth-response)
-          app-id        (when bot-id
-                          (try
-                            (-> (GET "bots.info" :bot bot-id)
-                                :bot
-                                :app_id)
-                            (catch Exception _
-                              ;; bots.info requires users:read scope which may not be present
-                              nil)))
-          scopes-header   (get-in auth-response [::headers "x-oauth-scopes"])
-          actual-scopes   (if (str/blank? scopes-header)
-                            #{}
-                            (set (str/split scopes-header #",")))
-          get-manifest    (requiring-resolve 'metabase.channel.api.slack/get-slack-manifest)
-          required-scopes (-> (get-manifest) :oauth_config :scopes :bot set)
-          missing-scopes  (set/difference required-scopes actual-scopes)
-          extra-scopes    (set/difference actual-scopes required-scopes)]
-      {:app_id  app-id
-       :team_id team-id
-       :scopes  {:actual   (vec (sort actual-scopes))
-                 :required (vec (sort required-scopes))
-                 :missing  (vec (sort missing-scopes))
-                 :extra    (vec (sort extra-scopes))}})))
 
 (defn- next-cursor
   "Get a cursor for the next page of results in a Slack API response, if one exists."

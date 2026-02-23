@@ -71,12 +71,12 @@
 (deftest app-info-test
   (testing "GET /api/slack/app-info"
     (testing "Returns app_id and team_id when Slack is configured"
-      (with-redefs [slack/app-info (constantly {:app_id "A12345"
-                                                :team_id "T67890"
-                                                :scopes {:actual ["chat:write"]
-                                                         :required ["chat:write"]
-                                                         :missing []
-                                                         :extra []}})]
+      (with-redefs [api.slack/app-info (constantly {:app_id "A12345"
+                                                    :team_id "T67890"
+                                                    :scopes {:actual ["chat:write"]
+                                                             :required ["chat:write"]
+                                                             :missing []
+                                                             :extra []}})]
         (mt/with-temporary-setting-values [slack-app-token "fake-token"]
           (let [response (mt/user-http-request :crowberto :get 200 "slack/app-info")]
             (is (= {:app_id "A12345"
@@ -85,15 +85,9 @@
                              :required ["chat:write"]
                              :missing []
                              :extra []}}
-                   response))))))))
-
-(deftest app-info-test-2
-  (testing "GET /api/slack/app-info"
+                   response))))))
     (testing "A non-admin cannot fetch the Slack app info"
-      (mt/user-http-request :rasta :get 403 "slack/app-info"))))
-
-(deftest app-info-test-3
-  (testing "GET /api/slack/app-info"
+      (mt/user-http-request :rasta :get 403 "slack/app-info"))
     (testing "Returns nil values when Slack is not configured"
       (mt/with-temporary-setting-values [slack-app-token nil]
         (let [response (mt/user-http-request :crowberto :get 200 "slack/app-info")]

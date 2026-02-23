@@ -1,6 +1,7 @@
 (ns metabase.channel.api.slack
   "/api/slack endpoints"
   (:require
+   [clojure.set :as set]
    [clojure.string :as str]
    [metabase.api.macros :as api.macros]
    [metabase.channel.settings :as channel.settings]
@@ -207,12 +208,43 @@
                       [:missing  [:sequential :string]]
                       [:extra    [:sequential :string]]]]]])
 
+(defn- app-info
+  "Returns the team_id, scopes, and app_id (requires users:read scope) from Slack's API.
+   Returns nil values if Slack is not configured or the info isn't available."
+  []
+  (if-not (channel.settings/slack-configured?)
+    {:app_id nil :team_id nil :scopes nil}
+    (let [auth-response   (slack/GET "auth.test")
+          team-id         (:team_id auth-response)
+          bot-id          (:bot_id auth-response)
+          app-id          (when bot-id
+                            (try
+                              (-> (slack/GET "bots.info" :bot bot-id)
+                                  :bot
+                                  :app_id)
+                              (catch Exception _
+                                ;; bots.info requires users:read scope which may not be present
+                                nil)))
+          scopes-header   (get-in auth-response [:metabase.channel.slack/headers "x-oauth-scopes"])
+          actual-scopes   (if (str/blank? scopes-header)
+                            #{}
+                            (set (str/split scopes-header #",")))
+          required-scopes (-> (get-slack-manifest) :oauth_config :scopes :bot set)
+          missing-scopes  (set/difference required-scopes actual-scopes)
+          extra-scopes    (set/difference actual-scopes required-scopes)]
+      {:app_id  app-id
+       :team_id team-id
+       :scopes  {:actual   (vec (sort actual-scopes))
+                 :required (vec (sort required-scopes))
+                 :missing  (vec (sort missing-scopes))
+                 :extra    (vec (sort extra-scopes))}})))
+
 (api.macros/defendpoint :get "/app-info" :- SlackAppInfo
   "Returns the Slack app_id and team_id. Used by the frontend to construct
    direct links to the Slack app settings page."
   []
   (perms/check-has-application-permission :setting)
-  (slack/app-info))
+  (app-info))
 
 ;; Handle bug report submissions to Slack
 ;;
