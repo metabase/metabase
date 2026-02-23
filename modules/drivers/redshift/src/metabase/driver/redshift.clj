@@ -550,9 +550,9 @@
                 (if (contains? param :name)
                   [(:name param) (:value param)]
 
-                  (when-let [field-id (driver-api/match-one param
+                  (when-let [field-id (driver-api/match-lite param
                                         [:field (field-id :guard integer?) _]
-                                        (when (contains? (set &parents) :dimension)
+                                        (when (perf/some #{:dimension} &parents)
                                           field-id))]
                     [(:name (driver-api/field (driver-api/metadata-provider) field-id))
                      (:value param)]))))

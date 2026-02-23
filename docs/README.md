@@ -87,6 +87,7 @@ Metabase's reference documentation.
 
 - [The SQL editor](./questions/native-editor/writing-sql.md)
 - [SQL parameters](./questions/native-editor/sql-parameters.md)
+- [Table variables](./questions/native-editor/table-variables.md)
 - [Referencing models and saved questions](./questions/native-editor/referencing-saved-questions-in-queries.md)
 - [Snippets](./questions/native-editor/snippets.md)
 - [Snippet folder permissions](./permissions/snippets.md)
@@ -150,6 +151,7 @@ Metabase's reference documentation.
 - [AI overview](./ai/start.md)
 - [Metabot](./ai/metabot.md)
 - [Setting up Metabot](./ai/settings.md)
+- [SQL generation](./ai/sql-generation.md)
 
 ### Exploration and organization
 

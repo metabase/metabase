@@ -46,6 +46,7 @@
                               :sso-google
                               :sso-jwt
                               :sso-ldap
+                              :sso-oidc
                               :sso-saml
                               :sso-slack
                               :support-users
@@ -94,6 +95,7 @@
             :sso_google                     true
             :sso_jwt                        true
             :sso_ldap                       true
+            :sso_oidc                       true
             :sso_saml                       true
             :sso_slack                      true
             :support-users                  true

@@ -1379,3 +1379,4 @@
       (is (= ["INSERT INTO `PRODUCTS_COPY` SELECT * FROM products" nil]
              (driver/compile-insert :bigquery-cloud-sdk {:query {:query "SELECT * FROM products"}
                                                          :output-table :PRODUCTS_COPY}))))))
+

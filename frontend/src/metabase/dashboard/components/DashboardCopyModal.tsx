@@ -89,7 +89,7 @@ const DashboardCopyModal = ({
       }}
       title={title}
       overwriteOnInitialValuesChange
-      copy={async (object) =>
+      copy={async (object: Record<string, unknown>) =>
         await copyDashboard({ id: dashboardIdFromSlug }, dissoc(object, "id"))
       }
       onClose={onClose}
