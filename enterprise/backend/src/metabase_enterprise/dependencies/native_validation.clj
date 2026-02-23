@@ -21,15 +21,44 @@
         compiled    (qp.compile/compile-with-inline-parameters with-params)]
     (lib/native-query with-params (:query compiled))))
 
+(defn- has-card-template-tags?
+  "Returns true if the query has any card-type template tags."
+  [query]
+  (some #(= (:type %) :card) (lib/all-template-tags query)))
+
+(defn- table-deps
+  "Returns the set of table IDs referenced directly in the compiled native query."
+  [driver compiled]
+  (into #{}
+        (keep :table)
+        (driver/native-query-deps driver compiled)))
+
+(defn- enrich-error-with-source
+  "Add source entity information to a validation error.
+   If there's exactly one table source, attribute the error to that table.
+   Otherwise, mark as :unknown."
+  [source error]
+  (merge error source))
+
 (mu/defn validate-native-query
   "Compiles a (native) query and validates that the fields and tables it refers to really exist.
 
-   Returns either nil or a list of errors."
+   Returns a set of errors, each enriched with source entity information when possible."
   [driver :- :keyword
    query  :- ::lib.schema/query]
-  (->> query
-       compile-query
-       (driver/validate-native-query-fields driver)))
+  (let [compiled (compile-query query)
+        errors   (driver/validate-native-query-fields driver compiled)]
+    (if (or (empty? errors) (has-card-template-tags? query))
+      errors
+      (let [tables (table-deps driver compiled)
+            source (cond
+                     (empty? tables) nil
+                     (= 1 (count tables)) {:source-entity-type :table
+                                           :source-entity-id   (first tables)}
+                     :else {:source-entity-type :unknown})]
+        (if source
+          (into #{} (map (partial enrich-error-with-source source)) errors)
+          errors)))))
 
 (mu/defn native-result-metadata
   "Compiles a (native) query and calculates its result metadata"
