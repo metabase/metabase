@@ -35,7 +35,3 @@ jobs:
         with:
           command: "pre-translate"
           command_args: "-l ru --method ai --ai-prompt ${{ secrets.CROWDIN_AI_PROMPT_ID }} --translate-untranslated-only --token ${{ secrets.CROWDIN_TOKEN }} --project-id ${{ secrets.CROWDIN_PROJECT_ID }} --config=locales/crowdin.yml"
-
-      # Access the command output in subsequent steps (optional)
-      - name: Use command output
-        run: echo "${{ steps.crowdin.outputs.command_output }}"
