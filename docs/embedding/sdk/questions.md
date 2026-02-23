@@ -10,8 +10,7 @@ description: How to embed charts in your app with the Modular embedding SDK.
 There are different ways you can embed questions:
 
 - [Static question](#staticquestion). Embeds a chart. Clicking on the chart doesn't do anything.
-- [Interactive question](#interactivequestion). Clicking on the chart gives you the drill-through menu.
-- [Query builder](#embedding-the-query-builder-for-creating-new-questions). Embeds the graphical query builder without a pre-defined query.
+- [Interactive question](#interactivequestion). Create new questions or edit existing ones with the visual query builder or SQL editor. Clicking on the chart gives you the drill-through menu.
 
 ## Embedding a question
 
@@ -168,13 +167,19 @@ To prevent people from saving changes to an interactive question, or from saving
 {% include_file "{{ dirname }}/snippets/questions/disable-question-save.tsx" %}
 ```
 
-## Embedding the query builder for creating new questions
+## Create and edit questions with the query builder
 
 ![Query builder](../images/query-builder.png)
 
+The `InteractiveQuestion` component supports three modes:
+
+- `questionId="new"` — opens the visual query builder for creating new questions.
+- `questionId="new-native"` — opens the SQL editor for creating new questions.
+- A numeric `questionId` (e.g., `questionId={42}`) — embeds an existing question. People can click the edit button to modify it, which opens the appropriate editor (visual or SQL) based on the question type.
+
 ### Embed the visual query builder
 
-You can embed the query builder for creating new questions by passing the `questionId="new"` prop to the `InteractiveQuestion` component. You can use the [`children` prop](#customizing-interactive-questions) to customize the layout for creating new questions.
+To embed the query builder for creating new questions, pass `questionId="new"` to the `InteractiveQuestion` component. You can use the [`children` prop](#customizing-interactive-questions) to customize the layout.
 
 ```tsx
 {% include_file "{{ dirname }}/snippets/questions/new-question.tsx" %}
@@ -182,7 +187,7 @@ You can embed the query builder for creating new questions by passing the `quest
 
 ### Embed the SQL editor
 
-You can also embed the SQL editor to enable people to build questions with SQL by passing `questionId="new-native"` to the `InteractiveQuestion` component:
+To embed the SQL editor for creating new questions, pass `questionId="new-native"` to the `InteractiveQuestion` component:
 
 ```tsx
 {% include_file "{{ dirname }}/snippets/questions/new-native-question.tsx" %}

@@ -113,6 +113,7 @@ export interface UnsavedCard<Q extends DatasetQuery = DatasetQuery> {
 
   // Not part of the card API contract, a field used by query builder for showing lineage
   original_card_id?: number;
+  displayIsLocked?: boolean;
 }
 
 export type LineSize = "S" | "M" | "L";

@@ -29,7 +29,7 @@ By default, Metabase also prevents users from setting passwords that are in a li
 If your instance is hosted on Metabase Cloud, passwords must:
 
 - Be at least 12 characters long
-- Contain at least: 
+- Contain at least:
   - 2 lowercase letters
   - 2 uppercase letters
   - 1 digit
@@ -39,4 +39,4 @@ If your instance is hosted on Metabase Cloud, passwords must:
 
 {% include plans-blockquote.html feature="Disabling password logins" %}
 
-On Pro and Enterprise plans, you can require people to log in with SSO by disabling password authentication from **Admin settings** > **Authentication**.
+On Pro and Enterprise plans, you can require people to log in with SSO by disabling password authentication from **Admin** > **Settings** > **Authentication**.
