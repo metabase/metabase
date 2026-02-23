@@ -43,6 +43,12 @@
 
 (set! *warn-on-reflection* true)
 
+(defn- metabot-message-defaults
+  "Default branding for Metabot Slack messages."
+  []
+  {:username "Metabot"
+   :icon_url "https://static.metabase.com/metabot-slackbot.png"})
+
 (defenterprise clear-slack-bot-settings!
   "Clears all slackbot-related settings when Slack token is cleared.
    This ensures enable-sso-slack? becomes false."
@@ -141,12 +147,14 @@
 (defn- post-message
   "Send a Slack message"
   [client message]
-  (:body (slack-post-json client "/chat.postMessage" message)))
+  (:body (slack-post-json client "/chat.postMessage"
+                          (merge (metabot-message-defaults) message))))
 
 (defn- post-ephemeral-message
   "Send a Slack ephemeral message (visible only to the specified user)"
   [client message]
-  (:body (slack-post-json client "/chat.postEphemeral" message)))
+  (:body (slack-post-json client "/chat.postEphemeral"
+                          (merge (metabot-message-defaults) message))))
 
 (defn- post-image
   "Upload a PNG image and send in a message"

@@ -316,6 +316,14 @@
               (is (= 1 (count @delete-calls)))
               (is (= "_Thinking..._" (get-in (first @delete-calls) [:message :text]))))))))))
 
+(deftest metabot-branding-test
+  (testing "post-message includes branding in payload"
+    (let [payload (atom nil)]
+      (with-redefs [slackbot/slack-post-json (fn [_ _ p] (reset! payload p) {:body {:ok true}})]
+        (#'slackbot/post-message {} {:channel "C123" :text "hi"})
+        (is (contains? @payload :username))
+        (is (contains? @payload :icon_url))))))
+
 (deftest app-mention-triggers-response-test
   (testing "POST /events with app_mention triggers AI response"
     (with-slackbot-setup
