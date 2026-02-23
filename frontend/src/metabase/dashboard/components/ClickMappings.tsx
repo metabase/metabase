@@ -1,7 +1,7 @@
 import cx from "classnames";
 import { assocIn, dissocIn, getIn } from "icepick";
 import type { ComponentType } from "react";
-import { Component, useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
@@ -18,6 +18,7 @@ import { GTAPApi } from "metabase/services";
 import { Flex, Icon } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import Question from "metabase-lib/v1/Question";
+import type Metadata from "metabase-lib/v1/metadata/Metadata";
 import {
   getTargetsForDashboard,
   getTargetsForQuestion,
@@ -49,11 +50,12 @@ type TargetItem = {
   id: string;
   name: string | null | undefined;
   target: ClickBehaviorTarget;
-  sourceFilters: Record<
-    SourceType,
-    (source: unknown, question: Question) => boolean
-  >;
-  type?: string;
+  sourceFilters: {
+    column: (source: DatasetColumn, question: Question) => boolean;
+    parameter: (source: Parameter, question: Question) => boolean;
+    userAttribute: (source: string, question: Question) => boolean;
+  };
+  type?: ClickBehaviorTarget["type"];
 };
 
 type ClickMappingsOwnProps = {
@@ -464,42 +466,22 @@ function loadQuestionMetadata(
   return (ComposedComponent: ComponentType<ComposedProps>) => {
     interface MetadataLoaderProps {
       question?: Question | null;
-      metadata?: unknown;
+      metadata?: Metadata;
       loadMetadataForCard: (
         ...args: Parameters<typeof loadMetadataForCard>
-      ) => unknown;
-      [key: string]: unknown;
+      ) => Promise<unknown>;
     }
 
-    class MetadataLoader extends Component<MetadataLoaderProps> {
-      componentDidMount() {
-        if (this.props.question instanceof Question) {
-          this.fetch();
-        }
-      }
+    function MetadataLoader(props: MetadataLoaderProps) {
+      const { question, loadMetadataForCard, ...rest } = props;
 
-      componentDidUpdate({ question: prevQuestion }: MetadataLoaderProps) {
-        const { question } = this.props;
-        if (
-          question instanceof Question &&
-          (!(prevQuestion instanceof Question) ||
-            question.id() !== prevQuestion.id())
-        ) {
-          this.fetch();
-        }
-      }
-
-      fetch() {
-        const { question, loadMetadataForCard } = this.props;
+      useEffect(() => {
         if (question instanceof Question) {
           loadMetadataForCard(question.card());
         }
-      }
+      }, [question, loadMetadataForCard]);
 
-      render() {
-        const { question, metadata, ...rest } = this.props;
-        return <ComposedComponent {...rest} />;
-      }
+      return <ComposedComponent {...rest} />;
     }
 
     return connect(
