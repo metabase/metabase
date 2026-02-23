@@ -2,6 +2,7 @@
   (:require
    [clojure.set :as set]
    [clojure.string :as str]
+   [medley.core :as m]
    [metabase-enterprise.dependencies.core :as dependencies]
    [metabase-enterprise.dependencies.dependency-types :as deps.dependency-types]
    [metabase-enterprise.dependencies.models.analysis-finding-error :as analysis-finding-error]
@@ -68,10 +69,7 @@
                       broken-cards)
      :bad_transforms (into [] broken-transforms)}))
 
-;; TODO (Cam 10/28/25) -- fix this endpoint route to use kebab-case for consistency with the rest of our REST API
-;;
-#_{:clj-kondo/ignore [:metabase/validate-defendpoint-route-uses-kebab-case]}
-(api.macros/defendpoint :post "/check_card" :- ::broken-cards-response
+(api.macros/defendpoint :post "/check-card" :- ::broken-cards-response
   "Check a proposed edit to a card, and return the card IDs for those cards this edit will break."
   [_route-params
    _query-params
@@ -90,7 +88,9 @@
                  (cond-> #_card
                   (:result_metadata body) (assoc :result-metadata (:result_metadata body))))
         edits {:card [card]}
-        breakages (dependencies/errors-from-proposed-edits edits :base-provider base-provider)]
+        breakages (dependencies/errors-from-proposed-edits edits
+                                                           :base-provider base-provider
+                                                           :include-native? true)]
     (broken-cards-response breakages)))
 
 (mr/def ::transform-body
@@ -104,10 +104,7 @@
                                       [:query {:optional true} ::queries.schema/query]]]]
    [:target {:optional true} [:maybe ms/Map]]])
 
-;; TODO (Cam 10/28/25) -- fix this endpoint route to use kebab-case for consistency with the rest of our REST API
-;;
-#_{:clj-kondo/ignore [:metabase/validate-defendpoint-route-uses-kebab-case]}
-(api.macros/defendpoint :post "/check_transform" :- ::broken-cards-response
+(api.macros/defendpoint :post "/check-transform" :- ::broken-cards-response
   "Check a proposed edit to a transform, and return the card, transform, etc. IDs for things that will break."
   [_route-params
    _query-params
@@ -121,19 +118,18 @@
                         (cond-> #_transform source (assoc :source source))
                         (cond-> #_transform target (assoc :target target)))
           edits {:transform [transform]}
-          breakages (dependencies/errors-from-proposed-edits edits :base-provider base-provider)]
+          breakages (dependencies/errors-from-proposed-edits edits
+                                                             :base-provider base-provider
+                                                             :include-native? true)]
       (broken-cards-response breakages))
     ;; if this isn't a sql query, just claim it works
     {:success true}))
 
-;; TODO (Cam 10/28/25) -- fix this endpoint route to use kebab-case for consistency with the rest of our REST API
-;;
-#_{:clj-kondo/ignore [:metabase/validate-defendpoint-route-uses-kebab-case]}
-(api.macros/defendpoint :post "/check_snippet" :- ::broken-cards-response
+(api.macros/defendpoint :post "/check-snippet" :- ::broken-cards-response
   "Check a proposed edit to a native snippet, and return the cards, etc. which will be broken."
   [_route-params
    _query-params
-   {:keys [id], snippet-name :name}
+   {:keys [id content], snippet-name :name}
    :- [:map
        [:id      {:optional false} ::lib.schema.id/snippet]
        [:name    {:optional true} native-query-snippets/NativeQuerySnippetName]
@@ -144,8 +140,14 @@
                      (not= snippet-name (:name original))
                      (t2/exists? :model/NativeQuerySnippet :name snippet-name))
             (throw (ex-info (tru "A snippet with that name already exists. Please pick a different name.")
-                            {:status-code 400})))]
-    (broken-cards-response {})))
+                            {:status-code 400})))
+        snippet (cond-> (m/assoc-some original
+                                      :lib/type :metadata/native-query-snippet
+                                      :name snippet-name
+                                      :content content)
+                  content native-query-snippets/add-template-tags)
+        breakages (dependencies/errors-from-proposed-edits {:snippet [snippet]} :include-native? true)]
+    (broken-cards-response breakages)))
 
 (def ^:private entity-keys
   {:table     [:name :description :display_name :db_id :db :schema :fields :transform
@@ -696,20 +698,20 @@
   [:map
    [:id                            ms/PositiveInt]
    [:type                          ::deps.dependency-types/dependency-types]
-   [:dependent_types               {:optional true}
+   [:dependent-types               {:optional true}
     [:or
      ::deps.dependency-types/dependency-types
      [:sequential ::deps.dependency-types/dependency-types]]]
-   [:dependent_card_types          {:optional true}
+   [:dependent-card-types          {:optional true}
     [:or
      (ms/enum-decode-keyword lib.schema.metadata/card-types)
      [:sequential (ms/enum-decode-keyword lib.schema.metadata/card-types)]]]
    [:archived                      {:optional true} :boolean]
    [:broken                        {:optional true} :boolean]
    [:query                         {:optional true} :string]
-   [:include_personal_collections  {:optional true} :boolean]
-   [:sort_column                   {:optional true} (ms/enum-decode-keyword dependents-sort-columns)]
-   [:sort_direction                {:optional true} (ms/enum-decode-keyword sort-directions)]])
+   [:include-personal-collections  {:optional true} :boolean]
+   [:sort-column                   {:optional true} (ms/enum-decode-keyword dependents-sort-columns)]
+   [:sort-direction                {:optional true} (ms/enum-decode-keyword sort-directions)]])
 
 (api.macros/defendpoint :get "/graph/dependents" :- [:sequential ::entity]
   "Returns a list of dependents for the specified entity.
@@ -719,22 +721,22 @@
    - `type`: The type of the entity (card, table, dashboard, etc.)
 
    Optional parameters:
-   - `dependent_types`: Dependency types to filter by. Can be single value or array.
-     If not provided, returns all types. Example: ?dependent_types=card&dependent_types=dashboard
-   - `dependent_card_types`: Card types to filter by when dependent_types includes :card.
-     Ignored if dependent_types doesn't include :card. Example: ?dependent_card_types=question&dependent_card_types=model
+   - `dependent-types`: Dependency types to filter by. Can be single value or array.
+     If not provided, returns all types. Example: ?dependent-types=card&dependent-types=dashboard
+   - `dependent-card-types`: Card types to filter by when dependent-types includes :card.
+     Ignored if dependent-types doesn't include :card. Example: ?dependent-card-types=question&dependent-card-types=model
    - `archived`: Include entities in archived collections (default: false)
    - `broken`: Return only broken entities (default: false)
    - `query`: Search string to filter results by name or location (case-insensitive)
-   - `include_personal_collections`: Include items in personal collections (default: false)
-   - `sort_column`: Column to sort by - name, location, or view-count (default: name)
-   - `sort_direction`: Sort direction - asc or desc (default: asc)"
+   - `include-personal-collections`: Include items in personal collections (default: false)
+   - `sort-column`: Column to sort by - name, location, or view-count (default: name)
+   - `sort-direction`: Sort direction - asc or desc (default: asc)"
   [_route-params
-   {:keys [id type dependent_types dependent_card_types archived broken
-           query include_personal_collections sort_column sort_direction]
-    :or {include_personal_collections false
-         sort_column :name
-         sort_direction :asc}} :- dependents-args]
+   {:keys [id type dependent-types dependent-card-types archived broken
+           query include-personal-collections sort-column sort-direction]
+    :or {include-personal-collections false
+         sort-column :name
+         sort-direction :asc}} :- dependents-args]
   (api/read-check (deps.dependency-types/dependency-type->model type) id)
   (lib-be/with-metadata-provider-cache
     (let [graph-opts {:include-archived-items (if archived :all :exclude)
@@ -743,13 +745,13 @@
           nodes (-> (graph/children-of downstream-graph [[type id]])
                     (get [type id]))
           dep-types-set (cond
-                          (nil? dependent_types) deps.dependency-types/dependency-types
-                          (sequential? dependent_types) (set dependent_types)
-                          :else #{dependent_types})
+                          (nil? dependent-types) deps.dependency-types/dependency-types
+                          (sequential? dependent-types) (set dependent-types)
+                          :else #{dependent-types})
           card-types-set (cond
-                           (nil? dependent_card_types) lib.schema.metadata/card-types
-                           (sequential? dependent_card_types) (set dependent_card_types)
-                           :else #{dependent_card_types})
+                           (nil? dependent-card-types) lib.schema.metadata/card-types
+                           (sequential? dependent-card-types) (set dependent-card-types)
+                           :else #{dependent-card-types})
           dependents-filter
           (comp
            ;; Filter by dependent types and card types
@@ -760,7 +762,7 @@
                               (nil? card-types-set)
                               (contains? card-types-set (-> node :data :type))))))
            ;; Filter out personal collections unless explicitly included
-           (if include_personal_collections
+           (if include-personal-collections
              identity
              (remove in-personal-collection?))
            ;; Filter by query (sandboxes are excluded since they have no name or location)
@@ -768,7 +770,7 @@
              (filter #(entity-matches-query? % query))
              identity))]
       (-> (into [] dependents-filter (expanded-nodes downstream-graph nodes {:include-errors? false}))
-          (sort-dependents sort_column sort_direction)))))
+          (sort-dependents sort-column sort-direction)))))
 
 (defn- entity-type-config
   [entity-type]
@@ -945,14 +947,14 @@
    [:types {:optional true} [:or
                              ::deps.dependency-types/dependency-types
                              [:sequential ::deps.dependency-types/dependency-types]]]
-   [:card_types {:optional true} [:or
+   [:card-types {:optional true} [:or
                                   (ms/enum-decode-keyword lib.schema.metadata/card-types)
                                   [:sequential (ms/enum-decode-keyword lib.schema.metadata/card-types)]]]
    [:query {:optional true} :string]
    [:archived {:optional true} :boolean]
-   [:include_personal_collections {:optional true} :boolean]
-   [:sort_column {:optional true} (ms/enum-decode-keyword breaking-items-sort-columns)]
-   [:sort_direction {:optional true} (ms/enum-decode-keyword sort-directions)]])
+   [:include-personal-collections {:optional true} :boolean]
+   [:sort-column {:optional true} (ms/enum-decode-keyword breaking-items-sort-columns)]
+   [:sort-direction {:optional true} (ms/enum-decode-keyword sort-directions)]])
 
 (def ^:private dependency-items-response
   [:map
@@ -967,12 +969,12 @@
 
    Accepts optional parameters for filtering:
    - `types`: List of entity types to include (e.g., [:card :transform :snippet :dashboard])
-   - `card_types`: List of card types to include when filtering cards (e.g., [:question :model :metric])
+   - `card-types`: List of card types to include when filtering cards (e.g., [:question :model :metric])
    - `query`: Search string to filter by name or location
    - `archived`: Controls whether archived entities are included
-   - `include_personal_collections`: Controls whether items in personal collections are included (default: false)
-   - `sort_column`: Sort column - `:name`, `:location`, `:dependents-errors`, or `:dependents-with-errors` (default: `:name`)
-   - `sort_direction`: Sort direction - `:asc` or `:desc` (default: `:asc`)
+   - `include-personal-collections`: Controls whether items in personal collections are included (default: false)
+   - `sort-column`: Sort column - `:name`, `:location`, `:dependents-errors`, or `:dependents-with-errors` (default: `:name`)
+   - `sort-direction`: Sort direction - `:asc` or `:desc` (default: `:asc`)
    - `offset`: Default 0
    - `limit`: Default 50
 
@@ -982,12 +984,12 @@
    - `offset`: Applied offset
    - `limit`: Applied limit"
   [_route-params
-   {:keys [types card_types query archived include_personal_collections sort_column sort_direction]
+   {:keys [types card-types query archived include-personal-collections sort-column sort-direction]
     :or {types (vec deps.dependency-types/dependency-types)
-         card_types (vec lib.schema.metadata/card-types)
-         include_personal_collections false
-         sort_column :name
-         sort_direction :asc}} :- dependency-items-args]
+         card-types (vec lib.schema.metadata/card-types)
+         include-personal-collections false
+         sort-column :name
+         sort-direction :asc}} :- dependency-items-args]
   (let [offset (or (request/offset) 0)
         limit (or (request/limit) 50)
         include-archived-items (if archived :all :exclude)
@@ -995,18 +997,18 @@
         selected-types (cond->> (if (sequential? types) types [types])
                          ;; Sandboxes don't support query filtering, so exclude them when a query is provided
                          query (remove #{:sandbox}))
-        card-types (if (sequential? card_types) card_types [card_types])
+        card-types (if (sequential? card-types) card-types [card-types])
         union-queries (map #(dependency-items-query {:query-type :unreferenced
                                                      :entity-type %
                                                      :card-types card-types
                                                      :query query
                                                      :include-archived-items include-archived-items
-                                                     :include-personal-collections include_personal_collections
-                                                     :sort-column sort_column})
+                                                     :include-personal-collections include-personal-collections
+                                                     :sort-column sort-column})
                            selected-types)
         union-query {:union-all union-queries}
         all-ids (->> (t2/query (assoc union-query
-                                      :order-by [[:sort_key sort_direction] [:entity_id sort_direction] [:entity_type sort_direction]]
+                                      :order-by [[:sort_key sort-direction] [:entity_id sort-direction] [:entity_type sort-direction]]
                                       :offset offset
                                       :limit limit))
                      (map (fn [{:keys [entity_id entity_type]}]
@@ -1028,12 +1030,12 @@
 
    Accepts optional parameters for filtering:
    - `types`: List of source entity types - only `:card` or `:table` (default: both)
-   - `card_types`: List of card types to include when filtering cards (e.g., `[:question :model :metric]`)
+   - `card-types`: List of card types to include when filtering cards (e.g., `[:question :model :metric]`)
    - `query`: Search string to filter by name or location
    - `archived`: Controls whether archived entities are included
-   - `include_personal_collections`: Controls whether items in personal collections are included (default: false)
-   - `sort_column`: Sort column - `:name`, `:location`, `:dependents-errors`, or `:dependents-with-errors` (default: `:name`)
-   - `sort_direction`: Sort direction - `:asc` or `:desc` (default: `:asc`)
+   - `include-personal-collections`: Controls whether items in personal collections are included (default: false)
+   - `sort-column`: Sort column - `:name`, `:location`, `:dependents-errors`, or `:dependents-with-errors` (default: `:name`)
+   - `sort-direction`: Sort direction - `:asc` or `:desc` (default: `:asc`)
    - `offset`: Default 0
    - `limit`: Default 50
 
@@ -1043,12 +1045,12 @@
    - `offset`: Applied offset
    - `limit`: Applied limit"
   [_route-params
-   {:keys [types card_types query archived include_personal_collections sort_column sort_direction]
+   {:keys [types card-types query archived include-personal-collections sort-column sort-direction]
     :or {types [:card :table]
-         card_types (vec lib.schema.metadata/card-types)
-         include_personal_collections false
-         sort_column :name
-         sort_direction :asc}} :- dependency-items-args]
+         card-types (vec lib.schema.metadata/card-types)
+         include-personal-collections false
+         sort-column :name
+         sort-direction :asc}} :- dependency-items-args]
   (let [offset (or (request/offset) 0)
         limit (or (request/limit) 50)
         include-archived-items (if archived :all :exclude)
@@ -1056,18 +1058,18 @@
         selected-types (cond->> (if (sequential? types) types [types])
                          ;; Sandboxes don't support query filtering, so exclude them when a query is provided
                          query (remove #{:sandbox}))
-        card-types (if (sequential? card_types) card_types [card_types])
+        card-types (if (sequential? card-types) card-types [card-types])
         union-queries (map #(dependency-items-query {:query-type :breaking
                                                      :entity-type %
                                                      :card-types card-types
                                                      :query query
                                                      :include-archived-items include-archived-items
-                                                     :include-personal-collections include_personal_collections
-                                                     :sort-column sort_column})
+                                                     :include-personal-collections include-personal-collections
+                                                     :sort-column sort-column})
                            selected-types)
         union-query {:union-all union-queries}
         all-ids (->> (t2/query (assoc union-query
-                                      :order-by [[:sort_key sort_direction] [:entity_id sort_direction] [:entity_type sort_direction]]
+                                      :order-by [[:sort_key sort-direction] [:entity_id sort-direction] [:entity_type sort-direction]]
                                       :offset offset
                                       :limit limit))
                      (map (fn [{:keys [entity_id entity_type]}]
@@ -1099,17 +1101,17 @@
   [:map
    [:id                            ms/PositiveInt]
    [:type                          ::deps.dependency-types/dependency-types]
-   [:dependent_types               {:optional true}
+   [:dependent-types               {:optional true}
     [:or
      ::deps.dependency-types/dependency-types
      [:sequential ::deps.dependency-types/dependency-types]]]
-   [:dependent_card_types          {:optional true}
+   [:dependent-card-types          {:optional true}
     [:or
      (ms/enum-decode-keyword lib.schema.metadata/card-types)
      [:sequential (ms/enum-decode-keyword lib.schema.metadata/card-types)]]]
-   [:include_personal_collections  {:optional true} :boolean]
-   [:sort_column                   {:optional true} (ms/enum-decode-keyword dependents-sort-columns)]
-   [:sort_direction                {:optional true} (ms/enum-decode-keyword sort-directions)]])
+   [:include-personal-collections  {:optional true} :boolean]
+   [:sort-column                   {:optional true} (ms/enum-decode-keyword dependents-sort-columns)]
+   [:sort-direction                {:optional true} (ms/enum-decode-keyword sort-directions)]])
 
 (mr/def ::broken-dependent-entity
   "Entity returned by /graph/broken endpoint - includes errors but no dependents_count."
@@ -1127,25 +1129,25 @@
    - `type`: The type of the source entity (card, table)
 
    Optional parameters:
-   - `dependent_types`: Dependency types to filter by. Can be single value or array.
-   - `dependent_card_types`: Card types to filter by when dependent_types includes :card.
-   - `include_personal_collections`: Include items in personal collections (default: false)
-   - `sort_column`: Column to sort by - name, location, or view-count (default: name)
-   - `sort_direction`: Sort direction - asc or desc (default: asc)"
+   - `dependent-types`: Dependency types to filter by. Can be single value or array.
+   - `dependent-card-types`: Card types to filter by when dependent-types includes :card.
+   - `include-personal-collections`: Include items in personal collections (default: false)
+   - `sort-column`: Column to sort by - name, location, or view-count (default: name)
+   - `sort-direction`: Sort direction - asc or desc (default: asc)"
   [_route-params
-   {:keys [id dependent_types dependent_card_types include_personal_collections sort_column sort_direction]
+   {:keys [id dependent-types dependent-card-types include-personal-collections sort-column sort-direction]
     entity-type :type
-    :or {include_personal_collections false
-         sort_column :name
-         sort_direction :asc}} :- broken-dependents-args]
+    :or {include-personal-collections false
+         sort-column :name
+         sort-direction :asc}} :- broken-dependents-args]
   (api/read-check (deps.dependency-types/dependency-type->model entity-type) id)
   (lib-be/with-metadata-provider-cache
     (let [normalize-types (fn normalize-types [types]
                             (if (keyword? types)
                               [(name types)]
                               (not-empty (map name types))))
-          dep-types (normalize-types dependent_types)
-          card-types (normalize-types dependent_card_types)
+          dep-types (normalize-types dependent-types)
+          card-types (normalize-types dependent-card-types)
           where-clause (cond-> [:and
                                 [:= :afe.source_entity_type (name entity-type)]
                                 [:= :afe.source_entity_id id]
@@ -1181,9 +1183,9 @@
                                    :type entity-type
                                    :data (-> (select-keys entity (entity-keys entity-type))
                                              (update-vals format-subentity))}))
-                     (not include_personal_collections) (comp (remove in-personal-collection?)))
+                     (not include-personal-collections) (comp (remove in-personal-collection?)))
                 (fetch-and-hydrate-nodes nodes-by-type))
-          (sort-dependents sort_column sort_direction)))))
+          (sort-dependents sort-column sort-direction)))))
 
 (def ^{:arglists '([request respond raise])} routes
   "`/api/ee/dependencies` routes."

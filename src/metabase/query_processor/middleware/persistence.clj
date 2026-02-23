@@ -16,7 +16,7 @@
   (if (and api/*current-user-id*
            (or (lib.util.match/match-lite query {:query-permissions/sandboxed-table (_ :guard identity)} true)
                (perms/impersonation-enforced-for-db? (:database query))))
-    (lib.util.match/replace query
-      (x :guard (every-pred map? :persisted-info/native))
-      (dissoc x :persisted-info/native))
+    (lib.util.match/replace-lite query
+      {:persisted-info/native (_ :guard identity)}
+      (dissoc &match :persisted-info/native))
     query))

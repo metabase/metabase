@@ -79,7 +79,7 @@
                                          #_resolved-query clojure.lang.IPersistentMap]
   [query-type model parsed-args honeysql]
   (merge (next-method query-type model parsed-args honeysql)
-         {:select [:id :engine :name :dbms_version :settings :is_audit :details :timezone :router_database_id]}))
+         {:select [:id :engine :name :dbms_version :settings :is_audit :details :write_data_details :timezone :router_database_id]}))
 
 (t2/define-after-select :metadata/database
   [database]

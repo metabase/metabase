@@ -1938,6 +1938,13 @@ Identify the source of HTTP requests by this header's value, instead of its remo
 Fetch size for result sets. We want to ensure that the jdbc ResultSet objects are not realizing the entire results
   in memory.
 
+### `MB_SQL_TOOLS_PARSER_BACKEND`
+
+- Type: keyword
+- Default: `sqlglot`
+
+Parser backend of `sql-tools` module.
+
 ### `MB_SSH_HEARTBEAT_INTERVAL_SEC`
 
 - Type: integer
@@ -2139,6 +2146,8 @@ Type: string<br>
 Default: `null`
 
 A JDBC-style connection URI that can be used instead of most of `MB_DB_*` like [MB_DB_HOST](#mb_db_host). Also used when certain Connection String parameters are required for the connection. The connection type requirement is the same as [MB_DB_TYPE](#mb_db_type).
+
+Note that the `currentSchema` JDBC parameter has no effect. [The schema used for PostgreSQL application databases must be `public`](https://github.com/metabase/metabase/issues/37836).
 
 Examples:
 
