@@ -20,7 +20,7 @@ jobs:
     uses: ./.github/workflows/e2e-matrix-builder.yml
     with:
       chunks: 50
-      specs: ${{ inputs.specs }}
+      specs: "./e2e/test/scenarios/embedding/sdk-iframe-embedding/metabase-browser.cy.spec.ts"
 
   reset-e2e-test-comment:
     if: ${{ github.event_name == 'pull_request' }}

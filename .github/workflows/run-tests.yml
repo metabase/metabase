@@ -84,7 +84,7 @@ jobs:
       skip-lint: ${{ needs.files-changed.outputs.frontend_all != 'true' && needs.files-changed.outputs.e2e_specs != 'true' }}
 
   e2e-tests:
-    needs: [files-changed, uberjar]
+    needs: [files-changed]
     if: always() && !cancelled() && needs.files-changed.result == 'success'
     uses: ./.github/workflows/e2e-tests.yml
     secrets: inherit
