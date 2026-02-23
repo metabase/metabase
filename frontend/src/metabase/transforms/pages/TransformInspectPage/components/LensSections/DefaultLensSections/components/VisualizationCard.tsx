@@ -132,6 +132,7 @@ function buildRawSeries(
       card: createMockCard({
         name: card.title,
         display: vizDisplay,
+        displayIsLocked: true,
         dataset_query: card.dataset_query,
         visualization_settings: {
           "graph.y_axis.labels_enabled": false,
