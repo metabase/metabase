@@ -34,7 +34,7 @@ jobs:
         uses: crowdin/github-action@v2
         with:
           command: "pre-translate"
-          command_args: "-l ru --method ai --ai-prompt ${{ secrets.CROWDIN_AI_PROMPT_ID }} --translate-untranslated-only true --token ${{ secrets.CROWDIN_TOKEN }} --project-id ${{ secrets.CROWDIN_PROJECT_ID }}"
+          command_args: "-l ru --method ai --ai-prompt ${{ secrets.CROWDIN_AI_PROMPT_ID }} --translate-untranslated-only --token ${{ secrets.CROWDIN_TOKEN }} --project-id ${{ secrets.CROWDIN_PROJECT_ID }}"
 
       # Access the command output in subsequent steps (optional)
       - name: Use command output
