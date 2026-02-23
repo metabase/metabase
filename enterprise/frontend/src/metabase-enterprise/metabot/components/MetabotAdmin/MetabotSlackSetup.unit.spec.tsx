@@ -4,6 +4,7 @@ import fetchMock from "fetch-mock";
 import {
   findRequests,
   setupMetabotSlackSettingsEndpoint,
+  setupMetabotSlackSettingsEndpointWithError,
   setupPropertiesEndpoints,
   setupSettingsEndpoints,
   setupSlackAppInfoEndpoint,
@@ -91,7 +92,17 @@ const setup = async ({
   renderWithProviders(<MetabotSlackSetup />, {
     storeInitialState: { settings: createMockSettingsState(settings) },
   });
+
+  // Wait for component to fully render
+  if (isSlackTokenValid) {
+    await screen.findByText("Natural language questions in Slack");
+  }
 };
+
+const clientIdInput = () => screen.findByLabelText("Client ID");
+const clientSecretInput = () => screen.findByLabelText("Client Secret");
+const signingSecretInput = () => screen.findByLabelText("Signing Secret");
+const saveButton = () => screen.findByRole("button", { name: "Save changes" });
 
 describe("MetabotSlackSetup", () => {
   it("renders nothing when slack-token-valid? is false", async () => {
@@ -104,9 +115,9 @@ describe("MetabotSlackSetup", () => {
   it("shows unconfigured form with all fields when secrets are missing", async () => {
     await setup();
     await screen.findByText("Natural language questions in Slack");
-    expect(await screen.findByLabelText("Client ID")).toBeInTheDocument();
-    expect(screen.getByLabelText("Client Secret")).toBeInTheDocument();
-    expect(screen.getByLabelText("Signing Secret")).toBeInTheDocument();
+    expect(await clientIdInput()).toBeInTheDocument();
+    expect(await clientSecretInput()).toBeInTheDocument();
+    expect(await signingSecretInput()).toBeInTheDocument();
   });
 
   it("shows configured state with toggle, accordion, and Remove button", async () => {
@@ -116,6 +127,19 @@ describe("MetabotSlackSetup", () => {
     ).toBeInTheDocument();
     expect(screen.getByText("View connection details")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Remove" })).toBeInTheDocument();
+  });
+
+  it("displays error message when submission fails", async () => {
+    await setup();
+    setupMetabotSlackSettingsEndpointWithError(400, "Invalid credentials");
+
+    await userEvent.type(await clientIdInput(), "123.456");
+    await userEvent.type(await clientSecretInput(), "secret");
+    await userEvent.type(await signingSecretInput(), "signing");
+
+    await userEvent.click(await saveButton());
+
+    expect(await screen.findByText(/Invalid credentials/)).toBeInTheDocument();
   });
 
   describe("encryption alert", () => {
@@ -171,25 +195,17 @@ describe("MetabotSlackSetup", () => {
     it("disables submit button when fields are empty", async () => {
       await setup();
       await screen.findByText("Natural language questions in Slack");
-      expect(
-        screen.getByRole("button", { name: "Save changes" }),
-      ).toBeDisabled();
+      expect(await saveButton()).toBeDisabled();
     });
 
     it("submits settings via PUT /api/ee/metabot-v3/slack/settings", async () => {
       await setup();
-      await screen.findByText("Natural language questions in Slack");
 
-      await userEvent.type(screen.getByLabelText("Client ID"), "123.456");
-      await userEvent.type(screen.getByLabelText("Client Secret"), "secret123");
-      await userEvent.type(
-        screen.getByLabelText("Signing Secret"),
-        "signing123",
-      );
+      await userEvent.type(await clientIdInput(), "123.456");
+      await userEvent.type(await clientSecretInput(), "secret123");
+      await userEvent.type(await signingSecretInput(), "signing123");
 
-      const submitButton = screen.getByRole("button", { name: "Save changes" });
-      await waitFor(() => expect(submitButton).toBeEnabled());
-      await userEvent.click(submitButton);
+      await userEvent.click(await saveButton());
 
       await waitFor(async () => {
         const puts = await findRequests("PUT");
@@ -210,9 +226,9 @@ describe("MetabotSlackSetup", () => {
       await setup(CONFIGURED);
       await userEvent.click(await screen.findByText("View connection details"));
 
-      expect(await screen.findByLabelText("Client ID")).toBeDisabled();
-      expect(screen.getByLabelText("Client Secret")).toBeDisabled();
-      expect(screen.getByLabelText("Signing Secret")).toBeDisabled();
+      expect(await clientIdInput()).toBeDisabled();
+      expect(await clientSecretInput()).toBeDisabled();
+      expect(await signingSecretInput()).toBeDisabled();
     });
 
     it("shows Basic Information link with app_id", async () => {
@@ -281,7 +297,7 @@ describe("MetabotSlackSetup", () => {
       await setup({ clientId: "123.456", signingSecret: "signing123" });
       await screen.findByText("Natural language questions in Slack");
 
-      expect(await screen.findByLabelText("Client ID")).toBeInTheDocument();
+      expect(await clientIdInput()).toBeInTheDocument();
       expect(
         screen.queryByText("Let people chat with Metabot"),
       ).not.toBeInTheDocument();

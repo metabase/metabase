@@ -16,6 +16,7 @@ import { ExternalLink } from "metabase/common/components/ExternalLink";
 import { useDocsUrl, useSetting } from "metabase/common/hooks";
 import {
   Form,
+  FormErrorMessage,
   FormProvider,
   FormSubmitButton,
   FormTextInput,
@@ -78,7 +79,7 @@ const MetabotSlackSettingsForm = ({
             values["metabot-slack-signing-secret"] ?? "",
         }}
         validationSchema={VALIDATION_SCHEMA}
-        onSubmit={updateMetabotSlackSettings}
+        onSubmit={(values) => updateMetabotSlackSettings(values).unwrap()}
         enableReinitialize
       >
         <Form>
@@ -101,6 +102,7 @@ const MetabotSlackSettingsForm = ({
               placeholder="xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
               disabled={isConfigured}
             />
+            <FormErrorMessage />
             {!isConfigured && (
               <Flex justify="flex-end" mt="md">
                 <FormSubmitButton label={t`Save changes`} variant="filled" />
