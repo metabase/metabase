@@ -12,6 +12,7 @@
    [metabase.settings.core :as setting]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.json :as json]
+   [metabase.util.log :as log]
    [metabase.util.malli.schema :as ms]))
 
 (set! *warn-on-reflection* true)
@@ -222,8 +223,9 @@
                               (-> (slack/GET "bots.info" :bot bot-id)
                                   :bot
                                   :app_id)
-                              (catch Exception _
+                              (catch Exception e
                                 ;; bots.info requires users:read scope which may not be present
+                                (log/warn e "Failed to fetch app_id from bots.info (may require users:read scope)")
                                 nil)))
           scopes-header   (get-in auth-response [:metabase.channel.slack/headers "x-oauth-scopes"])
           actual-scopes   (if (str/blank? scopes-header)
