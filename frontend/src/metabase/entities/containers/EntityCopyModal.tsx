@@ -3,35 +3,25 @@ import { t } from "ttag";
 
 import { useGetDefaultCollectionId } from "metabase/collections/hooks";
 import { useEscapeToCloseModal } from "metabase/common/hooks/use-escape-to-close-modal";
-import {
-  CopyDashboardFormConnected,
-  type CopyDashboardFormProperties,
-} from "metabase/dashboard/containers/CopyDashboardForm";
+import { CopyDashboardFormConnected } from "metabase/dashboard/containers/CopyDashboardForm";
 import { DocumentCopyForm } from "metabase/documents/components/DocumentCopyForm/DocumentCopyForm";
 import { CopyCardForm } from "metabase/questions/components/CopyCardForm/CopyCardForm";
 import { Modal } from "metabase/ui";
 
-interface EntityCopyModalProps {
-  entityType: string;
-  entityObject: any;
-  copy: (data: any) => Promise<any>;
-  title?: string;
-  onClose: () => void;
-  onSaved: (newEntityObject?: any) => void;
-  overwriteOnInitialValuesChange?: boolean;
-  onValuesChange?: (values: CopyDashboardFormProperties) => void;
-  form?: any;
-}
+import type {
+  CopyableEntityType,
+  EntityCopyModalProps,
+  GenericEntityCopyModalProps,
+} from "./EntityCopyModal.types";
 
-const EntityCopyModal = ({
-  entityType,
-  entityObject,
-  copy,
-  title,
-  onClose,
-  onSaved,
-  ...props
-}: EntityCopyModalProps) => {
+function EntityCopyModal<T extends CopyableEntityType>(
+  props: EntityCopyModalProps<T>,
+): React.JSX.Element;
+function EntityCopyModal(props: GenericEntityCopyModalProps): React.JSX.Element;
+function EntityCopyModal(props: GenericEntityCopyModalProps) {
+  const { entityType, entityObject, copy, title, onClose, onSaved, ...rest } =
+    props;
+
   const resolvedObject =
     typeof entityObject?.getPlainObject === "function"
       ? entityObject.getPlainObject()
@@ -66,7 +56,7 @@ const EntityCopyModal = ({
           onClose={onClose}
           onSaved={onSaved}
           initialValues={initialValues}
-          {...props}
+          onValuesChange={rest.onValuesChange}
           originalDashboardId={resolvedObjectWithDefaultCollection.id}
         />
       )}
@@ -77,7 +67,6 @@ const EntityCopyModal = ({
           onSaved={onSaved}
           initialValues={initialValues}
           model={entityObject?.type}
-          {...props}
         />
       )}
       {entityType === "documents" && (
@@ -86,12 +75,11 @@ const EntityCopyModal = ({
           onCancel={onClose}
           onSaved={onSaved}
           initialValues={initialValues}
-          {...props}
         />
       )}
     </Modal>
   );
-};
+}
 
 // eslint-disable-next-line import/no-default-export -- deprecated usage
 export default EntityCopyModal;
