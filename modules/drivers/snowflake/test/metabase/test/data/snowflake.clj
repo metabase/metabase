@@ -196,24 +196,11 @@
 
 (defmethod sql.tx/pk-sql-type :snowflake [_] "INTEGER AUTOINCREMENT")
 
-(defmethod tx/id-field-type :snowflake [_] :type/Number)
+(defmethod tx/id-field-type :snowflake [_] :type/BigInteger)
 
 (defmethod load-data/row-xform :snowflake
   [_driver _dbdef tabledef]
   (load-data/maybe-add-ids-xform tabledef))
-
-(defmethod tx/aggregate-column-info :snowflake
-  ([driver ag-type]
-   (merge
-    ((get-method tx/aggregate-column-info ::tx/test-extensions) driver ag-type)
-    (when (#{:count :cum-count} ag-type)
-      {:base_type :type/Number})))
-
-  ([driver ag-type field]
-   (merge
-    ((get-method tx/aggregate-column-info ::tx/test-extensions) driver ag-type field)
-    (when (#{:count :cum-count} ag-type)
-      {:base_type :type/Number}))))
 
 (defmethod sql.tx/generated-column-sql :snowflake [_ expr]
   (format "AS (%s)" expr))
@@ -440,13 +427,16 @@
   [_driver base-type]
   ;; Snowflake normalizes some types. Real sync maps them to specific base_types,
   ;; so fake-sync must match what sync would produce:
-  ;; - INTEGER/BIGINT -> NUMBER -> :type/Number
+  ;;
+  ;; - `(BIG)INTEGER` -> `NUMBER` + JDBC Type `java.sql.Types/BIGINT` -> `:type/BigInteger` (as of #67609)
+  ;;
   ;; - TimeWithLocalTZ/TimeWithZoneOffset -> TIME -> :type/Time (Snowflake only has one TIME type)
+  ;;
   ;; - DateTimeWithTZ/DateTimeWithZoneID/DateTimeWithZoneOffset -> TIMESTAMP_TZ -> :type/DateTimeWithLocalTZ
   ;;   (Note: :type/DateTimeWithTZ -> TIMESTAMP_TZ -> sync as TIMESTAMPTZ -> :type/DateTimeWithLocalTZ)
   (case base-type
-    :type/Integer                :type/Number
-    :type/BigInteger             :type/Number
+    :type/Integer                :type/BigInteger
+    :type/BigInteger             :type/BigInteger
     :type/TimeWithLocalTZ        :type/Time
     :type/TimeWithZoneOffset     :type/Time
     :type/DateTimeWithTZ         :type/DateTimeWithLocalTZ
