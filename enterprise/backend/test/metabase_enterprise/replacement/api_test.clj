@@ -96,7 +96,7 @@
                                                 :target_entity_id   (:id card-b)
                                                 :target_entity_type :card})]
             (is (false? (:success response)))
-            (is (some #(= "database-mismatch" %) (:errors response)))))))))
+            (is (some #{"database-mismatch"} (:errors response)))))))))
 
 (deftest check-replace-source-requires-premium-feature-test
   (testing "POST /api/ee/replacement/check-replace-source — requires :dependencies premium feature"

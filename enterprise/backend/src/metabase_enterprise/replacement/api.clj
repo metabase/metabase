@@ -31,7 +31,7 @@
   [:enum :column-type-mismatch :missing-primary-key :extra-primary-key :missing-foreign-key :foreign-key-mismatch])
 
 (def ^:private error-type-enum
-  [:enum :cycle-detected])
+  [:enum :cycle-detected :database-mismatch])
 
 (mr/def ::column-mapping
   [:map
