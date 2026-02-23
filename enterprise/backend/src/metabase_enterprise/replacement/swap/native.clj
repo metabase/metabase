@@ -212,6 +212,15 @@
                                                         :display-name card-tag-key})))]
         {:sql new-sql :template-tags new-tags}))))
 
+(defn- unquote-template-refs
+  "The SQL AST tool quotes identifiers containing special characters. Card template refs
+   like {{#123-slug}} get turned into \"{{#123-slug}}\", but they must be unquoted for the
+   native query processor to recognize them."
+  [sql]
+  (-> sql
+      (str/replace "\"{{" "{{")
+      (str/replace "}}\"" "}}")))
+
 (defn- replace-table-in-native-sql
   "Replace table names in native SQL, preserving template tags.
    Uses sql-tools/replace-names for AST-level table renaming.
@@ -251,7 +260,10 @@
                   ;; like {{#123}} which aren't valid SQL identifiers, and also when
                   ;; only one of the two keys (qualified/unqualified) matches.
                   {:allow-unused? true})
-        restored (restore-placeholders replaced placeholders)]
+        ;; The SQL AST tool quotes identifiers with special chars, but card template refs
+        ;; like {{#123-slug}} must stay unquoted for the native query processor.
+        unquoted (unquote-template-refs replaced)
+        restored (restore-placeholders unquoted placeholders)]
     restored))
 
 (defn- replace-table-in-native-query

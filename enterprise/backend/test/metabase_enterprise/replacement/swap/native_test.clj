@@ -491,7 +491,7 @@
   (testing "Schema-qualified table reference is matched and renamed"
     (let [result (#'swap.native/replace-table-in-native-sql :h2
                                                             "SELECT * FROM PUBLIC.ORDERS"
-                                                            {:table "ORDERS" :schema "PUBLIC"}
+                                                            {:schema "PUBLIC" :table "ORDERS"}
                                                             {:schema "PUBLIC" :table "NEW_ORDERS"})]
       (is (str/includes? result "NEW_ORDERS"))
       (is (not (str/includes? result "ORDERS ")))))
@@ -499,7 +499,7 @@
   (testing "Cross-schema rename: PUBLIC.ORDERS → ANALYTICS.NEW_ORDERS"
     (let [result (#'swap.native/replace-table-in-native-sql :h2
                                                             "SELECT * FROM PUBLIC.ORDERS"
-                                                            {:table "ORDERS" :schema "PUBLIC"}
+                                                            {:schema "PUBLIC" :table "ORDERS"}
                                                             {:schema "ANALYTICS" :table "NEW_ORDERS"})]
       (is (str/includes? result "ANALYTICS"))
       (is (str/includes? result "NEW_ORDERS"))
@@ -508,7 +508,7 @@
   (testing "Unqualified SQL still matches when old-table has schema"
     (let [result (#'swap.native/replace-table-in-native-sql :h2
                                                             "SELECT * FROM ORDERS"
-                                                            {:table "ORDERS" :schema "PUBLIC"}
+                                                            {:schema "PUBLIC" :table "ORDERS"}
                                                             {:schema "PUBLIC" :table "NEW_ORDERS"})]
       (is (str/includes? result "NEW_ORDERS"))))
 
@@ -517,12 +517,20 @@
     ;; because old-table has a schema and new-table doesn't
     (let [result (#'swap.native/replace-table-in-native-sql :h2
                                                             "SELECT * FROM PUBLIC.ORDERS"
-                                                            {:table "ORDERS" :schema "PUBLIC"}
+                                                            {:schema "PUBLIC" :table "ORDERS"}
                                                             "{{#123-my-card}}")]
       (is (str/includes? result "{{#123-my-card}}"))
       (is (not (str/includes? result "PUBLIC.{{"))
           "Schema must be cleared, not left as PUBLIC.{{#card}}")
-      (is (not (str/includes? result "PUBLIC"))))))
+      (is (not (str/includes? result "PUBLIC")))))
+
+  (testing "Card reference must not be quoted in SQL output"
+    (let [result (#'swap.native/replace-table-in-native-sql :h2
+                                                            "SELECT * FROM ORDERS"
+                                                            {:table "ORDERS"}
+                                                            "{{#123-my-card}}")]
+      (is (= "SELECT * FROM {{#123-my-card}}" result)
+          "Card reference should not be wrapped in double quotes"))))
 
 ;;; ------------------------------------------------ swap-source: table→table for native queries ------------------------------------------------
 
@@ -635,8 +643,10 @@
                 (let [updated-query  (t2/select-one-fn :dataset_query :model/Card :id (:id child))
                       sql            (get-in updated-query [:stages 0 :native])
                       template-tags  (get-in updated-query [:stages 0 :template-tags])]
-                  ;; SQL should have card reference
+                  ;; SQL should have card reference without quotes
                   (is (str/includes? sql (str "{{#" (:id new-source))))
+                  (is (not (re-find #"\"[{][{]#" sql))
+                      "Card reference must not be quoted in SQL")
                   (is (not (str/includes? sql "PRODUCTS")))
                   ;; Template tag should be added
                   (is (some #(= (:card-id %) (:id new-source)) (vals template-tags))))))))))))
@@ -854,8 +864,10 @@
                 (let [updated-query  (t2/select-one-fn :dataset_query :model/Card :id (:id child))
                       sql            (get-in updated-query [:stages 0 :native])
                       template-tags  (get-in updated-query [:stages 0 :template-tags])]
-                  ;; SQL should have card reference without schema prefix
+                  ;; SQL should have card reference without schema prefix or quotes
                   (is (str/includes? sql (str "{{#" (:id new-source))))
+                  (is (not (re-find #"\"[{][{]#" sql))
+                      "Card reference must not be quoted in SQL")
                   (is (not (str/includes? sql "PUBLIC.{{"))
                       "Must not produce schema.{{#card}} — schema should be cleared")
                   (is (not (str/includes? sql "PRODUCTS")))
