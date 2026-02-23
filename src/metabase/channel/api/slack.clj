@@ -8,6 +8,7 @@
    [metabase.config.core :as config]
    [metabase.permissions.core :as perms]
    [metabase.premium-features.core :refer [defenterprise defenterprise-schema]]
+   [metabase.settings.core :as setting]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.json :as json]
    [metabase.util.malli.schema :as ms]))
@@ -18,8 +19,7 @@
   "Clears enterprise slackbot settings when the Slack token is cleared.
    OSS implementation is a no-op."
   metabase-enterprise.metabot-v3.api.slackbot
-  []
-  nil)
+  [])
 
 (defn- truncate-url
   "Cut length of long URLs to avoid spamming the Slack channel"
@@ -106,9 +106,9 @@
       (if (nil? slack-app-token)
         ;; Clear settings when token is explicitly set to nil/empty
         (do
-          (channel.settings/slack-token-valid?! false)
-          (channel.settings/slack-app-token! nil)
-          (channel.settings/slack-bug-report-channel! nil)
+          (setting/set-many! {:slack-token-valid?       false
+                              :slack-app-token          nil
+                              :slack-bug-report-channel nil})
           (slack/clear-channel-cache!)
           (clear-slack-bot-settings!))
         ;; Set new token
@@ -118,8 +118,8 @@
             (slack/clear-channel-cache!)
             (throw (ex-info (tru "Invalid Slack token.")
                             {:errors {:slack-app-token (tru "invalid token")}})))
-          (channel.settings/slack-app-token! slack-app-token)
-          (channel.settings/slack-token-valid?! true)
+          (setting/set-many! {:slack-app-token    slack-app-token
+                              :slack-token-valid? true})
           (slack/refresh-channels-and-usernames-when-needed!))))
 
     (when (contains? body :slack-bug-report-channel)

@@ -26,6 +26,7 @@
    [metabase.query-processor :as qp]
    [metabase.query-processor.middleware.permissions :as qp.perms]
    [metabase.request.core :as request]
+   [metabase.settings.core :as setting]
    [metabase.system.core :as system]
    [metabase.upload.core :as upload]
    [metabase.util.encryption :as encryption]
@@ -54,10 +55,10 @@
    This ensures enable-sso-slack? becomes false."
   :feature :metabot-v3
   []
-  (sso-settings/slack-connect-enabled! false)
-  (sso-settings/slack-connect-client-id! nil)
-  (sso-settings/slack-connect-client-secret! nil)
-  (metabot.settings/metabot-slack-signing-secret! nil)
+  (setting/set-many! {:slack-connect-enabled        false
+                      :slack-connect-client-id      nil
+                      :slack-connect-client-secret  nil
+                      :metabot-slack-signing-secret nil})
   nil)
 
 ;; ------------------ SLACK CLIENT --------------------
@@ -976,10 +977,10 @@
     (when-not (or all-set? all-unset?)
       (throw (ex-info (tru "Must provide client id, client secret and signing secret together.")
                       {:status-code 400})))
-    (sso-settings/slack-connect-client-id! slack-connect-client-id)
-    (sso-settings/slack-connect-client-secret! slack-connect-client-secret)
-    (metabot.settings/metabot-slack-signing-secret! metabot-slack-signing-secret)
-    (sso-settings/slack-connect-enabled! (boolean all-set?))
+    (setting/set-many! {:slack-connect-client-id      slack-connect-client-id
+                        :slack-connect-client-secret  slack-connect-client-secret
+                        :metabot-slack-signing-secret metabot-slack-signing-secret
+                        :slack-connect-enabled        (boolean all-set?)})
     {:ok true}))
 
 (def ^{:arglists '([request respond raise])} routes
