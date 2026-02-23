@@ -8,6 +8,7 @@ import type {
 
 import { getEntityErrorMessage, getGenericErrorMessage } from "../../../utils";
 import type { EntityItem } from "../types";
+import { getEntityDatabaseId } from "../utils";
 
 import { EntitySection } from "./EntitySection";
 import { EntitySelect } from "./EntitySelect";
@@ -36,9 +37,11 @@ export function ModalSidebar({
   onSubmit,
   onCancel,
 }: ModalSidebarProps) {
-  const sourceDatabaseId = getSourceDatabaseId(sourceItem);
-  const sourceError = getSourceError(dependentsCount);
-  const targetError = getTargetError(checkInfo);
+  const sourceDatabaseId =
+    sourceItem != null ? getEntityDatabaseId(sourceItem) : undefined;
+  const sourceError =
+    dependentsCount != null ? getSourceError(dependentsCount) : undefined;
+  const targetError = checkInfo != null ? getTargetError(checkInfo) : undefined;
 
   return (
     <Stack
@@ -84,18 +87,14 @@ export function ModalSidebar({
   );
 }
 
-function getSourceDatabaseId(item: EntityItem | undefined) {
-  return item?.type === "table" ? item.data?.db_id : item?.data?.database_id;
-}
-
-function getSourceError(dependentsCount: number | undefined) {
+function getSourceError(dependentsCount: number) {
   if (dependentsCount === 0) {
     return t`Nothing uses this data source, so there's nothing to replace.`;
   }
 }
 
-function getTargetError(checkInfo: CheckReplaceSourceInfo | undefined) {
-  if (checkInfo == null || checkInfo.success) {
+function getTargetError(checkInfo: CheckReplaceSourceInfo) {
+  if (checkInfo.success) {
     return undefined;
   }
 

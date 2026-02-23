@@ -27,7 +27,9 @@ export function getPickerValue(item: EntityItem): OmniPickerValue | undefined {
   return undefined;
 }
 
-function getPickerItemDatabaseId(item: OmniPickerItem): DatabaseId | undefined {
+export function getPickerItemDatabaseId(
+  item: OmniPickerItem,
+): DatabaseId | undefined {
   if (item.model === "database") {
     return item.id;
   }

@@ -4,6 +4,7 @@ import { skipToken } from "metabase/api";
 import type {
   Card,
   CheckReplaceSourceInfo,
+  DatabaseId,
   DependencyNode,
   ReplaceSourceEntry,
   Table,
@@ -29,6 +30,17 @@ export function getEntityItem(
       type: "card",
       data: card?.id === entry.id ? card : undefined,
     };
+  }
+}
+
+export function getEntityDatabaseId(
+  entity: EntityItem,
+): DatabaseId | undefined {
+  switch (entity.type) {
+    case "table":
+      return entity.data?.db_id;
+    case "card":
+      return entity.data?.database_id;
   }
 }
 
