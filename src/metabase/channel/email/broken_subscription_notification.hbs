@@ -65,6 +65,7 @@
     {{/each}}
   </table>
 
+  {{#unless disable_links}}
   <div style="text-align: center;">
     <a
       href="{{{dashboardUrl}}}"
@@ -77,5 +78,6 @@
   <div
     style="height: 1px; width: 100%; background-color: #F0F0F0; margin-top: 2em;"
   ></div>
+  {{/unless}}
 </div>
 {{> metabase/channel/email/_footer.hbs }}

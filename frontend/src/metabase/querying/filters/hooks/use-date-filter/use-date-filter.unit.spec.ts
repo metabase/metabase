@@ -1,6 +1,6 @@
 import { renderHook } from "@testing-library/react";
 
-import type { DatePickerValue } from "metabase/querying/filters/types";
+import type { DatePickerValue } from "metabase/querying/common/types";
 import * as Lib from "metabase-lib";
 import {
   columnFinder,
@@ -61,7 +61,7 @@ describe("useDateFilter", () => {
     },
   );
 
-  it("should return available operators and units for a regular column", () => {
+  it("should return available units for a regular column", () => {
     const { result } = renderHook(() =>
       useDateFilter({
         query: defaultQuery,
@@ -70,12 +70,11 @@ describe("useDateFilter", () => {
       }),
     );
 
-    const { availableOperators, availableUnits } = result.current;
-    expect(availableOperators.length).toBeGreaterThan(0);
+    const { availableUnits } = result.current;
     expect(availableUnits.length).toBeGreaterThan(0);
   });
 
-  it("should return available operators and units for a custom column", () => {
+  it("should return available units for a custom column", () => {
     const query = createQueryWithClauses({
       query: defaultQuery,
       expressions: [
@@ -99,8 +98,7 @@ describe("useDateFilter", () => {
       }),
     );
 
-    const { availableOperators, availableUnits } = result.current;
-    expect(availableOperators.length).toBeGreaterThan(0);
+    const { availableUnits } = result.current;
     expect(availableUnits.length).toBe(0);
   });
 });

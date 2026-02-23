@@ -19,7 +19,10 @@ driver:
               - port
               - display-name: Router node port
                 placeholder: 8888
-    - ssh-tunnel
+    - group:
+        container-style: ["component", "backdrop"]
+        fields:
+        - ssh-tunnel
     - advanced-options-start
     - name: json-unfolding
       display-name: Allow unfolding of JSON columns

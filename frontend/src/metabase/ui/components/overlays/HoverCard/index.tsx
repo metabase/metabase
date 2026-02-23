@@ -19,6 +19,4 @@ const HoverCardDropdown = function Dropdown(props: HoverCardDropdownProps) {
 HoverCardDropdown.displayName = MantineHoverCardDropdown.displayName;
 MantineHoverCard.Dropdown = HoverCardDropdown;
 
-const HoverCard: typeof MantineHoverCard = MantineHoverCard;
-
-export { HoverCard };
+export const HoverCard: typeof MantineHoverCard = MantineHoverCard;

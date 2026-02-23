@@ -1,9 +1,9 @@
 import userEvent from "@testing-library/user-event";
 
 import { render, screen } from "__support__/ui";
-import Button from "metabase/common/components/Button";
+import { Button } from "metabase/common/components/Button";
 
-import ButtonGroup from "./ButtonGroup";
+import { ButtonGroup } from "./ButtonGroup";
 
 describe("ButtonGroup", () => {
   it("should render correctly", () => {

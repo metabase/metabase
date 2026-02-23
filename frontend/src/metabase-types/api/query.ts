@@ -1,12 +1,12 @@
+import type * as Lib from "metabase-lib";
 import type { UiParameter } from "metabase-lib/v1/parameters/types";
-import type {
-  CardId,
-  DatabaseId,
-  FieldId,
-  SegmentId,
-  TableId,
-  TemplateTags,
-} from "metabase-types/api";
+
+import type { CardId } from "./card";
+import type { DatabaseId } from "./database";
+import type { TemplateTag, TemplateTags, TemporalUnit } from "./dataset";
+import type { FieldId } from "./field";
+import type { SegmentId } from "./segment";
+import type { TableId } from "./table";
 
 export interface NativeQuery {
   query: string;
@@ -36,6 +36,7 @@ export type DatasetQuery = OpaqueDatasetQuery | LegacyDatasetQuery;
 
 export type LegacyDatasetQuery = StructuredDatasetQuery | NativeDatasetQuery;
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars -- used for types
 declare const OpaqueDatasetQuerySymbol: unique symbol;
 export type OpaqueDatasetQuery = unknown & {
   // TODO (AlexP 10/09/25) -- replace usages of this field with Lib.databaseID and drop it from here
@@ -439,3 +440,125 @@ export type DimensionReferenceWithOptions =
 export type DimensionReference =
   | DimensionReferenceWithOptions
   | TemplateTagReference;
+
+export type TestTableSourceSpec = {
+  type: "table";
+  id: TableId;
+};
+
+export type TestCardSourceSpec = {
+  type: "card";
+  id: CardId;
+};
+
+export type TestSourceSpec = TestTableSourceSpec | TestCardSourceSpec;
+
+export type TestColumnSpec = {
+  type: "column";
+  name: string;
+  sourceName?: string;
+  displayName?: string;
+};
+
+export type TestExpressionSpec =
+  | TestLiteralSpec
+  | TestOperatorSpec
+  | TestColumnSpec;
+
+export type TestFilterSpec = TestExpressionSpec;
+
+export type TestAggregationSpec = TestExpressionSpec | TestNamedExpressionSpec;
+
+export type TestNamedExpressionSpec = {
+  name: string;
+  value: TestExpressionSpec;
+};
+
+export type TestLiteralSpec = {
+  type: "literal";
+  value: NumericLiteral | StringLiteral | BooleanLiteral | DatetimeLiteral;
+};
+
+export type TestOperatorSpec = {
+  type: "operator";
+  operator: string;
+  args?: TestExpressionSpec[];
+};
+
+export type TestTemporalBucketSpec = {
+  unit?: TemporalUnit;
+};
+
+export type TestBinCountSpec = {
+  bins?: number;
+};
+
+export type TestBinWidthSpec = {
+  binWidth?: number;
+};
+
+type TestBinningSpec =
+  | TestTemporalBucketSpec
+  | TestBinCountSpec
+  | TestBinWidthSpec;
+
+export type TestColumnWithBinningSpec = TestColumnSpec & TestBinningSpec;
+
+export type TestBreakoutSpec = TestColumnWithBinningSpec;
+
+export type TestJoinSpec = {
+  source: TestSourceSpec;
+  strategy: JoinStrategy;
+
+  // If not set we will use the suggested join conditions
+  conditions?: TestJoinConditionSpec[];
+};
+
+type TestJoinConditionSpec = {
+  operator: Lib.JoinConditionOperator;
+  left: TestColumnWithBinningSpec | TestExpressionSpec;
+  right: TestColumnWithBinningSpec | TestExpressionSpec;
+};
+
+export type TestOrderBySpec = TestColumnSpec & {
+  direction?: "asc" | "desc";
+};
+
+export type TestStageSpec = {
+  fields?: TestColumnSpec[];
+  expressions?: TestNamedExpressionSpec[];
+  joins?: TestJoinSpec[];
+  filters?: TestFilterSpec[];
+  aggregations?: TestAggregationSpec[];
+  breakouts?: TestBreakoutSpec[];
+  orderBys?: TestOrderBySpec[];
+  limit?: number;
+};
+
+export type TestStageWithSourceSpec = TestStageSpec & {
+  source: TestSourceSpec;
+};
+
+export type TestQuerySpec = {
+  stages: [TestStageWithSourceSpec, ...TestStageSpec[]];
+};
+
+export type TestQuerySpecWithDatabase = TestQuerySpec & {
+  database: DatabaseId;
+};
+
+export type TestTemplateTag = Pick<TemplateTag, "type"> &
+  Partial<Omit<TemplateTag, "dimension" | "type">> & {
+    dimension?: TableId;
+  };
+
+export type TestTemplateTags = Record<string, TestTemplateTag>;
+
+export type TestNativeQuerySpec = {
+  query: string;
+  templateTags?: TestTemplateTags;
+};
+
+export type TestNativeQuerySpecWithDatabase = TestNativeQuerySpec & {
+  database: DatabaseId;
+};

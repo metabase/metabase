@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { c, t } from "ttag";
 
-import FormTextArea from "metabase/common/components/FormTextArea";
+import { FormTextArea } from "metabase/common/components/FormTextArea";
 import { Form, FormProvider, FormSubmitButton } from "metabase/forms";
 import {
   Box,
@@ -79,7 +79,7 @@ export const BugReportModal = ({
                     {t`Include diagnostic information`}
                   </Text>
                   <Text color="text-secondary" w="80%">
-                    {/* eslint-disable-next-line no-literal-metabase-strings -- this is a translation context string, not shown to users */}
+                    {/* eslint-disable-next-line metabase/no-literal-metabase-strings -- this is a translation context string, not shown to users */}
                     {c("{0} is the name of the application, usually 'Metabase'")
                       .t`This information helps ${applicationName} figure out what exactly caused the issue.`}
                   </Text>

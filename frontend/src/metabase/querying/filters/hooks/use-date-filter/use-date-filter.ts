@@ -1,9 +1,8 @@
 import { useMemo } from "react";
 
-import type { DatePickerValue } from "metabase/querying/filters/types";
+import type { DatePickerValue } from "metabase/querying/common/types";
 import {
   getDateFilterClause,
-  getDatePickerOperators,
   getDatePickerUnits,
   getDatePickerValue,
 } from "metabase/querying/filters/utils/dates";
@@ -25,18 +24,12 @@ export function useDateFilter({
   const value = useMemo(() => {
     return filter && getDatePickerValue(query, stageIndex, filter);
   }, [query, stageIndex, filter]);
-
-  const availableOperators = useMemo(() => {
-    return getDatePickerOperators(query, stageIndex, column);
-  }, [query, stageIndex, column]);
-
   const availableUnits = useMemo(() => {
     return getDatePickerUnits(query, stageIndex, column);
   }, [query, stageIndex, column]);
 
   return {
     value,
-    availableOperators,
     availableUnits,
     getFilterClause: (value: DatePickerValue) =>
       getDateFilterClause(column, value),

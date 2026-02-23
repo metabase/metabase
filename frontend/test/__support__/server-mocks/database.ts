@@ -90,7 +90,7 @@ export const setupSchemaEndpoints = (db: Database) => {
 
   schemaNames.forEach((schema) => {
     fetchMock.get(
-      `path:/api/database/${db.id}/schema/${schema}`,
+      `path:/api/database/${db.id}/schema/${encodeURIComponent(schema)}`,
       schemas[schema],
       { name: `database-${db.id}-schema-${schema}` },
     );

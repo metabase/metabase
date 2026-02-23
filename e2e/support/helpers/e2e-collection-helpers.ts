@@ -1,7 +1,6 @@
 import {
   entityPickerModal,
   entityPickerModalLevel,
-  entityPickerModalTab,
   getFullName,
   navigationSidebar,
   popover,
@@ -44,7 +43,7 @@ export function getPersonalCollectionName(
 }
 
 export function openCollectionItemMenu(item: string, index = 0) {
-  // eslint-disable-next-line no-unsafe-element-filtering
+  // eslint-disable-next-line metabase/no-unsafe-element-filtering
   cy.findByTestId("collection-table")
     .findAllByText(item)
     .eq(index)
@@ -79,11 +78,12 @@ export const openUnpinnedItemMenu = (name: string) => {
 };
 
 export const moveOpenedCollectionTo = (newParent: string) => {
+  cy.intercept("GET", "/api/collection/*/items**").as("getCollectionItems");
   openCollectionMenu();
   popover().within(() => cy.findByText("Move").click());
 
+  cy.wait(["@getCollectionItems", "@getCollectionItems"]);
   entityPickerModal().within(() => {
-    cy.findByRole("tab", { name: /Collections/ }).click();
     cy.findByTestId("nested-item-picker").findByText(newParent).click();
     cy.button("Move").click();
   });
@@ -94,16 +94,10 @@ export const moveOpenedCollectionTo = (newParent: string) => {
 export function pickEntity({
   path,
   select,
-  tab,
 }: {
-  path?: string[];
+  path?: (string | RegExp)[];
   select?: boolean;
-  tab?: string;
 }) {
-  if (tab) {
-    entityPickerModalTab(tab).click();
-  }
-
   if (path) {
     cy.findByTestId("nested-item-picker").within(() => {
       for (const [index, name] of path.entries()) {

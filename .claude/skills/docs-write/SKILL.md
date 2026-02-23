@@ -40,7 +40,7 @@ allowed-tools: Read, Write, Grep, Bash, Glob
 
 **Format:**
 
-- Run prettier on the file after making edits: `yarn prettier --write <file-path>`
+- Run prettier on the file after making edits: `bun run prettier --write <file-path>`
 - This ensures consistent formatting across all documentation
 
 ### Common patterns

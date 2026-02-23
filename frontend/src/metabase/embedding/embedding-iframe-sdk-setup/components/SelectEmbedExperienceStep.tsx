@@ -9,7 +9,6 @@ import { useSdkIframeEmbedSetupContext } from "../context";
 import { useHandleExperienceChange } from "../hooks/use-handle-experience-change";
 import type { SdkIframeEmbedSetupExperience } from "../types";
 
-import { AuthenticationSection } from "./Authentication/AuthenticationSection";
 import { EmbeddingUpsell } from "./Common/EmbeddingUpsell";
 
 export const SelectEmbedExperienceStep = () => {
@@ -27,8 +26,6 @@ export const SelectEmbedExperienceStep = () => {
 
   return (
     <>
-      <AuthenticationSection />
-
       <Card p="md" mb="md">
         <Text size="lg" fw="bold" mb="md">
           {t`Select your embed experience`}

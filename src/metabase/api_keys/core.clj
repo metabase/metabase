@@ -9,4 +9,5 @@
  [metabase.api-keys.models.api-key
   generate-key
   is-api-key-user?
-  prefix])
+  prefix
+  create-api-key-with-new-user!])

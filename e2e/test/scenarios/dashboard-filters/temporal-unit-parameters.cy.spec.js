@@ -784,7 +784,7 @@ describe("scenarios > dashboard > temporal unit parameters", () => {
       cy.log("add a temporal unit parameter");
       addTemporalUnitParameter();
       H.selectDashboardFilter(H.getDashboardCard(1), "Created At");
-      // eslint-disable-next-line no-unsafe-element-filtering
+      // eslint-disable-next-line metabase/no-unsafe-element-filtering
       H.undoToastList().last().findByText("Auto-connect").click();
       H.saveDashboard();
 
@@ -823,14 +823,12 @@ describe("scenarios > dashboard > temporal unit parameters", () => {
         cy.findByLabelText("Select all").click();
         cy.findByLabelText("Month").click();
         cy.findByLabelText("Year").click();
-        cy.findByLabelText("Minute").click();
       });
       H.dashboardParametersDoneButton().click();
       H.saveDashboard();
 
       H.filterWidget().click();
       H.popover().within(() => {
-        cy.findByText("Minute").should("not.exist");
         cy.findByText("Day").should("not.exist");
         cy.findByText("Month").should("be.visible");
         cy.findByText("Year").should("be.visible").click();

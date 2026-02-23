@@ -4,6 +4,7 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import CS from "metabase/css/core/index.css";
+import { useTranslateContent } from "metabase/i18n/hooks";
 import { Box, Icon, Text } from "metabase/ui";
 import type Database from "metabase-lib/v1/metadata/Database";
 import type Field from "metabase-lib/v1/metadata/Field";
@@ -62,6 +63,7 @@ export function FieldTrigger({
   database: Database;
   field: Field;
 }) {
+  const tc = useTranslateContent();
   if (!field || !field.table) {
     return <Text>{t`Select...`}</Text>;
   }
@@ -71,21 +73,22 @@ export function FieldTrigger({
   return (
     <div>
       <Box className={DataSelectorS.TextSchema}>
-        {hasMultipleSchemas && field.table.schema_name + " > "}
-        {field.table.display_name}
+        {hasMultipleSchemas && tc(field.table.schema_name) + " > "}
+        {tc(field.table.display_name)}
       </Box>
-      <Text lh="1.2rem">{field.display_name}</Text>
+      <Text lh="1.2rem">{tc(field.display_name)}</Text>
     </div>
   );
 }
 
 export function DatabaseTrigger({ database }: { database: Database }) {
+  const tc = useTranslateContent();
   return database ? (
     <span
       className={cx(CS.textWrap, CS.noDecoration)}
       data-testid="selected-database"
     >
-      {database.name}
+      {tc(database.name)}
     </span>
   ) : (
     <span
@@ -95,12 +98,13 @@ export function DatabaseTrigger({ database }: { database: Database }) {
 }
 
 export function TableTrigger({ table }: { table: Table }) {
+  const tc = useTranslateContent();
   return table ? (
     <span
       className={cx(CS.textWrap, CS.noDecoration)}
       data-testid="selected-table"
     >
-      {table.display_name || table.name}
+      {tc(table.display_name || table.name)}
     </span>
   ) : (
     <span

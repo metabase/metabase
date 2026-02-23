@@ -228,7 +228,11 @@ export function getTestStoreAndWrapper({
  **/
 const GlobalStylesForTest = () => {
   const theme = useMantineTheme();
-  const cssVariables = useMemo(() => getMetabaseCssVariables(theme), [theme]);
+
+  const cssVariables = useMemo(() => {
+    return getMetabaseCssVariables({ theme });
+  }, [theme]);
+
   return <Global styles={[baseStyle, cssVariables]} />;
 };
 
@@ -388,7 +392,8 @@ export const mockOffsetHeightAndWidth = (value = 50) => {
 };
 
 /**
- * jsdom doesn't have getBoundingClientRect, so we need to mock it
+ * jsdom doesn't have getBoundingClientRect, so we need to mock it for any components
+ * with virtualization to work in tests, like the entity picker
  */
 export const mockGetBoundingClientRect = (options: Partial<DOMRect> = {}) => {
   jest
@@ -458,8 +463,8 @@ export function renderWithTheme(children: React.ReactElement) {
   });
 }
 
-// eslint-disable-next-line import/export -- we're intentionally overriding the render function
+// eslint-disable-next-line import/export -- intentionally overriding render from @testing-library/react
 export { renderWithTheme as render };
 
-// eslint-disable-next-line import/export -- we're intentionally overriding the render function
+// eslint-disable-next-line import/export -- intentionally overriding render from @testing-library/react
 export * from "@testing-library/react";

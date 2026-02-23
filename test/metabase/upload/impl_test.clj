@@ -11,6 +11,7 @@
    [metabase.analytics.core :as analytics]
    [metabase.analytics.snowplow-test :as snowplow-test]
    [metabase.driver :as driver]
+   [metabase.driver.connection :as driver.conn]
    [metabase.driver.ddl.interface :as ddl.i]
    [metabase.driver.mysql :as mysql]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
@@ -20,6 +21,7 @@
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.interface :as mi]
+   [metabase.permissions.core :as perms]
    [metabase.permissions.models.data-permissions :as data-perms]
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.query-processor :as qp]
@@ -27,6 +29,7 @@
    [metabase.test :as mt]
    [metabase.test.data.impl :as data.impl]
    [metabase.test.data.sql :as sql.tx]
+   [metabase.upload.db :as upload.db]
    [metabase.upload.impl :as upload]
    [metabase.upload.parsing :as upload-parsing]
    [metabase.upload.types :as upload-types]
@@ -489,12 +492,12 @@
                     (testing "both tables have the same display name"
                       (is (= "Some File Prefix"
                              (:display_name table-1)
-                             (:display_name table-2))
-                          (testing "tables are different between the two uploads"
-                            (is (some? (:id table-1)))
-                            (is (some? (:id table-2)))
-                            (is (not= (:id table-1)
-                                      (:id table-2)))))))))))))))))
+                             (:display_name table-2))))
+                    (testing "tables are different between the two uploads"
+                      (is (some? (:id table-1)))
+                      (is (some? (:id table-2)))
+                      (is (not= (:id table-1)
+                                (:id table-2)))))))))))))))
 
 (defn- query [db-id source-table]
   (qp/process-query {:database db-id
@@ -719,7 +722,7 @@
       (when (driver/upload-type->database-type driver/*driver* :metabase.upload/offset-datetime)
         (with-mysql-local-infile-on-and-off
           (with-redefs [driver/db-default-timezone (constantly "Z")
-                        upload/current-database    (constantly (mt/db))]
+                        upload.db/current-database (constantly (mt/db))]
             (let [transpose  (fn [m] (apply mapv vector m))
                   [csv-strs expected] (transpose [["2022-01-01T12:00:00-07"    "2022-01-01T19:00:00Z"]
                                                   ["2022-01-01T12:00:00-07:00" "2022-01-01T19:00:00Z"]
@@ -1618,7 +1621,7 @@
           (mt/with-report-timezone-id! "UTC"
             (testing "Append should succeed for all possible CSV column types"
               (mt/with-dynamic-fn-redefs [driver/db-default-timezone (constantly "Z")
-                                          upload/current-database    (constantly (mt/db))]
+                                          upload.db/current-database (constantly (mt/db))]
                 (with-upload-table!
                   [table (create-upload-table!
                           {:col->upload-type (columns-with-auto-pk
@@ -1650,7 +1653,7 @@
           (mt/with-report-timezone-id! "UTC"
             (testing "Append should succeed for offset datetime columns"
               (with-redefs [driver/db-default-timezone (constantly "Z")
-                            upload/current-database    (constantly (mt/db))]
+                            upload.db/current-database (constantly (mt/db))]
                 (with-upload-table!
                   [table (create-upload-table!
                           {:col->upload-type (columns-with-auto-pk
@@ -2602,3 +2605,69 @@
       ;; This test ensure drivers always meet any transitive expectations users might have.
       (let [allow-list (driver/allowed-promotions driver/*driver*)]
         (is (= allow-list (or (mt/transitive allow-list) {})))))))
+
+(deftest can-create-upload-with-blocked-table-in-different-schema-test
+  (testing "A user with unrestricted access to the upload schema can upload even if blocked on a table in a different schema"
+    (mt/with-no-data-perms-for-all-users!
+      (mt/with-temp [:model/Database         {db-id :id}             {:engine "h2"  :uploads_enabled true}
+                     :model/Table            {upload-table :id}      {:db_id db-id :schema "upload_schema" :name "UploadTable"}
+                     :model/Table            {blocked-table :id}     {:db_id db-id :schema "other_schema"  :name "BlockedTable"}
+                     :model/PermissionsGroup pg                      {}]
+        (perms/add-user-to-group! (mt/user->id :rasta) pg)
+        (t2/delete! :model/DataPermissions :db_id db-id)
+        ;; Set database-level defaults to blocked
+        (data-perms/set-database-permission! pg db-id :perms/view-data :blocked)
+        (data-perms/set-database-permission! pg db-id :perms/create-queries :no)
+        ;; Grant unrestricted access to the upload schema table
+        (data-perms/set-table-permission! pg upload-table :perms/view-data :unrestricted)
+        (data-perms/set-table-permission! pg upload-table :perms/create-queries :query-builder)
+        ;; Block access to the table in the other schema
+        (data-perms/set-table-permission! pg blocked-table :perms/view-data :blocked)
+        (data-perms/set-table-permission! pg blocked-table :perms/create-queries :no)
+        (let [db (t2/select-one :model/Database db-id)]
+          (mt/with-current-user (mt/user->id :rasta)
+            (testing "can upload to the upload schema"
+              (is (true? (upload/can-create-upload? db "upload_schema"))))
+            (testing "cannot upload to the blocked schema"
+              (is (false? (upload/can-create-upload? db "other_schema"))))))))))
+
+(deftest upload-create-creates-write-pool-test
+  (mt/test-drivers (mt/normal-driver-select {:+parent :sql-jdbc, :+features [:uploads]})
+    (with-uploads-enabled!
+      (let [db-id           (mt/id)
+            write-cache-key [db-id :write-data]]
+        (with-redefs [driver.conn/effective-connection-type
+                      (fn [_database]
+                        (if (= driver.conn/*connection-type* :write-data)
+                          :write-data
+                          :default))]
+          (try
+            (sql-jdbc.conn/invalidate-pool-for-db! (mt/db))
+            (testing "write pool does not exist before upload create"
+              (is (not (contains? @@#'sql-jdbc.conn/pool-cache-key->connection-pool write-cache-key))))
+            (with-upload-table! [_table (create-from-csv-and-sync-with-defaults!)]
+              (testing "write pool is created during upload create"
+                (is (contains? @@#'sql-jdbc.conn/pool-cache-key->connection-pool write-cache-key))))
+            (finally
+              (sql-jdbc.conn/invalidate-pool-for-db! (mt/db)))))))))
+
+(deftest upload-delete-creates-write-pool-test
+  (mt/test-drivers (mt/normal-driver-select {:+parent :sql-jdbc, :+features [:uploads]})
+    (with-uploads-enabled!
+      (let [db-id           (mt/id)
+            write-cache-key [db-id :write-data]]
+        (with-redefs [driver.conn/effective-connection-type
+                      (fn [_database]
+                        (if (= driver.conn/*connection-type* :write-data)
+                          :write-data
+                          :default))]
+          (try
+            (let [table (create-upload-table!)]
+              (sql-jdbc.conn/invalidate-pool-for-db! (mt/db))
+              (testing "write pool does not exist before upload delete"
+                (is (not (contains? @@#'sql-jdbc.conn/pool-cache-key->connection-pool write-cache-key))))
+              (upload/delete-upload! table)
+              (testing "write pool is created during upload delete"
+                (is (contains? @@#'sql-jdbc.conn/pool-cache-key->connection-pool write-cache-key))))
+            (finally
+              (sql-jdbc.conn/invalidate-pool-for-db! (mt/db)))))))))

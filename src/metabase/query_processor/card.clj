@@ -118,7 +118,7 @@
                                           filter-stage-added?))
                                     lib/append-stage)
           query                   (-> query
-                                      ;; don't want default constraints overridding anything that's already there
+                                      ;; don't want default constraints overriding anything that's already there
                                       (m/dissoc-in [:middleware :add-default-userland-constraints?])
                                       (m/assoc-some :constraints (not-empty constraints)
                                                     :parameters  (not-empty (cond-> parameters
@@ -205,7 +205,7 @@
   [{parameter-name :name, :keys [target]}]
   (or
    parameter-name
-   (lib.util.match/match-one target
+   (lib.util.match/match-lite target
      [:template-tag tag-name]
      (name tag-name))))
 

@@ -8,6 +8,7 @@
    [metabase.driver.ddl.interface :as ddl.i]
    [metabase.driver.impl :as driver.impl]
    [metabase.driver.settings :as driver.settings]
+   [metabase.driver.util :as driver.u]
    [metabase.query-processor :as qp]
    [metabase.query-processor.compile :as qp.compile]
    [metabase.sync.task.sync-databases :as task.sync-databases]
@@ -16,7 +17,6 @@
    [metabase.test.data.interface :as tx]
    [metabase.util :as u]
    [metabase.util.json :as json]
-   [metabase.util.log :as log]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -49,19 +49,6 @@
     (is (driver/available? "metabase.driver-test/test-driver")
         "`driver/available?` should work for if `driver` is a string -- see #10135")))
 
-(defn- flatten-connection-properties
-  "Recursively flatten connection properties, extracting all properties from groups.
-  Groups have :type :group and contain a :fields array with nested properties."
-  [props]
-  (mapcat (fn [prop]
-            (if (and (= (:type prop) :group)
-                     (seq (:fields prop)))
-              ;; If it's a group, recursively flatten its fields
-              (flatten-connection-properties (:fields prop))
-              ;; Otherwise, return the property as-is
-              [prop]))
-          props))
-
 (deftest ^:parallel unique-connection-property-test
   ;; abnormal usage here; we are not using the regular mt/test-driver or mt/test-drivers, because those involve
   ;; initializing the driver and test data namespaces, which don't necessarily exist for all drivers (ex:
@@ -69,17 +56,30 @@
 
   ;; so instead, just iterate through all drivers currently set to test by the environment, and check their
   ;; connection-properties; between all the different CI driver runs, this should cover everything
-  (doseq [d (tx.env/test-drivers)]
-    (testing (str d " has entirely unique connection property names")
-      (let [props         (driver/connection-properties d)
-            flattened-props (flatten-connection-properties props)
-            props-by-name (group-by :name flattened-props)]
-        (is (= (count flattened-props) (count props-by-name))
-            (format "Property(s) with duplicate name: %s" (-> (filter (fn [[_ props]]
-                                                                        (> (count props) 1))
-                                                                      props-by-name)
-                                                              vec
-                                                              pr-str)))))))
+  (letfn [(count-named-props [props]
+            ;; Recursively count all properties with :name, including within groups
+            (reduce (fn [acc prop]
+                      (cond
+                        (= :group (:type prop))
+                        (+ acc (count-named-props (:fields prop)))
+
+                        (:name prop)
+                        (inc acc)
+
+                        :else
+                        acc))
+                    0
+                    props))]
+    (doseq [d (tx.env/test-drivers)]
+      (testing (str d " has entirely unique connection property names")
+        (let [props           (driver/connection-properties d)
+              props-by-name   (driver.u/collect-all-props-by-name props)
+              total-props     (count-named-props props)]
+          ;; If there are duplicate names, some will be overwritten in the map,
+          ;; so the map size will be less than the total count of named properties
+          (is (= total-props (count props-by-name))
+              (format "Property(s) with duplicate name: %d total properties but only %d unique names in %s"
+                      total-props (count props-by-name) d)))))))
 
 (deftest supports-schemas-matches-describe-database-test
   (mt/test-drivers (mt/normal-drivers)
@@ -481,52 +481,3 @@
 (deftest deps-flags-when-supported-driver-is-not-covered-test
   (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Database that supports :dependencies/native does not provide an implementation of driver/native-query-deps"
                         (driver/native-query-deps ::mock-deps-driver nil nil))))
-
-(defn- create-index-test-impl! [schema]
-  (let [driver      driver/*driver*
-        suffix      (str (System/currentTimeMillis))
-        table-name  (str "test_table_" suffix)
-        qualified-table-name (keyword schema table-name)
-        index-name  #(str "test_index_" % "_" suffix)
-        database-id (mt/id)
-        cleanup     (fn []
-                      (try
-                        (driver/drop-table! driver database-id qualified-table-name)
-                        (catch Throwable t
-                          (log/fatal t "Could not clean up test table!")
-                          (throw t))))]
-    (when schema
-      (driver/create-schema-if-needed! driver (driver/connection-spec driver database-id) schema))
-    (testing "Throws a driver-specific exception if the table does not exist"
-      (is (thrown? Throwable (driver/create-index! driver database-id schema table-name (index-name "a") [:a]))))
-    (try
-      (driver/create-table! driver database-id qualified-table-name {:a [:int], :b [:int], :c [:int]})
-      (testing "Create a single column index"
-        (is (nil? (driver/create-index! driver database-id schema table-name (index-name "a") [:a])))
-        (testing "Index now exists"
-          (is (= #{{:type       :normal-column-index
-                    :index-name (index-name "a")
-                    :value      "a"}}
-                 (driver/describe-table-indexes driver database-id {:schema schema :name table-name}))))
-        (testing "Drop the index"
-          (is (nil? (driver/drop-index! driver database-id schema table-name (index-name "a"))))
-          (testing "Index no longer exists"
-            (is (empty? (driver/describe-table-indexes driver database-id {:schema schema :name table-name}))))))
-      (testing "Create a multi column index"
-        (driver/create-index! driver database-id schema table-name (index-name "b_c") [:b :c])
-        (testing "Index now exists"
-          ;; single-part only as non-leading columns currently dropped by describe-table-indexes
-          (is (= #{{:type       :normal-column-index
-                    :index-name (index-name "b_c")
-                    :value      "b"}}
-                 (driver/describe-table-indexes driver database-id {:schema schema :name table-name})))))
-      (finally
-        (cleanup)))))
-
-(deftest create-index-test
-  (mt/test-drivers (mt/normal-drivers-with-feature :transforms/index-ddl)
-    (create-index-test-impl! nil)))
-
-(deftest create-index-schema-test
-  (mt/test-drivers (mt/normal-drivers-with-feature :transforms/index-ddl :schemas)
-    (create-index-test-impl! "flibble")))

@@ -17,7 +17,7 @@
 ;; +----------------------------------------------------------------------------------------------------------------+
 
 (defn create-job-execution-listener
-  "Creates an instance of an anonymous JobListener to record exeuction metrics to prometheus."
+  "Creates an instance of an anonymous JobListener to record execution metrics to prometheus."
   ^JobListener [] ; No registry argument needed
   (reify JobListener
     (getName [_]

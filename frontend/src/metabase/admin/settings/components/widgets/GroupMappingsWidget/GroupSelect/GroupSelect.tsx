@@ -3,8 +3,8 @@ import { t } from "ttag";
 
 import { GroupSummary } from "metabase/admin/people/components/GroupSummary";
 import type { GroupIds, UserGroupType } from "metabase/admin/types";
-import PopoverWithTrigger from "metabase/common/components/PopoverWithTrigger";
-import Select from "metabase/common/components/Select";
+import { PopoverWithTrigger } from "metabase/common/components/PopoverWithTrigger";
+import { Select } from "metabase/common/components/Select";
 import CS from "metabase/css/core/index.css";
 import {
   canEditMembership,

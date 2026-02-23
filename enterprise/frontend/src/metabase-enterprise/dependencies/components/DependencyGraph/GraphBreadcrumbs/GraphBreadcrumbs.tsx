@@ -1,6 +1,8 @@
+import cx from "classnames";
 import { Fragment } from "react";
 import { Link } from "react-router";
 
+import CS from "metabase/css/core/index.css";
 import { Box, Group, type GroupProps } from "metabase/ui";
 
 import type { NodeLink } from "../../../types";
@@ -19,7 +21,7 @@ export function GraphBreadcrumbs({ links, ...props }: GraphBreadcrumbsProps) {
           <Fragment key={linkIndex}>
             {linkIndex > 0 && <Box>/</Box>}
             <Box
-              className={S.link}
+              className={cx(S.link, CS.textWrap)}
               component={Link}
               to={link.url}
               target="_blank"

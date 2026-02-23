@@ -208,21 +208,11 @@
      :source/native)              ::none))
 
 (defn- add-source-to-field-ref [query path field-ref col]
-  (let [join-alias (:metabase.lib.join/join-alias col)
-        ;; For implicit joins, use the original column name since that's what exists
-        ;; in the actual database table (#67002).
-        implicit-join? (when join-alias
-                         (when-let [join (m/find-first #(= (:alias %) join-alias)
-                                                       (:joins (get-in query path)))]
-                           (:qp/is-implicit-join join)))
-        source-col-alias (if implicit-join?
-                           ((some-fn :lib/original-name :name) col)
-                           (:lib/source-column-alias col))]
-    (lib/update-options
-     field-ref #(-> %
-                    (assoc ::source-table (source-table query path col)
-                           ::source-alias (escaped-source-alias query path join-alias source-col-alias))
-                    (m/assoc-some ::nfc-path (not-empty (:nfc-path col)))))))
+  (lib/update-options
+   field-ref #(-> %
+                  (assoc ::source-table (source-table query path col)
+                         ::source-alias (escaped-source-alias query path (:metabase.lib.join/join-alias col) (:lib/source-column-alias col)))
+                  (m/assoc-some ::nfc-path (not-empty (:nfc-path col))))))
 
 (defn- fix-field-ref-if-it-should-actually-be-an-expression-ref
   "I feel evil about doing this, since generally this namespace otherwise just ADDs info and does not in any other way
@@ -237,22 +227,19 @@
   [query :- ::lib.schema/query
    path  :- ::lib.walk/path
    stage :- ::lib.schema/stage.mbql]
-  (lib.util.match/replace stage
+  (lib.util.match/replace-lite stage
     ;; don't recurse into the metadata or joins -- [[lib.walk]] will take care of that recursion for us.
-    (_ :guard (constantly (some (set &parents) [:lib/stage-metadata :joins])))
+    (_ :guard (some #{:lib/stage-metadata :joins} &parents))
     &match
 
-    :field
+    [:field & _]
     (let [col (resolve-field-ref query path &match)]
       (-> (add-source-to-field-ref query path &match col)
           (fix-field-ref-if-it-should-actually-be-an-expression-ref col)
           ;; record the column we resolved it to, so we can use this when we add desired aliases in the next pass.
           (lib/update-options assoc ::resolved col)))
 
-    :expression
-    (lib/update-options &match assoc ::source-table ::none)
-
-    :aggregation
+    [#{:expression :aggregation} & _]
     (lib/update-options &match assoc ::source-table ::none)))
 
 (mu/defn- add-desired-aliases-to-aggregations :- ::lib.schema/stage.mbql
@@ -291,9 +278,9 @@
    by-source-alias    :- [:map-of :string [:sequential ::lib.schema.metadata/column]]
    by-expression-name :- [:map-of :string ::lib.schema.metadata/column]
    stage              :- ::lib.schema/stage.mbql]
-  (lib.util.match/replace stage
+  (lib.util.match/replace-lite stage
     ;; don't recurse into the metadata or joins -- [[lib.walk]] will take care of that recursion for us.
-    (_ :guard (constantly (some (set &parents) [:lib/stage-metadata :joins ::resolved])))
+    (_ :guard (some #{:lib/stage-metadata :joins ::resolved} &parents))
     &match
 
     [:field opts _id-or-name]
@@ -428,21 +415,20 @@
                               ;; Sanity check - reject an "other" ref resolved to also come from this join!
                               ;; That creates a broken condition and a Cartesian join.
                               (when (and (= (:lib/source col) :source/joins)
-                                         (= (:source-alias col) (:alias join)))
+                                         (= (lib/current-join-alias col) (:alias join)))
                                 (throw (cartesian-join-condition-exception field-ref)))
                               (add-source-to-field-ref query parent-stage-path field-ref col)))
         update-conditions (fn [conditions]
                             ;; the only kind of ref join conditions can have is a `:field` ref
-                            (lib.util.match/replace conditions
-                              ;; a field ref that comes from THIS join needs to get the desired alias returned
-                              ;; by the last stage of the join to use as its source alias
-                              [:field (_opts :guard #(= (:join-alias %) (:alias join))) _id-or-name]
-                              (update-ref-from-this-join query join-path join &match)
-
-                              ;; a field ref that DOES NOT come from this join should get resolved relative to
-                              ;; the parent stage.
-                              [:field (_opts :guard #(not= (:join-alias %) (:alias join))) _id-or-name]
-                              (update-other-ref &match)))]
+                            (lib.util.match/replace-lite conditions
+                              [:field opts _id-or-name]
+                              (if (= (:join-alias opts) (:alias join))
+                                ;; a field ref that comes from THIS join needs to get the desired alias returned
+                                ;; by the last stage of the join to use as its source alias
+                                (update-ref-from-this-join query join-path join &match)
+                                ;; a field ref that DOES NOT come from this join should get resolved relative to
+                                ;; the parent stage.
+                                (update-other-ref &match))))]
     (try
       (update join :conditions update-conditions)
       (catch Throwable e

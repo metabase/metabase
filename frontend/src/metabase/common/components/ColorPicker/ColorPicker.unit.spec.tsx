@@ -4,7 +4,7 @@ import { useState } from "react";
 
 import { render, screen, within } from "__support__/ui";
 
-import ColorPicker from "./ColorPicker";
+import { ColorPicker } from "./ColorPicker";
 
 const TestColorPicker = () => {
   const [value, setValue] = useState("white");

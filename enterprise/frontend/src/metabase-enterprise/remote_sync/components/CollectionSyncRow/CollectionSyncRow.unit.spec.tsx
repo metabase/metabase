@@ -20,14 +20,12 @@ const createMockCollection = (
 interface SetupOpts {
   collection?: CollectionItem;
   isChecked?: boolean;
-  isLast?: boolean;
   isReadOnly?: boolean;
 }
 
 const setup = ({
   collection = createMockCollection(),
   isChecked = false,
-  isLast = true,
   isReadOnly = false,
 }: SetupOpts = {}) => {
   const onToggle = jest.fn();
@@ -37,7 +35,6 @@ const setup = ({
       collection={collection}
       isChecked={isChecked}
       onToggle={onToggle}
-      isLast={isLast}
       isReadOnly={isReadOnly}
     />,
   );

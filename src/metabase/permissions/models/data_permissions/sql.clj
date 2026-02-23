@@ -104,10 +104,11 @@
             :having   [(perm-condition perm-type required-level (or most-or-least :least))]}])
 
 (def UserInfo
-  "The user-id to use in the visiblity query and their superuser status."
+  "The user-id to use in the visibility query and their superuser status."
   [:map
-   [:user-id       pos-int?]
-   [:is-superuser? :boolean]])
+   [:user-id          pos-int?]
+   [:is-superuser?    :boolean]
+   [:is-data-analyst? {:optional true} :boolean]])
 
 (def PermissionMapping
   "Map of permission-type to either a permission value or tuple of (permission-value, :most/:least) indicating if we want to get the
@@ -120,14 +121,16 @@
 (mu/defn visible-table-filter-select
   "Selects a column from tables that are visible to the provided user given a mapping of permission types to the required value or the required
   value and a directive if we should test against the most or least permissive permission the user has."
-  [select-column                   :- [:enum :id :db_id]
-   {:keys [user-id is-superuser?]} :- UserInfo
-   permission-mapping              :- PermissionMapping]
+  [select-column                                    :- [:enum :id :db_id]
+   {:keys [user-id is-superuser? is-data-analyst?]} :- UserInfo
+   permission-mapping                               :- PermissionMapping]
   {:select [(case select-column
               :id :mt.id
               :db_id :mt.db_id)]
    :from   [[:metabase_table :mt]]
-   :where  (if is-superuser?
+   :where  (if (or is-superuser?
+                   (and is-data-analyst?
+                        (contains? permission-mapping :perms/manage-table-metadata)))
              [:= [:inline 1] [:inline 1]]
              (into [:and]
                    (mapcat (fn [[perm-type perm-level]]
@@ -176,10 +179,13 @@
 
    Uses UNION ALL to separate table-level and database-level permission lookups, avoiding
    inefficient BitmapOr scans that occur with OR joins."
-  [column-or-exp                    :- :any
-   {:keys [user-id is-superuser?]} :- UserInfo
-   permission-mapping               :- PermissionMapping]
-  (if is-superuser?
+  [column-or-exp                                    :- :any
+   {:keys [user-id is-superuser? is-data-analyst?]} :- UserInfo
+   permission-mapping                               :- PermissionMapping]
+  ;; Superusers see all tables. Data analysts see all tables when checking manage-table-metadata.
+  (if (or is-superuser?
+          (and is-data-analyst?
+               (contains? permission-mapping :perms/manage-table-metadata)))
     {:clause [:= [:inline 1] [:inline 1]]}
     (let [perm-types (keys permission-mapping)
           perm-type-filter (into [:or]
@@ -270,11 +276,14 @@
 (mu/defn visible-database-filter-select
   "Selects database IDs that are visible to the provided user given a mapping of permission types to the required value.
    Similar to visible-table-filter-select but for databases."
-  [{:keys [user-id is-superuser?]} :- UserInfo
+  [{:keys [user-id is-superuser? is-data-analyst?]} :- UserInfo
    permission-mapping :- PermissionMapping]
   {:select [:md.id]
    :from [[:metabase_database :md]]
-   :where (if is-superuser?
+   ;; Superusers see all databases. Data analysts see all databases when checking manage-table-metadata.
+   :where (if (or is-superuser?
+                  (and is-data-analyst?
+                       (contains? permission-mapping :perms/manage-table-metadata)))
             [:= [:inline 1] [:inline 1]]
             (into [:and]
                   (mapcat (fn [[perm-type perm-level]]

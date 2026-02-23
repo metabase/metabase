@@ -32,7 +32,9 @@ import type { UserInfo } from "./user";
 import type { CardDisplayType, VisualizationDisplay } from "./visualization";
 import type { SmartScalarComparison } from "./visualization-settings";
 
-export type CardType = "model" | "question" | "metric";
+export const CARD_TYPES = ["model", "question", "metric"] as const;
+export type CardType = (typeof CARD_TYPES)[number];
+
 export type CardDashboardInfo = Pick<Dashboard, "id" | "name">;
 export type CardDocumentInfo = Pick<Document, "id" | "name">;
 
@@ -111,6 +113,7 @@ export interface UnsavedCard<Q extends DatasetQuery = DatasetQuery> {
 
   // Not part of the card API contract, a field used by query builder for showing lineage
   original_card_id?: number;
+  displayIsLocked?: boolean;
 }
 
 export type LineSize = "S" | "M" | "L";
@@ -224,6 +227,10 @@ export type StackValuesDisplay = "total" | "all" | "series";
 export const numericScale = ["linear", "pow", "log"] as const;
 export type NumericScale = (typeof numericScale)[number];
 
+export type BoxPlotWhiskerType = "tukey" | "min-max";
+export type BoxPlotPointsMode = "none" | "outliers" | "all";
+export type BoxPlotShowValuesMode = "median" | "all";
+
 export type XAxisScale = "ordinal" | "histogram" | "timeseries" | NumericScale;
 
 export type YAxisScale = NumericScale;
@@ -268,6 +275,7 @@ export type VisualizationSettings = {
     | "rotate-90";
 
   // Y-axis
+  "graph.y_axis.auto_range"?: boolean;
   "graph.y_axis.title_text"?: string;
   "graph.y_axis.scale"?: YAxisScale;
   "graph.y_axis.axis_enabled"?: boolean;
@@ -313,6 +321,7 @@ export type VisualizationSettings = {
   "scalar.field"?: string;
   "scalar.switch_positive_negative"?: boolean;
   "scalar.compact_primary_number"?: boolean;
+  "scalar.segments"?: ScalarSegment[];
 
   // Pie Settings
   "pie.dimension"?: string | string[];
@@ -336,6 +345,12 @@ export type VisualizationSettings = {
   "sankey.node_align"?: "left" | "right" | "justify";
   "sankey.show_edge_labels"?: boolean;
   "sankey.label_value_formatting"?: "auto" | "full" | "compact";
+
+  // BoxPlot settings
+  "boxplot.whisker_type"?: BoxPlotWhiskerType;
+  "boxplot.points_mode"?: BoxPlotPointsMode;
+  "boxplot.show_mean"?: boolean;
+  "boxplot.show_values_mode"?: BoxPlotShowValuesMode;
 
   // List view settings
   "list.columns"?: ListViewColumns; // set of columns selected for custom list view
@@ -491,4 +506,11 @@ export type ListViewColumns = {
   left: string[];
   right: string[];
   image?: string;
+};
+
+export type ScalarSegment = {
+  min: number | null;
+  max: number | null;
+  color: string;
+  label?: string;
 };

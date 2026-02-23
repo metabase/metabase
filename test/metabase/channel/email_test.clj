@@ -152,7 +152,9 @@
   [user-or-email regex]
   (let [address (if (string? user-or-email) user-or-email (:username (test.users/user->credentials user-or-email)))
         emails  (get @inbox address)]
-    (boolean (some #(re-find regex %) (map (comp :content first :body) emails)))))
+    (boolean (some #(re-find regex %) (map #(if (string? (:body %))
+                                              (:body %)
+                                              (-> % :body first :content)) emails)))))
 
 (deftest regex-email-bodies-test
   (letfn [(email [body] {:to #{"mail"}

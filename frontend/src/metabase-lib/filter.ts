@@ -1,5 +1,4 @@
-import dayjs from "dayjs";
-import type { Moment } from "moment-timezone"; // eslint-disable-line no-restricted-imports -- deprecated usage
+import dayjs, { type Dayjs } from "dayjs";
 
 import * as ML from "cljs/metabase.lib.js";
 import type { CardId } from "metabase-types/api";
@@ -16,6 +15,7 @@ import type {
   ExpressionClause,
   FilterClause,
   FilterOperator,
+  FilterOperatorVariant,
   FilterParts,
   Filterable,
   NumberFilterParts,
@@ -27,17 +27,16 @@ import type {
   TimeFilterParts,
 } from "./types";
 
+export type FilterableColumnsOpts = {
+  includeSensitiveFields?: boolean;
+};
+
 export function filterableColumns(
   query: Query,
   stageIndex: number,
+  opts?: FilterableColumnsOpts,
 ): ColumnMetadata[] {
-  return ML.filterable_columns(query, stageIndex);
-}
-
-export function filterableColumnOperators(
-  column: ColumnMetadata,
-): FilterOperator[] {
-  return ML.filterable_column_operators(column);
+  return ML.filterable_columns(query, stageIndex, opts);
 }
 
 export function filter(
@@ -139,12 +138,7 @@ export function specificDateFilterClause({
   values,
   hasTime,
 }: SpecificDateFilterParts): ExpressionClause {
-  return ML.specific_date_filter_clause(
-    operator,
-    column,
-    values.map((value) => dayjs(value)),
-    hasTime,
-  );
+  return ML.specific_date_filter_clause(operator, column, values, hasTime);
 }
 
 export function specificDateFilterParts(
@@ -152,20 +146,7 @@ export function specificDateFilterParts(
   stageIndex: number,
   filterClause: Filterable,
 ): SpecificDateFilterParts | null {
-  const filterParts = ML.specific_date_filter_parts(
-    query,
-    stageIndex,
-    filterClause,
-  );
-  if (!filterParts) {
-    return null;
-  }
-  return {
-    ...filterParts,
-    values: filterParts.values.map((value: Moment) =>
-      value.local(true).toDate(),
-    ),
-  };
+  return ML.specific_date_filter_parts(query, stageIndex, filterClause);
 }
 
 export function relativeDateFilterClause({
@@ -234,7 +215,7 @@ export function timeFilterParts(
   }
   return {
     ...filterParts,
-    values: filterParts.values.map((value: Moment) => value.toDate()),
+    values: filterParts.values.map((value: Dayjs) => value.toDate()),
   };
 }
 
@@ -363,4 +344,11 @@ export function updateTemporalFilter(
     start,
     end,
   );
+}
+
+export function describeFilterOperator(
+  operator: FilterOperator,
+  variant: FilterOperatorVariant = "default",
+): string {
+  return ML.describe_filter_operator(operator, variant);
 }

@@ -9,8 +9,8 @@ import {
 } from "react";
 import { t } from "ttag";
 
-import EmptyState from "metabase/common/components/EmptyState";
-import Markdown from "metabase/common/components/Markdown";
+import { EmptyState } from "metabase/common/components/EmptyState";
+import { Markdown } from "metabase/common/components/Markdown";
 import { useSelector } from "metabase/lib/redux";
 import type { HelpText } from "metabase/querying/expressions";
 import { getMetadata } from "metabase/selectors/metadata";

@@ -88,7 +88,7 @@
         _           (u/debug "Code:\n-----\n" code-str "\n-----")
         _           (bencode/write-bencode out {:op "eval" :code code-str})
         final-value (atom nil)
-        safe-print (fn [& msg] (when-not *quiet-nrepl-eval* (apply print (map #(str/replace % #"\n$" "") msg)) (flush)))]
+        safe-print (fn [& msg] (when-not *quiet-nrepl-eval* (run! print msg) (flush)))]
     (loop []
       (let [response (->> (bencode/read-bencode in) (walk/postwalk consume))]
         (u/debug "Response:\n-----\n" (with-out-str (pp/pprint response)) "-----")

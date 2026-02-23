@@ -20,7 +20,7 @@
 (use-fixtures :each
   (fn warn-possible-rebuild
     [thunk]
-    (testing "[PRO TIP] If this test fails, you may need to rebuild the bundle with `yarn build-static-viz`\n"
+    (testing "[PRO TIP] If this test fails, you may need to rebuild the bundle with `bun run build-static-viz`\n"
       (thunk))))
 
 (def ^:private pacific-tz "America/Los_Angeles")

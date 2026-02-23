@@ -1,6 +1,7 @@
 (ns metabase-enterprise.dependencies.task.entity-check
   (:require
    [metabase-enterprise.dependencies.findings :as deps.findings]
+   [metabase-enterprise.dependencies.models.analysis-finding :as deps.analysis-finding]
    [metabase-enterprise.dependencies.settings :as deps.settings]
    [metabase-enterprise.dependencies.task-util :as deps.task-util]
    [metabase.premium-features.core :as premium-features]
@@ -9,19 +10,30 @@
 
 (set! *warn-on-reflection* true)
 
+(defn- process-one-batch!
+  "Process one batch of entities. Returns true if the full batch was used."
+  []
+  (-> (reduce (fn [batch-size entity-type]
+                (if (< batch-size 1)
+                  (reduced 0)
+                  (let [processed (deps.findings/analyze-batch! entity-type batch-size)]
+                    (when (pos? processed)
+                      (log/info "Updated" processed "entities of type" entity-type))
+                    (- batch-size processed))))
+              (deps.settings/dependency-entity-check-batch-size)
+              deps.findings/analyzable-entities)
+      (< 1)))
+
 (defn- check-entities!
+  "Process entities, draining all stale entities before returning.
+  Returns true if the full batch was used (more work may remain)."
   []
   (when (premium-features/has-feature? :dependencies)
-    (-> (reduce (fn [batch-size entity-type]
-                  (if (< batch-size 1)
-                    (reduced 0)
-                    (let [processed (deps.findings/analyze-batch! entity-type batch-size)]
-                      (when (pos? processed)
-                        (log/info "Updated" processed "entities of type" entity-type))
-                      (- batch-size processed))))
-                (deps.settings/dependency-entity-check-batch-size)
-                deps.findings/supported-entities)
-        (< 1))))
+    (loop []
+      (let [used-full-batch? (process-one-batch!)]
+        (if (and used-full-batch? (deps.analysis-finding/has-stale-entities?))
+          (recur)
+          used-full-batch?)))))
 
 (declare schedule-next-run!)
 
@@ -56,3 +68,9 @@
         deps.task-util/job-initial-delay
         schedule-next-run!)
     (log/info "Not starting dependency entity check job because the batch size is not positive")))
+
+(defn trigger-entity-check-job!
+  "Trigger the DependencyEntityCheck job to run immediately.
+  Use this when entities have been marked stale and need re-analysis."
+  []
+  (schedule-next-run! 0))

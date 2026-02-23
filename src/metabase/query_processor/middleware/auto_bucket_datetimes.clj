@@ -116,11 +116,12 @@
       :do-not-bucket-reason/not-all-values-are-auto-bucketable)
 
     ;; *  do not autobucket clauses that are updating the time interval
-    (lib.util.match/match-one x
+    (lib.util.match/match-lite x
       [(_tag :guard #{:+ :-})
        _
-       [(_ :guard #{:expression :field}) _ _]
-       [:interval _ _n (unit :guard #{:minute :hour :second})]])
+       [#{:expression :field} _ _]
+       [:interval _ _n (unit :guard #{:minute :hour :second})]]
+      true)
     :do-not-bucket-reason/bucket-between-relative-starting-from
 
     ;; do not auto-bucket clauses inside a `:time-interval` filter: it already supplies its own unit
@@ -148,7 +149,7 @@
 
 (mu/defn- wrap-unbucketed-clauses :- ::lib.schema/stage
   "Add `:temporal-unit` to `:field`s and `:expression`s in breakouts and filters if appropriate; for fields, look
-  at corresponing type information in `field-id->type-info` to see if we should do so. For expressions examine the clause
+  at corresponding type information in `field-id->type-info` to see if we should do so. For expressions examine the clause
   options."
   ;; we only want to wrap clauses in `:breakout` and `:filter` so just make a 3-arg version of this fn that takes the
   ;; name of the clause to rewrite and call that twice
@@ -164,9 +165,9 @@
             {:base-type base-type
              :effective-type (or effective-type base-type)})
           (wrap-clauses [x]
-            (lib.util.match/replace x
+            (lib.util.match/replace-lite x
               ;; don't replace anything that's already bucketed or otherwise is not subject to autobucketing
-              (_ :guard (partial should-not-be-autobucketed? query stage-path))
+              (x :guard (should-not-be-autobucketed? query stage-path x))
               &match
 
               ;; if it's a `:field` clause and `field-id->type-info` tells us it's a `:type/Temporal` (but not
@@ -174,7 +175,7 @@
               [:field _opts (_id-or-name :guard datetime-but-not-time?)]
               (lib/with-temporal-bucket &match :day)
 
-              [:expression (_opts :guard (comp date-or-datetime-clause? expression-opts->type-info)) _name]
+              [:expression (opts :guard (date-or-datetime-clause? (expression-opts->type-info opts))) _name]
               (lib/with-temporal-bucket &match :day)))
           (rewrite-clause [stage clause-to-rewrite]
             (m/update-existing stage clause-to-rewrite wrap-clauses))]
@@ -188,10 +189,10 @@
    {breakouts :breakout, :keys [filters], :as stage} :- ::lib.schema/stage]
   ;; find any breakouts or filters in the query that are just plain `[:field-id ...]` clauses (unwrapped by any other
   ;; clause)
-  (if-let [unbucketed-clauses (lib.util.match/match (cons filters breakouts)
-                                (_clause :guard (partial should-not-be-autobucketed? query stage-path)) nil
-                                :expression                                  &match
-                                :field                                       &match)]
+  (if-let [unbucketed-clauses (lib.util.match/match-many (cons filters breakouts)
+                                (clause :guard (should-not-be-autobucketed? query stage-path clause)) nil
+                                [:expression & _]                                                     &match
+                                [:field & _]                                                          &match)]
     ;; if we found some unbucketed breakouts/filters, fetch the Fields & type info that are referred to by those
     ;; breakouts/filters...
     (let [unbucketed-fields (filter (comp (partial = :field) first) unbucketed-clauses)

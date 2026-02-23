@@ -1,6 +1,5 @@
 import { flexRender } from "@tanstack/react-table";
 import cx from "classnames";
-import { memo } from "react";
 
 import { Flex } from "metabase/ui";
 
@@ -11,14 +10,13 @@ import { getColumnStyle } from "../utils";
 import { HeaderCell } from "./HeaderCell";
 import S from "./TreeTableHeader.module.css";
 
-function TreeTableHeaderInner<TData extends TreeNodeData>({
+export function TreeTableHeader<TData extends TreeNodeData>({
   table,
   columnWidths,
   showCheckboxes,
   classNames,
   styles,
   isMeasured = true,
-  totalContentWidth,
   headerVariant = "pill",
 }: TreeTableHeaderProps<TData>) {
   const headerGroups = table.getHeaderGroups();
@@ -28,8 +26,6 @@ function TreeTableHeaderInner<TData extends TreeNodeData>({
       className={cx(S.header, classNames?.header, {
         [S.measuring]: !isMeasured,
       })}
-      pos="sticky"
-      top={0}
       style={styles?.header}
     >
       {headerGroups.map((headerGroup) => (
@@ -37,7 +33,7 @@ function TreeTableHeaderInner<TData extends TreeNodeData>({
           key={headerGroup.id}
           className={cx(S.headerRow, classNames?.headerRow)}
           w="100%"
-          style={{ minWidth: totalContentWidth, ...styles?.headerRow }}
+          style={styles?.headerRow}
         >
           {showCheckboxes && (
             <Flex
@@ -54,6 +50,7 @@ function TreeTableHeaderInner<TData extends TreeNodeData>({
             const isFirstColumn = index === 0;
 
             const columnStyle = {
+              padding: "0.75rem",
               ...getColumnStyle(columnWidths, column.id, isFirstColumn),
               ...styles?.headerCell,
             };
@@ -68,7 +65,6 @@ function TreeTableHeaderInner<TData extends TreeNodeData>({
                   key={header.id}
                   className={cx(S.cell, classNames?.headerCell)}
                   align="center"
-                  p="0.75rem"
                   style={columnStyle}
                 />
               );
@@ -81,7 +77,6 @@ function TreeTableHeaderInner<TData extends TreeNodeData>({
                 key={header.id}
                 className={cx(S.cell, classNames?.headerCell)}
                 align="center"
-                p="0.75rem"
                 style={columnStyle}
                 role={isSortable ? "columnheader" : undefined}
                 aria-sort={
@@ -112,9 +107,3 @@ function TreeTableHeaderInner<TData extends TreeNodeData>({
     </Flex>
   );
 }
-
-export const TreeTableHeader = memo(TreeTableHeaderInner) as <
-  TData extends TreeNodeData,
->(
-  props: TreeTableHeaderProps<TData>,
-) => JSX.Element;

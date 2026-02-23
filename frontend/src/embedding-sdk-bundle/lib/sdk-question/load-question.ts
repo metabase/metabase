@@ -37,7 +37,9 @@ export const loadQuestionSdk =
   > => {
     const isGuestEmbed = getIsGuestEmbed(getState());
 
-    const isNewQuestion = initQuestionId === "new";
+    const isNewQuestion =
+      initQuestionId === "new" || initQuestionId === "new-native";
+    const isNativeQuestion = initQuestionId === "new-native";
     const questionId = isNewQuestion ? undefined : initQuestionId;
 
     const { card: resolvedCard, originalCard } = await resolveCards({
@@ -47,6 +49,7 @@ export const loadQuestionSdk =
       dispatch,
       getState,
       deserializedCard,
+      questionType: isNativeQuestion ? "native" : "gui",
     });
 
     const card = isNewQuestion

@@ -9,6 +9,91 @@ import {
 const { H } = cy;
 
 describe("scenarios > embedding > sdk iframe embedding > authentication", () => {
+  describe("jwtProviderUri", () => {
+    beforeEach(() => {
+      cy.signInAsAdmin();
+      H.prepareSdkIframeEmbedTest({
+        withToken: "bleeding-edge",
+      });
+
+      cy.intercept("GET", "http://localhost:4000/auth/sso").as("sso");
+      cy.intercept("GET", "http://auth-provider/sso?response=json").as(
+        "ssoProvider",
+      );
+      cy.intercept("GET", "http://localhost:4000/auth/sso?*").as(
+        "tokenInSessionOut",
+      );
+    });
+
+    it("should not skip the first auth request if jwtProviderUri is not given", () => {
+      H.visitCustomHtmlPage(`
+        <!DOCTYPE html>
+          <html>
+          <body>
+            <script src="http://localhost:4000/app/embed.js" ></script>
+            <script>
+              function defineMetabaseConfig(settings) {
+                window.metabaseConfig = settings;
+              }
+            </script>
+            <script>
+              defineMetabaseConfig({
+                "instanceUrl": "http://localhost:4000",
+              });
+            </script>
+            <metabase-dashboard dashboard-id='9' />
+          </body>
+          </html>
+            `);
+
+      cy.wait("@sso");
+      cy.wait("@ssoProvider");
+      cy.wait("@tokenInSessionOut");
+
+      cy.wait("@getDashboard");
+
+      H.getSimpleEmbedIframeContent().should(
+        "contain",
+        "Orders in a dashboard",
+      );
+    });
+
+    it("should skip the first auth request if jwtProviderUri is given", () => {
+      H.visitCustomHtmlPage(`
+        <!DOCTYPE html>
+          <html>
+          <body>
+            <script src="http://localhost:4000/app/embed.js" ></script>
+            <script>
+              function defineMetabaseConfig(settings) {
+                window.metabaseConfig = settings;
+              }
+            </script>
+            <script>
+              defineMetabaseConfig({
+                "instanceUrl": "http://localhost:4000",
+                "jwtProviderUri": "http://auth-provider/sso?response=json",
+              });
+            </script>
+            <metabase-dashboard dashboard-id='9' />
+          </body>
+          </html>
+            `);
+
+      cy.wait("@ssoProvider");
+      cy.wait("@tokenInSessionOut");
+
+      cy.get("@sso.all").should("have.length", 0);
+
+      cy.wait("@getDashboard");
+
+      H.getSimpleEmbedIframeContent().should(
+        "contain",
+        "Orders in a dashboard",
+      );
+    });
+  });
+
   it("cannot login if no auth methods are enabled", () => {
     H.prepareSdkIframeEmbedTest({ enabledAuthMethods: [], signOut: true });
 

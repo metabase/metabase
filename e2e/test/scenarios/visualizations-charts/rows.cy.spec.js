@@ -96,7 +96,7 @@ describe("scenarios > visualizations > rows", () => {
           .realHover()
           .invoke("width")
           .then((newWidth) => {
-            // eslint-disable-next-line no-unsafe-element-filtering
+            // eslint-disable-next-line metabase/no-unsafe-element-filtering
             expect(prevWidth).eq(newWidth);
           });
       });

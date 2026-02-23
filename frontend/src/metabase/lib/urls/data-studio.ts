@@ -281,8 +281,16 @@ export function dataStudioMetricDependencies(cardId: CardId) {
   return `${dataStudioMetric(cardId)}/dependencies`;
 }
 
+export function dataStudioMetricCaching(cardId: CardId) {
+  return `${dataStudioMetric(cardId)}/caching`;
+}
+
 export function dataStudioGlossary() {
   return `${dataStudio()}/glossary`;
+}
+
+export function dataStudioGitSync() {
+  return `${dataStudio()}/git-sync`;
 }
 
 export function dataStudioSnippet(snippetId: NativeQuerySnippetId) {
@@ -297,6 +305,24 @@ export function newDataStudioSnippet() {
   return `${dataStudioLibrary()}/snippets/new`;
 }
 
+export function dataStudioArchivedSnippets() {
+  return `${dataStudioLibrary()}/snippets/archived`;
+}
+
+export function dataStudioWorkspaceList() {
+  return `${ROOT_URL}/workspaces`;
+}
+
+export function dataStudioWorkspace(
+  workspaceId: number,
+  transformId?: number | string,
+) {
+  if (transformId) {
+    return `${dataStudioWorkspaceList()}/${workspaceId}?transformId=${transformId}`;
+  }
+  return `${dataStudioWorkspaceList()}/${workspaceId}`;
+}
+
 export function dataStudioSegment(segmentId: SegmentId) {
   return `${dataStudioLibrary()}/segments/${segmentId}`;
 }
@@ -307,16 +333,4 @@ export function newDataStudioSegment(tableId: TableId) {
 
 export function dataStudioSegmentDependencies(segmentId: SegmentId) {
   return `${dataStudioSegment(segmentId)}/dependencies`;
-}
-
-export function dataStudioDependencyDiagnostics() {
-  return `${ROOT_URL}/dependency-diagnostics`;
-}
-
-export function dataStudioBrokenEntities() {
-  return `${dataStudioDependencyDiagnostics()}/broken`;
-}
-
-export function dataStudioUnreferencedEntities() {
-  return `${dataStudioDependencyDiagnostics()}/unreferenced`;
 }

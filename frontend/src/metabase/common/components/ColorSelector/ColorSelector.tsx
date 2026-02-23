@@ -5,7 +5,7 @@ import type { PillSize } from "metabase/common/components/ColorPill";
 import { ColorPill } from "metabase/common/components/ColorPill";
 import { Center, Popover } from "metabase/ui";
 
-import ColorSelectorPopover from "./ColorSelectorPopover";
+import { ColorSelectorPopover } from "./ColorSelectorPopover";
 
 export type ColorSelectorAttributes = Omit<
   HTMLAttributes<HTMLDivElement>,

@@ -86,7 +86,7 @@ describe("scenarios > dashboard > filters > SQL > simple filter > required ", ()
 
     // Let's make sure the default dashboard filter is respected upon a subsequent visit from the root
     cy.visit("/collection/root");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Required Filters Dashboard").click();
 
     cy.location("search").should("eq", "?text=Bar");

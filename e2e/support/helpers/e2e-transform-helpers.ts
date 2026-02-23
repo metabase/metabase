@@ -2,15 +2,18 @@ import { WRITABLE_DB_ID } from "e2e/support/cypress_data";
 import type {
   Collection,
   CollectionId,
-  ListTransformRunsResponse,
   PythonTransformTableAliases,
+  SchemaName,
   TransformId,
   TransformRun,
+  TransformRunStatus,
+  TransformSourceCheckpointStrategy,
   TransformTagId,
 } from "metabase-types/api";
 
 import { createTransform } from "./api";
 import { getTableId } from "./e2e-qa-databases-helpers";
+import { retryRequest } from "./e2e-request-helpers";
 
 export function createTransformCollection({
   name,
@@ -31,31 +34,42 @@ export function visitTransform(transformId: TransformId) {
   cy.visit(`/data-studio/transforms/${transformId}`);
 }
 
-const WAIT_TIMEOUT = 10000;
-const WAIT_INTERVAL = 100;
+export function runTransform(transformId: TransformId) {
+  return cy.request("POST", `/api/transform/${transformId}/run`);
+}
+
+export function runTransformAndWaitForStatus(
+  transformId: TransformId,
+  status: TransformRunStatus,
+) {
+  return runTransform(transformId).then(({ body: run }) => {
+    return retryRequest(
+      () => cy.request("GET", `/api/transform/run/${run.run_id}`),
+      (response) => response.status === 200 && response.body.status === status,
+    );
+  });
+}
+
+export function runTransformAndWaitForSuccess(transformId: TransformId) {
+  return runTransformAndWaitForStatus(transformId, "succeeded");
+}
+
+export function runTransformAndWaitForFailure(transformId: TransformId) {
+  return runTransformAndWaitForStatus(transformId, "failed");
+}
 
 export function waitForTransformRuns(
   filter: (runs: TransformRun[]) => boolean,
-  timeout = WAIT_TIMEOUT,
-): Cypress.Chainable {
-  return cy
-    .request<ListTransformRunsResponse>("GET", "/api/ee/transform/run")
-    .then((response) => {
-      if (filter(response.body.data)) {
-        return cy.wrap(response);
-      } else if (timeout > 0) {
-        cy.wait(WAIT_INTERVAL);
-        return waitForTransformRuns(filter, timeout - WAIT_INTERVAL);
-      } else {
-        throw new Error("Run retry timeout");
-      }
-    });
+) {
+  return retryRequest(
+    () => cy.request("GET", "/api/transform/run"),
+    ({ body }) => filter(body.data),
+  );
 }
 
 export function waitForSucceededTransformRuns() {
-  waitForTransformRuns(
-    (runs) =>
-      runs.length > 0 && runs.every((run) => run.status === "succeeded"),
+  return waitForTransformRuns((runs) =>
+    runs.some((run) => run.status === "succeeded"),
   );
 }
 
@@ -113,16 +127,22 @@ export function createSqlTransform({
   targetSchema,
   tagIds,
   visitTransform,
+  sourceCheckpointStrategy,
+  name = "SQL transform",
+  wrapId = true,
 }: {
+  name?: string;
   sourceQuery: string;
   targetTable: string;
   targetSchema: string;
   tagIds?: TransformTagId[];
   visitTransform?: boolean;
+  sourceCheckpointStrategy?: TransformSourceCheckpointStrategy;
+  wrapId?: boolean;
 }) {
   return createTransform(
     {
-      name: "SQL transform",
+      name,
       source: {
         type: "query",
         query: {
@@ -132,6 +152,7 @@ export function createSqlTransform({
             query: sourceQuery,
           },
         },
+        "source-incremental-strategy": sourceCheckpointStrategy,
       },
       target: {
         type: "table",
@@ -141,7 +162,7 @@ export function createSqlTransform({
       },
       tag_ids: tagIds,
     },
-    { wrapId: true, visitTransform },
+    { wrapId, visitTransform },
   );
 }
 
@@ -212,8 +233,46 @@ export function createAndRunMbqlTransform({
     visitTransform: false,
   }).then(({ body: transform }) => {
     // Run the transform
-    cy.request("POST", `/api/ee/transform/${transform.id}/run`);
-    // Wait for it to complete successfully
+    runTransformAndWaitForSuccess(transform.id);
+
+    return cy.wrap({
+      transformId: transform.id,
+    });
+  });
+}
+
+/**
+ * Creates a SQL transform and runs it to create a table.
+ * @return: information about the created transform
+ */
+export function createAndRunSqlTransform({
+  sourceQuery,
+  targetTable,
+  targetSchema,
+  tagIds,
+  sourceCheckpointStrategy,
+  name = "Test SQL transform",
+}: {
+  sourceQuery: string;
+  targetTable: string;
+  targetSchema: SchemaName;
+  tagIds?: TransformTagId[];
+  sourceCheckpointStrategy?: TransformSourceCheckpointStrategy;
+  name?: string;
+}): Cypress.Chainable<{
+  transformId: TransformId;
+}> {
+  return createSqlTransform({
+    sourceQuery,
+    targetTable,
+    targetSchema,
+    tagIds,
+    name,
+    sourceCheckpointStrategy,
+    visitTransform: false,
+    wrapId: false,
+  }).then(({ body: transform }) => {
+    cy.request("POST", `/api/transform/${transform.id}/run`);
     waitForSucceededTransformRuns();
 
     return cy.wrap({

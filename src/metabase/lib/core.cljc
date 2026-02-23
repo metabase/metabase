@@ -37,6 +37,7 @@
    [metabase.lib.metadata.column]
    [metabase.lib.metadata.composed-provider :as lib.metadata.composed-provider]
    [metabase.lib.metadata.protocols]
+   [metabase.lib.metadata.result-metadata]
    [metabase.lib.metric :as lib.metric]
    [metabase.lib.native :as lib.native]
    [metabase.lib.normalize :as lib.normalize]
@@ -47,6 +48,7 @@
    [metabase.lib.parameters.parse :as lib.parameters.parse]
    [metabase.lib.parse :as lib.parse]
    [metabase.lib.query :as lib.query]
+   [metabase.lib.query.test-spec :as lib.query.test-spec]
    [metabase.lib.ref :as lib.ref]
    [metabase.lib.remove-replace :as lib.remove-replace]
    [metabase.lib.schema]
@@ -96,6 +98,7 @@
          metabase.lib.metadata.column/keep-me
          lib.metadata.composed-provider/keep-me
          metabase.lib.metadata.protocols/keep-me
+         metabase.lib.metadata.result-metadata/keep-me
          lib.metric/keep-me
          lib.native/keep-me
          lib.normalize/keep-me
@@ -104,6 +107,7 @@
          metabase.lib.parameters/keep-me
          lib.parse/keep-me
          lib.query/keep-me
+         lib.query.test-spec/keep-me
          lib.ref/keep-me
          lib.remove-replace/keep-me
          metabase.lib.schema/keep-me
@@ -160,7 +164,8 @@
   breakouts-metadata
   remove-all-breakouts]
  [metabase.lib.card
-  card->underlying-query]
+  card->underlying-query
+  model-preserved-keys]
  [lib.column-group
   columns-group-columns
   group-columns]
@@ -289,10 +294,8 @@
   filter
   filters
   filterable-columns
-  filterable-column-operators
-  filter-clause
-  filter-operator
   filter-parts
+  describe-filter-operator
   and
   or
   not
@@ -347,6 +350,7 @@
   available-metrics]
  [lib.limit
   current-limit
+  disable-default-limit
   limit
   max-rows-limit]
  [metabase.lib.metadata
@@ -372,6 +376,8 @@
   cached-metadata-provider-with-cache?
   metadata-provider?
   metadata-providerable?]
+ [metabase.lib.metadata.result-metadata
+  normalize-result-metadata-column]
  [lib.native
   add-parameters-for-template-tags
   engine
@@ -386,6 +392,7 @@
   required-native-extras
   native-query-card-ids
   native-query-snippet-ids
+  native-query-table-references
   template-tags-referenced-cards
   template-tags
   with-different-database
@@ -439,6 +446,9 @@
   with-different-table
   with-wrapped-native-query
   wrap-native-query-with-mbql]
+ [lib.query.test-spec
+  test-native-query
+  test-query]
  [lib.ref
   field-ref-id
   field-ref-name
@@ -504,6 +514,7 @@
  [lib.validate
   duplicate-column-error
   find-bad-refs
+  find-bad-refs-with-source
   missing-column-error
   missing-table-alias-error
   syntax-error
@@ -523,3 +534,14 @@
   all-template-tags-id->field-ids
   any-native-stage?
   any-native-stage-not-introduced-by-sandbox?])
+
+#?(:clj
+   (defmacro with-card-clean-hook
+     "Arranges for `hook-fn` to be called during `lib.convert`'s query cleaning process, and executes the `body`
+     as with [[do]].
+
+     The `hook-fn` will be called whenever [[lib.convert/clean]] makes material changes to the query, with
+     `(hook-fn pre-cleaning-query post-cleaning-query)`."
+     [hook-fn & body]
+     `(binding [lib.convert/*card-clean-hook* ~hook-fn]
+        ~@body)))

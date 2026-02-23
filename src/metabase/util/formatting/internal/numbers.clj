@@ -1,5 +1,5 @@
 (ns metabase.util.formatting.internal.numbers
-  "JVM Clojure implementation of the [[core/NumberFormatter]] abstaction."
+  "JVM Clojure implementation of the [[core/NumberFormatter]] abstraction."
   (:require
    [clojure.string :as str]
    [metabase.util.currency :as currency]

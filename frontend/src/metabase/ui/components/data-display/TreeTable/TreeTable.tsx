@@ -1,4 +1,5 @@
 import type { Row } from "@tanstack/react-table";
+import type { VirtualItem } from "@tanstack/react-virtual";
 import cx from "classnames";
 import {
   type KeyboardEvent,
@@ -9,7 +10,12 @@ import {
   useRef,
 } from "react";
 
-import { Box, Center, Flex } from "metabase/ui";
+import {
+  Box,
+  Center,
+  Flex,
+  type TreeTableRowPinnedPosition,
+} from "metabase/ui";
 
 import S from "./TreeTable.module.css";
 import { TreeTableHeader } from "./TreeTableHeader";
@@ -30,6 +36,9 @@ export function TreeTable<TData extends TreeNodeData>({
   isChildrenLoading,
   isRowDisabled,
   getRowProps,
+  getRowHref,
+  renderSubRow,
+  hierarchical = true,
   classNames,
   styles,
   ariaLabel,
@@ -38,6 +47,9 @@ export function TreeTable<TData extends TreeNodeData>({
   const {
     table,
     rows,
+    topPinnedRows,
+    centerRows,
+    bottomPinnedRows,
     virtualRows,
     totalSize,
     virtualizer,
@@ -87,7 +99,7 @@ export function TreeTable<TData extends TreeNodeData>({
     return () => observer.disconnect();
   }, [containerRef, setContainerWidth, showCheckboxes]);
 
-  const hasExpandableNodes = useMemo(
+  const hasExpandableRows = useMemo(
     () => rows.some((row) => row.getCanExpand()),
     [rows],
   );
@@ -111,13 +123,50 @@ export function TreeTable<TData extends TreeNodeData>({
 
   const handleRowClick = useCallback(
     (row: Row<TData>, event: MouseEvent) => {
-      setActiveRowId(row.id);
+      if (!isRowDisabled?.(row)) {
+        setActiveRowId(row.id);
+      }
       onRowClick?.(row, event);
     },
-    [setActiveRowId, onRowClick],
+    [isRowDisabled, onRowClick, setActiveRowId],
   );
 
   const showEmptyState = rows.length === 0 && emptyState;
+
+  const renderRow = (
+    row: Row<TData>,
+    index: number,
+    virtualItemOrPinnedPosition: VirtualItem | TreeTableRowPinnedPosition,
+  ) => (
+    <TreeTableRow<TData>
+      key={row.id}
+      row={row}
+      rowIndex={index}
+      virtualItemOrPinnedPosition={virtualItemOrPinnedPosition}
+      table={table}
+      columnWidths={columnWidths}
+      showCheckboxes={showCheckboxes}
+      showExpandButtons={hasExpandableRows}
+      indentWidth={indentWidth}
+      activeRowId={activeRowId}
+      selectedRowId={selectedRowId}
+      isExpanded={row.getIsExpanded()}
+      canExpand={row.getCanExpand()}
+      measureElement={measureElement}
+      onRowClick={handleRowClick}
+      onRowDoubleClick={onRowDoubleClick}
+      isDisabled={isRowDisabled?.(row)}
+      isChildrenLoading={isChildrenLoading?.(row)}
+      getSelectionState={getSelectionState}
+      onCheckboxClick={onCheckboxClick}
+      classNames={classNames}
+      styles={styles}
+      getRowProps={getRowProps}
+      href={getRowHref?.(row)}
+      renderSubRow={renderSubRow}
+      hierarchical={hierarchical}
+    />
+  );
 
   return (
     <Flex
@@ -146,55 +195,60 @@ export function TreeTable<TData extends TreeNodeData>({
           </Center>
         ) : (
           <>
-            <TreeTableHeader<TData>
-              table={table}
-              columnWidths={columnWidths}
-              showCheckboxes={showCheckboxes}
-              headerVariant={headerVariant}
-              classNames={classNames}
-              styles={styles}
-              isMeasured={isMeasured}
-              totalContentWidth={totalContentWidth}
-            />
+            <Box
+              pos="sticky"
+              top={0}
+              style={{ minWidth: totalContentWidth, zIndex: 1 }}
+            >
+              <TreeTableHeader
+                table={table}
+                columnWidths={columnWidths}
+                showCheckboxes={showCheckboxes}
+                headerVariant={headerVariant}
+                classNames={classNames}
+                styles={styles}
+                isMeasured={isMeasured}
+                totalContentWidth={totalContentWidth}
+              />
+              {topPinnedRows.length > 0 && (
+                <Box
+                  className={classNames?.pinnedTop}
+                  style={{ minWidth: totalContentWidth, ...styles?.pinnedTop }}
+                >
+                  {topPinnedRows.map((row, index) =>
+                    renderRow(row, index, "top"),
+                  )}
+                </Box>
+              )}
+            </Box>
             <Box
               pos="relative"
               style={{ height: totalSize, minWidth: totalContentWidth }}
             >
               {virtualRows.map((virtualItem) => {
-                const row = rows[virtualItem.index];
+                const row = centerRows[virtualItem.index];
                 if (!row) {
                   return null;
                 }
-
-                return (
-                  <TreeTableRow<TData>
-                    key={row.id}
-                    row={row}
-                    rowIndex={virtualItem.index}
-                    virtualItem={virtualItem}
-                    table={table}
-                    columnWidths={columnWidths}
-                    showCheckboxes={showCheckboxes}
-                    showExpandButtons={hasExpandableNodes}
-                    indentWidth={indentWidth}
-                    activeRowId={activeRowId}
-                    selectedRowId={selectedRowId}
-                    isExpanded={row.getIsExpanded()}
-                    canExpand={row.getCanExpand()}
-                    measureElement={measureElement}
-                    onRowClick={handleRowClick}
-                    onRowDoubleClick={onRowDoubleClick}
-                    isDisabled={isRowDisabled?.(row)}
-                    isChildrenLoading={isChildrenLoading?.(row)}
-                    getSelectionState={getSelectionState}
-                    onCheckboxClick={onCheckboxClick}
-                    classNames={classNames}
-                    styles={styles}
-                    getRowProps={getRowProps}
-                  />
-                );
+                const rowIndex = topPinnedRows.length + virtualItem.index;
+                return renderRow(row, rowIndex, virtualItem);
               })}
             </Box>
+
+            {bottomPinnedRows.length > 0 && (
+              <Box
+                pos="sticky"
+                bottom={0}
+                className={classNames?.pinnedBottom}
+                style={{ minWidth: totalContentWidth, ...styles?.pinnedBottom }}
+              >
+                {bottomPinnedRows.map((row, index) => {
+                  const rowIndex =
+                    topPinnedRows.length + centerRows.length + index;
+                  return renderRow(row, rowIndex, "bottom");
+                })}
+              </Box>
+            )}
           </>
         )}
       </Box>

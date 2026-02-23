@@ -69,7 +69,7 @@
     (and (set? val1) (set? val2))
     (set/union val1 val2)
 
-    ;; Booleans should only ever be `:native? true`, but make sure we propogate truthy values
+    ;; Booleans should only ever be `:native? true`, but make sure we propagate truthy values
     (and (boolean? val1) (boolean? val2))
     (or val1 val2)
 
@@ -126,25 +126,25 @@
      (recur (lib/->legacy-MBQL query) parent-source-card-id in-sandbox?)
      ;; already legacy MBQL
      (apply merge-with merge-source-ids
-            (lib.util.match/match query
-              (m :guard (every-pred map? :qp/stage-is-from-source-card))
+            (lib.util.match/match-many query
+              (m :guard (and (map? m) (:qp/stage-is-from-source-card m)))
               (merge-with merge-source-ids
                           (when-not parent-source-card-id
                             {:card-ids #{(:qp/stage-is-from-source-card m)}})
                           (query->source-ids (dissoc m :qp/stage-is-from-source-card) (:qp/stage-is-from-source-card m) in-sandbox?))
 
-              (m :guard (every-pred map? :query-permissions/sandboxed-table))
+              (m :guard (and (map? m) (:query-permissions/sandboxed-table m)))
               (merge-with merge-source-ids
                           {:table-ids #{(:query-permissions/sandboxed-table m)}}
                           (when-not (or parent-source-card-id in-sandbox?)
                             {:table-query-ids #{(:query-permissions/sandboxed-table m)}})
                           (query->source-ids (dissoc m :query-permissions/sandboxed-table :native) parent-source-card-id true))
 
-              (m :guard (every-pred map? :native))
+              {:native (_ :guard identity)}
               (when-not parent-source-card-id
                 {:native? true})
 
-              (m :guard (every-pred map? #(pos-int? (:source-table %))))
+              (m :guard (and (map? m) (pos-int? (:source-table m))))
               (merge-with merge-source-ids
                           {:table-ids #{(:source-table m)}}
                           (when-not (or parent-source-card-id in-sandbox?)
@@ -269,7 +269,7 @@
         (as-> $query (legacy-mbql-required-perms mp $query perms-opts)))))
 
 (defn required-perms-for-query
-  "Returns a map representing the permissions requried to run `query`. The map has the optional keys
+  "Returns a map representing the permissions required to run `query`. The map has the optional keys
   :paths (containing legacy permission paths), :card-ids, :perms/view-data, and :perms/create-queries."
   [query & {:as perms-opts}]
   (if (empty? query)

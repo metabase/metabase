@@ -20,7 +20,10 @@ driver:
                 placeholder: 8082
                 required: true
     - cloud-ip-address-info
-    - ssh-tunnel
+    - group:
+        container-style: ["component", "backdrop"]
+        fields:
+        - ssh-tunnel
     - advanced-options-start
     - name: auth-enabled
       display-name: Authentication header

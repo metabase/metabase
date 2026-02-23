@@ -39,7 +39,7 @@
 ;; effect once the warning is resolved.
 
 (setting/defsetting database-enable-table-editing
-  (i18n/deferred-tru "Whether to enable table data editing for a specific Database.")
+  (i18n/deferred-tru "Whether the Database has table data editing enabled.")
   :default          false
   :feature          :table-data-editing
   :driver-feature   :actions/data-editing

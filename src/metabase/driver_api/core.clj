@@ -56,7 +56,7 @@
    [metabase.settings.core :as setting]
    [metabase.sync.util :as sync-util]
    [metabase.system.core :as system]
-   [metabase.upload.core :as upload]
+   [metabase.upload.db :as upload.db]
    [metabase.warehouse-schema.models.table :as table]
    [potemkin :as p]))
 
@@ -107,7 +107,10 @@
  lib.types.isa/temporal?
  lib.util.match/match
  lib.util.match/match-one
+ lib.util.match/match-lite
+ lib.util.match/match-many
  lib.util.match/replace
+ lib.util.match/replace-lite
  lib/truncate-alias
  lib/->legacy-MBQL
  lib/->metadata-provider
@@ -115,6 +118,7 @@
  lib/match-and-normalize-tag-name
  lib/missing-column-error
  lib/missing-table-alias-error
+ lib/native-query-table-references
  lib/normalize
  lib/order-by-clause
  lib/query-from-legacy-inner-query
@@ -177,7 +181,7 @@
  setting/defsetting
  sync-util/name-for-logging
  system/site-uuid
- upload/current-database)
+ upload.db/current-database)
 
 (defn ^:deprecated current-user
   "Fetch the user making the request."
@@ -185,7 +189,7 @@
   api/*current-user*)
 
 (defn canceled-chan
-  "If this channel is bount you can check if it has received a message
+  "If this channel is bound you can check if it has received a message
   to see if the query has been canceled."
   []
   qp.pipeline/*canceled-chan*)

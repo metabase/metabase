@@ -72,7 +72,7 @@ const propTypes = {
   sidebarError: PropTypes.string,
 };
 
-function DatabasesPermissionsPage({
+function DatabasesPermissionsPageInner({
   sidebar,
   params,
   children,
@@ -182,8 +182,8 @@ function DatabasesPermissionsPage({
   );
 }
 
-DatabasesPermissionsPage.propTypes = propTypes;
+DatabasesPermissionsPageInner.propTypes = propTypes;
 
-export default _.compose(connect(mapStateToProps, mapDispatchToProps))(
-  DatabasesPermissionsPage,
-);
+export const DatabasesPermissionsPage = _.compose(
+  connect(mapStateToProps, mapDispatchToProps),
+)(DatabasesPermissionsPageInner);

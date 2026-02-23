@@ -133,7 +133,10 @@ export default function Gauge({
                       return (
                         arcPath && (
                           <g key={`pie-arc-${index}`}>
-                            <path d={arcPath} fill={colorGetter(arc)} />
+                            <path
+                              d={arcPath}
+                              fill={colorGetter(arc, getColor)}
+                            />
                           </g>
                         )
                       );

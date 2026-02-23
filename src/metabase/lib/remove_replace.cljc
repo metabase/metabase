@@ -90,9 +90,9 @@
         source-uuid->new-column (m/index-by :lib/source-uuid new-columns)]
     (lib.util/update-query-stage
      query-modified stage-number
-     #(lib.util.match/replace
+     #(lib.util.match/replace-lite
         %
-        :field
+        [:field & _]
         (let [old-matching-column (lib.equality/find-matching-column &match old-columns)]
           (if-let [new-column (some-> old-matching-column :lib/source-uuid source-uuid->new-column)]
             (assoc &match 2 ((some-fn :lib/source-column-alias :name) new-column))
@@ -163,10 +163,7 @@
             (remove-stage-references stage-number unmodified-query-for-stage target-uuid)
             (update-stale-references stage-number unmodified-query-for-stage))
 
-        (q :guard (and (vector? q)
-                       (or (= q [:breakout])
-                           (= q [:fields])
-                           (and (= (nth q 0) :joins) (= (nth q 2) :fields) (= (count q) 3)))))
+        (:or [:breakout] [:fields] [:joins _ :fields])
         (-> (remove-stage-references result stage-number unmodified-query-for-stage target-uuid)
             (update-stale-references stage-number unmodified-query-for-stage))
 
@@ -181,7 +178,7 @@
                      (when-let [clauses (get-in stage location)]
                        (->> clauses
                             (keep (fn [clause]
-                                    (lib.util.match/match-lite-recursive clause
+                                    (lib.util.match/match-lite clause
                                       [(op :guard (= op target-op))
                                        (opts :guard (or (empty? target-opts)
                                                         (set/subset? (set target-opts) (set opts))))
@@ -335,8 +332,8 @@
 
 (defn- local-replace-expression-references [stage target-ref-id replacement-ref]
   (let [replace-embedded-refs (fn replace-refs [stage]
-                                (lib.util.match/replace stage
-                                  [:expression _ target-ref-id]
+                                (lib.util.match/replace-lite stage
+                                  [:expression _ (id :guard (= id target-ref-id))]
                                   (-> replacement-ref
                                       fresh-ref)))]
     (replace-embedded-refs stage)))
@@ -377,9 +374,9 @@
   [query next-stage-number [col replaced-col]]
   (let [target-ref-id (:lib/desired-column-alias col)
         replaced-ref (lib.ref/ref (assoc replaced-col :lib/source :source/previous-stage))]
-    (map (fn [target-ref] [target-ref (fresh-ref replaced-ref)])
-         (lib.util.match/match (lib.util/query-stage query next-stage-number)
-           [:field _ target-ref-id] &match))))
+    (mapv (fn [target-ref] [target-ref (fresh-ref replaced-ref)])
+          (lib.util.match/match-many (lib.util/query-stage query next-stage-number)
+            [:field _ (id :guard (= id target-ref-id))] &match))))
 
 (defn- typed-expression
   [query stage-number expression]
@@ -457,17 +454,15 @@
   "Checks if two sets of join conditions are the same. We ignore the current join-aliases as those may be changing,
    and we ignore effective-type since `tweak-expression` above may have already added it, and in this case it will be irrelevant."
   [new-join-alias new-join-conditions join-alias-b join-conditions-b]
-  (let [a-conds (lib.util.match/replace
-                  new-join-conditions
-                  (_ :guard (every-pred map? (comp #{new-join-alias} :join-alias)))
+  (let [a-conds (lib.util.match/replace-lite new-join-conditions
+                  {:join-alias (ja :guard (= ja new-join-alias))}
                   (dissoc &match :join-alias :effective-type)
-                  (_ :guard (every-pred map? :effective-type))
+                  {:effective-type (_ :guard identity)}
                   (dissoc &match :effective-type))
-        b-conds (lib.util.match/replace
-                  join-conditions-b
-                  (_ :guard (every-pred map? (comp #{join-alias-b} :join-alias)))
+        b-conds (lib.util.match/replace-lite join-conditions-b
+                  {:join-alias (ja :guard (= ja join-alias-b))}
                   (dissoc &match :join-alias :effective-type)
-                  (_ :guard (every-pred map? :effective-type))
+                  {:effective-type (_ :guard identity)}
                   (dissoc &match :effective-type))]
     (not (lib.equality/= a-conds b-conds))))
 
@@ -560,8 +555,8 @@
 
 (defn- replace-join-alias
   [a-join old-name new-name]
-  (lib.util.match/replace a-join
-    (field :guard #(field-clause-with-join-alias? % old-name))
+  (lib.util.match/replace-lite a-join
+    (field :guard (field-clause-with-join-alias? field old-name))
     (lib.join/with-join-alias field new-name)))
 
 (defn- rename-join-in-stage

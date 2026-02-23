@@ -30,7 +30,7 @@ Navigate to the **Admin**>**Settings** section of the Admin area, then click on 
 
 Here's a breakdown of each of the settings:
 
-- **JWT Identity Provider URI**: This is where Metabase will redirect login requests. That is, it's where your users go to log in through your identity provider.
+- **JWT Identity Provider URI**: This is where Metabase will redirect login requests. It's where your users go to log in through your identity provider.
 
 - **String Used by the JWT Signing Key**: The string used to seed the private key used to validate JWT messages. Both Metabase and the authentication app should have the same JWT signing key.
 
@@ -103,7 +103,7 @@ Metabase accounts created with an external identity provider login don't have pa
 
 > **Avoid locking yourself out of your Metabase!** This setting will apply to all Metabase accounts, _including your Metabase admin account_. We recommend that you keep password authentication **enabled**. This will safeguard you from getting locked out of Metabase in case of any problems with SSO.
 
-To require people to log in with SSO, disable password authentication from **Admin settings** > **Authentication**.
+To require people to log in with SSO, disable password authentication from **Admin** > **Settings** > **Authentication**.
 
 ![Password disable](images/password-disable.png)
 

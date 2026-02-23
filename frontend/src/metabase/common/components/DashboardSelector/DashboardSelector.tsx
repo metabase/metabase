@@ -3,10 +3,7 @@ import { t } from "ttag";
 
 import { skipToken, useGetDashboardQuery } from "metabase/api";
 import { getErrorMessage } from "metabase/api/utils";
-import {
-  DashboardPickerModal,
-  type DashboardPickerValueItem,
-} from "metabase/common/components/Pickers/DashboardPicker";
+import { DashboardPickerModal } from "metabase/common/components/Pickers/DashboardPicker";
 import { Flex, Group, Icon } from "metabase/ui";
 import type { DashboardId } from "metabase-types/api";
 
@@ -55,7 +52,7 @@ export const DashboardSelector = ({
       </Group>
     );
   }
-  ``;
+
   return (
     <Flex>
       <DashboardPickerButton
@@ -66,19 +63,17 @@ export const DashboardSelector = ({
       </DashboardPickerButton>
       {isOpen && (
         <DashboardPickerModal
-          title={t`Choose a dashboard`}
           value={
             dashboard?.id ? { model: "dashboard", id: dashboard.id } : undefined
           }
-          onChange={(dashboard: DashboardPickerValueItem) => {
+          onChange={(dashboard) => {
             onChange(dashboard.id);
             setIsOpen(false);
           }}
           onClose={() => setIsOpen(false)}
           options={{
-            showPersonalCollections: false,
-            showRootCollection: true,
-            allowCreateNew: false,
+            hasPersonalCollections: false,
+            hasRootCollection: true,
             hasConfirmButtons: false,
           }}
         />

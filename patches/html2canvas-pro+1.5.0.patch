@@ -1,5 +1,5 @@
 diff --git a/node_modules/html2canvas-pro/dist/html2canvas-pro.js b/node_modules/html2canvas-pro/dist/html2canvas-pro.js
-index 86a610e..c74cc94 100644
+index 86a610e..79c8cc6 100644
 --- a/node_modules/html2canvas-pro/dist/html2canvas-pro.js
 +++ b/node_modules/html2canvas-pro/dist/html2canvas-pro.js
 @@ -802,6 +802,7 @@
@@ -10,7 +10,16 @@ index 86a610e..c74cc94 100644
      var Break = /** @class */ (function () {
          function Break(codePoints, lineBreak, start, end) {
              this.codePoints = codePoints;
-@@ -6060,6 +6061,11 @@
+@@ -5347,6 +5348,8 @@
+         function SVGElementContainer(context, img) {
+             var _this = _super.call(this, context, img) || this;
+             var s = new XMLSerializer();
++            // Remove transform to prevent double-application (transform is already accounted for in bounds/positioning)
++            img.style.transform = "none";
+             var bounds = parseBounds(context, img);
+             img.setAttribute('width', bounds.width + "px");
+             img.setAttribute('height', bounds.height + "px");
+@@ -6060,6 +6063,11 @@
              documentClone.write(serializeDoctype(document.doctype) + "<html></html>");
              // Chrome scrolls the parent document for some reason after the write to the cloned window???
              restoreOwnerScroll(this.referenceElement.ownerDocument, scrollX, scrollY);
@@ -22,7 +31,7 @@ index 86a610e..c74cc94 100644
              documentClone.replaceChild(documentClone.adoptNode(this.documentElement), documentClone.documentElement);
              documentClone.close();
              return iframeLoad;
-@@ -6188,6 +6194,11 @@
+@@ -6188,6 +6196,11 @@
                  (!isScriptElement(child) &&
                      !child.hasAttribute(IGNORE_ATTRIBUTE) &&
                      (typeof this.options.ignoreElements !== 'function' || !this.options.ignoreElements(child)))) {
@@ -34,7 +43,7 @@ index 86a610e..c74cc94 100644
                  if (!this.options.copyStyles || !isElementNode(child) || !isStyleElement(child)) {
                      clone.appendChild(this.cloneNode(child, copyStyles));
                  }
-@@ -6464,6 +6475,9 @@
+@@ -6464,6 +6477,9 @@
          var document = body.ownerDocument;
          if (document) {
              var style = document.createElement('style');
@@ -44,7 +53,17 @@ index 86a610e..c74cc94 100644
              style.textContent = styles;
              body.appendChild(style);
          }
-@@ -8570,6 +8584,7 @@
+@@ -6923,7 +6939,8 @@
+             if (this.container.styles.opacity < 1) {
+                 this.effects.push(new OpacityEffect(this.container.styles.opacity));
+             }
+-            if (this.container.styles.transform !== null) {
++            // Skip TransformEffect for SVG elements - their transform is already baked into bounds
++            if (this.container.styles.transform !== null && !(this.container instanceof SVGElementContainer)) {
+                 var offsetX = this.container.bounds.left + this.container.styles.transformOrigin[0].number;
+                 var offsetY = this.container.bounds.top + this.container.styles.transformOrigin[1].number;
+                 var matrix = this.container.styles.transform;
+@@ -8570,6 +8587,7 @@
  
      var html2canvas = function (element, options) {
          if (options === void 0) { options = {}; }

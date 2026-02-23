@@ -1,10 +1,9 @@
 (ns metabase.driver.bigquery-cloud-sdk
-  (:refer-clojure :exclude [mapv some empty? not-empty get-in])
+  (:refer-clojure :exclude [mapv some empty? not-empty])
   (:require
    [clojure.core.async :as a]
    [clojure.set :as set]
    [clojure.string :as str]
-   [macaw.core :as macaw]
    [medley.core :as m]
    [metabase.driver :as driver]
    [metabase.driver-api.core :as driver-api]
@@ -12,34 +11,44 @@
    [metabase.driver.bigquery-cloud-sdk.params :as bigquery.params]
    [metabase.driver.bigquery-cloud-sdk.query-processor :as bigquery.qp]
    [metabase.driver.common.table-rows-sample :as table-rows-sample]
+   [metabase.driver.connection :as driver.conn]
+   [metabase.driver.settings :as driver.settings]
    [metabase.driver.sql :as driver.sql]
    [metabase.driver.sql-jdbc :as driver.sql-jdbc]
    [metabase.driver.sql-jdbc.sync.describe-database :as sql-jdbc.describe-database]
-   [metabase.driver.sql.normalize :as driver.sql.normalize]
    [metabase.driver.sql.query-processor :as sql.qp]
+   [metabase.driver.sql.query-processor.like-escape-char-built-in :as-alias like-escape-char-built-in]
    [metabase.driver.sql.util :as sql.u]
    [metabase.driver.sync :as driver.s]
+   [metabase.driver.util :as driver.u]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [metabase.util.performance :refer [mapv some empty? not-empty get-in]]
+   [metabase.util.performance :refer [mapv some empty? not-empty]]
    ^{:clj-kondo/ignore [:discouraged-namespace]}
    [toucan2.core :as t2])
   (:import
    (clojure.lang PersistentList)
    (com.google.api.gax.rpc FixedHeaderProvider)
+   (com.google.auth.oauth2 ImpersonatedCredentials ServiceAccountCredentials)
+   (com.google.cloud Identity Role)
    (com.google.cloud.bigquery
+    Acl Acl$Role Acl$User
     BigQuery
+    BigQuery$DatasetDeleteOption
     BigQuery$DatasetListOption
+    BigQuery$DatasetOption
+    BigQuery$IAMOption
     BigQuery$JobOption
     BigQuery$QueryResultsOption
     BigQuery$TableDataListOption
     BigQuery$TableOption
     BigQueryException
-    BigQueryOptions
+    BigQueryOptions BigQueryOptions$Builder
     Dataset
+    DatasetId DatasetInfo
     Field
     Field$Mode
     FieldValue
@@ -53,13 +62,20 @@
     TableDefinition$Type
     TableId
     TableResult)
+   (com.google.cloud.http HttpTransportOptions)
+   (com.google.cloud.iam.admin.v1 IAMClient IAMSettings)
+   (com.google.cloud.resourcemanager.v3 ProjectsClient ProjectsSettings)
    (com.google.common.collect ImmutableMap)
    (com.google.gson JsonParser)
+   (com.google.iam.admin.v1 CreateServiceAccountRequest DeleteServiceAccountRequest ServiceAccount)
+   (com.google.iam.v1 Binding Policy SetIamPolicyRequest GetIamPolicyRequest)
+   (java.io ByteArrayInputStream)
    (java.util Iterator)))
 
 (set! *warn-on-reflection* true)
 
-(driver/register! :bigquery-cloud-sdk, :parent :sql)
+(driver/register! :bigquery-cloud-sdk, :parent #{:sql
+                                                 ::like-escape-char-built-in/like-escape-char-built-in})
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                     Client                                                     |
@@ -76,15 +92,34 @@
 
 (mu/defn- database-details->client
   ^BigQuery [details :- :map]
-  (let [creds   (bigquery.common/database-details->service-account-credential details)
-        mb-version (:tag driver-api/mb-version-info)
-        run-mode   (name driver-api/run-mode)
-        user-agent (format "Metabase/%s (GPN:Metabase; %s)" mb-version run-mode)
+  (let [base-creds   (bigquery.common/database-details->service-account-credential details)
+        ;; Check if we should impersonate a different service account
+        ;; ImpersonatedCredentials automatically refreshes tokens before expiration,
+        ;; so the 1-hour lifetime is just the initial token validity period.
+        ;; Each query creates a fresh client, and the credentials handle refresh internally.
+        final-creds  (if-let [target-sa (:impersonate-service-account details)]
+                       (do
+                         (log/debugf "Creating impersonated credentials for service account: %s" target-sa)
+                         (ImpersonatedCredentials/create
+                          (.createScoped base-creds bigquery-scopes)
+                          target-sa
+                          nil  ;; delegates (not needed)
+                          (java.util.ArrayList. bigquery-scopes)
+                          3600))  ;; 1 hour token lifetime
+                       (.createScoped base-creds bigquery-scopes))
+        mb-version   (:tag driver-api/mb-version-info)
+        run-mode     (name driver-api/run-mode)
+        user-agent   (format "Metabase/%s (GPN:Metabase; %s)" mb-version run-mode)
         header-provider (FixedHeaderProvider/create
                          (ImmutableMap/of "user-agent" user-agent))
-        bq-bldr (doto (BigQueryOptions/newBuilder)
-                  (.setCredentials (.createScoped creds bigquery-scopes))
-                  (.setHeaderProvider header-provider))]
+        read-timeout-ms driver.settings/*query-timeout-ms*
+        transport-options (-> (HttpTransportOptions/newBuilder)
+                              (.setReadTimeout read-timeout-ms)
+                              (.build))
+        bq-bldr      (doto (BigQueryOptions/newBuilder)
+                       (.setCredentials final-creds)
+                       (.setHeaderProvider header-provider)
+                       (.setTransportOptions transport-options))]
     (when-let [host (not-empty (:host details))]
       (.setHost bq-bldr host))
     (.. bq-bldr build getService)))
@@ -152,8 +187,10 @@
     (.getTable client dataset-id table-id empty-table-options)))
 
 (mu/defn- get-table :- (driver-api/instance-of-class Table)
-  (^Table [{{:keys [project-id]} :details, :as database} dataset-id table-id]
-   (get-table (database-details->client (:details database)) project-id dataset-id table-id))
+  (^Table [database dataset-id table-id]
+   (let [details    (driver.conn/effective-details database)
+         project-id (:project-id details)]
+     (get-table (database-details->client details) project-id dataset-id table-id)))
 
   (^Table [^BigQuery client :- (driver-api/instance-of-class BigQuery)
            project-id       :- [:maybe driver-api/schema.common.non-blank-string]
@@ -162,8 +199,9 @@
    (get-table* client project-id dataset-id table-id)))
 
 (defmethod driver/table-exists? :bigquery-cloud-sdk
-  [_ {:keys [details] :as _database} {table-id :name, dataset-id :schema :as _table}]
-  (let [client     (database-details->client details)
+  [_ database {table-id :name, dataset-id :schema :as _table}]
+  (let [details    (driver.conn/effective-details database)
+        client     (database-details->client details)
         project-id (get-project-id details)]
     (boolean
      (get-table* client project-id dataset-id table-id))))
@@ -191,7 +229,8 @@
 
 (defn- describe-database-tables
   [driver database]
-  (let [project-id (get-project-id (:details database))
+  (let [details       (driver.conn/effective-details database)
+        project-id    (get-project-id details)
         query-dataset (fn [dataset-id]
                         (query-honeysql
                          driver
@@ -215,7 +254,7 @@
                                 ;; Maybe this is something we can do once we can parse sql
                                 (= "BASE TABLE" table-type)
                                 require-partition-filter))})]
-    (->> (list-datasets (:details database) :logging-schema-exclusions? true)
+    (->> (list-datasets details :logging-schema-exclusions? true)
          (eduction (mapcat (fn [dataset-id] (eduction (map #(table-info dataset-id %)) (query-dataset dataset-id))))))))
 
 (defmethod driver/describe-database* :bigquery-cloud-sdk
@@ -441,8 +480,9 @@
 
 (defmethod driver/describe-fields :bigquery-cloud-sdk
   [driver database & {:keys [schema-names table-names]}]
-  (let [project-id (get-project-id (:details database))
-        dataset-ids (or schema-names (list-datasets (:details database)))]
+  (let [details     (driver.conn/effective-details database)
+        project-id  (get-project-id details)
+        dataset-ids (or schema-names (list-datasets details))]
 
     ;; The contract of [[driver/describe-fields]] requires results ordered by:
     ;; `table-schema`, `table-name`, `database-position`
@@ -602,7 +642,7 @@
     (throw-invalid-query t sql parameters)))
 
 (defn- effective-query-timezone-id [database]
-  (if (get-in database [:details :use-jvm-timezone])
+  (if (:use-jvm-timezone (driver.conn/effective-details database))
     (driver-api/system-timezone-id)
     "UTC"))
 
@@ -698,22 +738,23 @@
   ;; - Waiting for the cancel-chan to get either a cancel message or to be closed.
   ;; - Running the BigQuery execution in another thread, since it's blocking.
   (let [^BigQuery client (database-details->client database-details)
-        result-promise (promise)
-        request (build-bigquery-request sql parameters)
-        job (.create client (JobInfo/of request) (u/varargs BigQuery$JobOption))
-        job-id (.getJobId job)
-        query-future (future
-                       ;; ensure the classloader is available within the future.
-                       (driver-api/the-classloader)
-                       (try
-                         (*page-callback*)
-                         (let [result-options (if *page-size* [(BigQuery$QueryResultsOption/pageSize *page-size*)] [])
-                               result (.getQueryResults job (u/varargs BigQuery$QueryResultsOption result-options))]
-                           (if result
-                             (deliver result-promise [:ready result])
-                             (throw (ex-info "Null response from query" {}))))
-                         (catch Throwable t
-                           (deliver result-promise [:error t]))))]
+        result-promise   (promise)
+        request          (build-bigquery-request sql parameters)
+        _                (driver.conn/track-connection-acquisition! database-details)
+        job              (.create client (JobInfo/of request) (u/varargs BigQuery$JobOption))
+        job-id           (.getJobId job)
+        query-future     (future
+                           ;; ensure the classloader is available within the future.
+                           (driver-api/the-classloader)
+                           (try
+                             (*page-callback*)
+                             (let [result-options (if *page-size* [(BigQuery$QueryResultsOption/pageSize *page-size*)] [])
+                                   result         (.getQueryResults job (u/varargs BigQuery$QueryResultsOption result-options))]
+                               (if result
+                                 (deliver result-promise [:ready result])
+                                 (throw (ex-info "Null response from query" {}))))
+                             (catch Throwable t
+                               (deliver result-promise [:error t]))))]
 
     ;; This `go` is responsible for cancelling the *initial* job execution.
     ;; Future pages may still not be fetched and so the reducer needs to check `cancel-chan` as well.
@@ -745,13 +786,14 @@
   {:pre [(map? database) (map? (:details database))]}
   ;; automatically retry the query if it times out or otherwise fails. This is on top of the auto-retry added by
   ;; `execute`
-  (let [thunk (fn []
-                (execute-bigquery
-                 respond
-                 (:details database)
-                 sql
-                 parameters
-                 cancel-chan))]
+  (let [details (driver.conn/effective-details database)
+        thunk   (fn []
+                  (execute-bigquery
+                   respond
+                   details
+                   sql
+                   parameters
+                   cancel-chan))]
     (try
       (thunk)
       (catch Throwable e
@@ -765,7 +807,7 @@
   (let [database (driver-api/database (driver-api/metadata-provider))]
     (binding [bigquery.common/*bigquery-timezone-id* (effective-query-timezone-id database)]
       (log/tracef "Running BigQuery query in %s timezone" bigquery.common/*bigquery-timezone-id*)
-      (let [sql (if (get-in database [:details :include-user-id-and-hash] true)
+      (let [sql (if (:include-user-id-and-hash (driver.conn/effective-details database) true)
                   (str "-- " (driver-api/query->remark :bigquery-cloud-sdk outer-query) "\n" sql)
                   sql)]
         (*process-native* respond database sql params (driver-api/canceled-chan))))))
@@ -775,6 +817,7 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 (doseq [[feature supported?] {:convert-timezone                 true
+                              :create-or-replace-table          true
                               :database-routing                 true
                               :datetime-diff                    true
                               :describe-fields                  true
@@ -801,7 +844,9 @@
                               :set-timezone                     true
                               :split-part                       true
                               :transforms/python                true
-                              :transforms/table                 true}]
+                              :transforms/table                 true
+                              ;; Workspace isolation using service account impersonation
+                              :workspace                        false}]
   (defmethod driver/database-supports? [:bigquery-cloud-sdk feature] [_driver _feature _db] supported?))
 
 ;; BigQuery is always in UTC
@@ -841,27 +886,33 @@
       ;; duplicated tables with nil schema. Happily only in the "dataset-id" schema and not all schemas. But just
       ;; leave them with nil schemas and they will get deactivated in sync.
       (catch Exception _e))
-    (let [updated-db (-> (assoc-in database [:details :dataset-filters-type] "inclusion")
-                         (assoc-in [:details :dataset-filters-patterns] dataset-id)
-                         (m/dissoc-in [:details :dataset-id]))]
-      (t2/update! :model/Database db-id {:details (:details updated-db)})
-      updated-db)))
+    (let [updated-details (-> (driver.conn/default-details database)
+                              (assoc :dataset-filters-type "inclusion")
+                              (assoc :dataset-filters-patterns dataset-id)
+                              (dissoc :dataset-id))]
+      (t2/update! :model/Database db-id {:details updated-details})
+      (assoc database :details updated-details))))
 
 ;; TODO: THIS METHOD SHOULD NOT BE UPDATING THE APP-DB (which it does in [convert-dataset-id-to-filters!])
 ;; Issue: https://github.com/metabase/metabase/issues/39392
+;; NOTE: This normalize is a legacy migration (OAuth -> service-account, dataset-id -> filters).
+;; write-data-details is a new feature and will never contain these legacy fields, so we only
+;; normalize the primary details here. The convert-dataset-id-to-filters! function has DB write
+;; side effects that are specific to the primary details.
 (defmethod driver/normalize-db-details :bigquery-cloud-sdk
-  [_driver {:keys [details] :as database}]
-  (when-not (empty? (filter some? ((juxt :auth-code :client-id :client-secret) details)))
-    (log/errorf (str "Database ID %d, which was migrated from the legacy :bigquery driver to :bigquery-cloud-sdk, has"
-                     " one or more OAuth style authentication scheme parameters saved to db-details, which cannot"
-                     " be automatically migrated to the newer driver (since it *requires* service-account-json instead);"
-                     " this database must therefore be updated by an administrator (by adding a service-account-json)"
-                     " before sync and queries will work again")
-                (u/the-id database)))
-  (if-let [dataset-id (get details :dataset-id)]
-    (when-not (str/blank? dataset-id)
-      (convert-dataset-id-to-filters! database dataset-id))
-    database))
+  [_driver database]
+  (let [details (driver.conn/default-details database)]
+    (when-not (empty? (filter some? ((juxt :auth-code :client-id :client-secret) details)))
+      (log/errorf (str "Database ID %d, which was migrated from the legacy :bigquery driver to :bigquery-cloud-sdk, has"
+                       " one or more OAuth style authentication scheme parameters saved to db-details, which cannot"
+                       " be automatically migrated to the newer driver (since it *requires* service-account-json instead);"
+                       " this database must therefore be updated by an administrator (by adding a service-account-json)"
+                       " before sync and queries will work again")
+                  (u/the-id database)))
+    (if-let [dataset-id (get details :dataset-id)]
+      (when-not (str/blank? dataset-id)
+        (convert-dataset-id-to-filters! database dataset-id))
+      database)))
 
 (defmethod driver/prettify-native-form :bigquery-cloud-sdk
   [_ native-form]
@@ -872,10 +923,10 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 (defn- get-table-str [table]
-  (let [table-str (if (namespace table)
-                    (format "%s.%s" (namespace table) (name table))
-                    (name table))]
-    (sql.u/quote-name :bigquery-cloud-sdk :table table-str)))
+  (let [qn #(sql.u/quote-name :bigquery-cloud-sdk :table %)]
+    (if (namespace table)
+      (format "%s.%s" (qn (namespace table)) (qn (name table)))
+      (qn (name table)))))
 
 (defmethod driver/compile-transform :bigquery-cloud-sdk
   [_driver {:keys [query output-table]}]
@@ -898,13 +949,17 @@
 
 (defmethod driver/create-table! :bigquery-cloud-sdk
   [driver database-id table-name column-definitions & {:keys [primary-key]}]
-  (let [sql (#'driver.sql-jdbc/create-table!-sql driver table-name column-definitions :primary-key primary-key)]
-    (driver/execute-raw-queries! driver (t2/select-one :model/Database database-id) [sql])))
+  (let [sql       (#'driver.sql-jdbc/create-table!-sql driver table-name column-definitions :primary-key primary-key)
+        database  (t2/select-one :model/Database database-id)
+        conn-spec (driver/connection-spec driver database)]
+    (driver/execute-raw-queries! driver conn-spec [sql])))
 
 (defmethod driver/drop-table! :bigquery-cloud-sdk
   [driver database-id table-name]
-  (let [sql (driver/compile-drop-table driver table-name)]
-    (driver/execute-raw-queries! driver (t2/select-one :model/Database database-id) [sql])))
+  (let [sql       (driver/compile-drop-table driver table-name)
+        database  (t2/select-one :model/Database database-id)
+        conn-spec (driver/connection-spec driver database)]
+    (driver/execute-raw-queries! driver conn-spec [sql])))
 
 (defn- convert-value-for-insertion
   [base-type value]
@@ -953,9 +1008,10 @@
 (defmethod driver/insert-from-source! [:bigquery-cloud-sdk :rows]
   [_driver db-id {table-name :name :keys [columns]} {:keys [data]}]
   (let [col-names (map :name columns)
-        {:keys [details]} (t2/select-one :model/Database db-id)
+        database  (t2/select-one :model/Database db-id)
+        details   (driver.conn/effective-details database)
 
-        client (database-details->client details)
+        client     (database-details->client details)
         project-id (get-project-id details)
 
         dataset-id (namespace table-name)
@@ -969,18 +1025,22 @@
         (doseq [^java.util.Map row chunk]
           (.addRow insert-request-builder (InsertAllRequest$RowToInsert/of row)))
         (let [insert-request (.build insert-request-builder)
-              response (.insertAll client insert-request)]
+              response       (.insertAll client insert-request)]
           (when (.hasErrors response)
             (let [errors (.getInsertErrors response)]
               (throw (ex-info "BigQuery insert failed"
                               {:errors (into [] (map str errors))})))))))))
 
 (defmethod driver/execute-raw-queries! :bigquery-cloud-sdk
-  [_driver connection-details queries]
-  ;; connection-details is either database details directly (from transforms)
-  ;; or a database map with :details key (from other contexts)
-  (let [details (get connection-details :details connection-details)
-        client (database-details->client details)]
+  [driver conn-spec queries]
+  ;; conn-spec should be flat details (from driver/connection-spec)
+  ;; Defensive: multiple callsites used to pass in a database map. If the map has
+  ;; :details key, we will call driver/connection-spec on it.
+  (let [details (if (:details conn-spec)
+                  (driver/connection-spec driver conn-spec)
+                  conn-spec)
+        client  (database-details->client details)]
+    (driver.conn/track-connection-acquisition! details)
     (try
       (doall
        (for [query queries]
@@ -1002,47 +1062,38 @@
   (let [qualified-name (if schema
                          (keyword schema name)
                          (keyword name))
-        drop-sql (first (driver/compile-drop-table driver qualified-name))]
-    (driver/execute-raw-queries! driver database [drop-sql])
+        drop-sql       (first (driver/compile-drop-table driver qualified-name))
+        conn-spec      (driver/connection-spec driver database)]
+    (driver/execute-raw-queries! driver conn-spec [drop-sql])
     nil))
 
 (defmethod driver/connection-spec :bigquery-cloud-sdk
   [_driver database]
-  ;; Return the database details directly since we don't use a JDBC spec for bigquery
-  (:details database))
+  (driver.conn/effective-details database))
 
 (defmethod driver.sql/default-schema :bigquery-cloud-sdk
   [_]
   nil)
 
-(mu/defmethod driver/native-query-deps :bigquery-cloud-sdk :- ::driver/native-query-deps
-  [driver :- :keyword
-   query  :- :metabase.lib.schema/native-only-query]
-  (let [db-tables (driver-api/tables query)
-        transforms (t2/select [:model/Transform :id :target])]
-    (into #{} (comp
-               (map :component)
-               (map #(assoc % :table (driver.sql.normalize/normalize-name driver (:table %))))
-               (map #(let [parts (str/split (:table %) #"\.")]
-                       {:schema (first parts) :table (second parts)}))
-               (keep #(driver.sql/find-table-or-transform driver db-tables transforms %)))
-          (-> query
-              driver-api/raw-native-query
-              macaw/parsed-query
-              macaw/query->components
-              :tables))))
-
 (defmethod driver/create-schema-if-needed! :bigquery-cloud-sdk
   [driver conn-spec schema]
-  (let [sql [[(format "CREATE SCHEMA IF NOT EXISTS `%s`;" schema)]]]
-    (driver/execute-raw-queries! driver conn-spec sql)))
+  ;; Check if dataset exists using the BigQuery API before trying to create.
+  ;; This is important for workspace isolation where the impersonated SA has
+  ;; access to an existing isolated dataset but cannot create new datasets.
+  (let [client     (database-details->client conn-spec) ;; for bigquery, connection spec *is* the details
+        project-id (get-project-id conn-spec)
+        dataset-id (DatasetId/of project-id schema)]
+    (when-not (.getDataset client dataset-id (u/varargs BigQuery$DatasetOption))
+      ;; Dataset doesn't exist, try to create it
+      (let [sql [[(format "CREATE SCHEMA IF NOT EXISTS `%s`;" schema)]]]
+        (driver/execute-raw-queries! driver conn-spec sql)))))
 
 (defmethod driver/schema-exists? :bigquery-cloud-sdk
   [_driver db-id schema]
   (driver-api/with-metadata-provider db-id
     (->> (driver-api/metadata-provider)
          driver-api/database
-         :details
+         driver.conn/effective-details
          list-datasets
          (some #{schema}))))
 
@@ -1050,3 +1101,418 @@
   [_driver]
   ;; https://cloud.google.com/bigquery/docs/tables
   1024)
+
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                           Workspace Isolation                                                  |
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; BigQuery workspace isolation uses service account impersonation instead of SQL GRANT statements.
+;;; Each workspace gets its own service account (created automatically) with table-level read permissions.
+;;;
+;;; Required GCP setup for the main service account:
+;;; - Roles: `roles/bigquery.admin`, `roles/iam.serviceAccountAdmin`, `roles/resourcemanager.projectIamAdmin`
+;;; - APIs: `bigquery.googleapis.com`, `iam.googleapis.com`, `cloudresourcemanager.googleapis.com`
+
+(defn- ws-service-account-credentials
+  "Parse ServiceAccountCredentials from database details."
+  ^ServiceAccountCredentials [{:keys [service-account-json]}]
+  (ServiceAccountCredentials/fromStream
+   (ByteArrayInputStream. (.getBytes ^String service-account-json))))
+
+(defn- ws-database-details->client
+  "Create a BigQuery client from database details for workspace isolation."
+  ^BigQuery [details]
+  (let [creds (.createScoped (ws-service-account-credentials details)
+                             (doto (java.util.ArrayList.)
+                               (.add "https://www.googleapis.com/auth/bigquery")))]
+    (-> (BigQueryOptions/newBuilder)
+        ^BigQueryOptions$Builder (.setCredentials creds)
+        ^BigQueryOptions (.build)
+        (.getService))))
+
+(defn- ws-database-details->iam-client
+  "Create an IAM Admin client from database details."
+  ^IAMClient [details]
+  (let [creds (.createScoped (ws-service-account-credentials details)
+                             (doto (java.util.ArrayList.)
+                               (.add "https://www.googleapis.com/auth/cloud-platform")))]
+    (IAMClient/create
+     (-> (IAMSettings/newBuilder)
+         (.setCredentialsProvider (reify com.google.api.gax.core.CredentialsProvider
+                                    (getCredentials [_] creds)))
+         ^IAMSettings (.build)))))
+
+(defn- ws-service-account-id
+  "Generate the service account ID for a workspace (max 30 chars, lowercase, alphanumeric + hyphens)."
+  [workspace]
+  ;; Format: mb-ws-{workspace-id} truncated to 30 chars
+  (let [ws-id (str (:id workspace))
+        sa-id (str "mb-ws-" ws-id)]
+    (-> sa-id
+        (subs 0 (min 30 (count sa-id)))
+        u/lower-case-en)))
+
+(defn- ws-service-account-exists?
+  "Check if a service account exists."
+  [^IAMClient iam-client ^String project-id ^String sa-email]
+  (try
+    (.getServiceAccount iam-client (format "projects/%s/serviceAccounts/%s" project-id sa-email))
+    true
+    (catch com.google.api.gax.rpc.NotFoundException _
+      false)))
+
+(defn- ws-create-service-account!
+  "Create a service account for a workspace if it doesn't exist.
+   Returns the service account email."
+  [^IAMClient iam-client ^String project-id workspace]
+  (let [sa-id        (ws-service-account-id workspace)
+        sa-email     (format "%s@%s.iam.gserviceaccount.com" sa-id project-id)
+        project-name (format "projects/%s" project-id)]
+    ;; Check if already exists first
+    (if (ws-service-account-exists? iam-client project-id sa-email)
+      (log/debugf "Service account already exists: %s" sa-email)
+      (do
+        (log/infof "Creating service account %s in project %s" sa-id project-id)
+        (let [request (-> (CreateServiceAccountRequest/newBuilder)
+                          (.setName project-name)
+                          (.setAccountId sa-id)
+                          (.setServiceAccount
+                           (-> (ServiceAccount/newBuilder)
+                               (.setDisplayName (format "Metabase Workspace %s" (:id workspace)))
+                               (.setDescription "Auto-created by Metabase for workspace isolation")
+                               (.build)))
+                          (.build))]
+          (.createServiceAccount iam-client request)
+          (log/infof "Created service account: %s" sa-email))))
+    sa-email))
+
+(defn- ws-delete-service-account!
+  "Delete a service account for a workspace. Idempotent - does nothing if SA doesn't exist."
+  [^IAMClient iam-client ^String project-id workspace]
+  (let [sa-id    (ws-service-account-id workspace)
+        sa-email (format "%s@%s.iam.gserviceaccount.com" sa-id project-id)
+        sa-name  (format "projects/%s/serviceAccounts/%s" project-id sa-email)]
+    (when (ws-service-account-exists? iam-client project-id sa-email)
+      (log/infof "Deleting service account %s" sa-email)
+      (let [request (-> (DeleteServiceAccountRequest/newBuilder)
+                        (.setName sa-name)
+                        (.build))]
+        (.deleteServiceAccount iam-client request)
+        (log/infof "Deleted service account: %s" sa-email)))))
+
+(defn- ws-has-role-binding?
+  "Check if a policy already has a binding for the given role and member."
+  [^Policy policy ^String role ^String member]
+  (some (fn [^Binding binding]
+          (and (= (.getRole binding) role)
+               (some #(= % member) (.getMembersList binding))))
+        (.getBindingsList policy)))
+
+(defn- ws-grant-impersonation-permission!
+  "Grant the main service account permission to impersonate the workspace service account."
+  [^IAMClient iam-client ^String project-id ^String main-sa-email ^String workspace-sa-email]
+  (let [resource (format "projects/%s/serviceAccounts/%s" project-id workspace-sa-email)
+        role     "roles/iam.serviceAccountTokenCreator"
+        member   (format "serviceAccount:%s" main-sa-email)]
+    (try
+      ;; Get current policy
+      (let [current-policy (.getIamPolicy iam-client resource)]
+        ;; Only add if not already granted
+        (when-not (ws-has-role-binding? current-policy role member)
+          (let [new-binding    (-> (Binding/newBuilder)
+                                   (.setRole role)
+                                   (.addMembers member)
+                                   (.build))
+                updated-policy (-> (Policy/newBuilder current-policy)
+                                   (.addBindings new-binding)
+                                   (.build))
+                request        (-> (SetIamPolicyRequest/newBuilder)
+                                   (.setResource resource)
+                                   (.setPolicy updated-policy)
+                                   (.build))]
+            (.setIamPolicy iam-client request)
+            (log/infof "Granted impersonation permission on %s to %s" workspace-sa-email main-sa-email))))
+      (catch Exception e
+        (log/warn e "Failed to grant impersonation permission (may already exist)")))))
+
+(defn- ws-grant-project-role!
+  "Grant a project-level IAM role to a service account.
+   This is needed for roles like bigquery.jobUser that must be granted at project level."
+  [details ^String project-id ^String service-account-email ^String role]
+  (log/infof "Granting project role %s to %s" role service-account-email)
+  (let [creds          (.createScoped (ws-service-account-credentials details)
+                                      (doto (java.util.ArrayList.)
+                                        (.add "https://www.googleapis.com/auth/cloud-platform")))
+        settings       (-> (ProjectsSettings/newBuilder)
+                           (.setCredentialsProvider (reify com.google.api.gax.core.CredentialsProvider
+                                                      (getCredentials [_] creds)))
+                           ^ProjectsSettings (.build))
+        projects-client (ProjectsClient/create settings)
+        resource       (format "projects/%s" project-id)
+        member         (format "serviceAccount:%s" service-account-email)]
+    (try
+      ;; Get current policy
+      (let [get-request    (-> (GetIamPolicyRequest/newBuilder)
+                               (.setResource resource)
+                               (.build))
+            current-policy (.getIamPolicy projects-client get-request)]
+        ;; Only add if not already granted
+        (when-not (ws-has-role-binding? current-policy role member)
+          (let [new-binding    (-> (Binding/newBuilder)
+                                   (.setRole role)
+                                   (.addMembers member)
+                                   (.build))
+                updated-policy (-> (Policy/newBuilder current-policy)
+                                   (.addBindings new-binding)
+                                   (.build))
+                set-request    (-> (SetIamPolicyRequest/newBuilder)
+                                   (.setResource resource)
+                                   (.setPolicy updated-policy)
+                                   (.build))]
+            (.setIamPolicy projects-client set-request)
+            (log/infof "Granted %s on project %s to %s" role project-id service-account-email))))
+      (finally
+        (.close projects-client)))))
+
+(defn- ws-wait-for-impersonation-ready!
+  "Poll until impersonation is working. GCP IAM changes can take up to 60 seconds to propagate.
+   Tests by actually creating impersonated credentials and making a simple API call."
+  [details ^String target-sa-email & {:keys [max-attempts interval-ms]
+                                      :or   {max-attempts 120
+                                             interval-ms  1000}}]
+  (log/info "Waiting for IAM impersonation to be ready...")
+  (let [base-creds  (.createScoped (ws-service-account-credentials details)
+                                   (doto (java.util.ArrayList.)
+                                     (.add "https://www.googleapis.com/auth/bigquery")))
+        project-id  (get-project-id details)]
+    (loop [attempt 1]
+      (log/debugf "Checking impersonation readiness (attempt %d/%d)" attempt max-attempts)
+      (let [result (try
+                     ;; Try to create impersonated credentials and use them
+                     (let [impersonated (ImpersonatedCredentials/create
+                                         base-creds
+                                         target-sa-email
+                                         nil  ;; delegates
+                                         (doto (java.util.ArrayList.)
+                                           (.add "https://www.googleapis.com/auth/bigquery"))
+                                         3600)
+                           client       (-> (BigQueryOptions/newBuilder)
+                                            ^BigQueryOptions$Builder (.setCredentials impersonated)
+                                            ^BigQueryOptions (.build)
+                                            ^BigQuery (.getService))]
+                       ;; Try a simple operation - list datasets (limited to 1)
+                       (.listDatasets client project-id (into-array BigQuery$DatasetListOption []))
+                       :ready)
+                     (catch Exception e
+                       (if (or (str/includes? (str (ex-message e)) "permission")
+                               (str/includes? (str (ex-message e)) "403")
+                               (str/includes? (str (ex-message e)) "Access Denied"))
+                         :not-ready
+                         (do
+                           (log/debugf "Unexpected error checking impersonation: %s" (ex-message e))
+                           :not-ready))))]
+        (cond
+          (= result :ready)
+          (log/info "IAM impersonation is ready")
+
+          (>= attempt max-attempts)
+          (throw (ex-info "Timeout waiting for IAM impersonation to propagate"
+                          {:target-sa target-sa-email
+                           :attempts  attempt}))
+
+          :else
+          (do
+            (Thread/sleep ^long interval-ms)
+            (recur (inc attempt))))))))
+
+(defn- ws-role-name->acl-role
+  "Convert a BigQuery IAM role name to an Acl$Role."
+  ^Acl$Role [^String role-name]
+  (case role-name
+    "roles/bigquery.dataEditor" Acl$Role/WRITER
+    "roles/bigquery.dataViewer" Acl$Role/READER
+    "roles/bigquery.dataOwner"  Acl$Role/OWNER
+    (throw (ex-info (str "Unknown role: " role-name) {:role role-name}))))
+
+(defn- ws-has-acl-entry?
+  "Check if an ACL list already has an entry for the given entity and role."
+  [acl-list ^Acl$User entity ^Acl$Role role]
+  (some (fn [^Acl acl]
+          (and (= (.getEntity acl) entity)
+               (= (.getRole acl) role)))
+        acl-list))
+
+(defn- ws-grant-dataset-acl!
+  "Grant an ACL role on a dataset to a service account."
+  [^BigQuery client ^DatasetId dataset-id ^String service-account-email ^String role-name]
+  (log/debugf "Granting %s on dataset %s to %s" role-name dataset-id service-account-email)
+  (let [dataset     ^Dataset (.getDataset client dataset-id
+                                          ^"[Lcom.google.cloud.bigquery.BigQuery$DatasetOption;"
+                                          (into-array BigQuery$DatasetOption []))
+        current-acl (into [] (.getAcl dataset))
+        acl-role    (ws-role-name->acl-role role-name)
+        acl-user    (Acl$User. service-account-email)]
+    ;; Only add if not already granted
+    (when-not (ws-has-acl-entry? current-acl acl-user acl-role)
+      (let [new-acl-entry   (Acl/of acl-user acl-role)
+            updated-acl     (conj current-acl new-acl-entry)
+            updated-dataset (-> (.toBuilder dataset)
+                                (.setAcl ^"clojure.lang.PersistentVector" updated-acl)
+                                (.build))]
+        (.update client updated-dataset
+                 ^"[Lcom.google.cloud.bigquery.BigQuery$DatasetOption;"
+                 (into-array BigQuery$DatasetOption []))))))
+
+(defn- ws-has-table-iam-binding?
+  "Check if a table IAM policy already has a binding for the given role and identity."
+  [^com.google.cloud.Policy policy ^Role role ^Identity identity]
+  (let [bindings (.getBindings policy)
+        identity-set (clojure.core/get bindings role)]
+    (and identity-set (.contains ^java.util.Set identity-set identity))))
+
+(defn- ws-grant-table-read-access!
+  "Grant read access on a specific table to a service account using table-level IAM."
+  [^BigQuery client ^TableId table-id ^String service-account-email]
+  (log/debugf "Granting read access on table %s to %s" table-id service-account-email)
+  (let [current-policy (.getIamPolicy client table-id (into-array BigQuery$IAMOption []))
+        role           (Role/of "roles/bigquery.dataViewer")
+        sa-identity    (Identity/serviceAccount service-account-email)]
+    ;; Only add if not already granted
+    (when-not (ws-has-table-iam-binding? current-policy role sa-identity)
+      (let [updated-policy (-> current-policy
+                               (.toBuilder)
+                               (.addIdentity role sa-identity (into-array Identity []))
+                               (.build))]
+        (.setIamPolicy client table-id updated-policy (into-array BigQuery$IAMOption []))))))
+
+(defmethod driver/init-workspace-isolation! :bigquery-cloud-sdk
+  [_driver database workspace]
+  (let [details       (driver.conn/effective-details database)
+        client        (ws-database-details->client details)
+        iam-client    (ws-database-details->iam-client details)
+        project-id    (get-project-id details)
+        main-sa-email (.getClientEmail (ws-service-account-credentials details))
+        dataset-name  (driver.u/workspace-isolation-namespace-name workspace)]
+
+    (try
+      ;; Create the workspace service account (or get existing)
+      (let [ws-sa-email (ws-create-service-account! iam-client project-id workspace)
+            dataset-id  (DatasetId/of project-id dataset-name)]
+
+        (log/infof "Initializing BigQuery workspace isolation: dataset=%s, service-account=%s"
+                   dataset-name ws-sa-email)
+
+        ;; Grant main SA permission to impersonate workspace SA
+        (ws-grant-impersonation-permission! iam-client project-id main-sa-email ws-sa-email)
+
+        ;; Grant the workspace SA permission to run BigQuery jobs (queries) at project level
+        ;; Note: We intentionally do NOT grant project-level dataEditor as that would give
+        ;; access to all datasets. The workspace SA only gets dataEditor on its isolated dataset.
+        (ws-grant-project-role! details project-id ws-sa-email "roles/bigquery.jobUser")
+
+        ;; Wait for IAM permissions to propagate by polling until impersonation works
+        (ws-wait-for-impersonation-ready! details ws-sa-email)
+
+        ;; Create the isolated dataset if it doesn't exist (using main SA credentials, not impersonated)
+        (when-not (.getDataset client dataset-id
+                               ^"[Lcom.google.cloud.bigquery.BigQuery$DatasetOption;"
+                               (into-array BigQuery$DatasetOption []))
+          (let [dataset-info (-> (DatasetInfo/newBuilder dataset-id)
+                                 (.setDescription (format "Metabase workspace isolation for workspace %s" (:id workspace)))
+                                 (.build))]
+            (.create client dataset-info
+                     ^"[Lcom.google.cloud.bigquery.BigQuery$DatasetOption;"
+                     (into-array BigQuery$DatasetOption []))))
+
+        ;; Grant the workspace service account dataEditor role on the isolated dataset
+        ;; dataEditor allows: create/update/delete tables, insert/update/delete data
+        (ws-grant-dataset-acl! client dataset-id ws-sa-email "roles/bigquery.dataEditor")
+
+        ;; Return workspace connection details for impersonation
+        ;; :user is used by grant-read-access-to-tables! to know which SA to grant access to
+        ;; :impersonate-service-account is used by the connection swap to use impersonated credentials
+        {:schema           dataset-name
+         :database_details {:user                        ws-sa-email
+                            :impersonate-service-account ws-sa-email}})
+      (finally
+        (.close iam-client)))))
+
+(defmethod driver/grant-workspace-read-access! :bigquery-cloud-sdk
+  [_driver database workspace tables]
+  ;; For BigQuery, the workspace contains the service account email in database_details
+  (let [ws-sa-email (-> workspace :database_details :impersonate-service-account)
+        details     (driver.conn/effective-details database)
+        client      (ws-database-details->client details)
+        project-id  (get-project-id details)]
+
+    (log/debugf "Granting read access to %d tables for %s" (count tables) ws-sa-email)
+
+    ;; Grant dataViewer at table level for each table - proper isolation
+    (doseq [{:keys [schema name]} tables]
+      (let [table-id (TableId/of project-id schema name)]
+        (ws-grant-table-read-access! client table-id ws-sa-email)))))
+
+(def ^:private perm-check-workspace-id "00000000-0000-0000-0000-000000000000")
+
+(defmethod driver/check-isolation-permissions :bigquery-cloud-sdk
+  [driver database test-table]
+  ;; BigQuery uses GCP IAM APIs instead of SQL, so we can't use transaction rollback.
+  ;; We run the actual init/grant/destroy operations and clean up immediately.
+  (let [test-workspace {:id   perm-check-workspace-id
+                        :name "_mb_perm_check_"}]
+    (try
+      (let [init-result (try
+                          (driver/init-workspace-isolation! driver database test-workspace)
+                          (catch Exception e
+                            (throw (ex-info (format "Failed to initialize workspace isolation: %s" (ex-message e))
+                                            {:step :init} e))))
+            workspace-with-details (merge test-workspace init-result)]
+        (when test-table
+          (try
+            (driver/grant-workspace-read-access! driver database workspace-with-details [test-table])
+            (catch Exception e
+              (throw (ex-info (format "Failed to grant read access to table %s.%s: %s"
+                                      (:schema test-table) (:name test-table) (ex-message e))
+                              {:step :grant :table test-table} e)))))
+        (try
+          (driver/destroy-workspace-isolation! driver database workspace-with-details)
+          (catch Exception e
+            (throw (ex-info (format "Failed to destroy workspace isolation: %s" (ex-message e))
+                            {:step :destroy} e)))))
+      nil
+      (catch Exception e
+        (ex-message e))
+      (finally
+        (try
+          (driver/destroy-workspace-isolation! driver database test-workspace)
+          (catch Exception _ nil))))))
+
+(defmethod driver/destroy-workspace-isolation! :bigquery-cloud-sdk
+  [_driver database workspace]
+  (let [details      (driver.conn/effective-details database)
+        client       (ws-database-details->client details)
+        iam-client   (ws-database-details->iam-client details)
+        project-id   (get-project-id details)
+        dataset-name (driver.u/workspace-isolation-namespace-name workspace)
+        dataset-id   (DatasetId/of project-id dataset-name)]
+    (try
+      (log/infof "Destroying BigQuery workspace isolation: dataset=%s" dataset-name)
+
+      ;; Delete the dataset if it exists (deleteContents=true removes all tables)
+      (when (.getDataset client dataset-id
+                         ^"[Lcom.google.cloud.bigquery.BigQuery$DatasetOption;"
+                         (into-array BigQuery$DatasetOption []))
+        (log/infof "Deleting dataset %s" dataset-name)
+        (.delete client dataset-id
+                 ^"[Lcom.google.cloud.bigquery.BigQuery$DatasetDeleteOption;"
+                 (into-array BigQuery$DatasetDeleteOption [(BigQuery$DatasetDeleteOption/deleteContents)]))
+        (log/infof "Deleted dataset %s" dataset-name))
+
+      ;; Delete the service account (this also removes its IAM bindings)
+      (ws-delete-service-account! iam-client project-id workspace)
+
+      {:success true}
+      (finally
+        (.close iam-client)))))
+
+(defmethod driver/llm-sql-dialect-resource :bigquery-cloud-sdk [_]
+  "llm/prompts/dialects/bigquery.md")

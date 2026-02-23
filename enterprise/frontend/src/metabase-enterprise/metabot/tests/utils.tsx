@@ -12,6 +12,7 @@ import {
   renderWithProviders,
   screen,
   waitFor,
+  within,
 } from "__support__/ui";
 import {
   type MockStreamedEndpointParams,
@@ -71,6 +72,21 @@ export const closeChatButton = () => screen.findByTestId("metabot-close-chat");
 export const responseLoader = () =>
   screen.findByTestId("metabot-response-loader");
 export const resetChatButton = () => screen.findByTestId("metabot-reset-chat");
+
+// Feedback helpers
+export const feedbackModal = () =>
+  screen.findByTestId("metabot-feedback-modal");
+export const thumbsUp = (message: HTMLElement) =>
+  within(message).findByTestId("metabot-chat-message-thumbs-up");
+export const thumbsDown = (message: HTMLElement) =>
+  within(message).findByTestId("metabot-chat-message-thumbs-down");
+export const mockFeedbackEndpoint = () => {
+  const path = "path:/api/ee/metabot-v3/feedback";
+  fetchMock.post(path, 204);
+  return {
+    calls: () => fetchMock.callHistory.calls(path),
+  };
+};
 
 export const assertVisible = async () =>
   expect(await screen.findByTestId("metabot-chat")).toBeInTheDocument();

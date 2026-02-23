@@ -35,7 +35,7 @@
     (conj "Setting")
 
     (not (:no-transforms opts))
-    (conj "Transform" "TransformTag" "TransformJob")))
+    (conj "Transform" "TransformTag" "TransformJob" "PythonLibrary")))
 
 (defn make-targets-of-type
   "Returns a targets seq with model type and given ids"
@@ -73,7 +73,12 @@
 
 (defn- parse-target [[model-name id :as target]]
   (if (string? id)
-    [model-name (serdes/eid->id model-name id)]
+    (if-let [resolved-id (serdes/eid->id model-name id)]
+      [model-name resolved-id]
+      (throw (ex-info (format "Could not find %s with entity ID: %s" model-name id)
+                      {:status-code 400
+                       :model       model-name
+                       :entity-id   id})))
     target))
 
 (defn- analytics-collection-ids
@@ -173,10 +178,11 @@
             coll-set        (get by-model "Collection")
             ;; When targets are specified, also include Tables found via descendants
             ;; (published tables in target collections). These are extracted by ID, not all.
-            targeted-tables (when (seq targets) (get by-model "Table"))
+            targeted-data-model (when (seq targets)
+                                  (select-keys by-model serdes.models/data-model-in-collection))
             by-model        (cond-> (select-keys by-model models)
                               ;; Add Tables back if they were found in descendants
-                              (seq targeted-tables) (assoc "Table" targeted-tables)
+                              (seq targeted-data-model) (merge targeted-data-model)
                               ;; Remove analytics cards from extraction - they have stable entity_ids across instances
                               ;; so cards that reference them can still be exported and imported correctly
                               (and analytics-card-ids (contains? by-model "Card"))

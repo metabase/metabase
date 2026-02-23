@@ -90,6 +90,8 @@ export interface EditorProps {
   onQuestionSelect?: (cardId: number | null) => void;
   editable?: boolean;
   isLoading?: boolean;
+  /** Ref to the editor container for external access (e.g., anchor scrolling) */
+  editorContainerRef?: React.RefObject<HTMLDivElement>;
 }
 
 export const Editor: React.FC<EditorProps> = ({
@@ -100,6 +102,7 @@ export const Editor: React.FC<EditorProps> = ({
   editable = true,
   onQuestionSelect,
   isLoading = false,
+  editorContainerRef,
 }) => {
   const siteUrl = useSelector((state) => getSetting(state, "site-url"));
   const { getState } = useStore();
@@ -228,6 +231,7 @@ export const Editor: React.FC<EditorProps> = ({
     <Box className={cx(S.editor, DND_IGNORE_CLASS_NAME)}>
       <Box
         className={S.editorContent}
+        ref={editorContainerRef}
         onClick={(e) => {
           // Focus editor when clicking on empty space
           const target = e.target as HTMLElement;

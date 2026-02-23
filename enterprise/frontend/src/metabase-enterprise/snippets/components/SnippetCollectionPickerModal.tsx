@@ -1,8 +1,8 @@
 import { useCallback } from "react";
 import { t } from "ttag";
 
-import type { CollectionPickerValueItem } from "metabase/common/components/Pickers/CollectionPicker";
-import { CollectionPickerModal } from "metabase/common/components/Pickers/CollectionPicker";
+import type { OmniPickerItem } from "metabase/common/components/Pickers";
+import { CollectionPickerModal } from "metabase/common/components/Pickers";
 import type { SnippetCollectionPickerModalProps } from "metabase/plugins";
 import type { CollectionId } from "metabase-types/api";
 
@@ -12,7 +12,7 @@ export function SnippetCollectionPickerModal({
   onClose,
 }: SnippetCollectionPickerModalProps) {
   const handleChange = useCallback(
-    (item: CollectionPickerValueItem) => {
+    (item: OmniPickerItem) => {
       const collectionId: CollectionId | null =
         item.id === "root" ? null : item.id;
       onSelect(collectionId);
@@ -30,14 +30,15 @@ export function SnippetCollectionPickerModal({
       onChange={handleChange}
       onClose={onClose}
       title={t`Select a folder for your snippet`}
+      namespaces={["snippets"]}
       options={{
-        namespace: "snippets",
-        showPersonalCollections: false,
-        showRootCollection: true,
-        showSearch: false,
+        hasPersonalCollections: false,
+        canCreateCollections: true,
+        hasRootCollection: true,
+        hasSearch: false,
         hasConfirmButtons: true,
         hasRecents: false,
-        showLibrary: false,
+        hasLibrary: false,
       }}
     />
   );

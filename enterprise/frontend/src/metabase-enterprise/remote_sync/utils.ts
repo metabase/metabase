@@ -2,16 +2,16 @@ import { t } from "ttag";
 
 import type { ColorName } from "metabase/lib/colors/types";
 import type { IconName } from "metabase/ui";
-import type {
-  Collection,
-  CollectionId,
-  RemoteSyncEntityStatus,
-} from "metabase-types/api";
+import type { Collection, RemoteSyncEntityStatus } from "metabase-types/api";
 
-export type CollectionPathSegment = {
-  id: CollectionId;
-  name: string;
-};
+import type { CollectionPathSegment } from "./displayGroups";
+
+// Re-export from displayGroups for backwards compatibility
+export {
+  TRANSFORMS_ROOT_ID,
+  isTableChildModel,
+  type CollectionPathSegment,
+} from "./displayGroups";
 
 type ErrorData = {
   message?: string;

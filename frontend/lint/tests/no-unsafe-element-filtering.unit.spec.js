@@ -1,8 +1,8 @@
 import { RuleTester } from "eslint";
 
-import rule from "../eslint-rules/no-unsafe-element-filtering";
+import rule from "../eslint-plugin-metabase/rules/no-unsafe-element-filtering";
 
-const ruleTester = new RuleTester({ parserOptions: { ecmaVersion: 2015 } });
+const ruleTester = new RuleTester({ languageOptions: { ecmaVersion: 2015 } });
 
 const unsafeError = {
   messageId: "unexpected",

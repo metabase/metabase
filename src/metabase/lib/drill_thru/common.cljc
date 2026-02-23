@@ -7,6 +7,8 @@
    [metabase.lib.expression :as lib.expression]
    [metabase.lib.filter :as lib.filter]
    [metabase.lib.hierarchy :as lib.hierarchy]
+   [metabase.lib.join :as lib.join]
+   [metabase.lib.join.util :as lib.join.util]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
    [metabase.lib.ref :as lib.ref]
    [metabase.lib.schema :as lib.schema]
@@ -16,7 +18,7 @@
    [metabase.lib.underlying :as lib.underlying]
    [metabase.lib.util :as lib.util]
    [metabase.util.malli :as mu]
-   [metabase.util.performance :refer [select-keys not-empty]]))
+   [metabase.util.performance :refer [not-empty select-keys]]))
 
 (defn mbql-stage?
   "Is this query stage an MBQL stage?"
@@ -140,6 +142,22 @@
    column       :- ::lib.schema.metadata/column]
   (let [columns (lib.filter/filterable-columns query stage-number)]
     (or (lib.equality/find-matching-column query stage-number column-ref columns)
+        ;; TODO (Cam 2026-02-11) HACK if we have a column ref that for some reason is missing the
+        ;; `:join-alias` (likely from broken metadata converted from legacy metadata where `:source-alias` was renamed
+        ;; to `:lib/original-join-alias` but not `:metabase.lib.join/join-alias`) we still want find a match, so try
+        ;; using that if we failed without using it. This hack is needed to
+        ;; make [[metabase.lib.drill-thru.column-filter-test/column-filter-join-alias-test]] pass.
+        ;;
+        ;; Ideally I think we'd just update this code to use [[metabase.lib.metadata.calculation/metadata]] (which
+        ;; uses things like [[metabase.lib.field.resolution]] under the hood) but then we'd have to fix a lot of bugs
+        ;; where this is called with the wrong stage number (several callers append a stage to the query and then call
+        ;; with a different `stage-number` than the original even tho `column` is relative to a different stage). I
+        ;; tried doing this fix but it broke a few other things. Investigate further.
+        (when (and (lib.util/clause-of-type? column-ref :field)
+                   (not (lib.join.util/current-join-alias column-ref)))
+          (when-let [original-join-alias (:lib/original-join-alias column)]
+            (let [ref-with-alias (lib.join/with-join-alias column-ref original-join-alias)]
+              (lib.equality/find-matching-column query stage-number ref-with-alias columns))))
         (and (:lib/source-uuid column)
              (m/find-first #(= (:lib/source-uuid %) (:lib/source-uuid column))
                            columns)))))

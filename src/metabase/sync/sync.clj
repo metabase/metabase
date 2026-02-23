@@ -95,5 +95,5 @@
           (driver.u/can-connect-with-details? (:engine database) (:details database)))
       (sync-util/with-error-handling (format "Error refingerprinting field %s"
                                              (sync-util/name-for-logging field))
-        (sync.fingerprint/refingerprint-field field))
+        (sync.fingerprint/refingerprint-field! field))
       :sync/no-connection)))

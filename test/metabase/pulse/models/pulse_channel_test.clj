@@ -126,7 +126,7 @@
 (defn user-details
   [username]
   (-> (mt/fetch-user username)
-      (dissoc :date_joined :last_login :is_superuser :is_qbnewb :locale :tenant_id)
+      (dissoc :date_joined :last_login :is_superuser :is_qbnewb :locale :tenant_id :is_data_analyst)
       mt/derecordize))
 
 ;; create a channel then select its details

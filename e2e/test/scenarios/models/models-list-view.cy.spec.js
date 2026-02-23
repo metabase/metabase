@@ -1,6 +1,6 @@
-const Color = require("color");
+import Color from "color";
 
-const { colors } = require("metabase/lib/colors");
+import { colors } from "metabase/lib/colors";
 
 const { H } = cy;
 

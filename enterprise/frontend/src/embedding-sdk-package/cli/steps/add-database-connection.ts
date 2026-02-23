@@ -25,7 +25,6 @@ export const addDatabaseConnectionStep: CliStepMethod = async (state) => {
 
   const engineChoices = getEngineChoices(settings);
 
-  // eslint-disable-next-line no-constant-condition -- keep asking until the user enters a valid connection.
   while (true) {
     const engineKey = await search({
       pageSize: 10,

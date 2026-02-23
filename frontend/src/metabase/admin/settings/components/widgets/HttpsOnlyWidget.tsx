@@ -25,7 +25,11 @@ export function HttpsOnlyWidget() {
     setStatus(Status.CHECKING);
     fetchWithTimeout(siteUrl + "/api/health", { timeout: 10000 })
       .then((response) => {
-        response.ok ? setStatus(Status.VERIFIED) : setStatus(Status.FAILED);
+        if (response.ok) {
+          setStatus(Status.VERIFIED);
+        } else {
+          setStatus(Status.FAILED);
+        }
       })
       .catch(() => {
         setStatus(Status.FAILED);

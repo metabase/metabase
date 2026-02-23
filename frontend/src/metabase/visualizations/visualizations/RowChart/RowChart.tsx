@@ -2,7 +2,7 @@ import type * as React from "react";
 import { useEffect, useMemo } from "react";
 import { t } from "ttag";
 
-import ExplicitSize from "metabase/common/components/ExplicitSize";
+import { ExplicitSize } from "metabase/common/components/ExplicitSize";
 import CS from "metabase/css/core/index.css";
 import { measureTextWidth } from "metabase/lib/measure-text";
 import { extractRemappedColumns } from "metabase/visualizations";
@@ -82,7 +82,7 @@ interface RowChartRendererProps extends RowChartProps<GroupedDatum> {
 
 function RowChartRendererInner(props: RowChartRendererProps) {
   return (
-    <RowChartContainer>
+    <RowChartContainer data-testid="row-chart-container">
       <RowChart {...props} />
     </RowChartContainer>
   );
@@ -433,5 +433,4 @@ RowChartVisualization.hasEmptyState = true;
 
 RowChartVisualization.getUiName = () => t`Row`;
 
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default RowChartVisualization;
+export { RowChartVisualization as RowChart };

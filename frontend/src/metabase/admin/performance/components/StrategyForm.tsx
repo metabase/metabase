@@ -73,6 +73,7 @@ export const StrategyForm = ({
   shouldShowName = true,
   onReset,
   isInSidebar = false,
+  classNames,
   buttonLabels = isInSidebar
     ? {
         save: t`Save`,
@@ -94,6 +95,7 @@ export const StrategyForm = ({
   onReset?: () => void;
   buttonLabels?: ButtonLabels;
   isInSidebar?: boolean;
+  classNames?: { formBox?: string };
 }) => {
   const defaultStrategy: CacheStrategy = useMemo(
     () => ({
@@ -123,6 +125,7 @@ export const StrategyForm = ({
         buttonLabels={buttonLabels}
         isInSidebar={isInSidebar}
         strategyType={initialValues.type}
+        classNames={classNames}
       />
     </FormProvider>
   );
@@ -163,6 +166,7 @@ const StrategyFormBody = ({
   shouldShowName = true,
   buttonLabels,
   isInSidebar,
+  classNames,
 }: {
   targetId: number | null;
   targetModel: CacheableModel;
@@ -173,6 +177,7 @@ const StrategyFormBody = ({
   shouldShowName?: boolean;
   buttonLabels: ButtonLabels;
   isInSidebar?: boolean;
+  classNames?: { formBox?: string };
 }) => {
   const { values, initialValues, setFieldValue } =
     useFormikContext<CacheStrategy>();
@@ -229,7 +234,7 @@ const StrategyFormBody = ({
         data-testid={`strategy-form-for-${targetModel}-${targetId}`}
       >
         <Box
-          className={cx(Styles.FormBox, {
+          className={cx(Styles.FormBox, classNames?.formBox, {
             [Styles.FormBoxSidebar]: isInSidebar,
           })}
         >

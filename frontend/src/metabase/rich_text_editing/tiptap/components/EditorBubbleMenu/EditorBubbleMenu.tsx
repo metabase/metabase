@@ -1,4 +1,3 @@
-/* eslint-disable import/no-unresolved */ // -- this is a valid import for Tiptap's BubbleMenu
 import type { BubbleMenuOptions } from "@tiptap/extension-bubble-menu";
 import type { EditorState } from "@tiptap/pm/state";
 import type { Editor as TiptapEditor } from "@tiptap/react";

@@ -3,7 +3,7 @@ import userEvent from "@testing-library/user-event";
 import { getIcon, render, screen } from "__support__/ui";
 
 import type { ModalContentProps } from "./ModalContent";
-import ModalContent from "./ModalContent";
+import { ModalContent } from "./ModalContent";
 import { ModalContentActionIcon } from "./ModalContent.styled";
 
 describe("ModalContent", () => {

@@ -18,13 +18,14 @@
   gap: 0.25rem;
 
   &:hover {
-    background-color: var(--mb-color-brand-light);
+    background-color: var(--mb-color-background-hover);
   }
 
   &:hover .shortcutText {
     color: var(--mb-color-text-secondary);
     transition: color 100ms ease;
-    background-color: var(--mb-color-background-hover);
+    /* Not semantically correct color, but we need something with contrast on background-hover */
+    background-color: var(--mb-color-background-selected);
   }
 }
 

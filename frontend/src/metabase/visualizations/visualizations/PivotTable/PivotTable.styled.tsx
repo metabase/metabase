@@ -136,9 +136,7 @@ export const PivotTableCell = styled.div<PivotTableCellProps>`
   }
 `;
 
-interface PivotTableTopLeftCellsContainerProps {}
-
-export const PivotTableTopLeftCellsContainer = styled.div<PivotTableTopLeftCellsContainerProps>`
+export const PivotTableTopLeftCellsContainer = styled.div`
   display: flex;
   align-items: flex-end;
   position: relative;

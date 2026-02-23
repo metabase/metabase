@@ -22,6 +22,7 @@
                           :event/card-update.notification-deleted.card-changed
                           messages/send-alert-stopped-because-changed-email!)
           recipients (->> notifications
+                          (filter #((complement true?) (get-in % [:payload :disable_links])))
                           (mapcat :handlers)
                           (filter #(= :channel/email (:channel_type %)))
                           (mapcat :recipients)
@@ -31,8 +32,21 @@
                                     (-> recipient :user :email)
                                     :notification-recipient/raw-value
                                     (-> recipient :details :value)
-                                    (throw (ex-info "Unknown recipient type" {:recipient recipient}))))))]
-      (when (seq recipients)
-        (send-message! card recipients actor)))
+                                    (throw (ex-info "Unknown recipient type" {:recipient recipient}))))))
+
+          recipients-with-no-links (->> notifications
+                                        (filter #(true? (get-in % [:payload :disable_links])))
+                                        (mapcat :handlers)
+                                        (filter #(= :channel/email (:channel_type %)))
+                                        (mapcat :recipients)
+                                        (keep (fn [recipient]
+                                                (case (:type recipient)
+                                                  :notification-recipient/user
+                                                  (-> recipient :user :email)
+                                                  :notification-recipient/raw-value
+                                                  (-> recipient :details :value)
+                                                  (throw (ex-info "Unknown recipient type" {:recipient recipient}))))))]
+
+      (send-message! card recipients recipients-with-no-links actor))
     (catch Throwable e
       (log/error e "Error sending notification email"))))

@@ -1,7 +1,10 @@
 import { createSelector } from "@reduxjs/toolkit";
+import { match } from "ts-pattern";
 import _ from "underscore";
 
-import { getIsEmbedding } from "metabase/selectors/embed";
+import { isEmbedding } from "metabase/embedding/config";
+import { getLocation } from "metabase/selectors/routing";
+import { Urls } from "metabase-enterprise/urls";
 import type { TransformId } from "metabase-types/api";
 
 import {
@@ -29,9 +32,8 @@ export const getActiveMetabotAgentIds = createSelector(
   (state) => Object.keys(state.conversations) as MetabotAgentId[],
 );
 
-export const getMetabotId = createSelector(getIsEmbedding, (isEmbedding) =>
-  isEmbedding ? FIXED_METABOT_IDS.EMBEDDED : FIXED_METABOT_IDS.DEFAULT,
-);
+export const getMetabotId = () =>
+  isEmbedding() ? FIXED_METABOT_IDS.EMBEDDED : FIXED_METABOT_IDS.DEFAULT;
 
 export const getDebugMode = createSelector(
   getMetabotState,
@@ -182,30 +184,50 @@ export const getMetabotReqIdOverride = createSelector(
   (convo) => convo.experimental.metabotReqIdOverride,
 );
 
-export const getMetabotRequestId = createSelector(
-  getMetabotReqIdOverride,
-  getIsEmbedding,
-  (metabotReqIdOverride, isEmbedding) =>
+export const getMetabotRequestId = (
+  state: MetabotStoreState,
+  agentId: MetabotAgentId,
+) => {
+  const metabotReqIdOverride = getMetabotReqIdOverride(state, agentId);
+  return (
     metabotReqIdOverride ??
-    (isEmbedding ? METABOT_REQUEST_IDS.EMBEDDED : undefined),
-);
+    (isEmbedding() ? METABOT_REQUEST_IDS.EMBEDDED : undefined)
+  );
+};
 
 export const getProfileOverride = createSelector(
   getMetabotConversation,
   (convo) => convo.profileOverride,
 );
 
+export const getProfile = createSelector(
+  [getProfileOverride, getDebugMode, getLocation],
+  (profileOverride, debugMode, location) => {
+    const isTransformsPage = location.pathname.startsWith(Urls.transformList());
+    return match({ debugMode, isTransformsPage })
+      .with(
+        { debugMode: false, isTransformsPage: true },
+        () => "transforms_codegen",
+      )
+      .with(
+        { debugMode: true, isTransformsPage: true },
+        () => profileOverride ?? "transforms_codegen",
+      )
+      .otherwise(() => profileOverride);
+  },
+);
+
 export const getAgentRequestMetadata = createSelector(
   getHistory,
   getMetabotRequestState,
-  getProfileOverride,
-  (history, state, profileOverride) => ({
+  getProfile,
+  (history, state, profile) => ({
     state,
     // NOTE: need end to end support for ids on messages as BE will error if ids are present
     history: history.map((h) =>
       h.id && h.id.startsWith(`msg_`) ? _.omit(h, "id") : h,
     ),
-    ...(profileOverride ? { profile_id: profileOverride } : {}),
+    ...(profile ? { profile_id: profile } : {}),
   }),
 );
 

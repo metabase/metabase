@@ -1,25 +1,30 @@
-import { msgid, ngettext, t } from "ttag";
+import { c, msgid, ngettext, t } from "ttag";
 
 import * as Urls from "metabase/lib/urls";
+import type { NamedUser } from "metabase/lib/user";
 import type { IconName } from "metabase/ui";
 import visualizations from "metabase/visualizations";
 import type {
+  AnalysisFindingError,
+  AnalysisFindingErrorType,
   CardType,
   DependencyEntry,
-  DependencyError,
-  DependencyErrorType,
   DependencyGroupType,
   DependencyId,
   DependencyNode,
   DependencyType,
-  LastEditInfo,
-  UserInfo,
+  Field,
+  Transform,
   VisualizationDisplay,
 } from "metabase-types/api";
 
 import type {
+  DependencyError,
+  DependencyErrorGroup,
   DependencyErrorInfo,
+  DependencyFilterOptions,
   DependencyGroupTypeInfo,
+  DependentGroup,
   NodeId,
   NodeLink,
   NodeLocationInfo,
@@ -32,7 +37,10 @@ export function isSameNode(
   return entry1.id === entry2.id && entry1.type === entry2.type;
 }
 
-export function getNodeId(id: DependencyId, type: DependencyType): NodeId {
+export function getNodeId(
+  id: DependencyId | string,
+  type: DependencyType | string,
+): NodeId {
   return `${id}-${type}`;
 }
 
@@ -51,6 +59,7 @@ export function getNodeDescription(node: DependencyNode): string | null {
   switch (node.type) {
     case "document":
     case "sandbox":
+    case "workspace-transform":
       return null;
     default:
       return node.data.description ?? "";
@@ -92,6 +101,8 @@ export function getNodeIconWithType(
     case "table":
       return "table";
     case "transform":
+      return "transform";
+    case "workspace-transform":
       return "transform";
     case "snippet":
       return "snippet";
@@ -144,20 +155,31 @@ export function getNodeLink(node: DependencyNode): NodeLink | null {
         label: t`View this transform`,
         url: Urls.transform(node.id),
       };
+    case "workspace-transform": {
+      const workspaceId = node.data.workspace_id;
+      const refId = node.data.ref_id;
+      if (workspaceId == null) {
+        return null;
+      }
+      return {
+        label: t`View this workspace transform`,
+        url: Urls.dataStudioWorkspace(workspaceId, refId),
+      };
+    }
     case "dashboard":
       return {
-        label: `View this dashboard`,
+        label: t`View this dashboard`,
         url: Urls.dashboard({ id: node.id, name: node.data.name }),
       };
     case "document":
       return {
-        label: `View this document`,
+        label: t`View this document`,
         url: Urls.document({ id: node.id }),
       };
     case "sandbox":
       if (node.data.table != null) {
         return {
-          label: `View this permission`,
+          label: t`View this permission`,
           url: Urls.tableDataPermissions(
             node.data.table.db_id,
             node.data.table.schema,
@@ -323,8 +345,29 @@ export function getNodeLocationInfo(
       }
       return null;
     case "transform":
+    case "workspace-transform":
     case "sandbox":
       return null;
+  }
+}
+
+export function getNodeOwner(node: DependencyNode): NamedUser | null {
+  switch (node.type) {
+    case "table":
+    case "transform":
+      return node.data.owner ?? null;
+    default:
+      return null;
+  }
+}
+
+export function canNodeHaveOwner(type: DependencyType): boolean {
+  switch (type) {
+    case "table":
+    case "transform":
+      return true;
+    default:
+      return false;
   }
 }
 
@@ -338,13 +381,12 @@ export function getNodeCreatedAt(node: DependencyNode): string | null {
     case "snippet":
     case "transform":
       return node.data.created_at;
-    case "table":
-    case "sandbox":
+    default:
       return null;
   }
 }
 
-export function getNodeCreatedBy(node: DependencyNode): UserInfo | null {
+export function getNodeCreatedBy(node: DependencyNode): NamedUser | null {
   switch (node.type) {
     case "card":
     case "dashboard":
@@ -354,8 +396,7 @@ export function getNodeCreatedBy(node: DependencyNode): UserInfo | null {
     case "snippet":
     case "transform":
       return node.data.creator ?? null;
-    case "table":
-    case "sandbox":
+    default:
       return null;
   }
 }
@@ -365,62 +406,85 @@ export function getNodeLastEditedAt(node: DependencyNode): string | null {
     case "card":
     case "dashboard":
       return node.data["last-edit-info"]?.timestamp ?? null;
-    case "segment":
-    case "measure":
-    case "table":
-    case "transform":
-    case "snippet":
-    case "document":
-    case "sandbox":
+    default:
       return null;
   }
 }
 
-export function getNodeLastEditedBy(node: DependencyNode): LastEditInfo | null {
+export function getNodeLastEditedBy(node: DependencyNode): NamedUser | null {
   switch (node.type) {
     case "card":
     case "dashboard":
       return node.data["last-edit-info"] ?? null;
-    case "segment":
-    case "measure":
-    case "table":
-    case "transform":
-    case "snippet":
-    case "document":
-    case "sandbox":
+    default:
       return null;
+  }
+}
+
+export function canNodeHaveViewCount(type: DependencyType): boolean {
+  switch (type) {
+    case "card":
+    case "dashboard":
+    case "document":
+      return true;
+    default:
+      return false;
   }
 }
 
 export function getNodeViewCount(node: DependencyNode): number | null {
   switch (node.type) {
     case "card":
-      // view_count is not calculated property for models and metrics since
-      // they are typically not run directly
-      return node.data.type === "question"
-        ? (node.data.view_count ?? null)
-        : null;
     case "dashboard":
     case "document":
-      return node.data.view_count ?? null;
-    case "table":
-    case "measure":
-    case "transform":
-    case "snippet":
-    case "sandbox":
-    case "segment":
+      return node.data.view_count ?? 0;
+    default:
       return null;
   }
 }
 
-export function getNodeDependentsCount(node: DependencyNode): number {
-  const dependentsCount = node.dependents_count;
-  if (dependentsCount == null) {
-    return 0;
+export function getNodeViewCountLabel(viewCount: number): string {
+  return ngettext(msgid`${viewCount} view`, `${viewCount} views`, viewCount);
+}
+
+export function getNodeTransform(node: DependencyNode): Transform | null {
+  if (node.type === "table") {
+    return node.data.transform ?? null;
   }
-  return Object.values(dependentsCount).reduce(
-    (total, count) => total + count,
-    0,
+  return null;
+}
+
+export function getNodeFields(node: DependencyNode): Field[] | null {
+  switch (node.type) {
+    case "card":
+      return node.data.result_metadata ?? [];
+    case "table":
+      return node.data.fields ?? [];
+    case "transform":
+    case "sandbox":
+      return node.data.table?.fields ?? [];
+    case "workspace-transform":
+      return [];
+    case "snippet":
+    case "dashboard":
+    case "document":
+    case "segment":
+    case "measure":
+      return null;
+    default:
+      return null;
+  }
+}
+
+export function getNodeFieldsLabel(fieldCount = 0) {
+  return fieldCount === 1 ? t`Field` : t`Fields`;
+}
+
+export function getNodeFieldsLabelWithCount(fieldCount: number) {
+  return ngettext(
+    msgid`${fieldCount} field`,
+    `${fieldCount} fields`,
+    fieldCount,
   );
 }
 
@@ -458,6 +522,8 @@ export function getDependencyGroupType(
       return "table";
     case "transform":
       return "transform";
+    case "workspace-transform":
+      return "workspace-transform";
     case "dashboard":
       return "dashboard";
     case "document":
@@ -487,6 +553,8 @@ export function getDependencyGroupTypeInfo(
       return { label: t`Table`, color: "brand" };
     case "transform":
       return { label: t`Transform`, color: "warning" };
+    case "workspace-transform":
+      return { label: t`Workspace transform`, color: "warning" };
     case "snippet":
       return { label: t`Snippet`, color: "text-secondary" };
     case "dashboard":
@@ -500,6 +568,13 @@ export function getDependencyGroupTypeInfo(
     case "measure":
       return { label: t`Measure`, color: "summarize" };
   }
+}
+
+export function getDependencyGroupIcon(groupType: DependencyGroupType) {
+  const type = getDependencyType(groupType);
+  const cardType = getCardType(groupType);
+
+  return getNodeIconWithType(type, cardType ?? undefined);
 }
 
 export function getNodeTypeInfo(node: DependencyNode): DependencyGroupTypeInfo {
@@ -530,71 +605,218 @@ export function getCardTypes(groupTypes: DependencyGroupType[]): CardType[] {
   return Array.from(new Set(cardTypes));
 }
 
-export function getDependencyErrorTypeLabel(type: DependencyErrorType): string {
+export function getDependentGroups(node: DependencyNode): DependentGroup[] {
+  const {
+    question = 0,
+    model = 0,
+    metric = 0,
+    table = 0,
+    transform = 0,
+    snippet = 0,
+    dashboard = 0,
+    document = 0,
+    sandbox = 0,
+    segment = 0,
+    measure = 0,
+  } = node.dependents_count ?? {};
+
+  const groups: DependentGroup[] = [
+    { type: "question", count: question },
+    { type: "model", count: model },
+    { type: "metric", count: metric },
+    { type: "table", count: table },
+    { type: "transform", count: transform },
+    { type: "snippet", count: snippet },
+    { type: "dashboard", count: dashboard },
+    { type: "document", count: document },
+    { type: "sandbox", count: sandbox },
+    { type: "segment", count: segment },
+    { type: "measure", count: measure },
+  ];
+
+  return groups.filter(({ count }) => count !== 0);
+}
+
+export function getDependentsCount(node: DependencyNode): number {
+  if (node.dependents_count == null) {
+    return 0;
+  }
+  return Object.values(node.dependents_count).reduce(
+    (total, count) => total + count,
+    0,
+  );
+}
+
+export function getDependencyGroupTitle(
+  node: DependencyNode,
+  groups: DependentGroup[],
+) {
+  if (node.type === "sandbox") {
+    return t`Restricts table data`;
+  }
+  if (groups.length === 0) {
+    return t`Nothing uses this`;
+  }
+  if (node.type === "transform") {
+    return t`Generates`;
+  }
+  return t`Used by`;
+}
+
+export function getDependentGroupLabel({
+  type,
+  count,
+}: DependentGroup): string {
   switch (type) {
-    case "validate/missing-column":
-      return t`Missing column`;
-    case "validate/missing-table-alias":
-      return t`Missing table alias`;
-    case "validate/duplicate-column":
-      return t`Duplicate column`;
-    case "validate/syntax-error":
-      return t`Syntax error`;
-    case "validate/validation-error":
-      return t`Unknown error`;
+    case "question":
+      return ngettext(msgid`${count} question`, `${count} questions`, count);
+    case "model":
+      return ngettext(msgid`${count} model`, `${count} models`, count);
+    case "metric":
+      return ngettext(msgid`${count} metric`, `${count} metrics`, count);
+    case "table":
+      return ngettext(msgid`${count} table`, `${count} tables`, count);
+    case "transform":
+      return ngettext(msgid`${count} transform`, `${count} transforms`, count);
+    case "snippet":
+      return ngettext(msgid`${count} snippet`, `${count} snippet`, count);
+    case "dashboard":
+      return ngettext(msgid`${count} dashboard`, `${count} dashboards`, count);
+    case "document":
+      return ngettext(msgid`${count} document`, `${count} documents`, count);
+    case "sandbox":
+      return ngettext(
+        msgid`${count} row and column security rule`,
+        `${count} row and column security rules`,
+        count,
+      );
+    case "segment":
+      return c("{0} is the number of segments").ngettext(
+        msgid`${count} segment`,
+        `${count} segments`,
+        count,
+      );
+    case "measure":
+      return c("{0} is the number of measures").ngettext(
+        msgid`${count} measure`,
+        `${count} measures`,
+        count,
+      );
+    default:
+      return ngettext(msgid`${count} entity`, `${count} entities`, count);
   }
 }
 
-export function getDependencyErrorTypeCountMessage(
-  type: DependencyErrorType,
-  count: number,
+function areGroupTypesEqual(
+  groupTypes1: DependencyGroupType[],
+  groupTypes2: DependencyGroupType[],
+): boolean {
+  const groupTypes1Set = new Set(groupTypes1);
+  return (
+    groupTypes1Set.size === groupTypes2.length &&
+    groupTypes2.every((groupType) => groupTypes1Set.has(groupType))
+  );
+}
+
+export function areFilterOptionsEqual(
+  filterOptions1: DependencyFilterOptions,
+  filterOptions2: DependencyFilterOptions,
+): boolean {
+  return (
+    areGroupTypesEqual(filterOptions1.groupTypes, filterOptions2.groupTypes) &&
+    filterOptions1.includePersonalCollections ===
+      filterOptions2.includePersonalCollections
+  );
+}
+
+export function getErrorTypeLabel(
+  type: AnalysisFindingErrorType,
+  count = 0,
 ): string {
   switch (type) {
-    case "validate/missing-column":
+    case "missing-column":
+      return count === 1 ? t`Missing column` : t`Missing columns`;
+    case "missing-table-alias":
+      return count === 1 ? t`Missing table alias` : t`Missing table aliases`;
+    case "duplicate-column":
+      return count === 1 ? t`Duplicate column` : t`Duplicate columns`;
+    case "syntax-error":
+      return count === 1 ? t`Syntax error` : t`Syntax errors`;
+    case "validation-error":
+      return count === 1 ? t`Unknown problem` : t`Unknown problems`;
+  }
+}
+
+export function getErrorTypeLabelWithCount(
+  type: AnalysisFindingErrorType,
+  count = 0,
+): string {
+  switch (type) {
+    case "missing-column":
       return ngettext(
         msgid`${count} missing column`,
         `${count} missing columns`,
         count,
       );
-    case "validate/missing-table-alias":
+    case "missing-table-alias":
       return ngettext(
         msgid`${count} missing table alias`,
         `${count} missing table aliases`,
         count,
       );
-    case "validate/duplicate-column":
+    case "duplicate-column":
       return ngettext(
         msgid`${count} duplicate column`,
         `${count} duplicate columns`,
         count,
       );
-    case "validate/syntax-error":
+    case "syntax-error":
       return ngettext(
         msgid`${count} syntax error`,
         `${count} syntax errors`,
         count,
       );
-    case "validate/validation-error":
+    case "validation-error":
       return ngettext(
-        msgid`${count} unknown error`,
-        `${count} unknown errors`,
+        msgid`${count} unknown problem`,
+        `${count} unknown problems`,
         count,
       );
   }
 }
 
-export function getDependencyErrorDetail(
-  error: DependencyError,
-): string | null {
-  switch (error.type) {
-    case "validate/missing-column":
-    case "validate/missing-table-alias":
-    case "validate/duplicate-column":
-      return error.name;
-    case "validate/syntax-error":
-    case "validate/validation-error":
-      return null;
+export function getDependentErrorNodesLabel(count = 0): string {
+  return count === 1 ? t`Broken dependent` : t`Broken dependents`;
+}
+
+export function getDependencyErrors(
+  errors: AnalysisFindingError[],
+): DependencyError[] {
+  const errorByKey = new Map<string, DependencyError>();
+  for (const error of errors) {
+    const { error_type: type, error_detail: detail } = error;
+    const key = `${type}-${detail}`;
+    errorByKey.set(key, { type, detail });
   }
+  return Array.from(errorByKey.values());
+}
+
+export function getDependencyErrorGroups(
+  errors: DependencyError[],
+): DependencyErrorGroup[] {
+  const groups = new Map<AnalysisFindingErrorType, DependencyError[]>();
+  for (const error of errors) {
+    const group = groups.get(error.type);
+    if (group != null) {
+      group.push(error);
+    } else {
+      groups.set(error.type, [error]);
+    }
+  }
+  return Array.from(groups.entries()).map(([type, errors]) => ({
+    type,
+    errors,
+  }));
 }
 
 export function getDependencyErrorInfo(
@@ -606,8 +828,8 @@ export function getDependencyErrorInfo(
 
   if (errors.length === 1) {
     const [error] = errors;
-    const label = getDependencyErrorTypeLabel(error.type);
-    const detail = getDependencyErrorDetail(error);
+    const label = getErrorTypeLabel(error.type, errors.length);
+    const detail = error.detail;
     return { label, detail };
   }
 
@@ -615,30 +837,31 @@ export function getDependencyErrorInfo(
   if (types.size === 1) {
     const [type] = types;
     return {
-      label: getDependencyErrorTypeCountMessage(type, errors.length),
+      label: getErrorTypeLabelWithCount(type, errors.length),
       detail: null,
     };
   }
 
   return {
     label: ngettext(
-      msgid`${errors.length} error`,
-      `${errors.length} errors`,
+      msgid`${errors.length} problem`,
+      `${errors.length} problems`,
       errors.length,
     ),
     detail: null,
   };
 }
 
-export function parseEnum<T extends string>(
-  value: unknown,
-  items: readonly T[],
-): T | undefined {
-  if (typeof value !== "string") {
-    return undefined;
-  }
-  const item = items.find((item) => item === value);
-  return item != null ? item : undefined;
+export function getDependentErrorNodesCount(
+  errors: AnalysisFindingError[],
+): number {
+  const nodeIds = new Set();
+  errors.forEach((error) => {
+    nodeIds.add(
+      getNodeId(error.analyzed_entity_id, error.analyzed_entity_type),
+    );
+  });
+  return nodeIds.size;
 }
 
 export function getSearchQuery(searchValue: string): string | undefined {

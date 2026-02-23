@@ -70,8 +70,8 @@
                                   :region_key  nil
                                   :region_name nil}}]
           (if should-pass?
-            (is (valid? geojson) (str url))
-            (is (thrown? clojure.lang.ExceptionInfo (valid? geojson)) (str url))))))))
+            (is (valid? geojson geojson) (str url))
+            (is (thrown? clojure.lang.ExceptionInfo (valid? geojson geojson)) (str url))))))))
 
 (deftest custom-geojson-disallow-overriding-builtins-test
   (testing "We shouldn't let people override the builtin GeoJSON and put weird stuff in there; ignore changes to them"
@@ -119,3 +119,39 @@
               (testing "Env var value SHOULD come back with [[setting/user-readable-values-map]] -- should be READABLE."
                 (is (= expected-value
                        (get (setting/user-readable-values-map #{:public}) :custom-geojson)))))))))))
+
+(deftest unchanged-url-validation-test
+  (testing "Unchanged URLs should not be re-validated when saving other changes (#44353)"
+    (mt/with-temporary-setting-values [custom-geojson nil]
+      (let [unreachable-url "http://hostname.invalid/map.geojson"
+            existing-entry  {:existing {:name        "Existing Map"
+                                        :url         unreachable-url
+                                        :region_key  nil
+                                        :region_name nil}}
+            new-entry       {:new-map {:name        "New Map"
+                                       :url         "https://example.com/valid.geojson"
+                                       :region_key  nil
+                                       :region_name nil}}]
+        (setting/set-value-of-type! :json :custom-geojson existing-entry)
+        (testing "Adding a new entry with a valid URL should succeed even if an existing entry has an unreachable URL"
+          (geojson.settings/custom-geojson! (merge existing-entry new-entry)))
+        (testing "The new entry was saved correctly"
+          (is (= (merge (@#'geojson.settings/builtin-geojson) existing-entry new-entry)
+                 (geojson.settings/custom-geojson))))
+        (testing "Updating properties other than URL on an existing entry should succeed"
+          (let [updated-existing {:existing {:name        "Updated Existing Map"
+                                             :url         unreachable-url
+                                             :region_key  "NEW_KEY"
+                                             :region_name "New Name"}}]
+            (geojson.settings/custom-geojson! (merge updated-existing new-entry))
+            (is (= (merge (@#'geojson.settings/builtin-geojson) updated-existing new-entry)
+                   (geojson.settings/custom-geojson)))))
+        (testing "Changing the URL of an existing entry SHOULD trigger validation"
+          (let [changed-url-entry {:existing {:name        "Updated Existing Map"
+                                              :url         "http://also.invalid/map.geojson"
+                                              :region_key  "NEW_KEY"
+                                              :region_name "New Name"}}]
+            (is (thrown-with-msg?
+                 clojure.lang.ExceptionInfo
+                 #"Invalid GeoJSON"
+                 (geojson.settings/custom-geojson! (merge changed-url-entry new-entry))))))))))

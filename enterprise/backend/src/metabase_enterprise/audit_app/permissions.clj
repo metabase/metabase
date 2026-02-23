@@ -27,6 +27,7 @@
     "v_query_log"
     "v_tables"
     "v_tasks"
+    "v_task_runs"
     "v_view_log"})
 
 (defenterprise check-audit-db-permissions

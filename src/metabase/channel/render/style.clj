@@ -14,15 +14,26 @@
 ;; TODO - we should move other CSS definitions from `metabase.channel.render` namespaces into this one, so they're all
 ;; in one place.
 
+(defn- sanitize-css-value
+  "Remove characters that are unsafe in CSS values rendered inside a `<style>` block.
+  Allows alphanumerics plus punctuation that appears in legitimate CSS values
+  (e.g. `#FF0000`, `1.5em`, `100%`, `1px solid black`, `Lato, \"Helvetica Neue\"`, `780px !important`, `3/2`)."
+  [v]
+  (-> v
+      (str/replace #"[^\p{L}\p{N} #%.,!+\-/\"'()]" "")
+      ;; block those that can fetch remote url
+      (str/replace #"(?i)(url|expression|image|image-set)\s*\(" "blocked(")))
+
 (defn style
   "Compile one or more CSS style maps into a string.
 
      (style {:font-weight 400, :color \"white\"}) -> \"font-weight: 400; color: white;\""
   [& style-maps]
   (str/join " " (for [[k v] (into {} style-maps)
-                      :let  [v (if (keyword? v) (name v) (str v))]
+                      :let  [v (-> (if (keyword? v) (name v) (str v))
+                                   sanitize-css-value)]
                       :when (seq v)]
-                  (str (name k) ": " v ";"))))
+                  (str (sanitize-css-value (name k)) ": " v ";"))))
 
 (def ^:const color-gold
   "Used as color for 'We were unable to display this Pulse' messages."
@@ -56,8 +67,12 @@
   "Color for dark text."
   "#4C5773")
 
+(def ^:const color-text-primary
+  "Color that matches text-primary used in the frontend"
+  "#303D46")
+
 (def ^:const color-border
-  "Used as color for the border of table, table header, and table body rows for charts with `:table` vizualization."
+  "Used as color for the border of table, table header, and table body rows for charts with `:table` visualization."
   "#F0F0F0")
 
 ;; don't try to improve the code and make this a plain variable, in EE it's customizable which is why it's a function.
@@ -94,12 +109,13 @@
 
 (defn scalar-style
   "Style for a scalar display-type 'chart' in a Pulse."
-  []
-  (merge
-   (font-style)
-   {:font-size   :24px
-    :font-weight 700
-    :color       color-text-dark}))
+  ([] (scalar-style nil))
+  ([color]
+   (merge
+    (font-style)
+    {:font-size   :24px
+     :font-weight 700
+     :color       (or color color-text-dark)})))
 
 (defn- register-font! [filename]
   (with-open [is (io/input-stream (io/resource filename))]

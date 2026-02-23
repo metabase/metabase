@@ -1,5 +1,6 @@
 import { SAMPLE_DB_ID, SAMPLE_DB_SCHEMA_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
+import { NODATA_USER_ID } from "e2e/support/cypress_sample_instance_data";
 
 const { H } = cy;
 const { MeasureList, MeasureEditor, MeasureRevisionHistory } = H.DataModel;
@@ -387,6 +388,76 @@ describe("scenarios > data studio > data model > measures", () => {
       H.DependencyGraph.graph()
         .findByText("Dependencies Test Measure")
         .should("be.visible");
+    });
+  });
+
+  describe("Readonly access for data analysts", () => {
+    it("should show measures in list but hide New measure button for non-admin", () => {
+      createTestMeasure({ name: "Readonly Test Measure" });
+
+      H.setUserAsAnalyst(NODATA_USER_ID);
+      cy.signIn("nodata");
+
+      cy.log("verify measure is visible in list");
+      visitDataStudioMeasures(ORDERS_ID);
+      MeasureList.getMeasure("Readonly Test Measure")
+        .scrollIntoView()
+        .should("be.visible");
+
+      cy.log("verify New measure button is not visible");
+      MeasureList.get()
+        .findByRole("link", { name: /New measure/i })
+        .should("not.exist");
+
+      cy.log("verify direct navigation to new measure page is blocked");
+      cy.visit(
+        `/data-studio/data/database/${SAMPLE_DB_ID}/schema/${SAMPLE_DB_SCHEMA_ID}/table/${ORDERS_ID}/measures/new`,
+      );
+      cy.url().should("include", "/unauthorized");
+    });
+
+    it("should display measure detail in readonly mode for non-admin", () => {
+      createTestMeasure({
+        name: "Readonly Detail Measure",
+        description: "Test description for readonly",
+      });
+
+      cy.get<number>("@measureId").then((measureId) => {
+        H.setUserAsAnalyst(NODATA_USER_ID);
+        cy.signIn("nodata");
+
+        visitDataModelMeasure(ORDERS_ID, measureId);
+
+        cy.log("verify measure name input is disabled");
+        MeasureEditor.get()
+          .findByDisplayValue("Readonly Detail Measure")
+          .should("be.disabled");
+
+        cy.log("verify description is displayed as plain text");
+        MeasureEditor.get().findByText("Description").should("be.visible");
+        MeasureEditor.get()
+          .findByText("Test description for readonly")
+          .should("be.visible");
+
+        cy.log("verify Save button is not visible");
+        MeasureEditor.get()
+          .findByRole("button", { name: /Save/i })
+          .should("not.exist");
+
+        cy.log("verify Remove measure option is hidden in actions menu");
+        MeasureEditor.getActionsButton().click();
+        H.popover().findByText("Preview").should("be.visible");
+        H.popover().findByText("Remove measure").should("not.exist");
+        cy.realPress("Escape");
+
+        cy.log("verify revision history is still accessible");
+        MeasureEditor.getRevisionHistoryTab().click();
+        MeasureRevisionHistory.get().within(() => {
+          cy.findByText(/created this measure/i)
+            .scrollIntoView()
+            .should("be.visible");
+        });
+      });
     });
   });
 });

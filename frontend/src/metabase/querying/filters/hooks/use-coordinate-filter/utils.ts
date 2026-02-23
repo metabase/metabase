@@ -1,34 +1,25 @@
 import { isNotNull } from "metabase/lib/types";
-import {
-  getAvailableOperatorOptions,
-  getDefaultAvailableOperator,
-} from "metabase/querying/filters/utils/operators";
 import * as Lib from "metabase-lib";
 
-import { OPERATOR_OPTIONS } from "./constants";
-import type { NumberOrEmptyValue, OperatorOption } from "./types";
+import { OPERATORS } from "./constants";
+import type {
+  CoordinateFilterOperatorOption,
+  NumberOrEmptyValue,
+} from "./types";
 
-export function getAvailableOptions(
-  query: Lib.Query,
-  stageIndex: number,
-  column: Lib.ColumnMetadata,
-) {
-  return getAvailableOperatorOptions(
-    query,
-    stageIndex,
-    column,
-    OPERATOR_OPTIONS,
-  );
+export function getAvailableOptions(): CoordinateFilterOperatorOption[] {
+  return Object.values(OPERATORS).map(({ operator }) => ({
+    operator,
+    displayName: Lib.describeFilterOperator(operator),
+  }));
 }
 
 export function getOptionByOperator(operator: Lib.CoordinateFilterOperator) {
-  return OPERATOR_OPTIONS[operator];
+  return OPERATORS[operator];
 }
 
-export function getDefaultOperator(
-  availableOptions: OperatorOption[],
-): Lib.CoordinateFilterOperator {
-  return getDefaultAvailableOperator(availableOptions, "between");
+export function getDefaultOperator(): Lib.CoordinateFilterOperator {
+  return "between";
 }
 
 export function getAvailableColumns(
@@ -63,7 +54,7 @@ export function getDefaultValues(
   operator: Lib.CoordinateFilterOperator,
   values: NumberOrEmptyValue[],
 ): NumberOrEmptyValue[] {
-  const { valueCount, hasMultipleValues } = OPERATOR_OPTIONS[operator];
+  const { valueCount, hasMultipleValues } = OPERATORS[operator];
   if (hasMultipleValues) {
     return values.filter(isNotNull);
   }

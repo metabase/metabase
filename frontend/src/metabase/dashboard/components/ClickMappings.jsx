@@ -5,7 +5,7 @@ import { Component } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
-import Select from "metabase/common/components/Select";
+import { Select } from "metabase/common/components/Select";
 import CS from "metabase/css/core/index.css";
 import { getDashcardData, getParameters } from "metabase/dashboard/selectors";
 import { isPivotGroupColumn } from "metabase/lib/data_grid";
@@ -246,7 +246,7 @@ function TargetWithSource({
           CS.flex,
           CS.alignCenter,
         )}
-        // eslint-disable-next-line no-color-literals
+        // eslint-disable-next-line metabase/no-color-literals
         style={{ borderColor: "#E2E4E8" }}
       >
         <svg
@@ -260,14 +260,14 @@ function TargetWithSource({
           <g opacity="0.6">
             <path
               d="M9 32C9 33.6569 7.65685 35 6 35C4.34315 35 3 33.6569 3 32C3 30.3431 4.34315 29 6 29C7.65685 29 9 30.3431 9 32Z"
-              // eslint-disable-next-line no-color-literals
+              // eslint-disable-next-line metabase/no-color-literals
               fill="#509EE3"
             />
             <path
               fillRule="evenodd"
               clipRule="evenodd"
               d="M12 6C12 8.973 9.83771 11.441 7 11.917V26.083C9.83771 26.559 12 29.027 12 32C12 35.3137 9.31371 38 6 38C2.68629 38 0 35.3137 0 32C0 29.027 2.16229 26.559 5 26.083V11.917C2.16229 11.441 0 8.973 0 6C0 2.68629 2.68629 0 6 0C9.31371 0 12 2.68629 12 6ZM6 10C8.20914 10 10 8.20914 10 6C10 3.79086 8.20914 2 6 2C3.79086 2 2 3.79086 2 6C2 8.20914 3.79086 10 6 10ZM6 36C8.20914 36 10 34.2091 10 32C10 29.7909 8.20914 28 6 28C3.79086 28 2 29.7909 2 32C2 34.2091 3.79086 36 6 36Z"
-              // eslint-disable-next-line no-color-literals
+              // eslint-disable-next-line metabase/no-color-literals
               fill="#509EE3"
             />
           </g>

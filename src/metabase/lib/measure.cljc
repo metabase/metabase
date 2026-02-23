@@ -1,12 +1,13 @@
 (ns metabase.lib.measure
   "A Measure is a saved MBQL query stage snippet with `:aggregation`. Measures are numeric expressions."
-  (:refer-clojure :exclude [mapv empty? some])
+  (:refer-clojure :exclude [not-empty])
   (:require
    [clojure.string :as str]
+   [metabase.graph.core :as graph]
    [metabase.lib.aggregation :as lib.aggregation]
+   [metabase.lib.join :as lib.join]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
-   [metabase.lib.metadata.protocols :as lib.metadata.protocols]
    [metabase.lib.normalize :as lib.normalize]
    [metabase.lib.options :as lib.options]
    [metabase.lib.query :as lib.query]
@@ -17,10 +18,9 @@
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.lib.util :as lib.util]
    [metabase.lib.walk.util :as lib.walk.util]
-   [metabase.util :as u]
    [metabase.util.i18n :as i18n]
    [metabase.util.malli :as mu]
-   [metabase.util.performance :refer [mapv empty? some]]))
+   [metabase.util.performance :refer [not-empty]]))
 
 (defn- resolve-measure [query measure-id]
   (when (integer? measure-id)
@@ -113,60 +113,62 @@
      :display-name (fallback-display-name)}))
 
 (mu/defn available-measures :- [:maybe [:sequential {:min 1} ::lib.schema.metadata/measure]]
-  "Get a list of Measures that you may consider using as aggregation for a query. Only Measures that have the same
-  `table-id` as the `source-table` for this query will be suggested."
+  "Get a list of Measures usable as aggregation in `query`. Only Measures with the same
+  `table-id` as the `source-table` of `query` are returned. Measures for joined tables are NOT returned."
   ([query]
    (available-measures query -1))
   ([query :- ::lib.schema/query
     stage-number :- :int]
    (when (zero? (lib.util/canonical-stage-index query stage-number))
      (when-let [source-table-id (lib.util/source-table-id query)]
-       (let [measures (lib.metadata.protocols/measures (lib.metadata/->metadata-provider query) source-table-id)
-             measure-aggregations (into {}
-                                        (keep-indexed (fn [index aggregation-clause]
-                                                        (when (lib.util/clause-of-type? aggregation-clause :measure)
-                                                          [(get aggregation-clause 2) index])))
-                                        (lib.aggregation/aggregations query 0))]
-         (cond
-           (empty? measures)             nil
-           (empty? measure-aggregations) (vec measures)
-           :else                         (mapv (fn [measure-metadata]
-                                                 (let [aggregation-pos (-> measure-metadata :id measure-aggregations)]
-                                                   (cond-> measure-metadata
-                                                     aggregation-pos (assoc :aggregation-positions [aggregation-pos]))))
-                                               measures)))))))
+       (let [measures             (lib.metadata/metadatas-for-table query :metadata/measure source-table-id)
+             measure-aggregations (transduce
+                                   (map-indexed vector)
+                                   (completing (fn [acc [index clause]]
+                                                 (if (lib.util/clause-of-type? clause :measure)
+                                                   (let [k [(get clause 2)
+                                                            (:join-alias (lib.options/options clause))]]
+                                                     (update acc k (fnil conj []) index))
+                                                   acc)))
+                                   {}
+                                   (lib.aggregation/aggregations query 0))]
+         (not-empty
+          (into []
+                (map (fn [measure-metadata]
+                       (let [positions (-> measure-metadata
+                                           ((juxt :id ::lib.join/join-alias))
+                                           measure-aggregations)]
+                         (cond-> measure-metadata
+                           positions (assoc :aggregation-positions positions)))))
+                measures)))))))
+
+(defn- measure-graph
+  "Create a Graph for measure dependency traversal.
+  Uses `initial-definition` for `initial-measure-id`, and looks up other measures from `metadata-provider`."
+  [metadata-provider initial-definition initial-measure-id]
+  (reify graph/Graph
+    (children-of [_this measure-ids]
+      (reduce (fn [acc measure-id]
+                (let [definition (if (= measure-id initial-measure-id)
+                                   initial-definition
+                                   (:definition (lib.metadata/measure metadata-provider measure-id)))]
+                  (if definition
+                    (assoc acc measure-id (set (lib.walk.util/all-measure-ids definition)))
+                    (throw (ex-info (i18n/tru "Measure {0} does not exist." measure-id)
+                                    {:measure-id measure-id})))))
+              {}
+              measure-ids))))
 
 (defn check-measure-cycles
-  "DFS to detect cycles starting from `measure-id` with `definition`.
-  `metadata-provider` is used for looking up referenced measures.
-  `path` is a vector of measure IDs representing the current DFS path (for cycle detection and reporting).
-  `visited` is the set of measure IDs we've fully processed (for avoiding redundant work).
-  Returns updated `visited` set. Throws if a cycle is detected or if a referenced measure doesn't exist."
-  ([metadata-provider definition measure-id]
-   (check-measure-cycles metadata-provider definition measure-id [] #{}))
-  ([metadata-provider definition measure-id path visited]
-   (cond
-     (some #{measure-id} path)
-     (let [cycle-start-idx (u/index-of #{measure-id} path)
-           cycle-path      (conj (subvec path cycle-start-idx) measure-id)]
-       (throw (ex-info (i18n/tru "Measure cycle detected: {0}" (str/join " → " cycle-path))
-                       {:measure-id measure-id
-                        :cycle-path cycle-path
-                        :path       path})))
-
-     (contains? visited measure-id)
-     visited
-
-     :else
-     (let [referenced-ids (lib.walk.util/all-measure-ids definition)
-           path'          (conj path measure-id)]
-       (reduce (fn [visited' ref-id]
-                 (if-let [measure (lib.metadata/measure metadata-provider ref-id)]
-                   (check-measure-cycles metadata-provider (:definition measure) ref-id path' visited')
-                   (throw (ex-info (i18n/tru "Measure {0} does not exist." ref-id)
-                                   {:measure-id ref-id}))))
-               (conj visited measure-id)
-               referenced-ids)))))
+  "Check for cycles in measure dependencies starting from `measure-id` with `definition`.
+  `definition` also serves as the metadata provider for looking up referenced measures.
+  Throws if a cycle is detected or if a referenced measure doesn't exist."
+  [metadata-provider definition measure-id]
+  (when-let [cycle-path (graph/find-cycle (measure-graph metadata-provider definition measure-id)
+                                          [measure-id])]
+    (throw (ex-info (i18n/tru "Measure cycle detected: {0}" (str/join " → " cycle-path))
+                    {:measure-id measure-id
+                     :cycle-path cycle-path}))))
 
 (mu/defn check-measure-overwrite
   "Check if saving a measure with `measure-id` and `definition` would create a cycle.

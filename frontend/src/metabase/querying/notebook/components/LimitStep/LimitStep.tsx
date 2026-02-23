@@ -3,7 +3,7 @@ import { useState } from "react";
 import { t } from "ttag";
 
 import CS from "metabase/css/core/index.css";
-import LimitInput from "metabase/query_builder/components/LimitInput";
+import { LimitInput } from "metabase/query_builder/components/LimitInput";
 import * as Lib from "metabase-lib";
 
 import type { NotebookStepProps } from "../../types";

@@ -1,0 +1,15 @@
+.Container {
+  display: grid;
+  width: 100%;
+  grid-template-columns: 1fr;
+  grid-template-rows: 1fr;
+}
+
+.Container:has(.BrandingFooter) {
+  grid-template-rows: 1fr auto;
+}
+
+.Dashboard {
+  height: 100%;
+  min-height: unset;
+}

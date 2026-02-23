@@ -180,6 +180,31 @@
                                   {:total 1
                                    :archived (true? (:archived document))}))})
 
+(defn- library-stats
+  "Get metrics for Library usage."
+  []
+  (letfn [(collection-and-descendant-ids [type]
+            ;; Get collection and build location prefix for descendants (location like "<parent-location><id>/%")
+            (when-let [{:keys [id location]} (t2/select-one [:model/Collection :id :location] :type type)]
+              (let [children-location (str location id "/")
+                    descendant-ids    (t2/select-pks-set :model/Collection :location [:like (str children-location "%")])]
+                (conj (or descendant-ids #{}) id))))]
+    (let [library-data-ids    (collection-and-descendant-ids "library-data")
+          library-metrics-ids (collection-and-descendant-ids "library-metrics")]
+      {:library_data    (if (seq library-data-ids)
+                          (t2/count :model/Table
+                                    {:where [:and
+                                             [:= :is_published true]
+                                             [:in :collection_id library-data-ids]]})
+                          0)
+       :library_metrics (if (seq library-metrics-ids)
+                          (t2/count :model/Card
+                                    {:where [:and
+                                             [:= :type "metric"]
+                                             [:= :archived false]
+                                             [:in :collection_id library-metrics-ids]]})
+                          0)})))
+
 (defn- group-metrics
   "Get metrics based on groups:
   TODO characterize by # w/ sql access, # of users, no self-serve data access"
@@ -497,7 +522,8 @@
                       :system     (system-metrics)
                       :table      (table-metrics)
                       :user       (user-metrics)
-                      :document   (document-metrics)}}))
+                      :document   (document-metrics)
+                      :library    (library-stats)}}))
 
 (defn- ^:deprecated send-stats-deprecated!
   "Send stats to Metabase tracking server."
@@ -711,6 +737,8 @@
     [:embedded_questions              (get-in stats [:stats :question :embedded :total] 0)            #{"questions" "embedding"}]
     [:entity_id_translations_last_24h (:entity_id_translations_last_24h metric-info 0)                #{"embedding"}]
     [:first_time_only_alerts          (get-in stats [:stats :alert :first_time_only] 0)               #{"alerts"}]
+    [:library_data                    (get-in stats [:stats :library :library_data] 0)               #{"library"}]
+    [:library_metrics                 (get-in stats [:stats :library :library_metrics] 0)            #{"library"}]
     [:metabase_fields                 (get-in stats [:stats :field :fields] 0)                        #{"fields"}]
     [:metrics                         (get-in stats [:stats :metric :metrics] 0)                      #{"metrics"}]
     [:models                          (:models metric-info 0)                                         #{}]
@@ -771,7 +799,7 @@
 
 (defn- ee-snowplow-features-data'
   []
-  (let [features [:sso-jwt :sso-saml :scim :sandboxes :email-allow-list :semantic-search]]
+  (let [features [:sso-jwt :sso-saml :sso-slack :scim :sandboxes :email-allow-list :semantic-search]]
     (map
      (fn [feature]
        {:name      feature
@@ -921,7 +949,10 @@
     :enabled   (premium-features/enable-dependencies?)}
    {:name      :support-users
     :available (premium-features/enable-support-users?)
-    :enabled   (premium-features/enable-support-users?)}])
+    :enabled   (premium-features/enable-support-users?)}
+   {:name      :workspaces
+    :available (premium-features/enable-workspaces?)
+    :enabled   (premium-features/enable-workspaces?)}])
 
 (defn- snowplow-features
   []

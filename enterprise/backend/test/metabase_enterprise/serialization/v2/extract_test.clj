@@ -962,6 +962,92 @@
                           {:model "Field" :id "Some Field"}]}
                        (set (serdes/dependencies ser))))))))))))
 
+(deftest measure-referencing-measure-test
+  (mt/with-empty-h2-app-db!
+    (ts/with-temp-dpc [:model/User       {ann-id :id}        {:first_name "Ann"
+                                                              :last_name  "Wilson"
+                                                              :email      "ann@heart.band"}
+                       :model/Database   {db-id :id}        {:name "My Database"}
+                       :model/Table      {table-id :id}     {:name "My Table" :db_id db-id}
+                       :model/Field      {field-id :id}     {:name "Amount" :table_id table-id}]
+      (let [base-definition (pmbql-measure-definition db-id table-id field-id)]
+        (ts/with-temp-dpc [:model/Measure
+                           {m1-id  :id
+                            m1-eid :entity_id}
+                           {:name       "Base Measure"
+                            :creator_id ann-id
+                            :table_id   table-id
+                            :definition base-definition}]
+          ;; Create a measure that references the base measure
+          (let [metadata-provider (lib-be/application-database-metadata-provider db-id)
+                table (lib.metadata/table metadata-provider table-id)
+                query (lib/query metadata-provider table)
+                measure-ref (lib.metadata/measure metadata-provider m1-id)
+                derived-definition (lib/aggregate query (lib/* measure-ref 2))]
+            (ts/with-temp-dpc [:model/Measure
+                               {m2-id  :id
+                                m2-eid :entity_id}
+                               {:name       "Derived Measure"
+                                :creator_id ann-id
+                                :table_id   table-id
+                                :definition derived-definition}]
+              (testing "measure referencing another measure"
+                (let [ser (serdes/extract-one "Measure" {} (t2/select-one :model/Measure :id m2-id))]
+                  (is (=? {:serdes/meta [{:model "Measure" :id m2-eid :label "derived_measure"}]
+                           :table_id    ["My Database" nil "My Table"]
+                           :creator_id  "ann@heart.band"
+                           :definition  {:database "My Database"
+                                         :type     :query
+                                         :query    {:source-table ["My Database" nil "My Table"]
+                                                    :aggregation  [[:* [:measure m1-eid] 2]]}}}
+                          ser))
+                  (testing "depends on the referenced Measure"
+                    (is (contains? (set (serdes/dependencies ser))
+                                   [{:model "Measure" :id m1-eid}]))))))))))))
+
+(deftest measure-referencing-segment-test
+  (mt/with-empty-h2-app-db!
+    (ts/with-temp-dpc [:model/User       {ann-id :id}        {:first_name "Ann"
+                                                              :last_name  "Wilson"
+                                                              :email      "ann@heart.band"}
+                       :model/Database   {db-id :id}        {:name "My Database"}
+                       :model/Table      {table-id :id}     {:name "My Table" :db_id db-id}
+                       :model/Field      {field-id :id}     {:name "Price" :table_id table-id}
+                       :model/Segment
+                       {seg-id  :id
+                        seg-eid :entity_id}
+                       {:name       "Expensive Items"
+                        :creator_id ann-id
+                        :table_id   table-id
+                        :definition {:source-table table-id
+                                     :filter       [:> [:field field-id nil] 100]}}]
+      ;; Create a measure that uses count-where with a segment reference
+      (let [metadata-provider (lib-be/application-database-metadata-provider db-id)
+            table (lib.metadata/table metadata-provider table-id)
+            query (lib/query metadata-provider table)
+            segment-ref (lib.metadata/segment metadata-provider seg-id)
+            measure-definition (lib/aggregate query (lib/count-where segment-ref))]
+        (ts/with-temp-dpc [:model/Measure
+                           {m-id  :id
+                            m-eid :entity_id}
+                           {:name       "Expensive Item Count"
+                            :creator_id ann-id
+                            :table_id   table-id
+                            :definition measure-definition}]
+          (testing "measure referencing a segment"
+            (let [ser (serdes/extract-one "Measure" {} (t2/select-one :model/Measure :id m-id))]
+              (is (=? {:serdes/meta [{:model "Measure" :id m-eid :label "expensive_item_count"}]
+                       :table_id    ["My Database" nil "My Table"]
+                       :creator_id  "ann@heart.band"
+                       :definition  {:database "My Database"
+                                     :type     :query
+                                     :query    {:source-table ["My Database" nil "My Table"]
+                                                :aggregation  [[:count-where [:segment seg-eid]]]}}}
+                      ser))
+              (testing "depends on the referenced Segment"
+                (is (contains? (set (serdes/dependencies ser))
+                               [{:model "Segment" :id seg-eid}]))))))))))
+
 (deftest table-publishing-serdes-test
   (mt/with-empty-h2-app-db!
     (ts/with-temp-dpc [:model/Database   {db-id :id}           {:name "My Database"}
@@ -1032,43 +1118,6 @@
                          :created_at  string?
                          :model_id    card-eid-1
                          :implicit    [{:kind :row/update}]}
-                        ser))
-                (is (not (contains? ser :id)))
-                (testing "depends on the Model"
-                  (is (= #{[{:model "Card" :id card-eid-1}]}
-                         (set (serdes/dependencies ser)))))))))))))
-
-(deftest http-action-test
-  (mt/with-empty-h2-app-db!
-    (ts/with-temp-dpc [:model/User     {ann-id :id} {:first_name "Ann"
-                                                     :last_name  "Wilson"
-                                                     :email      "ann@heart.band"}
-                       :model/Database {db-id :id :as db} {:name "My Database"}]
-      (mt/with-db db
-        (mt/with-actions [{card-id-1  :id
-                           card-eid-1 :entity_id}
-                          {:name          "Source question"
-                           :database_id   db-id
-                           :type          :model
-                           :query_type    :native
-                           :dataset_query (mt/native-query {:query "select 1"})
-                           :creator_id    ann-id}
-
-                          {:keys [action-id]}
-                          {:name       "My Action"
-                           :type       :http
-                           :template   {:method "GET", :url "https://camsaul.com"}
-                           :creator_id ann-id
-                           :model_id   card-id-1}]
-          (let [action (action/select-action :id action-id)]
-            (testing "action"
-              (let [ser (ts/extract-one "Action" action-id)]
-                (is (=? {:serdes/meta [{:model "Action" :id (:entity_id action) :label "my_action"}]
-                         :creator_id  "ann@heart.band"
-                         :type        "http"
-                         :created_at  string?
-                         :model_id    card-eid-1
-                         :http        [{:template {}}]}
                         ser))
                 (is (not (contains? ser :id)))
                 (testing "depends on the Model"
@@ -1467,7 +1516,7 @@
                                                                                                     :dimension dimension}}}}})}}}]
 
       (testing "selecting a collection includes settings metabot and data model by default"
-        (is (= #{"Card" "Collection" "Dashboard" "Database" "Setting" "TransformTag" "TransformJob"}
+        (is (= #{"Card" "Collection" "Dashboard" "Database" "PythonLibrary" "Setting" "TransformTag" "TransformJob"}
                (->> (extract/extract {:targets [["Collection" coll1-id]]})
                     (map (comp :model first serdes/path))
                     set))))
@@ -2205,6 +2254,11 @@
                            {_field-id :id}
                            {:name "Some Field" :table_id table-id}
 
+                           :model/Collection
+                           {coll-id :id coll-eid :entity_id}
+                           {:name "Transform Collection"
+                            :namespace :transforms}
+
                            ;; Create tags for associations
                            :model/TransformTag
                            {hourly-tag-id :id
@@ -2228,6 +2282,7 @@
                            {:name "Test Transform"
                             :description "A test transform for serialization"
                             :entity_id "2HzIFwJ6720JAx07UMavl"
+                            :collection_id coll-id
                             :source {:query {:database db-id
                                              :type     "query"
                                              :query    {:source-table table-id}}
@@ -2278,8 +2333,9 @@
                 (is (= [hourly-tag-eid custom-tag-eid daily-tag-eid] tag-ids))
                 (is (= [0 1 2] positions))))
 
-            (testing "dependencies include source table and tags"
+            (testing "dependencies include collection, source table, and tags"
               (let [deps (set (serdes/dependencies ser))]
+                (is (contains? deps [{:model "Collection" :id coll-eid}]))
                 (is (contains? deps [{:model "Database" :id "My Database"}
                                      {:model "Table" :id "Schemaless Table"}]))
                 (is (contains? deps [{:model "TransformTag" :id hourly-tag-eid}]))
@@ -2426,3 +2482,139 @@
             (is (not (contains? table-names "Other Table"))))
           (testing "database is not exported (no-data-model: true)"
             (is (empty? (filter #(= "Database" (-> % :serdes/meta last :model)) extracted)))))))))
+
+(deftest collection-export-includes-fields-and-segments-test
+  (testing "Exporting a collection with published tables includes their Fields and Segments"
+    (mt/with-empty-h2-app-db!
+      (ts/with-temp-dpc [:model/Database   {db-id :id}          {:name "My Database"}
+                         :model/Collection {coll-id :id}        {:name "Export Collection"}
+                         :model/Table      {table-id :id}       {:name          "Published Table"
+                                                                 :db_id         db-id
+                                                                 :is_published  true
+                                                                 :collection_id coll-id}
+                         :model/Field      {field1-id :id}      {:name      "Field One"
+                                                                 :table_id  table-id
+                                                                 :base_type :type/Integer}
+                         :model/Field      {field2-id :id}      {:name      "Field Two"
+                                                                 :table_id  table-id
+                                                                 :base_type :type/Text}
+                         :model/Segment    {segment-id :id}     {:name       "Test Segment"
+                                                                 :table_id   table-id
+                                                                 :definition {}}
+                         ;; Create another table with fields that should NOT be exported
+                         :model/Table      {other-table-id :id} {:name          "Other Table"
+                                                                 :db_id         db-id
+                                                                 :is_published  false}
+                         :model/Field      _                    {:name      "Other Field"
+                                                                 :table_id  other-table-id
+                                                                 :base_type :type/Integer}]
+        (let [opts        {:targets       [["Collection" coll-id]]
+                           :no-data-model true
+                           :no-settings   true}
+              extracted   (into [] (extract/extract opts))
+              field-ids   (->> extracted
+                               (filter #(= "Field" (-> % :serdes/meta last :model)))
+                               (map #(t2/select-one-pk :model/Field
+                                                       :table_id (t2/select-one-pk :model/Table :name (-> % :serdes/meta butlast last :id))
+                                                       :name (-> % :serdes/meta last :id)))
+                               set)
+              segment-ids (->> extracted
+                               (filter #(= "Segment" (-> % :serdes/meta last :model)))
+                               (map #(:id (t2/select-one :model/Segment :entity_id (:entity_id %))))
+                               set)]
+          (testing "fields from published table are exported"
+            (is (contains? field-ids field1-id))
+            (is (contains? field-ids field2-id)))
+          (testing "segments from published table are exported"
+            (is (contains? segment-ids segment-id)))
+          (testing "fields from non-published table are NOT exported"
+            (is (= 2 (count field-ids)))))))))
+
+(deftest python-library-test
+  (mt/with-empty-h2-app-db!
+    ;; Delete any pre-existing python_library entries from migrations
+    (t2/delete! :model/PythonLibrary)
+    (ts/with-temp-dpc [:model/PythonLibrary {lib-id :id lib-entity-id :entity_id} {:path   "common"
+                                                                                   :source "def helper():\n    return 42"}]
+      (testing "python library extraction"
+        (let [ser (serdes/extract-one "PythonLibrary" {} (t2/select-one :model/PythonLibrary :id lib-id))]
+          (is (=? {:serdes/meta [{:model "PythonLibrary"
+                                  :id    lib-entity-id}]
+                   :path        "common.py"
+                   :source      "def helper():\n    return 42"
+                   :entity_id   lib-entity-id
+                   :created_at  string?}
+                  ser))
+          (is (not (contains? ser :id)))
+
+          (testing "has no dependencies"
+            (is (empty? (serdes/dependencies ser)))))))))
+
+(deftest ^:parallel export-parameters-sorts-by-id-test
+  (let [params [{:id "zebra" :name "Z param" :type :category}
+                {:id "alpha" :name "A param" :type :category}
+                {:id "middle" :name "M param" :type :category}]
+        result (serdes/export-parameters params)]
+    (is (= ["alpha" "middle" "zebra"]
+           (map :id result)))))
+
+(deftest ^:parallel export-parameters-empty-input-test
+  (is (= [] (serdes/export-parameters []))))
+
+(deftest ^:parallel export-parameters-nil-input-test
+  (is (= [] (serdes/export-parameters nil))))
+
+(deftest ^:parallel export-parameters-single-element-test
+  (let [params [{:id "only" :name "Only param"}]
+        result (serdes/export-parameters params)]
+    (is (= ["only"] (map :id result)))))
+
+(deftest ^:parallel export-parameters-nil-id-sorts-first-test
+  (let [params [{:id "beta" :name "B"}
+                {:id nil :name "Nil"}
+                {:id "alpha" :name "A"}]
+        result (serdes/export-parameters params)]
+    (is (= [nil "alpha" "beta"] (map :id result)))))
+
+(deftest ^:parallel export-parameter-mappings-sorts-by-parameter-id-test
+  (let [mappings [{:parameter_id "z-param" :target [:dimension [:field 1 nil]]}
+                  {:parameter_id "a-param" :target [:dimension [:field 2 nil]]}
+                  {:parameter_id "m-param" :target [:dimension [:field 3 nil]]}]
+        result (serdes/export-parameter-mappings mappings)]
+    (is (= ["a-param" "m-param" "z-param"]
+           (map :parameter_id result)))))
+
+(deftest ^:parallel export-parameter-mappings-empty-input-test
+  (is (= [] (serdes/export-parameter-mappings []))))
+
+(deftest ^:parallel export-parameter-mappings-nil-input-test
+  (is (= [] (serdes/export-parameter-mappings nil))))
+
+(deftest ^:parallel export-parameter-mappings-single-element-test
+  (let [mappings [{:parameter_id "only" :target [:dimension [:field 1 nil]]}]
+        result (serdes/export-parameter-mappings mappings)]
+    (is (= ["only"] (map :parameter_id result)))))
+
+(deftest dashboard-parameters-sorted-extraction-test
+  (mt/with-empty-h2-app-db!
+    (ts/with-temp-dpc [:model/Collection {coll-id :id} {:name "Test Collection"}
+                       :model/Card {card-id :id} {:name "Source Card"
+                                                  :collection_id coll-id}
+                       :model/Dashboard {dash-id :id} {:name "Test Dashboard"
+                                                       :collection_id coll-id
+                                                       :parameters [{:id "zebra" :name "Z" :type :category}
+                                                                    {:id "alpha" :name "A" :type :category}
+                                                                    {:id "beta" :name "B" :type :category}]}
+                       :model/DashboardCard _ {:dashboard_id dash-id
+                                               :card_id card-id
+                                               :parameter_mappings [{:parameter_id "zebra"
+                                                                     :card_id card-id
+                                                                     :target [:dimension [:field 1 nil]]}
+                                                                    {:parameter_id "alpha"
+                                                                     :card_id card-id
+                                                                     :target [:dimension [:field 2 nil]]}]}]
+      (let [ser (ts/extract-one "Dashboard" dash-id)]
+        (is (= ["alpha" "beta" "zebra"]
+               (map :id (:parameters ser))))
+        (is (= ["alpha" "zebra"]
+               (map :parameter_id (-> ser :dashcards first :parameter_mappings))))))))
