@@ -41,7 +41,7 @@ function getAuthState(): SdkAuthState | undefined {
 function waitForAuthConfigAndStart({ startTime }: { startTime: Date }) {
   const after = () => `after ${new Date().getTime() - startTime.getTime()} ms`;
   const log = (message: string, ...args: any[]) =>
-    console.log(`SDK Bootstrap Auth: ${message} ${after()}`, ...args);
+    console.log(`SDK Bootstrap Auth: ${message} ${after()}`, ...args); // eslint-disable-line no-console
   const win = getWindow();
   if (!win) {
     log("No window, skipping");
@@ -93,6 +93,7 @@ function waitForAuthConfigAndStart({ startTime }: { startTime: Date }) {
   const maxAttempts = 20;
   const checkInterval = () => {
     if (attempts >= maxAttempts) {
+      // eslint-disable-next-line no-console
       console.log(
         "SDK Bootstrap Auth: Gave up waiting for auth config, will use bundle auth",
       );
@@ -172,12 +173,14 @@ async function performFullAuthFlow(config: {
   user: any;
   siteSettings: Record<string, any>;
 }> {
+  // eslint-disable-next-line no-console
   console.log("[DEBUG] performFullAuthFlow");
   const headers = getSdkRequestHeaders();
 
   // Step 1: Get JWT provider URI (skip discovery if jwtProviderUri provided)
   let providerUri = config.jwtProviderUri;
   if (!providerUri) {
+    // eslint-disable-next-line no-console
     console.log("[DEBUG] !providerUri, will do sso discovery");
     const ssoUrl = new URL(`${config.metabaseInstanceUrl}/auth/sso`);
 
@@ -199,6 +202,7 @@ async function performFullAuthFlow(config: {
     }
     providerUri = ssoData.url;
   } else {
+    // eslint-disable-next-line no-console
     console.log(
       "[SDK Auth Flow] Step 1: Using provided jwtProviderUri, skipping discovery",
     );
@@ -207,6 +211,7 @@ async function performFullAuthFlow(config: {
   // Step 2: Get JWT from customer backend
   let jwt: string;
   if (config.fetchRequestToken) {
+    // eslint-disable-next-line no-console
     console.log(
       "[SDK Auth Flow] Step 2: Fetching JWT using custom fetchRequestToken",
     );
@@ -218,6 +223,7 @@ async function performFullAuthFlow(config: {
     }
     jwt = response.jwt;
   } else {
+    // eslint-disable-next-line no-console
     console.log(
       "[SDK Auth Flow] Step 2: Fetching JWT from provider:",
       providerUri,
@@ -226,6 +232,7 @@ async function performFullAuthFlow(config: {
     const jwtUrl = new URL(providerUri as string);
     jwtUrl.searchParams.set("response", "json");
 
+    // eslint-disable-next-line no-console
     console.log(
       "[SDK Auth Flow] Fetching JWT from provider:",
       jwtUrl.toString(),
@@ -234,6 +241,7 @@ async function performFullAuthFlow(config: {
       method: "GET",
       credentials: "include",
     });
+    // eslint-disable-next-line no-console
     console.log(
       "[SDK Auth Flow] JWT response:",
       jwtResponse.status,
@@ -254,9 +262,11 @@ async function performFullAuthFlow(config: {
     }
     jwt = jwtData.jwt;
   }
+  // eslint-disable-next-line no-console
   console.log("[SDK Auth Flow] Step 2: Got JWT");
 
   // Step 3: Exchange JWT for session token
+  // eslint-disable-next-line no-console
   console.log("[SDK Auth Flow] Step 3: Exchanging JWT for session token");
   const sessionUrl = new URL(`${config.metabaseInstanceUrl}/auth/sso`);
   sessionUrl.searchParams.set("jwt", jwt);
@@ -270,15 +280,17 @@ async function performFullAuthFlow(config: {
   }
 
   const session = await sessionResponse.json();
+  // eslint-disable-next-line no-console
   console.log("[SDK Auth Flow] Step 3: Got session token");
 
   // Step 4: Fetch user and site settings in parallel
+  // eslint-disable-next-line no-console
   console.log(
     "[SDK Auth Flow] Step 4: Fetching user and site settings in parallel",
   );
   const authHeaders = {
     ...headers,
-    // eslint-disable-next-line no-literal-metabase-strings -- header name
+    // eslint-disable-next-line metabase/no-literal-metabase-strings -- header name
     "X-Metabase-Session": session.id,
   };
 
@@ -306,14 +318,14 @@ async function performFullAuthFlow(config: {
 
 function getSdkRequestHeaders(hash?: string): Record<string, string> {
   return {
-    // eslint-disable-next-line no-literal-metabase-strings -- header name
+    // eslint-disable-next-line metabase/no-literal-metabase-strings -- header name
     "X-Metabase-Client": "embedding-sdk-react",
-    // eslint-disable-next-line no-literal-metabase-strings -- header name
+    // eslint-disable-next-line metabase/no-literal-metabase-strings -- header name
     "X-Metabase-Client-Version":
       // Intentionally hardcoded — cannot import getBuildInfo here without
       // creating a shared module that breaks rspack runtime isolation.
       "unknown",
-    // eslint-disable-next-line no-literal-metabase-strings -- header name
+    // eslint-disable-next-line metabase/no-literal-metabase-strings -- header name
     ...(hash && { "X-Metabase-SDK-JWT-Hash": hash }),
   };
 }

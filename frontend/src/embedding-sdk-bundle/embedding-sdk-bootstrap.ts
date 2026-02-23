@@ -11,6 +11,7 @@ import { waitForAuthConfigAndStart } from "./bootstrap-auth";
 
 const startTime = new Date();
 const log = (message: string, ...args: any[]) =>
+  // eslint-disable-next-line no-console
   console.log(
     `SDK Bootstrap: ${message} after ${new Date().getTime() - startTime.getTime()} ms`,
     ...args,
@@ -51,7 +52,7 @@ function loadScript(filename: string): Promise<string> {
 // so __webpack_require__ is already available. Load all split chunks in parallel.
 log(`Loading ${manifest.chunks.length} chunks in parallel`, manifest);
 
-Promise.all(manifest.chunks.map(filename => loadScript(filename)))
+Promise.all(manifest.chunks.map((filename) => loadScript(filename)))
   .then(() => {
     // The "metabase-sdk-bundle-loaded" event is dispatched by
     // main-bundle.ts itself after setting window.METABASE_EMBEDDING_SDK_BUNDLE.
@@ -60,7 +61,7 @@ Promise.all(manifest.chunks.map(filename => loadScript(filename)))
     // before the entry module code actually runs.
     log("All chunk scripts loaded");
   })
-  .catch(error => {
+  .catch((error) => {
     console.error("SDK Bootstrap: Failed to load bundle chunks:", error);
   });
 
