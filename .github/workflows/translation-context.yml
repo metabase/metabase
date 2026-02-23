@@ -32,6 +32,7 @@ jobs:
 
       - name: Trigger pre-translations
         uses: crowdin/github-action@v2
+        # https://crowdin.github.io/crowdin-cli/commands/crowdin-pre-translate
         with:
           command: "pre-translate"
           command_args: >-
