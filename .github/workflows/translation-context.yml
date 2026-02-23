@@ -29,3 +29,13 @@ jobs:
             --croql='not (context contains "✨ AI Context")' \
             --output="crowdin" \
             --concurrency=10
+
+      - name: Trigger pre-translations
+        uses: crowdin/github-action@v2
+        with:
+          command: "pre-translate"
+          command_args: "-l ru --method ai --ai-prompt ${{ secrets.CROWDIN_AI_PROMPT_ID }} --translate-untranslated-only true --token ${{ secrets.CROWDIN_TOKEN }} --project-id ${{ secrets.CROWDIN_PROJECT_ID }}"
+
+      # Access the command output in subsequent steps (optional)
+      - name: Use command output
+        run: echo "${{ steps.crowdin.outputs.command_output }}"
