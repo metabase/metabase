@@ -7,12 +7,11 @@ import { Flex, type FlexProps, type TextProps } from "metabase/ui";
 
 import S from "./ViewSection.module.css";
 
-export type ViewSectionProps = HTMLAttributes<HTMLDivElement> &
-  FlexProps & {
-    className?: string;
-    style?: CSSProperties;
-    children?: ReactNode;
-  };
+export type ViewSectionProps = FlexProps & {
+  className?: string;
+  style?: CSSProperties;
+  children?: ReactNode;
+};
 
 export const ViewSection = ({
   className,

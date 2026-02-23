@@ -7,4 +7,5 @@
   border-radius: 8px;
   background-color: color-mix(in srgb, var(--mb-color-accent4) 5%, transparent);
   border: 1px solid var(--mb-color-accent4);
+  line-height: 1.25rem;
 }

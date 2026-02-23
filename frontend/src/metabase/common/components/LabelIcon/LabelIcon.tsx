@@ -11,9 +11,7 @@ type LabelIconProps = {
 };
 
 export function LabelIcon({ icon, size = 16, className }: LabelIconProps) {
-  const isColor = icon.startsWith("#");
-
-  if (isColor) {
+  if (isColorString(icon)) {
     return (
       <span
         className={cx(S.icon, S.colorIcon, className)}
@@ -22,5 +20,9 @@ export function LabelIcon({ icon, size = 16, className }: LabelIconProps) {
     );
   }
 
-  return <Icon className={cx(S.icon, className)} name={icon as IconName} />;
+  return <Icon className={cx(S.icon, className)} name={icon} />;
+}
+
+function isColorString(icon: string): icon is `#${string}` {
+  return icon.startsWith("#");
 }
