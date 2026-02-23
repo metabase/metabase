@@ -173,6 +173,12 @@ const ComponentWrapperInner = <TComponentProps,>({
     ? null
     : getWindow()?.METABASE_EMBEDDING_SDK_BUNDLE?.ComponentProvider;
 
+  // console.log("ComponentProvider", ComponentProvider);
+  // console.log(
+  //   "metabaseProviderInternalProps.reduxStore",
+  //   metabaseProviderInternalProps.reduxStore,
+  // );
+  // console.log("metabaseProviderProps", metabaseProviderProps);
   if (
     !ComponentProvider ||
     !metabaseProviderInternalProps.reduxStore ||

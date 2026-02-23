@@ -7,6 +7,7 @@ const PLUGIN_NAME = "copy-js-from-tmp-directory-plugin";
 
 module.exports.CopyJsFromTmpDirectoryPlugin = ({
   fileName,
+  fileNames,
   tmpPath,
   outputPath,
   copySourceMap,
@@ -15,19 +16,23 @@ module.exports.CopyJsFromTmpDirectoryPlugin = ({
   name: PLUGIN_NAME,
   apply(compiler) {
     compiler.hooks.afterEmit.tap(PLUGIN_NAME, () => {
-      const tmpFilePath = path.join(tmpPath, fileName);
-      const outputFilePath = path.join(outputPath, fileName);
+      fs.mkdirSync(outputPath, { recursive: true });
 
-      // copy embedding-sdk.js from the temp directory to the resources directory
-      fs.mkdirSync(tmpPath, { recursive: true });
-      fs.copyFileSync(tmpFilePath, outputFilePath);
+      const files = fileNames || [fileName];
 
-      if (copySourceMap) {
-        const tmpSourceMapPath = `${tmpFilePath}.map`;
-        const outputSourceMapPath = `${outputFilePath}.map`;
+      for (const name of files) {
+        const tmpFilePath = path.join(tmpPath, name);
+        const outputFilePath = path.join(outputPath, name);
 
-        if (fs.existsSync(tmpSourceMapPath)) {
-          fs.copyFileSync(tmpSourceMapPath, outputSourceMapPath);
+        fs.copyFileSync(tmpFilePath, outputFilePath);
+
+        if (copySourceMap) {
+          const tmpSourceMapPath = `${tmpFilePath}.map`;
+          const outputSourceMapPath = `${outputFilePath}.map`;
+
+          if (fs.existsSync(tmpSourceMapPath)) {
+            fs.copyFileSync(tmpSourceMapPath, outputSourceMapPath);
+          }
         }
       }
 

@@ -65,6 +65,7 @@ cypress.env.json
 /resources/frontend_client/app/embed.js
 /resources/frontend_client/app/embedding-sdk.js
 /resources/frontend_client/app/embedding-sdk.js.map
+/resources/frontend_client/app/embedding-sdk/
 /resources/frontend_client/tmp-*/
 /resources/frontend_client/embed.html
 /resources/frontend_client/embed-sdk.html
@@ -114,6 +115,7 @@ dev/serialization_deltas/
 .shadow-cljs
 .clerk
 mise.local.toml
+docker-compose.local.yml
 
 # lsp: ignore all but the config file
 .lsp/*
@@ -172,3 +174,5 @@ CLAUDE.local.md
 /resources/python-sources/sqlglot-*.dist-info/
 /resources/python-sources/.lock
 __pycache__/
+
+
