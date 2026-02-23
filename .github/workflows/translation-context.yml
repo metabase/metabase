@@ -27,16 +27,5 @@ jobs:
             --ai="openai" \
             --model="gpt-5.1" \
             --croql='not (context contains "✨ AI Context")' \
-            --output="csv" \
+            --output="crowdin" \
             --concurrency=10
-      # TODO: Switch the output to crowdin
-      - name: Display CSV content
-        run: |
-          echo "=== Crowdin Context CSV ==="
-          cat crowdin-context.csv
-      - name: Upload CSV artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: crowdin-context
-          path: crowdin-context.csv
-          retention-days: 1
