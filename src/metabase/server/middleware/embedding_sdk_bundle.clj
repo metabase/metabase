@@ -15,7 +15,6 @@
 (def ^:private no-store-cache-header     {"Cache-Control" "no-store"})
 (def ^:private vary-accept-encoding-header {"Vary" "Accept-Encoding"})
 
-
 (defn- not-found []
   (-> (response/not-found "Not found")
       (update :headers merge no-store-cache-header)))
@@ -64,8 +63,8 @@
   (fn [request]
     (let [package-version (get-in request [:query-params "packageVersion"])
           resource        (if (some? package-version)
-                           bootstrap-resource
-                           bundle-resource)]
+                            bootstrap-resource
+                            bundle-resource)]
       ((serve-resource-handler resource) request))))
 
 (defn serve-chunk-handler
@@ -73,7 +72,7 @@
    Chunk filenames contain content hashes, so we always use far-future caching."
   [filename]
   (let [resource (str "frontend_client/app/embedding-sdk/chunks/" filename)]
-    (fn [request]
+    (fn [_request]
       (let [base (response/resource-response resource)]
         (if (nil? base)
           (not-found)
