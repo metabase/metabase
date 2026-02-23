@@ -25,7 +25,11 @@ import type {
   VisualizationSettingsDefinitions,
 } from "metabase/visualizations/types";
 import type Question from "metabase-lib/v1/Question";
-import type { ColumnSettings, VisualizationSettings } from "metabase-types/api";
+import type {
+  ColumnSettings,
+  VisualizationSettingKey,
+  VisualizationSettings,
+} from "metabase-types/api";
 import { isObject } from "metabase-types/guards";
 
 const WIDGETS: Record<string, React.ComponentType<any>> = {
@@ -82,7 +86,7 @@ export function getComputedSettings<T>(
 function getComputedSetting<T>(
   computedSettings: ComputedVisualizationSettings,
   settingDefs: VisualizationSettingsDefinitions,
-  settingId: keyof ComputedVisualizationSettings,
+  settingId: VisualizationSettingKey,
   object: T,
   storedSettings: VisualizationSettings,
   extra: SettingsExtra = {},
@@ -184,7 +188,7 @@ export function getSettingsWidgets<T>(
 
 function getSettingWidget<T, TValue, TProps>(
   settingDefs: VisualizationSettingsDefinitions,
-  settingId: keyof ComputedVisualizationSettings,
+  settingId: VisualizationSettingKey,
   storedSettings: VisualizationSettings,
   computedSettings: ComputedVisualizationSettings,
   object: T,
@@ -201,10 +205,8 @@ function getSettingWidget<T, TValue, TProps>(
     TProps
   >;
   const value = computedSettings[settingId];
-  const onChange = (
-    newValue: VisualizationSettings[keyof VisualizationSettings],
-    question?: Question,
-  ) => {
+
+  const onChange = (newValue: TValue, question?: Question) => {
     const newSettings: Partial<VisualizationSettings> = {
       [settingId]: newValue,
     };

@@ -360,7 +360,7 @@ export type VisualizationSettings = {
   "list.entity_icon"?: IconName | null;
   "list.entity_icon_color"?: string;
 
-  [key: string]: any;
+  [key: string]: any; // TODO extract separate issue for it
 } & EmbedVisualizationSettings;
 
 export type EmbedVisualizationSettings = {
