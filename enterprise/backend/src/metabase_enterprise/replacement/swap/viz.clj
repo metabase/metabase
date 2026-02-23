@@ -4,6 +4,7 @@
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.models.visualization-settings :as vs]
+   [metabase.util.log :as log]
    [toucan2.core :as t2]))
 
 (defn- ultimate-table-id
@@ -47,17 +48,12 @@
         :else ;; okay, we just have to switch it now
         (let [query   (query-source mp new-source)
               columns (lib/fieldable-columns query)
-              column-matches  (filter #(= (:name field) (:name %)) columns)
-              column (first column-matches)]
-          (when (not= 1 (count column-matches))
-            (throw (ex-info "Bad matches for new field ref"
-                            {:field field
-                             :column-matches column-matches
-                             :field-ref field-ref
-                             :old-source old-source
-                             :new-source new-source
-                             :columns columns})))
-          (lib/ref column))))))
+              column-matches (filter #(= (:name field) (:name %)) columns)]
+          (if (= 1 (count column-matches))
+            (lib/ref (first column-matches))
+            (do (log/warnf "Expected 1 match for field %s, got %d; keeping original ref"
+                           (:name field) (count column-matches))
+                field-ref)))))))
 
 (defn- swap-legacy-target
   [target mp old-source new-source]
