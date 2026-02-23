@@ -276,39 +276,39 @@ export type SettingsExtra = {
   // [key: string]: unknown;
 };
 
-export type VisualizationSettingDefinition<TValue, TProps = void> = {
+export type VisualizationSettingDefinition<T, TValue, TProps = void> = {
   section?: string;
   title?: string;
   group?: string;
   widget?: string | ComponentType<TProps>;
   isValid?: (
-    series: Series | DatasetColumn, // TODO: make it generic
+    object: T,
     settings: ComputedVisualizationSettings,
     extra?: SettingsExtra,
   ) => boolean;
   hidden?: boolean;
   getHidden?: (
-    object: Series | DatasetColumn, // TODO: make it generic
+    object: T,
     settings: ComputedVisualizationSettings,
     extra?: SettingsExtra,
   ) => boolean;
   getDefault?: (
-    object: Series | DatasetColumn, // TODO: make it generic
+    object: T,
     settings: ComputedVisualizationSettings,
     extra?: SettingsExtra,
   ) => TValue;
   getValue?: (
-    object: Series | DatasetColumn, // TODO: make it generic
+    object: T,
     settings: ComputedVisualizationSettings,
     extra?: SettingsExtra,
   ) => TValue;
   getDisabled?: (
-    object: Series | DatasetColumn, // TODO: make it generic
+    object: T,
     settings: ComputedVisualizationSettings,
     extra?: SettingsExtra,
   ) => boolean;
   getSection?: (
-    object: Series | DatasetColumn, // TODO: make it generic
+    object: T,
     settings: ComputedVisualizationSettings,
     extra?: SettingsExtra,
   ) => string;
@@ -316,7 +316,7 @@ export type VisualizationSettingDefinition<TValue, TProps = void> = {
   default?: TValue;
   marginBottom?: string;
   getMarginBottom?: (
-    object: Series | DatasetColumn, // TODO: make it generic
+    object: T,
     settings: ComputedVisualizationSettings,
     extra?: SettingsExtra,
   ) => string;
@@ -324,7 +324,7 @@ export type VisualizationSettingDefinition<TValue, TProps = void> = {
   inline?: boolean;
   props?: TProps;
   getProps?: (
-    object: Series | DatasetColumn, // TODO: make it generic
+    object: T,
     vizSettings: ComputedVisualizationSettings,
     onChange: (value: TValue) => void,
     extra: SettingsExtra,

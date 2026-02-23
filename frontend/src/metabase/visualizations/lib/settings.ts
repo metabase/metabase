@@ -25,12 +25,7 @@ import type {
   VisualizationSettingsDefinitions,
 } from "metabase/visualizations/types";
 import type Question from "metabase-lib/v1/Question";
-import type {
-  ColumnSettings,
-  DatasetColumn,
-  Series,
-  VisualizationSettings,
-} from "metabase-types/api";
+import type { ColumnSettings, VisualizationSettings } from "metabase-types/api";
 
 const WIDGETS: Record<string, React.ComponentType<any>> = {
   input: ChartSettingInput,
@@ -47,9 +42,9 @@ const WIDGETS: Record<string, React.ComponentType<any>> = {
   multiselect: ChartSettingMultiSelect,
 };
 
-export function getComputedSettings(
+export function getComputedSettings<T extends object>(
   settingsDefs: VisualizationSettingsDefinitions,
-  object: DatasetColumn | Series,
+  object: T,
   storedSettings: VisualizationSettings,
   extra: SettingsExtra = {},
 ): ComputedVisualizationSettings {
@@ -83,11 +78,11 @@ export function getComputedSettings(
   return computedSettings;
 }
 
-function getComputedSetting(
+function getComputedSetting<T extends object>(
   computedSettings: ComputedVisualizationSettings,
   settingDefs: VisualizationSettingsDefinitions,
   settingId: keyof ComputedVisualizationSettings,
-  object: DatasetColumn | Series,
+  object: T,
   storedSettings: VisualizationSettings,
   extra: SettingsExtra = {},
 ): void {
@@ -156,17 +151,17 @@ function getComputedSetting(
   computedSettings[settingId] = undefined;
 }
 
-function isObjectWithRaw<T extends object = DatasetColumn | Series>(
+function isObjectWithRaw<T extends object>(
   object: T,
 ): object is T & { _raw?: T } {
   return "_raw" in object;
 }
 
-export function getSettingsWidgets(
+export function getSettingsWidgets<T extends object>(
   settingDefs: VisualizationSettingsDefinitions,
   storedSettings: VisualizationSettings,
   computedSettings: ComputedVisualizationSettings,
-  object: DatasetColumn | Series, // TODO: make it generic
+  object: T,
   onChangeSettings: (
     newSettings: Partial<VisualizationSettings>,
     question?: Question,
@@ -188,12 +183,12 @@ export function getSettingsWidgets(
     .filter((widget) => widget.widget);
 }
 
-function getSettingWidget<TValue, TProps>(
+function getSettingWidget<T extends object, TValue, TProps>(
   settingDefs: VisualizationSettingsDefinitions,
   settingId: keyof ComputedVisualizationSettings,
   storedSettings: VisualizationSettings,
   computedSettings: ComputedVisualizationSettings,
-  object: DatasetColumn | Series, // TODO: make it generic
+  object: T,
   onChangeSettings: (
     newSettings: Partial<VisualizationSettings>,
     question?: Question,
@@ -202,6 +197,7 @@ function getSettingWidget<TValue, TProps>(
 ) {
   const settingDefUntyped = settingDefs[settingId] ?? {};
   const settingDef = settingDefUntyped as VisualizationSettingDefinition<
+    T,
     TValue,
     TProps
   >;
