@@ -236,12 +236,15 @@
        [:on-line {:optional true} [:function [:=> [:cat :string] :any]]]]]
   (let [response (open-ai-stream! opts)
         lines    (atom [])]
-    (with-open [^BufferedReader response-reader (io/reader (quick-closing-body response))]
-      (loop [^String line (.readLine response-reader)]
-        (when line
-          (swap! lines conj line)
-          (when on-line (on-line line))
-          (recur (.readLine response-reader)))))
+    (try
+      (with-open [^BufferedReader response-reader (io/reader (quick-closing-body response))]
+        (loop [^String line (.readLine response-reader)]
+          (when line
+            (swap! lines conj line)
+            (when on-line (on-line line))
+            (recur (.readLine response-reader)))))
+      (catch java.io.IOException e
+        (log/debugf e "Stream closed while reading AI response (%d lines collected)" (count @lines))))
     @lines))
 
 (mu/defn select-metric-request

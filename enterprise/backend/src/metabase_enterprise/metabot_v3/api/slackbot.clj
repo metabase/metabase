@@ -794,7 +794,7 @@
 
                           :DATA nil ;; collected from full lines below
 
-                          (log/infof "Ignoring AI SDK line of type %s" type))))
+                          (log/debugf "Ignoring AI SDK line of type %s" type))))
 
         lines          (metabot-v3.client/streaming-request-with-callback
                         {:context         (metabot-v3.context/create-context
@@ -845,20 +845,21 @@
    - `:flush-text!` — flush any buffered text to the stream
    - `:stream-state` — volatile holding `{:stream_ts :channel}` once started, nil before"
   [client {:keys [channel thread-ts team-id user-id]}]
-  (let [stream-state     (volatile! nil)
-        tool-id->name    (volatile! {})
-        text-buffer      (volatile! (StringBuilder.))
-        last-flush-timer (volatile! (u/start-timer))
-        last-flushed     (volatile! "")
+  (let [stream-state      (volatile! nil)
+        stream-attempted? (volatile! false)
+        tool-id->name     (volatile! {})
+        text-buffer       (volatile! (StringBuilder.))
+        last-flush-timer  (volatile! (u/start-timer))
+        last-flushed      (volatile! "")
 
         ensure-stream! (fn []
-                         (when (nil? @stream-state)
-                           (let [stream (start-stream client {:channel   channel
-                                                              :thread_ts thread-ts
-                                                              :team_id   team-id
-                                                              :user_id   user-id})]
-                             (vreset! stream-state
-                                      (if (:stream_ts stream) stream :failed)))))
+                         (when-not @stream-attempted?
+                           (vreset! stream-attempted? true)
+                           (when-let [stream (start-stream client {:channel   channel
+                                                                   :thread_ts thread-ts
+                                                                   :team_id   team-id
+                                                                   :user_id   user-id})]
+                             (vreset! stream-state stream))))
 
         flush-text! (fn []
                       (let [text (str @text-buffer)]
@@ -949,12 +950,15 @@
            (post-message client (merge message-ctx {:text "I wasn't able to generate a response. Please try again."}))))
        (catch Exception e
          (log/error e "[slackbot] Error in streaming response")
-         (when-let [{:keys [stream_ts channel]} @stream-state]
+         (if-let [{:keys [stream_ts channel]} @stream-state]
            (try
+             (append-markdown-text client channel stream_ts
+                                   "\nSomething went wrong. Please try again.")
              (stop-stream client channel stream_ts)
-             (catch Exception e
-               (log/debugf e "[slackbot] Failed to stop stream during error cleanup"))))
-         (throw e))))))
+             (catch Exception stop-e
+               (log/debug stop-e "[slackbot] Failed to stop stream during error cleanup")))
+           (post-message client (merge message-ctx
+                                       {:text "Something went wrong. Please try again."}))))))))
 
 (defn- send-auth-link
   "Respond to an incoming slack message with a request to authorize"

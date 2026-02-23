@@ -326,6 +326,73 @@
               (testing "stream was stopped"
                 (is (= 1 (count @stop-stream-calls)))))))))))
 
+(deftest stream-start-failure-test
+  (testing "When start-stream fails, falls back to a regular message"
+    (with-slackbot-setup
+      (let [event-body {:type "event_callback"
+                        :event {:type "message"
+                                :text "Hello!"
+                                :user "U123"
+                                :channel "C123"
+                                :ts "1234567890.000001"
+                                :event_ts "1234567890.000001"
+                                :channel_type "im"}}]
+        (with-slackbot-mocks
+          {:ai-text "Here is your answer"}
+          (fn [{:keys [post-calls stop-stream-calls]}]
+            ;; Override start-stream to simulate failure
+            (mt/with-dynamic-fn-redefs
+              [slackbot/start-stream (constantly nil)]
+              (let [response (mt/client :post 200 "ee/metabot-v3/slack/events"
+                                        (slack-request-options event-body)
+                                        event-body)]
+                (is (= "ok" response))
+                (u/poll {:thunk #(>= (count @post-calls) 1)
+                         :done? true?
+                         :timeout-ms 5000})
+                (testing "fallback message is sent"
+                  (is (= "I wasn't able to generate a response. Please try again."
+                         (:text (first @post-calls)))))
+                (testing "stop-stream is never called"
+                  (is (= 0 (count @stop-stream-calls))))))))))))
+
+(deftest ai-request-error-stops-stream-test
+  (testing "When the AI request throws after the stream has started, the stream is stopped"
+    (with-slackbot-setup
+      (let [event-body {:type "event_callback"
+                        :event {:type "message"
+                                :text "Hello!"
+                                :user "U123"
+                                :channel "C123"
+                                :ts "1234567890.000001"
+                                :event_ts "1234567890.000001"
+                                :channel_type "im"}}]
+        (with-slackbot-mocks
+          {:ai-text "unused"}
+          (fn [{:keys [stop-stream-calls stream-calls append-text-calls]}]
+            ;; Override the AI client to start the stream via on-line, then throw
+            (mt/with-dynamic-fn-redefs
+              [metabot-v3.client/streaming-request-with-callback
+               (fn [opts]
+                 ;; Send enough text to trigger a flush (which starts the stream)
+                 (when-let [on-line (:on-line opts)]
+                   (on-line (str "0:" (json/encode (apply str (repeat (inc @#'slackbot/min-text-batch-size) "x"))))))
+                 (throw (ex-info "AI service unavailable" {})))]
+              (let [response (mt/client :post 200 "ee/metabot-v3/slack/events"
+                                        (slack-request-options event-body)
+                                        event-body)]
+                (is (= "ok" response))
+                (u/poll {:thunk #(>= (count @stop-stream-calls) 1)
+                         :done? true?
+                         :timeout-ms 5000})
+                (testing "stream was started before the error"
+                  (is (= 1 (count @stream-calls))))
+                (testing "error message was appended to the stream"
+                  (is (some #(str/includes? % "Something went wrong")
+                            @append-text-calls)))
+                (testing "stream was stopped during cleanup"
+                  (is (= 1 (count @stop-stream-calls))))))))))))
+
 (deftest streaming-request-args-test
   (testing "POST /events passes correct arguments to streaming-request-with-callback"
     (with-slackbot-setup
