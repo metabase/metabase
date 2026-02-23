@@ -108,4 +108,5 @@
     :card      (card-swap!      entity old-source new-source)
     :transform (transform-swap! entity old-source new-source)
     :segment   (segment-swap!   entity old-source new-source)
-    :measure   (measure-swap!   entity old-source new-source)))
+    :measure   (measure-swap!   entity old-source new-source)
+    :dashboard nil))
