@@ -53,8 +53,8 @@
                     :lib/original-name                          "CREATED_AT"
                     :lib/source-column-alias                    "CREATED_AT"
                     :lib/type                                   :metadata/column
-                    :metabase.lib.field/original-effective-type :type/DateTime
-                    :metabase.lib.field/temporal-unit           :year}))))
+                    :lib/original-effective-type :type/DateTime
+                    :lib/temporal-unit           :year}))))
 
 (defn grandparent-parent-child-id [field]
   (+ (meta/id :venues :id)
@@ -765,7 +765,7 @@
              :lib/source-column-alias "Categories__NAME"}
             joined-col))
     (testing "Metadata should not contain inherited join information"
-      (is (not-any? :metabase.lib.join/join-alias (lib/returned-columns query))))
+      (is (not-any? :lib/join-alias (lib/returned-columns query))))
     (testing "Reference a joined column from a previous stage w/ desired-column-alias and w/o join-alias"
       (is (=? {:lib/type :mbql.stage/mbql,
                :breakout [[:field
@@ -1143,7 +1143,7 @@
             (is (=? field-query
                     (lib/remove-field field-query -1 (nth table-columns 6)))))))
       (testing "with :fields :all"
-        (let [created-at (m/find-first #(and (= (:metabase.lib.join/join-alias %) "People - User")
+        (let [created-at (m/find-first #(and (= (:lib/join-alias %) "People - User")
                                              (= (:lib/source-column-alias %) "CREATED_AT"))
                                        join-columns)]
           (assert (some? created-at) (str "Found:\n" (u/pprint-to-str join-columns)))
@@ -1256,7 +1256,7 @@
             (is (=? field-query
                     (lib/remove-field field-query -1 (nth table-columns 6)))))))
       (testing "with :fields :all"
-        (let [created-at (m/find-first #(and (= (:metabase.lib.join/join-alias %) "People - User")
+        (let [created-at (m/find-first #(and (= (:lib/join-alias %) "People - User")
                                              (= (:lib/source-column-alias %) "CREATED_AT"))
                                        join-columns)]
           (assert (some? created-at))
@@ -1507,14 +1507,14 @@
                         :table-id                     (meta/id :orders)
                         :id                           (meta/id :orders :id)
                         :lib/source                   :source/joins
-                        :metabase.lib.join/join-alias "Orders"
+                        :lib/join-alias "Orders"
                         :display-name                 "ID"}
           exp-join-tax {:lib/type                     :metadata/column
                         :lib/source-column-alias      "TAX"
                         :table-id                     (meta/id :orders)
                         :id                           (meta/id :orders :tax)
                         :lib/source                   :source/joins
-                        :metabase.lib.join/join-alias "Orders"
+                        :lib/join-alias "Orders"
                         :display-name                 "Tax"}
           columns      (lib.metadata.calculation/returned-columns query)]
       (is (=? [exp-src-id exp-src-tax exp-join-id exp-join-tax]
@@ -1524,7 +1524,7 @@
                                                ["joined ID column"    "Orders" "ID"]
                                                ["joined TAX column"   "Orders" "TAX"]]]
         (testing (str "when hiding the " label)
-          (let [col-pred   #(and (= (:metabase.lib.join/join-alias %) join-alias)
+          (let [col-pred   #(and (= (:lib/join-alias %) join-alias)
                                  (= (:lib/source-column-alias %) column-alias))
                 to-hide    (first (filter col-pred columns))
                                         ;_ (prn "to hide" to-hide)
@@ -2113,7 +2113,7 @@
               [nil      "CATEGORY" "Category"]                 ; products.category
               ["Orders" "sum"      "Orders → Sum of Quantity"] ; sum(orders.quantity)
               ["Orders" "TITLE"    "Orders → Title"]]          ; orders.product-id remap to products.title
-             (map (juxt :metabase.lib.join/join-alias :lib/source-column-alias :display-name)
+             (map (juxt :lib/join-alias :lib/source-column-alias :display-name)
                   (lib.metadata.result-metadata/returned-columns query)))))))
 
 (deftest ^:parallel propagate-binning-display-names-test
@@ -2317,7 +2317,7 @@
                  (lib.join/joinable-columns query -1 join)
                  {}
                  {:name "TITLE"})]
-    (is (=? {:metabase.lib.join/join-alias "question b - Product"
+    (is (=? {:lib/join-alias "question b - Product"
              :name                         "TITLE"}
             b-title))
     (testing "Sanity check: lib.equality should be able to find match for column"
