@@ -1,4 +1,4 @@
-(ns metabase.transforms.api.transform-job-test
+(ns metabase.transforms-rest.api.transform-job-test
   (:require
    [clojure.test :refer :all]
    [metabase.models.transforms.transform-job]

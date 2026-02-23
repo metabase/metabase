@@ -1,4 +1,4 @@
-(ns metabase.transforms.api.transform-tag-test
+(ns metabase.transforms-rest.api.transform-tag-test
   "Tests for transform tag CRUD API endpoints."
   (:require
    [clojure.test :refer :all]
