@@ -80,3 +80,11 @@ export const dashboardUsesRoutingEnabledDatabases = (
     return false;
   });
 };
+
+export function hasWorkspacesEnabled(database: Pick<Database, "settings">) {
+  return Boolean(database.settings?.["database-enable-workspaces"]);
+}
+
+export function hasTableEditingEnabled(database: Pick<Database, "settings">) {
+  return Boolean(database.settings?.["database-enable-table-editing"]);
+}
