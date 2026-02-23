@@ -182,7 +182,7 @@
                        :model/Card {card-id :id} {:dataset_query
                                                   (lib/native-query mp "SELECT * FROM {{#999-old-query-name}} WHERE x > 1")}]
           (field-refs/upgrade! [:card card-id])
-          (source-swap/swap! [:card card-id]
+          (source-swap/do-swap! [:card card-id]
                              [:card 9999]
                              [:card new-card-id])
           (let [updated-query (:dataset_query (t2/select-one :model/Card :id card-id))
@@ -208,7 +208,7 @@
                                                   "JOIN {{#" orders-a-id "-all-orders-a}} o ON p.id = o.product_id"))}]
           ;; Swap orders A -> orders B
           (field-refs/upgrade! [:card native-card-id])
-          (source-swap/swap! [:card native-card-id]
+          (source-swap/do-swap! [:card native-card-id]
                              [:card orders-a-id]
                              [:card orders-b-id])
           (let [updated-card  (t2/select-one :model/Card :id native-card-id)
@@ -257,7 +257,7 @@
                                                   "LEFT JOIN order_data o ON p.id = o.product_id"))}]
           ;; Swap products A -> products B (orders should stay as-is)
           (field-refs/upgrade! [:card kitchen-sink-id])
-          (source-swap/swap! [:card kitchen-sink-id]
+          (source-swap/do-swap! [:card kitchen-sink-id]
                              [:card products-a-id]
                              [:card products-b-id])
           (let [updated-query (:dataset_query (t2/select-one :model/Card :id kitchen-sink-id))
@@ -282,11 +282,11 @@
         (mt/with-temp [:model/Card {card-id :id} {:dataset_query
                                                   (lib/native-query mp "SELECT * FROM {{ #999 }} WHERE x > 1")}]
           (field-refs/upgrade! [:card card-id])
-          (source-swap/swap! [:card card-id]
+          (source-swap/do-swap! [:card card-id]
                              [:card 999]
                              [:card 888])
           (field-refs/upgrade! [:card card-id])
-          (source-swap/swap! [:card card-id]
+          (source-swap/do-swap! [:card card-id]
                              [:card 999]
                              [:card 888])
           (let [updated-query (:dataset_query (t2/select-one :model/Card :id card-id))
@@ -301,7 +301,7 @@
         (mt/with-temp [:model/Card {card-id :id} {:dataset_query
                                                   (lib/native-query mp "SELECT * FROM {{#999}} a JOIN {{#999}} b ON a.id = b.id")}]
           (field-refs/upgrade! [:card card-id])
-          (source-swap/swap! [:card card-id]
+          (source-swap/do-swap! [:card card-id]
                              [:card 999]
                              [:card 888])
           (let [updated-query (:dataset_query (t2/select-one :model/Card :id card-id))
@@ -316,7 +316,7 @@
         (mt/with-temp [:model/Card {card-id :id} {:dataset_query
                                                   (lib/native-query mp "WITH base AS {{#999}} SELECT * FROM base WHERE x > 1")}]
           (field-refs/upgrade! [:card card-id])
-          (source-swap/swap! [:card card-id]
+          (source-swap/do-swap! [:card card-id]
                              [:card 999]
                              [:card 888])
           (let [updated-query (:dataset_query (t2/select-one :model/Card :id card-id))
@@ -331,7 +331,7 @@
         (mt/with-temp [:model/Card {card-id :id} {:dataset_query
                                                   (lib/native-query mp "SELECT t.* FROM {{#999}} AS t WHERE t.x > 1")}]
           (field-refs/upgrade! [:card card-id])
-          (source-swap/swap! [:card card-id]
+          (source-swap/do-swap! [:card card-id]
                              [:card 999]
                              [:card 888])
           (let [updated-query (:dataset_query (t2/select-one :model/Card :id card-id))
@@ -346,7 +346,7 @@
         (mt/with-temp [:model/Card {card-id :id} {:dataset_query
                                                   (lib/native-query mp "SELECT * FROM {{#999}} WHERE status = {{status}} AND total > {{min_total}}")}]
           (field-refs/upgrade! [:card card-id])
-          (source-swap/swap! [:card card-id]
+          (source-swap/do-swap! [:card card-id]
                              [:card 999]
                              [:card 888])
           (let [updated-query (:dataset_query (t2/select-one :model/Card :id card-id))
@@ -365,7 +365,7 @@
         (mt/with-temp [:model/Card {card-id :id} {:dataset_query
                                                   (lib/native-query mp "SELECT * FROM {{#999}} a JOIN {{#777}} b ON a.id = b.id")}]
           (field-refs/upgrade! [:card card-id])
-          (source-swap/swap! [:card card-id]
+          (source-swap/do-swap! [:card card-id]
                              [:card 999]
                              [:card 888])
           (let [updated-query (:dataset_query (t2/select-one :model/Card :id card-id))
@@ -381,7 +381,7 @@
         (mt/with-temp [:model/Card {card-id :id} {:dataset_query
                                                   (lib/native-query mp "SELECT * FROM orders WHERE product_id IN (SELECT id FROM {{#999}})")}]
           (field-refs/upgrade! [:card card-id])
-          (source-swap/swap! [:card card-id]
+          (source-swap/do-swap! [:card card-id]
                              [:card 999]
                              [:card 888])
           (let [updated-query (:dataset_query (t2/select-one :model/Card :id card-id))
@@ -396,7 +396,7 @@
         (mt/with-temp [:model/Card {card-id :id} {:dataset_query
                                                   (lib/native-query mp "SELECT * FROM orders WHERE 1=1 [[AND product_id IN (SELECT id FROM {{#999}})]]\n")}]
           (field-refs/upgrade! [:card card-id])
-          (source-swap/swap! [:card card-id]
+          (source-swap/do-swap! [:card card-id]
                              [:card 999]
                              [:card 888])
           (let [updated-query (:dataset_query (t2/select-one :model/Card :id card-id))
@@ -552,7 +552,7 @@
                             :visualization_settings {}}
                            user)]
                 (field-refs/upgrade! [:card (:id child)])
-                (source-swap/swap! [:card (:id child)]
+                (source-swap/do-swap! [:card (:id child)]
                                    [:table (mt/id :products)]
                                    [:table (mt/id :orders)])
                 (let [updated-query (t2/select-one-fn :dataset_query :model/Card :id (:id child))
@@ -578,7 +578,7 @@
                             :visualization_settings {}}
                            user)]
                 (field-refs/upgrade! [:card (:id child)])
-                (source-swap/swap! [:card (:id child)]
+                (source-swap/do-swap! [:card (:id child)]
                                    [:table (mt/id :products)]
                                    [:table (mt/id :orders)])
                 (let [updated-query (t2/select-one-fn :dataset_query :model/Card :id (:id child))
@@ -606,7 +606,7 @@
                            user)]
                 ;; Swap ORDERS table to REVIEWS table
                 (field-refs/upgrade! [:card (:id child)])
-                (source-swap/swap! [:card (:id child)]
+                (source-swap/do-swap! [:card (:id child)]
                                    [:table (mt/id :orders)]
                                    [:table (mt/id :reviews)])
                 (let [updated-query (t2/select-one-fn :dataset_query :model/Card :id (:id child))
@@ -637,7 +637,7 @@
                                  :visualization_settings {}}
                                 user)]
                 (field-refs/upgrade! [:card (:id child)])
-                (source-swap/swap! [:card (:id child)]
+                (source-swap/do-swap! [:card (:id child)]
                                    [:table (mt/id :products)]
                                    [:card (:id new-source)])
                 (let [updated-query  (t2/select-one-fn :dataset_query :model/Card :id (:id child))
@@ -671,7 +671,7 @@
                                  :visualization_settings {}}
                                 user)]
                 (field-refs/upgrade! [:card (:id child)])
-                (source-swap/swap! [:card (:id child)]
+                (source-swap/do-swap! [:card (:id child)]
                                    [:table (mt/id :products)]
                                    [:card (:id new-source)])
                 (let [updated-query  (t2/select-one-fn :dataset_query :model/Card :id (:id child))
@@ -697,7 +697,7 @@
                   _          (wait-for-result-metadata (:id old-source))
                   child      (card/create-card! (native-card-sourced-from "Native Child" old-source) user)]
               (field-refs/upgrade! [:card (:id child)])
-              (source-swap/swap! [:card (:id child)]
+              (source-swap/do-swap! [:card (:id child)]
                                  [:card (:id old-source)]
                                  [:table (mt/id :orders)])
               (let [updated-query  (t2/select-one-fn :dataset_query :model/Card :id (:id child))
@@ -728,7 +728,7 @@
                                :visualization_settings {}}
                               user)]
               (field-refs/upgrade! [:card (:id child)])
-              (source-swap/swap! [:card (:id child)]
+              (source-swap/do-swap! [:card (:id child)]
                                  [:card (:id old-source)]
                                  [:table (mt/id :orders)])
               (let [updated-query  (t2/select-one-fn :dataset_query :model/Card :id (:id child))
@@ -830,7 +830,7 @@
                             :visualization_settings {}}
                            user)]
                 (field-refs/upgrade! [:card (:id child)])
-                (source-swap/swap! [:card (:id child)]
+                (source-swap/do-swap! [:card (:id child)]
                                    [:table (mt/id :products)]
                                    [:table (mt/id :orders)])
                 (let [updated-query (t2/select-one-fn :dataset_query :model/Card :id (:id child))
@@ -858,7 +858,7 @@
                                  :visualization_settings {}}
                                 user)]
                 (field-refs/upgrade! [:card (:id child)])
-                (source-swap/swap! [:card (:id child)]
+                (source-swap/do-swap! [:card (:id child)]
                                    [:table (mt/id :products)]
                                    [:card (:id new-source)])
                 (let [updated-query  (t2/select-one-fn :dataset_query :model/Card :id (:id child))
@@ -885,7 +885,7 @@
                   _          (wait-for-result-metadata (:id old-source))
                   child      (card/create-card! (native-card-sourced-from "Native Child" old-source) user)]
               (field-refs/upgrade! [:card (:id child)])
-              (source-swap/swap! [:card (:id child)]
+              (source-swap/do-swap! [:card (:id child)]
                                  [:card (:id old-source)]
                                  [:table (mt/id :orders)])
               (let [updated-query  (t2/select-one-fn :dataset_query :model/Card :id (:id child))

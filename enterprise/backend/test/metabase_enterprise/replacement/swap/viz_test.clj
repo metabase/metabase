@@ -79,7 +79,7 @@
                               :card_id (:id child)
                               :visualization_settings vis-settings}]
                 (field-refs/upgrade! [:card (:id child)])
-                (source-swap/swap! [:card (:id child)]
+                (source-swap/do-swap! [:card (:id child)]
                                    [:card (:id old-source)]
                                    [:card (:id new-source)])
                 ;; TODO (eric): Add assertions
@@ -100,7 +100,7 @@
                               :card_id (:id child)
                               :visualization_settings {:some_setting "value"}}]
                 (field-refs/upgrade! [:card (:id child)])
-                (source-swap/swap! [:card (:id child)]
+                (source-swap/do-swap! [:card (:id child)]
                                    [:card (:id old-source)]
                                    [:card (:id new-source)])
                 (let [updated-viz (t2/select-one-fn :visualization_settings :model/DashboardCard :id dashcard-id)]
@@ -123,7 +123,7 @@
                               :card_id (:id child)
                               :visualization_settings {:column_settings {name-key {:column_title "Custom"}}}}]
                 (field-refs/upgrade! [:card (:id child)])
-                (source-swap/swap! [:card (:id child)]
+                (source-swap/do-swap! [:card (:id child)]
                                    [:card (:id old-source)]
                                    [:card (:id new-source)])
                 (let [updated-viz (t2/select-one-fn :visualization_settings :model/DashboardCard :id dashcard-id)

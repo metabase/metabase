@@ -96,10 +96,10 @@
               ;; Swap the model at the root
               (field-refs/upgrade! [:card (:id native-card)])
               (field-refs/upgrade! [:card (:id mbql-card)])
-              (source-swap/swap! [:card (:id native-card)]
+              (source-swap/do-swap! [:card (:id native-card)]
                                  [:card (:id old-model)]
                                  [:card (:id new-model)])
-              (source-swap/swap! [:card (:id mbql-card)]
+              (source-swap/do-swap! [:card (:id mbql-card)]
                                  [:card (:id old-model)]
                                  [:card (:id new-model)])
               ;; Native card's {{#old-id}} should be updated to {{#new-id}}

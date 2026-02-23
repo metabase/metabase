@@ -102,7 +102,7 @@
         (events/publish-event! :event/measure-update
                                {:object (merge measure changes) :user-id (:id @api/*current-user*)})))))
 
-(defn swap!
+(defn do-swap!
   [[entity-type _entity-id :as entity] old-source new-source]
   (case entity-type
     :card      (card-swap!      entity old-source new-source)

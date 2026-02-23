@@ -50,12 +50,10 @@
      (let [failures (atom [])]
        (doseq [entity direct]
          (try
-           (source-swap/swap! entity old-source new-source)
+           (source-swap/do-swap! entity old-source new-source)
            (catch Exception e
              (log/warnf e "Failed to swap %s, continuing with next entity" entity)
-             (swap! failures conj {:entity entity
-                                   :error (ex-message e)
-                                   :e (pr-str e)})))
+             (swap! failures conj {:entity entity :error (ex-message e)})))
          (execute/advance! progress))
        (when (seq @failures)
          {:failures @failures})))))
