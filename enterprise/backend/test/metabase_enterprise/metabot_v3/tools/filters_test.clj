@@ -1567,3 +1567,148 @@
                                        {:field-id (->field-id "Quantity")
                                         :operation :greater-than
                                         :value 50}]}]})))))))
+
+(deftest ^:parallel query-metric-with-compound-filter-test
+  (let [mp (mt/metadata-provider)
+        created-at-meta (lib.metadata/field mp (mt/id :orders :created_at))
+        metric-query (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
+                         (lib/aggregate (lib/avg (lib.metadata/field mp (mt/id :orders :subtotal))))
+                         (lib/breakout (lib/with-temporal-bucket created-at-meta :month)))
+        legacy-metric-query (lib.convert/->legacy-MBQL metric-query)]
+    (mt/with-temp [:model/Card {metric-id :id} {:dataset_query legacy-metric-query
+                                                :database_id (mt/id)
+                                                :name "Average Order Value"
+                                                :description "The average subtotal of orders."
+                                                :type :metric}]
+      (mt/with-current-user (mt/user->id :crowberto)
+        (let [metric-details (metabot-v3.tools.entity-details/metric-details metric-id)
+              ->field-id #(u/prog1 (-> metric-details :queryable-dimensions (by-name %) :field_id)
+                            (when-not <>
+                              (throw (ex-info (str "Column " % " not found") {:column %}))))
+              result (metabot-v3.tools.filters/query-metric
+                      {:metric-id metric-id
+                       :filters [{:filter-kind :compound
+                                  :operator :or
+                                  :filters [{:field-id (->field-id "Discount")
+                                             :operation :number-greater-than
+                                             :value 5}
+                                            {:field-id (->field-id "Quantity")
+                                             :operation :number-greater-than
+                                             :value 10}]}]
+                       :group-by []})
+              filter-clause (get-in result [:structured-output :query :stages 0 :filters 0])]
+          (is (some? (:structured-output result)))
+          (is (= :or (first filter-clause))))))))
+
+(deftest ^:parallel query-datasource-between-filter-temporal-validation-test
+  (mt/with-current-user (mt/user->id :crowberto)
+    (let [mp (mt/metadata-provider)
+          table-id (mt/id :orders)
+          table-details (#'metabot-v3.tools.entity-details/table-details table-id {:metadata-provider mp})
+          ->field-id #(u/prog1 (-> table-details :fields (by-name %) :field_id)
+                        (when-not <>
+                          (throw (ex-info (str "Column " % " not found") {:column %}))))
+          result (metabot-v3.tools.filters/query-datasource
+                  {:table-id table-id
+                   :filters [{:filter-kind :between
+                              :field-id (->field-id "Created At")
+                              :lower-value -30
+                              :upper-value 0}]})]
+      (is (= 400 (:status-code result)))
+      (is (str/includes? (:output result) "not valid for a date/datetime field")))))
+
+(deftest ^:parallel query-datasource-post-filters-apply-before-limit-test
+  (mt/with-current-user (mt/user->id :crowberto)
+    (let [mp (mt/metadata-provider)
+          table-id (mt/id :orders)
+          table-details (#'metabot-v3.tools.entity-details/table-details table-id {:metadata-provider mp})
+          ->field-id #(u/prog1 (-> table-details :fields (by-name %) :field_id)
+                        (when-not <>
+                          (throw (ex-info (str "Column " % " not found") {:column %}))))
+          result (metabot-v3.tools.filters/query-datasource
+                  {:table-id table-id
+                   :aggregations [{:field-id (->field-id "Total")
+                                   :function :sum}]
+                   :group-by [{:field-id (->field-id "Product ID")}]
+                   :post-filters [{:aggregation-index 0
+                                   :operation :greater-than
+                                   :value 1000}]
+                   :limit 5})
+          stages (get-in result [:structured-output :query :stages])]
+      (is (some? (:structured-output result)))
+      (is (= 2 (count stages)))
+      (is (nil? (get-in stages [0 :limit])))
+      (is (= 5 (get-in stages [1 :limit]))))))
+
+(deftest ^:parallel query-datasource-invalid-percentile-value-test
+  (mt/with-current-user (mt/user->id :crowberto)
+    (let [mp (mt/metadata-provider)
+          table-id (mt/id :orders)
+          table-details (#'metabot-v3.tools.entity-details/table-details table-id {:metadata-provider mp})
+          ->field-id #(u/prog1 (-> table-details :fields (by-name %) :field_id)
+                        (when-not <>
+                          (throw (ex-info (str "Column " % " not found") {:column %}))))
+          result (metabot-v3.tools.filters/query-datasource
+                  {:table-id table-id
+                   :aggregations [{:field-id (->field-id "Total")
+                                   :function :percentile
+                                   :percentile-value 1.5}]})]
+      (is (= 400 (:status-code result)))
+      (is (str/includes? (:output result) "percentile_value")))))
+
+(deftest ^:parallel query-datasource-expression-parameter-validation-test
+  (mt/with-current-user (mt/user->id :crowberto)
+    (let [mp (mt/metadata-provider)
+          table-id (mt/id :orders)
+          table-details (#'metabot-v3.tools.entity-details/table-details table-id {:metadata-provider mp})
+          ->field-id #(u/prog1 (-> table-details :fields (by-name %) :field_id)
+                        (when-not <>
+                          (throw (ex-info (str "Column " % " not found") {:column %}))))]
+      (testing "datetime-add requires a valid unit"
+        (let [result (metabot-v3.tools.filters/query-datasource
+                      {:table-id table-id
+                       :expressions [{:name "Shifted Date"
+                                      :operation :datetime-add
+                                      :arguments [{:field-id (->field-id "Created At")}
+                                                  {:value 7}]}]})]
+          (is (= 400 (:status-code result)))
+          (is (str/includes? (:output result) "requires valid 'unit'"))))
+
+      (testing "power requires exponent or a second argument"
+        (let [result (metabot-v3.tools.filters/query-datasource
+                      {:table-id table-id
+                       :expressions [{:name "Squared Total"
+                                      :operation :power
+                                      :arguments [{:field-id (->field-id "Total")}]}]})]
+          (is (= 400 (:status-code result)))
+          (is (str/includes? (:output result) "requires either 'exponent' or a second argument")))))))
+
+(deftest ^:parallel query-datasource-empty-compound-filter-validation-test
+  (mt/with-current-user (mt/user->id :crowberto)
+    (let [table-id (mt/id :orders)
+          result (metabot-v3.tools.filters/query-datasource
+                  {:table-id table-id
+                   :filters [{:filter-kind :compound
+                              :operator :or
+                              :filters []}]})]
+      (is (= 400 (:status-code result)))
+      (is (str/includes? (:output result) "at least one nested filter")))))
+
+(deftest ^:parallel query-datasource-empty-compound-post-filter-validation-test
+  (mt/with-current-user (mt/user->id :crowberto)
+    (let [mp (mt/metadata-provider)
+          table-id (mt/id :orders)
+          table-details (#'metabot-v3.tools.entity-details/table-details table-id {:metadata-provider mp})
+          ->field-id #(u/prog1 (-> table-details :fields (by-name %) :field_id)
+                        (when-not <>
+                          (throw (ex-info (str "Column " % " not found") {:column %}))))
+          result (metabot-v3.tools.filters/query-datasource
+                  {:table-id table-id
+                   :aggregations [{:field-id (->field-id "Total")
+                                   :function :sum}]
+                   :group-by [{:field-id (->field-id "Product ID")}]
+                   :post-filters [{:filter-kind :compound
+                                   :operator :and
+                                   :filters []}]})]
+      (is (= 400 (:status-code result)))
+      (is (str/includes? (:output result) "at least one nested filter")))))

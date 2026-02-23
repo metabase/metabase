@@ -26,11 +26,12 @@
         enum-keys #{:operation :bucket :function :sort-order :direction :field-granularity :filter-type :operator}
         normalize-enum (fn [v]
                          (cond
-                           (keyword? v) v
-                           (string? v) (case v
-                                         "ascending" :asc
-                                         "descending" :desc
-                                         (keyword v))
+                           (keyword? v) (-> v name metabot-u/safe->kebab-case-en keyword)
+                           (string? v) (let [normalized-v (metabot-u/safe->kebab-case-en v)]
+                                         (case normalized-v
+                                           "ascending" :asc
+                                           "descending" :desc
+                                           (keyword normalized-v)))
                            :else v))]
     (walk/postwalk
      (fn [x]
@@ -81,7 +82,7 @@
    "string-starts-with" "string-ends-with"
    "string-contains"    "string-not-contains"
    ;; aliases the LLM may send from system-instruction shorthand
-   "contains"           "not-contains"
+   "contains"           "not-contains" "does-not-contain"
    "starts-with"        "ends-with"])
 
 (def ^:private single-value-operations
@@ -147,22 +148,19 @@
    construct-segment-filter-schema
    construct-between-filter-schema])
 
-;; Compound filter supports one level of nesting (compound can contain leaf filters only)
-;; This avoids infinite recursion in JSON Schema generation while still supporting AND/OR
-(def ^:private construct-compound-filter-schema
-  [:map {:closed true}
-   [:filter_type [:enum "compound"]]
-   [:operator [:enum "and" "or"]]
-   [:filters [:sequential construct-leaf-filter-schema]]])
+;; Recursive filter schema so compound filters can be nested.
+(def ^:private construct-filter-registry
+  {::construct-filter
+   [:or
+    construct-leaf-filter-schema
+    [:map {:closed true}
+     [:filter_type [:enum "compound"]]
+     [:operator [:enum "and" "or"]]
+     [:filters [:sequential {:min 1} [:ref ::construct-filter]]]]]})
 
 (def ^:private construct-filter-schema
-  [:or
-   construct-multi-value-filter-schema
-   construct-single-value-filter-schema
-   construct-no-value-filter-schema
-   construct-segment-filter-schema
-   construct-between-filter-schema
-   construct-compound-filter-schema])
+  [:schema {:registry construct-filter-registry}
+   [:ref ::construct-filter]])
 
 ;; Simple filter schema for conditional aggregation conditions.
 ;; Conditions don't need compound (AND/OR) filters - those are for top-level filters only.
@@ -247,11 +245,6 @@
     [:map {:closed true} [:expression_ref :string]]
     construct-inline-expression-schema]})
 
-(def ^:private construct-expression-argument-schema
-  "An argument to an expression - field reference, literal value, expression ref, or inline sub-expression."
-  [:schema {:registry expression-argument-registry}
-   [:ref ::expression-argument]])
-
 (def ^:private construct-expression-schema
   "Schema for defining calculated columns/expressions (top-level, must have a name)."
   [:map {:closed true}
@@ -283,7 +276,7 @@
   [:map {:closed true}
    [:filter_type [:enum "compound"]]
    [:operator [:enum "and" "or"]]
-   [:filters [:sequential construct-leaf-post-filter-schema]]])
+   [:filters [:sequential {:min 1} construct-leaf-post-filter-schema]]])
 
 (def ^:private construct-post-filter-schema
   "Schema for post-aggregation filtering. Can be a simple filter or compound (AND/OR)."
@@ -330,6 +323,7 @@
 (def ^:private construct-operation-aliases
   {"contains"     :string-contains
    "not-contains" :string-not-contains
+   "does-not-contain" :string-not-contains
    "starts-with"  :string-starts-with
    "ends-with"    :string-ends-with
    "is-empty"     :string-is-empty
