@@ -94,6 +94,11 @@ function ModalContent({
     }
   }, [selectedTab, canReplace]);
 
+  const handleSourceChange = (sourceEntry: ReplaceSourceEntry) => {
+    setSourceEntry(sourceEntry);
+    setTargetEntry(undefined);
+  };
+
   const handleReplaceSuccess = (dependentsCount: number) => {
     sendToast({ message: getSuccessMessage(dependentsCount), icon: "check" });
     closeConfirmation();
@@ -113,7 +118,7 @@ function ModalContent({
         checkInfo={checkInfo}
         dependentsCount={dependents?.length}
         canReplace={canReplace}
-        onSourceChange={setSourceEntry}
+        onSourceChange={handleSourceChange}
         onTargetChange={setTargetEntry}
         onSubmit={openConfirmation}
         onCancel={onClose}
