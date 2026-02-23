@@ -123,5 +123,5 @@
     :measure
     (measure-upgrade-field-refs! entity-id)
 
-    :dashboard
+    (:dashboard :document :table)
     :do-nothing))
