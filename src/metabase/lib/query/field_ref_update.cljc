@@ -1,4 +1,5 @@
 (ns metabase.lib.query.field-ref-update
+  (:refer-clojure :exclude [mapv])
   (:require
    [medley.core :as m]
    [metabase.lib.card :as lib.card]
@@ -79,11 +80,25 @@
 (defn- update-source-table-or-card
   "Updates the source table or card in the stage."
   [{:keys [source-table source-card], :as stage}
-   [old-source-type old-source-id, :as _old-source]
-   [new-source-type new-source-id, :as _new-source]]
-  (cond-> stage
-    (and (= old-source-type :table) (= old-source-id source-table)) (assoc :source-table new-source-id)
-    (and (= old-source-type :card) (= old-source-id source-card)) (assoc :source-card new-source-id)))
+   [old-source-type old-source-id, :as old-source]
+   [new-source-type new-source-id, :as new-source]]
+  (when-not (every? #{:table :card} [old-source-type new-source-type])
+    (throw (ex-info "Can only swap cards and tables" {:old-source old-source
+                                                      :new-source new-source})))
+  (cond
+    (and (= old-source-type :table) (= old-source-id source-table))
+    (-> stage
+        (dissoc :source-table)
+        (assoc (case new-source-type
+                 :card :source-card
+                 :table :source-table) new-source-id))
+    (and (= old-source-type :card) (= old-source-id source-card))
+    (-> stage
+        (dissoc :source-card)
+        (assoc (case new-source-type
+                 :card :source-card
+                 :table :source-table) new-source-id))
+    :else stage))
 
 (defn- update-source-and-field-ids-in-join
   "Updates the source table or card and field IDs in the join conditions using the provided mapping."
