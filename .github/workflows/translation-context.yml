@@ -4,7 +4,7 @@ on:
   push: # TEMPORARY - FOR TESTING ONLY
   workflow_dispatch:
   schedule:
-    - cron: "0 6 * * 2" # Tuesday at 06:00 UTC
+    - cron: "30 6 * * 2" # Tuesday at 06:30 UTC, one hour after translation-update.yml
 
 jobs:
   harvest:
