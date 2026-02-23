@@ -136,7 +136,7 @@
         (if (empty? source-tables)
           true
           (let [table-ids (into []
-                                (comp (map val)
+                                (comp (map :table)
                                       (map #(cond
                                               (int? %) %
                                               (map? %) (:table_id %)
@@ -566,7 +566,7 @@
   (and (map? v) (nil? (:table_id v))))
 
 (defn normalize-source-tables
-  "Normalize source-tables to consistent map format {:database_id :schema :table :table_id}.
+  "Normalize source-tables to consistent format [{:alias :table {:database_id :schema :table :table_id}} ...].
 
   The old format stored just integer table IDs. New transforms store maps on write.
   Old data is converted on read via transform-source-out for backwards compatibility.
@@ -574,7 +574,7 @@
   Throws if an integer table ID references a non-existent table.
   Map refs with non-existent tables get nil table_id (resolved later at execute time)."
   [source-tables]
-  (let [int-table-ids    (into #{} (filter int?) (vals source-tables))
+  (let [int-table-ids    (into #{} (comp (map :table) (filter int?)) source-tables)
         int-id->metadata (when (seq int-table-ids)
                            (t2/select-pk->fn (fn [{:keys [db_id schema name]}]
                                                {:database_id db_id :schema schema :table name})
@@ -582,32 +582,35 @@
                                              :id [:in int-table-ids]))
         missing-ids      (when (seq int-table-ids)
                            (remove int-id->metadata int-table-ids))
-        refs-needing-id  (filter missing-table-id? (vals source-tables))
+        refs-needing-id  (into [] (comp (map :table) (filter missing-table-id?)) source-tables)
         ref-lookup       (or (batch-lookup-table-ids refs-needing-id) {})]
     (when (seq missing-ids)
       (throw (ex-info (str "Tables not found for ids: " (str/join ", " (sort missing-ids)))
                       {:table_ids (vec missing-ids)})))
-    (update-vals source-tables
-                 (fn [v]
-                   (cond
-                     (int? v)     (assoc (int-id->metadata v) :table_id v)
-                     (:table_id v) v
-                     :else        (assoc v :table_id (ref-lookup (source-table-ref->key v))))))))
+    (mapv (fn [entry]
+            (update entry :table
+                    (fn [v]
+                      (cond
+                        (int? v)     (assoc (int-id->metadata v) :table_id v)
+                        (:table_id v) v
+                        :else        (assoc v :table_id (ref-lookup (source-table-ref->key v)))))))
+          source-tables)))
 
 (defn resolve-source-tables
   "Resolve source-tables to {alias -> table_id}. Throws if any table not found.
   For execute time - all entries must resolve to valid table IDs.
   Handles both integer IDs (old format) and map refs (new format)."
   [source-tables]
-  (let [needs-lookup (filter missing-table-id? (vals source-tables))
+  (let [as-map       (into {} (map (juxt :alias :table)) source-tables)
+        needs-lookup (filter missing-table-id? (vals as-map))
         lookup       (or (batch-lookup-table-ids needs-lookup) {})
-        resolved     (u/for-map [[alias v] source-tables]
+        resolved     (u/for-map [[alias v] as-map]
                        [alias (if (int? v)
                                 v
                                 (or (:table_id v) (lookup (source-table-ref->key v))))])
         unresolved   (for [[alias table-id] resolved
                            :when (nil? table-id)
-                           :let [v (get source-tables alias)]]
+                           :let [v (get as-map alias)]]
                        {:alias alias
                         :table (if-let [schema (:schema v)]
                                  (str schema "." (:table v))

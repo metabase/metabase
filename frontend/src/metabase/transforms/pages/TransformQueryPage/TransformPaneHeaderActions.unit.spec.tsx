@@ -26,7 +26,7 @@ const mockPythonSource: DraftTransformSource = {
   type: "python",
   body: "# Python script",
   "source-database": 1,
-  "source-tables": {},
+  "source-tables": [],
 };
 
 type SetupOpts = {

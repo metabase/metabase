@@ -95,8 +95,8 @@
 (deftest ^:parallel analyze-entity-python-transform-test
   (testing "analyze-entity extracts dependencies from a python transform"
     (let [transform {:source {:type          "python"
-                              :source-tables {"orders"   (mt/id :orders)
-                                              "products" (mt/id :products)}
+                              :source-tables [{:alias "orders" :table (mt/id :orders)}
+                                              {:alias "products" :table (mt/id :products)}]
                               :body          "def transform(orders, products): return orders"}
                      :target {:database (mt/id)
                               :schema   "public"

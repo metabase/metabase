@@ -34,7 +34,10 @@ export function useTestPythonTransform(
 
     const request = executePython({
       code: source.body,
-      source_tables: source["source-tables"],
+      source_tables: source["source-tables"].map((t) => ({
+        alias: t.alias,
+        table_id: t.table,
+      })),
     });
 
     abort.current = () => request.abort();

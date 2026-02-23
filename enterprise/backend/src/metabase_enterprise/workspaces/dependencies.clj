@@ -177,11 +177,11 @@
 
 (defn- inputs-from-python-transform
   "Extract table refs from a python transform's source-tables.
-   Python transforms require tables to exist (they map name -> table_id). Batch lookup."
+   Python transforms require tables to exist (they store [{:alias :table} ...]). Batch lookup."
   [source-tables]
-  (let [table-ids  (set (vals source-tables))
+  (let [table-ids  (into #{} (map :table) source-tables)
         table-refs (batch-table-refs-from-ids table-ids)]
-    (u/keepv table-refs (vals source-tables))))
+    (u/keepv table-refs (map :table source-tables))))
 
 (mu/defn analyze-entity :- ::analysis
   "Analyze a workspace entity to find its dependencies.

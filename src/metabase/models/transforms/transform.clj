@@ -67,15 +67,26 @@
          (perms/has-db-transforms-permission? api/*current-user-id* source-db-id)
          (remote-sync/transforms-editable?))))
 
-(defn- keywordize-source-table-refs
-  "Keywordize keys in source-tables map values (refs are maps, ints pass through)."
+(defn- source-tables-map->vec
+  "Convert old map format {alias -> table} to new array format [{:alias alias :table table} ...]."
   [source-tables]
-  (update-vals source-tables #(if (map? %) (update-keys % keyword) %)))
+  (if (map? source-tables)
+    (mapv (fn [[alias table]] {:alias alias :table table}) source-tables)
+    source-tables))
+
+(defn- keywordize-source-table-refs
+  "Keywordize keys in source-tables entries (refs are maps, ints pass through)."
+  [source-tables]
+  (mapv (fn [entry]
+          (let [entry (update-keys entry keyword)]
+            (update entry :table #(if (map? %) (update-keys % keyword) %))))
+        source-tables))
 
 (defn- transform-source-out [m]
   (-> m
       mi/json-out-without-keywordization
       (update-keys keyword)
+      (m/update-existing :source-tables source-tables-map->vec)
       (m/update-existing :source-tables keywordize-source-table-refs)
       (m/update-existing :query lib-be/normalize-query)
       (m/update-existing :type keyword)

@@ -26,7 +26,7 @@
 (set! *warn-on-reflection* true)
 
 (defn python-source-table-ref->table-id
-  "Change source of python transform from name->table-ref to name->table-id.
+  "Change source of python transform from table-ref to table-id in the array entries.
 
   We now supported table-ref as source but since FE is still expecting table-id we need to temporarily do this.
   Should update FE to fully use table-ref"
@@ -34,7 +34,9 @@
   (if (transforms.util/python-transform? transform)
     (update-in transform [:source :source-tables]
                (fn [source-tables]
-                 (update-vals source-tables #(if (int? %) % (:table_id %)))))
+                 (mapv (fn [entry]
+                         (update entry :table #(if (int? %) % (:table_id %))))
+                       source-tables)))
     transform))
 
 (defn check-database-feature

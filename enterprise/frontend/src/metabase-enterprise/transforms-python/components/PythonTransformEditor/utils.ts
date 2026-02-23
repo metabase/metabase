@@ -9,7 +9,7 @@ export function updateTransformSignature(
   tables: PythonTransformTableAliases,
   tableInfo: Table[],
 ): string {
-  const tableAliases = Object.keys(tables);
+  const tableAliases = tables.map((t) => t.alias);
 
   const transformRegex = /^def\s+transform\s*\([^)]*\)\s*:\s*\n(\s*)/m;
 
@@ -46,8 +46,8 @@ export function updateTransformSignature(
       const newArgsSection = tableAliases
         .map((alias) => {
           const padding = " ".repeat(maxAliasLength - alias.length);
-          const tableId = tables[alias];
-          const tableName = getTableName(tableId);
+          const tableId = tables.find((t) => t.alias === alias)?.table;
+          const tableName = tableId != null ? getTableName(tableId) : undefined;
           return `        ${alias}:${padding} DataFrame containing the data from the "${tableName}" table`;
         })
         .join("\n");
@@ -118,8 +118,8 @@ ${newSignature}
 ${tableAliases
   .map((alias) => {
     const padding = " ".repeat(maxAliasLength - alias.length);
-    const tableId = tables[alias];
-    const tableName = getTableName(tableId);
+    const tableId = tables.find((t) => t.alias === alias)?.table;
+    const tableName = tableId != null ? getTableName(tableId) : undefined;
     if (alias === tableName) {
       return `        ${alias}:${padding} DataFrame containing the data from the corresponding table`;
     }

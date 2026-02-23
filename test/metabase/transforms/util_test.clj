@@ -266,12 +266,12 @@
 
               (testing "returns true for python transform when user can read all source tables"
                 (let [transform {:source {:type :python
-                                          :source-tables {"t1" table-id}}}]
+                                          :source-tables [{:alias "t1" :table table-id}]}}]
                   (is (true? (transforms.util/source-tables-readable? transform)))))
 
               (testing "handles source tables with table_id in map format"
                 (let [transform {:source {:type :python
-                                          :source-tables {"t1" {:table_id table-id}}}}]
+                                          :source-tables [{:alias "t1" :table {:table_id table-id}}]}}]
                   (is (true? (transforms.util/source-tables-readable? transform))))))))))))
 
 (deftest source-tables-readable-permissions-test
@@ -295,7 +295,7 @@
 
           (testing "Python transforms - blocked database access"
             (let [transform {:source {:type          :python
-                                      :source-tables {"t1" table1-id}}}]
+                                      :source-tables [{:alias "t1" :table table1-id}]}}]
               (mt/with-user-in-groups [group {:name "Blocked Group"}
                                        user [group]]
                 (mt/with-db-perm-for-group! (perms-group/all-users) db-id :perms/view-data :blocked
@@ -306,8 +306,8 @@
 
           (testing "Python transforms - granular access but missing some tables"
             (let [transform {:source {:type          :python
-                                      :source-tables {"t1" table1-id
-                                                      "t2" table2-id}}}]
+                                      :source-tables [{:alias "t1" :table table1-id}
+                                                      {:alias "t2" :table table2-id}]}}]
               (mt/with-user-in-groups [group {:name "Limited Granular Group"}
                                        user [group]]
                 ;; Block all-users from viewing data at database level, then grant specific access via test group

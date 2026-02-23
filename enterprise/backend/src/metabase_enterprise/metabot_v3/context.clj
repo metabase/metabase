@@ -99,7 +99,7 @@
     (when-let [source-database (get-in item [:source :source-database])]
       (when-let [source-tables (not-empty (get-in item [:source :source-tables]))]
         {:database-id source-database
-         :table-ids (vals source-tables)}))))
+         :table-ids (map :table source-tables)}))))
 
 (defn- python-transform-tables-for-context
   "Get tables for Python transform formatted for metabot context."

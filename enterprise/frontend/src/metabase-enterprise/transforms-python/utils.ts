@@ -20,7 +20,7 @@ export function getPythonSourceValidationResult(
     };
   }
 
-  if (Object.keys(source["source-tables"]).length === 0) {
+  if (source["source-tables"].length === 0) {
     return {
       isValid: false,
       errorMessage: t`Select at least one table to alias`,
