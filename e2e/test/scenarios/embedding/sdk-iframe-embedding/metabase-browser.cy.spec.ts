@@ -167,6 +167,10 @@ describe("scenarios > embedding > sdk iframe embedding > metabase-browser", () =
 
       cy.findByText("Orders").click();
 
+      // Wait for the data picker to close, ensuring the selection was processed
+      // and the breadcrumb's onNavigate callback is properly registered
+      cy.findByText("Pick your starting data").should("not.exist");
+
       cy.findByTestId("sdk-breadcrumbs").findByText("New exploration").click();
 
       cy.findByText("Pick your starting data").should("be.visible");
