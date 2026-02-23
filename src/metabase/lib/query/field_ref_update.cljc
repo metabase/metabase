@@ -1,15 +1,18 @@
-(ns metabase.lib.query.field-ref-upgrade
+(ns metabase.lib.query.field-ref-update
   (:require
+   [medley.core :as m]
+   [metabase.lib.card :as lib.card]
+   [metabase.lib.metadata :as lib.metadata]
+   [metabase.lib.options :as lib.options]
+   [metabase.lib.ref :as lib.ref]
    [metabase.lib.util :as lib.util]
    [metabase.lib.walk :as lib.walk]
    [metabase.util :as u]
-   [metabase.util.malli :as mu]
-   [metabase.util.malli.registry :as mr]
-   [metabase.util.performance :refer [some select-keys mapv empty? #?(:clj for)]]
-   [weavejester.dependency :as dep]))
+   [metabase.util.performance :refer [mapv]]))
 
 (defn- build-field-id-mapping-for-table
-  [source-table-id target-table-id]
+  "Builds a mapping of field IDs of the source table to field IDs of the target table."
+  [query source-table-id target-table-id]
   (let [source-fields (lib.metadata/fields query source-table-id)
         target-fields (lib.metadata/fields query target-table-id)
         target-fields-by-name (m/index-by :name target-fields)]
@@ -19,7 +22,8 @@
                    source-fields))))
 
 (defn- build-field-id-mapping-for-card
-  [source-card-id target-card-id]
+  "Builds a mapping of field IDs of the source card to desired column aliases of the target card."
+  [query source-card-id target-card-id]
   (let [source-fields (lib.metadata/fields query source-card-id)
         target-columns (lib.card/saved-question-metadata query target-card-id)
         target-columns-by-name (m/index-by :lib/desired-column-alias target-columns)]
@@ -29,67 +33,85 @@
                    source-fields))))
 
 (defn- build-field-id-mapping
+  "Builds a mapping of field IDs of the source table to what should replace them in a field ref.
+
+  - If the target is a table, source field IDs will be replaced with the target field IDs.
+  - If the target is a card, source field IDs will be replaced with the desired column aliases of the target card columns.
+  - If the source is not a table or card, the mapping will be empty and no replacement should be made."
   [query
    [old-source-type old-source-id  , :as _old-source]
-   [new-source-type new-source-alias new-source-id, :as _new-source]]
+   [new-source-type new-source-id, :as _new-source]]
   (cond
     (and (= old-source-type :table) (= new-source-type :table))
-    (build-field-id-mapping-for-table old-source-id new-source-id)
+    (build-field-id-mapping-for-table query old-source-id new-source-id)
 
     (and (= old-source-type :card) (= new-source-type :card))
-    (build-field-id-mapping-for-card old-source-id new-source-id)
+    (build-field-id-mapping-for-card query old-source-id new-source-id)
 
     :else {}))
 
 (defn- update-field-id-in-ref
+  "If this field ref is field-id-based and there is a mapping for the field ID, update the ref to use the target field ID or desired column alias."
   [field-ref field-id-mapping]
-  (let [field-id (lib.ref/field-ref-id field-ref)]
-    (cond-> field-ref
-      (and (some? field-id) (contains? field-id-mapping field-id))
-      (assoc 2 (get field-id-mapping field-id)))))
+  (let [source-field-id (lib.ref/field-ref-id field-ref)
+        source-field-options (lib.options/options field-ref)
+        target-column-id-or-name (get field-id-mapping source-field-id)]
+    (if (some? target-column-id-or-name)
+      [:field source-field-options target-column-id-or-name]
+      field-ref)))
 
 (defn- walk-field-refs
+  "Walks the clause and updates the field refs using the provided function."
   [clause f]
   (lib.walk/walk-clause clause
                         (fn [clause]
                           (cond-> clause
-                            (lib.ref/field-ref-id clause)
+                            (lib.util/field-clause? clause)
                             f))))
 
 (defn- update-field-ids-in-clauses
+  "Updates the field IDs in the clauses using the provided mapping."
   [clauses field-id-mapping]
   (mapv (fn [clause]
           (walk-field-refs clause #(update-field-id-in-ref % field-id-mapping)))
         clauses))
 
 (defn- update-field-ids-in-join
+  "Updates the field IDs in the join conditions using the provided mapping."
   [join field-id-mapping]
   (u/update-some join :conditions update-field-ids-in-clauses field-id-mapping))
 
+(defn- update-field-ids-in-joins
+  "Updates the field IDs in all joins using the provided mapping."
+  [joins field-id-mapping]
+  (mapv #(update-field-ids-in-join % field-id-mapping) joins))
+
 (defn- update-source-table-or-card
+  "Updates the source table or card in the stage."
   [{:keys [source-table source-card], :as stage}
    [old-source-type old-source-id, :as _old-source]
-   [new-source-type new-source-alias new-source-id, :as _new-source]]
+   [new-source-type new-source-id, :as _new-source]]
   (cond-> stage
     (and (= old-source-type :table) (= old-source-id source-table)) (assoc :source-table new-source-id)
     (and (= old-source-type :card) (= old-source-id source-card)) (assoc :source-card new-source-id)))
 
 (defn- update-field-ids-in-stage
-  [query stage-number field-id-mapping]
+  "Updates the field IDs in the stage using the provided mapping."
+  [query stage-number old-source new-source field-id-mapping]
   (-> (lib.util/query-stage query stage-number)
       (update-source-table-or-card old-source new-source)
       (u/update-some :fields update-field-ids-in-clauses field-id-mapping)
+      (u/update-some :joins update-field-ids-in-joins field-id-mapping)
       (u/update-some :expressions update-field-ids-in-clauses field-id-mapping)
       (u/update-some :filters update-field-ids-in-clauses field-id-mapping)
       (u/update-some :aggregation update-field-ids-in-clauses field-id-mapping)
       (u/update-some :breakout update-field-ids-in-clauses field-id-mapping)
-      (u/update-some :order-by update-field-ids-in-clauses field-id-mapping)
-      (u/update-some :joins update-field-ids-in-join field-id-mapping)))
+      (u/update-some :order-by update-field-ids-in-clauses field-id-mapping)))
 
 (defn update-field-refs
-  "Updates the qeury to use the new source table or card."
+  "Updates the query to use the new source table or card."
   [query old-source new-source]
   (let [field-id-mapping (build-field-id-mapping query old-source new-source)]
     (update query :stages #(vec (map-indexed (fn [stage-number _]
-                                               (update-field-ids-in-stage query stage-number field-id-mapping))
+                                               (update-field-ids-in-stage query stage-number old-source new-source field-id-mapping))
                                              %)))))
