@@ -99,6 +99,7 @@ export type ColumnSettings = OptionsType & {
 
 export type ComputedVisualizationSettings = VisualizationSettings & {
   column?: (col: RemappingHydratedDatasetColumn) => ColumnSettings;
+  nested?: (value: unknown) => unknown;
 };
 
 export interface StaticVisualizationProps {

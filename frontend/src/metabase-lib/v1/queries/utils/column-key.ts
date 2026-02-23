@@ -70,7 +70,7 @@ export const getColumnNameFromKey = (key: string) => {
 export const getColumnSettings = (
   settings: VisualizationSettings | null | undefined,
   column: DatasetColumnReference,
-) => {
+): ColumnSettings | undefined => {
   return getObjectColumnSettings(settings?.column_settings, column);
 };
 
@@ -87,7 +87,7 @@ export const getColumnSettings = (
 export const getObjectColumnSettings = (
   settings: Record<string, ColumnSettings> | null | undefined,
   column: DatasetColumnReference,
-) => {
+): ColumnSettings | undefined => {
   return (
     settings?.[getLegacyColumnKey(column)] ??
     settings?.[getLegacyColumnKey(column, { excludeBaseType: true })] ??
