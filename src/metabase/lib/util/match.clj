@@ -234,6 +234,11 @@
     {:type :or
      :clauses (rest pattern)}
 
+    ;; (:and ...) pattern
+    (and (seq? pattern) (= (first pattern) :and) (>= (count pattern) 2))
+    {:type :and
+     :clauses (rest pattern)}
+
     ;; Vector pattern
     (vector? pattern)
     (let [[main-parts rest-parts] (vec (split-with (complement #{'&}) pattern))
@@ -288,6 +293,8 @@
       :or (let [or-clauses (:clauses parsed)
                 new-body (process-clauses (mapv vector (:clauses parsed) (repeat (count or-clauses) @return)) value nil)]
             (vreset! return (with-meta new-body {:nil-wrapped true})))
+      :and (let [and-clauses (:clauses parsed)]
+             (run! (fn [and-clause] (process-pattern and-clause value bindings conditions return)) and-clauses))
       :guard (let [s (:symbol parsed)
                    s (if (= s '_) (gensym "_") s)
                    ;; Treat symbol, keyword, or set predicates as functions to be called, and thus transform them
