@@ -963,7 +963,7 @@
   [base-type value]
   (condp #(isa? %2 %1) base-type
     :type/JSON
-    (.toString (JsonParser/parseString value))
+    (bigquery.params/param "JSON" (JsonParser/parseString value))
 
     :type/Dictionary
     (JsonParser/parseString value)
@@ -1009,17 +1009,19 @@
   ;; this is because during transforms tables are dropped and re-created, and both these API's do not
   ;; update their metadata caches frequently enough for timely transform runs (or interactive previews).
   ;; rather than waiting many minutes, we trade torward consistency by using SQL DML, whose table metadata
-  ;; is consistent and we do not see cached non-existence and things like that causing trouble.
+  ;; is consistent, and we do not see cached non-existence and things like that causing trouble.
   (let [database   (t2/select-one :model/Database db-id)
         col-kws    (mapv (comp keyword name :name) columns)
         num-cols   (count col-kws)
         ;; bigquery allows 10k query parameters per request
         max-rows   (max 1 (quot 10000 num-cols))
         chunk-size (min (or driver/*insert-chunk-rows* 1000) max-rows)]
-    (doseq [chunk (partition-all chunk-size data)]
+    (doseq [chunk (partition-all chunk-size data)
+            :let [lift       #(if (coll? %) [:lift %] %)
+                  lift-tuple #(mapv lift %)]]
       (let [[sql & params] (sql.qp/format-honeysql driver {:insert-into table-name
                                                            :columns     col-kws
-                                                           :values      (vec chunk)})]
+                                                           :values      (mapv lift-tuple chunk)})]
         (driver/execute-raw-queries! driver database [[sql params]])))))
 
 (defmethod driver/execute-raw-queries! :bigquery-cloud-sdk
