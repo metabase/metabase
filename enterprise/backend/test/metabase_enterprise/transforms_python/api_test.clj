@@ -3,6 +3,7 @@
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
+   [metabase-enterprise.transforms-javascript.models.javascript-library :as javascript-library]
    [metabase-enterprise.transforms-python.models.python-library :as python-library]
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.test :as mt]
@@ -86,6 +87,63 @@
             (is (= "Invalid library path. Only 'common' is currently supported."
                    (:message (mt/user-http-request :lucky :put 400 "ee/transforms-python/library/invalid-path"
                                                    {:source "def test(): pass"}))))))))))
+
+(deftest get-javascript-library-path-test
+  (testing "GET /api/ee/transforms-python/library/:path?type=javascript"
+    (mt/with-premium-features #{:transforms-python :transforms}
+      (mt/with-data-analyst-role! (mt/user->id :lucky)
+        (mt/with-db-perm-for-group! (perms-group/all-users) (mt/id) :perms/transforms :yes
+          (testing "returns nil when no JS library exists"
+            (t2/delete! :model/JavaScriptLibrary)
+            (is (= "Not found." (mt/user-http-request :lucky :get 404 "ee/transforms-python/library/common"
+                                                      :type "javascript"))))
+          (testing "returns existing JS library"
+            (t2/delete! :model/JavaScriptLibrary)
+            (javascript-library/update-javascript-library-source! "common" "function myFunc() { return 42; }")
+            (is (=? {:source "function myFunc() { return 42; }"
+                     :path "common.js"
+                     :created_at some?
+                     :updated_at some?}
+                    (mt/user-http-request :lucky :get 200 "ee/transforms-python/library/common"
+                                          :type "javascript"))))
+          (testing "without type param, returns Python library (not JS)"
+            (t2/delete! :model/PythonLibrary)
+            (python-library/update-python-library-source! "common" "def py_func(): return 1")
+            (is (=? {:source "def py_func(): return 1"
+                     :path "common.py"}
+                    (mt/user-http-request :lucky :get 200 "ee/transforms-python/library/common")))))))))
+
+(deftest put-javascript-library-path-test
+  (testing "PUT /api/ee/transforms-python/library/:path with type=javascript"
+    (mt/with-premium-features #{:transforms-python :transforms}
+      (mt/with-data-analyst-role! (mt/user->id :lucky)
+        (mt/with-db-perm-for-group! (perms-group/all-users) (mt/id) :perms/transforms :yes
+          (testing "creates new JS library"
+            (t2/delete! :model/JavaScriptLibrary)
+            (is (=? {:source "function newFunc() { return 100; }"
+                     :path "common.js"
+                     :id integer?
+                     :created_at some?
+                     :updated_at some?}
+                    (mt/user-http-request :lucky :put 200 "ee/transforms-python/library/common"
+                                          {:source "function newFunc() { return 100; }"
+                                           :type "javascript"})))
+            (is (= "function newFunc() { return 100; }"
+                   (t2/select-one-fn :source :model/JavaScriptLibrary))))
+          (testing "updates existing JS library"
+            (is (=? {:source "function updated() { return 2; }"
+                     :path "common.js"}
+                    (mt/user-http-request :lucky :put 200 "ee/transforms-python/library/common"
+                                          {:source "function updated() { return 2; }"
+                                           :type "javascript"})))
+            (is (= 1 (t2/count :model/JavaScriptLibrary)) "Should not create duplicate"))
+          (testing "without type param, updates Python library (not JS)"
+            (t2/delete! :model/PythonLibrary)
+            (is (=? {:source "def py_func(): return 1"
+                     :path "common.py"}
+                    (mt/user-http-request :lucky :put 200 "ee/transforms-python/library/common"
+                                          {:source "def py_func(): return 1"})))
+            (is (= 1 (t2/count :model/PythonLibrary)))))))))
 
 (deftest test-run-test
   (mt/with-premium-features #{:transforms :transforms-python}
