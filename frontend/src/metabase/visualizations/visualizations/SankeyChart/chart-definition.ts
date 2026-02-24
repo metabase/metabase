@@ -15,7 +15,6 @@ import {
 import type {
   ComputedVisualizationSettings,
   VisualizationDefinition,
-  VisualizationSettingsDefinitions,
 } from "metabase/visualizations/types";
 import { isDate, isDimension, isMetric } from "metabase-lib/v1/types/utils/isa";
 import type { DatasetData, RawSeries, Series } from "metabase-types/api";
@@ -24,7 +23,7 @@ import { hasCyclicFlow } from "./utils/cycle-detection";
 
 const MAX_SANKEY_NODES = 150;
 
-export const SETTINGS_DEFINITIONS = {
+export const SETTINGS_DEFINITIONS: VisualizationDefinition<Series> = {
   ...columnSettings({ hidden: true }),
   ...dimensionSetting("sankey.source", {
     // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
@@ -35,8 +34,7 @@ export const SETTINGS_DEFINITIONS = {
     persistDefault: true,
     dashboard: false,
     autoOpenWhenUnset: false,
-    getDefault: ([series]: RawSeries) =>
-      findSensibleSankeyColumns(series.data)?.source,
+    getDefault: ([series]) => findSensibleSankeyColumns(series.data)?.source,
   }),
   ...dimensionSetting("sankey.target", {
     // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
@@ -47,8 +45,7 @@ export const SETTINGS_DEFINITIONS = {
     persistDefault: true,
     dashboard: false,
     autoOpenWhenUnset: false,
-    getDefault: ([series]: RawSeries) =>
-      findSensibleSankeyColumns(series.data)?.target,
+    getDefault: ([series]) => findSensibleSankeyColumns(series.data)?.target,
   }),
   ...metricSetting("sankey.value", {
     // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
@@ -59,8 +56,7 @@ export const SETTINGS_DEFINITIONS = {
     persistDefault: true,
     dashboard: false,
     autoOpenWhenUnset: false,
-    getDefault: ([series]: RawSeries) =>
-      findSensibleSankeyColumns(series.data)?.metric,
+    getDefault: ([series]) => findSensibleSankeyColumns(series.data)?.metric,
   }),
   "sankey.node_align": {
     // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
@@ -142,7 +138,7 @@ export const SETTINGS_DEFINITIONS = {
   },
 };
 
-export const SANKEY_CHART_DEFINITION: VisualizationDefinition = {
+export const SANKEY_CHART_DEFINITION: VisualizationDefinition<Series> = {
   getUiName: () => t`Sankey`,
   identifier: "sankey",
   iconName: "sankey",
@@ -238,5 +234,5 @@ export const SANKEY_CHART_DEFINITION: VisualizationDefinition = {
   hasEmptyState: true,
   settings: {
     ...SETTINGS_DEFINITIONS,
-  } as any as VisualizationSettingsDefinitions,
+  },
 };

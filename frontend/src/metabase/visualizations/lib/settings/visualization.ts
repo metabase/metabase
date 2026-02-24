@@ -10,7 +10,11 @@ import type {
   VisualizationSettingsDefinitions,
 } from "metabase/visualizations/types";
 import { normalize } from "metabase-lib/v1/queries/utils/normalize";
-import type { DimensionReference, Series } from "metabase-types/api";
+import type {
+  DimensionReference,
+  Series,
+  VisualizationSettings,
+} from "metabase-types/api";
 
 import {
   getComputedSettings,
@@ -143,7 +147,7 @@ export function getPersistableDefaultSettingsForSeries(
 
 export function getSettingsWidgetsForSeries(
   series: Series | null | undefined,
-  onChangeSettings: (newSettings: Record<string, unknown>) => void,
+  onChangeSettings: (newSettings: Partial<VisualizationSettings>) => void,
   isDashboard = false,
   extra: SettingsExtra = {},
 ) {
