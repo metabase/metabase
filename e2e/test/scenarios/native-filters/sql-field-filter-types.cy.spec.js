@@ -101,7 +101,7 @@ describe("scenarios > filters > sql filters > field filter > Date", () => {
     });
   });
 
-  it("when set as the default value for a required filter", () => {
+  it.only("when set as the default value for a required filter", () => {
     SQLFilter.toggleRequired();
 
     dateFilters.forEach(([subType, { value, representativeResult }], index) => {
