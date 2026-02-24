@@ -1222,14 +1222,6 @@
    [:nodes [:sequential ::erd-node]]
    [:edges [:sequential ::erd-edge]]])
 
-(defn- active-fields-for-table
-  "Return active (non-retired) fields for a table."
-  [table-id]
-  (t2/select :model/Field
-             :table_id table-id
-             :active true
-             :visibility_type [:not= "retired"]))
-
 (defn- build-erd-field
   "Convert a field to the ERD field shape."
   [field field->table]
