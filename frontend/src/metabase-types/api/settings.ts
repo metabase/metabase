@@ -749,6 +749,7 @@ export interface EnterpriseSettings extends Settings {
   "embedding-hub-production-embed-snippet-created": boolean;
   "enable-product-analytics?": boolean;
   "product-analytics-events-table-id"?: number | null;
+  "product-analytics-sessions-table-id"?: number | null;
   "python-runner-url"?: string | null;
   "python-runner-api-token"?: string | null;
   "python-storage-s-3-endpoint"?: string | null;

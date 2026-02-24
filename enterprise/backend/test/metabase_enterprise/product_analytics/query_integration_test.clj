@@ -159,32 +159,33 @@
                   "Dashboard should have at least one 'per category' card"))))))))
 
 (deftest xray-events-funnel-template-test
-  (testing "X-ray for V_PA_EVENTS includes funnel flow cards from FunnelFlows template"
+  (testing "X-ray for V_PA_EVENTS includes FunnelFlows as an in-depth related template"
     (pa.tu/with-pa-db-cleanup
       (mt/with-premium-features #{:product-analytics}
         (pa.setup/ensure-product-analytics-db-installed!)
         (mt/with-test-user :crowberto
           (let [events-table (t2/select-one :model/Table :db_id pa/product-analytics-db-id :name "V_PA_EVENTS")
                 dashboard    (magic/automagic-analysis events-table {:show :all})
-                card-names   (set (keep (comp :name :card) (:dashcards dashboard)))]
-            (is (seq card-names) "Dashboard should have named cards")
-            (testing "Funnel cards are present"
-              (is (some #(re-find #"(?i)funnel|flow" %) card-names)
-                  "Dashboard should have at least one funnel/flow card"))))))))
+                related      (:related dashboard)
+                zoom-in-urls (set (keep :url (:zoom-in related)))]
+            (testing "FunnelFlows template is available in zoom-in related section"
+              (is (some #(re-find #"FunnelFlows" %) zoom-in-urls)
+                  "Related zoom-in should include the FunnelFlows sub-template"))))))))
 
 (deftest xray-sessions-visitors-template-test
-  (testing "X-ray for V_PA_SESSIONS includes visitor and geographic cards from VisitorsAndLocations template"
+  (testing "X-ray for V_PA_SESSIONS includes VisitorsAndLocations as an in-depth related template"
     (pa.tu/with-pa-db-cleanup
       (mt/with-premium-features #{:product-analytics}
         (pa.setup/ensure-product-analytics-db-installed!)
         (mt/with-test-user :crowberto
           (let [sessions-table (t2/select-one :model/Table :db_id pa/product-analytics-db-id :name "V_PA_SESSIONS")
                 dashboard      (magic/automagic-analysis sessions-table {:show :all})
-                card-names     (set (keep (comp :name :card) (:dashcards dashboard)))]
-            (is (seq card-names) "Dashboard should have named cards")
-            (testing "Country map card is present"
-              (is (some #(re-find #"(?i)country" %) card-names)
-                  "Dashboard should have a country-based card"))
-            (testing "Session count cards are present"
-              (is (some #(re-find #"(?i)session" %) card-names)
-                  "Dashboard should have session-related cards"))))))))
+                related        (:related dashboard)
+                zoom-in-urls   (set (keep :url (:zoom-in related)))]
+            (testing "VisitorsAndLocations template is available in zoom-in related section"
+              (is (some #(re-find #"VisitorsAndLocations" %) zoom-in-urls)
+                  "Related zoom-in should include the VisitorsAndLocations sub-template"))
+            (testing "Base dashboard includes geographic cards from GenericTable template"
+              (let [card-names (set (keep (comp :name :card) (:dashcards dashboard)))]
+                (is (some #(re-find #"(?i)country" %) card-names)
+                    "Dashboard should have a country-based card")))))))))
