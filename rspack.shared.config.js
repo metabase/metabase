@@ -1,5 +1,4 @@
 /* eslint-env node */
-/* eslint-disable import/no-commonjs */
 
 const path = require("path");
 
@@ -10,6 +9,7 @@ module.exports = {
   devtool: false,
   entry: {
     color_selector: "./frontend/src/metabase-shared/color_selector.js",
+    tracker: "./frontend/src/metabase-shared/analytics_tracker.js",
   },
   module: config.module,
   resolve: config.resolve,
