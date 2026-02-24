@@ -159,11 +159,23 @@
   SendNotification
   [context]
   (let [{:strs [subscription-id]} (qc/from-job-data context)
-        fire-instance-id          (.getFireInstanceId ^JobExecutionContext context)
-        scheduler-instance-id     (.. ^JobExecutionContext context getScheduler getSchedulerInstanceId)]
-    (log/with-context {:quartz-fire-instance-id   fire-instance-id
-                       :quartz-scheduler-instance scheduler-instance-id}
-      (log/infof "SendNotification fired for subscription %d" subscription-id)
+        ^JobExecutionContext ctx  context
+        scheduled-fire-time       (.getScheduledFireTime ctx)
+        fire-time                 (.getFireTime ctx)
+        fire-instance-id          (.getFireInstanceId ctx)
+        recovering?               (.isRecovering ctx)
+        refire-count              (.getRefireCount ctx)
+        trigger-key               (.. ctx getTrigger getKey getName)
+        scheduler-id              (.. ctx getScheduler getSchedulerInstanceId)]
+    (log/with-context {:quartz-fire-instance-id    fire-instance-id
+                       :quartz-scheduled-fire-time (str scheduled-fire-time)
+                       :quartz-fire-time           (str fire-time)
+                       :quartz-recovering          recovering?
+                       :quartz-refire-count        refire-count
+                       :quartz-trigger-key         trigger-key
+                       :quartz-scheduler-id        scheduler-id}
+      (log/infof "SendNotification fired for subscription %d (trigger=%s, scheduled=%s, actual=%s, recovering=%s, refire=%d, scheduler=%s)"
+                 subscription-id trigger-key scheduled-fire-time fire-time recovering? refire-count scheduler-id)
       (send-notification* subscription-id))))
 
 (defn init-send-notification-triggers!
