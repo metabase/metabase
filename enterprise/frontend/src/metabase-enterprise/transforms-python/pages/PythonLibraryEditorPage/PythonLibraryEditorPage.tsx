@@ -44,10 +44,10 @@ function getEmptyLibrarySource(type?: AdvancedTransformType) {
   if (type == null) {
     return "";
   }
-  const displayName = ADVANCED_TRANSFORM_TYPES[type];
+  const { displayName, commentString } = ADVANCED_TRANSFORM_TYPES[type];
   return `
-# This is your ${displayName} library.
-# You can add code here that can be reused in ${displayName} transforms.
+${commentString} This is your ${displayName} library.
+${commentString} You can add code here that can be reused in ${displayName} transforms.
 `
     .trim()
     .concat("\n");
@@ -93,9 +93,9 @@ export function PythonLibraryEditorPage({
     }
     try {
       await updatePythonLibrary({ path, source, type }).unwrap();
-      sendSuccessToast(t`Python library saved`);
+      sendSuccessToast(t`Library saved`);
     } catch (error) {
-      sendErrorToast(t`Python library could not be saved`);
+      sendErrorToast(t`Library could not be saved`);
     }
   }
 
@@ -118,11 +118,14 @@ export function PythonLibraryEditorPage({
     );
   }
 
+  const typeDisplayName = ADVANCED_TRANSFORM_TYPES[type].displayName;
+
   return (
     <>
       <PageContainer>
         <Stack>
           <PythonLibraryEditorHeader
+            typeDisplayName={typeDisplayName}
             onSave={handleSave}
             onRevert={handleRevert}
             isDirty={isDirty && !isRemoteSyncReadOnly}
@@ -134,7 +137,7 @@ export function PythonLibraryEditorPage({
               className={S.flexStart}
               color="warning"
               p="0.75rem"
-              title={t`The Python library is not editable because Remote Sync is in read-only mode.`}
+              title={t`The library is not editable because Remote Sync is in read-only mode.`}
               variant="outline"
               w="auto"
             />

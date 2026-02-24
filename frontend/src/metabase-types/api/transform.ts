@@ -24,9 +24,15 @@ export type TransformOwner = Pick<
 >;
 
 export const ADVANCED_TRANSFORM_TYPES = {
-  python: "Python",
-  javascript: "JavaScript",
-} satisfies Record<string, string>;
+  python: {
+    displayName: "Python",
+    commentString: "#",
+  },
+  javascript: {
+    displayName: "JavaScript",
+    commentString: "//",
+  },
+} satisfies Record<string, { displayName: string; commentString: string }>;
 
 export type AdvancedTransformType = keyof typeof ADVANCED_TRANSFORM_TYPES;
 
