@@ -105,7 +105,7 @@
     :card :source-card))
 
 (mu/defn- update-source-in-clause :- [:or ::lib.schema/stage ::lib.schema.join/join]
-  [clause :- [:or ::lib.schema/stage ::lib.schema.join/join]
+  [clause  :- [:or ::lib.schema/stage ::lib.schema.join/join]
    options :- ::swap-source-options]
   (let [source-key (source-key (:source-type options))
         target-key (source-key (:target-type options))]
@@ -116,15 +116,21 @@
       clause)))
 
 (mu/defn- update-source-in-stage :- ::lib.schema/stage
-  [stage :- ::lib.schema/stage
+  [stage   :- ::lib.schema/stage
    options :- ::swap-source-options]
   (-> stage
       (update-source-in-clause options)
       (u/update-some :joins #(mapv #(update-source-in-clause % options) %))))
 
 (mu/defn- update-source-in-query :- ::lib.schema/query
-  [query :- ::lib.schema/query
+  [query   :- ::lib.schema/query
    options :- ::swap-source-options]
-  (update query :stages #(vec (map-indexed (fn [stage-number _]
-                                             (update-source-in-stage query stage-number options))
-                                           %))))
+  (update query :stages (fn [stages] (mapv #(update-source-in-stage % options) stages))))
+
+(mu/defn swap-source-in-query :- ::lib.schema/query
+  [query   :- ::lib.schema/query
+   options :- ::swap-source-options]
+  (-> query
+      (update-field-refs-in-query #(dissoc % :id))
+      (update-source-in-query options)
+      (update-field-refs-in-query identity)))
