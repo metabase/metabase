@@ -8,6 +8,13 @@ import { QuestionChartSettings } from "metabase/visualizations/components/ChartS
 import registerVisualizations from "metabase/visualizations/register";
 import { Table } from "metabase/visualizations/visualizations/Table/Table";
 import Question from "metabase-lib/v1/Question";
+import { getColumnKey } from "metabase-lib/v1/queries/utils/column-key";
+import type {
+  DatasetColumn,
+  Series,
+  VisualizationDisplay,
+  VisualizationSettings,
+} from "metabase-types/api";
 import {
   createMockCard,
   createMockColumn,
@@ -32,7 +39,14 @@ const metadata = createMockMetadata({
 const ordersTable = createOrdersTable();
 const ordersFields = ordersTable.fields ?? [];
 
-const setup = ({ display, visualization_settings = {} }) => {
+type Display = Extract<VisualizationDisplay, "table" | "object">;
+
+type SetupOptions = {
+  display: Display;
+  visualization_settings?: VisualizationSettings;
+};
+
+const setup = ({ display, visualization_settings = {} }: SetupOptions) => {
   const onChange = jest.fn();
 
   const Container = () => {
@@ -53,7 +67,7 @@ const setup = ({ display, visualization_settings = {} }) => {
       ),
     );
 
-    const handleChange = (update) => {
+    const handleChange = (update: VisualizationSettings) => {
       onChange(update);
       setQuestion((q) => {
         const newQuestion = q.updateSettings(update);
@@ -67,7 +81,7 @@ const setup = ({ display, visualization_settings = {} }) => {
         series={[
           {
             card: question.card(),
-            data: {
+            data: createMockDatasetData({
               rows: [],
               cols: ordersFields.map((field) =>
                 createMockColumn({
@@ -77,11 +91,10 @@ const setup = ({ display, visualization_settings = {} }) => {
                   field_ref: ["field", Number(field.id), null],
                 }),
               ),
-            },
+            }),
           },
         ]}
         initial={{ section: "Data" }}
-        noPreview
         question={question}
       />
     );
@@ -93,7 +106,7 @@ const setup = ({ display, visualization_settings = {} }) => {
 };
 
 // these visualizations share column settings, so all the tests should work for both
-["table", "object"].forEach((display) => {
+(["table", "object"] as const).forEach((display) => {
   describe(`${display} column settings`, () => {
     it("should show you related columns in structured queries", async () => {
       setup({ display });
@@ -157,8 +170,12 @@ const setup = ({ display, visualization_settings = {} }) => {
       await userEvent.click(await screen.findByText("Total1"));
       expect(onChange).toHaveBeenCalledWith({
         column_settings: {
-          [JSON.stringify(["name", "TOTAL"])]: { column_title: "Total1" },
-          [JSON.stringify(["name", "SUBTOTAL"])]: { column_title: "Subtotal2" },
+          [getColumnKey(createMockColumn({ name: "TOTAL" }))]: {
+            column_title: "Total1",
+          },
+          [getColumnKey(createMockColumn({ name: "SUBTOTAL" }))]: {
+            column_title: "Subtotal2",
+          },
         },
       });
     });
@@ -167,7 +184,7 @@ const setup = ({ display, visualization_settings = {} }) => {
 
 describe("table.pivot", () => {
   describe("getHidden", () => {
-    const createMockSeriesWithCols = (cols) => [
+    const createMockSeriesWithCols = (cols: string[]): Series => [
       createMockSingleSeries(
         createMockCard(),
         createMockDataset({
@@ -185,9 +202,15 @@ describe("table.pivot", () => {
       "dim3",
       "metric",
     ]);
+    const getHidden = Table.settings["table.pivot"].getHidden;
+    if (!getHidden) {
+      throw new Error("table.pivot getHidden should be defined");
+    }
 
     it("should be hidden when table.pivot is false and cols.length is not 3", () => {
-      const isHidden = Table.settings["table.pivot"].getHidden(fourCols, {
+      expect(getHidden).toBeDefined();
+
+      const isHidden = getHidden(fourCols, {
         "table.pivot": false,
       });
 
@@ -195,7 +218,9 @@ describe("table.pivot", () => {
     });
 
     it("should not be hidden when table.pivot is true, regardless of cols.length", () => {
-      const isHidden = Table.settings["table.pivot"].getHidden(fourCols, {
+      expect(getHidden).toBeDefined();
+
+      const isHidden = getHidden(fourCols, {
         "table.pivot": true,
       });
 
@@ -203,7 +228,9 @@ describe("table.pivot", () => {
     });
 
     it("should not be hidden when cols.length is 3 and table.pivot is false", () => {
-      const isHidden = Table.settings["table.pivot"].getHidden(threeCols, {
+      expect(getHidden).toBeDefined();
+
+      const isHidden = getHidden(threeCols, {
         "table.pivot": false,
       });
 
@@ -214,17 +241,29 @@ describe("table.pivot", () => {
 
 describe("text_wrapping", () => {
   describe("in columnSettings", () => {
-    const createMockStringColumn = () =>
-      createMockColumn({ base_type: "type/Text" });
+    const createMockStringColumn = (): DatasetColumn =>
+      createMockColumn({ base_type: "type/Text", effective_type: "type/Text" });
 
-    const createMockNumberColumn = () =>
-      createMockColumn({ base_type: "type/Number" });
+    const createMockNumberColumn = (): DatasetColumn =>
+      createMockColumn({
+        base_type: "type/Integer",
+        effective_type: "type/Integer",
+      });
+
+    const getTextWrappingSetting = (column: DatasetColumn) => {
+      const textWrappingSetting = Table.columnSettings(column)["text_wrapping"];
+      expect(textWrappingSetting).toBeDefined();
+      if (!textWrappingSetting) {
+        throw new Error("text_wrapping setting should be defined");
+      }
+      return textWrappingSetting;
+    };
 
     it("should be available for string columns", () => {
       const stringColumn = createMockStringColumn();
-      const settings = Table.columnSettings(stringColumn);
+      const textWrappingSetting = getTextWrappingSetting(stringColumn);
 
-      expect(settings["text_wrapping"]).toBeDefined();
+      expect(textWrappingSetting).toBeDefined();
     });
 
     it("should not be available for non-string columns", () => {
@@ -236,9 +275,14 @@ describe("text_wrapping", () => {
 
     it("should be hidden when view_as is image", () => {
       const stringColumn = createMockStringColumn();
-      const settings = Table.columnSettings(stringColumn);
+      const textWrappingSetting = getTextWrappingSetting(stringColumn);
+      const getHidden = textWrappingSetting.getHidden;
+      expect(getHidden).toBeDefined();
+      if (!getHidden) {
+        throw new Error("text_wrapping getHidden should be defined");
+      }
 
-      const isHidden = settings["text_wrapping"].getHidden(stringColumn, {
+      const isHidden = getHidden(stringColumn, {
         view_as: "image",
       });
 
@@ -247,20 +291,30 @@ describe("text_wrapping", () => {
 
     it("should be not valid when view_as is image", () => {
       const stringColumn = createMockStringColumn();
-      const settings = Table.columnSettings(stringColumn);
+      const textWrappingSetting = getTextWrappingSetting(stringColumn);
+      const isValid = textWrappingSetting.isValid;
+      expect(isValid).toBeDefined();
+      if (!isValid) {
+        throw new Error("text_wrapping isValid should be defined");
+      }
 
-      const isValid = settings["text_wrapping"].isValid(stringColumn, {
+      const valueIsValid = isValid(stringColumn, {
         view_as: "image",
       });
 
-      expect(isValid).toBe(false);
+      expect(valueIsValid).toBe(false);
     });
 
     it("should be visible when view_as is null", () => {
       const stringColumn = createMockStringColumn();
-      const settings = Table.columnSettings(stringColumn);
+      const textWrappingSetting = getTextWrappingSetting(stringColumn);
+      const getHidden = textWrappingSetting.getHidden;
+      expect(getHidden).toBeDefined();
+      if (!getHidden) {
+        throw new Error("text_wrapping getHidden should be defined");
+      }
 
-      const isHidden = settings["text_wrapping"].getHidden(stringColumn, {
+      const isHidden = getHidden(stringColumn, {
         view_as: null,
       });
 
@@ -269,9 +323,14 @@ describe("text_wrapping", () => {
 
     it("should be visible when view_as is auto", () => {
       const stringColumn = createMockStringColumn();
-      const settings = Table.columnSettings(stringColumn);
+      const textWrappingSetting = getTextWrappingSetting(stringColumn);
+      const getHidden = textWrappingSetting.getHidden;
+      expect(getHidden).toBeDefined();
+      if (!getHidden) {
+        throw new Error("text_wrapping getHidden should be defined");
+      }
 
-      const isHidden = settings["text_wrapping"].getHidden(stringColumn, {
+      const isHidden = getHidden(stringColumn, {
         view_as: "auto",
       });
 
@@ -280,9 +339,14 @@ describe("text_wrapping", () => {
 
     it("should be visible when view_as is link", () => {
       const stringColumn = createMockStringColumn();
-      const settings = Table.columnSettings(stringColumn);
+      const textWrappingSetting = getTextWrappingSetting(stringColumn);
+      const getHidden = textWrappingSetting.getHidden;
+      expect(getHidden).toBeDefined();
+      if (!getHidden) {
+        throw new Error("text_wrapping getHidden should be defined");
+      }
 
-      const isHidden = settings["text_wrapping"].getHidden(stringColumn, {
+      const isHidden = getHidden(stringColumn, {
         view_as: "link",
       });
 
@@ -291,20 +355,25 @@ describe("text_wrapping", () => {
 
     it("should be valid when view_as is link", () => {
       const stringColumn = createMockStringColumn();
-      const settings = Table.columnSettings(stringColumn);
+      const textWrappingSetting = getTextWrappingSetting(stringColumn);
+      const isValid = textWrappingSetting.isValid;
+      expect(isValid).toBeDefined();
+      if (!isValid) {
+        throw new Error("text_wrapping isValid should be defined");
+      }
 
-      const isValid = settings["text_wrapping"].isValid(stringColumn, {
+      const valueIsValid = isValid(stringColumn, {
         view_as: "link",
       });
 
-      expect(isValid).toBe(true);
+      expect(valueIsValid).toBe(true);
     });
 
     it("should default to false", () => {
       const stringColumn = createMockStringColumn();
-      const settings = Table.columnSettings(stringColumn);
+      const textWrappingSetting = getTextWrappingSetting(stringColumn);
 
-      expect(settings["text_wrapping"].default).toBe(false);
+      expect(textWrappingSetting.default).toBe(false);
     });
   });
 });
