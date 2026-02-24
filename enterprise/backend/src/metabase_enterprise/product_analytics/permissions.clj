@@ -2,7 +2,6 @@
   "Permission enforcement for the Product Analytics virtual database.
    Follows the same pattern as `metabase-enterprise.audit-app.permissions`."
   (:require
-   [metabase.collections.models.collection :as collection]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.models.interface :as mi]
    [metabase.premium-features.core :refer [defenterprise]]
