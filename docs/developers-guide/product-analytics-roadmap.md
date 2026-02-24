@@ -99,11 +99,37 @@ implementations for the backend keyword — no protocol reification needed.
 
 ---
 
-## Phase 3 — Event postprocessing pipeline
+## Phase 3 — Site management CRUD API
+
+Expose endpoints for creating, listing, updating, and deleting analytics sites.
+These are authenticated admin-only endpoints. This phase comes before the event
+pipeline because the CRUD endpoints are simpler and provide the site records that
+the pipeline and HTTP endpoint depend on for site lookup and CORS configuration.
+
+**Endpoints:**
+
+| Method | Path | Description |
+|---|---|---|
+| `GET` | `/api/ee/product-analytics/sites` | List all registered sites. |
+| `POST` | `/api/ee/product-analytics/sites` | Create a new site (returns UUID + snippet). |
+| `GET` | `/api/ee/product-analytics/sites/:id` | Get site details. |
+| `PUT` | `/api/ee/product-analytics/sites/:id` | Update site settings. |
+| `DELETE` | `/api/ee/product-analytics/sites/:id` | Soft-delete a site. |
+
+**Deliverables:**
+
+- CRUD endpoint definitions gated behind admin permissions.
+- Tracking snippet generation (returns the `<script>` tag with the site UUID
+  and the Metabase host URL).
+- API tests for each endpoint, including permission checks.
+
+---
+
+## Phase 4 — Event postprocessing pipeline
 
 Build the server-side enrichment logic that transforms a raw inbound payload into
 a fully resolved event ready for storage. This phase has no HTTP surface; it is
-a pure-function pipeline consumed by the API layer in Phase 4.
+a pure-function pipeline consumed by the API layer in Phase 5.
 
 **Processing steps (mirroring Umami):**
 
@@ -129,7 +155,7 @@ a pure-function pipeline consumed by the API layer in Phase 4.
 
 ---
 
-## Phase 4 — Event-receiving HTTP endpoint
+## Phase 5 — Event-receiving HTTP endpoint
 
 Wire the postprocessing pipeline to an HTTP endpoint that accepts events from
 tracking scripts or server-side callers, and persists them through the storage
@@ -164,31 +190,7 @@ CORS origins must be updated accordingly.
 
 ---
 
-## Phase 5 — Site management CRUD API
-
-Expose endpoints for creating, listing, updating, and deleting analytics sites.
-These are authenticated admin-only endpoints.
-
-**Endpoints:**
-
-| Method | Path | Description |
-|---|---|---|
-| `GET` | `/api/ee/product-analytics/sites` | List all registered sites. |
-| `POST` | `/api/ee/product-analytics/sites` | Create a new site (returns UUID + snippet). |
-| `GET` | `/api/ee/product-analytics/sites/:id` | Get site details. |
-| `PUT` | `/api/ee/product-analytics/sites/:id` | Update site settings. |
-| `DELETE` | `/api/ee/product-analytics/sites/:id` | Soft-delete a site. |
-
-**Deliverables:**
-
-- CRUD endpoint definitions gated behind admin permissions.
-- Tracking snippet generation (returns the `<script>` tag with the site UUID
-  and the Metabase host URL).
-- API tests for each endpoint, including permission checks.
-
----
-
-## Phase 6 — Tracking script
+## Phase 6 — Tracking script (parallel: start with Phase 4)
 
 Serve a lightweight JavaScript tracker from Metabase that site operators embed in
 their pages. Modeled on Umami's `script.js`.
@@ -289,15 +291,15 @@ Phase 1  (data model + virtual DB)
   v
 Phase 2  (storage multimethods)
   │
+  v
+Phase 3  (site CRUD)
+  │
   ├──────────────────────┐
   v                      v
-Phase 3  (pipeline)    Phase 5  (site CRUD)
+Phase 4  (pipeline)    Phase 6  (tracker script)   ← parallel
   │
   v
-Phase 4  (HTTP endpoint)
-  │
-  v
-Phase 6  (tracker script)
+Phase 5  (HTTP endpoint)
   │
   v
 Phase 7  (query integration)
@@ -306,9 +308,18 @@ Phase 8  (ClickHouse)  ── depends on Phase 2
 Phase 9  (Stream)      ── depends on Phase 2
 ```
 
+### Parallelism opportunities
+
+After Phase 2 completes, the following work streams can proceed in parallel:
+
+| Stream | Phases | Notes |
+|---|---|---|
+| **Admin API** | Phase 3 (site CRUD) | Short; unblocks both other streams. |
+| **Ingestion pipeline** | Phase 4 → 5 | Pipeline is pure functions, then HTTP wiring. Can start as soon as Phase 3 merges. |
+| **Tracker script** | Phase 6 | JS-only work with no backend deps beyond the `/send` contract. Development can start in parallel with Phase 4; integration testing waits for Phase 5. |
+| **Alternative backends** | Phase 8, 9 | Independent of Phases 3–7; can start any time after Phase 2. |
+
 Phases 8 and 9 are independent of each other and of Phases 3–7.
-Phase 5 (site CRUD) only depends on Phases 1–2 and can be developed
-in parallel with the pipeline work in Phases 3–4.
 
 ---
 
@@ -318,7 +329,7 @@ in parallel with the pipeline work in Phases 3–4.
 |---|---|
 | **Feature flag** | `:product-analytics` |
 | **Geolocation** | Check CDN headers first (Cloudflare, Vercel, CloudFront). Fall back to a user-supplied MaxMind GeoLite2 DB file whose path is configured in application settings. No bundled DB. |
-| **Rate limiting** | Deferred. Ship Phase 4 without rate limiting; add it as a fast follow once real traffic patterns are understood. |
+| **Rate limiting** | Deferred. Ship Phase 5 without rate limiting; add it as a fast follow once real traffic patterns are understood. |
 | **Session salt rotation** | Monthly, same as Umami. Salt rotates on the 1st of each calendar month. |
 | **Retention / TTL** | No automatic purge for now. Operators manage DB size themselves. Revisit when usage patterns are clearer. |
 | **Table isolation** | Follow the audit DB pattern: tables live in the main schema with a `product_analytics_` prefix, exposed via `v_pa_*` SQL views through a virtual Database record. Permissions are gated by a dedicated collection, not direct DB grants. |
