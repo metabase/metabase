@@ -1,9 +1,9 @@
 (ns metabase.documents.api.webhook
   (:require
-   [metabase-enterprise.documents.api.document :as document.api]
-   [metabase-enterprise.documents.prose-mirror :as prose-mirror]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
+   [metabase.documents.api.document :as document.api]
+   [metabase.documents.prose-mirror :as prose-mirror]
    [metabase.events.core :as events]
    [metabase.models.interface :as mi]
    [metabase.request.core :as request]
