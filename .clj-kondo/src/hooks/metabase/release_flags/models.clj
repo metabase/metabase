@@ -66,3 +66,9 @@
   [{:keys [node]}]
   (let [[_ flag-node] (:children node)]
     (check-flag-arg flag-node)))
+
+(defn bypass-guard-fixture
+  "Lint hook for metabase.release-flags.guard/bypass-guard-fixture."
+  [{:keys [node]}]
+  (doseq [flag-node (rest (:children node))]
+    (check-flag-arg flag-node)))

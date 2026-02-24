@@ -686,6 +686,7 @@
    metabase.util.malli.registry/def                                                                                          hooks.metabase.util.malli.registry/def
    metabase.util/case-enum                                                                                                   hooks.metabase.util/case-enum
    metabase.util/format-color                                                                                                hooks.metabase.util/format-color
+   metabase.release-flags.guard/bypass-guard-fixture                                                                           hooks.metabase.release-flags.models/bypass-guard-fixture
    metabase.release-flags.guard/guard-namespace!                                                                              hooks.metabase.release-flags.models/guard-namespace!
    metabase.release-flags.models/has-release-flag?                                                                            hooks.metabase.release-flags.models/has-release-flag?
    metabase.xrays.api.automagic-dashboards-test/with-indexed-model!                                                          hooks.metabase.xrays.api.automagic-dashboards-test/with-indexed-model!}
