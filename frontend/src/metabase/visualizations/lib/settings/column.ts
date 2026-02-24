@@ -119,7 +119,7 @@ function getInheritedSettingsForColumn(column: DatasetColumn): ColumnSettings {
 }
 
 function getTimeEnabledOptionsForUnit(
-  unit: DatetimeUnit | undefined,
+  unit: DatetimeUnit | "second" | "millisecond" | undefined,
 ): { name: string; value: TimeEnabled | null }[] {
   const options: { name: string; value: TimeEnabled | null }[] = [
     { name: t`Off`, value: null },
