@@ -585,27 +585,32 @@
 (deftest app-mention-unlinked-user-test
   (testing "POST /events with app_mention from unlinked user sends auth message"
     (with-slackbot-setup
-      (let [event-body {:type "event_callback"
-                        :event {:type "app_mention"
-                                :text "<@UBOT123> Hello!"
-                                :user "U-UNKNOWN"
-                                :channel "C123"
-                                :ts "1234567890.000001"
-                                :event_ts "1234567890.000001"}}]
-        (with-slackbot-mocks
-          {:ai-text "Should not be called"
-           :user-id ::no-user}
-          (fn [{:keys [post-calls ephemeral-calls]}]
-            (let [response (mt/client :post 200 "ee/metabot-v3/slack/events"
-                                      (slack-request-options event-body)
-                                      event-body)]
-              (is (= "ok" response))
-              (u/poll {:thunk #(= 1 (count @ephemeral-calls))
-                       :done? true?
-                       :timeout-ms 5000})
-              (is (= 0 (count @post-calls)))
-              (is (=? [{:user "U-UNKNOWN" :channel "C123"}]
-                      @ephemeral-calls)))))))))
+      (doseq [[desc thread-ts expected-thread-ts]
+              [;; top-level @mention should NOT thread (so users see the prompt)
+               ["top-level @mention" nil nil]
+               ;; @mention in thread should thread (to keep context)
+               ["@mention in thread" "1234567890.000001" "1234567890.000001"]]]
+        (testing desc
+          (let [event-body {:type "event_callback"
+                            :event (cond-> {:type "app_mention"
+                                            :text "<@UBOT123> Hello!"
+                                            :user "U-UNKNOWN"
+                                            :channel "C123"
+                                            :ts "1234567890.000002"
+                                            :event_ts "1234567890.000002"}
+                                     thread-ts (assoc :thread_ts thread-ts))}]
+            (with-slackbot-mocks
+              {:ai-text "Should not be called"
+               :user-id ::no-user}
+              (fn [{:keys [post-calls ephemeral-calls]}]
+                (is (= "ok" (mt/client :post 200 "ee/metabot-v3/slack/events"
+                                       (slack-request-options event-body) event-body)))
+                (u/poll {:thunk #(= 1 (count @ephemeral-calls))
+                         :done? true?
+                         :timeout-ms 5000})
+                (is (= 0 (count @post-calls)))
+                (is (=? {:user "U-UNKNOWN" :channel "C123" :thread_ts expected-thread-ts}
+                        (first @ephemeral-calls)))))))))))))
 
 ;; -------------------------------- Setup Complete Tests --------------------------------
 

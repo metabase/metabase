@@ -181,10 +181,11 @@
   "Start a Slack message stream. Returns the stream timestamp on success (acts as an identifier)."
   [client {:keys [channel thread_ts team_id user_id]}]
   (let [body (:body (slack-post-json client "/chat.startStream"
-                                     {:channel           channel
-                                      :thread_ts         thread_ts
-                                      :recipient_team_id team_id
-                                      :recipient_user_id user_id}))]
+                                     (merge (metabot-message-defaults)
+                                            {:channel           channel
+                                             :thread_ts         thread_ts
+                                             :recipient_team_id team_id
+                                             :recipient_user_id user_id})))]
     (log/debugf "[slackbot] start-stream response: %s" (pr-str body))
     (if (:ok body)
       {:stream_ts (:ts body)
@@ -215,9 +216,10 @@
    (stop-stream client channel stream-ts nil))
   ([client channel stream-ts blocks]
    (let [body (:body (slack-post-json client "/chat.stopStream"
-                                      (cond-> {:channel channel
-                                               :ts      stream-ts}
-                                        blocks (assoc :blocks blocks))))]
+                                      (merge (metabot-message-defaults)
+                                             (cond-> {:channel channel
+                                                      :ts      stream-ts}
+                                               blocks (assoc :blocks blocks)))))]
      (when-not (:ok body)
        (log/warnf "[slackbot] stop-stream failed: %s" (:error body)))
      body)))
@@ -955,12 +957,16 @@
                                        {:text "Something went wrong. Please try again."}))))))))
 
 (defn- send-auth-link
-  "Respond to an incoming slack message with a request to authorize"
+  "Respond to an incoming slack message with a request to authorize.
+   For top-level @mentions (not in a thread), sends ephemeral message directly to channel
+   so users don't miss it (threaded ephemeral messages don't show thread indicators)."
   [client event]
   (post-ephemeral-message
    client
    (merge (event->reply-context event)
           {:user (:user event)
+           ;; only thread the reply if the original message was already in a thread
+           :thread_ts (:thread_ts event)
            :text "Connect your Slack account to Metabase. Once linked, I can use your permissions to query data on your behalf."
            :blocks [{:type "section"
                      :text {:type "mrkdwn"
