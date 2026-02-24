@@ -4,24 +4,82 @@ import { computeChange } from "metabase/visualizations/lib/numeric";
 import {
   CHANGE_ARROW_ICONS,
   CHANGE_TYPE_OPTIONS,
+  type Trend,
   computeTrend as _computeTrend,
 } from "metabase/visualizations/visualizations/SmartScalar/compute";
+import type {
+  DatasetColumn,
+  RowValue,
+  Series,
+  VisualizationSettings,
+} from "metabase-types/api";
+import type { Insight } from "metabase-types/api/insight";
 import {
   createMockColumn,
   createMockNativeDatasetQuery,
   createMockSingleSeries,
   createMockVisualizationSettings,
 } from "metabase-types/api/mocks";
+import { isAbsoluteDateTimeUnit } from "metabase-types/guards/date-time";
 
 import { COMPARISON_TYPES } from "./constants";
 import { formatChange } from "./utils";
 
-const computeTrend = (...args) =>
-  _computeTrend(...args, { formatValue, getColor: color });
+type SeriesInput = {
+  rows: RowValue[][];
+  cols: DatasetColumn[];
+  queryType?: "native";
+};
+
+type ChangeTypeInput = "increase" | "decrease" | "no change" | "missing";
+
+type ComparisonPropertiesInput = {
+  changeType: ChangeTypeInput;
+  comparisonValue?: RowValue;
+  dateStr?: string;
+  flipColor?: boolean;
+  metricValue?: RowValue;
+};
+
+const computeTrend = (
+  series: Series,
+  insights: Insight[] | null | undefined,
+  settings: VisualizationSettings,
+) =>
+  _computeTrend(series, insights, settings, {
+    getColor: color,
+  });
+
+const createMockInsight = ({
+  col,
+  unit,
+}: {
+  col: string;
+  unit: Insight["unit"];
+}): Insight => ({
+  col,
+  unit,
+  offset: 0,
+  slope: 0,
+  "last-change": 0,
+  "last-value": 0,
+  "previous-value": 0,
+});
+
+const createMockInsights = ({
+  col,
+  unit,
+}: {
+  col: string;
+  unit: unknown;
+}): Insight[] | null =>
+  isAbsoluteDateTimeUnit(unit) ? [createMockInsight({ col, unit })] : null;
+
+type TrendComparison = Trend["comparisons"][number];
 
 describe("SmartScalar > compute", () => {
   describe("computeTrend", () => {
-    const series = ({ rows, cols, queryType }) => {
+    const series = ({ rows, cols, queryType }: SeriesInput): Series => {
       if (queryType === "native") {
         return [
           createMockSingleSeries(
@@ -178,7 +236,7 @@ describe("SmartScalar > compute", () => {
       ];
 
       it.each(testCases)("$description", ({ rows, expected, dateUnit }) => {
-        const insights = [{ unit: dateUnit, col: "Count" }];
+        const insights = createMockInsights({ unit: dateUnit, col: "Count" });
         const { trend } = computeTrend(
           series({ rows, cols }),
           insights,
@@ -261,7 +319,7 @@ describe("SmartScalar > compute", () => {
         ];
 
         it.each(testCases)("$description", ({ rows, expected, dateUnit }) => {
-          const insights = [{ unit: dateUnit, col: "Count" }];
+          const insights = createMockInsights({ unit: dateUnit, col: "Count" });
           const { trend } = computeTrend(
             series({ rows, cols }),
             insights,
@@ -462,7 +520,7 @@ describe("SmartScalar > compute", () => {
         ];
 
         it.each(testCases)("$description", ({ rows, expected, dateUnit }) => {
-          const insights = [{ unit: dateUnit, col: "Count" }];
+          const insights = createMockInsights({ unit: dateUnit, col: "Count" });
           const { trend } = computeTrend(
             series({ rows, cols }),
             insights,
@@ -497,13 +555,20 @@ describe("SmartScalar > compute", () => {
           ];
 
           it.each(testCases)("$description", ({ rows, dateUnit, error }) => {
-            const insights = [{ unit: dateUnit, col: "Count" }];
+            const insights = createMockInsights({
+              unit: dateUnit,
+              col: "Count",
+            });
             const { error: computeTrendError } = computeTrend(
               series({ rows, cols }),
               insights,
               settings,
             );
 
+            expect(computeTrendError).toBeDefined();
+            if (!computeTrendError) {
+              throw new Error("Expected computeTrendError");
+            }
             expect(computeTrendError.message).toEqual(error);
           });
         });
@@ -513,10 +578,16 @@ describe("SmartScalar > compute", () => {
         const comparisonType = COMPARISON_TYPES.PERIODS_AGO;
         const getComparisonProperties =
           createGetComparisonProperties(comparisonType);
-        const createSettings = (value) =>
+        const createSettings = (value: number | string | null) =>
           createMockVisualizationSettings({
             "scalar.field": "Count",
-            "scalar.comparisons": [{ id: "1", type: comparisonType, value }],
+            "scalar.comparisons": [
+              {
+                id: "1",
+                type: comparisonType,
+                value: value as unknown as number,
+              },
+            ],
           });
 
         const cols = [
@@ -802,7 +873,10 @@ describe("SmartScalar > compute", () => {
         it.each(testCases)(
           "$description",
           ({ rows, expected, dateUnit, periodsAgo }) => {
-            const insights = [{ unit: dateUnit, col: "Count" }];
+            const insights = createMockInsights({
+              unit: dateUnit,
+              col: "Count",
+            });
             const { trend } = computeTrend(
               series({ rows, cols }),
               insights,
@@ -815,10 +889,16 @@ describe("SmartScalar > compute", () => {
 
         describe(`invalid options`, () => {
           const comparisonType = COMPARISON_TYPES.PERIODS_AGO;
-          const createSettings = (value) =>
+          const createSettings = (value: number | string | null) =>
             createMockVisualizationSettings({
               "scalar.field": "Count",
-              "scalar.comparisons": [{ id: "1", type: comparisonType, value }],
+              "scalar.comparisons": [
+                {
+                  id: "1",
+                  type: comparisonType,
+                  value: value as unknown as number,
+                },
+              ],
             });
 
           const cols = [
@@ -887,7 +967,10 @@ describe("SmartScalar > compute", () => {
           it.each(testCases)(
             "$description",
             ({ rows, dateUnit, periodsAgo, error }) => {
-              const insights = [{ unit: dateUnit, col: "Count" }];
+              const insights = createMockInsights({
+                unit: dateUnit,
+                col: "Count",
+              });
 
               const { error: computeTrendError } = computeTrend(
                 series({ rows, cols }),
@@ -895,6 +978,10 @@ describe("SmartScalar > compute", () => {
                 createSettings(periodsAgo),
               );
 
+              expect(computeTrendError).toBeDefined();
+              if (!computeTrendError) {
+                throw new Error("Expected computeTrendError");
+              }
               expect(computeTrendError.message).toEqual(error);
             },
           );
@@ -907,15 +994,28 @@ describe("SmartScalar > compute", () => {
         const getComparisonProperties =
           createGetComparisonProperties(comparisonType);
 
-        const createSettings = ({ label, value }) => ({
+        const createSettings = ({
+          label,
+          value,
+        }: {
+          label: string;
+          value: number;
+        }) => ({
           "scalar.field": "Count",
           "scalar.comparisons": [
             { id: "1", type: comparisonType, label, value },
           ],
         });
 
-        const createExpectedTrendObject = ({ changeType, label, value }) => ({
+        const createExpectedTrendObject = ({
+          changeType,
+          label,
           value,
+        }: {
+          changeType: ChangeTypeInput;
+          label: string;
+          value: number;
+        }) => ({
           comparison: {
             ...getComparisonProperties({
               changeType,
@@ -930,7 +1030,7 @@ describe("SmartScalar > compute", () => {
           }),
         });
 
-        const insights = [{ unit: "year", col: "Count" }];
+        const insights = createMockInsights({ unit: "year", col: "Count" });
 
         const rows = [
           ["2016-01-01", 100],
@@ -1022,14 +1122,20 @@ describe("SmartScalar > compute", () => {
         const getComparisonProperties =
           createGetComparisonProperties(comparisonType);
 
-        const createSettings = ({ column = "Average", label = column }) => ({
+        const createSettings = ({
+          column = "Average",
+          label = column,
+        }: {
+          column?: string;
+          label?: string;
+        }) => ({
           "scalar.field": "Count",
           "scalar.comparisons": [
             { id: "1", type: comparisonType, label, column },
           ],
         });
 
-        const insights = [{ unit: "year", col: "Count" }];
+        const insights = createMockInsights({ unit: "year", col: "Count" });
 
         const monthColumn = createMockDateTimeColumn({ name: "Month" });
         const countColumn = createMockNumberColumn({ name: "Count" });
@@ -1040,8 +1146,12 @@ describe("SmartScalar > compute", () => {
           primaryValue,
           comparisonValue,
           comparisonColumnLabel,
+        }: {
+          changeType: ChangeTypeInput;
+          primaryValue: number;
+          comparisonValue: number | undefined;
+          comparisonColumnLabel: string;
         }) => ({
-          value: primaryValue,
           comparison: {
             ...getComparisonProperties({
               changeType,
@@ -1114,10 +1224,12 @@ describe("SmartScalar > compute", () => {
       });
 
       describe(`invalid comparison type`, () => {
-        const createSettings = (type) =>
+        const createSettings = (type: string | undefined) =>
           createMockVisualizationSettings({
             "scalar.field": "Count",
-            "scalar.comparisons": [{ id: "1", type }],
+            "scalar.comparisons": [
+              { id: "1", type: type as unknown as "previousValue" },
+            ],
           });
 
         const cols = [
@@ -1149,7 +1261,7 @@ describe("SmartScalar > compute", () => {
         ];
 
         it.each(testCases)("$description", ({ rows, dateUnit, type }) => {
-          const insights = [{ unit: dateUnit, col: "Count" }];
+          const insights = createMockInsights({ unit: dateUnit, col: "Count" });
 
           const { error: computeTrendError } = computeTrend(
             series({ rows, cols }),
@@ -1157,6 +1269,10 @@ describe("SmartScalar > compute", () => {
             createSettings(type),
           );
 
+          expect(computeTrendError).toBeDefined();
+          if (!computeTrendError) {
+            throw new Error("Expected computeTrendError");
+          }
           expect(computeTrendError.message).toEqual(
             "Invalid comparison type specified.",
           );
@@ -1527,7 +1643,7 @@ describe("SmartScalar > compute", () => {
         ];
 
         it.each(testCases)("$description", ({ rows, expected, dateUnit }) => {
-          const insights = [{ unit: dateUnit, col: "Count" }];
+          const insights = createMockInsights({ unit: dateUnit, col: "Count" });
           const { trend } = computeTrend(
             series({ rows, cols }),
             insights,
@@ -1583,7 +1699,7 @@ describe("SmartScalar > compute", () => {
               ["2018-01-01T00:00:00", 100],
               ["2019-01-01T00:00:00", 300],
             ],
-            insights: [{ unit: undefined, col: "Count" }],
+            insights: createMockInsights({ unit: undefined, col: "Count" }),
             expected: {
               ...getMetricProperties({
                 dateStr: "2019",
@@ -1605,7 +1721,7 @@ describe("SmartScalar > compute", () => {
               ["2018-01-01T00:00:00", 100],
               ["2019-01-01T00:00:00", 300],
             ],
-            insights: [{ unit: null, col: "Count" }],
+            insights: createMockInsights({ unit: null, col: "Count" }),
             expected: {
               ...getMetricProperties({
                 dateStr: "2019",
@@ -1638,10 +1754,16 @@ describe("SmartScalar > compute", () => {
         const comparisonType = COMPARISON_TYPES.PERIODS_AGO;
         const getComparisonProperties =
           createGetComparisonProperties(comparisonType);
-        const createSettings = (value) =>
+        const createSettings = (value: number | null | undefined) =>
           createMockVisualizationSettings({
             "scalar.field": "Count",
-            "scalar.comparisons": [{ id: "1", type: comparisonType, value }],
+            "scalar.comparisons": [
+              {
+                id: "1",
+                type: comparisonType,
+                value: value as unknown as number,
+              },
+            ],
           });
 
         const cols = [
@@ -1794,7 +1916,10 @@ describe("SmartScalar > compute", () => {
           it.each(testCases)(
             "$description",
             ({ rows, expected, dateUnit, periodsAgo }) => {
-              const insights = [{ unit: dateUnit, col: "Count" }];
+              const insights = createMockInsights({
+                unit: dateUnit,
+                col: "Count",
+              });
               const { trend } = computeTrend(
                 series({ rows, cols }),
                 insights,
@@ -1909,7 +2034,10 @@ describe("SmartScalar > compute", () => {
           it.each(testCases)(
             "$description",
             ({ rows, expected, dateUnit, periodsAgo }) => {
-              const insights = [{ unit: dateUnit, col: "Count" }];
+              const insights = createMockInsights({
+                unit: dateUnit,
+                col: "Count",
+              });
               const { trend } = computeTrend(
                 series({ rows, cols }),
                 insights,
@@ -1927,7 +2055,7 @@ describe("SmartScalar > compute", () => {
       const comparisonType = COMPARISON_TYPES.PREVIOUS_VALUE;
       const getComparisonProperties =
         createGetComparisonProperties(comparisonType);
-      const createSettings = (field) =>
+      const createSettings = (field: string) =>
         createMockVisualizationSettings({
           "scalar.field": field,
           "scalar.comparisons": [{ id: "1", type: comparisonType }],
@@ -1991,7 +2119,7 @@ describe("SmartScalar > compute", () => {
       it.each(testCases)(
         "$description",
         ({ rows, expected, dateUnit, field }) => {
-          const insights = [{ unit: dateUnit, col: field }];
+          const insights = createMockInsights({ unit: dateUnit, col: field });
           const { trend } = computeTrend(
             series({ rows, cols }),
             insights,
@@ -2015,11 +2143,11 @@ describe("SmartScalar > compute", () => {
 
       const series = [createMockSingleSeries({}, { data: { rows, cols } })];
 
-      const insights = [{ unit: "month", col: "Count" }];
+      const insights = createMockInsights({ unit: "month", col: "Count" });
 
-      const createVizSettings = (settings) =>
+      const createVizSettings = (settings: VisualizationSettings = {}) =>
         createMockVisualizationSettings({
-          column: (column) => ({ column }),
+          column: (column: DatasetColumn) => ({ column }),
           "scalar.field": "Count",
           "scalar.comparisons": [
             { id: "1", type: COMPARISON_TYPES.PREVIOUS_VALUE },
@@ -2028,13 +2156,16 @@ describe("SmartScalar > compute", () => {
         });
 
       it("should have `compact: false` by default", () => {
+        const result = computeTrend(series, insights, createVizSettings());
+        expect(result.trend).toBeDefined();
+        if (!result.trend) {
+          throw new Error("Expected trend");
+        }
         const {
-          trend: {
-            comparisons: [{ display: comparisonDisplay }],
-            display,
-            formatOptions,
-          },
-        } = computeTrend(series, insights, createVizSettings());
+          comparisons: [{ display: comparisonDisplay }],
+          display,
+          formatOptions,
+        } = result.trend;
 
         expect(formatOptions.compact).toBeFalsy();
         expect(display.value).toBe("210,000");
@@ -2042,19 +2173,22 @@ describe("SmartScalar > compute", () => {
       });
 
       it("should have `compact: true` with `scalar.compact_primary_number` viz setting", () => {
-        const {
-          trend: {
-            comparisons: [{ display: comparisonDisplay }],
-            display,
-            formatOptions,
-          },
-        } = computeTrend(
+        const result = computeTrend(
           series,
           insights,
           createVizSettings({
             "scalar.compact_primary_number": true,
           }),
         );
+        expect(result.trend).toBeDefined();
+        if (!result.trend) {
+          throw new Error("Expected trend");
+        }
+        const {
+          comparisons: [{ display: comparisonDisplay }],
+          display,
+          formatOptions,
+        } = result.trend;
 
         expect(formatOptions.compact).toBe(true);
         expect(display.value).toBe("210.0k");
@@ -2069,10 +2203,16 @@ describe("SmartScalar > compute", () => {
         createGetComparisonProperties(COMPARISON_TYPE);
 
       const COUNT_FIELD = "Count";
-      const createSettings = (value) =>
+      const createSettings = (value: number | string | null) =>
         createMockVisualizationSettings({
           "scalar.field": COUNT_FIELD,
-          "scalar.comparisons": [{ id: "1", type: COMPARISON_TYPE, value }],
+          "scalar.comparisons": [
+            {
+              id: "1",
+              type: COMPARISON_TYPE,
+              value: value as unknown as number,
+            },
+          ],
         });
 
       const cols = [
@@ -2101,7 +2241,7 @@ describe("SmartScalar > compute", () => {
         },
       };
 
-      const insights = [{ unit: dateUnit, col: COUNT_FIELD }];
+      const insights = createMockInsights({ unit: dateUnit, col: COUNT_FIELD });
       const { trend } = computeTrend(
         series({ rows, cols, queryType: QUERY_TYPE }),
         insights,
@@ -2113,8 +2253,14 @@ describe("SmartScalar > compute", () => {
   });
 });
 
-function createGetComparisonProperties(comparisonType) {
-  return ({ changeType, comparisonValue, dateStr, flipColor, metricValue }) =>
+function createGetComparisonProperties(comparisonType: unknown) {
+  return ({
+    changeType,
+    comparisonValue,
+    dateStr,
+    flipColor,
+    metricValue,
+  }: ComparisonPropertiesInput) =>
     getComparisonPropertiesByType({
       comparisonType,
       changeType,
@@ -2132,7 +2278,7 @@ function getComparisonPropertiesByType({
   dateStr,
   flipColor,
   metricValue,
-}) {
+}: ComparisonPropertiesInput & { comparisonType?: unknown }) {
   if (changeType === "decrease") {
     return {
       ...getComparisonChangeProperties({ changeType, flipColor }),
@@ -2183,7 +2329,13 @@ function getComparisonPropertiesByType({
   return null;
 }
 
-function getComparisonChangeProperties({ changeType, flipColor }) {
+function getComparisonChangeProperties({
+  changeType,
+  flipColor,
+}: {
+  changeType: ChangeTypeInput;
+  flipColor?: boolean;
+}) {
   if (changeType === "decrease") {
     return {
       changeArrowIconName: CHANGE_ARROW_ICONS.ARROW_DOWN,
@@ -2221,6 +2373,12 @@ function getComparisonValueProperties({
   changeType,
   dateStr,
   metricValue,
+}: {
+  comparisonType?: unknown;
+  comparisonValue?: RowValue;
+  changeType?: ChangeTypeInput;
+  dateStr?: string;
+  metricValue?: RowValue;
 }) {
   if (changeType === "missing") {
     const includeComparisonDescStr =
@@ -2246,7 +2404,10 @@ function getComparisonValueProperties({
         comparisonValue: CHANGE_TYPE_OPTIONS.SAME.COMPARISON_VALUE_STR,
         percentChange: CHANGE_TYPE_OPTIONS.SAME.PERCENT_CHANGE_STR,
       },
-      percentChange: computeChange(comparisonValue, metricValue),
+      percentChange: computeChange(
+        comparisonValue as number,
+        metricValue as number,
+      ),
     };
   }
 
@@ -2254,14 +2415,25 @@ function getComparisonValueProperties({
     comparisonValue: comparisonValue,
     comparisonDescStr: `vs. ${dateStr}`,
     display: {
-      percentChange: formatChange(computeChange(comparisonValue, metricValue)),
+      percentChange: formatChange(
+        computeChange(comparisonValue as number, metricValue as number),
+      ),
       comparisonValue: formatValue(comparisonValue),
     },
-    percentChange: computeChange(comparisonValue, metricValue),
+    percentChange: computeChange(
+      comparisonValue as number,
+      metricValue as number,
+    ),
   };
 }
 
-function getMetricProperties({ dateStr, metricValue }) {
+function getMetricProperties({
+  dateStr,
+  metricValue,
+}: {
+  dateStr: string;
+  metricValue: RowValue;
+}) {
   return {
     value: metricValue,
     display: {
@@ -2271,8 +2443,8 @@ function getMetricProperties({ dateStr, metricValue }) {
   };
 }
 
-function getComparison(comparison) {
-  if (comparison === null) {
+function getComparison(comparison: TrendComparison | null | undefined) {
+  if (comparison == null) {
     return null;
   }
 
@@ -2303,8 +2475,8 @@ function getComparison(comparison) {
   };
 }
 
-function getTrend(trend) {
-  if (trend === null) {
+function getTrend(trend: Trend | null | undefined) {
+  if (trend == null) {
     return null;
   }
 
@@ -2320,7 +2492,7 @@ function getTrend(trend) {
   };
 }
 
-function createMockDateTimeColumn(opts) {
+function createMockDateTimeColumn(opts: Partial<DatasetColumn>) {
   return createMockColumn({
     base_type: "type/DateTime",
     effective_type: "type/DateTime",
@@ -2329,7 +2501,7 @@ function createMockDateTimeColumn(opts) {
   });
 }
 
-function createMockNumberColumn(opts) {
+function createMockNumberColumn(opts: Partial<DatasetColumn>) {
   return createMockColumn({
     base_type: "type/Integer",
     effective_type: "type/Integer",
