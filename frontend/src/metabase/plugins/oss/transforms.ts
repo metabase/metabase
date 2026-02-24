@@ -10,6 +10,7 @@ import type Question from "metabase-lib/v1/Question";
 import type {
   CheckDependenciesResponse,
   GetDependencyGraphRequest,
+  JavaScriptTransformSourceDraft,
   PythonTransformSourceDraft,
   Transform,
   UpdateSnippetRequest,
@@ -47,6 +48,25 @@ export type PythonTransformEditorProps = {
   /** Custom run handler that overrides internal test-run. Used in workspace context for dry-run. */
   onRun?: () => void;
 };
+
+export type JavaScriptTransformEditorProps = {
+  source: JavaScriptTransformSourceDraft;
+  proposedSource?: JavaScriptTransformSourceDraft;
+  uiOptions?: PythonTransformEditorUiOptions;
+  isEditMode?: boolean;
+  transform?: Transform;
+  readOnly?: boolean;
+  onChangeSource: (source: JavaScriptTransformSourceDraft) => void;
+  onAcceptProposed: () => void;
+  onRejectProposed: () => void;
+  onRunTransform?: (result: any) => void;
+  /** Custom run handler that overrides internal test-run. Used in workspace context for dry-run. */
+  onRun?: () => void;
+};
+
+export type TransformEditorProps =
+  | PythonTransformEditorProps
+  | JavaScriptTransformEditorProps;
 
 export type PythonTransformSourceSectionProps = {
   transform: Transform;

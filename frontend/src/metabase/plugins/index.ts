@@ -131,6 +131,8 @@ export {
   PLUGIN_DEPENDENCIES,
   type TransformsPlugin,
   type PythonTransformEditorProps,
+  type JavaScriptTransformEditorProps,
+  type TransformEditorProps,
   type PythonTransformSourceSectionProps,
   type PythonTransformSourceValidationResult,
   type PythonTransformsPlugin,

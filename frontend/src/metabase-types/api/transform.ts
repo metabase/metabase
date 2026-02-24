@@ -28,7 +28,7 @@ export type Transform = {
   name: string;
   description: string | null;
   source: TransformSource;
-  source_type: "native" | "python" | "mbql";
+  source_type: "native" | "python" | "mbql" | "javascript";
   target: TransformTarget;
   collection_id: CollectionId | null;
   created_at: string;
@@ -76,6 +76,13 @@ export type PythonTransformSourceDraft = {
   "source-tables": PythonTransformTableAliases;
 };
 
+export type JavaScriptTransformSourceDraft = {
+  type: "javascript";
+  body: string;
+  "source-database": DatabaseId | undefined;
+  "source-tables": PythonTransformTableAliases;
+};
+
 export type PythonTransformSource = {
   type: "python";
   body: string;
@@ -90,7 +97,18 @@ export type QueryTransformSource = {
   "source-incremental-strategy"?: SourceIncrementalStrategy;
 };
 
-export type TransformSource = QueryTransformSource | PythonTransformSource;
+export type JavaScriptTransformSource = {
+  type: "javascript";
+  body: string;
+  "source-database": DatabaseId;
+  "source-tables": PythonTransformTableAliases;
+  "source-incremental-strategy"?: SourceIncrementalStrategy;
+};
+
+export type TransformSource =
+  | QueryTransformSource
+  | PythonTransformSource
+  | JavaScriptTransformSource;
 
 export type TransformTargetAppendStrategy = {
   type: "append";
