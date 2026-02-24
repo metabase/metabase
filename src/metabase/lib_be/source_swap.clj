@@ -4,10 +4,13 @@
    [metabase.lib.field :as lib.field]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
    [metabase.lib.order-by :as lib.order-by]
+   [metabase.lib.parameters :as lib.parameters]
+   [metabase.lib.query :as lib.query]
    [metabase.lib.ref :as lib.ref]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.join :as lib.schema.join]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
+   [metabase.lib.schema.parameter :as lib.schema.parameter]
    [metabase.lib.util :as lib.util]
    [metabase.lib.walk :as lib.walk]
    [metabase.util :as u]
@@ -81,3 +84,16 @@
   (update query :stages #(vec (map-indexed (fn [stage-number _]
                                              (upgrade-field-refs-in-stage query stage-number))
                                            %))))
+
+(mu/defn upgrade-field-ref-in-parameter-target :- ::lib.schema.parameter/target
+  [query  :- ::lib.schema/query
+   target :- ::lib.schema.parameter/target]
+  (or (when (lib.parameters/parameter-target-field-ref target)
+        (let [opts         (lib.parameters/parameter-target-dimension-options target)
+              stage-number (or (:stage-number opts) -1)]
+          (when (and (>= stage-number 0) (< stage-number (lib.query/stage-count query)))
+            (let [columns (lib.metadata.calculation/visible-columns query stage-number)]
+              (lib.parameters/update-parameter-target-field-ref
+               target
+               #(upgrade-field-ref query stage-number % columns))))))
+      target))
