@@ -300,7 +300,7 @@ Application settings (all under a `product-analytics-iceberg-` prefix):
 | `catalog-type` | `jdbc` | One of `jdbc`, `rest`, `hadoop`, `glue`. |
 | `s3-bucket` | *(required)* | S3 bucket name. |
 | `s3-prefix` | `product-analytics/` | Key prefix for Parquet data files. |
-| `s3-endpoint` | *(none)* | Custom S3 endpoint URL. Set to `http://localhost:9000` for MinIO in local dev. Omit for real AWS S3. |
+| `s3-endpoint` | *(none)* | Custom S3 endpoint URL. Set to `http://localhost:3900` for Garage in local dev. Omit for real AWS S3. |
 | `catalog-uri` | *(derived from app DB for jdbc)* | REST catalog URI, or Glue region. |
 | `catalog-credentials` | *(none)* | Auth for REST/Glue catalogs. Not needed for JDBC. |
 | `flush-interval-seconds` | `30` | Max seconds between flushes. |
@@ -321,67 +321,92 @@ backend is selected.
 
 ### Local development setup
 
-No AWS account is needed for local development. Use MinIO as an
-S3-compatible object store and the JDBC catalog backed by the app DB:
+No AWS account is needed for local development. Use
+[Garage](https://garagehq.deuxfleurs.fr/) (AGPLv3, Rust-based) as an
+S3-compatible object store and the JDBC catalog backed by the app DB.
 
-1. **Start MinIO:**
+1. **Write a Garage config** (`dev/garage.toml`):
 
-   ```bash
-   docker run -d --name minio \
-     -p 9000:9000 -p 9001:9001 \
-     -e MINIO_ROOT_USER=minioadmin \
-     -e MINIO_ROOT_PASSWORD=minioadmin \
-     minio/minio server /data --console-address ":9001"
+   ```toml
+   metadata_dir = "/var/lib/garage/meta"
+   data_dir = "/var/lib/garage/data"
+   db_engine = "sqlite"
+   replication_factor = 1
+
+   [rpc]
+   bind_addr = "[::]:3901"
+   rpc_secret = "$(openssl rand -hex 32)"
+
+   [s3_api]
+   s3_region = "garage"
+   api_bind_addr = "[::]:3900"
+
+   [admin]
+   api_bind_addr = "[::]:3903"
+   admin_token = "admin"
    ```
 
-2. **Create the bucket:**
+2. **Start Garage:**
 
    ```bash
-   mc alias set local http://localhost:9000 minioadmin minioadmin
-   mc mb local/product-analytics
+   docker run -d --name garage \
+     -p 3900:3900 -p 3903:3903 \
+     -v $(pwd)/dev/garage.toml:/etc/garage.toml \
+     dxflrs/garage:v2.2.0
    ```
 
-3. **Configure Metabase** (REPL or env vars):
+3. **Create a bucket and access key** (run inside the container):
+
+   ```bash
+   docker exec garage /garage bucket create product-analytics
+   docker exec garage /garage key create pa-dev-key
+   # Note the Key ID and Secret Key from the output, then:
+   docker exec garage /garage bucket allow \
+     --read --write --owner product-analytics --key pa-dev-key
+   ```
+
+4. **Configure Metabase** (REPL or env vars):
 
    ```clojure
    (setting/set! :product-analytics-storage-backend "iceberg")
    (setting/set! :product-analytics-iceberg-catalog-type "jdbc")
    (setting/set! :product-analytics-iceberg-s3-bucket "product-analytics")
    (setting/set! :product-analytics-iceberg-s3-prefix "events/")
-   (setting/set! :product-analytics-iceberg-s3-endpoint "http://localhost:9000")
-   (setting/set! :product-analytics-iceberg-aws-region "us-east-1")
-   (setting/set! :product-analytics-iceberg-aws-access-key "minioadmin")
-   (setting/set! :product-analytics-iceberg-aws-secret-key "minioadmin")
+   (setting/set! :product-analytics-iceberg-s3-endpoint "http://localhost:3900")
+   (setting/set! :product-analytics-iceberg-aws-region "garage")
+   (setting/set! :product-analytics-iceberg-aws-access-key "<Key ID from step 3>")
+   (setting/set! :product-analytics-iceberg-aws-secret-key "<Secret Key from step 3>")
    ```
 
    The JDBC catalog auto-creates its metadata tables (`iceberg_tables`,
    `iceberg_namespace_properties`) in the app DB on first use.
 
-4. **Verify data landed** after sending events and flushing:
+5. **Verify data landed** after sending events and flushing:
 
    ```bash
-   mc ls --recursive local/product-analytics/events/
+   # Using the AWS CLI pointed at Garage
+   aws --endpoint-url http://localhost:3900 s3 ls s3://product-analytics/events/ --recursive
    ```
 
-5. **(Optional) Query with Trino** to test the full warehouse query path:
+6. **(Optional) Query with Trino** to test the full warehouse query path:
 
    ```bash
    docker run -d --name trino -p 8080:8080 trinodb/trino
    ```
 
-   Add a catalog config pointing Trino at the JDBC catalog and MinIO, then
+   Add a catalog config pointing Trino at the JDBC catalog and Garage, then
    connect Metabase to Trino as a warehouse to query the Iceberg tables.
 
 ### CI testing
 
-Integration tests use Docker (Testcontainers or compose) to spin up MinIO and
+Integration tests use Docker (Testcontainers or compose) to spin up Garage and
 use the H2 in-memory app DB as the JDBC catalog. No AWS credentials required.
 The test lifecycle is:
 
-1. Start MinIO container, create bucket.
+1. Start Garage container, create bucket and access key.
 2. Initialize Iceberg backend with JDBC catalog pointed at the test app DB.
 3. Send events through the pipeline, call `flush!`.
-4. Assert Parquet files exist in MinIO and catalog tables are populated.
+4. Assert Parquet files exist in Garage and catalog tables are populated.
 5. Tear down containers.
 
 ### Deliverables
@@ -392,7 +417,8 @@ The test lifecycle is:
 - `storage/iceberg/buffer.clj` — in-memory event buffer with scheduled flush.
 - `storage/iceberg/schema.clj` — Iceberg `Schema` and `PartitionSpec` definitions.
 - Table auto-creation on first flush (idempotent `createTable` if not exists).
-- Integration tests against a local MinIO + JDBC catalog (Docker in CI).
+- `dev/garage.toml` — Garage config for local development.
+- Integration tests against Garage + JDBC catalog (Docker in CI).
 - Unit tests for buffer flush logic, catalog factory, and schema mapping.
 
 ---
