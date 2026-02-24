@@ -6,10 +6,10 @@
    [metabase.release-flags.core :as flags]))
 
 (api.macros/defendpoint :get "/" :- [:map
-                                     [:id :int]
-                                     [:type :string]
-                                     [:setup :string]
-                                     [:punchline :string]]
+                                     ["id" :int]
+                                     ["type" :string]
+                                     ["setup" :string]
+                                     ["punchline" :string]]
   "Return the joke of the day."
   []
   (when (flags/has-release-flag? :joke-of-the-day)
