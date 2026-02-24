@@ -1,5 +1,7 @@
 import type { CardId, DatabaseId, FieldId, TableId } from "./";
 
+export type ErdRelationship = "one-to-one" | "many-to-one";
+
 export type ErdField = {
   id: FieldId;
   name: string;
@@ -25,7 +27,7 @@ export type ErdEdge = {
   source_field_id: FieldId;
   target_table_id: TableId;
   target_field_id: FieldId;
-  relationship: string;
+  relationship: ErdRelationship;
 };
 
 export type ErdResponse = {

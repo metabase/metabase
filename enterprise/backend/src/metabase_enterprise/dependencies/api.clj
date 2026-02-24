@@ -1213,7 +1213,7 @@
    [:source_field_id :int]
    [:target_table_id :int]
    [:target_field_id :int]
-   [:relationship :string]])
+  [:relationship [:enum "one-to-one" "many-to-one"]]])
 
 (mr/def ::erd-response
   [:map
@@ -1342,18 +1342,15 @@
 
 (defn- determine-relationship
   "Determine the cardinality relationship between source and target fields.
-   - many-to-one (*:1): Source FK points to target PK (most common)
-   - one-to-one (1:1): Source field is also a PK (unique), target is PK
-   - one-to-many (1:*): Source is PK, target is not PK (rare)
-   - many-to-many (*:*): Neither has PK constraint (rare, usually via junction table)"
+   For FK edges emitted by this endpoint (source FK -> target referenced field):
+   - one-to-one (1:1): Source FK field is also a PK (effectively unique per row)
+   - many-to-one (*:1): Default FK relationship"
   [source-field target-field]
   (let [source-is-pk (:database_is_pk source-field)
         target-is-pk (:database_is_pk target-field)]
     (cond
       (and source-is-pk target-is-pk) "one-to-one"
-      (and source-is-pk (not target-is-pk)) "one-to-many"
-      (and (not source-is-pk) target-is-pk) "many-to-one"
-      :else "many-to-many")))
+      :else "many-to-one")))
 
 (defn- build-erd-edges
   "Build ERD edges from fields, filtered to only include edges between visible tables."

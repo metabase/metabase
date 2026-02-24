@@ -5,6 +5,7 @@ import {
   getSmoothStepPath,
   useNodesInitialized,
 } from "@xyflow/react";
+import { memo, useMemo } from "react";
 
 import { usePalette } from "metabase/common/hooks/use-palette";
 
@@ -12,22 +13,16 @@ import type { SchemaViewerEdgeData } from "../types";
 
 import S from "./SchemaViewerEdge.module.css";
 
-function getCardinalityLabel(relationship: string): {
+const CARDINALITY_LABELS = {
+  "one-to-one": { source: "1", target: "1" },
+  "many-to-one": { source: "N", target: "1" },
+} as const;
+
+function getCardinalityLabel(relationship: SchemaViewerEdgeData["relationship"]): {
   source: string;
   target: string;
 } {
-  switch (relationship) {
-    case "one-to-one":
-      return { source: "1", target: "1" };
-    case "one-to-many":
-      return { source: "1", target: "N" };
-    case "many-to-one":
-      return { source: "N", target: "1" };
-    case "many-to-many":
-      return { source: "N", target: "N" };
-    default:
-      return { source: "N", target: "1" };
-  }
+  return CARDINALITY_LABELS[relationship] ?? CARDINALITY_LABELS["many-to-one"];
 }
 
 function CardinalitySymbol({ symbol }: { symbol: string }) {
@@ -53,21 +48,29 @@ function CardinalityLabel({
   );
 }
 
-export function SchemaViewerEdge(props: EdgeProps<SchemaViewerEdgeData>) {
+export const SchemaViewerEdge = memo(function SchemaViewerEdge(
+  props: EdgeProps<SchemaViewerEdgeData>,
+) {
   const palette = usePalette();
   const isInitialized = useNodesInitialized();
   const isSelfRef = props.source === props.target;
-  const hiddenStyle = !isInitialized ? { visibility: "hidden" as const } : {};
+  const isHidden = !isInitialized;
   const animationClass = "schema-viewer-edge-march";
 
   const relationship = props.data?.relationship ?? "many-to-one";
-  const cardinality = getCardinalityLabel(relationship);
+  const cardinality = useMemo(
+    () => getCardinalityLabel(relationship),
+    [relationship],
+  );
 
-  const style = {
-    strokeWidth: 1.5,
-    stroke: palette["border"],
-    ...hiddenStyle,
-  };
+  const style = useMemo(
+    () => ({
+      strokeWidth: 1.5,
+      stroke: palette["border"],
+      ...(isHidden ? { visibility: "hidden" as const } : {}),
+    }),
+    [palette, isHidden],
+  );
 
   if (isSelfRef) {
     const { sourceX, sourceY, targetX, targetY } = props;
@@ -88,6 +91,11 @@ export function SchemaViewerEdge(props: EdgeProps<SchemaViewerEdgeData>) {
     const labelX = midX + 8;
     const labelY = (sourceY + targetY) / 2;
 
+    const labelStyle = {
+      transform: `translate(-50%, -50%) translate(${labelX}px, ${labelY}px)`,
+      ...(isHidden ? { visibility: "hidden" as const } : {}),
+    };
+
     return (
       <>
         <BaseEdge
@@ -99,10 +107,7 @@ export function SchemaViewerEdge(props: EdgeProps<SchemaViewerEdgeData>) {
         <EdgeLabelRenderer>
           <div
             className={S.cardinalityLabel}
-            style={{
-              transform: `translate(-50%, -50%) translate(${labelX}px, ${labelY}px)`,
-              ...hiddenStyle,
-            }}
+            style={labelStyle}
           >
             <CardinalityLabel
               source={cardinality.source}
@@ -123,6 +128,11 @@ export function SchemaViewerEdge(props: EdgeProps<SchemaViewerEdgeData>) {
     targetPosition: props.targetPosition,
   });
 
+  const labelStyle = {
+    transform: `translate(-50%, -50%) translate(${labelX}px, ${labelY}px)`,
+    ...(isHidden ? { visibility: "hidden" as const } : {}),
+  };
+
   return (
     <>
       <BaseEdge
@@ -134,10 +144,7 @@ export function SchemaViewerEdge(props: EdgeProps<SchemaViewerEdgeData>) {
       <EdgeLabelRenderer>
         <div
           className={S.cardinalityLabel}
-          style={{
-            transform: `translate(-50%, -50%) translate(${labelX}px, ${labelY}px)`,
-            ...hiddenStyle,
-          }}
+          style={labelStyle}
         >
           <CardinalityLabel
             source={cardinality.source}
@@ -147,4 +154,4 @@ export function SchemaViewerEdge(props: EdgeProps<SchemaViewerEdgeData>) {
       </EdgeLabelRenderer>
     </>
   );
-}
+});

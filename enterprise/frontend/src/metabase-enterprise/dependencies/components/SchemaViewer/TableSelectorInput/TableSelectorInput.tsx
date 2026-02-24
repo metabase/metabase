@@ -1,6 +1,6 @@
 import { useClickOutside } from "@mantine/hooks";
 import { useReactFlow } from "@xyflow/react";
-import { useCallback, useMemo, useRef, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { t } from "ttag";
 
 import {
@@ -43,10 +43,12 @@ export function TableSelectorInput({
   const [searchQuery, setSearchQuery] = useState("");
 
   // Snapshot of selected IDs when dropdown opened - used for stable sorting
-  const sortSnapshotRef = useRef<Set<ConcreteTableId>>(new Set());
+  const [sortSnapshot, setSortSnapshot] = useState<Set<ConcreteTableId>>(
+    new Set(),
+  );
 
   const handleOpen = useCallback(() => {
-    sortSnapshotRef.current = new Set(selectedTableIds);
+    setSortSnapshot(new Set(selectedTableIds));
     setOpened(true);
   }, [selectedTableIds]);
 
@@ -73,6 +75,7 @@ export function TableSelectorInput({
     () => new Set(selectedTableIds),
     [selectedTableIds],
   );
+  const activeSortSet = opened ? sortSnapshot : selectedTableIdSet;
 
   // Map of table ID to flow node (for focus functionality)
   const nodesByTableId = useMemo(() => {
@@ -94,10 +97,9 @@ export function TableSelectorInput({
       );
     }
     // Sort selected tables to the top using the snapshot from when dropdown opened
-    const sortSet = opened ? sortSnapshotRef.current : selectedTableIdSet;
     return [...tables].sort((a, b) => {
-      const aSelected = sortSet.has(a.id as ConcreteTableId);
-      const bSelected = sortSet.has(b.id as ConcreteTableId);
+      const aSelected = activeSortSet.has(a.id as ConcreteTableId);
+      const bSelected = activeSortSet.has(b.id as ConcreteTableId);
       if (aSelected && !bSelected) {
         return -1;
       }
@@ -106,7 +108,7 @@ export function TableSelectorInput({
       }
       return 0;
     });
-  }, [allTables, searchQuery, selectedTableIdSet, opened]);
+  }, [activeSortSet, allTables, searchQuery]);
 
   const handleFocus = useCallback(
     (tableId: ConcreteTableId) => {
