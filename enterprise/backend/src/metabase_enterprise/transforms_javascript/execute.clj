@@ -255,7 +255,7 @@
               :run-id run-id
               :table-name->id resolved-source-tables
               :shared-storage @shared-storage-ref
-              :language "javascript"})
+              :runtime "javascript"})
 
             output-manifest (python-runner/read-output-manifest @shared-storage-ref)
             events (python-runner/read-events @shared-storage-ref)]
