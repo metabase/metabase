@@ -56,7 +56,6 @@ import type {
   NumericScale,
   RawSeries,
   RowValue,
-  SeriesSettings,
   StackType,
 } from "metabase-types/api";
 import { numericScale } from "metabase-types/api";
@@ -292,7 +291,7 @@ const getYAxisSplit = (
 
   const axisBySeriesKey = seriesModels.reduce(
     (acc, seriesModel) => {
-      const seriesSettings: SeriesSettings = settings.series(
+      const seriesSettings = settings.series?.(
         seriesModel.legacySeriesSettingsObjectKey,
       );
 

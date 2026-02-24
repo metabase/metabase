@@ -423,18 +423,18 @@ export function getComboChartDataDensity(
   );
   const seriesWithSymbols = seriesModels.filter((seriesModel) => {
     const seriesSettings = seriesSettingsByDataKey[seriesModel.dataKey];
-    return ["area", "line"].includes(seriesSettings.display ?? "");
+    return ["area", "line"].includes(seriesSettings?.display ?? "");
   });
   const seriesWithLabels = seriesModels.filter((seriesModel) => {
     const seriesSettings = seriesSettingsByDataKey[seriesModel.dataKey];
     if (
-      ["area", "bar"].includes(seriesSettings.display ?? "") &&
+      ["area", "bar"].includes(seriesSettings?.display ?? "") &&
       settings["stackable.stack_type"] != null
     ) {
       return false;
     }
 
-    return seriesSettings["show_series_values"];
+    return seriesSettings?.show_series_values;
   });
 
   let totalNumberOfDots = 0;
@@ -550,20 +550,23 @@ export function getDisplaySeriesSettingsByDataKey(
   stackModels: StackModel[] | null,
   settings: ComputedVisualizationSettings,
 ) {
-  const seriesSettingsByKey = seriesModels.reduce(
-    (acc, seriesModel) => {
-      acc[seriesModel.dataKey] = settings.series(
-        seriesModel.legacySeriesSettingsObjectKey,
-      );
-      return acc;
-    },
-    {} as Record<DataKey, SeriesSettings>,
-  );
+  const seriesSettingsByKey = seriesModels.reduce<
+    Partial<Record<DataKey, SeriesSettings>>
+  >((acc, seriesModel) => {
+    acc[seriesModel.dataKey] = settings.series?.(
+      seriesModel.legacySeriesSettingsObjectKey,
+    );
+    return acc;
+  }, {});
 
   if (stackModels != null) {
     stackModels.forEach(({ display, seriesKeys }) => {
       seriesKeys.forEach((seriesKey) => {
-        seriesSettingsByKey[seriesKey].display = display;
+        const settings = seriesSettingsByKey[seriesKey];
+
+        if (settings) {
+          settings.display = display;
+        }
       });
     });
   }
@@ -712,7 +715,7 @@ const getSeriesLabelsFormatters = (
 
   const seriesModelsWithLabels = seriesModels.filter((seriesModel) => {
     const seriesSettings =
-      settings.series(seriesModel.legacySeriesSettingsObjectKey) ?? {};
+      settings.series?.(seriesModel.legacySeriesSettingsObjectKey) ?? {};
 
     return !!seriesSettings["show_series_values"];
   });

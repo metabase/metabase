@@ -34,7 +34,7 @@ export type DataKey =
 export type VizSettingsKey = string;
 
 export type LegacySeriesSettingsObjectKey = {
-  card: Card & {
+  card: Partial<Card> & {
     _seriesKey: VizSettingsKey;
   };
 };

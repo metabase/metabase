@@ -24,6 +24,7 @@ import type {
   RawSeries,
   RowValue,
   Series,
+  SeriesSettings,
   TimelineEvent,
   TimelineEventId,
   TransformedSeries,
@@ -101,7 +102,7 @@ export type ColumnSettings = OptionsType & {
 
 export type ComputedVisualizationSettings = VisualizationSettings & {
   column?: (col: RemappingHydratedDatasetColumn) => ColumnSettings;
-  series?: (key: LegacySeriesSettingsObjectKey) => VisualizationSettings;
+  series?: (key: LegacySeriesSettingsObjectKey) => SeriesSettings;
   nested?: (value: unknown) => unknown;
 };
 

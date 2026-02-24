@@ -200,7 +200,7 @@ export const buildEChartsPointsSeries = (
   return seriesModels
     .filter((seriesModel) => seriesModel.visible)
     .flatMap((seriesModel) => {
-      const seriesSettings = settings?.series(
+      const seriesSettings = settings.series?.(
         seriesModel.legacySeriesSettingsObjectKey,
       );
       const showSeriesValues = seriesSettings?.show_series_values ?? true;
@@ -357,7 +357,7 @@ export const buildEChartsBoxPlotLabelsSeries = (
       if (!labelFormatter) {
         return false;
       }
-      const seriesSettings = settings?.series(
+      const seriesSettings = settings.series?.(
         seriesModel.legacySeriesSettingsObjectKey,
       );
       return seriesSettings?.show_series_values ?? true;
