@@ -55,3 +55,12 @@
       (t2/insert! :model/ReleaseFlag {:flag        flag-name
                                       :description description
                                       :start_date  start-date}))))
+
+(mu/defn has-release-flag? :- :boolean
+  "Is this release flag enabled?
+  If the release flag does not exist, we throw an exception."
+  [flag :- [:or :keyword :string]]
+  (if-some [status (t2/select-one-fn :is_enabled :model/ReleaseFlag :flag flag)]
+    status
+    (throw (ex-info (str "Release flag `" flag "` not found.")
+                    {:flag flag}))))
