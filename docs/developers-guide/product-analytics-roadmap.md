@@ -12,7 +12,7 @@ ingestion or processing code.
 
 ---
 
-## Phase 0 — Feature flag and skeleton module
+## Phase 0 — Feature flag and skeleton module [DONE]
 
 Create the enterprise module scaffolding with no real functionality yet. This
 establishes the namespace structure, premium feature gate, and empty API routes
@@ -28,7 +28,7 @@ so subsequent phases can be developed and merged independently.
 
 ---
 
-## Phase 1 — Data model, migrations, and virtual database
+## Phase 1 — Data model, migrations, and virtual database [DONE]
 
 Define the app DB tables and Toucan 2 models that store analytics configuration
 and raw events, plus the virtual Database record that exposes them through
@@ -71,7 +71,7 @@ Analytics audit DB.
 
 ---
 
-## Phase 2 — Storage protocol and app-DB implementation
+## Phase 2 — Storage protocol and app-DB implementation [DONE]
 
 Introduce an abstraction layer between the event processing pipeline and the
 persistence backend. The app-DB adapter is the default (and only) implementation
@@ -126,37 +126,112 @@ the pipeline and HTTP endpoint depend on for site lookup and CORS configuration.
 
 ---
 
-## Phase 4 — Event postprocessing pipeline
+## Phase 4 — User identification and session data
+
+Add support for Umami's user identification flow: distinct IDs that tie sessions
+together across devices and time, the `identify` payload type for attaching
+arbitrary session-level attributes, and the session cache JWT that lets clients
+skip server-side session resolution on repeat hits.
+
+Since Phase 1 is already complete, these are additive schema changes (new
+migration changeset) plus new model and storage-protocol work.
+
+**Schema additions (new Liquibase migration):**
+
+| Change | Detail |
+|---|---|
+| `product_analytics_session.distinct_id` | `VARCHAR(50)`, nullable. Operator-supplied user identifier set via `umami.identify(id)` or the `id` payload field. Indexed for lookup. |
+| `product_analytics_session_data` (new table) | Stores arbitrary key/value attributes from `umami.identify(id, data)`. One row per key, with typed value columns mirroring `product_analytics_event_data`: `session_id` (FK), `data_key`, `string_value`, `number_value`, `date_value`, `data_type`. |
+| `v_pa_sessions` view | Recreated to include `distinct_id`. |
+| `v_pa_session_data` view (new) | Exposes `product_analytics_session_data` through the virtual DB. |
+
+**Session cache JWT:**
+
+The `/send` endpoint (Phase 6) will return a short-lived JWT so the client can
+skip the hash-based session resolution on subsequent requests. The token and
+verification logic are built in this phase so they are ready when the HTTP
+endpoint lands.
+
+- **Payload:** `{sessionId, visitId, websiteId}`.
+- **Signing:** HMAC-SHA256 using a dedicated `product-analytics-session-secret`
+  application setting. Falls back to `MB_ENCRYPTION_SECRET_KEY` if unset.
+- **Expiry:** 24 hours. The client refreshes it on each `/send` response.
+- **Validation:** When the client sends the token back (via an `x-umami-cache`
+  header or cookie), the server verifies the signature and expiry, then uses
+  the embedded session/visit IDs directly instead of re-hashing.
+
+**Storage protocol additions (extend Phase 2 multimethods):**
+
+- `save-session-data!` — upsert key/value session attributes.
+- `set-distinct-id!` — associate a distinct ID with a session.
+- App-DB implementations call Toucan 2 against the new table/column.
+
+**Toucan 2 model:**
+
+- `session_data.clj` — model for `product_analytics_session_data` with
+  `table-name`, `deftransforms`, and `derive` declarations.
+
+**Deliverables:**
+
+- Liquibase migration adding `distinct_id` column, `product_analytics_session_data`
+  table with indexes, and the new/updated SQL views.
+- `session_data.clj` Toucan 2 model.
+- `token.clj` — `create-session-token` and `verify-session-token` functions.
+- Storage multimethod extensions (`save-session-data!`, `set-distinct-id!`) with
+  app-DB implementations.
+- Permission allowlist updated to include `v_pa_session_data`.
+- Unit tests: model round-trips, token sign/verify (including expiry and
+  tampered tokens), storage protocol, and permission enforcement.
+
+---
+
+## Phase 5 — Event postprocessing pipeline
 
 Build the server-side enrichment logic that transforms a raw inbound payload into
 a fully resolved event ready for storage. This phase has no HTTP surface; it is
-a pure-function pipeline consumed by the API layer in Phase 5.
+a pure-function pipeline consumed by the API layer in Phase 6.
+
+**Payload types:**
+
+The pipeline handles two payload types, mirroring Umami's `/api/send`:
+
+- `type: "event"` — pageview or custom event. Processed through the full
+  enrichment pipeline and stored as an event row.
+- `type: "identify"` — user identification. Associates a distinct ID and/or
+  session-level attributes with the current session. No event row is created.
 
 **Processing steps (mirroring Umami):**
 
 1. **Payload validation** — enforce field presence and length limits.
 2. **Site lookup** — resolve the site UUID, reject if missing or inactive.
 3. **Bot filtering** — drop requests whose User-Agent matches known bot patterns.
-4. **Client-info extraction:**
+4. **Session cache check** — if a valid session cache JWT (from Phase 4) is
+   present, extract the session and visit IDs directly and skip steps 5–7.
+5. **Client-info extraction:**
    - Parse User-Agent → browser, OS, device type.
    - Derive geolocation from IP (MaxMind GeoLite2 or CDN headers).
    - IP is used for derivation only and never persisted.
-5. **Session resolution** — deterministic UUID from `hash(site-id, ip, user-agent, monthly-salt)`.
+6. **Session resolution** — deterministic UUID from `hash(site-id, ip, user-agent, monthly-salt)`.
    Salt rotates on the first of each month so cross-month correlation is impossible.
-6. **Visit bucketing** — `hash(session-id, hourly-salt)` to segment activity windows.
-7. **URL/referrer parsing** — extract path, query, domain, UTM params, click IDs.
+7. **Visit bucketing** — `hash(session-id, hourly-salt)` to segment activity windows.
+8. **Identify handling** (identify payloads only) — if the payload includes a
+   distinct ID, call `set-distinct-id!`. If it includes `data`, call
+   `save-session-data!`. Return early without creating an event row.
+9. **URL/referrer parsing** (event payloads only) — extract path, query, domain,
+   UTM params, click IDs.
 
 **Deliverables:**
 
-- `pipeline.clj` (or `pipeline/` directory) with a top-level `process-event` function
-  that accepts a raw payload + request context and returns a map ready for storage.
+- `pipeline.clj` (or `pipeline/` directory) with a top-level `process-payload`
+  function that accepts a raw payload + request context and returns either an
+  event map ready for storage or an identify result.
 - Individual processing step functions, each independently testable.
 - Comprehensive unit tests for each step, including edge cases (missing fields,
-  bot UAs, IPv6, malformed URLs).
+  bot UAs, IPv6, malformed URLs, identify-only payloads, distinct ID assignment).
 
 ---
 
-## Phase 5 — Event-receiving HTTP endpoint
+## Phase 6 — Event-receiving HTTP endpoint
 
 Wire the postprocessing pipeline to an HTTP endpoint that accepts events from
 tracking scripts or server-side callers, and persists them through the storage
@@ -166,9 +241,10 @@ protocol.
 
 - No authentication required (public endpoint, like Umami).
 - Requires a valid `User-Agent` header.
-- Accepts the same JSON shape as Umami's `/api/send`.
-- Returns a session cache token in a response header so clients can short-circuit
-  session resolution on subsequent requests.
+- Accepts the same JSON shape as Umami's `/api/send`, including both
+  `type: "event"` and `type: "identify"` payloads.
+- Returns a session cache JWT (built in Phase 4) in a response header so clients
+  can short-circuit session resolution on subsequent requests.
 - Rate limiting / abuse mitigation (configurable per-site).
 
 **CORS:**
@@ -182,16 +258,16 @@ CORS origins must be updated accordingly.
 **Deliverables:**
 
 - `api.clj` — `defendpoint` for `POST /send` that orchestrates validation →
-  pipeline → storage.
-- Session cache token generation and lookup (avoid re-deriving session on every hit).
+  pipeline → storage, dispatching on payload type.
+- Session cache JWT returned in each response (using `token.clj` from Phase 4).
 - CORS middleware/configuration that dynamically allows origins matching
   registered site hostnames for the `/send` endpoint.
 - Integration tests hitting the endpoint end-to-end against the app-DB backend,
-  including CORS preflight checks.
+  including CORS preflight checks, event payloads, and identify payloads.
 
 ---
 
-## Phase 6 — Query builder integration
+## Phase 7 — Query builder integration
 
 Surface stored product analytics events in Metabase's query builder so users
 can build questions and dashboards against their event data without writing SQL.
@@ -214,7 +290,7 @@ can build questions and dashboards against their event data without writing SQL.
 
 ---
 
-## Phase 7 — Iceberg datalake storage backend
+## Phase 8 — Iceberg datalake storage backend
 
 Implement the storage multimethod for Apache Iceberg, writing events as Parquet
 files to an S3-hosted datalake. This is the first alternative backend and
@@ -287,7 +363,7 @@ downstream query engines.
 
 When an operator configures the Iceberg backend and also has a warehouse
 connection (Trino, Athena, Spark, etc.) that can read the same Iceberg tables,
-Phase 6 (query builder integration) can detect this and route queries through
+Phase 7 (query builder integration) can detect this and route queries through
 the warehouse instead of the virtual DB views. This gives operators full
 SQL engine performance for analytics queries.
 
@@ -423,7 +499,7 @@ The test lifecycle is:
 
 ---
 
-## Phase 8 — Stream storage backend (optional/plugin)
+## Phase 9 — Stream storage backend (optional/plugin)
 
 Implement the storage multimethod as a write-to-stream adapter. Events are
 serialized and published to a message stream for downstream consumers to
@@ -443,7 +519,7 @@ ingest into their own warehouse.
 
 ---
 
-## Phase 9 — ClickHouse storage backend (optional/plugin, deprioritized)
+## Phase 10 — ClickHouse storage backend (optional/plugin, deprioritized)
 
 Implement the storage multimethod for ClickHouse. Lower priority than the
 Iceberg backend since Iceberg tables can already be queried by ClickHouse
@@ -484,17 +560,20 @@ Phase 2  (storage multimethods)
 Phase 3  (site CRUD)
   │
   v
-Phase 4  (pipeline)
+Phase 4  (user identification + session data + cache JWT)
   │
   v
-Phase 5  (HTTP endpoint)
+Phase 5  (pipeline)
   │
   v
-Phase 6  (query integration)
+Phase 6  (HTTP endpoint)
+  │
+  v
+Phase 7  (query integration)
 
-Phase 7  (Iceberg)     ── depends on Phase 2
-Phase 8  (Stream)      ── depends on Phase 2
-Phase 9  (ClickHouse)  ── depends on Phase 2 (deprioritized)
+Phase 8  (Iceberg)     ── depends on Phase 2
+Phase 9  (Stream)      ── depends on Phase 2
+Phase 10 (ClickHouse)  ── depends on Phase 2 (deprioritized)
 ```
 
 ### Parallelism opportunities
@@ -503,11 +582,11 @@ After Phase 2 completes, the following work streams can proceed in parallel:
 
 | Stream | Phases | Notes |
 |---|---|---|
-| **Admin API + Ingestion** | Phase 3 → 4 → 5 | Main sequential path. |
-| **Iceberg backend** | Phase 7 | Primary alternative backend. Independent of Phases 3–6; can start any time after Phase 2. |
-| **Stream / ClickHouse** | Phase 8, 9 | Lower priority. Independent of all other backend phases. |
+| **Admin API + Ingestion** | Phase 3 → 4 → 5 → 6 | Main sequential path. |
+| **Iceberg backend** | Phase 8 | Primary alternative backend. Independent of Phases 3–7; can start any time after Phase 2. |
+| **Stream / ClickHouse** | Phase 9, 10 | Lower priority. Independent of all other backend phases. |
 
-Phases 7, 8, and 9 are independent of each other and of Phases 3–6.
+Phases 8, 9, and 10 are independent of each other and of Phases 3–7.
 
 ---
 
@@ -517,10 +596,11 @@ Phases 7, 8, and 9 are independent of each other and of Phases 3–6.
 |---|---|
 | **Feature flag** | `:product-analytics` |
 | **Geolocation** | Check CDN headers first (Cloudflare, Vercel, CloudFront). Fall back to a user-supplied MaxMind GeoLite2 DB file whose path is configured in application settings. No bundled DB. |
-| **Rate limiting** | Deferred. Ship Phase 5 without rate limiting; add it as a fast follow once real traffic patterns are understood. |
+| **Rate limiting** | Deferred. Ship Phase 6 without rate limiting; add it as a fast follow once real traffic patterns are understood. |
 | **Session salt rotation** | Monthly, same as Umami. Salt rotates on the 1st of each calendar month. |
 | **Retention / TTL** | No automatic purge for now. Operators manage DB size themselves. Revisit when usage patterns are clearer. |
 | **Table isolation** | Follow the audit DB pattern: tables live in the main schema with a `product_analytics_` prefix, exposed via `v_pa_*` SQL views through a virtual Database record. Permissions are gated by a dedicated collection, not direct DB grants. |
 | **Tracker script** | None. The `/send` endpoint is API-compatible with Umami, so operators use Umami's tracker script from a CDN (or self-hosted) pointed at Metabase's endpoint. |
 | **Iceberg catalog** | Configurable. JDBC catalog (using the app DB) is the default — zero extra infra. REST and Glue catalogs supported for orgs with existing catalog infrastructure. Hadoop catalog supported but not recommended for multi-node deployments (no locking). |
-| **Query integration** | Phase 6, after the ingestion pipeline is complete and before alternative storage backends. |
+| **User identification** | Umami-compatible. Support `type: "identify"` payloads, distinct IDs (max 50 chars) on sessions, and arbitrary session-level key/value attributes. Session cache uses a short-lived HMAC-SHA256 JWT (24h expiry). |
+| **Query integration** | Phase 7, after the ingestion pipeline is complete and before alternative storage backends. |
