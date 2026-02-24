@@ -6,7 +6,6 @@
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
    [metabase.lib.ref :as lib.ref]
    [metabase.lib.schema :as lib.schema]
-   [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.lib.util :as lib.util]
    [metabase.lib.util.unique-name-generator :as lib.util.unique-name-generator]
@@ -15,12 +14,10 @@
 (mu/defn inherited-column? :- :boolean
   "Is the `column` coming directly from a card, a native query, or a previous query stage?"
   [column :- [:map
-              [:lib/source {:optional true} [:maybe ::lib.schema.metadata/column.source]]
-              [:lib/card-id {:optional true} [:maybe ::lib.schema.id/card]]]]
-  (or (some? (#{:source/card :source/native :source/previous-stage} (:lib/source column)))
-      (some? (:lib/card-id column))))
+              [:lib/source {:optional true} [:maybe ::lib.schema.metadata/column.source]]]]
+  (some? (#{:source/card :source/native :source/previous-stage} (:lib/source column))))
 
-(mu/defn inherited-column-name :- [:maybe :string]
+(mu/defn column-metadata->field-ref-name :- [:maybe :string]
   "If the field ref for this `column` should be name-based, returns the name used in the field ref.
 
   `column` SHOULD BE METADATA RELATIVE TO THE CURRENT STAGE WHERE YOU ARE ADDING THE REF!!!!!!
@@ -32,7 +29,7 @@
   which should be the same as the `:lib/desired-column-alias` the previous stage or (last stage of the) join that it
   came from."
   [column :- ::lib.schema.metadata/column]
-  (when (inherited-column? column)
+  (when (or (inherited-column? column) (= (:lib/source column) :source/joins))
     ((some-fn
       ;; broken field refs never use `:lib/source-column-alias`.
       (case lib.ref/*ref-style*
