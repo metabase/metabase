@@ -8,6 +8,7 @@ import type {
   X_AXIS_DATA_KEY,
 } from "metabase/visualizations/echarts/cartesian/constants/dataset";
 import type {
+  Card,
   CardId,
   DatasetColumn,
   DateTimeAbsoluteUnit,
@@ -33,7 +34,7 @@ export type DataKey =
 export type VizSettingsKey = string;
 
 export type LegacySeriesSettingsObjectKey = {
-  card: {
+  card: Card & {
     _seriesKey: VizSettingsKey;
   };
 };

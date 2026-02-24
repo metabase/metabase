@@ -32,6 +32,8 @@ import type {
 import type { VisualizationDisplay } from "metabase-types/api/visualization";
 import type { Dispatch, QueryBuilderMode } from "metabase-types/store";
 
+import type { LegacySeriesSettingsObjectKey } from "../echarts/cartesian/model/types";
+
 import type { RemappingHydratedDatasetColumn } from "./columns";
 import type { HoveredObject } from "./hover";
 
@@ -99,6 +101,7 @@ export type ColumnSettings = OptionsType & {
 
 export type ComputedVisualizationSettings = VisualizationSettings & {
   column?: (col: RemappingHydratedDatasetColumn) => ColumnSettings;
+  series?: (key: LegacySeriesSettingsObjectKey) => VisualizationSettings;
   nested?: (value: unknown) => unknown;
 };
 

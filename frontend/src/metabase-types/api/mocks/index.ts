@@ -14,6 +14,7 @@ export * from "./document";
 export * from "./field";
 export * from "./geojson";
 export * from "./group";
+export * from "./insight";
 export * from "./logger";
 export * from "./measure";
 export * from "./metabot";
