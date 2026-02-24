@@ -8,13 +8,7 @@ import {
   useNodesState,
 } from "@xyflow/react";
 import { useClipboard } from "@mantine/hooks";
-import {
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { t } from "ttag";
 
 import { skipToken, useListDatabaseSchemaTablesQuery } from "metabase/api";
@@ -51,6 +45,7 @@ import { MAX_ZOOM, MIN_ZOOM } from "./constants";
 import { useSchemaViewerShareUrl } from "./useSchemaViewerShareUrl";
 import type { SchemaViewerFlowEdge, SchemaViewerFlowNode } from "./types";
 import { toFlowGraph } from "./utils";
+import { Slider } from "@mantine/core";
 
 const NODE_TYPES = {
   schemaViewerTable: SchemaViewerTableNode,
@@ -93,13 +88,26 @@ function getErdQueryParams({
   }
   if (databaseId != null) {
     // User explicitly cleared all tables - show empty canvas
-    if (isUserModified && selectedTableIds != null && selectedTableIds.length === 0) {
+    if (
+      isUserModified &&
+      selectedTableIds != null &&
+      selectedTableIds.length === 0
+    ) {
       return skipToken;
     }
     // Include table-ids when user has made a custom selection
-    if (isUserModified && selectedTableIds != null && selectedTableIds.length > 0) {
+    if (
+      isUserModified &&
+      selectedTableIds != null &&
+      selectedTableIds.length > 0
+    ) {
       return schema != null
-        ? { "database-id": databaseId, schema, "table-ids": selectedTableIds, hops }
+        ? {
+            "database-id": databaseId,
+            schema,
+            "table-ids": selectedTableIds,
+            hops,
+          }
         : { "database-id": databaseId, "table-ids": selectedTableIds, hops };
     }
     // Initial fetch or auto-initialized - let backend determine "most relationships"
@@ -121,7 +129,9 @@ export function SchemaViewer({
 
   // Persist table selection + hops per database:schema
   const prefsKey =
-    modelId == null && databaseId != null ? `${databaseId}:${schema ?? ""}` : null;
+    modelId == null && databaseId != null
+      ? `${databaseId}:${schema ?? ""}`
+      : null;
 
   const {
     value: savedPrefs,
@@ -142,7 +152,11 @@ export function SchemaViewer({
     isUserModified: boolean;
   } | null>(() => {
     // Initialize from URL params if provided
-    if (initialTableIds != null && initialTableIds.length > 0 && databaseId != null) {
+    if (
+      initialTableIds != null &&
+      initialTableIds.length > 0 &&
+      databaseId != null
+    ) {
       return {
         tableIds: initialTableIds,
         forDatabaseId: databaseId,
@@ -182,7 +196,9 @@ export function SchemaViewer({
     databaseId != null ? `${databaseId}:${schema ?? ""}` : null;
   const initializedContextRef = useRef<string | null>(
     // Mark as initialized if we got table IDs from URL
-    initialTableIds != null && initialTableIds.length > 0 ? currentContextKey : null,
+    initialTableIds != null && initialTableIds.length > 0
+      ? currentContextKey
+      : null,
   );
 
   // Reset state synchronously during render when database/schema changes.
@@ -271,7 +287,16 @@ export function SchemaViewer({
       }
       // If no valid table IDs remain, don't set selection - let backend pick focal tables
     }
-  }, [isLoadingPrefs, isFetchingTables, savedPrefs, validTableIdSet, initialTableIds, databaseId, schema, currentContextKey]);
+  }, [
+    isLoadingPrefs,
+    isFetchingTables,
+    savedPrefs,
+    validTableIdSet,
+    initialTableIds,
+    databaseId,
+    schema,
+    currentContextKey,
+  ]);
 
   // Initialize selected table IDs from initial ERD response (focal tables)
   // Only run when data is fresh (not fetching) to avoid using cached data from previous context
@@ -296,7 +321,14 @@ export function SchemaViewer({
         initializedContextRef.current = currentContextKey;
       }
     }
-  }, [data, isFetching, databaseId, schema, currentContextKey, effectiveSelectedTableIds]);
+  }, [
+    data,
+    isFetching,
+    databaseId,
+    schema,
+    currentContextKey,
+    effectiveSelectedTableIds,
+  ]);
 
   const handleTableSelectionChange = useCallback(
     (tableIds: ConcreteTableId[]) => {
@@ -420,76 +452,75 @@ export function SchemaViewer({
         onNodesChange={onNodesChange}
         onEdgesChange={onEdgesChange}
       >
-      <Background />
-      <Controls showInteractive={false} />
-      {shareUrl != null && (
-        <Panel position="top-right">
-          <Tooltip
-            label={
-              <Text fw={700} c="inherit">
-                {clipboard.copied ? t`Copied!` : t`Share this schema`}
-              </Text>
-            }
-            opened={clipboard.copied ? true : undefined}
-          >
-            <ActionIcon
-              variant="default"
-              onClick={handleShare}
-              aria-label={t`Copy link`}
+        <Background />
+        <Controls showInteractive={false} />
+        {shareUrl != null && (
+          <Panel position="top-right">
+            <Tooltip
+              label={
+                <Text fw={700} c="inherit">
+                  {clipboard.copied ? t`Copied!` : t`Share this schema`}
+                </Text>
+              }
+              opened={clipboard.copied ? true : undefined}
             >
-              <Icon name="link" />
-            </ActionIcon>
-          </Tooltip>
-        </Panel>
-      )}
-      {nodes.length > 0 && <SchemaViewerNodeLayout />}
-      <Panel className={S.entryInput} position="top-left">
-        <Group gap="sm">
-          <SchemaPickerInput
-            databaseId={databaseId}
-            schema={schema}
-            isLoading={isFetching}
-          />
-          {effectiveSelectedTableIds != null && (
-            <TableSelectorInput
-              nodes={nodes}
-              allTables={isFetchingTables ? [] : (allTables ?? [])}
-              selectedTableIds={effectiveSelectedTableIds}
-              isUserModified={isUserModified}
-              onSelectionChange={handleTableSelectionChange}
+              <ActionIcon
+                variant="default"
+                onClick={handleShare}
+                aria-label={t`Copy link`}
+              >
+                <Icon name="link" />
+              </ActionIcon>
+            </Tooltip>
+          </Panel>
+        )}
+        {nodes.length > 0 && <SchemaViewerNodeLayout />}
+        <Panel className={S.entryInput} position="top-left">
+          <Group gap="sm">
+            <SchemaPickerInput
+              databaseId={databaseId}
+              schema={schema}
+              isLoading={isFetching}
             />
-          )}
-          {effectiveSelectedTableIds != null &&
-            effectiveSelectedTableIds.length > 0 &&
-            edges.length > 0 && (
-              <HopsInput value={hops} onChange={handleHopsChange} />
+            {effectiveSelectedTableIds != null && (
+              <TableSelectorInput
+                nodes={nodes}
+                allTables={isFetchingTables ? [] : (allTables ?? [])}
+                selectedTableIds={effectiveSelectedTableIds}
+                isUserModified={isUserModified}
+                onSelectionChange={handleTableSelectionChange}
+              />
             )}
-        </Group>
-      </Panel>
-      {isFetching && (
-        <Panel position="top-center">
-          <Stack align="center" justify="center" pt="xl">
-            <Loader />
-          </Stack>
+            {effectiveSelectedTableIds != null &&
+              effectiveSelectedTableIds.length > 0 && (
+                <HopsInput value={hops} onChange={handleHopsChange} />
+              )}
+          </Group>
         </Panel>
-      )}
-      {error != null && (
-        <Panel position="bottom-center">
-          <Stack align="center" justify="center" mb="xl">
-            <Text c="text-secondary">
-              {getErrorMessage(error, t`Failed to load schema.`)}
-            </Text>
-          </Stack>
-        </Panel>
-      )}
-      {!hasEntry && !isFetching && error == null && (
-        <Panel position="top-center">
-          <Stack align="center" justify="center" pt="xl">
-            <Text c="text-tertiary">{t`Pick a database to view its schema`}</Text>
-          </Stack>
-        </Panel>
-      )}
-    </ReactFlow>
+        {isFetching && (
+          <Panel position="top-center">
+            <Stack align="center" justify="center" pt="xl">
+              <Loader />
+            </Stack>
+          </Panel>
+        )}
+        {error != null && (
+          <Panel position="bottom-center">
+            <Stack align="center" justify="center" mb="xl">
+              <Text c="text-secondary">
+                {getErrorMessage(error, t`Failed to load schema.`)}
+              </Text>
+            </Stack>
+          </Panel>
+        )}
+        {!hasEntry && !isFetching && error == null && (
+          <Panel position="top-center">
+            <Stack align="center" justify="center" pt="xl">
+              <Text c="text-tertiary">{t`Pick a database to view its schema`}</Text>
+            </Stack>
+          </Panel>
+        )}
+      </ReactFlow>
     </SchemaViewerContext.Provider>
   );
 }

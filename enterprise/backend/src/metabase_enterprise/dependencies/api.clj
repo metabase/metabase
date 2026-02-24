@@ -1546,7 +1546,8 @@
   When `model-id` is provided, the ERD is built for the model's underlying source table.
   When `database-id` is provided without `table-ids`, returns ERD for the top 3 tables with most FK relationships.
   When `database-id` is provided with `table-ids`, returns ERD for those specific tables.
-  The `hops` parameter controls how many relationship hops to traverse (default: 2)."
+  The `hops` parameter controls how many relationship hops to traverse (default: 2).
+  When `hops` is 0, only the focal/selected tables are returned with no related tables."
   [_route-params
    {:keys [model-id database-id table-ids schema hops]
     :or {hops 2}} :- [:map
@@ -1554,7 +1555,7 @@
                        [:database-id {:optional true} [:maybe ms/PositiveInt]]
                        [:table-ids {:optional true} [:maybe (ms/QueryVectorOf ms/PositiveInt)]]
                        [:schema {:optional true} [:maybe :string]]
-                       [:hops {:optional true} [:maybe ms/PositiveInt]]]]
+                       [:hops {:optional true} [:maybe ms/IntGreaterThanOrEqualToZero]]]]
   (when-not (or model-id database-id)
     (throw (ex-info (tru "Either model-id or database-id must be provided")
                     {:status-code 400})))

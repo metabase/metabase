@@ -1,18 +1,73 @@
 .container {
   padding-inline: 0.75rem;
-  border: 1px solid var(--mb-color-border);
-  border-radius: 0.5rem;
   height: 2.5rem;
   background-color: var(--mb-color-background-primary);
+  overflow: visible;
 }
 
-.numberInput {
+.label {
+  flex-shrink: 0;
+}
+
+/* Mini Graph */
+.miniGraph {
+  width: 48px;
+  height: 20px;
+  flex-shrink: 0;
+}
+
+.node {
+  fill: var(--mb-color-brand);
+}
+
+.nodeFocal {
+  fill: var(--mb-color-brand);
+}
+
+.edge {
+  stroke: var(--mb-color-brand);
+  stroke-width: 1;
+}
+
+/* Slider */
+.sliderRoot {
+  width: 100px;
+  flex-shrink: 0;
+  overflow: visible;
+}
+
+.sliderTrack {
+  background-color: var(--mb-color-border);
+}
+
+.sliderBar {
+  background-color: var(--mb-color-brand);
+}
+
+.sliderThumb {
+  width: 1.25rem;
+  height: 1.25rem;
+  border-color: var(--mb-color-brand);
+  background-color: var(--mb-color-background-primary);
+  border-width: 2px;
+}
+
+.thumbValue {
+  font-size: 0.625rem;
   font-weight: 700;
-  /* text-align: center; */
-  padding-inline: 1.5rem;
-  padding-inline-start: 0.5rem;
+  color: var(--mb-color-brand);
+  line-height: 1;
+  user-select: none;
 }
 
-.numberInputRoot {
-  width: 4rem;
+.sliderMark[data-filled=true] {
+  background-color: white;
+  border: 1px solid var(--mb-color-brand);
+  /* border: 1px solid transparent; */
+}
+
+.sliderMark {
+  background-color: white;
+  border: 1px solid var(--mb-color-border);
+  /* border: 1px solid transparent; */
 }
