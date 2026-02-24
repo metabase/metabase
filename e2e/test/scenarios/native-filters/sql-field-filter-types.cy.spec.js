@@ -81,7 +81,7 @@ describe("scenarios > filters > sql filters > field filter > Date", () => {
     });
   });
 
-  it.only("when set through the filter widget", () => {
+  it("when set through the filter widget", () => {
     dateFilters.forEach(([subType, { value, representativeResult }]) => {
       cy.log(`Make sure it works for ${subType.toUpperCase()}`);
 
