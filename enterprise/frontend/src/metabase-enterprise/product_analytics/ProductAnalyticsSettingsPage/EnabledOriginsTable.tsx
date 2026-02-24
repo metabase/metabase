@@ -1,7 +1,15 @@
 import { t } from "ttag";
 
 import { ClientSortableTable } from "metabase/common/components/Table";
-import { Button, Group, Icon, Stack, Text } from "metabase/ui";
+import {
+  ActionIcon,
+  Button,
+  Group,
+  Icon,
+  Stack,
+  Text,
+  Tooltip,
+} from "metabase/ui";
 import type { ProductAnalyticsSite } from "metabase-enterprise/api/product-analytics";
 
 const ENABLED_ORIGINS_COLUMNS = [
@@ -31,6 +39,7 @@ export function EnabledOriginsTable({
   onViewSite: (site: ProductAnalyticsSite) => void;
   onDeleteSite: (site: ProductAnalyticsSite) => void;
 }) {
+  const archiveActionLabel = t`Archive`;
   return (
     <Stack gap="md">
       {sites.length === 0 ? (
@@ -41,20 +50,29 @@ export function EnabledOriginsTable({
           rows={sites}
           rowRenderer={(site) => (
             <tr>
-              <td>{site.name}</td>
-              <td>{site.allowed_domains}</td>
-              <td>
-                <Group gap="md">
+              <td style={{ width: "20%" }}>{site.name}</td>
+              <td style={{ width: "75%" }}>{site.allowed_domains}</td>
+              <td style={{ minWidth: "162px" }}>
+                <Group gap="md" wrap="nowrap">
                   <Button
                     variant="subtle"
                     size="xs"
                     onClick={() => onViewSite(site)}
                   >{t`View details`}</Button>
-                  <Icon
-                    name="trash"
-                    style={{ cursor: "pointer" }}
-                    onClick={() => onDeleteSite(site)}
-                  />
+
+                  <Tooltip
+                    label={archiveActionLabel}
+                    aria-label={archiveActionLabel}
+                  >
+                    <ActionIcon
+                      color="error"
+                      variant="subtle"
+                      aria-label={archiveActionLabel}
+                      onClick={() => onDeleteSite(site)}
+                    >
+                      <Icon name="trash" />
+                    </ActionIcon>
+                  </Tooltip>
                 </Group>
               </td>
             </tr>
