@@ -11,6 +11,26 @@
    and :call-site. Bind to (atom []) in test fixtures to capture blocked calls."
   nil)
 
+(def ^:dynamic *bypass-guard*
+  "When bound to a set of flag name strings, guarded functions for those flags execute
+   without checking the release flag. Use [[bypass-guard-fixture]] in tests."
+  #{})
+
+(defn bypass-guard-fixture
+  "Returns a clojure.test fixture that bypasses the given release flag guards.
+   Usage: (use-fixtures :once (guard/bypass-guard-fixture :joke-of-the-day :other-flag))"
+  [& flags]
+  (let [flag-strs (into #{}
+                        (map #(if (keyword? %)
+                                (if (namespace %)
+                                  (str (namespace %) "/" (name %))
+                                  (name %))
+                                (str %)))
+                        flags)]
+    (fn [thunk]
+      (binding [*bypass-guard* (into *bypass-guard* flag-strs)]
+        (thunk)))))
+
 (defn- call-site
   "Returns the call site of the guarded function as a string, e.g. \"my.ns (my_ns.clj:42)\".
    Walks the stack trace to find the first frame outside the guard namespace."
@@ -48,10 +68,11 @@
          v
          (constantly
           (fn [& args]
-            (if (try
-                  (models/has-release-flag? flag-name)
-                  (catch Exception _
-                    false))
+            (if (or (contains? *bypass-guard* flag-name)
+                    (try
+                      (models/has-release-flag? flag-name)
+                      (catch Exception _
+                        false)))
               (apply original-fn args)
               (let [site (call-site)
                     entry {:flag      flag-name
