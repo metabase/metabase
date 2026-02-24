@@ -65,7 +65,7 @@
               :id                       (mt/id :products :id)
               :lib/desired-column-alias "ID"
               :display-name             "ID"}
-             {:metabase.lib.join/join-alias "Orders"
+             {:lib/join-alias "Orders"
               :base-type                    :type/Integer
               :semantic-type                :type/FK
               :table-id                     (mt/id :orders)
@@ -77,7 +77,7 @@
               :lib/desired-column-alias     "Orders__PRODUCT_ID"
               :display-name                 "Orders → Product ID"
               :lib/original-join-alias      "Orders"}
-             {:metabase.lib.join/join-alias "Orders"
+             {:lib/join-alias "Orders"
               :lib/type                     :metadata/column
               :base-type                    :type/Integer
               :name                         "sum"
@@ -285,7 +285,7 @@
                       :lib/original-name                                 "ID"
                       :lib/source                                        :source/table-defaults
                       :lib/source-column-alias                           "ID"
-                      :metabase.lib.query/transformation-added-base-type true
+                      :lib/transformation-added-base-type true
                       :name                                              "ID"
                       :position                                          0
                       :semantic_type                                     :type/PK
