@@ -1,32 +1,44 @@
-import { useState } from "react";
 import { t } from "ttag";
 
-import { Box, Stack, Switch, Title } from "metabase/ui";
-
-const TEST_FLAGS = {
-  "test-flag-1": {
-    value: false,
-    description: "This is an important flag that does something really cool",
-  },
-  "test-flag-2": {
-    value: true,
-    description:
-      "This is another important flag that does something really cool",
-  },
-  "test-flag-3": {
-    value: false,
-    description:
-      "This is yet another important flag that does something really cool",
-  },
-};
+import {
+  useGetReleaseFlagsQuery,
+  useSetReleaseFlagMutation,
+} from "metabase/api/release-flags";
+import { Box, Center, Loader, Stack, Switch, Title } from "metabase/ui";
+import type { ReleaseFlag } from "metabase-types/api";
 
 export function ReleaseFlagPage() {
-  const flags = TEST_FLAGS;
+  const { data: flags, isLoading } = useGetReleaseFlagsQuery();
+
+  if (isLoading) {
+    return (
+      <Center p="xl">
+        <Loader />
+      </Center>
+    );
+  }
+
+  if (!flags) {
+    return (
+      <Box p="xl">
+        <Title pb="xl">{t`Release Flags`}</Title>
+        <p>{t`No release flags found.`}</p>
+      </Box>
+    );
+  }
+
+  const flagList: { name: ReleaseFlag; description: string; value: boolean }[] =
+    Object.entries(flags).map(([name, { is_enabled, description }]) => ({
+      name: name as ReleaseFlag,
+      description,
+      value: is_enabled,
+    }));
+
   return (
     <Box p="xl">
       <Title pb="xl">{t`Release Flags`}</Title>
       <Stack>
-        {Object.entries(flags).map(([name, { value, description }]) => (
+        {flagList.map(({ name, description, value }) => (
           <FlagSwitch
             key={name}
             name={name}
@@ -44,18 +56,23 @@ const FlagSwitch = ({
   value,
   description,
 }: {
-  name: string;
+  name: ReleaseFlag;
   value: boolean;
   description: string;
 }) => {
-  const [enabled, setEnabled] = useState(value);
+  const [updateFlag] = useSetReleaseFlagMutation();
 
   return (
     <Switch
       label={name}
-      checked={enabled}
+      checked={value}
       description={description}
-      onChange={() => setEnabled(!enabled)}
+      onChange={() =>
+        updateFlag({
+          name: name,
+          is_enabled: !value,
+        })
+      }
     />
   );
 };
