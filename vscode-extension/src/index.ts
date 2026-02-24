@@ -10,6 +10,7 @@ import {
   commands,
   Diagnostic,
   DiagnosticSeverity,
+  env,
   languages,
   Range,
   Uri,
@@ -25,7 +26,7 @@ import {
   CatalogGraph,
   ContentGraph,
 } from "./metabase-lib";
-import type { DependencyGraphResult } from "./metabase-lib";
+import type { DependencyGraphResult, ContentNode, CatalogNode } from "./metabase-lib";
 import { CatalogTreeProvider } from "./catalog-tree-provider";
 import { ContentTreeProvider } from "./content-tree-provider";
 import { ConnectionTreeProvider } from "./connection-tree-provider";
@@ -33,6 +34,13 @@ import { config } from "./config";
 import { checkMetabaseConnection } from "./metabase-client";
 import { buildGraphViewData } from "./graph-view-data";
 import { getWebviewHtml } from "./webview-html";
+import { getTransformPreviewHtml } from "./transform-preview-html";
+import type { TransformPreviewData } from "./transform-preview-html";
+import {
+  parseTransformQuery,
+  parseTransformTarget,
+} from "./transform-query";
+import type { TransformNode } from "./metabase-lib";
 import type { WebviewToExtensionMessage } from "./shared-types";
 
 const CONFIG_FILENAME = "metabase.config.json";
@@ -53,7 +61,21 @@ const { activate, deactivate } = defineExtension((context) => {
   window.registerTreeDataProvider("metabase.connection", connectionProvider);
   window.registerTreeDataProvider("metabase.dataCatalog", catalogProvider);
   window.registerTreeDataProvider("metabase.content", contentProvider);
-  window.showInformationMessage(`Host: ${config.host}`);
+
+  function updateHostConfigured() {
+    commands.executeCommand(
+      "setContext",
+      "metastudio.hostConfigured",
+      !!config.host,
+    );
+  }
+  updateHostConfigured();
+
+  workspace.onDidChangeConfiguration((event) => {
+    if (event.affectsConfiguration("metastudio.host")) {
+      updateHostConfigured();
+    }
+  });
 
   useCommand("metastudio.setHost", async () => {
     const current = config.host ?? "";
@@ -162,9 +184,11 @@ const { activate, deactivate } = defineExtension((context) => {
     try {
       const rootPath = folders[0].uri.fsPath;
       const { catalog, content } = await loadMetabaseExport(rootPath);
+      currentCatalog = catalog;
       catalogProvider.setGraph(catalog);
       contentProvider.setGraph(content);
     } catch {
+      currentCatalog = null;
       catalogProvider.setGraph(null);
       contentProvider.setGraph(null);
     }
@@ -181,6 +205,9 @@ const { activate, deactivate } = defineExtension((context) => {
   context.subscriptions.push(diagnosticCollection);
 
   let graphPanel: WebviewPanel | null = null;
+  let transformPanel: WebviewPanel | null = null;
+  let currentCatalog: CatalogGraph | null = null;
+  let pendingFocusNodeKey: string | null = null;
 
   function publishDiagnostics(result: DependencyGraphResult) {
     diagnosticCollection.clear();
@@ -258,6 +285,14 @@ const { activate, deactivate } = defineExtension((context) => {
         issueCount: graphResult.issues.length,
         cycleCount: graphResult.cycles.length,
       });
+
+      if (pendingFocusNodeKey) {
+        panel.webview.postMessage({
+          type: "focusNode",
+          nodeKey: pendingFocusNodeKey,
+        });
+        pendingFocusNodeKey = null;
+      }
     } catch (error) {
       window.showErrorMessage(
         `Failed to build dependency graph: ${error instanceof Error ? error.message : String(error)}`,
@@ -310,6 +345,8 @@ const { activate, deactivate } = defineExtension((context) => {
               `Dependency check passed. ${result.entities.size} entities, ${result.edges.length} dependencies, no issues.`,
             );
           } else {
+            commands.executeCommand("workbench.actions.view.problems");
+
             const parts: string[] = [];
             if (errorCount > 0)
               parts.push(`${errorCount} error${errorCount > 1 ? "s" : ""}`);
@@ -319,9 +356,13 @@ const { activate, deactivate } = defineExtension((context) => {
               );
             if (cycleCount > 0)
               parts.push(`${cycleCount} cycle${cycleCount > 1 ? "s" : ""}`);
-            window.showWarningMessage(
-              `Dependency check: ${parts.join(", ")}. See Problems panel.`,
+            const action = await window.showWarningMessage(
+              `Dependency check: ${parts.join(", ")}.`,
+              "Show Problems",
             );
+            if (action === "Show Problems") {
+              commands.executeCommand("workbench.actions.view.problems");
+            }
           }
         } catch (error) {
           window.showErrorMessage(
@@ -332,9 +373,20 @@ const { activate, deactivate } = defineExtension((context) => {
     );
   });
 
-  useCommand("metastudio.showDependencyGraph", async () => {
+  async function showDependencyGraph(focusNodeKey?: string) {
+    if (focusNodeKey) {
+      pendingFocusNodeKey = focusNodeKey;
+    }
+
     if (graphPanel) {
       graphPanel.reveal(ViewColumn.One);
+      if (pendingFocusNodeKey) {
+        graphPanel.webview.postMessage({
+          type: "focusNode",
+          nodeKey: pendingFocusNodeKey,
+        });
+        pendingFocusNodeKey = null;
+      }
       return;
     }
 
@@ -372,6 +424,173 @@ const { activate, deactivate } = defineExtension((context) => {
     panel.onDidDispose(() => {
       graphPanel = null;
     });
+  }
+
+  useCommand("metastudio.showDependencyGraph", () => showDependencyGraph());
+
+  const CONTENT_KIND_TO_MODEL: Record<ContentNode["kind"], string> = {
+    card: "Card",
+    dashboard: "Dashboard",
+    collection: "Collection",
+    native_query_snippet: "NativeQuerySnippet",
+    timeline: "Timeline",
+    document: "Document",
+    transform: "Transform",
+    action: "Action",
+  };
+
+  function getGraphNodeKey(node: ContentNode | CatalogNode): string | null {
+    if (node.kind === "table") {
+      return `Table:${node.name}`;
+    }
+    if (node.kind === "measure" || node.kind === "segment") {
+      return `${node.kind === "measure" ? "Measure" : "Segment"}:${node.entityId}`;
+    }
+    if (node.kind in CONTENT_KIND_TO_MODEL) {
+      const contentNode = node as ContentNode;
+      return `${CONTENT_KIND_TO_MODEL[contentNode.kind]}:${contentNode.entityId}`;
+    }
+    return null;
+  }
+
+  useCommand("metastudio.openInMetabase", (node: ContentNode) => {
+    const host = config.host;
+    if (!host) {
+      window.showErrorMessage(
+        'Metabase host is not configured. Set it in Settings under "metastudio.host".',
+      );
+      return;
+    }
+
+    let urlPath: string;
+    switch (node.kind) {
+      case "card":
+        urlPath = `/question/entity/${node.entityId}`;
+        break;
+      case "dashboard":
+        urlPath = `/dashboard/entity/${node.entityId}`;
+        break;
+      case "collection":
+        urlPath = `/collection/entity/${node.entityId}`;
+        break;
+      default:
+        return;
+    }
+
+    const url = `${host.replace(/\/+$/, "")}${urlPath}`;
+    env.openExternal(Uri.parse(url));
+  });
+
+  useCommand(
+    "metastudio.showInDependencyGraph",
+    (node: ContentNode | CatalogNode) => {
+      const nodeKey = getGraphNodeKey(node);
+      if (nodeKey) {
+        showDependencyGraph(nodeKey);
+      }
+    },
+  );
+
+  function generateNonce(): string {
+    const possible =
+      "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+    let text = "";
+    for (let i = 0; i < 32; i++) {
+      text += possible.charAt(Math.floor(Math.random() * possible.length));
+    }
+    return text;
+  }
+
+  function buildTransformPreviewData(
+    node: TransformNode,
+  ): TransformPreviewData {
+    return {
+      name: node.name,
+      description: node.description,
+      query: parseTransformQuery(node.raw),
+      target: parseTransformTarget(node.raw),
+      filePath: node.filePath,
+      entityId: node.entityId,
+    };
+  }
+
+  async function handleTransformMessage(message: Record<string, unknown>) {
+    switch (message.type) {
+      case "openFile": {
+        const filePath = message.filePath as string | undefined;
+        if (filePath) {
+          window.showTextDocument(Uri.file(filePath));
+        }
+        break;
+      }
+      case "openGraph": {
+        const entityId = message.entityId as string | undefined;
+        if (entityId) {
+          await showDependencyGraph(`Transform:${entityId}`);
+        } else {
+          await showDependencyGraph();
+        }
+        break;
+      }
+      case "openTable": {
+        const tableRef = message.ref as string[] | undefined;
+        if (!tableRef || tableRef.length < 3 || !currentCatalog) break;
+        const tableNode = currentCatalog.getTable(
+          tableRef[0],
+          tableRef[1],
+          tableRef[2],
+        );
+        if (tableNode?.filePath) {
+          window.showTextDocument(Uri.file(tableNode.filePath));
+        }
+        break;
+      }
+      case "openField": {
+        const fieldRef = message.ref as string[] | undefined;
+        if (!fieldRef || fieldRef.length < 4 || !currentCatalog) break;
+        const table = currentCatalog.getTable(
+          fieldRef[0],
+          fieldRef[1],
+          fieldRef[2],
+        );
+        const field = table?.fields.find(
+          (fieldNode) => fieldNode.name === fieldRef[3],
+        );
+        if (field?.filePath) {
+          window.showTextDocument(Uri.file(field.filePath));
+        } else if (table?.filePath) {
+          window.showTextDocument(Uri.file(table.filePath));
+        }
+        break;
+      }
+    }
+  }
+
+  useCommand("metastudio.showTransformPreview", (node: TransformNode) => {
+    const data = buildTransformPreviewData(node);
+    const nonce = generateNonce();
+    const html = getTransformPreviewHtml(data, nonce);
+
+    if (transformPanel) {
+      transformPanel.title = node.name;
+      transformPanel.webview.html = html;
+      transformPanel.reveal(ViewColumn.One, true);
+    } else {
+      const panel = window.createWebviewPanel(
+        "metabaseTransformPreview",
+        node.name,
+        { viewColumn: ViewColumn.One, preserveFocus: true },
+        { enableScripts: true },
+      );
+      panel.webview.html = html;
+      transformPanel = panel;
+
+      panel.webview.onDidReceiveMessage(handleTransformMessage);
+
+      panel.onDidDispose(() => {
+        transformPanel = null;
+      });
+    }
   });
 
   useFileSystemWatcher("**/*.yaml", {

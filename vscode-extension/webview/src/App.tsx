@@ -7,6 +7,7 @@ import {
   ReactFlowProvider,
   useEdgesState,
   useNodesState,
+  useReactFlow,
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
 import { useEffect, useMemo, useState } from "react";
@@ -76,6 +77,7 @@ function DependencyGraphInner() {
   const [selection, setSelection] = useState<GraphSelection | null>(null);
   const [configExists, setConfigExists] = useState(false);
   const [colorMode, setColorMode] = useState<"light" | "dark">(getColorMode());
+  const { fitView, getNodes } = useReactFlow<GraphNodeType>();
 
   useEffect(() => {
     function handleMessage(event: MessageEvent) {
@@ -95,6 +97,20 @@ function DependencyGraphInner() {
         case "themeChanged":
           setColorMode(message.colorMode);
           break;
+        case "focusNode": {
+          const flowNodes = getNodes();
+          const targetNode = flowNodes.find(
+            (node) => node.id === message.nodeKey,
+          );
+          if (targetNode) {
+            setSelection({
+              key: message.nodeKey,
+              model: targetNode.data.model,
+            });
+            fitView({ nodes: [targetNode], duration: 300 });
+          }
+          break;
+        }
       }
     }
 
@@ -102,7 +118,7 @@ function DependencyGraphInner() {
     vscode.postMessage({ type: "ready" });
 
     return () => window.removeEventListener("message", handleMessage);
-  }, [setNodes, setEdges]);
+  }, [setNodes, setEdges, getNodes, fitView, setSelection]);
 
   useEffect(() => {
     const observer = new MutationObserver(() => {

@@ -1,4 +1,5 @@
 import type { GraphNodeModel, GraphViewNode, DependentsCount } from "../../src/shared-types";
+import type { IconName } from "./icons";
 
 export interface NodeTypeInfo {
   label: string;
@@ -15,7 +16,7 @@ export function getNodeTypeInfo(node: GraphViewNode): NodeTypeInfo {
     node.model === "question" &&
     node.queryType === "native"
   ) {
-    return { label: "SQL question", color: "var(--graph-text-secondary)" };
+    return { label: "SQL question", color: "var(--graph-color-text-secondary)" };
   }
 
   return getGroupTypeInfo(node.model);
@@ -24,7 +25,7 @@ export function getNodeTypeInfo(node: GraphViewNode): NodeTypeInfo {
 export function getGroupTypeInfo(model: GraphNodeModel): NodeTypeInfo {
   switch (model) {
     case "question":
-      return { label: "Question", color: "var(--graph-text-secondary)" };
+      return { label: "Question", color: "var(--graph-color-text-secondary)" };
     case "model":
       return { label: "Model", color: "var(--graph-color-brand)" };
     case "metric":
@@ -34,66 +35,65 @@ export function getGroupTypeInfo(model: GraphNodeModel): NodeTypeInfo {
     case "transform":
       return { label: "Transform", color: "var(--graph-color-warning)" };
     case "snippet":
-      return { label: "Snippet", color: "var(--graph-text-secondary)" };
+      return { label: "Snippet", color: "var(--graph-color-text-secondary)" };
     case "dashboard":
       return { label: "Dashboard", color: "var(--graph-color-filter)" };
     case "document":
-      return { label: "Document", color: "var(--graph-text-secondary)" };
+      return { label: "Document", color: "var(--graph-color-text-secondary)" };
     case "segment":
       return { label: "Segment", color: "var(--graph-color-accent2)" };
     case "measure":
       return { label: "Measure", color: "var(--graph-color-summarize)" };
     case "collection":
-      return { label: "Collection", color: "var(--graph-text-secondary)" };
+      return { label: "Collection", color: "var(--graph-color-text-secondary)" };
     case "action":
-      return { label: "Action", color: "var(--graph-text-secondary)" };
+      return { label: "Action", color: "var(--graph-color-text-secondary)" };
     case "database":
       return { label: "Database", color: "var(--graph-color-brand)" };
     case "field":
-      return { label: "Field", color: "var(--graph-text-secondary)" };
+      return { label: "Field", color: "var(--graph-color-text-secondary)" };
   }
 }
 
-export function getNodeIcon(node: GraphViewNode): string {
-  return getNodeIconForModel(node.model, node.cardType, node.queryType, node.display);
+export function getNodeIconName(node: GraphViewNode): IconName {
+  return getIconNameForModel(node.model, node.cardType, node.queryType);
 }
 
-export function getNodeIconForModel(
+export function getIconNameForModel(
   model: GraphNodeModel,
   cardType?: string,
   queryType?: string,
-  display?: string,
-): string {
+): IconName {
   switch (model) {
     case "question":
-      if (queryType === "native") return "⌨";
-      return "📊";
+      if (queryType === "native") return "sql";
+      return "table2";
     case "model":
-      return "🧊";
+      return "model";
     case "metric":
-      return "📈";
+      return "metric";
     case "table":
-      return "⊞";
+      return "table";
     case "transform":
-      return "⚙";
+      return "transform";
     case "snippet":
-      return "✂";
+      return "snippet";
     case "dashboard":
-      return "▦";
+      return "dashboard";
     case "document":
-      return "📄";
+      return "document";
     case "segment":
-      return "⊟";
+      return "segment";
     case "measure":
-      return "∑";
+      return "sum";
     case "collection":
-      return "📁";
+      return "collection";
     case "action":
-      return "⚡";
+      return "action";
     case "database":
-      return "🗄";
+      return "database";
     case "field":
-      return "⊡";
+      return "hash";
   }
 }
 
@@ -164,9 +164,9 @@ export function getDependentGroupLabel(group: DependentGroup): string {
   }
 }
 
-export function getFieldIcon(semanticType: string | null): string {
-  if (!semanticType) return "#";
-  if (semanticType.includes("PK") || semanticType === "type/PK") return "🔑";
-  if (semanticType.includes("FK") || semanticType === "type/FK") return "🔗";
-  return "#";
+export function getFieldIconName(semanticType: string | null): IconName {
+  if (!semanticType) return "hash";
+  if (semanticType.includes("PK") || semanticType === "type/PK") return "key";
+  if (semanticType.includes("FK") || semanticType === "type/FK") return "connections";
+  return "hash";
 }

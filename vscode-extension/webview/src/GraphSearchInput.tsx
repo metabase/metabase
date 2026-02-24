@@ -1,7 +1,8 @@
 import { useState, useMemo, useRef, useEffect } from "react";
 import { useReactFlow } from "@xyflow/react";
 import type { GraphViewNode } from "../../src/shared-types";
-import { getNodeIcon } from "./graph-utils";
+import { Icon } from "./icons";
+import { getNodeIconName } from "./graph-utils";
 import type { GraphNodeType } from "./GraphNode";
 
 interface GraphSearchInputProps {
@@ -62,7 +63,7 @@ export function GraphSearchInput({ nodes }: GraphSearchInputProps) {
         onClick={() => setIsOpen(true)}
         title="Jump to an item on the graph"
       >
-        🔍
+        <Icon name="search" size={16} />
       </button>
     );
   }
@@ -70,7 +71,7 @@ export function GraphSearchInput({ nodes }: GraphSearchInputProps) {
   return (
     <div className="graph-search-dropdown" ref={dropdownRef}>
       <div className="graph-search-input-wrapper">
-        <span className="graph-search-icon">🔍</span>
+        <Icon name="search" size={14} style={{ color: "var(--graph-text-secondary)" }} />
         <input
           ref={inputRef}
           type="text"
@@ -97,9 +98,11 @@ export function GraphSearchInput({ nodes }: GraphSearchInputProps) {
                 handleSelect(node.key);
               }}
             >
-              <span className="graph-search-result-icon">
-                {getNodeIcon(node)}
-              </span>
+              <Icon
+                name={getNodeIconName(node)}
+                size={14}
+                style={{ color: "var(--graph-text-secondary)" }}
+              />
               <span className="graph-search-result-name">{node.name}</span>
             </button>
           ))}

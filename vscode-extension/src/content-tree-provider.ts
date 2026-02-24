@@ -26,7 +26,19 @@ export class ContentTreeProvider implements vscode.TreeDataProvider<ContentNode>
     item.iconPath = this.getIcon(element)
     item.tooltip = element.description ?? undefined
 
-    if ('filePath' in element && element.filePath) {
+    if (element.kind === 'card') {
+      item.contextValue = element.cardType === 'model' ? 'model' : element.cardType === 'metric' ? 'metric' : 'card'
+    } else {
+      item.contextValue = element.kind
+    }
+
+    if (element.kind === 'transform') {
+      item.command = {
+        command: 'metastudio.showTransformPreview',
+        title: 'Preview Transform',
+        arguments: [element],
+      }
+    } else if ('filePath' in element && element.filePath) {
       item.command = {
         command: 'vscode.open',
         title: 'Open',

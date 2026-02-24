@@ -9,9 +9,10 @@ import { type MouseEvent, memo, useContext } from "react";
 import type { GraphViewNode } from "../../src/shared-types";
 import { GraphContext } from "./GraphContext";
 import type { GraphSelection } from "./GraphContext";
+import { Icon } from "./icons";
 import {
   getNodeTypeInfo,
-  getNodeIcon,
+  getNodeIconName,
   getDependentGroups,
   getDependencyGroupTitle,
   getDependentGroupLabel,
@@ -27,7 +28,7 @@ export const GraphNodeComponent = memo(function GraphNodeComponent({
 }: GraphNodeComponentProps) {
   const { selection, setSelection } = useContext(GraphContext);
   const typeInfo = getNodeTypeInfo(node);
-  const icon = getNodeIcon(node);
+  const iconName = getNodeIconName(node);
   const groups = getDependentGroups(node);
   const isSelected = selection !== null && selection.key === node.key && selection.groupType == null;
   const isInitialized = useNodesInitialized();
@@ -63,7 +64,7 @@ export const GraphNodeComponent = memo(function GraphNodeComponent({
       >
         <div className="graph-node-content">
           <div className="graph-node-type" style={{ color: typeInfo.color }}>
-            <span className="graph-node-type-icon">{icon}</span>
+            <Icon name={iconName} size={14} />
             <span className="graph-node-type-label">{typeInfo.label}</span>
           </div>
           <div className="graph-node-name">{node.name}</div>

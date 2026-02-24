@@ -17,14 +17,17 @@
 
 <!-- commands -->
 
-| Command                           | Title                                 |
-| --------------------------------- | ------------------------------------- |
-| `metastudio.setHost`              | Metastudio: Set Host URL              |
-| `metastudio.setApiKey`            | Metastudio: Set API Key               |
-| `metastudio.checkConnection`      | Metastudio: Check Metabase Connection |
-| `metastudio.clearCredentials`     | Metastudio: Clear Credentials         |
-| `metastudio.checkDependencyGraph` | Metastudio: Check Dependency Graph    |
-| `metastudio.showDependencyGraph`  | Metastudio: Show Dependency Graph     |
+| Command                            | Title                                 |
+| ---------------------------------- | ------------------------------------- |
+| `metastudio.setHost`               | Metastudio: Set Host URL              |
+| `metastudio.setApiKey`             | Metastudio: Set API Key               |
+| `metastudio.checkConnection`       | Metastudio: Check Metabase Connection |
+| `metastudio.clearCredentials`      | Metastudio: Clear Credentials         |
+| `metastudio.checkDependencyGraph`  | Metastudio: Check Dependency Graph    |
+| `metastudio.showDependencyGraph`   | Metastudio: Show Dependency Graph     |
+| `metastudio.showTransformPreview`  | Metastudio: Show Transform Preview    |
+| `metastudio.openInMetabase`        | Open in Metabase                      |
+| `metastudio.showInDependencyGraph` | Show in Dependency Graph              |
 
 <!-- commands -->
 

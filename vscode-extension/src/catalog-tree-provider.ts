@@ -27,6 +27,8 @@ export class CatalogTreeProvider implements vscode.TreeDataProvider<CatalogNode>
     item.iconPath = this.getIcon(element)
     item.tooltip = ('description' in element ? element.description : undefined) ?? undefined
 
+    item.contextValue = element.kind
+
     if ('filePath' in element && element.filePath) {
       item.command = {
         command: 'vscode.open',

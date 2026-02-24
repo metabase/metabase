@@ -5,28 +5,38 @@
   color: var(--vscode-foreground);
   background-color: transparent;
 
-  --graph-brand: #509ee3;
+  /* Metabase brand colors */
+  --graph-color-brand: hsla(208, 72%, 60%, 1);
+  --graph-color-summarize: hsla(89, 48%, 40%, 1);
+  --graph-color-filter: hsla(240, 65%, 69%, 1);
+  --graph-color-warning: hsla(46, 81%, 52%, 1);
+  --graph-color-error: hsla(358, 71%, 62%, 1);
+  --graph-color-accent2: #A989C5;
+  --graph-color-text-secondary: var(--vscode-descriptionForeground);
+
   --graph-text-primary: var(--vscode-foreground);
   --graph-text-secondary: var(--vscode-descriptionForeground);
   --graph-background: var(--vscode-editor-background);
   --graph-border: var(--vscode-panel-border, rgba(128, 128, 128, 0.35));
   --graph-card-bg: var(--vscode-editorWidget-background);
-  --graph-pill-bg: var(
-    --vscode-badge-background,
-    rgba(128, 128, 128, 0.2)
-  );
-  --graph-color-brand: #509ee3;
-  --graph-color-summarize: #ef8c2a;
-  --graph-color-filter: #7c5cfc;
-  --graph-color-warning: #f9cf48;
-  --graph-color-error: #ed6e6e;
-  --graph-color-accent2: #70b75f;
+  --graph-pill-bg: var(--vscode-badge-background, rgba(128, 128, 128, 0.2));
 }
 
 * {
   margin: 0;
   padding: 0;
   box-sizing: border-box;
+}
+
+input[type="text"],
+input[type="search"] {
+  outline: none;
+  border: none;
+  appearance: none;
+  -webkit-appearance: none;
+  background: transparent;
+  outline-color: transparent;
+  outline-style: none;
 }
 
 body {
@@ -82,7 +92,7 @@ body {
 
 .graph-node-card:hover,
 .graph-node-card.selected {
-  border-color: var(--graph-brand);
+  border-color: var(--graph-color-brand);
 }
 
 .graph-node-handle {
@@ -106,11 +116,6 @@ body {
   font-size: 0.85em;
   font-weight: 600;
   white-space: nowrap;
-}
-
-.graph-node-type-icon {
-  font-size: 1em;
-  flex-shrink: 0;
 }
 
 .graph-node-type-label {
@@ -156,10 +161,10 @@ body {
 .graph-node-pill:hover,
 .graph-node-pill.selected {
   color: #fff;
-  background-color: var(--graph-brand);
+  background-color: var(--graph-color-brand);
 }
 
-/* Panels (shared) */
+/* Panels layout */
 .graph-left-panel {
   right: 0;
   pointer-events: none;
@@ -176,8 +181,9 @@ body {
   pointer-events: all;
 }
 
+/* Panel card */
 .graph-panel {
-  width: 22rem;
+  width: 32rem;
   max-height: calc(100vh - 2rem);
   background: var(--graph-card-bg);
   border: 1px solid var(--graph-border);
@@ -186,6 +192,7 @@ body {
   display: flex;
   flex-direction: column;
   pointer-events: all;
+  padding: 0;
 }
 
 .graph-panel-header {
@@ -205,7 +212,6 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 1.25rem;
   flex-shrink: 0;
 }
 
@@ -262,6 +268,8 @@ body {
 
 .graph-panel-section {
   line-height: 1.5;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
 }
 
 .graph-panel-section-label {
@@ -291,10 +299,12 @@ body {
 
 .graph-panel-field-icon {
   color: var(--graph-text-secondary);
-  font-size: 1em;
   width: 1.25em;
   text-align: center;
   flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .graph-panel-field-name {
@@ -302,27 +312,36 @@ body {
   overflow-wrap: break-word;
 }
 
-/* Dependency Panel */
+/* Dependency Panel search */
 .graph-panel-search {
   padding: 8px 16px;
   border-bottom: 1px solid var(--graph-border);
 }
 
-.graph-panel-search-input {
-  width: 100%;
-  padding: 6px 10px;
+.graph-panel-search-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 8px;
   background: var(--vscode-input-background, transparent);
-  color: var(--vscode-input-foreground, inherit);
-  border: 1px solid
-    var(--vscode-input-border, var(--graph-border));
+  border: 1px solid var(--vscode-input-border, var(--graph-border));
   border-radius: 4px;
+  padding: 6px 10px;
+}
+
+.graph-panel-search-wrapper:focus-within {
+  border-color: var(--graph-color-brand);
+}
+
+.graph-panel-search-input {
+  flex: 1;
+  background: none;
+  border: none;
+  color: var(--vscode-input-foreground, inherit);
   font-family: inherit;
   font-size: inherit;
   outline: none;
-}
-
-.graph-panel-search-input:focus {
-  border-color: var(--graph-brand);
+  appearance: none;
+  -webkit-appearance: none;
 }
 
 .graph-panel-empty {
@@ -348,19 +367,14 @@ body {
   font-size: inherit;
   color: inherit;
   text-align: left;
+}
+
+.graph-panel-list-item:not(:last-child) {
   border-bottom: 1px solid var(--graph-border);
 }
 
-.graph-panel-list-item:last-child {
-  border-bottom: none;
-}
-
 .graph-panel-list-item:hover {
-  color: var(--graph-brand);
-}
-
-.graph-panel-list-icon {
-  flex-shrink: 0;
+  color: var(--graph-color-brand);
 }
 
 .graph-panel-list-name {
@@ -375,7 +389,6 @@ body {
   border-radius: 4px;
   padding: 6px 12px;
   cursor: pointer;
-  font-size: 1rem;
   color: var(--graph-text-primary);
   display: flex;
   align-items: center;
@@ -383,7 +396,7 @@ body {
 }
 
 .graph-search-button:hover {
-  border-color: var(--graph-brand);
+  border-color: var(--graph-color-brand);
 }
 
 .graph-search-dropdown {
@@ -396,18 +409,13 @@ body {
   align-items: center;
   gap: 8px;
   background: var(--vscode-input-background, var(--graph-card-bg));
-  border: 1px solid
-    var(--vscode-input-border, var(--graph-border));
+  border: 1px solid var(--vscode-input-border, var(--graph-border));
   border-radius: 4px;
   padding: 6px 10px;
 }
 
 .graph-search-input-wrapper:focus-within {
-  border-color: var(--graph-brand);
-}
-
-.graph-search-icon {
-  flex-shrink: 0;
+  border-color: var(--graph-color-brand);
 }
 
 .graph-search-input {
@@ -418,6 +426,8 @@ body {
   font-family: inherit;
   font-size: inherit;
   outline: none;
+  appearance: none;
+  -webkit-appearance: none;
 }
 
 .graph-search-results {
@@ -453,10 +463,6 @@ body {
   background: var(--graph-pill-bg);
 }
 
-.graph-search-result-icon {
-  flex-shrink: 0;
-}
-
 .graph-search-result-name {
   overflow: hidden;
   text-overflow: ellipsis;
@@ -475,4 +481,10 @@ body {
 [data-vscode-theme-kind="vscode-high-contrast"] .dependency-graph {
   --xy-background-color-default: transparent;
   --xy-controls-button-background-color-default: transparent;
+}
+
+[data-vscode-theme-kind="vscode-dark"] .graph-controls,
+[data-vscode-theme-kind="vscode-high-contrast"] .graph-controls {
+  border: 1px solid var(--graph-border);
+  background-color: var(--graph-card-bg);
 }

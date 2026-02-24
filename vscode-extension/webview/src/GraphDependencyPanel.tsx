@@ -1,7 +1,8 @@
 import { useState, useMemo } from "react";
 import { useReactFlow } from "@xyflow/react";
 import type { GraphViewNode, GraphViewEdge, GraphNodeModel } from "../../src/shared-types";
-import { getNodeIconForModel, getGroupTypeInfo } from "./graph-utils";
+import { Icon } from "./icons";
+import { getIconNameForModel, getGroupTypeInfo } from "./graph-utils";
 import type { GraphNodeType } from "./GraphNode";
 
 interface GraphDependencyPanelProps {
@@ -32,9 +33,6 @@ export function GraphDependencyPanel({
 
     return allNodes.filter((sourceNode) => {
       if (!sourceKeys.has(sourceNode.key)) return false;
-      if (groupType === "question" || groupType === "model" || groupType === "metric") {
-        return sourceNode.model === groupType;
-      }
       return sourceNode.model === groupType;
     });
   }, [allNodes, allEdges, node.key, groupType]);
@@ -71,19 +69,22 @@ export function GraphDependencyPanel({
             onClick={onClose}
             title="Close"
           >
-            ✕
+            <Icon name="close" size={16} />
           </button>
         </div>
       </div>
       {dependentNodes.length >= 5 && (
         <div className="graph-panel-search">
-          <input
-            type="text"
-            className="graph-panel-search-input"
-            placeholder="Search..."
-            value={searchText}
-            onChange={(event) => setSearchText(event.target.value)}
-          />
+          <div className="graph-panel-search-wrapper">
+            <Icon name="search" size={14} style={{ color: "var(--graph-text-secondary)" }} />
+            <input
+              type="text"
+              className="graph-panel-search-input"
+              placeholder="Search..."
+              value={searchText}
+              onChange={(event) => setSearchText(event.target.value)}
+            />
+          </div>
         </div>
       )}
       <div className="graph-panel-body">
@@ -97,9 +98,11 @@ export function GraphDependencyPanel({
                 className="graph-panel-list-item"
                 onClick={() => handleNodeClick(filteredNode.key)}
               >
-                <span className="graph-panel-list-icon">
-                  {getNodeIconForModel(filteredNode.model)}
-                </span>
+                <Icon
+                  name={getIconNameForModel(filteredNode.model)}
+                  size={16}
+                  style={{ color: "var(--graph-text-secondary)" }}
+                />
                 <span className="graph-panel-list-name">{filteredNode.name}</span>
               </button>
             ))}
