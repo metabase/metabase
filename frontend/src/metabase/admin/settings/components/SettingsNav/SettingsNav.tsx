@@ -106,6 +106,11 @@ export function SettingsNav() {
         label={t`Public sharing`}
         icon="share"
       />
+      <SettingsNavItem
+        path="product-analytics"
+        label={t`Product Analytics`}
+        icon="line"
+      />
       <NavDivider />
       <SettingsNavItem path="license" label={t`License`} icon="store" />
       <SettingsNavItem
