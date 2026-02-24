@@ -307,7 +307,7 @@ function getSourceCode(
 function getTransformUrl(transform: SuggestedTransform): string {
   return match(transform)
     .with({ id: P.number }, ({ id }) => Urls.transformEdit(id))
-    .with({ source: { type: "python" } }, () => Urls.newPythonTransform())
+    .with({ source: { type: "python" } }, () => Urls.newAdvancedTransform())
     .with({ source: { type: "query" } }, () => Urls.newNativeTransform())
     .exhaustive();
 }

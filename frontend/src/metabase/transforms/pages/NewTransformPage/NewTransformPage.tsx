@@ -23,10 +23,13 @@ import { useTransformPermissions } from "metabase/transforms/hooks/use-transform
 import { Box, Center } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import {
+  type AdvancedTransformType,
   type Database,
   type DraftTransformSource,
+  type PythonTransformSourceDraft,
   type Transform,
   isAdvancedTransformSource,
+  isAdvancedTransformType,
 } from "metabase-types/api";
 
 import { TransformEditor } from "../../components/TransformEditor";
@@ -221,21 +224,33 @@ export function NewNativeTransformPage({ route }: NewNativeTransformPageProps) {
   return <NewTransformPage initialSource={initialSource} route={route} />;
 }
 
-type NewPythonTransformPageProps = {
+type NewAdvancedTransformPageProps = {
   route: Route;
+  location: { query: { type?: string } };
 };
 
-export function NewPythonTransformPage({ route }: NewPythonTransformPageProps) {
-  const initialSource = useMemo(() => getInitialPythonSource(), []);
-  return <NewTransformPage initialSource={initialSource} route={route} />;
+export function NewAdvancedTransformPage({
+  route,
+  location,
+}: NewAdvancedTransformPageProps) {
+  const typeParam = location?.query?.type || "";
+  const type: AdvancedTransformType = isAdvancedTransformType(typeParam)
+    ? typeParam
+    : "python";
+  const initialSource = useMemo(() => sourceFunctionMap[type](), [type]);
+
+  return (
+    <NewTransformPage initialSource={initialSource} route={route} key={type} />
+  );
 }
 
-export function NewJavascriptTransformPage({
-  route,
-}: NewPythonTransformPageProps) {
-  const initialSource = useMemo(() => getInitialJavascriptSource(), []);
-  return <NewTransformPage initialSource={initialSource} route={route} />;
-}
+const sourceFunctionMap: Record<
+  AdvancedTransformType,
+  () => PythonTransformSourceDraft
+> = {
+  javascript: getInitialJavascriptSource,
+  python: getInitialPythonSource,
+};
 
 type NewCardTransformPageParams = {
   cardId: string;

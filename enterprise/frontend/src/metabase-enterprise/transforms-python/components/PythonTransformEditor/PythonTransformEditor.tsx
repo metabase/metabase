@@ -124,6 +124,7 @@ export function PythonTransformEditor({
   return (
     <Flex h="100%" w="100%" direction="column">
       <PythonTransformTopBar
+        sourceType={source.type}
         databaseId={source["source-database"]}
         isEditMode={isEditMode}
         readOnly={uiOptions?.readOnly}
