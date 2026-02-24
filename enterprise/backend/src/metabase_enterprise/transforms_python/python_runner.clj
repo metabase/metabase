@@ -200,7 +200,7 @@
 (defn execute-python-code-http-call!
   "Calls the /execute endpoint of the python runner. Blocks until the run either succeeds or fails and returns
   the response from the server."
-  [{:keys [server-url code request-id run-id table-name->id shared-storage timeout-secs]}]
+  [{:keys [server-url code request-id run-id table-name->id shared-storage timeout-secs language]}]
   (let [{:keys [objects]} shared-storage
         {:keys [output output-manifest events]} objects
         url-for-path             (fn [path] (:url (get objects path)))
@@ -214,7 +214,8 @@
                                   :output_manifest_url (:url output-manifest)
                                   :events_url          (:url events)
                                   :table_mapping       table-name->url
-                                  :manifest_mapping    table-name->manifest-url}
+                                  :manifest_mapping table-name->manifest-url
+                                  :language (or language "python")}
         response                 (with-python-api-timing [run-id]
                                    (python-runner-request server-url :post "/execute" {:body (json/encode payload)}))]
     ;; when a 500 is returned we observe a string in the body (despite the python returning json)
@@ -342,6 +343,7 @@
      :source-tables - Map of table-name -> table-id (already resolved)
      :row-limit     - Max rows to return (also limits input rows)
      :timeout-secs  - Optional timeout override
+     :language      - Optional language override (default: \"python\")
 
    Returns:
      {:status  :succeeded/:failed
@@ -350,7 +352,7 @@
       :logs    [{:message ...} ...]   ; events from Python execution
       :message \"error message\"}     ; on failure
 "
-  [{:keys [code source-tables per-input-limit row-limit timeout-secs]}]
+  [{:keys [code source-tables per-input-limit row-limit timeout-secs language]}]
   (with-open [shared-storage-ref (s3/open-shared-storage! source-tables)]
     (let [server-url (transforms-python.settings/python-runner-url)
           _          (copy-tables-to-s3! {:shared-storage @shared-storage-ref
@@ -363,7 +365,8 @@
             :request-id     (u/generate-nano-id)
             :table-name->id source-tables
             :timeout-secs   timeout-secs
-            :shared-storage @shared-storage-ref})
+            :shared-storage @shared-storage-ref
+            :language language})
           events (read-events @shared-storage-ref)]
       (cond
         (:timeout body)

@@ -46,6 +46,13 @@
      [:source-tables   [:map-of :string ::source-table-value]]
      [:type {:decode/normalize lib.schema.common/normalize-keyword} [:= :python]]
      [:body :string]
+     [:source-incremental-strategy {:optional true} ::source-incremental-strategy]]]
+   [:javascript
+    [:map
+     [:source-database {:optional true} :int]
+     [:source-tables [:map-of :string ::source-table-value]]
+     [:type {:decode/normalize lib.schema.common/normalize-keyword} [:= :javascript]]
+     [:body :string]
      [:source-incremental-strategy {:optional true} ::source-incremental-strategy]]]])
 
 (mr/def ::append-config
