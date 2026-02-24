@@ -66,7 +66,6 @@ cli() {
   bun "$SCRIPT_DIR/cli.ts" "$@"
 }
 
-# Wait for Metabase to be healthy
 wait_for_health() {
   local timeout="$1"
   local start_time=$(date +%s)
@@ -110,7 +109,7 @@ stop_metabase() {
   docker compose rm -f metabase
 }
 
-# Run migrate down command
+# https://www.metabase.com/docs/latest/installation-and-operation/upgrading-metabase#using-the-migrate-down-command
 run_migrate_down() {
   local image="$1"
   log "Running 'migrate down' with image: $image"
@@ -142,7 +141,6 @@ check_downgrade_refused() {
       return 0
     fi
 
-    # Check if container exited
     local status=$(docker compose ps metabase --format '{{.Status}}' 2>/dev/null || echo "")
     if [[ "$status" =~ [Ee]xit ]]; then
       log "Metabase container exited (expected for downgrade)"
@@ -153,13 +151,11 @@ check_downgrade_refused() {
   done
 }
 
-# Cleanup
 cleanup() {
   log "Cleaning up..."
   docker compose down -v --remove-orphans 2>/dev/null || true
 }
 
-# Main test logic
 main() {
   local direction=$(cli compare "$SOURCE_VERSION" "$TARGET_VERSION")
 
@@ -184,7 +180,6 @@ main() {
 
   trap cleanup EXIT
 
-  # Step 1: Start SOURCE version
   log ""
   log "Step 1: Starting SOURCE version ($SOURCE_VERSION)..."
   start_metabase "$source_image"
@@ -197,12 +192,10 @@ main() {
 
   log "SOURCE version is healthy"
 
-  # Step 2: Stop SOURCE
   log ""
   log "Step 2: Stopping SOURCE version..."
   stop_metabase
 
-  # Step 3: Start TARGET version
   log ""
   log "Step 3: Starting TARGET version ($TARGET_VERSION)..."
   start_metabase "$target_image"
