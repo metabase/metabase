@@ -172,7 +172,32 @@ describe("scenarios > embedding > sdk iframe embedding > metabase-browser", () =
       // callback has fired
       cy.findByTestId("data-step-cell").should("have.text", "Orders");
 
-      cy.findByTestId("sdk-breadcrumbs").findByText("New exploration").click();
+      cy.findByTestId("sdk-breadcrumbs")
+        .findByText("New exploration")
+        .then(($el) => {
+          // Log what element Chrome sees at the click target
+          const rect = $el[0].getBoundingClientRect();
+          const centerX = rect.left + rect.width / 2;
+          const centerY = rect.top + rect.height / 2;
+          const hitTarget = $el[0].ownerDocument.elementFromPoint(
+            centerX,
+            centerY,
+          );
+          cy.log(
+            `Click target element: <${hitTarget?.tagName}> class="${hitTarget?.className}"`,
+          );
+          cy.log(
+            `Expected element: <${$el[0].tagName}> class="${$el[0].className}"`,
+          );
+          cy.log(`Are same element: ${hitTarget === $el[0]}`);
+          cy.log(
+            `Hit target parent: <${hitTarget?.parentElement?.tagName}> class="${hitTarget?.parentElement?.className}"`,
+          );
+          // Log the full breadcrumb DOM for debugging
+          const breadcrumbs = $el[0].closest('[data-testid="sdk-breadcrumbs"]');
+          cy.log(`Breadcrumbs HTML: ${breadcrumbs?.innerHTML}`);
+        })
+        .click();
 
       cy.findByText("Pick your starting data").should("be.visible");
       cy.findByText("Orders").should("not.exist");
