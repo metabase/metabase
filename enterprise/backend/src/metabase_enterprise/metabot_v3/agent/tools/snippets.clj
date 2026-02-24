@@ -40,7 +40,7 @@
   Use this tool before editing or creating SQL transforms to understand what
   snippets are available. If any snippets may be relevant to the user's request,
   fetch their content using the get_snippet_details tool."
-  [_args :- [:map {:closed true}]]
+  [_args :- [:maybe [:map {:closed true}]]]
   (add-output (snippet-tools/get-snippets {}) format-snippet-list-output))
 
 (mu/defn ^{:tool-name "get_snippet_details"
