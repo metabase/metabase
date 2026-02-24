@@ -21,7 +21,7 @@ databaseChangeLog:
                   type: ${text.type}
               - column:
                   name: is_enabled
-                  type: boolean
+                  type: ${boolean.type}
                   defaultValueBoolean: false
                   constraints:
                     nullable: false
