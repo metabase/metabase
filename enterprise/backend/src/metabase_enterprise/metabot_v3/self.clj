@@ -237,9 +237,13 @@
     (with-span :info {:name      :metabot-v3.agent/call-llm-structured
                       :model     model
                       :msg-count (count messages)}
-      (with-retries
+      (with-retries model
         (fn []
-          (let [parts (into [] (core/aisdk-xf) (stream-fn opts))
+          (let [parts (into []
+                            (comp (core/aisdk-xf)
+                                  (report-aisdk-errors-xf model)
+                                  (report-token-usage-xf model))
+                            (stream-fn opts))
                 result (some (fn [{:keys [type arguments]}]
                                (when (= type :tool-input)
                                  arguments))
