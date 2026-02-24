@@ -26,7 +26,6 @@
    [metabase.settings.core :as setting]
    [metabase.system.core :as system]
    [metabase.upload.core :as upload]
-   [metabase.util :as u]
    [metabase.util.encryption :as encryption]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.json :as json]
@@ -741,17 +740,13 @@
   [tool-name]
   (get tool-friendly-names tool-name "Thinking"))
 
-(def ^:private text-batch-interval-ms
-  "Minimum time between text flushes to Slack (ms)."
-  100)
-
 (def ^:private min-text-batch-size
   "Minimum characters to accumulate before considering a flush."
   50)
 
 (defn- make-streaming-ai-request
   "Make a streaming AI request with callbacks for each message type.
-   Returns {:text <full-text> :data-parts <seq>} like make-ai-request.
+   Returns data-parts (visualizations) from the response.
 
    Callbacks:
    - on-text: Called with text content (ai-service already buffers markdown links)
@@ -766,17 +761,12 @@
         capabilities   (compute-capabilities)
         thread-history (thread->history thread bot-user-id)
         history        (into (vec thread-history) extra-history)
-        ;; Accumulate all text for final response.
-        ;; Using volatile! since callbacks are invoked sequentially from a single thread.
-        all-text    (volatile! (StringBuilder.))
         handle-line (fn [line]
                       (when-let [[type content] (metabot-v3.util/parse-aisdk-line line)]
                         (case type
                           :TEXT
-                          (do
-                            (.append ^StringBuilder @all-text content)
-                            (when (and on-text (seq content))
-                              (on-text content)))
+                          (when (and on-text (seq content))
+                            (on-text content))
 
                           :TOOL_CALL
                           (when on-tool-start
@@ -805,10 +795,8 @@
                          :history         history
                          :state           {}
                          :on-line         handle-line})]
-    ;; Parse all lines for the complete response
-    {:text       (str @all-text)
-     :data-parts (->> (metabot-v3.util/aisdk->messages :assistant lines)
-                      (filter #(= (:_type %) :DATA)))}))
+    (->> (metabot-v3.util/aisdk->messages :assistant lines)
+         (filter #(= (:_type %) :DATA)))))
 
 (defn- send-visualizations
   "Send visualization data-parts as separate Slack messages after the stream ends."
@@ -836,17 +824,28 @@
 
 (defn- make-streaming-callbacks
   "Create streaming callback functions and associated control functions.
+   Slack API writes are dispatched to a background agent so the AI stream reader is never
+   blocked by Slack I/O. The agent serializes writes to preserve ordering.
+
+   Text is coalesced via a shared `pending-text` atom: the callback thread appends text there,
+   and each agent action drains everything accumulated since the last write. This means multiple
+   flushes that pile up while a Slack API call is in flight get combined into a single append,
+   preventing the agent queue from falling further behind over time.
+
    Returns a map with:
    - `:on-text`, `:on-tool-start`, `:on-tool-end` — callbacks for [[make-streaming-ai-request]]
-   - `:flush-text!` — flush any buffered text to the stream
-   - `:stream-state` — volatile holding `{:stream_ts :channel}` once started, nil before"
+   - `:stream-state` — volatile holding `{:stream_ts :channel}` once started, nil before
+   - `:slack-writer` — agent; callers should `(await slack-writer)` before stopping the stream"
   [client {:keys [channel thread-ts team-id user-id]}]
   (let [stream-state      (volatile! nil)
         stream-attempted? (volatile! false)
         tool-id->name     (volatile! {})
-        text-buffer       (volatile! (StringBuilder.))
-        last-flush-timer  (volatile! (u/start-timer))
-        last-flushed      (volatile! "")
+        ;; Text awaiting write to Slack. Callback thread appends here; agent thread drains.
+        ;; An atom because it's shared across threads (callback thread writes, agent thread reads).
+        pending-text      (atom "")
+        slack-writer      (agent nil
+                                 :error-mode    :continue
+                                 :error-handler (fn [_ e] (log/warn e "[slackbot] Async Slack write failed")))
 
         ensure-stream! (fn []
                          (when-not @stream-attempted?
@@ -857,54 +856,61 @@
                                                                    :user_id   user-id})]
                              (vreset! stream-state stream))))
 
-        flush-text! (fn []
-                      (let [text (str @text-buffer)]
-                        (when (seq text)
-                          (ensure-stream!)
-                          (when-let [{:keys [stream_ts channel]} @stream-state]
-                            (append-markdown-text client channel stream_ts text)
-                            (vreset! last-flushed text)))
-                        (vreset! text-buffer (StringBuilder.))
-                        (vreset! last-flush-timer (u/start-timer))))
+        ;; Drain all accumulated text from pending-text and send to Slack in one call.
+        ;; Called from agent actions only.
+        drain-pending-text! (fn []
+                              (when-let [{:keys [stream_ts channel]} @stream-state]
+                                (let [[text] (reset-vals! pending-text "")]
+                                  (when (seq text)
+                                    (append-markdown-text client channel stream_ts text)))))
+
+        ;; Schedule an agent drain. Cheap to call frequently — if the agent is already busy,
+        ;; text just accumulates in pending-text and gets coalesced into the next drain.
+        request-flush! (fn []
+                         (ensure-stream!)
+                         (when @stream-state
+                           (send-off slack-writer (fn [_] (drain-pending-text!) nil))))
 
         on-text (fn [text]
                   (when (seq text)
-                    (.append ^StringBuilder @text-buffer text)
-                    (let [buffer-size (.length ^StringBuilder @text-buffer)
-                          elapsed-ms  (u/since-ms @last-flush-timer)]
-                      (when (or (>= buffer-size min-text-batch-size)
-                                (>= elapsed-ms text-batch-interval-ms))
-                        (flush-text!)))))
+                    (swap! pending-text str text)
+                    (when (>= (count @pending-text) min-text-batch-size)
+                      (request-flush!))))
 
         on-tool-start (fn [{:keys [id tool-name]}]
-                        (flush-text!)
-                        (ensure-stream!)
+                        (request-flush!)
                         (vswap! tool-id->name assoc id tool-name)
                         (when-let [{:keys [stream_ts channel]} @stream-state]
-                          (when (and (seq @last-flushed)
-                                     (not (str/ends-with? @last-flushed "\n")))
-                            (append-markdown-text client channel stream_ts "\n"))
-                          (append-stream client channel stream_ts
-                                         [{:type   "task_update"
-                                           :id     id
-                                           :title  (tool-name->friendly tool-name)
-                                           :status "in_progress"}])))
+                          (send-off slack-writer
+                                    (fn [_]
+                                      (drain-pending-text!)
+                                      (append-stream client channel stream_ts
+                                                     [{:type   "task_update"
+                                                       :id     id
+                                                       :title  (tool-name->friendly tool-name)
+                                                       :status "in_progress"}])
+                                      nil))))
 
         on-tool-end (fn [{:keys [id]}]
                       (when-let [{:keys [stream_ts channel]} @stream-state]
                         (let [tool-name (get @tool-id->name id)]
-                          (append-stream client channel stream_ts
-                                         [{:type   "task_update"
-                                           :id     id
-                                           :title  (tool-name->friendly tool-name)
-                                           :status "complete"}])
-                          (append-markdown-text client channel stream_ts "\n")))
+                          (send-off slack-writer
+                                    (fn [_]
+                                      (drain-pending-text!)
+                                      (append-stream client channel stream_ts
+                                                     [{:type   "task_update"
+                                                       :id     id
+                                                       :title  (tool-name->friendly tool-name)
+                                                       :status "complete"}])
+                                      (append-markdown-text client channel stream_ts "\n")
+                                      nil))))
                       (vswap! tool-id->name dissoc id))]
     {:on-text       on-text
      :on-tool-start on-tool-start
      :on-tool-end   on-tool-end
-     :flush-text!   flush-text!
-     :stream-state  stream-state}))
+     :request-flush! request-flush!
+     :stream-state  stream-state
+     :slack-writer  slack-writer}))
 
 (defn- send-streaming-metabot-response
   "Send a metabot response using Slack's streaming API for progressive updates.
@@ -922,23 +928,24 @@
          channel     (:channel message-ctx)
          thread-ts   (:thread_ts message-ctx)
 
-         {:keys [on-text on-tool-start on-tool-end flush-text! stream-state]}
+         {:keys [on-text on-tool-start on-tool-end request-flush! stream-state slack-writer]}
          (make-streaming-callbacks client {:channel   channel
                                            :thread-ts thread-ts
                                            :team-id   (:team_id auth-info)
                                            :user-id   (:user event)})]
      (try
-       (let [{:keys [data-parts]} (make-streaming-ai-request
-                                   (str (random-uuid))
-                                   prompt
-                                   thread
-                                   bot-user-id
-                                   channel-id
-                                   extra-history
-                                   {:on-text       on-text
-                                    :on-tool-start on-tool-start
-                                    :on-tool-end   on-tool-end})]
-         (flush-text!)
+       (let [data-parts (make-streaming-ai-request
+                         (str (random-uuid))
+                         prompt
+                         thread
+                         bot-user-id
+                         channel-id
+                         extra-history
+                         {:on-text       on-text
+                          :on-tool-start on-tool-start
+                          :on-tool-end   on-tool-end})]
+         (request-flush!)
+         (await slack-writer)
          (if-let [{:keys [stream_ts channel]} @stream-state]
            (do
              (stop-stream client channel stream_ts)
@@ -946,6 +953,7 @@
            (post-message client (merge message-ctx {:text "I wasn't able to generate a response. Please try again."}))))
        (catch Exception e
          (log/error e "[slackbot] Error in streaming response")
+         (await slack-writer)
          (if-let [{:keys [stream_ts channel]} @stream-state]
            (try
              (append-markdown-text client channel stream_ts
