@@ -110,7 +110,11 @@
    [{:role "user" :content rendered-prompt}]
    questions-json-schema
    temperature
-   300))
+   300
+   {:request-id (str (random-uuid))
+    ;; example_question_generation_batch was the name of the old ai-service api endpoint
+    :source     "example_question_generation_batch"
+    :tag        "example-question-generation"}))
 
 ;;; Per-item generation (mirrors Python generate_table_example_questions / generate_metric_example_questions)
 

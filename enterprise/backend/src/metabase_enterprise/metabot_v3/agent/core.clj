@@ -13,6 +13,7 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
+   [metabase.util.malli.schema :as ms]
    [metabase.util.o11y :refer [with-span]]))
 
 (set! *warn-on-reflection* true)
@@ -186,9 +187,9 @@
 
   Builds AISDK parts from memory and passes them to the adapter which converts
   them to its native wire format."
-  [memory context profile tools iteration]
-  (let [model      (:model profile)
-        system-msg (messages/build-system-message context profile tools)
+  [memory context profile tools iteration tracking-opts]
+  (let [model       (:model profile)
+        system-msg  (messages/build-system-message context profile tools)
         input-parts (messages/build-message-history memory)]
     (when *debug-log*
       (debug-log! {:iteration iteration
@@ -199,7 +200,7 @@
                    :tools     (mapv (fn [[name _]] name) tools)}))
     (eduction (streaming/post-process-xf (get-in memory [:state :queries] {})
                                          (get-in memory [:state :charts] {}))
-              (self/call-llm model "agent" (:content system-msg) input-parts tools))))
+              (self/call-llm model "agent" (:content system-msg) input-parts tools tracking-opts))))
 
 ;;; Memory management
 
@@ -289,7 +290,7 @@
 
 (defn- init-agent
   "Initialize agent state."
-  [{:keys [messages state profile-id context]}]
+  [{:keys [messages state profile-id context conversation-id]}]
   (let [context      (assign-context-ids context)
         profile      (or (profiles/get-profile profile-id)
                          (throw (ex-info "Unknown profile" {:profile-id profile-id})))
@@ -307,10 +308,12 @@
                                 :tools    (count tools)
                                 :max-iter (:max-iterations profile)
                                 :msgs     (count messages)})
-    {:profile     profile
-     :tools       tools
-     :context     context
-     :memory-atom memory-atom}))
+    {:profile         profile
+     :tools           tools
+     :context         context
+     :memory-atom     memory-atom
+     :request-id      (str (random-uuid))
+     :conversation-id conversation-id}))
 
 (defn- initial-loop-state
   "Create initial loop state from agent config and reduction context."
@@ -349,10 +352,15 @@
   [{:keys [agent rf result iteration usage-atom] :as loop-state}]
   (with-span :debug {:name      :metabot-v3.agent/loop-step
                      :iteration iteration}
-    (let [{:keys [profile tools context memory-atom]} agent
-          max-iter   (:max-iterations profile 10)
-          parts-atom (atom [])
-          llm-call   (call-llm @memory-atom context profile tools iteration)
+    (let [{:keys [profile tools context memory-atom request-id conversation-id]} agent
+          max-iter      (:max-iterations profile 10)
+          tracking-opts {:profile-name    (:name profile)
+                         :request-id      request-id
+                         :session-id      conversation-id
+                         :source          "metabot_agent"
+                         :tag             "agent"}
+          parts-atom    (atom [])
+          llm-call      (call-llm @memory-atom context profile tools iteration tracking-opts)
           xf         (comp (accumulate-usage-xf usage-atom)
                            (u/tee-xf parts-atom))
           ;; We use `reduce` instead of `transduce` because rf is the outer reducing
@@ -417,6 +425,7 @@
             [:profile-id ::profile-id]
             [:state {:optional true} [:maybe ::state]]
             [:context {:optional true} [:maybe ::context]]
+            [:conversation-id {:optional true} [:maybe ms/UUIDString]]
             [:debug? {:optional true} [:maybe :boolean]]]]
   (let [profile-id (:profile-id opts)
         debug?     (:debug? opts)

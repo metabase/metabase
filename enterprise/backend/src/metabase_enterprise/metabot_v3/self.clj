@@ -10,12 +10,17 @@
   TODO:
   - figure out what's lacking compared to ai-service"
   (:require
+   [buddy.core.codecs :as codecs]
+   [buddy.core.hash :as buddy-hash]
    [clojure.string :as str]
    [metabase-enterprise.metabot-v3.self.claude :as claude]
    [metabase-enterprise.metabot-v3.self.core :as core]
    [metabase-enterprise.metabot-v3.self.openai :as openai]
    [metabase-enterprise.metabot-v3.self.openrouter :as openrouter]
+   [metabase.analytics.core :as analytics]
    [metabase.analytics.prometheus :as prometheus]
+   [metabase.api.common :as api]
+   [metabase.premium-features.core :as premium-features]
    [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.o11y :refer [with-span]]))
@@ -121,20 +126,44 @@
                              :error-type "llm-sse-error"}))
          part)))
 
+(defn- hashed-license-token
+  "Returns the SHA-256 hex hash of the premium embedding token."
+  []
+  (-> (premium-features/premium-embedding-token)
+      buddy-hash/sha256
+      codecs/bytes->hex))
+
 (defn- report-token-usage-xf
-  "Transducer that reports prometheus metrics for :usage parts in the aisdk stream."
-  [model source]
-  (map (fn [part]
-         (when (= (:type part) :usage)
-           (let [usage      (:usage part)
-                 part-model (or (:model part) model)
-                 labels     {:model part-model :source source}
-                 prompt     (:promptTokens usage 0)
-                 completion (:completionTokens usage 0)]
-             (prometheus/inc! :metabase-metabot/llm-input-tokens labels prompt)
-             (prometheus/inc! :metabase-metabot/llm-output-tokens labels completion)
-             (prometheus/observe! :metabase-metabot/llm-tokens-per-call labels (+ prompt completion))))
-         part)))
+  "Transducer that reports prometheus metrics and snowplow token_usage event
+  for :usage parts in the aisdk stream."
+  [model source tracking-opts]
+  (let [start-ms (u/start-timer)]
+    (map (fn [part]
+           (when (= (:type part) :usage)
+             (let [usage      (:usage part)
+                   part-model (or (:model part) model)
+                   labels     {:model part-model :source source}
+                   prompt     (:promptTokens usage 0)
+                   completion (:completionTokens usage 0)]
+               (prometheus/inc! :metabase-metabot/llm-input-tokens labels prompt)
+               (prometheus/inc! :metabase-metabot/llm-output-tokens labels completion)
+               (prometheus/observe! :metabase-metabot/llm-tokens-per-call labels (+ prompt completion))
+               (when (seq tracking-opts)
+                 (analytics/track-event! :snowplow/token_usage
+                                         {:hashed_metabase_license_token (hashed-license-token)
+                                          :user_id                       api/*current-user-id*
+                                          :model_id                      part-model
+                                          :duration_ms                   (long (u/since-ms start-ms))
+                                          :total_tokens                  (+ prompt completion)
+                                          :prompt_tokens                 prompt
+                                          :completion_tokens             completion
+                                          :estimated_costs_usd           0.0
+                                          :profile                       (:profile-name tracking-opts)
+                                          :request_id                    (:request-id tracking-opts)
+                                          :session_id                    (:session-id tracking-opts)
+                                          :source                        (:source tracking-opts)
+                                          :tag                           (:tag tracking-opts)}))))
+           part))))
 
 (defn- with-retries
   "Execute `(thunk)` with retry logic for transient LLM errors.
@@ -179,11 +208,19 @@
   and user messages (`{:role :user, :content ...}`).  Each adapter converts
   these into its own wire format.
 
+  `tracking-opts` is an optional map with analytics context. When non-empty,
+  fires a `:snowplow/token_usage` event for each `:usage` part in the stream:
+    - `:profile-name` — keyword profile identifier (e.g. `:internal`)
+    - `:request-id`   — UUID string for this agent request
+    - `:session-id`   — conversation UUID string
+    - `:source`       — string source label (default \"metabot_agent\")
+    - `:tag`          — string tag (e.g. \"agent\", \"sql-generation\")
+
   Returns a reducible that, when consumed, traces the full LLM round-trip
   (HTTP call + streaming response) as an OTel span. Retries transient errors
   (429 rate limit, 529 overloaded, connection errors) up to 3 attempts with
   exponential backoff, matching the Python ai-service retry behavior."
-  [provider-and-model source system-msg parts tools]
+  [provider-and-model source system-msg parts tools tracking-opts]
   (let [{:keys [provider stream-fn model]} (parse-provider-model provider-and-model)]
     (log/info "Calling LLM" {:provider provider :model model :parts (count parts) :tools (count tools)})
     (let [opts (cond-> {:model model :input parts :tools (vec tools)}
@@ -192,7 +229,7 @@
                         (eduction (comp (core/tool-executor-xf tools)
                                         (core/lite-aisdk-xf)
                                         (report-aisdk-errors-xf model source)
-                                        (report-token-usage-xf model source))
+                                        (report-token-usage-xf model source tracking-opts))
                                   (stream-fn opts)))]
       (reify clojure.lang.IReduceInit
         (reduce [_ rf init]
@@ -221,7 +258,7 @@
     max-tokens  - Maximum tokens in the response
 
   Returns the parsed JSON map from the forced tool call."
-  [provider-and-model source messages json-schema temperature max-tokens]
+  [provider-and-model source messages json-schema temperature max-tokens tracking-opts]
   (let [{:keys [provider stream-fn model]} (parse-provider-model provider-and-model)
         _ (log/info "Calling LLM (structured)" {:provider provider :model model :msg-count (count messages)})
         raw-tools   [{:type     "function"
@@ -243,7 +280,7 @@
           (let [parts (into []
                             (comp (core/aisdk-xf)
                                   (report-aisdk-errors-xf model source)
-                                  (report-token-usage-xf model source))
+                                  (report-token-usage-xf model source tracking-opts))
                             (stream-fn opts))
                 result (some (fn [{:keys [type arguments]}]
                                (when (= type :tool-input)

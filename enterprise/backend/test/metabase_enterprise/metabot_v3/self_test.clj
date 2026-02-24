@@ -534,7 +534,7 @@
       (let [labels {:model "test-model" :source "agent"}]
         (testing "increments llm-requests and observes duration on success"
           (with-redefs [openrouter/openrouter (constantly (test-util/mock-llm-response [{:type :start :id "m1"}]))]
-            (run! identity (self/call-llm "openrouter/test-model" "agent" nil [] {})))
+            (run! identity (self/call-llm "openrouter/test-model" "agent" nil [] {} {})))
           (is (== 1 (mt/metric-value system :metabase-metabot/llm-requests labels)))
           (is (== 0 (mt/metric-value system :metabase-metabot/llm-retries labels)))
           (is (== 0 (mt/metric-value system :metabase-metabot/llm-errors
@@ -555,7 +555,7 @@
                                   (if (< (swap! calls inc) 3)
                                     (throw (ex-info "rate limited" {:status 429}))
                                     (reduce rf init (test-util/mock-llm-response [{:type :start :id "m1"}]))))))]
-                (run! identity (self/call-llm "openrouter/test-model" "agent" nil [] {}))))
+                (run! identity (self/call-llm "openrouter/test-model" "agent" nil [] {} {}))))
             (is (== 3 (mt/metric-value system :metabase-metabot/llm-requests labels)))
             (is (== 2 (mt/metric-value system :metabase-metabot/llm-retries labels)))
             (is (== 0 (mt/metric-value system :metabase-metabot/llm-errors
@@ -572,7 +572,7 @@
                           (reify clojure.lang.IReduceInit
                             (reduce [_ _rf _init]
                               (throw (ex-info "unauthorized" {:status 401})))))]
-            (is (thrown? Exception (run! identity (self/call-llm "openrouter/test-model" "agent" nil [] {})))))
+            (is (thrown? Exception (run! identity (self/call-llm "openrouter/test-model" "agent" nil [] {} {})))))
           (is (== 1 (mt/metric-value system :metabase-metabot/llm-requests labels)))
           (is (== 0 (mt/metric-value system :metabase-metabot/llm-retries labels)))
           (is (== 1 (mt/metric-value system :metabase-metabot/llm-errors
@@ -586,7 +586,7 @@
         (testing "increments llm-errors with :error-type llm-sse-error on inline SSE errors"
           (with-redefs [openrouter/openrouter
                         (constantly (test-util/mock-llm-response [{:type :error :errorText "content policy violation"}]))]
-            (run! identity (self/call-llm "openrouter/test-model" "agent" nil [] {})))
+            (run! identity (self/call-llm "openrouter/test-model" "agent" nil [] {} {})))
           (is (== 1 (mt/metric-value system :metabase-metabot/llm-requests labels)))
           (is (== 1 (mt/metric-value system :metabase-metabot/llm-errors
                                      (assoc labels :error-type "llm-sse-error")))))
@@ -599,7 +599,7 @@
                                       {:type  :usage
                                        :usage {:promptTokens 100 :completionTokens 25}
                                        :model "test-model"}]))]
-            (run! identity (self/call-llm "openrouter/test-model" "agent" nil [] {})))
+            (run! identity (self/call-llm "openrouter/test-model" "agent" nil [] {} {})))
           (is (== 100 (mt/metric-value system :metabase-metabot/llm-input-tokens labels)))
           (is (==  25 (mt/metric-value system :metabase-metabot/llm-output-tokens labels)))
           (is (== 125 (:sum (mt/metric-value system :metabase-metabot/llm-tokens-per-call labels)))))))))
