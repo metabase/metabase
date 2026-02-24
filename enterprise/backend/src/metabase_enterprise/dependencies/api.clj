@@ -1340,23 +1340,42 @@
          :extra-tables      (into {} (map (fn [t] [(:id t) t]) readable-extra-tables))
          :extra-field->table (into {} (map (fn [f] [(:id f) (:table_id f)]) all-extra-fields))}))))
 
+(defn- determine-relationship
+  "Determine the cardinality relationship between source and target fields.
+   - many-to-one (*:1): Source FK points to target PK (most common)
+   - one-to-one (1:1): Source field is also a PK (unique), target is PK
+   - one-to-many (1:*): Source is PK, target is not PK (rare)
+   - many-to-many (*:*): Neither has PK constraint (rare, usually via junction table)"
+  [source-field target-field]
+  (let [source-is-pk (:database_is_pk source-field)
+        target-is-pk (:database_is_pk target-field)]
+    (cond
+      (and source-is-pk target-is-pk) "one-to-one"
+      (and source-is-pk (not target-is-pk)) "one-to-many"
+      (and (not source-is-pk) target-is-pk) "many-to-one"
+      :else "many-to-many")))
+
 (defn- build-erd-edges
   "Build ERD edges from fields, filtered to only include edges between visible tables."
   [fields field->table visible-table-ids]
-  (->> fields
-       (filter :fk_target_field_id)
-       (keep (fn [field]
-               (let [target-table (field->table (:fk_target_field_id field))]
-                 (when (and target-table
-                            (contains? visible-table-ids (:table_id field))
-                            (contains? visible-table-ids target-table))
-                   {:source_table_id (:table_id field)
-                    :source_field_id (:id field)
-                    :target_table_id target-table
-                    :target_field_id (:fk_target_field_id field)
-                    :relationship    "many-to-one"}))))
-       distinct
-       vec))
+  (let [field-by-id (into {} (map (fn [f] [(:id f) f]) fields))]
+    (->> fields
+         (filter :fk_target_field_id)
+         (keep (fn [field]
+                 (let [target-field-id (:fk_target_field_id field)
+                       target-table (field->table target-field-id)
+                       target-field (field-by-id target-field-id)]
+                   (when (and target-table
+                              target-field
+                              (contains? visible-table-ids (:table_id field))
+                              (contains? visible-table-ids target-table))
+                     {:source_table_id (:table_id field)
+                      :source_field_id (:id field)
+                      :target_table_id target-table
+                      :target_field_id target-field-id
+                      :relationship    (determine-relationship field target-field)}))))
+         distinct
+         vec)))
 
 (defn- build-erd-for-tables
   "Build ERD for specific tables by their IDs within a database/schema."

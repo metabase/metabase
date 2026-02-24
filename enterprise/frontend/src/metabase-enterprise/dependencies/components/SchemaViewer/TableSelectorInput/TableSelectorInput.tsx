@@ -1,6 +1,6 @@
-import { useClickOutside, useDisclosure } from "@mantine/hooks";
+import { useClickOutside } from "@mantine/hooks";
 import { useReactFlow } from "@xyflow/react";
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
 import { t } from "ttag";
 
 import {
@@ -39,12 +39,33 @@ export function TableSelectorInput({
   onSelectionChange,
 }: TableSelectorInputProps) {
   const { fitView } = useReactFlow();
-  const [opened, { close, toggle }] = useDisclosure(false);
+  const [opened, setOpened] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
+
+  // Snapshot of selected IDs when dropdown opened - used for stable sorting
+  const sortSnapshotRef = useRef<Set<ConcreteTableId>>(new Set());
+
+  const handleOpen = useCallback(() => {
+    sortSnapshotRef.current = new Set(selectedTableIds);
+    setOpened(true);
+  }, [selectedTableIds]);
+
+  const handleClose = useCallback(() => {
+    setSearchQuery("");
+    setOpened(false);
+  }, []);
+
+  const handlePopoverToggle = useCallback(() => {
+    if (opened) {
+      handleClose();
+    } else {
+      handleOpen();
+    }
+  }, [opened, handleClose, handleOpen]);
+
   const clickOutsideRef = useClickOutside(() => {
     if (opened) {
-      setSearchQuery("");
-      close();
+      handleClose();
     }
   });
 
@@ -72,10 +93,11 @@ export function TableSelectorInput({
           table.name.toLowerCase().includes(query),
       );
     }
-    // Sort selected tables to the top
+    // Sort selected tables to the top using the snapshot from when dropdown opened
+    const sortSet = opened ? sortSnapshotRef.current : selectedTableIdSet;
     return [...tables].sort((a, b) => {
-      const aSelected = selectedTableIdSet.has(a.id as ConcreteTableId);
-      const bSelected = selectedTableIdSet.has(b.id as ConcreteTableId);
+      const aSelected = sortSet.has(a.id as ConcreteTableId);
+      const bSelected = sortSet.has(b.id as ConcreteTableId);
       if (aSelected && !bSelected) {
         return -1;
       }
@@ -84,7 +106,7 @@ export function TableSelectorInput({
       }
       return 0;
     });
-  }, [allTables, searchQuery, selectedTableIdSet]);
+  }, [allTables, searchQuery, selectedTableIdSet, opened]);
 
   const handleFocus = useCallback(
     (tableId: ConcreteTableId) => {
@@ -118,11 +140,6 @@ export function TableSelectorInput({
     [allTables, onSelectionChange],
   );
 
-  const handleClose = () => {
-    setSearchQuery("");
-    close();
-  };
-
   if (allTables.length === 0) {
     return null;
   }
@@ -149,7 +166,7 @@ export function TableSelectorInput({
             leftSection={<FixedSizeIcon name="table" />}
             rightSection={<FixedSizeIcon name="chevrondown" />}
             data-testid="table-selector-button"
-            onClick={toggle}
+            onClick={handlePopoverToggle}
           >
             {isUserModified
               ? t`${selectedCount} tables selected`

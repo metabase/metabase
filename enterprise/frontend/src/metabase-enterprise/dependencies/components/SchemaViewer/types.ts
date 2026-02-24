@@ -7,4 +7,9 @@ export type SchemaViewerNodeData = ErdNode & {
   [key: string]: unknown;
 };
 export type SchemaViewerFlowNode = Node<SchemaViewerNodeData>;
-export type SchemaViewerFlowEdge = Edge;
+
+export type SchemaViewerEdgeData = {
+  relationship: string;
+  [key: string]: unknown;
+};
+export type SchemaViewerFlowEdge = Edge<SchemaViewerEdgeData>;

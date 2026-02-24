@@ -1,0 +1,26 @@
+.cardinalityLabel {
+  position: absolute;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: var(--mb-color-background-primary);
+  border: 1px solid var(--mb-color-border);
+  border-radius: 4px;
+  padding: 2px 6px;
+  font-size: 0.625rem;
+  font-weight: 600;
+  line-height: 1;
+  color: var(--mb-color-text-secondary);
+  pointer-events: none;
+  white-space: nowrap;
+}
+
+.asterisk {
+  position: relative;
+  transform: translateY(0.25rem);
+  font-size: 1.25rem;
+}
+
+.colon {
+  margin: 0 1px;
+}

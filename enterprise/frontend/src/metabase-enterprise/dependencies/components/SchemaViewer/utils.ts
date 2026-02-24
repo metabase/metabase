@@ -77,6 +77,9 @@ function toFlowEdge(
       : `field-${edge.target_field_id}`,
     type: "schemaViewerEdge",
     markerEnd,
+    data: {
+      relationship: edge.relationship,
+    },
   };
 }
 
