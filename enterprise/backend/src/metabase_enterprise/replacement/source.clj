@@ -149,6 +149,7 @@
           success?       (not (or db-mismatch? cycle? has-missing? has-col-errors?))
           ;; Only report :cycle-detected in top-level errors
           reported-errors (cond-> []
+                            db-mismatch? (conj :database-mismatch)
                             cycle? (conj :cycle-detected))]
       (cond-> {:success success?}
         (seq reported-errors) (assoc :errors reported-errors)

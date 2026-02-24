@@ -296,7 +296,8 @@
 
 (defmethod lib.temporal-bucket/with-temporal-bucket-method :metadata/column
   [metadata unit]
-  (let [original-effective-type ((some-fn ::original-effective-type :effective-type :base-type) metadata)]
+  (let [original-effective-type (some-> ((some-fn ::original-effective-type :effective-type :base-type) metadata)
+                                        keyword)]
     (if unit
       (-> metadata
           (assoc ::temporal-unit unit)
