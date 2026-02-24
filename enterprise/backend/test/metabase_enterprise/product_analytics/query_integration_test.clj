@@ -158,20 +158,6 @@
               (is (some #(re-find #"(?i)per" %) card-names)
                   "Dashboard should have at least one 'per category' card"))))))))
 
-(deftest xray-events-funnel-template-test
-  (testing "X-ray for V_PA_EVENTS includes FunnelFlows as an in-depth related template"
-    (pa.tu/with-pa-db-cleanup
-      (mt/with-premium-features #{:product-analytics}
-        (pa.setup/ensure-product-analytics-db-installed!)
-        (mt/with-test-user :crowberto
-          (let [events-table (t2/select-one :model/Table :db_id pa/product-analytics-db-id :name "V_PA_EVENTS")
-                dashboard    (magic/automagic-analysis events-table {:show :all})
-                related      (:related dashboard)
-                zoom-in-urls (set (keep :url (:zoom-in related)))]
-            (testing "FunnelFlows template is available in zoom-in related section"
-              (is (some #(re-find #"FunnelFlows" %) zoom-in-urls)
-                  "Related zoom-in should include the FunnelFlows sub-template"))))))))
-
 (deftest xray-sessions-visitors-template-test
   (testing "X-ray for V_PA_SESSIONS includes VisitorsAndLocations as an in-depth related template"
     (pa.tu/with-pa-db-cleanup

@@ -18,14 +18,6 @@ export function ProductAnalyticsNavItem() {
           {t`Web Analytics`}
         </PaddedSidebarLink>
       )}
-      {eventsTableId && (
-        <PaddedSidebarLink
-          icon="funnel"
-          url={`/auto/dashboard/table/${eventsTableId}/rule/EventTable/FunnelFlows`}
-        >
-          {t`Funnel Flows`}
-        </PaddedSidebarLink>
-      )}
       {sessionsTableId && (
         <PaddedSidebarLink
           icon="location"
