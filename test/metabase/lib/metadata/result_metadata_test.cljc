@@ -26,7 +26,7 @@
   (testing "make sure columns are comming back the way we'd expect for :field clauses"
     (lib.tu.macros/$ids venues
       (is (=? [{::result-metadata/source    :fields
-                ::result-metadata/field-ref $price}]
+                ::result-metadata/field-ref [:field "PRICE" nil]}]
               (column-info
                (lib/query meta/metadata-provider (lib.tu.macros/mbql-query venues {:fields [$price]}))
                {:columns [:price], :cols [{}]}))))))
@@ -37,7 +37,7 @@
                   "info about the source Field")
       (is (=? [{:fk-field-id                %category-id
                 ::result-metadata/source    :fields
-                ::result-metadata/field-ref $category-id->categories.name
+                ::result-metadata/field-ref [:field "NAME" {:source-field (meta/id :venues :category-id)}]
                 ;; for whatever reason this is what the `annotate` middleware traditionally returns here, for
                 ;; some reason we use the `:long` style inside aggregations and the `:default` style elsewhere
                 ;; who knows why. See notes
