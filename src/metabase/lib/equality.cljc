@@ -395,7 +395,7 @@ are known to be the same."
      ;;
      ;; TODO (Cam 6/26/25) -- we should first try this using just the `:lib/join-alias` (join alias from
      ;; this stage) and only then fall back to using `:lib/original-alias` and what not
-     (when-let [matches (not-empty (filter #(clojure.core/= (column-join-alias %) join-alias) columns))]
+     (when-let [matches (not-empty (filter #(matching-join? a-ref %) columns))]
        (if-not (next matches)
          (first matches)
          ;; if there wasn't exactly 1 match then log a warning only if we had a join alias in the first place. Then

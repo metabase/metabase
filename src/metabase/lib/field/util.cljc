@@ -17,7 +17,7 @@
               [:lib/source {:optional true} [:maybe ::lib.schema.metadata/column.source]]]]
   (some? (#{:source/card :source/native :source/previous-stage} (:lib/source column))))
 
-(mu/defn inherited-column-name :- [:maybe :string]
+(mu/defn column-metadata->field-ref-name :- [:maybe :string]
   "If the field ref for this `column` should be name-based, returns the name used in the field ref.
 
   `column` SHOULD BE METADATA RELATIVE TO THE CURRENT STAGE WHERE YOU ARE ADDING THE REF!!!!!!
@@ -29,16 +29,15 @@
   which should be the same as the `:lib/desired-column-alias` the previous stage or (last stage of the) join that it
   came from."
   [column :- ::lib.schema.metadata/column]
-  (when (inherited-column? column)
-    ((some-fn
+  ((some-fn
       ;; broken field refs never use `:lib/source-column-alias`.
-      (case lib.ref/*ref-style*
-        :ref.style/default                  :lib/source-column-alias
-        :ref.style/broken-legacy-qp-results (constantly nil))
+    (case lib.ref/*ref-style*
+      :ref.style/default                  :lib/source-column-alias
+      :ref.style/broken-legacy-qp-results (constantly nil))
       ;; if this is missing for some reason then fall back to `:name` -- probably wrong, but maybe not and it might
       ;; still work.
-      :name)
-     column)))
+    :name)
+   column))
 
 (mu/defn add-deduplicated-names :- [:or
                                     ;; zero-arity: transducer
