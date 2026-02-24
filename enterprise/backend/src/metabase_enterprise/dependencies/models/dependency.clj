@@ -8,6 +8,7 @@
    [metabase.util :as u]
    [metabase.util.malli :as mu]
    [methodical.core :as methodical]
+   [potemkin :as p]
    [toucan2.core :as t2]))
 
 (def current-dependency-analysis-version
@@ -99,7 +100,7 @@
      :destination-filter-fn destination-filter-fn
      :source-filter-fn      source-filter-fn})))
 
-(deftype DependencyGraph [children-fn]
+(p/deftype+ DependencyGraph [children-fn]
   graph/Graph
   (children-of [_this key-seq]
     (children-fn key-seq)))
