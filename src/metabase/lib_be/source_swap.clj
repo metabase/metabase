@@ -1,6 +1,7 @@
 (ns metabase.lib-be.source-swap
   (:require
    [metabase.lib.equality :as lib.equality]
+   [metabase.lib.expression :as lib.expression]
    [metabase.lib.field :as lib.field]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
    [metabase.lib.order-by :as lib.order-by]
@@ -35,7 +36,7 @@
         (let [column (cond-> column (:lib/card-id column) (dissoc :id))
               expression-name (lib.util/expression-name field-ref)]
           (cond-> (lib.ref/ref column)
-            expression-name (lib.expression/with-expression-name % expression-name))))
+            expression-name (lib.expression/with-expression-name expression-name))))
       field-ref))
 
 (mu/defn- upgrade-field-refs-in-clauses :- [:sequential :any]
@@ -91,11 +92,14 @@
   [query  :- ::lib.schema/query
    target :- ::lib.schema.parameter/target]
   (or (when (lib.parameters/parameter-target-field-ref target)
-        (let [opts         (lib.parameters/parameter-target-dimension-options target)
-              stage-number (or (:stage-number opts) -1)]
-          (when (and (>= stage-number -1) (< stage-number (lib.query/stage-count query)))
-            (let [columns (lib.metadata.calculation/visible-columns query stage-number)]
+        (let [stage-number (lib.parameters/parameter-target-stage-number target)
+              stage-count  (lib.query/stage-count query)
+              abs-stage    (if (neg? stage-number)
+                             (+ stage-count stage-number)
+                             stage-number)]
+          (when (and (>= abs-stage 0) (< abs-stage stage-count))
+            (let [columns (lib.metadata.calculation/visible-columns query abs-stage)]
               (lib.parameters/update-parameter-target-field-ref
                target
-               #(upgrade-field-ref query stage-number % columns))))))
+               #(upgrade-field-ref query abs-stage % columns))))))
       target))

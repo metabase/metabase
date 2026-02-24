@@ -4,6 +4,7 @@
    [clojure.data :as data]
    [clojure.set :as set]
    [metabase.lib.core :as lib]
+   [metabase.lib.parameters :as lib.parameters]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.id :as lib.schema.id]
@@ -48,19 +49,15 @@
 
 (mu/defn- parameter->stage-number :- :int
   "The stage number that this parameter should be applied to. This is derived from the `:stage-number` specified in the
-  parameter `:target`, defaulting to `0`. Note that this `:stage-number` is relative to the stages in the query BEFORE
+  parameter `:target`, defaulting to `-1` (last stage). Note that this `:stage-number` is relative to the stages in the query BEFORE
   stages were appended by preprocessing, so if a parameter specifies `:stage-number` 1 and the the first stage (stage 0)
   has a `:source-card` that gets expanded to three replacement stages (i.e., 2 additional stages prepended to `:stages`
   before the original first stage) then the actual stage number we need to apply the parameter is `3` (1 offset by
   the [[num-stages-prepended-by-preprocessing]])."
   [query     :- ::lib.schema/query
    parameter :- ::lib.schema.parameter/parameter]
-  (let [stage-number (or (-> parameter
-                             :target
-                             lib/->pMBQL
-                             lib/options
-                             :stage-number)
-                         0)]
+  (let [stage-number (lib.parameters/parameter-target-stage-number
+                      (lib/->pMBQL (:target parameter)))]
     (if (not (neg? stage-number))
       ;; for a non-negative stage number add the offset to it as mentioned above
       (+ stage-number (num-stages-prepended-by-preprocessing query))
