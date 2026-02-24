@@ -10,7 +10,6 @@ import {
   DEFAULT_TEST_QUERY,
   SAMPLE_PROVIDER,
   columnFinder,
-  findAggregationOperator,
 } from "metabase-lib/test-helpers";
 import Question from "metabase-lib/v1/Question";
 import type { CardType } from "metabase-types/api";
@@ -24,6 +23,21 @@ import {
 import { DEFAULT_QUESTION, createMockNotebookStep } from "../../../test-utils";
 
 import { type SetupOpts, setup as baseSetup } from "./setup";
+
+const findAggregationOperator = (
+  query: Lib.Query,
+  operatorShortName: string,
+) => {
+  const operators = Lib.availableAggregationOperators(query, 0);
+  const operator = operators.find(
+    (operator) =>
+      Lib.displayInfo(query, 0, operator).shortName === operatorShortName,
+  );
+  if (!operator) {
+    throw new Error(`Could not find aggregation operator ${operatorShortName}`);
+  }
+  return operator;
+};
 
 const createQueryWithFields = (columnNames: string[]) => {
   return Lib.createTestQuery(SAMPLE_PROVIDER, {

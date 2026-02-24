@@ -5,8 +5,26 @@ import {
   DEFAULT_TEST_QUERY,
   SAMPLE_PROVIDER,
   columnFinder,
-  findTemporalBucket,
 } from "./test-helpers";
+
+const findTemporalBucket = (
+  query: Lib.Query,
+  column: Lib.ColumnMetadata,
+  bucketName: string,
+) => {
+  if (bucketName === "Don't bin") {
+    return null;
+  }
+
+  const buckets = Lib.availableTemporalBuckets(query, 0, column);
+  const bucket = buckets.find(
+    (bucket) => Lib.displayInfo(query, 0, bucket).displayName === bucketName,
+  );
+  if (!bucket) {
+    throw new Error(`Could not find temporal bucket ${bucketName}`);
+  }
+  return bucket;
+};
 
 describe("breakout", () => {
   describe("add breakout", () => {

@@ -68,52 +68,6 @@ export const columnFinder =
     return column;
   };
 
-export const findTemporalBucket = (
-  query: Lib.Query,
-  column: Lib.ColumnMetadata,
-  bucketName: string,
-) => {
-  if (bucketName === "Don't bin") {
-    return null;
-  }
-
-  const buckets = Lib.availableTemporalBuckets(query, 0, column);
-  const bucket = buckets.find(
-    (bucket) => Lib.displayInfo(query, 0, bucket).displayName === bucketName,
-  );
-  if (!bucket) {
-    throw new Error(`Could not find temporal bucket ${bucketName}`);
-  }
-  return bucket;
-};
-
-export const findAggregationOperator = (
-  query: Lib.Query,
-  operatorShortName: string,
-) => {
-  const operators = Lib.availableAggregationOperators(query, 0);
-  const operator = operators.find(
-    (operator) =>
-      Lib.displayInfo(query, 0, operator).shortName === operatorShortName,
-  );
-  if (!operator) {
-    throw new Error(`Could not find aggregation operator ${operatorShortName}`);
-  }
-  return operator;
-};
-
-export const findSegment = (query: Lib.Query, segmentName: string) => {
-  const stageIndex = 0;
-  const segment = Lib.availableSegments(query, stageIndex).find(
-    (segment) =>
-      Lib.displayInfo(query, stageIndex, segment).displayName === segmentName,
-  );
-  if (!segment) {
-    throw new Error(`Could not find segment ${segmentName}`);
-  }
-  return segment;
-};
-
 export interface ExpressionClauseOpts {
   name: string;
   operator: Lib.ExpressionOperator;
