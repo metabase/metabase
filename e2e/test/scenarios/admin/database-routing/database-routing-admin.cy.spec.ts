@@ -683,10 +683,7 @@ function assertDbRoutingDisabled() {
   // from appearing. cy.trigger() dispatches the event directly on the Box
   // wrapper, bypassing Chrome's hit-testing.
   dbRoutingSection()
-    .find("#database-routing-toggle")
-    .parent()
-    .parent()
-    .parent()
+    .findByTestId("database-routing-toggle-wrapper")
     .trigger("mouseenter");
   H.tooltip()
     .findByText(/Database routing can't be enabled if/)
