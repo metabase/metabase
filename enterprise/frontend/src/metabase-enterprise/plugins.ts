@@ -75,6 +75,7 @@ export function initializePlugins() {
   initializeSmtpOverride();
   initializeSharing();
   initializeModeration();
+  initializeProductAnalytics();
   initializeAdvancedPermissions();
   initializeAiSqlFixer();
   initializeAiEntityAnalysis();

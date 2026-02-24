@@ -7,7 +7,6 @@
    [metabase.api.common :as api]
    [metabase.app-db.core :as mdb]
    [metabase.audit-app.core :as audit]
-   [metabase.product-analytics.core :as pa]
    [metabase.driver :as driver]
    [metabase.driver.connection :as driver.conn]
    [metabase.driver.impl :as driver.impl]
@@ -18,6 +17,7 @@
    [metabase.models.serialization :as serdes]
    [metabase.permissions.core :as perms]
    [metabase.premium-features.core :as premium-features :refer [defenterprise]]
+   [metabase.product-analytics.core :as pa]
    ;; Trying to use metabase.search would cause a circular reference ;_;
    [metabase.search.spec :as search.spec]
    [metabase.secrets.core :as secret]
@@ -111,7 +111,7 @@
   ([_model database-id]
    (cond
      (should-read-audit-db? database-id) false
-     (should-read-pa-db? database-id)    false
+     (should-read-pa-db? database-id)    true
      (db-id->router-db-id database-id) (mi/can-read? :model/Database (db-id->router-db-id database-id))
      :else (or
             ;; Has query builder access
@@ -144,7 +144,7 @@
   ([_model database-id]
    (cond
      (should-read-audit-db? database-id) false
-     (should-read-pa-db? database-id)    false
+     (should-read-pa-db? database-id)    true
      (db-id->router-db-id database-id) (mi/can-query? :model/Database (db-id->router-db-id database-id))
      :else (or
             ;; Has query builder access

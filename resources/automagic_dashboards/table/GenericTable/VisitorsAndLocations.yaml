@@ -1,0 +1,131 @@
+title: "Unique Visitors & Locations for [[this]]"
+transient_title: "Visitor and location analysis for [[this]]"
+description: "Unique visitor counts, geographic distribution, and browser/OS/device breakdowns."
+applies_to: GenericTable
+dimensions:
+  - Timestamp:
+      field_type: CreationTimestamp
+      score: 100
+  - Country:
+      field_type: GenericTable.Country
+      score: 100
+  - State:
+      field_type: GenericTable.State
+      score: 90
+  - CategoryMedium:
+      field_type: GenericTable.Category
+      score: 75
+      max_cardinality: 10
+  - CategoryLow:
+      field_type: GenericTable.Category
+      score: 50
+      max_cardinality: 5
+metrics:
+  - Count: ["count"]
+filters:
+  - Last30Days:
+      filter: ["time-interval", [dimension, Timestamp], -30, day]
+groups:
+  - Overview:
+      title: Overview
+      score: 90
+  - Geographical:
+      title: Where visitors are
+      score: 85
+  - Breakdown:
+      title: Visitor breakdown
+      score: 80
+  - Periodicity:
+      title: When sessions happen
+      score: 60
+dashboard_filters:
+  - Timestamp
+  - Country
+  - State
+  - CategoryMedium
+cards:
+# Overview
+  - Rowcount:
+      title: Total sessions
+      visualization: scalar
+      metrics: Count
+      score: 100
+      group: Overview
+      width: 6
+      height: 3
+  - RowcountLast30Days:
+      title: Sessions in the last 30 days
+      visualization: scalar
+      metrics: Count
+      score: 95
+      filters: Last30Days
+      group: Overview
+      width: 6
+      height: 3
+  - SessionGrowth:
+      title: Session growth
+      visualization: smartscalar
+      dimensions: Timestamp
+      metrics: Count
+      width: 6
+      height: 3
+      group: Overview
+  - SessionsOverTime:
+      title: Sessions over time
+      metrics: Count
+      dimensions: Timestamp
+      visualization: line
+      group: Overview
+      width: 18
+      score: 90
+# Geographical
+  - VisitorsByCountry:
+      title: Visitors by country
+      metrics: Count
+      dimensions: Country
+      score: 90
+      visualization:
+        map:
+          map.type: region
+          map.region: world_countries
+      group: Geographical
+      height: 6
+  - VisitorsByState:
+      title: Visitors by state
+      metrics: Count
+      dimensions: State
+      score: 85
+      visualization:
+        map:
+          map.type: region
+          map.region: us_states
+      group: Geographical
+      height: 6
+# Breakdown
+  - SessionsPerCategory:
+      title: "Sessions per [[CategoryMedium]]"
+      dimensions: CategoryMedium
+      metrics: Count
+      visualization: smart-row
+      score: 85
+      height: 8
+      group: Breakdown
+# Periodicity
+  - DayOfWeek:
+      title: Sessions per day of the week
+      visualization: bar
+      dimensions:
+        - Timestamp:
+            aggregation: day-of-week
+      metrics: Count
+      score: 60
+      group: Periodicity
+  - HourOfDay:
+      title: Sessions per hour of the day
+      visualization: bar
+      dimensions:
+        - Timestamp:
+            aggregation: hour-of-day
+      metrics: Count
+      score: 55
+      group: Periodicity

@@ -109,6 +109,7 @@ export {
   PLUGIN_APPLICATION_PERMISSIONS,
   PLUGIN_GROUP_MANAGERS,
 } from "./oss/permissions";
+export { PLUGIN_PRODUCT_ANALYTICS } from "./oss/product-analytics";
 export { PLUGIN_REMOTE_SYNC } from "./oss/remote-sync";
 export { PLUGIN_RESOURCE_DOWNLOADS } from "./oss/resource-downloads";
 export {

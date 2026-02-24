@@ -46,6 +46,18 @@
             (is (contains? field-names "BROWSER"))
             (is (contains? field-names "COUNTRY"))))))))
 
+(deftest pa-table-entity-types-enriched-test
+  (testing "Post-sync enhancement sets correct entity types on PA tables"
+    (pa.tu/with-pa-db-cleanup
+      (mt/with-premium-features #{:product-analytics}
+        (pa.setup/ensure-product-analytics-db-installed!)
+        (is (= :entity/EventTable
+               (:entity_type (t2/select-one :model/Table :db_id pa/product-analytics-db-id :name "V_PA_EVENTS")))
+            "V_PA_EVENTS should be classified as EventTable")
+        (is (= :entity/GenericTable
+               (:entity_type (t2/select-one :model/Table :db_id pa/product-analytics-db-id :name "V_PA_SESSIONS")))
+            "V_PA_SESSIONS should be classified as GenericTable")))))
+
 (deftest pa-field-semantic-types-enriched-test
   (testing "Post-sync enhancement sets correct semantic types on key fields"
     (pa.tu/with-pa-db-cleanup
@@ -131,7 +143,7 @@
             (is (pos? (count (:dashcards dashboard))) "Dashboard should have cards")))))))
 
 (deftest xray-includes-expected-cards-test
-  (testing "X-ray for V_PA_EVENTS includes events-over-time card"
+  (testing "X-ray for V_PA_EVENTS includes event and category cards"
     (pa.tu/with-pa-db-cleanup
       (mt/with-premium-features #{:product-analytics}
         (pa.setup/ensure-product-analytics-db-installed!)
@@ -140,6 +152,39 @@
                 dashboard    (magic/automagic-analysis events-table {:show :all})
                 card-names   (set (keep (comp :name :card) (:dashcards dashboard)))]
             (is (seq card-names) "Dashboard should have named cards")
-            ;; The EventTable template provides "Events over time" card
-            (is (some #(re-find #"(?i)event" %) card-names)
-                "Dashboard should have at least one event-related card")))))))
+            (testing "EventTable template is used (has 'Events over time' card)"
+              (is (some #(re-find #"(?i)events over time" %) card-names)))
+            (testing "Category dimension cards are generated (entity_type enables GenericTable.Category matching)"
+              (is (some #(re-find #"(?i)per" %) card-names)
+                  "Dashboard should have at least one 'per category' card"))))))))
+
+(deftest xray-events-funnel-template-test
+  (testing "X-ray for V_PA_EVENTS includes funnel flow cards from FunnelFlows template"
+    (pa.tu/with-pa-db-cleanup
+      (mt/with-premium-features #{:product-analytics}
+        (pa.setup/ensure-product-analytics-db-installed!)
+        (mt/with-test-user :crowberto
+          (let [events-table (t2/select-one :model/Table :db_id pa/product-analytics-db-id :name "V_PA_EVENTS")
+                dashboard    (magic/automagic-analysis events-table {:show :all})
+                card-names   (set (keep (comp :name :card) (:dashcards dashboard)))]
+            (is (seq card-names) "Dashboard should have named cards")
+            (testing "Funnel cards are present"
+              (is (some #(re-find #"(?i)funnel|flow" %) card-names)
+                  "Dashboard should have at least one funnel/flow card"))))))))
+
+(deftest xray-sessions-visitors-template-test
+  (testing "X-ray for V_PA_SESSIONS includes visitor and geographic cards from VisitorsAndLocations template"
+    (pa.tu/with-pa-db-cleanup
+      (mt/with-premium-features #{:product-analytics}
+        (pa.setup/ensure-product-analytics-db-installed!)
+        (mt/with-test-user :crowberto
+          (let [sessions-table (t2/select-one :model/Table :db_id pa/product-analytics-db-id :name "V_PA_SESSIONS")
+                dashboard      (magic/automagic-analysis sessions-table {:show :all})
+                card-names     (set (keep (comp :name :card) (:dashcards dashboard)))]
+            (is (seq card-names) "Dashboard should have named cards")
+            (testing "Country map card is present"
+              (is (some #(re-find #"(?i)country" %) card-names)
+                  "Dashboard should have a country-based card"))
+            (testing "Session count cards are present"
+              (is (some #(re-find #"(?i)session" %) card-names)
+                  "Dashboard should have session-related cards"))))))))

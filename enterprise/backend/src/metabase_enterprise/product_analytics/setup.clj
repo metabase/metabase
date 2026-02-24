@@ -1,6 +1,7 @@
 (ns metabase-enterprise.product-analytics.setup
   "Startup functions for ensuring the Product Analytics virtual Database and Collection exist."
   (:require
+   [metabase-enterprise.product-analytics.settings]
    [metabase.app-db.core :as mdb]
    [metabase.collections.models.collection :as collection]
    [metabase.config.core :as config]
@@ -41,7 +42,19 @@
                  :namespace   "product-analytics"
                  :description "Collection for Product Analytics dashboards and questions."})))
 
-;;; ------------------------------------------------- Field Enhancement -------------------------------------------------
+;;; ------------------------------------------------- Metadata Enhancement -------------------------------------------------
+
+(def ^:private pa-table-entity-types
+  "Mapping of table-name → entity_type for PA tables.
+   The :analyze phase is skipped during schema-only sync, so entity_type is not
+   set automatically. We set it explicitly so that the x-ray template system
+   can match dimensions (e.g. GenericTable.Category requires tables to have an
+   entity_type that isa? :entity/GenericTable)."
+  {"V_PA_EVENTS"       :entity/EventTable
+   "V_PA_SESSIONS"     :entity/GenericTable
+   "V_PA_SITES"        :entity/GenericTable
+   "V_PA_EVENT_DATA"   :entity/GenericTable
+   "V_PA_SESSION_DATA" :entity/GenericTable})
 
 (def ^:private pa-field-semantic-types
   "Mapping of {table-name {field-name semantic-type}} for post-sync enhancement."
@@ -53,16 +66,23 @@
                     "UTM_CAMPAIGN"    :type/Category
                     "REFERRER_DOMAIN" :type/Category
                     "EVENT_TYPE"      :type/Category}
-   "V_PA_SESSIONS" {"CREATED_AT" :type/CreationTimestamp
-                    "BROWSER"    :type/Category
-                    "OS"         :type/Category
-                    "DEVICE"     :type/Category
-                    "COUNTRY"    :type/Country
-                    "LANGUAGE"   :type/Category}})
+   "V_PA_SESSIONS" {"CREATED_AT"    :type/CreationTimestamp
+                    "UPDATED_AT"    :type/UpdatedTimestamp
+                    "BROWSER"       :type/Category
+                    "OS"            :type/Category
+                    "DEVICE"        :type/Category
+                    "COUNTRY"       :type/Country
+                    "SUBDIVISION1"  :type/State
+                    "CITY"          :type/City
+                    "LANGUAGE"      :type/Category}})
 
-(defn- enhance-pa-field-metadata!
-  "After sync, update semantic types on key PA fields to improve x-ray dimension matching."
+(defn- enhance-pa-metadata!
+  "After sync, set entity types on PA tables and semantic types on key fields
+   to enable proper x-ray template matching and dimension resolution."
   []
+  (doseq [[table-name entity-type] pa-table-entity-types]
+    (t2/update! :model/Table {:db_id pa/product-analytics-db-id :name table-name}
+                {:entity_type entity-type}))
   (doseq [[table-name field-types] pa-field-semantic-types]
     (when-let [table (t2/select-one :model/Table :db_id pa/product-analytics-db-id :name table-name)]
       (doseq [[field-name semantic-type] field-types]
@@ -80,7 +100,7 @@
     (let [sync-future (future
                         (log/with-no-logs
                           (sync/sync-database! pa-db {:scan :schema}))
-                        (enhance-pa-field-metadata!)
+                        (enhance-pa-metadata!)
                         (log/info "Product Analytics Database sync complete."))]
       (when config/is-test?
         @sync-future))))
@@ -98,4 +118,5 @@
                    (sync-pa-database!)
                    ::installed)
                (do (ensure-pa-collection!)
+                   (enhance-pa-metadata!)
                    ::no-op)))))
