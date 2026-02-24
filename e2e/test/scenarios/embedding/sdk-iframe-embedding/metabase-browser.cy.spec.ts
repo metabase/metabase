@@ -161,27 +161,33 @@ describe("scenarios > embedding > sdk iframe embedding > metabase-browser", () =
       `);
 
     H.getSimpleEmbedIframeContent().within(() => {
+      cy.log("Clicking New exploration");
       cy.findByText("New exploration").click();
 
+      cy.log("Waiting for Pick your starting data (first time)");
       cy.findByText("Pick your starting data").should("be.visible");
 
       cy.intercept("GET", "/api/table/*/query_metadata").as("tableMetadata");
+      cy.log("Clicking Orders");
       cy.findByText("Orders").click();
 
-      // Wait for the table metadata request to complete, ensuring the
-      // updateQuestion async operation has fully settled before clicking
-      // the breadcrumb. Without this, a stale updateQuestion can race
-      // with loadAndQueryQuestion and overwrite the reset state.
+      cy.log("Waiting for @tableMetadata intercept");
       cy.wait("@tableMetadata");
-      cy.findByTestId("data-step-cell").should("have.text", "Orders");
+      cy.log("@tableMetadata resolved");
 
+      cy.findByTestId("data-step-cell").should("have.text", "Orders");
+      cy.log("data-step-cell confirmed Orders");
+
+      cy.log("About to click breadcrumb");
       // Click the parent Badge element which has the onClick handler,
       // not the inner text span that findByText resolves to
       cy.findByTestId("sdk-breadcrumbs")
         .findByText("New exploration")
         .parent()
         .click();
+      cy.log("Breadcrumb clicked");
 
+      cy.log("Waiting for Pick your starting data (second time)");
       cy.findByText("Pick your starting data").should("be.visible");
       cy.findByText("Orders").should("not.exist");
     });

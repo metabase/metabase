@@ -129,6 +129,18 @@ export const SdkQuestionDefaultView = ({
 
     const onNavigate = onNavigateBack ?? onReset ?? undefined;
 
+    console.log("[DEBUG reportLocation effect]", {
+      originalId,
+      isNewQuestion,
+      isExistingQuestion: !!isExistingQuestion,
+      hasOnNavigate: !!onNavigate,
+      hasOnReset: !!onReset,
+      hasOnNavigateBack: !!onNavigateBack,
+      isQuestionLoading,
+      hasQuestion: !!question,
+      sourceTable: question?.card?.()?.dataset_query?.query?.["source-table"],
+    });
+
     if (isNewQuestion) {
       reportLocation({
         type: "question",

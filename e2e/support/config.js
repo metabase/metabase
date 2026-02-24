@@ -87,9 +87,9 @@ const defaultConfig = {
     on("before:browser:launch", (browser = {}, launchOptions) => {
       if (browser.name === "chrome" || browser.name === "chromium") {
         //  Open dev tools in Chrome by default (skip in CI to save memory)
-        if (!isCI) {
-          launchOptions.args.push("--auto-open-devtools-for-tabs");
-        }
+        // if (!isCI) {
+        launchOptions.args.push("--auto-open-devtools-for-tabs");
+        // }
         launchOptions.args.push("--blink-settings=preferredColorScheme=1");
       }
 
