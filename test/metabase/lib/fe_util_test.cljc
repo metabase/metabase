@@ -1169,7 +1169,7 @@
               [:field {:lib/uuid "3fcaefe5-5c20-4cbc-98ed-6007b67843a3"} 111]
               "2024-05-13T16:35"]]
     (testing "Expandable temporal units"
-      (are [unit start end] (=? [:between map? [:field {:temporal-unit unit} int?] start end]
+      (are [unit start end] (=? [:between map? [:field {:temporal-unit unit} string?] start end]
                                 (#'lib.fe-util/expand-temporal-expression (update-temporal-unit expr unit)))
         :hour "2024-05-13T16:00:00" "2024-05-13T16:59:59"
         :week "2024-05-12" "2024-05-18"

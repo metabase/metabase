@@ -192,7 +192,7 @@
 (deftest ^:parallel string-filter-clauses-test
   (doseq [tag                          [:contains :starts-with :ends-with :does-not-contain]
           opts                         [{} {:case-sensitive false}]
-          :let [field    [:field {} (meta/id :venues :name)]
+          :let [field    [:field {} "NAME"]
                 js-field #js ["field" (meta/id :venues :name) #js {"base-type" "type/Text"}]]
           [label legacy-expr exp-form] [["binary"
                                          (apply array (name tag) js-field "hotel"
@@ -321,13 +321,13 @@
                (is (mr/validate :metabase.lib.schema.expression/expression y))
                (is (=? x y)))
 
-    [:time-interval {} [:field {} int?] :current :day]
+    [:time-interval {} [:field {} string?] :current :day]
     (lib.js/expression-clause "time-interval" [(meta/field-metadata :products :created-at) "current" "day"] nil)
 
-    [:time-interval {} [:field {} int?] 10 :day]
+    [:time-interval {} [:field {} string?] 10 :day]
     (lib.js/expression-clause "time-interval" [(meta/field-metadata :products :created-at) 10 "day"] nil)
 
-    [:relative-time-interval {} [:field {} int?] 10 :day 10 :month]
+    [:relative-time-interval {} [:field {} string?] 10 :day 10 :month]
     (lib.js/expression-clause "relative-time-interval" [(meta/field-metadata :products :created-at) 10 "day" 10 "month"] nil)
 
     [:relative-datetime {} :current :day]
@@ -339,39 +339,39 @@
     [:interval {} 10 :day]
     (lib.js/expression-clause "interval" [10 "day"] nil)
 
-    [:datetime-add {} [:field {} int?] 10 :day]
+    [:datetime-add {} [:field {} string?] 10 :day]
     (lib.js/expression-clause "datetime-add" [(meta/field-metadata :products :created-at) 10 "day"] nil)
 
-    [:datetime-subtract {} [:field {} int?] 10 :day]
+    [:datetime-subtract {} [:field {} string?] 10 :day]
     (lib.js/expression-clause "datetime-subtract" [(meta/field-metadata :products :created-at) 10 "day"] nil)
 
-    [:get-week {} [:field {} int?] :iso]
+    [:get-week {} [:field {} string?] :iso]
     (lib.js/expression-clause "get-week" [(meta/field-metadata :products :created-at) "iso"] nil)
 
-    [:get-week {} [:field {} int?]]
+    [:get-week {} [:field {} string?]]
     (lib.js/expression-clause "get-week" [(meta/field-metadata :products :created-at)] nil)
 
-    [:get-day-of-week {} [:field {} int?] :iso]
+    [:get-day-of-week {} [:field {} string?] :iso]
     (lib.js/expression-clause "get-day-of-week" [(meta/field-metadata :products :created-at) "iso"] nil)
 
-    [:get-day-of-week {} [:field {} int?]]
+    [:get-day-of-week {} [:field {} string?]]
     (lib.js/expression-clause "get-day-of-week" [(meta/field-metadata :products :created-at)] nil)
 
-    [:temporal-extract {} [:field {} int?] :day-of-week]
+    [:temporal-extract {} [:field {} string?] :day-of-week]
     (lib.js/expression-clause "temporal-extract" [(meta/field-metadata :products :created-at) "day-of-week"] nil)
 
-    [:temporal-extract {} [:field {} int?] :day-of-week :iso]
+    [:temporal-extract {} [:field {} string?] :day-of-week :iso]
     (lib.js/expression-clause "temporal-extract" [(meta/field-metadata :products :created-at) "day-of-week" "iso"] nil)
 
-    [:during {} [:field {} int?] "2024-12-05T22:13:54" :minute]
+    [:during {} [:field {} string?] "2024-12-05T22:13:54" :minute]
     (lib.js/expression-clause "during" [(meta/field-metadata :products :created-at) "2024-12-05T22:13:54" "minute"] nil)
 
-    [:datetime-diff {} [:field {} int?] [:field {} int?] :day]
+    [:datetime-diff {} [:field {} string?] [:field {} string?] :day]
     (lib.js/expression-clause "datetime-diff" [(meta/field-metadata :products :created-at) (meta/field-metadata :products :created-at) "day"] nil))
 
   (testing "normalizes recursively"
     (is (=?
-         [:time-interval {} [:field {} int?]
+         [:time-interval {} [:field {} string?]
           [:interval {} 10 :day]
           :day]
          (lib.js/expression-clause "time-interval" [(meta/field-metadata :products :created-at)
