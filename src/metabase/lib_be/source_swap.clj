@@ -31,9 +31,10 @@
    field-ref     :- :mbql.clause/field
    columns       :- [:sequential ::lib.schema.metadata/column]]
   (or (when-let [column (lib.equality/find-matching-column query stage-number field-ref columns)]
-        (-> (cond-> column
-              (:lib/card-id column) (dissoc :id))
-            lib.ref/ref))
+        (let [column (cond-> column (:lib/card-id column) (dissoc :id))
+              expression-name (lib.util/expression-name field-ref)]
+          (cond-> (lib.ref/ref column)
+            expression-name (lib.expression/with-expression-name % expression-name))))
       field-ref))
 
 (mu/defn- upgrade-field-refs-in-clauses :- [:sequential :any]
