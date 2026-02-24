@@ -3,9 +3,9 @@ import userEvent from "@testing-library/user-event";
 import { renderWithProviders, screen } from "__support__/ui";
 import { checkNotNull } from "metabase/lib/types";
 import * as Lib from "metabase-lib";
-import { DEFAULT_TEST_QUERY, SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
 
 import {
+  createQuery,
   createQueryWithBooleanFilter,
   findBooleanColumn,
   storeInitialState,
@@ -21,7 +21,7 @@ type SetupOpts = {
 };
 
 function setup({
-  query = Lib.createTestQuery(SAMPLE_PROVIDER, DEFAULT_TEST_QUERY),
+  query = createQuery(),
   column = findBooleanColumn(query),
   filter,
   withAddButton = false,

@@ -166,7 +166,7 @@ describe("QueryColumnPicker", () => {
                   {
                     type: "column",
                     name: "PRICE",
-                    sourceName: "Product",
+                    sourceName: "PRODUCTS",
                   },
                 ],
               },
@@ -198,7 +198,7 @@ describe("QueryColumnPicker", () => {
               {
                 type: "column",
                 name: "PRICE",
-                sourceName: "Product",
+                sourceName: "PRODUCTS",
               },
             ],
           },
@@ -228,7 +228,7 @@ describe("QueryColumnPicker", () => {
               {
                 type: "column",
                 name: "PRICE",
-                sourceName: "Product",
+                sourceName: "PRODUCTS",
               },
             ],
           },
@@ -241,7 +241,6 @@ describe("QueryColumnPicker", () => {
                   {
                     type: "column",
                     name: "PRICE",
-                    sourceName: "Summaries",
                   },
                   { type: "literal", value: 1 },
                 ],
@@ -275,12 +274,12 @@ describe("QueryColumnPicker", () => {
               {
                 type: "column",
                 name: "PRICE",
-                sourceName: "Product",
+                sourceName: "PRODUCTS",
               },
               {
                 type: "column",
                 name: "CREATED_AT",
-                sourceName: "Product",
+                sourceName: "PRODUCTS",
               },
             ],
           },
@@ -293,7 +292,6 @@ describe("QueryColumnPicker", () => {
                   {
                     type: "column",
                     name: "PRICE",
-                    sourceName: "Summaries",
                   },
                   { type: "literal", value: 1 },
                 ],
@@ -416,7 +414,7 @@ describe("QueryColumnPicker", () => {
               {
                 type: "column",
                 name: "PRICE",
-                sourceName: "Product",
+                sourceName: "PRODUCTS",
               },
             ],
           },
@@ -442,7 +440,6 @@ describe("QueryColumnPicker", () => {
                   {
                     type: "column",
                     name: "PRICE",
-                    sourceName: "Summaries",
                   },
                   { type: "literal", value: 1 },
                 ],

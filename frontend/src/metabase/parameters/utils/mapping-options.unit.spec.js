@@ -782,6 +782,7 @@ describe("getMappingOptionByTarget", () => {
             breakouts: [
               {
                 type: "column",
+                sourceName: "ORDERS",
                 name: "CREATED_AT",
                 unit: "month",
               },

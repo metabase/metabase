@@ -33,11 +33,13 @@ function createSummarizedQuery() {
         breakouts: [
           {
             type: "column",
+            sourceName: "ORDERS",
             name: "CREATED_AT",
             unit: "month",
           },
           {
             type: "column",
+            sourceName: "PRODUCTS",
             name: "CATEGORY",
           },
         ],
@@ -55,11 +57,13 @@ function createQueryWithBreakoutsForSameColumn() {
         breakouts: [
           {
             type: "column",
+            sourceName: "ORDERS",
             name: "CREATED_AT",
             unit: "year",
           },
           {
             type: "column",
+            sourceName: "ORDERS",
             name: "CREATED_AT",
             unit: "quarter",
           },

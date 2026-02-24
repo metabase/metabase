@@ -1,59 +1,59 @@
 import { createMockMetadata } from "__support__/metadata";
 import * as Lib from "metabase-lib";
-import type { Field, Table } from "metabase-types/api";
 import { createMockField, createMockTable } from "metabase-types/api/mocks";
 import {
   ORDERS_ID,
-  SAMPLE_DB_ID,
   createSampleDatabase,
 } from "metabase-types/api/mocks/presets";
 
-import { DEFAULT_TEST_QUERY, createMetadataProvider } from "../test-helpers";
+import {
+  DEFAULT_TEST_QUERY,
+  SAMPLE_PROVIDER,
+  createMetadataProvider,
+} from "../test-helpers";
 
 import { defaultDisplay } from "./display";
 
+const DATABASE_ID = 1;
 const ACCOUNTS_ID = 4;
 const ACCOUNTS_COUNTRY_ID = 56;
 
-const createAccountsTable = (opts?: Partial<Table>): Table =>
-  createMockTable({
-    id: ACCOUNTS_ID,
-    db_id: SAMPLE_DB_ID,
-    name: "ACCOUNTS",
-    display_name: "Accounts",
-    schema: "PUBLIC",
-    fields: [createAccountsCountryField()],
-    ...opts,
-  });
-
-const createAccountsCountryField = (opts?: Partial<Field>): Field =>
-  createMockField({
-    id: ACCOUNTS_COUNTRY_ID,
-    table_id: ACCOUNTS_ID,
-    name: "COUNTRY",
-    display_name: "Country",
-    base_type: "type/Text",
-    effective_type: "type/Text",
-    semantic_type: "type/Country",
-    fingerprint: null,
-    ...opts,
-  });
-
-const SAMPLE_DATABASE = createSampleDatabase({
-  tables: [createAccountsTable()],
+const ACCOUNTS_COUNTRY = createMockField({
+  id: ACCOUNTS_COUNTRY_ID,
+  table_id: ACCOUNTS_ID,
+  name: "COUNTRY",
+  display_name: "Country",
+  base_type: "type/Text",
+  effective_type: "type/Text",
+  semantic_type: "type/Country",
+  fingerprint: null,
 });
 
-const SAMPLE_METADATA = createMockMetadata({ databases: [SAMPLE_DATABASE] });
-const SAMPLE_PROVIDER = createMetadataProvider({
-  databaseId: SAMPLE_DATABASE.id,
-  metadata: SAMPLE_METADATA,
+const ACCOUNTS = createMockTable({
+  id: ACCOUNTS_ID,
+  db_id: DATABASE_ID,
+  name: "ACCOUNTS",
+  display_name: "Accounts",
+  schema: "PUBLIC",
+  fields: [ACCOUNTS_COUNTRY],
+});
+
+const DATABASE = createSampleDatabase({
+  id: DATABASE_ID,
+  tables: [ACCOUNTS],
+});
+
+const METADATA = createMockMetadata({ databases: [DATABASE] });
+const PROVIDER = createMetadataProvider({
+  databaseId: DATABASE.id,
+  metadata: METADATA,
 });
 
 describe("defaultDisplay", () => {
   it("returns 'table' display for native queries", () => {
     const query = Lib.nativeQuery(
-      SAMPLE_DATABASE.id,
-      SAMPLE_PROVIDER,
+      DATABASE.id,
+      PROVIDER,
       "SELECT * FROM ACCOUNTS",
     );
 
@@ -70,10 +70,7 @@ describe("defaultDisplay", () => {
     const query = Lib.createTestQuery(SAMPLE_PROVIDER, {
       stages: [
         {
-          source: {
-            type: "table",
-            id: ORDERS_ID,
-          },
+          source: { type: "table", id: ORDERS_ID },
           aggregations: [{ type: "operator", operator: "count", args: [] }],
         },
       ],
@@ -103,7 +100,7 @@ describe("defaultDisplay", () => {
   });
 
   it("returns 'map' display for queries with 1 aggregation and 1 breakout by country", () => {
-    const query = Lib.createTestQuery(SAMPLE_PROVIDER, {
+    const query = Lib.createTestQuery(PROVIDER, {
       stages: [
         {
           source: {
@@ -133,9 +130,9 @@ describe("defaultDisplay", () => {
         {
           source: {
             type: "table",
-            id: ACCOUNTS_ID,
+            id: ORDERS_ID,
           },
-          aggregations: [{ type: "operator", operator: "count", args: [] }],
+          aggregations: [{ type: "operator", operator: "count" }],
           breakouts: [
             {
               type: "column",
@@ -240,19 +237,19 @@ describe("defaultDisplay", () => {
       stages: [
         {
           source: { type: "table", id: ORDERS_ID },
-          aggregations: [{ type: "operator", operator: "count", args: [] }],
+          aggregations: [{ type: "operator", operator: "count" }],
           breakouts: [
             {
               type: "column",
               name: "LATITUDE",
               sourceName: "PEOPLE",
-              bins: "auto",
+              binWidth: "auto",
             },
             {
               type: "column",
               name: "LONGITUDE",
               sourceName: "PEOPLE",
-              bins: "auto",
+              binWidth: "auto",
             },
           ],
         },
@@ -300,7 +297,7 @@ describe("defaultDisplay", () => {
               type: "column",
               name: "LATITUDE",
               sourceName: "PEOPLE",
-              bins: "auto",
+              // bins: "auto",
             },
             { type: "column", name: "LONGITUDE", sourceName: "PEOPLE" },
           ],

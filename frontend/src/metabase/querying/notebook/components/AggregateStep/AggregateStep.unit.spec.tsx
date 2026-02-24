@@ -32,7 +32,7 @@ function createAggregatedQuery() {
           {
             type: "operator",
             operator: "avg",
-            args: [{ type: "column", sourceName: "Orders", name: "QUANTITY" }],
+            args: [{ type: "column", sourceName: "ORDERS", name: "QUANTITY" }],
           },
         ],
       },

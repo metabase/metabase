@@ -65,6 +65,7 @@ describe("stageIndexes", () => {
           },
         },
         {},
+        {},
       ],
     });
     expect(Lib.stageIndexes(query)).toEqual([0, 1, 2]);

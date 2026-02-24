@@ -71,7 +71,14 @@ describe("TimeseriesChrome", () => {
             type: "table",
             id: ORDERS_ID,
           },
-          breakouts: [{ type: "column", name: "CREATED_AT", unit: "month" }],
+          breakouts: [
+            {
+              type: "column",
+              sourceName: "ORDERS",
+              name: "CREATED_AT",
+              unit: "month",
+            },
+          ],
         },
       ],
     });
@@ -94,8 +101,18 @@ describe("TimeseriesChrome", () => {
             id: ORDERS_ID,
           },
           breakouts: [
-            { type: "column", name: "CREATED_AT", unit: "month" },
-            { type: "column", name: "CREATED_AT", unit: "year" },
+            {
+              type: "column",
+              sourceName: "ORDERS",
+              name: "CREATED_AT",
+              unit: "month",
+            },
+            {
+              type: "column",
+              sourceName: "ORDERS",
+              name: "CREATED_AT",
+              unit: "year",
+            },
           ],
         },
       ],

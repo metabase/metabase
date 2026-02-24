@@ -34,7 +34,13 @@ function createQueryWithBreakout() {
           type: "table",
           id: ORDERS_ID,
         },
-        breakouts: [{ type: "column", name: "TAX" }],
+        breakouts: [
+          {
+            type: "column",
+            sourceName: "ORDERS",
+            name: "TAX",
+          },
+        ],
       },
     ],
   });
@@ -53,6 +59,7 @@ function createQueryWithBreakoutAndBinningCount(
         breakouts: [
           {
             type: "column",
+            sourceName: "ORDERS",
             name: "TAX",
             bins: binningCount,
           },
@@ -71,8 +78,8 @@ function createQueryWithMultipleBreakoutsAndBinningStrategy() {
           id: ORDERS_ID,
         },
         breakouts: [
-          { type: "column", name: "TAX", bins: 10 },
-          { type: "column", name: "TAX", bins: 50 },
+          { type: "column", sourceName: "ORDERS", name: "TAX", bins: 10 },
+          { type: "column", sourceName: "ORDERS", name: "TAX", bins: 50 },
         ],
       },
     ],
@@ -90,7 +97,12 @@ function createQueryWithBreakoutAndTemporalBucket(
           id: ORDERS_ID,
         },
         breakouts: [
-          { type: "column", name: "CREATED_AT", unit: temporalBucketName },
+          {
+            type: "column",
+            sourceName: "ORDERS",
+            name: "CREATED_AT",
+            unit: temporalBucketName,
+          },
         ],
       },
     ],
@@ -106,8 +118,18 @@ function createQueryWithMultipleBreakoutsAndTemporalBucket() {
           id: ORDERS_ID,
         },
         breakouts: [
-          { type: "column", name: "CREATED_AT", unit: "year" },
-          { type: "column", name: "CREATED_AT", unit: "month" },
+          {
+            type: "column",
+            sourceName: "ORDERS",
+            name: "CREATED_AT",
+            unit: "year",
+          },
+          {
+            type: "column",
+            sourceName: "ORDERS",
+            name: "CREATED_AT",
+            unit: "month",
+          },
         ],
       },
     ],
@@ -578,7 +600,9 @@ describe("BreakoutStep", () => {
               type: "table",
               id: ORDERS_ID,
             },
-            breakouts: [{ type: "column", name: "CREATED_AT" }],
+            breakouts: [
+              { type: "column", sourceName: "ORDERS", name: "CREATED_AT" },
+            ],
           },
         ],
       });

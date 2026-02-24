@@ -327,12 +327,12 @@ describe("suggestFields", () => {
                   operator: "=",
                   left: {
                     type: "column",
-                    sourceName: "REVIEWS",
+                    sourceName: "ORDERS",
                     name: "PRODUCT_ID",
                   },
                   right: {
                     type: "column",
-                    sourceName: "ORDERS",
+                    sourceName: "REVIEWS",
                     name: "PRODUCT_ID",
                   },
                 },
@@ -353,31 +353,35 @@ describe("suggestFields", () => {
       }),
     });
 
-    complete(source, "Foo|");
-
-    const result = await complete(source, "Foo|");
+    const result = await complete(source, "Body|");
 
     expect(result).toEqual({
       from: 0,
-      to: 3,
+      to: 4,
       options: expect.any(Array),
     });
 
     expect(result?.options[0]).toEqual({
-      displayLabel: "Foo → Body",
-      label: "[Foo → Body]",
+      displayLabel: "Reviews - Product → Body",
+      label: "[Reviews - Product → Body]",
       type: "field",
       icon: "string",
       column: expect.any(Object),
-      matches: [[0, 2]],
+      matches: [
+        [12, 13],
+        [20, 23],
+      ],
     });
     expect(result?.options[1]).toEqual({
-      displayLabel: "Foo → ID",
-      label: "[Foo → ID]",
+      displayLabel: "Product ID",
+      label: "[Product ID]",
       type: "field",
-      icon: "label",
+      icon: "connections",
       column: expect.any(Object),
-      matches: [[0, 2]],
+      matches: [
+        [2, 3],
+        [9, 9],
+      ],
     });
   });
 
