@@ -18,7 +18,9 @@
      MB_TRACING_GROUPS=qp,api  MB_TRACING_SERVICE_NAME=metabase-prod-1"
   (:require
    [clojure.string :as str]
+   [metabase.tracing.attributes :as trace-attrs]
    [metabase.util.log :as log]
+   [potemkin :as p]
    [steffan-westcott.clj-otel.api.trace.span :as span])
   (:import
    (io.opentelemetry.api.trace Span SpanContext)
@@ -27,6 +29,16 @@
    (org.apache.logging.log4j ThreadContext)))
 
 (set! *warn-on-reflection* true)
+
+(p/import-vars
+ [trace-attrs
+  db-attrs
+  http-attrs
+  query-attrs
+  sanitize-sql
+  service-attrs
+  sync-attrs
+  task-attrs])
 
 ;;; ------------------------------------------------ Group Registry ------------------------------------------------
 

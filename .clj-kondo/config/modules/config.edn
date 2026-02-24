@@ -1592,8 +1592,7 @@
 
   tracing
   {:team "DevEx"
-   :api  #{metabase.tracing.attributes
-           metabase.tracing.core
+   :api  #{metabase.tracing.core
            metabase.tracing.init}
    :uses #{config
            settings

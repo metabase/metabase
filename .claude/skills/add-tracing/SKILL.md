@@ -9,27 +9,27 @@ This skill helps you add OpenTelemetry (OTel) tracing spans to the Metabase back
 
 ## Reference Files
 
-- `src/metabase/tracing/core.clj` - The `with-span` macro, group registry, SDK lifecycle, and Pyroscope integration
-- `src/metabase/tracing/attributes.clj` - Standard attribute builders and `sanitize-sql`
+- `src/metabase/tracing/core.clj` - `with-span` macro, group registry, SDK lifecycle, attribute builders, Pyroscope integration
 - `src/metabase/task/impl.clj` - `defjob` macro that wraps Quartz jobs with root spans
 - `.clj-kondo/config/modules/config.edn` - Module boundary configuration
 
 ## Module Architecture
 
-The tracing module has a deliberately minimal API surface. **Only 3 namespaces are public** (listed in `:api` in the module config):
+The tracing module has a deliberately minimal API surface. **Only 2 namespaces are public** (listed in `:api` in the module config):
 
 | Namespace | Role | Status |
 |---|---|---|
-| `tracing.core` | Primary API: `with-span`, groups, SDK lifecycle, Pyroscope, MDC | **Public API** |
-| `tracing.attributes` | Attribute builders: `sanitize-sql`, `query-attrs`, etc. | **Public API** |
+| `tracing.core` | Primary API: `with-span`, groups, SDK lifecycle, Pyroscope, MDC, attribute builders | **Public API** |
 | `tracing.init` | Side-effect loader for `quartz` and `settings` | **Public API** (init convention) |
+| `tracing.attributes` | Attribute builder implementations (re-exported via `tracing.core`) | Internal |
 | `tracing.settings` | Setting definitions (`MB_TRACING_*` env vars) | Internal |
 | `tracing.quartz` | Quartz JDBC proxy + JobListener | Internal |
 
 **Rules:**
-- **Do NOT add new API namespaces** to the tracing module. Add new public functions to `tracing.core` or `tracing.attributes` instead.
-- **Do NOT require internal namespaces** (`tracing.settings`, `tracing.quartz`) from outside the tracing module. They are loaded via `tracing.init` for side effects only.
-- Even the `core` module (which has `:uses :any`) cannot require non-API namespaces from other modules — `:uses :any` bypasses the consumer's restriction but NOT the target module's `:api` check.
+- Only require `[metabase.tracing.core :as tracing]` from outside the module. All public functions (including attribute builders like `tracing/sanitize-sql`) are available from this single namespace.
+- Do not add new API namespaces. Add new public functions to `tracing.core` instead.
+- Do not require internal namespaces (`tracing.attributes`, `tracing.settings`, `tracing.quartz`) from outside the module.
+- `:uses :any` on the `core` module does NOT bypass the target module's `:api` check — internal namespaces are still enforced.
 
 ### Cyclic Dependency Avoidance
 
@@ -67,7 +67,7 @@ When adding tracing spans:
 - [ ] Span name follows dot-notation convention (`"domain.subsystem.operation"`)
 - [ ] Attributes use namespaced keywords (`:search/query-length`, `:db/id`)
 - [ ] No sensitive data in attributes (use `sanitize-sql` for HoneySQL, never raw SQL)
-- [ ] No new tracing namespaces created (add to `tracing.core` or `tracing.attributes` instead)
+- [ ] No new tracing namespaces created (add to `tracing.core` instead)
 - [ ] No `DO_NOT_ADD_NEW_FILES_HERE.txt` violations in the target directory
 - [ ] Run `clj-kondo --lint <files>` to verify 0 errors, 0 warnings
 - [ ] Add or update tests in the corresponding `test/` path (see Testing section below)
@@ -153,7 +153,7 @@ my-module
    [metabase.util :as u]))
 ```
 
-If using `sanitize-sql`, also add `[metabase.tracing.attributes :as trace-attrs]`.
+`sanitize-sql` and all attribute builders are available from `tracing.core` — no additional require needed.
 
 ### 3. Identify the I/O boundary
 
@@ -195,7 +195,7 @@ Only wrap code at **meaningful I/O boundaries**:
 (let [hsql {:delete-from [(t2/table-name :model/Session)]
             :where [:< :created_at oldest-allowed]}]
   (tracing/with-span :tasks "task.session-cleanup.delete"
-                     {:db/statement (trace-attrs/sanitize-sql hsql)}
+                     {:db/statement (tracing/sanitize-sql hsql)}
     (t2/query-one hsql)))
 
 ;; Sub-spans breaking a function into I/O phases
@@ -252,13 +252,13 @@ Expect: all tests pass, 0 failures, 0 errors, no reflection warnings from your f
 
 ## Sanitizing SQL for Attributes
 
-When including SQL in span attributes, **always** use `trace-attrs/sanitize-sql`. This converts HoneySQL maps to parameterized SQL strings where values become `?` placeholders -- no data leaks.
+When including SQL in span attributes, **always** use `tracing/sanitize-sql`. This converts HoneySQL maps to parameterized SQL strings where values become `?` placeholders -- no data leaks.
 
 ```clojure
 (let [hsql {:delete-from [:core_session]
             :where [:< :created_at some-timestamp]}]
   (tracing/with-span :tasks "task.cleanup.delete"
-                     {:db/statement (trace-attrs/sanitize-sql hsql)}
+                     {:db/statement (tracing/sanitize-sql hsql)}
     (t2/query-one hsql)))
 ;; Trace attribute: db/statement = "DELETE FROM core_session WHERE created_at < ?"
 ```
@@ -270,13 +270,13 @@ When including SQL in span attributes, **always** use `trace-attrs/sanitize-sql`
 
 ## Standard Attribute Builders
 
-`metabase.tracing.attributes` provides helpers for common attribute patterns:
+`tracing.core` provides attribute builders for common patterns:
 
 ```clojure
-(trace-attrs/query-attrs {:database-id 1 :database-engine :postgres :query-type :native})
-(trace-attrs/sync-attrs {:database-id 1 :phase :metadata :table-name "users"})
-(trace-attrs/task-attrs {:task-name "SessionCleanup"})
-(trace-attrs/http-attrs {:method :get :uri "/api/card/1" :status 200})
+(tracing/query-attrs {:database-id 1 :database-engine :postgres :query-type :native})
+(tracing/sync-attrs {:database-id 1 :phase :metadata :table-name "users"})
+(tracing/task-attrs {:task-name "SessionCleanup"})
+(tracing/http-attrs {:method :get :uri "/api/card/1" :status 200})
 ```
 
 Use these when they fit. For domain-specific attributes, use inline maps.
@@ -331,13 +331,13 @@ For code on plain `Thread`s (not Quartz), add the root span manually:
 ### Architecture Mistakes
 
 ```clojure
-;; WRONG - creating a new tracing namespace for your feature
-;; Instead, add public functions to tracing.core or tracing.attributes
+;; WRONG - creating a new tracing namespace
 (ns metabase.tracing.my-feature ...)
 
 ;; WRONG - requiring internal tracing namespaces from outside the module
 (ns metabase.my-module.thing
-  (:require [metabase.tracing.settings :as tracing.settings]  ;; internal!
+  (:require [metabase.tracing.attributes :as trace-attrs]      ;; internal!
+            [metabase.tracing.settings :as tracing.settings]   ;; internal!
             [metabase.tracing.quartz :as tracing.quartz]))     ;; internal!
 
 ;; WRONG - adding compile-time requires to tracing/core.clj for settings or SDK
@@ -347,13 +347,6 @@ For code on plain `Thread`s (not Quartz), add the root span manually:
 
 ;; WRONG - dynamic symbol construction with requiring-resolve (kondo rejects it)
 (requiring-resolve (symbol "metabase.tracing.settings" "tracing-enabled"))
-
-;; WRONG - 3-step pattern
-(pyroscope/set-profiling-context! span-id span-name)
-(when (pyroscope/available?)
-  (.setAttribute span "pyroscope.profile.id" span-id))
-;; CORRECT — single call, availability checked internally:
-(tracing/set-pyroscope-context! span span-id span-name)
 ```
 
 ## Configuration

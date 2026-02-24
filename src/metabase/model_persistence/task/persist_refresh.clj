@@ -17,7 +17,6 @@
    [metabase.query-processor.timezone :as qp.timezone]
    [metabase.task-history.core :as task-history]
    [metabase.task.core :as task]
-   [metabase.tracing.attributes :as trace-attrs]
    [metabase.tracing.core :as tracing]
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
@@ -181,7 +180,7 @@
                           [:= :c.archived true]
                           ;; card_id is set to null when the corresponding card is deleted
                           [:= :p.card_id nil]]}]
-    (tracing/with-span :tasks "task.persist.find-deletable" {:db/statement (trace-attrs/sanitize-sql hsql)}
+    (tracing/with-span :tasks "task.persist.find-deletable" {:db/statement (tracing/sanitize-sql hsql)}
       (t2/select :model/PersistedInfo hsql))))
 
 (defn- refreshable-models
@@ -195,7 +194,7 @@
                           [:in :p.state (persisted-info/refreshable-states)]
                           [:= :c.archived false]
                           [:= :c.type "model"]]}]
-    (tracing/with-span :tasks "task.persist.find-refreshable" {:db/id database-id :db/statement (trace-attrs/sanitize-sql hsql)}
+    (tracing/with-span :tasks "task.persist.find-refreshable" {:db/id database-id :db/statement (tracing/sanitize-sql hsql)}
       (t2/select :model/PersistedInfo hsql))))
 
 (defn- prune-all-deletable!
