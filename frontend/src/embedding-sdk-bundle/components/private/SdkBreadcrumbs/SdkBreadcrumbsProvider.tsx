@@ -35,13 +35,6 @@ export const SdkBreadcrumbsProvider = ({
     (nextItem: SdkBreadcrumbItem) => {
       const nextBreadcrumbs = removeBreadcrumbsAfterItem(breadcrumbs, nextItem);
 
-      console.log("[DEBUG navigateTo]", {
-        nextItem: { id: nextItem.id, type: nextItem.type, name: nextItem.name },
-        hasOnNavigate: !!nextItem?.onNavigate,
-        hasBreadcrumbs: !!nextBreadcrumbs,
-        breadcrumbCount: breadcrumbs.length,
-      });
-
       if (nextBreadcrumbs) {
         nextItem?.onNavigate?.();
         setBreadcrumbs(nextBreadcrumbs);

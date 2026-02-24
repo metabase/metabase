@@ -105,7 +105,6 @@ export function useLoadQuestion({
     useState(shouldLoadQuestion);
 
   const [, loadAndQueryQuestion] = useAsyncFn(async () => {
-    console.log("[DEBUG loadAndQueryQuestion] called", { questionId, shouldLoadQuestion });
     if (shouldLoadQuestion) {
       setIsQuestionLoading(true);
     }
@@ -122,10 +121,6 @@ export function useLoadQuestion({
         }),
       );
 
-      console.log("[DEBUG loadAndQueryQuestion] loadQuestionSdk resolved", {
-        hasQuestion: !!questionState.question,
-        sourceTable: questionState.question?.card?.()?.dataset_query?.query?.["source-table"],
-      });
       mergeQuestionState(questionState);
 
       const results = await runQuestionQuerySdk({
@@ -137,15 +132,11 @@ export function useLoadQuestion({
         cancelDeferred: deferred(),
       });
 
-      console.log("[DEBUG loadAndQueryQuestion] runQuestionQuerySdk resolved", {
-        hasResults: !!results.queryResults,
-      });
       mergeQuestionState(results);
 
       setIsQuestionLoading(false);
       return { ...results, originalQuestion };
     } catch (err) {
-      console.log("[DEBUG loadAndQueryQuestion] caught error", err);
       // Ignore cancelled requests (e.g. when the component unmounts).
       // React simulates unmounting on strict mode, therefore "Question not found" will be shown without this.
       if (isCancelledRequestError(err)) {
@@ -216,11 +207,6 @@ export function useLoadQuestion({
         return;
       }
 
-      console.log("[DEBUG updateQuestion] dispatch start", {
-        run,
-        sourceTable: nextQuestion?.card?.()?.dataset_query?.query?.["source-table"],
-      });
-
       const state = await dispatch(
         updateQuestionSdk({
           nextQuestion,
@@ -237,9 +223,6 @@ export function useLoadQuestion({
         }),
       );
 
-      console.log("[DEBUG updateQuestion] dispatch resolved, merging state", {
-        sourceTable: state.question?.card?.()?.dataset_query?.query?.["source-table"],
-      });
       mergeQuestionState(state);
     },
     [
