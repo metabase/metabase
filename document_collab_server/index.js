@@ -78,7 +78,7 @@ const server = new Server({
   port: 3005,
   extensions: [
     new WebhookWithBin({
-      url: "http://localhost:3000/api/ee/document/webhook",
+      url: "http://localhost:3000/api/document/webhook",
       secret: "459824aaffa928e05f5b1caec411ae5f",
       transformer: TiptapTransformer,
       events: [
