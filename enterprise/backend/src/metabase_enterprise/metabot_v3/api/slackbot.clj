@@ -832,8 +832,14 @@
    flushes that pile up while a Slack API call is in flight get combined into a single append,
    preventing the agent queue from falling further behind over time.
 
+   A 'Thinking...' placeholder message can be posted before the stream starts via
+   `:start-with-thinking!`. It is automatically deleted when the first text or tool update
+   is sent to the stream.
+
    Returns a map with:
    - `:on-text`, `:on-tool-start`, `:on-tool-end` — callbacks for [[make-streaming-ai-request]]
+   - `:start-with-thinking!` — posts a 'Thinking...' placeholder in the thread
+   - `:request-flush!` — schedules a drain of pending text to Slack
    - `:stream-state` — volatile holding `{:stream_ts :channel}` once started, nil before
    - `:slack-writer` — agent; callers should `(await slack-writer)` before stopping the stream"
   [client {:keys [channel thread-ts team-id user-id]}]
@@ -843,6 +849,8 @@
         ;; Text awaiting write to Slack. Callback thread appends here; agent thread drains.
         ;; An atom because it's shared across threads (callback thread writes, agent thread reads).
         pending-text      (atom "")
+        ;; Holds the ts of the "Thinking..." placeholder message, or nil if not posted / already dismissed.
+        thinking-ts       (atom nil)
         slack-writer      (agent nil
                                  :error-mode    :continue
                                  :error-handler (fn [_ e] (log/warn e "[slackbot] Async Slack write failed")))
@@ -856,12 +864,20 @@
                                                                    :user_id   user-id})]
                              (vreset! stream-state stream))))
 
+        ;; Delete the "Thinking..." placeholder message. Idempotent via reset-vals!.
+        ;; Called from agent actions only.
+        dismiss-thinking! (fn []
+                            (let [[ts] (reset-vals! thinking-ts nil)]
+                              (when ts
+                                (delete-message client {:channel channel :ts ts}))))
+
         ;; Drain all accumulated text from pending-text and send to Slack in one call.
         ;; Called from agent actions only.
         drain-pending-text! (fn []
                               (when-let [{:keys [stream_ts channel]} @stream-state]
                                 (let [[text] (reset-vals! pending-text "")]
                                   (when (seq text)
+                                    (dismiss-thinking!)
                                     (append-markdown-text client channel stream_ts text)))))
 
         ;; Schedule an agent drain. Cheap to call frequently — if the agent is already busy,
@@ -870,6 +886,14 @@
                          (ensure-stream!)
                          (when @stream-state
                            (send-off slack-writer (fn [_] (drain-pending-text!) nil))))
+
+        start-with-thinking! (fn []
+                               (let [response (:body (slack-post-json client "/chat.postMessage"
+                                                                      {:channel   channel
+                                                                       :thread_ts thread-ts
+                                                                       :text      "_Thinking..._"}))]
+                                 (when (:ok response)
+                                   (reset! thinking-ts (:ts response)))))
 
         on-text (fn [text]
                   (when (seq text)
@@ -884,6 +908,7 @@
                           (send-off slack-writer
                                     (fn [_]
                                       (drain-pending-text!)
+                                      (dismiss-thinking!)
                                       (append-stream client channel stream_ts
                                                      [{:type   "task_update"
                                                        :id     id
@@ -905,12 +930,13 @@
                                       (append-markdown-text client channel stream_ts "\n")
                                       nil))))
                       (vswap! tool-id->name dissoc id))]
-    {:on-text       on-text
-     :on-tool-start on-tool-start
-     :on-tool-end   on-tool-end
-     :request-flush! request-flush!
-     :stream-state  stream-state
-     :slack-writer  slack-writer}))
+    {:on-text              on-text
+     :on-tool-start        on-tool-start
+     :on-tool-end          on-tool-end
+     :request-flush!       request-flush!
+     :start-with-thinking! start-with-thinking!
+     :stream-state         stream-state
+     :slack-writer         slack-writer}))
 
 (defn- send-streaming-metabot-response
   "Send a metabot response using Slack's streaming API for progressive updates.
@@ -918,21 +944,25 @@
   ([client event]
    (send-streaming-metabot-response client event nil))
   ([client event extra-history]
-   (let [prompt      (:text event)
-         thread      (-> (fetch-thread client event)
-                         (update :messages #(remove (fn [m] (= (:ts m) (:ts event))) %)))
-         auth-info   (:body (auth-test client))
-         bot-user-id (:user_id auth-info)
-         channel-id  (:channel event)
-         message-ctx (event->reply-context event)
-         channel     (:channel message-ctx)
-         thread-ts   (:thread_ts message-ctx)
+   (let [prompt        (:text event)
+         channel-id    (:channel event)
+         message-ctx   (event->reply-context event)
+         channel       (:channel message-ctx)
+         thread-ts     (:thread_ts message-ctx)
+         ;; Run both Slack API calls in parallel
+         thread-future (future (-> (fetch-thread client event)
+                                   (update :messages #(remove (fn [m] (= (:ts m) (:ts event))) %))))
+         auth-future   (future (:body (auth-test client)))
+         auth-info     @auth-future
+         thread        @thread-future
+         bot-user-id   (:user_id auth-info)
 
-         {:keys [on-text on-tool-start on-tool-end request-flush! stream-state slack-writer]}
+         {:keys [on-text on-tool-start on-tool-end request-flush! start-with-thinking! stream-state slack-writer]}
          (make-streaming-callbacks client {:channel   channel
                                            :thread-ts thread-ts
                                            :team-id   (:team_id auth-info)
                                            :user-id   (:user event)})]
+     (start-with-thinking!)
      (try
        (let [data-parts (make-streaming-ai-request
                          (str (random-uuid))
