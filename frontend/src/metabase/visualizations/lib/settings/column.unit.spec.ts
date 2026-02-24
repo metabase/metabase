@@ -3,9 +3,8 @@ import { getComputedSettings } from "metabase/visualizations/lib/settings";
 import registerVisualizations from "metabase/visualizations/register";
 import type { DatasetColumn, Series } from "metabase-types/api";
 import {
-  createMockCard,
   createMockColumn,
-  createMockDatasetData,
+  createMockSingleSeries,
 } from "metabase-types/api/mocks";
 
 import { NUMBER_COLUMN_SETTINGS, columnSettings } from "./column";
@@ -14,19 +13,21 @@ registerVisualizations();
 
 function seriesWithColumn(column?: Partial<DatasetColumn>): Series {
   return [
-    {
-      card: createMockCard(),
-      data: createMockDatasetData({
-        cols: [
-          createMockColumn({
-            name: "foo",
-            base_type: "type/Float",
-            semantic_type: "type/Currency",
-            ...column,
-          }),
-        ],
-      }),
-    },
+    createMockSingleSeries(
+      {},
+      {
+        data: {
+          cols: [
+            createMockColumn({
+              name: "foo",
+              base_type: "type/Float",
+              semantic_type: "type/Currency",
+              ...column,
+            }),
+          ],
+        },
+      },
+    ),
   ];
 }
 
