@@ -1,7 +1,7 @@
 import { PLUGIN_TRANSFORMS_PYTHON } from "metabase/plugins";
 import { hasPremiumFeature } from "metabase-enterprise/settings";
 
-import { PythonTransformEditor } from "./components/PythonTransformEditor";
+import { TransformEditor } from "./components/TransformEditor";
 import { SHARED_LIB_IMPORT_PATH } from "./constants";
 import { PythonRunnerSettingsPage } from "./pages/PythonRunnerSettingsPage";
 import { getPythonTransformsRoutes, getPythonUpsellRoutes } from "./routes";
@@ -17,7 +17,7 @@ export function initializePlugin() {
       getPythonTransformsRoutes;
     PLUGIN_TRANSFORMS_PYTHON.getPythonSourceValidationResult =
       getPythonSourceValidationResult;
-    PLUGIN_TRANSFORMS_PYTHON.TransformEditor = PythonTransformEditor;
+    PLUGIN_TRANSFORMS_PYTHON.TransformEditor = TransformEditor;
     PLUGIN_TRANSFORMS_PYTHON.PythonRunnerSettingsPage =
       PythonRunnerSettingsPage;
   } else {
