@@ -23,10 +23,10 @@ export function getOptionFromColumn(col: DatasetColumn) {
 export function metricSetting(
   id: string,
   def: Partial<VisualizationSettingsDefinitions[string]> = {},
-): VisualizationSettingsDefinitions {
+): VisualizationSettingsDefinitions<Series> {
   return fieldSetting(id, {
     fieldFilter: isMetric,
-    getDefault: (series: Series) => getDefaultDimensionAndMetric(series).metric,
+    getDefault: (series) => getDefaultDimensionAndMetric(series).metric,
     ...def,
   });
 }
@@ -34,11 +34,10 @@ export function metricSetting(
 export function dimensionSetting(
   id: string,
   def: Partial<VisualizationSettingsDefinitions[string]> = {},
-): VisualizationSettingsDefinitions {
+): VisualizationSettingsDefinitions<Series> {
   return fieldSetting(id, {
     fieldFilter: isDimension,
-    getDefault: (series: Series) =>
-      getDefaultDimensionAndMetric(series).dimension,
+    getDefault: (series) => getDefaultDimensionAndMetric(series).dimension,
     ...def,
   });
 }
@@ -48,8 +47,8 @@ const DEFAULT_FIELD_FILTER = (_column: DatasetColumn) => true;
 type FieldFilterFn = (column: DatasetColumn) => boolean;
 
 export function getDefaultColumn(
-  series: { data: { cols: DatasetColumn[] } }[],
-  vizSettings: VisualizationSettings,
+  series: Series,
+  _vizSettings: VisualizationSettings,
   fieldFilter: FieldFilterFn = DEFAULT_FIELD_FILTER,
 ): string | undefined {
   const [{ data }] = series;
@@ -68,7 +67,7 @@ export function fieldSetting(
     showColumnSetting?: boolean;
     autoOpenWhenUnset?: boolean;
   } = {},
-): VisualizationSettingsDefinitions {
+): VisualizationSettingsDefinitions<Series> {
   return {
     [id]: {
       widget: "field",
@@ -90,9 +89,5 @@ export function fieldSetting(
 export function getDeduplicatedTableColumnSettings(
   tableColumnsSettings: TableColumnOrderSetting[],
 ): TableColumnOrderSetting[] {
-  return _.uniq(
-    tableColumnsSettings,
-    false,
-    (item: { name: string }) => item.name,
-  );
+  return _.uniq(tableColumnsSettings, false, (item) => item.name);
 }
