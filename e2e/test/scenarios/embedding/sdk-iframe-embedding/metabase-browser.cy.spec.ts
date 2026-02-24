@@ -167,9 +167,10 @@ describe("scenarios > embedding > sdk iframe embedding > metabase-browser", () =
 
       cy.findByText("Orders").click();
 
-      // Wait for the data picker to close, ensuring the selection was processed
-      // and the breadcrumb's onNavigate callback is properly registered
-      cy.findByText("Pick your starting data").should("not.exist");
+      // Wait for the notebook editor to fully render with the selected table,
+      // which ensures the useEffect that registers the breadcrumb's onNavigate
+      // callback has fired
+      cy.findByTestId("data-step-cell").should("have.text", "Orders");
 
       cy.findByTestId("sdk-breadcrumbs").findByText("New exploration").click();
 
