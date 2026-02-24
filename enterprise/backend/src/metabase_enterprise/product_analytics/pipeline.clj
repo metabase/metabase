@@ -8,6 +8,7 @@
    [clojure.string :as str]
    [java-time.api :as t]
    [malli.core :as mc]
+   [metabase-enterprise.product-analytics.geo :as geo]
    [metabase-enterprise.product-analytics.storage :as storage]
    [metabase-enterprise.product-analytics.token :as pa.token]
    [user-agent])
@@ -148,26 +149,33 @@
        :device  (truncate device 254)})))
 
 (defn extract-geo
-  "Extract geo information from CDN headers.
-   Checks Cloudflare, then Vercel headers. Returns `{:country :subdivision1 :city}`."
-  [headers]
-  (let [headers   (into {} (map (fn [[k v]] [(str/lower-case (name k)) v])) headers)
-        cf-country (get headers "cf-ipcountry")
-        country    (cond
-                     (and cf-country (not (#{"XX" "T1"} cf-country)))
-                     cf-country
+  "Extract geo information from CDN headers, falling back to MaxMind DB lookup.
+   Checks Cloudflare, then Vercel headers. If no country is found and an IP is
+   available, falls back to a local MaxMind GeoLite2/GeoIP2 database.
+   Returns `{:country :subdivision1 :city}`."
+  ([headers]
+   (extract-geo headers nil))
+  ([headers ip]
+   (let [headers   (into {} (map (fn [[k v]] [(str/lower-case (name k)) v])) headers)
+         cf-country (get headers "cf-ipcountry")
+         country    (cond
+                      (and cf-country (not (#{"XX" "T1"} cf-country)))
+                      cf-country
 
-                     :else
-                     (get headers "x-vercel-ip-country"))
-        subdivision1 (get headers "x-vercel-ip-country-region")
-        raw-city     (get headers "x-vercel-ip-city")
-        city         (when raw-city
-                       (try
-                         (URLDecoder/decode ^String raw-city "UTF-8")
-                         (catch Exception _ raw-city)))]
-    {:country      country
-     :subdivision1 subdivision1
-     :city         city}))
+                      :else
+                      (get headers "x-vercel-ip-country"))
+         subdivision1 (get headers "x-vercel-ip-country-region")
+         raw-city     (get headers "x-vercel-ip-city")
+         city         (when raw-city
+                        (try
+                          (URLDecoder/decode ^String raw-city "UTF-8")
+                          (catch Exception _ raw-city)))]
+     (if (and (nil? country) (not (str/blank? ip)))
+       ;; No CDN geo headers — fall back to MaxMind
+       (geo/lookup-city ip)
+       {:country      country
+        :subdivision1 subdivision1
+        :city         city}))))
 
 (defn session-uuid
   "Compute a deterministic session UUID from site, IP, UA, and monthly-rotating salt."
@@ -321,7 +329,8 @@
                                          claims)))
                      cached?       (boolean (or resolved-session token-claims))
                      client-info   (when-not cached? (parse-client-info ua))
-                     geo           (when-not cached? (extract-geo (:headers request-context)))
+                     geo           (when-not cached? (extract-geo (:headers request-context)
+                                                                  (:ip request-context)))
                      sess-uuid     (cond
                                      resolved-session (:session_uuid resolved-session)
                                      token-claims     (:session-id token-claims)

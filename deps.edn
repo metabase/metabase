@@ -28,6 +28,7 @@
   clojurewerkz/quartzite                    {:mvn/version "2.2.0"               ; scheduling library
                                              :exclusions  [com.mchange.c3p0/c3p0
                                                            com.zaxxer/HikariCP-java7]}
+  com.maxmind.geoip2/geoip2                 {:mvn/version "4.2.1"}              ; GeoIP2 database reader for IP geolocation
   colorize/colorize                         {:mvn/version "0.1.1"               ; string output with ANSI color codes (for logging)
                                              :exclusions  [org.clojure/clojure]}
   com.clearspring.analytics/stream          {:mvn/version "2.9.8"               ; Various sketching algorithms
