@@ -76,9 +76,34 @@
                     "CITY"          :type/City
                     "LANGUAGE"      :type/Category}})
 
+(def ^:private pa-field-remappings
+  "Internal dimension remappings for enum fields.
+   Maps {table-name {field-name {:name display-name :values [v ...] :labels [s ...]}}}"
+  {"V_PA_EVENTS" {"EVENT_TYPE" {:name   "Event Type"
+                                :values [1 2]
+                                :labels ["Pageview" "Custom Event"]}}})
+
+(defn- ensure-field-remapping!
+  "Create or update an internal Dimension + FieldValues remapping for a field."
+  [field-id {:keys [name values labels]}]
+  ;; Dimension
+  (when-not (t2/select-one :model/Dimension :field_id field-id :type :internal)
+    (t2/insert! :model/Dimension {:field_id field-id
+                                  :type     :internal
+                                  :name     name}))
+  ;; FieldValues with human-readable labels
+  (if-let [existing (t2/select-one :model/FieldValues :field_id field-id :type :full)]
+    (t2/update! :model/FieldValues (:id existing)
+                {:values                values
+                 :human_readable_values labels})
+    (t2/insert! :model/FieldValues {:field_id              field-id
+                                    :type                  :full
+                                    :values                values
+                                    :human_readable_values labels})))
+
 (defn- enhance-pa-metadata!
-  "After sync, set entity types on PA tables and semantic types on key fields
-   to enable proper x-ray template matching and dimension resolution."
+  "After sync, set entity types on PA tables, semantic types on key fields,
+   and internal remappings on enum fields."
   []
   (doseq [[table-name entity-type] pa-table-entity-types]
     (t2/update! :model/Table {:db_id pa/product-analytics-db-id :name table-name}
@@ -87,7 +112,12 @@
     (when-let [table (t2/select-one :model/Table :db_id pa/product-analytics-db-id :name table-name)]
       (doseq [[field-name semantic-type] field-types]
         (t2/update! :model/Field {:table_id (:id table) :name field-name}
-                    {:semantic_type semantic-type})))))
+                    {:semantic_type semantic-type}))))
+  (doseq [[table-name field-remaps] pa-field-remappings]
+    (when-let [table (t2/select-one :model/Table :db_id pa/product-analytics-db-id :name table-name)]
+      (doseq [[field-name remap-config] field-remaps]
+        (when-let [field (t2/select-one :model/Field :table_id (:id table) :name field-name)]
+          (ensure-field-remapping! (:id field) remap-config))))))
 
 ;;; ------------------------------------------------- Sync -------------------------------------------------
 
