@@ -1,8 +1,10 @@
 (ns metabase-enterprise.product-analytics.pipeline-test
   (:require
+   [buddy.sign.jwt :as jwt]
    [clojure.test :refer :all]
    [java-time.api :as t]
    [metabase-enterprise.product-analytics.pipeline :as pipeline]
+   [metabase-enterprise.product-analytics.token :as pa.token]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]))
 
@@ -26,9 +28,33 @@
   (is (= :validation/invalid-payload
          (:error (pipeline/validate-payload {:payload {:website "abc" :url "https://x.com"}})))))
 
-(deftest validate-payload-wrong-type-test
+(deftest validate-payload-identify-valid-test
+  (testing "identify with website is valid"
+    (is (:ok (pipeline/validate-payload
+              {:type "identify"
+               :payload {:website "abc"}}))))
+  (testing "identify with data + distinct_id is valid"
+    (is (:ok (pipeline/validate-payload
+              {:type "identify"
+               :payload {:website "abc"
+                         :distinct_id "user-123"
+                         :data {"plan" "pro"}}})))))
+
+(deftest validate-payload-unknown-type-test
+  (testing "truly unknown types like 'pageview' fail validation"
+    (is (= :validation/invalid-payload
+           (:error (pipeline/validate-payload {:type "pageview" :payload {:website "abc" :url "https://x.com"}}))))))
+
+(deftest validate-payload-identify-missing-website-test
   (is (= :validation/invalid-payload
-         (:error (pipeline/validate-payload {:type "identify" :payload {:website "abc" :url "https://x.com"}})))))
+         (:error (pipeline/validate-payload {:type "identify" :payload {}})))))
+
+(deftest validate-payload-identify-distinct-id-too-long-test
+  (is (= :validation/invalid-payload
+         (:error (pipeline/validate-payload
+                  {:type "identify"
+                   :payload {:website "abc"
+                             :distinct_id (apply str (repeat 51 "x"))}})))))
 
 (deftest validate-payload-missing-website-test
   (is (= :validation/invalid-payload
@@ -239,6 +265,37 @@
 (deftest build-event-properties-empty-test
   (is (= [] (pipeline/build-event-properties {}))))
 
+;;; ----------------------------------------- Session data rows ----------------------------------------------------
+
+(deftest build-session-data-rows-string-values-test
+  (let [result (pipeline/build-session-data-rows {"plan" "pro"})]
+    (is (= 1 (count result)))
+    (is (= "plan" (:data_key (first result))))
+    (is (= "pro" (:string_value (first result))))
+    (is (= 1 (:data_type (first result))))))
+
+(deftest build-session-data-rows-number-values-test
+  (let [result (pipeline/build-session-data-rows {"score" 99})]
+    (is (= 1 (count result)))
+    (is (= 99 (:number_value (first result))))
+    (is (= 2 (:data_type (first result))))))
+
+(deftest build-session-data-rows-mixed-test
+  (let [result (pipeline/build-session-data-rows {"plan" "pro" "seats" 10})]
+    (is (= 2 (count result)))
+    (is (= #{1 2} (set (map :data_type result))))))
+
+(deftest build-session-data-rows-nil-test
+  (is (= [] (pipeline/build-session-data-rows nil))))
+
+(deftest build-session-data-rows-empty-test
+  (is (= [] (pipeline/build-session-data-rows {}))))
+
+(deftest build-session-data-rows-no-session-id-test
+  (testing "rows do not contain :session_id — caller adds it"
+    (let [result (pipeline/build-session-data-rows {"k" "v"})]
+      (is (not (contains? (first result) :session_id))))))
+
 ;;; ============================================ Integration tests =================================================
 ;;; These tests use the DB (mt/with-temp) — NOT :parallel safe.
 
@@ -253,11 +310,18 @@
               screen   (assoc :screen screen)
               language (assoc :language language))})
 
-(defn- make-ctx [& {:keys [user-agent ip headers]
+(defn- make-identify-body [site-uuid & {:keys [distinct-id data]}]
+  {:type    "identify"
+   :payload (cond-> {:website site-uuid}
+              distinct-id (assoc :distinct_id distinct-id)
+              data        (assoc :data data))})
+
+(defn- make-ctx [& {:keys [user-agent ip headers token]
                     :or {user-agent "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
                          ip         "1.2.3.4"
                          headers    {}}}]
-  {:user-agent user-agent :ip ip :headers headers})
+  (cond-> {:user-agent user-agent :ip ip :headers headers}
+    token (assoc :token token)))
 
 (deftest process-event-pageview-success-test
   (testing "valid pageview body + context → success with correct shape"
@@ -334,3 +398,157 @@
                     (make-body (:uuid site))
                     (make-ctx))]
         (is (= :validation/unknown-site (:error result)))))))
+
+;;; --------------------------------------- Session cache tests (process-event) ------------------------------------
+
+(deftest process-event-valid-jwt-uses-token-test
+  (testing "valid JWT → uses token's session-id and visit-id, omits client-info/geo from session-data"
+    (mt/with-temp [:model/ProductAnalyticsSite site {:name "Test Site" :uuid (str (random-uuid))}]
+      (let [token  (pa.token/create-session-token "cached-sess-uuid" "cached-visit-id" (:uuid site))
+            body   (make-body (:uuid site) :url "https://example.com/page")
+            ctx    (make-ctx :token token :headers {"cf-ipcountry" "US"})
+            result (pipeline/process-event body ctx)]
+        (is (nil? (:error result)) (str "Unexpected error: " (:message result)))
+        (let [sd (:session-data result)]
+          (is (= "cached-sess-uuid" (:session_uuid sd)))
+          (is (= (:id site) (:site_id sd)))
+          ;; client-info/geo keys should be absent (not nil) when cached
+          (is (not (contains? sd :browser)))
+          (is (not (contains? sd :os)))
+          (is (not (contains? sd :device)))
+          (is (not (contains? sd :country)))
+          (is (not (contains? sd :subdivision1)))
+          (is (not (contains? sd :city))))
+        (let [ed (get-in result [:event-data :event])]
+          (is (= "cached-visit-id" (:visit_id ed))))))))
+
+(deftest process-event-expired-jwt-falls-back-test
+  (testing "expired JWT (>24h) → falls back to normal hash resolution, client-info present"
+    (mt/with-temp [:model/ProductAnalyticsSite site {:name "Test Site" :uuid (str (random-uuid))}]
+      (let [;; Create a token that is already expired by backdating the iat claim
+            secret (pa.token/ensure-secret!)
+            token  (jwt/sign {:session-id "old-sess"
+                              :visit-id   "old-vid"
+                              :website-id (:uuid site)
+                              :iat        (- (quot (System/currentTimeMillis) 1000) 90000)}
+                             secret
+                             {:alg :hs256})
+            body   (make-body (:uuid site) :url "https://example.com/page")
+            ctx    (make-ctx :token token :headers {"cf-ipcountry" "US"})
+            result (pipeline/process-event body ctx)]
+        (is (nil? (:error result)))
+        (let [sd (:session-data result)]
+          ;; Should NOT use the expired token's session-id
+          (is (not= "old-sess" (:session_uuid sd)))
+          ;; client-info/geo keys should be present
+          (is (contains? sd :browser))
+          (is (contains? sd :country)))))))
+
+(deftest process-event-tampered-jwt-falls-back-test
+  (testing "tampered JWT → falls back to normal resolution"
+    (mt/with-temp [:model/ProductAnalyticsSite site {:name "Test Site" :uuid (str (random-uuid))}]
+      (let [token  (str (pa.token/create-session-token "sess" "vid" (:uuid site)) "TAMPERED")
+            body   (make-body (:uuid site) :url "https://example.com/page")
+            ctx    (make-ctx :token token)
+            result (pipeline/process-event body ctx)]
+        (is (nil? (:error result)))
+        (let [sd (:session-data result)]
+          (is (not= "sess" (:session_uuid sd)))
+          (is (contains? sd :browser)))))))
+
+(deftest process-event-jwt-wrong-site-falls-back-test
+  (testing "JWT with mismatched website-id → falls back to normal resolution"
+    (mt/with-temp [:model/ProductAnalyticsSite site {:name "Test Site" :uuid (str (random-uuid))}]
+      (let [token  (pa.token/create-session-token "sess" "vid" "wrong-site-uuid")
+            body   (make-body (:uuid site) :url "https://example.com/page")
+            ctx    (make-ctx :token token)
+            result (pipeline/process-event body ctx)]
+        (is (nil? (:error result)))
+        (let [sd (:session-data result)]
+          (is (not= "sess" (:session_uuid sd)))
+          (is (contains? sd :browser)))))))
+
+;;; --------------------------------------- process-identify tests -------------------------------------------------
+
+(deftest process-identify-success-with-data-test
+  (testing "identify with data + distinct_id → success"
+    (mt/with-temp [:model/ProductAnalyticsSite site {:name "Test Site" :uuid (str (random-uuid))}]
+      (let [body   (make-identify-body (:uuid site)
+                                       :distinct-id "user-123"
+                                       :data {"plan" "pro" "seats" 5})
+            ctx    (make-ctx)
+            result (pipeline/process-identify body ctx)]
+        (is (nil? (:error result)) (str "Unexpected error: " (:message result)))
+        (is (true? (:identify result)))
+        (is (= "user-123" (:distinct-id result)))
+        (let [sd (:session-data result)]
+          (is (string? (:session_uuid sd)))
+          (is (= (:id site) (:site_id sd))))
+        (is (= 2 (count (:data-rows result))))
+        (is (= #{1 2} (set (map :data_type (:data-rows result)))))))))
+
+(deftest process-identify-minimal-test
+  (testing "identify with only website → nil distinct-id, empty data-rows"
+    (mt/with-temp [:model/ProductAnalyticsSite site {:name "Test Site" :uuid (str (random-uuid))}]
+      (let [body   (make-identify-body (:uuid site))
+            ctx    (make-ctx)
+            result (pipeline/process-identify body ctx)]
+        (is (nil? (:error result)))
+        (is (true? (:identify result)))
+        (is (nil? (:distinct-id result)))
+        (is (= [] (:data-rows result)))))))
+
+(deftest process-identify-unknown-site-test
+  (testing "unknown site → error"
+    (let [result (pipeline/process-identify
+                  (make-identify-body (str (random-uuid)))
+                  (make-ctx))]
+      (is (= :validation/unknown-site (:error result))))))
+
+(deftest process-identify-bot-rejected-test
+  (testing "bot UA → error"
+    (mt/with-temp [:model/ProductAnalyticsSite site {:name "Test Site" :uuid (str (random-uuid))}]
+      (let [result (pipeline/process-identify
+                    (make-identify-body (:uuid site))
+                    (make-ctx :user-agent "Googlebot/2.1"))]
+        (is (= :rejected/bot (:error result)))))))
+
+(deftest process-identify-valid-jwt-test
+  (testing "valid JWT → uses token's session-id"
+    (mt/with-temp [:model/ProductAnalyticsSite site {:name "Test Site" :uuid (str (random-uuid))}]
+      (let [token  (pa.token/create-session-token "cached-sess" "cached-vid" (:uuid site))
+            body   (make-identify-body (:uuid site) :distinct-id "user-456")
+            ctx    (make-ctx :token token)
+            result (pipeline/process-identify body ctx)]
+        (is (nil? (:error result)))
+        (is (= "cached-sess" (get-in result [:session-data :session_uuid])))))))
+
+;;; --------------------------------------- process-payload tests --------------------------------------------------
+
+(deftest process-payload-event-routes-test
+  (testing "type=event routes correctly and has :event-data"
+    (mt/with-temp [:model/ProductAnalyticsSite site {:name "Test Site" :uuid (str (random-uuid))}]
+      (let [body   (make-body (:uuid site))
+            ctx    (make-ctx)
+            result (pipeline/process-payload body ctx)]
+        (is (nil? (:error result)))
+        (is (some? (:event-data result)))))))
+
+(deftest process-payload-identify-routes-test
+  (testing "type=identify routes correctly and has :identify true"
+    (mt/with-temp [:model/ProductAnalyticsSite site {:name "Test Site" :uuid (str (random-uuid))}]
+      (let [body   (make-identify-body (:uuid site))
+            ctx    (make-ctx)
+            result (pipeline/process-payload body ctx)]
+        (is (nil? (:error result)))
+        (is (true? (:identify result)))))))
+
+(deftest process-payload-unknown-type-test
+  (testing "unknown type → :validation/invalid-payload"
+    (let [result (pipeline/process-payload {:type "pageview" :payload {:website "abc"}} (make-ctx))]
+      (is (= :validation/invalid-payload (:error result))))))
+
+(deftest process-payload-missing-type-test
+  (testing "missing type → :validation/invalid-payload"
+    (let [result (pipeline/process-payload {:payload {:website "abc"}} (make-ctx))]
+      (is (= :validation/invalid-payload (:error result))))))

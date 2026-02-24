@@ -30,10 +30,16 @@
    [:name     {:optional true} [:maybe [:string {:max 50}]]]
    [:data     {:optional true} [:maybe :any]]])
 
-(def ^:private SendRequest
+(def ^:private IdentifyPayload
   [:map
-   [:type    [:= "event"]]
-   [:payload EventPayload]])
+   [:website     [:string {:max 36}]]
+   [:data        {:optional true} [:maybe [:map-of :string :any]]]
+   [:distinct_id {:optional true} [:maybe [:string {:max 50}]]]])
+
+(def ^:private SendRequest
+  [:multi {:dispatch :type}
+   ["event"    [:map [:type [:= "event"]]    [:payload EventPayload]]]
+   ["identify" [:map [:type [:= "identify"]] [:payload IdentifyPayload]]]])
 
 ;;; --------------------------------------------------- Utilities --------------------------------------------------
 
@@ -244,13 +250,47 @@
                  :data_type    1})))
           data-map)))
 
+(defn build-session-data-rows
+  "Convert a `{\"key\" value}` data map into session-data row maps for
+   [[storage/save-session-data!]]. Caller must assoc `:session_id` onto each row.
+   Strings → data_type 1, numbers → data_type 2, else coerced to string.
+   Keys and string values truncated to 500 chars. nil/empty → `[]`."
+  [data-map]
+  (if (or (nil? data-map) (empty? data-map))
+    []
+    (mapv (fn [[k v]]
+            (let [str-key (truncate (str k) 500)]
+              (cond
+                (number? v)
+                {:data_key     str-key
+                 :number_value v
+                 :data_type    2}
+
+                (string? v)
+                {:data_key     str-key
+                 :string_value (truncate v 500)
+                 :data_type    1}
+
+                :else
+                {:data_key     str-key
+                 :string_value (truncate (str v) 500)
+                 :data_type    1})))
+          data-map)))
+
 ;;; ----------------------------------------------- Orchestrator ---------------------------------------------------
+
+(defn- resolve-token
+  "Verify a session cache JWT from request-context :token.
+   Returns claims map or nil."
+  [request-context]
+  (when-let [token (:token request-context)]
+    (pa.token/verify-session-token token)))
 
 (defn process-event
   "Process a raw event payload and request context through the pipeline.
 
    `body` is the parsed JSON body (e.g. `{:type \"event\" :payload {...}}`).
-   `request-context` is `{:user-agent \"...\" :ip \"...\" :headers {...}}`.
+   `request-context` is `{:user-agent \"...\" :ip \"...\" :headers {...} :token \"...\"}`.
    `resolved-session` is an optional pre-resolved session (for Phase 5.5, nil for now).
 
    Returns on success:
@@ -267,38 +307,53 @@
        (let [ua (:user-agent request-context)]
          (if (bot? ua)
            {:error :rejected/bot :message "Bot user-agent rejected"}
-           (let [payload   (:payload body)
-                 site-uuid (:website payload)
-                 site-res  (lookup-site site-uuid)]
+           (let [payload      (:payload body)
+                 site-uuid    (:website payload)
+                 site-res     (lookup-site site-uuid)]
              (if (:error site-res)
                site-res
-               (let [site        (:ok site-res)
-                     now         (t/zoned-date-time)
-                     secret      (pa.token/ensure-secret!)
-                     client-info (parse-client-info ua)
-                     geo         (extract-geo (:headers request-context))
-                     sess-uuid   (if resolved-session
-                                   (:session_uuid resolved-session)
-                                   (session-uuid site-uuid
-                                                 (:ip request-context)
-                                                 ua
-                                                 secret
-                                                 now))
-                     vid         (visit-id sess-uuid secret now)
-                     url-info    (parse-url (:url payload))
-                     ref-info    (parse-referrer (:referrer payload))
-                     props       (build-event-properties (:data payload))
-                     event-type  (if (str/blank? (:name payload)) 1 2)]
-                 {:session-data {:session_uuid sess-uuid
-                                 :site_id      (:id site)
-                                 :browser      (:browser client-info)
-                                 :os           (:os client-info)
-                                 :device       (:device client-info)
-                                 :screen       (truncate (:screen payload) 254)
-                                 :language     (truncate (:language payload) 20)
-                                 :country      (:country geo)
-                                 :subdivision1 (:subdivision1 geo)
-                                 :city         (:city geo)}
+               (let [site          (:ok site-res)
+                     now           (t/zoned-date-time)
+                     secret        (pa.token/ensure-secret!)
+                     token-claims  (when-not resolved-session
+                                     (let [claims (resolve-token request-context)]
+                                       (when (and claims (= (:website-id claims) site-uuid))
+                                         claims)))
+                     cached?       (boolean (or resolved-session token-claims))
+                     client-info   (when-not cached? (parse-client-info ua))
+                     geo           (when-not cached? (extract-geo (:headers request-context)))
+                     sess-uuid     (cond
+                                     resolved-session (:session_uuid resolved-session)
+                                     token-claims     (:session-id token-claims)
+                                     :else            (session-uuid site-uuid
+                                                                    (:ip request-context)
+                                                                    ua
+                                                                    secret
+                                                                    now))
+                     vid           (cond
+                                     (and resolved-session (:visit_id resolved-session))
+                                     (:visit_id resolved-session)
+
+                                     token-claims
+                                     (:visit-id token-claims)
+
+                                     :else
+                                     (visit-id sess-uuid secret now))
+                     url-info      (parse-url (:url payload))
+                     ref-info      (parse-referrer (:referrer payload))
+                     props         (build-event-properties (:data payload))
+                     event-type    (if (str/blank? (:name payload)) 1 2)]
+                 {:session-data (cond-> {:session_uuid sess-uuid
+                                         :site_id      (:id site)
+                                         :screen       (truncate (:screen payload) 254)
+                                         :language     (truncate (:language payload) 20)}
+                                  (not cached?)
+                                  (merge {:browser      (:browser client-info)
+                                          :os           (:os client-info)
+                                          :device       (:device client-info)
+                                          :country      (:country geo)
+                                          :subdivision1 (:subdivision1 geo)
+                                          :city         (:city geo)}))
                   :event-data   {:event      {:site_id         (:id site)
                                               :visit_id        vid
                                               :event_type      event-type
@@ -318,3 +373,56 @@
                                               :gclid           (:gclid url-info)
                                               :fbclid          (:fbclid url-info)}
                                  :properties props}})))))))))
+
+(defn process-identify
+  "Process an identify payload and request context.
+
+   `body` is `{:type \"identify\" :payload {:website \"...\" :distinct_id \"...\" :data {...}}}`.
+   `request-context` is `{:user-agent \"...\" :ip \"...\" :headers {...} :token \"...\"}`.
+
+   Returns on success:
+     `{:identify true :session-data {...} :distinct-id \"...\" :data-rows [...]}`
+
+   Returns on failure:
+     `{:error :validation/... :message \"...\"}`"
+  [body request-context]
+  (let [validation (validate-payload body)]
+    (if (:error validation)
+      validation
+      (let [ua (:user-agent request-context)]
+        (if (bot? ua)
+          {:error :rejected/bot :message "Bot user-agent rejected"}
+          (let [payload      (:payload body)
+                site-uuid    (:website payload)
+                site-res     (lookup-site site-uuid)]
+            (if (:error site-res)
+              site-res
+              (let [site         (:ok site-res)
+                    token-claims (let [claims (resolve-token request-context)]
+                                   (when (and claims (= (:website-id claims) site-uuid))
+                                     claims))
+                    now          (t/zoned-date-time)
+                    secret       (pa.token/ensure-secret!)
+                    sess-uuid    (if token-claims
+                                   (:session-id token-claims)
+                                   (session-uuid site-uuid
+                                                 (:ip request-context)
+                                                 ua
+                                                 secret
+                                                 now))
+                    distinct-id  (:distinct_id payload)
+                    data-rows    (build-session-data-rows (:data payload))]
+                {:identify     true
+                 :session-data {:session_uuid sess-uuid
+                                :site_id      (:id site)}
+                 :distinct-id  distinct-id
+                 :data-rows    data-rows}))))))))
+
+(defn process-payload
+  "Top-level entry point. Dispatches on `:type` to [[process-event]] or [[process-identify]]."
+  [body request-context]
+  (case (:type body)
+    "event"    (process-event body request-context)
+    "identify" (process-identify body request-context)
+    {:error   :validation/invalid-payload
+     :message (str "Unknown payload type: " (pr-str (:type body)))}))
