@@ -6,6 +6,7 @@
    [metabase.lib.common :as lib.common]
    [metabase.lib.equality :as lib.equality]
    [metabase.lib.expression :as lib.expression]
+   [metabase.lib.field.util :as lib.field.util]
    [metabase.lib.join :as lib.join]
    [metabase.lib.join.util :as lib.join.util]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
@@ -620,7 +621,9 @@
                                   query-after
                                   query-before
                                   stage-number
-                                  (fn [column] [:field {:join-alias (:lib/join-alias column)} (:id column)]))]
+                                  (fn [column] [:field {:join-alias (:lib/join-alias column)}
+                                                (or (lib.field.util/column-metadata->field-ref-name column)
+                                                    (:id column))]))]
     ;; Because joins can use :all or :none, we cannot just use `remove-local-references` we have to manually look at
     ;; the next stage as well
     (if-let [next-stage-number (lib.util/next-stage-number query-without-local-refs stage-number)]

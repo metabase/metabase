@@ -687,7 +687,7 @@
   (testing "Should be able to calculate type info for :coalese with field refs without type info (#30397, QUE-147)"
     (let [query (lib/query meta/metadata-provider (meta/table-metadata :venues))
           price (-> (lib/ref (meta/field-metadata :venues :price))
-                    (lib.options/update-options dissoc :base-type :effective-type))]
+                    (lib.options/update-options dissoc :effective-type))]
       (are [expr expected-type] (= expected-type
                                    (lib.metadata.calculation/type-of query expr))
         (lib/coalesce price 1)
@@ -714,7 +714,7 @@
   (testing "Should be able to calculate type info for :case with field refs without type info (#30397, QUE-147)"
     (let [query (lib/query meta/metadata-provider (meta/table-metadata :venues))
           price (-> (lib/ref (meta/field-metadata :venues :price))
-                    (lib.options/update-options dissoc :base-type :effective-type))]
+                    (lib.options/update-options dissoc :effective-type))]
       (are [expr expected-type] (= expected-type
                                    (lib.metadata.calculation/type-of query expr))
         (lib/case

@@ -488,8 +488,10 @@
 
 (deftest ^:parallel coordinate-filter-parts-test
   (let [query         (lib.query/query meta/metadata-provider (meta/table-metadata :orders))
-        lat-column    (m/filter-vals some? (meta/field-metadata :people :latitude))
-        lon-column    (m/filter-vals some? (meta/field-metadata :people :longitude))
+        lat-column    (assoc (m/filter-vals some? (meta/field-metadata :people :latitude))
+                             :fk-field-id (meta/id :orders :user-id))
+        lon-column    (assoc (m/filter-vals some? (meta/field-metadata :people :longitude))
+                             :fk-field-id (meta/id :orders :user-id))
         bigint-value  (u.number/bigint "9007199254740993")
         bigint-clause (lib.expression/value bigint-value)]
     (testing "clause to parts roundtrip"
