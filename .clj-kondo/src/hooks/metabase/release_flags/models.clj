@@ -7,7 +7,7 @@
   "Reads release-flags.json and returns the set of top-level flag name strings."
   []
   (try
-    (let [content (slurp "release-flags.json")]
+    (let [content (slurp "resources/release-flags.json")]
       ;; Extract top-level keys from JSON. Keys are quoted strings before a colon.
       ;; This is a simple approach that avoids needing a JSON parser.
       (-> (into #{}

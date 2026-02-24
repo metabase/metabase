@@ -1,5 +1,6 @@
 (ns metabase.release-flags.init
   (:require
+   [clojure.java.io :as io]
    [clojure.set :as set]
    [metabase.release-flags.models :as models]
    [metabase.task.core :as task]
@@ -14,7 +15,7 @@
   "Reads release-flags.json from the project root and returns a map of flag name to {:description :start_date}."
   []
   (try
-    (-> (slurp "release-flags.json")
+    (-> (slurp (io/resource "release-flags.json"))
         (json/decode+kw))
     (catch Exception e
       (log/warn e "Could not read release-flags.json")
