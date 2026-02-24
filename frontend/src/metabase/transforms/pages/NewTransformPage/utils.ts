@@ -55,7 +55,7 @@ export function getInitialJavascriptSource(): PythonTransformSourceDraft {
     body: `// Write your Javascript transformation script here
 import * as common from "./common.js";
 
-function transform() {
+export function transform() {
   /**
    * Your transformation function.
    *
