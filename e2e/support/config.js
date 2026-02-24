@@ -100,6 +100,13 @@ const defaultConfig = {
         launchOptions.args.push("--force-prefers-reduced-motion");
       }
 
+      // Prevent OOM crashes in CI (cypress-io/cypress#27415)
+      if (isCI) {
+        launchOptions.args.push("--disable-gpu");
+        launchOptions.args.push("--disable-dev-shm-usage");
+        launchOptions.args.push("--js-flags=--max-old-space-size=4096");
+      }
+
       return launchOptions;
     });
 
