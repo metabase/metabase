@@ -12,6 +12,30 @@
   []
   nil)
 
+(def ^:private ^:const max-slack-timestamp-age-seconds
+  "Maximum age in seconds for a Slack request timestamp. Requests older than this are rejected
+   to prevent replay attacks. Slack recommends 5 minutes (300 seconds)."
+  300)
+
+(defn- current-unix-timestamp
+  "Returns current Unix timestamp in seconds. Extracted for testability."
+  []
+  (quot (System/currentTimeMillis) 1000))
+
+(defn- slack-timestamp-valid?
+  "Check if the Slack request timestamp is within the acceptable time window.
+   Returns false if timestamp is missing, malformed, or too old."
+  [timestamp]
+  (if timestamp
+    (try
+      (let [request-time (Long/parseLong timestamp)
+            current-time (current-unix-timestamp)
+            age (Math/abs (long (- current-time request-time)))]
+        (<= age max-slack-timestamp-age-seconds))
+      (catch NumberFormatException _
+        false))
+    false))
+
 (def ^:private ^:const ^String static-metabase-api-key-header "x-metabase-apikey")
 
 (defn- wrap-static-api-key* [{:keys [headers], :as request}]
@@ -33,13 +57,16 @@
       codecs/bytes->hex))
 
 (defn- verify-slack-signature
-  "Verify that the request came from Slack using signature verification"
+  "Verify that the request came from Slack using signature verification.
+   Returns nil if no signing secret is configured, false if timestamp is too old
+   (replay attack prevention) or signature is invalid, true if valid."
   [request-body timestamp slack-signature]
   (when-let [signing-secret (metabot-slack-signing-secret-setting)]
-    (let [message (str "v0:" timestamp ":" request-body)
-          computed-signature (hmac-sha256 signing-secret message)
-          expected-signature (str "v0=" computed-signature)]
-      (= expected-signature slack-signature))))
+    (and (slack-timestamp-valid? timestamp)
+         (let [message (str "v0:" timestamp ":" request-body)
+               computed-signature (hmac-sha256 signing-secret message)
+               expected-signature (str "v0=" computed-signature)]
+           (= expected-signature slack-signature)))))
 
 (defn verify-slack-request
   "Middleware that detects if an incoming request is from Slack and sets the `:slack/validated?` keyword on a request
