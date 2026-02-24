@@ -245,7 +245,7 @@
         (if (empty? errors)
           errors
           (fallback-enrich driver compiled errors)))
-      ;; Fallback: cards without result-metadata or placeholder collision
+      ;; Fallback: cards with placeholder collision
       (driver/validate-native-query-fields driver (compile-query query)))
     (let [compiled (compile-query query)
           errors   (validate-with-sources driver compiled)]
