@@ -22,7 +22,7 @@
   :encryption  :when-encryption-key-set
   :type        :string)
 
-(defn- ensure-secret!
+(defn ensure-secret!
   "Return the configured secret, generating and persisting one if absent."
   []
   (or (product-analytics-session-secret)
