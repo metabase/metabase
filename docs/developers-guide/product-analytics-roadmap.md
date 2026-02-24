@@ -184,37 +184,13 @@ CORS origins must be updated accordingly.
   pipeline → storage.
 - Session cache token generation and lookup (avoid re-deriving session on every hit).
 - CORS middleware/configuration that dynamically allows origins matching
-  registered site hostnames for the `/send` and `/script.js` endpoints.
+  registered site hostnames for the `/send` endpoint.
 - Integration tests hitting the endpoint end-to-end against the app-DB backend,
   including CORS preflight checks.
 
 ---
 
-## Phase 6 — Tracking script (parallel: start with Phase 4)
-
-Serve a lightweight JavaScript tracker from Metabase that site operators embed in
-their pages. Modeled on Umami's `script.js`.
-
-**Behavior:**
-
-- Auto-fires a pageview on load.
-- Listens for SPA navigation (`popstate` / History API) and fires subsequent pageviews.
-- Collects: URL, referrer, document title, screen size, language.
-- Sends events to `POST /api/ee/product-analytics/send`.
-- Echoes the session cache token on follow-up requests.
-- Exposes `window.metabaseAnalytics.track(name, data)` for custom events.
-- Respects `data-domains`, `data-do-not-track`, and `data-auto-track` attributes.
-
-**Deliverables:**
-
-- `resources/product-analytics/tracker.js` (or built from a small TS/JS source).
-- A `GET /api/ee/product-analytics/script.js` endpoint that serves the tracker
-  (with appropriate cache headers).
-- Manual QA plan for SPA and multi-page site scenarios.
-
----
-
-## Phase 7 — Query builder integration
+## Phase 6 — Query builder integration
 
 Surface stored product analytics events in Metabase's query builder so users
 can build questions and dashboards against their event data without writing SQL.
@@ -237,7 +213,7 @@ can build questions and dashboards against their event data without writing SQL.
 
 ---
 
-## Phase 8 — ClickHouse storage backend (optional/plugin)
+## Phase 7 — ClickHouse storage backend (optional/plugin)
 
 Implement the storage multimethod for ClickHouse. This is the first alternative
 backend and validates that the Phase 2 abstraction works in practice.
@@ -260,7 +236,7 @@ backend and validates that the Phase 2 abstraction works in practice.
 
 ---
 
-## Phase 9 — Stream storage backend (optional/plugin)
+## Phase 8 — Stream storage backend (optional/plugin)
 
 Implement the storage multimethod as a write-to-stream adapter. Events are
 serialized and published to a message stream for downstream consumers to
@@ -294,18 +270,17 @@ Phase 2  (storage multimethods)
   v
 Phase 3  (site CRUD)
   │
-  ├──────────────────────┐
-  v                      v
-Phase 4  (pipeline)    Phase 6  (tracker script)   ← parallel
+  v
+Phase 4  (pipeline)
   │
   v
 Phase 5  (HTTP endpoint)
   │
   v
-Phase 7  (query integration)
+Phase 6  (query integration)
 
-Phase 8  (ClickHouse)  ── depends on Phase 2
-Phase 9  (Stream)      ── depends on Phase 2
+Phase 7  (ClickHouse)  ── depends on Phase 2
+Phase 8  (Stream)      ── depends on Phase 2
 ```
 
 ### Parallelism opportunities
@@ -314,12 +289,10 @@ After Phase 2 completes, the following work streams can proceed in parallel:
 
 | Stream | Phases | Notes |
 |---|---|---|
-| **Admin API** | Phase 3 (site CRUD) | Short; unblocks both other streams. |
-| **Ingestion pipeline** | Phase 4 → 5 | Pipeline is pure functions, then HTTP wiring. Can start as soon as Phase 3 merges. |
-| **Tracker script** | Phase 6 | JS-only work with no backend deps beyond the `/send` contract. Development can start in parallel with Phase 4; integration testing waits for Phase 5. |
-| **Alternative backends** | Phase 8, 9 | Independent of Phases 3–7; can start any time after Phase 2. |
+| **Admin API + Ingestion** | Phase 3 → 4 → 5 | Main sequential path. |
+| **Alternative backends** | Phase 7, 8 | Independent of Phases 3–6; can start any time after Phase 2. |
 
-Phases 8 and 9 are independent of each other and of Phases 3–7.
+Phases 7 and 8 are independent of each other and of Phases 3–6.
 
 ---
 
@@ -333,4 +306,5 @@ Phases 8 and 9 are independent of each other and of Phases 3–7.
 | **Session salt rotation** | Monthly, same as Umami. Salt rotates on the 1st of each calendar month. |
 | **Retention / TTL** | No automatic purge for now. Operators manage DB size themselves. Revisit when usage patterns are clearer. |
 | **Table isolation** | Follow the audit DB pattern: tables live in the main schema with a `product_analytics_` prefix, exposed via `v_pa_*` SQL views through a virtual Database record. Permissions are gated by a dedicated collection, not direct DB grants. |
-| **Query integration** | Phase 7, after the ingestion pipeline is complete and before alternative storage backends. |
+| **Tracker script** | None. The `/send` endpoint is API-compatible with Umami, so operators use Umami's tracker script from a CDN (or self-hosted) pointed at Metabase's endpoint. |
+| **Query integration** | Phase 6, after the ingestion pipeline is complete and before alternative storage backends. |
