@@ -172,6 +172,7 @@ describe("scenarios > embedding > sdk iframe embedding > metabase-browser", () =
       // callback has fired
       cy.findByTestId("data-step-cell").should("have.text", "Orders");
 
+      cy.wait(5000);
       // Click the parent Badge element which has the onClick handler,
       // not the inner text span that findByText resolves to
       cy.findByTestId("sdk-breadcrumbs")
