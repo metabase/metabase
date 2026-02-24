@@ -349,14 +349,6 @@
               (testing "stream was stopped"
                 (is (= 1 (count @stop-stream-calls)))))))))))
 
-(deftest metabot-branding-test
-  (testing "post-message includes branding in payload"
-    (let [payload (atom nil)]
-      (with-redefs [slackbot/slack-post-json (fn [_ _ p] (reset! payload p) {:body {:ok true}})]
-        (#'slackbot/post-message {} {:channel "C123" :text "hi"})
-        (is (contains? @payload :username))
-        (is (contains? @payload :icon_url))))))
-
 (deftest app-mention-triggers-response-test
   (testing "POST /events with app_mention triggers AI response via streaming"
     (with-slackbot-setup

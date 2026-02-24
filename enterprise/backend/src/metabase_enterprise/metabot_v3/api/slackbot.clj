@@ -38,12 +38,6 @@
 
 (set! *warn-on-reflection* true)
 
-(defn- metabot-message-defaults
-  "Default branding for Metabot Slack messages."
-  []
-  {:username "Metabot"
-   :icon_url "https://static.metabase.com/metabot-slackbot.png"})
-
 (defenterprise clear-slack-bot-settings!
   "Clears all slackbot-related settings when Slack token is cleared.
    This ensures enable-sso-slack? becomes false."
@@ -142,14 +136,12 @@
 (defn- post-message
   "Send a Slack message"
   [client message]
-  (:body (slack-post-json client "/chat.postMessage"
-                          (merge (metabot-message-defaults) message))))
+  (:body (slack-post-json client "/chat.postMessage" message)))
 
 (defn- post-ephemeral-message
   "Send a Slack ephemeral message (visible only to the specified user)"
   [client message]
-  (:body (slack-post-json client "/chat.postEphemeral"
-                          (merge (metabot-message-defaults) message))))
+  (:body (slack-post-json client "/chat.postEphemeral" message)))
 
 (defn- post-image
   "Upload a PNG image and send in a message"
@@ -180,11 +172,10 @@
   "Start a Slack message stream. Returns the stream timestamp on success (acts as an identifier)."
   [client {:keys [channel thread_ts team_id user_id]}]
   (let [body (:body (slack-post-json client "/chat.startStream"
-                                     (merge (metabot-message-defaults)
-                                            {:channel           channel
-                                             :thread_ts         thread_ts
-                                             :recipient_team_id team_id
-                                             :recipient_user_id user_id})))]
+                                     {:channel           channel
+                                      :thread_ts         thread_ts
+                                      :recipient_team_id team_id
+                                      :recipient_user_id user_id}))]
     (log/debugf "[slackbot] start-stream response: %s" (pr-str body))
     (if (:ok body)
       {:stream_ts (:ts body)
@@ -215,10 +206,9 @@
    (stop-stream client channel stream-ts nil))
   ([client channel stream-ts blocks]
    (let [body (:body (slack-post-json client "/chat.stopStream"
-                                      (merge (metabot-message-defaults)
-                                             (cond-> {:channel channel
-                                                      :ts      stream-ts}
-                                               blocks (assoc :blocks blocks)))))]
+                                      (cond-> {:channel channel
+                                               :ts      stream-ts}
+                                        blocks (assoc :blocks blocks))))]
      (when-not (:ok body)
        (log/warnf "[slackbot] stop-stream failed: %s" (:error body)))
      body)))
