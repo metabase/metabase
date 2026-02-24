@@ -1,0 +1,579 @@
+databaseChangeLog:
+  - objectQuotingStrategy: QUOTE_ALL_OBJECTS
+
+  # ──────────────────────────────────────────────────────────────────────────────
+  # Product Analytics tables
+  # ──────────────────────────────────────────────────────────────────────────────
+
+  - changeSet:
+      id: v60.2026-02-24T00:00:00
+      author: epaget
+      comment: Product Analytics; Create product_analytics_site table
+      changes:
+        - createTable:
+            tableName: product_analytics_site
+            remarks: Sites tracked by product analytics
+            columns:
+              - column:
+                  name: id
+                  type: int
+                  autoIncrement: true
+                  remarks: Primary key
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: uuid
+                  type: char(36)
+                  remarks: UUID used in tracking snippet
+                  constraints:
+                    nullable: false
+              - column:
+                  name: name
+                  type: varchar(254)
+                  remarks: Human-readable site name
+                  constraints:
+                    nullable: false
+              - column:
+                  name: allowed_domains
+                  type: ${text.type}
+                  remarks: Comma-separated hostnames allowed to send events
+              - column:
+                  name: archived
+                  type: ${boolean.type}
+                  defaultValueBoolean: false
+                  remarks: Soft-delete flag
+                  constraints:
+                    nullable: false
+              - column:
+                  name: created_at
+                  type: ${timestamp_type}
+                  defaultValueComputed: current_timestamp
+                  remarks: Timestamp when this site was created
+                  constraints:
+                    nullable: false
+              - column:
+                  name: updated_at
+                  type: ${timestamp_type}
+                  defaultValueComputed: current_timestamp
+                  remarks: Timestamp when this site was last updated
+                  constraints:
+                    nullable: false
+
+  - changeSet:
+      id: v60.2026-02-24T00:00:01
+      author: epaget
+      comment: Product Analytics; Add unique index on product_analytics_site.uuid
+      changes:
+        - createIndex:
+            tableName: product_analytics_site
+            indexName: idx_product_analytics_site_uuid
+            unique: true
+            columns:
+              - column:
+                  name: uuid
+
+  - changeSet:
+      id: v60.2026-02-24T00:00:02
+      author: epaget
+      comment: Product Analytics; Create product_analytics_session table
+      changes:
+        - createTable:
+            tableName: product_analytics_session
+            remarks: Visitor sessions for product analytics
+            columns:
+              - column:
+                  name: id
+                  type: int
+                  autoIncrement: true
+                  remarks: Primary key
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: session_uuid
+                  type: char(36)
+                  remarks: Deterministic session hash
+                  constraints:
+                    nullable: false
+              - column:
+                  name: site_id
+                  type: int
+                  remarks: Foreign key to product_analytics_site
+                  constraints:
+                    nullable: false
+              - column:
+                  name: browser
+                  type: varchar(254)
+                  remarks: Browser name
+              - column:
+                  name: os
+                  type: varchar(254)
+                  remarks: Operating system name
+              - column:
+                  name: device
+                  type: varchar(254)
+                  remarks: Device type
+              - column:
+                  name: screen
+                  type: varchar(254)
+                  remarks: Screen resolution e.g. 1920x1080
+              - column:
+                  name: language
+                  type: varchar(20)
+                  remarks: Browser language e.g. en-US
+              - column:
+                  name: country
+                  type: varchar(2)
+                  remarks: ISO 3166-1 alpha-2 country code
+              - column:
+                  name: subdivision1
+                  type: varchar(20)
+                  remarks: First-level administrative subdivision
+              - column:
+                  name: city
+                  type: varchar(254)
+                  remarks: City name
+              - column:
+                  name: created_at
+                  type: ${timestamp_type}
+                  defaultValueComputed: current_timestamp
+                  remarks: Timestamp when this session was created
+                  constraints:
+                    nullable: false
+              - column:
+                  name: updated_at
+                  type: ${timestamp_type}
+                  defaultValueComputed: current_timestamp
+                  remarks: Timestamp when this session was last updated
+                  constraints:
+                    nullable: false
+
+  - changeSet:
+      id: v60.2026-02-24T00:00:03
+      author: epaget
+      comment: Product Analytics; Add unique index on product_analytics_session.session_uuid
+      changes:
+        - createIndex:
+            tableName: product_analytics_session
+            indexName: idx_product_analytics_session_uuid
+            unique: true
+            columns:
+              - column:
+                  name: session_uuid
+
+  - changeSet:
+      id: v60.2026-02-24T00:00:04
+      author: epaget
+      comment: Product Analytics; Add FK index on product_analytics_session.site_id
+      changes:
+        - createIndex:
+            tableName: product_analytics_session
+            indexName: idx_product_analytics_session_site_id
+            columns:
+              - column:
+                  name: site_id
+
+  - changeSet:
+      id: v60.2026-02-24T00:00:05
+      author: epaget
+      comment: Product Analytics; Add FK constraint product_analytics_session.site_id -> product_analytics_site.id
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: product_analytics_session
+            baseColumnNames: site_id
+            referencedTableName: product_analytics_site
+            referencedColumnNames: id
+            constraintName: fk_pa_session_site_id
+
+  - changeSet:
+      id: v60.2026-02-24T00:00:06
+      author: epaget
+      comment: Product Analytics; Create product_analytics_event table
+      changes:
+        - createTable:
+            tableName: product_analytics_event
+            remarks: Individual pageview and custom events
+            columns:
+              - column:
+                  name: id
+                  type: int
+                  autoIncrement: true
+                  remarks: Primary key
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: site_id
+                  type: int
+                  remarks: Foreign key to product_analytics_site
+                  constraints:
+                    nullable: false
+              - column:
+                  name: session_id
+                  type: int
+                  remarks: Foreign key to product_analytics_session
+                  constraints:
+                    nullable: false
+              - column:
+                  name: visit_id
+                  type: char(36)
+                  remarks: Hourly bucketing hash
+              - column:
+                  name: event_type
+                  type: int
+                  defaultValueNumeric: 1
+                  remarks: 1=pageview 2=custom
+                  constraints:
+                    nullable: false
+              - column:
+                  name: event_name
+                  type: varchar(50)
+                  remarks: Name for custom events
+              - column:
+                  name: url_path
+                  type: varchar(500)
+                  remarks: URL path of the page
+              - column:
+                  name: url_query
+                  type: ${text.type}
+                  remarks: URL query string
+              - column:
+                  name: referrer_path
+                  type: varchar(500)
+                  remarks: Referrer URL path
+              - column:
+                  name: referrer_query
+                  type: ${text.type}
+                  remarks: Referrer URL query string
+              - column:
+                  name: referrer_domain
+                  type: varchar(500)
+                  remarks: Referrer domain name
+              - column:
+                  name: page_title
+                  type: varchar(500)
+                  remarks: HTML page title
+              - column:
+                  name: utm_source
+                  type: varchar(254)
+                  remarks: UTM source parameter
+              - column:
+                  name: utm_medium
+                  type: varchar(254)
+                  remarks: UTM medium parameter
+              - column:
+                  name: utm_campaign
+                  type: varchar(254)
+                  remarks: UTM campaign parameter
+              - column:
+                  name: utm_content
+                  type: varchar(254)
+                  remarks: UTM content parameter
+              - column:
+                  name: utm_term
+                  type: varchar(254)
+                  remarks: UTM term parameter
+              - column:
+                  name: gclid
+                  type: varchar(254)
+                  remarks: Google click ID
+              - column:
+                  name: fbclid
+                  type: varchar(254)
+                  remarks: Facebook click ID
+              - column:
+                  name: created_at
+                  type: ${timestamp_type}
+                  defaultValueComputed: current_timestamp
+                  remarks: Timestamp when this event was recorded
+                  constraints:
+                    nullable: false
+
+  - changeSet:
+      id: v60.2026-02-24T00:00:07
+      author: epaget
+      comment: Product Analytics; Add index on product_analytics_event.site_id
+      changes:
+        - createIndex:
+            tableName: product_analytics_event
+            indexName: idx_pa_event_site_id
+            columns:
+              - column:
+                  name: site_id
+
+  - changeSet:
+      id: v60.2026-02-24T00:00:08
+      author: epaget
+      comment: Product Analytics; Add index on product_analytics_event.session_id
+      changes:
+        - createIndex:
+            tableName: product_analytics_event
+            indexName: idx_pa_event_session_id
+            columns:
+              - column:
+                  name: session_id
+
+  - changeSet:
+      id: v60.2026-02-24T00:00:09
+      author: epaget
+      comment: Product Analytics; Add index on product_analytics_event.created_at
+      changes:
+        - createIndex:
+            tableName: product_analytics_event
+            indexName: idx_pa_event_created_at
+            columns:
+              - column:
+                  name: created_at
+
+  - changeSet:
+      id: v60.2026-02-24T00:00:10
+      author: epaget
+      comment: Product Analytics; Add compound index on product_analytics_event(site_id, created_at)
+      changes:
+        - createIndex:
+            tableName: product_analytics_event
+            indexName: idx_pa_event_site_id_created_at
+            columns:
+              - column:
+                  name: site_id
+              - column:
+                  name: created_at
+
+  - changeSet:
+      id: v60.2026-02-24T00:00:11
+      author: epaget
+      comment: Product Analytics; Add FK constraint product_analytics_event.site_id -> product_analytics_site.id
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: product_analytics_event
+            baseColumnNames: site_id
+            referencedTableName: product_analytics_site
+            referencedColumnNames: id
+            constraintName: fk_pa_event_site_id
+
+  - changeSet:
+      id: v60.2026-02-24T00:00:12
+      author: epaget
+      comment: Product Analytics; Add FK constraint product_analytics_event.session_id -> product_analytics_session.id
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: product_analytics_event
+            baseColumnNames: session_id
+            referencedTableName: product_analytics_session
+            referencedColumnNames: id
+            constraintName: fk_pa_event_session_id
+
+  - changeSet:
+      id: v60.2026-02-24T00:00:13
+      author: epaget
+      comment: Product Analytics; Create product_analytics_event_data table
+      changes:
+        - createTable:
+            tableName: product_analytics_event_data
+            remarks: Custom property key-value pairs attached to events
+            columns:
+              - column:
+                  name: id
+                  type: int
+                  autoIncrement: true
+                  remarks: Primary key
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: event_id
+                  type: int
+                  remarks: Foreign key to product_analytics_event
+                  constraints:
+                    nullable: false
+              - column:
+                  name: data_key
+                  type: varchar(500)
+                  remarks: Property name
+                  constraints:
+                    nullable: false
+              - column:
+                  name: string_value
+                  type: varchar(500)
+                  remarks: String value of the property
+              - column:
+                  name: number_value
+                  type: float
+                  remarks: Numeric value of the property
+              - column:
+                  name: date_value
+                  type: ${timestamp_type}
+                  remarks: Date value of the property
+              - column:
+                  name: data_type
+                  type: int
+                  defaultValueNumeric: 1
+                  remarks: 1=string 2=number 3=date
+                  constraints:
+                    nullable: false
+              - column:
+                  name: created_at
+                  type: ${timestamp_type}
+                  defaultValueComputed: current_timestamp
+                  remarks: Timestamp when this event data was recorded
+                  constraints:
+                    nullable: false
+
+  - changeSet:
+      id: v60.2026-02-24T00:00:14
+      author: epaget
+      comment: Product Analytics; Add index on product_analytics_event_data.event_id
+      changes:
+        - createIndex:
+            tableName: product_analytics_event_data
+            indexName: idx_pa_event_data_event_id
+            columns:
+              - column:
+                  name: event_id
+
+  - changeSet:
+      id: v60.2026-02-24T00:00:15
+      author: epaget
+      comment: Product Analytics; Add compound index on product_analytics_event_data(event_id, data_key)
+      changes:
+        - createIndex:
+            tableName: product_analytics_event_data
+            indexName: idx_pa_event_data_event_id_data_key
+            columns:
+              - column:
+                  name: event_id
+              - column:
+                  name: data_key
+
+  - changeSet:
+      id: v60.2026-02-24T00:00:16
+      author: epaget
+      comment: Product Analytics; Add FK constraint product_analytics_event_data.event_id -> product_analytics_event.id
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: product_analytics_event_data
+            baseColumnNames: event_id
+            referencedTableName: product_analytics_event
+            referencedColumnNames: id
+            constraintName: fk_pa_event_data_event_id
+
+  # ──────────────────────────────────────────────────────────────────────────────
+  # Add is_product_analytics column to metabase_database
+  # ──────────────────────────────────────────────────────────────────────────────
+
+  - changeSet:
+      id: v60.2026-02-24T00:00:17
+      author: epaget
+      comment: Product Analytics; Add is_product_analytics column to metabase_database
+      changes:
+        - addColumn:
+            tableName: metabase_database
+            columns:
+              - column:
+                  name: is_product_analytics
+                  type: ${boolean.type}
+                  defaultValueBoolean: false
+                  remarks: True for the virtual Product Analytics database record.
+
+  - changeSet:
+      id: v60.2026-02-24T00:00:18
+      author: epaget
+      comment: Product Analytics; Make is_product_analytics not null
+      changes:
+        - addNotNullConstraint:
+            tableName: metabase_database
+            columnName: is_product_analytics
+            columnDataType: ${boolean.type}
+
+  # ──────────────────────────────────────────────────────────────────────────────
+  # Product Analytics SQL views
+  # ──────────────────────────────────────────────────────────────────────────────
+
+  - changeSet:
+      id: v60.2026-02-24T00:00:19
+      author: epaget
+      comment: Product Analytics; Create v_pa_sites view
+      changes:
+        - sqlFile:
+            dbms: postgresql
+            path: product_analytics_views/sites/v1/postgres-sites.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            dbms: mysql,mariadb
+            path: product_analytics_views/sites/v1/mysql-sites.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            dbms: h2
+            path: product_analytics_views/sites/v1/h2-sites.sql
+            relativeToChangelogFile: true
+      rollback:
+        - sql:
+            dbms: postgresql,mysql,mariadb,h2
+            sql: drop view if exists v_pa_sites;
+
+  - changeSet:
+      id: v60.2026-02-24T00:00:20
+      author: epaget
+      comment: Product Analytics; Create v_pa_sessions view
+      changes:
+        - sqlFile:
+            dbms: postgresql
+            path: product_analytics_views/sessions/v1/postgres-sessions.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            dbms: mysql,mariadb
+            path: product_analytics_views/sessions/v1/mysql-sessions.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            dbms: h2
+            path: product_analytics_views/sessions/v1/h2-sessions.sql
+            relativeToChangelogFile: true
+      rollback:
+        - sql:
+            dbms: postgresql,mysql,mariadb,h2
+            sql: drop view if exists v_pa_sessions;
+
+  - changeSet:
+      id: v60.2026-02-24T00:00:21
+      author: epaget
+      comment: Product Analytics; Create v_pa_events view
+      changes:
+        - sqlFile:
+            dbms: postgresql
+            path: product_analytics_views/events/v1/postgres-events.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            dbms: mysql,mariadb
+            path: product_analytics_views/events/v1/mysql-events.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            dbms: h2
+            path: product_analytics_views/events/v1/h2-events.sql
+            relativeToChangelogFile: true
+      rollback:
+        - sql:
+            dbms: postgresql,mysql,mariadb,h2
+            sql: drop view if exists v_pa_events;
+
+  - changeSet:
+      id: v60.2026-02-24T00:00:22
+      author: epaget
+      comment: Product Analytics; Create v_pa_event_data view
+      changes:
+        - sqlFile:
+            dbms: postgresql
+            path: product_analytics_views/event_data/v1/postgres-event_data.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            dbms: mysql,mariadb
+            path: product_analytics_views/event_data/v1/mysql-event_data.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            dbms: h2
+            path: product_analytics_views/event_data/v1/h2-event_data.sql
+            relativeToChangelogFile: true
+      rollback:
+        - sql:
+            dbms: postgresql,mysql,mariadb,h2
+            sql: drop view if exists v_pa_event_data;

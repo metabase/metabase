@@ -11,6 +11,7 @@
    [medley.core :as m]
    [metabase.app-db.cluster-lock :as cluster-lock]
    [metabase.audit-app.core :as audit]
+   [metabase.product-analytics.core :as pa]
    [metabase.permissions-rest.schema :as permissions-rest.schema]
    [metabase.permissions.core :as perms]
    [metabase.permissions.schema :as permissions.schema]
@@ -135,7 +136,8 @@
   (let [admin-group-id (u/the-id (perms/admin-group))
         db-ids         (if db-id [db-id] (t2/select-pks-vec :model/Database
                                                             {:where [:and
-                                                                     (when-not audit? [:not= :id audit/audit-db-id])]}))]
+                                                                     (when-not audit? [:not= :id audit/audit-db-id])
+                                                                     [:not= :id pa/product-analytics-db-id]]}))]
     ;; Don't add admin perms when we're fetching the perms for a specific non-admin group or set of groups
     (if (or (= group-id admin-group-id)
             (contains? (set group-ids) admin-group-id)
@@ -155,7 +157,8 @@
   (let [data-analyst-group-id (u/the-id (perms/data-analyst-group))
         db-ids                (if db-id [db-id] (t2/select-pks-vec :model/Database
                                                                    {:where [:and
-                                                                            (when-not audit? [:not= :id audit/audit-db-id])]}))]
+                                                                            (when-not audit? [:not= :id audit/audit-db-id])
+                                                                            [:not= :id pa/product-analytics-db-id]]}))]
     ;; Don't add data analyst perms when we're fetching perms for a specific non-data-analyst group
     (if (or (= group-id data-analyst-group-id)
             (contains? (set group-ids) data-analyst-group-id)
@@ -207,7 +210,8 @@
                                        (when db-id [:= :db_id db-id])
                                        (when group-id [:= :group_id group-id])
                                        (when group-ids [:in :group_id group-ids])
-                                       (when-not audit? [:not= :db_id audit/audit-db-id])]})]
+                                       (when-not audit? [:not= :db_id audit/audit-db-id])
+                                       [:not= :db_id pa/product-analytics-db-id]]})]
     (reduce
      (fn [graph {group-id  :group-id
                  perm-type :type
@@ -453,6 +457,17 @@
       (throw (ex-info (tru "Audit database permissions can only be changed by updating audit collection permissions.")
                       {:status-code 400})))))
 
+(defn check-product-analytics-db-permissions
+  "Block direct permission edits to the Product Analytics virtual database."
+  [group-updates]
+  (let [changes-ids (->> group-updates
+                         vals
+                         (map keys)
+                         (apply concat))]
+    (when (some #{pa/product-analytics-db-id} changes-ids)
+      (throw (ex-info (tru "Product Analytics database permissions cannot be changed directly.")
+                      {:status-code 400})))))
+
 (mu/defn update-data-perms-graph!*
   "Takes an API-style perms graph and sets the permissions in the database accordingly."
   ([graph]
@@ -484,6 +499,7 @@
        (let [group-updates (:groups graph-updates)]
          (check-data-analyst-locked-permissions group-updates)
          (check-audit-db-permissions group-updates)
+         (check-product-analytics-db-permissions group-updates)
          (t2/with-transaction [_conn]
            (update-data-perms-graph!* group-updates)
            (delete-impersonations-if-needed-after-permissions-change! group-updates)

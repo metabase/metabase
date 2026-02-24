@@ -121,6 +121,12 @@
   (log/info "Not installing EE audit app DB")
   ::noop)
 
+(defenterprise ensure-product-analytics-db-installed!
+  "OSS implementation — product analytics is an enterprise feature, so does nothing in the OSS version."
+  metabase-enterprise.product-analytics.setup []
+  (log/info "Not installing EE product analytics DB")
+  ::noop)
+
 (defn- signal-handler
   "Create a signal handler that logs the received signal and then delegates to the original handler."
   [^String signal-name ^SignalHandler original-handler]
@@ -213,6 +219,7 @@
         (sample-data/update-sample-database-if-needed!)))
     (init-status/set-progress! 0.8))
   (ensure-audit-db-installed!)
+  (ensure-product-analytics-db-installed!)
   (notification/seed-notification!)
 
   (init-status/set-progress! 0.85)

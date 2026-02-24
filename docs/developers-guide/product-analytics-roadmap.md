@@ -6,8 +6,9 @@ Umami's event-receiving and postprocessing pipeline, adapted to Metabase's
 architecture and gated behind a premium feature flag.
 
 Events are stored in the app DB by default, but the storage layer is behind a
-protocol so it can be swapped for ClickHouse or a write-to-stream adapter
-(Kafka, Kinesis, etc.) without changing the ingestion or processing code.
+protocol so it can be swapped for an S3-hosted Iceberg datalake, a stream
+adapter (Kafka, Kinesis, etc.), or other backends without changing the
+ingestion or processing code.
 
 ---
 
@@ -79,7 +80,7 @@ at this stage.
 **Design:**
 
 - Multimethods dispatching on a namespaced storage-backend keyword (e.g.
-  `:product-analytics.storage/app-db`, `:product-analytics.storage/clickhouse`,
+  `:product-analytics.storage/app-db`, `:product-analytics.storage/iceberg`,
   `:product-analytics.storage/stream`):
   - `upsert-session!` — insert or update a session row.
   - `save-event!` — write an event row and its associated event-data rows.
@@ -213,26 +214,120 @@ can build questions and dashboards against their event data without writing SQL.
 
 ---
 
-## Phase 7 — ClickHouse storage backend (optional/plugin)
+## Phase 7 — Iceberg datalake storage backend
 
-Implement the storage multimethod for ClickHouse. This is the first alternative
-backend and validates that the Phase 2 abstraction works in practice.
+Implement the storage multimethod for Apache Iceberg, writing events as Parquet
+files to an S3-hosted datalake. This is the first alternative backend and
+validates that the Phase 2 abstraction works in practice. Once data lands in
+Iceberg, operators can query it through any engine that speaks Iceberg (Trino,
+Spark, Athena, StarRocks, or Metabase itself via a warehouse connection).
 
-**Considerations:**
+### Write path
 
-- ClickHouse favors append-only inserts; session upserts need to use
-  `ReplacingMergeTree` or a separate session-state approach.
-- Event data can leverage ClickHouse's native `Map(String, String)` column type
-  or a `Nested` structure instead of the flattened rows used in the app DB.
-- Connection config lives in Metabase's application settings (not a warehouse
-  connection — this is infrastructure config).
+Iceberg does not support single-row inserts. The backend buffers events
+in-memory and flushes them as Parquet batches on a configurable schedule:
 
-**Deliverables:**
+- `save-event!` appends the processed event to an in-memory buffer (a
+  `ConcurrentLinkedQueue` or similar).
+- A background scheduled task flushes the buffer every N seconds (default: 30)
+  or when the buffer reaches M events (default: 1000), whichever comes first.
+- Each flush writes one Parquet data file and commits it to the Iceberg table
+  as a single append snapshot.
+- On JVM shutdown a shutdown hook drains any remaining buffered events.
 
-- `storage/clickhouse.clj` — protocol implementation.
-- ClickHouse table DDL (managed outside Liquibase; possibly an init script the
-  backend runs on first connection).
-- Integration tests against a real ClickHouse instance (Docker in CI).
+Session handling: sessions are written as append-only rows. Downstream queries
+deduplicate by `session_id` + latest timestamp, or an Iceberg merge-on-read
+view handles it. This avoids expensive upsert patterns (equality deletes /
+copy-on-write rewrites) on a high-write table.
+
+### Storage protocol changes
+
+The buffered write model means `save-event!` returns before data is durable in
+Iceberg. To support this:
+
+- `save-event!` is documented as "at least once, eventually durable" for
+  backends that buffer. The app-DB backend remains synchronous.
+- A new `flush!` multimethod is added. The app-DB backend no-ops; the Iceberg
+  backend forces an immediate flush. Used in tests and graceful shutdown.
+
+### Iceberg catalog
+
+The catalog tracks table metadata (which Parquet files belong to which
+snapshots, schema evolution, partition specs). The catalog type is configurable
+via an application setting, with the JDBC catalog as the default.
+
+| Catalog | Pros | Cons | Config |
+|---|---|---|---|
+| **JDBC** (default) | Zero extra infra — uses Metabase's app DB as the catalog store. Supports concurrent writers safely via row-level locking. Simplest path to production. | Adds catalog tables to the app DB. Slight write contention under very high flush rates. | Just the S3 bucket — catalog connection is derived from the app DB. |
+| **REST** | Standard interface supported by AWS Glue, Tabular, Polaris, Unity Catalog. Best for orgs already running a catalog service. Decouples catalog from app DB. | Requires external infra. Each provider has its own auth story. | Catalog URI + auth credentials. |
+| **Hadoop** | Simplest possible setup — catalog metadata is just files in S3 alongside the data. No server component at all. | No locking — unsafe with concurrent writers (only safe for single-node Metabase). No atomic rename on S3 without a lock manager. | S3 path only. |
+| **Glue** | Native AWS integration. No separate catalog server if you're already on AWS. | AWS-only. IAM permissions can be complex. Glue API rate limits under high commit rates. | AWS region + optional database name. |
+
+**Recommended default: JDBC.** It requires no additional infrastructure, reuses
+the existing app DB connection, and handles concurrent writers correctly. The
+catalog creates a small set of metadata tables (`iceberg_tables`,
+`iceberg_namespace_properties`) in the app DB schema — these are lightweight
+and do not grow with event volume.
+
+Operators who already run a REST catalog or Glue can switch by changing a single
+application setting and providing the appropriate connection details.
+
+### Iceberg table schema
+
+| Table | Partition | Notes |
+|---|---|---|
+| `pa_events` | `day(event_time), site_id` | Main event table. Custom event properties stored as a `Map<String, String>` column rather than the flattened `event_data` rows used in the app DB. |
+| `pa_sessions` | `day(created_at)` | Append-only; deduplicate on read by `session_id` + latest `updated_at`. |
+
+Using a map column for event data is cleaner than the relational
+`product_analytics_event_data` table and is well-supported by Iceberg and
+downstream query engines.
+
+### Query integration
+
+When an operator configures the Iceberg backend and also has a warehouse
+connection (Trino, Athena, Spark, etc.) that can read the same Iceberg tables,
+Phase 6 (query builder integration) can detect this and route queries through
+the warehouse instead of the virtual DB views. This gives operators full
+SQL engine performance for analytics queries.
+
+### Configuration
+
+Application settings (all under a `product-analytics-iceberg-` prefix):
+
+| Setting | Default | Description |
+|---|---|---|
+| `catalog-type` | `jdbc` | One of `jdbc`, `rest`, `hadoop`, `glue`. |
+| `s3-bucket` | *(required)* | S3 bucket name. |
+| `s3-prefix` | `product-analytics/` | Key prefix for Parquet data files. |
+| `catalog-uri` | *(derived from app DB for jdbc)* | REST catalog URI, or Glue region. |
+| `catalog-credentials` | *(none)* | Auth for REST/Glue catalogs. Not needed for JDBC. |
+| `flush-interval-seconds` | `30` | Max seconds between flushes. |
+| `flush-batch-size` | `1000` | Max buffered events before forcing a flush. |
+| `aws-region` | *(from env)* | AWS region for S3. Falls back to `AWS_REGION` env var / instance metadata. |
+| `aws-credentials` | *(from env)* | Explicit key/secret, or omit to use instance profile / environment. |
+
+### Dependencies
+
+- `org.apache.iceberg/iceberg-core` — table API, catalog interfaces.
+- `org.apache.iceberg/iceberg-parquet` — Parquet file read/write.
+- `org.apache.iceberg/iceberg-aws` — S3 `FileIO` and Glue catalog.
+- `software.amazon.awssdk/s3` — S3 client.
+
+These add ~50-80 MB of JARs. This backend should be packaged as an enterprise
+plugin/module rather than bundled in core, loaded only when the Iceberg storage
+backend is selected.
+
+### Deliverables
+
+- `storage/iceberg.clj` — multimethod implementations for `:product-analytics.storage/iceberg`.
+- `storage/iceberg/catalog.clj` — catalog factory that builds the appropriate
+  `org.apache.iceberg.catalog.Catalog` instance based on the `catalog-type` setting.
+- `storage/iceberg/buffer.clj` — in-memory event buffer with scheduled flush.
+- `storage/iceberg/schema.clj` — Iceberg `Schema` and `PartitionSpec` definitions.
+- Table auto-creation on first flush (idempotent `createTable` if not exists).
+- Integration tests against a local MinIO + JDBC catalog (Docker in CI).
+- Unit tests for buffer flush logic, catalog factory, and schema mapping.
 
 ---
 
@@ -253,6 +348,32 @@ ingest into their own warehouse.
 - `storage/stream.clj` — protocol implementation for the chosen target.
 - Serialization format (JSON or Avro, configurable).
 - Integration test with an embedded/mock broker.
+
+---
+
+## Phase 9 — ClickHouse storage backend (optional/plugin, deprioritized)
+
+Implement the storage multimethod for ClickHouse. Lower priority than the
+Iceberg backend since Iceberg tables can already be queried by ClickHouse
+via its Iceberg table engine.
+
+**Considerations:**
+
+- ClickHouse favors append-only inserts; session upserts need to use
+  `ReplacingMergeTree` or a separate session-state approach.
+- Event data can leverage ClickHouse's native `Map(String, String)` column type
+  or a `Nested` structure instead of the flattened rows used in the app DB.
+- Connection config lives in Metabase's application settings (not a warehouse
+  connection — this is infrastructure config).
+- Operators who need ClickHouse performance may be better served by the Iceberg
+  backend + ClickHouse's Iceberg table engine, avoiding a separate write path.
+
+**Deliverables:**
+
+- `storage/clickhouse.clj` — protocol implementation.
+- ClickHouse table DDL (managed outside Liquibase; possibly an init script the
+  backend runs on first connection).
+- Integration tests against a real ClickHouse instance (Docker in CI).
 
 ---
 
@@ -279,8 +400,9 @@ Phase 5  (HTTP endpoint)
   v
 Phase 6  (query integration)
 
-Phase 7  (ClickHouse)  ── depends on Phase 2
+Phase 7  (Iceberg)     ── depends on Phase 2
 Phase 8  (Stream)      ── depends on Phase 2
+Phase 9  (ClickHouse)  ── depends on Phase 2 (deprioritized)
 ```
 
 ### Parallelism opportunities
@@ -290,9 +412,10 @@ After Phase 2 completes, the following work streams can proceed in parallel:
 | Stream | Phases | Notes |
 |---|---|---|
 | **Admin API + Ingestion** | Phase 3 → 4 → 5 | Main sequential path. |
-| **Alternative backends** | Phase 7, 8 | Independent of Phases 3–6; can start any time after Phase 2. |
+| **Iceberg backend** | Phase 7 | Primary alternative backend. Independent of Phases 3–6; can start any time after Phase 2. |
+| **Stream / ClickHouse** | Phase 8, 9 | Lower priority. Independent of all other backend phases. |
 
-Phases 7 and 8 are independent of each other and of Phases 3–6.
+Phases 7, 8, and 9 are independent of each other and of Phases 3–6.
 
 ---
 
@@ -307,4 +430,5 @@ Phases 7 and 8 are independent of each other and of Phases 3–6.
 | **Retention / TTL** | No automatic purge for now. Operators manage DB size themselves. Revisit when usage patterns are clearer. |
 | **Table isolation** | Follow the audit DB pattern: tables live in the main schema with a `product_analytics_` prefix, exposed via `v_pa_*` SQL views through a virtual Database record. Permissions are gated by a dedicated collection, not direct DB grants. |
 | **Tracker script** | None. The `/send` endpoint is API-compatible with Umami, so operators use Umami's tracker script from a CDN (or self-hosted) pointed at Metabase's endpoint. |
+| **Iceberg catalog** | Configurable. JDBC catalog (using the app DB) is the default — zero extra infra. REST and Glue catalogs supported for orgs with existing catalog infrastructure. Hadoop catalog supported but not recommended for multi-node deployments (no locking). |
 | **Query integration** | Phase 6, after the ingestion pipeline is complete and before alternative storage backends. |
