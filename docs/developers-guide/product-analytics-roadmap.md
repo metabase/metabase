@@ -300,6 +300,7 @@ Application settings (all under a `product-analytics-iceberg-` prefix):
 | `catalog-type` | `jdbc` | One of `jdbc`, `rest`, `hadoop`, `glue`. |
 | `s3-bucket` | *(required)* | S3 bucket name. |
 | `s3-prefix` | `product-analytics/` | Key prefix for Parquet data files. |
+| `s3-endpoint` | *(none)* | Custom S3 endpoint URL. Set to `http://localhost:9000` for MinIO in local dev. Omit for real AWS S3. |
 | `catalog-uri` | *(derived from app DB for jdbc)* | REST catalog URI, or Glue region. |
 | `catalog-credentials` | *(none)* | Auth for REST/Glue catalogs. Not needed for JDBC. |
 | `flush-interval-seconds` | `30` | Max seconds between flushes. |
@@ -317,6 +318,71 @@ Application settings (all under a `product-analytics-iceberg-` prefix):
 These add ~50-80 MB of JARs. This backend should be packaged as an enterprise
 plugin/module rather than bundled in core, loaded only when the Iceberg storage
 backend is selected.
+
+### Local development setup
+
+No AWS account is needed for local development. Use MinIO as an
+S3-compatible object store and the JDBC catalog backed by the app DB:
+
+1. **Start MinIO:**
+
+   ```bash
+   docker run -d --name minio \
+     -p 9000:9000 -p 9001:9001 \
+     -e MINIO_ROOT_USER=minioadmin \
+     -e MINIO_ROOT_PASSWORD=minioadmin \
+     minio/minio server /data --console-address ":9001"
+   ```
+
+2. **Create the bucket:**
+
+   ```bash
+   mc alias set local http://localhost:9000 minioadmin minioadmin
+   mc mb local/product-analytics
+   ```
+
+3. **Configure Metabase** (REPL or env vars):
+
+   ```clojure
+   (setting/set! :product-analytics-storage-backend "iceberg")
+   (setting/set! :product-analytics-iceberg-catalog-type "jdbc")
+   (setting/set! :product-analytics-iceberg-s3-bucket "product-analytics")
+   (setting/set! :product-analytics-iceberg-s3-prefix "events/")
+   (setting/set! :product-analytics-iceberg-s3-endpoint "http://localhost:9000")
+   (setting/set! :product-analytics-iceberg-aws-region "us-east-1")
+   (setting/set! :product-analytics-iceberg-aws-access-key "minioadmin")
+   (setting/set! :product-analytics-iceberg-aws-secret-key "minioadmin")
+   ```
+
+   The JDBC catalog auto-creates its metadata tables (`iceberg_tables`,
+   `iceberg_namespace_properties`) in the app DB on first use.
+
+4. **Verify data landed** after sending events and flushing:
+
+   ```bash
+   mc ls --recursive local/product-analytics/events/
+   ```
+
+5. **(Optional) Query with Trino** to test the full warehouse query path:
+
+   ```bash
+   docker run -d --name trino -p 8080:8080 trinodb/trino
+   ```
+
+   Add a catalog config pointing Trino at the JDBC catalog and MinIO, then
+   connect Metabase to Trino as a warehouse to query the Iceberg tables.
+
+### CI testing
+
+Integration tests use Docker (Testcontainers or compose) to spin up MinIO and
+use the H2 in-memory app DB as the JDBC catalog. No AWS credentials required.
+The test lifecycle is:
+
+1. Start MinIO container, create bucket.
+2. Initialize Iceberg backend with JDBC catalog pointed at the test app DB.
+3. Send events through the pipeline, call `flush!`.
+4. Assert Parquet files exist in MinIO and catalog tables are populated.
+5. Tear down containers.
 
 ### Deliverables
 
