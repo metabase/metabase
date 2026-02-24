@@ -38,7 +38,10 @@ export const LensContent = ({
   onTitleResolved,
   onError,
 }: LensContentProps) => {
-  const trackLensLoaded = useLensLoadedTracking(transform.id, lensHandle.id);
+  const trackLensLoaded = useLensLoadedTracking(
+    transform.id,
+    getLensKey(lensHandle),
+  );
 
   const {
     data: lens,
