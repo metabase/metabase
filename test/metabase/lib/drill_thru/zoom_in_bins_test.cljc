@@ -135,7 +135,7 @@
       (is (=? {:lib/type    :metabase.lib.drill-thru/drill-thru
                :type        :drill-thru/zoom-in.binning
                :column      {:name                       "QUANTITY"
-                             :metabase.lib.field/binning {:strategy :default}}
+                             :lib/binning {:strategy :default}}
                :min-value   20
                :max-value   32.5
                :new-binning {:strategy :default}}
@@ -397,13 +397,13 @@
                                         :value 80})]
     ;; make sure we're testing the right thing
     (assert (get-in people-orders-ref [1 :join-alias]))
-    (assert (nil? (:metabase.lib.join/join-alias people-orders-clicked-column)))
+    (assert (nil? (:lib/join-alias people-orders-clicked-column)))
     ;; the column (as printed out in console.log) was from legacy metadata, and had `:source-alias`, renamed to
-    ;; `:lib/original-join-alias`; but should be missing `:metabase.lib.join/join-alias`
+    ;; `:lib/original-join-alias`; but should be missing `:lib/join-alias`
     (assert (:lib/original-join-alias people-orders-clicked-column))
 
     (assert (nil? (get-in orders-people-ref [1 :join-alias])))
-    (assert (nil? (:metabase.lib.join/join-alias orders-people-clicked-column)))
+    (assert (nil? (:lib/join-alias orders-people-clicked-column)))
     (assert (nil? (:source-alias orders-people-clicked-column)))
 
     (testing "zoom-in binning should not depend on join order"
