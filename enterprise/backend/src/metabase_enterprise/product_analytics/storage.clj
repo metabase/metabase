@@ -15,7 +15,7 @@
 ;;; ------------------------------------------------- Setting --------------------------------------------------
 
 (def ^:private available-storage-backends
-  #{::app-db})
+  #{::app-db ::iceberg})
 
 (def ^:dynamic *storage-backend-override*
   "Dynamic var for overriding the storage backend in tests.
@@ -100,6 +100,17 @@
   (throw (ex-info (tru "No product-analytics storage backend registered for {0}" (pr-str backend))
                   {:backend backend})))
 
+(defmulti flush!
+  "Flush any buffered data to durable storage.
+   Synchronous backends (e.g. app-db) are no-ops.
+   Buffered backends (e.g. Iceberg) drain their in-memory queues and write to storage."
+  {:arglists '([backend])}
+  identity)
+
+(defmethod flush! :default
+  [_backend]
+  nil)
+
 ;;; ---------------------------------------------- Public wrappers -----------------------------------------------
 
 (defn store-get-site
@@ -126,6 +137,11 @@
   "Set the distinct_id on a session using the active storage backend."
   [session-id distinct-id]
   (set-distinct-id! (active-backend) session-id distinct-id))
+
+(defn store-flush!
+  "Flush any buffered data to durable storage using the active storage backend."
+  []
+  (flush! (active-backend)))
 
 ;;; Ensure the default app-db backend is loaded.
 (require 'metabase-enterprise.product-analytics.storage.app-db)

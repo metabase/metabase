@@ -157,6 +157,10 @@
   org.clojure/tools.namespace               {:mvn/version "1.5.0"}
   org.clojure/tools.reader                  {:mvn/version "1.5.2"}
   org.clojure/tools.trace                   {:mvn/version "0.8.0"}              ; function tracing
+  org.apache.iceberg/iceberg-aws            {:mvn/version "1.7.1"}              ; Iceberg integration with AWS (S3FileIO)
+  org.apache.iceberg/iceberg-core           {:mvn/version "1.7.1"}              ; Apache Iceberg table format
+  org.apache.iceberg/iceberg-data           {:mvn/version "1.7.1"}              ; Iceberg GenericRecord and data readers/writers
+  org.apache.iceberg/iceberg-parquet        {:mvn/version "1.7.1"}              ; Iceberg Parquet file read/write
   org.eclipse.jetty/jetty-server            {:mvn/version "12.1.3"}
   org.eclipse.jetty/jetty-unixdomain-server {:mvn/version "12.1.3"}
   org.eclipse.jetty.ee9/jetty-ee9-servlet   {:mvn/version "12.1.3"}
