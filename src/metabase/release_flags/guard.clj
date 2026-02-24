@@ -33,7 +33,11 @@
    - If the flag is not enabled (or does not exist), the call is recorded in
      [[blocked-calls]], a warning is logged, and nil is returned."
   [flag]
-  (let [flag-name (name flag)
+  (let [flag-name (if (keyword? flag)
+                    (if (namespace flag)
+                      (str (namespace flag) "/" (name flag))
+                      (name flag))
+                    (str flag))
         ns-name   (ns-name *ns*)]
     (doseq [[sym v] (ns-interns *ns*)
             :when (and (var? v) (fn? @v))]

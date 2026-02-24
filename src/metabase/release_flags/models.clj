@@ -60,7 +60,12 @@
   "Is this release flag enabled?
   If the release flag does not exist, we throw an exception."
   [flag :- [:or :keyword :string]]
-  (if-some [status (t2/select-one-fn :is_enabled :model/ReleaseFlag :flag flag)]
-    status
-    (throw (ex-info (str "Release flag `" flag "` not found.")
-                    {:flag flag}))))
+  (let [flag (if (keyword? flag)
+               (if (namespace flag)
+                 (str (namespace flag) "/" (name flag))
+                 (name flag))
+               flag)]
+    (if-some [status (t2/select-one-fn :is_enabled :model/ReleaseFlag :flag flag)]
+      status
+      (throw (ex-info (str "Release flag `" flag "` not found.")
+                      {:flag flag})))))
