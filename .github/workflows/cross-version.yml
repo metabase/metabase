@@ -1,0 +1,49 @@
+name: Cross-Version Migration Tests
+
+on:
+  workflow_dispatch:
+    inputs:
+      source_version:
+        description: 'Source version (e.g., v0.58.6 for OSS, v1.58.6 for EE)'
+        required: true
+        type: string
+      target_version:
+        description: 'Target version (e.g., v0.58.7 for OSS, v1.58.7 for EE)'
+        required: true
+        type: string
+      health_timeout:
+        description: 'Health check timeout in seconds'
+        required: false
+        type: number
+        default: 120
+
+  schedule:
+    # Run nightly at 3 AM UTC
+    - cron: '0 3 * * *'
+
+jobs:
+  test-migration:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Prepare release scripts
+        uses: ./.github/actions/prepare-release-scripts
+
+      - name: Run cross-version test
+        env:
+          SOURCE_VERSION: ${{ inputs.source_version || 'v0.58.6' }}
+          TARGET_VERSION: ${{ inputs.target_version || 'v0.58.7' }}
+          HEALTH_TIMEOUT: ${{ inputs.health_timeout || 120 }}
+        run: |
+          cd cross-version
+          ./test.sh --source "$SOURCE_VERSION" --target "$TARGET_VERSION"
+
+      - name: Show logs on failure
+        if: failure()
+        run: |
+          cd cross-version
+          docker compose logs metabase || true
+          docker compose logs postgres || true

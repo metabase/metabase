@@ -399,6 +399,24 @@ export async function getLastReleaseTag({
   return lastRelease;
 }
 
+export type VersionComparisonResult = "upgrade" | "downgrade" | "same";
+
+export const compareVersions = (
+  source: string,
+  target: string,
+): VersionComparisonResult => {
+  const result = versionSort(source, target);
+  if (result < 0) return "upgrade";
+  if (result > 0) return "downgrade";
+  return "same";
+};
+
+export const getDockerImage = (version: string): string => {
+  const isEE = isEnterpriseVersion(version);
+  const repo = isEE ? "metabase/metabase-enterprise" : "metabase/metabase";
+  return `${repo}:${version}`;
+};
+
 export const findNextPatchVersion = (version: string) => {
   if (!isValidVersionString(version)) {
     throw new Error(`Invalid version string: ${version}`);
