@@ -241,7 +241,7 @@
                                      :total :discount :created-at :quantity]
                           :let      [field (meta/field-metadata :orders field-key)]]
                       {:name                         (:name field)
-                       :metabase.lib.join/join-alias "Orders"
+                       :lib/join-alias "Orders"
                        :lib/source-column-alias      (:name field)
                        :lib/source                   :source/joins})]
     (testing "just own columns"
@@ -917,7 +917,7 @@
               {:lib/desired-column-alias "Q2__BIRTH_DATE"
                :inherited-temporal-unit  :month}
               {:lib/desired-column-alias "Q2__count"}]
-             (map #(select-keys % [:lib/desired-column-alias :metabase.lib.field/temporal-unit :inherited-temporal-unit])
+             (map #(select-keys % [:lib/desired-column-alias :lib/temporal-unit :inherited-temporal-unit])
                   (lib/returned-columns query)))))))
 
 (deftest ^:parallel returned-columns-no-duplicates-test-2
@@ -970,14 +970,14 @@
                     :name                         "ID"
                     :lib/source                   :source/table-defaults
                     :lib/original-join-alias      (symbol "nil #_\"key is not present.\"")
-                    :metabase.lib.join/join-alias (symbol "nil #_\"key is not present.\"")
+                    :lib/join-alias (symbol "nil #_\"key is not present.\"")
                     :lib/source-column-alias      "ID"
                     :lib/desired-column-alias     "ID"}
                    {:id                           (meta/id :categories :name)
                     :table-id                     (meta/id :categories)
                     :name                         "NAME"
                     :lib/source                   :source/joins
-                    :metabase.lib.join/join-alias "Cat"
+                    :lib/join-alias "Cat"
                     :lib/source-column-alias      "NAME"
                     :lib/desired-column-alias     "Cat__NAME"}]
                   (lib/returned-columns query 0 (lib/query-stage query 0)))))
@@ -988,7 +988,7 @@
                     :lib/source                   :source/previous-stage
                     :lib/breakout?                true
                     :lib/original-join-alias      "Cat"
-                    :metabase.lib.join/join-alias (symbol "nil #_\"key is not present.\"")
+                    :lib/join-alias (symbol "nil #_\"key is not present.\"")
                     :lib/source-column-alias      "Cat__NAME"
                     :lib/desired-column-alias     "Cat__NAME"}]
                   (lib/returned-columns query)))))
@@ -998,14 +998,14 @@
                   :name                         "ID"
                   :lib/source                   :source/previous-stage
                   :lib/original-join-alias      (symbol "nil #_\"key is not present.\"")
-                  :metabase.lib.join/join-alias (symbol "nil #_\"key is not present.\"")
+                  :lib/join-alias (symbol "nil #_\"key is not present.\"")
                   :lib/source-column-alias      "ID"}
                  {:id                           (meta/id :categories :name)
                   :table-id                     (meta/id :categories)
                   :name                         "NAME"
                   :lib/source                   :source/previous-stage
                   :lib/original-join-alias      "Cat"
-                  :metabase.lib.join/join-alias (symbol "nil #_\"key is not present.\"")
+                  :lib/join-alias (symbol "nil #_\"key is not present.\"")
                   :lib/source-column-alias      "Cat__NAME"
                   ;; should not be returned by `visible-columns` since it needs to be recalculated in the context of
                   ;; everything that gets returned.
@@ -1040,7 +1040,7 @@
           relevant-keys (fn [cols]
                           (map #(select-keys % [:name
                                                 :lib/source
-                                                :metabase.lib.join/join-alias
+                                                :lib/join-alias
                                                 :lib/source-column-alias
                                                 :lib/desired-column-alias])
                                cols))]
@@ -1049,7 +1049,7 @@
                  :lib/source                   :source/joins
                  :lib/desired-column-alias     "P2__CATEGORY"
                  :lib/source-column-alias      "CATEGORY"
-                 :metabase.lib.join/join-alias "P2"}
+                 :lib/join-alias "P2"}
                 {:name                     "avg"
                  :lib/source               :source/aggregations
                  :lib/desired-column-alias "avg"
@@ -1059,22 +1059,22 @@
       (testing "join returned columns relative to parent stage"
         (is (= [{:name                         "CATEGORY"
                  :lib/source                   :source/joins
-                 :metabase.lib.join/join-alias "Q2"
+                 :lib/join-alias "Q2"
                  :lib/source-column-alias      "P2__CATEGORY"}
                 {:name                         "avg"
                  :lib/source                   :source/joins
-                 :metabase.lib.join/join-alias "Q2"
+                 :lib/join-alias "Q2"
                  :lib/source-column-alias      "avg"}]
                (relevant-keys (#'lib.join/join-returned-columns-relative-to-parent-stage query -1 (first (lib/joins query)))))))
       (testing "query (last stage) returned columns"
         (is (= [{:name                         "CATEGORY"
                  :lib/source                   :source/joins
-                 :metabase.lib.join/join-alias "Q2"
+                 :lib/join-alias "Q2"
                  :lib/source-column-alias      "P2__CATEGORY"
                  :lib/desired-column-alias     "Q2__P2__CATEGORY"}
                 {:name                         "avg"
                  :lib/source                   :source/joins
-                 :metabase.lib.join/join-alias "Q2"
+                 :lib/join-alias "Q2"
                  :lib/source-column-alias      "avg"
                  :lib/desired-column-alias     "Q2__avg"}]
                (relevant-keys (lib/returned-columns query))))))))
