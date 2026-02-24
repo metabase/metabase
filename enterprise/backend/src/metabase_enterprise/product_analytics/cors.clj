@@ -9,7 +9,7 @@
    Only applies to the PA send endpoint."
   :feature :product-analytics
   [request]
-  (when (str/starts-with? (str (:uri request)) "/api/ee/product-analytics/api/send")
+  (when (str/starts-with? (str (:uri request)) "/api/ee/product-analytics/send")
     (let [domains (t2/select-fn-set :allowed_domains :model/ProductAnalyticsSite :archived false)]
       (when (seq domains)
         (let [result (->> domains

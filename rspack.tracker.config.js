@@ -8,14 +8,13 @@ module.exports = {
   mode: "production",
   devtool: false,
   entry: {
-    color_selector: "./frontend/src/metabase-shared/color_selector.js",
+    metabase_tracker: "./frontend/src/metabase-shared/analytics_tracker.js",
   },
   module: config.module,
   resolve: config.resolve,
   output: {
-    path: path.resolve(__dirname, "resources", "frontend_shared"),
+    path: path.resolve(__dirname, "resources/frontend_client/app"),
     filename: "[name].js",
-    library: "shared",
   },
   optimization: {
     minimize: true,

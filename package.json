@@ -454,6 +454,7 @@
     "build-release:embedding-sdk-package": "WEBPACK_BUNDLE=production rspack --config rspack.embedding-sdk-package.config.js",
     "build-release:embedding-sdk-bundle": "WEBPACK_BUNDLE=production rspack --config rspack.embedding-sdk-bundle.config.js",
     "build-shared": "bun install && rspack --config rspack.shared.config.js",
+    "build-tracker": "bun install && rspack --config rspack.tracker.config.js",
     "build-static-viz": "bun install && bun run build-release:cljs && WEBPACK_BUNDLE=production rspack --config rspack.static-viz.config.js",
     "build-static-viz:watch": "rspack --config rspack.static-viz.config.js --watch",
     "build-static-viz:watch-wait": "bun run wait:cljs; bun run build-static-viz:watch",

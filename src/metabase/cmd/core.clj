@@ -140,7 +140,7 @@
 
 (defn ^:command collector
   "Start Metabase in collector mode — a minimal event ingestion server for
-   Product Analytics. Only the /api/ee/product-analytics/api/send endpoint and
+   Product Analytics. Only the /api/ee/product-analytics/send endpoint and
    health probes are available."
   []
   (classloader/require 'metabase.core.collector)

@@ -41,7 +41,8 @@
   "Generate the Umami-compatible tracking script tag for a site."
   [{:keys [uuid]}]
   (let [host (system/site-url)]
-    (format "<script defer src=\"https://cloud.umami.is/script.js\" data-website-id=\"%s\" data-host-url=\"%s/api/ee/product-analytics\"></script>"
+    (format "<script defer src=\"%s/app/metabase_tracker.js\" data-website-id=\"%s\" data-host-url=\"%s/api/ee/product-analytics\"></script>"
+            host
             uuid
             host)))
 

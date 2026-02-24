@@ -84,9 +84,9 @@
   (let [routes  (collector/collector-routes)
         handler (collector/apply-collector-middleware routes)]
 
-    (testing "POST /api/ee/product-analytics/api/send without premium feature returns error"
+    (testing "POST /api/ee/product-analytics/send without premium feature returns error"
       (mt/with-premium-features #{}
-        (let [request  (-> (ring.mock/request :post "/api/ee/product-analytics/api/send")
+        (let [request  (-> (ring.mock/request :post "/api/ee/product-analytics/send")
                            (ring.mock/content-type "application/json")
                            (ring.mock/body "{\"type\":\"event\",\"payload\":{\"website\":\"abc\",\"url\":\"https://example.com\"}}")
                            (assoc-in [:headers "user-agent"] "Mozilla/5.0"))
@@ -94,11 +94,11 @@
           ;; Should be 400 (public-exceptions masks the 402) or 402
           (is (contains? #{400 402} (:status response))))))
 
-    (testing "POST /api/ee/product-analytics/api/send with premium feature reaches the handler (not 404)"
+    (testing "POST /api/ee/product-analytics/send with premium feature reaches the handler (not 404)"
       (mt/with-premium-features #{:product-analytics}
         ;; Send a request with a nonexistent site UUID. The handler should process it
         ;; and return 400 (validation error), NOT 404 (route not found).
-        (let [request  (-> (ring.mock/request :post "/api/ee/product-analytics/api/send")
+        (let [request  (-> (ring.mock/request :post "/api/ee/product-analytics/send")
                            (ring.mock/content-type "application/json")
                            (ring.mock/body "{\"type\":\"event\",\"payload\":{\"website\":\"00000000-0000-0000-0000-000000000000\",\"url\":\"https://example.com\"}}")
                            (assoc-in [:headers "user-agent"] "Mozilla/5.0 Chrome/120"))
