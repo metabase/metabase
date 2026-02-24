@@ -2,34 +2,11 @@
   (:require
    [clojure.walk :as clojure.walk]
    [metabase.lib-be.core :as lib-be]
-   [metabase.lib.core :as lib]
    [metabase.models.visualization-settings :as vs]
    [toucan2.core :as t2]))
 
 ;; I tried putting the various {dashboard-card,card,transform}-upgrade-field-refs! functions in the respective models
 ;; namespaces, but there were cyclical dependencies.
-
-(defn- upgrade-target
-  [target query]
-  (let [field-ref (lib/parameter-target-field-ref target)
-        options (lib/parameter-target-dimension-options target)
-        filterable-columns (lib/filterable-columns query (:stage-number options))
-        matching-column (lib/find-matching-column query (:stage-number options) field-ref filterable-columns)]
-    (if (nil? matching-column)
-      target
-      ;; TODO (eric 2026-02-18): Probably shouldn't build one of these from scratch outside of lib
-      [:dimension (-> matching-column lib/ref) options])))
-
-(defn- upgrade-legacy-target
-  [target query]
-  (let [field-ref (lib/parameter-target-field-ref target) ;; also converts to mbql
-        options (lib/parameter-target-dimension-options target)
-        filterable-columns (lib/filterable-columns query (:stage-number options))
-        matching-column (lib/find-matching-column query (:stage-number options) field-ref filterable-columns)]
-    (if (nil? matching-column)
-      target
-      ;; TODO (eric 2026-02-18): Probably shouldn't build one of these from scratch outside of lib
-      [:dimension (-> matching-column lib/ref lib/->legacy-MBQL) options])))
 
 (defn- upgrade-column-settings-keys
   "Given a card's dataset_query (pMBQL) and a column_settings map (from visualization_settings),
@@ -45,7 +22,7 @@
                        (update 0 keyword)
                        (update-in [1 0] keyword)
                        (update-in [1 2 :base-type] keyword))]
-           (upgrade-target dim query))
+           (lib-be/upgrade-field-ref-in-parameter-target query dim))
          (catch Exception _
            form))
        form))
@@ -53,7 +30,7 @@
 
 (defn- upgrade-parameter-mappings
   [query parameter-mapping]
-  (update parameter-mapping :target upgrade-legacy-target query))
+  (update parameter-mapping :target #(lib-be/upgrade-field-ref-in-parameter-target query %)))
 
 (defn- dashboard-card-upgrade-field-refs!
   [query card-id]
