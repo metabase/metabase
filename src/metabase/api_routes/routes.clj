@@ -27,6 +27,7 @@
    [metabase.geojson.api]
    [metabase.glossary.api]
    [metabase.indexed-entities.api]
+   [metabase.joke-of-the-day.api]
    [metabase.llm.api]
    [metabase.logger.api]
    [metabase.login-history.api]
