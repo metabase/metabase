@@ -4,7 +4,7 @@ import { Api } from "./api";
 
 type SetReleaseFlagRequest = {
   name: ReleaseFlag;
-  value: boolean;
+  is_enabled: boolean;
 };
 
 export const releaseFlagsApi = Api.injectEndpoints({
@@ -17,10 +17,10 @@ export const releaseFlagsApi = Api.injectEndpoints({
       providesTags: ["release-flags"],
     }),
     setReleaseFlag: builder.mutation<ReleaseFlagMap, SetReleaseFlagRequest>({
-      query: ({ name, value }) => ({
+      query: ({ name, is_enabled }) => ({
         method: "PUT",
-        url: `/api/release-flag`,
-        body: JSON.stringify({ name, value }),
+        url: `/api/release-flags`,
+        body: { name, is_enabled },
       }),
       invalidatesTags: () => ["release-flags"],
     }),
