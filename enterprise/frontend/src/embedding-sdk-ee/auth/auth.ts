@@ -38,6 +38,7 @@ import MetabaseSettings from "metabase/lib/settings";
 import { PLUGIN_EMBEDDING_SDK } from "metabase/plugins";
 import { loadSettings, refreshSiteSettings } from "metabase/redux/settings";
 import { refreshCurrentUser } from "metabase/redux/user";
+import type { Settings } from "metabase-types/api";
 
 const GET_OR_REFRESH_SESSION = "sdk/token/GET_OR_REFRESH_SESSION";
 
@@ -87,7 +88,7 @@ PLUGIN_EMBEDDING_SDK_AUTH.initAuth = async (
       api.sessionToken = authState.session.id;
       dispatch(refreshCurrentUser.fulfilled(authState.user, "", undefined));
       dispatch(loadSettings(authState.siteSettings as any));
-      MetabaseSettings.setAll(authState.siteSettings);
+      MetabaseSettings.setAll(authState.siteSettings as Settings);
 
       // Set up the refresh handler so API calls can renew the token later.
       PLUGIN_EMBEDDING_SDK.onBeforeRequestHandlers.getOrRefreshSessionHandler =

@@ -31,7 +31,8 @@ const _bundleHash = "__SDK_BUNDLE_HASH__";
 // so the manifest only contains the split chunks to load in parallel.
 const manifest: { chunks: string[] } = "__SDK_CHUNK_MANIFEST__" as any;
 
-const scriptUrl = document.currentScript?.src || "";
+const scriptUrl =
+  (document.currentScript as HTMLScriptElement | null)?.src || "";
 const baseUrl = scriptUrl.substring(0, scriptUrl.lastIndexOf("/") + 1);
 
 function loadScript(filename: string): Promise<string> {
