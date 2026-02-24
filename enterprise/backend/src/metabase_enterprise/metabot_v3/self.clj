@@ -140,3 +140,46 @@
                           :tool-count (count tools)}
           (with-retries
             #(reduce rf init (make-source))))))))
+
+(defn call-llm-structured
+  "Make an LLM call that returns structured JSON output.
+
+  Uses tool_choice to force the model to call a 'json' tool with the given schema,
+  then collects the streamed response and extracts the parsed tool arguments.
+  Includes the same retry logic as [[call-llm]] for transient errors.
+
+  Args:
+    model       - Model identifier (e.g. \"anthropic/claude-haiku-4-5\")
+    messages    - Sequence of Chat Completions message maps
+                  (e.g. [{:role \"user\" :content \"...\"}])
+    json-schema - JSON Schema map for the expected response shape
+    temperature - Sampling temperature
+    max-tokens  - Maximum tokens in the response
+
+  Returns the parsed JSON map from the forced tool call."
+  [model messages json-schema temperature max-tokens]
+  (log/info "Calling LLM (structured)" {:model model :msg-count (count messages)})
+  (let [raw-tools   [{:type     "function"
+                      :function {:name        "json"
+                                 :description "Respond with a JSON object"
+                                 :parameters  json-schema}}]
+        tool-choice {:type "function" :function {:name "json"}}
+        opts        {:model       model
+                     :input       messages
+                     :raw-tools   raw-tools
+                     :tool_choice tool-choice
+                     :temperature temperature
+                     :max-tokens  max-tokens}]
+    (with-span :info {:name      :metabot-v3.agent/call-llm-structured
+                      :model     model
+                      :msg-count (count messages)}
+      (with-retries
+        (fn []
+          (let [parts (into [] (core/aisdk-xf) (openrouter/openrouter opts))
+                result (some (fn [{:keys [type arguments]}]
+                               (when (= type :tool-input)
+                                 arguments))
+                             parts)]
+            (or result
+                (throw (ex-info "LLM returned no tool call in structured response"
+                                {:parts parts})))))))))
