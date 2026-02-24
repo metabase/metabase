@@ -378,7 +378,8 @@
   (let [test-n (-> v meta :name)
         test-ns (-> v meta :ns str)]
     (log/with-context {:test (str test-ns "/" test-n)}
-      (binding [guard/*blocked-calls* (atom [])]
+      (binding [guard/*blocked-calls* (atom [])
+                clojure.test/*testing-vars* (conj clojure.test/*testing-vars* v)]
         (original-test-var v)
         ;; report when blocked calls are used
         (doseq [{:keys [flag fn call-site]} @guard/*blocked-calls*]
