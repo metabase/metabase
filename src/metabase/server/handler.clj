@@ -75,12 +75,12 @@
         #'mw.browser-cookie/ensure-browser-id-cookie ; add cookie to identify browser; add `:browser-id` to the request
         #'mw.security/add-security-headers           ; Add HTTP headers to API responses to prevent them from being cached
         #'mw.json/wrap-json-body                     ; extracts json POST/PUT body and makes it available on request
-        #'mw.auth/verify-slack-request               ; looks for requests from slack and assocs a :slack/validated? on the request if valid
         #'mw.offset-paging/handle-paging             ; binds per-request parameters to handle paging
         #'mw.json/wrap-streamed-json-response        ; middleware to automatically serialize suitable objects as JSON in responses
         #'mw.mp-cache/wrap-metadata-provider-cache   ; initializes the Lib-BE metadata provider cache
         #'wrap-keyword-params                        ; converts string keys in :params to keyword keys
         #'wrap-params                                ; parses GET and POST params as :query-params/:form-params and both as :params
+        #'mw.auth/verify-slack-request               ; looks for requests from slack and assocs a :slack/validated? on the request if valid
         #'mw.misc/maybe-set-site-url                 ; set the value of `site-url` if it hasn't been set yet
         #'mw.session/reset-session-timeout           ; Resets the timeout cookie for user activity to [[metabase.request.cookies/session-timeout]]
         #'mw.session/bind-current-user               ; Binds *current-user* and *current-user-id* if :metabase-user-id is non-nil

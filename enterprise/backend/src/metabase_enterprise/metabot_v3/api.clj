@@ -93,6 +93,18 @@
   (metabot-v3.context/log body :llm.log/fe->be)
   (streaming-request body))
 
+(defn- submit-feedback-to-harbormaster!
+  "Submit feedback to Harbormaster via the Store API. Throws on failure."
+  [feedback]
+  (let [token    (premium-features/premium-embedding-token)
+        base-url (store-api/store-api-url)]
+    (when (or (str/blank? token) (str/blank? base-url))
+      (throw (ex-info "Cannot build a request. The license token and/or Store api url are missing!"
+                      {:status-code 400})))
+    (http/post (str base-url "/api/v2/metabot/feedback/" token)
+               {:content-type :json
+                :body         (json/encode feedback)})))
+
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
 ;;
@@ -102,18 +114,12 @@
   [_route-params
    _query-params
    feedback :- :map]
-  (let [token (premium-features/premium-embedding-token)
-        base-url (store-api/store-api-url)]
-    (api/check-400 (not (or (str/blank? token) (str/blank? base-url)))
-                   "Cannot build a request. The license token and/or Store api url are missing!")
-    (try
-      (http/post (str base-url "/api/v2/metabot/feedback/" token)
-                 {:content-type :json
-                  :body         (json/encode feedback)})
-      api/generic-204-no-content
-      (catch Exception e
-        (log/error e "Failed to submit feedback to Harbormaster")
-        (throw e)))))
+  (try
+    (submit-feedback-to-harbormaster! feedback)
+    api/generic-204-no-content
+    (catch Exception e
+      (log/error e "Failed to submit feedback to Harbormaster")
+      (throw e))))
 
 (def ^{:arglists '([request respond raise])} routes
   "`/api/ee/metabot-v3` routes."

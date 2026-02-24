@@ -134,6 +134,11 @@
   [client message]
   (:body (slack-post-json client "/chat.delete" (select-keys message [:channel :ts]))))
 
+(defn update-message
+  "Update a Slack message"
+  [client message]
+  (slack-post-json client "/chat.update" message))
+
 (defn download-file
   "Download a file from Slack using the client's token for authentication.
    Returns byte array of file contents."
