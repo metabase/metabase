@@ -1,0 +1,6 @@
+{
+  "joke-of-the-day:": {
+    "description": "Whether to show the joke of the day on the homepage.",
+    "startDate": "2026-02-24"
+  }
+}
