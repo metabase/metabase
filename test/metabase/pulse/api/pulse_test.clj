@@ -12,12 +12,11 @@
    [metabase.notification.test-util :as notification.tu]
    [metabase.permissions.models.permissions :as perms]
    [metabase.permissions.models.permissions-group :as perms-group]
-   ^{:clj-kondo/ignore [:deprecated-namespace]}
-   [metabase.pulse.api.pulse :as api.pulse]
    [metabase.pulse.models.pulse-channel :as pulse-channel]
    [metabase.pulse.models.pulse-test :as pulse-test]
    [metabase.pulse.test-util :as pulse.test-util]
    [metabase.queries-rest.api.card-test :as api.card-test]
+   [metabase.query-processor :as qp]
    [metabase.test :as mt]
    [metabase.test.data.interface :as tx]
    [metabase.test.http-client :as client]
@@ -1230,12 +1229,17 @@
 
 (deftest ^:parallel pulse-card-query-results-test
   (testing "viz-settings saved in the DB for a Card should be loaded"
-    (is (some? (get-in (#'api.pulse/pulse-card-query-results
-                        {:id            1
-                         :dataset_query {:database (mt/id)
-                                         :type     :query
-                                         :query    {:source-table (mt/id :venues)
-                                                    :limit        1}}})
+    (is (some? (get-in (qp/process-query
+                        (qp/userland-query
+                         {:database (mt/id)
+                          :type     :query
+                          :query    {:source-table (mt/id :venues)
+                                     :limit        1}
+                          :middleware {:process-viz-settings? true
+                                       :js-int-to-string?     false}}
+                         {:executed-by (mt/user->id :rasta)
+                          :context     :pulse
+                          :card-id     1}))
                        [:data :viz-settings])))))
 
 (deftest form-input-test
