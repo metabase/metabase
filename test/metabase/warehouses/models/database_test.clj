@@ -77,9 +77,9 @@
           (mt/with-prometheus-system! [_ system]
             (mt/with-temporary-setting-values [db-connection-timeout-ms 30000]
               (database/check-health!)
-              (is (== 1.0 (mt/metric-value system :metabase-database/status {:driver driver/*driver* :healthy true})))
+              (is (== 1.0 (mt/metric-value system :metabase-database/status {:driver driver/*driver* :healthy true :connection-type "default"})))
               (database/check-health!)
-              (is (== 1.0 (mt/metric-value system :metabase-database/status {:driver driver/*driver* :healthy true}))))))))))
+              (is (== 1.0 (mt/metric-value system :metabase-database/status {:driver driver/*driver* :healthy true :connection-type "default"}))))))))))
 
 (deftest health-check-database-test
   (mt/test-drivers (mt/normal-drivers)
@@ -89,47 +89,83 @@
           (mt/with-prometheus-system! [_ system]
             (mt/with-temporary-setting-values [db-connection-timeout-ms 30000]
               (database/health-check-database! (mt/db))
-              (is (== 1 (mt/metric-value system :metabase-database/status {:driver driver/*driver* :healthy true})) "healthy")
-              (is (== 0 (mt/metric-value system :metabase-database/status {:driver driver/*driver* :healthy false :reason "user-input"})) "unhealthy user-input")
-              (is (== 0 (mt/metric-value system :metabase-database/status {:driver driver/*driver* :healthy false :reason "exception"})) "unhealthy exception"))))
+              (is (== 1 (mt/metric-value system :metabase-database/status {:driver driver/*driver* :healthy true :connection-type "default"})) "healthy")
+              (is (== 0 (mt/metric-value system :metabase-database/status {:driver driver/*driver* :healthy false :reason "user-input" :connection-type "default"})) "unhealthy user-input")
+              (is (== 0 (mt/metric-value system :metabase-database/status {:driver driver/*driver* :healthy false :reason "exception" :connection-type "default"})) "unhealthy exception"))))
 
         (testing "skip audit"
           (mt/with-prometheus-system! [_ system]
             (database/health-check-database! (assoc (mt/db) :is_audit true))
-            (is (== 0 (mt/metric-value system :metabase-database/status {:driver driver/*driver* :healthy true})) "healthy")
-            (is (== 0 (mt/metric-value system :metabase-database/status {:driver driver/*driver* :healthy false :reason "user-input"})) "unhealthy user-input")
-            (is (== 0 (mt/metric-value system :metabase-database/status {:driver driver/*driver* :healthy false :reason "exception"})) "unhealthy exception")))
+            (is (== 0 (mt/metric-value system :metabase-database/status {:driver driver/*driver* :healthy true :connection-type "default"})) "healthy")
+            (is (== 0 (mt/metric-value system :metabase-database/status {:driver driver/*driver* :healthy false :reason "user-input" :connection-type "default"})) "unhealthy user-input")
+            (is (== 0 (mt/metric-value system :metabase-database/status {:driver driver/*driver* :healthy false :reason "exception" :connection-type "default"})) "unhealthy exception")))
 
         (testing "skip sample"
           (mt/with-prometheus-system! [_ system]
             (database/health-check-database! (assoc (mt/db) :is_sample true))
-            (is (== 0 (mt/metric-value system :metabase-database/status {:driver driver/*driver* :healthy true})) "healthy")
-            (is (== 0 (mt/metric-value system :metabase-database/status {:driver driver/*driver* :healthy false :reason "user-input"})) "unhealthy user-input")
-            (is (== 0 (mt/metric-value system :metabase-database/status {:driver driver/*driver* :healthy false :reason "exception"})) "unhealthy exception")))
+            (is (== 0 (mt/metric-value system :metabase-database/status {:driver driver/*driver* :healthy true :connection-type "default"})) "healthy")
+            (is (== 0 (mt/metric-value system :metabase-database/status {:driver driver/*driver* :healthy false :reason "user-input" :connection-type "default"})) "unhealthy user-input")
+            (is (== 0 (mt/metric-value system :metabase-database/status {:driver driver/*driver* :healthy false :reason "exception" :connection-type "default"})) "unhealthy exception")))
 
         (testing "failures for timeout"
           (mt/with-prometheus-system! [_ system]
-            (mt/with-temporary-setting-values [db-connection-timeout-ms -1] ;; setting to -1 because 0 sometimes flakes
+            (mt/with-temporary-setting-values [db-connection-timeout-ms -1]
               (database/health-check-database! (mt/db))
-              (is (== 0 (mt/metric-value system :metabase-database/status {:driver driver/*driver* :healthy true})) "healthy")
-              (is (== 0 (mt/metric-value system :metabase-database/status {:driver driver/*driver* :healthy false :reason "user-input"})) "unhealthy user-input")
-              (is (== 1 (mt/metric-value system :metabase-database/status {:driver driver/*driver* :healthy false :reason "exception"})) "unhealthy exception"))))
+              (is (== 0 (mt/metric-value system :metabase-database/status {:driver driver/*driver* :healthy true :connection-type "default"})) "healthy")
+              (is (== 0 (mt/metric-value system :metabase-database/status {:driver driver/*driver* :healthy false :reason "user-input" :connection-type "default"})) "unhealthy user-input")
+              (is (== 1 (mt/metric-value system :metabase-database/status {:driver driver/*driver* :healthy false :reason "exception" :connection-type "default"})) "unhealthy exception"))))
 
         (testing "failures for bad connections"
           (when-let [bad-conn (tx/bad-connection-details driver/*driver*)]
             (mt/with-prometheus-system! [_ system]
               (database/health-check-database! (update (mt/db) :details merge bad-conn))
-              (is (== 0 (mt/metric-value system :metabase-database/status {:driver driver/*driver* :healthy true})) "healthy")
-              (is (or (== 1 (mt/metric-value system :metabase-database/status {:driver driver/*driver* :healthy false :reason "user-input"}))
-                      (== 1 (mt/metric-value system :metabase-database/status {:driver driver/*driver* :healthy false :reason "exception"}))) "unhealthy user-input or exception"))))
+              (is (== 0 (mt/metric-value system :metabase-database/status {:driver driver/*driver* :healthy true :connection-type "default"})) "healthy")
+              (is (or (== 1 (mt/metric-value system :metabase-database/status {:driver driver/*driver* :healthy false :reason "user-input" :connection-type "default"}))
+                      (== 1 (mt/metric-value system :metabase-database/status {:driver driver/*driver* :healthy false :reason "exception" :connection-type "default"}))) "unhealthy user-input or exception"))))
 
         (testing "failures for exception"
           (with-redefs [driver/can-connect? (fn [& _args] (throw (Exception. "boom")))]
             (mt/with-prometheus-system! [_ system]
               (database/health-check-database! (mt/db))
-              (is (== 0 (mt/metric-value system :metabase-database/status {:driver driver/*driver* :healthy true})) "healthy")
-              (is (== 0 (mt/metric-value system :metabase-database/status {:driver driver/*driver* :healthy false :reason "user-input"})) "unhealthy user-input")
-              (is (== 1 (mt/metric-value system :metabase-database/status {:driver driver/*driver* :healthy false :reason "exception"})) "unhealthy exception"))))))))
+              (is (== 0 (mt/metric-value system :metabase-database/status {:driver driver/*driver* :healthy true :connection-type "default"})) "healthy")
+              (is (== 0 (mt/metric-value system :metabase-database/status {:driver driver/*driver* :healthy false :reason "user-input" :connection-type "default"})) "unhealthy user-input")
+              (is (== 1 (mt/metric-value system :metabase-database/status {:driver driver/*driver* :healthy false :reason "exception" :connection-type "default"})) "unhealthy exception"))))))))
+
+(deftest health-check-write-connection-test
+  (mt/test-drivers (mt/normal-drivers)
+    (with-redefs [quick-task/submit-task! (fn [task] (task))]
+      (binding [driver.settings/*allow-testing-h2-connections* true]
+        (testing "database with write_data_details checks both connections"
+          (mt/with-prometheus-system! [_ system]
+            (mt/with-temporary-setting-values [db-connection-timeout-ms 30000]
+              (database/health-check-database! (assoc (mt/db) :write_data_details (:details (mt/db))))
+              (is (== 1 (mt/metric-value system :metabase-database/status {:driver driver/*driver* :healthy true :connection-type "default"}))
+                  "default connection healthy")
+              (is (== 1 (mt/metric-value system :metabase-database/status {:driver driver/*driver* :healthy true :connection-type "write-data"}))
+                  "write-data connection healthy"))))
+
+        (testing "database without write_data_details only checks default connection"
+          (mt/with-prometheus-system! [_ system]
+            (mt/with-temporary-setting-values [db-connection-timeout-ms 30000]
+              (database/health-check-database! (mt/db))
+              (is (== 1 (mt/metric-value system :metabase-database/status {:driver driver/*driver* :healthy true :connection-type "default"}))
+                  "default connection healthy")
+              (is (== 0 (mt/metric-value system :metabase-database/status {:driver driver/*driver* :healthy true :connection-type "write-data"}))
+                  "no write-data connection checked"))))
+
+        (testing "write connection failure does not prevent default check"
+          (let [call-count (atom 0)]
+            (with-redefs [driver/can-connect? (fn [& _args]
+                                                (if (< (swap! call-count inc) 2)
+                                                  true
+                                                  (throw (Exception. "write connection failed"))))]
+              (mt/with-prometheus-system! [_ system]
+                (mt/with-temporary-setting-values [db-connection-timeout-ms 30000]
+                  (database/health-check-database! (assoc (mt/db) :write_data_details (:details (mt/db))))
+                  (is (== 1 (mt/metric-value system :metabase-database/status {:driver driver/*driver* :healthy true :connection-type "default"}))
+                      "default connection healthy")
+                  (is (== 1 (mt/metric-value system :metabase-database/status {:driver driver/*driver* :healthy false :reason "exception" :connection-type "write-data"}))
+                      "write-data connection failed"))))))))))
 
 (deftest can-read-database-setting-test
   (let [encode-decode (comp json/decode json/encode)
@@ -569,6 +605,98 @@
                 (testing (format "Secret ID %d should have been deleted after the Database was" secret-id)
                   (is (nil? (t2/select-one :model/Secret :id secret-id))
                       (format "Secret ID %d was not removed from the app DB" secret-id)))))))))))
+
+(deftest write-data-details-secrets-on-insert-test
+  (testing "handle-incoming-client-secrets! processes write_data_details on insert"
+    (mt/with-temp [:model/Database db {:engine             "secret-test-driver"
+                                       :name               "Secret Test"
+                                       :details            {:host "localhost"}
+                                       :write_data_details {:keystore-value "write-secret"}}]
+      (let [db-id             (:id db)
+            raw-write-details (t2/select-one-fn
+                               (comp json/decode+kw :write_data_details)
+                               (t2/table-name :model/Database) db-id)]
+        (testing "keystore-value replaced with keystore-id"
+          (is (contains? raw-write-details :keystore-id))
+          (is (not (contains? raw-write-details :keystore-value))))
+        (testing "Secret record created with correct value"
+          (when-let [secret-id (:keystore-id raw-write-details)]
+            (is (=? {:value (u/string-to-bytes "write-secret") :source :uploaded :version 1}
+                    (secret/latest-for-id secret-id)))))))))
+
+(deftest write-data-details-secrets-on-update-test
+  (testing "handle-incoming-client-secrets! processes write_data_details on update"
+    (mt/with-temp [:model/Database db {:engine  "secret-test-driver"
+                                       :name    "Secret Test"
+                                       :details {:host "localhost"}}]
+      (let [db-id (:id db)]
+        (t2/update! :model/Database db-id {:write_data_details {:keystore-value "write-secret"}})
+        (let [raw-write-details (t2/select-one-fn
+                                 (comp json/decode+kw :write_data_details)
+                                 (t2/table-name :model/Database) db-id)]
+          (testing "keystore-value replaced with keystore-id"
+            (is (contains? raw-write-details :keystore-id))
+            (is (not (contains? raw-write-details :keystore-value))))
+          (testing "Secret record created with correct value"
+            (when-let [secret-id (:keystore-id raw-write-details)]
+              (is (=? {:value (u/string-to-bytes "write-secret") :source :uploaded :version 1}
+                      (secret/latest-for-id secret-id))))))))))
+
+(deftest delete-orphaned-secrets-includes-write-data-details-test
+  (testing "Secret records referenced in write_data_details are deleted when database is deleted"
+    (let [db-table (t2/table-name :model/Database)]
+      (mt/with-temp [:model/Secret {write-secret-id :id} {:name "write-secret" :value "secret-value" :kind "keystore"}]
+        (mt/with-temp [db-table {db-id :id} {:engine             (name :secret-test-driver)
+                                             :name               "Secret Test"
+                                             :created_at         (t/instant)
+                                             :updated_at         (t/instant)
+                                             :details            (json/encode {:host "localhost"})
+                                             :write_data_details (json/encode {:keystore-id write-secret-id})}]
+          (t2/delete! :model/Database :id db-id)
+          (is (nil? (t2/select-one :model/Secret :id write-secret-id))
+              "Secret referenced in write_data_details should be deleted"))))))
+
+(deftest write-data-details-redaction-to-json-test
+  (testing "to-json-hydrate-redacted-secrets hydrates redacted values in write_data_details"
+    (mt/with-temp [:model/Secret {secret-id :id} {:name "secret" :value "stored-secret-value" :kind "s" :source "uploaded"}
+                   :model/Database db {:engine  (name :secret-test-driver)
+                                       :name    "Secret Test"
+                                       :details {:host "localhost"}}]
+      (mt/with-current-user (mt/user->id :crowberto)
+        (let [db-with-write-details (assoc db :write_data_details {:keystore-id secret-id})
+              json-result           (-> db-with-write-details json/encode json/decode+kw)]
+          (testing "keystore-value hydrated with redacted placeholder"
+            (is (= secret/protected-password
+                   (get-in json-result [:write_data_details :keystore-value]))))
+          (testing "keystore-options hydrated"
+            (is (= "uploaded"
+                   (get-in json-result [:write_data_details :keystore-options])))))))))
+
+(deftest clean-secret-properties-from-write-data-details-test
+  (testing "results-transform cleans secret properties from write_data_details"
+    (let [db-table (t2/table-name :model/Database)]
+      (mt/with-temp [db-table {db-id :id} {:engine             (name :secret-test-driver)
+                                           :name               "Secret Test"
+                                           :created_at         (t/instant)
+                                           :updated_at         (t/instant)
+                                           :details            (json/encode {:host "localhost"})
+                                           :write_data_details (json/encode {:keystore-value "should-be-cleaned"
+                                                                             :keystore-id    999})}]
+        (let [db (t2/select-one :model/Database db-id)]
+          (testing "keystore-value cleaned from write_data_details"
+            (is (not (contains? (:write_data_details db) :keystore-value)))))))))
+
+(deftest after-select-keywordizes-auth-provider-in-details-test
+  (testing "after-select keywordizes :auth-provider in both :details and :write_data_details"
+    (mt/with-temp [:model/Database db {:engine             :h2
+                                       :name               "Auth Provider Test"
+                                       :details            {:auth-provider "aws-iam"}
+                                       :write_data_details {:auth-provider "aws-iam"}}]
+      (let [db (t2/select-one :model/Database (:id db))]
+        (testing ":details :auth-provider is keywordized"
+          (is (keyword? (get-in db [:details :auth-provider]))))
+        (testing ":write_data_details :auth-provider is keywordized"
+          (is (keyword? (get-in db [:write_data_details :auth-provider]))))))))
 
 (deftest user-may-not-update-sample-database-test
   (mt/with-temp [:model/Database {:keys [id] :as _sample-database} {:engine    :h2

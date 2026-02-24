@@ -552,6 +552,13 @@
                           "")
        true str/join))))
 
+(defn valid-slug?
+  "Check that a given string is a valid slug."
+  [slug]
+  (and (string? slug)
+       (not (str/blank? slug))
+       (re-matches #"^[a-z0-9][a-z0-9\-]*$" slug)))
+
 (defn id
   "If passed an integer ID, returns it. If passed a map containing an `:id` key, returns the value if it is an integer.
   Otherwise returns `nil`.

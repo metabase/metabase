@@ -16,13 +16,10 @@ import {
   ToggleLabel,
   WarningIcon,
 } from "./PermissionsSelect.styled";
-import {
-  PermissionsSelectOption,
-  optionShape,
-} from "./PermissionsSelectOption";
+import { PermissionsSelectOption } from "./PermissionsSelectOption";
 
 const propTypes = {
-  options: PropTypes.arrayOf(PropTypes.shape(optionShape)).isRequired,
+  options: PropTypes.arrayOf(PropTypes.object).isRequired,
   actions: PropTypes.object,
   value: PropTypes.string.isRequired,
   toggleLabel: PropTypes.string,

@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 
 import { useSelector } from "metabase/lib/redux";
 import { getMetadata } from "metabase/selectors/metadata";
@@ -23,6 +23,7 @@ export function useQueryQuestion(
   onChangeQuery: (newQuery: Lib.Query) => void,
 ) {
   const metadata = useSelector(getMetadata);
+  const [parameterValues, setParameterValues] = useState({});
 
   const { question, proposedQuestion } = useMemo(
     () => ({
@@ -32,6 +33,7 @@ export function useQueryQuestion(
         cardType,
         display: cardDisplay,
         visualization_settings: cardVizSettings,
+        parameterValues,
       }),
       proposedQuestion:
         proposedQuery != null
@@ -42,12 +44,26 @@ export function useQueryQuestion(
             })
           : undefined,
     }),
-    [query, proposedQuery, metadata, cardType, cardDisplay, cardVizSettings],
+    [
+      query,
+      proposedQuery,
+      metadata,
+      cardType,
+      cardDisplay,
+      cardVizSettings,
+      parameterValues,
+    ],
   );
 
   const setQuestion = (newQuestion: Question) => {
     onChangeQuery(newQuestion.query());
   };
 
-  return { question, proposedQuestion, setQuestion };
+  return {
+    question,
+    proposedQuestion,
+    setQuestion,
+    parameterValues,
+    setParameterValues,
+  };
 }

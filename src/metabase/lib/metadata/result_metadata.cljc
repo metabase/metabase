@@ -9,7 +9,9 @@
   (:refer-clojure :exclude [mapv select-keys some update-keys every? empty? not-empty get-in #?(:clj for)])
   (:require
    #?@(:clj
-       ([metabase.config.core :as config]))
+       ([metabase.config.core :as config]
+        [metabase.lib.binning :as lib.binning]
+        [metabase.lib.temporal-bucket :as lib.temporal-bucket]))
    [clojure.set :as set]
    [clojure.string :as str]
    [medley.core :as m]
@@ -22,8 +24,8 @@
    [metabase.lib.field.util :as lib.field.util]
    [metabase.lib.join :as lib.join]
    [metabase.lib.join.util :as lib.join.util]
-
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
+   [metabase.lib.normalize :as lib.normalize]
    [metabase.lib.options :as lib.options]
    [metabase.lib.ref :as lib.ref]
    [metabase.lib.schema :as lib.schema]
@@ -113,7 +115,7 @@
                                       (count initial-cols)
                                       (count lib-cols))
                      (letfn [(select-relevant-keys [m]
-                               (select-keys m [:id :metabase.lib.join/join-alias :lib/desired-column-alias :lib/deduplicated-name :lib/original-name :name]))]
+                               (select-keys m [:id :lib/join-alias :lib/desired-column-alias :lib/deduplicated-name :lib/original-name :name]))]
                        {:initial-cols (map select-relevant-keys initial-cols)
                         :lib-cols     (map select-relevant-keys lib-cols)}))]
       (if #?(:clj config/is-prod? :cljs false)
@@ -170,10 +172,9 @@
                                                            (log/error e "Column metadata has invalid :lib/expression-name (this was probably incorrectly propagated from a previous stage) (QUE-1342)")
                                                            (log/debugf "In query:\n%s" (u/pprint-to-str query))
                                                            nil))]
-                                         (lib.util.match/match-one expr
-                                           :convert-timezone
-                                           (let [[_convert-timezone _opts _expr source-tz] &match]
-                                             source-tz)))))]
+                                         (lib.util.match/match-lite expr
+                                           [:convert-timezone _opts _expr source-tz & _]
+                                           source-tz))))]
             (cond-> col
               converted-timezone (assoc :converted-timezone converted-timezone))))
         cols))
@@ -202,7 +203,7 @@
                                 (= (:lib/source col) :source/joins)
                                 (assoc :lib/source :source/implicitly-joinable)))
         remove-aliases      (fn [col]
-                              (dissoc col :metabase.lib.join/join-alias :lib/original-join-alias))
+                              (dissoc col :lib/join-alias :lib/original-join-alias))
         implicitly-joined?  (fn [col]
                               (when-let [join-alias (any-join-alias col)]
                                 (contains? implicit-aliases join-alias)))
@@ -241,22 +242,22 @@
   [col   :- ::kebab-cased-map
    a-ref :- ::mbql.s/Reference]
   (let [a-ref (remove-namespaced-options a-ref)]
-    (lib.util.match/replace a-ref
+    (lib.util.match/replace-lite a-ref
       [:field (id :guard pos-int?) opts]
       [:field id (not-empty (cond-> (dissoc opts :effective-type :inherited-temporal-unit)
                               (:source-field opts) (dissoc :join-alias)
-                              (:metabase.lib.query/transformation-added-base-type col) (dissoc :base-type)))]
+                              (:lib/transformation-added-base-type col) (dissoc :base-type)))]
 
       [:field (field-name :guard string?) opts]
       [:field field-name (not-empty (dissoc opts :inherited-temporal-unit))]
 
-      [:expression expression-name (opts :guard (some-fn :base-type :effective-type))]
+      [:expression expression-name (opts :guard (or (:base-type opts) (:effective-type opts)))]
       (let [fe-friendly-opts (dissoc opts :base-type :effective-type)]
         (if (seq fe-friendly-opts)
           [:expression expression-name fe-friendly-opts]
           [:expression expression-name]))
 
-      [:aggregation aggregation-index (opts :guard (some-fn :base-type :effective-type))]
+      [:aggregation aggregation-index (opts :guard (or (:base-type opts) (:effective-type opts)))]
       (let [fe-friendly-opts (dissoc opts :base-type :effective-type)]
         (if (seq fe-friendly-opts)
           [:aggregation aggregation-index fe-friendly-opts]
@@ -294,7 +295,7 @@
                                                              col
                                                              (when-not remove-join-alias?
                                                                (when-let [previous-join-alias (:lib/original-join-alias col)]
-                                                                 {:metabase.lib.join/join-alias previous-join-alias, :lib/source :source/joins})))
+                                                                 {:lib/join-alias previous-join-alias, :lib/source :source/joins})))
                                                             lib.ref/ref)]
               (cond
                 ;; if original ref in the query used an ID then `::field-ref` should as well for historic
@@ -388,6 +389,16 @@
         (lib.field.util/add-source-and-desired-aliases-xform query)
         cols))
 
+(defn- add-nested-display-names
+  "Compute nested display-names for columns with `:parent-id`. Raw field metadata from the metadata provider has leaf
+  display-names (e.g. \"Child\"), but QP results should have the full nested path (e.g. \"Grandparent: Parent: Child\")."
+  [query cols]
+  (mapv (fn [col]
+          (if (:parent-id col)
+            (assoc col :display-name (lib.metadata.calculation/display-name query -1 col))
+            col))
+        cols))
+
 (mu/defn- add-extra-metadata :- [:sequential ::kebab-cased-map]
   "Add extra metadata to the [[lib/returned-columns]] that only comes back with QP results metadata."
   [query        :- ::lib.schema/query
@@ -414,6 +425,7 @@
            deduplicate-names
            (add-legacy-field-refs query)
            (merge-model-metadata query)
+           (add-nested-display-names query)
            (add-source-and-desired-aliases query)))))
 
 (defn- add-unit [col]
@@ -421,13 +433,13 @@
    ;; TODO -- we also need to 'flow' the unit from previous stage(s) "so the frontend can use the correct
    ;; formatting to display values of the column" according
    ;; to [[metabase.query-processor.nested-queries-test/breakout-year-test]]
-   (when-let [temporal-unit ((some-fn :metabase.lib.field/temporal-unit :inherited-temporal-unit) col)]
+   (when-let [temporal-unit ((some-fn :lib/temporal-unit :inherited-temporal-unit) col)]
      {:unit temporal-unit})
    col))
 
 (defn- add-binning-info [col]
   (merge
-   (when-let [binning-info ((some-fn :metabase.lib.field/binning :lib/original-binning) col)]
+   (when-let [binning-info ((some-fn :lib/binning :lib/original-binning) col)]
      {:binning-info (merge
                      (when-let [strategy (:strategy binning-info)]
                        {:binning-strategy strategy})
@@ -487,3 +499,18 @@
    (->> initial-cols
         (add-extra-metadata query)
         cols->legacy-metadata)))
+
+(defn normalize-result-metadata-column
+  "Normalizes either a modern MBQL 5 `::lib.schema.metadata/column` or legacy `:result_metadata` column as it comes
+  out of AppDB. This is called by [[metabase.models.interface/result-metadata-out]]."
+  [col]
+  #?(:clj  (if (:lib/type col)
+             (lib.normalize/normalize ::lib.schema.metadata/column col)
+             ;; legacy usages -- do not use these going forward
+             #_{:clj-kondo/ignore [:deprecated-var]}
+             (-> col
+                 (->> (lib.normalize/normalize :metabase.query-processor.schema/result-metadata.column))
+                 ;; This is necessary, because in the wild, there may be cards created prior to this change.
+                 lib.temporal-bucket/ensure-temporal-unit-in-display-name
+                 lib.binning/ensure-binning-in-display-name))
+     :cljs (lib.normalize/normalize ::lib.schema.metadata/column col)))

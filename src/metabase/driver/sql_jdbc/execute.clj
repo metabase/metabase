@@ -14,6 +14,7 @@
    [medley.core :as m]
    [metabase.driver :as driver]
    [metabase.driver-api.core :as driver-api]
+   [metabase.driver.connection :as driver.conn]
    [metabase.driver.settings :as driver.settings]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.execute.diagnostic :as sql-jdbc.execute.diagnostic]
@@ -653,7 +654,9 @@
   [_ rs _ i]
   (get-object-of-class-thunk rs i java.time.OffsetTime))
 
-(defn- column-range [^ResultSetMetaData rsmeta]
+(defn column-range
+  "Return a sequence of all the column indexes in a JDBC result set. Column indexes in JDBC start at `1`."
+  [^ResultSetMetaData rsmeta]
   (range 1 (inc (.getColumnCount rsmeta))))
 
 (defn- log-readers [driver ^ResultSetMetaData rsmeta fns]
@@ -688,6 +691,7 @@
           (thunk))))))
 
 (defn- resolve-missing-base-types
+  "Resolve missing base types in initial column `metadatas` using [[driver/dynamic-database-types-lookup]]."
   [driver metadatas]
   (if (driver-api/initialized?)
     (let [missing (keep (fn [{:keys [database_type base_type]}]
@@ -728,10 +732,7 @@
              :database_type db-type-name}))
         (column-range rsmeta))
        (resolve-missing-base-types driver)
-       (mapv (fn [{:keys [base_type] :as metadata}]
-               (if (nil? base_type)
-                 (assoc metadata :base_type :type/*)
-                 metadata)))))
+       (mapv #(u/assoc-default % :base_type :type/*))))
 
 (defn reducible-rows
   "Returns an object that can be reduced to fetch the rows and columns in a `ResultSet` in a driver-specific way (e.g.
@@ -775,7 +776,7 @@
   {:pre [(string? sql) (seq sql)]}
   (tracing/with-span :db-user "db-user.execute-query" {:db/engine (name driver)}
     (let [database (driver-api/database (driver-api/metadata-provider))
-          sql      (if (get-in database [:details :include-user-id-and-hash] true)
+          sql      (if (get-in (driver.conn/effective-details database) [:include-user-id-and-hash] true)
                      (->> (driver-api/query->remark driver outer-query)
                           (inject-remark driver sql))
                      sql)

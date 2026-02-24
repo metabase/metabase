@@ -31,7 +31,8 @@
   plan-alias
   quotas
   TokenStatus
-  clear-cache!]
+  clear-cache!
+  transform-stats]
 
  (metabase.premium-features.settings
   active-users-count
@@ -75,9 +76,10 @@
   enable-sso-google?
   enable-sso-jwt?
   enable-sso-ldap?
+  enable-sso-oidc?
   enable-sso-saml?
-  enable-support-users?
   enable-sso-slack?
+  enable-support-users?
   enable-transforms?
   enable-python-transforms?
   enable-upload-management?
