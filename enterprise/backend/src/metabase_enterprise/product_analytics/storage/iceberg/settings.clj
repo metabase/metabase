@@ -2,7 +2,7 @@
   "Settings for the Iceberg storage backend for Product Analytics."
   (:require
    [metabase.config.core :as config]
-   [metabase.settings.core :as setting]
+   [metabase.settings.core :as setting :refer [defsetting]]
    [metabase.util.i18n :refer [deferred-tru]]))
 
 (setting/defsetting product-analytics-iceberg-catalog-type
@@ -124,3 +124,107 @@
   :export?    false
   :encryption :no
   :audit      :getter)
+
+;;; ----------------------------------------- Query Engine Settings ------------------------------------------
+
+(defn- reconfigure-pa-database-if-loaded!
+  "Trigger PA database reconfiguration if the query-engine namespace is loaded."
+  []
+  (when-let [reconfigure! (resolve 'metabase-enterprise.product-analytics.query-engine/reconfigure-pa-database!)]
+    (reconfigure!)))
+
+(defsetting product-analytics-query-engine
+  (deferred-tru "Query engine for reading Product Analytics data when using Iceberg storage.")
+  :type       :keyword
+  :visibility :admin
+  :default    :app-db
+  :feature    :product-analytics
+  :doc        false
+  :export?    false
+  :encryption :no
+  :audit      :getter
+  :setter     (fn [new-value]
+                (setting/set-value-of-type! :keyword :product-analytics-query-engine new-value)
+                (reconfigure-pa-database-if-loaded!)))
+
+(defsetting product-analytics-starburst-host
+  (deferred-tru "Hostname of the Starburst/Trino server for querying Iceberg data.")
+  :type       :string
+  :visibility :admin
+  :feature    :product-analytics
+  :doc        false
+  :export?    false
+  :encryption :no
+  :audit      :getter
+  :setter     (fn [new-value]
+                (setting/set-value-of-type! :string :product-analytics-starburst-host new-value)
+                (reconfigure-pa-database-if-loaded!)))
+
+(defsetting product-analytics-starburst-port
+  (deferred-tru "Port of the Starburst/Trino server.")
+  :type       :integer
+  :visibility :admin
+  :default    443
+  :feature    :product-analytics
+  :doc        false
+  :export?    false
+  :encryption :no
+  :audit      :getter
+  :setter     (fn [new-value]
+                (setting/set-value-of-type! :integer :product-analytics-starburst-port new-value)
+                (reconfigure-pa-database-if-loaded!)))
+
+(defsetting product-analytics-starburst-catalog
+  (deferred-tru "Iceberg catalog name configured in Starburst/Trino.")
+  :type       :string
+  :visibility :admin
+  :default    "iceberg"
+  :feature    :product-analytics
+  :doc        false
+  :export?    false
+  :encryption :no
+  :audit      :getter
+  :setter     (fn [new-value]
+                (setting/set-value-of-type! :string :product-analytics-starburst-catalog new-value)
+                (reconfigure-pa-database-if-loaded!)))
+
+(defsetting product-analytics-starburst-schema
+  (deferred-tru "Schema within the Iceberg catalog for Product Analytics tables.")
+  :type       :string
+  :visibility :admin
+  :default    "product_analytics"
+  :feature    :product-analytics
+  :doc        false
+  :export?    false
+  :encryption :no
+  :audit      :getter
+  :setter     (fn [new-value]
+                (setting/set-value-of-type! :string :product-analytics-starburst-schema new-value)
+                (reconfigure-pa-database-if-loaded!)))
+
+(defsetting product-analytics-starburst-user
+  (deferred-tru "Username for connecting to Starburst/Trino.")
+  :type       :string
+  :visibility :admin
+  :feature    :product-analytics
+  :doc        false
+  :export?    false
+  :encryption :no
+  :audit      :getter
+  :setter     (fn [new-value]
+                (setting/set-value-of-type! :string :product-analytics-starburst-user new-value)
+                (reconfigure-pa-database-if-loaded!)))
+
+(defsetting product-analytics-starburst-ssl
+  (deferred-tru "Use SSL when connecting to Starburst/Trino.")
+  :type       :boolean
+  :visibility :admin
+  :default    true
+  :feature    :product-analytics
+  :doc        false
+  :export?    false
+  :encryption :no
+  :audit      :getter
+  :setter     (fn [new-value]
+                (setting/set-value-of-type! :boolean :product-analytics-starburst-ssl new-value)
+                (reconfigure-pa-database-if-loaded!)))

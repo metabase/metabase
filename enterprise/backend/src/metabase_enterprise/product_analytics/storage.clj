@@ -34,7 +34,10 @@
                     (throw (ex-info (tru "Invalid product-analytics storage backend.")
                                     {:value     kw
                                      :available available-storage-backends})))
-                  (setting/set-value-of-type! :keyword :product-analytics-storage-backend new-value))))
+                  (setting/set-value-of-type! :keyword :product-analytics-storage-backend new-value)
+                  ;; Trigger PA database reconfiguration when backend changes
+                  (when-let [reconfigure! (resolve 'metabase-enterprise.product-analytics.query-engine/reconfigure-pa-database!)]
+                    (reconfigure!)))))
 
 (defn active-backend
   "Return the current storage backend keyword.

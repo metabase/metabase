@@ -44,6 +44,8 @@
 
 ;;; ------------------------------------------------- Metadata Enhancement -------------------------------------------------
 
+;;; ---- App-DB metadata (V_PA_* views, uppercase columns) ----
+
 (def ^:private pa-table-entity-types
   "Mapping of table-name → entity_type for PA tables.
    The :analyze phase is skipped during schema-only sync, so entity_type is not
@@ -93,6 +95,73 @@
                                 :values [1 2]
                                 :labels ["Pageview" "Custom Event"]}}})
 
+(def ^:private pa-visible-tables
+  "Set of table names that should be visible in the PA database.
+   All other tables (underlying PRODUCT_ANALYTICS_* tables) are hidden."
+  #{"V_PA_EVENTS" "V_PA_SESSIONS" "V_PA_SITES" "V_PA_EVENT_DATA" "V_PA_SESSION_DATA"})
+
+;;; ---- Iceberg/Trino metadata (pa_* tables, lowercase columns) ----
+
+(def ^:private iceberg-table-entity-types
+  {"pa_events"       :entity/EventTable
+   "pa_sessions"     :entity/GenericTable
+   "pa_sites"        :entity/GenericTable
+   "pa_session_data" :entity/GenericTable})
+
+(def ^:private iceberg-field-semantic-types
+  {"pa_events"   {"created_at"      :type/CreationTimestamp
+                  "url_path"        :type/URL
+                  "event_name"      :type/Category
+                  "utm_source"      :type/Category
+                  "utm_medium"      :type/Category
+                  "utm_campaign"    :type/Category
+                  "referrer_domain" :type/Category
+                  "event_type"      :type/Category}
+   "pa_sessions" {"created_at"    :type/CreationTimestamp
+                  "updated_at"    :type/UpdatedTimestamp
+                  "browser"       :type/Category
+                  "os"            :type/Category
+                  "device"        :type/Category
+                  "country"       :type/Country
+                  "subdivision1"  :type/State
+                  "city"          :type/City
+                  "language"      :type/Category}})
+
+(def ^:private iceberg-foreign-keys
+  {"pa_events"   {"site_id"    ["pa_sites" "id"]
+                  "session_id" ["pa_sessions" "session_id"]}
+   "pa_sessions" {"site_id"    ["pa_sites" "id"]}})
+
+(def ^:private iceberg-visible-tables
+  #{"pa_events" "pa_sessions" "pa_sites" "pa_session_data"})
+
+;;; ---- Config dispatch ----
+
+(defn- iceberg-query-engine?
+  "Returns true when the PA database engine differs from the app-db type,
+   indicating it's configured to use an external query engine (e.g. Starburst)."
+  []
+  (let [pa-db (t2/select-one [:model/Database :engine] :id pa/product-analytics-db-id)]
+    (and pa-db
+         (not= (keyword (:engine pa-db)) (mdb/db-type)))))
+
+(defn- active-table-config
+  "Returns the metadata configuration maps appropriate for the current PA query engine."
+  []
+  (if (iceberg-query-engine?)
+    {:entity-types   iceberg-table-entity-types
+     :semantic-types iceberg-field-semantic-types
+     :foreign-keys   iceberg-foreign-keys
+     :visible-tables iceberg-visible-tables
+     :remappings     {}}
+    {:entity-types   pa-table-entity-types
+     :semantic-types pa-field-semantic-types
+     :foreign-keys   pa-foreign-keys
+     :visible-tables pa-visible-tables
+     :remappings     pa-field-remappings}))
+
+;;; ---- Enhancement helpers ----
+
 (defn- ensure-field-remapping!
   "Create or update an internal Dimension + FieldValues remapping for a field."
   [field-id {:keys [name values labels]}]
@@ -111,41 +180,39 @@
                                     :values                values
                                     :human_readable_values labels})))
 
-(def ^:private pa-visible-tables
-  "Set of table names that should be visible in the PA database.
-   All other tables (underlying PRODUCT_ANALYTICS_* tables) are hidden."
-  #{"V_PA_EVENTS" "V_PA_SESSIONS" "V_PA_SITES" "V_PA_EVENT_DATA" "V_PA_SESSION_DATA"})
-
-(defn- enhance-pa-metadata!
+(defn enhance-pa-metadata!
   "After sync, set entity types on PA tables, semantic types on key fields,
-   and internal remappings on enum fields. Hides non-view tables."
+   and internal remappings on enum fields. Hides non-view tables.
+   Selects the correct metadata maps based on the PA database's current engine."
   []
-  ;; Hide underlying tables, show only views
-  (t2/update! :model/Table {:db_id pa/product-analytics-db-id
-                            :name  [:not-in pa-visible-tables]}
-              {:visibility_type :hidden})
-  (doseq [[table-name entity-type] pa-table-entity-types]
-    (t2/update! :model/Table {:db_id pa/product-analytics-db-id :name table-name}
-                {:entity_type entity-type}))
-  (doseq [[table-name field-types] pa-field-semantic-types]
-    (when-let [table (t2/select-one :model/Table :db_id pa/product-analytics-db-id :name table-name)]
-      (doseq [[field-name semantic-type] field-types]
-        (t2/update! :model/Field {:table_id (:id table) :name field-name}
-                    {:semantic_type semantic-type}))))
-  (doseq [[source-table-name fk-defs] pa-foreign-keys]
-    (when-let [source-table (t2/select-one :model/Table :db_id pa/product-analytics-db-id :name source-table-name)]
-      (doseq [[source-field-name [target-table-name target-field-name]] fk-defs]
-        (when-let [source-field (t2/select-one :model/Field :table_id (:id source-table) :name source-field-name)]
-          (when-let [target-table (t2/select-one :model/Table :db_id pa/product-analytics-db-id :name target-table-name)]
-            (when-let [target-field (t2/select-one :model/Field :table_id (:id target-table) :name target-field-name)]
-              (t2/update! :model/Field (:id source-field)
-                          {:semantic_type      :type/FK
-                           :fk_target_field_id (:id target-field)})))))))
-  (doseq [[table-name field-remaps] pa-field-remappings]
-    (when-let [table (t2/select-one :model/Table :db_id pa/product-analytics-db-id :name table-name)]
-      (doseq [[field-name remap-config] field-remaps]
-        (when-let [field (t2/select-one :model/Field :table_id (:id table) :name field-name)]
-          (ensure-field-remapping! (:id field) remap-config))))))
+  (let [{:keys [entity-types semantic-types foreign-keys visible-tables remappings]}
+        (active-table-config)]
+    ;; Hide underlying tables, show only the relevant visible set
+    (t2/update! :model/Table {:db_id pa/product-analytics-db-id
+                              :name  [:not-in visible-tables]}
+                {:visibility_type :hidden})
+    (doseq [[table-name entity-type] entity-types]
+      (t2/update! :model/Table {:db_id pa/product-analytics-db-id :name table-name}
+                  {:entity_type entity-type}))
+    (doseq [[table-name field-types] semantic-types]
+      (when-let [table (t2/select-one :model/Table :db_id pa/product-analytics-db-id :name table-name)]
+        (doseq [[field-name semantic-type] field-types]
+          (t2/update! :model/Field {:table_id (:id table) :name field-name}
+                      {:semantic_type semantic-type}))))
+    (doseq [[source-table-name fk-defs] foreign-keys]
+      (when-let [source-table (t2/select-one :model/Table :db_id pa/product-analytics-db-id :name source-table-name)]
+        (doseq [[source-field-name [target-table-name target-field-name]] fk-defs]
+          (when-let [source-field (t2/select-one :model/Field :table_id (:id source-table) :name source-field-name)]
+            (when-let [target-table (t2/select-one :model/Table :db_id pa/product-analytics-db-id :name target-table-name)]
+              (when-let [target-field (t2/select-one :model/Field :table_id (:id target-table) :name target-field-name)]
+                (t2/update! :model/Field (:id source-field)
+                            {:semantic_type      :type/FK
+                             :fk_target_field_id (:id target-field)})))))))
+    (doseq [[table-name field-remaps] remappings]
+      (when-let [table (t2/select-one :model/Table :db_id pa/product-analytics-db-id :name table-name)]
+        (doseq [[field-name remap-config] field-remaps]
+          (when-let [field (t2/select-one :model/Field :table_id (:id table) :name field-name)]
+            (ensure-field-remapping! (:id field) remap-config)))))))
 
 ;;; ------------------------------------------------- Sync -------------------------------------------------
 
@@ -165,6 +232,12 @@
 
 ;;; ------------------------------------------------- Entry Point -------------------------------------------------
 
+(defn- reconcile-pa-engine!
+  "Ensure the PA database engine matches the current settings.
+   Called at startup to handle the case where settings changed and Metabase was restarted."
+  [_pa-db]
+  ((requiring-resolve 'metabase-enterprise.product-analytics.query-engine/reconfigure-pa-database!)))
+
 (defenterprise ensure-product-analytics-db-installed!
   "EE implementation. Installs Product Analytics virtual DB if it does not already exist."
   :feature :product-analytics
@@ -176,5 +249,6 @@
                    (sync-pa-database!)
                    ::installed)
                (do (ensure-pa-collection!)
+                   (reconcile-pa-engine! pa-db)
                    (enhance-pa-metadata!)
                    ::no-op)))))
