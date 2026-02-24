@@ -682,7 +682,12 @@ function assertDbRoutingDisabled() {
   // Mantine Switch, which suppresses boundary events and prevents the Tooltip
   // from appearing. cy.trigger() dispatches the event directly on the Box
   // wrapper, bypassing Chrome's hit-testing.
-  dbRoutingSection().find("#database-routing-toggle").trigger("mouseenter");
+  dbRoutingSection()
+    .find("#database-routing-toggle")
+    .parent()
+    .parent()
+    .parent()
+    .trigger("mouseenter");
   H.tooltip()
     .findByText(/Database routing can't be enabled if/)
     .should("exist");
