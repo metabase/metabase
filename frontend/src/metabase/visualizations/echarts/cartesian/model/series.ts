@@ -31,14 +31,15 @@ import type {
   ComputedVisualizationSettings,
   RenderingContext,
 } from "metabase/visualizations/types";
-import type {
-  CardId,
-  DatasetColumn,
-  DatasetData,
-  RawSeries,
-  RowValue,
-  SeriesSettings,
-  SingleSeries,
+import {
+  type CardId,
+  type DatasetColumn,
+  type DatasetData,
+  type RawSeries,
+  type RowValue,
+  type SeriesSettings,
+  type SingleSeries,
+  getRowsForStableKeys,
 } from "metabase-types/api";
 
 import {
@@ -93,7 +94,10 @@ const createLegacySeriesObjectKey = (
 export const getBreakoutDistinctValues = (
   data: DatasetData,
   breakoutIndex: number,
-) => Array.from(new Set<RowValue>(data.rows.map((row) => row[breakoutIndex])));
+) => {
+  const rows = getRowsForStableKeys(data);
+  return Array.from(new Set<RowValue>(rows.map((row) => row[breakoutIndex])));
+};
 
 const getDefaultSeriesName = (
   columnDisplayNameOrFormattedBreakoutValue: string,
