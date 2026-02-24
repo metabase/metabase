@@ -3,6 +3,7 @@
    [clojure.test :refer :all]
    [metabase-enterprise.dependencies.native-validation :as deps.native-validation]
    [metabase-enterprise.dependencies.test-util :as deps.tu]
+   [metabase.driver :as driver]
    [metabase.driver.sql :as driver.sql]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
@@ -102,11 +103,9 @@
           (is (= #{(lib/syntax-error)} result)
               (str "Expected syntax-error or empty set, got: " result))))
       (testing "bad table wildcard"
-        ;; Normalize expected value using driver conventions (H2 uppercases, Postgres lowercases)
+        ;; missing-table-alias errors don't get source attribution — the alias itself is unresolved
         (is (= (normalize-error-names driver
-                                      #{(merge (lib/missing-table-alias-error "products")
-                                               {:source-entity-type :table
-                                                :source-entity-id   (meta/id :orders)})})
+                                      #{(lib/missing-table-alias-error "products")})
                (deps.native-validation/validate-native-query
                 driver
                 (fake-query mp "select products.* from orders")))))
@@ -207,7 +206,13 @@
         (validates? mp driver 27
                     #{(merge (lib/missing-column-error "BAD")
                              {:source-entity-type :table
-                              :source-entity-id   (meta/id :products)})})))))
+                              :source-entity-id   (meta/id :products)})}))
+      (testing "Mixed table+card, missing column + unknown alias"
+        (validates? mp driver 28
+                    #{(merge (lib/missing-column-error "BAD")
+                             {:source-entity-type :table
+                              :source-entity-id   (meta/id :products)})
+                      (lib/missing-table-alias-error "xix")})))))
 
 (defn- check-result-metadata [driver mp query expected]
   (is (=? (normalize-result-metadata expected)
@@ -357,3 +362,137 @@
                (deps.native-validation/validate-native-query
                 driver
                 (fake-query mp "select * from products"))))))))
+
+(deftest fallback-enrich-resolves-table-id-test
+  (testing "fallback enrichment should resolve string table names to integer IDs"
+    (let [mp     (deps.tu/default-metadata-provider)
+          driver (:engine (lib.metadata/database mp))]
+      ;; CTE columns have :single-column source types, so extract-source-entity returns nil
+      ;; and the error falls through to fallback-enrich.
+      ;; Mock native-query-deps to return string table names (as some drivers do)
+      ;; instead of pre-resolved integer IDs.
+      (with-redefs [driver/native-query-deps (fn [_ _] #{{:table "PRODUCTS"}})]
+        (is (= (normalize-error-names driver
+                                      #{(merge (lib/missing-column-error "bad")
+                                               {:source-entity-type :table
+                                                :source-entity-id   (meta/id :products)})})
+               (deps.native-validation/validate-native-query
+                driver
+                (fake-query mp "WITH cte AS (SELECT id, title FROM products) SELECT bad FROM cte"))))))))
+
+(deftest ^:parallel fallback-single-table-cte-test
+  (testing "CTE with single table - fallback attributes missing column to that table"
+    (let [mp     (deps.tu/default-metadata-provider)
+          driver (:engine (lib.metadata/database mp))]
+      (is (= (normalize-error-names driver
+                                    #{{:type               :missing-column
+                                       :name               "bad"
+                                       :source-entity-type :table
+                                       :source-entity-id   (meta/id :products)}})
+             (deps.native-validation/validate-native-query
+              driver
+              (fake-query mp "WITH cte AS (SELECT id, title FROM products) SELECT bad FROM cte")))))))
+
+(deftest ^:parallel fallback-multi-table-cte-test
+  (testing "CTE with multiple tables - fallback produces :unknown source"
+    (let [mp     (deps.tu/default-metadata-provider)
+          driver (:engine (lib.metadata/database mp))]
+      (is (= (normalize-error-names driver
+                                    #{{:type               :missing-column
+                                       :name               "bad"
+                                       :source-entity-type :unknown}})
+             (deps.native-validation/validate-native-query
+              driver
+              (fake-query mp "WITH cte AS (SELECT p.id, o.total FROM products p JOIN orders o ON p.id = o.product_id) SELECT bad FROM cte")))))))
+
+(deftest ^:parallel fallback-zero-tables-test
+  (testing "CTE with no real table references - error has no source attribution"
+    (let [mp     (deps.tu/default-metadata-provider)
+          driver (:engine (lib.metadata/database mp))]
+      (is (= (normalize-error-names driver
+                                    #{{:type :missing-column
+                                       :name "bad"}})
+             (deps.native-validation/validate-native-query
+              driver
+              (fake-query mp "WITH cte AS (SELECT 1 AS id) SELECT bad FROM cte")))))))
+
+(deftest ^:parallel card-without-result-metadata-test
+  (testing "Card ref to card without result-metadata - falls back to full expansion"
+    (let [mp     (deps.tu/default-metadata-provider)
+          driver (:engine (lib.metadata/database mp))]
+      (is (nil? (:result-metadata @(def ca (lib.metadata/card mp 4))))
+          "Card 4 should have no result-metadata (native query)")
+      (validates? mp driver 29
+                  #{(lib/missing-column-error "BAD")}))))
+
+(deftest ^:parallel card-source-attribution-test
+  (testing "errors are attributed to the correct card"
+    (let [mp     (deps.tu/default-metadata-provider)
+          driver (:engine (lib.metadata/database mp))]
+      (testing "mixed table+card, qualified to card - attributed to card"
+        (validates? mp driver 30
+                    #{(merge (lib/missing-column-error "BAD")
+                             {:source-entity-type :card
+                              :source-entity-id   1})}))
+      (testing "multi-card, qualified to second card - attributed to card 2"
+        (validates? mp driver 31
+                    #{(merge (lib/missing-column-error "BAD")
+                             {:source-entity-type :card
+                              :source-entity-id   2})})))))
+
+(deftest ^:parallel transitive-card-chain-test
+  (testing "Transitive card chain: c33 -> c32 -> c1, where c32's result-metadata lost CATEGORY"
+    (let [mp     (deps.tu/default-metadata-provider)
+          driver (:engine (lib.metadata/database mp))]
+      (is (nil? (some #{"CATEGORY"} (map :name (:result-metadata (lib.metadata/card mp 32)))))
+          "Card 32 should not have CATEGORY in its result-metadata")
+      (validates? mp driver 33
+                  #{(merge (lib/missing-column-error "CATEGORY")
+                           {:source-entity-type :card
+                            :source-entity-id   32})}))))
+
+(deftest ^:parallel cross-reference-mbql-and-native-cards-test
+  (testing "Native query referencing an MBQL card"
+    (let [mp     (deps.tu/default-metadata-provider)
+          driver (:engine (lib.metadata/database mp))]
+      (testing "error attributed to MBQL card"
+        (validates? mp driver 35
+                    #{(merge (lib/missing-column-error "CATEGORY")
+                             {:source-entity-type :card
+                              :source-entity-id   34})}))
+      (testing "mixed MBQL + native card refs - errors attributed to correct cards"
+        (validates? mp driver 37
+                    #{(merge (lib/missing-column-error "CATEGORY")
+                             {:source-entity-type :card
+                              :source-entity-id   34})
+                      (merge (lib/missing-column-error "BAD")
+                             {:source-entity-type :card
+                              :source-entity-id   36})})))))
+
+#_(deftest ^:parallel card-with-special-char-column-test
+    (testing "Card reference where card has special characters in column names"
+      (let [base-mp (deps.tu/mock-metadata-provider {:snippets []})
+            driver  (:engine (lib.metadata/database base-mp))
+            card    (deps.tu/mock-card base-mp
+                                       {:id      100
+                                        :query   "SELECT 1"
+                                        :details {:result-metadata [{:name "FIRST NAME" :base-type :type/Text}
+                                                                    {:name "ORDER-ID"   :base-type :type/Integer}
+                                                                    {:name "NORMAL"     :base-type :type/Text}]}})
+            mp      (deps.tu/mock-metadata-provider {:cards [card] :snippets []})
+            mkquery (fn [sql]
+                      (let [ttags (lib/extract-template-tags mp sql)]
+                        (fake-query mp sql ttags)))]
+        (testing "valid column produces no errors"
+          (is (= #{}
+                 (deps.native-validation/validate-native-query
+                  driver
+                  (mkquery "SELECT NORMAL FROM {{#100}}")))))
+        (testing "invalid column produces error attributed to card"
+          (is (= (normalize-error-names driver
+                                        #{(merge (lib/missing-column-error "BAD")
+                                                 {:source-entity-type :card
+                                                  :source-entity-id   100})})
+                 (deps.native-validation/validate-native-query
+                  driver
+                  (mkquery "SELECT BAD FROM {{#100}}"))))))))

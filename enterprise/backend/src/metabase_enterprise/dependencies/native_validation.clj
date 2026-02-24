@@ -84,10 +84,11 @@
          :card-columns card-columns}))))
 
 (defn- table-deps
-  "Returns the set of table IDs referenced directly in the compiled native query."
+  "Returns the set of table dep maps (e.g. {:table \"products\" :schema \"public\"})
+   referenced directly in the compiled native query."
   [driver compiled]
   (into #{}
-        (keep :table)
+        (filter :table)
         (driver/native-query-deps driver compiled)))
 
 (defn- normalize-error
@@ -194,11 +195,11 @@
                                       (keep :error)
                                       (map (partial enrich-error driver mp card-columns col-spec))))
                                fields))]
-    (->> (concat errors
-                 (check-fields used-fields)
-                 (check-fields returned-fields))
-         (map (partial normalize-error driver))
-         set)))
+    (into #{}
+          (map (partial normalize-error driver))
+          (concat errors
+                  (check-fields used-fields)
+                  (check-fields returned-fields)))))
 
 (defn- fallback-enrich
   "Second-pass enrichment for errors that validate-with-sources couldn't attribute
@@ -206,15 +207,23 @@
   [driver compiled errors]
   (if (every? :source-entity-type errors)
     errors
-    (let [tables (table-deps driver compiled)
+    (let [mp     (lib/->metadata-provider compiled)
+          tables (table-deps driver compiled)
           source (cond
                    (empty? tables) nil
-                   (= 1 (count tables)) {:source-entity-type :table
-                                         :source-entity-id   (first tables)}
+                   (= 1 (count tables))
+                   (let [table-spec (first tables)]
+                     (if-let [table-id (if (int? (:table table-spec))
+                                         (:table table-spec)
+                                         (resolve-table-id driver mp table-spec))]
+                       {:source-entity-type :table
+                        :source-entity-id   table-id}
+                       {:source-entity-type :unknown}))
                    :else {:source-entity-type :unknown})]
       (if source
         (into #{} (map (fn [error]
-                         (if (:source-entity-type error)
+                         (if (or (:source-entity-type error)
+                                 (not= (:type error) :missing-column))
                            error
                            (merge error source))))
               errors)
