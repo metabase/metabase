@@ -53,6 +53,7 @@ export const ENTERPRISE_TAG_TYPES = [
   "support-access-grant",
   "support-access-grant-current",
   "library-collection",
+  "product-analytics-site",
 ] as const;
 
 export type EnterpriseTagType = TagType | (typeof ENTERPRISE_TAG_TYPES)[number];
