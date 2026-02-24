@@ -158,6 +158,7 @@
   org.clojure/tools.namespace               {:mvn/version "1.5.0"}
   org.clojure/tools.reader                  {:mvn/version "1.5.2"}
   org.clojure/tools.trace                   {:mvn/version "0.8.0"}              ; function tracing
+  org.apache.hadoop/hadoop-client-runtime    {:mvn/version "3.3.5"}              ; Hadoop runtime (shaded deps for Configuration etc.)
   org.apache.iceberg/iceberg-aws            {:mvn/version "1.7.1"}              ; Iceberg integration with AWS (S3FileIO)
   org.apache.iceberg/iceberg-core           {:mvn/version "1.7.1"}              ; Apache Iceberg table format
   org.apache.iceberg/iceberg-data           {:mvn/version "1.7.1"}              ; Iceberg GenericRecord and data readers/writers

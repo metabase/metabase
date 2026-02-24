@@ -8,11 +8,12 @@
    (java.time Instant OffsetDateTime ZoneOffset)
    (java.util HashMap UUID)
    (org.apache.iceberg Schema Table)
-   (org.apache.iceberg.catalog Catalog Namespace TableIdentifier)
+   (org.apache.iceberg.catalog Catalog Namespace SupportsNamespaces TableIdentifier)
    (org.apache.iceberg.data GenericRecord Record)
    (org.apache.iceberg.data.parquet GenericParquetWriter)
    (org.apache.iceberg.io DataWriter OutputFile)
-   (org.apache.iceberg.parquet Parquet)))
+   (org.apache.iceberg.parquet Parquet)
+   (org.apache.iceberg.types Types$NestedField)))
 
 (set! *warn-on-reflection* true)
 
@@ -28,7 +29,7 @@
 
 (defn- ensure-namespace!
   "Create the namespace if it doesn't exist."
-  [^Catalog catalog]
+  [^SupportsNamespaces catalog]
   (when-not (.namespaceExists catalog pa-namespace)
     (try
       (.createNamespace catalog pa-namespace (HashMap.))
@@ -76,7 +77,7 @@
   "Convert a Clojure map to an Iceberg GenericRecord using the given schema."
   ^GenericRecord [^Schema schema m]
   (let [record (GenericRecord/create schema)]
-    (doseq [field (.columns schema)
+    (doseq [^Types$NestedField field (.columns schema)
             :let  [field-name (.name field)
                    v          (get m (keyword field-name))]]
       (when (some? v)
@@ -99,7 +100,7 @@
                                        (.createWriterFunc
                                         (reify java.util.function.Function
                                           (apply [_ msg-type]
-                                            (GenericParquetWriter/buildWriter schema msg-type))))
+                                            (GenericParquetWriter/buildWriter ^org.apache.parquet.schema.MessageType msg-type))))
                                        (.overwrite)
                                        (.withSpec (.spec table))
                                        (.build))]
