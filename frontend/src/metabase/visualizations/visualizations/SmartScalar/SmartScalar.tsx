@@ -17,7 +17,6 @@ import {
   getMinSize,
 } from "metabase/visualizations/shared/utils/sizes";
 import type {
-  VisualizationDefinition,
   VisualizationPassThroughProps,
   VisualizationProps,
 } from "metabase/visualizations/types";
@@ -263,4 +262,4 @@ Object.assign(SmartScalar, {
   },
 
   hasEmptyState: true,
-} as VisualizationDefinition);
+});
