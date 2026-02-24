@@ -675,9 +675,19 @@ function assertDbRoutingDisabled() {
   dbRoutingSection().within(() => {
     cy.findByLabelText("Enable database routing")
       .should("not.be.checked")
-      .should("be.disabled")
-      .realHover();
+      .should("be.disabled");
   });
+  // Use cy.trigger("mouseenter") instead of realHover() because Chrome v122+
+  // headless hit-tests CDP mouse events to the disabled <input> inside the
+  // Mantine Switch, which suppresses boundary events and prevents the Tooltip
+  // from appearing. cy.trigger() dispatches the event directly on the Box
+  // wrapper, bypassing Chrome's hit-testing.
+  dbRoutingSection()
+    .find("#database-routing-toggle")
+    .parent()
+    .parent()
+    .parent()
+    .trigger("mouseenter");
   H.tooltip()
     .findByText(/Database routing can't be enabled if/)
     .should("exist");

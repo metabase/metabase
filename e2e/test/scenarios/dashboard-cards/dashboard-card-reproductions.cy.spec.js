@@ -804,7 +804,7 @@ describe("issue 29304", () => {
         cy.findByTestId("scalar-value").should(([$scalarValue]) => {
           expect($scalarValue.offsetWidth).to.be.closeTo(
             expectedWidth,
-            expectedWidth * 0.1,
+            expectedWidth * 0.2, // 20% tolerance for font rendering differences across Chrome versions
           );
         });
       });
