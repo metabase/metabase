@@ -7,7 +7,7 @@ import {
   DEFAULT_TEST_QUERY,
   SAMPLE_PROVIDER,
   columnFinder,
-} from "metabase-lib/queries";
+} from "metabase-lib/test-helpers";
 import {
   PRODUCTS,
   PRODUCT_CATEGORY_VALUES,
