@@ -9,6 +9,7 @@ import { useDispatch } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { RunButtonWithTooltip } from "metabase/query_builder/components/RunButtonWithTooltip";
 import { Button, Flex, Icon, Stack, Tooltip } from "metabase/ui";
+import type { AdvancedTransformType } from "metabase-types/api";
 
 import { SHARED_LIB_IMPORT_PATH } from "../../../constants";
 import { PythonEditor } from "../../PythonEditor";
@@ -17,6 +18,7 @@ import { ResizableBoxHandle } from "./ResizableBoxHandle";
 import { createPythonImportTokenLocator } from "./utils";
 
 type PythonEditorBodyProps = {
+  type: AdvancedTransformType;
   disabled?: boolean;
   source: string;
   proposedSource?: string;
@@ -39,6 +41,7 @@ const HEADER_HEIGHT = 65 + 50; // Top bar height + transform header height
 const PREVIEW_MAX_INITIAL_HEIGHT = 192;
 
 export function PythonEditorBody({
+  type,
   disabled,
   source,
   proposedSource,
@@ -88,10 +91,10 @@ export function PythonEditorBody({
   const editorContent = (
     <Flex h="100%" align="end" bg="background-secondary" pos="relative">
       <PythonEditor
+        type={type}
         value={source}
         proposedValue={proposedSource}
         onChange={onChange}
-        withPandasCompletions
         readOnly={!isEditMode || disabled}
         extensions={[clickableTokensExtension]}
         data-testid="python-editor"
@@ -134,7 +137,7 @@ export function PythonEditorBody({
               isDirty={isDirty}
               onRun={onRun}
               onCancel={onCancel}
-              getTooltip={() => t`Run Python script`}
+              getTooltip={() => t`Run transform`}
             />
           )}
         </Stack>

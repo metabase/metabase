@@ -4,7 +4,10 @@ import {
   autocompletion,
 } from "@codemirror/autocomplete";
 import { pythonLanguage } from "@codemirror/lang-python";
+import type { Extension } from "@uiw/react-codemirror";
 import { t } from "ttag";
+
+import type { AdvancedTransformType } from "metabase-types/api";
 
 const pandasDefinitions = (): Record<string, Completion[]> => ({
   pd: [
@@ -667,9 +670,16 @@ function genericPandasCompletions(context: CompletionContext) {
   }
 }
 
-export const completion = [
-  pythonLanguage.data.of({
-    autocomplete: genericPandasCompletions,
-  }),
-  autocompletion(),
-];
+export function getCompletionExtensions(
+  type: AdvancedTransformType,
+): Extension[] {
+  if (type === "python") {
+    return [
+      pythonLanguage.data.of({
+        autocomplete: genericPandasCompletions,
+      }),
+      autocompletion(),
+    ];
+  }
+  return [autocompletion()];
+}

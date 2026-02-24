@@ -22,10 +22,11 @@ import { getMetadata } from "metabase/selectors/metadata";
 import { useTransformPermissions } from "metabase/transforms/hooks/use-transform-permissions";
 import { Box, Center } from "metabase/ui";
 import * as Lib from "metabase-lib";
-import type {
-  Database,
-  DraftTransformSource,
-  Transform,
+import {
+  type Database,
+  type DraftTransformSource,
+  type Transform,
+  isAdvancedTransformSource,
 } from "metabase-types/api";
 
 import { TransformEditor } from "../../components/TransformEditor";
@@ -157,7 +158,7 @@ function NewTransformPageBody({
             overflow: "hidden",
           }}
         >
-          {source.type !== "query" ? (
+          {isAdvancedTransformSource(source) ? (
             <PLUGIN_TRANSFORMS_PYTHON.TransformEditor
               source={source}
               proposedSource={
@@ -229,7 +230,9 @@ export function NewPythonTransformPage({ route }: NewPythonTransformPageProps) {
   return <NewTransformPage initialSource={initialSource} route={route} />;
 }
 
-export function NewJavascriptTransformPage({ route }: NewPythonTransformPageProps) {
+export function NewJavascriptTransformPage({
+  route,
+}: NewPythonTransformPageProps) {
   const initialSource = useMemo(() => getInitialJavascriptSource(), []);
   return <NewTransformPage initialSource={initialSource} route={route} />;
 }

@@ -142,6 +142,7 @@ export function PythonTransformEditor({
         )}
         <Stack w="100%" h="100%" gap={0}>
           <PythonEditorBody
+            type={source.type}
             disabled={uiOptions?.readOnly}
             isRunnable={isPythonTransformSource(source)}
             isRunning={isRunning}
