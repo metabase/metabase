@@ -84,7 +84,7 @@ export function getComputedSettings<T>(
 }
 
 function getComputedSetting<T>(
-  computedSettings: ComputedVisualizationSettings,
+  computedSettings: ComputedVisualizationSettings, // MUTATED!
   settingDefs: VisualizationSettingsDefinitions<T>,
   settingId: VisualizationSettingKey,
   object: T,
@@ -269,7 +269,7 @@ function getSettingWidget<T, TValue, TProps extends object>(
         ? WIDGETS[settingDef.widget]
         : settingDef.widget,
     onChange,
-    onChangeSettings,
+    onChangeSettings, // this gives a widget access to update other settings
   };
 }
 
@@ -297,11 +297,14 @@ export function updateSettings(
     ...storedSettings,
     ...changedSettings,
   };
+
+  // remove undefined settings
   for (const [key, value] of Object.entries(changedSettings)) {
     if (value === undefined) {
       delete newSettings[key];
     }
   }
+
   return newSettings;
 }
 

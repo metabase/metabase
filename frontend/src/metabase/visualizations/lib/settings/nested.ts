@@ -67,6 +67,7 @@ export function nestedSettings<T, TValue, TProps extends object>(
       { ...inheritedSettings, ...storedSettings },
       extra,
     );
+    // remove undefined settings since they override other settings when merging object
     return _.pick(computedSettings, (value) => value !== undefined);
   }
 
@@ -117,6 +118,7 @@ export function nestedSettings<T, TValue, TProps extends object>(
     return widgets.map((widget) => ({ ...widget, noPadding: true }));
   }
 
+  // decorate with nested settings HOC
   const widget = chartSettingNestedSettings({
     getObjectKey,
     getObjectSettings,

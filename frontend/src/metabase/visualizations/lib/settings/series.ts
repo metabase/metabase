@@ -31,6 +31,7 @@ import { type NestedSettingsOptions, nestedSettings } from "./nested";
 
 export function keyForSingleSeries(single: SingleSeries): string {
   if (isLegacySeriesCard(single.card)) {
+    // _seriesKey is sometimes set by transformSeries
     return single.card._seriesKey || String(single.card.name);
   }
 
@@ -63,13 +64,14 @@ export function seriesSetting({
   def = {},
 }: SeriesSettingOptions = {}): Record<string, unknown> {
   const COMMON_SETTINGS: VisualizationSettingsDefinitions<SingleSeries> = {
+    // title, and color don't need widgets because they're handled directly in ChartNestedSettingSeries
     title: {
       getDefault: (single, _settings, extra = {}) => {
         const { series = [], settings: vizSettings = {} } = extra;
         const legacyTitles: string[] | undefined =
           vizSettings["graph.series_labels"];
         if (legacyTitles) {
-          const index = series.indexOf(single);
+          const index = series.indexOf(single); // TODO: pass in series index so we don't have to search for it
           if (index >= 0 && index < legacyTitles.length) {
             return legacyTitles[index];
           }
@@ -93,8 +95,9 @@ export function seriesSetting({
       getDefault: (single, _settings, extra) => {
         const { series = [] } = extra ?? {};
         if (keyForSingleSeries(single) === OTHER_DATA_KEY) {
-          return "bar";
+          return "bar"; // "other" series is always a bar chart now
         }
+        // FIXME: will move to Cartesian series model further, but now this code is used by other legacy charts
         const transformedSeriesIndex = series.findIndex(
           (s) => keyForSingleSeries(s) === keyForSingleSeries(single),
         );
@@ -106,6 +109,7 @@ export function seriesSetting({
     },
     color: {
       getDefault: (single, _settings, extra) => {
+        // get the color for series key, computed in the setting
         return getIn(extra?.settings, [
           SERIES_COLORS_SETTING_KEY,
           keyForSingleSeries(single),
@@ -124,8 +128,10 @@ export function seriesSetting({
       },
       getHidden: (_single, settings) =>
         !LINE_DISPLAY_TYPES.has(settings["display"]),
-      getDefault: (_single, _settings, extra) =>
-        getSeriesDefaultLinearInterpolate(extra?.settings ?? {}),
+      getDefault: (_single, _settings, extra) => {
+        // use legacy global line.interpolate setting if present
+        return getSeriesDefaultLinearInterpolate(extra?.settings ?? {});
+      },
       readDependencies: ["display"],
     },
     "line.style": {
@@ -170,8 +176,10 @@ export function seriesSetting({
       },
       getHidden: (_single, settings) =>
         !LINE_DISPLAY_TYPES.has(settings["display"]),
-      getDefault: (_single, _settings, extra) =>
-        getSeriesDefaultLineMarker(extra?.settings ?? {}),
+      getDefault: (_single, _settings, extra) => {
+        // use legacy global line.marker_enabled setting if present
+        return getSeriesDefaultLineMarker(extra?.settings ?? {});
+      },
       readDependencies: ["display"],
     },
     "line.missing": {
@@ -186,8 +194,10 @@ export function seriesSetting({
       },
       getHidden: (_single, settings) =>
         !LINE_DISPLAY_TYPES.has(settings["display"]),
-      getDefault: (_single: SingleSeries, _settings, extra) =>
-        getSeriesDefaultLineMissing(extra?.settings ?? {}),
+      getDefault: (_single: SingleSeries, _settings, extra) => {
+        // use legacy global line.missing setting if present
+        return getSeriesDefaultLineMissing(extra?.settings ?? {});
+      },
       readDependencies: ["display"],
     },
     axis: {
@@ -210,7 +220,10 @@ export function seriesSetting({
       inline: true,
       getHidden: (_single, _seriesSettings, extra) => {
         const { series = [], settings = {} } = extra ?? {};
-        return series.length <= 1 || !settings["graph.show_trendline"];
+        return (
+          series.length <= 1 || // no need to show series-level control if there's only one series
+          !settings["graph.show_trendline"] // don't show it unless this chart has a global setting;
+        );
       },
       getDefault: (_single, _seriesSettings, extra) =>
         getSeriesDefaultShowSeriesTrendline(extra?.settings ?? {}),
@@ -224,8 +237,8 @@ export function seriesSetting({
         const { series = [], settings = {} } = extra ?? {};
 
         return Boolean(
-          series.length <= 1 ||
-            !settings["graph.show_values"] ||
+          series.length <= 1 || // no need to show series-level control if there's only one series
+            !settings["graph.show_values"] || // don't show it unless this chart has a global setting
             (settings["stackable.stack_type"] &&
               settings["graph.show_stack_values"] === "total"),
         );
@@ -264,12 +277,22 @@ export function seriesSetting({
       }),
       ...def,
     }),
+    // colors must be computed as a whole rather than individually
     [SERIES_COLORS_SETTING_KEY]: {
       getValue: getColors,
     },
   };
 }
 
+/**
+ * Exported for testing purposes.
+ * Computes the colors for the series based on their keys and settings.
+ * It filters out series that do not have a single key and maps them to their keys.
+ * Then it retrieves the colors using the `getSeriesColors` function.
+ * @param series - The series to compute colors for.
+ * @param settings - The visualization settings.
+ * @returns {Object} - An object mapping series keys to their colors.
+ */
 export function getColors(
   series: Series,
   settings: VisualizationSettings,

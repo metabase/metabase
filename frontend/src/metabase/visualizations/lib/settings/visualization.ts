@@ -120,7 +120,7 @@ export function getStoredSettingsForSeries(
 
 export function getComputedSettingsForSeries(
   series: Series | null | undefined,
-  extra: SettingsExtra & { enableEntityNavigation?: boolean } = {},
+  extra: SettingsExtra = {},
 ): ComputedVisualizationSettings {
   if (!series) {
     return {};
