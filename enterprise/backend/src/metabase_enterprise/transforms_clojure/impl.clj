@@ -1,28 +1,28 @@
-(ns metabase-enterprise.transforms-javascript.impl
+(ns metabase-enterprise.transforms-clojure.impl
   (:require
    [metabase-enterprise.transforms-runner.execute :as runner.execute]
    [metabase.transforms.interface :as transforms.i]
    [metabase.transforms.util :as transforms.util]))
 
-(defmethod transforms.i/target-db-id :javascript
+(defmethod transforms.i/target-db-id :clojure
   [transform]
   (-> transform :target :database))
 
-(defmethod transforms.i/source-db-id :javascript
+(defmethod transforms.i/source-db-id :clojure
   [transform]
   (-> transform :source :source-database))
 
 #_{:clj-kondo/ignore [:discouraged-var]}
-(defmethod transforms.i/execute! :javascript
+(defmethod transforms.i/execute! :clojure
   [transform options]
   (runner.execute/execute-runner-transform!
    transform options
-   {:runtime "javascript"
-    :label "JavaScript"
-    :timing-key :javascript-execution
-    :transform-type-pred transforms.util/javascript-transform?}))
+   {:runtime "clojure"
+    :label "Clojure"
+    :timing-key :clojure-execution
+    :transform-type-pred #(= :clojure (transforms.util/transform-type %))}))
 
-(defmethod transforms.i/table-dependencies :javascript
+(defmethod transforms.i/table-dependencies :clojure
   [transform]
   (into #{}
         (map runner.execute/source-table-value->dependency)

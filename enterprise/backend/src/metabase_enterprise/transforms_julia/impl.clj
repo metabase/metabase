@@ -1,28 +1,28 @@
-(ns metabase-enterprise.transforms-javascript.impl
+(ns metabase-enterprise.transforms-julia.impl
   (:require
    [metabase-enterprise.transforms-runner.execute :as runner.execute]
    [metabase.transforms.interface :as transforms.i]
    [metabase.transforms.util :as transforms.util]))
 
-(defmethod transforms.i/target-db-id :javascript
+(defmethod transforms.i/target-db-id :julia
   [transform]
   (-> transform :target :database))
 
-(defmethod transforms.i/source-db-id :javascript
+(defmethod transforms.i/source-db-id :julia
   [transform]
   (-> transform :source :source-database))
 
 #_{:clj-kondo/ignore [:discouraged-var]}
-(defmethod transforms.i/execute! :javascript
+(defmethod transforms.i/execute! :julia
   [transform options]
   (runner.execute/execute-runner-transform!
    transform options
-   {:runtime "javascript"
-    :label "JavaScript"
-    :timing-key :javascript-execution
-    :transform-type-pred transforms.util/javascript-transform?}))
+   {:runtime "julia"
+    :label "Julia"
+    :timing-key :julia-execution
+    :transform-type-pred #(= :julia (transforms.util/transform-type %))}))
 
-(defmethod transforms.i/table-dependencies :javascript
+(defmethod transforms.i/table-dependencies :julia
   [transform]
   (into #{}
         (map runner.execute/source-table-value->dependency)
