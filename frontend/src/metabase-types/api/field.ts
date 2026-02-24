@@ -115,8 +115,21 @@ export interface Field {
 }
 
 export interface FieldFormattingSettings {
+  column_title?: string;
+  date_style?: string;
+  date_separator?: string;
+  date_abbreviate?: boolean;
+  time_enabled?: string | null;
+  time_style?: string;
+  number_style?: string;
   currency?: string;
+  currency_style?: string;
+  currency_in_header?: boolean;
   number_separators?: string;
+  decimals?: number | null;
+  scale?: number;
+  prefix?: string;
+  suffix?: string;
 }
 
 export interface GetFieldRequest {
