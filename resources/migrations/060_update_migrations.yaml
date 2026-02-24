@@ -1,0 +1,32 @@
+databaseChangeLog:
+  - objectQuotingStrategy: QUOTE_ALL_OBJECTS
+
+  - changeSet:
+      id: v60.2026-02-24T00:00:00
+      author: ericnormand
+      comment: Create release_flag table
+      changes:
+        - createTable:
+            tableName: release_flag
+            remarks: Stores release flags for feature rollout
+            columns:
+              - column:
+                  name: flag
+                  type: varchar(254)
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: description
+                  type: text
+              - column:
+                  name: is_enabled
+                  type: boolean
+                  defaultValueBoolean: false
+                  constraints:
+                    nullable: false
+              - column:
+                  name: start_date
+                  type: date
+                  constraints:
+                    nullable: false

@@ -47,6 +47,7 @@
    [metabase.pulse.api]
    [metabase.queries-rest.api]
    [metabase.query-processor.api]
+   [metabase.release-flags.api]
    [metabase.revisions.api]
    [metabase.search.api]
    [metabase.segments.api]
@@ -203,6 +204,7 @@
    "/product-feedback"     'metabase.product-feedback.api
    "/public"               (+public-exceptions metabase.public-sharing-rest.api/routes)
    "/pulse"                metabase.pulse.api/pulse-routes
+   "/release-flags"        'metabase.release-flags.api
    "/revision"             (+auth 'metabase.revisions.api)
    "/search"               (+auth metabase.search.api/routes)
    "/segment"              (+auth 'metabase.segments.api)
