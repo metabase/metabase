@@ -2,10 +2,7 @@ import type { ReleaseFlag, ReleaseFlagMap } from "metabase-types/api";
 
 import { Api } from "./api";
 
-type SetReleaseFlagRequest = {
-  name: ReleaseFlag;
-  is_enabled: boolean;
-};
+type SetReleaseFlagRequest = Record<ReleaseFlag, boolean>;
 
 export const releaseFlagsApi = Api.injectEndpoints({
   endpoints: (builder) => ({
@@ -17,10 +14,10 @@ export const releaseFlagsApi = Api.injectEndpoints({
       providesTags: ["release-flags"],
     }),
     setReleaseFlag: builder.mutation<ReleaseFlagMap, SetReleaseFlagRequest>({
-      query: ({ name, is_enabled }) => ({
+      query: (payload: SetReleaseFlagRequest) => ({
         method: "PUT",
         url: `/api/release-flags`,
-        body: { name, is_enabled },
+        body: payload,
       }),
       invalidatesTags: () => ["release-flags"],
     }),
