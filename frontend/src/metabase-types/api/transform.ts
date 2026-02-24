@@ -307,11 +307,13 @@ export type PythonLibrary = {
 
 export type GetPythonLibraryRequest = {
   path: string;
+  type: AdvancedTransformType;
 };
 
 export type UpdatePythonLibraryRequest = {
   path: string;
   source: string;
+  type: AdvancedTransformType;
 };
 
 export type ExtractColumnsFromQueryRequest = {

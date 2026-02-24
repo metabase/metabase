@@ -10,25 +10,25 @@ import { useSetting } from "metabase/common/hooks";
 export function PythonRunnerSettingsPage() {
   const isHosted = useSetting("is-hosted?");
 
-  // Python Runner settings are managed by Metabase Cloud for hosted instances
+  // Advanced Transform Runner settings are managed by Metabase Cloud for hosted instances
   if (isHosted) {
     return null;
   }
 
   return (
-    <SettingsPageWrapper title={t`Python Runner`}>
+    <SettingsPageWrapper title={t`Advanced Transform Runner`}>
       <SettingsSection title={t`Service Configuration`}>
         <AdminSettingInput
           name="python-runner-url"
-          title={t`Python Execution Server URL`}
-          description={t`URL for the Python execution server that runs transform functions.`}
+          title={t`Advanced Transform Execution Server URL`}
+          description={t`URL for the server that runs advanced transform functions.`}
           placeholder="http://localhost:5001"
           inputType="text"
         />
         <AdminSettingInput
           name="python-runner-timeout-seconds"
-          title={t`Python Script Execution Timeout`}
-          description={t`Timeout in seconds for Python script execution. Defaults to 30 minutes (1800 seconds).`}
+          title={t`Advanced Transform Execution Timeout`}
+          description={t`Timeout in seconds for advanced transform execution. Defaults to 30 minutes (1800 seconds).`}
           placeholder="1800"
           inputType="number"
         />
@@ -37,7 +37,7 @@ export function PythonRunnerSettingsPage() {
         <AdminSettingInput
           name="python-storage-s-3-endpoint"
           title={t`S3 Endpoint`}
-          description={t`S3 endpoint URL for storing Python execution artifacts.`}
+          description={t`S3 endpoint URL for storing advanced transform execution artifacts.`}
           inputType="text"
         />
         <AdminSettingInput
@@ -49,7 +49,7 @@ export function PythonRunnerSettingsPage() {
         <AdminSettingInput
           name="python-storage-s-3-bucket"
           title={t`S3 Bucket`}
-          description={t`S3 bucket name for storing Python execution artifacts.`}
+          description={t`S3 bucket name for storing advanced transform execution artifacts.`}
           inputType="text"
         />
         <AdminSettingInput

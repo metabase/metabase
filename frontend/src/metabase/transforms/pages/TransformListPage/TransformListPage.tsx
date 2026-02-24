@@ -151,12 +151,22 @@ export const TransformListPage = ({
 
     if (shouldShowPythonLibraryRow) {
       data.push({
-        id: "library",
+        id: "python-library",
         name: t`Python library`,
         nodeType: "library",
         icon: "snippet",
         url: Urls.transformPythonLibrary({
-          path: PLUGIN_TRANSFORMS_PYTHON.sharedLibImportPath,
+          path: PLUGIN_TRANSFORMS_PYTHON.sharedLibImportPaths["python"],
+        }),
+        source_readable: transformsDatabases.length > 0,
+      });
+      data.push({
+        id: "javascript-library",
+        name: t`JavaScript library`,
+        nodeType: "library",
+        icon: "snippet",
+        url: Urls.transformPythonLibrary({
+          path: PLUGIN_TRANSFORMS_PYTHON.sharedLibImportPaths["javascript"],
         }),
         source_readable: transformsDatabases.length > 0,
       });
