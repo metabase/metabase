@@ -130,7 +130,7 @@
                                       (lib/available-drill-thrus query context))]
     (is (=? {:lib/type    :metabase.lib.drill-thru/drill-thru,
              :type        :drill-thru/fk-filter
-             :filter      [:= {} [:field {:join-alias "Venues"} (meta/id :venues :category-id)] 2]
+             :filter      [:= {} [:field {:join-alias "Venues"} "CATEGORY_ID"] 2]
              :column-name "Venues → Category ID"
              :table-name  "Checkins"}
             fk-filter-drill))
@@ -152,8 +152,7 @@
                          :column-name "User ID"
                          :table-name  string?}
         :expected-query {:stages [{:filters [[:= {}
-                                              [:field {} (lib.drill-thru.tu/field-key=
-                                                          "USER_ID" (meta/id :orders :user-id))]
+                                              [:field {} "USER_ID"]
                                               (get-in lib.drill-thru.tu/test-queries
                                                       ["ORDERS" :unaggregated :row "USER_ID"])]]}]}}))
     (testing "in a new stage for an aggregated query"
@@ -167,7 +166,7 @@
                           :column-name "Product ID"
                           :table-name  string?}
         :expected-query  {:stages [(-> (get lib.drill-thru.tu/test-queries "ORDERS") :aggregated :query :stages first)
-                                   {:filters [[:= {} [:field {} (meta/id :orders :product-id)]
+                                   {:filters [[:= {} [:field {} "PRODUCT_ID"]
                                                (get-in lib.drill-thru.tu/test-queries
                                                        ["ORDERS" :aggregated :row "PRODUCT_ID"])]]}]}
         :expected-native {:stages [{:filters [[:= {} [:field {} "PRODUCT_ID"]
@@ -187,5 +186,4 @@
                          :column-name "Product ID"
                          :table-name  string?}
         :expected-query {:stages [{:filters [[:is-null {}
-                                              [:field {} (lib.drill-thru.tu/field-key=
-                                                          "PRODUCT_ID" (meta/id :orders :product-id))]]]}]}}))))
+                                              [:field {} "PRODUCT_ID"]]]}]}}))))

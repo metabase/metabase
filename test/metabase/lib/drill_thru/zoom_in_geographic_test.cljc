@@ -26,15 +26,15 @@
           query             (-> (lib/query metadata-provider (meta/table-metadata :people))
                                 (lib/aggregate (lib/count))
                                 (lib/breakout (lib.metadata/field metadata-provider 1)))
-          field-key         (lib.drill-thru.tu/field-key= "COUNTRY" 1)
+          field-key         (lib.drill-thru.tu/field-key= "COUNTRY")
           expected-query    {:stages [{:source-table (meta/id :people)
                                        :aggregation  [[:count {}]]
                                        :breakout     [[:field
                                                        {:binning {:strategy :bin-width, :bin-width 10}}
-                                                       (meta/id :people :latitude)]
+                                                       "LATITUDE"]
                                                       [:field
                                                        {:binning {:strategy :bin-width, :bin-width 10}}
-                                                       (meta/id :people :longitude)]]
+                                                       "LONGITUDE"]]
                                        :filters      [[:= {}
                                                        [:field {} field-key]
                                                        "United States"]]}]}]
@@ -89,15 +89,15 @@
     (let [query          (-> (lib/query meta/metadata-provider (meta/table-metadata :people))
                              (lib/aggregate (lib/count))
                              (lib/breakout (meta/field-metadata :people :state)))
-          field-key      (lib.drill-thru.tu/field-key= "STATE" (meta/id :people :state))
+          field-key      (lib.drill-thru.tu/field-key= "STATE")
           expected-query {:stages [{:source-table (meta/id :people)
                                     :aggregation  [[:count {}]]
                                     :breakout     [[:field
                                                     {:binning {:strategy :bin-width, :bin-width 1}}
-                                                    (meta/id :people :latitude)]
+                                                    "LATITUDE"]
                                                    [:field
                                                     {:binning {:strategy :bin-width, :bin-width 1}}
-                                                    (meta/id :people :longitude)]]
+                                                    "LONGITUDE"]]
                                     :filters      [[:= {}
                                                     [:field {} field-key]
                                                     "California"]]}]}]
@@ -149,18 +149,18 @@
                              (lib/breakout (meta/field-metadata :people :state))
                              (lib/breakout (-> (meta/field-metadata :people :latitude)
                                                (lib/with-binning {:strategy :bin-width, :bin-width 0.1}))))
-          field-key      (lib.drill-thru.tu/field-key= "STATE" (meta/id :people :state))
+          field-key      (lib.drill-thru.tu/field-key= "STATE")
           expected-query {:stages [{:source-table (meta/id :people)
                                     :aggregation  [[:count {}]]
                                     :breakout     [[:field
                                                     {}
-                                                    (meta/id :people :name)]
+                                                    "NAME"]
                                                    [:field
                                                     {:binning {:strategy :bin-width, :bin-width 1}}
-                                                    (meta/id :people :latitude)]
+                                                    "LATITUDE"]
                                                    [:field
                                                     {:binning {:strategy :bin-width, :bin-width 1}}
-                                                    (meta/id :people :longitude)]]
+                                                    "LONGITUDE"]]
                                     :filters      [[:= {}
                                                     [:field {} field-key]
                                                     "California"]]}]}]
@@ -195,15 +195,15 @@
     (let [query          (-> (lib/query meta/metadata-provider (meta/table-metadata :people))
                              (lib/aggregate (lib/count))
                              (lib/breakout (meta/field-metadata :people :city)))
-          field-key      (lib.drill-thru.tu/field-key= "CITY" (meta/id :people :city))
+          field-key      (lib.drill-thru.tu/field-key= "CITY")
           expected-query {:stages [{:source-table (meta/id :people)
                                     :aggregation  [[:count {}]]
                                     :breakout     [[:field
                                                     {:binning {:strategy :bin-width, :bin-width 0.1}}
-                                                    (meta/id :people :latitude)]
+                                                    "LATITUDE"]
                                                    [:field
                                                     {:binning {:strategy :bin-width, :bin-width 0.1}}
-                                                    (meta/id :people :longitude)]]
+                                                    "LONGITUDE"]]
                                     :filters      [[:= {}
                                                     [:field {} field-key]
                                                     "Long Beach"]]}]}]
@@ -258,21 +258,21 @@
                                     :aggregation  [[:count {}]]
                                     :breakout     [[:field
                                                     {:binning {:strategy :bin-width, :bin-width 10}}
-                                                    (meta/id :people :latitude)]
+                                                    "LATITUDE"]
                                                    [:field
                                                     {:binning {:strategy :bin-width, :bin-width 10}}
-                                                    (meta/id :people :longitude)]]
+                                                    "LONGITUDE"]]
                                     :filters      [[:>= {}
-                                                    [:field {} (meta/id :people :latitude)]
+                                                    [:field {} "LATITUDE"]
                                                     20]
                                                    [:< {}
-                                                    [:field {} (meta/id :people :latitude)]
+                                                    [:field {} "LATITUDE"]
                                                     40]
                                                    [:>= {}
-                                                    [:field {} (meta/id :people :longitude)]
+                                                    [:field {} "LONGITUDE"]
                                                     50]
                                                    [:< {}
-                                                    [:field {} (meta/id :people :longitude)]
+                                                    [:field {} "LONGITUDE"]
                                                     75]]}]}]
       (lib.drill-thru.tu/test-drill-variants-with-merged-args
        lib.drill-thru.tu/test-drill-application
@@ -313,21 +313,21 @@
                                     :aggregation  [[:count {}]]
                                     :breakout     [[:field
                                                     {:binning {:strategy :bin-width, :bin-width 1.0}}
-                                                    (meta/id :people :latitude)]
+                                                    "LATITUDE"]
                                                    [:field
                                                     {:binning {:strategy :bin-width, :bin-width 0.5}}
-                                                    (meta/id :people :longitude)]]
+                                                    "LONGITUDE"]]
                                     :filters      [[:>= {}
-                                                    [:field {} (meta/id :people :latitude)]
+                                                    [:field {} "LATITUDE"]
                                                     20]
                                                    [:< {}
-                                                    [:field {} (meta/id :people :latitude)]
+                                                    [:field {} "LATITUDE"]
                                                     30]
                                                    [:>= {}
-                                                    [:field {} (meta/id :people :longitude)]
+                                                    [:field {} "LONGITUDE"]
                                                     50]
                                                    [:< {}
-                                                    [:field {} (meta/id :people :longitude)]
+                                                    [:field {} "LONGITUDE"]
                                                     55]]}]}]
       (lib.drill-thru.tu/test-drill-variants-with-merged-args
        lib.drill-thru.tu/test-drill-application
@@ -410,33 +410,33 @@
       (is (=? {:stages [{:aggregation [[:count {}]]
                          :breakout    [[:field
                                         {:binning {:strategy :bin-width, :bin-width 1.0}}
-                                        (meta/id :people :latitude)]
+                                        "LATITUDE"]
                                        [:field
                                         {:binning {:strategy :bin-width, :bin-width 1.0}}
-                                        (meta/id :people :longitude)]]
+                                        "LONGITUDE"]]
                          :filters     [[:>=
                                         {}
                                         [:field
                                          {:binning {:strategy :default}}
-                                         (meta/id :people :latitude)]
+                                         "LATITUDE"]
                                         20.0]
                                        [:<
                                         {}
                                         [:field
                                          {:binning {:strategy :default}}
-                                         (meta/id :people :latitude)]
+                                         "LATITUDE"]
                                         30.0]
                                        [:>=
                                         {}
                                         [:field
                                          {:binning {:strategy :default}}
-                                         (meta/id :people :longitude)]
+                                         "LONGITUDE"]
                                         50.0]
                                        [:<
                                         {}
                                         [:field
                                          {:binning {:strategy :default}}
-                                         (meta/id :people :longitude)]
+                                         "LONGITUDE"]
                                         60.0]]}]}
               (lib/drill-thru query -1 nil drill))))))
 
@@ -501,21 +501,21 @@
                                     :aggregation  [[:count {}]]
                                     :breakout     [[:field
                                                     {:binning {:strategy :bin-width, :bin-width 1.0}}
-                                                    (meta/id :people :latitude)]
+                                                    "LATITUDE"]
                                                    [:field
                                                     {:binning {:strategy :bin-width, :bin-width 1.0}}
-                                                    (meta/id :people :longitude)]]
+                                                    "LONGITUDE"]]
                                     :filters      [[:>= {}
-                                                    [:field {} (meta/id :people :latitude)]
+                                                    [:field {} "LATITUDE"]
                                                     20]
                                                    [:< {}
-                                                    [:field {} (meta/id :people :latitude)]
+                                                    [:field {} "LATITUDE"]
                                                     30]
                                                    [:>= {}
-                                                    [:field {} (meta/id :people :longitude)]
+                                                    [:field {} "LONGITUDE"]
                                                     50]
                                                    [:< {}
-                                                    [:field {} (meta/id :people :longitude)]
+                                                    [:field {} "LONGITUDE"]
                                                     60]]}]}]
       (lib.drill-thru.tu/test-drill-variants-with-merged-args
        lib.drill-thru.tu/test-drill-application
@@ -574,9 +574,9 @@
              :longitude {:column    (meta/field-metadata :people :longitude)
                          :bin-width 1}}
             zoom-in))
-    (is (=? {:stages [{:filters  [[:= {} [:field {} (meta/id :people :state)] "MN"]]
+    (is (=? {:stages [{:filters  [[:= {} [:field {} "STATE"] "MN"]]
                        ;; should remove the breakout on people.state
-                       :breakout [[:field {:temporal-unit :month} (meta/id :orders :created-at)]
-                                  [:field {:binning {:strategy :bin-width, :bin-width 1}} (meta/id :people :latitude)]
-                                  [:field {:binning {:strategy :bin-width, :bin-width 1}} (meta/id :people :longitude)]]}]}
+                       :breakout [[:field {:temporal-unit :month} "CREATED_AT"]
+                                  [:field {:binning {:strategy :bin-width, :bin-width 1}} "LATITUDE"]
+                                  [:field {:binning {:strategy :bin-width, :bin-width 1}} "LONGITUDE"]]}]}
             (lib/drill-thru query -1 nil zoom-in)))))

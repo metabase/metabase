@@ -94,7 +94,7 @@
                                 node))
                             (lib.convert/->legacy-MBQL query)))]
       (is (=? {:stages [{:joins [{:conditions [[:= {}
-                                                [:field {:base-type :type/BigInteger} (meta/id :venues :id)]
+                                                [:field {} "ID"]
                                                 [:expression
                                                  {}
                                                  ;; TODO Fill these in?
@@ -552,9 +552,9 @@
              [{:lib/type :mbql.stage/mbql
                :source-table (meta/id :venues)
                :aggregation [[:metric {} table-based-metric-id]]
-               :breakout [[:field {} (meta/id :venues :category-id)]
-                          [:field {} (meta/id :venues :latitude)]
-                          [:field {} (meta/id :venues :longitude)]]}]}
+               :breakout [[:field {} "CATEGORY_ID"]
+                          [:field {} "LATITUDE"]
+                          [:field {} "LONGITUDE"]]}]}
             (lib/query base-mp (lib.metadata/card base-mp table-based-metric-id))))
     (is (=? {:lib/type :mbql/query
              :database (meta/id)

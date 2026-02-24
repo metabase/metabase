@@ -26,7 +26,7 @@
   (testing "make sure columns are comming back the way we'd expect for :field clauses"
     (lib.tu.macros/$ids venues
       (is (=? [{::result-metadata/source    :fields
-                ::result-metadata/field-ref $price}]
+                ::result-metadata/field-ref [:field "PRICE" nil]}]
               (column-info
                (lib/query meta/metadata-provider (lib.tu.macros/mbql-query venues {:fields [$price]}))
                {:columns [:price], :cols [{}]}))))))
@@ -37,7 +37,7 @@
                   "info about the source Field")
       (is (=? [{:fk-field-id                %category-id
                 ::result-metadata/source    :fields
-                ::result-metadata/field-ref $category-id->categories.name
+                ::result-metadata/field-ref [:field "NAME" {:source-field (meta/id :venues :category-id)}]
                 ;; for whatever reason this is what the `annotate` middleware traditionally returns here, for
                 ;; some reason we use the `:long` style inside aggregations and the `:default` style elsewhere
                 ;; who knows why. See notes
@@ -71,7 +71,7 @@
                 ;; sort of contrived since this is not a query we could build create IRL... even tho the join is
                 ;; technically explicit it matches the shape of an implicit one, so we should return field refs that
                 ;; act like the join isn't here yet
-                ::result-metadata/field-ref [:field (meta/id :categories :name) {:source-field (meta/id :venues :category-id)}]}]
+                ::result-metadata/field-ref [:field "NAME" {:source-field (meta/id :venues :category-id)}]}]
               (column-info
                (lib/query
                 meta/metadata-provider
@@ -92,7 +92,7 @@
                   "`::result-metadata/field-ref` should be have only `:join-alias`, and no `:source-field`")
       (is (=? [{:display-name               "Categories → Name"
                 ::result-metadata/source    :fields
-                ::result-metadata/field-ref &Categories.categories.name}]
+                ::result-metadata/field-ref [:field "NAME" {:join-alias "Categories"}]}]
               (column-info
                (lib/query
                 meta/metadata-provider
@@ -110,7 +110,7 @@
     (testing "when a `:field` with `:temporal-unit` is used, we should add in info about the `:unit`"
       (is (=? [{:unit                       :month
                 ::result-metadata/source    :fields
-                ::result-metadata/field-ref !month.price}]
+                ::result-metadata/field-ref [:field "PRICE" {:temporal-unit :month}]}]
               (column-info
                (lib/query
                 meta/metadata-provider
@@ -190,7 +190,7 @@
                ;; type: the db type is different and we have a way to convert. Othertimes, it doesn't make sense:
                ;; when the info is inferred. the solution to this might be quite extensive renaming
                :name              "grandparent.parent"
-               ::result-metadata/field-ref         [:field 2 nil]
+               ::result-metadata/field-ref         [:field "parent" {}]
                :parent-id         1
                :visibility-type   :normal
                :display-name      "Grandparent: Parent"
@@ -204,7 +204,7 @@
                                 (lib/with-fields [(lib.metadata/field metadata-provider 3)]))]
       (is (=? {:table-id          (meta/id :venues)
                :name              "grandparent.parent.child"
-               ::result-metadata/field-ref         [:field 3 nil]
+               ::result-metadata/field-ref         [:field "child" {}]
                :parent-id         2
                :id                3
                :visibility-type   :normal
@@ -746,7 +746,7 @@
       ;; the `:year` bucketing if you used this query in another subsequent query, so the field ref doesn't
       ;; include the unit; however `:unit` is still `:year` so the frontend can use the correct formatting to
       ;; display values of the column.
-      (is (=? [(assoc date-col  ::result-metadata/field-ref [:field (meta/id :checkins :date) nil], :unit :year)
+      (is (=? [(assoc date-col  ::result-metadata/field-ref [:field "DATE" nil], :unit :year)
                (assoc count-col ::result-metadata/field-ref [:field "count" {:base-type :type/Integer}])]
               (result-metadata/returned-columns
                (lib/query metadata-provider (lib.metadata/card metadata-provider 1))))))))
@@ -869,7 +869,7 @@
                   :base-type                  expected-base-type
                   :effective-type             expected-base-type
                   ::result-metadata/source    :fields
-                  ::result-metadata/field-ref [:field (meta/id :venues :id) nil]}]
+                  ::result-metadata/field-ref [:field "ID" nil]}]
                 (column-info
                  (lib/query meta/metadata-provider (lib.tu.macros/mbql-query venues
                                                      {:fields [$id]}))
@@ -1116,21 +1116,21 @@
   (testing "Don't return duplicate field refs, force deduplicated-name when they are ambiguous (QUE-1623)"
     (let [cols [(-> (meta/field-metadata :venues :id)
                     (assoc :lib/source :source/previous-stage
-                           ::result-metadata/field-ref  [:field (meta/id :venues :id) nil]))
+                           ::result-metadata/field-ref  [:field "ID" nil]))
                 (-> (meta/field-metadata :venues :name)
                     (assoc :lib/source               :source/joins
-                           ::result-metadata/field-ref                [:field (meta/id :venues :name) nil]
+                           ::result-metadata/field-ref                [:field "NAME" nil]
                            :lib/join-alias "v1"
                            :lib/source-column-alias      "NAME"
                            :lib/desired-column-alias     "v1__NAME"))
                 (-> (meta/field-metadata :venues :name)
                     (assoc :lib/source               :source/joins
-                           ::result-metadata/field-ref                [:field (meta/id :venues :name) nil]
+                           ::result-metadata/field-ref                [:field "NAME" nil]
                            :lib/join-alias "v2"
                            :lib/source-column-alias      "NAME"
                            :lib/desired-column-alias     "v2__NAME"))]
           cols (lib.field.util/add-deduplicated-names cols)]
-      (is (=? [[:field (meta/id :venues :id) nil]
+      (is (=? [[:field "ID" nil]
                [:field "NAME"   {}]
                [:field "NAME_2" {}]]
               (map ::result-metadata/field-ref (#'result-metadata/deduplicate-field-refs cols)))))))

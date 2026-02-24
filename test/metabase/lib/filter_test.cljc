@@ -38,11 +38,12 @@
         (test-clause
          [op
           {:lib/uuid string?}
-          [:field {:lib/uuid string?} (meta/id :venues :category-id)]
-          [:field {:base-type    :type/BigInteger
-                   :lib/uuid     string?
-                   :source-field (meta/id :venues :category-id)}
-           (meta/id :categories :id)]]
+          [:field {:base-type :type/Integer, :lib/uuid string?} "CATEGORY_ID"]
+          [:field {:base-type        :type/BigInteger
+                   :lib/uuid         string?
+                   :source-field     (meta/id :venues :category-id)
+                   :source-field-name "CATEGORY_ID"}
+           "ID"]]
          f
          venues-category-id-metadata
          categories-id-metadata)))
@@ -51,12 +52,13 @@
       (test-clause
        [:between
         {:lib/uuid string?}
-        [:field {:lib/uuid string?} (meta/id :venues :category-id)]
+        [:field {:base-type :type/Integer, :lib/uuid string?} "CATEGORY_ID"]
         42
-        [:field {:base-type    :type/BigInteger
-                 :lib/uuid     string?
-                 :source-field (meta/id :venues :category-id)}
-         (meta/id :categories :id)]]
+        [:field {:base-type        :type/BigInteger
+                 :lib/uuid         string?
+                 :source-field     (meta/id :venues :category-id)
+                 :source-field-name "CATEGORY_ID"}
+         "ID"]]
        lib/between
        venues-category-id-metadata
        42
@@ -66,8 +68,8 @@
       (test-clause
        [:inside
         {:lib/uuid string?}
-        [:field {:base-type :type/Float, :lib/uuid string?} (meta/id :venues :latitude)]
-        [:field {:base-type :type/Float, :lib/uuid string?} (meta/id :venues :longitude)]
+        [:field {:base-type :type/Float, :lib/uuid string?} "LATITUDE"]
+        [:field {:base-type :type/Float, :lib/uuid string?} "LONGITUDE"]
         42.7 13 4 27.3]
        lib/inside
        venues-latitude-metadata
@@ -82,7 +84,7 @@
         (test-clause
          [op
           {:lib/uuid string?}
-          [:field {:lib/uuid string?} (meta/id :venues :name)]]
+          [:field {:base-type :type/Text, :lib/uuid string?} "NAME"]]
          f
          venues-name-metadata)))
 
@@ -94,7 +96,7 @@
         (test-clause
          [op
           {:lib/uuid string?}
-          [:field {:lib/uuid string?} (meta/id :venues :name)]
+          [:field {:base-type :type/Text, :lib/uuid string?} "NAME"]
           "part"]
          f
          venues-name-metadata
@@ -104,7 +106,7 @@
       (test-clause
        [:time-interval
         {:lib/uuid string?}
-        [:field {:base-type :type/Date, :lib/uuid string?} (meta/id :checkins :date)]
+        [:field {:base-type :type/Date, :lib/uuid string?} "DATE"]
         3
         :day]
        lib/time-interval
@@ -126,7 +128,7 @@
         original-filter
         [:between
          {:lib/uuid string?}
-         [:field {:base-type :type/Integer :lib/uuid string?} (meta/id :venues :category-id)]
+         [:field {:base-type :type/Integer :lib/uuid string?} "CATEGORY_ID"]
          42
          100]
         simple-filtered-query
@@ -163,18 +165,18 @@
                               {:lib/uuid string?}
                               [:field
                                {:base-type :type/Integer, :lib/uuid string?}
-                               (meta/id :venues :category-id)]
+                               "CATEGORY_ID"]
                               42
                               100]
         first-result-filter  first-filter
         second-filter        [:starts-with
                               {:lib/uuid string?}
-                              [:field {:base-type :type/Text, :lib/uuid string?} (meta/id :venues :name)]
+                              [:field {:base-type :type/Text, :lib/uuid string?} "NAME"]
                               "prefix"]
         second-result-filter second-filter
         third-filter         [:contains
                               {:lib/uuid string?}
-                              [:field {:base-type :type/Text, :lib/uuid string?} (meta/id :venues :name)]
+                              [:field {:base-type :type/Text, :lib/uuid string?} "NAME"]
                               "part"]
         third-result-filter  third-filter
         first-add            (lib/filter simple-query
@@ -198,7 +200,7 @@
                                         second-filter
                                         [:contains
                                          {:lib/uuid string?}
-                                         [:field {:base-type :type/Text, :lib/uuid string?} (meta/id :venues :name)]
+                                         [:field {:base-type :type/Text, :lib/uuid string?} "NAME"]
                                          "part"]])]
     (testing "adding an initial filter"
       (is (=? filtered-query first-add))
@@ -220,7 +222,7 @@
             (lib.tu/venues-query)
             [:ends-with
              {:lib/uuid "953597df-a96d-4453-a57b-665e845abc69"}
-             [:field {:lib/uuid "be28f393-538a-406b-90da-bac5f8ef565e"} (meta/id :venues :name)]
+             [:field {:lib/uuid "be28f393-538a-406b-90da-bac5f8ef565e"} "NAME"]
              "t"])))))
 
 (deftest ^:parallel filterable-columns-test
@@ -257,17 +259,19 @@
 
 (def ^:private last-online-time
   (assoc (meta/field-metadata :people :birth-date)
-         :display-name   "Last Online Time"
-         :base-type      :type/Time
-         :effective-type :type/Time
-         :semantic-type  :type/UpdatedTime))
+         :display-name        "Last Online Time"
+         :lib/ref-display-name "Last Online Time"
+         :base-type           :type/Time
+         :effective-type      :type/Time
+         :semantic-type       :type/UpdatedTime))
 
 (def ^:private is-active
   (assoc (meta/field-metadata :orders :discount)
-         :display-name   "Is Active"
-         :base-type      :type/Boolean
-         :effective-type :type/Boolean
-         :semantic-type  nil))
+         :display-name        "Is Active"
+         :lib/ref-display-name "Is Active"
+         :base-type           :type/Boolean
+         :effective-type      :type/Boolean
+         :semantic-type       nil))
 
 (defn- check-display-names [tests]
   (let [metadata-provider (lib/composed-metadata-provider
@@ -465,13 +469,13 @@
 (deftest ^:parallel fk-frontend-filter-display-names-test
   (let [fk (meta/field-metadata :orders :user-id)]
     (check-display-names
-     [{:clause [:= fk 1], :name "User ID is 1"}
-      {:clause [:= fk 11], :name "User ID is 11"}
-      {:clause [:= fk 1 2], :name "User ID is 2 selections"}
-      {:clause [:= fk 1 2 12], :name "User ID is 3 selections"}
-      {:clause [:!= fk 1], :name "User ID is not 1"}
-      {:clause [:!= fk 1 2], :name "User ID is not 2 selections"}
-      {:clause [:!= fk 1 2 12], :name "User ID is not 3 selections"}
+     [{:clause [:= fk 1], :name "User ID is equal to 1"}
+      {:clause [:= fk 11], :name "User ID is equal to 11"}
+      {:clause [:= fk 1 2], :name "User ID is equal to 2 selections"}
+      {:clause [:= fk 1 2 12], :name "User ID is equal to 3 selections"}
+      {:clause [:!= fk 1], :name "User ID is not equal to 1"}
+      {:clause [:!= fk 1 2], :name "User ID is not equal to 2 selections"}
+      {:clause [:!= fk 1 2 12], :name "User ID is not equal to 3 selections"}
       {:clause [:> fk 1], :name "User ID is greater than 1"}
       {:clause [:< fk 1], :name "User ID is less than 1"}
       {:clause [:between fk 1 10], :name "User ID is between 1 and 10"}

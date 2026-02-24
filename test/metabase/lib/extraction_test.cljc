@@ -23,34 +23,34 @@
                {:tag :year,            :column created-at, :display-name "Year"}]
               extractions))
       (testing "extracting :month-of-year"
-        (is (=? [:month-name {} [:get-month {} [:field {} (meta/id :orders :created-at)]]]
+        (is (=? [:month-name {} [:get-month {} [:field {} "CREATED_AT"]]]
                 (lib/extraction-expression (:month-of-year by-tag))))
         (is (=? {:stages [{:expressions
                            [[:month-name {:lib/expression-name "Month of year"}
-                             [:get-month {} [:field {} (meta/id :orders :created-at)]]]]}]}
+                             [:get-month {} [:field {} "CREATED_AT"]]]]}]}
                 (lib/extract query -1 (:month-of-year by-tag)))))
       (testing "extracting :day-of-week"
-        (is (=? [:day-name {} [:get-day-of-week {} [:field {} (meta/id :orders :created-at)]]]
+        (is (=? [:day-name {} [:get-day-of-week {} [:field {} "CREATED_AT"]]]
                 (lib/extraction-expression (:day-of-week by-tag))))
         (is (=? {:stages [{:expressions
                            [[:day-name {:lib/expression-name "Day of week"}
-                             [:get-day-of-week {} [:field {} (meta/id :orders :created-at)]]]]}]}
+                             [:get-day-of-week {} [:field {} "CREATED_AT"]]]]}]}
                 (lib/extract query -1 (:day-of-week by-tag)))))
       (testing "extracting :quarter-of-year"
-        (is (=? [:quarter-name {} [:get-quarter {} [:field {} (meta/id :orders :created-at)]]]
+        (is (=? [:quarter-name {} [:get-quarter {} [:field {} "CREATED_AT"]]]
                 (lib/extraction-expression (:quarter-of-year by-tag))))
         (is (=? {:stages [{:expressions
                            [[:quarter-name {:lib/expression-name "Quarter of year"}
-                             [:get-quarter {} [:field {} (meta/id :orders :created-at)]]]]}]}
+                             [:get-quarter {} [:field {} "CREATED_AT"]]]]}]}
                 (lib/extract query -1 (:quarter-of-year by-tag)))))
       (doseq [[tag expr label] [[:year         :get-year "Year"]
                                 [:day-of-month :get-day  "Day of month"]
                                 [:hour-of-day  :get-hour "Hour of day"]]]
         (testing (str "extracting " tag)
-          (is (=? [expr {} [:field {} (meta/id :orders :created-at)]]
+          (is (=? [expr {} [:field {} "CREATED_AT"]]
                   (lib/extraction-expression (get by-tag tag))))
           (is (=? {:stages [{:expressions [[expr {:lib/expression-name label}
-                                            [:field {} (meta/id :orders :created-at)]]]}]}
+                                            [:field {} "CREATED_AT"]]]}]}
                   (lib/extract query -1 (get by-tag tag)))))))))
 
 (deftest ^:parallel duplicate-names-test
@@ -61,10 +61,10 @@
                                     (lib/get-day (meta/field-metadata :orders :created-at))))]
       (is (=? {:stages [{:expressions [;; The original
                                        [:get-day {:lib/expression-name "Day of month"}
-                                        [:field {} (meta/id :orders :created-at)]]
+                                        [:field {} "CREATED_AT"]]
                                        ;; The newly added one
                                        [:get-day {:lib/expression-name "Day of month_2"}
-                                        [:field {} (meta/id :orders :created-at)]]]}]}
+                                        [:field {} "CREATED_AT"]]]}]}
               (->> (lib/returned-columns query)
                    (m/find-first #(= (:name %) "CREATED_AT"))
                    (lib/column-extractions query)
@@ -136,28 +136,28 @@
           by-tag      (m/index-by :tag extractions)]
       (is (=? #{:domain :subdomain :host :path} (set (keys by-tag))))
       (testing "to :domain"
-        (is (=? [:domain {} [:field {} 9999001]]
+        (is (=? [:domain {} [:field {} "HOMEPAGE"]]
                 (lib/extraction-expression (:domain by-tag))))
         (is (=? {:stages [{:expressions [[:domain {:lib/expression-name "Domain"}
-                                          [:field {} 9999001]]]}]}
+                                          [:field {} "HOMEPAGE"]]]}]}
                 (lib/extract query -1 (:domain by-tag)))))
       (testing "to :subdomain"
-        (is (=? [:subdomain {} [:field {} 9999001]]
+        (is (=? [:subdomain {} [:field {} "HOMEPAGE"]]
                 (lib/extraction-expression (:subdomain by-tag))))
         (is (=? {:stages [{:expressions [[:subdomain {:lib/expression-name "Subdomain"}
-                                          [:field {} 9999001]]]}]}
+                                          [:field {} "HOMEPAGE"]]]}]}
                 (lib/extract query -1 (:subdomain by-tag)))))
       (testing "to :host"
-        (is (=? [:host {} [:field {} 9999001]]
+        (is (=? [:host {} [:field {} "HOMEPAGE"]]
                 (lib/extraction-expression (:host by-tag))))
         (is (=? {:stages [{:expressions [[:host {:lib/expression-name "Host"}
-                                          [:field {} 9999001]]]}]}
+                                          [:field {} "HOMEPAGE"]]]}]}
                 (lib/extract query -1 (:host by-tag)))))
       (testing "to :path"
-        (is (=? [:path {} [:field {} 9999001]]
+        (is (=? [:path {} [:field {} "HOMEPAGE"]]
                 (lib/extraction-expression (:path by-tag))))
         (is (=? {:stages [{:expressions [[:path {:lib/expression-name "Path"}
-                                          [:field {} 9999001]]]}]}
+                                          [:field {} "HOMEPAGE"]]]}]}
                 (lib/extract query -1 (:path by-tag))))))))
 
 (deftest ^:parallel extracting-from-urls-requires-regex-feature-test

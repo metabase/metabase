@@ -123,8 +123,8 @@
   (let [query (-> (lib.tu/venues-query)
                   (lib/expression "ID + 1" (lib/+ (meta/field-metadata :venues :id) 1))
                   (lib/expression "ID + 2" (lib/+ (meta/field-metadata :venues :id) 2)))]
-    (is (=? {:stages [{:expressions [[:+ {:lib/expression-name "ID + 1"} [:field {} (meta/id :venues :id)] 1]
-                                     [:+ {:lib/expression-name "ID + 2"} [:field {} (meta/id :venues :id)] 2]]}]}
+    (is (=? {:stages [{:expressions [[:+ {:lib/expression-name "ID + 1"} [:field {} "ID"] 1]
+                                     [:+ {:lib/expression-name "ID + 2"} [:field {} "ID"] 2]]}]}
             query))
     query))
 
@@ -153,11 +153,11 @@
                                         :stages     [{:source-table (meta/id :categories)}]
                                         :conditions [[:=
                                                       {}
-                                                      [:field {} (meta/id :venues :category-id)]
-                                                      [:field {:join-alias "Cat"} (meta/id :categories :id)]]]
+                                                      [:field {} "CATEGORY_ID"]
+                                                      [:field {:join-alias "Cat"} "ID"]]]
                                         :fields     :all}]
-                         :expressions [[:+ {:lib/expression-name "ID + 1"} [:field {} (meta/id :venues :id)] 1]
-                                       [:+ {:lib/expression-name "ID + 2"} [:field {} (meta/id :venues :id)] 2]]}]}
+                         :expressions [[:+ {:lib/expression-name "ID + 1"} [:field {} "ID"] 1]
+                                       [:+ {:lib/expression-name "ID + 2"} [:field {} "ID"] 2]]}]}
               query))
       (let [metadata (lib/returned-columns query)]
         (is (=? [{:id (meta/id :venues :id), :name "ID", :lib/source :source/table-defaults}

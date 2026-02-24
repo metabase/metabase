@@ -879,8 +879,8 @@
               "CATEGORY"
               "Orders__sum"]
              (mapv :lib/desired-column-alias cols)))
-      (is (=? [[:field {} (meta/id :products :title)]
-               [:field {} (meta/id :products :category)]
+      (is (=? [[:field {} "TITLE"]
+               [:field {} "CATEGORY"]
                [:field {:join-alias "Orders"} "sum"]]
               (mapv lib/ref cols)))
       (testing "update stage :fields to include the columns from the join already"
@@ -890,8 +890,8 @@
                   "CATEGORY"
                   "Orders__sum"]
                  (mapv :lib/desired-column-alias cols')))
-          (is (=? [[:field {} (meta/id :products :title)]
-                   [:field {} (meta/id :products :category)]
+          (is (=? [[:field {} "TITLE"]
+                   [:field {} "CATEGORY"]
                    [:field {:join-alias "Orders"} "sum"]]
                   (mapv lib/ref cols'))))))))
 

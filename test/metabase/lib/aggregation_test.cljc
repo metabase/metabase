@@ -20,7 +20,7 @@
 
 (deftest ^:parallel aggregation-test
   (let [venues-category-id-metadata (meta/field-metadata :venues :category-id)
-        venue-field-check [:field {:base-type :type/Integer, :lib/uuid string?} (meta/id :venues :category-id)]]
+        venue-field-check [:field {:base-type :type/Integer, :lib/uuid string?} "CATEGORY_ID"]]
     (testing "count"
       (is (=? [:count {:lib/uuid string?}]
               (lib/count)))
@@ -193,7 +193,7 @@
                    :aggregation [[:sum {:lib/uuid string?}
                                   [:field
                                    {:base-type :type/Integer, :lib/uuid string?}
-                                   (meta/id :venues :category-id)]]]}]}]
+                                   "CATEGORY_ID"]]]}]}]
 
     (testing "with helper function"
       (is (=? result-query
@@ -313,11 +313,11 @@
         aggregation-operators (lib/available-aggregation-operators query)
         count-op (first aggregation-operators)
         sum-op (second aggregation-operators)]
-    (is (=? [:sum {} [:field {} (meta/id :venues :price)]]
+    (is (=? [:sum {} [:field {} "PRICE"]]
             (lib/aggregation-clause sum-op (meta/field-metadata :venues :price))))
     (is (=? [:count {}]
             (lib/aggregation-clause count-op)))
-    (is (=? [:count {} [:field {} (meta/id :venues :price)]]
+    (is (=? [:count {} [:field {} "PRICE"]]
             (lib/aggregation-clause count-op (meta/field-metadata :venues :price))))
     (is (thrown-with-msg?
          #?(:clj Exception :cljs :default)
@@ -422,12 +422,12 @@
                  [{:lib/type :mbql.stage/mbql
                    :source-table int?
                    :expressions
-                   [[:* {:lib/expression-name "double-price"} [:field {:base-type :type/Integer, :effective-type :type/Integer} int?] 2]
-                    [:< {:lib/expression-name "budget?"} [:field {:base-type :type/Integer, :effective-type :type/Integer} int?] 2]]
+                   [[:* {:lib/expression-name "double-price"} [:field {:base-type :type/Integer, :effective-type :type/Integer} string?] 2]
+                    [:< {:lib/expression-name "budget?"} [:field {:base-type :type/Integer, :effective-type :type/Integer} string?] 2]]
                    :aggregation
                    [[:sum {} [:expression {} "double-price"]]
                     [:count {}]
-                    [:sum {} [:field {:base-type :type/Integer, :effective-type :type/Integer} int?]]]}]}
+                    [:sum {} [:field {:base-type :type/Integer, :effective-type :type/Integer} string?]]]}]}
                 agg-query))
         (is (=? [{:lib/type       :metadata/column
                   :effective-type :type/Integer
@@ -646,7 +646,7 @@
 (deftest ^:parallel var-test
   (let [query (-> (lib.tu/venues-query)
                   (lib/aggregate (lib/var (meta/field-metadata :venues :price))))]
-    (is (=? {:stages [{:aggregation [[:var {} [:field {} (meta/id :venues :price)]]]}]}
+    (is (=? {:stages [{:aggregation [[:var {} [:field {} "PRICE"]]]}]}
             query))
     (is (= "Venues, Variance of Price"
            (lib/describe-query query)))))
@@ -768,7 +768,7 @@
                                              (f (meta/field-metadata :venues :id))
                                              (f))))]
               (is (=? {:stages [{:aggregation [(if field?
-                                                 [k {} [:field {} integer?]]
+                                                 [k {} [:field {} string?]]
                                                  [k {}])]}]}
                       query)
                   "query")

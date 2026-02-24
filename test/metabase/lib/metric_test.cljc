@@ -216,7 +216,7 @@
                  :breakout
                  [[:field
                    {:base-type :type/DateTimeWithLocalTZ, :temporal-unit :month}
-                   (meta/id :orders :created-at)]]
+                   "CREATED_AT"]]
                  :aggregation [[:metric {} 1]]}]}
               metric-based-query)))
     (testing "The columns of the query underlying the metric are visible in the metric-based query"

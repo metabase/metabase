@@ -9,7 +9,6 @@
    [metabase.lib.options :as lib.options]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
-   [metabase.lib.test-util.macros :as lib.tu.macros]
    [metabase.util :as u]
    [metabase.util.malli.registry :as mr]))
 
@@ -952,22 +951,22 @@
                                                     [:field
                                                      {:temporal-unit                              :year
                                                       :lib/original-effective-type :type/DateTimeWithLocalTZ}
-                                                     (meta/id :products :created-at)]
+                                                     "CREATED_AT"]
                                                     [:field
                                                      {:join-alias                                 "O"
                                                       :temporal-unit                              :year
                                                       :lib/original-effective-type :type/DateTimeWithLocalTZ}
-                                                     (meta/id :orders :created-at)]]]}]}]}
+                                                     "CREATED_AT"]]]}]}]}
                   query)))
         (is (=? {:query {:joins [{:alias        "O"
                                   :condition    [:=
                                                  [:field
-                                                  (meta/id :products :created-at)
+                                                  "CREATED_AT"
                                                   {:base-type                                  :type/DateTimeWithLocalTZ
                                                    :temporal-unit                              :year
                                                    :lib/original-effective-type (symbol "nil #_\"key is not present.\"")}]
                                                  [:field
-                                                  (meta/id :orders :created-at)
+                                                  "CREATED_AT"
                                                   {:base-type                                  :type/DateTimeWithLocalTZ
                                                    :join-alias                                 "O"
                                                    :temporal-unit                              :year
@@ -1109,12 +1108,12 @@
       {:lib/uuid "d5149080-5e1c-4643-9264-bf4a82116abd", :name "my_offset"})))
 
 (deftest ^:parallel cumulative-count-test
-  (is (=? (lib.tu.macros/mbql-query
-            venues
-            {:source-table $$venues
-             :aggregation [[:aggregation-options
-                            [:cum-count [:field %id {:base-type :type/BigInteger}]]
-                            {:name "count"}]]})
+  (is (=? {:database (meta/id)
+           :type     :query
+           :query    {:source-table (meta/id :venues)
+                      :aggregation  [[:aggregation-options
+                                      [:cum-count [:field "ID" {:base-type :type/BigInteger}]]
+                                      {:name "count"}]]}}
           (lib.convert/->legacy-MBQL
            (-> (lib/query meta/metadata-provider (meta/table-metadata :venues))
                (lib/aggregate (lib.options/update-options
@@ -1122,14 +1121,14 @@
                                assoc :name "count")))))))
 
 (deftest ^:parallel cumulative-aggregations-in-expression-test
-  (is (=?  (lib.tu.macros/mbql-query
-             venues
-             {:source-table $$venues
-              :aggregation [[:aggregation-options
-                             [:+
-                              [:aggregation-options [:cum-sum [:field %id {:base-type :type/BigInteger}]] {:name "a"}]
-                              [:aggregation-options [:cum-count] {:name "b"}]]
-                             {:name "xixix"}]]})
+  (is (=?  {:database (meta/id)
+            :type     :query
+            :query    {:source-table (meta/id :venues)
+                       :aggregation  [[:aggregation-options
+                                       [:+
+                                        [:aggregation-options [:cum-sum [:field "ID" {:base-type :type/BigInteger}]] {:name "a"}]
+                                        [:aggregation-options [:cum-count] {:name "b"}]]
+                                       {:name "xixix"}]]}}
            (lib.convert/->legacy-MBQL
             (-> (lib/query meta/metadata-provider (meta/table-metadata :venues))
                 (lib/aggregate (lib.options/update-options

@@ -307,13 +307,13 @@
                                      {}
                                      [:field
                                       {:binning (symbol "nil #_\"key is not present.\"")}
-                                      (meta/id :orders :quantity)]
+                                      "QUANTITY"]
                                      20]
                                     [:<
                                      {}
                                      [:field
                                       {:binning (symbol "nil #_\"key is not present.\"")}
-                                      (meta/id :orders :quantity)]
+                                      "QUANTITY"]
                                      30.0]]}]}
               query')))))
 
@@ -340,7 +340,7 @@
                :dimensions [{}]}
               drill))
       (is (=? {:lib/type :mbql/query
-               :stages [{:filters     [[:= {} [:field {} (meta/id :products :category)] "Gadget"]]
+               :stages [{:filters     [[:= {} [:field {} "CATEGORY"] "Gadget"]]
                          :aggregation (symbol "nil #_\"key is not present.\"")
                          :breakout    (symbol "nil #_\"key is not present.\"")
                          :fields      (symbol "nil #_\"key is not present.\"")}]}
@@ -379,10 +379,10 @@
                                        (lib/available-drill-thrus query context))]
       (is (some? drill))
       (is (=? {:stages [{:filters [[:> {}
-                                    [:field {} (meta/id :orders :total)]
+                                    [:field {} "TOTAL"]
                                     50]
                                    [:between {}
-                                    [:field {:temporal-unit :month} (meta/id :orders :created-at)]
+                                    [:field {:temporal-unit :month} "CREATED_AT"]
                                     "2023-03-01"
                                     "2023-03-31"]]}]}
               (lib/drill-thru query drill))))))
@@ -415,7 +415,7 @@
                :row-count  2
                :table-name "Orders"
                :dimensions [{:column     {:name "CREATED_AT"}
-                             :column-ref [:field {} (meta/id :orders :created-at)]
+                             :column-ref [:field {} "CREATED_AT"]
                              :value      "2020-01-01"}]
                :column-ref [:aggregation {} string?]}
               drill))
@@ -455,7 +455,7 @@
       (is (some? drill))
       (is (=? {:stages [{:filters [[:is-null
                                     {}
-                                    [:field {:binning (symbol "nil #_\"key is not present.\"")} (meta/id :orders :discount)]]]}]}
+                                    [:field {:binning (symbol "nil #_\"key is not present.\"")} "DISCOUNT"]]]}]}
               (lib/drill-thru query drill))))))
 
 (deftest ^:parallel nil-aggregation-value-unbinned-test
@@ -484,7 +484,7 @@
           drill (m/find-first #(= (:type %) :drill-thru/underlying-records)
                               (lib/available-drill-thrus query context))]
       (is (some? drill))
-      (is (=? {:stages [{:filters [[:is-null {} [:field {} (meta/id :products :category)]]]}]}
+      (is (=? {:stages [{:filters [[:is-null {} [:field {} "CATEGORY"]]]}]}
               (lib/drill-thru query drill))))))
 
 (deftest ^:parallel multi-stage-query-test
@@ -772,11 +772,11 @@
       (let [query' (lib/drill-thru query drill)]
         (is (=? [{:source-table (meta/id :orders)
                   :filters      [[:>= {}
-                                  [:field {} (meta/id :orders :total)]
+                                  [:field {} "TOTAL"]
                                   90]
                                  [:<
                                   {}
-                                  [:field {} (meta/id :orders :total)]
+                                  [:field {} "TOTAL"]
                                   92.0]]}]
                 (:stages query')))
         (is (= ["Total is greater than or equal to 90"

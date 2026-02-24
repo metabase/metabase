@@ -35,8 +35,8 @@
                   (lib/breakout (meta/field-metadata :products :category))
                   (lib/breakout (lib/with-temporal-bucket (meta/field-metadata :orders :created-at) :year)))]
     (is (=? {:stages [{:aggregation [[:count {}]]
-                       :breakout    [[:field {} (meta/id :products :category)]
-                                     [:field {:temporal-unit :year} (meta/id :orders :created-at)]]}]}
+                       :breakout    [[:field {} "CATEGORY"]
+                                     [:field {:temporal-unit :year} "CREATED_AT"]]}]}
             query))
     (let [columns    (lib/returned-columns query)
           created-at (m/find-first #(and (= (:id %) (meta/id :orders :created-at))
@@ -56,7 +56,7 @@
       (is (=? {:type         :drill-thru/zoom-in.timeseries
                :dimension    {:column     {:id                               (meta/id :orders :created-at)
                                            :lib/temporal-unit :year}
-                              :column-ref [:field {} (meta/id :orders :created-at)]
+                              :column-ref [:field {} "CREATED_AT"]
                               :value      2022}
                :next-unit    :quarter
                :display-name "See this year by quarter"}
@@ -65,11 +65,11 @@
               (lib/display-info query -1 drill)))
       (let [query' (lib/drill-thru query -1 nil drill)]
         (is (=? {:stages [{:aggregation [[:count {}]]
-                           :breakout    [[:field {} (meta/id :products :category)]
-                                         [:field {:temporal-unit :quarter} (meta/id :orders :created-at)]]
+                           :breakout    [[:field {} "CATEGORY"]
+                                         [:field {:temporal-unit :quarter} "CREATED_AT"]]
                            :filters     [[:=
                                           {}
-                                          [:field {:temporal-unit :year} (meta/id :orders :created-at)]
+                                          [:field {:temporal-unit :year} "CREATED_AT"]
                                           2022]]}]}
                 query'))
         (let [columns    (lib/returned-columns query')
@@ -88,7 +88,7 @@
           (is (=? {:type         :drill-thru/zoom-in.timeseries
                    :dimension    {:column     {:id                               (meta/id :orders :created-at)
                                                :lib/temporal-unit :quarter}
-                                  :column-ref [:field {} (meta/id :orders :created-at)]
+                                  :column-ref [:field {} "CREATED_AT"]
                                   :value      "2022-04-01T00:00:00"}
                    :next-unit    :month
                    :display-name "See this quarter by month"}
@@ -97,18 +97,18 @@
                   (lib/display-info query' -1 drill)))
           (let [query'' (lib/drill-thru query' -1 nil drill)]
             (is (=? {:stages [{:aggregation [[:count {}]]
-                               :breakout    [[:field {} (meta/id :products :category)]
-                                             [:field {:temporal-unit :month} (meta/id :orders :created-at)]]
+                               :breakout    [[:field {} "CATEGORY"]
+                                             [:field {:temporal-unit :month} "CREATED_AT"]]
                                ;; if we were SMART we could remove the first filter clause since it's not adding any
                                ;; value, but it won't hurt anything other than performance to keep it there. QP can
                                ;; generate optimal filters anyway
                                :filters     [[:=
                                               {}
-                                              [:field {:temporal-unit :year} (meta/id :orders :created-at)]
+                                              [:field {:temporal-unit :year} "CREATED_AT"]
                                               2022]
                                              [:=
                                               {}
-                                              [:field {:temporal-unit :quarter} (meta/id :orders :created-at)]
+                                              [:field {:temporal-unit :quarter} "CREATED_AT"]
                                               "2022-04-01T00:00:00"]]}]}
                     query''))))))))
 
@@ -207,7 +207,7 @@
                    ;; the "underlying" dimension is reconstructed from the row.
                    :dimension {:column     {:name          "CREATED_AT"
                                             :lib/breakout? true}
-                               :column-ref [:field {} (meta/id :orders :created-at)]
+                               :column-ref [:field {} "CREATED_AT"]
                                :value      "2022-12-01T00:00:00+02:00"}}}))
 
 (deftest ^:parallel returns-zoom-in-timeseries-e2e-test-2
@@ -245,10 +245,10 @@
                                         [{:aggregation [[:count {}]]
                                           :breakout    [[:field
                                                          {:temporal-unit :quarter}
-                                                         (meta/id :orders :created-at)]],
+                                                         "CREATED_AT"]],
                                           :filters     [[:=
                                                          {}
-                                                         [:field {:temporal-unit :year} (meta/id :orders :created-at)]
+                                                         [:field {:temporal-unit :year} "CREATED_AT"]
                                                          "2022-12-01T00:00:00+02:00"]]}]}
                                  (= query multi-stage-query)
                                  (lib.drill-thru.tu/append-filter-stage-to-test-expectation "count"))]
@@ -279,11 +279,11 @@
                                           :aggregation  [[:count {}]]
                                           :breakout     [[:field
                                                           {:temporal-unit unit2}
-                                                          (meta/id :orders :created-at)]]
+                                                          "CREATED_AT"]]
                                           :filters      [[:= {}
                                                           [:field
                                                            {:temporal-unit unit1}
-                                                           (meta/id :orders :created-at)]
+                                                           "CREATED_AT"]
                                                           "2022-12-09T11:22:33+02:00"]]}]}
                                  (= query multi-stage-query)
                                  (lib.drill-thru.tu/append-filter-stage-to-test-expectation "count"))]
@@ -298,7 +298,7 @@
               :expected       {:type         :drill-thru/zoom-in.timeseries
                                :display-name (str "See this " (name unit1) " by " (name unit2))
                                :dimension    {:column     {:name "CREATED_AT"}
-                                              :column-ref [:field {:temporal-unit unit1} (meta/id :orders :created-at)]
+                                              :column-ref [:field {:temporal-unit unit1} "CREATED_AT"]
                                               :value      "2022-12-09T11:22:33+02:00"}
                                :next-unit    unit2}
               :expected-query expected-query})))))))
@@ -324,14 +324,14 @@
           :expected       {:type         :drill-thru/zoom-in.timeseries
                            :display-name (str "See this " (name unit1) " by " (name unit2))
                            :dimension    {:column     {:name "CREATED_AT"}
-                                          :column-ref [:field {:temporal-unit unit1} (meta/id :orders :created-at)]
+                                          :column-ref [:field {:temporal-unit unit1} "CREATED_AT"]
                                           :value      "2022-12-09"}
                            :next-unit    unit2}
           :expected-query {:stages [{:source-table (meta/id :orders)
                                      :aggregation  [[:count {}]]
                                      :breakout     [[:field
                                                      {:temporal-unit unit2}
-                                                     (meta/id :orders :created-at)]]
+                                                     "CREATED_AT"]]
                                      :filters      [[:= {}
-                                                     [:field {:temporal-unit unit1} (meta/id :orders :created-at)]
+                                                     [:field {:temporal-unit unit1} "CREATED_AT"]
                                                      "2022-12-09"]]}]}})))))

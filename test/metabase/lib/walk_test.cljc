@@ -227,10 +227,10 @@
         calls (atom [])]
     (is (=? {:stages [{:filters [[:and {}
                                   [:> {}
-                                   [:field {} (meta/id :venues :id)]
+                                   [:field {} "ID"]
                                    [:value {:lib/uuid "00000000-0000-0000-0000-000000000000"} 50]]
                                   [:< {}
-                                   [:field {} (meta/id :venues :id)]
+                                   [:field {} "ID"]
                                    60]]]}]}
             (lib.walk/walk-clauses
              query
@@ -240,30 +240,30 @@
                  [:value {:lib/uuid "00000000-0000-0000-0000-000000000000"} 50]
                  clause)))))
     (is (=? [;; recursing into `>`
-             (meta/id :venues :id)
-             [:field {} (meta/id :venues :id)]
+             "ID"
+             [:field {} "ID"]
              50
              [:> {}
-              [:field {} (meta/id :venues :id)]
+              [:field {} "ID"]
               [:value {:lib/uuid "00000000-0000-0000-0000-000000000000"} 50]]
              ;; recursing into `<`
-             (meta/id :venues :id)
+             "ID"
              [:field
               {}
-              (meta/id :venues :id)]
+              "ID"]
              60
              [:< {}
               [:field
                {}
-               (meta/id :venues :id)]
+               "ID"]
               60]
              ;; `:filters`
              [:and {}
               [:> {}
-               [:field {} (meta/id :venues :id)]
+               [:field {} "ID"]
                [:value {:lib/uuid "00000000-0000-0000-0000-000000000000"} 50]]
               [:< {}
-               [:field {} (meta/id :venues :id)]
+               [:field {} "ID"]
                60]]]
             @calls))))
 
@@ -273,8 +273,8 @@
     (is (=? {:stages [{:joins [{:alias      "Categories"
                                 :conditions [[:=
                                               {}
-                                              [:field {} (meta/id :venues :category-id)]
-                                              [:field {:join-alias "Categories"} (meta/id :categories :id)]]]}]}]}
+                                              [:field {} "CATEGORY_ID"]
+                                              [:field {:join-alias "Categories"} "ID"]]]}]}]}
             query))
     (is (=? {:stages [{:joins [{:alias      "Categories"
                                 :conditions [[:=
@@ -286,8 +286,10 @@
              (fn [query _path-type _stage-or-join-path clause]
                (lib.util.match/match-lite clause
                  [:field opts id]
-                 (let [col (lib.metadata/field query id)]
-                   [:field (merge (select-keys col [:base-type]) opts) (:name col)])
+                 (if (integer? id)
+                   (let [col (lib.metadata/field query id)]
+                     [:field (merge (select-keys col [:base-type]) opts) (:name col)])
+                   [:field opts id])
 
                  _ nil)))))))
 
@@ -318,7 +320,7 @@
       (is (=? [:SUM {}
                [:CASE {}
                 [[[:BETWEEN {}
-                   [:FIELD {} pos-int?]
+                   [:FIELD {} string?]
                    "2018-09-01"
                    "2018-09-30"]
                   false]]
@@ -334,14 +336,14 @@
                   :aggregation
                   first)))
       (is (=? [;; sum => case => if-then-pairs => if expr (between) => field => arg
-               (meta/id :checkins :date)
+               "DATE"
                ;; sum => case => if-then-pairs => if expr (between) => field
-               [:field {} (meta/id :checkins :date)]
+               [:field {} "DATE"]
                ;; sum => case => if-then-pairs => if expr (between) => other args
                "2018-09-01"
                "2018-09-30"
                ;; sum => case => if-then-pairs => if expr (between)
-               [:between {} [:FIELD {} (meta/id :checkins :date)] "2018-09-01" "2018-09-30"]
+               [:between {} [:FIELD {} "DATE"] "2018-09-01" "2018-09-30"]
                ;; sum => case => if-then-pairs => then expr (false)
                false
                ;; sum => case => default
@@ -349,7 +351,7 @@
                ;; sum => case
                [:case {}
                 [[[:BETWEEN {}
-                   [:FIELD {} pos-int?]
+                   [:FIELD {} string?]
                    "2018-09-01"
                    "2018-09-30"]
                   false]]
@@ -358,7 +360,7 @@
                [:sum {}
                 [:CASE {}
                  [[[:BETWEEN {}
-                    [:FIELD {} pos-int?]
+                    [:FIELD {} string?]
                     "2018-09-01"
                     "2018-09-30"]
                    false]]

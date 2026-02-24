@@ -25,7 +25,7 @@
                          :aggregation  [[:count {}]]
                          :breakout     [[:field
                                          {:base-type :type/Date, :temporal-unit :year}
-                                         (meta/id :checkins :date)]]}]}
+                                         "DATE"]]}]}
             query))
     (is (= "Checkins, Count, Grouped by Date: Year"
            (lib/display-name query query)
@@ -35,7 +35,7 @@
 (deftest ^:parallel breakouts-test
   (let [query (-> (lib/query meta/metadata-provider (meta/table-metadata :checkins))
                   (lib/breakout (meta/field-metadata :checkins :date)))]
-    (is (=? [[:field {} (meta/id :checkins :date)]]
+    (is (=? [[:field {} "DATE"]]
             (lib/breakouts query)))))
 
 (deftest ^:parallel breakout-should-drop-invalid-parts
@@ -368,9 +368,9 @@
                    :database (meta/id)
                    :stages   [{:lib/type     :mbql.stage/mbql
                                :source-table (meta/id :venues)
-                               :breakout     [[:field {:lib/uuid string? :base-type :type/Text} (meta/id :venues :name)]]}]}
+                               :breakout     [[:field {:lib/uuid string? :base-type :type/Text} "NAME"]]}]}
                   query'))
-          (is (=? [[:field {:lib/uuid string? :base-type :type/Text} (meta/id :venues :name)]]
+          (is (=? [[:field {:lib/uuid string? :base-type :type/Text} "NAME"]]
                   (lib/breakouts query'))))))))
 
 (deftest ^:parallel breakoutable-columns-own-and-implicitly-joinable-columns-e2e-test
@@ -386,10 +386,10 @@
           breakoutables' (lib/breakoutable-columns query')]
       (is (=? {:stages [{:breakout [[:field
                                      {:source-field (meta/id :venues :category-id)}
-                                     (meta/id :categories :name)]
+                                     "NAME"]
                                     [:field
                                      {:lib/uuid string? :base-type :type/Integer}
-                                     (meta/id :venues :price)]]}]}
+                                     "PRICE"]]}]}
               query'))
       (is (= "Venues, Grouped by Category → Name and Price"
              (lib/describe-query query')))
@@ -575,14 +575,14 @@
                                  "correct ref but missing :base-type/:effective-type"
                                  [:field {:lib/uuid   (str (random-uuid))
                                           :join-alias "Categories"}
-                                  (meta/id :categories :name)]
+                                  "NAME"]
 
                                  ;; this is a busted Field ref, it's referring to a Field from a joined Table but
                                  ;; does not include `:join-alias`. It should still work anyway.
                                  "busted ref"
                                  [:field {:lib/uuid  (str (random-uuid))
                                           :base-type :type/Text}
-                                  (meta/id :categories :name)]}]
+                                  "NAME"]}]
       (testing (str \newline message " ref = " (pr-str field-ref))
         (let [query (-> (lib.tu/venues-query)
                         (lib/join (-> (lib/join-clause
@@ -633,7 +633,7 @@
     (is (=? {:stages [{:aggregation [[:count {}]]
                        :breakout    [[:field
                                       {:binning {:strategy :bin-width, :bin-width 1}}
-                                      (meta/id :people :latitude)]]}]}
+                                      "LATITUDE"]]}]}
             (-> (lib/query meta/metadata-provider (meta/table-metadata :people))
                 (lib/aggregate (lib/count))
                 (lib/breakout (lib/with-binning (meta/field-metadata :people :latitude) {:strategy :bin-width, :bin-width 1})))))))
@@ -646,11 +646,11 @@
                   (lib/breakout (lib/with-temporal-bucket (meta/field-metadata :people :latitude) :month))
                   (lib/breakout (meta/field-metadata :people :longitude)))]
     (is (=? [[:field {}
-              (meta/id :people :latitude)]
+              "LATITUDE"]
              [:field {:binning {:strategy :bin-width, :bin-width 1}}
-              (meta/id :people :latitude)]
+              "LATITUDE"]
              [:field {:temporal-unit :month}
-              (meta/id :people :latitude)]]
+              "LATITUDE"]]
             (lib.breakout/existing-breakouts query -1 (meta/field-metadata :people :latitude))))))
 
 (deftest ^:parallel existing-breakouts-multiple-implicit-joins-test
@@ -717,11 +717,11 @@
                    (lib/breakout (meta/field-metadata :people :longitude)))
         query' (lib.breakout/remove-existing-breakouts-for-column query (meta/field-metadata :people :latitude))]
     (is (=? {:stages [{:aggregation [[:count {}]]
-                       :breakout    [[:field {} (meta/id :people :longitude)]]}]}
+                       :breakout    [[:field {} "LONGITUDE"]]}]}
             query'))
     (testing "Don't explode if there are no existing breakouts"
       (is (=? {:stages [{:aggregation [[:count {}]]
-                         :breakout    [[:field {} (meta/id :people :longitude)]]}]}
+                         :breakout    [[:field {} "LONGITUDE"]]}]}
               (lib.breakout/remove-existing-breakouts-for-column query' (meta/field-metadata :people :latitude)))))))
 
 (deftest ^:parallel breakout-column-test

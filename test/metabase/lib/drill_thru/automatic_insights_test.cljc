@@ -84,7 +84,7 @@
             (lib/drill-thru query -1 nil drill)))))
 
 (deftest ^:parallel automatic-insights-apply-test
-  (let [filters [[:between {} [:field {} (meta/id :orders :created-at)]
+  (let [filters [[:between {} [:field {} "CREATED_AT"]
                   "2023-12-01" "2023-12-31"]]]
     (testing "breakouts are turned to filters, aggregations dropped"
       (auto-insights (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
@@ -112,8 +112,8 @@
                        (lib/breakout (lib/with-temporal-bucket
                                        (meta/field-metadata :orders :created-at)
                                        :month)))
-                   [[:between {} [:field {} (meta/id :orders :created-at)] "2023-12-01" "2023-12-31"]
-                    [:= {} [:field {} (meta/id :products :category)] "Doohickey"]])))
+                   [[:between {} [:field {} "CREATED_AT"] "2023-12-01" "2023-12-31"]
+                    [:= {} [:field {} "CATEGORY"] "Doohickey"]])))
 
 (deftest ^:parallel automatic-insights-apply-test-3
   (testing "metric over time"
@@ -132,7 +132,7 @@
                          (lib/breakout (lib/with-temporal-bucket
                                          (meta/field-metadata :orders :created-at)
                                          :month)))
-                     [[:between {} [:field {} (meta/id :orders :created-at)]
+                     [[:between {} [:field {} "CREATED_AT"]
                        "2023-12-01" "2023-12-31"]]))))
 
 (deftest ^:parallel binned-column-test
@@ -163,12 +163,12 @@
                                      {}
                                      [:field
                                       {:binning (symbol "nil #_\"key is not present.\"")}
-                                      (meta/id :orders :quantity)]
+                                      "QUANTITY"]
                                      20]
                                     [:<
                                      {}
                                      [:field
                                       {:binning (symbol "nil #_\"key is not present.\"")}
-                                      (meta/id :orders :quantity)]
+                                      "QUANTITY"]
                                      30.0]]}]}
               query')))))

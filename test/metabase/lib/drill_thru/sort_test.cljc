@@ -42,7 +42,7 @@
              (lib/display-info query drill)))
     ;; fails: no drill-thru-method
     (are [actual] (=? {:stages [{:lib/type :mbql.stage/mbql
-                                 :order-by [[:asc {} [:field {} (meta/id :orders :id)]]]}]}
+                                 :order-by [[:asc {} [:field {} "ID"]]]}]}
                       actual)
       (lib/drill-thru query drill)
       (lib/drill-thru query -1 nil drill)
@@ -54,11 +54,11 @@
         (is (=? {:query {:source-table (meta/id :orders)
                          :order-by     [[:asc
                                          [:field
-                                          (meta/id :orders :id)
+                                          "ID"
                                           {:base-type :type/BigInteger}]]]}}
                 (lib.convert/->legacy-MBQL (lib/drill-thru query -1 nil drill "asc"))))))
     (is (=? {:stages [{:lib/type :mbql.stage/mbql
-                       :order-by [[:desc {} [:field {} (meta/id :orders :id)]]]}]}
+                       :order-by [[:desc {} [:field {} "ID"]]]}]}
             (lib/drill-thru query -1 nil drill :desc)))))
 
 (deftest ^:parallel aggregate-column-e2e-test
@@ -81,7 +81,7 @@
                 drill))
         (testing "Apply the drill"
           (is (=? {:stages [{:aggregation [[:count {}]]
-                             :breakout    [[:field {} (meta/id :orders :product-id)]]
+                             :breakout    [[:field {} "PRODUCT_ID"]]
                              :order-by    [[:desc
                                             {}
                                             [:aggregation {} string?]]]}]}
@@ -100,8 +100,8 @@
                    :value      nil}
           drill   (lib.drill-thru.sort/sort-drill query -1 context)]
       (is (=? {:stages
-               [{:order-by [[:asc {} [:field {} (meta/id :orders :user-id)]]
-                            [:asc {} [:field {} (meta/id :orders :id)]]]}]}
+               [{:order-by [[:asc {} [:field {} "USER_ID"]]
+                            [:asc {} [:field {} "ID"]]]}]}
               query))
       (is (=? {:lib/type        :metabase.lib.drill-thru/drill-thru
                :type            :drill-thru/sort
@@ -110,7 +110,7 @@
               drill))
       (testing "We should REPLACE the original sort, as opposed to removing it and appending a new one"
         (is (=? {:stages
-                 [{:order-by [[:desc {} [:field {} (meta/id :orders :user-id)]]]}]}
+                 [{:order-by [[:desc {} [:field {} "USER_ID"]]]}]}
                 (lib/drill-thru query -1 nil drill :desc)))))))
 
 (deftest ^:parallel returns-sort-test-1

@@ -54,9 +54,9 @@
                                      {:type :column
                                       :name "NAME"
                                       :source-name "PEOPLE"}]}]})]
-      (is (=? [[:field {} (meta/id :orders :id)]
-               [:field {} (meta/id :orders :total)]
-               [:field {} (meta/id :people :name)]]
+      (is (=? [[:field {} "ID"]
+               [:field {} "TOTAL"]
+               [:field {} "NAME"]]
               (:fields (first (:stages query))))))))
 
 (deftest ^:parallel test-query-with-expressions-test
@@ -81,7 +81,7 @@
                                                            :value 4}]}}]}]})]
       (is (=? [[:*
                 {:lib/expression-name "double-price"}
-                [:field {} (meta/id :venues :price)]
+                [:field {} "PRICE"]
                 2]
                [:/
                 {:lib/expression-name "half-price"}
@@ -101,7 +101,7 @@
                                                    :name "PRICE"}
                                                   {:type  :literal
                                                    :value 3}]}]}]})]
-      (is (=? [[:> {} [:field {} (meta/id :venues :price)] 3]]
+      (is (=? [[:> {} [:field {} "PRICE"] 3]]
               (lib/filters query))))))
 
 (deftest ^:parallel test-query-with-aggregations-test
@@ -123,7 +123,7 @@
                                         :id   (meta/id :venues)}
                             :breakouts [{:type :column
                                          :name "CATEGORY_ID"}]}]})]
-      (is (=? [[:field {} (meta/id :venues :category-id)]]
+      (is (=? [[:field {} "CATEGORY_ID"]]
               (lib/breakouts query))))))
 
 (deftest ^:parallel test-query-with-temporal-bucket-breakout-test
@@ -137,7 +137,7 @@
                                          :unit :month}]}]})]
       (is (=? [[:field
                 {:temporal-unit :month}
-                (meta/id :checkins :date)]]
+                "DATE"]]
               (lib/breakouts query))))))
 
 (deftest ^:parallel test-query-with-bin-count-breakout-test
@@ -151,7 +151,7 @@
                                          :bins 10}]}]})]
       (is (=? [[:field
                 {:binning {:strategy :num-bins :num-bins 10}}
-                (meta/id :venues :price)]]
+                "PRICE"]]
               (lib/breakouts query))))))
 
 (deftest ^:parallel test-query-with-bin-width-breakout-test
@@ -165,7 +165,7 @@
                                          :bin-width 20}]}]})]
       (is (=? [[:field
                 {:binning {:strategy :bin-width :bin-width 20.0}}
-                (meta/id :venues :latitude)]]
+                "LATITUDE"]]
               (lib/breakouts query))))))
 
 (deftest ^:parallel test-query-with-order-bys-test
@@ -177,7 +177,7 @@
                             :order-bys [{:type      :column
                                          :name      "PRICE"
                                          :direction :asc}]}]})]
-      (is (=? [[:asc {} [:field {} (meta/id :venues :price)]]]
+      (is (=? [[:asc {} [:field {} "PRICE"]]]
               (lib/order-bys query))))))
 
 (deftest ^:parallel test-query-with-limit-test
@@ -218,8 +218,8 @@
       (is (=? [{:alias "Categories"
                 :strategy :left-join
                 :conditions [[:= {}
-                              [:field {:join-alias missing-value} (meta/id :venues :category-id)]
-                              [:field {:join-alias "Categories"} (meta/id :categories :id)]]]}]
+                              [:field {:join-alias missing-value} "CATEGORY_ID"]
+                              [:field {:join-alias "Categories"} "ID"]]]}]
               (lib/joins query))))))
 
 (deftest ^:parallel test-query-with-join-conditions-with-binning-test
@@ -243,9 +243,9 @@
       (is (=? [{:strategy :left-join
                 :conditions [[:= {}
                               [:field {:temporal-unit :month :join-alias missing-value}
-                               (meta/id :users :last-login)]
+                               "LAST_LOGIN"]
                               [:field {:temporal-unit :month :join-alias "Checkins - Last Login"}
-                               (meta/id :checkins :date)]]]}]
+                               "DATE"]]]}]
               (lib/joins query))))))
 
 (deftest ^:parallel test-query-multi-stage-test
@@ -295,8 +295,8 @@
                                                                :value 4}]}]}]}]})]
       (is (=? [[:and
                 {}
-                [:> {} [:field {} (meta/id :venues :price)] 2]
-                [:< {} [:field {} (meta/id :venues :price)] 4]]]
+                [:> {} [:field {} "PRICE"] 2]
+                [:< {} [:field {} "PRICE"] 4]]]
               (lib/filters query))))))
 
 (deftest ^:parallel test-query-named-aggregation-test
@@ -351,7 +351,7 @@
                                             :operator :sum
                                             :args     [{:type :column
                                                         :name "PRICE"}]}]}]})]
-      (is (=? [[:sum {} [:field {} (meta/id :venues :price)]]]
+      (is (=? [[:sum {} [:field {} "PRICE"]]]
               (lib/aggregations query))))))
 
 (deftest ^:parallel test-query-aggregation-avg-test
@@ -364,7 +364,7 @@
                                             :operator :avg
                                             :args     [{:type :column
                                                         :name "PRICE"}]}]}]})]
-      (is (=? [[:avg {} [:field {} (meta/id :venues :price)]]]
+      (is (=? [[:avg {} [:field {} "PRICE"]]]
               (lib/aggregations query))))))
 
 (deftest ^:parallel test-query-named-aggregation-with-args-test
@@ -378,7 +378,7 @@
                                                     :operator :sum
                                                     :args     [{:type :column
                                                                 :name "PRICE"}]}}]}]})]
-      (is (=? [[:sum {:display-name "total-price"} [:field {} (meta/id :venues :price)]]]
+      (is (=? [[:sum {:display-name "total-price"} [:field {} "PRICE"]]]
               (lib/aggregations query))))))
 
 (deftest ^:parallel test-query-with-join-card-source-test
@@ -420,11 +420,11 @@
                               [:field {:join-alias missing-value
                                        :binning    {:bin-width 20.0
                                                     :strategy  :bin-width}}
-                               (meta/id :venues :latitude)]
+                               "LATITUDE"]
                               [:field {:join-alias "Venues - Latitude"
                                        :binning    {:bin-width 20.0
                                                     :strategy  :bin-width}}
-                               (meta/id :venues :longitude)]]]}]
+                               "LONGITUDE"]]]}]
               (lib/joins query))))))
 
 (deftest ^:parallel test-query-order-by-with-temporal-bucket-test
@@ -438,7 +438,7 @@
                                          :unit      :month
                                          :direction :desc}]}]})]
       (is (=? [[:desc {}
-                [:field {:temporal-unit :month} (meta/id :checkins :date)]]]
+                [:field {:temporal-unit :month} "DATE"]]]
               (lib/order-bys query))))))
 
 (deftest ^:parallel test-query-order-by-with-temporal-bucket-test-with-duplicate-column
@@ -458,7 +458,7 @@
                                          :display-name "Date: Month"
                                          :direction    :desc}]}]})]
       (is (=? [[:desc {}
-                [:field {:temporal-unit :month} (meta/id :checkins :date)]]]
+                [:field {:temporal-unit :month} "DATE"]]]
               (lib/order-bys query)))))
 
   (testing "test-query adds order-by with temporal bucketing when selecting the second column"
@@ -477,7 +477,7 @@
                                          :display-name "Date: Year"
                                          :direction     :desc}]}]})]
       (is (=? [[:desc {}
-                [:field {:temporal-unit :year} (meta/id :checkins :date)]]]
+                [:field {:temporal-unit :year} "DATE"]]]
               (lib/order-bys query))))))
 
 (deftest ^:parallel test-query-order-by-with-binning-test
@@ -490,7 +490,7 @@
                                          :name      "PRICE"
                                          :bins      10
                                          :direction :asc}]}]})]
-      (is (=? [[:asc {} [:field {:binning {:strategy :num-bins :num-bins 10}} (meta/id :venues :price)]]]
+      (is (=? [[:asc {} [:field {:binning {:strategy :num-bins :num-bins 10}} "PRICE"]]]
               (lib/order-bys query))))))
 
 (deftest ^:parallel test-query-expression-with-aggregation-test
@@ -535,8 +535,8 @@
                                                    :name "LATITUDE"}
                                                   {:type  :literal
                                                    :value 40}]}]}]})]
-      (is (=? [[:> {} [:field {} (meta/id :venues :price)] 2]
-               [:< {} [:field {} (meta/id :venues :latitude)] 40]]
+      (is (=? [[:> {} [:field {} "PRICE"] 2]
+               [:< {} [:field {} "LATITUDE"] 40]]
               (-> query lib/filters))))))
 
 (deftest ^:parallel test-query-multiple-joins-test
@@ -581,8 +581,8 @@
                {:strategy :right-join
                 :alias "Reviews"
                 :conditions [[:= {}
-                              [:field {:join-alias "Products"} (meta/id :products :id)]
-                              [:field {:join-alias "Reviews"} (meta/id :reviews :product-id)]]]}]
+                              [:field {:join-alias "Products"} "ID"]
+                              [:field {:join-alias "Reviews"} "PRODUCT_ID"]]]}]
               (lib/joins query))))))
 
 (deftest ^:parallel test-query-with-implicit-join-test
@@ -620,13 +620,13 @@
                 {} "Gadget"
                 [:field
                  {:source-field (meta/id :orders :product-id)}
-                 (meta/id :products :category)]]]
+                 "CATEGORY"]]]
               (lib/filters query)))
 
       (is (=? [[:sum {}
                 [:field
                  {:source-field (meta/id :orders :product-id)}
-                 (meta/id :products :price)]]]
+                 "PRICE"]]]
               (lib/aggregations query)))
 
       (is (=? [[:+
@@ -634,12 +634,12 @@
                 42
                 [:field
                  {:source-field (meta/id :orders :product-id)}
-                 (meta/id :products :price)]]]
+                 "PRICE"]]]
               (lib/expressions query)))
 
       (is (=? [[:field
                 {:source-field (meta/id :orders :product-id)}
-                (meta/id :products :created-at)]]
+                "CREATED_AT"]]
               (lib/breakouts query)))
 
       (let [query (lib.query.test-spec/test-query
@@ -651,7 +651,7 @@
 
         (is (=? [[:asc {} [:field
                            {:source-field (meta/id :orders :product-id)}
-                           (meta/id :products :price)]]]
+                           "PRICE"]]]
                 (lib/order-bys query)))))))
 
 (deftest ^:parallel test-query-three-stage-test
@@ -806,29 +806,29 @@
                 :alias "People - User"}]
               (lib/joins query 0)))
 
-      (is (=? [[:* {:lib/expression-name "discounted-price"} [:field {} (meta/id :products :price)] 0.9]
+      (is (=? [[:* {:lib/expression-name "discounted-price"} [:field {} "PRICE"] 0.9]
                [:/ {:lib/expression-name "double-discount"} [:expression {} "discounted-price"] 2]]
               (lib/expressions query 0)))
 
       (is (empty? (lib/fields query 0)))
 
       (is (=? [[:and {}
-                [:> {} [:field {} (meta/id :orders :total)] 50]
+                [:> {} [:field {} "TOTAL"] 50]
                 [:or {}
-                 [:= {} [:field {:join-alias "Products"} (meta/id :products :category)] "Widget"]
+                 [:= {} [:field {:join-alias "Products"} "CATEGORY"] "Widget"]
                  [:< {} [:expression {} "double-discount"] 10]]]]
               (lib/filters query 0)))
 
       (is (=? [[:count {:display-name "total-count"}]
-               [:sum {:display-name "total-revenue"} [:field {} (meta/id :orders :total)]]
-               [:avg {} [:field {:join-alias "Products"} (meta/id :products :price)]]]
+               [:sum {:display-name "total-revenue"} [:field {} "TOTAL"]]
+               [:avg {} [:field {:join-alias "Products"} "PRICE"]]]
               (lib/aggregations query 0)))
 
-      (is (=? [[:field {:temporal-unit :month} (meta/id :orders :created-at)]
-               [:field {:binning {:strategy :num-bins :num-bins 10}} (meta/id :orders :quantity)]]
+      (is (=? [[:field {:temporal-unit :month} "CREATED_AT"]
+               [:field {:binning {:strategy :num-bins :num-bins 10}} "QUANTITY"]]
               (lib/breakouts query 0)))
 
-      (is (=? [[:desc {} [:field {:temporal-unit :month} (meta/id :orders :created-at)]]]
+      (is (=? [[:desc {} [:field {:temporal-unit :month} "CREATED_AT"]]]
               (lib/order-bys query 0)))
 
       ;; Stage 1
@@ -962,27 +962,27 @@
                 :alias "People - User"}]
               (lib/joins query 0)))
 
-      (is (=? [[:* {:lib/expression-name "discounted-price"} [:field {} (meta/id :products :price)] 0.9]
+      (is (=? [[:* {:lib/expression-name "discounted-price"} [:field {} "PRICE"] 0.9]
                [:/ {:lib/expression-name "double-discount"} [:expression {} "discounted-price"] 2]]
               (lib/expressions query 0)))
 
-      (is (=? [[:field {} (meta/id :orders :total)]
-               [:field {:join-alias "Products"} (meta/id :products :category)]
+      (is (=? [[:field {} "TOTAL"]
+               [:field {:join-alias "Products"} "CATEGORY"]
                [:expression {} "double-discount"]
                [:expression {} "discounted-price"]]
               (lib/fields query 0)))
 
       (is (=? [[:and {}
-                [:> {} [:field {} (meta/id :orders :total)] 50]
+                [:> {} [:field {} "TOTAL"] 50]
                 [:or {}
-                 [:= {} [:field {:join-alias "Products"} (meta/id :products :category)] "Widget"]
+                 [:= {} [:field {:join-alias "Products"} "CATEGORY"] "Widget"]
                  [:< {} [:expression {} "double-discount"] 10]]]]
               (lib/filters query 0)))
 
       (is (empty? (lib/aggregations query 0)))
       (is (empty? (lib/breakouts query 0)))
 
-      (is (=? [[:desc {} [:field {} (meta/id :orders :created-at)]]]
+      (is (=? [[:desc {} [:field {} "CREATED_AT"]]]
               (lib/order-bys query 0)))
 
       ;; Stage 1
@@ -1098,7 +1098,7 @@
       (is (=? {"category_filter" {:type         :dimension
                                   :name         "category_filter"
                                   :display-name "Category Filter"
-                                  :dimension    [:field {} (meta/id :venues :category-id)]
+                                  :dimension    [:field {} "CATEGORY_ID"]
                                   :widget-type  :text}}
               (lib/template-tags query))))))
 
@@ -1118,7 +1118,7 @@
       (is (=? {"date_unit" {:type         :temporal-unit
                             :name         "date_unit"
                             :display-name "Date Unit"
-                            :dimension    [:field {} (meta/id :orders :created-at)]}}
+                            :dimension    [:field {} "CREATED_AT"]}}
               (lib/template-tags query))))))
 
 (deftest ^:parallel test-native-query-with-snippet-tag-test
@@ -1188,7 +1188,7 @@
                "category_filter" {:type         :dimension
                                   :name         "category_filter"
                                   :display-name "Category Filter"
-                                  :dimension    [:field {} (meta/id :venues :category-id)]
+                                  :dimension    [:field {} "CATEGORY_ID"]
                                   :widget-type  :text}}
               (lib/template-tags query))))))
 

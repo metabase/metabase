@@ -28,7 +28,7 @@
                      :source-table (meta/id :venues)
                      :expressions [[:+ {:lib/uuid string? :lib/expression-name "myadd"}
                                     1
-                                    [:field {:base-type :type/Integer, :lib/uuid string?} (meta/id :venues :category-id)]]]}]}
+                                    [:field {:base-type :type/Integer, :lib/uuid string?} "CATEGORY_ID"]]]}]}
           (-> (lib.tu/venues-query)
               (lib/expression "myadd" (lib/+ 1 (meta/field-metadata :venues :category-id)))
               (dissoc :lib/metadata)))))
@@ -410,7 +410,7 @@
           join   (first (lib/joins query))]
       ;; TODO: There should probably be a (lib/join-alias join) ;=> "Products" function. (#39368)
       (is (=? [[:< {:lib/expression-name "bad_product"}
-                [:field {:join-alias (:alias join)} (meta/id :products :rating)]
+                [:field {:join-alias (:alias join)} "RATING"]
                 3]]
               (lib/expressions query)))
       (is (= 1 (count (lib/joins query))))

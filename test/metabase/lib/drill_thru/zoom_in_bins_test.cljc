@@ -142,14 +142,14 @@
               drill))
       (when drill
         (is (=? {:stages [{:aggregation [[:count {}]]
-                           :breakout    [[:field {:binning {:strategy :default}} (meta/id :orders :quantity)]]
+                           :breakout    [[:field {:binning {:strategy :default}} "QUANTITY"]]
                            :filters     [[:>=
                                           {}
-                                          [:field {:binning {:strategy :default}} (meta/id :orders :quantity)]
+                                          [:field {:binning {:strategy :default}} "QUANTITY"]
                                           20]
                                          [:<
                                           {}
-                                          [:field {:binning {:strategy :default}} (meta/id :orders :quantity)]
+                                          [:field {:binning {:strategy :default}} "QUANTITY"]
                                           32.5]]}]}
                 (lib/drill-thru query -1 nil drill)))))))
 
@@ -186,7 +186,7 @@
                                                    quantity-field]
                                                   [:field
                                                    {:temporal-unit :month}
-                                                   (meta/id :orders :created-at)]]
+                                                   "CREATED_AT"]]
                                    :filters      [[:>= {}
                                                    [:field {} quantity-field]
                                                    10]
@@ -221,8 +221,8 @@
       (testing "still has both breakouts"
         (is (= 2 (count (lib/breakouts drilled)))))
       (testing "filters to the zoomed range"
-        (is (=? [[:>= {} [:field {} (meta/id :products :rating)] 4.5]
-                 [:<  {} [:field {} (meta/id :products :rating)] 5.125]]
+        (is (=? [[:>= {} [:field {} "RATING"] 4.5]
+                 [:<  {} [:field {} "RATING"] 5.125]]
                 (lib/filters drilled)))))))
 
 ;; This actually checks pivot tables too.
@@ -251,8 +251,8 @@
       (testing "still has both breakouts"
         (is (= 2 (count (lib/breakouts drilled)))))
       (testing "filters to the zoomed range"
-        (is (=? [[:>= {} [:field {} (meta/id :people :latitude)] 30]
-                 [:<  {} [:field {} (meta/id :people :latitude)] 40.0]]
+        (is (=? [[:>= {} [:field {} "LATITUDE"] 30]
+                 [:<  {} [:field {} "LATITUDE"] 40.0]]
                 (lib/filters drilled)))))))
 
 (deftest ^:parallel nil-aggregation-value-test

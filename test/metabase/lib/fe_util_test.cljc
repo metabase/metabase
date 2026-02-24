@@ -239,9 +239,9 @@
                 (lib/expression-parts query stage-number [:expression {} other-expression-name])))))))
 
 (deftest ^:parallel expression-clause-test
-  (is (=? [:= {:lib/uuid string?} [:field {:lib/uuid string?} (meta/id :products :id)] 1]
+  (is (=? [:= {:lib/uuid string?} [:field {:lib/uuid string?} "ID"] 1]
           (lib/expression-clause := [(meta/field-metadata :products :id) 1] {})))
-  (is (=? [:= {:lib/uuid string?} [:field {:lib/uuid string?} (meta/id :products :id)] 1]
+  (is (=? [:= {:lib/uuid string?} [:field {:lib/uuid string?} "ID"] 1]
           (lib/expression-clause := [(meta/field-metadata :products :id) 1] {}))))
 
 (deftest ^:parallel invisible-expression-parts-test

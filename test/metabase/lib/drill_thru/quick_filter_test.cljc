@@ -173,7 +173,7 @@
 
 (deftest ^:parallel returns-quick-filter-test-10
   (testing "quick-filter should use is-empty and not-empty operators for string columns (#41783)"
-    (let [field-key (lib.drill-thru.tu/field-key= "TITLE" (meta/id :products :title))]
+    (let [field-key "TITLE"]
       (lib.drill-thru.tu/test-returns-drill
        {:drill-type  :drill-thru/quick-filter
         :click-type  :cell
@@ -237,8 +237,7 @@
                        :value        (get-in lib.drill-thru.tu/test-queries ["ORDERS" :aggregated :row "CREATED_AT"])}
       :drill-args     ["<"]
       :expected-query {:stages [{:filters [[:< {}
-                                            [:field {} (lib.drill-thru.tu/field-key= (meta/id :orders :created-at)
-                                                                                     "CREATED_AT")]
+                                            [:field {} "CREATED_AT"]
                                             (get-in lib.drill-thru.tu/test-queries ["ORDERS" :aggregated :row "CREATED_AT"])]]}]}}
 
      "multi-stage query"
@@ -302,10 +301,10 @@
                 (lib/display-info query drill))))
       (testing "apply drills"
         (testing :contains
-          (is (=? {:stages [{:filters [[:contains {} [:field {} (meta/id :reviews :body)] "text"]]}]}
+          (is (=? {:stages [{:filters [[:contains {} [:field {} "BODY"] "text"]]}]}
                   (lib/drill-thru query -1 nil drill "contains"))))
         (testing :does-not-contain
-          (is (=? {:stages [{:filters [[:does-not-contain {} [:field {} (meta/id :reviews :body)] "text"]]}]}
+          (is (=? {:stages [{:filters [[:does-not-contain {} [:field {} "BODY"] "text"]]}]}
                   (lib/drill-thru query -1 nil drill "does-not-contain"))))))))
 
 (deftest ^:parallel preserve-temporal-bucket-test-quick-filter
@@ -339,6 +338,6 @@
                                        (lib/available-drill-thrus base-query context))]
       (is (some? drill))
       (is (=? {:stages [{:filters [[:= {}
-                                    [:field {:temporal-unit :month} (meta/id :orders :created-at)]
+                                    [:field {:temporal-unit :month} "CREATED_AT"]
                                     "2023-03-01T00:00:00Z"]]}]}
               (lib/drill-thru base-query -1 nil drill "="))))))
