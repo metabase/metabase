@@ -1,7 +1,7 @@
 export type ReleaseFlag = "joke-of-the-day";
 
 export type ReleaseFlagInfo = {
-  value: boolean;
+  is_enabled: boolean;
   description: string;
 };
 
