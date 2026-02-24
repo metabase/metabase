@@ -37,7 +37,7 @@ export const CreateTransformMenu = () => {
     hasPythonTransformsFeature || shouldShowPythonTransformsUpsell;
 
   const handlePythonClick = () => {
-    dispatch(push(Urls.newPythonTransform())); // Route will show upsell modal if feature is not enabled
+    dispatch(push(Urls.newAdvancedTransform())); // Route will show upsell modal if feature is not enabled
 
     if (hasPythonTransformsFeature) {
       trackTransformCreate({ creationType: "python" });
@@ -90,7 +90,7 @@ export const CreateTransformMenu = () => {
                   }
                   onClick={handlePythonClick}
                 >
-                  {t`Python script`}
+                  {t`Advanced transform`}
                 </Menu.Item>
               )}
               <Menu.Item
