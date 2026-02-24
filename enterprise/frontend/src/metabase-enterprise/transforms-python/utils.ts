@@ -10,13 +10,13 @@ export function getPythonSourceValidationResult(
   source: PythonTransformSourceDraft,
 ): PythonTransformSourceValidationResult {
   if (!source["source-database"]) {
-    return { isValid: false, errorMessage: t`Select a source a database` };
+    return { isValid: false, errorMessage: t`Select a source database` };
   }
 
   if (source.body.trim() === "") {
     return {
       isValid: false,
-      errorMessage: t`The Python script cannot be empty`,
+      errorMessage: t`The transform cannot be empty`,
     };
   }
 
@@ -33,5 +33,5 @@ export function getPythonSourceValidationResult(
 export function isPythonTransformSource(
   source: PythonTransformSourceDraft,
 ): source is PythonTransformSource {
-  return source.type === "python" && source["source-database"] !== undefined;
+  return source["source-database"] !== undefined;
 }

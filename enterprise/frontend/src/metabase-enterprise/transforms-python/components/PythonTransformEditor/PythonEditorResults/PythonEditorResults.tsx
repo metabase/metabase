@@ -161,7 +161,7 @@ function ResultsFooter({
         <Text
           c="text-primary"
           ml="xs"
-        >{t`An error occurred while executing your Python script.`}</Text>
+        >{t`An error occurred while executing your transform.`}</Text>
         <DismissButton onDismiss={onDismiss} />
       </Flex>
     );

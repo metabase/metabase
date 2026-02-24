@@ -23,7 +23,18 @@ export type TransformOwner = Pick<
   "id" | "email" | "first_name" | "last_name"
 >;
 
-export type AdvancedTransformType = "python" | "javascript";
+export const ADVANCED_TRANSFORM_TYPES = {
+  python: "Python",
+  javascript: "JavaScript",
+} satisfies Record<string, string>;
+
+export type AdvancedTransformType = keyof typeof ADVANCED_TRANSFORM_TYPES;
+
+export function isAdvancedTransformType(
+  type: string,
+): type is AdvancedTransformType {
+  return type in ADVANCED_TRANSFORM_TYPES;
+}
 
 export type Transform = {
   id: TransformId;
@@ -98,8 +109,15 @@ export type TransformTargetAppendStrategy = {
   type: "append";
 };
 export type DraftTransformSource =
-  | Transform["source"]
+  | QueryTransformSource
+  | PythonTransformSource
   | PythonTransformSourceDraft;
+
+export function isAdvancedTransformSource(
+  source: DraftTransformSource,
+): source is PythonTransformSource | PythonTransformSourceDraft {
+  return isAdvancedTransformType(source.type);
+}
 
 export type DraftTransform = Partial<
   Pick<Transform, "id" | "name" | "description" | "target">

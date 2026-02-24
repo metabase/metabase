@@ -1,35 +1,36 @@
 import type { Extension } from "@uiw/react-codemirror";
 import cx from "classnames";
-import _ from "underscore";
+import { useMemo } from "react";
 
 import { CodeEditor } from "metabase/common/components/CodeEditor";
+import type { AdvancedTransformType } from "metabase-types/api";
 
 import S from "./PythonEditor.module.css";
-import { completion } from "./utils";
+import { getCompletionExtensions } from "./utils";
 
 export function PythonEditor({
+  type,
   value,
   proposedValue,
   onChange,
-  withPandasCompletions,
   className,
   readOnly,
   extensions: externalExtensions,
   ...rest
 }: {
+  type: AdvancedTransformType;
   value: string;
   proposedValue?: string;
 
   onChange?: (value: string) => void;
-  withPandasCompletions?: boolean;
   className?: string;
   readOnly?: boolean;
   extensions?: Extension[];
 }) {
-  const extensions = _.compact([
-    ...(externalExtensions ?? []),
-    withPandasCompletions ? completion : undefined,
-  ]);
+  const extensions = useMemo(
+    () => [...(externalExtensions ?? []), ...getCompletionExtensions(type)],
+    [externalExtensions, type],
+  );
 
   return (
     <CodeEditor
@@ -37,7 +38,7 @@ export function PythonEditor({
       value={value}
       proposedValue={proposedValue}
       onChange={onChange}
-      language="python"
+      language={type === "javascript" ? "typescript" : type}
       extensions={extensions}
       readOnly={readOnly}
       {...rest}
