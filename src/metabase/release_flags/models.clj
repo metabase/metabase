@@ -24,12 +24,7 @@
                [flag (dissoc row :flag)]))
         (t2/select :model/ReleaseFlag)))
 
-(mu/defn update-statuses! :- [:map-of
-                              :string
-                              [:map
-                               [:description [:maybe :string]]
-                               [:start_date :any]
-                               [:is_enabled :boolean]]]
+(mu/defn update-statuses!
   "Takes a map of flag name to enabled status and updates each flag's is_enabled accordingly."
   [statuses :- [:map-of :string :boolean]]
   (doseq [[flag enabled?] statuses]
