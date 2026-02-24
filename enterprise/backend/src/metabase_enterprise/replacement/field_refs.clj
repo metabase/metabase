@@ -77,7 +77,7 @@
 (defn- card-upgrade-field-refs!
   [card-id]
   (let [dataset-query (t2/select-one-fn :dataset_query :model/Card card-id)
-        dataset-query' (lib-be/update-field-refs-in-query dataset-query)]
+        dataset-query' (lib-be/upgrade-field-refs-in-query dataset-query)]
     (when (not= dataset-query dataset-query')
       (t2/update! :model/Card card-id {:dataset_query dataset-query'}))
     (dashboard-card-upgrade-field-refs! dataset-query' card-id)))
@@ -87,21 +87,21 @@
   (let [source (t2/select-one-fn :source :model/Transform transform-id)]
     (when (= :query (:type source))
       (let [query (:query source)
-            query' (lib-be/update-field-refs-in-query query)]
+            query' (lib-be/upgrade-field-refs-in-query query)]
         (when (not= query query')
           (t2/update! :model/Transform transform-id {:source (assoc source :query query')}))))))
 
 (defn- segment-upgrade-field-refs!
   [segment-id]
   (let [definition  (t2/select-one-fn :definition :model/Segment segment-id)
-        definition' (lib-be/update-field-refs-in-query definition)]
+        definition' (lib-be/upgrade-field-refs-in-query definition)]
     (when (not= definition definition')
       (t2/update! :model/Segment segment-id {:definition definition'}))))
 
 (defn- measure-upgrade-field-refs!
   [measure-id]
   (let [definition  (t2/select-one-fn :definition :model/Measure measure-id)
-        definition' (lib-be/update-field-refs-in-query definition)]
+        definition' (lib-be/upgrade-field-refs-in-query definition)]
     (when (not= definition definition')
       (t2/update! :model/Measure measure-id {:definition definition'}))))
 

@@ -12,7 +12,6 @@
    [metabase.lib.walk :as lib.walk]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.registry :as mr]
    [metabase.util.performance  :as perf]))
 
 (defn- walk-clause-field-refs
@@ -23,7 +22,7 @@
                             (lib.field/is-field-clause? clause)
                             f))))
 
-(mu/defn- update-field-ref :- :mbql.clause/field
+(mu/defn- upgrade-field-ref :- :mbql.clause/field
   [query         :- ::lib.schema/query
    stage-number  :- :int
    field-ref     :- :mbql.clause/field
@@ -34,32 +33,32 @@
             lib.ref/ref))
       field-ref))
 
-(mu/defn- update-field-refs-in-clauses :- [:sequential :any]
+(mu/defn- upgrade-field-refs-in-clauses :- [:sequential :any]
   [query        :- ::lib.schema/query
    stage-number :- :int
    clauses      :- [:sequential :any]
    columns      :- [:sequential ::lib.schema.metadata/column]]
   (perf/mapv (fn [clause]
-               (walk-clause-field-refs clause #(update-field-ref query stage-number % columns)))
+               (walk-clause-field-refs clause #(upgrade-field-ref query stage-number % columns)))
              clauses))
 
-(mu/defn- update-field-refs-in-join :- ::lib.schema.join/join
+(mu/defn- upgrade-field-refs-in-join :- ::lib.schema.join/join
   [query        :- ::lib.schema/query
    stage-number :- :int
    join         :- ::lib.schema.join/join
    columns      :- [:sequential ::lib.schema.metadata/column]]
   (-> join
-      (u/update-some :fields #(if (keyword? %) % (update-field-refs-in-clauses query stage-number % columns)))
-      (u/update-some :conditions #(update-field-refs-in-clauses query stage-number % columns))))
+      (u/update-some :fields #(if (keyword? %) % (upgrade-field-refs-in-clauses query stage-number % columns)))
+      (u/update-some :conditions #(upgrade-field-refs-in-clauses query stage-number % columns))))
 
-(mu/defn- update-field-refs-in-joins :- [:sequential ::lib.schema.join/join]
+(mu/defn- upgrade-field-refs-in-joins :- [:sequential ::lib.schema.join/join]
   [query        :- ::lib.schema/query
    stage-number :- :int
    joins        :- [:sequential ::lib.schema.join/join]
    columns      :- [:sequential ::lib.schema.metadata/column]]
-  (perf/mapv #(update-field-refs-in-join query stage-number % columns) joins))
+  (perf/mapv #(upgrade-field-refs-in-join query stage-number % columns) joins))
 
-(mu/defn- update-field-refs-in-stage :- ::lib.schema/stage
+(mu/defn- upgrade-field-refs-in-stage :- ::lib.schema/stage
   [query        :- ::lib.schema/query
    stage-number :- :int]
   (let [stage (lib.util/query-stage query stage-number)
@@ -69,16 +68,16 @@
                             (lib.order-by/orderable-columns query stage-number)
                             visible-columns)]
     (-> stage
-        (u/update-some :fields      #(update-field-refs-in-clauses query stage-number % visible-columns))
-        (u/update-some :joins       #(update-field-refs-in-joins query stage-number % visible-columns))
-        (u/update-some :expressions #(update-field-refs-in-clauses query stage-number % visible-columns))
-        (u/update-some :filters     #(update-field-refs-in-clauses query stage-number % visible-columns))
-        (u/update-some :aggregation #(update-field-refs-in-clauses query stage-number % visible-columns))
-        (u/update-some :breakout    #(update-field-refs-in-clauses query stage-number % visible-columns))
-        (u/update-some :order-by    #(update-field-refs-in-clauses query stage-number % orderable-columns)))))
+        (u/update-some :fields      #(upgrade-field-refs-in-clauses query stage-number % visible-columns))
+        (u/update-some :joins       #(upgrade-field-refs-in-joins query stage-number % visible-columns))
+        (u/update-some :expressions #(upgrade-field-refs-in-clauses query stage-number % visible-columns))
+        (u/update-some :filters     #(upgrade-field-refs-in-clauses query stage-number % visible-columns))
+        (u/update-some :aggregation #(upgrade-field-refs-in-clauses query stage-number % visible-columns))
+        (u/update-some :breakout    #(upgrade-field-refs-in-clauses query stage-number % visible-columns))
+        (u/update-some :order-by    #(upgrade-field-refs-in-clauses query stage-number % orderable-columns)))))
 
-(mu/defn update-field-refs-in-query :- ::lib.schema/query
+(mu/defn upgrade-field-refs-in-query :- ::lib.schema/query
   [query     :- ::lib.schema/query]
   (update query :stages #(vec (map-indexed (fn [stage-number _]
-                                             (update-field-refs-in-stage query stage-number))
+                                             (upgrade-field-refs-in-stage query stage-number))
                                            %))))

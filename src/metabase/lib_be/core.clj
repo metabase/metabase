@@ -36,4 +36,4 @@
   enable-nested-queries
   start-of-week]
  [metabase.lib-be.source-swap
-  update-field-refs-in-query])
+  upgrade-field-refs-in-query])
