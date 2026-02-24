@@ -94,39 +94,38 @@
 
 (defn- extract-source-entity
   "Extract source entity info from a :single-column col-spec's source-columns.
-   Recognizes card placeholder table names (mb__dummy_card__N) as card sources.
+   When card-placeholders? is true, recognizes card placeholder table names (mb__dummy_card__N).
    Returns:
    - {:kind :table, :spec table-spec} for a single real table source
-   - {:kind :card, :card-id N} for a single card placeholder source
+   - {:kind :card, :card-id N} for a single card placeholder source (only when card-placeholders?)
    - :multiple for ambiguous sources (multiple sources of any kind)
    - nil otherwise (no recognizable sources, or not a :single-column spec)"
-  [col-spec]
-  (when (= (:type col-spec) :single-column)
-    (let [first-sources   (first (:source-columns col-spec))
-          all-col-sources (filter #(= (:type %) :all-columns) first-sources)]
-      (cond
-        (empty? all-col-sources) nil
+  [card-placeholders? col-spec]
+  (let [card-id-fn (if card-placeholders?
+                     (fn [source] (some-> source :table :table parse-card-placeholder))
+                     (constantly nil))]
+    (when (= (:type col-spec) :single-column)
+      (let [first-sources   (first (:source-columns col-spec))
+            all-col-sources (filter #(= (:type %) :all-columns) first-sources)]
+        (cond
+          (empty? all-col-sources) nil
 
-        (> (count all-col-sources) 1)
-        ;; Multiple sources — check if any are card placeholders
-        (let [cards  (keep #(some-> (:table %) :table parse-card-placeholder) all-col-sources)
-              tables (remove #(some-> (:table %) :table parse-card-placeholder) all-col-sources)]
-          (cond
-            ;; Single card, no tables
-            (and (= 1 (count cards)) (empty? tables))
-            {:kind :card, :card-id (first cards)}
-            ;; Single table, no cards
-            (and (empty? cards) (= 1 (count tables)))
-            {:kind :table, :spec (:table (first tables))}
-            :else :multiple))
+          (> (count all-col-sources) 1)
+          (let [cards  (keep card-id-fn all-col-sources)
+                tables (remove card-id-fn all-col-sources)]
+            (cond
+              (and (= 1 (count cards)) (empty? tables))
+              {:kind :card, :card-id (first cards)}
+              (and (empty? cards) (= 1 (count tables)))
+              {:kind :table, :spec (:table (first tables))}
+              :else :multiple))
 
-        :else
-        (let [source    (first all-col-sources)
-              table-name (-> source :table :table)
-              card-id   (some-> table-name parse-card-placeholder)]
-          (if card-id
-            {:kind :card, :card-id card-id}
-            {:kind :table, :spec (:table source)}))))))
+          :else
+          (let [source   (first all-col-sources)
+                card-id  (card-id-fn source)]
+            (if card-id
+              {:kind :card, :card-id card-id}
+              {:kind :table, :spec (:table source)})))))))
 
 (defn- resolve-table-id
   "Map a SQL table spec {:table name, :schema schema} to a Metabase table ID.
@@ -148,14 +147,15 @@
 
 (defn- enrich-error
   "Enrich a :missing-column error with source entity information from its col-spec.
-   For card placeholder sources, checks the column against the card's result-metadata:
-   if the column exists in the card, returns nil (valid column, not an error).
+   When card-placeholders? is true, checks card placeholder columns against card metadata:
+   valid columns return nil (suppressed), invalid ones get source attribution.
    Suppresses :missing-table-alias errors for card placeholder table names.
    For other error types, returns the error unchanged."
-  [driver mp col-spec error]
+  [driver mp card-placeholders? col-spec error]
   (cond
     ;; Suppress missing-table-alias for card placeholders (e.g. SELECT * FROM mb__dummy_card__1)
-    (and (= (:type error) :missing-table-alias)
+    (and card-placeholders?
+         (= (:type error) :missing-table-alias)
          (parse-card-placeholder (:name error)))
     nil
 
@@ -163,7 +163,7 @@
     error
 
     :else
-    (let [source (extract-source-entity col-spec)]
+    (let [source (extract-source-entity card-placeholders? col-spec)]
       (cond
         ;; Table source
         (and (map? source) (= (:kind source) :table))
@@ -188,8 +188,9 @@
 (defn- validate-with-sources
   "Validate a compiled native query, enriching errors with source entity information
    derived from the col-spec's source-columns.
-   For card placeholder sources, valid columns are filtered out (enrich-error returns nil)."
-  [driver compiled]
+   When card-placeholders? is true, card placeholder sources are recognized and valid
+   columns are filtered out (enrich-error returns nil)."
+  [driver compiled card-placeholders?]
   (let [sql                                (lib/raw-native-query compiled)
         mp                                 (lib/->metadata-provider compiled)
         {:keys [used-fields returned-fields errors]} (sql-tools/field-references driver sql)
@@ -197,7 +198,7 @@
                        (mapcat (fn [col-spec]
                                  (->> (sql-tools.common/resolve-field driver mp col-spec)
                                       (keep :error)
-                                      (keep (partial enrich-error driver mp col-spec))))
+                                      (keep (partial enrich-error driver mp card-placeholders? col-spec))))
                                fields))]
     (into #{}
           (map (partial normalize-error driver))
@@ -214,7 +215,9 @@
     (let [mp     (lib/->metadata-provider compiled)
           tables (table-deps driver compiled)
           source (cond
-                   (empty? tables) nil
+                   (empty? tables)
+                   nil
+
                    (= 1 (count tables))
                    (let [table-spec (first tables)]
                      (if-let [table-id (if (int? (:table table-spec))
@@ -223,7 +226,9 @@
                        {:source-entity-type :table
                         :source-entity-id   table-id}
                        {:source-entity-type :unknown}))
-                   :else {:source-entity-type :unknown})]
+
+                   :else
+                   {:source-entity-type :unknown})]
       (if source
         (into #{} (map (fn [error]
                          (if (or (:source-entity-type error)
@@ -241,14 +246,14 @@
    query  :- ::lib.schema/query]
   (if (has-card-template-tags? query)
     (if-let [compiled (compile-toplevel-query query)]
-      (let [errors (validate-with-sources driver compiled)]
+      (let [errors (validate-with-sources driver compiled true)]
         (if (empty? errors)
           errors
           (fallback-enrich driver compiled errors)))
       ;; Fallback: cards with placeholder collision
       (driver/validate-native-query-fields driver (compile-query query)))
     (let [compiled (compile-query query)
-          errors   (validate-with-sources driver compiled)]
+          errors   (validate-with-sources driver compiled false)]
       (if (empty? errors)
         errors
         (fallback-enrich driver compiled errors)))))

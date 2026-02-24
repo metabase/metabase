@@ -499,3 +499,13 @@
       (is (= (normalize-error-names driver
                                     #{(lib/missing-column-error "BAD")})
              (deps.native-validation/validate-native-query driver query))))))
+
+(deftest ^:parallel placeholder-no-card-refs-collision-test
+  (testing "Placeholder should make "
+    (let [mp     (deps.tu/default-metadata-provider)
+          driver (:engine (lib.metadata/database mp))
+          query  (fake-query mp
+                             "SELECT BAD FROM mb__dummy_card__99")]
+      (is (= (normalize-error-names driver
+                                    #{(lib/missing-column-error "BAD")})
+             (deps.native-validation/validate-native-query driver query))))))
