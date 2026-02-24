@@ -270,12 +270,13 @@ export type ColumnSettingDefinition<TValue, TProps = unknown> = {
 };
 
 export type SettingsExtra = {
-  enableEntityNavigation?: boolean;
-  transformedSeries?: RawSeries | TransformedSeries;
   dashboardId?: DashboardId;
+  enableEntityNavigation?: boolean;
+  forAdminSettings?: boolean;
   isDashboard?: boolean;
   series?: Series;
   settings?: VisualizationSettings;
+  transformedSeries?: RawSeries | TransformedSeries;
   // [key: string]: unknown; // TODO
 };
 
@@ -332,7 +333,7 @@ export type VisualizationSettingDefinition<T, TValue, TProps extends object> = {
     onChange: (value: TValue) => void,
     extra: SettingsExtra,
     onChangeSettings: (value: Partial<VisualizationSettings>) => void,
-  ) => TProps;
+  ) => Partial<TProps>;
   onUpdate?: (value: TValue, extra: SettingsExtra) => void;
   readDependencies?: string[];
   writeDependencies?: string[];

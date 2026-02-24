@@ -17,7 +17,7 @@ import type {
 
 export type DatasetColumnReference = Pick<DatasetColumn, "name" | "field_ref">;
 
-export const getColumnKey = (column: DatasetColumnReference) => {
+export const getColumnKey = (column: DatasetColumnReference): string => {
   return JSON.stringify(["name", column.name]);
 };
 

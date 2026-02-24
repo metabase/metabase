@@ -9,7 +9,7 @@ import {
 
 const isDataSetting = ({
   widget,
-}: VisualizationSettingDefinition<unknown, unknown>) => {
+}: VisualizationSettingDefinition<unknown, unknown, object>) => {
   // TODO Come up with a better condition
   return widget === "field" || widget === "fields";
 };

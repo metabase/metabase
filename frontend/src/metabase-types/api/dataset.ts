@@ -6,7 +6,7 @@ import type {
   VisualizerColumnValueSource,
 } from "metabase-types/api";
 
-import type { Card } from "./card";
+import type { Card, ColumnSettings } from "./card";
 import type { DatabaseId } from "./database";
 import type {
   Field,
@@ -74,7 +74,7 @@ export interface DatasetColumn {
   remapped_to?: string;
   effective_type?: string;
   binning_info?: BinningMetadata | null;
-  settings?: Record<string, any>;
+  settings?: ColumnSettings;
   fingerprint?: FieldFingerprint | null;
 
   // model with customized metadata

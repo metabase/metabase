@@ -1,3 +1,4 @@
+import type { CurrencyStyle } from "metabase/lib/formatting";
 import type {
   EmbeddingParameters,
   EmbeddingType,
@@ -240,10 +241,11 @@ export interface ColumnSettings {
   column_title?: string;
   number_separators?: string;
   currency?: string;
+  currency_style?: CurrencyStyle;
   click_behavior?: ClickBehavior;
 
   // some options are untyped
-  [key: string]: any;
+  [key: string]: any; // TODO
 }
 
 export type VisualizationSettings = {

@@ -14,7 +14,7 @@ import { TableColumnPanel } from "./TableColumnPanel";
 import type { EditWidgetData } from "./types";
 import { canEditQuery } from "./utils";
 
-interface ChartSettingTableColumnsProps {
+export interface ChartSettingTableColumnsProps {
   value: TableColumnOrderSetting[];
   columns: DatasetColumn[];
   question?: Question;
