@@ -551,11 +551,16 @@ export function getDisplaySeriesSettingsByDataKey(
   settings: ComputedVisualizationSettings,
 ) {
   const seriesSettingsByKey = seriesModels.reduce<
-    Partial<Record<DataKey, SeriesSettings>>
+    Record<DataKey, SeriesSettings>
   >((acc, seriesModel) => {
-    acc[seriesModel.dataKey] = settings.series?.(
+    const seriesSettings = settings.series?.(
       seriesModel.legacySeriesSettingsObjectKey,
     );
+
+    if (seriesSettings) {
+      acc[seriesModel.dataKey] = seriesSettings;
+    }
+
     return acc;
   }, {});
 

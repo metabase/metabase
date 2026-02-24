@@ -341,6 +341,7 @@ export type VisualizationSettingDefinition<T, TValue, TProps extends object> = {
     extra: SettingsExtra | undefined,
     onChangeSettings: (value: Partial<VisualizationSettings>) => void,
   ) => Partial<TProps>;
+  onChange?: (value: TValue) => void;
   onUpdate?: (value: TValue, extra: SettingsExtra) => void;
   readDependencies?: string[];
   writeDependencies?: string[];

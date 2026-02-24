@@ -42,7 +42,7 @@ const getSeriesModelsWithTrends = (
   return seriesModels
     .map((seriesModel) => {
       if (
-        settings.series(seriesModel.legacySeriesSettingsObjectKey)
+        settings.series?.(seriesModel.legacySeriesSettingsObjectKey)
           .show_series_trendline === false
       ) {
         return null;

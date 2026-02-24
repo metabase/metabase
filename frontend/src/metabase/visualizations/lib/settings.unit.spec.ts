@@ -162,7 +162,7 @@ describe("settings framework", () => {
         mockObject,
         onChangeSettings,
       );
-      widgets[0].onChange("bar");
+      widgets[0].onChange?.("bar");
       expect(onChangeSettings.mock.calls).toEqual([[{ foo: "bar" }]]);
     });
   });

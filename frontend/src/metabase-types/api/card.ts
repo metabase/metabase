@@ -131,6 +131,7 @@ export type SeriesSettings = {
   "line.interpolate"?: string;
   "line.marker_enabled"?: boolean;
   "line.missing"?: string;
+  show_series_trendline?: boolean;
 };
 
 export type SeriesOrderSetting = {
