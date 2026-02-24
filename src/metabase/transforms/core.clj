@@ -26,6 +26,7 @@
   native-query-transform?
   javascript-transform?
   python-transform?
+  runner-transform?
   query-transform?
   transform-source-database
   transform-source-type
@@ -92,8 +93,14 @@
     {:transform-native-runs         (count-runs ["native" "mbql"] yesterday-utc)
      :transform-python-runs         (count-runs ["python"] yesterday-utc)
      :transform-javascript-runs (count-runs ["javascript"] yesterday-utc)
+     :transform-clojure-runs (count-runs ["clojure"] yesterday-utc)
+     :transform-r-runs (count-runs ["r"] yesterday-utc)
+     :transform-julia-runs (count-runs ["julia"] yesterday-utc)
      :transform-usage-date          (str (t/local-date yesterday-utc))
      :transform-rolling-native-runs (count-runs ["native" "mbql"] today-utc)
      :transform-rolling-python-runs (count-runs ["python"] today-utc)
      :transform-rolling-javascript-runs (count-runs ["javascript"] today-utc)
+     :transform-rolling-clojure-runs (count-runs ["clojure"] today-utc)
+     :transform-rolling-r-runs (count-runs ["r"] today-utc)
+     :transform-rolling-julia-runs (count-runs ["julia"] today-utc)
      :transform-rolling-usage-date  (str (t/local-date today-utc))}))

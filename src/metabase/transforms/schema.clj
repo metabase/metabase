@@ -32,6 +32,17 @@
   [:multi {:dispatch :type}
    ["checkpoint" ::checkpoint-strategy]])
 
+(defn- runner-source-schema
+  "Schema for a runner-based transform source (Python, JavaScript, Clojure, R, Julia).
+  All runner languages share the same shape — only the :type keyword differs."
+  [type-kw]
+  [:map
+   [:source-database {:optional true} :int]
+   [:source-tables [:map-of :string ::source-table-value]]
+   [:type {:decode/normalize lib.schema.common/normalize-keyword} [:= type-kw]]
+   [:body :string]
+   [:source-incremental-strategy {:optional true} ::source-incremental-strategy]])
+
 (mr/def ::transform-source
   [:multi {:dispatch (comp keyword :type)}
    [:query
@@ -39,21 +50,11 @@
      [:type {:decode/normalize lib.schema.common/normalize-keyword} [:= :query]]
      [:query ::queries.schema/query]
      [:source-incremental-strategy {:optional true} ::source-incremental-strategy]]]
-   [:python
-    [:map
-     [:source-database {:optional true} :int]
-     ;; NB: if source is checkpoint, only one table allowed
-     [:source-tables   [:map-of :string ::source-table-value]]
-     [:type {:decode/normalize lib.schema.common/normalize-keyword} [:= :python]]
-     [:body :string]
-     [:source-incremental-strategy {:optional true} ::source-incremental-strategy]]]
-   [:javascript
-    [:map
-     [:source-database {:optional true} :int]
-     [:source-tables [:map-of :string ::source-table-value]]
-     [:type {:decode/normalize lib.schema.common/normalize-keyword} [:= :javascript]]
-     [:body :string]
-     [:source-incremental-strategy {:optional true} ::source-incremental-strategy]]]])
+   [:python (runner-source-schema :python)]
+   [:javascript (runner-source-schema :javascript)]
+   [:clojure (runner-source-schema :clojure)]
+   [:r (runner-source-schema :r)]
+   [:julia (runner-source-schema :julia)]])
 
 (mr/def ::append-config
   [:map [:type [:= "append"]]])
