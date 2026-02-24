@@ -79,8 +79,9 @@
 (def ^:private pa-foreign-keys
   "Foreign key relationships between PA views.
    Maps {source-table {source-field [target-table target-field]}}."
-  {"V_PA_EVENTS"   {"SITE_ID" ["V_PA_SITES" "ID"]}
-   "V_PA_SESSIONS" {"SITE_ID" ["V_PA_SITES" "ID"]}})
+  {"V_PA_EVENTS"   {"SITE_ID"    ["V_PA_SITES" "ID"]
+                    "SESSION_ID" ["V_PA_SESSIONS" "ID"]}
+   "V_PA_SESSIONS" {"SITE_ID"    ["V_PA_SITES" "ID"]}})
 
 (def ^:private pa-field-remappings
   "Internal dimension remappings for enum fields.
