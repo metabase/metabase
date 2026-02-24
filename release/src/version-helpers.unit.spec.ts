@@ -1,8 +1,10 @@
 import type { Tag } from "./types";
 import {
+  compareVersions,
   filterOutNonSupportedPrereleaseIdentifier,
   findNextPatchVersion,
   getBuildRequirements,
+  getDockerImage,
   getDotXs,
   getEnterpriseVersion,
   getExtraTagsForVersion,
@@ -907,6 +909,52 @@ describe("version-helpers", () => {
       ["v1.43.2.1", "2"],
     ])("%s -> %s", (input, expected) => {
       expect(getMinorVersion(input)).toBe(expected);
+    });
+  });
+
+  describe("compareVersions", () => {
+    it.each([
+      // major version changes
+      ["v0.50.0", "v0.51.0", "upgrade"],
+      ["v0.57.13", "v0.58.7", "upgrade"],
+      ["v0.51.0", "v0.50.0", "downgrade"],
+      ["v0.58.7", "v0.57.13", "downgrade"],
+      // minor version changes
+      ["v0.58.6", "v0.58.7", "upgrade"],
+      ["v0.58.7", "v0.58.6", "downgrade"],
+      // patch version changes
+      ["v0.50.13.5", "v0.50.13.6", "upgrade"],
+      ["v0.50.13.6", "v0.50.13.5", "downgrade"],
+      ["v0.50.13.5", "v0.50.13.5", "same"],
+      // patch to minor
+      ["v0.50.13.5", "v0.50.14", "upgrade"],
+      ["v0.50.14", "v0.50.13.5", "downgrade"],
+      // patch to major
+      ["v0.50.13.5", "v0.51.0", "upgrade"],
+      ["v0.51.0", "v0.50.13.5", "downgrade"],
+      // same versions
+      ["v0.50.0", "v0.50.0", "same"],
+      ["v0.58.7", "v0.58.7", "same"],
+      // ignores edition prefix (v0 vs v1)
+      ["v1.58.6", "v0.58.7", "upgrade"],
+      ["v0.58.7", "v1.58.6", "downgrade"],
+    ] as const)("%s -> %s = %s", (source, target, expected) => {
+      expect(compareVersions(source, target)).toBe(expected);
+    });
+  });
+
+  describe("getDockerImage", () => {
+    it.each([
+      // OSS versions (v0.x.x)
+      ["v0.58.7", "metabase/metabase:v0.58.7"],
+      ["v0.57.13", "metabase/metabase:v0.57.13"],
+      ["v0.50.13.5", "metabase/metabase:v0.50.13.5"], // patch version
+      // EE versions (v1.x.x)
+      ["v1.58.7", "metabase/metabase-enterprise:v1.58.7"],
+      ["v1.57.13", "metabase/metabase-enterprise:v1.57.13"],
+      ["v1.50.13.5", "metabase/metabase-enterprise:v1.50.13.5"], // patch version
+    ] as const)("%s -> %s", (version, expected) => {
+      expect(getDockerImage(version)).toBe(expected);
     });
   });
 
