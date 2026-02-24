@@ -67,12 +67,7 @@ const FlagSwitch = ({
       label={name}
       checked={value}
       description={description}
-      onChange={() =>
-        updateFlag({
-          name: name,
-          is_enabled: !value,
-        })
-      }
+      onChange={() => updateFlag({ [name]: !value })}
     />
   );
 };
