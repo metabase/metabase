@@ -20,6 +20,9 @@ dimensions:
       field_type: GenericTable.Category
       score: 50
       max_cardinality: 5
+  - Site:
+      field_type: FK
+      named: site
 metrics:
   - Count: ["count"]
 filters:
@@ -39,6 +42,7 @@ groups:
       title: When sessions happen
       score: 60
 dashboard_filters:
+  - Site
   - Timestamp
   - Country
   - State

@@ -16,6 +16,9 @@ dimensions:
       field_type: GenericTable.Category
       score: 75
   - Country: GenericTable.Country
+  - Site:
+      field_type: FK
+      named: site
 metrics:
   - Count: ["count"]
 filters:
@@ -35,6 +38,7 @@ groups:
       title: When events happen
       score: 60
 dashboard_filters:
+  - Site
   - Timestamp
   - GenericCategoryMedium
   - Country
