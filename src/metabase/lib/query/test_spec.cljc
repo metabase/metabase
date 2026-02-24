@@ -59,7 +59,9 @@
     (case (count columns)
       0 (throw (ex-info "No column found" {:columns available-columns, :column-spec column-spec}))
       1 (first columns)
-      (throw (ex-info "Multiple columns found" {:columns columns, :column-spec column-spec})))))
+      (if (:index column-spec)
+        (get columns (:index column-spec))
+        (throw (ex-info "Multiple columns found" {:columns columns, :column-spec column-spec}))))))
 
 (mu/defn- append-fields :- ::lib.schema/query
   [query        :- ::lib.schema/query

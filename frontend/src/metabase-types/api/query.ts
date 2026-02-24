@@ -458,6 +458,10 @@ export type TestColumnSpec = {
   name: string;
   sourceName?: string;
   displayName?: string;
+
+  // When the columns cannot be disambiguated with name, sourceName and displayName
+  // use this index to pick one.
+  index?: number;
 };
 
 export type TestExpressionSpec =

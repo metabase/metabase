@@ -32,7 +32,8 @@
    [:type [:= {:decode/normalize lib.schema.common/normalize-keyword} :column]]
    [:name string?]
    [:source-name {:optional true} [:maybe string?]]
-   [:display-name {:optional true} [:maybe string?]]])
+   [:display-name {:optional true} [:maybe string?]]
+   [:index {:optional true} [:maybe pos-int?]]])
 
 (mr/def ::test-temporal-bucket-spec
   [:map
