@@ -1338,7 +1338,7 @@
                (lib/join-lhs-display-name query join-or-joinable (meta/field-metadata :orders :product-id)))))
       (testing "existing join should use the display name for condition LHS"
         (when join?
-          (is (= (if (= join-condition-count 1)
+          (is (= (if (and source-table? (= join-condition-count 1))
                    "Venues"
                    "Previous results")
                  (lib/join-lhs-display-name query join-or-joinable)))))

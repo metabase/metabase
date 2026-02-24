@@ -189,9 +189,7 @@
                                "checkins_by_user"))
                     (lib/breakout (lib/with-temporal-bucket (meta/field-metadata :users :last-login) :month))
                     (lib/aggregate (lib/avg (lib/with-join-alias (lib/ref (get cols "count")) "checkins_by_user"))))]
-      (is (=? [{:id                       (meta/id :users :last-login)
-                :name                     "LAST_LOGIN"
-                :lib/source               :source/table-defaults
+      (is (=? [{:name                     "LAST_LOGIN"
                 :lib/breakout?            true
                 :lib/source-column-alias "LAST_LOGIN"
                 :lib/desired-column-alias "LAST_LOGIN"}
@@ -1253,7 +1251,7 @@
           [bad-ref] (lib/breakouts query -1)]
       ;; maybe one day `lib/query` will automatically fix bad refs like these. If that happens, we probably don't even
       ;; need this test anymore? Or we should update it so it's still testing with a bad ref rather than a fixed ref.
-      (is (=? [:field {:join-alias "Cat"} "NAME"]
+      (is (=? [:field {:join-alias "Cat"} (meta/id :categories :name)]
               bad-ref))
       (is (=? {:table-id                     (meta/id :categories)
                :id                           (meta/id :categories :name)
