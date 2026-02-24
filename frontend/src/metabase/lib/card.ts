@@ -62,7 +62,7 @@ function getCleanCard(
   return res;
 }
 
-export function isEqualCard(card1: Card, card2: Card) {
+export function isEqualCard(card1?: Card | null, card2?: Card | null) {
   if (card1 && card2) {
     return equals(getCleanCard(card1), getCleanCard(card2));
   } else {
