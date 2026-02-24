@@ -1,6 +1,7 @@
 (ns metabase.joke-of-the-day.api
   "/api/joke-of-the-day endpoint."
   (:require
+   [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.joke-of-the-day.jokes :as jokes]
    [metabase.release-flags.core :as flags]))
@@ -12,5 +13,5 @@
                                      ["punchline" :string]]
   "Return the joke of the day."
   []
-  (when (flags/has-release-flag? :joke-of-the-day)
-    (rand-nth (jokes/jokes))))
+  (api/check-404 (flags/has-release-flag? :joke-of-the-day))
+  (rand-nth (jokes/jokes)))
