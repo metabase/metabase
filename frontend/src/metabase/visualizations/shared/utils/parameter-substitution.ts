@@ -2,6 +2,20 @@ import _ from "underscore";
 
 import { substitute_tags } from "cljs/metabase.parameters.shared";
 import { siteLocale, withInstanceLanguage } from "metabase/lib/i18n";
+import type {
+  Dashboard,
+  ParameterValuesMap,
+  VirtualDashboardCard,
+} from "metabase-types/api";
+
+type FillParametersInTextProps = {
+  dashcard?: VirtualDashboardCard;
+  dashboard: Dashboard;
+  parameterValues: ParameterValuesMap;
+  text: string;
+  escapeMarkdown?: boolean;
+  urlEncode?: boolean;
+};
 
 export function fillParametersInText({
   dashcard,
@@ -10,16 +24,20 @@ export function fillParametersInText({
   text,
   escapeMarkdown = false,
   urlEncode = false,
-}) {
+}: FillParametersInTextProps): string {
   const parametersByTag = dashcard?.parameter_mappings?.reduce(
     (acc, mapping) => {
-      const tagId = mapping.target[1];
+      // TODO: most likely we need to narrow down type of target for virtual
+      // dashcards to ParameterTextTarget, then as string can be removed
+      const tagId = mapping.target[1] as string;
       const parameter = dashboard.parameters?.find(
         (p) => p.id === mapping.parameter_id,
       );
 
       if (parameter) {
-        const rawParameterValue = parameterValues[parameter.id];
+        // same as above, parameterValue type can be narrowed down when
+        // ParameterTextTarget is used for virtual dashcards
+        const rawParameterValue = parameterValues[parameter.id] as string;
         const parameterValue = urlEncode
           ? encodeURIComponent(rawParameterValue)
           : rawParameterValue;
@@ -42,5 +60,5 @@ export function fillParametersInText({
     );
   }
 
-  return text;
+  return text ?? "";
 }
