@@ -4,12 +4,7 @@
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.release-flags.models :as models]
-   [metabase.release-flags.schema :as schema]
-   [metabase.util.log :as log]
-   [metabase.util.malli :as mu]
-   [metabase.util.malli.schema :as ms]
-   [metabase.xrays.core :as xrays]
-   [toucan2.core :as t2]))
+   [metabase.release-flags.schema :as schema]))
 
 (api.macros/defendpoint :get "/" :- schema/FlagMap
   "Return the status of all feature flags."

@@ -70,6 +70,7 @@
           (fn [& args]
             (if (or (contains? *bypass-guard* flag-name)
                     (try
+                      #_{:clj-kondo/ignore [:metabase/non-literal-release-flag]}
                       (models/has-release-flag? flag-name)
                       (catch Exception _
                         false)))
