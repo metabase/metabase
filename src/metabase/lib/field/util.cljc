@@ -20,7 +20,7 @@
   (or (some? (#{:source/card :source/native :source/previous-stage} (:lib/source column)))
       (some? (:lib/card-id column))))
 
-(mu/defn column-metadata->field-ref-name :- [:maybe :string]
+(mu/defn inherited-column-name :- [:maybe :string]
   "If the field ref for this `column` should be name-based, returns the name used in the field ref.
 
   `column` SHOULD BE METADATA RELATIVE TO THE CURRENT STAGE WHERE YOU ARE ADDING THE REF!!!!!!
