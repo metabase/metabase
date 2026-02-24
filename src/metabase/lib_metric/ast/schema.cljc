@@ -214,6 +214,7 @@
    [:name {:optional true} [:maybe string?]]
    [:aggregation ::aggregation-node]
    [:base-table ::table-node]
+   [:metadata {:optional true} [:maybe :map]]
    [:joins {:optional true} [:maybe [:sequential ::join-node]]]
    [:filters {:optional true} [:maybe [:ref ::filter-node]]]])
 
@@ -225,6 +226,7 @@
    [:name {:optional true} [:maybe string?]]
    [:aggregation ::aggregation-node]
    [:base-table ::table-node]
+   [:metadata {:optional true} [:maybe :map]]
    [:joins {:optional true} [:maybe [:sequential ::join-node]]]
    [:filters {:optional true} [:maybe [:ref ::filter-node]]]])
 

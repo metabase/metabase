@@ -170,7 +170,9 @@
 
         ;; Temporal filters
         (operators/temporal? operator)
-        (let [[dimension-ref value unit offset-value offset-unit] args]
+        (let [[dimension-ref value unit pos-offset-value pos-offset-unit] args
+              offset-value (or pos-offset-value (:offset-value opts))
+              offset-unit  (or pos-offset-unit (:offset-unit opts))]
           (cond-> {:node/type :filter/temporal
                    :operator  operator
                    :dimension (dimension-ref->ast-dimension-ref dimension-ref)
@@ -267,24 +269,29 @@
 
 ;;; -------------------- Main Construction --------------------
 
-(defn- expression-leaf-type
+(defn expression-leaf?
+  "Returns true if the expression is a single leaf node ([:metric opts id] or [:measure opts id])."
+  [expression]
+  (and (sequential? expression)
+       (= 3 (count expression))
+       (#{:metric :measure} (first expression))))
+
+(defn expression-leaf-type
   "Returns :metric or :measure from an expression leaf."
   [expression]
-  (when (and (sequential? expression)
-             (= 3 (count expression))
-             (#{:metric :measure} (first expression)))
+  (when (expression-leaf? expression)
     (first expression)))
 
-(defn- expression-leaf-id
+(defn expression-leaf-id
   "Returns the source ID from an expression leaf."
   [expression]
-  (when (expression-leaf-type expression)
+  (when (expression-leaf? expression)
     (nth expression 2)))
 
-(defn- expression-leaf-uuid
+(defn expression-leaf-uuid
   "Returns the :lib/uuid from an expression leaf."
   [expression]
-  (when (expression-leaf-type expression)
+  (when (expression-leaf? expression)
     (get (second expression) :lib/uuid)))
 
 (defn from-definition

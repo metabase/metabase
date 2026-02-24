@@ -9,6 +9,7 @@
    [metabase.metrics.core :as metrics]
    [metabase.query-processor :as qp]
    [metabase.query-processor.streaming :as qp.streaming]
+   [metabase.request.core :as request]
    [metabase.server.core :as server]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
@@ -48,20 +49,37 @@
    [:= :archived false]
    (collection/visible-collection-filter-clause :collection_id visibility-config)])
 
-(defn- select-metrics []
+(defn- count-metrics []
+  (t2/count :model/Card {:where (metrics-where-clause)}))
+
+(defn- select-metrics [limit offset]
   (-> (t2/select [:model/Card :id :name :description :collection_id]
                  {:where    (metrics-where-clause)
-                  :order-by [[:name :asc]]})
+                  :order-by [[:name :asc]]
+                  :limit    limit
+                  :offset   offset})
       (t2/hydrate :collection)))
 
-(api.macros/defendpoint :get "/" :- [:sequential ::Metric]
+(api.macros/defendpoint :get "/"
+  :- [:map
+      [:total  ms/IntGreaterThanOrEqualToZero]
+      [:limit  ms/PositiveInt]
+      [:offset ms/IntGreaterThanOrEqualToZero]
+      [:data   [:sequential ::Metric]]]
   "Get a list of metrics.
 
   Returns metrics (Cards with type='metric') that the current user has read access to,
   filtered by collection visibility permissions."
   []
-  (->> (select-metrics)
-       (mapv #(select-keys % [:id :name :description :collection_id :collection]))))
+  (let [limit   (or (request/limit) 500)
+        offset  (or (request/offset) 0)
+        total   (count-metrics)
+        metrics (->> (select-metrics limit offset)
+                     (mapv #(select-keys % [:id :name :description :collection_id :collection])))]
+    {:total  total
+     :limit  limit
+     :offset offset
+     :data   metrics}))
 
 (mu/defn- hydrated-metric [id :- ms/PositiveInt]
   (api/read-check (t2/select-one :model/Card :id id :type "metric"))
@@ -239,7 +257,7 @@
    {:keys [definition]} :- ::DatasetRequest]
   (let [query   (-> (lib-metric/metadata-provider)
                     (from-api-definition definition)
-                    (lib-metric/->mbql-query {:limit 100}))
+                    (lib-metric/->values-query {:limit 100}))
         result  (qp/process-query (qp/userland-query query))
         col     (first (get-in result [:data :cols]))
         values  (mapv first (get-in result [:data :rows]))]

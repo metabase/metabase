@@ -230,10 +230,13 @@
                                 :value     -30
                                 :unit      :day})
         result          (ast.compile/compile-to-mbql ast-with-filter)
-        filter          (first (get-in result [:stages 0 :filters]))]
-    (is (= :time-interval (first filter)))
-    (is (= -30 (nth filter 3)))
-    (is (= :day (nth filter 4)))))
+        filter-clause   (first (get-in result [:stages 0 :filters]))]
+    (is (= :time-interval (first filter-clause)))
+    (is (= -30 (nth filter-clause 3)))
+    (is (= :day (nth filter-clause 4)))
+    ;; No offset keys in opts when not specified
+    (is (not (contains? (nth filter-clause 1) :offset-value)))
+    (is (= 5 (count filter-clause)))))
 
 (deftest ^:parallel compile-relative-time-interval-filter-test
   (let [ast-with-filter (assoc sample-ast :filter
@@ -245,12 +248,14 @@
                                 :offset-value -1
                                 :offset-unit  :month})
         result          (ast.compile/compile-to-mbql ast-with-filter)
-        filter          (first (get-in result [:stages 0 :filters]))]
-    (is (= :relative-time-interval (first filter)))
-    (is (= -7 (nth filter 3)))
-    (is (= :day (nth filter 4)))
-    (is (= -1 (nth filter 5)))
-    (is (= :month (nth filter 6)))))
+        filter-clause   (first (get-in result [:stages 0 :filters]))]
+    (is (= :relative-time-interval (first filter-clause)))
+    (is (= -1 (get-in filter-clause [1 :offset-value])))
+    (is (= :month (get-in filter-clause [1 :offset-unit])))
+    (is (= -7 (nth filter-clause 3)))
+    (is (= :day (nth filter-clause 4)))
+    ;; Offsets should be in opts map, not positional
+    (is (= 5 (count filter-clause)))))
 
 (deftest ^:parallel compile-and-filter-test
   (let [filter-a        {:node/type :filter/comparison :operator := :dimension dim-ref-1 :values ["a"]}
@@ -581,3 +586,67 @@
     (let [result (ast.compile/compile-to-mbql sample-ast)]
       (is (= 1 (count (:stages result))))
       (is (nil? (:joins (first (:stages result))))))))
+
+;;; -------------------------------------------------- Values Query Compilation --------------------------------------------------
+
+(deftest ^:parallel compile-to-values-query-basic-test
+  (let [result (ast.compile/compile-to-values-query sample-ast)]
+    (testing "produces valid MBQL structure without aggregation"
+      (is (= :mbql/query (:lib/type result)))
+      (is (= 1 (:database result)))
+      (is (= 1 (count (:stages result)))))
+
+    (testing "stage has no :aggregation key"
+      (let [stage (first (:stages result))]
+        (is (= :mbql.stage/mbql (:lib/type stage)))
+        (is (= 100 (:source-table stage)))
+        (is (not (contains? stage :aggregation)))))))
+
+(deftest ^:parallel compile-to-values-query-with-breakout-test
+  (let [ast-with-groupby (assoc sample-ast :group-by [dim-ref-1])
+        result           (ast.compile/compile-to-values-query ast-with-groupby)
+        stage            (first (:stages result))]
+    (testing "produces breakout but no aggregation"
+      (is (= 1 (count (:breakout stage))))
+      (is (not (contains? stage :aggregation))))))
+
+(deftest ^:parallel compile-to-values-query-with-filters-test
+  (let [ast-with-filter (assoc sample-ast :filter
+                               {:node/type :filter/comparison
+                                :operator  :=
+                                :dimension dim-ref-1
+                                :values    ["Electronics"]})
+        result          (ast.compile/compile-to-values-query ast-with-filter)
+        stage           (first (:stages result))]
+    (testing "produces filters but no aggregation"
+      (is (seq (:filters stage)))
+      (is (not (contains? stage :aggregation))))))
+
+(deftest ^:parallel compile-to-values-query-with-limit-test
+  (let [result (ast.compile/compile-to-values-query sample-ast :limit 50)
+        stage  (first (:stages result))]
+    (testing "limit flows through"
+      (is (= 50 (:limit stage)))
+      (is (not (contains? stage :aggregation))))))
+
+(deftest ^:parallel compile-to-values-query-two-stage-test
+  (let [result (ast.compile/compile-to-values-query ast-with-joins)]
+    (testing "produces two stages with no aggregation in either"
+      (is (= 2 (count (:stages result))))
+      (let [stage-0 (first (:stages result))
+            stage-1 (second (:stages result))]
+        (is (= 100 (:source-table stage-0)))
+        (is (seq (:joins stage-0)))
+        (is (not (contains? stage-0 :aggregation)))
+        (is (not (contains? stage-1 :aggregation)))))))
+
+(deftest ^:parallel compile-to-values-query-two-stage-with-breakout-test
+  (let [ast-with-groupby (assoc ast-with-joins :group-by [dim-ref-1 dim-ref-2])
+        result           (ast.compile/compile-to-values-query ast-with-groupby)
+        stage-0          (first (:stages result))
+        stage-1          (second (:stages result))]
+    (testing "breakouts in stage 1, no aggregation anywhere"
+      (is (nil? (:breakout stage-0)))
+      (is (= 2 (count (:breakout stage-1))))
+      (is (not (contains? stage-0 :aggregation)))
+      (is (not (contains? stage-1 :aggregation))))))

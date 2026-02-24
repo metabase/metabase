@@ -257,7 +257,20 @@
       ;; filter-b removed from inner :or, leaving just filter-a
       ;; Inner :or should unwrap to just filter-a
       (is (= :filter/and (get-in result [:filter :node/type])))
-      (is (= 2 (count (get-in result [:filter :children])))))))
+      (is (= 2 (count (get-in result [:filter :children]))))))
+
+  (testing "handles nested compound where all inner children are removed"
+    (let [nested-ast (assoc sample-ast
+                            :filter (and-filter
+                                     (or-filter filter-a filter-b)
+                                     filter-c))
+          ;; Remove all comparison filters — inner :or loses both children → nil
+          result     (ast.walk/remove-filters
+                      #(= :filter/comparison (:node/type %))
+                      nested-ast)]
+      ;; Only filter-c (string filter) should remain, :and unwrapped
+      (is (= :filter/string (get-in result [:filter :node/type])))
+      (is (= :contains (get-in result [:filter :operator]))))))
 
 ;;; -------------------------------------------------- Complex Transformations --------------------------------------------------
 

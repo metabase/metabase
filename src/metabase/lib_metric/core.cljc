@@ -44,7 +44,8 @@
      projections
      source-measure-id
      source-metric-id
-     ->mbql-query]
+     ->mbql-query
+     ->values-query]
     [lib-metric.dimension
      compute-dimension-pairs
      dimension

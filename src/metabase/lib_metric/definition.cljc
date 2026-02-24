@@ -11,30 +11,21 @@
 
 ;;; -------------------------------------------------- Expression Helpers --------------------------------------------------
 
-(defn expression-leaf?
+(def expression-leaf?
   "Returns true if the expression is a single leaf node ([:metric opts id] or [:measure opts id])."
-  [expression]
-  (and (sequential? expression)
-       (= 3 (count expression))
-       (#{:metric :measure} (first expression))))
+  ast.build/expression-leaf?)
 
-(defn expression-leaf-type
+(def expression-leaf-type
   "Returns the type keyword (:metric or :measure) from an expression leaf."
-  [expression]
-  (when (expression-leaf? expression)
-    (first expression)))
+  ast.build/expression-leaf-type)
 
-(defn expression-leaf-id
+(def expression-leaf-id
   "Returns the source ID (integer) from an expression leaf."
-  [expression]
-  (when (expression-leaf? expression)
-    (nth expression 2)))
+  ast.build/expression-leaf-id)
 
-(defn expression-leaf-uuid
+(def expression-leaf-uuid
   "Returns the :lib/uuid from an expression leaf's options map."
-  [expression]
-  (when (expression-leaf? expression)
-    (get (second expression) :lib/uuid)))
+  ast.build/expression-leaf-uuid)
 
 (defn source-type-for-leaf
   "Returns the source type keyword for an expression leaf.
@@ -134,3 +125,16 @@
      (if-let [limit (:limit opts)]
        (ast.compile/compile-to-mbql ast :limit limit)
        (ast.compile/compile-to-mbql ast)))))
+
+(mu/defn ->values-query
+  "Convert MetricDefinition to a values-only MBQL query via AST.
+   Like [[->mbql-query]] but omits aggregation, returning distinct breakout values."
+  ([definition :- ::lib-metric.schema/metric-definition]
+   (->values-query definition {}))
+  ([definition :- ::lib-metric.schema/metric-definition
+    opts :- [:map
+             [:limit {:optional true} [:maybe pos-int?]]]]
+   (let [ast (->ast definition)]
+     (if-let [limit (:limit opts)]
+       (ast.compile/compile-to-values-query ast :limit limit)
+       (ast.compile/compile-to-values-query ast)))))

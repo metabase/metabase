@@ -138,7 +138,7 @@
        node
 
        (#{:filter/and :filter/or} (:node/type node))
-       (let [filtered-children (filterv #(not (pred %)) (:children node))]
+       (let [filtered-children (filterv #(and (some? %) (not (pred %))) (:children node))]
          (case (count filtered-children)
            0 nil
            1 (first filtered-children)

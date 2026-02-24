@@ -239,15 +239,26 @@
 
 (defmulti get-persisted-dimensions
   "Returns the currently persisted dimensions from the entity.
-   Pure function - only reads data from the entity."
+   Pure function - only reads data from the entity.
+   Default implementation reads `:dimensions` and normalizes them."
   {:arglists '([entity])}
   :lib/type)
 
+(defmethod get-persisted-dimensions :default
+  [entity]
+  (some->> (:dimensions entity)
+           (perf/mapv normalize-persisted-dimension)))
+
 (defmulti get-persisted-dimension-mappings
   "Returns the currently persisted dimension mappings from the entity.
-   Pure function - only reads data from the entity."
+   Pure function - only reads data from the entity.
+   Default implementation reads `:dimension-mappings`."
   {:arglists '([entity])}
   :lib/type)
+
+(defmethod get-persisted-dimension-mappings :default
+  [entity]
+  (:dimension-mappings entity))
 
 ;;; ------------------------------------------------- Public Dimension Fetching API -------------------------------------------------
 ;;; These functions provide access to dimensions as first-class metadata entities

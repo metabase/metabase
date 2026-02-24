@@ -240,6 +240,28 @@
              (mt/user-http-request :rasta :post 404 "metric/dataset"
                                    {:definition {:expression [:metric {:lib/uuid "a"} (:id card)]}}))))))
 
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                     POST /api/metric/breakout-values                                         |
+;;; +----------------------------------------------------------------------------------------------------------------+
+
+(deftest breakout-values-endpoint-test
+  (testing "POST /api/metric/breakout-values returns distinct breakout values"
+    (mt/with-temp [:model/Card metric {:name          "Test Metric"
+                                       :type          :metric
+                                       :dataset_query (mt/mbql-query venues {:aggregation [[:count]]})}]
+      ;; Fetch metric to trigger dimension sync
+      (let [hydrated   (mt/user-http-request :rasta :get 200 (str "metric/" (:id metric)))
+            dim        (first (:dimensions hydrated))
+            dim-id     (:id dim)
+            response   (mt/user-http-request :rasta :post 200 "metric/breakout-values"
+                                             {:definition {:expression  [:metric {:lib/uuid "a"} (:id metric)]
+                                                           :projections [{:type :metric
+                                                                          :id   (:id metric)
+                                                                          :projection [[:dimension {} dim-id]]}]}})]
+        (is (sequential? (:values response)))
+        (is (seq (:values response)))
+        (is (map? (:col response)))))))
+
 (deftest dataset-endpoint-accepts-filters-and-projections-test
   (testing "POST /api/metric/dataset accepts filters parameter (returns 202 even if filters can't be applied)"
     (mt/with-temp [:model/Card metric {:name          "Test Metric"

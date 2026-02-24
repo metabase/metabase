@@ -79,10 +79,10 @@
 
 (defmethod compile-filter-node :filter/temporal
   [{:keys [operator dimension value unit offset-value offset-unit]} mappings]
-  (cond-> [operator {:lib/uuid (random-uuid-str)}
-           (resolve-dimension-ref dimension mappings)
-           value unit]
-    offset-value (conj offset-value offset-unit)))
+  (let [opts (cond-> {:lib/uuid (random-uuid-str)}
+               offset-value (assoc :offset-value offset-value)
+               offset-unit  (assoc :offset-unit offset-unit))]
+    [operator opts (resolve-dimension-ref dimension mappings) value unit]))
 
 (defmethod compile-filter-node :filter/and
   [{:keys [children]} mappings]
@@ -229,4 +229,66 @@
   (if (has-joins? source)
     (compile-two-stage-query ast opts)
     (compile-single-stage-query ast opts)))
+
+;;; -------------------- Values Query Compilation (no aggregation) --------------------
+
+(defn- compile-single-stage-values-query
+  "Compile AST to single-stage MBQL query for distinct values (no aggregation)."
+  [{:keys [source mappings filter group-by]} {:keys [limit]}]
+  (let [source-filters (compile-source-filters source mappings)
+        user-filters   (when filter (compile-filter-node filter mappings))
+        all-filters    (cond
+                         (and source-filters user-filters)
+                         [[:and {:lib/uuid (random-uuid-str)} source-filters user-filters]]
+                         source-filters [source-filters]
+                         user-filters   [user-filters]
+                         :else          nil)
+        breakouts (when (seq group-by)
+                    (perf/mapv #(resolve-dimension-ref % mappings) group-by))
+        stage (cond-> {:lib/type     :mbql.stage/mbql
+                       :source-table (perf/get-in source [:base-table :id])}
+                (seq all-filters) (assoc :filters all-filters)
+                (seq breakouts)   (assoc :breakout breakouts)
+                limit             (assoc :limit limit))
+        database-id (get-database-id source)]
+    {:lib/type :mbql/query
+     :database database-id
+     :stages   [stage]}))
+
+(defn- compile-two-stage-values-query
+  "Compile AST to two-stage MBQL query for distinct values (no aggregation).
+
+   Stage 0: Data model - base table, joins, source filters
+   Stage 1: User filters, breakouts (no aggregation)"
+  [{:keys [source mappings filter group-by]} {:keys [limit]}]
+  (let [stage-0 (cond-> {:lib/type     :mbql.stage/mbql
+                         :source-table (perf/get-in source [:base-table :id])
+                         :joins        (compile-join-nodes (:joins source))}
+                  (:filters source)
+                  (assoc :filters [(compile-filter-node (:filters source) mappings)]))
+        user-filters (when filter [(compile-filter-node filter mappings)])
+        breakouts    (when (seq group-by)
+                       (perf/mapv #(resolve-dimension-ref % mappings) group-by))
+        stage-1      (cond-> {:lib/type :mbql.stage/mbql}
+                       (seq user-filters) (assoc :filters user-filters)
+                       (seq breakouts)    (assoc :breakout breakouts)
+                       limit              (assoc :limit limit))
+        database-id (get-database-id source)]
+    {:lib/type :mbql/query
+     :database database-id
+     :stages   [stage-0 stage-1]}))
+
+(mu/defn compile-to-values-query
+  "Compile AST to MBQL query for fetching distinct values (no aggregation).
+
+   Like [[compile-to-mbql]] but omits the aggregation clause, producing a query
+   that returns distinct breakout values instead of aggregated results.
+
+   Options:
+   - :limit - add limit to query"
+  [{:keys [source] :as ast} :- ::ast.schema/ast
+   & {:as opts}]
+  (if (has-joins? source)
+    (compile-two-stage-values-query ast opts)
+    (compile-single-stage-values-query ast opts)))
 

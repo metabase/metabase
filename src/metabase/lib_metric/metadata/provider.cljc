@@ -34,16 +34,8 @@
                          (assoc metadata-spec :id (set table-ids))))))
             tables-by-db))))
 
-(defn- route-column-metadata
-  "Route column metadata request to the appropriate database provider."
-  [table->db-fn db-provider-fn {:keys [table-id], :as metadata-spec}]
-  (when table-id
-    (when-let [db-id (table->db-fn table-id)]
-      (when-let [provider (db-provider-fn db-id)]
-        (lib.metadata.protocols/metadatas provider metadata-spec)))))
-
-(defn- route-segment-or-measure-metadata
-  "Route segment or measure metadata request to the appropriate database provider."
+(defn- route-metadata-by-table
+  "Route a metadata request to the appropriate database provider based on table-id."
   [table->db-fn db-provider-fn {:keys [table-id], :as metadata-spec}]
   (when table-id
     (when-let [db-id (table->db-fn table-id)]
@@ -83,12 +75,12 @@
       (route-table-metadata table->db-fn db-provider-fn metadata-spec)
 
       :metadata/column
-      (or (route-column-metadata table->db-fn db-provider-fn metadata-spec) [])
+      (or (route-metadata-by-table table->db-fn db-provider-fn metadata-spec) [])
 
       :metadata/measure
       (if measure-fetcher-fn
         (measure-fetcher-fn metadata-spec)
-        (or (route-segment-or-measure-metadata table->db-fn db-provider-fn metadata-spec) []))
+        (or (route-metadata-by-table table->db-fn db-provider-fn metadata-spec) []))
 
       :metadata/dimension
       (if dimension-fetcher-fn
@@ -96,7 +88,7 @@
         [])
 
       :metadata/segment
-      (or (route-segment-or-measure-metadata table->db-fn db-provider-fn metadata-spec) [])
+      (or (route-metadata-by-table table->db-fn db-provider-fn metadata-spec) [])
 
       :metadata/card
       (route-card-metadata table->db-fn db-provider-fn metadata-spec)

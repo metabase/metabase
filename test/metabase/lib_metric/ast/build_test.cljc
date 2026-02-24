@@ -266,7 +266,7 @@
       (is (= :day (:unit result)))
       (is (nil? (:offset-value result)))))
 
-  (testing "converts relative-time-interval filter with offsets"
+  (testing "converts relative-time-interval filter with positional offsets"
     (let [result (ast.build/mbql-filter->ast-filter
                   [:relative-time-interval {} [:dimension {} uuid-1] -7 "day" -1 "month"])]
       (is (= :filter/temporal (:node/type result)))
@@ -274,7 +274,17 @@
       (is (= -7 (:value result)))
       (is (= :day (:unit result)))
       (is (= -1 (:offset-value result)))
-      (is (= :month (:offset-unit result))))))
+      (is (= :month (:offset-unit result)))))
+
+  (testing "converts time-interval filter with offsets in opts map"
+    (let [result (ast.build/mbql-filter->ast-filter
+                  [:time-interval {:offset-value -1 :offset-unit :week} [:dimension {} uuid-1] -30 "day"])]
+      (is (= :filter/temporal (:node/type result)))
+      (is (= :time-interval (:operator result)))
+      (is (= -30 (:value result)))
+      (is (= :day (:unit result)))
+      (is (= -1 (:offset-value result)))
+      (is (= :week (:offset-unit result))))))
 
 (deftest ^:parallel mbql-filter->ast-filter-compound-test
   (testing "converts and filter"
