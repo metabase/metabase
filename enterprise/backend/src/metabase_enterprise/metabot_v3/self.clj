@@ -112,23 +112,23 @@
 
 (defn- report-aisdk-errors-xf
   "Transducer that increments the llm-errors counter for :error parts in the aisdk stream."
-  [model]
+  [model source]
   (map (fn [part]
          (when (= (:type part) :error)
            (prometheus/inc! :metabase-metabot/llm-errors
                             {:model model
-                             :source "agent"
+                             :source source
                              :error-type "llm-sse-error"}))
          part)))
 
 (defn- report-token-usage-xf
   "Transducer that reports prometheus metrics for :usage parts in the aisdk stream."
-  [model]
+  [model source]
   (map (fn [part]
          (when (= (:type part) :usage)
            (let [usage      (:usage part)
                  part-model (or (:model part) model)
-                 labels     {:model part-model :source "agent"}
+                 labels     {:model part-model :source source}
                  prompt     (:promptTokens usage 0)
                  completion (:completionTokens usage 0)]
              (prometheus/inc! :metabase-metabot/llm-input-tokens labels prompt)
@@ -139,9 +139,9 @@
 (defn- with-retries
   "Execute `(thunk)` with retry logic for transient LLM errors.
   Retries up to `max-llm-retries` attempts with exponential backoff.
-  Records prometheus metrics with `model` as a label."
-  [model thunk]
-  (let [labels {:model model :source "agent"}]
+  Records prometheus metrics with `model` and `source` as labels."
+  [model source thunk]
+  (let [labels {:model model :source source}]
     (loop [attempt 1]
       (prometheus/inc! :metabase-metabot/llm-requests labels)
       (let [timer  (u/start-timer)
@@ -183,7 +183,7 @@
   (HTTP call + streaming response) as an OTel span. Retries transient errors
   (429 rate limit, 529 overloaded, connection errors) up to 3 attempts with
   exponential backoff, matching the Python ai-service retry behavior."
-  [provider-and-model system-msg parts tools]
+  [provider-and-model source system-msg parts tools]
   (let [{:keys [provider stream-fn model]} (parse-provider-model provider-and-model)]
     (log/info "Calling LLM" {:provider provider :model model :parts (count parts) :tools (count tools)})
     (let [opts (cond-> {:model model :input parts :tools (vec tools)}
@@ -191,8 +191,8 @@
           make-source (fn []
                         (eduction (comp (core/tool-executor-xf tools)
                                         (core/lite-aisdk-xf)
-                                        (report-aisdk-errors-xf model)
-                                        (report-token-usage-xf model))
+                                        (report-aisdk-errors-xf model source)
+                                        (report-token-usage-xf model source))
                                   (stream-fn opts)))]
       (reify clojure.lang.IReduceInit
         (reduce [_ rf init]
@@ -201,7 +201,7 @@
                             :model      model
                             :part-count (count parts)
                             :tool-count (count tools)}
-            (with-retries model
+            (with-retries model source
               #(reduce rf init (make-source)))))))))
 
 (defn call-llm-structured
@@ -213,6 +213,7 @@
 
   Args:
     model       - Model identifier (e.g. \"openrouter/anthropic/claude-haiku-4-5\")
+    source      - Label for prometheus metrics (e.g. \"agent\", \"example-question-generation\")
     messages    - Sequence of Chat Completions message maps
                   (e.g. [{:role \"user\" :content \"...\"}])
     json-schema - JSON Schema map for the expected response shape
@@ -220,7 +221,7 @@
     max-tokens  - Maximum tokens in the response
 
   Returns the parsed JSON map from the forced tool call."
-  [provider-and-model messages json-schema temperature max-tokens]
+  [provider-and-model source messages json-schema temperature max-tokens]
   (let [{:keys [provider stream-fn model]} (parse-provider-model provider-and-model)
         _ (log/info "Calling LLM (structured)" {:provider provider :model model :msg-count (count messages)})
         raw-tools   [{:type     "function"
@@ -237,12 +238,12 @@
     (with-span :info {:name      :metabot-v3.agent/call-llm-structured
                       :model     model
                       :msg-count (count messages)}
-      (with-retries model
+      (with-retries model source
         (fn []
           (let [parts (into []
                             (comp (core/aisdk-xf)
-                                  (report-aisdk-errors-xf model)
-                                  (report-token-usage-xf model))
+                                  (report-aisdk-errors-xf model source)
+                                  (report-token-usage-xf model source))
                             (stream-fn opts))
                 result (some (fn [{:keys [type arguments]}]
                                (when (= type :tool-input)
