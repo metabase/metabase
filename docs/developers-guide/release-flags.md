@@ -4,7 +4,7 @@ The purpose of Metabase release flags is to allow developers to progressively me
 
 At the beginning of any long-running project that intends to use a release flag, a developer should open a pr adding the new release flag to the `release-flags.json` file with a unique name and a brief description.
 
-Throughout development, all code that should be behind the release flag should be disabled at the highest possible level in the calling code. Good encapsulation principles should be used to minimize the number of needed release flags. Nesting release flags should be avoided wherever possible. Care should be taken that release flagging code should not diminish the maintainability or readability of code.
+Throughout development, all code that should be behind the release flag should be disabled at the highest possible level in the calling code. Good encapsulation principles should be used to minimize the number of needed release flag conditionals. Nesting release flags should be avoided wherever possible. Care should be taken that release flagging code should not diminish the maintainability or readability of code. During development, you can toggle release flags from the ui at `/release-flags`.
 
 Incomplete feature code will be loaded as normal. But it should not be called outside of a release flag conditional.
 
