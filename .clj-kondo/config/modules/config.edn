@@ -1009,6 +1009,13 @@
                     :model/QueryExecution
                     :model/User}}
 
+  joke-of-the-day
+  {:team "UX West"
+   :api  #{metabase.joke-of-the-day.api}
+   :uses #{api
+           release-flags
+           util}}
+
   legacy-mbql
   {:team "Querying Platform"
    :api  #{metabase.legacy-mbql.normalize
@@ -1771,6 +1778,16 @@
            users
            util}
    :model-imports #{:model/User}}
+
+  release-flags
+  {:team "UX West"
+   :api  #{metabase.release-flags.api
+           metabase.release-flags.core
+           metabase.release-flags.guard
+           metabase.release-flags.init}
+   :uses #{api
+           task
+           util}}
 
   revisions
   {:team "UX West"
