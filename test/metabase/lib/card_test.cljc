@@ -107,7 +107,7 @@
     (meta/field-metadata table col)))
 
 (defn- sort-cols [cols]
-  (sort-by (juxt :id :name :metabase.lib.join/join-alias :lib/desired-column-alias) cols))
+  (sort-by (juxt :id :name :lib/join-alias :lib/desired-column-alias) cols))
 
 (deftest ^:parallel visible-columns-use-result-metadata-test
   (testing "visible-columns should use the Card's `:result-metadata` (regardless of what's actually in the Card)"
@@ -135,7 +135,7 @@
                 :lib/source                   :source/joins
                 :lib/breakout?                true
                 :lib/source-column-alias      "CATEGORY"
-                :metabase.lib.join/join-alias "Products"
+                :lib/join-alias "Products"
                 :lib/desired-column-alias     "Products__CATEGORY"}
                {:name                     "count"
                 :lib/source               :source/aggregations
@@ -233,7 +233,7 @@
           rhs (m/find-first (comp #{"ID"} :name) (lib/join-condition-rhs-columns query 0 people-card nil nil))
           join-clause (lib/join-clause people-card [(lib/= lhs rhs)])
           query (lib/join query join-clause)
-          filter-col (m/find-first #(and (= (:metabase.lib.join/join-alias %) "Mock people card")
+          filter-col (m/find-first #(and (= (:lib/join-alias %) "Mock people card")
                                          (= (:lib/source-column-alias %) "ID"))
                                    (lib/filterable-columns query))
           _ (assert (some? filter-col) "Failed to find filter column")
@@ -585,22 +585,22 @@
               {:cards [{:id 1, :dataset-query q1}]})
         card (lib.metadata/card mp 1)
         q2   (lib/query mp card)]
-    (testing (str "returned-columns for a card should NEVER return `:metabase.lib.join/join-alias`, because the join"
+    (testing (str "returned-columns for a card should NEVER return `:lib/join-alias`, because the join"
                   " happened within the Card itself.")
       (is (=? [{:name                             "CREATED_AT"
                 :display-name                     "Created At: Month"
                 :lib/card-id                      1
                 :lib/source                       :source/card
                 :lib/original-join-alias          "Products"
-                :metabase.lib.join/join-alias     (symbol "nil #_\"key is not present.\"")
-                :metabase.lib.field/temporal-unit (symbol "nil #_\"key is not present.\"")
+                :lib/join-alias     (symbol "nil #_\"key is not present.\"")
+                :lib/temporal-unit (symbol "nil #_\"key is not present.\"")
                 :inherited-temporal-unit          :month}
                {:name                         "count"
                 :display-name                 "Distinct values of ID"
                 :lib/card-id                  1
                 :lib/source                   :source/card
                 :lib/original-join-alias      (symbol "nil #_\"key is not present.\"")
-                :metabase.lib.join/join-alias (symbol "nil #_\"key is not present.\"")}]
+                :lib/join-alias (symbol "nil #_\"key is not present.\"")}]
               (lib/returned-columns q2 card))))))
 
 (deftest ^:parallel do-not-propagate-breakout?-test
@@ -742,7 +742,7 @@
       (let [temporal-result (assoc result-col
                                    :base-type :type/Date
                                    :effective-type :type/Date
-                                   :metabase.lib.field/temporal-unit :month)]
+                                   :lib/temporal-unit :month)]
         (is (=? [{:display-name "Custom Foo: Month"}]
                 (lib.card/merge-model-metadata [temporal-result] [model-col] false)))))
     (testing "aggregation source columns are not overridden by model metadata"
@@ -760,7 +760,7 @@
                     :display-name "Foo"
                     :lib/source :source/card
                     :lib/card-id 1
-                    :metabase.lib.field/binning {:strategy :num-bins :num-bins 10}}
+                    :lib/binning {:strategy :num-bins :num-bins 10}}
         model-col (assoc result-col
                          :display-name "Custom Foo"
                          :semantic-type :type/Quantity)]
@@ -776,7 +776,7 @@
                       :semantic-type :type/Latitude
                       :lib/source :source/card
                       :lib/card-id 1
-                      :metabase.lib.field/binning {:strategy :bin-width :bin-width 1.0}}
+                      :lib/binning {:strategy :bin-width :bin-width 1.0}}
           model-col (assoc result-col
                            :display-name "Custom Lat")]
       (is (=? [{:display-name "Custom Lat: 1°"}]
