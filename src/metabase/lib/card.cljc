@@ -96,8 +96,8 @@
              {:lib/type                :metadata/column
               :lib/source-column-alias ((some-fn :lib/source-column-alias :name) source-metadata-col)})
         col (cond-> col
-              (:metabase.lib.field/temporal-unit source-metadata-col)
-              (assoc :inherited-temporal-unit (keyword (:metabase.lib.field/temporal-unit source-metadata-col)))
+              (:lib/temporal-unit source-metadata-col)
+              (assoc :inherited-temporal-unit (keyword (:lib/temporal-unit source-metadata-col)))
 
               ;; If the incoming source-metadata-col doesn't have `:semantic-type :type/FK`, drop
               ;; `:fk-target-field-id`. This comes up with metadata on SQL cards, which might be linked to their

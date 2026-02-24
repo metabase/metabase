@@ -37,6 +37,7 @@
    :embedded-xlsx-download
    :embedded-json-download
    :table-grid
+   :transform-inspector
    :slackbot])
 
 (mr/def ::hash
@@ -63,6 +64,9 @@
    [:card-id                 {:optional true} [:maybe ::lib.schema.id/card]]
    [:card-name               {:optional true} [:maybe ::lib.schema.common/non-blank-string]]
    [:dashboard-id            {:optional true} [:maybe ::lib.schema.id/dashboard]]
+   [:transform-id            {:optional true} [:maybe ::lib.schema.id/transform]]
+   [:lens-id                 {:optional true} [:maybe ::lib.schema.common/non-blank-string]]
+   [:lens-params             {:optional true} [:maybe [:map-of :keyword :any]]]
    [:pulse-id                {:optional true} [:maybe ::lib.schema.id/pulse]]
    ;; Metadata for datasets when querying the dataset. This ensures that user edits to dataset metadata are blended in
    ;; with runtime computed metadata so that edits are saved.
