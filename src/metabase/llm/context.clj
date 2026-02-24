@@ -9,6 +9,7 @@
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.models.interface :as mi]
+   [metabase.request.core :as request]
    [metabase.sync.core :as sync]
    [metabase.util :as u]
    [metabase.util.log :as log]
@@ -179,7 +180,8 @@
     (when (seq missing-fp-ids)
       (let [fields (t2/select :model/Field :id [:in missing-fp-ids])]
         (doseq [field fields]
-          (sync/refingerprint-field! field))
+          ;; Run with admin perms to match behavior during normal sync.
+          (request/as-admin (sync/refingerprint-field! field)))
         (t2/select-pk->fn :fingerprint :model/Field :id [:in missing-fp-ids])))))
 
 ;;; ------------------------------------------- Fingerprint Formatting -------------------------------------------
