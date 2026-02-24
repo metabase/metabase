@@ -193,7 +193,10 @@
         (as-> m (cond-> m
                   (and (:source-alias m)
                        (not (:lib/original-join-alias m)))
-                  (set/rename-keys {:source-alias :lib/original-join-alias}))))))
+                  (set/rename-keys {:source-alias :lib/original-join-alias})))
+        ;; Rename old long-namespaced keys (e.g. `:metabase.lib.field/temporal-unit`) to short `:lib/*` equivalents
+        ;; for backwards compatibility with stored result_metadata
+        lib.schema.common/rename-deprecated-lib-keys)))
 
 (def ^:private column-validate-for-source-specs
   "Schemas to use to validate columns with a given `:lib/source`. Since a lot of these schemas are applicable to
@@ -209,19 +212,19 @@
     :schema  [:fn
               {:error/message ":lib/expression-name is required for columns with :source/expressions"}
               :lib/expression-name]}
-   ;; Current stage join alias (`:metabase.lib.join/join-alias`) should only be set for columns whose `:lib/source` is
+   ;; Current stage join alias (`:lib/join-alias`) should only be set for columns whose `:lib/source` is
    ;; `:source/joins`
    {:exclude :source/joins
     :schema  (lib.schema.common/disallowed-keys
-              {:metabase.lib.join/join-alias
-               (str "Current stage join alias (:metabase.lib.join/join-alias) should only be set for"
+              {:lib/join-alias
+               (str "Current stage join alias (:lib/join-alias) should only be set for"
                     " columns joined in the current stage (i.e., columns with :source/joins).")})}
    ;; If source is `:source/joins` column must specify a current stage join alias.
    {:include :source/joins
     :schema  [:fn
               {:error/message (str "Columns joined in the current stage (i.e., columns with :source/joins) must specify"
-                                   " current stage join alias (:metabase.lib.join/join-alias).")}
-              (some-fn :metabase.lib.join/join-alias
+                                   " current stage join alias (:lib/join-alias).")}
+              (some-fn :lib/join-alias
                        ;; see [[metabase.lib.join/HACK-column-from-incomplete-join]]
                        :metabase.lib.join/HACK-from-incomplete-join?)]}
    ;; `:lib/source` `:source/implicitly-joinable` must have `:fk-field-id`; `:fk-field-id` is only allowed for
@@ -362,10 +365,7 @@
     ;; Join alias of the table we're joining against, if any. SHOULD ONLY BE SET IF THE JOIN HAPPENED AT THIS STAGE OF
     ;; THE QUERY! (Also ok within a join's conditions for previous joins within the parent stage, because a join is
     ;; allowed to join on the results of something else)
-    ;;
-    ;; TODO (Cam 6/19/25) -- rename this key to `:lib/join-alias` since we're not really good about only using the
-    ;; special getter and setter functions to get at this key
-    [:metabase.lib.join/join-alias {:optional true} [:maybe ::lib.schema.join/alias]]
+    [:lib/join-alias {:optional true} [:maybe ::lib.schema.join/alias]]
     ;; the initial join alias used when this column was first introduced; should be propagated even if the join was
     ;; from a previous stage.
     ;;
@@ -376,20 +376,22 @@
     ;;    column => [join X => join Y]
     ;;
     ;; It is not currently well-defined whether this appears when the join was the current stage or not, i.e. if it's
-    ;; equal to `:metabase.lib.join/join-alias` when it is set or if it is only set if the join happened in a previous
-    ;; stage, i.e. if it's `nil` when `:metabase.lib.join/join-alias` is set. It seems like current behavior is the
+    ;; equal to `:lib/join-alias` when it is set or if it is only set if the join happened in a previous
+    ;; stage, i.e. if it's `nil` when `:lib/join-alias` is set. It seems like current behavior is the
     ;; former but you should NOT rely on this behavior.
     [:lib/original-join-alias {:optional true} [:maybe ::lib.schema.join/alias]]
     ;; these should only be present if temporal bucketing or binning is done in the current stage of the query; if
     ;; this happened in a previous stage they should get propagated as the keys below instead.
-    [:metabase.lib.field/temporal-unit {:optional true} [:maybe ::lib.schema.temporal-bucketing/unit]]
-    [:metabase.lib.field/binning       {:optional true} [:maybe ::lib.schema.binning/binning]]
+    [:lib/temporal-unit {:optional true} [:maybe ::lib.schema.temporal-bucketing/unit]]
+    [:lib/binning       {:optional true} [:maybe ::lib.schema.binning/binning]]
     ;; For nested fields (fields with a `:parent-id`, e.g. JSON columns), the pre-computed display name including the
     ;; full parent chain prefix, e.g. `"Grandparent: Parent: Child"`. Used as the highest-priority initial display
     ;; name in the display name pipeline, before join alias, binning, and temporal bucketing decorations are added.
     ;; This is distinct from `:lib/original-display-name`, which for a nested field stores just the leaf name
     ;; (e.g. `"Child"`) — both may coexist on the same column.
-    [:metabase.lib.field/simple-display-name {:optional true} [:maybe ::lib.schema.common/non-blank-string]]
+    [:lib/simple-display-name {:optional true} [:maybe ::lib.schema.common/non-blank-string]]
+    [:lib/original-effective-type {:optional true} [:maybe ::lib.schema.common/base-type]]
+    [:lib/transformation-added-base-type {:optional true} [:maybe :boolean]]
     ;; If temporal bucketing or binning happened in a previous stage, they are propagated as the keys below.
     ;; `:inherited-temporal-unit` signals that this column was already bucketed upstream, so the default temporal
     ;; unit becomes `:inherited` rather than a type-based default like `:month`, preventing double-bucketing.
@@ -513,13 +515,16 @@
    [:ref ::lib.schema.common/kebab-cased-map]
    [:ref ::column.validate-for-source]
    (lib.schema.common/disallowed-keys
-    {:binning           ":binning is deprecated; use :metabase.lib.field/binning instead"
-     :field-ref         ":field-ref is deprecated. For QP result metadata, use :metabase.lib.metadata.result-metadata/field-ref"
-     :ident             ":ident is deprecated and should not be included in column metadata"
-     :model/inner-ident ":model/inner_ident (normalized to :model/inner-ident) is deprecated and should not be included in column metadata"
-     :source            ":source is deprecated; use :lib/source instead. For QP result metadata, use :metabase.lib.metadata.result-metadata/source"
-     :source-alias      ":source-alias is deprecated; use :metabase.lib.join/join-alias or :lib/original-join-alias instead"
-     :unit              ":unit is deprecated; use :metabase.lib.field/temporal-unit instead"})])
+    (into {:binning           ":binning is deprecated; use :lib/binning instead"
+           :field-ref         ":field-ref is deprecated. For QP result metadata, use :metabase.lib.metadata.result-metadata/field-ref"
+           :ident             ":ident is deprecated and should not be included in column metadata"
+           :model/inner-ident ":model/inner_ident (normalized to :model/inner-ident) is deprecated and should not be included in column metadata"
+           :source            ":source is deprecated; use :lib/source instead. For QP result metadata, use :metabase.lib.metadata.result-metadata/source"
+           :source-alias      ":source-alias is deprecated; use :lib/join-alias or :lib/original-join-alias instead"
+           :unit              ":unit is deprecated; use :lib/temporal-unit instead"}
+          (map (fn [[old-key new-key]]
+                 [old-key (str old-key " is deprecated; use " new-key " instead")]))
+          lib.schema.common/deprecated-lib-key-renames))])
 
 (mr/def ::persisted-info.definition
   "Definition spec for a cached table."
@@ -718,7 +723,7 @@
    [:map
     [:lib/type [:= :metadata/metric]]
     [:type     [:= :metric]]
-    [:metabase.lib.join/join-alias {:optional true} ::lib.schema.common/non-blank-string]]])
+    [:lib/join-alias {:optional true} ::lib.schema.common/non-blank-string]]])
 
 (mr/def ::native-query-snippet
   [:map

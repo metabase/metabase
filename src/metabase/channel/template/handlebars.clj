@@ -7,8 +7,9 @@
    [metabase.util.log :as log])
   (:import
    (com.github.jknack.handlebars
-    Handlebars Template)
+    Handlebars Template Context)
    (com.github.jknack.handlebars.cache ConcurrentMapTemplateCache)
+   (com.github.jknack.handlebars.context MapValueResolver)
    (com.github.jknack.handlebars.io
     ClassPathTemplateLoader)))
 
@@ -34,6 +35,14 @@
       (u/qualified-name %)
       %) context))
 
+(defn- build-context
+  [context]
+  (-> context
+      wrap-context
+      (Context/newBuilder)
+      (.resolver (into-array [(MapValueResolver/INSTANCE)]))
+      (.build)))
+
 (def ^:private default-hbs
   (delay (u/prog1 (registry (classpath-loader "/" "") :reload? true)
            (handlebars-helper/register-helpers <> handlebars-helper/default-helpers))))
@@ -53,7 +62,7 @@
    (render @default-hbs template-name context))
   ([^Handlebars req ^String template-name ctx]
    (let [template ^Template (.compile req template-name)]
-     (.apply template (wrap-context ctx)))))
+     (.apply template (build-context ctx)))))
 
 (defn render-string
   "Render a template string with a context."
@@ -61,7 +70,7 @@
    (render-string @default-hbs template context))
   ([^Handlebars req ^String template ctx]
    (.apply ^Template (.compileInline req template)
-           (wrap-context ctx))))
+           (build-context ctx))))
 
 (comment
   (render-string "{{now}}" {})
