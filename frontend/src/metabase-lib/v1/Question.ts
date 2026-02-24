@@ -749,7 +749,6 @@ class Question {
       "parameterValues",
       "type",
       "visualization_settings",
-      "parameterValues",
     ];
 
     const res = {};
