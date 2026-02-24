@@ -17,8 +17,9 @@
    [metabase.util.malli :as mu]
    [metabase.util.performance  :as perf]))
 
-(defn- walk-clause-field-refs
-  [clause f]
+(mu/defn- walk-clause-field-refs :- :any
+  [clause :- :any
+   f      :- fn?]
   (lib.walk/walk-clause clause
                         (fn [clause]
                           (cond-> clause
