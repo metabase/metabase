@@ -1,5 +1,5 @@
 (ns metabase-enterprise.product-analytics.api.send
-  "Public `/api/ee/product-analytics/send` endpoint for receiving Umami-compatible
+  "Public `/api/ee/product-analytics/api/send` endpoint for receiving Umami-compatible
    event payloads from tracking scripts on external sites. No authentication required."
   (:require
    [clojure.string :as str]
@@ -72,7 +72,7 @@
        :body    {:ok true}})))
 
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
-(api.macros/defendpoint :post "/send"
+(api.macros/defendpoint :post "/api/send"
   "Receive an Umami-compatible event or identify payload from a tracking script."
   [_route-params
    _query-params
@@ -96,5 +96,5 @@
           (add-cors-headers origin)))))
 
 (def ^{:arglists '([request respond raise])} routes
-  "`/api/ee/product-analytics/send` routes (public, no auth)."
+  "`/api/ee/product-analytics/api/send` routes (public, no auth)."
   (api.macros/ns-handler *ns* +public-exceptions))

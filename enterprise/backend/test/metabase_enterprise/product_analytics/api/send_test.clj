@@ -21,12 +21,12 @@
              :language "en-US"}})
 
 (defn- send-request
-  "Send a POST to /api/ee/product-analytics/send with the given body and optional request-options.
+  "Send a POST to /api/ee/product-analytics/api/send with the given body and optional request-options.
    Returns the full response map (status, headers, body)."
   ([body]
    (send-request body {}))
   ([body request-options]
-   (mt/client-full-response :post "ee/product-analytics/send"
+   (mt/client-full-response :post "ee/product-analytics/api/send"
                             {:request-options (merge {:headers {"user-agent" chrome-ua
                                                                 "origin"     "https://example.com"}}
                                                      request-options)}

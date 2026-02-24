@@ -254,7 +254,7 @@ Wire the postprocessing pipeline to an HTTP endpoint that accepts events from
 tracking scripts or server-side callers, and persists them through the storage
 protocol.
 
-**Endpoint:** `POST /api/ee/product-analytics/send`
+**Endpoint:** `POST /api/ee/product-analytics/api/send`
 
 - No authentication required (public endpoint, like Umami).
 - Requires a valid `User-Agent` header.
@@ -335,7 +335,7 @@ environment variable (`MB_MODE=collector`). The startup sequence:
 3. Set up app DB connection, run migrations.
 4. Warm the settings cache.
 5. Build a minimal Ring handler:
-   - `POST /api/ee/product-analytics/send` — the Phase 6 endpoint.
+   - `POST /api/ee/product-analytics/api/send` — the Phase 6 endpoint.
    - `GET /api/health` — returns 200 when ready (for load-balancer probes).
    - `GET /livez` — liveness probe (no DB check).
    - CORS middleware scoped to registered site hostnames.
@@ -394,7 +394,7 @@ connects to the same app DB. The only new setting is:
                     └───────────────────┘
 ```
 
-Operators route `/api/ee/product-analytics/send` (and its CORS preflight) to
+Operators route `/api/ee/product-analytics/api/send` (and its CORS preflight) to
 the collector pool, and all other traffic to the main Metabase pool. Both
 pools share the app DB (and optionally the Iceberg catalog / S3 bucket).
 
