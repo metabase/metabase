@@ -7,6 +7,14 @@ export type ProductAnalyticsSite = {
   id: ProductAnalyticsSiteId;
   name: string;
   allowed_domains: string;
+  uuid: string;
+  archived: boolean;
+  created_at: string;
+  updated_at: string;
+};
+
+export type ProductAnalyticsSiteDetails = ProductAnalyticsSite & {
+  tracking_snippet: string;
 };
 
 export type CreateProductAnalyticsSiteRequest = {
@@ -22,6 +30,13 @@ export const productAnalyticsApi = EnterpriseApi.injectEndpoints({
         listTag("product-analytics-site"),
         ...sites.map((site) => idTag("product-analytics-site", site.id)),
       ],
+    }),
+    getProductAnalyticsSite: builder.query<
+      ProductAnalyticsSiteDetails,
+      ProductAnalyticsSiteId
+    >({
+      query: (id) => `/api/ee/product-analytics/sites/${id}`,
+      providesTags: (_, __, id) => [idTag("product-analytics-site", id)],
     }),
     createProductAnalyticsSite: builder.mutation<
       ProductAnalyticsSite,
@@ -51,6 +66,7 @@ export const productAnalyticsApi = EnterpriseApi.injectEndpoints({
 
 export const {
   useListProductAnalyticsSitesQuery,
+  useGetProductAnalyticsSiteQuery,
   useCreateProductAnalyticsSiteMutation,
   useDeleteProductAnalyticsSiteMutation,
 } = productAnalyticsApi;

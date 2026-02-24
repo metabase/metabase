@@ -5,8 +5,8 @@ import {
   SettingsPageWrapper,
   SettingsSection,
 } from "metabase/admin/components/SettingsSection";
-import { ClientSortableTable } from "metabase/common/components/Table";
 import { DelayedLoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper/DelayedLoadingAndErrorWrapper";
+import { ClientSortableTable } from "metabase/common/components/Table";
 import {
   Form,
   FormErrorMessage,
@@ -15,12 +15,22 @@ import {
   FormTextInput,
   FormTextarea,
 } from "metabase/forms";
-import { Button, Group, Icon, Modal, Stack, Text, Title } from "metabase/ui";
+import {
+  Button,
+  Code,
+  Group,
+  Icon,
+  Modal,
+  Stack,
+  Text,
+  Title,
+} from "metabase/ui";
 import type { ProductAnalyticsSite } from "metabase-enterprise/api/product-analytics";
 import {
-  useListProductAnalyticsSitesQuery,
   useCreateProductAnalyticsSiteMutation,
   useDeleteProductAnalyticsSiteMutation,
+  useGetProductAnalyticsSiteQuery,
+  useListProductAnalyticsSitesQuery,
 } from "metabase-enterprise/api/product-analytics";
 
 import { AdminSettingInput } from "../widgets/AdminSettingInput";
@@ -122,13 +132,41 @@ function DeleteSiteModal({
   );
 }
 
+function SiteDetailsModal({
+  site,
+  onClose,
+}: {
+  site: ProductAnalyticsSite;
+  onClose: () => void;
+}) {
+  const { data, isLoading, error } = useGetProductAnalyticsSiteQuery(site.id);
+
+  return (
+    <Modal size="40rem" opened onClose={onClose} title={site.name}>
+      <Stack gap="md">
+        <DelayedLoadingAndErrorWrapper loading={isLoading} error={error}>
+          <Stack gap="sm">
+            <Text fw="bold">{t`Tracking snippet`}</Text>
+            <Code block>{data?.tracking_snippet ?? ""}</Code>
+          </Stack>
+        </DelayedLoadingAndErrorWrapper>
+        <Group justify="flex-end">
+          <Button onClick={onClose}>{t`Close`}</Button>
+        </Group>
+      </Stack>
+    </Modal>
+  );
+}
+
 function EnabledOriginsTable({
   sites,
   onAddSite,
+  onViewSite,
   onDeleteSite,
 }: {
   sites: ProductAnalyticsSite[];
   onAddSite: () => void;
+  onViewSite: (site: ProductAnalyticsSite) => void;
   onDeleteSite: (site: ProductAnalyticsSite) => void;
 }) {
   return (
@@ -144,11 +182,18 @@ function EnabledOriginsTable({
               <td>{site.name}</td>
               <td>{site.allowed_domains}</td>
               <td>
-                <Icon
-                  name="trash"
-                  style={{ cursor: "pointer" }}
-                  onClick={() => onDeleteSite(site)}
-                />
+                <Group gap="md">
+                  <Button
+                    variant="subtle"
+                    size="xs"
+                    onClick={() => onViewSite(site)}
+                  >{t`View details`}</Button>
+                  <Icon
+                    name="trash"
+                    style={{ cursor: "pointer" }}
+                    onClick={() => onDeleteSite(site)}
+                  />
+                </Group>
               </td>
             </tr>
           )}
@@ -174,6 +219,9 @@ export function ProductAnalyticsSettingsPage() {
   });
 
   const [showAddModal, setShowAddModal] = useState(false);
+  const [siteToView, setSiteToView] = useState<ProductAnalyticsSite | null>(
+    null,
+  );
   const [siteToDelete, setSiteToDelete] = useState<ProductAnalyticsSite | null>(
     null,
   );
@@ -194,6 +242,7 @@ export function ProductAnalyticsSettingsPage() {
               <EnabledOriginsTable
                 sites={sites ?? []}
                 onAddSite={() => setShowAddModal(true)}
+                onViewSite={setSiteToView}
                 onDeleteSite={setSiteToDelete}
               />
             </DelayedLoadingAndErrorWrapper>
@@ -202,6 +251,12 @@ export function ProductAnalyticsSettingsPage() {
       </SettingsSection>
 
       {showAddModal && <AddSiteModal onClose={() => setShowAddModal(false)} />}
+      {siteToView && (
+        <SiteDetailsModal
+          site={siteToView}
+          onClose={() => setSiteToView(null)}
+        />
+      )}
       {siteToDelete && (
         <DeleteSiteModal
           site={siteToDelete}
