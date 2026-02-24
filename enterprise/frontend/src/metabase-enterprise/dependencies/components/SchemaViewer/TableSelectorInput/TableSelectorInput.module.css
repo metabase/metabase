@@ -11,6 +11,8 @@
 }
 
 .listItem {
+  height: 2.25rem;
+  min-height: 2.25rem;
   padding: 0.5rem;
   border-radius: var(--default-border-radius);
 

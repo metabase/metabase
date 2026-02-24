@@ -1,6 +1,6 @@
 import { useClickOutside } from "@mantine/hooks";
 import { useReactFlow } from "@xyflow/react";
-import { useCallback, useMemo, useRef, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { t } from "ttag";
 
 import {
@@ -43,15 +43,28 @@ export function TableSelectorInput({
   const [opened, setOpened] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
 
-  // Snapshot of selected IDs when dropdown opened - used for stable sorting
-  const [sortSnapshot, setSortSnapshot] = useState<Set<ConcreteTableId>>(
+  // Snapshot of selected and visible IDs when dropdown opened - used for stable sorting
+  const [selectedSnapshot, setSelectedSnapshot] = useState<
+    Set<ConcreteTableId>
+  >(new Set());
+  const [visibleSnapshot, setVisibleSnapshot] = useState<Set<ConcreteTableId>>(
     new Set(),
   );
 
+  // Map of table ID to flow node (for focus functionality)
+  const nodesByTableId = useMemo(() => {
+    const map = new Map<ConcreteTableId, SchemaViewerFlowNode>();
+    for (const node of nodes) {
+      map.set(node.data.table_id as ConcreteTableId, node);
+    }
+    return map;
+  }, [nodes]);
+
   const handleOpen = useCallback(() => {
-    setSortSnapshot(new Set(selectedTableIds));
+    setSelectedSnapshot(new Set(selectedTableIds));
+    setVisibleSnapshot(new Set(nodesByTableId.keys()));
     setOpened(true);
-  }, [selectedTableIds]);
+  }, [selectedTableIds, nodesByTableId]);
 
   const handleClose = useCallback(() => {
     setSearchQuery("");
@@ -67,7 +80,7 @@ export function TableSelectorInput({
   }, [opened, handleClose, handleOpen]);
 
   const clickOutsideRef = useClickOutside(() => {
-    if (opened) {
+    if (opened && !showSelectAllWarning) {
       handleClose();
     }
   });
@@ -76,16 +89,13 @@ export function TableSelectorInput({
     () => new Set(selectedTableIds),
     [selectedTableIds],
   );
-  const activeSortSet = opened ? sortSnapshot : selectedTableIdSet;
 
-  // Map of table ID to flow node (for focus functionality)
-  const nodesByTableId = useMemo(() => {
-    const map = new Map<ConcreteTableId, SchemaViewerFlowNode>();
-    for (const node of nodes) {
-      map.set(node.data.table_id as ConcreteTableId, node);
-    }
-    return map;
-  }, [nodes]);
+  // Use snapshots when open, current values when closed
+  const activeSelectedSet = opened ? selectedSnapshot : selectedTableIdSet;
+  const activeVisibleSet = useMemo(
+    () => (opened ? visibleSnapshot : new Set(nodesByTableId.keys())),
+    [opened, visibleSnapshot, nodesByTableId],
+  );
 
   const filteredTables = useMemo(() => {
     let tables = allTables;
@@ -97,19 +107,34 @@ export function TableSelectorInput({
           table.name.toLowerCase().includes(query),
       );
     }
-    // Sort selected tables to the top using the snapshot from when dropdown opened
+    // Sort: selected first, then visible (not selected), then others
     return [...tables].sort((a, b) => {
-      const aSelected = activeSortSet.has(a.id as ConcreteTableId);
-      const bSelected = activeSortSet.has(b.id as ConcreteTableId);
+      const aId = a.id as ConcreteTableId;
+      const bId = b.id as ConcreteTableId;
+      const aSelected = activeSelectedSet.has(aId);
+      const bSelected = activeSelectedSet.has(bId);
+      const aVisible = activeVisibleSet.has(aId);
+      const bVisible = activeVisibleSet.has(bId);
+
+      // Selected tables first
       if (aSelected && !bSelected) {
         return -1;
       }
       if (!aSelected && bSelected) {
         return 1;
       }
+      // If both selected or both not selected, visible tables next
+      if (!aSelected && !bSelected) {
+        if (aVisible && !bVisible) {
+          return -1;
+        }
+        if (!aVisible && bVisible) {
+          return 1;
+        }
+      }
       return 0;
     });
-  }, [activeSortSet, allTables, searchQuery]);
+  }, [activeSelectedSet, activeVisibleSet, allTables, searchQuery]);
 
   const handleFocus = useCallback(
     (tableId: ConcreteTableId) => {
@@ -148,7 +173,8 @@ export function TableSelectorInput({
   const handleConfirmSelectAll = useCallback(() => {
     onSelectionChange(allTables.map((t) => t.id as ConcreteTableId));
     setShowSelectAllWarning(false);
-  }, [allTables, onSelectionChange]);
+    handleClose();
+  }, [allTables, onSelectionChange, handleClose]);
 
   const handleCancelSelectAll = useCallback(() => {
     setShowSelectAllWarning(false);
@@ -210,7 +236,9 @@ export function TableSelectorInput({
                     label={t`Select all`}
                     checked={allSelected}
                     indeterminate={someSelected}
-                    onChange={(e) => handleSelectAllClick(e.currentTarget.checked)}
+                    onChange={(e) =>
+                      handleSelectAllClick(e.currentTarget.checked)
+                    }
                     classNames={{ label: S.checkboxLabel }}
                   />
                 </Group>
@@ -252,9 +280,7 @@ export function TableSelectorInput({
             <Button variant="subtle" onClick={handleCancelSelectAll}>
               {t`Cancel`}
             </Button>
-            <Button onClick={handleConfirmSelectAll}>
-              {t`Select all`}
-            </Button>
+            <Button onClick={handleConfirmSelectAll}>{t`Select all`}</Button>
           </Group>
         </Stack>
       </Modal>
