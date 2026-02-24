@@ -253,7 +253,7 @@ class TagEditorParamInner extends Component<
     });
   };
 
-  setParameterAttribute(attr: keyof TemplateTag, val: any) {
+  setTemplateTagAttribute(attr: keyof TemplateTag, val: any) {
     // only register an update if the value actually changes
     if (this.props.tag[attr] !== val) {
       this.props.setTemplateTag({
@@ -389,7 +389,7 @@ class TagEditorParamInner extends Component<
           <FilterWidgetLabelInput
             tag={tag}
             onChange={(value) =>
-              this.setParameterAttribute("display-name", value)
+              this.setTemplateTagAttribute("display-name", value)
             }
           />
         )}
@@ -410,7 +410,7 @@ class TagEditorParamInner extends Component<
                       !newTemporalUnits.includes(tag.default as TemporalUnit)
                     ) {
                       // reset value as it's not on the new list of available options
-                      this.setParameterAttribute("default", null);
+                      this.setTemplateTagAttribute("default", null);
                       this.props.setParameterValue(tag.id, null);
                     }
                   }
@@ -447,7 +447,7 @@ class TagEditorParamInner extends Component<
             parameter={parameter}
             isEmbeddedDisabled={embeddedParameterVisibility === "disabled"}
             onChangeDefaultValue={(value) => {
-              this.setParameterAttribute("default", value);
+              this.setTemplateTagAttribute("default", value);
               this.props.setParameterValue(tag.id, value);
             }}
             onChangeRequired={this.setRequired}
