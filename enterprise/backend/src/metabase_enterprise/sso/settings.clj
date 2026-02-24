@@ -12,6 +12,7 @@
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
+   [metabase.util.string :as u.str]
    [saml20-clj.core :as saml]))
 
 (set! *warn-on-reflection* true)
@@ -359,9 +360,16 @@ using, this usually looks like `https://your-org-name.example.com` or `https://e
   (deferred-tru "Client Secret for your Slack app")
   :encryption :when-encryption-key-set
   :export?    false
-  :sensitive? true
   :feature    :sso-slack
-  :audit      :no-value)
+  :audit      :no-value
+  :getter     (fn []
+                (-> (setting/get-value-of-type :string :slack-connect-client-secret)
+                    (u.str/mask 4))))
+
+(defn unobfuscated-slack-connect-client-secret
+  "Get the unobfuscated value of [[slack-connect-client-secret]]."
+  []
+  (setting/get-value-of-type :string :slack-connect-client-secret))
 
 (def slack-connect-auth-mode-sso
   "Authentication mode for full SSO login."
@@ -372,10 +380,10 @@ using, this usually looks like `https://your-org-name.example.com` or `https://e
   "link-only")
 
 (defsetting slack-connect-authentication-mode
-  (deferred-tru "Controls whether Slack can be used for SSO login or just account linking. Valid values: \"sso\" (default) or \"link-only\"")
+  (deferred-tru "Controls whether Slack can be used for SSO login or just account linking. Valid values: \"sso\" or \"link-only\" (default)")
   :type       :string
   :export?    false
-  :default    slack-connect-auth-mode-sso
+  :default    slack-connect-auth-mode-link-only
   :feature    :sso-slack
   :audit      :getter
   :encryption :no
@@ -434,4 +442,7 @@ using, this usually looks like `https://your-org-name.example.com` or `https://e
   authorization rather than the normal login form or Google Auth button."
   :visibility :public
   :setter     :none
-  :getter     (fn [] (or (saml-enabled) (jwt-enabled) (slack-connect-enabled))))
+  :getter     (fn [] (or (saml-enabled)
+                         (jwt-enabled)
+                         (and (slack-connect-enabled)
+                              (= slack-connect-auth-mode-sso (slack-connect-authentication-mode))))))

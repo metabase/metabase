@@ -154,13 +154,13 @@ export const useAdminSettings = <
 
   type Values = { [K in SettingNames[number]]: EnterpriseSettings[K] };
   const values = useMemo(() => {
-    return (settings ? _.pick(settingNames, ...settingNames) : {}) as Values;
+    return (settings ? _.pick(settings, ...settingNames) : {}) as Values;
   }, [settings, settingNames]);
 
   type Details = { [K in SettingNames[number]]: SettingDefinition<K> };
   const details = useMemo(() => {
     return (
-      settingsDetails ? _.pick(settingNames, ...settingNames) : {}
+      settingsDetails ? _.pick(settingsDetails, ...settingNames) : {}
     ) as Details;
   }, [settingsDetails, settingNames]);
 

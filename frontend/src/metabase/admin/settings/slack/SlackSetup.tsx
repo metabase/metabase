@@ -1,101 +1,157 @@
-import type { ReactNode } from "react";
-import { t } from "ttag";
+import { useDisclosure } from "@mantine/hooks";
+import { useMemo } from "react";
+import { jt, t } from "ttag";
 
-import { useGetSlackManifestQuery } from "metabase/api";
-import { ButtonLink } from "metabase/common/components/ExternalLink";
+import { SettingsSection } from "metabase/admin/components/SettingsSection";
+import {
+  useGetSlackManifestQuery,
+  useUpdateSlackSettingsMutation,
+} from "metabase/api";
+import { ConfirmModal } from "metabase/common/components/ConfirmModal";
+import {
+  ButtonLink,
+  ExternalLink,
+} from "metabase/common/components/ExternalLink";
 import { Markdown } from "metabase/common/components/Markdown";
-import { useSetting } from "metabase/common/hooks";
-import { Box, Divider, Icon, Stack, Text, Title } from "metabase/ui";
+import { useDocsUrl, useSetting } from "metabase/common/hooks";
+import {
+  Badge,
+  Box,
+  Button,
+  Divider,
+  Flex,
+  HoverCard,
+  Icon,
+  Stack,
+  Text,
+} from "metabase/ui";
 
-import { SlackBadge } from "./SlackBadge";
+import { SlackConfiguration } from "./SlackConfiguration";
 import { SlackSetupForm } from "./SlackSetupForm";
-import S from "./slack.module.css";
+
+const SlackConnectionStatus = ({
+  isValid,
+  docsUrl,
+  token,
+}: {
+  isValid: boolean;
+  docsUrl: string;
+  token: string | null;
+}) => {
+  const [updateSlackSettings] = useUpdateSlackSettingsMutation();
+  const [isOpened, { open: handleOpen, close: handleClose }] =
+    useDisclosure(false);
+
+  const handleDisconnect = () => {
+    updateSlackSettings({ "slack-app-token": null });
+    handleClose();
+  };
+
+  return (
+    <>
+      <Flex justify="space-between" align="center">
+        <Flex align="center" gap="sm">
+          <Badge
+            circle
+            size="12"
+            bg={isValid ? "success" : "error"}
+            style={{ flexShrink: 0 }}
+          />
+          <Text>
+            {isValid ? t`Slack app is working` : t`Slack app is not working.`}
+          </Text>
+          {token && (
+            <HoverCard position="bottom">
+              <HoverCard.Target>
+                <Icon
+                  name="info"
+                  c="text-secondary"
+                  size={14}
+                  style={{ cursor: "pointer" }}
+                />
+              </HoverCard.Target>
+              <HoverCard.Dropdown>
+                <Stack gap="xs" p="md">
+                  <Text c="text-secondary">{t`Slack Bot OAuth Token`}</Text>
+                  <Text fw="bold">{token}</Text>
+                </Stack>
+              </HoverCard.Dropdown>
+            </HoverCard>
+          )}
+          {!isValid && (
+            <Text ml="sm" inline>
+              {jt`Need help? ${(<ExternalLink key="link" href={docsUrl}>{t`See our docs`}</ExternalLink>)}.`}
+            </Text>
+          )}
+        </Flex>
+
+        <Button c="danger" onClick={handleOpen}>{t`Disconnect`}</Button>
+      </Flex>
+      <ConfirmModal
+        opened={isOpened}
+        onClose={handleClose}
+        title={t`Disconnect Slack?`}
+        message={t`This will stop dashboard subscriptions from appearing in Slack until you reconnect.`}
+        confirmButtonText={t`Disconnect`}
+        onConfirm={handleDisconnect}
+      />
+    </>
+  );
+};
 
 export const SlackSetup = () => {
-  const botToken = useSetting("slack-token");
-  const isValid = useSetting("slack-token-valid?");
-  return (
-    <Stack>
-      <SetupHeader isBot={!!botToken} isValid={isValid} />
-      <SetupSection
-        title={t`1. Click the button below and create your Slack App`}
-      >
-        <Text>
-          <Markdown>
-            {t`First, **click the button below to create your Slack App** using the Metabase configuration. Once created, click "**Install to workspace**" to authorize it.`}
-          </Markdown>
-        </Text>
-        <SlackAppsLink />
-      </SetupSection>
-      <SetupSection
-        title={t`2. Activate the OAuth token and create a new slack channel`}
-      >
-        <Text mb="md">
-          <Markdown>
-            {t`Click on "**OAuth and Permissions**" in the sidebar, copy the "**Bot User OAuth Token**" and paste it here.`}
-          </Markdown>
-        </Text>
-        <SlackSetupForm />
-      </SetupSection>
-    </Stack>
-  );
-};
+  const slackAppToken = useSetting("slack-app-token");
+  const hasCompletedSetup = !!slackAppToken;
+  const isValid = useSetting("slack-token-valid?") ?? false;
+  const { url: docsUrl } = useDocsUrl("configuring-metabase/slack");
 
-const SetupHeader = ({
-  isBot,
-  isValid,
-}: {
-  isBot?: boolean;
-  isValid?: boolean;
-}) => {
-  return (
-    <Box>
-      {isBot ? (
-        <Text>
-          <SlackBadge isBot={isBot} isValid={isValid} />{" "}
-          <Markdown>
-            {t`We recommend you **upgrade to Slack Apps** see the instructions below:`}
-          </Markdown>
-        </Text>
-      ) : (
-        <Text c="text-secondary">
-          {t`Bring the power of Metabase to your Slack #channels.`}{" "}
-          {t`Follow these steps to connect to Slack:`}
-        </Text>
-      )}
-    </Box>
-  );
-};
-
-const SetupSection = ({
-  title,
-  children,
-}: {
-  title: string;
-  children?: ReactNode;
-}) => {
-  return (
-    <Box className={S.SetupSection}>
-      <Title order={4} p="md" c="brand">
-        {title}
-      </Title>
-      <Divider />
-      <Box p="md">{children}</Box>
-    </Box>
-  );
-};
-
-const SlackAppsLink = () => {
   const { data: manifest } = useGetSlackManifestQuery();
 
-  const link = manifest
-    ? `/apps?new_app=1&manifest_yaml=${encodeURIComponent(manifest)}`
-    : "/apps";
+  const link = useMemo(() => {
+    if (!manifest) {
+      return "/apps";
+    }
+    const encodedManifest = encodeURIComponent(JSON.stringify(manifest));
+    return `/apps?new_app=1&manifest_json=${encodedManifest}`;
+  }, [manifest]);
+
+  if (!hasCompletedSetup) {
+    return (
+      <SettingsSection title={t`Create a Slack app and connect to it.`}>
+        <Stack gap="md">
+          <Markdown>
+            {t`First, **click the button below** to create your Slack App using the Metabase configuration.`}
+          </Markdown>
+          <Box>
+            <ButtonLink href={`https://api.slack.com${link}`}>
+              <span>{t`Create Slack App`}</span>
+              <Icon name="external" opacity={0.7} ml="md" />
+            </ButtonLink>
+          </Box>
+          <Markdown>
+            {t`First, click "**Install to workspace**" to authorize it, then copy the **Bot User OAuth Token** and paste it here.`}
+          </Markdown>
+          <SlackSetupForm
+            initialValues={{
+              "slack-app-token": slackAppToken ?? "",
+            }}
+          />
+        </Stack>
+      </SettingsSection>
+    );
+  }
 
   return (
-    <ButtonLink href={`https://api.slack.com${link}`}>
-      <span>{t`Create Slack App`}</span>
-      <Icon name="external" opacity={0.7} ml="md" />
-    </ButtonLink>
+    <SettingsSection stackProps={{ pt: "lg" }}>
+      <Box>
+        <SlackConnectionStatus
+          isValid={isValid}
+          docsUrl={docsUrl}
+          token={slackAppToken}
+        />
+        <Divider w="calc(100% + 4rem)" ml="-2rem" my="lg" />
+        <SlackConfiguration />
+      </Box>
+    </SettingsSection>
   );
 };

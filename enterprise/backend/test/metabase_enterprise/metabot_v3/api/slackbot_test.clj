@@ -8,7 +8,9 @@
    [metabase-enterprise.metabot-v3.api.slackbot.query :as slackbot.query]
    [metabase-enterprise.metabot-v3.settings :as metabot.settings]
    [metabase-enterprise.sso.settings :as sso-settings]
+   [metabase.channel.settings :as channel.settings]
    [metabase.premium-features.core :as premium-features]
+   [metabase.server.middleware.auth :as mw.auth]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.upload.db :as upload.db]
@@ -32,9 +34,10 @@
      (mt/with-premium-features #{:metabot-v3 :sso-slack}
        (mt/with-temporary-setting-values [site-url "https://localhost:3000"
                                           metabot.settings/metabot-slack-signing-secret test-signing-secret
-                                          metabot.settings/metabot-slack-bot-token "xoxb-test"
+                                          channel.settings/slack-app-token "xoxb-test"
                                           sso-settings/slack-connect-client-id "test-client-id"
-                                          sso-settings/slack-connect-client-secret "test-secret"]
+                                          sso-settings/slack-connect-client-secret "test-secret"
+                                          sso-settings/slack-connect-enabled true]
          ~@body))))
 
 (defn- compute-slack-signature
@@ -55,12 +58,12 @@
                                  "x-slack-request-timestamp" timestamp}}}))
 
 (deftest manifest-endpoint-test
-  (testing "GET /api/ee/metabot-v3/slack/manifest"
+  (testing "GET /api/slack/manifest with metabot-v3 feature"
     (mt/with-premium-features #{:metabot-v3}
       (mt/with-temporary-setting-values [site-url "https://localhost:3000"]
         (testing "with site-url configured"
           (testing "admins can access manifest"
-            (let [response (mt/user-http-request :crowberto :get 200 "ee/metabot-v3/slack/manifest")]
+            (let [response (mt/user-http-request :crowberto :get 200 "slack/manifest")]
               (is (map? response))
               (is (contains? response :display_information))
               (is (contains? response :features))
@@ -68,12 +71,12 @@
               (is (contains? response :settings))))
           (testing "non-admins cannot access manifest"
             (is (= "You don't have permissions to do that."
-                   (mt/user-http-request :rasta :get 403 "ee/metabot-v3/slack/manifest"))))))
+                   (mt/user-http-request :rasta :get 403 "slack/manifest"))))))
       (mt/with-temporary-setting-values [site-url nil]
         (testing "without site-url configured"
           (testing "raises a 503 error"
             (is (= "You must configure a site-url for Slack integration to work."
-                   (mt/user-http-request :crowberto :get 503 "ee/metabot-v3/slack/manifest")))))))))
+                   (mt/user-http-request :crowberto :get 503 "slack/manifest")))))))))
 
 (deftest events-endpoint-test
   (testing "POST /api/ee/metabot-v3/slack/events"
@@ -119,16 +122,30 @@
                            :challenge "test"})))))))
 
 (deftest feature-flag-test
-  (testing "Endpoints require metabot-v3 premium feature"
-    (mt/with-premium-features #{}
-      (testing "GET /api/ee/metabot-v3/slack/manifest"
-        (mt/assert-has-premium-feature-error "MetaBot"
-                                             (mt/user-http-request :crowberto :get 402 "ee/metabot-v3/slack/manifest")))
-      (testing "POST /api/ee/metabot-v3/slack/events"
-        (mt/assert-has-premium-feature-error "MetaBot"
-                                             (mt/client :post 402 "ee/metabot-v3/slack/events"
-                                                        {:type "url_verification"
-                                                         :challenge "test"}))))))
+  (testing "POST /api/ee/metabot-v3/slack/events"
+    (testing "ack events even when metabot-v3 feature is disabled to prevent Slack retries"
+      (with-redefs [slackbot/validate-bot-token! (constantly {:ok true})
+                    encryption/default-secret-key test-encryption-key
+                    mw.auth/metabot-slack-signing-secret-setting (constantly test-signing-secret)]
+        (mt/with-premium-features #{:sso-slack}
+          (mt/with-temporary-setting-values [site-url "https://localhost:3000"
+                                             metabot.settings/metabot-slack-signing-secret test-signing-secret
+                                             channel.settings/slack-app-token "xoxb-test"
+                                             sso-settings/slack-connect-client-id "test-client-id"
+                                             sso-settings/slack-connect-client-secret "test-secret"
+                                             sso-settings/slack-connect-enabled true]
+            (let [body {:type "event_callback"
+                        :event {:type "message"
+                                :text "Hello!"
+                                :user "U123"
+                                :channel "D123"
+                                :ts "1234567890.000001"
+                                :event_ts "1234567890.000001"
+                                :channel_type "im"}}
+                  response (mt/client :post 200 "ee/metabot-v3/slack/events"
+                                      (slack-request-options body)
+                                      body)]
+              (is (= "ok" response) "Should ACK the event with 200 OK"))))))))
 
 (defn- with-slackbot-mocks
   "Helper to set up common mocks for slackbot tests.
@@ -236,6 +253,42 @@
                   (is (= 0 (count @post-calls)))
                   (is (= 0 (count @ephemeral-calls))))))))))))
 
+(deftest slackbot-disabled-setting-test
+  (testing "POST /events acks but does not process when slack-connect-enabled is false"
+    (with-slackbot-setup
+      (mt/with-temporary-setting-values [sso-settings/slack-connect-enabled false]
+        (doseq [[desc event-body]
+                [["message.im event"
+                  {:type "event_callback"
+                   :event {:type "message"
+                           :text "Hello!"
+                           :user "U123"
+                           :channel "D123"
+                           :ts "1234567890.000001"
+                           :event_ts "1234567890.000001"
+                           :channel_type "im"}}]
+                 ["app_mention event"
+                  {:type "event_callback"
+                   :event {:type "app_mention"
+                           :text "<@UBOT123> Hello!"
+                           :user "U123"
+                           :channel "C123"
+                           :ts "1234567890.000001"
+                           :event_ts "1234567890.000001"}}]]]
+          (testing desc
+            (with-slackbot-mocks
+              {:ai-text "Should not be called"}
+              (fn [{:keys [post-calls delete-calls ephemeral-calls]}]
+                (let [response (mt/client :post 200 "ee/metabot-v3/slack/events"
+                                          (slack-request-options event-body)
+                                          event-body)]
+                  (is (= "ok" response))
+                  ;; Brief wait to ensure no async processing starts
+                  (Thread/sleep 200)
+                  (is (= 0 (count @post-calls)) "No messages should be posted")
+                  (is (= 0 (count @delete-calls)) "No messages should be deleted")
+                  (is (= 0 (count @ephemeral-calls)) "No ephemeral messages should be sent"))))))))))
+
 (deftest user-message-triggers-response-test
   (testing "POST /events with user message triggers AI response via Slack"
     (with-slackbot-setup
@@ -262,6 +315,14 @@
               (is (= mock-ai-text (:text (second @post-calls))))
               (is (= 1 (count @delete-calls)))
               (is (= "_Thinking..._" (get-in (first @delete-calls) [:message :text]))))))))))
+
+(deftest metabot-branding-test
+  (testing "post-message includes branding in payload"
+    (let [payload (atom nil)]
+      (with-redefs [slackbot/slack-post-json (fn [_ _ p] (reset! payload p) {:body {:ok true}})]
+        (#'slackbot/post-message {} {:channel "C123" :text "hi"})
+        (is (contains? @payload :username))
+        (is (contains? @payload :icon_url))))))
 
 (deftest app-mention-triggers-response-test
   (testing "POST /events with app_mention triggers AI response"
@@ -461,18 +522,25 @@
     (mt/with-premium-features #{:metabot-v3 :sso-slack}
       (mt/with-temporary-setting-values [site-url site-url
                                          metabot.settings/metabot-slack-signing-secret signing-secret
-                                         metabot.settings/metabot-slack-bot-token bot-token
+                                         channel.settings/slack-app-token bot-token
                                          sso-settings/slack-connect-client-id client-id
                                          sso-settings/slack-connect-client-secret client-secret]
         (thunk)))))
 
 (deftest setup-complete-test
-  (let [request-body {:type "url_verification" :challenge "test-challenge"}
+  (let [request-body {:type "event_callback"
+                      :event {:type "message"
+                              :text "test"
+                              :user "U123"
+                              :channel "C123"
+                              :ts "1234567890.000001"
+                              :event_ts "1234567890.000001"
+                              :channel_type "im"}}
         post-events  #(mt/client :post %1 "ee/metabot-v3/slack/events"
                                  (slack-request-options request-body) request-body)]
     (testing "succeeds when all settings are configured"
       (do-with-setup-override! {}
-                               #(is (= "test-challenge" (post-events 200)))))
+                               #(is (= "ok" (post-events 200)))))
 
     (doseq [[desc override] [["sso-slack feature disabled"    {:sso-slack false}]
                              ["client-id missing"             {:client-id nil}]
@@ -973,6 +1041,56 @@
         (testing "returns nil when no AuthIdentity exists"
           (is (nil? (#'slackbot/slack-id->user-id slack-id))))))))
 
+(deftest channel-message-without-mention-no-auth-test
+  (testing "POST /events with channel message (no @mention) from unlinked user should NOT send auth message"
+    (with-slackbot-setup
+      (let [event-body {:type "event_callback"
+                        :event {:type "message"
+                                :text "Hello everyone!"
+                                :user "U-UNKNOWN-USER"
+                                :channel "C123"
+                                :ts "1234567890.000001"
+                                :event_ts "1234567890.000001"
+                                :channel_type "channel"}}]
+        (with-slackbot-mocks
+          {:ai-text "Should not be called"
+           :user-id ::no-user}
+          (fn [{:keys [post-calls ephemeral-calls]}]
+            (let [response (mt/client :post 200 "ee/metabot-v3/slack/events"
+                                      (slack-request-options event-body)
+                                      event-body)]
+              (is (= "ok" response))
+              ;; Give a moment for any async processing
+              (Thread/sleep 500)
+              (testing "no regular messages posted"
+                (is (= 0 (count @post-calls))))
+              (testing "no ephemeral auth messages sent"
+                (is (= 0 (count @ephemeral-calls)))))))))))
+
+(deftest channel-message-without-mention-linked-user-test
+  (testing "POST /events with channel message from linked user should be silently ignored"
+    (with-slackbot-setup
+      (let [event-body {:type "event_callback"
+                        :event {:type "message"
+                                :text "Hello team!"
+                                :user "U123"
+                                :channel "C123"
+                                :ts "1234567890.000001"
+                                :event_ts "1234567890.000001"
+                                :channel_type "channel"}}]
+        (with-slackbot-mocks
+          {:ai-text "Should not be called"}
+          (fn [{:keys [post-calls ephemeral-calls]}]
+            (let [response (mt/client :post 200 "ee/metabot-v3/slack/events"
+                                      (slack-request-options event-body)
+                                      event-body)]
+              (is (= "ok" response))
+              (Thread/sleep 500)
+              (testing "no messages posted"
+                (is (= 0 (count @post-calls))))
+              (testing "no ephemeral messages"
+                (is (= 0 (count @ephemeral-calls)))))))))))
+
 ;; NOTE: Table block extraction disabled due to hallucinations - see slackbot.clj
 #_(deftest thread->history-includes-table-blocks-test
     (testing "thread->history includes table block content in assistant messages"
@@ -987,3 +1105,52 @@
         (is (str/includes? (:content (first result)) "Product"))
         (is (str/includes? (:content (first result)) "Widget"))
         (is (str/includes? (:content (first result)) "$100")))))
+
+;; -------------------------------- PUT /slack/settings Tests --------------------------------
+
+(deftest put-slack-settings-test
+  (mt/with-premium-features #{:metabot-v3 :sso-slack}
+    (let [creds {:slack-connect-client-id "id"
+                 :slack-connect-client-secret "secret"
+                 :metabot-slack-signing-secret "signing"}
+          clear {:slack-connect-client-id nil
+                 :slack-connect-client-secret nil
+                 :metabot-slack-signing-secret nil}]
+      (testing "set all credentials"
+        (mt/with-temporary-setting-values [sso-settings/slack-connect-client-id nil
+                                           sso-settings/slack-connect-client-secret nil
+                                           metabot.settings/metabot-slack-signing-secret nil]
+          (is (= {:ok true} (mt/user-http-request :crowberto :put 200 "ee/metabot-v3/slack/settings" creds)))
+          (is (every? some? [(sso-settings/slack-connect-client-id)
+                             (sso-settings/slack-connect-client-secret)
+                             (metabot.settings/metabot-slack-signing-secret)]))
+          (is (true? (sso-settings/slack-connect-enabled)))))
+
+      (testing "clear all credentials"
+        (mt/with-temporary-setting-values [sso-settings/slack-connect-client-id "x"
+                                           sso-settings/slack-connect-client-secret "x"
+                                           metabot.settings/metabot-slack-signing-secret "x"]
+          (is (= {:ok true} (mt/user-http-request :crowberto :put 200 "ee/metabot-v3/slack/settings" clear)))
+          (is (every? nil? [(sso-settings/slack-connect-client-id)
+                            (sso-settings/slack-connect-client-secret)
+                            (metabot.settings/metabot-slack-signing-secret)]))
+          (is (false? (sso-settings/slack-connect-enabled)))))
+
+      (testing "partial credentials returns 400"
+        (doseq [partial [(assoc creds :slack-connect-client-id nil)
+                         (assoc creds :slack-connect-client-secret nil)
+                         (assoc creds :metabot-slack-signing-secret nil)]]
+          (is (= "Must provide client id, client secret and signing secret together."
+                 (mt/user-http-request :crowberto :put 400 "ee/metabot-v3/slack/settings" partial)))))
+
+      (testing "non-admin returns 403"
+        (is (= "You don't have permissions to do that."
+               (mt/user-http-request :rasta :put 403 "ee/metabot-v3/slack/settings" creds))))))
+
+  (testing "setting values without metabot-v3 feature returns 402"
+    (mt/with-premium-features #{:sso-slack}
+      (is (= "Metabot feature is not enabled."
+             (mt/user-http-request :crowberto :put 402 "ee/metabot-v3/slack/settings"
+                                   {:slack-connect-client-id "id"
+                                    :slack-connect-client-secret "secret"
+                                    :metabot-slack-signing-secret "signing"}))))))

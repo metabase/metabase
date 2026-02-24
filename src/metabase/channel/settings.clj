@@ -8,17 +8,6 @@
    [metabase.util.malli.schema :as ms]
    [metabase.util.string :as u.str]))
 
-(defsetting slack-token
-  (deferred-tru
-   (str "Deprecated Slack API token for connecting the Metabase Slack bot. "
-        "Please use a new Slack app integration instead."))
-  :deprecated "0.42.0"
-  :encryption :when-encryption-key-set
-  :visibility :settings-manager
-  :doc        false
-  :audit      :never
-  :export?    false)
-
 (defsetting slack-app-token
   (deferred-tru
    (str "Bot user OAuth token for connecting the Metabase Slack app. "
@@ -335,10 +324,6 @@
   "Is Slack integration configured?"
   :type       :boolean
   :visibility :internal
-  :getter     (fn []
-                (boolean
-                 (or
-                  (seq (slack-app-token))
-                  (seq (slack-token)))))
+  :getter     (fn [] (boolean (slack-app-token)))
   :export?    false
   :setter     :none)

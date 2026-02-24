@@ -523,7 +523,7 @@ export const Onboarding = () => {
                         <Link
                           className={CS.link}
                           key="subscription-slack"
-                          to="/admin/settings/notifications"
+                          to="/admin/settings/slack"
                         >{t`Slack`}</Link>
                       )}.`}
                     </Text>
@@ -587,7 +587,7 @@ export const Onboarding = () => {
                         <Link
                           className={CS.link}
                           key="alert-slack"
-                          to="/admin/settings/notifications"
+                          to="/admin/settings/slack"
                         >{t`Slack`}</Link>
                       )}.`}
                     </Text>

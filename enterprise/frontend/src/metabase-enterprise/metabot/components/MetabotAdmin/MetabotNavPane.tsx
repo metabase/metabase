@@ -21,11 +21,6 @@ export function MetabotNavPane() {
           label={t`Embedded Metabot`}
           path={`/admin/metabot/${FIXED_METABOT_IDS.EMBEDDED}`}
         />
-        <AdminNavItem
-          icon="slack"
-          label={t`Slackbot`}
-          path={`/admin/metabot/slackbot`}
-        />
       </AdminNavWrapper>
     </Flex>
   );

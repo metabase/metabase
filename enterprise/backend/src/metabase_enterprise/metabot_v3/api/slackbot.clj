@@ -18,12 +18,15 @@
    [metabase-enterprise.sso.settings :as sso-settings]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
+   [metabase.channel.api.slack :as channel.api.slack]
    [metabase.channel.render.core :as channel.render]
+   [metabase.channel.settings :as channel.settings]
    [metabase.permissions.core :as perms]
-   [metabase.premium-features.core :as premium-features]
+   [metabase.premium-features.core :as premium-features :refer [defenterprise defenterprise-schema]]
    [metabase.query-processor :as qp]
    [metabase.query-processor.middleware.permissions :as qp.perms]
    [metabase.request.core :as request]
+   [metabase.settings.core :as setting]
    [metabase.system.core :as system]
    [metabase.upload.core :as upload]
    [metabase.util.encryption :as encryption]
@@ -41,6 +44,23 @@
 
 (set! *warn-on-reflection* true)
 
+(defn- metabot-message-defaults
+  "Default branding for Metabot Slack messages."
+  []
+  {:username "Metabot"
+   :icon_url "https://static.metabase.com/metabot-slackbot.png"})
+
+(defenterprise clear-slack-bot-settings!
+  "Clears all slackbot-related settings when Slack token is cleared.
+   This ensures enable-sso-slack? becomes false."
+  :feature :metabot-v3
+  []
+  (setting/set-many! {:slack-connect-enabled        false
+                      :slack-connect-client-id      nil
+                      :slack-connect-client-secret  nil
+                      :metabot-slack-signing-secret nil})
+  nil)
+
 ;; ------------------ SLACK CLIENT --------------------
 
 (def ^:private SlackClient
@@ -51,21 +71,21 @@
 (defn- slack-get
   "GET from slack"
   [client endpoint params]
-  (-> (http/get (str "https://slack.com/api" endpoint)
-                {:headers {"Authorization" (str "Bearer " (:token client))}
-                 :query-params params})
-      :body
-      (json/decode true)))
+  (let [response (http/get (str "https://slack.com/api" endpoint)
+                           {:headers {"Authorization" (str "Bearer " (:token client))}
+                            :query-params params})]
+    {:body (json/decode (:body response) true)
+     :headers (:headers response)}))
 
 (defn- slack-post-json
-  "POST to slack"
+  "POST to slack."
   [client endpoint payload]
-  (-> (http/post (str "https://slack.com/api" endpoint)
-                 {:headers {"Authorization" (str "Bearer " (:token client))}
-                  :content-type "application/json; charset=utf-8"
-                  :body (json/encode payload)})
-      :body
-      (json/decode true)))
+  (let [response (http/post (str "https://slack.com/api" endpoint)
+                            {:headers {"Authorization" (str "Bearer " (:token client))}
+                             :content-type "application/json; charset=utf-8"
+                             :body (json/encode payload)})]
+    {:body (json/decode (:body response) true)
+     :headers (:headers response)}))
 
 (defn- slack-post-form
   "POST form to slack"
@@ -82,16 +102,16 @@
   #{"invalid_auth" "account_inactive" "token_revoked" "token_expired" "not_authed"})
 
 (defn- auth-test
-  "Call auth.test and return the response.
+  "Call auth.test and return the response including headers.
    Throws an exception with appropriate status code if the call fails:
    - 400 for invalid/revoked tokens
    - 502 for Slack API errors (e.g., Slack is down)"
   [client]
   (try
-    (let [response (slack-post-json client "/auth.test" {})]
-      (if (:ok response)
-        response
-        (let [error-code (:error response)
+    (let [{:keys [body headers]} (slack-post-json client "/auth.test" {})]
+      (if (:ok body)
+        {:body body :headers headers}
+        (let [error-code (:error body)
               invalid-token? (slack-token-error-codes error-code)]
           (throw (ex-info (if invalid-token?
                             (tru "Invalid Slack bot token: {0}" error-code)
@@ -108,17 +128,17 @@
 (defn- get-bot-user-id
   "Get the bot's Slack user ID"
   [client]
-  (:user_id (auth-test client)))
+  (:user_id (:body (auth-test client))))
 
 (defn- fetch-thread
   "Fetch a Slack thread"
   ([client message]
    (fetch-thread client message 50))
   ([client message limit]
-   (slack-get client "/conversations.replies"
-              {:channel (:channel message)
-               :ts (or (:thread_ts message) (:ts message))
-               :limit limit})))
+   (:body (slack-get client "/conversations.replies"
+                     {:channel (:channel message)
+                      :ts (or (:thread_ts message) (:ts message))
+                      :limit limit}))))
 
 (defn- get-upload-url
   "Get a URL we can upload to"
@@ -128,12 +148,14 @@
 (defn- post-message
   "Send a Slack message"
   [client message]
-  (slack-post-json client "/chat.postMessage" message))
+  (:body (slack-post-json client "/chat.postMessage"
+                          (merge (metabot-message-defaults) message))))
 
 (defn- post-ephemeral-message
   "Send a Slack ephemeral message (visible only to the specified user)"
   [client message]
-  (slack-post-json client "/chat.postEphemeral" message))
+  (:body (slack-post-json client "/chat.postEphemeral"
+                          (merge (metabot-message-defaults) message))))
 
 (defn- post-image
   "Upload a PNG image and send in a message"
@@ -144,17 +166,17 @@
       (http/post upload_url
                  {:headers {"Content-Type" "image/png"}
                   :body image-bytes})
-      (slack-post-json client "/files.completeUploadExternal"
-                       {:files [{:id file_id
-                                 :title filename}]
-                        :channel_id channel
-                        :thread_ts thread-ts})
+      (:body (slack-post-json client "/files.completeUploadExternal"
+                              {:files [{:id file_id
+                                        :title filename}]
+                               :channel_id channel
+                               :thread_ts thread-ts}))
       res)))
 
 (defn- delete-message
   "Remove a Slack message"
   [client message]
-  (slack-post-json client "/chat.delete" (select-keys message [:channel :ts])))
+  (:body (slack-post-json client "/chat.delete" (select-keys message [:channel :ts]))))
 
 ;; -------------------- VISUALIZATION GENERATION ---------------------------
 
@@ -252,7 +274,7 @@
   "Download a file from Slack using the bot token for authentication.
    Returns byte array of file contents."
   [url]
-  (let [token (metabot.settings/metabot-slack-bot-token)]
+  (let [token (channel.settings/unobfuscated-slack-app-token)]
     (-> (http/get url {:headers {"Authorization" (str "Bearer " token)}
                        :as :byte-array})
         :body)))
@@ -440,90 +462,64 @@
 
 ;; -------------------- API ---------------------------
 
-(def ^:private SlackbotManifest
-  "Malli schema for Slack app manifest structure"
-  [:map
-   [:display_information [:map
-                          [:name :string]
-                          [:description :string]
-                          [:background_color :string]]]
-   [:features [:map
-               [:app_home [:map
-                           [:home_tab_enabled :boolean]
-                           [:messages_tab_enabled :boolean]
-                           [:messages_tab_read_only_enabled :boolean]]]
-               [:bot_user [:map
-                           [:display_name :string]
-                           [:always_online :boolean]]]
-               [:assistant_view [:map
-                                 [:assistant_description :string]]]
-               [:slash_commands [:sequential [:map
-                                              [:command :string]
-                                              [:url ms/Url]
-                                              [:description :string]
-                                              [:should_escape :boolean]]]]]]
-   [:oauth_config [:map
-                   [:redirect_urls [:sequential ms/Url]]
-                   [:scopes [:map
-                             [:bot [:sequential :string]]]]]]
-   [:settings [:map
-               [:event_subscriptions [:map
-                                      [:request_url ms/Url]
-                                      [:bot_events [:sequential :string]]]]
-               [:interactivity [:map
-                                [:is_enabled :boolean]
-                                [:request_url ms/Url]]]
-               [:org_deploy_enabled :boolean]
-               [:socket_mode_enabled :boolean]
-               [:token_rotation_enabled :boolean]]]])
-
-(mu/defn- slackbot-manifest :- SlackbotManifest
-  [base-url :- ms/Url]
-  {:display_information {:name "Metabot"
-                         :description "Your AI-powered data assistant"
-                         :background_color "#509EE3"}
-   :features {:app_home {:home_tab_enabled false
-                         :messages_tab_enabled true
-                         :messages_tab_read_only_enabled false}
-              :bot_user {:display_name "Metabot"
-                         :always_online false}
-              :assistant_view {:assistant_description "Your AI-powered data assistant"}
-              :slash_commands [{:command "/metabot"
-                                :url (str base-url "/api/ee/metabot-v3/slack/commands")
-                                :description "Issue a Metabot command"
-                                :should_escape false}]}
-   :oauth_config {:redirect_urls [(str base-url "/auth/sso")]
-                  :scopes {:bot ["app_mentions:read"
-                                 "assistant:write"
-                                 "channels:history"
-                                 "chat:write"
-                                 "channels:read"
-                                 "commands"
-                                 "groups:read"
-                                 "groups:history"
-                                 "im:history"
-                                 "im:read"
-                                 "files:read"
-                                 "files:write"
-                                 "mpim:read"]}}
-   :settings {:event_subscriptions {:request_url (str base-url "/api/ee/metabot-v3/slack/events")
-                                    :bot_events ["app_home_opened"
-                                                 "app_mention"
-                                                 "message.channels"
-                                                 "message.im"
-                                                 "assistant_thread_started"
-                                                 "assistant_thread_context_changed"]}
-              :interactivity {:is_enabled true
-                              :request_url (str base-url "/api/ee/metabot-v3/slack/interactive")}
-              :org_deploy_enabled true
-              :socket_mode_enabled false
-              :token_rotation_enabled false}})
+(defenterprise-schema get-slack-manifest :- channel.api.slack/SlackManifest
+  "Enterprise implementation - returns full MetaBot manifest with event subscriptions, slash commands, etc."
+  :feature :metabot-v3
+  []
+  (let [base-url (system/site-url)]
+    (when-not base-url
+      (throw (ex-info (tru "You must configure a site-url for Slack integration to work.") {:status-code 503})))
+    {:display_information {:name "Metabot"
+                           :description "Your AI-powered data assistant"
+                           :background_color "#509EE3"}
+     :features {:app_home {:home_tab_enabled false
+                           :messages_tab_enabled true
+                           :messages_tab_read_only_enabled false}
+                :bot_user {:display_name "Metabot"
+                           :always_online false}
+                :assistant_view {:assistant_description "Your AI-powered data assistant"}
+                :slash_commands [{:command "/metabot"
+                                  :url (str base-url "/api/ee/metabot-v3/slack/commands")
+                                  :description "Issue a Metabot command"
+                                  :should_escape false}]}
+     :oauth_config {:redirect_urls [(str base-url "/auth/sso")]
+                    :scopes {:bot ["app_mentions:read"
+                                   "assistant:write"
+                                   "channels:history"
+                                   "chat:write"
+                                   "chat:write.customize"
+                                   "chat:write.public"
+                                   "channels:join"
+                                   "channels:read"
+                                   "commands"
+                                   "groups:read"
+                                   "groups:history"
+                                   "im:history"
+                                   "im:read"
+                                   "files:read"
+                                   "files:write"
+                                   "mpim:read"
+                                   "users:read"]}}
+     :settings {:event_subscriptions {:request_url (str base-url "/api/ee/metabot-v3/slack/events")
+                                      :bot_events ["app_home_opened"
+                                                   "app_mention"
+                                                   "message.channels"
+                                                   "message.im"
+                                                   "assistant_thread_started"
+                                                   "assistant_thread_context_changed"]}
+                :interactivity {:is_enabled true
+                                :request_url (str base-url "/api/ee/metabot-v3/slack/interactive")}
+                :org_deploy_enabled true
+                :socket_mode_enabled false
+                :token_rotation_enabled false}}))
 
 ;; ------------------------- VALIDATION ----------------------------------
 
 (defn- assert-valid-slack-req
   "Asserts that incoming Slack request has a valid signature."
   [request]
+  (when-not (metabot.settings/unobfuscated-metabot-slack-signing-secret)
+    (throw (ex-info (str (tru "Slack integration is not fully configured.")) {:status-code 503})))
   (when-not (:slack/validated? request)
     (throw (ex-info (str (tru "Slack request signature is not valid.")) {:status-code 401}))))
 
@@ -536,9 +532,7 @@
         (sso-settings/slack-connect-client-id)
         (sso-settings/slack-connect-client-secret)
         (metabot.settings/metabot-slack-signing-secret)
-        ;; TODO: we need to factor in this or make it always true if metabot-v3 is enabled?
-        ;; (metabase-enterprise.sso.settings/slack-connect-enabled)
-        (metabot.settings/metabot-slack-bot-token)
+        (channel.settings/unobfuscated-slack-app-token)
         (encryption/default-encryption-enabled?))))
 
 (defn- assert-setup-complete
@@ -778,10 +772,10 @@
    client
    (merge (event->reply-context event)
           {:user (:user event)
-           :text "Connect your Slack account to Metabase to use Metabot."
+           :text "Connect your Slack account to Metabase. Once linked, I can use your permissions to query data on your behalf."
            :blocks [{:type "section"
                      :text {:type "mrkdwn"
-                            :text "To use Metabot, connect your Slack account to Metabase."}}
+                            :text "Connect your Slack account to Metabase. Once linked, I can use your permissions to query data on your behalf."}}
                     {:type "actions"
                      :elements [{:type "button"
                                  :text {:type "plain_text"
@@ -850,15 +844,17 @@
   "Respond to an incoming user slack message, dispatching based on channel_type or subtype"
   [client :- SlackClient
    event  :- SlackKnownMessageEvent]
-  (when-let [user-id (require-authenticated-slack-user! client event)]
-    (let [channel-type (:channel_type event)
-          subtype (:subtype event)]
-      (cond
-        (= subtype "file_share")   (process-message-file-share client event user-id)
-        (= channel-type "im")      (process-message-im client event user-id)
-        (= channel-type "channel") nil
-        :else                      (log/warnf "[slackbot] Unhandled message type: channel_type=%s subtype=%s"
-                                              channel-type subtype))))
+  ;; Early return for plain channel messages (without @mention) - we only respond in DMs or to file shares
+  (when-not (and (= (:channel_type event) "channel")
+                 (not= (:subtype event) "file_share"))
+    (when-let [user-id (require-authenticated-slack-user! client event)]
+      (let [channel-type (:channel_type event)
+            subtype (:subtype event)]
+        (cond
+          (= subtype "file_share")   (process-message-file-share client event user-id)
+          (= channel-type "im")      (process-message-im client event user-id)
+          :else                      (log/warnf "[slackbot] Unhandled message type: channel_type=%s subtype=%s"
+                                                channel-type subtype)))))
   nil)
 
 (mu/defn- process-app-mention :- :nil
@@ -883,50 +879,45 @@
 (mu/defn- handle-event-callback :- SlackEventsResponse
   "Respond to an event_callback request"
   [payload :- SlackEventCallbackEvent]
-  (let [client {:token (metabot.settings/metabot-slack-bot-token)}
-        event  (:event payload)]
-    (log/debugf "[slackbot] Event callback: event_type=%s user=%s channel=%s"
-                (:type event) (:user event) (:channel event))
-    (cond
-      (edited-message? event)
-      (log/debug "[slackbot] Ignoring edited message")
+  (when (and (premium-features/enable-metabot-v3?)
+             (sso-settings/slack-connect-enabled))
+    (let [client {:token (channel.settings/unobfuscated-slack-app-token)}
+          event (:event payload)]
+      (log/debugf "[slackbot] Event callback: event_type=%s user=%s channel=%s"
+                  (:type event) (:user event) (:channel event))
+      (cond
+        (edited-message? event)
+        (log/debug "[slackbot] Ignoring edited message")
 
-      ;; Skip app_mention events with files - these will be handled by the file_share event
-      (app-mention-with-files? event)
-      (log/debugf "[slackbot] Skipping app_mention with files (will be handled by file_share): ts=%s"
-                  (:ts event))
+        ;; Skip app_mention events with files - these will be handled by the file_share event
+        (app-mention-with-files? event)
+        (log/debugf "[slackbot] Skipping app_mention with files (will be handled by file_share): ts=%s"
+                    (:ts event))
 
-      (app-mention? event)
-      (do
-        (log/debug "[slackbot] Processing app_mention event")
-        (future
-          (try
-            (process-app-mention client event)
-            (catch Exception e
-              (log/errorf e "[slackbot] Error processing app_mention: %s" (ex-message e))))))
+        (app-mention? event)
+        (do
+          (log/debug "[slackbot] Processing app_mention event")
+          (future
+            (try
+              (process-app-mention client event)
+              (catch Exception e
+                (log/errorf e "[slackbot] Error processing app_mention: %s" (ex-message e))))))
 
-      (known-user-message? event)
-      (do
-        (log/debug "[slackbot] Processing user message event")
-        (future
-          (try
-            (process-user-message client event)
-            (catch Exception e
-              (log/errorf e "[slackbot] Error processing message: %s" (ex-message e))))))
+        (known-user-message? event)
+        (do
+          (log/debug "[slackbot] Processing user message event")
+          (future
+            (try
+              (process-user-message client event)
+              (catch Exception e
+                (log/errorf e "[slackbot] Error processing message: %s" (ex-message e))))))
 
-      :else
-      (log/debugf "[slackbot] Ignoring unhandled event type: %s" (:type event)))
-    ack-msg))
+        :else
+        (log/debugf "[slackbot] Ignoring unhandled event type: %s" (:type event)))))
+  ack-msg)
 
 ;; ----------------------- ROUTES --------------------------
-
-(api.macros/defendpoint :get "/manifest" :- SlackbotManifest
-  "Returns the JSON manifest used to create a new Slack app"
-  []
-  (perms/check-has-application-permission :setting)
-  (when-not (some? (system/site-url))
-    (throw (ex-info (tru "You must configure a site-url for Slack integration to work.") {:status-code 503})))
-  (slackbot-manifest (system/site-url)))
+;; NOTE: make sure to do premium-features/enable-metabot-v3? checks if you add new endpoints
 
 (api.macros/defendpoint :post "/events" :- SlackEventsResponse
   "Respond to activities in Slack"
@@ -937,14 +928,60 @@
             ["event_callback"   SlackEventCallbackEvent]
             [::mc/default       [:map [:type :string]]]]
    request]
-  (assert-setup-complete)
   (assert-valid-slack-req request)
   (log/debugf "[slackbot] Received Slack event type=%s" (:type body))
   ;; all handlers must respond within 3 seconds or slack will retry
-  (case (:type body)
-    "url_verification" (handle-url-verification body)
-    "event_callback"   (handle-event-callback body)
-    ack-msg))
+  (if-not (premium-features/enable-metabot-v3?)
+    ack-msg ;; prevent retries if metabot becomes disabled after app is configured
+    (case (:type body)
+      "url_verification" (handle-url-verification body)
+      "event_callback" (do (assert-setup-complete)
+                           (handle-event-callback body))
+      ack-msg)))
+
+(def SlackBotSettingsRequest
+  "Malli schema for the request body of PUT /api/ee/metabot-v3/slack/settings.
+   All credential fields must be provided together (either all set or all nil)."
+  [:map
+   [:slack-connect-client-id      [:maybe ms/NonBlankString]]
+   [:slack-connect-client-secret  [:maybe ms/NonBlankString]]
+   [:metabot-slack-signing-secret [:maybe ms/NonBlankString]]])
+
+(def SlackBotSettingsResponse
+  "Malli schema for the response of PUT /api/ee/metabot-v3/slack/settings."
+  [:map
+   [:ok :boolean]])
+
+(api.macros/defendpoint :put "/settings" :- SlackBotSettingsResponse
+  "Update Metabot Slack settings atomically.
+   All credential fields must be provided together.
+   Setting values requires the metabot-v3 feature, but clearing values is always allowed.
+   slack-connect-enabled is automatically set to true when credentials are provided, nil when cleared."
+  [_route-params
+   _query-params
+   {:keys [slack-connect-client-id
+           slack-connect-client-secret
+           metabot-slack-signing-secret]} :- SlackBotSettingsRequest]
+  (perms/check-has-application-permission :setting)
+  (let [all-set?   (and slack-connect-client-id
+                        slack-connect-client-secret
+                        metabot-slack-signing-secret)
+        all-unset? (and (nil? slack-connect-client-id)
+                        (nil? slack-connect-client-secret)
+                        (nil? metabot-slack-signing-secret))]
+    ;; require metabot-v3 feature only when setting values (clearing is always allowed)
+    (when (not (or all-unset? (premium-features/enable-metabot-v3?)))
+      (throw (ex-info (tru "Metabot feature is not enabled.")
+                      {:status-code 402})))
+    ;; all values must be set together or unset together
+    (when-not (or all-set? all-unset?)
+      (throw (ex-info (tru "Must provide client id, client secret and signing secret together.")
+                      {:status-code 400})))
+    (setting/set-many! {:slack-connect-client-id      slack-connect-client-id
+                        :slack-connect-client-secret  slack-connect-client-secret
+                        :metabot-slack-signing-secret metabot-slack-signing-secret
+                        :slack-connect-enabled        (boolean all-set?)})
+    {:ok true}))
 
 (def ^{:arglists '([request respond raise])} routes
   "`/api/ee/metabot-v3/slack` routes."
@@ -972,7 +1009,7 @@
   ;; 4. execute this form to copy the manifest to clipboard, paste the result in the manifest page
   (do
     (require '[clojure.java.shell :refer [sh]])
-    (sh "pbcopy" :in (json/encode (slackbot-manifest (system/site-url)) {:pretty true}))))
+    (sh "pbcopy" :in (json/encode (get-slack-manifest) {:pretty true}))))
   ;; 5. there will be a notification at the top of the manifest page to verify your new site url, click verify
 
 ;; ----------------- DEV -----------------------
@@ -982,7 +1019,7 @@
   (def channel "XXXXXXXXXXX") ; slack channel id (e.g. bot's dms)
   (def thread-ts "XXXXXXXX.XXXXXXX") ; thread id
 
-  (def client {:token (metabot.settings/metabot-slack-bot-token)})
+  (def client {:token (channel.settings/unobfuscated-slack-app-token)})
   (def message (post-message client {:channel channel :text "_Thinking..._" :thread_ts thread-ts}))
   (delete-message client message)
   (select-keys message [:channel :ts])
