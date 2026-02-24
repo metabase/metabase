@@ -1,5 +1,5 @@
 import { useGetJokeQuery } from "metabase/api/joke";
-import { Box, Text, Title } from "metabase/ui";
+import { Card, Text, Title } from "metabase/ui";
 
 export function JokeOfTheDay() {
   const { data: joke, isLoading } = useGetJokeQuery();
@@ -9,10 +9,10 @@ export function JokeOfTheDay() {
   }
 
   return (
-    <Box py="lg">
-      <Title>😂</Title>
+    <Card p="lg" my="lg" bd="1px solid var(--mb-color-border)">
+      <Title order={3}>😂</Title>
       <Text fw="bold">{joke.setup}</Text>
       <Text>{joke.punchline}</Text>
-    </Box>
+    </Card>
   );
 }
