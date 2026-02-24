@@ -35,6 +35,7 @@
     :model/DashboardFavorite
     :model/DatabaseRouter
     :model/Dependency
+    :model/JavaScriptLibrary
     :model/PythonLibrary
     :model/PremiumFeaturesCache
     :model/Query

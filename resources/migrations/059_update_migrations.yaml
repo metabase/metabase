@@ -3574,6 +3574,102 @@ databaseChangeLog:
             path: instance_analytics_views/query_log/v2/h2-query_log.sql
             relativeToChangelogFile: true
 
+  - changeSet:
+      id: v59.2026-02-24T12:00:00
+      author: galdre
+      comment: Add javascript_library table for storing JavaScript transform user modules
+      changes:
+        - createTable:
+            tableName: javascript_library
+            remarks: Store JavaScript library code for user modules in transforms
+            columns:
+              - column:
+                  name: id
+                  type: integer
+                  autoIncrement: true
+                  remarks: Primary key for javascript_library
+                  constraints:
+                    primaryKey: true
+                    primaryKeyName: pk_javascript_library
+              - column:
+                  name: path
+                  type: varchar(254)
+                  remarks: Path identifier for the library
+                  constraints:
+                    nullable: false
+                    unique: true
+                    uniqueConstraintName: uk_javascript_library_path
+              - column:
+                  name: source
+                  type: ${text.type}
+                  remarks: JavaScript source code for user modules
+                  constraints:
+                    nullable: true
+              - column:
+                  name: entity_id
+                  type: char(21)
+                  remarks: Random NanoID tag for unique identity
+                  constraints:
+                    nullable: true
+              - column:
+                  name: created_at
+                  type: ${timestamp_type}
+                  remarks: When the record was created
+                  constraints:
+                    nullable: false
+                  defaultValueComputed: current_timestamp
+              - column:
+                  name: updated_at
+                  type: ${timestamp_type}
+                  remarks: When the record was last updated
+                  constraints:
+                    nullable: false
+                  defaultValueComputed: current_timestamp
+
+  - changeSet:
+      id: v59.2026-02-24T12:00:01
+      author: galdre
+      comment: Add index on entity_id column in javascript_library table
+      changes:
+        - createIndex:
+            tableName: javascript_library
+            indexName: idx_javascript_library_entity_id
+            columns:
+              - column:
+                  name: entity_id
+      rollback:
+        - dropIndex:
+            tableName: javascript_library
+            indexName: idx_javascript_library_entity_id
+
+  - changeSet:
+      id: v59.2026-02-24T12:00:02
+      author: galdre
+      comment: Add unique constraint on entity_id column in javascript_library table
+      changes:
+        - addUniqueConstraint:
+            tableName: javascript_library
+            columnNames: entity_id
+            constraintName: unique_javascript_library_entity_id
+      rollback:
+        - dropUniqueConstraint:
+            tableName: javascript_library
+            constraintName: unique_javascript_library_entity_id
+
+  - changeSet:
+      id: v59.2026-02-24T12:00:03
+      author: galdre
+      comment: Insert default common.js entry in javascript_library
+      preConditions:
+        - onFail: MARK_RAN
+        - sqlCheck:
+            expectedResult: 0
+            sql: SELECT count(*) FROM javascript_library WHERE path = 'common.js'
+      changes:
+        - sql:
+            sql: INSERT INTO javascript_library (path, source, entity_id) VALUES ('common.js', '', 'aHWo_0yPLwKqpQPlFNzCg')
+      rollback:
+
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
 ########################################################################################################################
