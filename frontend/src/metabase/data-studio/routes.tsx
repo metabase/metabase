@@ -13,13 +13,10 @@ import { getDataStudioTransformRoutes } from "metabase/transforms/routes";
 import { canAccessTransforms } from "metabase/transforms/selectors";
 import type { State } from "metabase-types/store";
 
-import { SchemaViewerPage } from "metabase-enterprise/dependencies/pages/SchemaViewerPage";
-
 import { DataSectionLayout } from "./app/pages/DataSectionLayout";
 import { DataStudioLayout } from "./app/pages/DataStudioLayout";
 import { DependenciesSectionLayout } from "./app/pages/DependenciesSectionLayout";
 import { GitSyncSectionLayout } from "./app/pages/GitSyncSectionLayout";
-import { DependencyDiagnosticsSectionLayout } from "./app/pages/TasksSectionLayout/TasksSectionLayout";
 import { TransformsSectionLayout } from "./app/pages/TransformsSectionLayout";
 import { WorkspacesSectionLayout } from "./app/pages/WorkspacesSectionLayout";
 import { getDataStudioMetadataRoutes } from "./data-model/routes";
@@ -73,7 +70,7 @@ export function getDataStudioRoutes(
         {PLUGIN_DEPENDENCIES.isEnabled ? (
           <Route
             path="dependency-diagnostics"
-            component={DependencyDiagnosticsSectionLayout}
+            component={DependenciesSectionLayout}
           >
             {PLUGIN_DEPENDENCIES.getDataStudioDependencyDiagnosticsRoutes()}
           </Route>
@@ -84,7 +81,9 @@ export function getDataStudioRoutes(
           />
         )}
         {PLUGIN_DEPENDENCIES.isEnabled && (
-          <Route path="schema-viewer" component={SchemaViewerPage} />
+          <Route path="schema-viewer">
+            {PLUGIN_DEPENDENCIES.getDataStudioSchemaViewerRoutes()}
+          </Route>
         )}
         <Route path="git-sync" component={GitSyncSectionLayout} />
       </Route>

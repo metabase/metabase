@@ -672,7 +672,6 @@
                                :source-metadata [{:semantic_type :type/Category
                                                   :table_id 45
                                                   :name "CATEGORY"
-                                                  :field_ref [:field 350 {:base-type :type/Text}]
                                                   :effective_type :type/Text
                                                   :id 350
                                                   :display_name "Category"
@@ -721,7 +720,6 @@
                                      :source-metadata [{:semantic_type :type/Category
                                                         :table_id 45
                                                         :name "CATEGORY"
-                                                        :field_ref [:field 350 {:base-type :type/Text, :join-alias "Products"}]
                                                         :effective_type :type/Text
                                                         :id 350
                                                         :display_name "Products → Category"
@@ -735,13 +733,10 @@
                                                        {:name "count"
                                                         :display_name "Count"
                                                         :base_type :type/Integer
-                                                        :semantic_type :type/Quantity
-                                                        :field_ref [:aggregation 0]}]}
+                                                        :semantic_type :type/Quantity}]}
                       :source-metadata [{:semantic_type :type/Category
                                          :table_id 45
                                          :name "CATEGORY"
-                                         :field_ref [:field 350 {:base-type :type/Text
-                                                                 :join-alias "Card 2 - Category"}]
                                          :effective_type :type/Text
                                          :id 350
                                          :display_name "Products → Category"
@@ -755,8 +750,7 @@
                                         {:name "count"
                                          :display_name "Count"
                                          :base_type :type/Integer
-                                         :semantic_type :type/Quantity
-                                         :field_ref [:field "count" {:base-type :type/Integer}]}]}}]]
+                                         :semantic_type :type/Quantity}]}}]]
       (test-round-trip query))))
 
 (deftest ^:parallel round-trip-options-test
@@ -822,8 +816,6 @@
                             [{:semantic_type   :type/PK
                               :table_id        32598
                               :name            "id"
-                              :source          :fields
-                              :field_ref       [:field 134528 nil]
                               :effective_type  :type/Integer
                               :id              134528
                               :visibility_type :normal
@@ -838,7 +830,7 @@
                    :source                       :breakout
                    :effective-type               :type/Text
                    :id                           134551
-                   :metabase.lib.join/join-alias "products__via__product_id"
+                   :lib/join-alias "products__via__product_id"
                    :visibility-type              :normal
                    :display-name                 "Product → Category"
                    :field-ref                    [:field 134551 {:source-field 134534}]
@@ -940,7 +932,7 @@
              (#'lib.convert/disqualify
               {:join-alias                                 "O"
                :temporal-unit                              :year
-               :metabase.lib.field/original-effective-type :type/DateTimeWithLocalTZ}))))
+               :lib/original-effective-type :type/DateTimeWithLocalTZ}))))
     (testing `lib.convert/->legacy-MBQL
       (let [query (-> (lib/query meta/metadata-provider (meta/table-metadata :products))
                       (lib/join (-> (lib/join-clause (meta/table-metadata :orders))
@@ -953,18 +945,18 @@
                                                                     (lib/with-join-alias "O")
                                                                     lib/ref
                                                                     (lib/with-temporal-bucket :year)))]))))]
-        (testing "sanity check: the pMBQL query should namespaced have keys (:metabase.lib.field/original-effective-type)"
+        (testing "sanity check: the pMBQL query should namespaced have keys (:lib/original-effective-type)"
           (is (=? {:stages [{:joins [{:alias      "O"
                                       :conditions [[:=
                                                     {}
                                                     [:field
                                                      {:temporal-unit                              :year
-                                                      :metabase.lib.field/original-effective-type :type/DateTimeWithLocalTZ}
+                                                      :lib/original-effective-type :type/DateTimeWithLocalTZ}
                                                      (meta/id :products :created-at)]
                                                     [:field
                                                      {:join-alias                                 "O"
                                                       :temporal-unit                              :year
-                                                      :metabase.lib.field/original-effective-type :type/DateTimeWithLocalTZ}
+                                                      :lib/original-effective-type :type/DateTimeWithLocalTZ}
                                                      (meta/id :orders :created-at)]]]}]}]}
                   query)))
         (is (=? {:query {:joins [{:alias        "O"
@@ -973,13 +965,13 @@
                                                   (meta/id :products :created-at)
                                                   {:base-type                                  :type/DateTimeWithLocalTZ
                                                    :temporal-unit                              :year
-                                                   :metabase.lib.field/original-effective-type (symbol "nil #_\"key is not present.\"")}]
+                                                   :lib/original-effective-type (symbol "nil #_\"key is not present.\"")}]
                                                  [:field
                                                   (meta/id :orders :created-at)
                                                   {:base-type                                  :type/DateTimeWithLocalTZ
                                                    :join-alias                                 "O"
                                                    :temporal-unit                              :year
-                                                   :metabase.lib.field/original-effective-type (symbol "nil #_\"key is not present.\"")}]]}]}}
+                                                   :lib/original-effective-type (symbol "nil #_\"key is not present.\"")}]]}]}}
                 (lib.convert/->legacy-MBQL query)))))))
 
 (deftest ^:parallel legacy-ref->pMBQL-field-test
@@ -1640,12 +1632,12 @@
               "C"]])))))
 
 (deftest ^:parallel field-name-ref-to-legacy-never-remove-base-type-test
-  (testing "never remove :base-type from a :field name ref regardless of :metabase.lib.query/transformation-added-base-type"
+  (testing "never remove :base-type from a :field name ref regardless of :lib/transformation-added-base-type"
     (is (= [:field "USER_ID" {:base-type :type/Integer, :join-alias "ord1"}]
            (lib.convert/->legacy-MBQL [:field {:lib/uuid                                          "47afe974-396c-4213-8736-859399ba5e7e"
                                                :base-type                                         :type/Integer
                                                :join-alias                                        "ord1"
-                                               :metabase.lib.query/transformation-added-base-type true}
+                                               :lib/transformation-added-base-type true}
                                        "USER_ID"])))))
 
 (deftest ^:parallel dimension->mbql5-test

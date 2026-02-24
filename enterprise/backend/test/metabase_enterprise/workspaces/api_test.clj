@@ -21,7 +21,7 @@
    [metabase.lib.metadata :as lib.metadata]
    [metabase.query-processor.compile :as qp.compile]
    [metabase.test :as mt]
-   [metabase.transforms.api.transform :as transforms.api]
+   [metabase.transforms.core :as transforms.core]
    [metabase.transforms.execute :as transforms.execute]
    [metabase.transforms.test-dataset :as transforms-dataset]
    [metabase.transforms.test-util :as transforms.tu :refer [with-transform-cleanup!]]
@@ -315,13 +315,13 @@
                    (t2/select-one-fn :name [:model/WorkspaceTransform :name] :workspace_id ws-id :ref_id ws-x-2-id)))))
 
         (testing "No updates are propagated back to core app on merge failure"
-          (let [update-transform! transforms.api/update-transform!]
-            (with-redefs [transforms.api/update-transform! (let [call-count (atom 0)]
-                                                             (fn [& args]
-                                                               (when (> @call-count 0)
-                                                                 (throw (Exception. "boom")))
-                                                               (swap! call-count inc)
-                                                               (apply update-transform! args)))]
+          (let [update-transform! transforms.core/update-transform!]
+            (with-redefs [transforms.core/update-transform! (let [call-count (atom 0)]
+                                                              (fn [& args]
+                                                                (when (> @call-count 0)
+                                                                  (throw (Exception. "boom")))
+                                                                (swap! call-count inc)
+                                                                (apply update-transform! args)))]
               (testing "API response: empty merged, single error"
                 (let [resp (mt/user-http-request :crowberto :post 200 (ws-url ws-id "/merge"))]
                   (is (empty? (get-in resp [:merged :transforms])))
@@ -574,8 +574,8 @@
           _ (mt/user-http-request :crowberto :post 204
                                   (ws-url ws-id "/transform" ws-x-1-id "/archive"))]
       (testing "Failure on merge"
-        (with-redefs [transforms.api/delete-transform! (fn [& _args]
-                                                         (throw (Exception. "boom")))]
+        (with-redefs [transforms.core/delete-transform! (fn [& _args]
+                                                          (throw (Exception. "boom")))]
           (let [resp (mt/user-http-request :crowberto :post 500
                                            (ws-url ws-id "/transform" ws-x-1-id "/merge"))]
             (testing "Response"
@@ -1313,7 +1313,7 @@
       (ws.tu/with-workspaces! [ws {:name "Workspace for failure test"}]
         (let [bad-transform {:name   "Bad Transform"
                              :source {:type  "query"
-                                      :query (mt/native-query {:query "SELECT 1 LIMIT"})}
+                                      :query (mt/native-query {:query "SELECT * FROM nonexistent_table_xyz"})}
                              :target {:type     "table"
                                       :database (mt/id)
                                       :schema   "public"
@@ -1481,7 +1481,7 @@
           (testing "returns failed status with message"
             (t2/update! :model/WorkspaceTransform {:workspace_id (:id ws1) :ref_id ref-id}
                         {:source {:type  "query"
-                                  :query (mt/native-query {:query "SELECT 1 LIMIT"})}})
+                                  :query (mt/native-query {:query "SELECT * FROM nonexistent_table_xyz"})}})
             (is (=? {:status  "failed"
                      :message string?}
                     (mt/user-http-request :crowberto :post 200 (ws-url (:id ws1) "transform" ref-id "dry-run"))))))))))
@@ -1589,7 +1589,7 @@
       (testing "returns failed status for syntax errors"
         (let [result (mt/user-http-request :crowberto :post 200
                                            (ws-url (:id ws) "/query")
-                                           {:sql "SELECT 1 LIMIT"})]
+                                           {:sql "SELECT 1 X LIMIT"})]
           (is (=? {:status  "failed"
                    :message string?}
                   result)))))))
@@ -1645,11 +1645,11 @@
                                                            (ws-url (:id ws) "/transform")
                                                            transform-def))
               ws            (ws.tu/ws-done! (:id ws))]
-        ;; Run the transform to populate the isolated table
+          ;; Run the transform to populate the isolated table
+          #_{:clj-kondo/ignore [:redundant-let]}
           (let [run-result (mt/user-http-request :crowberto :post 200
                                                  (ws-url (:id ws) "/transform/" ref-id "/run"))]
             (is (= "succeeded" (:status run-result)) "Transform should run successfully"))
-
           (testing "ad-hoc query can SELECT from transform output using schema-qualified table name"
             (let [query-sql (str "SELECT * FROM " target-schema "." target-table)
                   result    (mt/user-http-request :crowberto :post 200

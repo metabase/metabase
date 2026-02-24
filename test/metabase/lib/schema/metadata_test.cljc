@@ -4,69 +4,75 @@
    [clojure.walk :as walk]
    [metabase.legacy-mbql.schema :as mbql.s]
    [metabase.lib.core :as lib]
+   [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.lib.test-metadata :as meta]
-   [metabase.util :as u]))
+   [metabase.util :as u]
+   [metabase.util.malli.registry :as mr]))
 
 (deftest ^:parallel normalize-column-metadata-test
-  (let [col {"active"                    true
-             "base-type"                 "type/Text"
-             "database-type"             "CHARACTER VARYING"
-             "display-name"              "Category"
-             "effective-type"            "type/Text"
-             "field-ref"                 ["field" 61339 nil]
-             "fingerprint"               {"global" {"distinct-count" 4, "nil%" 0.0}
-                                          "type"   {"type/Text"   {"average-length" 6.375
-                                                                   "percent-email"  0.0
-                                                                   "percent-json"   0.0
-                                                                   "percent-state"  0.0
-                                                                   "percent-url"    0.0}
-                                                    "type/Number" {"q1" 1.459}}}
-             "id"                        61339
-             "lib/breakout?"             true
-             "lib/deduplicated-name"     "CATEGORY"
-             "lib/desired-column-alias"  "CATEGORY"
-             "lib/original-display-name" "Category"
-             "lib/original-name"         "CATEGORY"
-             "lib/source"                "source/table-defaults"
-             "lib/source-column-alias"   "CATEGORY"
-             "lib/type"                  "metadata/column"
-             "name"                      "CATEGORY"
-             "position"                  3
-             "semantic-type"             "type/Category"
-             "settings"                  {"is_priceless" true}
-             "source"                    "breakout"
-             "table-id"                  10808
-             "visibility-type"           "normal"}]
-    (is (= {:active                    true
-            :base-type                 :type/Text
-            :database-type             "CHARACTER VARYING"
-            :display-name              "Category"
-            :effective-type            :type/Text
-            :field-ref                 [:field 61339 nil]
-            :fingerprint               {:global {:distinct-count 4, :nil% 0.0}
-                                        :type   {:type/Text   {:average-length 6.375
-                                                               :percent-email  0.0
-                                                               :percent-json   0.0
-                                                               :percent-state  0.0
-                                                               :percent-url    0.0}
-                                                 :type/Number {:q1 1.459}}}
-            :id                        61339
-            :name                      "CATEGORY"
-            :position                  3
-            :semantic-type             :type/Category
-            :settings                  {:is_priceless true}
-            :source                    :breakout
-            :table-id                  10808
-            :visibility-type           :normal
-            :lib/breakout?             true
-            :lib/deduplicated-name     "CATEGORY"
-            :lib/desired-column-alias  "CATEGORY"
-            :lib/original-display-name "Category"
-            :lib/original-name         "CATEGORY"
-            :lib/source                :source/table-defaults
-            :lib/source-column-alias   "CATEGORY"
-            :lib/type                  :metadata/column}
+  (let [col {"active"                                          true
+             "base-type"                                       "type/Text"
+             "database-type"                                   "CHARACTER VARYING"
+             "display-name"                                    "Category"
+             "effective-type"                                  "type/Text"
+             ;; `:field-ref` should get removed, but the result-metadata key should get normalized
+             "field-ref"                                       ["field" 61339 nil]
+             "metabase.lib.metadata.result-metadata/field-ref" ["field" 61339 nil]
+             "fingerprint"                                     {"global" {"distinct-count" 4, "nil%" 0.0}
+                                                                "type"   {"type/Text"   {"average-length" 6.375
+                                                                                         "percent-email"  0.0
+                                                                                         "percent-json"   0.0
+                                                                                         "percent-state"  0.0
+                                                                                         "percent-url"    0.0}
+                                                                          "type/Number" {"q1" 1.459}}}
+             "id"                                              61339
+             "lib/breakout?"                                   true
+             "lib/deduplicated-name"                           "CATEGORY"
+             "lib/desired-column-alias"                        "CATEGORY"
+             "lib/original-display-name"                       "Category"
+             "lib/original-name"                               "CATEGORY"
+             "lib/source"                                      "source/table-defaults"
+             "lib/source-column-alias"                         "CATEGORY"
+             "lib/type"                                        "metadata/column"
+             "name"                                            "CATEGORY"
+             "position"                                        3
+             "semantic-type"                                   "type/Category"
+             "settings"                                        {"is_priceless" true}
+             ;; `:source` should get removed, but the result-metadata version should get normalized.
+             "source"                                          "breakout"
+             "metabase.lib.metadata.result-metadata/source"    "breakout"
+             "table-id"                                        10808
+             "visibility-type"                                 "normal"}]
+    (is (= {:active                                          true
+            :base-type                                       :type/Text
+            :database-type                                   "CHARACTER VARYING"
+            :display-name                                    "Category"
+            :effective-type                                  :type/Text
+            :metabase.lib.metadata.result-metadata/field-ref [:field 61339 nil]
+            :fingerprint                                     {:global {:distinct-count 4, :nil% 0.0}
+                                                              :type   {:type/Text   {:average-length 6.375
+                                                                                     :percent-email  0.0
+                                                                                     :percent-json   0.0
+                                                                                     :percent-state  0.0
+                                                                                     :percent-url    0.0}
+                                                                       :type/Number {:q1 1.459}}}
+            :id                                              61339
+            :name                                            "CATEGORY"
+            :position                                        3
+            :semantic-type                                   :type/Category
+            :settings                                        {:is_priceless true}
+            :metabase.lib.metadata.result-metadata/source    :breakout
+            :table-id                                        10808
+            :visibility-type                                 :normal
+            :lib/breakout?                                   true
+            :lib/deduplicated-name                           "CATEGORY"
+            :lib/desired-column-alias                        "CATEGORY"
+            :lib/original-display-name                       "Category"
+            :lib/original-name                               "CATEGORY"
+            :lib/source                                      :source/table-defaults
+            :lib/source-column-alias                         "CATEGORY"
+            :lib/type                                        :metadata/column}
            (lib/normalize ::lib.schema.metadata/column col)
            ;; should be able to detect that this is Lib metadata based on the use of `:base-type`
            (lib/normalize ::lib.schema.metadata/lib-or-legacy-column (dissoc col "lib/type"))))))
@@ -136,3 +142,33 @@
 
       {:name "X", :source-alias "alias", :lib/original-join-alias "existing alias"}
       {:name "X", :lib/type :metadata/column, :base-type :type/*, :lib/original-join-alias "existing alias"})))
+
+(deftest ^:parallel rename-old-long-namespaced-keys-test
+  (testing "Old long-namespaced keys in stored result_metadata should be renamed to :lib/* equivalents"
+    (let [base    {:name "X", :lib/type :metadata/column, :base-type :type/*}
+          renames @#'lib.schema.common/deprecated-lib-key-renames]
+      (are [old-key value] (let [normalized (lib/normalize ::lib.schema.metadata/column {old-key value, :name "X"})]
+                             (is (= (assoc base (renames old-key) value)
+                                    normalized))
+                             (is (mr/validate ::lib.schema.metadata/column normalized)))
+        :metabase.lib.join/join-alias                      "Products"
+        :metabase.lib.field/temporal-unit                  :month
+        :metabase.lib.field/binning                        {:strategy :default, :num-bins 10}
+        :metabase.lib.field/original-effective-type        :type/Text
+        :metabase.lib.field/simple-display-name            "Category: Name"
+        :metabase.lib.query/transformation-added-base-type true)
+
+      (testing "new key already present takes precedence"
+        (is (= (assoc base :lib/temporal-unit :year)
+               (lib/normalize ::lib.schema.metadata/column
+                              {:name "X", :metabase.lib.field/temporal-unit :month, :lib/temporal-unit :year}))))
+
+      (testing "old keys are disallowed by the schema"
+        (are [old-key value] (not (mr/validate ::lib.schema.metadata/column
+                                               (assoc base old-key value)))
+          :metabase.lib.join/join-alias                      "Products"
+          :metabase.lib.field/temporal-unit                  :month
+          :metabase.lib.field/binning                        {:strategy :default, :num-bins 10}
+          :metabase.lib.field/original-effective-type        :type/Text
+          :metabase.lib.field/simple-display-name            "Category: Name"
+          :metabase.lib.query/transformation-added-base-type true)))))

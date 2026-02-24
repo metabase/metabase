@@ -1580,10 +1580,11 @@ describe("scenarios > data studio > workspaces", () => {
       createWorkspace();
       registerWorkspaceAliasName("workspaceB");
 
-      Workspaces.getMainlandTransforms()
-        .findByText("SQL transform")
-        .should("be.visible")
-        .click();
+      Workspaces.getMainlandTransforms().within(() => {
+        cy.findByText("SQL transform").should("be.visible");
+        // intentionally not chaining the click since it makes the test flaky
+        cy.findByText("SQL transform").click();
+      });
 
       Workspaces.getWorkspaceContent().within(() => {
         H.NativeEditor.type(" LIMIT 2");
@@ -2478,6 +2479,7 @@ function enableWorkspacesInDb(id: DatabaseId) {
 
 function createWorkspace() {
   Workspaces.getNewWorkspaceButton().click();
+  cy.findByTestId("loading-indicator").should("not.exist");
 }
 
 const TEST_PYTHON_TRANSFORM = dedent`

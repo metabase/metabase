@@ -3,7 +3,8 @@
    [clj-http.client :as http]
    [clojure.test :refer :all]
    [java-time.api :as t]
-   [metabase.sso.oidc.discovery :as oidc.discovery]))
+   [metabase.sso.oidc.discovery :as oidc.discovery]
+   [metabase.test :as mt]))
 
 (deftest ^:parallel get-authorization-endpoint-test
   (testing "Gets authorization endpoint from discovery document"
@@ -205,32 +206,35 @@
 ;;; ================================================== SSRF Protection Tests ==================================================
 
 (deftest discover-oidc-configuration-ssrf-protection-test
-  (testing "Rejects internal addresses (localhost)"
+  (testing "Respects oidc-allowed-networks if set"
     (oidc.discovery/clear-cache!)
-    (is (thrown-with-msg? clojure.lang.ExceptionInfo
-                          #"Invalid issuer URL: internal addresses not allowed"
-                          (oidc.discovery/discover-oidc-configuration "http://localhost/oidc"))))
+    (mt/with-temporary-setting-values [oidc-allowed-networks :external-only]
+      (testing "Rejects internal addresses (localhost)"
+        (oidc.discovery/clear-cache!)
+        (is (thrown-with-msg? clojure.lang.ExceptionInfo
+                              #"Invalid issuer URL: address not allowed by network restrictions"
+                              (oidc.discovery/discover-oidc-configuration "http://localhost/oidc"))))
 
-  (testing "Rejects internal addresses (127.0.0.1)"
-    (oidc.discovery/clear-cache!)
-    (is (thrown-with-msg? clojure.lang.ExceptionInfo
-                          #"Invalid issuer URL: internal addresses not allowed"
-                          (oidc.discovery/discover-oidc-configuration "http://127.0.0.1/oidc"))))
+      (testing "Rejects internal addresses (127.0.0.1)"
+        (oidc.discovery/clear-cache!)
+        (is (thrown-with-msg? clojure.lang.ExceptionInfo
+                              #"Invalid issuer URL: address not allowed by network restrictions"
+                              (oidc.discovery/discover-oidc-configuration "http://127.0.0.1/oidc"))))
 
-  (testing "Rejects cloud metadata endpoint"
-    (oidc.discovery/clear-cache!)
-    (is (thrown-with-msg? clojure.lang.ExceptionInfo
-                          #"Invalid issuer URL: internal addresses not allowed"
-                          (oidc.discovery/discover-oidc-configuration "http://169.254.169.254/metadata"))))
+      (testing "Rejects cloud metadata endpoint"
+        (oidc.discovery/clear-cache!)
+        (is (thrown-with-msg? clojure.lang.ExceptionInfo
+                              #"Invalid issuer URL: address not allowed by network restrictions"
+                              (oidc.discovery/discover-oidc-configuration "http://169.254.169.254/metadata"))))
 
-  (testing "Rejects private network addresses (192.168.x.x)"
-    (oidc.discovery/clear-cache!)
-    (is (thrown-with-msg? clojure.lang.ExceptionInfo
-                          #"Invalid issuer URL: internal addresses not allowed"
-                          (oidc.discovery/discover-oidc-configuration "http://192.168.1.1/oidc"))))
+      (testing "Rejects private network addresses (192.168.x.x)"
+        (oidc.discovery/clear-cache!)
+        (is (thrown-with-msg? clojure.lang.ExceptionInfo
+                              #"Invalid issuer URL: address not allowed by network restrictions"
+                              (oidc.discovery/discover-oidc-configuration "http://192.168.1.1/oidc"))))
 
-  (testing "Rejects private network addresses (10.x.x.x)"
-    (oidc.discovery/clear-cache!)
-    (is (thrown-with-msg? clojure.lang.ExceptionInfo
-                          #"Invalid issuer URL: internal addresses not allowed"
-                          (oidc.discovery/discover-oidc-configuration "http://10.0.0.1/oidc")))))
+      (testing "Rejects private network addresses (10.x.x.x)"
+        (oidc.discovery/clear-cache!)
+        (is (thrown-with-msg? clojure.lang.ExceptionInfo
+                              #"Invalid issuer URL: address not allowed by network restrictions"
+                              (oidc.discovery/discover-oidc-configuration "http://10.0.0.1/oidc")))))))

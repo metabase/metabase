@@ -253,3 +253,14 @@
                                           [:ref ::lib.schema.test-spec/test-query-spec]]]
   (-> (lib-be/application-database-metadata-provider database)
       (lib/test-query query-spec)))
+
+(api.macros/defendpoint :post "/native-query" :- ::lib.schema/query
+  "Creates a native query from a test query spec."
+  [_route-params
+   _query-params
+   {:keys [database], :as native-query-spec} :- [:merge
+                                                 [:map
+                                                  [:database ::lib.schema.id/database]]
+                                                 [:ref ::lib.schema.test-spec/test-native-query-spec]]]
+  (-> (lib-be/application-database-metadata-provider database)
+      (lib/test-native-query native-query-spec)))

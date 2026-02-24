@@ -5,6 +5,7 @@ import { push } from "react-router-redux";
 import { t } from "ttag";
 
 import type { EntityPickerProps } from "metabase/common/components/Pickers";
+import { trackDependencyEntitySelected } from "metabase/data-studio/analytics";
 import { useDispatch } from "metabase/lib/redux";
 import { Button, Card, FixedSizeIcon } from "metabase/ui";
 import type {
@@ -49,6 +50,14 @@ export function GraphEntryInput({
 
   const handleEntryChange = (newEntry: DependencyEntry | undefined) => {
     dispatch(push(getGraphUrl(newEntry)));
+
+    if (newEntry) {
+      trackDependencyEntitySelected({
+        entityId: newEntry.id,
+        triggeredFrom: "dependency-graph",
+        eventDetail: newEntry.type,
+      });
+    }
   };
 
   const handlePickerChange = (newEntry: PickerEntry) => {

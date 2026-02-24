@@ -1,6 +1,6 @@
 import type { CollectionId } from "./collection";
 import type { DashboardId } from "./dashboard";
-import type { DependencyListUserParams } from "./dependencies";
+import type { DependencyDiagnosticsUserParams } from "./dependencies";
 import type { PaginationRequest, PaginationResponse } from "./pagination";
 
 export type UserId = number;
@@ -71,7 +71,7 @@ export interface User extends BaseUser {
   can_write_any_collection: boolean;
   personal_collection_id: CollectionId;
   tenant_collection_id: CollectionId | null;
-  sso_source: "jwt" | "ldap" | "google" | "scim" | "saml" | null;
+  sso_source: "jwt" | "ldap" | "google" | "scim" | "saml" | "oidc" | null;
   custom_homepage: {
     dashboard_id: DashboardId;
   } | null;
@@ -189,9 +189,9 @@ export type UserKeyValue =
       value: boolean;
     }
   | {
-      namespace: "dependency_list";
+      namespace: "dependency_diagnostics";
       key: string;
-      value: DependencyListUserParams;
+      value: DependencyDiagnosticsUserParams;
     }
   | {
       namespace: "schema_viewer";

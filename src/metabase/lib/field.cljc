@@ -38,10 +38,10 @@
    [metabase.util.time :as u.time]))
 
 (defn- column-metadata-effective-type
-  "Effective type of a column when taking the `::temporal-unit` into account. If we have a temporal extraction like
+  "Effective type of a column when taking the `:lib/temporal-unit` into account. If we have a temporal extraction like
   `:month-of-year`, then this actually returns an integer rather than the 'original` effective type of `:type/Date` or
   whatever."
-  [{::keys [temporal-unit], :as column-metadata}]
+  [{:keys [lib/temporal-unit], :as column-metadata}]
   (if (and temporal-unit
            (contains? lib.schema.temporal-bucketing/datetime-extraction-units temporal-unit))
     :type/Integer
@@ -54,7 +54,7 @@
 (defmethod lib.metadata.calculation/type-of-method :field
   [query stage-number [_tag {:keys [temporal-unit], :as _opts} _id-or-name :as field-ref]]
   (let [metadata (cond-> (lib.field.resolution/resolve-field-ref query stage-number field-ref)
-                   temporal-unit (assoc ::temporal-unit temporal-unit))]
+                   temporal-unit (assoc :lib/temporal-unit temporal-unit))]
     (lib.metadata.calculation/type-of query stage-number metadata)))
 
 (defmethod lib.metadata.calculation/metadata-method :metadata/column
@@ -108,24 +108,20 @@
    stage-number
    {field-display-name    :display-name
     field-name            :name
-    join-alias            :metabase.lib.join/join-alias
+    join-alias            :lib/join-alias
     fk-field-id           :fk-field-id
     original-fk-field-id  :lib/original-fk-field-id
     parent-id             :parent-id
     ;; TODO (Cam 6/19/25) -- not sure why we need both "simple display name" and "original display name". QUE-1408
-    simple-display-name   ::simple-display-name
+    simple-display-name   :lib/simple-display-name
     original-display-name :lib/original-display-name
     ref-display-name      :lib/ref-display-name
-    model-display-name    :lib/model-display-name
     source                :lib/source
     source-uuid           :lib/source-uuid
     :as                   col}
    style]
   (let [humanized-name     (u.humanization/name->human-readable-name :simple field-name)
         field-display-name (or ref-display-name
-                               (when (and model-display-name
-                                          (not (str/includes? model-display-name " → ")))
-                                 model-display-name)
                                original-display-name
                                field-display-name)
         fk-field-id        (or fk-field-id original-fk-field-id)]
@@ -133,7 +129,15 @@
         (when (and parent-id
                    ;; check that we haven't nested yet
                    (or (nil? field-display-name)
-                       (= field-display-name humanized-name)))
+                       (= field-display-name humanized-name)
+                       ;; For card-metadata columns, :name may be the dotted form
+                       ;; (e.g. "grandparent.parent"). Humanizing it doesn't produce
+                       ;; the leaf display-name, so also check against the raw field's
+                       ;; display-name from the metadata provider.
+                       (when-let [field-id (when (pos-int? (:id col))
+                                             (:id col))]
+                         (when-let [raw-field (lib.metadata/field query field-id)]
+                           (= field-display-name (:display-name raw-field))))))
           (nest-display-name query col))
         (when-let [[source-index source-clause]
                    (and source-uuid
@@ -158,7 +162,7 @@
 (defn- field-display-name-add-join-alias
   [query
    stage-number
-   {join-alias           :metabase.lib.join/join-alias
+   {join-alias           :lib/join-alias
     original-join-alias  :lib/original-join-alias
     fk-field-id          :fk-field-id
     original-fk-field-id :lib/original-fk-field-id
@@ -195,7 +199,7 @@
       display-name)))
 
 (defn- field-display-name-add-binning
-  [{binning          ::binning
+  [{binning          :lib/binning
     original-binning :lib/original-binning
     semantic-type    :semantic-type
     :as              _col}
@@ -210,7 +214,7 @@
 
 (defn- field-display-name-add-bucketing
   [{inherited-temporal-unit :inherited-temporal-unit
-    temporal-unit           ::temporal-unit
+    temporal-unit           :lib/temporal-unit
     :as                     _col}
    display-name]
   (let [temporal-unit   (or temporal-unit inherited-temporal-unit)
@@ -292,7 +296,7 @@
 
 (defmethod lib.temporal-bucket/temporal-bucket-method :metadata/column
   [metadata]
-  (::temporal-unit metadata))
+  (:lib/temporal-unit metadata))
 
 (defmethod lib.temporal-bucket/with-temporal-bucket-method :field
   [field-ref unit]
@@ -300,16 +304,13 @@
 
 (defmethod lib.temporal-bucket/with-temporal-bucket-method :metadata/column
   [metadata unit]
-  (let [original-effective-type ((some-fn ::original-effective-type :effective-type :base-type) metadata)
-        original-temporal-unit ((some-fn ::original-temporal-unit ::temporal-unit) metadata)]
+  (let [original-effective-type ((some-fn :lib/original-effective-type :effective-type :base-type) metadata)]
     (if unit
       (-> metadata
-          (assoc ::temporal-unit unit)
-          (m/assoc-some ::original-effective-type original-effective-type
-                        ::original-temporal-unit  original-temporal-unit))
-      (cond-> (dissoc metadata ::temporal-unit ::original-effective-type)
-        original-effective-type (assoc :effective-type original-effective-type)
-        original-temporal-unit  (assoc ::original-temporal-unit original-temporal-unit)))))
+          (assoc :lib/temporal-unit unit)
+          (m/assoc-some :lib/original-effective-type original-effective-type))
+      (cond-> (dissoc metadata :lib/temporal-unit :lib/original-effective-type)
+        original-effective-type (assoc :effective-type original-effective-type)))))
 
 (defmethod lib.temporal-bucket/available-temporal-buckets-method :field
   [query stage-number field-ref]
@@ -330,7 +331,7 @@
 (defmethod lib.temporal-bucket/available-temporal-buckets-method :metadata/column
   [_query _stage-number field-metadata]
   (lib.temporal-bucket/available-temporal-buckets-for-type
-   ((some-fn ::original-effective-type :effective-type :base-type) field-metadata)
+   ((some-fn :lib/original-effective-type :effective-type :base-type) field-metadata)
    ;; `:inherited-temporal-unit` being set means field was bucketed on former stage. For this case, make the default nil
    ;; for next bucketing attempt (of already bucketed) field eg. through BreakoutPopover on FE, by setting `:inherited`
    ;; default unit.
@@ -339,7 +340,7 @@
      (or (some-> field-metadata :fingerprint fingerprint-based-default-unit)
          :month)
      :inherited)
-   (::temporal-unit field-metadata)))
+   (:lib/temporal-unit field-metadata)))
 
 ;;; ---------------------------------------- Binning ---------------------------------------------
 
@@ -355,7 +356,7 @@
 (defmethod lib.binning/binning-method :metadata/column
   [metadata]
   (some-> metadata
-          ::binning
+          :lib/binning
           (assoc :lib/type    ::lib.binning/binning
                  :metadata-fn (constantly metadata))))
 
@@ -365,7 +366,7 @@
 
 (defmethod lib.binning/with-binning-method :metadata/column
   [metadata binning]
-  (u/assoc-dissoc metadata ::binning binning))
+  (u/assoc-dissoc metadata :lib/binning binning))
 
 (defmethod lib.binning/available-binning-strategies-method :field
   [query stage-number field-ref]
@@ -407,10 +408,9 @@
     [:base-type
      :inherited-temporal-unit
      :lib/original-binning
-     ::original-effective-type
-     ::original-temporal-unit])
-   {:metabase.lib.field/binning       :binning
-    :metabase.lib.field/temporal-unit :temporal-unit
+     :lib/original-effective-type])
+   {:lib/binning       :binning
+    :lib/temporal-unit :temporal-unit
     :lib/ref-name                     :name
     :lib/ref-display-name             :display-name}))
 
@@ -421,13 +421,13 @@
   (merge
    (u/index-by
     identity
-    ;; include `:metabase.lib.query/transformation-added-base-type` if this is going to be a field ID ref, so we can
+    ;; include `:lib/transformation-added-base-type` if this is going to be a field ID ref, so we can
     ;; remove `:base-type` if it wasn't included in the original query if we convert this ref back to legacy (mostly
     ;; important for [[metabase.query-processor.middleware.annotate/super-broken-legacy-field-ref]] purposes). But if
     ;; this will have a Field name then don't include the key because we don't want the convert code to strip out base
     ;; types -- they're required for field name refs.
-    [:metabase.lib.query/transformation-added-base-type])
-   {:metabase.lib.join/join-alias :join-alias
+    [:lib/transformation-added-base-type])
+   {:lib/join-alias :join-alias
     :fk-field-id                  :source-field
     :fk-join-alias                :source-field-join-alias
     :fk-field-name                :source-field-name}))
@@ -548,7 +548,7 @@
     (if matching-ref
       (do
         (log/debugf "Column %s already included by ref %s, doing nothing and returning the original query"
-                    (pr-str (select-keys column [:id :metabase.lib.join/join-alias :lib/source-column-alias]))
+                    (pr-str (select-keys column [:id :lib/join-alias :lib/source-column-alias]))
                     (pr-str matching-ref))
         query)
       (let [column-ref (lib.ref/ref column)]
@@ -643,7 +643,7 @@
         (log/errorf "[exclude-field] Failed to remove field %s, query is unchanged." (pr-str ((some-fn :display-name :name) column)))))))
 
 (defn- remove-field-from-join [query stage-number column]
-  (let [join        (lib.join/resolve-join query stage-number (::lib.join/join-alias column))
+  (let [join        (lib.join/resolve-join query stage-number (:lib/join-alias column))
         join-fields (lib.join/join-fields join)]
     (if (or (nil? join-fields)
             (= join-fields :none))

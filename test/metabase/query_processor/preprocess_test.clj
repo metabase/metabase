@@ -387,8 +387,12 @@
                  {:name "count", :display-name "Count"}]
                 (lib/returned-columns query))))
       (testing `lib.metadata.result-metadata/returned-columns
-        (is (=? [{:name "CREATED_AT_2", :display-name "Created At: Month", :field-ref [:field "CREATED_AT_2" {}]}
-                 {:name "count", :display-name "Count", :field-ref [:field "count" {}]}]
+        (is (=? [{:name                                            "CREATED_AT_2"
+                  :display-name                                    "Created At: Month"
+                  :metabase.lib.metadata.result-metadata/field-ref [:field "CREATED_AT_2" {}]}
+                 {:name                                            "count"
+                  :display-name                                    "Count"
+                  :metabase.lib.metadata.result-metadata/field-ref [:field "count" {}]}]
                 (lib.metadata.result-metadata/returned-columns query))))
       (testing `qp.preprocess/query->expected-cols
         ;; I think traditionally this field ref would have used a Field ID, and `:field_ref` should aim to preserve
@@ -607,7 +611,7 @@
                   :lib/breakout?                true
                   :lib/source-column-alias      "CATEGORY"
                   :lib/desired-column-alias     "PRODUCTS__via__PRODUCT_ID__CATEGORY"
-                  :metabase.lib.join/join-alias (symbol "nil #_\"key is not present.\"")
+                  :lib/join-alias (symbol "nil #_\"key is not present.\"")
                   :lib/original-join-alias      (symbol "nil #_\"key is not present.\"")
                   :source_alias                 (symbol "nil #_\"key is not present.\"")
                   :fk_field_id                  (meta/id :orders :product-id)}

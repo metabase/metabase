@@ -195,11 +195,11 @@
   (case (:lib/source col)
     :source/table-defaults        (:table-id col)
     (:source/joins
-     :source/implicitly-joinable) (let [join-alias (or (:metabase.lib.join/join-alias col)
+     :source/implicitly-joinable) (let [join-alias (or (:lib/join-alias col)
                                                        (throw (ex-info (format "Column with source %s is missing join alias" (:lib/source col))
                                                                        {:col col})))]
                                     (or (escaped-join-alias query stage-path join-alias)
-                                        (throw (ex-info (format "Resolved metadata is missing ::escaped-join-alias for %s" (pr-str (:metabase.lib.join/join-alias col)))
+                                        (throw (ex-info (format "Resolved metadata is missing ::escaped-join-alias for %s" (pr-str (:lib/join-alias col)))
                                                         {:col col}))))
     (:source/previous-stage
      :source/card)                ::source
@@ -211,7 +211,7 @@
   (lib/update-options
    field-ref #(-> %
                   (assoc ::source-table (source-table query path col)
-                         ::source-alias (escaped-source-alias query path (:metabase.lib.join/join-alias col) (:lib/source-column-alias col)))
+                         ::source-alias (escaped-source-alias query path (:lib/join-alias col) (:lib/source-column-alias col)))
                   (m/assoc-some ::nfc-path (not-empty (:nfc-path col))))))
 
 (defn- fix-field-ref-if-it-should-actually-be-an-expression-ref
@@ -227,22 +227,19 @@
   [query :- ::lib.schema/query
    path  :- ::lib.walk/path
    stage :- ::lib.schema/stage.mbql]
-  (lib.util.match/replace stage
+  (lib.util.match/replace-lite stage
     ;; don't recurse into the metadata or joins -- [[lib.walk]] will take care of that recursion for us.
-    (_ :guard (constantly (some (set &parents) [:lib/stage-metadata :joins])))
+    (_ :guard (some #{:lib/stage-metadata :joins} &parents))
     &match
 
-    :field
+    [:field & _]
     (let [col (resolve-field-ref query path &match)]
       (-> (add-source-to-field-ref query path &match col)
           (fix-field-ref-if-it-should-actually-be-an-expression-ref col)
           ;; record the column we resolved it to, so we can use this when we add desired aliases in the next pass.
           (lib/update-options assoc ::resolved col)))
 
-    :expression
-    (lib/update-options &match assoc ::source-table ::none)
-
-    :aggregation
+    [#{:expression :aggregation} & _]
     (lib/update-options &match assoc ::source-table ::none)))
 
 (mu/defn- add-desired-aliases-to-aggregations :- ::lib.schema/stage.mbql
@@ -281,9 +278,9 @@
    by-source-alias    :- [:map-of :string [:sequential ::lib.schema.metadata/column]]
    by-expression-name :- [:map-of :string ::lib.schema.metadata/column]
    stage              :- ::lib.schema/stage.mbql]
-  (lib.util.match/replace stage
+  (lib.util.match/replace-lite stage
     ;; don't recurse into the metadata or joins -- [[lib.walk]] will take care of that recursion for us.
-    (_ :guard (constantly (some (set &parents) [:lib/stage-metadata :joins ::resolved])))
+    (_ :guard (some #{:lib/stage-metadata :joins ::resolved} &parents))
     &match
 
     [:field opts _id-or-name]
@@ -423,16 +420,15 @@
                               (add-source-to-field-ref query parent-stage-path field-ref col)))
         update-conditions (fn [conditions]
                             ;; the only kind of ref join conditions can have is a `:field` ref
-                            (lib.util.match/replace conditions
-                              ;; a field ref that comes from THIS join needs to get the desired alias returned
-                              ;; by the last stage of the join to use as its source alias
-                              [:field (_opts :guard #(= (:join-alias %) (:alias join))) _id-or-name]
-                              (update-ref-from-this-join query join-path join &match)
-
-                              ;; a field ref that DOES NOT come from this join should get resolved relative to
-                              ;; the parent stage.
-                              [:field (_opts :guard #(not= (:join-alias %) (:alias join))) _id-or-name]
-                              (update-other-ref &match)))]
+                            (lib.util.match/replace-lite conditions
+                              [:field opts _id-or-name]
+                              (if (= (:join-alias opts) (:alias join))
+                                ;; a field ref that comes from THIS join needs to get the desired alias returned
+                                ;; by the last stage of the join to use as its source alias
+                                (update-ref-from-this-join query join-path join &match)
+                                ;; a field ref that DOES NOT come from this join should get resolved relative to
+                                ;; the parent stage.
+                                (update-other-ref &match))))]
     (try
       (update join :conditions update-conditions)
       (catch Throwable e

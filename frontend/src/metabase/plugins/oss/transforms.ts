@@ -22,11 +22,6 @@ export type TransformPickerItem = OmniPickerItem & {
   model: "transform";
 };
 
-export type TransformPickerProps = {
-  value: TransformPickerItem | undefined;
-  onItemSelect: (transform: TransformPickerItem) => void;
-};
-
 export type TransformsPlugin = {
   isEnabled: boolean;
   TransformsUpsellPage: ComponentType;
@@ -63,14 +58,9 @@ export type PythonTransformSourceValidationResult = {
   errorMessage?: string;
 };
 
-export type PythonTransformsUpsellModalProps = {
-  isOpen: boolean;
-  onClose: () => void;
-};
-
 export type PythonTransformsPlugin = {
   isEnabled: boolean;
-  getPythonLibraryRoutes: () => ReactNode;
+  getPythonTransformsRoutes: () => ReactNode;
   getPythonSourceValidationResult: (
     source: PythonTransformSourceDraft,
   ) => PythonTransformSourceValidationResult;
@@ -80,7 +70,6 @@ export type PythonTransformsPlugin = {
   getAdminRoutes: () => ReactNode;
   getTransformsNavLinks: () => ReactNode;
   sharedLibImportPath: string;
-  PythonTransformsUpsellModal: ComponentType<PythonTransformsUpsellModalProps>;
 };
 
 export type DatabaseSchemaViewerSectionProps = {
@@ -91,6 +80,7 @@ type DependenciesPlugin = {
   isEnabled: boolean;
   getDataStudioDependencyRoutes: () => ReactNode;
   getDataStudioDependencyDiagnosticsRoutes: () => ReactNode;
+  getDataStudioSchemaViewerRoutes: () => ReactNode;
   DependencyGraphPage: ComponentType;
   DependencyGraphPageContext: Context<DependencyGraphPageContextType>;
   CheckDependenciesForm: ComponentType<CheckDependenciesFormProps>;
@@ -164,7 +154,7 @@ export const PLUGIN_TRANSFORMS = getDefaultPluginTransforms();
 
 const getDefaultPluginTransformsPython = (): PythonTransformsPlugin => ({
   isEnabled: false,
-  getPythonLibraryRoutes: () => null,
+  getPythonTransformsRoutes: () => null,
   getPythonSourceValidationResult: () => ({ isValid: true }),
   TransformEditor: PluginPlaceholder,
   SourceSection: PluginPlaceholder,
@@ -172,7 +162,6 @@ const getDefaultPluginTransformsPython = (): PythonTransformsPlugin => ({
   getAdminRoutes: () => null,
   getTransformsNavLinks: () => null,
   sharedLibImportPath: "",
-  PythonTransformsUpsellModal: PluginPlaceholder,
 });
 
 export const PLUGIN_TRANSFORMS_PYTHON = getDefaultPluginTransformsPython();
@@ -181,6 +170,7 @@ const getDefaultPluginDependencies = (): DependenciesPlugin => ({
   isEnabled: false,
   getDataStudioDependencyRoutes: () => null,
   getDataStudioDependencyDiagnosticsRoutes: () => null,
+  getDataStudioSchemaViewerRoutes: () => null,
   DependencyGraphPage: PluginPlaceholder,
   DependencyGraphPageContext: createContext({}),
   CheckDependenciesForm: PluginPlaceholder,
