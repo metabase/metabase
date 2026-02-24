@@ -396,7 +396,7 @@
                 :effective-type :type/Text
                 :base-type      :type/Text
                 :join-alias     "Category"}
-               (meta/id :categories :name)]
+               "NAME"]
               (lib/ref col))))))
 
 (deftest ^:parallel legacy-query-joined-field-display-name-test
@@ -497,7 +497,7 @@
   (testing "Handle busted references to joined Fields in broken breakouts from broken drill-thrus (#31482)"
     (let [query        (metabase.lib.breakout-test/legacy-query-with-broken-breakout)
           breakout-ref (first (lib/breakouts query))]
-      (is (=? [:field {:lib/uuid string?} (meta/id :products :category)]
+      (is (=? [:field {:lib/uuid string?} "CATEGORY"]
               breakout-ref))
       (binding [lib.metadata.calculation/*display-name-style* :long]
         (is (=? {:active                       true
@@ -1253,7 +1253,7 @@
           [bad-ref] (lib/breakouts query -1)]
       ;; maybe one day `lib/query` will automatically fix bad refs like these. If that happens, we probably don't even
       ;; need this test anymore? Or we should update it so it's still testing with a bad ref rather than a fixed ref.
-      (is (=? [:field {:join-alias "Cat"} (meta/id :categories :name)]
+      (is (=? [:field {:join-alias "Cat"} "NAME"]
               bad-ref))
       (is (=? {:table-id                     (meta/id :categories)
                :id                           (meta/id :categories :name)

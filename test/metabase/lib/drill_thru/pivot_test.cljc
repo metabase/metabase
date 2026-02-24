@@ -120,20 +120,24 @@
    "2025-12-06T22:22:48.544+02:00"])
 
 (def ^:private bv-address
-  [(meta/field-metadata :people :state)
+  [(assoc (meta/field-metadata :people :state)
+          :fk-field-id (meta/id :orders :user-id))
    "MT"])
 
 (def ^:private bv-category1
-  [(meta/field-metadata :products :category)
+  [(assoc (meta/field-metadata :products :category)
+          :fk-field-id (meta/id :orders :product-id))
    "Gadget"])
 
 (def ^:private bv-category2
-  [(meta/field-metadata :people :source)
+  [(assoc (meta/field-metadata :people :source)
+          :fk-field-id (meta/id :orders :user-id))
    "Twitter"])
 
 ; This isn't really a category column, but it has few enough values to be considered one.
 (def ^:private bv-category3
-  [(meta/field-metadata :products :vendor)
+  [(assoc (meta/field-metadata :products :vendor)
+          :fk-field-id (meta/id :orders :product-id))
    "Spacely Sprockets Inc."])
 
 (def ^:private bv-unknown
