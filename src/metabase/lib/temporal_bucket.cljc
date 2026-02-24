@@ -458,11 +458,11 @@
   ;; if `unit` is an extraction unit like `:month-of-year`, then the `:effective-type` of the ref changes to
   ;; `:type/Integer` (month of year returns an int). We need to record the ORIGINAL effective type somewhere in case
   ;; we need to refer back to it, e.g. to see what temporal buckets are available if we want to change the unit, or if
-  ;; we want to remove it later. We will record this with the key `::original-effective-type`. Note that changing the
-  ;; unit multiple times should keep the original first value of `::original-effective-type`.
+  ;; we want to remove it later. We will record this with the key `:lib/original-effective-type`. Note that changing the
+  ;; unit multiple times should keep the original first value of `:lib/original-effective-type`.
   (if unit
     (let [extraction-unit?        (contains? lib.schema.temporal-bucketing/datetime-extraction-units unit)
-          original-effective-type ((some-fn :metabase.lib.field/original-effective-type :effective-type :base-type)
+          original-effective-type ((some-fn :lib/original-effective-type :effective-type :base-type)
                                    options)
           new-effective-type      (if extraction-unit?
                                     :type/Integer
@@ -470,14 +470,14 @@
           options                 (-> options
                                       (assoc :temporal-unit unit
                                              :effective-type new-effective-type)
-                                      (m/assoc-some :metabase.lib.field/original-effective-type original-effective-type))]
+                                      (m/assoc-some :lib/original-effective-type original-effective-type))]
       [tag options id-or-name])
     ;; `unit` is `nil`: remove the temporal bucket.
-    (let [original-effective-type (:metabase.lib.field/original-effective-type options)
+    (let [original-effective-type (:lib/original-effective-type options)
           options (cond-> (dissoc options :temporal-unit)
                     original-effective-type
                     (-> (assoc :effective-type original-effective-type)
-                        (dissoc :metabase.lib.field/original-effective-type)))]
+                        (dissoc :lib/original-effective-type)))]
       [tag options id-or-name])))
 
 (defn- ends-with-temporal-unit?
