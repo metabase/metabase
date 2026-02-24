@@ -32,6 +32,7 @@
    [metabase-enterprise.metabot-v3.tools.api]
    [metabase-enterprise.permission-debug.api]
    [metabase-enterprise.product-analytics.api]
+   [metabase-enterprise.product-analytics.api.send]
    [metabase-enterprise.remote-sync.api]
    [metabase-enterprise.sandbox.api.routes]
    [metabase-enterprise.scim.routes]
@@ -132,7 +133,17 @@
    "/metabot-tools"                metabase-enterprise.metabot-v3.tools.api/routes
    "/metabot-v3"                   (premium-handler metabase-enterprise.metabot-v3.api/routes :metabot-v3)
    "/permission_debug"             (premium-handler metabase-enterprise.permission-debug.api/routes :advanced-permissions)
-   "/product-analytics"            (premium-handler metabase-enterprise.product-analytics.api/routes :product-analytics)
+   "/product-analytics"            (premium-handler
+                                    (let [send-handler metabase-enterprise.product-analytics.api.send/routes
+                                          crud-handler metabase-enterprise.product-analytics.api/routes]
+                                      (fn pa-routes [request respond raise]
+                                        (send-handler request
+                                                      (fn [response]
+                                                        (if response
+                                                          (respond response)
+                                                          (crud-handler request respond raise)))
+                                                      raise)))
+                                    :product-analytics)
    "/transforms-python"            (premium-handler metabase-enterprise.transforms-python.api/routes :transforms-python)
    "/scim"                         (premium-handler metabase-enterprise.scim.routes/routes :scim)
    "/semantic-search"              (premium-handler metabase-enterprise.semantic-search.api/routes :semantic-search)
