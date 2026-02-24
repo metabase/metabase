@@ -36,6 +36,6 @@
   [{:keys [path]}]
   (try
     {:structured_output
-     (transforms-python.api/get-python-library-by-path path)}
+     (transforms-python.api/get-library-by-path path nil)}
     (catch Exception e
       (metabot-v3.tools.u/handle-agent-error e))))

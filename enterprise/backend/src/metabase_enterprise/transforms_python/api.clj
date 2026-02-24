@@ -92,7 +92,7 @@
                  :per-input-limit per_input_row_limit
                  :row-limit       output_row_limit
                  :timeout-secs (transforms-python.settings/python-runner-test-run-timeout-seconds)
-                 :language (if (javascript? type) "javascript" "python")})
+                 :runtime (if (javascript? type) "javascript" "python")})
         logs   (str/join "\n" (map :message (:logs result)))]
     (if (= :succeeded (:status result))
       {:logs   logs
