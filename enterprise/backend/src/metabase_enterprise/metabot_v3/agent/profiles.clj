@@ -4,6 +4,7 @@
   (:require
    [clojure.string :as str]
    [malli.error :as me]
+   [metabase-enterprise.llm.settings :as llm]
    [metabase-enterprise.metabot-v3.agent.tools :as agent-tools]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]))
@@ -168,7 +169,7 @@
   setting at call time, so it always reflects the current admin configuration."
   [profile-id]
   (when-let [profile (get @*profiles profile-id)]
-    (assoc profile :model "anthropic/claude-haiku-4-5")))
+    (assoc profile :model (llm/ee-ai-metabot-provider))))
 
 (defn get-tools-for-profile
   "Get tool registry filtered by profile configuration and user capabilities."
