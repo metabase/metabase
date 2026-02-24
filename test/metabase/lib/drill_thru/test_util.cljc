@@ -286,7 +286,7 @@
                      true                   (map #(assoc % ::was-breakout-in-original-query? (:lib/breakout? %)))
                      (= query-kind :native) (map #(-> %
                                                       (assoc :lib/source :source/native)
-                                                      (dissoc :lib/breakout? :lib/expression-name :lib/join-alias))))
+                                                      (dissoc :lib/breakout? :lib/expression-name :lib/join-alias :fk-field-id))))
         by-name    (m/index-by :name cols)
         col        (get by-name column-name)
         refs       (update-vals by-name lib/ref)

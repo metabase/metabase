@@ -24,7 +24,8 @@
                     (lib/filter (lib/= (meta/field-metadata :orders :id) 1))
                     (lib/filter (lib/= (meta/field-metadata :orders :id) 2))
                     (lib/filter (lib/= (lib/with-join-alias (meta/field-metadata :orders :id) "O2") 4)))]
-      (is (=? {:stages [{:filters [[:between {} [:field {} "ID"] -100 200]]}]}
+      (is (=? {:stages [{:filters [[:= {} [:field {:join-alias "O2"} "ID"] 4]
+                                   [:between {} [:field {} "ID"] -100 200]]}]}
               (lib/update-numeric-filter query (meta/field-metadata :orders :id) -100 200))))))
 
 (deftest ^:parallel update-numeric-filter-fix-order-test
@@ -91,7 +92,8 @@
                                                     (meta/field-metadata :venues :longitude)
                                                     {:north 10, :south -10, :east 20, :west -20})]
       (testing "First application of update-lat-lon-filter"
-        (is (=? {:stages [{:filters [[:inside
+        (is (=? {:stages [{:filters [[:= {} [:field {:join-alias "V2"} "LATITUDE"] 4]
+                                     [:inside
                                       {}
                                       [:field {} "LATITUDE"]
                                       [:field {} "LONGITUDE"]
@@ -101,7 +103,8 @@
                                       20]]}]}
                 query-lat-lon)))
       (testing "Second application of update-lat-lon-filter"
-        (is (=? {:stages [{:filters [[:inside
+        (is (=? {:stages [{:filters [[:= {} [:field {:join-alias "V2"} "LATITUDE"] 4]
+                                     [:inside
                                       {}
                                       [:field {} "LATITUDE"]
                                       [:field {} "LONGITUDE"]
@@ -130,7 +133,8 @@
                                                     (meta/field-metadata :venues :longitude)
                                                     {:north 10, :south -10, :east -170, :west 170})]
       (testing "First application of update-lat-lon-filter (metabase#41056)"
-        (is (=? {:stages [{:filters [[:or
+        (is (=? {:stages [{:filters [[:= {} [:field {:join-alias "V2"} "LATITUDE"] 4]
+                                     [:or
                                       {}
                                       [:inside
                                        {}
@@ -150,7 +154,8 @@
                                        -170]]]}]}
                 query-lat-lon)))
       (testing "Second application of update-lat-lon-filter (metabase#41056)"
-        (is (=? {:stages [{:filters [[:or
+        (is (=? {:stages [{:filters [[:= {} [:field {:join-alias "V2"} "LATITUDE"] 4]
+                                     [:or
                                       {}
                                       [:inside
                                        {}

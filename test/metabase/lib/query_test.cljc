@@ -85,16 +85,22 @@
                    (lib/join-clause $q [(lib/= (meta/field-metadata :venues :id)
                                                (lib/expression-ref $q "CC"))]))
           query (lib/join (lib.tu/venues-query) clause)
-          ;; Make a legacy query but don't put types in :field and :expression
+          ;; Make a legacy query but don't put types in :field and :expression.
+          ;; Use prewalk so we can skip stripping types from string-name field refs,
+          ;; which require :base-type for the field.literal schema.
           converted-query (lib.convert/->pMBQL
-                           (walk/postwalk
+                           (walk/prewalk
                             (fn [node]
-                              (if (map? node)
-                                (dissoc node :base-type :effective-type)
-                                node))
+                              (if (and (sequential? node)
+                                       (#{:field "field"} (first node))
+                                       (string? (second node)))
+                                node
+                                (if (map? node)
+                                  (dissoc node :base-type :effective-type)
+                                  node)))
                             (lib.convert/->legacy-MBQL query)))]
       (is (=? {:stages [{:joins [{:conditions [[:= {}
-                                                [:field {:base-type :type/BigInteger} (meta/id :venues :id)]
+                                                [:field {:base-type :type/BigInteger} "ID"]
                                                 [:expression
                                                  {}
                                                  ;; TODO Fill these in?
