@@ -1594,8 +1594,7 @@
   {:team "DevEx"
    :api  #{metabase.tracing.core
            metabase.tracing.init}
-   :uses #{config
-           settings
+   :uses #{settings
            task
            util}}
 
