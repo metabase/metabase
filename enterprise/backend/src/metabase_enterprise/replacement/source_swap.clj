@@ -1,5 +1,6 @@
 (ns metabase-enterprise.replacement.source-swap
   (:require
+   [metabase-enterprise.dependencies.models.dependency :as models.dependency]
    [metabase-enterprise.replacement.swap.mbql :as swap.mbql]
    [metabase-enterprise.replacement.swap.native :as swap.native]
    [metabase-enterprise.replacement.swap.viz :as swap.viz]
@@ -54,10 +55,14 @@
         (t2/update! :model/Card entity-id changes)
         ;; TODO: not sure we really want this code to have to know about dependency tracking
         ;; TODO: publishing this event twice per update seems bad
-        (events/publish-event! :event/card-update
+        #_(events/publish-event! :event/card-update
                                {:object (merge card changes)
                                 :user-id (:id @api/*current-user*)
-                                :previous-object card}))
+                                :previous-object card})
+        ;; todo: we still want to publish the card changed event here, but we should suppress the depdency analysis
+        ;; and do it ourselves. This probably should be moved higher up so it's a bit more generic than this
+        ;; paritcular spot
+        (models.dependency/swap-dependency! :card entity-id old-source new-source))
       (swap.viz/dashboard-card-update-field-refs! entity-id query' old-source new-source))))
 
 (defn- segment-swap!
