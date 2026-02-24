@@ -510,11 +510,8 @@ using, this usually looks like `https://your-org-name.example.com` or `https://e
   :audit   :getter)
 
 (defsetting other-sso-enabled?
-  "Are we using an SSO integration other than LDAP or Google Auth or ODIC? These integrations use the `/auth/sso` endpoint for
-  authorization rather than the normal login form or Google Auth button."
+  "Are we using an SSO integration other than LDAP or Google Auth or OIDC? These integrations use the `/auth/sso` endpoint
+  (SAML/JWT) or `/auth/sso/slack-connect` (Slack Connect) for authorization rather than the normal login form or Google Auth button."
   :visibility :public
   :setter     :none
-  :getter     (fn [] (or (saml-enabled)
-                         (jwt-enabled)
-                         (and (slack-connect-enabled)
-                              (= slack-connect-auth-mode-sso (slack-connect-authentication-mode))))))
+  :getter     (fn [] (or (saml-enabled) (jwt-enabled))))

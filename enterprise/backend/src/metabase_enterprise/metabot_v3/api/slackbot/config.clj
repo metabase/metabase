@@ -27,7 +27,7 @@
                                 :url (str base-url "/api/ee/metabot-v3/slack/commands")
                                 :description "Issue a Metabot command"
                                 :should_escape false}]}
-   :oauth_config {:redirect_urls [(str base-url "/auth/sso")]
+   :oauth_config {:redirect_urls [(str base-url "/auth/sso/slack-connect/callback")]
                   :scopes {:bot ["app_mentions:read"
                                  "assistant:write"
                                  "channels:history"

@@ -49,6 +49,8 @@
       (throw (ex-info (tru "You must configure a site-url for Slack integration to work.") {:status-code 503})))
     (slackbot.config/build-slack-manifest base-url)))
 
+;; ------------------------- VALIDATION ----------------------------------
+
 (defn- assert-valid-slack-req
   "Asserts that incoming Slack request has a valid signature."
   [request]
@@ -72,7 +74,7 @@
 (defn- slack-user-authorize-link
   "Link to page where user can initiate SSO auth flow to authorize slackbot"
   []
-  (let [sso-url "/auth/sso?preferred_method=slack-connect&redirect=/slack-connect-success"]
+  (let [sso-url "/auth/sso/slack-connect?redirect=/slack-connect-success"]
     (str (system/site-url) "/auth/login?redirect=" (codec/url-encode sso-url))))
 
 (defn- send-auth-link
