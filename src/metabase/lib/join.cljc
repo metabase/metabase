@@ -17,7 +17,6 @@
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
    [metabase.lib.options :as lib.options]
-   [metabase.lib.query :as lib.query]
    [metabase.lib.ref :as lib.ref]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.common :as lib.schema.common]
@@ -561,15 +560,16 @@
                         "source")]
     join-alias))
 
-(defn- add-alias-to-join-refs [query stage-number form join-alias join-cols]
-  (lib.util.match/replace-lite form
-    (field :guard (and (lib.util/field-clause? field)
-                       (boolean (lib.equality/find-matching-column query stage-number field join-cols))))
-    (with-join-alias field join-alias)))
+(defn- add-alias-to-join-refs [condition join-alias]
+  (standard-join-condition-update-rhs condition
+                                      (fn [rhs]
+                                        (lib.util.match/replace-lite rhs
+                                          (field :guard lib.util/field-clause?)
+                                          (with-join-alias field join-alias)))))
 
 (defn- add-alias-to-condition
-  [query stage-number condition join-alias home-cols join-cols]
-  (let [condition (add-alias-to-join-refs query stage-number condition join-alias join-cols)]
+  [query stage-number condition join-alias home-cols]
+  (let [condition (add-alias-to-join-refs condition join-alias)]
     ;; Sometimes conditions have field references which cannot be unambiguously
     ;; assigned to one of the sides. The following code tries to deal with
     ;; these cases, but only for conditions that look like the ones generated
@@ -646,14 +646,12 @@
                                                             %)
                                                          joins))))
           home-cols   (lib.metadata.calculation/visible-columns query stage-number)
-          join-alias  (default-alias query stage-number a-join stage home-cols)
-          join-cols   (lib.metadata.calculation/returned-columns
-                       (lib.query/query-with-stages query (:stages a-join)))]
+          join-alias  (default-alias query stage-number a-join stage home-cols)]
       (cond-> a-join
         true (dissoc ::replace-alias)
         (not old-alias) (update :conditions
                                 (fn [conditions]
-                                  (mapv #(add-alias-to-condition query stage-number % join-alias home-cols join-cols)
+                                  (mapv #(add-alias-to-condition query stage-number % join-alias home-cols)
                                         conditions)))
         true (with-join-alias join-alias)))))
 
