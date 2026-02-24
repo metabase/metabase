@@ -284,7 +284,11 @@ export type SettingsExtra = {
   // [key: string]: unknown; // TODO
 };
 
-export type VisualizationSettingDefinition<T, TValue, TProps extends object> = {
+export type VisualizationSettingDefinition<
+  T = unknown,
+  TValue = unknown,
+  TProps extends object = object,
+> = {
   id?: string | number;
   section?: string;
   title?: string;

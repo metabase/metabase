@@ -160,8 +160,8 @@ function isObjectWithRaw<T>(object: T): object is T & { _raw?: T } {
   return isObject(object) && "_raw" in object;
 }
 
-export function getSettingsWidgets<T>(
-  settingDefs: VisualizationSettingsDefinitions,
+export function getSettingsWidgets<T, TValue, TProps extends object>(
+  settingDefs: VisualizationSettingsDefinitions<T, TValue, TProps>,
   storedSettings: VisualizationSettings,
   computedSettings: ComputedVisualizationSettings,
   object: T,
@@ -187,7 +187,7 @@ export function getSettingsWidgets<T>(
 }
 
 function getSettingWidget<T, TValue, TProps extends object>(
-  settingDefs: VisualizationSettingsDefinitions,
+  settingDefs: VisualizationSettingsDefinitions<T, TValue, TProps>,
   settingId: VisualizationSettingKey,
   storedSettings: VisualizationSettings,
   computedSettings: ComputedVisualizationSettings,

@@ -65,7 +65,7 @@ const mergeTableColumns = (
 };
 
 export const isSettingHiddenOnDashboards = (
-  vizSettingDefinition: VisualizationSettingDefinition<unknown, unknown>,
+  vizSettingDefinition: VisualizationSettingDefinition,
 ) => {
   // strict check as by default all settings are visible on dashboards
   return vizSettingDefinition.dashboard === false;
@@ -78,10 +78,7 @@ export const isSettingHiddenOnDashboards = (
  */
 export function sanitizeDashcardSettings(
   settings: VisualizationSettings,
-  vizSettingsDefs: Record<
-    string,
-    VisualizationSettingDefinition<unknown, unknown>
-  >,
+  vizSettingsDefs: Record<string, VisualizationSettingDefinition>,
 ): VisualizationSettings {
   return _.pick(settings, (_, key) => {
     const settingDef = vizSettingsDefs[key];
