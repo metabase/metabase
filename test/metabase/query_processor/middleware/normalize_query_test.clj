@@ -14,8 +14,8 @@
                :lib/metadata lib.metadata.protocols/cached-metadata-provider?
                :stages       [{:lib/type     :mbql.stage/mbql
                                :source-table (meta/id :venues)
-                               :fields       [[:field {:lib/uuid string?} (meta/id :venues :id)]
-                                              [:field {:lib/uuid string?} (meta/id :venues :name)]]}]}
+                               :fields       [[:field {:lib/uuid string?} "ID"]
+                                              [:field {:lib/uuid string?} "NAME"]]}]}
               (normalize-query/normalize-preprocessing-middleware
                {:database (meta/id)
                 :type     "query"
@@ -31,14 +31,14 @@
                :lib/metadata lib.metadata.protocols/cached-metadata-provider?
                :stages       [{:lib/type     :mbql.stage/mbql
                                :source-table (meta/id :venues)
-                               :fields       [[:field {:lib/uuid string?} (meta/id :venues :id)]]
+                               :fields       [[:field {:lib/uuid string?} "ID"]]
                                :order-by     [[:asc
                                                {:lib/uuid string?}
                                                [:field
                                                 {:lib/uuid string?
                                                  :base-type :type/BigInteger
                                                  :effective-type :type/BigInteger}
-                                                (meta/id :venues :id)]]]}]}
+                                                "ID"]]]}]}
               (normalize-query/normalize-preprocessing-middleware
                {:database (meta/id)
                 :type     "query"

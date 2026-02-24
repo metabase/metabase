@@ -567,7 +567,7 @@
                  (mapv (juxt :display-name :lib/desired-column-alias)
                        (lib/returned-columns query))))))
       (testing `qp.preprocess/query->expected-cols
-        (is (=? {:stages [{:breakout    [[:field {:join-alias "Products"} pos-int?]]
+        (is (=? {:stages [{:breakout    [[:field {:join-alias "Products"} string?]]
                            :aggregation [[:count {}]]
                            :joins       [{:alias  "Products"
                                           :stages [{:fields #(= (count %) 8)}]}
@@ -577,10 +577,10 @@
                                     [:field {} "count"]]}
                           {:fields [[:field {} "Products__CATEGORY"]
                                     [:field {} "count"]
-                                    [:field {:join-alias "Card 2 - Products → Category"} (meta/id :products :category)]]
+                                    [:field {:join-alias "Card 2 - Products → Category"} "CATEGORY"]]
                            :joins  [{:alias  "Card 2 - Products → Category"
-                                     :fields [[:field {:join-alias "Card 2 - Products → Category"} (meta/id :products :category)]]
-                                     :stages [{:breakout [[:field {} (meta/id :products :category)]]}
+                                     :fields [[:field {:join-alias "Card 2 - Products → Category"} "CATEGORY"]]
+                                     :stages [{:breakout [[:field {} "CATEGORY"]]}
                                               {:fields [[:field {} "CATEGORY"]]}]}]}]}
                 (qp.preprocess/preprocess query)))
         (is (= [["Products → Category"                     "Products__CATEGORY"]

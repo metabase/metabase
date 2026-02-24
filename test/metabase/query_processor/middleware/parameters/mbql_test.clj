@@ -99,10 +99,10 @@
 (deftest ^:parallel multi-stage-test
   (testing "adding parameters to different stages"
     (is (=? {:stages [{:aggregation  [[:count {}]]
-                       :breakout     [[:field {:temporal-unit :year} (meta/id :venues :price)]]
+                       :breakout     [[:field {:temporal-unit :year} "PRICE"]]
                        :filters      [[:=
                                        {}
-                                       [:field {} (meta/id :venues :name)]
+                                       [:field {} "NAME"]
                                        "Cam's Toucannery"]]}
                       {:filters [[:> {}
                                   [:field {:base-type :type/Integer} "count"]
@@ -421,7 +421,7 @@
 
 (deftest ^:parallel convert-ids-to-numbers-test
   (is (=? (lib.tu.macros/$ids venues
-            [:= {} [:field {} %id] 1])
+            [:= {} [:field {} "ID"] 1])
           (build-filter-clause
            (lib/query meta/metadata-provider (meta/table-metadata :venues))
            (lib.tu.macros/$ids venues

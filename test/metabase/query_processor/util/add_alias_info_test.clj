@@ -552,7 +552,7 @@
                                         {::add/desired-alias "sum"}
                                         [:field {::add/source-table $$checkins
                                                  ::add/source-alias "USER_ID"}
-                                         %user-id]]]
+                                         "USER_ID"]]]
                          :order-by    [[:asc
                                         {}
                                         [:aggregation {::add/desired-alias "sum"} string?]]]}]})
@@ -1354,7 +1354,7 @@
                           ::add/source-table  "Products Model - Product"
                           ::add/source-alias  "NAME"
                           ::add/desired-alias nil}
-                  (meta/id :people :name)]
+                  "NAME"]
                  [:value {} nil]]]
                ;; denominator
                [:distinct {} vector?]]

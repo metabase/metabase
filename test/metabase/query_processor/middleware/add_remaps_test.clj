@@ -35,9 +35,9 @@
 (deftest ^:parallel remap-column-infos-test
   (testing "make sure we create the remap column tuples correctly"
     (is (=? [{:original-field-clause [:field {}
-                                      (meta/id :venues :category-id)]
+                                      "CATEGORY_ID"]
               :new-field-clause      [:field {:source-field (meta/id :venues :category-id)}
-                                      (meta/id :categories :name)]
+                                      "NAME"]
               :dimension             {:name                      "Category ID [external remap]"
                                       :field-id                  (meta/id :venues :category-id)
                                       :human-readable-field-id   (meta/id :categories :name)
@@ -603,9 +603,9 @@
                            :limit       3}))
           dimension-id (get-in (lib.metadata/field mp (meta/id :orders :product-id))
                                [:lib/external-remap :id])]
-      (is (=? {:stages [{:breakout [[:field {::qp.add-remaps/new-field-dimension-id dimension-id} (meta/id :products :title)]
-                                    [:field {::qp.add-remaps/original-field-dimension-id dimension-id} (meta/id :orders :product-id)]]
-                         :order-by [[:asc {} [:field {::qp.add-remaps/new-field-dimension-id pos-int?} (meta/id :products :title)]]]}]}
+      (is (=? {:stages [{:breakout [[:field {::qp.add-remaps/new-field-dimension-id dimension-id} "TITLE"]
+                                    [:field {::qp.add-remaps/original-field-dimension-id dimension-id} "PRODUCT_ID"]]
+                         :order-by [[:asc {} [:field {::qp.add-remaps/new-field-dimension-id pos-int?} "TITLE"]]]}]}
               (qp.add-remaps/add-remapped-columns query))))))
 
 (deftest ^:parallel add-remaps-to-joins-e2e-test
@@ -813,20 +813,20 @@
                     "Orders → ID"]
                    (map :display-name (lib/returned-columns query -1 -1 {:include-remaps? true})))))))
       (testing `qp.preprocess/preprocess
-        (is (=? {:fields [[:field {} (meta/id :people :id)]
-                          [:field {:join-alias "Orders"} (meta/id :orders :id)]]
+        (is (=? {:fields [[:field {} "ID"]
+                          [:field {:join-alias "Orders"} "ID"]]
                  :joins  [{:alias  "Orders"
-                           :fields [[:field {:join-alias "Orders"} (meta/id :orders :id)]]
+                           :fields [[:field {:join-alias "Orders"} "ID"]]
                            :stages [{:joins  (symbol "nil #_\"key is not present.\"")
-                                     :fields [[:field {} (meta/id :orders :id)]
-                                              [:field {} (meta/id :orders :user-id)]
-                                              [:field {} (meta/id :orders :product-id)]
-                                              [:field {} (meta/id :orders :subtotal)]
-                                              [:field {} (meta/id :orders :tax)]
-                                              [:field {} (meta/id :orders :total)]
-                                              [:field {} (meta/id :orders :discount)]
-                                              [:field {} (meta/id :orders :created-at)]
-                                              [:field {} (meta/id :orders :quantity)]]}]}]}
+                                     :fields [[:field {} "ID"]
+                                              [:field {} "USER_ID"]
+                                              [:field {} "PRODUCT_ID"]
+                                              [:field {} "SUBTOTAL"]
+                                              [:field {} "TAX"]
+                                              [:field {} "TOTAL"]
+                                              [:field {} "DISCOUNT"]
+                                              [:field {} "CREATED_AT"]
+                                              [:field {} "QUANTITY"]]}]}]}
                 (-> (qp.preprocess/preprocess query) :stages first))))
       (testing `qp.preprocess/query->expected-cols
         (is (= ["ID"

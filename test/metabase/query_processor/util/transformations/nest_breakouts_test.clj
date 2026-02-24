@@ -25,9 +25,9 @@
                                   (lib/breakout (lib/with-temporal-bucket orders-created-at :month))
                                   (lib/breakout orders-quantity)
                                   (lib/limit 5))]
-        (is (=? {:stages [{:filters [[:> {} [:field {} (meta/id :orders :id)] 0]]
-                           :fields [[:field {:temporal-unit :month} (meta/id :orders :created-at)]
-                                    [:field {} (meta/id :orders :quantity)]]}
+        (is (=? {:stages [{:filters [[:> {} [:field {} "ID"] 0]]
+                           :fields [[:field {:temporal-unit :month} "CREATED_AT"]
+                                    [:field {} "QUANTITY"]]}
                           {:breakout    [[:field {:temporal-unit :default} "CREATED_AT"]
                                          [:field {} "QUANTITY"]]
                            :aggregation [[:cum-count {}]]
@@ -50,17 +50,17 @@
                                          {:base-type      :type/DateTimeWithLocalTZ
                                           :effective-type :type/DateTimeWithLocalTZ
                                           :temporal-unit  :month}
-                                         (meta/id :orders :created-at)]]
+                                         "CREATED_AT"]]
                          :aggregation  [[:/ {}
                                          [:cum-sum {}
                                           [:+ {}
-                                           [:field {} (meta/id :orders :total)]
+                                           [:field {} "TOTAL"]
                                            1]]
                                          [:cum-count {}]]]
                          :limit        3}]}
               query))
-      (is (=? (sort-by last [[:field {} (meta/id :orders :total)]
-                             [:field {:temporal-unit :month} (meta/id :orders :created-at)]])
+      (is (=? (sort-by last [[:field {} "TOTAL"]
+                             [:field {:temporal-unit :month} "CREATED_AT"]])
               (sort-by last
                        (#'nest-breakouts/fields-used-in-breakouts-aggregations-or-expressions
                         (first (:stages query))))))
@@ -69,8 +69,8 @@
                                          {:base-type      :type/DateTimeWithLocalTZ
                                           :effective-type :type/DateTimeWithLocalTZ
                                           :temporal-unit  :month}
-                                         (meta/id :orders :created-at)]
-                                        [:field {} (meta/id :orders :total)]]}
+                                         "CREATED_AT"]
+                                        [:field {} "TOTAL"]]}
                         {:breakout    [[:field {:temporal-unit :default} "CREATED_AT"]]
                          :aggregation [[:/ {}
                                         [:cum-sum {}
@@ -130,15 +130,15 @@
                                       :stages     [{:lib/type :mbql.stage/mbql, :source-table pos-int?}]
                                       :conditions [[:=
                                                     {}
-                                                    [:field {} pos-int?]
+                                                    [:field {} string?]
                                                     [:field
                                                      {::add/source-table "test_data_products__v_af2712b9"}
-                                                     pos-int?]]]}]
-                           :fields  [[:field {} pos-int?]
-                                     [:field {::add/source-table "test_data_products__v_af2712b9"} pos-int?]]
+                                                     string?]]]}]
+                           :fields  [[:field {} string?]
+                                     [:field {::add/source-table "test_data_products__v_af2712b9"} string?]]
                            :filters [[:>
                                       {}
-                                      [:field {} pos-int?]
+                                      [:field {} string?]
                                       [:value {} 5000]]]}
                           ;; new second stage. Source column names ONLY GET ESCAPED WHEN RAN THRU `add-alias-info`,
                           ;; which should always be done after using this transformation:

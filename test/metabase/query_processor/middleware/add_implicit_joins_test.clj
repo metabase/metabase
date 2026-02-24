@@ -28,8 +28,8 @@
             :strategy    :left-join
             :conditions  [[:=
                            {}
-                           [:field {} (meta/id :orders :product-id)]
-                           [:field {:join-alias "PRODUCTS__via__PRODUCT_ID"} (meta/id :products :id)]]]
+                           [:field {} "PRODUCT_ID"]
+                           [:field {:join-alias "PRODUCTS__via__PRODUCT_ID"} "ID"]]]
             :fk-field-id (meta/id :orders :product-id)}]
           (#'qp.add-implicit-joins/fk-field-infos->joins
            meta/metadata-provider
@@ -1004,26 +1004,26 @@
                                         :strategy            :left-join
                                         :conditions          [[:=
                                                                {}
-                                                               [:field {} (meta/id :orders :product-id)]
-                                                               [:field {:join-alias "PRODUCTS__via__PRODUCT_ID"} (meta/id :products :id)]]]
+                                                               [:field {} "PRODUCT_ID"]
+                                                               [:field {:join-alias "PRODUCTS__via__PRODUCT_ID"} "ID"]]]
                                         :fk-field-id         (meta/id :orders :product-id)}]
                          :breakout    [[:field {:source-field (meta/id :orders :product-id), :join-alias "PRODUCTS__via__PRODUCT_ID"}
-                                        (meta/id :products :category)]]
+                                        "CATEGORY"]]
                          :aggregation [[:count {}]]}
                         {:joins       [{:alias      "Products"
-                                        :fields     [[:field {:join-alias "Products"} (meta/id :products :id)]
-                                                     [:field {:join-alias "Products"} (meta/id :products :title)]]
+                                        :fields     [[:field {:join-alias "Products"} "ID"]
+                                                     [:field {:join-alias "Products"} "TITLE"]]
                                         :conditions [[:=
                                                       {}
                                                       ;; this ref is wrong, it should be
                                                       ;; `PRODUCTS__via__PRODUCT_ID__CATEGORY` but it came in wrong and
                                                       ;; this middleware doesn't fix wrong refs.
                                                       [:field {} "CATEGORY"]
-                                                      [:field {:join-alias "Products"} (meta/id :products :category)]]]
+                                                      [:field {:join-alias "Products"} "CATEGORY"]]]
                                         :lib/type   :mbql/join
                                         :stages     [{:source-table (meta/id :products)}]}]
                          :expressions [[:+ {:lib/expression-name "CC"} 1 1]]
-                         :order-by    [[:asc {} [:field {:join-alias "Products"} (meta/id :products :id)]]]}]}
+                         :order-by    [[:asc {} [:field {:join-alias "Products"} "ID"]]]}]}
               (qp.add-implicit-joins/add-implicit-joins query))))))
 
 (deftest ^:parallel add-multiple-implicit-joins-for-different-source-fields-test
@@ -1084,7 +1084,7 @@
                                   [:field {:join-alias        "PEOPLE__via__USER_ID"
                                            :source-field      (meta/id :orders :user-id)
                                            :source-field-name "USER_ID"}
-                                   (meta/id :people :state)]]}
+                                   "STATE"]]}
                         {}
                         {}]}
               preprocessed)))))
@@ -1155,19 +1155,19 @@
                                                             :source-field-name "PRODUCT_ID"
                                                             :source-field   (mt/id :orders :product_id)))
                                     "Blah")))]
-      (is (=? [[:field {} (mt/id :orders :id)]
-               [:field {} (mt/id :orders :user_id)]
-               [:field {} (mt/id :orders :product_id)]
-               [:field {} (mt/id :orders :subtotal)]
-               [:field {} (mt/id :orders :tax)]
-               [:field {} (mt/id :orders :total)]
-               [:field {} (mt/id :orders :discount)]
-               [:field {} (mt/id :orders :created_at)]
-               [:field {} (mt/id :orders :quantity)]
+      (is (=? [[:field {} "ID"]
+               [:field {} "USER_ID"]
+               [:field {} "PRODUCT_ID"]
+               [:field {} "SUBTOTAL"]
+               [:field {} "TAX"]
+               [:field {} "TOTAL"]
+               [:field {} "DISCOUNT"]
+               [:field {} "CREATED_AT"]
+               [:field {} "QUANTITY"]
                [:field
                 {:source-field (mt/id :orders :product_id)
                  :join-alias   "PRODUCTS__via__PRODUCT_ID"}
-                (mt/id :products :title)]
+                "TITLE"]
                ;; should only have one product title... this is broken if we have a second copy that includes
                ;; `:source-field-name`
                ]

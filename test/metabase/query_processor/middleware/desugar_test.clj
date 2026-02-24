@@ -12,29 +12,29 @@
 (deftest ^:parallel e2e-filters-test
   (is (=? [[:and {}
             [:= {}
-             [:field {:source-field (meta/id :orders :user-id)} (meta/id :people :name)]
+             [:field {:source-field (meta/id :orders :user-id)} "NAME"]
              "Run Query"]
             [:between {}
-             [:field {:temporal-unit :day} (meta/id :orders :created-at)]
+             [:field {:temporal-unit :day} "CREATED_AT"]
              [:relative-datetime {} -30 :day]
              [:relative-datetime {} -1 :day]]
             [:>= {}
-             [:field {:temporal-unit :default} (meta/id :orders :created-at)]
+             [:field {:temporal-unit :default} "CREATED_AT"]
              [:+ {} [:relative-datetime {} -30 :day] [:interval {} -30 :day]]]
             [:< {}
-             [:field {:temporal-unit :default} (meta/id :orders :created-at)]
+             [:field {:temporal-unit :default} "CREATED_AT"]
              [:+ {}
               [:relative-datetime {} 0 :day]
               [:interval {} -30 :day]]]
             [:!= {}
-             [:field {:source-field (meta/id :orders :user-id)} (meta/id :people :source)]
+             [:field {:source-field (meta/id :orders :user-id)} "SOURCE"]
              "(not set)"]
             [:!= {}
-             [:field {:source-field (meta/id :orders :user-id)} (meta/id :people :source)]
+             [:field {:source-field (meta/id :orders :user-id)} "SOURCE"]
              "Twitter"]
             [:> {}
              [:temporal-extract {}
-              [:field {:source-field (meta/id :orders :user-id)} (meta/id :people :birth-date)]
+              [:field {:source-field (meta/id :orders :user-id)} "BIRTH_DATE"]
               :year-of-era]
              [:/ {} [:/ {} 1 2] 3]]]]
           (-> (lib/query
@@ -68,7 +68,7 @@
   (is (=? [[:+
             {:lib/expression-name "year"}
             [:temporal-extract {}
-             [:field {:source-field (meta/id :orders :user-id)} (meta/id :people :birth-date)]
+             [:field {:source-field (meta/id :orders :user-id)} "BIRTH_DATE"]
              :year-of-era]
             [:/ {} [:/ {} [:/ {} 1 2] 3] 4]]]
           (-> (lib/query
@@ -88,17 +88,17 @@
   (is (=? [[:share {}
             [:and {}
              [:= {}
-              [:field {:source-field (meta/id :orders :user-id)} (meta/id :people :name)]
+              [:field {:source-field (meta/id :orders :user-id)} "NAME"]
               "Run Query"]
              [:between {}
-              [:field {:temporal-unit :day} (meta/id :orders :created-at)]
+              [:field {:temporal-unit :day} "CREATED_AT"]
               [:relative-datetime {} -30 :day]
               [:relative-datetime {} -1 :day]]
              [:!= {}
-              [:field {:source-field (meta/id :orders :user-id)} (meta/id :people :source)]
+              [:field {:source-field (meta/id :orders :user-id)} "SOURCE"]
               "(not set)"]
              [:!= {}
-              [:field {:source-field (meta/id :orders :user-id)} (meta/id :people :source)]
+              [:field {:source-field (meta/id :orders :user-id)} "SOURCE"]
               "Twitter"]]]]
           (-> (lib/query
                meta/metadata-provider

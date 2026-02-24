@@ -96,14 +96,14 @@
                  (-> (lib/query meta/metadata-provider (meta/table-metadata :products))
                      (lib/aggregate (lib/avg (meta/field-metadata :products :rating)))))
      :check-fn #(is (=? {:stages [{:source-table (meta/id :products)
-                                   :aggregation  [[:avg {} [:field {} (meta/id :products :rating)]]]}]}
+                                   :aggregation  [[:avg {} [:field {} "RATING"]]]}]}
                         (adjust %)))))
   (testing "successful adjustment does not increment error counter"
     (check-prometheus-metrics!
      :metabase-query-processor/metrics-adjust 1
      :metabase-query-processor/metrics-adjust-errors 0
      :check-fn #(is (=? {:stages [{:source-table (meta/id :products)
-                                   :aggregation  [[:avg {} [:field {} (meta/id :products :rating)]]]}]}
+                                   :aggregation  [[:avg {} [:field {} "RATING"]]]}]}
                         (adjust %)))))
   (testing "failure to adjust :metric clauses increments error counter"
     (check-prometheus-metrics!
@@ -156,14 +156,14 @@
         query (-> (lib/query mp (meta/table-metadata :products))
                   (lib/aggregate (lib.metadata/metric mp (:id source-metric))))]
     (is (=? {:stages [{:source-table (meta/id :products)
-                       :aggregation [[:avg {} [:field {} (meta/id :products :rating)]]]}]}
+                       :aggregation [[:avg {} [:field {} "RATING"]]]}]}
             (adjust query)))))
 
 (deftest ^:parallel adjust-basic-source-metric-test
   (let [[source-metric mp] (mock-metric)
         query (lib/query mp source-metric)]
     (is (=? {:stages [{:source-table (meta/id :products)
-                       :aggregation [[:avg {} [:field {} (meta/id :products :rating)]]]}]}
+                       :aggregation [[:avg {} [:field {} "RATING"]]]}]}
             (adjust query)))))
 
 (deftest ^:parallel adjust-aggregation-metric-ref-test
@@ -172,7 +172,7 @@
                   (lib/aggregate (lib/+ (lib.options/ensure-uuid [:metric {} (:id source-metric)]) 1)))]
     (is (=?
          {:stages [{:source-table (meta/id :products)
-                    :aggregation [[:+ {} [:avg {} [:field {} (meta/id :products :rating)]] 1]]}]}
+                    :aggregation [[:+ {} [:avg {} [:field {} "RATING"]] 1]]}]}
          (adjust query)))))
 
 (deftest ^:parallel metric-with-implicit-join-test
@@ -187,7 +187,7 @@
                       :joins [{:stages [{:source-table (meta/id :products)}]}]
                       :aggregation [[:sum {} [:case {}
                                               [[[:= {}
-                                                 [:field {} (meta/id :products :category)]
+                                                 [:field {} "CATEGORY"]
                                                  [:value {} "Gadget"]]
                                                 1]]
                                               0]]]}]}
@@ -197,10 +197,10 @@
              {:stages [{:source-table (meta/id :orders)
                         :joins [{:stages [{:source-table (meta/id :products)}]}
                                 {:stages [{:source-table (meta/id :products)}]}]
-                        :filters [[:= {} [:field {} (meta/id :products :title)] "foobar"]]
+                        :filters [[:= {} [:field {} "TITLE"] "foobar"]]
                         :aggregation [[:sum {} [:case {}
                                                 [[[:= {}
-                                                   [:field {} (meta/id :products :category)]
+                                                   [:field {} "CATEGORY"]
                                                    [:value {} "Gadget"]]
                                                   1]]
                                                 0]]]}]}
@@ -213,10 +213,10 @@
         (is (=?
              {:stages [{:source-table (meta/id :orders)
                         :joins [{:stages [{:source-table (meta/id :products)}]}]
-                        :filters [[:= {} [:field {} (meta/id :products :title)] "foobar"]]
+                        :filters [[:= {} [:field {} "TITLE"] "foobar"]]
                         :aggregation [[:sum {} [:case {}
                                                 [[[:= {}
-                                                   [:field {} (meta/id :products :category)]
+                                                   [:field {} "CATEGORY"]
                                                    [:value {} "Gadget"]]
                                                   1]]
                                                 0]]]}]}
@@ -242,11 +242,11 @@
     (is (=? {:stages [{:source-table (meta/id :orders)
                        :joins [{:stages [{:source-table (meta/id :products)}]}]
                        :aggregation [[:sum {} [:case {}
-                                               [[[:= {} [:field {} (meta/id :products :category)] [:value {} "Gadget"]]
+                                               [[[:= {} [:field {} "CATEGORY"] [:value {} "Gadget"]]
                                                  1]]
                                                0]]
                                      [:sum {} [:case {}
-                                               [[[:= {} [:field {} (meta/id :products :title)] [:value {} "Title"]]
+                                               [[[:= {} [:field {} "TITLE"] [:value {} "Title"]]
                                                  1]]
                                                0]]]}]}
             (adjust query)))))
@@ -261,7 +261,7 @@
       (is (=? {:stages
                [{:source-table (meta/id :products)
                  :aggregation
-                 [[:+ {} [:avg {} [:field {} (meta/id :products :rating)]] 1]]
+                 [[:+ {} [:avg {} [:field {} "RATING"]] 1]]
                  :order-by
                  [[:asc {} [:aggregation {} agg-ref]]]}]}
               adjusted)))))
@@ -275,13 +275,13 @@
                                                    (meta/field-metadata :orders :product-id))])
                                 (lib/with-join-fields :all))))]
     (is (=? {:stages [{:source-table (meta/id :products)
-                       :aggregation [[:avg {} [:field {} (meta/id :products :rating)]]]
+                       :aggregation [[:avg {} [:field {} "RATING"]]]
                        :joins [{:stages
                                 [{:source-table (meta/id :orders)}],
                                 :conditions
                                 [[:= {}
-                                  [:field {} (meta/id :products :id)]
-                                  [:field {:join-alias "Orders"} (meta/id :orders :product-id)]]],
+                                  [:field {} "ID"]
+                                  [:field {:join-alias "Orders"} "PRODUCT_ID"]]],
                                 :alias "Orders"}]}]}
             (adjust query)))))
 
@@ -292,7 +292,7 @@
     (is (=?
          {:stages [{:expressions [[:- {:lib/expression-name "target"} 2 2]
                                   [:+ {:lib/expression-name "source"} 1 1]]
-                    :aggregation [[:avg {} [:field {} (meta/id :products :rating)]]]}]}
+                    :aggregation [[:avg {} [:field {} "RATING"]]]}]}
          (adjust query)))))
 
 (deftest ^:parallel adjust-expression-name-collision-test
@@ -316,7 +316,7 @@
                     :aggregation [[:avg {}
                                    [:case {}
                                     [[#_some? [:= {} [:expression {} "qux_2"] [:expression {} "foobar_2"]]
-                                      [:field {} (meta/id :products :rating)]]]]]]}]}
+                                      [:field {} "RATING"]]]]]]}]}
          (adjust query)))))
 
 (deftest ^:parallel adjust-filter-test
@@ -326,10 +326,10 @@
     (is (=?
          {:stages [{:source-table (meta/id :products)
                     :aggregation [[:avg {} [:case {} [[[:> {}
-                                                        [:field {} (meta/id :products :price)]
+                                                        [:field {} "PRICE"]
                                                         [:value {} 1]]
-                                                       [:field {} (meta/id :products :rating)]]]]]]
-                    :filters [[:= {} [:field {} (meta/id :products :category)] "Widget"]]}]}
+                                                       [:field {} "RATING"]]]]]]
+                    :filters [[:= {} [:field {} "CATEGORY"] "Widget"]]}]}
          (adjust query)))))
 
 (deftest ^:parallel adjust-mixed-multi-source-test
@@ -343,7 +343,7 @@
         query (-> (lib/query mp second-metric)
                   (lib/filter (lib/= (meta/field-metadata :products :category) "Widget")))]
     (is (=? {:stages [{:source-table (meta/id :products)}
-                      {:filters [[:= {} [:field {} (meta/id :products :category)] "Widget"]]
+                      {:filters [[:= {} [:field {} "CATEGORY"] "Widget"]]
                        :aggregation [[:avg {}
                                       [:case {}
                                        [[[:< {} [:field {} "PRICE"] [:value {} 100]]
@@ -357,7 +357,7 @@
         [second-metric mp] (mock-metric mp (lib/query mp first-metric))
         [third-metric mp] (mock-metric mp (lib/query mp second-metric))
         query (lib/query mp third-metric)]
-    (is (=? {:stages [{:aggregation [[:avg {} [:field {} (meta/id :products :rating)]]]}]}
+    (is (=? {:stages [{:aggregation [[:avg {} [:field {} "RATING"]]]}]}
             (adjust query)))))
 
 (deftest ^:parallel joined-question-based-on-metric-based-on-metric-based-on-metric-test
@@ -366,7 +366,7 @@
         [question mp] (mock-metric mp (lib/query mp second-metric) {:type :question})
         query (-> (lib/query mp (meta/table-metadata :products))
                   (lib/join (lib/join-clause question [(lib/= 1 1)])))]
-    (is (=? {:stages [{:joins [{:stages [{:aggregation [[:avg {} [:field {} (meta/id :products :rating)]]]}
+    (is (=? {:stages [{:joins [{:stages [{:aggregation [[:avg {} [:field {} "RATING"]]]}
                                          ;; Empty stage added by resolved-source-cards to nest join
                                          (=?/exactly {:lib/type                 :mbql.stage/mbql
                                                       :qp/stage-had-source-card (:id question)
@@ -409,7 +409,7 @@
         question (model-based-metric-question mp query (comp #{"foobar"} :name))]
     (is (=? {:stages
              [{:source-table (meta/id :orders)
-               :expressions [[:+ {:lib/expression-name "foobar"} [:field {} (meta/id :orders :discount)] 1]]
+               :expressions [[:+ {:lib/expression-name "foobar"} [:field {} "DISCOUNT"] 1]]
                :fields [[:expression {} "foobar"]]}
               {:lib/type :mbql.stage/mbql,
                :aggregation [[:avg {:name "avg"} [:field {} "foobar"]]]}]}
@@ -422,7 +422,7 @@
         question (model-based-metric-question mp query (comp #{"sum"} :name))]
     (is (=? {:stages
              [{:source-table (meta/id :orders)
-               :aggregation [[:sum {} [:field {} (meta/id :orders :discount)]]]}
+               :aggregation [[:sum {} [:field {} "DISCOUNT"]]]}
               {:lib/type :mbql.stage/mbql,
                :aggregation [[:avg {:name "avg"} [:field {} "sum"]]]}]}
             (adjust question)))))
@@ -448,7 +448,7 @@
     (testing (str (dissoc question :lib/metadata))
       (is (=? {:stages
                [{:source-table (meta/id :orders)
-                 :filters [[:> {} [:field {} (meta/id :orders :discount)] 3]]}
+                 :filters [[:> {} [:field {} "DISCOUNT"] 3]]}
                 {}
                 {:aggregation [[:avg {:name "avg"} [:field {} "QUANTITY"]]]}]}
               (adjust question))))))
@@ -463,7 +463,7 @@
         question (model-based-metric-question mp query sum-pred)]
     (is (=? {:stages
              [{:source-table (meta/id :orders)
-               :aggregation [[:sum {} [:field {} (meta/id :orders :discount)]]]}
+               :aggregation [[:sum {} [:field {} "DISCOUNT"]]]}
               {:filters [[:> {} [:field {} "sum"] 2]]}
               {:aggregation [[:avg {:name "avg"} [:field {} "sum"]]]}]}
             (adjust question)))))
@@ -658,15 +658,15 @@
           [{:source-table (meta/id :products)
             :aggregation [[:avg {:name "avg"}
                            [:case {}
-                            [[[:= {} [:field {} (meta/id :venues :name)] some?]
-                              [:field {} (meta/id :products :rating)]]]]]]}]}
+                            [[[:= {} [:field {} "NAME"] some?]
+                              [:field {} "RATING"]]]]]]}]}
          (adjust (lib/query mp source-metric))))
     ;; Segments will be expanded in this case as the metric query that is spliced in needs to be processed
     (is (=?
          {:stages [{:aggregation [[:avg {}
                                    [:case {}
-                                    [[[:= {} [:field {} (meta/id :venues :name)] [:value {} "abc"]]
-                                      [:field {} (meta/id :products :rating)]]]]]]}]}
+                                    [[[:= {} [:field {} "NAME"] [:value {} "abc"]]
+                                      [:field {} "RATING"]]]]]]}]}
          (adjust
           (-> (lib/query mp (meta/table-metadata :products))
               (lib/aggregate (lib.metadata/metric mp (:id source-metric)))))))))
@@ -766,7 +766,7 @@
                   (lib/aggregate (lib.metadata/metric mp (:id metric2))))]
     (testing "model based metrics can be used in question based on that model"
       (is (=? {:stages [{:source-table (meta/id :products)
-                         :filters [[:> {} [:field {} (meta/id :products :rating)] 2]]}
+                         :filters [[:> {} [:field {} "RATING"] 2]]}
                         {:aggregation [[:avg {:name "avg"}
                                         [:case {}
                                          [[[:< {} [:field {} "RATING"] [:value {} 5]]
@@ -926,7 +926,7 @@
           query        (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
                            (lib/aggregate (lib.metadata/metric mp 1)))
           stage        (get-in query [:stages 0])]
-      (is (=? [:sum {:name (symbol "nil #_\"key is not present.\"")} [:field {} pos-int?]]
+      (is (=? [:sum {:name (symbol "nil #_\"key is not present.\"")} [:field {} string?]]
               (get-in (#'metrics/fetch-referenced-metrics query stage)
                       [1 :aggregation]))))))
 

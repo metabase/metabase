@@ -139,11 +139,11 @@
 (deftest ^:parallel wrap-datetime-literal-strings-test-4
   (is (=? {:filters [[:>
                       {}
-                      [:field {:temporal-unit :day} (meta/id :checkins :date)]
+                      [:field {:temporal-unit :day} "DATE"]
                       [:absolute-datetime {} (t/offset-date-time "2015-06-01T00:00Z") :day]]
                      [:<
                       {}
-                      [:field {:temporal-unit :day} (meta/id :checkins :date)]
+                      [:field {:temporal-unit :day} "DATE"]
                       [:absolute-datetime {} (t/offset-date-time "2015-06-03T00:00:00Z") :day]]]}
           (-> (lib/query
                unix-timestamp-metadata-provider
@@ -160,11 +160,11 @@
   (qp.store/with-metadata-provider unix-timestamp-metadata-provider
     (is (=? {:filters [[:>
                         {}
-                        [:field {:temporal-unit :day} (meta/id :checkins :date)]
+                        [:field {:temporal-unit :day} "DATE"]
                         [:absolute-datetime {} (t/offset-date-time "2015-06-01T00:00Z") :day]]
                        [:<
                         {}
-                        [:field {:temporal-unit :day} (meta/id :checkins :date)]
+                        [:field {:temporal-unit :day} "DATE"]
                         [:absolute-datetime {} (t/offset-date-time "2015-06-03T00:00:00Z") :day]]]}
             (-> (lib/query
                  unix-timestamp-metadata-provider
