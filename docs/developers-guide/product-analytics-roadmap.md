@@ -100,7 +100,7 @@ implementations for the backend keyword — no protocol reification needed.
 
 ---
 
-## Phase 3 — Site management CRUD API
+## Phase 3 — Site management CRUD API [DONE]
 
 Expose endpoints for creating, listing, updating, and deleting analytics sites.
 These are authenticated admin-only endpoints. This phase comes before the event
@@ -126,7 +126,7 @@ the pipeline and HTTP endpoint depend on for site lookup and CORS configuration.
 
 ---
 
-## Phase 4 — User identification and session data
+## Phase 4 — User identification and session data [DONE]
 
 Add support for Umami's user identification flow: distinct IDs that tie sessions
 together across devices and time, the `identify` payload type for attaching
@@ -185,7 +185,7 @@ endpoint lands.
 
 ---
 
-## Phase 5 — Event postprocessing pipeline (core)
+## Phase 5 — Event postprocessing pipeline (core) [DONE]
 
 Build the server-side enrichment logic that transforms a raw inbound event
 payload into a fully resolved event ready for storage. This phase has no HTTP
@@ -222,7 +222,7 @@ Phase 5.5 after Phase 4 lands.
 
 ---
 
-## Phase 5.5 — Identify handling and session cache integration
+## Phase 5.5 — Identify handling and session cache integration [DONE]
 
 Wire Phase 4's session cache JWT and identity/session-data storage into the
 event pipeline from Phase 5. This phase depends on both Phase 4 and Phase 5.
@@ -248,7 +248,7 @@ event pipeline from Phase 5. This phase depends on both Phase 4 and Phase 5.
 
 ---
 
-## Phase 6 — Event-receiving HTTP endpoint
+## Phase 6 — Event-receiving HTTP endpoint [DONE]
 
 Wire the postprocessing pipeline to an HTTP endpoint that accepts events from
 tracking scripts or server-side callers, and persists them through the storage
@@ -412,7 +412,7 @@ pools share the app DB (and optionally the Iceberg catalog / S3 bucket).
 
 ---
 
-## Phase 7 — Query builder integration
+## Phase 7 — Query builder integration [DONE]
 
 Surface stored product analytics events in Metabase's query builder so users
 can build questions and dashboards against their event data without writing SQL.
@@ -435,7 +435,7 @@ can build questions and dashboards against their event data without writing SQL.
 
 ---
 
-## Phase 8 — Iceberg datalake storage backend
+## Phase 8 — Iceberg datalake storage backend [DONE]
 
 Implement the storage multimethod for Apache Iceberg, writing events as Parquet
 files to an S3-hosted datalake. This is the first alternative backend and
@@ -693,54 +693,49 @@ via its Iceberg table engine.
 ## Dependency graph
 
 ```
-Phase 0  (skeleton)
+Phase 0  (skeleton)               [DONE]
   │
   v
-Phase 1  (data model + virtual DB)
+Phase 1  (data model + virtual DB) [DONE]
   │
   v
-Phase 2  (storage multimethods)
+Phase 2  (storage multimethods)    [DONE]
   │
   v
-Phase 3  (site CRUD)
+Phase 3  (site CRUD)              [DONE]
   │
   ├──────────────────────────┐
   v                          v
 Phase 4  (identification +   Phase 5  (pipeline core)
-          session data +       │
-          cache JWT)           │
+          session data +       │           [DONE]
+          cache JWT) [DONE]    │
   │                          │
   └──────────┬───────────────┘
              v
-Phase 5.5  (identify handling + session cache integration)
+Phase 5.5  (identify + cache)  [DONE]
   │
   v
-Phase 6  (HTTP endpoint)
+Phase 6  (HTTP endpoint)       [DONE]
   │
   ├──────────────────────────┐
   v                          v
-Phase 6.5 (collector       Phase 7  (query integration)
-           entrypoint)
+Phase 6.5 (collector)        Phase 7  (query integration)
+           [DONE]                      [DONE]
 
-Phase 8  (Iceberg)     ── depends on Phase 2
+Phase 8  (Iceberg)     [DONE]
 Phase 9  (Stream)      ── depends on Phase 2
 Phase 10 (ClickHouse)  ── depends on Phase 2 (deprioritized)
 ```
 
-### Parallelism opportunities
+### Remaining work
 
-After Phase 3 completes, the following work streams can proceed in parallel:
+Phases 0–8 (inclusive) are complete. The remaining phases are optional alternative
+storage backends:
 
-| Stream | Phases | Notes |
+| Phase | Status | Notes |
 |---|---|---|
-| **Identity + session data** | Phase 4 | Schema, JWT, storage extensions. Can run in parallel with Phase 5. |
-| **Event pipeline (core)** | Phase 5 | Pure-function pipeline for event payloads. Can run in parallel with Phase 4. |
-| **Collector entrypoint** | Phase 6.5 | Minimal boot for event ingestion. Requires Phase 6 endpoint code to exist. Independent of Phase 7. |
-| **Iceberg backend** | Phase 8 | Primary alternative backend. Independent of Phases 3–7; can start any time after Phase 2. |
-| **Stream / ClickHouse** | Phase 9, 10 | Lower priority. Independent of all other backend phases. |
-
-Phase 5.5 merges the two streams and requires both Phase 4 and Phase 5 to be complete.
-Phases 8, 9, and 10 are independent of each other and of Phases 3–7.
+| **Phase 9 — Stream** | Not started | Kafka/Kinesis/webhook adapter. Independent of other phases. |
+| **Phase 10 — ClickHouse** | Not started | Deprioritized — Iceberg backend + ClickHouse's Iceberg table engine covers most use cases. |
 
 ---
 
