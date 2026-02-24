@@ -100,4 +100,4 @@
               (is (= expected (validate-request-with-timestamp
                                (if (number? offset-or-val)
                                  (str (+ test-timestamp offset-or-val))
-                                 offset-or-val))))))))))))
+                                 offset-or-val)))))))))))
