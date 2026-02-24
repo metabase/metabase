@@ -1,5 +1,6 @@
 (ns metabase.release-flags.models
   (:require
+   [metabase.release-flags.schema :as schema]
    [metabase.util.malli :as mu]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
@@ -11,12 +12,7 @@
 (doto :model/ReleaseFlag
   (derive :metabase/model))
 
-(mu/defn all-flags :- [:map-of
-                       :string
-                       [:map
-                        [:description [:maybe :string]]
-                        [:start_date :any]
-                        [:is_enabled :boolean]]]
+(mu/defn all-flags :- schema/FlagMap
   "Returns a map of flag name to its data (description, start_date, is_enabled)."
   []
   (into {}
@@ -26,9 +22,14 @@
 
 (mu/defn update-statuses!
   "Takes a map of flag name to enabled status and updates each flag's is_enabled accordingly."
-  [statuses :- [:map-of :string :boolean]]
+  [statuses :- schema/StatusMap]
   (doseq [[flag enabled?] statuses]
-    (t2/update! :model/ReleaseFlag :flag flag {:is_enabled enabled?})))
+    (let [flag (if (keyword? flag)
+                 (if (namespace flag)
+                   (str (namespace flag) "/" (name flag))
+                   (name flag))
+                 flag)]
+      (t2/update! :model/ReleaseFlag :flag flag {:is_enabled enabled?}))))
 
 (mu/defn delete-flags! :- :int
   "Deletes the given set of flags from the release_flag table. Returns the number deleted."
@@ -54,7 +55,7 @@
 (mu/defn has-release-flag? :- :boolean
   "Is this release flag enabled?
   If the release flag does not exist, we throw an exception."
-  [flag :- [:or :keyword :string]]
+  [flag :- schema/FlagName]
   (let [flag (if (keyword? flag)
                (if (namespace flag)
                  (str (namespace flag) "/" (name flag))
