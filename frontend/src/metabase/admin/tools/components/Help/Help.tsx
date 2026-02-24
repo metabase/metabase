@@ -4,12 +4,12 @@ import { useMount } from "react-use";
 import { t } from "ttag";
 import _ from "underscore";
 
+import { CodeTextBlock } from "metabase/admin/components/CodeTextBlock";
 import {
   SettingsPageWrapper,
   SettingsSection,
 } from "metabase/admin/components/SettingsSection";
 import { UpsellBetterSupport } from "metabase/admin/upsells";
-import { CopyButton } from "metabase/common/components/CopyButton";
 import { ExternalLink } from "metabase/common/components/ExternalLink";
 import { useSetting } from "metabase/common/hooks";
 import CS from "metabase/css/core/index.css";
@@ -17,7 +17,7 @@ import { useSelector } from "metabase/lib/redux";
 import { PLUGIN_SUPPORT } from "metabase/plugins";
 import { getIsPaidPlan } from "metabase/selectors/settings";
 import { UtilApi } from "metabase/services";
-import { Box, Code, Group } from "metabase/ui";
+import { Group } from "metabase/ui";
 
 import S from "./help.module.css";
 
@@ -76,21 +76,6 @@ const HelpLink = ({ title, description, link }: HelpLinkProps) => (
   </ExternalLink>
 );
 
-interface InfoBlockProps {
-  children: string;
-}
-
-const InfoBlock = ({ children }: InfoBlockProps) => (
-  <Box p="md" className={cx(CS.bordered, CS.rounded, CS.bgLight, CS.relative)}>
-    <Box className={S.InfoBlockButton}>
-      <CopyButton value={children} />
-    </Box>
-    <Code bg="transparent" block>
-      {children}
-    </Code>
-  </Box>
-);
-
 export const Help = ({ children }: PropsWithChildren) => {
   const [details, setDetails] = useState({ "browser-info": navigatorInfo() });
   const { tag } = useSetting("version");
@@ -131,7 +116,7 @@ export const Help = ({ children }: PropsWithChildren) => {
         title={t`Diagnostic info`}
         description={t`Please include these details in support requests. Thank you!`}
       >
-        <InfoBlock>{detailString}</InfoBlock>
+        <CodeTextBlock>{detailString}</CodeTextBlock>
       </SettingsSection>
       <SettingsSection
         title={t`Advanced details`}

@@ -4,6 +4,7 @@ import { AdminSettingsLayout } from "metabase/common/components/AdminLayout/Admi
 import { NotFound } from "metabase/common/components/ErrorPages";
 import {
   PLUGIN_AUTH_PROVIDERS,
+  PLUGIN_PRODUCT_ANALYTICS,
   PLUGIN_REMOTE_SYNC,
   PLUGIN_TRANSFORMS_PYTHON,
 } from "metabase/plugins";
@@ -20,7 +21,6 @@ import { LicenseSettingsPage } from "./settings/components/SettingsPages/License
 import { LocalizationSettingsPage } from "./settings/components/SettingsPages/LocalizationSettingsPage";
 import { MapsSettingsPage } from "./settings/components/SettingsPages/MapsSettingsPage";
 import { NotificationSettingsPage } from "./settings/components/SettingsPages/NotificationSettingsPage";
-import { ProductAnalyticsSettingsPage } from "./settings/components/SettingsPages/ProductAnalyticsSettingsPage";
 import { PublicSharingSettingsPage } from "./settings/components/SettingsPages/PublicSharingSettingsPage";
 import { UpdatesSettingsPage } from "./settings/components/SettingsPages/UpdatesSettingsPage";
 import { UploadSettingsPage } from "./settings/components/SettingsPages/UploadSettingsPage";
@@ -91,7 +91,7 @@ export const getSettingsRoutes = () => (
       component={() => <AppearanceSettingsPage tab="conceal-metabase" />}
     />
     <Route path="cloud" component={CloudSettingsPage} />
-    <Route path="product-analytics" component={ProductAnalyticsSettingsPage} />
+    {PLUGIN_PRODUCT_ANALYTICS.getAdminRoutes()}
     <Route path="*" component={NotFound} />
   </Route>
 );

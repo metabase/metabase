@@ -144,6 +144,7 @@ export { PLUGIN_UPLOAD_MANAGEMENT } from "./oss/upload-management";
 export { PLUGIN_WHITELABEL } from "./oss/whitelabel";
 export { PLUGIN_SUPPORT } from "./oss/support";
 export { PLUGIN_TENANTS } from "./oss/tenants";
+export { PLUGIN_PRODUCT_ANALYTICS } from "./oss/product-analytics";
 
 // Re-export types that are used by other files
 export type {
@@ -176,6 +177,7 @@ import { reinitialize as reinitializeLibrary } from "./oss/library";
 import { reinitialize as reinitializeModelPersistence } from "./oss/model-persistence";
 import { reinitialize as reinitializeModeration } from "./oss/moderation";
 import { reinitialize as reinitializePermissions } from "./oss/permissions";
+import { reinitialize as reinitializeProductAnalytics } from "./oss/product-analytics";
 import { reinitialize as reinitializeRemoteSync } from "./oss/remote-sync";
 import { reinitialize as reinitializeResourceDownloads } from "./oss/resource-downloads";
 import { reinitialize as reinitializeSemanticSearch } from "./oss/semantic-search";
@@ -216,6 +218,7 @@ export function reinitialize() {
   reinitializeModelPersistence();
   reinitializeModeration();
   reinitializePermissions();
+  reinitializeProductAnalytics();
   reinitializeRemoteSync();
   reinitializeResourceDownloads();
   reinitializeSemanticSearch();
