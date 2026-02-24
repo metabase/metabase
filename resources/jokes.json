@@ -1,0 +1,2114 @@
+[
+  {
+    "id": 1,
+    "type": "general",
+    "setup": "What did the fish say when it hit the wall?",
+    "punchline": "Dam."
+  },
+  {
+    "id": 2,
+    "type": "general",
+    "setup": "How do you make a tissue dance?",
+    "punchline": "You put a little boogie on it."
+  },
+  {
+    "id": 3,
+    "type": "general",
+    "setup": "What's Forrest Gump's password?",
+    "punchline": "1Forrest1"
+  },
+  {
+    "id": 4,
+    "type": "general",
+    "setup": "What do you call a belt made out of watches?",
+    "punchline": "A waist of time."
+  },
+  {
+    "id": 5,
+    "type": "general",
+    "setup": "Why can't bicycles stand on their own?",
+    "punchline": "They are two tired"
+  },
+  {
+    "id": 6,
+    "type": "general",
+    "setup": "How does a train eat?",
+    "punchline": "It goes chew, chew"
+  },
+  {
+    "id": 7,
+    "type": "general",
+    "setup": "What do you call a singing Laptop",
+    "punchline": "A Dell"
+  },
+  {
+    "id": 8,
+    "type": "general",
+    "setup": "How many lips does a flower have?",
+    "punchline": "Tulips"
+  },
+  {
+    "id": 9,
+    "type": "general",
+    "setup": "How do you organize an outer space party?",
+    "punchline": "You planet"
+  },
+  {
+    "id": 10,
+    "type": "general",
+    "setup": "What kind of shoes does a thief wear?",
+    "punchline": "Sneakers"
+  },
+  {
+    "id": 11,
+    "type": "general",
+    "setup": "What's the best time to go to the dentist?",
+    "punchline": "Tooth hurty."
+  },
+  {
+    "id": 12,
+    "type": "knock-knock",
+    "setup": "Knock knock. \n Who's there? \n A broken pencil. \n A broken pencil who?",
+    "punchline": "Never mind. It's pointless."
+  },
+  {
+    "id": 13,
+    "type": "knock-knock",
+    "setup": "Knock knock. \n Who's there? \n Cows go. \n Cows go who?",
+    "punchline": "No, cows go moo."
+  },
+  {
+    "id": 14,
+    "type": "knock-knock",
+    "setup": "Knock knock. \n Who's there? \n Little old lady. \n Little old lady who?",
+    "punchline": "I didn't know you could yodel!"
+  },
+  {
+    "id": 19,
+    "type": "general",
+    "setup": "Did you hear about the two silk worms in a race?",
+    "punchline": "It ended in a tie."
+  },
+  {
+    "id": 20,
+    "type": "general",
+    "setup": "What do you call a laughing motorcycle?",
+    "punchline": "A Yamahahahaha."
+  },
+  {
+    "id": 21,
+    "type": "general",
+    "setup": "A termite walks into a bar and says...",
+    "punchline": "'Where is the bar tended?'"
+  },
+  {
+    "id": 22,
+    "type": "general",
+    "setup": "What does C.S. Lewis keep at the back of his wardrobe?",
+    "punchline": "Narnia business!"
+  },
+  {
+    "id": 30,
+    "type": "general",
+    "setup": "What did the duck say when he bought lipstick?",
+    "punchline": "Put it on my bill"
+  },
+  {
+    "id": 31,
+    "type": "general",
+    "setup": "What happens to a frog's car when it breaks down?",
+    "punchline": "It gets toad away"
+  },
+  {
+    "id": 32,
+    "type": "general",
+    "setup": "did you know the first French fries weren't cooked in France?",
+    "punchline": "they were cooked in Greece"
+  },
+  {
+    "id": 34,
+    "type": "knock-knock",
+    "setup": "Knock knock. \n Who's there? \n Opportunity.",
+    "punchline": "That is impossible. Opportunity doesn’t come knocking twice!"
+  },
+  {
+    "id": 36,
+    "type": "general",
+    "setup": "Why did the mushroom get invited to the party?",
+    "punchline": "Because he was a fungi."
+  },
+  {
+    "id": 37,
+    "type": "general",
+    "setup": "Why did the mushroom get invited to the party?",
+    "punchline": "Because he was a fungi."
+  },
+  {
+    "id": 38,
+    "type": "general",
+    "setup": "I'm reading a book about anti-gravity...",
+    "punchline": "It's impossible to put down"
+  },
+  {
+    "id": 39,
+    "type": "general",
+    "setup": "If you're American when you go into the bathroom, and American when you come out, what are you when you're in there?",
+    "punchline": "European"
+  },
+  {
+    "id": 40,
+    "type": "general",
+    "setup": "Want to hear a joke about a piece of paper?",
+    "punchline": "Never mind...it's tearable"
+  },
+  {
+    "id": 41,
+    "type": "general",
+    "setup": "I just watched a documentary about beavers.",
+    "punchline": "It was the best dam show I ever saw"
+  },
+  {
+    "id": 42,
+    "type": "general",
+    "setup": "If you see a robbery at an Apple Store...",
+    "punchline": "Does that make you an iWitness?"
+  },
+  {
+    "id": 43,
+    "type": "general",
+    "setup": "A ham sandwhich walks into a bar and orders a beer. The bartender says...",
+    "punchline": "I'm sorry, we don't serve food here"
+  },
+  {
+    "id": 44,
+    "type": "general",
+    "setup": "Why did the Clydesdale give the pony a glass of water?",
+    "punchline": "Because he was a little horse"
+  },
+  {
+    "id": 45,
+    "type": "general",
+    "setup": "If you boil a clown...",
+    "punchline": "Do you get a laughing stock?"
+  },
+  {
+    "id": 46,
+    "type": "general",
+    "setup": "Finally realized why my plant sits around doing nothing all day...",
+    "punchline": "He loves his pot."
+  },
+  {
+    "id": 47,
+    "type": "general",
+    "setup": "Don't look at the eclipse through a colander.",
+    "punchline": "You'll strain your eyes."
+  },
+  {
+    "id": 48,
+    "type": "general",
+    "setup": "I bought some shoes from a drug dealer.",
+    "punchline": "I don't know what he laced them with, but I was tripping all day!"
+  },
+  {
+    "id": 49,
+    "type": "general",
+    "setup": "Why do chicken coops only have two doors?",
+    "punchline": "Because if they had four, they would be chicken sedans"
+  },
+  {
+    "id": 50,
+    "type": "general",
+    "setup": "What do you call a factory that sells passable products?",
+    "punchline": "A satisfactory"
+  },
+  {
+    "id": 51,
+    "type": "general",
+    "setup": "When a dad drives past a graveyard: Did you know that's a popular cemetery?",
+    "punchline": "Yep, people are just dying to get in there"
+  },
+  {
+    "id": 52,
+    "type": "general",
+    "setup": "Why did the invisible man turn down the job offer?",
+    "punchline": "He couldn't see himself doing it"
+  },
+  {
+    "id": 53,
+    "type": "general",
+    "setup": "How do you make holy water?",
+    "punchline": "You boil the hell out of it"
+  },
+  {
+    "id": 54,
+    "type": "general",
+    "setup": "I had a dream that I was a muffler last night.",
+    "punchline": "I woke up exhausted!"
+  },
+  {
+    "id": 55,
+    "type": "general",
+    "setup": "Why is peter pan always flying?",
+    "punchline": "Because he neverlands"
+  },
+  {
+    "id": 57,
+    "type": "general",
+    "setup": "What do you call a cow with no legs?",
+    "punchline": "Ground beef!"
+  },
+  {
+    "id": 58,
+    "type": "general",
+    "setup": "I dropped a pear in my car this morning.",
+    "punchline": "You should drop another one, then you would have a pair."
+  },
+  {
+    "id": 59,
+    "type": "general",
+    "setup": "Lady: How do I spread love in this cruel world?",
+    "punchline": "Random Dude: [...💘]"
+  },
+  {
+    "id": 61,
+    "type": "knock-knock",
+    "setup": "Knock knock. \n Who's there? \n Hatch. \n Hatch who?",
+    "punchline": "Bless you!"
+  },
+  {
+    "id": 62,
+    "type": "general",
+    "setup": "What do you call sad coffee?",
+    "punchline": "Despresso."
+  },
+  {
+    "id": 63,
+    "type": "general",
+    "setup": "Why did the butcher work extra hours at the shop?",
+    "punchline": "To make ends meat."
+  },
+  {
+    "id": 64,
+    "type": "general",
+    "setup": "Did you hear about the hungry clock?",
+    "punchline": "It went back four seconds."
+  },
+  {
+    "id": 65,
+    "type": "general",
+    "setup": "Well...",
+    "punchline": "That’s a deep subject."
+  },
+  {
+    "id": 66,
+    "type": "general",
+    "setup": "Did you hear the story about the cheese that saved the world?",
+    "punchline": "It was legend dairy."
+  },
+  {
+    "id": 67,
+    "type": "general",
+    "setup": "Did you watch the new comic book movie?",
+    "punchline": "It was very graphic!"
+  },
+  {
+    "id": 68,
+    "type": "general",
+    "setup": "I started a new business making yachts in my attic this year...",
+    "punchline": "The sails are going through the roof."
+  },
+  {
+    "id": 69,
+    "type": "general",
+    "setup": "I got hit in the head by a soda can, but it didn't hurt that much...",
+    "punchline": "It was a soft drink."
+  },
+  {
+    "id": 70,
+    "type": "general",
+    "setup": "I can't tell if i like this blender...",
+    "punchline": "It keeps giving me mixed results."
+  },
+  {
+    "id": 71,
+    "type": "general",
+    "setup": "I couldn't get a reservation at the library...",
+    "punchline": "They were fully booked."
+  },
+  {
+    "id": 75,
+    "type": "general",
+    "setup": "What do you give to a lemon in need?",
+    "punchline": "Lemonaid."
+  },
+  {
+    "id": 76,
+    "type": "general",
+    "setup": "Never take advice from electrons.",
+    "punchline": "They are always negative."
+  },
+  {
+    "id": 78,
+    "type": "general",
+    "setup": "Hey, dad, did you get a haircut?",
+    "punchline": "No, I got them all cut."
+  },
+  {
+    "id": 79,
+    "type": "general",
+    "setup": "What time is it?",
+    "punchline": "I don't know... it keeps changing."
+  },
+  {
+    "id": 80,
+    "type": "general",
+    "setup": "A weasel walks into a bar. The bartender says, \"Wow, I've never served a weasel before. What can I get for you?\"",
+    "punchline": "Pop,goes the weasel."
+  },
+  {
+    "id": 81,
+    "type": "general",
+    "setup": "Bad at golf?",
+    "punchline": "Join the club."
+  },
+  {
+    "id": 82,
+    "type": "general",
+    "setup": "Can a kangaroo jump higher than the Empire State Building?",
+    "punchline": "Of course. The Empire State Building can't jump."
+  },
+  {
+    "id": 83,
+    "type": "general",
+    "setup": "Can February march?",
+    "punchline": "No, but April may."
+  },
+  {
+    "id": 84,
+    "type": "general",
+    "setup": "Can I watch the TV?",
+    "punchline": "Yes, but don’t turn it on."
+  },
+  {
+    "id": 85,
+    "type": "general",
+    "setup": "Dad, can you put my shoes on?",
+    "punchline": "I don't think they'll fit me."
+  },
+  {
+    "id": 86,
+    "type": "general",
+    "setup": "Did you hear about the bread factory burning down?",
+    "punchline": "They say the business is toast."
+  },
+  {
+    "id": 87,
+    "type": "general",
+    "setup": "Did you hear about the chameleon who couldn't change color?",
+    "punchline": "They had a reptile dysfunction."
+  },
+  {
+    "id": 88,
+    "type": "general",
+    "setup": "Did you hear about the cheese factory that exploded in France?",
+    "punchline": "There was nothing left but de Brie."
+  },
+  {
+    "id": 89,
+    "type": "general",
+    "setup": "Did you hear about the cow who jumped over the barbed wire fence?",
+    "punchline": "It was udder destruction."
+  },
+  {
+    "id": 90,
+    "type": "general",
+    "setup": "Did you hear about the guy who invented Lifesavers?",
+    "punchline": "They say he made a mint."
+  },
+  {
+    "id": 91,
+    "type": "general",
+    "setup": "Did you hear about the guy whose whole left side was cut off?",
+    "punchline": "He's all right now."
+  },
+  {
+    "id": 92,
+    "type": "general",
+    "setup": "Did you hear about the kidnapping at school?",
+    "punchline": "It's ok, he woke up."
+  },
+  {
+    "id": 93,
+    "type": "general",
+    "setup": "Did you hear about the Mexican train killer?",
+    "punchline": "He had loco motives"
+  },
+  {
+    "id": 94,
+    "type": "general",
+    "setup": "Did you hear about the new restaurant on the moon?",
+    "punchline": "The food is great, but there’s just no atmosphere."
+  },
+  {
+    "id": 95,
+    "type": "general",
+    "setup": "Did you hear about the runner who was criticized?",
+    "punchline": "He just took it in stride"
+  },
+  {
+    "id": 96,
+    "type": "general",
+    "setup": "Did you hear about the scientist who was lab partners with a pot of boiling water?",
+    "punchline": "He had a very esteemed colleague."
+  },
+  {
+    "id": 97,
+    "type": "general",
+    "setup": "Did you hear about the submarine industry?",
+    "punchline": "It really took a dive..."
+  },
+  {
+    "id": 98,
+    "type": "general",
+    "setup": "Did you hear that David lost his ID in prague?",
+    "punchline": "Now we just have to call him Dav."
+  },
+  {
+    "id": 99,
+    "type": "general",
+    "setup": "Did you hear that the police have a warrant out on a midget psychic ripping people off?",
+    "punchline": "It reads \"Small medium at large.\""
+  },
+  {
+    "id": 100,
+    "type": "general",
+    "setup": "Did you hear the joke about the wandering nun?",
+    "punchline": "She was a roman catholic."
+  },
+  {
+    "id": 101,
+    "type": "general",
+    "setup": "Did you hear the news?",
+    "punchline": "FedEx and UPS are merging. They’re going to go by the name Fed-Up from now on."
+  },
+  {
+    "id": 102,
+    "type": "general",
+    "setup": "Did you hear the one about the guy with the broken hearing aid?",
+    "punchline": "Neither did he."
+  },
+  {
+    "id": 103,
+    "type": "general",
+    "setup": "Did you know crocodiles could grow up to 15 feet?",
+    "punchline": "But most just have 4."
+  },
+  {
+    "id": 104,
+    "type": "general",
+    "setup": "What do ghosts call their true love?",
+    "punchline": "Their ghoul-friend"
+  },
+  {
+    "id": 105,
+    "type": "general",
+    "setup": "Did you know that protons have mass?",
+    "punchline": "I didn't even know they were catholic."
+  },
+  {
+    "id": 106,
+    "type": "general",
+    "setup": "Did you know you should always take an extra pair of pants golfing?",
+    "punchline": "Just in case you get a hole in one."
+  },
+  {
+    "id": 107,
+    "type": "general",
+    "setup": "Do I enjoy making courthouse puns?",
+    "punchline": "Guilty"
+  },
+  {
+    "id": 108,
+    "type": "general",
+    "setup": "Do you know where you can get chicken broth in bulk?",
+    "punchline": "The stock market."
+  },
+  {
+    "id": 109,
+    "type": "general",
+    "setup": "Do you want a brief explanation of what an acorn is?",
+    "punchline": "In a nutshell, it's an oak tree."
+  },
+  {
+    "id": 110,
+    "type": "general",
+    "setup": "Ever wondered why bees hum?",
+    "punchline": "It's because they don't know the words."
+  },
+  {
+    "id": 111,
+    "type": "general",
+    "setup": "Have you ever heard of a music group called Cellophane?",
+    "punchline": "They mostly wrap."
+  },
+  {
+    "id": 112,
+    "type": "general",
+    "setup": "Have you heard of the band 1023MB?",
+    "punchline": "They haven't got a gig yet."
+  },
+  {
+    "id": 113,
+    "type": "general",
+    "setup": "Have you heard the rumor going around about butter?",
+    "punchline": "Never mind, I shouldn't spread it."
+  },
+  {
+    "id": 114,
+    "type": "general",
+    "setup": "How are false teeth like stars?",
+    "punchline": "They come out at night!"
+  },
+  {
+    "id": 115,
+    "type": "general",
+    "setup": "How can you tell a vampire has a cold?",
+    "punchline": "They start coffin."
+  },
+  {
+    "id": 116,
+    "type": "general",
+    "setup": "How come a man driving a train got struck by lightning?",
+    "punchline": "He was a good conductor."
+  },
+  {
+    "id": 117,
+    "type": "general",
+    "setup": "How come the stadium got hot after the game?",
+    "punchline": "Because all of the fans left."
+  },
+  {
+    "id": 118,
+    "type": "general",
+    "setup": "How did Darth Vader know what Luke was getting for Christmas?",
+    "punchline": "He felt his presents."
+  },
+  {
+    "id": 119,
+    "type": "general",
+    "setup": "How did the hipster burn the roof of his mouth?",
+    "punchline": "He ate the pizza before it was cool."
+  },
+  {
+    "id": 120,
+    "type": "general",
+    "setup": "How do hens stay fit?",
+    "punchline": "They always egg-cercise!"
+  },
+  {
+    "id": 121,
+    "type": "general",
+    "setup": "How do locomotives know where they're going?",
+    "punchline": "Lots of training"
+  },
+  {
+    "id": 122,
+    "type": "general",
+    "setup": "How do the trees get on the internet?",
+    "punchline": "They log on."
+  },
+  {
+    "id": 123,
+    "type": "general",
+    "setup": "How do you find Will Smith in the snow?",
+    "punchline": " Look for fresh prints."
+  },
+  {
+    "id": 124,
+    "type": "general",
+    "setup": "How do you fix a broken pizza?",
+    "punchline": "With tomato paste."
+  },
+  {
+    "id": 125,
+    "type": "general",
+    "setup": "How do you fix a damaged jack-o-lantern?",
+    "punchline": "You use a pumpkin patch."
+  },
+  {
+    "id": 126,
+    "type": "general",
+    "setup": "How do you get a baby alien to sleep?",
+    "punchline": " You rocket."
+  },
+  {
+    "id": 127,
+    "type": "general",
+    "setup": "How do you get two whales in a car?",
+    "punchline": "Start in England and drive West."
+  },
+  {
+    "id": 128,
+    "type": "general",
+    "setup": "How do you know if there’s an elephant under your bed?",
+    "punchline": "Your head hits the ceiling!"
+  },
+  {
+    "id": 129,
+    "type": "general",
+    "setup": "How do you make a hankie dance?",
+    "punchline": "Put a little boogie in it."
+  },
+  {
+    "id": 130,
+    "type": "general",
+    "setup": "How do you make holy water?",
+    "punchline": "You boil the hell out of it."
+  },
+  {
+    "id": 131,
+    "type": "general",
+    "setup": "How do you organize a space party?",
+    "punchline": "You planet."
+  },
+  {
+    "id": 132,
+    "type": "general",
+    "setup": "How do you steal a coat?",
+    "punchline": "You jacket."
+  },
+  {
+    "id": 133,
+    "type": "general",
+    "setup": "How do you tell the difference between a crocodile and an alligator?",
+    "punchline": "You will see one later and one in a while."
+  },
+  {
+    "id": 134,
+    "type": "general",
+    "setup": "How does a dyslexic poet write?",
+    "punchline": "Inverse."
+  },
+  {
+    "id": 135,
+    "type": "general",
+    "setup": "How does a French skeleton say hello?",
+    "punchline": "Bone-jour."
+  },
+  {
+    "id": 136,
+    "type": "general",
+    "setup": "How does a penguin build it’s house?",
+    "punchline": "Igloos it together."
+  },
+  {
+    "id": 137,
+    "type": "general",
+    "setup": "How does a scientist freshen their breath?",
+    "punchline": "With experi-mints!"
+  },
+  {
+    "id": 138,
+    "type": "general",
+    "setup": "How does the moon cut his hair?",
+    "punchline": "Eclipse it."
+  },
+  {
+    "id": 139,
+    "type": "general",
+    "setup": "How many apples grow on a tree?",
+    "punchline": "All of them!"
+  },
+  {
+    "id": 140,
+    "type": "general",
+    "setup": "How many bones are in the human hand?",
+    "punchline": "A handful of them."
+  },
+  {
+    "id": 141,
+    "type": "general",
+    "setup": "How many hipsters does it take to change a lightbulb?",
+    "punchline": "Oh, it's a really obscure number. You've probably never heard of it."
+  },
+  {
+    "id": 142,
+    "type": "general",
+    "setup": "How many kids with ADD does it take to change a lightbulb?",
+    "punchline": "Let's go ride bikes!"
+  },
+  {
+    "id": 143,
+    "type": "general",
+    "setup": "How many optometrists does it take to change a light bulb?",
+    "punchline": "1 or 2? 1... or 2?"
+  },
+  {
+    "id": 144,
+    "type": "general",
+    "setup": "How many seconds are in a year?",
+    "punchline": "12. January 2nd, February 2nd, March 2nd, April 2nd.... etc"
+  },
+  {
+    "id": 145,
+    "type": "general",
+    "setup": "How many South Americans does it take to change a lightbulb?",
+    "punchline": "A Brazilian"
+  },
+  {
+    "id": 146,
+    "type": "general",
+    "setup": "How many tickles does it take to tickle an octopus?",
+    "punchline": "Ten-tickles!"
+  },
+  {
+    "id": 147,
+    "type": "general",
+    "setup": "How much does a hipster weigh?",
+    "punchline": "An instagram."
+  },
+  {
+    "id": 148,
+    "type": "general",
+    "setup": "How was the snow globe feeling after the storm?",
+    "punchline": "A little shaken."
+  },
+  {
+    "id": 149,
+    "type": "general",
+    "setup": "Is the pool safe for diving?",
+    "punchline": "It deep ends."
+  },
+  {
+    "id": 150,
+    "type": "general",
+    "setup": "Is there a hole in your shoe?",
+    "punchline": "No… Then how’d you get your foot in it?"
+  },
+  {
+    "id": 151,
+    "type": "general",
+    "setup": "What did the spaghetti say to the other spaghetti?",
+    "punchline": "Pasta la vista, baby!"
+  },
+  {
+    "id": 152,
+    "type": "general",
+    "setup": "What’s 50 Cent’s name in Zimbabwe?",
+    "punchline": "200 Dollars."
+  },
+  {
+    "id": 153,
+    "type": "general",
+    "setup": "Want to hear a chimney joke?",
+    "punchline": "Got stacks of em! First one's on the house"
+  },
+  {
+    "id": 154,
+    "type": "general",
+    "setup": "Want to hear a joke about construction?",
+    "punchline": "Nah, I'm still working on it."
+  },
+  {
+    "id": 155,
+    "type": "general",
+    "setup": "Want to hear my pizza joke?",
+    "punchline": "Never mind, it's too cheesy."
+  },
+  {
+    "id": 156,
+    "type": "general",
+    "setup": "What animal is always at a game of cricket?",
+    "punchline": "A bat."
+  },
+  {
+    "id": 157,
+    "type": "general",
+    "setup": "What are the strongest days of the week?",
+    "punchline": "Saturday and Sunday...the rest are weekdays."
+  },
+  {
+    "id": 158,
+    "type": "general",
+    "setup": "What biscuit does a short person like?",
+    "punchline": "Shortbread. "
+  },
+  {
+    "id": 159,
+    "type": "general",
+    "setup": "What cheese can never be yours?",
+    "punchline": "Nacho cheese."
+  },
+  {
+    "id": 160,
+    "type": "general",
+    "setup": "What creature is smarter than a talking parrot?",
+    "punchline": "A spelling bee."
+  },
+  {
+    "id": 161,
+    "type": "general",
+    "setup": "What did celery say when he broke up with his girlfriend?",
+    "punchline": "She wasn't right for me, so I really don't carrot all."
+  },
+  {
+    "id": 162,
+    "type": "general",
+    "setup": "What did Michael Jackson name his denim store?",
+    "punchline": "   Billy Jeans!"
+  },
+  {
+    "id": 163,
+    "type": "general",
+    "setup": "What did one nut say as he chased another nut?",
+    "punchline": " I'm a cashew!"
+  },
+  {
+    "id": 164,
+    "type": "general",
+    "setup": "What did one plate say to the other plate?",
+    "punchline": "Dinner is on me!"
+  },
+  {
+    "id": 165,
+    "type": "general",
+    "setup": "What did one snowman say to the other snow man?",
+    "punchline": "Do you smell carrot?"
+  },
+  {
+    "id": 166,
+    "type": "general",
+    "setup": "What did one wall say to the other wall?",
+    "punchline": "I'll meet you at the corner!"
+  },
+  {
+    "id": 167,
+    "type": "general",
+    "setup": "What did Romans use to cut pizza before the rolling cutter was invented?",
+    "punchline": "Lil Caesars"
+  },
+  {
+    "id": 168,
+    "type": "general",
+    "setup": "What did the 0 say to the 8?",
+    "punchline": "Nice belt."
+  },
+  {
+    "id": 169,
+    "type": "general",
+    "setup": "What did the beaver say to the tree?",
+    "punchline": "It's been nice gnawing you."
+  },
+  {
+    "id": 170,
+    "type": "general",
+    "setup": "What did the big flower say to the littler flower?",
+    "punchline": "Hi, bud!"
+  },
+  {
+    "id": 180,
+    "type": "general",
+    "setup": "What did the Buffalo say to his little boy when he dropped him off at school?",
+    "punchline": "Bison."
+  },
+  {
+    "id": 181,
+    "type": "general",
+    "setup": "What did the digital clock say to the grandfather clock?",
+    "punchline": "Look, no hands!"
+  },
+  {
+    "id": 182,
+    "type": "general",
+    "setup": "What did the dog say to the two trees?",
+    "punchline": "Bark bark."
+  },
+  {
+    "id": 183,
+    "type": "general",
+    "setup": "What did the Dorito farmer say to the other Dorito farmer?",
+    "punchline": "Cool Ranch!"
+  },
+  {
+    "id": 184,
+    "type": "general",
+    "setup": "What did the fish say when it swam into a wall?",
+    "punchline": "Damn!"
+  },
+  {
+    "id": 185,
+    "type": "general",
+    "setup": "What did the grape do when he got stepped on?",
+    "punchline": "He let out a little wine."
+  },
+  {
+    "id": 186,
+    "type": "general",
+    "setup": "What did the judge say to the dentist?",
+    "punchline": "Do you swear to pull the tooth, the whole tooth and nothing but the tooth?"
+  },
+  {
+    "id": 187,
+    "type": "general",
+    "setup": "What did the late tomato say to the early tomato?",
+    "punchline": "I’ll ketch up"
+  },
+  {
+    "id": 188,
+    "type": "general",
+    "setup": "What did the left eye say to the right eye?",
+    "punchline": "Between us, something smells!"
+  },
+  {
+    "id": 189,
+    "type": "general",
+    "setup": "What did the mountain climber name his son?",
+    "punchline": "Cliff."
+  },
+  {
+    "id": 189,
+    "type": "general",
+    "setup": "What did the ocean say to the beach?",
+    "punchline": "Thanks for all the sediment."
+  },
+  {
+    "id": 190,
+    "type": "general",
+    "setup": "What did the ocean say to the shore?",
+    "punchline": "Nothing, it just waved."
+  },
+  {
+    "id": 191,
+    "type": "general",
+    "setup": "Why don't you find hippopotamuses hiding in trees?",
+    "punchline": "They're really good at it."
+  },
+  {
+    "id": 192,
+    "type": "general",
+    "setup": "What did the pirate say on his 80th birthday?",
+    "punchline": "Aye Matey!"
+  },
+  {
+    "id": 193,
+    "type": "general",
+    "setup": "What did the Red light say to the Green light?",
+    "punchline": "Don't look at me I'm changing!"
+  },
+  {
+    "id": 194,
+    "type": "general",
+    "setup": "What did the scarf say to the hat?",
+    "punchline": "You go on ahead, I am going to hang around a bit longer."
+  },
+  {
+    "id": 195,
+    "type": "general",
+    "setup": "What did the shy pebble wish for?",
+    "punchline": "That she was a little boulder."
+  },
+  {
+    "id": 196,
+    "type": "general",
+    "setup": "What did the traffic light say to the car as it passed?",
+    "punchline": "Don't look I'm changing!"
+  },
+  {
+    "id": 197,
+    "type": "general",
+    "setup": "What did the Zen Buddist say to the hotdog vendor?",
+    "punchline": "Make me one with everything."
+  },
+  {
+    "id": 198,
+    "type": "general",
+    "setup": "What do birds give out on Halloween?",
+    "punchline": "Tweets."
+  },
+  {
+    "id": 199,
+    "type": "general",
+    "setup": "What do I look like?",
+    "punchline": "A JOKE MACHINE!?"
+  },
+  {
+    "id": 200,
+    "type": "general",
+    "setup": "What do prisoners use to call each other?",
+    "punchline": "Cell phones."
+  },
+  {
+    "id": 201,
+    "type": "general",
+    "setup": "What do vegetarian zombies eat?",
+    "punchline": "Grrrrrainnnnnssss."
+  },
+  {
+    "id": 202,
+    "type": "general",
+    "setup": "What do you call a bear with no teeth?",
+    "punchline": "A gummy bear!"
+  },
+  {
+    "id": 203,
+    "type": "general",
+    "setup": "What do you call a bee that lives in America?",
+    "punchline": "A USB."
+  },
+  {
+    "id": 204,
+    "type": "general",
+    "setup": "What do you call a boomerang that won't come back?",
+    "punchline": "A stick."
+  },
+  {
+    "id": 205,
+    "type": "general",
+    "setup": "What do you call a careful wolf?",
+    "punchline": "Aware wolf."
+  },
+  {
+    "id": 206,
+    "type": "general",
+    "setup": "What do you call a cow on a trampoline?",
+    "punchline": "A milk shake!"
+  },
+  {
+    "id": 207,
+    "type": "general",
+    "setup": "What do you call a cow with no legs?",
+    "punchline": "Ground beef."
+  },
+  {
+    "id": 208,
+    "type": "general",
+    "setup": "What do you call a cow with two legs?",
+    "punchline": "Lean beef."
+  },
+  {
+    "id": 209,
+    "type": "general",
+    "setup": "What do you call a crowd of chess players bragging about their wins in a hotel lobby?",
+    "punchline": "Chess nuts boasting in an open foyer."
+  },
+  {
+    "id": 210,
+    "type": "general",
+    "setup": "What do you call a dad that has fallen through the ice?",
+    "punchline": "A Popsicle."
+  },
+  {
+    "id": 211,
+    "type": "general",
+    "setup": "What do you call a dictionary on drugs?",
+    "punchline": "High definition."
+  },
+  {
+    "id": 212,
+    "type": "general",
+    "setup": "what do you call a dog that can do magic tricks?",
+    "punchline": "a labracadabrador"
+  },
+  {
+    "id": 213,
+    "type": "general",
+    "setup": "What do you call a droid that takes the long way around?",
+    "punchline": "R2 detour."
+  },
+  {
+    "id": 214,
+    "type": "general",
+    "setup": "What do you call a duck that gets all A's?",
+    "punchline": "A wise quacker."
+  },
+  {
+    "id": 215,
+    "type": "general",
+    "setup": "What do you call a fake noodle?",
+    "punchline": "An impasta."
+  },
+  {
+    "id": 216,
+    "type": "general",
+    "setup": "What do you call a fashionable lawn statue with an excellent sense of rhythmn?",
+    "punchline": "A metro-gnome"
+  },
+  {
+    "id": 217,
+    "type": "general",
+    "setup": "What do you call a fat psychic?",
+    "punchline": "A four-chin teller."
+  },
+  {
+    "id": 218,
+    "type": "general",
+    "setup": "What do you call a fly without wings?",
+    "punchline": "A walk."
+  },
+  {
+    "id": 219,
+    "type": "general",
+    "setup": "What do you call a girl between two posts?",
+    "punchline": "Annette."
+  },
+  {
+    "id": 220,
+    "type": "general",
+    "setup": "What do you call a group of disorganized cats?",
+    "punchline": "A cat-tastrophe."
+  },
+  {
+    "id": 221,
+    "type": "general",
+    "setup": "What do you call a group of killer whales playing instruments?",
+    "punchline": "An Orca-stra."
+  },
+  {
+    "id": 222,
+    "type": "general",
+    "setup": "What do you call a monkey in a mine field?",
+    "punchline": "A babooooom!"
+  },
+  {
+    "id": 223,
+    "type": "general",
+    "setup": "What do you call a nervous javelin thrower?",
+    "punchline": "Shakespeare."
+  },
+  {
+    "id": 224,
+    "type": "general",
+    "setup": "What do you call a pig that knows karate?",
+    "punchline": "A pork chop!"
+  },
+  {
+    "id": 225,
+    "type": "general",
+    "setup": "What do you call a pig with three eyes?",
+    "punchline": "Piiig"
+  },
+  {
+    "id": 226,
+    "type": "general",
+    "setup": "What do you call a pile of cats?",
+    "punchline": " A Meowtain."
+  },
+  {
+    "id": 227,
+    "type": "general",
+    "setup": "What do you call a sheep with no legs?",
+    "punchline": "A cloud."
+  },
+  {
+    "id": 228,
+    "type": "general",
+    "setup": "What do you call a troublesome Canadian high schooler?",
+    "punchline": "A poutine."
+  },
+  {
+    "id": 229,
+    "type": "general",
+    "setup": "What do you call an alligator in a vest?",
+    "punchline": "An in-vest-igator!"
+  },
+  {
+    "id": 230,
+    "type": "general",
+    "setup": "What do you call an Argentinian with a rubber toe?",
+    "punchline": "Roberto"
+  },
+  {
+    "id": 231,
+    "type": "general",
+    "setup": "What do you call an eagle who can play the piano?",
+    "punchline": "Talonted!"
+  },
+  {
+    "id": 232,
+    "type": "general",
+    "setup": "What do you call an elephant that doesn’t matter?",
+    "punchline": "An irrelephant."
+  },
+  {
+    "id": 233,
+    "type": "general",
+    "setup": "What do you call an old snowman?",
+    "punchline": "Water."
+  },
+  {
+    "id": 234,
+    "type": "general",
+    "setup": "What do you call cheese by itself?",
+    "punchline": "Provolone."
+  },
+  {
+    "id": 235,
+    "type": "general",
+    "setup": "What do you call corn that joins the army?",
+    "punchline": "Kernel."
+  },
+  {
+    "id": 236,
+    "type": "general",
+    "setup": "What do you call someone with no nose?",
+    "punchline": "Nobody knows."
+  },
+  {
+    "id": 237,
+    "type": "general",
+    "setup": "What do you call two barracuda fish?",
+    "punchline": " A Pairacuda!"
+  },
+  {
+    "id": 238,
+    "type": "general",
+    "setup": "What do you do on a remote island?",
+    "punchline": "Try and find the TV island it belongs to."
+  },
+  {
+    "id": 239,
+    "type": "general",
+    "setup": "What do you do when you see a space man?",
+    "punchline": "Park your car, man."
+  },
+  {
+    "id": 240,
+    "type": "general",
+    "setup": "What do you get hanging from Apple trees?",
+    "punchline": "Sore arms."
+  },
+  {
+    "id": 241,
+    "type": "general",
+    "setup": "What do you get when you cross a bee and a sheep?",
+    "punchline": "A bah-humbug."
+  },
+  {
+    "id": 242,
+    "type": "general",
+    "setup": "What do you get when you cross a chicken with a skunk?",
+    "punchline": "A fowl smell!"
+  },
+  {
+    "id": 243,
+    "type": "general",
+    "setup": "What do you get when you cross a rabbit with a water hose?",
+    "punchline": "Hare spray."
+  },
+  {
+    "id": 244,
+    "type": "general",
+    "setup": "What do you get when you cross a snowman with a vampire?",
+    "punchline": "Frostbite."
+  },
+  {
+    "id": 245,
+    "type": "general",
+    "setup": "What do you give a sick lemon?",
+    "punchline": "Lemonaid."
+  },
+  {
+    "id": 246,
+    "type": "general",
+    "setup": "What does a clock do when it's hungry?",
+    "punchline": "It goes back four seconds!"
+  },
+  {
+    "id": 247,
+    "type": "general",
+    "setup": "What does a female snake use for support?",
+    "punchline": "A co-Bra!"
+  },
+  {
+    "id": 248,
+    "type": "general",
+    "setup": "What does a pirate pay for his corn?",
+    "punchline": "A buccaneer!"
+  },
+  {
+    "id": 249,
+    "type": "general",
+    "setup": "What does an angry pepper do?",
+    "punchline": "It gets jalapeño face."
+  },
+  {
+    "id": 250,
+    "type": "general",
+    "setup": "What happens to a frog's car when it breaks down?",
+    "punchline": "It gets toad."
+  },
+  {
+    "id": 251,
+    "type": "general",
+    "setup": "What happens when you anger a brain surgeon?",
+    "punchline": "They will give you a piece of your mind."
+  },
+  {
+    "id": 252,
+    "type": "general",
+    "setup": "What has ears but cannot hear?",
+    "punchline": "A field of corn."
+  },
+  {
+    "id": 253,
+    "type": "general",
+    "setup": "What is a centipedes's favorite Beatle song?",
+    "punchline": " I want to hold your hand, hand, hand, hand..."
+  },
+  {
+    "id": 254,
+    "type": "general",
+    "setup": "What is a tornado's favorite game to play?",
+    "punchline": "Twister!"
+  },
+  {
+    "id": 255,
+    "type": "general",
+    "setup": "What is a vampire's favorite fruit?",
+    "punchline": "A blood orange."
+  },
+  {
+    "id": 256,
+    "type": "general",
+    "setup": "What is a witch's favorite subject in school?",
+    "punchline": "Spelling!"
+  },
+  {
+    "id": 257,
+    "type": "general",
+    "setup": "What is red and smells like blue paint?",
+    "punchline": "Red paint!"
+  },
+  {
+    "id": 258,
+    "type": "general",
+    "setup": "What is the difference between ignorance and apathy?",
+    "punchline": "I don't know and I don't care."
+  },
+  {
+    "id": 259,
+    "type": "general",
+    "setup": "What is the hardest part about sky diving?",
+    "punchline": "The ground."
+  },
+  {
+    "id": 260,
+    "type": "general",
+    "setup": "What is the leading cause of dry skin?",
+    "punchline": "Towels"
+  },
+  {
+    "id": 261,
+    "type": "general",
+    "setup": "What is the least spoken language in the world?",
+    "punchline": "Sign Language"
+  },
+  {
+    "id": 262,
+    "type": "general",
+    "setup": "What is the tallest building in the world?",
+    "punchline": "The library, it’s got the most stories!"
+  },
+  {
+    "id": 263,
+    "type": "general",
+    "setup": "What is this movie about?",
+    "punchline": "It is about 2 hours long."
+  },
+  {
+    "id": 264,
+    "type": "general",
+    "setup": "What kind of award did the dentist receive?",
+    "punchline": "A little plaque."
+  },
+  {
+    "id": 265,
+    "type": "general",
+    "setup": "What kind of bagel can fly?",
+    "punchline": "A plain bagel."
+  },
+  {
+    "id": 266,
+    "type": "general",
+    "setup": "What kind of dinosaur loves to sleep?",
+    "punchline": "A stega-snore-us."
+  },
+  {
+    "id": 267,
+    "type": "general",
+    "setup": "What kind of dog lives in a particle accelerator?",
+    "punchline": "A Fermilabrador Retriever."
+  },
+  {
+    "id": 268,
+    "type": "general",
+    "setup": "What kind of magic do cows believe in?",
+    "punchline": "MOODOO."
+  },
+  {
+    "id": 269,
+    "type": "general",
+    "setup": "What kind of music do planets listen to?",
+    "punchline": "Nep-tunes."
+  },
+  {
+    "id": 270,
+    "type": "general",
+    "setup": "What kind of pants do ghosts wear?",
+    "punchline": "Boo jeans."
+  },
+  {
+    "id": 271,
+    "type": "general",
+    "setup": "What kind of tree fits in your hand?",
+    "punchline": "A palm tree!"
+  },
+  {
+    "id": 272,
+    "type": "general",
+    "setup": "What lies at the bottom of the ocean and twitches?",
+    "punchline": "A nervous wreck."
+  },
+  {
+    "id": 273,
+    "type": "general",
+    "setup": "What musical instrument is found in the bathroom?",
+    "punchline": "A tuba toothpaste."
+  },
+  {
+    "id": 274,
+    "type": "general",
+    "setup": "What time did the man go to the dentist?",
+    "punchline": "Tooth hurt-y."
+  },
+  {
+    "id": 275,
+    "type": "general",
+    "setup": "What type of music do balloons hate?",
+    "punchline": "Pop music!"
+  },
+  {
+    "id": 276,
+    "type": "general",
+    "setup": "What was a more important invention than the first telephone?",
+    "punchline": "The second one."
+  },
+  {
+    "id": 277,
+    "type": "general",
+    "setup": "What was the pumpkin’s favorite sport?",
+    "punchline": "Squash."
+  },
+  {
+    "id": 278,
+    "type": "general",
+    "setup": "What's black and white and read all over?",
+    "punchline": "The newspaper."
+  },
+  {
+    "id": 279,
+    "type": "general",
+    "setup": "What's blue and not very heavy?",
+    "punchline": " Light blue."
+  },
+  {
+    "id": 280,
+    "type": "general",
+    "setup": "What's brown and sticky?",
+    "punchline": "A stick."
+  },
+  {
+    "id": 281,
+    "type": "general",
+    "setup": "What's orange and sounds like a parrot?",
+    "punchline": "A Carrot."
+  },
+  {
+    "id": 282,
+    "type": "general",
+    "setup": "What's red and bad for your teeth?",
+    "punchline": "A Brick."
+  },
+  {
+    "id": 283,
+    "type": "general",
+    "setup": "What's the best thing about elevator jokes?",
+    "punchline": "They work on so many levels."
+  },
+  {
+    "id": 284,
+    "type": "general",
+    "setup": "What's the difference between a guitar and a fish?",
+    "punchline": "You can tune a guitar but you can't \"tuna\"fish!"
+  },
+  {
+    "id": 285,
+    "type": "general",
+    "setup": "What's the difference between a hippo and a zippo?",
+    "punchline": "One is really heavy, the other is a little lighter."
+  },
+  {
+    "id": 286,
+    "type": "general",
+    "setup": "What's the difference between a seal and a sea lion?",
+    "punchline": "An ion! "
+  },
+  {
+    "id": 287,
+    "type": "general",
+    "setup": "What's the worst part about being a cross-eyed teacher?",
+    "punchline": "They can't control their pupils."
+  },
+  {
+    "id": 288,
+    "type": "general",
+    "setup": "What's the worst thing about ancient history class?",
+    "punchline": "The teachers tend to Babylon."
+  },
+  {
+    "id": 289,
+    "type": "general",
+    "setup": "What’s brown and sounds like a bell?",
+    "punchline": "Dung!"
+  },
+  {
+    "id": 290,
+    "type": "general",
+    "setup": "What’s E.T. short for?",
+    "punchline": "He’s only got little legs."
+  },
+  {
+    "id": 291,
+    "type": "general",
+    "setup": "What’s Forest Gump’s Facebook password?",
+    "punchline": "1forest1"
+  },
+  {
+    "id": 292,
+    "type": "general",
+    "setup": "What’s the advantage of living in Switzerland?",
+    "punchline": "Well, the flag is a big plus."
+  },
+  {
+    "id": 293,
+    "type": "general",
+    "setup": "What’s the difference between an African elephant and an Indian elephant?",
+    "punchline": "About 5000 miles."
+  },
+  {
+    "id": 294,
+    "type": "general",
+    "setup": "When do doctors get angry?",
+    "punchline": "When they run out of patients."
+  },
+  {
+    "id": 295,
+    "type": "general",
+    "setup": "When does a joke become a dad joke?",
+    "punchline": "When it becomes apparent."
+  },
+  {
+    "id": 296,
+    "type": "general",
+    "setup": "When is a door not a door?",
+    "punchline": "When it's ajar."
+  },
+  {
+    "id": 297,
+    "type": "general",
+    "setup": "Where did you learn to make ice cream?",
+    "punchline": "Sunday school."
+  },
+  {
+    "id": 298,
+    "type": "general",
+    "setup": "Where do bees go to the bathroom?",
+    "punchline": " The BP station."
+  },
+  {
+    "id": 299,
+    "type": "general",
+    "setup": "Where do hamburgers go to dance?",
+    "punchline": "The meat-ball."
+  },
+  {
+    "id": 300,
+    "type": "general",
+    "setup": "Where do rabbits go after they get married?",
+    "punchline": "On a bunny-moon."
+  },
+  {
+    "id": 301,
+    "type": "general",
+    "setup": "Where do sheep go to get their hair cut?",
+    "punchline": "The baa-baa shop."
+  },
+  {
+    "id": 302,
+    "type": "general",
+    "setup": "Where do you learn to make banana splits?",
+    "punchline": "At sundae school."
+  },
+  {
+    "id": 303,
+    "type": "general",
+    "setup": "Where do young cows eat lunch?",
+    "punchline": "In the calf-ateria."
+  },
+  {
+    "id": 304,
+    "type": "general",
+    "setup": "Where does batman go to the bathroom?",
+    "punchline": "The batroom."
+  },
+  {
+    "id": 305,
+    "type": "general",
+    "setup": "Where does Fonzie like to go for lunch?",
+    "punchline": "Chick-Fil-Eyyyyyyyy."
+  },
+  {
+    "id": 306,
+    "type": "general",
+    "setup": "Where does Napoleon keep his armies?",
+    "punchline": "In his sleevies."
+  },
+  {
+    "id": 307,
+    "type": "general",
+    "setup": "Where was the Declaration of Independence signed?",
+    "punchline": "At the bottom! "
+  },
+  {
+    "id": 308,
+    "type": "general",
+    "setup": "Where’s the bin?",
+    "punchline": "I haven’t been anywhere!"
+  },
+  {
+    "id": 309,
+    "type": "general",
+    "setup": "Which side of the chicken has more feathers?",
+    "punchline": "The outside."
+  },
+  {
+    "id": 310,
+    "type": "general",
+    "setup": "Who did the wizard marry?",
+    "punchline": "His ghoul-friend"
+  },
+  {
+    "id": 311,
+    "type": "general",
+    "setup": "Who is the coolest Doctor in the hospital?",
+    "punchline": "The hip Doctor!"
+  },
+  {
+    "id": 312,
+    "type": "general",
+    "setup": "Why are fish easy to weigh?",
+    "punchline": "Because they have their own scales."
+  },
+  {
+    "id": 313,
+    "type": "general",
+    "setup": "Why are fish so smart?",
+    "punchline": "Because they live in schools!"
+  },
+  {
+    "id": 314,
+    "type": "general",
+    "setup": "Why are ghosts bad liars?",
+    "punchline": "Because you can see right through them!"
+  },
+  {
+    "id": 315,
+    "type": "general",
+    "setup": "Why are graveyards so noisy?",
+    "punchline": "Because of all the coffin."
+  },
+  {
+    "id": 316,
+    "type": "general",
+    "setup": "Why are mummys scared of vacation?",
+    "punchline": "They're afraid to unwind."
+  },
+  {
+    "id": 317,
+    "type": "general",
+    "setup": "Why are oranges the smartest fruit?",
+    "punchline": "Because they are made to concentrate. "
+  },
+  {
+    "id": 318,
+    "type": "general",
+    "setup": "Why are pirates called pirates?",
+    "punchline": "Because they arrr!"
+  },
+  {
+    "id": 319,
+    "type": "general",
+    "setup": "Why are skeletons so calm?",
+    "punchline": "Because nothing gets under their skin."
+  },
+  {
+    "id": 320,
+    "type": "general",
+    "setup": "Why can't a bicycle stand on its own?",
+    "punchline": "It's two-tired."
+  },
+  {
+    "id": 321,
+    "type": "general",
+    "setup": "Why can't you use \"Beef stew\"as a password?",
+    "punchline": "Because it's not stroganoff."
+  },
+  {
+    "id": 322,
+    "type": "general",
+    "setup": "Why can't your nose be 12 inches long?",
+    "punchline": "Because then it'd be a foot!"
+  },
+  {
+    "id": 323,
+    "type": "general",
+    "setup": "Why can’t you hear a pterodactyl go to the bathroom?",
+    "punchline": "The p is silent."
+  },
+  {
+    "id": 324,
+    "type": "general",
+    "setup": "Why couldn't the kid see the pirate movie?",
+    "punchline": "Because it was rated arrr!"
+  },
+  {
+    "id": 325,
+    "type": "general",
+    "setup": "Why couldn't the lifeguard save the hippie?",
+    "punchline": "He was too far out, man."
+  },
+  {
+    "id": 326,
+    "type": "general",
+    "setup": "Why did Dracula lie in the wrong coffin?",
+    "punchline": "He made a grave mistake."
+  },
+  {
+    "id": 327,
+    "type": "general",
+    "setup": "Why did Sweden start painting barcodes on the sides of their battleships?",
+    "punchline": "So they could Scandinavian."
+  },
+  {
+    "id": 328,
+    "type": "general",
+    "setup": "Why did the A go to the bathroom and come out as an E?",
+    "punchline": "Because he had a vowel movement."
+  },
+  {
+    "id": 329,
+    "type": "general",
+    "setup": "Why did the barber win the race?",
+    "punchline": "He took a short cut."
+  },
+  {
+    "id": 330,
+    "type": "general",
+    "setup": "Why did the belt go to prison?",
+    "punchline": "He held up a pair of pants!"
+  },
+  {
+    "id": 331,
+    "type": "general",
+    "setup": "Why did the burglar hang his mugshot on the wall?",
+    "punchline": "To prove that he was framed!"
+  },
+  {
+    "id": 332,
+    "type": "general",
+    "setup": "Why did the chicken get a penalty?",
+    "punchline": "For fowl play."
+  },
+  {
+    "id": 333,
+    "type": "general",
+    "setup": "Why did the Clydesdale give the pony a glass of water?",
+    "punchline": "Because he was a little horse!"
+  },
+  {
+    "id": 334,
+    "type": "general",
+    "setup": "Why did the coffee file a police report?",
+    "punchline": "It got mugged."
+  },
+  {
+    "id": 335,
+    "type": "general",
+    "setup": "Why did the cookie cry?",
+    "punchline": "Because his mother was a wafer so long"
+  },
+  {
+    "id": 336,
+    "type": "general",
+    "setup": "Why did the cookie cry?",
+    "punchline": "It was feeling crumby."
+  },
+  {
+    "id": 337,
+    "type": "general",
+    "setup": "Why did the cowboy have a weiner dog?",
+    "punchline": "Somebody told him to get a long little doggy."
+  },
+  {
+    "id": 338,
+    "type": "general",
+    "setup": "Why did the fireman wear red, white, and blue suspenders?",
+    "punchline": "To hold his pants up."
+  },
+  {
+    "id": 339,
+    "type": "general",
+    "setup": "Why did the girl smear peanut butter on the road?",
+    "punchline": "To go with the traffic jam."
+  },
+  {
+    "id": 340,
+    "type": "general",
+    "setup": "Why did the half blind man fall in the well?",
+    "punchline": "Because he couldn't see that well!"
+  },
+  {
+    "id": 341,
+    "type": "general",
+    "setup": "Why did the house go to the doctor?",
+    "punchline": "It was having window panes."
+  },
+  {
+    "id": 342,
+    "type": "general",
+    "setup": "Why did the kid cross the playground?",
+    "punchline": "To get to the other slide."
+  },
+  {
+    "id": 343,
+    "type": "general",
+    "setup": "Why did the man put his money in the freezer?",
+    "punchline": "He wanted cold hard cash!"
+  },
+  {
+    "id": 344,
+    "type": "general",
+    "setup": "Why did the man run around his bed?",
+    "punchline": "Because he was trying to catch up on his sleep!"
+  },
+  {
+    "id": 345,
+    "type": "general",
+    "setup": "Why did the melons plan a big wedding?",
+    "punchline": "Because they cantaloupe!"
+  },
+  {
+    "id": 346,
+    "type": "general",
+    "setup": "Why did the octopus beat the shark in a fight?",
+    "punchline": "Because it was well armed."
+  },
+  {
+    "id": 347,
+    "type": "general",
+    "setup": "Why did the opera singer go sailing?",
+    "punchline": "They wanted to hit the high Cs."
+  },
+  {
+    "id": 348,
+    "type": "general",
+    "setup": "Why did the scarecrow win an award?",
+    "punchline": "Because he was outstanding in his field."
+  },
+  {
+    "id": 349,
+    "type": "general",
+    "setup": "Why did the tomato blush?",
+    "punchline": "Because it saw the salad dressing."
+  },
+  {
+    "id": 350,
+    "type": "general",
+    "setup": "Why did the tree go to the dentist?",
+    "punchline": "It needed a root canal."
+  },
+  {
+    "id": 351,
+    "type": "general",
+    "setup": "Why did the worker get fired from the orange juice factory?",
+    "punchline": "Lack of concentration."
+  },
+  {
+    "id": 352,
+    "type": "general",
+    "setup": "Why didn't the number 4 get into the nightclub?",
+    "punchline": "Because he is 2 square."
+  },
+  {
+    "id": 353,
+    "type": "general",
+    "setup": "Why didn’t the orange win the race?",
+    "punchline": "It ran out of juice."
+  },
+  {
+    "id": 354,
+    "type": "general",
+    "setup": "Why didn’t the skeleton cross the road?",
+    "punchline": "Because he had no guts."
+  },
+  {
+    "id": 355,
+    "type": "general",
+    "setup": "Why do bananas have to put on sunscreen before they go to the beach?",
+    "punchline": "Because they might peel!"
+  },
+  {
+    "id": 356,
+    "type": "general",
+    "setup": "Why do bears have hairy coats?",
+    "punchline": "Fur protection."
+  },
+  {
+    "id": 357,
+    "type": "general",
+    "setup": "Why do bees have sticky hair?",
+    "punchline": "Because they use honey combs!"
+  },
+  {
+    "id": 358,
+    "type": "general",
+    "setup": "Why do bees hum?",
+    "punchline": "Because they don't know the words."
+  },
+  {
+    "id": 359,
+    "type": "general",
+    "setup": "Why do birds fly south for the winter?",
+    "punchline": "Because it's too far to walk."
+  },
+  {
+    "id": 360,
+    "type": "general",
+    "setup": "Why do choirs keep buckets handy?",
+    "punchline": "So they can carry their tune"
+  },
+  {
+    "id": 361,
+    "type": "general",
+    "setup": "Why do crabs never give to charity?",
+    "punchline": "Because they’re shellfish."
+  },
+  {
+    "id": 362,
+    "type": "general",
+    "setup": "Why do ducks make great detectives?",
+    "punchline": "They always quack the case."
+  },
+  {
+    "id": 363,
+    "type": "general",
+    "setup": "Why do mathematicians hate the U.S.?",
+    "punchline": "Because it's indivisible."
+  },
+  {
+    "id": 364,
+    "type": "general",
+    "setup": "Why do pirates not know the alphabet?",
+    "punchline": "They always get stuck at \"C\"."
+  },
+  {
+    "id": 365,
+    "type": "general",
+    "setup": "Why do pumpkins sit on people’s porches?",
+    "punchline": "They have no hands to knock on the door."
+  },
+  {
+    "id": 366,
+    "type": "general",
+    "setup": "Why do scuba divers fall backwards into the water?",
+    "punchline": "Because if they fell forwards they’d still be in the boat."
+  },
+  {
+    "id": 367,
+    "type": "general",
+    "setup": "Why do trees seem suspicious on sunny days?",
+    "punchline": "Dunno, they're just a bit shady."
+  },
+  {
+    "id": 368,
+    "type": "general",
+    "setup": "Why do valley girls hang out in odd numbered groups?",
+    "punchline": "Because they can't even."
+  },
+  {
+    "id": 369,
+    "type": "general",
+    "setup": "Why do wizards clean their teeth three times a day?",
+    "punchline": "To prevent bat breath!"
+  },
+  {
+    "id": 370,
+    "type": "general",
+    "setup": "Why do you never see elephants hiding in trees?",
+    "punchline": "Because they're so good at it."
+  },
+  {
+    "id": 371,
+    "type": "general",
+    "setup": "Why does a chicken coop only have two doors?",
+    "punchline": "Because if it had four doors it would be a chicken sedan."
+  },
+  {
+    "id": 372,
+    "type": "general",
+    "setup": "Why does a Moon-rock taste better than an Earth-rock?",
+    "punchline": "Because it's a little meteor."
+  },
+  {
+    "id": 373,
+    "type": "general",
+    "setup": "Why does it take longer to get from 1st to 2nd base, than it does to get from 2nd to 3rd base?",
+    "punchline": "Because there’s a Shortstop in between!"
+  },
+  {
+    "id": 374,
+    "type": "general",
+    "setup": "Why does Norway have barcodes on their battleships?",
+    "punchline": "So when they get back to port, they can Scandinavian."
+  },
+  {
+    "id": 375,
+    "type": "general",
+    "setup": "Why does Superman get invited to dinners?",
+    "punchline": "Because he is a Supperhero."
+  },
+  {
+    "id": 376,
+    "type": "general",
+    "setup": "Why does Waldo only wear stripes?",
+    "punchline": "Because he doesn't want to be spotted."
+  },
+  {
+    "id": 381,
+    "type": "general",
+    "setup": "Two guys walk into a bar . . .",
+    "punchline": "The first guy says \"Ouch!\" and the second says \"Yeah, I didn't see it either.\""
+  },
+  {
+    "id": 386,
+    "type": "general",
+    "setup": "I saw a nice stereo on Craigslist for $1. Seller says the volume is stuck on ‘high’",
+    "punchline": "I couldn’t turn it down."
+  },
+  {
+    "id": 387,
+    "type": "general",
+    "setup": "My older brother always tore the last pages of my comic books, and never told me why.",
+    "punchline": "I had to draw my own conclusions."
+  }
+]
