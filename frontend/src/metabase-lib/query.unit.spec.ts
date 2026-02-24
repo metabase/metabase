@@ -1,4 +1,5 @@
 import * as Lib from "metabase-lib";
+import type { DatasetQuery } from "metabase-types/api";
 import {
   ORDERS_ID,
   PEOPLE_ID,
@@ -7,12 +8,19 @@ import {
 } from "metabase-types/api/mocks/presets";
 
 import {
-  DEFAULT_QUERY,
   DEFAULT_TEST_QUERY,
   SAMPLE_DATABASE,
   SAMPLE_METADATA,
   SAMPLE_PROVIDER,
 } from "./test-helpers";
+
+const DEFAULT_QUERY: DatasetQuery = {
+  database: SAMPLE_DATABASE.id,
+  type: "query",
+  query: {
+    "source-table": ORDERS_ID,
+  },
+};
 
 describe("fromJsQuery", () => {
   // this is a very important optimization that the FE heavily relies upon

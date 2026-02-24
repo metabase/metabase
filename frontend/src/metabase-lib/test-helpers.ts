@@ -6,7 +6,6 @@ import type Metadata from "metabase-lib/v1/metadata/Metadata";
 import type {
   DatabaseId,
   DatasetColumn,
-  DatasetQuery,
   RowValue,
   TestQuerySpec,
 } from "metabase-types/api";
@@ -41,14 +40,6 @@ export const DEFAULT_TEST_QUERY: TestQuerySpec = {
       source: { type: "table", id: ORDERS_ID },
     },
   ],
-};
-
-export const DEFAULT_QUERY: DatasetQuery = {
-  database: SAMPLE_DATABASE.id,
-  type: "query",
-  query: {
-    "source-table": ORDERS_ID,
-  },
 };
 
 export const columnFinder =
