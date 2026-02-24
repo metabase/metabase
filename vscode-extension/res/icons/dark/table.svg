@@ -1,18 +1,3 @@
-<!-- @license lucide-static v0.575.0 - ISC -->
-<svg
-  class="lucide lucide-table"
-  xmlns="http://www.w3.org/2000/svg"
-  width="24"
-  height="24"
-  viewBox="0 0 24 24"
-  fill="none"
-  stroke="#C5C5C5"
-  stroke-width="2"
-  stroke-linecap="round"
-  stroke-linejoin="round"
->
-  <path d="M12 3v18" />
-  <rect width="18" height="18" x="3" y="3" rx="2" />
-  <path d="M3 9h18" />
-  <path d="M3 15h18" />
+<svg viewBox="0 0 16 16" fill="#C5C5C5" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+  <path d="M12.667 1.25c1.15 0 2.083.933 2.083 2.083v9.334c0 1.15-.933 2.083-2.083 2.083H3.333a2.083 2.083 0 0 1-2.083-2.083V3.333c0-1.15.933-2.083 2.083-2.083h9.334zm-9.917 9.5v1.917c0 .322.261.583.583.583H7.25v-2.5h-4.5zm6 0v2.5h3.917a.583.583 0 0 0 .583-.583V10.75h-4.5zm-6-1.5h4.5v-2.5h-4.5v2.5zm6 0h4.5v-2.5h-4.5v2.5zm-5.417-6.5a.583.583 0 0 0-.583.583V5.25h4.5v-2.5H3.333zm5.417 2.5h4.5V3.333a.583.583 0 0 0-.583-.583H8.75v2.5z" />
 </svg>

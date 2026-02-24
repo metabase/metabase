@@ -593,19 +593,40 @@ const { activate, deactivate } = defineExtension((context) => {
     }
   });
 
+  let checkDebounceTimer: ReturnType<typeof setTimeout> | null = null;
+
+  async function runDebouncedCheck() {
+    if (!configExists.value) return;
+    const folders = workspaceFolders.value;
+    if (!folders?.length) return;
+
+    try {
+      const rootPath = folders[0].uri.fsPath;
+      const entities = await parseDirectory(rootPath);
+      const catalog = CatalogGraph.build(entities);
+      const content = ContentGraph.build(entities);
+      const result = buildDependencyGraph(entities, catalog, content);
+      publishDiagnostics(result);
+    } catch {
+      // silently fail for background checks
+    }
+  }
+
+  function scheduleCheck() {
+    if (checkDebounceTimer) clearTimeout(checkDebounceTimer);
+    checkDebounceTimer = setTimeout(runDebouncedCheck, 1000);
+  }
+
+  function onYamlChanged() {
+    loadExport();
+    if (graphPanel) sendGraphDataToWebview(graphPanel);
+    scheduleCheck();
+  }
+
   useFileSystemWatcher("**/*.yaml", {
-    onDidCreate: () => {
-      loadExport();
-      if (graphPanel) sendGraphDataToWebview(graphPanel);
-    },
-    onDidChange: () => {
-      loadExport();
-      if (graphPanel) sendGraphDataToWebview(graphPanel);
-    },
-    onDidDelete: () => {
-      loadExport();
-      if (graphPanel) sendGraphDataToWebview(graphPanel);
-    },
+    onDidCreate: onYamlChanged,
+    onDidChange: onYamlChanged,
+    onDidDelete: onYamlChanged,
   });
 });
 

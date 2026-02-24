@@ -15,7 +15,8 @@
       "WebFetch(domain:dev.to)",
       "WebFetch(domain:medium.com)",
       "WebFetch(domain:vogella.com)",
-      "Bash(find:*)"
+      "Bash(find:*)",
+      "Bash(ls:*)"
     ]
   }
 }

@@ -80,14 +80,14 @@ export class CatalogTreeProvider implements vscode.TreeDataProvider<CatalogNode>
   private getIcon(node: CatalogNode): { light: vscode.Uri, dark: vscode.Uri } {
     switch (node.kind) {
       case 'database': return this.iconPath('database')
-      case 'schema': return this.iconPath('boxes')
+      case 'schema': return this.iconPath('folder_database')
       case 'table': return this.iconPath('table')
       case 'field':
-        if (node.semanticType === 'type/PK') return this.iconPath('key-round')
-        if (node.semanticType === 'type/FK') return this.iconPath('link')
-        return this.iconPath('hash')
-      case 'measure': return this.iconPath('chart-line')
-      case 'segment': return this.iconPath('filter')
+        if (node.semanticType === 'type/PK') return this.iconPath('label')
+        if (node.semanticType === 'type/FK') return this.iconPath('connections')
+        return this.iconPath('int')
+      case 'measure': return this.iconPath('metric')
+      case 'segment': return this.iconPath('segment')
     }
   }
 }

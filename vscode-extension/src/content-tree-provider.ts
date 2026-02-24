@@ -88,15 +88,17 @@ export class ContentTreeProvider implements vscode.TreeDataProvider<ContentNode>
     switch (node.kind) {
       case 'collection': return this.iconPath('folder')
       case 'card':
+        if (node.cardType === 'model')
+          return this.iconPath('model')
         if (node.cardType === 'metric')
-          return this.iconPath('chart-line')
-        return this.iconPath('file-question')
-      case 'dashboard': return this.iconPath('layout-dashboard')
-      case 'native_query_snippet': return this.iconPath('code')
+          return this.iconPath('metric')
+        return this.iconPath('table2')
+      case 'dashboard': return this.iconPath('dashboard')
+      case 'native_query_snippet': return this.iconPath('snippet')
       case 'timeline': return this.iconPath('calendar')
-      case 'document': return this.iconPath('file-text')
-      case 'transform': return this.iconPath('arrow-right-left')
-      case 'action': return this.iconPath('play')
+      case 'document': return this.iconPath('document')
+      case 'transform': return this.iconPath('transform')
+      case 'action': return this.iconPath('bolt')
     }
   }
 }
