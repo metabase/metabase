@@ -622,7 +622,7 @@
                                   query-before
                                   stage-number
                                   (fn [column] [:field {:join-alias (:lib/join-alias column)}
-                                                (or (lib.field.util/inherited-column-name column)
+                                                (or (lib.field.util/column-metadata->field-ref-name column)
                                                     (:id column))]))]
     ;; Because joins can use :all or :none, we cannot just use `remove-local-references` we have to manually look at
     ;; the next stage as well
