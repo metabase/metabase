@@ -185,7 +185,7 @@
                                 [:field {:base-type    :type/BigInteger
                                          :lib/uuid     string?
                                          :source-field (meta/id :venues :category-id)}
-                                 "ID"]
+                                 (meta/id :categories :id)]
                                 [:field {:lib/uuid string?} "CATEGORY_ID"]]]}
                 clause)))
       (is (=? {:database (meta/id)
@@ -200,7 +200,7 @@
                                                            {:base-type :type/BigInteger
                                                             :lib/uuid string?
                                                             :join-alias absent-key-marker}
-                                                           "ID"]
+                                                           (meta/id :categories :id)]
                                                           [:field
                                                            {:lib/uuid string?
                                                             :join-alias "Venues"}

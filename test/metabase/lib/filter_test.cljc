@@ -39,11 +39,10 @@
          [op
           {:lib/uuid string?}
           [:field {:base-type :type/Integer, :lib/uuid string?} "CATEGORY_ID"]
-          [:field {:base-type        :type/BigInteger
-                   :lib/uuid         string?
-                   :source-field     (meta/id :venues :category-id)
-                   :source-field-name "CATEGORY_ID"}
-           "ID"]]
+          [:field {:base-type    :type/BigInteger
+                   :lib/uuid     string?
+                   :source-field (meta/id :venues :category-id)}
+           (meta/id :categories :id)]]
          f
          venues-category-id-metadata
          categories-id-metadata)))
@@ -54,11 +53,10 @@
         {:lib/uuid string?}
         [:field {:base-type :type/Integer, :lib/uuid string?} "CATEGORY_ID"]
         42
-        [:field {:base-type        :type/BigInteger
-                 :lib/uuid         string?
-                 :source-field     (meta/id :venues :category-id)
-                 :source-field-name "CATEGORY_ID"}
-         "ID"]]
+        [:field {:base-type    :type/BigInteger
+                 :lib/uuid     string?
+                 :source-field (meta/id :venues :category-id)}
+         (meta/id :categories :id)]]
        lib/between
        venues-category-id-metadata
        42
@@ -222,7 +220,7 @@
             (lib.tu/venues-query)
             [:ends-with
              {:lib/uuid "953597df-a96d-4453-a57b-665e845abc69"}
-             [:field {:lib/uuid "be28f393-538a-406b-90da-bac5f8ef565e"} "NAME"]
+             [:field {:lib/uuid "be28f393-538a-406b-90da-bac5f8ef565e", :base-type :type/Text} "NAME"]
              "t"])))))
 
 (deftest ^:parallel filterable-columns-test

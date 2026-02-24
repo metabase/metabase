@@ -227,8 +227,8 @@
                  [{:lib/type :mbql/join
                    :stages [{:lib/type :mbql.stage/mbql, :source-table (meta/id :venues)}]
                    :conditions [[:= {}
-                                 [:field {:join-alias "Venues"} "CATEGORY_ID"]
-                                 [:field {} "ID"]]]
+                                 [:field {} "CATEGORY_ID"]
+                                 [:field {:join-alias "Venues"} "ID"]]]
                    ;; No :fields :all because it gets removed on joins when there are aggregations/breakouts.
                    :fields (symbol "nil #_\"key is not present.\"")
                    :alias "Venues"}]}]}
@@ -1133,7 +1133,8 @@
                                (lib/replace-clause -1 (second (lib/joins multi-query)) new-clause)
                                lib/joins)]
         (is (= ["Products" "Products - Created At" "Products - Created At_2"]
-               (map :alias original-joins)
+               (map :alias original-joins)))
+        (is (= ["Products" "Products - User" "Products - Created At_2"]
                (map :alias replaced-joins)))))
     (testing "New clause alias reflects new table"
       (let [multi-query (-> query
@@ -1358,7 +1359,7 @@
             query    (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
                          (lib/add-field 0 category)
                          ;; Can't use remove-field itself; it will normalize the fields clause.
-                         (update-in [:stages 0 :fields] #(remove (comp #{"CATEGORY"} last) %)))]
+                         (update-in [:stages 0 :fields] #(remove (comp #{(meta/id :products :category)} last) %)))]
         (is (= 9 (-> query :stages first :fields count)))
         (is (nil? (-> query
                       lib.remove-replace/normalize-fields-clauses

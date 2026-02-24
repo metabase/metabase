@@ -56,7 +56,7 @@
                                       :source-name "PEOPLE"}]}]})]
       (is (=? [[:field {} "ID"]
                [:field {} "TOTAL"]
-               [:field {} "NAME"]]
+               [:field {:source-field (meta/id :orders :user-id)} (meta/id :people :name)]]
               (:fields (first (:stages query))))))))
 
 (deftest ^:parallel test-query-with-expressions-test
@@ -620,13 +620,13 @@
                 {} "Gadget"
                 [:field
                  {:source-field (meta/id :orders :product-id)}
-                 "CATEGORY"]]]
+                 (meta/id :products :category)]]]
               (lib/filters query)))
 
       (is (=? [[:sum {}
                 [:field
                  {:source-field (meta/id :orders :product-id)}
-                 "PRICE"]]]
+                 (meta/id :products :price)]]]
               (lib/aggregations query)))
 
       (is (=? [[:+
@@ -634,12 +634,12 @@
                 42
                 [:field
                  {:source-field (meta/id :orders :product-id)}
-                 "PRICE"]]]
+                 (meta/id :products :price)]]]
               (lib/expressions query)))
 
       (is (=? [[:field
                 {:source-field (meta/id :orders :product-id)}
-                "CREATED_AT"]]
+                (meta/id :products :created-at)]]
               (lib/breakouts query)))
 
       (let [query (lib.query.test-spec/test-query
@@ -651,7 +651,7 @@
 
         (is (=? [[:asc {} [:field
                            {:source-field (meta/id :orders :product-id)}
-                           "PRICE"]]]
+                           (meta/id :products :price)]]]
                 (lib/order-bys query)))))))
 
 (deftest ^:parallel test-query-three-stage-test

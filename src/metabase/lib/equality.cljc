@@ -283,14 +283,15 @@ are known to be the same."
 (mu/defn- plausible-matches-for-name :- [:maybe [:sequential ::lib.schema.metadata/column]]
   [[_ref-kind opts ref-name :as _a-ref] :- ::lib.schema.ref/ref
    columns                              :- [:sequential ::lib.schema.metadata/column]]
-  (or (when-let [join-alias (:join-alias opts)]
-        (or (plausible-matches-for-name-with-join-alias join-alias ref-name columns)
-            ;; if there's no match for a join then fall back to trying to match by ignoring the join alias.
-            (do (log/warnf "Failed to find match for column %s with join alias %s, looking for match without join alias..."
-                           (pr-str ref-name)
-                           (pr-str join-alias))
-                nil)))
-      (plausible-matches-for-name-no-join-alias ref-name columns)))
+  (if-let [join-alias (:join-alias opts)]
+    (or (plausible-matches-for-name-with-join-alias join-alias ref-name columns)
+        ;; if there's no match for a join then DON'T fall back to matching by ignoring the join alias -- this
+        ;; could cause incorrect matches for columns from different joins that happen to have the same name.
+        (do (log/warnf "Failed to find match for column %s with join alias %s"
+                       (pr-str ref-name)
+                       (pr-str join-alias))
+            nil))
+    (plausible-matches-for-name-no-join-alias ref-name columns)))
 
 (mu/defn- plausible-matches-for-id :- [:sequential ::lib.schema.metadata/column]
   [[_ref-kind opts ref-id :as a-ref] :- ::lib.schema.ref/ref

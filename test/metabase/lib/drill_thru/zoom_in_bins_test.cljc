@@ -57,7 +57,7 @@
                        :min-value   40
                        :max-value   60.0
                        :new-binning {:strategy :default}}
-      :expected-query (let [total-field (lib.drill-thru.tu/field-key= "TOTAL" (meta/id :orders :total))]
+      :expected-query (let [total-field (lib.drill-thru.tu/field-key= "TOTAL")]
                         {:stages [{:source-table (meta/id :orders)
                                    :aggregation  [[:count {}]]
                                    :breakout     [[:field {:binning {:strategy :default}} total-field]]
@@ -91,7 +91,7 @@
                        :min-value   41.0
                        :max-value   42.0
                        :new-binning {:strategy :bin-width, :bin-width 0.1}}
-      :expected-query (let [lat-field (lib.drill-thru.tu/field-key= "LATITUDE" (meta/id :people :latitude))]
+      :expected-query (let [lat-field (lib.drill-thru.tu/field-key= "LATITUDE")]
                         {:stages [{:source-table (meta/id :people)
                                    :aggregation  [[:count {}]]
                                    :breakout     [[:field
@@ -178,7 +178,7 @@
                        :min-value   10
                        :max-value   20.0
                        :new-binning {:strategy :default}}
-      :expected-query (let [quantity-field   (lib.drill-thru.tu/field-key= "QUANTITY"   (meta/id :orders :quantity))]
+      :expected-query (let [quantity-field   (lib.drill-thru.tu/field-key= "QUANTITY")]
                         {:stages [{:source-table (meta/id :orders)
                                    :aggregation  [[:count {}]]
                                    :breakout     [[:field
@@ -312,7 +312,7 @@
                          :min-value   50
                          :max-value   52.5
                          :new-binning {:strategy :default}}
-        :expected-query (let [subtotal-field (lib.drill-thru.tu/field-key= "SUBTOTAL" (meta/id :orders :subtotal))]
+        :expected-query (let [subtotal-field (lib.drill-thru.tu/field-key= "SUBTOTAL")]
                           {:stages [{:source-table (meta/id :orders)
                                      :aggregation  [[:count {}]]
                                      :breakout     [[:field

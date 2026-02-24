@@ -643,7 +643,7 @@
         (testing "Implicitly joinable columns should NOT be given a join alias"
           (is (=? {:stages [{:order-by [[:asc {} [:field
                                                   (complement :join-alias)
-                                                  "NAME"]]]}]}
+                                                  (meta/id :categories :name)]]]}]}
                   query')))
         (is (= "Venues, Sorted by Category → Name ascending"
                (lib/describe-query query'))))

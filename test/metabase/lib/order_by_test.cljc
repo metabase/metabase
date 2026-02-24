@@ -665,8 +665,8 @@
                     (lib/order-by (m/find-first #(= (:id %) (meta/id :categories :name))
                                                 (lib/orderable-columns query))))]
       (is (=? {:stages [{:order-by [[:asc {} [:field
-                                              {:source-field "CATEGORY_ID"}
-                                              "NAME"]]]}]}
+                                              {:source-field (meta/id :venues :category-id)}
+                                              (meta/id :categories :name)]]]}]}
               query))
       (is (= "Venues, Sorted by Category → Name ascending"
              (lib/describe-query query)))
