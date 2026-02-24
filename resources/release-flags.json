@@ -2,5 +2,9 @@
   "joke-of-the-day": {
     "description": "Whether to show the joke of the day on the homepage.",
     "startDate": "2026-02-24"
+  },
+  "document-collaboration": {
+    "description": "Real-time collaborative editing for Documents via Hocuspocus/Yjs.",
+    "startDate": "2026-02-24"
   }
 }

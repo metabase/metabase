@@ -6,6 +6,7 @@
    [metabase.documents.prose-mirror :as prose-mirror]
    [metabase.events.core :as events]
    [metabase.models.interface :as mi]
+   [metabase.release-flags.core :as release-flags]
    [metabase.request.core :as request]
    [metabase.util.log :as log]
    [toucan2.core :as t2]))
@@ -42,6 +43,7 @@
   [_
    _
    {:keys [event _context payload]}]
+  (api/check-404 (release-flags/has-release-flag? :document-collaboration))
   (let [cookies-str (get-in payload [:requestHeaders :cookie])
         session-key (second (re-find yuck-regex cookies-str))
         user-id     (:metabase-user-id (metabase.server.middleware.session/current-user-info-for-session session-key nil))]
@@ -58,6 +60,7 @@
 
 (api.macros/defendpoint :post "/copy-cards"
   [_ _ {document-id :document_id document :document}]
+  (api/check-404 (release-flags/has-release-flag? :document-collaboration))
   (let [collection-id (t2/select-one-fn :collection_id :model/Document :id (parse-long document-id))]
     (->> (document.api/clone-cards-in-document!
           {:id document-id

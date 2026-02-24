@@ -1,3 +1,4 @@
+import type { HocuspocusProvider } from "@hocuspocus/provider";
 import Collaboration from "@tiptap/extension-collaboration";
 import CollaborationCaret from "@tiptap/extension-collaboration-caret";
 import Image from "@tiptap/extension-image";
@@ -9,7 +10,6 @@ import type React from "react";
 import { useEffect, useMemo, useState } from "react";
 import { useLatest, usePrevious } from "react-use";
 import { t } from "ttag";
-import { HocuspocusProvider } from "@hocuspocus/provider";
 
 import { getCurrentUser } from "metabase/admin/datamodel/selectors";
 import { DND_IGNORE_CLASS_NAME } from "metabase/common/components/dnd";
@@ -49,7 +49,6 @@ import type { CardEmbedRef } from "metabase-types/store/documents";
 import S from "./Editor.module.css";
 import { colors } from "./collab";
 import { useCardEmbedsTracking, useQuestionSelection } from "./hooks";
-import { getCurrentUser } from "metabase/admin/datamodel/selectors";
 
 const BUBBLE_MENU_DISALLOWED_NODES: string[] = [
   CardEmbed.name,
@@ -132,7 +131,7 @@ export const Editor: React.FC<EditorProps> = ({
           width: 2,
           class: DropCursorS.dropCursor,
         },
-        undoRedo: false,
+        undoRedo: !ydoc,
       }),
       Image.configure({
         inline: false,
@@ -179,30 +178,34 @@ export const Editor: React.FC<EditorProps> = ({
       }),
       ResizeNode,
       HandleEditorDrop,
-      Collaboration.extend().configure({
-        document: ydoc,
-      }),
-      CollaborationCaret.extend().configure({
-        provider,
-        render: (user: any) => {
-          const cursor = document.createElement("span");
-          cursor.classList.add("collaboration-carets__caret");
-          cursor.setAttribute("style", `border-color: ${user.color}`);
+      ...(ydoc && provider
+        ? [
+            Collaboration.extend().configure({
+              document: ydoc,
+            }),
+            CollaborationCaret.extend().configure({
+              provider,
+              render: (user: any) => {
+                const cursor = document.createElement("span");
+                cursor.classList.add("collaboration-carets__caret");
+                cursor.setAttribute("style", `border-color: ${user.color}`);
 
-          const label = document.createElement("div");
-          label.classList.add("collaboration-carets__label");
-          label.setAttribute("style", `background-color: ${user.color};`);
-          label.insertBefore(document.createTextNode(user.name), null);
+                const label = document.createElement("div");
+                label.classList.add("collaboration-carets__label");
+                label.setAttribute("style", `background-color: ${user.color};`);
+                label.insertBefore(document.createTextNode(user.name), null);
 
-          cursor.insertBefore(label, null);
+                cursor.insertBefore(label, null);
 
-          return cursor;
-        },
-        user: {
-          name: currentUser?.common_name,
-          color: colors[Math.floor(Math.random() * colors.length)],
-        },
-      }),
+                return cursor;
+              },
+              user: {
+                name: currentUser?.common_name,
+                color: colors[Math.floor(Math.random() * colors.length)],
+              },
+            }),
+          ]
+        : []),
     ],
     [siteUrl, getState, ydoc, provider, currentUser?.common_name],
   );
@@ -253,7 +256,7 @@ export const Editor: React.FC<EditorProps> = ({
 
   // Track collaboration users every 100ms
   useEffect(() => {
-    if (!editor) {
+    if (!editor || !provider) {
       return;
     }
 
@@ -278,7 +281,7 @@ export const Editor: React.FC<EditorProps> = ({
     return () => {
       clearInterval(interval);
     };
-  }, [editor]);
+  }, [editor, provider]);
 
   // Notify parent when editor is ready
   useEffect(() => {

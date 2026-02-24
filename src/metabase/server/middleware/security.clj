@@ -8,9 +8,9 @@
    [metabase.analytics.core :as analytics]
    [metabase.config.core :as config]
    [metabase.embedding.settings :as embedding.settings]
+   [metabase.release-flags.core :as release-flags]
    [metabase.request.core :as request]
    [metabase.server.settings :as server.settings]
-
    [metabase.settings.core :as setting]
    [metabase.util :as u]
    [metabase.util.log :as log]
@@ -180,7 +180,9 @@
                                  ;; CLJS REPL
                                  (when config/is-dev?
                                    "ws://*:9630")
-                                 "ws://*:3005"]
+                                 (when (try (release-flags/has-release-flag? :document-collaboration)
+                                            (catch Exception _ false))
+                                   "ws://*:3005")]
                   :manifest-src ["'self'"]
                   :media-src    ["www.metabase.com"]}]
       (format "%s %s; " (name k) (str/join " " vs))))})

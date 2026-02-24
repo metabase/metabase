@@ -40,6 +40,7 @@ import {
 import { CollectionPickerModal } from "metabase/common/components/Pickers/CollectionPicker";
 import { useToast } from "metabase/common/hooks";
 import { useCallbackEffect } from "metabase/common/hooks/use-callback-effect";
+import { useHasReleaseFlag } from "metabase/common/hooks/use-has-release-flag/use-has-release-flag";
 import EntityCopyModal from "metabase/entities/containers/EntityCopyModal";
 import { usePageTitle } from "metabase/hooks/use-page-title";
 import { useDispatch, useSelector } from "metabase/lib/redux";
@@ -131,6 +132,7 @@ export const DocumentPage = ({
   const documentId = entityId === "new" ? "new" : extractEntityId(entityId);
   const [isNavigationScheduled, scheduleNavigation] = useCallbackEffect();
   const isNewDocument = documentId === "new";
+  const hasCollab = useHasReleaseFlag("document-collaboration");
 
   const { data: bookmarks = [] } = useListBookmarksQuery(undefined, {
     skip: isNewDocument,
@@ -156,6 +158,9 @@ export const DocumentPage = ({
   }
 
   const { ydoc, provider } = useMemo(() => {
+    if (!hasCollab) {
+      return { ydoc: undefined, provider: undefined };
+    }
     const ydoc = new Y.Doc();
     const provider = new HocuspocusProvider({
       url: `${window.location.protocol === "https:" ? "wss" : "ws"}://${window.location.hostname}:3005/`,
@@ -163,12 +168,12 @@ export const DocumentPage = ({
       document: ydoc,
     });
     return { ydoc, provider };
-  }, [documentId]);
+  }, [documentId, hasCollab]);
 
   const { data: commentsData } = useListCommentsQuery(
     getListCommentsQuery(documentData),
     {
-      pollingInterval: 1000,
+      pollingInterval: hasCollab ? 1000 : undefined,
     },
   );
   const hasComments =
@@ -607,8 +612,10 @@ export const DocumentPage = ({
           // `key` remounts this modal when navigating between different documents or to a new document.
           // The `route` doesn't change in that scenario which prevents the modal from closing when you confirm you want to discard your changes.
           key={location.key}
-          // isEnabled={hasUnsavedChanges() && !isNavigationScheduled}
-          isEnabled={isNewDocument && !isNavigationScheduled}
+          isEnabled={
+            (hasCollab ? isNewDocument : hasUnsavedChanges()) &&
+            !isNavigationScheduled
+          }
           route={route}
           onOpenChange={(open) => {
             if (open) {
@@ -620,8 +627,8 @@ export const DocumentPage = ({
         <LeaveConfirmModal
           // only applies when going from /new -> /new
           opened={
-            // hasUnsavedChanges() &&
-            isNewDocument && location.key !== previousLocationKey
+            (hasCollab ? isNewDocument : hasUnsavedChanges()) &&
+            location.key !== previousLocationKey
           }
           onConfirm={resetDocument}
           onClose={() => forceUpdate()}

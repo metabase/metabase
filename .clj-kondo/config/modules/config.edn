@@ -536,6 +536,7 @@
            queries
            query-permissions
            query-processor
+           release-flags
            revisions
            search
            util
@@ -1236,6 +1237,15 @@
            users
            util}}
 
+  release-flags
+  {:team "DevEx"
+   :api  #{metabase.release-flags.core
+           metabase.release-flags.api
+           metabase.release-flags.init}
+   :uses #{app-db
+           models
+           util}}
+
   remote-sync
   {:team "UX West"
    :api  #{metabase.remote-sync.core
@@ -1356,6 +1366,7 @@
            lib-be
            premium-features
            query-processor
+           release-flags
            request
            session
            settings
