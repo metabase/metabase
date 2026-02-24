@@ -405,6 +405,12 @@ export const compareVersions = (
   source: string,
   target: string,
 ): VersionComparisonResult => {
+  if (!isValidVersionString(source)) {
+    throw new Error(`Invalid version string: ${source}`);
+  }
+  if (!isValidVersionString(target)) {
+    throw new Error(`Invalid version string: ${target}`);
+  }
   const result = versionSort(source, target);
   if (result < 0) return "upgrade";
   if (result > 0) return "downgrade";
@@ -412,6 +418,9 @@ export const compareVersions = (
 };
 
 export const getDockerImage = (version: string): string => {
+  if (!isValidVersionString(version)) {
+    throw new Error(`Invalid version string: ${version}`);
+  }
   const isEE = isEnterpriseVersion(version);
   const repo = isEE ? "metabase/metabase-enterprise" : "metabase/metabase";
   return `${repo}:${version}`;
