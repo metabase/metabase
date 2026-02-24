@@ -29,15 +29,16 @@
   which should be the same as the `:lib/desired-column-alias` the previous stage or (last stage of the) join that it
   came from."
   [column :- ::lib.schema.metadata/column]
-  ((some-fn
+  (when (not= (:lib/source column) :source/implicitly-joinable)
+    ((some-fn
       ;; broken field refs never use `:lib/source-column-alias`.
-    (case lib.ref/*ref-style*
-      :ref.style/default                  :lib/source-column-alias
-      :ref.style/broken-legacy-qp-results (constantly nil))
-      ;; if this is missing for some reason then fall back to `:name` -- probably wrong, but maybe not and it might
-      ;; still work.
-    :name)
-   column))
+      (case lib.ref/*ref-style*
+        :ref.style/default                  :lib/source-column-alias
+        :ref.style/broken-legacy-qp-results (constantly nil))
+        ;; if this is missing for some reason then fall back to `:name` -- probably wrong, but maybe not and it might
+        ;; still work.
+      :name)
+     column)))
 
 (mu/defn add-deduplicated-names :- [:or
                                     ;; zero-arity: transducer

@@ -380,14 +380,7 @@
                                                  (= ((some-fn :fk-join-alias :lib/original-fk-join-alias) col)
                                                     source-field-join-alias))))
                                       (lib.metadata.calculation/returned-columns query previous-stage-number))]
-      ;; The ref's id-or-name is the raw column name (e.g. "CATEGORY"), but the previous-stage columns
-      ;; have qualified :lib/desired-column-alias (e.g. "PRODUCTS__via__PRODUCT_ID__via__Orders__CATEGORY").
-      ;; Standard resolution matches by :lib/desired-column-alias, which won't find it.
-      ;; After filtering by FK info we can also try matching by :name.
-      (or (resolve-in-previous-stage-returned-columns-and-update-keys query previous-stage-cols id-or-name)
-          (when (string? id-or-name)
-            (when-some [col (m/find-first #(= (:name %) id-or-name) previous-stage-cols)]
-              (lib.field.util/update-keys-for-col-from-previous-stage col)))))))
+      (resolve-in-previous-stage-returned-columns-and-update-keys query previous-stage-cols id-or-name))))
 
 (mu/defn- find-reified-implicit-join-with-fk-field-id :- [:maybe [:tuple ::lib.schema.join/join :int]]
   "Find the reified implicit join (i.e., a join added by
@@ -437,15 +430,12 @@
   ;; don't resolve name refs using [[field-metadata]] here, because it can cause us to trip up when there are multiple
   ;; fks to the same table. See
   ;; [[metabase.lib.field.resolution-test/multiple-remaps-between-tables-test]]
-  (let [source-field (lib.metadata/field query source-field-id)
-        fk-target-field-id (:fk-target-field-id source-field)
-        target-field (when fk-target-field-id (lib.metadata/field query fk-target-field-id))]
-    (when-some [col (or (field-metadata query (:table-id target-field) id-or-name)
-                        (resolve-name-in-implicit-join-this-stage query source-field-id id-or-name))]
+  (when-some [col (or (field-metadata query nil id-or-name)
+                      (resolve-name-in-implicit-join-this-stage query source-field-id id-or-name))]
     ;; if we managed to resolve it then update metadata appropriately.
-      (assoc col
-             :lib/source :source/implicitly-joinable
-             :fk-field-id source-field-id))))
+    (assoc col
+           :lib/source :source/implicitly-joinable
+           :fk-field-id source-field-id)))
 
 ;;; See for
 ;;; example [[metabase.query-processor.field-ref-repro-test/model-with-implicit-join-and-external-remapping-test]],
