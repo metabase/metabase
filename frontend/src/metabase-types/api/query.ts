@@ -490,11 +490,11 @@ export type TestTemporalBucketSpec = {
 };
 
 export type TestBinCountSpec = {
-  bins?: number;
+  bins?: number | "auto";
 };
 
 export type TestBinWidthSpec = {
-  binWidth?: number;
+  binWidth?: number | "auto";
 };
 
 type TestBinningSpec =

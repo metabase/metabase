@@ -38,13 +38,16 @@
   [:map
    [:unit {:optional true} [:maybe ::lib.schema.temporal-bucketing/unit]]])
 
+(mr/def ::test-auto-bin-spec
+  [:= {:decode/normalize lib.schema.common/normalize-keyword} :auto])
+
 (mr/def ::test-bin-count-bucket-spec
   [:map
-   [:bins {:optional true} [:maybe ::lib.schema.binning/num-bins]]])
+   [:bins {:optional true} [:maybe [:or ::lib.schema.binning/num-bins ::test-auto-bin-spec]]]])
 
 (mr/def ::test-bin-width-bucket-spec
   [:map
-   [:bin-width {:optional true} [:maybe ::lib.schema.binning/bin-width]]])
+   [:bin-width {:optional true} [:maybe [:or ::lib.schema.binning/bin-width ::test-auto-bin-spec]]]])
 
 (mr/def ::test-column-with-binning-spec
   [:merge

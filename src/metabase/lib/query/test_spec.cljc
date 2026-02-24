@@ -97,11 +97,15 @@
 
 (mu/defn- matches-binning? :- :boolean
   [strategy       :- ::lib.schema.binning/strategy
-   value          :- [:or ::lib.schema.binning/num-bins ::lib.schema.binning/bin-width]
+   value          :- [:or ::lib.schema.binning/num-bins ::lib.schema.binning/bin-width ::lib.schema.test-spec/test-auto-bin-spec]
    {:keys [mbql]} :- ::lib.schema.binning/binning-option]
-  (and
-   (= strategy (:strategy mbql))
-   (== value (strategy mbql))))
+  (or
+   (and
+    (= :default (:strategy mbql))
+    (= value :auto))
+   (and
+    (= strategy (:strategy mbql))
+    (== value (strategy mbql)))))
 
 (mu/defn- find-binning-strategy :- ::lib.schema.binning/binning-option
   [query        :- ::lib.schema/query
