@@ -109,6 +109,42 @@
                      {:_type :FINISH_MESSAGE :finish_reason "error"}]
                     (metabot-v3.util/aisdk->messages :assistant (str/split-lines body))))))))))
 
+(deftest streaming-request-with-callback-test
+  (mt/with-premium-features #{:metabot-v3}
+    (let [input         ["a1" "a2" "a3"]
+          mock-response (make-mock-text-stream-response input {"some-model" {:prompt 8 :completion 2}})
+          req           {:context         {:some "context"}
+                         :message         {:role :user :content "stuff"}
+                         :history         []
+                         :profile-id      "test-profile"
+                         :conversation-id (str (random-uuid))
+                         :session-id      "test-session"
+                         :state           {:some "state"}}]
+      (testing "collects and returns all lines"
+        (mt/with-dynamic-fn-redefs [http/post (mock-post! mock-response)]
+          (mt/with-current-user (mt/user->id :crowberto)
+            (let [lines (metabot-v3.client/streaming-request-with-callback req)]
+              (is (sequential? lines))
+              (is (pos? (count lines)))
+              (is (=? [{:_type :TEXT :content "a1a2a3"}
+                       {:_type :FINISH_MESSAGE :finish_reason "stop"}]
+                      (metabot-v3.util/aisdk->messages :assistant lines)))))))
+      (testing "invokes on-line callback for each line"
+        (mt/with-dynamic-fn-redefs [http/post (mock-post! mock-response)]
+          (mt/with-current-user (mt/user->id :crowberto)
+            (let [callback-lines (atom [])
+                  lines          (metabot-v3.client/streaming-request-with-callback
+                                  (assoc req :on-line #(swap! callback-lines conj %)))]
+              (is (= lines @callback-lines))))))
+      (testing "handles stream errors gracefully"
+        (mt/with-dynamic-fn-redefs [http/post (mock-post! mock-response {:delay-ms 10})]
+          (mt/with-current-user (mt/user->id :crowberto)
+            (let [error-lines (atom [])
+                  lines       (metabot-v3.client/streaming-request-with-callback
+                               (assoc req :on-line #(swap! error-lines conj %)))]
+              (is (sequential? lines))
+              (is (= lines @error-lines)))))))))
+
 (deftest streaming-request-error-excludes-headers-test
   (testing "When streaming-request gets an error response, the exception should not include headers"
     (mt/with-premium-features #{:metabot-v3}
