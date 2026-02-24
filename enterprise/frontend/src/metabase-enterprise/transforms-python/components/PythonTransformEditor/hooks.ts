@@ -33,6 +33,7 @@ export function useTestPythonTransform(
     }
 
     const request = executePython({
+      type: source.type,
       code: source.body,
       source_tables: source["source-tables"],
     });

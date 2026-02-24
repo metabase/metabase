@@ -23,12 +23,14 @@ export type TransformOwner = Pick<
   "id" | "email" | "first_name" | "last_name"
 >;
 
+export type AdvancedTransformType = "python" | "javascript";
+
 export type Transform = {
   id: TransformId;
   name: string;
   description: string | null;
   source: TransformSource;
-  source_type: "native" | "python" | "mbql" | "javascript";
+  source_type: "native" | "mbql" | AdvancedTransformType;
   target: TransformTarget;
   collection_id: CollectionId | null;
   created_at: string;
@@ -70,21 +72,14 @@ export type TransformSourceCheckpointStrategy = {
 export type SourceIncrementalStrategy = TransformSourceCheckpointStrategy;
 
 export type PythonTransformSourceDraft = {
-  type: "python";
-  body: string;
-  "source-database": DatabaseId | undefined;
-  "source-tables": PythonTransformTableAliases;
-};
-
-export type JavaScriptTransformSourceDraft = {
-  type: "javascript";
+  type: AdvancedTransformType;
   body: string;
   "source-database": DatabaseId | undefined;
   "source-tables": PythonTransformTableAliases;
 };
 
 export type PythonTransformSource = {
-  type: "python";
+  type: AdvancedTransformType;
   body: string;
   "source-database": DatabaseId;
   "source-tables": PythonTransformTableAliases;
@@ -97,18 +92,7 @@ export type QueryTransformSource = {
   "source-incremental-strategy"?: SourceIncrementalStrategy;
 };
 
-export type JavaScriptTransformSource = {
-  type: "javascript";
-  body: string;
-  "source-database": DatabaseId;
-  "source-tables": PythonTransformTableAliases;
-  "source-incremental-strategy"?: SourceIncrementalStrategy;
-};
-
-export type TransformSource =
-  | QueryTransformSource
-  | PythonTransformSource
-  | JavaScriptTransformSource;
+export type TransformSource = QueryTransformSource | PythonTransformSource;
 
 export type TransformTargetAppendStrategy = {
   type: "append";
@@ -284,6 +268,7 @@ export type ListTransformRunsResponse = {
 } & PaginationResponse;
 
 export type TestPythonTransformRequest = {
+  type: AdvancedTransformType;
   code: string;
   source_tables: PythonTransformTableAliases;
 };
