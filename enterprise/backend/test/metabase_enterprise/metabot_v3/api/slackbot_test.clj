@@ -610,7 +610,7 @@
                          :timeout-ms 5000})
                 (is (= 0 (count @post-calls)))
                 (is (=? {:user "U-UNKNOWN" :channel "C123" :thread_ts expected-thread-ts}
-                        (first @ephemeral-calls)))))))))))))
+                        (first @ephemeral-calls)))))))))))
 
 ;; -------------------------------- Setup Complete Tests --------------------------------
 
