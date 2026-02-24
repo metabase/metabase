@@ -1,4 +1,4 @@
-(ns metabase.lib-be.swap-source
+(ns metabase.lib-be.source-swap
   (:require
    [metabase.lib.equality :as lib.equality]
    [metabase.lib.field :as lib.field]
