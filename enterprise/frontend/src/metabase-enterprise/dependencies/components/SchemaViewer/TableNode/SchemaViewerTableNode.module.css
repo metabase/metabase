@@ -36,3 +36,17 @@
 .detailsLink:hover {
   opacity: 1;
 }
+
+.collapseButton {
+  padding: 0.5rem 1rem;
+  border-top: 1px solid rgba(7, 23, 34, 0.14);
+  transition: background-color 0.15s ease;
+}
+
+.collapseButton:hover {
+  background-color: var(--mb-color-background-hover);
+}
+
+.focal .collapseButton {
+  border-top-color: var(--mb-color-brand);
+}
