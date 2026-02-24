@@ -214,6 +214,9 @@ config:
     notification-system-event-thread-pool-size: 5
     notification-temp-file-size-max-bytes: 10485760
     notification-thread-pool-size: 3
+    oidc-allowed-networks: allow-all
+    oidc-providers: []
+    oidc-user-provisioning-enabled: true
     persisted-model-refresh-cron-schedule: 0 0 0/6 * * ? *
     persisted-models-enabled: false
     premium-embedding-token: null

@@ -194,7 +194,7 @@ function DataStudioNav({ isNavbarOpened, onNavbarToggle }: DataStudioNavProps) {
             />
           ) : (
             <DataStudioTab
-              label={t`Set up git sync`}
+              label={t`Set up remote sync`}
               icon="gear"
               to={Urls.dataStudioGitSync()}
               isSelected={currentTab === "git-sync"}
@@ -220,12 +220,6 @@ function DataStudioNav({ isNavbarOpened, onNavbarToggle }: DataStudioNavProps) {
               showLabel={isNavbarOpened}
             />
           )}
-          <DataStudioTab
-            label={t`Exit`}
-            icon="exit"
-            to={"/"}
-            showLabel={isNavbarOpened}
-          />
         </Stack>
         <PLUGIN_REMOTE_SYNC.GitSettingsModal
           isOpen={isGitSettingsOpen}

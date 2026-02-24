@@ -48,7 +48,7 @@ export function AdHocQuestionLeftSide(
       <Flex align="center" wrap="nowrap">
         <ViewHeading
           className={ViewTitleHeaderS.AdHocViewHeading}
-          color="medium"
+          c="text-secondary"
         >
           {isNative ? (
             t`New question`

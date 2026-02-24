@@ -21,4 +21,14 @@ console.warn = () => {};
 describe("InteractiveDashboard", () => {
   addEnterpriseSubscriptionsTests(setupEnterprise);
   addEnterpriseAutoRefreshTests(setupEnterprise);
+
+  // eslint-disable-next-line jest/expect-expect -- Just want to ensure the type passes
+  it('should accept "drillThroughQuestionProps.dataPicker"', async () => {
+    <InteractiveDashboard
+      dashboardId={1}
+      drillThroughQuestionProps={{
+        dataPicker: "staged",
+      }}
+    />;
+  });
 });
