@@ -64,13 +64,13 @@ const config = {
   entry: {
     // Legacy monolithic bundle — backward compatible for old NPM packages.
     // Must remain a single file (splitChunks excludes it).
-    "embedding-sdk": "./main-bundle.ts",
+    "embedding-sdk": "./index.ts",
     // Bootstrap — tiny script that starts auth early and loads chunks
     "embedding-sdk-bootstrap": "./embedding-sdk-bootstrap.ts",
     // Chunked entry — same code as monolithic, but splitChunks splits it into
     // multiple smaller files for faster V8 parse+eval via parallel streaming.
     "embedding-sdk-chunked": {
-      import: "./main-bundle.ts",
+      import: "./index.ts",
       runtime: "embedding-sdk-chunk-runtime",
     },
   },

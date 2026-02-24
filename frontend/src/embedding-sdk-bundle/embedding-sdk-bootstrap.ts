@@ -55,7 +55,7 @@ log(`Loading ${manifest.chunks.length} chunks in parallel`, manifest);
 Promise.all(manifest.chunks.map((filename) => loadScript(filename)))
   .then(() => {
     // The "metabase-sdk-bundle-loaded" event is dispatched by
-    // main-bundle.ts itself after setting window.METABASE_EMBEDDING_SDK_BUNDLE.
+    // index.ts itself after setting window.METABASE_EMBEDDING_SDK_BUNDLE.
     // We don't dispatch it here because the rspack runtime defers entry module
     // execution until all chunks are registered — so script `load` events fire
     // before the entry module code actually runs.

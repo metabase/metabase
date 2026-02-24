@@ -22,7 +22,7 @@ const SDK_PACKAGE_VERSION = process.env.VERSION || "unknown";
  * - On script `load`: if `window.METABASE_EMBEDDING_SDK_BUNDLE` is already
  *   set, the monolithic bundle ran synchronously → resolve.
  * - On `"metabase-sdk-bundle-loaded"` CustomEvent: the bootstrap loaded all
- *   chunks and `main-bundle.ts` executed → resolve.
+ *   chunks and `index.ts` executed → resolve.
  * - First signal wins; all listeners are cleaned up after settling.
  */
 const waitForScriptLoading = (script: HTMLScriptElement) => {
@@ -38,6 +38,7 @@ const waitForScriptLoading = (script: HTMLScriptElement) => {
     };
 
     const onBundleEvent = () => {
+      // eslint-disable-next-line no-console
       console.log("SDK loader: received 'metabase-sdk-bundle-loaded' event");
       settle(() => resolve());
     };
@@ -47,11 +48,13 @@ const waitForScriptLoading = (script: HTMLScriptElement) => {
         // Old backend served the monolithic bundle (or new backend served
         // monolithic because bootstrap=false / no packageVersion param).
         // The global is set synchronously during script execution → resolve.
+        // eslint-disable-next-line no-console
         console.log("SDK loader: script loaded, bundle global found → ready");
         settle(() => resolve());
       } else {
         // The bootstrap loaded. It will load chunks in parallel, and
-        // main-bundle.ts will dispatch the custom event when done.
+        // index.ts will dispatch the custom event when done.
+        // eslint-disable-next-line no-console
         console.log(
           "SDK loader: script loaded, no bundle global → waiting for chunks",
         );
@@ -95,6 +98,7 @@ const loadSdkBundle = (
 
   const script = document.createElement("script");
 
+  // eslint-disable-next-line no-console
   console.log("useLoadSdkBundle", {
     baseUrl,
     useBootstrap,
