@@ -5,16 +5,24 @@ export type ProductAnalyticsSiteId = number;
 
 export type ProductAnalyticsSite = {
   id: ProductAnalyticsSiteId;
-  origin: string;
-  api_token: string;
+  name: string;
+  allowed_domains: string;
 };
 
 export type CreateProductAnalyticsSiteRequest = {
-  origin: string;
+  name: string;
+  allowed_domains: string;
 };
 
 export const productAnalyticsApi = EnterpriseApi.injectEndpoints({
   endpoints: (builder) => ({
+    listProductAnalyticsSites: builder.query<ProductAnalyticsSite[], void>({
+      query: () => `/api/ee/product-analytics/sites`,
+      providesTags: (sites = []) => [
+        listTag("product-analytics-site"),
+        ...sites.map((site) => idTag("product-analytics-site", site.id)),
+      ],
+    }),
     createProductAnalyticsSite: builder.mutation<
       ProductAnalyticsSite,
       CreateProductAnalyticsSiteRequest
@@ -42,6 +50,7 @@ export const productAnalyticsApi = EnterpriseApi.injectEndpoints({
 });
 
 export const {
+  useListProductAnalyticsSitesQuery,
   useCreateProductAnalyticsSiteMutation,
   useDeleteProductAnalyticsSiteMutation,
 } = productAnalyticsApi;

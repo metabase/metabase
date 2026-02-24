@@ -6,19 +6,19 @@ import {
   SettingsSection,
 } from "metabase/admin/components/SettingsSection";
 import { ClientSortableTable } from "metabase/common/components/Table";
+import { DelayedLoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper/DelayedLoadingAndErrorWrapper";
 import {
   Form,
   FormErrorMessage,
   FormProvider,
   FormSubmitButton,
   FormTextInput,
+  FormTextarea,
 } from "metabase/forms";
 import { Button, Group, Icon, Modal, Stack, Text, Title } from "metabase/ui";
-import type {
-  CreateProductAnalyticsSiteRequest,
-  ProductAnalyticsSite,
-} from "metabase-enterprise/api/product-analytics";
+import type { ProductAnalyticsSite } from "metabase-enterprise/api/product-analytics";
 import {
+  useListProductAnalyticsSitesQuery,
   useCreateProductAnalyticsSiteMutation,
   useDeleteProductAnalyticsSiteMutation,
 } from "metabase-enterprise/api/product-analytics";
@@ -27,47 +27,57 @@ import { AdminSettingInput } from "../widgets/AdminSettingInput";
 
 const ENABLED_ORIGINS_COLUMNS = [
   {
-    key: "origin",
+    key: "name",
     get name() {
-      return t`Origin`;
+      return t`Name`;
     },
   },
   {
-    key: "api_token",
+    key: "allowed_domains",
     get name() {
-      return t`API token`;
+      return t`Allowed domains`;
     },
   },
   { key: "actions", name: "", sortable: false },
 ];
 
+type AddSiteFormValues = {
+  name: string;
+  allowed_domains: string;
+};
+
 function AddSiteModal({ onClose }: { onClose: () => void }) {
   const [createProductAnalyticsSite] = useCreateProductAnalyticsSiteMutation();
 
   const handleSubmit = useCallback(
-    async (vals: CreateProductAnalyticsSiteRequest) => {
-      await createProductAnalyticsSite(vals).unwrap();
+    async ({ name, allowed_domains }: AddSiteFormValues) => {
+      await createProductAnalyticsSite({ name, allowed_domains }).unwrap();
       onClose();
     },
     [createProductAnalyticsSite, onClose],
   );
 
   return (
-    <Modal size="30rem" opened onClose={onClose} title={t`Add origin`}>
-      <FormProvider initialValues={{ origin: "" }} onSubmit={handleSubmit}>
+    <Modal size="30rem" opened onClose={onClose} title={t`Add site`}>
+      <FormProvider
+        initialValues={{ name: "", allowed_domains: "" }}
+        onSubmit={handleSubmit}
+      >
         <Form>
           <Stack gap="md">
-            <FormTextInput
-              name="origin"
-              label={t`Origin`}
-              placeholder="https://example.com"
+            <FormTextInput name="name" label={t`Name`} size="sm" required />
+            <FormTextarea
+              name="allowed_domains"
+              label={t`Allowed domains`}
+              description={t`Separate multiple domains with a space or new line.`}
+              placeholder="https://example.com, https://*.example.com"
               size="sm"
               required
             />
             <FormErrorMessage />
             <Group justify="flex-end">
               <Button onClick={onClose}>{t`Cancel`}</Button>
-              <FormSubmitButton variant="filled" label={t`Add origin`} />
+              <FormSubmitButton variant="filled" label={t`Add site`} />
             </Group>
           </Stack>
         </Form>
@@ -95,7 +105,7 @@ function DeleteSiteModal({
       <FormProvider initialValues={{}} onSubmit={handleDelete}>
         <Form>
           <Stack gap="lg">
-            <Text>{t`Are you sure you want to remove ${site.origin}? This will disable analytics tracking for this origin.`}</Text>
+            <Text>{t`Are you sure you want to remove ${site.name}? This will disable analytics tracking for all its allowed domains.`}</Text>
             <FormErrorMessage />
             <Group justify="flex-end">
               <Button onClick={onClose}>{t`Cancel`}</Button>
@@ -131,8 +141,8 @@ function EnabledOriginsTable({
           rows={sites}
           rowRenderer={(site) => (
             <tr>
-              <td>{site.origin}</td>
-              <td>{site.api_token}</td>
+              <td>{site.name}</td>
+              <td>{site.allowed_domains}</td>
               <td>
                 <Icon
                   name="trash"
@@ -155,14 +165,13 @@ export function ProductAnalyticsSettingsPage() {
   // const productAnalyticsEnabled = useSetting("enable-product-analytics?");
   const productAnalyticsEnabled = true;
 
-  // TODO: replace with useListProductAnalyticsSitesQuery() once GET /api/ee/product-analytics/sites is implemented
-  const sites: ProductAnalyticsSite[] = [
-    {
-      id: 1,
-      origin: "http://mysass.com",
-      api_token: "api token",
-    },
-  ];
+  const {
+    data: sites,
+    isLoading,
+    error,
+  } = useListProductAnalyticsSitesQuery(undefined, {
+    skip: !productAnalyticsEnabled,
+  });
 
   const [showAddModal, setShowAddModal] = useState(false);
   const [siteToDelete, setSiteToDelete] = useState<ProductAnalyticsSite | null>(
@@ -181,11 +190,13 @@ export function ProductAnalyticsSettingsPage() {
         {productAnalyticsEnabled && (
           <SettingsSection>
             <Title order={4}>{t`Enabled origins`}</Title>
-            <EnabledOriginsTable
-              sites={sites}
-              onAddSite={() => setShowAddModal(true)}
-              onDeleteSite={setSiteToDelete}
-            />
+            <DelayedLoadingAndErrorWrapper loading={isLoading} error={error}>
+              <EnabledOriginsTable
+                sites={sites ?? []}
+                onAddSite={() => setShowAddModal(true)}
+                onDeleteSite={setSiteToDelete}
+              />
+            </DelayedLoadingAndErrorWrapper>
           </SettingsSection>
         )}
       </SettingsSection>
