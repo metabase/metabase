@@ -113,7 +113,7 @@
                       (->> (lib/returned-columns mbql-query)
                            (map #(-> %
                                      (assoc :lib/source :source/native)
-                                     (dissoc :lib/breakout? :lib/expression-name :metabase.lib.join/join-alias))))
+                                     (dissoc :lib/breakout? :lib/expression-name :lib/join-alias))))
                       (catch #?(:clj clojure.lang.ExceptionInfo :cljs js/Error) e
                         ;; Not all the input queries passed to this are real. Some of them are skeletons used
                         ;; as test expectations. If we fail to generate the returned columns, just return nil.
@@ -286,7 +286,7 @@
                      true                   (map #(assoc % ::was-breakout-in-original-query? (:lib/breakout? %)))
                      (= query-kind :native) (map #(-> %
                                                       (assoc :lib/source :source/native)
-                                                      (dissoc :lib/breakout? :lib/expression-name :metabase.lib.join/join-alias))))
+                                                      (dissoc :lib/breakout? :lib/expression-name :lib/join-alias))))
         by-name    (m/index-by :name cols)
         col        (get by-name column-name)
         refs       (update-vals by-name lib/ref)

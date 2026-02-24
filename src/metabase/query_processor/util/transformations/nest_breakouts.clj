@@ -58,8 +58,8 @@
 (mu/defn- update-second-stage-refs :- ::lib.schema/stage
   [stage            :- ::lib.schema/stage
    first-stage-cols :- [:sequential ::lib.schema.metadata/column]]
-  (lib.util.match/replace stage
-    #{:field :expression}
+  (lib.util.match/replace-lite stage
+    [#{:field :expression} & _]
     (if-let [col (when-not (some #{:expressions} &parents)
                    (lib.equality/find-matching-column &match first-stage-cols))]
       (-> col
