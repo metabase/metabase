@@ -24,6 +24,7 @@
  [metabase.transforms.util
   add-source-readable
   native-query-transform?
+  javascript-transform?
   python-transform?
   query-transform?
   transform-source-database
@@ -90,7 +91,9 @@
                             0))]
     {:transform-native-runs         (count-runs ["native" "mbql"] yesterday-utc)
      :transform-python-runs         (count-runs ["python"] yesterday-utc)
+     :transform-javascript-runs (count-runs ["javascript"] yesterday-utc)
      :transform-usage-date          (str (t/local-date yesterday-utc))
      :transform-rolling-native-runs (count-runs ["native" "mbql"] today-utc)
      :transform-rolling-python-runs (count-runs ["python"] today-utc)
+     :transform-rolling-javascript-runs (count-runs ["javascript"] today-utc)
      :transform-rolling-usage-date  (str (t/local-date today-utc))}))

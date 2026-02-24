@@ -76,12 +76,17 @@
   [transform]
   (= :python (transform-type transform)))
 
+(defn javascript-transform?
+  "Check if this is a JavaScript transform."
+  [transform]
+  (= :javascript (transform-type transform)))
+
 (defn transform-source-database
   "Get the source database from a transform"
   [transform]
   (case (transform-type transform)
     :query (-> transform :source :query :database)
-    :python (-> transform :source :source-database)))
+    (:python :javascript) (-> transform :source :source-database)))
 
 (defn normalize-transform
   "Normalize a transform's source query, similar to how transforms are normalized when read from the database.
@@ -94,12 +99,13 @@
     transform))
 
 (defn transform-source-type
-  "Returns the type of a transform's source: :python, :native, or :mbql.
+  "Returns the type of a transform's source: :python, :javascript, :native, or :mbql.
   Throws if the source type cannot be detected.
   Note: The transform should be normalized (via `normalize-transform`) before calling this function."
   [source]
   (case (keyword (:type source))
     :python :python
+    :javascript :javascript
     :query  (if (lib/native-only-query? (:query source))
               :native
               :mbql)
@@ -112,6 +118,7 @@
   (cond
     (query-transform? transform) (transforms.gating/query-transforms-enabled?)
     (python-transform? transform) (transforms.gating/python-transforms-enabled?)
+    (javascript-transform? transform) (transforms.gating/javascript-transforms-enabled?)
     :else false))
 
 (defn enabled-source-types-for-user
@@ -122,7 +129,7 @@
 
 (defn source-tables-readable?
   "Check if the source tables/database in a transform are readable by the current user.
-  Returns true if the user can query all source tables (for python transforms) or the
+  Returns true if the user can query all source tables (for python/javascript transforms) or the
   source database (for query transforms)."
   [transform]
   (let [source (:source transform)]
@@ -132,7 +139,7 @@
         (boolean (mi/can-query? (t2/select-one :model/Database db-id)))
         false)
 
-      :python
+      (:python :javascript)
       (let [source-tables (:source-tables source)]
         (if (empty? source-tables)
           true
@@ -445,9 +452,10 @@
 (defn required-database-features
   "Returns the database features necessary to execute `transform`."
   [transform]
-  (if (python-transform? transform)
-    [:transforms/python]
-    [:transforms/table]))
+  (cond
+    (python-transform? transform) [:transforms/python]
+    (javascript-transform? transform) [:transforms/javascript]
+    :else [:transforms/table]))
 
 (defn ->instant
   "Convert a temporal value `t` to an Instant in the system timezone."

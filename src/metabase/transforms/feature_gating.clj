@@ -15,14 +15,21 @@
   (and (premium-features/has-feature? :transforms)
        (premium-features/has-feature? :transforms-python)))
 
+(defn javascript-transforms-enabled?
+  "JavaScript transforms: EE only, requires both :transforms and :transforms-python (shared runner)."
+  []
+  (and (premium-features/has-feature? :transforms)
+       (premium-features/has-feature? :transforms-python)))
+
 (defn enabled-source-types
   "Returns set of enabled source types for WHERE clause filtering."
   []
   (cond-> #{}
     (query-transforms-enabled?) (into ["native" "mbql"])
-    (python-transforms-enabled?) (conj "python")))
+    (python-transforms-enabled?) (conj "python")
+    (javascript-transforms-enabled?) (conj "javascript")))
 
 (defn any-transforms-enabled?
   "Whether any transforms are enabled."
   []
-  (or (query-transforms-enabled?) (python-transforms-enabled?)))
+  (or (query-transforms-enabled?) (python-transforms-enabled?) (javascript-transforms-enabled?)))

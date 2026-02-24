@@ -39,6 +39,7 @@
    [metabase-enterprise.stale.api]
    [metabase-enterprise.support-access-grants.api]
    [metabase-enterprise.tenants.api]
+   [metabase-enterprise.transforms-javascript.api]
    [metabase-enterprise.transforms-python.api]
    [metabase-enterprise.upload-management.api]
    [metabase-enterprise.workspaces.api]
@@ -77,6 +78,7 @@
    :database-routing           (deferred-tru "Database Routing")
    :cloud-custom-smtp          (deferred-tru "Custom SMTP")
    :support-users              (deferred-tru "Support Users")
+   :transforms-javascript (deferred-tru "Transforms JavaScript")
    :transforms-python          (deferred-tru "Transforms Python")
    :workspaces                 (deferred-tru "Workspaces")})
 
@@ -130,6 +132,7 @@
    "/metabot-tools"                metabase-enterprise.metabot-v3.tools.api/routes
    "/metabot-v3"                   (premium-handler metabase-enterprise.metabot-v3.api/routes :metabot-v3)
    "/permission_debug"             (premium-handler metabase-enterprise.permission-debug.api/routes :advanced-permissions)
+   "/transforms-javascript" (premium-handler metabase-enterprise.transforms-javascript.api/routes :transforms-javascript)
    "/transforms-python"            (premium-handler metabase-enterprise.transforms-python.api/routes :transforms-python)
    "/scim"                         (premium-handler metabase-enterprise.scim.routes/routes :scim)
    "/semantic-search"              (premium-handler metabase-enterprise.semantic-search.api/routes :semantic-search)
