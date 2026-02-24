@@ -2,7 +2,7 @@ import { useHotkeys } from "@mantine/hooks";
 import { useEffect } from "react";
 import { usePrevious } from "react-use";
 
-import type { TransformEditorProps } from "metabase/plugins";
+import type { PythonTransformEditorProps } from "metabase/plugins";
 import { Flex, Stack } from "metabase/ui";
 import type {
   DatabaseId,
@@ -31,7 +31,7 @@ export function PythonTransformEditor({
   onRejectProposed,
   onRunTransform,
   onRun,
-}: TransformEditorProps) {
+}: PythonTransformEditorProps) {
   const { isRunning, cancel, run, executionResult, isDirty } =
     useTestPythonTransform(source);
 
