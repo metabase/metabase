@@ -94,7 +94,7 @@
                                 node))
                             (lib.convert/->legacy-MBQL query)))]
       (is (=? {:stages [{:joins [{:conditions [[:= {}
-                                                [:field {} "ID"]
+                                                [:field {:base-type :type/BigInteger} (meta/id :venues :id)]
                                                 [:expression
                                                  {}
                                                  ;; TODO Fill these in?

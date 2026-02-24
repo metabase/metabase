@@ -201,6 +201,8 @@
   (let [query   (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
                     (lib/aggregate (lib/sum (meta/field-metadata :orders :subtotal)))
                     (lib/breakout  (-> (meta/field-metadata :products :rating)
+                                       (assoc :lib/source :source/implicitly-joinable
+                                              :fk-field-id (meta/id :orders :product-id))
                                        (lib/with-binning {:strategy :default})))
                     (lib/breakout  (-> (meta/field-metadata :orders :created-at)
                                        (lib/with-temporal-bucket :month))))
@@ -221,8 +223,8 @@
       (testing "still has both breakouts"
         (is (= 2 (count (lib/breakouts drilled)))))
       (testing "filters to the zoomed range"
-        (is (=? [[:>= {} [:field {} "RATING"] 4.5]
-                 [:<  {} [:field {} "RATING"] 5.125]]
+        (is (=? [[:>= {} [:field {} (meta/id :products :rating)] 4.5]
+                 [:<  {} [:field {} (meta/id :products :rating)] 5.125]]
                 (lib/filters drilled)))))))
 
 ;; This actually checks pivot tables too.
@@ -231,6 +233,8 @@
   (let [query    (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
                      (lib/aggregate (lib/sum (meta/field-metadata :orders :subtotal)))
                      (lib/breakout  (-> (meta/field-metadata :people :latitude)
+                                        (assoc :lib/source :source/implicitly-joinable
+                                               :fk-field-id (meta/id :orders :user-id))
                                         (lib/with-binning {:strategy :default})))
                      (lib/breakout  (-> (meta/field-metadata :orders :created-at)
                                         (lib/with-temporal-bucket :month))))
@@ -251,8 +255,8 @@
       (testing "still has both breakouts"
         (is (= 2 (count (lib/breakouts drilled)))))
       (testing "filters to the zoomed range"
-        (is (=? [[:>= {} [:field {} "LATITUDE"] 30]
-                 [:<  {} [:field {} "LATITUDE"] 40.0]]
+        (is (=? [[:>= {} [:field {} (meta/id :people :latitude)] 30]
+                 [:<  {} [:field {} (meta/id :people :latitude)] 40.0]]
                 (lib/filters drilled)))))))
 
 (deftest ^:parallel nil-aggregation-value-test

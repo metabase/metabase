@@ -121,22 +121,26 @@
 
 (def ^:private bv-address
   [(assoc (meta/field-metadata :people :state)
+          :lib/source :source/implicitly-joinable
           :fk-field-id (meta/id :orders :user-id))
    "MT"])
 
 (def ^:private bv-category1
   [(assoc (meta/field-metadata :products :category)
+          :lib/source :source/implicitly-joinable
           :fk-field-id (meta/id :orders :product-id))
    "Gadget"])
 
 (def ^:private bv-category2
   [(assoc (meta/field-metadata :people :source)
+          :lib/source :source/implicitly-joinable
           :fk-field-id (meta/id :orders :user-id))
    "Twitter"])
 
 ; This isn't really a category column, but it has few enough values to be considered one.
 (def ^:private bv-category3
   [(assoc (meta/field-metadata :products :vendor)
+          :lib/source :source/implicitly-joinable
           :fk-field-id (meta/id :orders :product-id))
    "Spacely Sprockets Inc."])
 
