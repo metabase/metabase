@@ -3,7 +3,6 @@
   (:require
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
-   [metabase.models.interface :as mi]
    [metabase.release-flags.models :as models]
    [metabase.util :as u]
    [metabase.util.log :as log]
@@ -29,7 +28,9 @@
                                       [:start_date :any]
                                       [:is_enabled :boolean]]]
   "Modify the release flags."
-  [flags :- [:map-of :string :boolean]]
+  [_route-params
+   _query-params
+   flags :- [:map-of :string :boolean]]
   (api/check-superuser)
   (models/update-statuses! flags)
   (models/all-flags))
