@@ -577,3 +577,170 @@ databaseChangeLog:
         - sql:
             dbms: postgresql,mysql,mariadb,h2
             sql: drop view if exists v_pa_event_data;
+
+  # ──────────────────────────────────────────────────────────────────────────────
+  # Phase 4: User Identification and Session Data
+  # ──────────────────────────────────────────────────────────────────────────────
+
+  - changeSet:
+      id: v60.2026-02-24T00:00:23
+      author: epaget
+      comment: Product Analytics; Add distinct_id column to product_analytics_session
+      changes:
+        - addColumn:
+            tableName: product_analytics_session
+            columns:
+              - column:
+                  name: distinct_id
+                  type: varchar(50)
+                  remarks: User-provided distinct ID for cross-session identification
+
+  - changeSet:
+      id: v60.2026-02-24T00:00:24
+      author: epaget
+      comment: Product Analytics; Add index on product_analytics_session.distinct_id
+      changes:
+        - createIndex:
+            tableName: product_analytics_session
+            indexName: idx_pa_session_distinct_id
+            columns:
+              - column:
+                  name: distinct_id
+
+  - changeSet:
+      id: v60.2026-02-24T00:00:25
+      author: epaget
+      comment: Product Analytics; Create product_analytics_session_data table
+      changes:
+        - createTable:
+            tableName: product_analytics_session_data
+            remarks: Custom property key-value pairs attached to sessions
+            columns:
+              - column:
+                  name: id
+                  type: int
+                  autoIncrement: true
+                  remarks: Primary key
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: session_id
+                  type: int
+                  remarks: Foreign key to product_analytics_session
+                  constraints:
+                    nullable: false
+              - column:
+                  name: data_key
+                  type: varchar(500)
+                  remarks: Property name
+                  constraints:
+                    nullable: false
+              - column:
+                  name: string_value
+                  type: varchar(500)
+                  remarks: String value of the property
+              - column:
+                  name: number_value
+                  type: float
+                  remarks: Numeric value of the property
+              - column:
+                  name: date_value
+                  type: ${timestamp_type}
+                  remarks: Date value of the property
+              - column:
+                  name: data_type
+                  type: int
+                  defaultValueNumeric: 1
+                  remarks: 1=string 2=number 3=date
+                  constraints:
+                    nullable: false
+              - column:
+                  name: created_at
+                  type: ${timestamp_type}
+                  defaultValueComputed: current_timestamp
+                  remarks: Timestamp when this session data was recorded
+                  constraints:
+                    nullable: false
+
+  - changeSet:
+      id: v60.2026-02-24T00:00:26
+      author: epaget
+      comment: Product Analytics; Add index on product_analytics_session_data.session_id
+      changes:
+        - createIndex:
+            tableName: product_analytics_session_data
+            indexName: idx_pa_session_data_session_id
+            columns:
+              - column:
+                  name: session_id
+
+  - changeSet:
+      id: v60.2026-02-24T00:00:27
+      author: epaget
+      comment: Product Analytics; Add compound index on product_analytics_session_data(session_id, data_key)
+      changes:
+        - createIndex:
+            tableName: product_analytics_session_data
+            indexName: idx_pa_session_data_session_id_data_key
+            columns:
+              - column:
+                  name: session_id
+              - column:
+                  name: data_key
+
+  - changeSet:
+      id: v60.2026-02-24T00:00:28
+      author: epaget
+      comment: Product Analytics; Add FK constraint product_analytics_session_data.session_id -> product_analytics_session.id
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: product_analytics_session_data
+            baseColumnNames: session_id
+            referencedTableName: product_analytics_session
+            referencedColumnNames: id
+            constraintName: fk_pa_session_data_session_id
+
+  - changeSet:
+      id: v60.2026-02-24T00:00:29
+      author: epaget
+      comment: Product Analytics; Update v_pa_sessions view to v2 (add distinct_id)
+      changes:
+        - sqlFile:
+            dbms: postgresql
+            path: product_analytics_views/sessions/v2/postgres-sessions.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            dbms: mysql,mariadb
+            path: product_analytics_views/sessions/v2/mysql-sessions.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            dbms: h2
+            path: product_analytics_views/sessions/v2/h2-sessions.sql
+            relativeToChangelogFile: true
+      rollback:
+        - sql:
+            dbms: postgresql,mysql,mariadb,h2
+            sql: drop view if exists v_pa_sessions;
+
+  - changeSet:
+      id: v60.2026-02-24T00:00:30
+      author: epaget
+      comment: Product Analytics; Create v_pa_session_data view
+      changes:
+        - sqlFile:
+            dbms: postgresql
+            path: product_analytics_views/session_data/v1/postgres-session_data.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            dbms: mysql,mariadb
+            path: product_analytics_views/session_data/v1/mysql-session_data.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            dbms: h2
+            path: product_analytics_views/session_data/v1/h2-session_data.sql
+            relativeToChangelogFile: true
+      rollback:
+        - sql:
+            dbms: postgresql,mysql,mariadb,h2
+            sql: drop view if exists v_pa_session_data;

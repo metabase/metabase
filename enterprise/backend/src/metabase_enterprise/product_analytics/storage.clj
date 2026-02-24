@@ -78,6 +78,28 @@
   (throw (ex-info (tru "No product-analytics storage backend registered for {0}" (pr-str backend))
                   {:backend backend})))
 
+(defmulti save-session-data!
+  "Persist key/value session attribute rows.
+   Returns the number of rows inserted (0 when the input is empty)."
+  {:arglists '([backend session-data-rows])}
+  (fn [backend _session-data-rows] backend))
+
+(defmethod save-session-data! :default
+  [backend _session-data-rows]
+  (throw (ex-info (tru "No product-analytics storage backend registered for {0}" (pr-str backend))
+                  {:backend backend})))
+
+(defmulti set-distinct-id!
+  "Set the `distinct_id` on an existing session.
+   Returns true if a row was updated, false otherwise."
+  {:arglists '([backend session-id distinct-id])}
+  (fn [backend _session-id _distinct-id] backend))
+
+(defmethod set-distinct-id! :default
+  [backend _session-id _distinct-id]
+  (throw (ex-info (tru "No product-analytics storage backend registered for {0}" (pr-str backend))
+                  {:backend backend})))
+
 ;;; ---------------------------------------------- Public wrappers -----------------------------------------------
 
 (defn store-get-site
@@ -94,6 +116,16 @@
   "Persist an event (and its properties) using the active storage backend."
   [event-map]
   (save-event! (active-backend) event-map))
+
+(defn store-save-session-data!
+  "Persist session attribute rows using the active storage backend."
+  [session-data-rows]
+  (save-session-data! (active-backend) session-data-rows))
+
+(defn store-set-distinct-id!
+  "Set the distinct_id on a session using the active storage backend."
+  [session-id distinct-id]
+  (set-distinct-id! (active-backend) session-id distinct-id))
 
 ;;; Ensure the default app-db backend is loaded.
 (require 'metabase-enterprise.product-analytics.storage.app-db)

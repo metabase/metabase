@@ -1,6 +1,7 @@
 (ns metabase-enterprise.product-analytics.permissions-test
   (:require
    [clojure.test :refer :all]
+   [metabase-enterprise.product-analytics.permissions :as pa.perms]
    [metabase-enterprise.product-analytics.test-util :as pa.tu]
    [metabase.product-analytics.core :as pa]
    [metabase.query-processor :as qp]
@@ -54,3 +55,8 @@
                   {:database pa/product-analytics-db-id
                    :type     :query
                    :query    {:source-table (u/the-id table)}})))))))))
+
+(deftest session-data-view-in-allowlist-test
+  (testing "v_pa_session_data is in the PA view allowlist"
+    (is (contains? pa.perms/pa-view-names "v_pa_session_data")))
+)

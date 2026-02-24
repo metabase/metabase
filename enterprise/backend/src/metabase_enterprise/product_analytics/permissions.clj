@@ -15,7 +15,7 @@
 
 (def pa-view-names
   "Allowlist of view names for Product Analytics queries."
-  #{"v_pa_sites" "v_pa_sessions" "v_pa_events" "v_pa_event_data"})
+  #{"v_pa_sites" "v_pa_sessions" "v_pa_events" "v_pa_event_data" "v_pa_session_data"})
 
 (defn- pa-collection
   "Returns the Product Analytics collection."

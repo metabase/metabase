@@ -4,6 +4,7 @@
    [metabase-enterprise.product-analytics.models.event]
    [metabase-enterprise.product-analytics.models.event-data]
    [metabase-enterprise.product-analytics.models.session]
+   [metabase-enterprise.product-analytics.models.session-data]
    [metabase-enterprise.product-analytics.models.site]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
@@ -69,3 +70,28 @@
         (is (= "submit-btn" (:string_value fetched)))
         (is (= 1 (:data_type fetched)))
         (is (some? (:created_at fetched)))))))
+
+(deftest session-data-model-test
+  (testing "ProductAnalyticsSessionData can be inserted with FK to session"
+    (mt/with-temp [:model/ProductAnalyticsSite        site {:name "Site" :uuid (str (random-uuid))}
+                   :model/ProductAnalyticsSession      sess {:site_id      (:id site)
+                                                             :session_uuid (str (random-uuid))}
+                   :model/ProductAnalyticsSessionData  data {:session_id   (:id sess)
+                                                             :data_key     "plan"
+                                                             :string_value "enterprise"
+                                                             :data_type    1}]
+      (let [fetched (t2/select-one :model/ProductAnalyticsSessionData :id (:id data))]
+        (is (= (:id sess) (:session_id fetched)))
+        (is (= "plan" (:data_key fetched)))
+        (is (= "enterprise" (:string_value fetched)))
+        (is (= 1 (:data_type fetched)))
+        (is (some? (:created_at fetched)))))))
+
+(deftest session-distinct-id-test
+  (testing "ProductAnalyticsSession can be inserted with distinct_id and round-trips"
+    (mt/with-temp [:model/ProductAnalyticsSite    site {:name "Site" :uuid (str (random-uuid))}
+                   :model/ProductAnalyticsSession sess {:site_id      (:id site)
+                                                        :session_uuid (str (random-uuid))
+                                                        :distinct_id  "user-42"}]
+      (let [fetched (t2/select-one :model/ProductAnalyticsSession :id (:id sess))]
+        (is (= "user-42" (:distinct_id fetched)))))))

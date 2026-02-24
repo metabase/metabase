@@ -128,3 +128,42 @@
          clojure.lang.ExceptionInfo
          #"Invalid product-analytics storage backend"
          (storage/product-analytics-storage-backend! :not-a-real-backend)))))
+
+;;; -------------------------------------------- save-session-data! -----------------------------------------------
+
+(deftest save-session-data-inserts-rows-test
+  (testing "save-session-data! inserts multiple key/value rows"
+    (mt/with-temp [:model/ProductAnalyticsSite    site {:name "Site" :uuid (str (random-uuid))}
+                   :model/ProductAnalyticsSession sess {:site_id      (:id site)
+                                                        :session_uuid (str (random-uuid))}]
+      (try
+        (storage/store-save-session-data!
+         [{:session_id   (:id sess)
+           :data_key     "plan"
+           :string_value "pro"
+           :data_type    1}
+          {:session_id    (:id sess)
+           :data_key      "company_size"
+           :number_value  50.0
+           :data_type     2}])
+        (is (= 2 (t2/count :model/ProductAnalyticsSessionData :session_id (:id sess))))
+        (finally
+          (t2/delete! :model/ProductAnalyticsSessionData :session_id (:id sess)))))))
+
+(deftest save-session-data-empty-is-noop-test
+  (testing "save-session-data! with empty list returns 0"
+    (is (= 0 (storage/store-save-session-data! [])))))
+
+;;; --------------------------------------------- set-distinct-id! ------------------------------------------------
+
+(deftest set-distinct-id-test
+  (testing "set-distinct-id! updates distinct_id on an existing session"
+    (mt/with-temp [:model/ProductAnalyticsSite    site {:name "Site" :uuid (str (random-uuid))}
+                   :model/ProductAnalyticsSession sess {:site_id      (:id site)
+                                                        :session_uuid (str (random-uuid))}]
+      (is (true? (storage/store-set-distinct-id! (:id sess) "user-123")))
+      (is (= "user-123" (:distinct_id (t2/select-one :model/ProductAnalyticsSession :id (:id sess))))))))
+
+(deftest set-distinct-id-nonexistent-session-test
+  (testing "set-distinct-id! returns false for a nonexistent session"
+    (is (false? (storage/store-set-distinct-id! Integer/MAX_VALUE "ghost")))))

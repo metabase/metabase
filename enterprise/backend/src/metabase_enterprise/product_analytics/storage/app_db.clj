@@ -5,6 +5,7 @@
    [metabase-enterprise.product-analytics.models.event]
    [metabase-enterprise.product-analytics.models.event-data]
    [metabase-enterprise.product-analytics.models.session]
+   [metabase-enterprise.product-analytics.models.session-data]
    [metabase-enterprise.product-analytics.models.site]
    [metabase-enterprise.product-analytics.storage :as storage]
    [metabase.app-db.query :as app-db.query]
@@ -36,3 +37,13 @@
         (t2/insert! :model/ProductAnalyticsEventData
                     (mapv #(assoc % :event_id event-id) properties)))
       (t2/select-one :model/ProductAnalyticsEvent :id event-id))))
+
+(defmethod storage/save-session-data! ::storage/app-db
+  [_backend session-data-rows]
+  (if (seq session-data-rows)
+    (t2/insert! :model/ProductAnalyticsSessionData session-data-rows)
+    0))
+
+(defmethod storage/set-distinct-id! ::storage/app-db
+  [_backend session-id distinct-id]
+  (pos? (t2/update! :model/ProductAnalyticsSession session-id {:distinct_id distinct-id})))
