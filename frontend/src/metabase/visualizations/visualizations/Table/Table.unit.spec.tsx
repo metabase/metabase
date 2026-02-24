@@ -17,9 +17,11 @@ import type {
 } from "metabase-types/api";
 import {
   createMockCard,
+  createMockCategoryColumn,
   createMockColumn,
   createMockDataset,
   createMockDatasetData,
+  createMockNumericColumn,
   createMockSingleSeries,
   createMockVisualizationSettings,
 } from "metabase-types/api/mocks";
@@ -241,15 +243,6 @@ describe("table.pivot", () => {
 
 describe("text_wrapping", () => {
   describe("in columnSettings", () => {
-    const createMockStringColumn = (): DatasetColumn =>
-      createMockColumn({ base_type: "type/Text", effective_type: "type/Text" });
-
-    const createMockNumberColumn = (): DatasetColumn =>
-      createMockColumn({
-        base_type: "type/Integer",
-        effective_type: "type/Integer",
-      });
-
     const getTextWrappingSetting = (column: DatasetColumn) => {
       const textWrappingSetting = Table.columnSettings(column)["text_wrapping"];
       expect(textWrappingSetting).toBeDefined();
@@ -260,21 +253,21 @@ describe("text_wrapping", () => {
     };
 
     it("should be available for string columns", () => {
-      const stringColumn = createMockStringColumn();
+      const stringColumn = createMockCategoryColumn();
       const textWrappingSetting = getTextWrappingSetting(stringColumn);
 
       expect(textWrappingSetting).toBeDefined();
     });
 
     it("should not be available for non-string columns", () => {
-      const numberColumn = createMockNumberColumn();
+      const numberColumn = createMockNumericColumn();
       const settings = Table.columnSettings(numberColumn);
 
       expect(settings["text_wrapping"]).toBeUndefined();
     });
 
     it("should be hidden when view_as is image", () => {
-      const stringColumn = createMockStringColumn();
+      const stringColumn = createMockCategoryColumn();
       const textWrappingSetting = getTextWrappingSetting(stringColumn);
       const getHidden = textWrappingSetting.getHidden;
       expect(getHidden).toBeDefined();
@@ -290,7 +283,7 @@ describe("text_wrapping", () => {
     });
 
     it("should be not valid when view_as is image", () => {
-      const stringColumn = createMockStringColumn();
+      const stringColumn = createMockCategoryColumn();
       const textWrappingSetting = getTextWrappingSetting(stringColumn);
       const isValid = textWrappingSetting.isValid;
       expect(isValid).toBeDefined();
@@ -306,7 +299,7 @@ describe("text_wrapping", () => {
     });
 
     it("should be visible when view_as is null", () => {
-      const stringColumn = createMockStringColumn();
+      const stringColumn = createMockCategoryColumn();
       const textWrappingSetting = getTextWrappingSetting(stringColumn);
       const getHidden = textWrappingSetting.getHidden;
       expect(getHidden).toBeDefined();
@@ -322,7 +315,7 @@ describe("text_wrapping", () => {
     });
 
     it("should be visible when view_as is auto", () => {
-      const stringColumn = createMockStringColumn();
+      const stringColumn = createMockCategoryColumn();
       const textWrappingSetting = getTextWrappingSetting(stringColumn);
       const getHidden = textWrappingSetting.getHidden;
       expect(getHidden).toBeDefined();
@@ -338,7 +331,7 @@ describe("text_wrapping", () => {
     });
 
     it("should be visible when view_as is link", () => {
-      const stringColumn = createMockStringColumn();
+      const stringColumn = createMockCategoryColumn();
       const textWrappingSetting = getTextWrappingSetting(stringColumn);
       const getHidden = textWrappingSetting.getHidden;
       expect(getHidden).toBeDefined();
@@ -354,7 +347,7 @@ describe("text_wrapping", () => {
     });
 
     it("should be valid when view_as is link", () => {
-      const stringColumn = createMockStringColumn();
+      const stringColumn = createMockCategoryColumn();
       const textWrappingSetting = getTextWrappingSetting(stringColumn);
       const isValid = textWrappingSetting.isValid;
       expect(isValid).toBeDefined();
@@ -370,7 +363,7 @@ describe("text_wrapping", () => {
     });
 
     it("should default to false", () => {
-      const stringColumn = createMockStringColumn();
+      const stringColumn = createMockCategoryColumn();
       const textWrappingSetting = getTextWrappingSetting(stringColumn);
 
       expect(textWrappingSetting.default).toBe(false);

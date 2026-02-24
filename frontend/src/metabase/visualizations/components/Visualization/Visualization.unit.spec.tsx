@@ -14,8 +14,9 @@ import type {
 import type { DatasetColumn, RawSeries, Settings } from "metabase-types/api";
 import {
   createMockCard,
-  createMockColumn,
+  createMockCategoryColumn,
   createMockDatasetData,
+  createMockNumericColumn,
   createMockSettings,
   createMockTokenFeatures,
   createMockVisualizationSettings,
@@ -23,22 +24,6 @@ import {
 import { createMockState } from "metabase-types/store/mocks";
 
 registerVisualizations();
-
-const textColumn = (data: Partial<DatasetColumn> = {}) =>
-  createMockColumn({
-    base_type: "type/Text",
-    effective_type: "type/Text",
-    semantic_type: null,
-    ...data,
-  });
-
-const numberColumn = (data: Partial<DatasetColumn> = {}) =>
-  createMockColumn({
-    base_type: "type/Integer",
-    effective_type: "type/Integer",
-    semantic_type: "type/Number",
-    ...data,
-  });
 
 const makeData = (cols: DatasetColumn[], rows: Array<Array<string | number>>) =>
   createMockDatasetData({ cols, rows });
@@ -99,9 +84,9 @@ describe("Visualization", () => {
             data: {
               ...makeData(
                 [
-                  textColumn({ name: "CATEGORY" }),
-                  textColumn({ name: "VENDOR" }),
-                  numberColumn({ name: "count" }),
+                  createMockCategoryColumn({ name: "CATEGORY" }),
+                  createMockCategoryColumn({ name: "VENDOR" }),
+                  createMockNumericColumn({ name: "count" }),
                 ],
                 [
                   ["Doohickey", "Annetta Wyman and Sons", 1],
@@ -140,8 +125,8 @@ describe("Visualization", () => {
           card: createMockCard({ name: "Card", display: "bar" }),
           data: makeData(
             [
-              textColumn({ name: "Dimension" }),
-              numberColumn({ name: "Count" }),
+              createMockCategoryColumn({ name: "Dimension" }),
+              createMockNumericColumn({ name: "Count" }),
             ],
             [
               ["foo", 1],
@@ -168,7 +153,7 @@ describe("Visualization", () => {
       await renderViz([
         {
           card: createMockCard({ display: "scalar" }),
-          data: makeData([numberColumn({ name: "Count" })], [[1]]),
+          data: makeData([createMockNumericColumn({ name: "Count" })], [[1]]),
         },
       ]);
 
@@ -184,8 +169,8 @@ describe("Visualization", () => {
             card: createMockCard({ name: "Card", display: "bar" }),
             data: makeData(
               [
-                textColumn({ name: "Dimension" }),
-                numberColumn({ name: "Count" }),
+                createMockCategoryColumn({ name: "Dimension" }),
+                createMockNumericColumn({ name: "Count" }),
               ],
               [
                 ["foo", 1],
@@ -206,9 +191,9 @@ describe("Visualization", () => {
             card: createMockCard({ name: "Card", display: "bar" }),
             data: makeData(
               [
-                textColumn({ name: "Dimension" }),
-                numberColumn({ name: "Count" }),
-                numberColumn({ name: "Sum" }),
+                createMockCategoryColumn({ name: "Dimension" }),
+                createMockNumericColumn({ name: "Count" }),
+                createMockNumericColumn({ name: "Sum" }),
               ],
               [
                 ["foo", 1, 3],
@@ -230,9 +215,9 @@ describe("Visualization", () => {
             card: createMockCard({ name: "Card", display: "bar" }),
             data: makeData(
               [
-                textColumn({ name: "Dimension1" }),
-                textColumn({ name: "Dimension2" }),
-                numberColumn({ name: "Count" }),
+                createMockCategoryColumn({ name: "Dimension1" }),
+                createMockCategoryColumn({ name: "Dimension2" }),
+                createMockNumericColumn({ name: "Count" }),
               ],
               [
                 ["foo", "a", 1],
@@ -256,8 +241,8 @@ describe("Visualization", () => {
             card: createMockCard({ id: 1, name: "Card1", display: "bar" }),
             data: makeData(
               [
-                textColumn({ id: 1, name: "Dimension" }),
-                numberColumn({ id: 2, name: "Count" }),
+                createMockCategoryColumn({ id: 1, name: "Dimension" }),
+                createMockNumericColumn({ id: 2, name: "Count" }),
               ],
               [
                 ["foo", 1],
@@ -269,8 +254,8 @@ describe("Visualization", () => {
             card: createMockCard({ id: 2, name: "Card2", display: "bar" }),
             data: makeData(
               [
-                textColumn({ id: 1, name: "Dimension" }),
-                numberColumn({ id: 2, name: "Count" }),
+                createMockCategoryColumn({ id: 1, name: "Dimension" }),
+                createMockNumericColumn({ id: 2, name: "Count" }),
               ],
               [
                 ["foo", 3],
