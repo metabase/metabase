@@ -6,8 +6,8 @@ import utc from "dayjs/plugin/utc";
 dayjs.extend(utc);
 dayjs.extend(timezone);
 
-import { NumberColumn, StringColumn } from "__support__/visualizations";
 import { getVisualizationTransformed } from "metabase/visualizations";
+import type { TimeSeriesInterval } from "metabase/visualizations/echarts/cartesian/model/types";
 import {
   computeTimeseriesDataInterval,
   computeTimeseriesTicksInterval,
@@ -15,103 +15,83 @@ import {
   normalizeDate,
 } from "metabase/visualizations/echarts/cartesian/utils/timeseries";
 import registerVisualizations from "metabase/visualizations/register";
+import type { DateTimeAbsoluteUnit, RawSeries } from "metabase-types/api";
+import {
+  createMockColumn,
+  createMockSingleSeries,
+} from "metabase-types/api/mocks";
 
 registerVisualizations();
 
+function computeDefinedTimeseriesDataInterval(
+  xValues: Parameters<typeof computeTimeseriesDataInterval>[0],
+  unit: Parameters<typeof computeTimeseriesDataInterval>[1],
+): TimeSeriesInterval {
+  const interval = computeTimeseriesDataInterval(xValues, unit);
+
+  if (interval == null) {
+    throw new Error("Expected interval to be defined");
+  }
+
+  return interval;
+}
+
 describe("visualization.lib.timeseries", () => {
   describe("computeTimeseriesDataIntervalIndex", () => {
-    const TEST_CASES = [
-      ["ms", 1, [["2015-01-01T00:00:00.000Z"], ["2016-05-04T03:02:01.001Z"]]],
-      [
-        "second",
-        1,
-        [["2015-01-01T00:00:00.000Z"], ["2016-05-04T03:02:01.000Z"]],
-      ],
-      [
-        "second",
-        5,
-        [["2015-01-01T00:00:00.000Z"], ["2016-05-04T03:02:05.000Z"]],
-      ],
-      [
-        "second",
-        15,
-        [["2015-01-01T00:00:00.000Z"], ["2016-05-04T03:02:15.000Z"]],
-      ],
-      [
-        "second",
-        30,
-        [["2015-01-01T00:00:00.000Z"], ["2016-05-04T03:02:30.000Z"]],
-      ],
-      [
-        "minute",
-        1,
-        [["2015-01-01T00:00:00.000Z"], ["2016-05-04T03:02:00.000Z"]],
-      ],
-      [
-        "minute",
-        5,
-        [["2015-01-01T00:00:00.000Z"], ["2016-05-04T03:05:00.000Z"]],
-      ],
-      [
-        "minute",
-        15,
-        [["2015-01-01T00:00:00.000Z"], ["2016-05-04T03:15:00.000Z"]],
-      ],
-      [
-        "minute",
-        30,
-        [["2015-01-01T00:00:00.000Z"], ["2016-05-04T03:30:00.000Z"]],
-      ],
-      ["hour", 1, [["2015-01-01T00:00:00.000Z"], ["2016-05-04T01:00:00.000Z"]]],
-      ["hour", 3, [["2015-01-01T00:00:00.000Z"], ["2016-05-04T03:00:00.000Z"]]],
-      ["hour", 6, [["2015-01-01T00:00:00.000Z"], ["2016-05-04T06:00:00.000Z"]]],
-      [
-        "hour",
-        12,
-        [["2015-01-01T00:00:00.000Z"], ["2016-05-04T12:00:00.000Z"]],
-      ],
-      ["day", 1, [["2015-01-01T00:00:00.000Z"], ["2015-01-02T00:00:00.000Z"]]],
-      ["week", 1, [["2015-01-01T00:00:00.000Z"], ["2015-01-08T00:00:00.000Z"]]],
-      ["week", 1, [["2015-01-31T00:00:00.000Z"], ["2015-02-07T00:00:00.000Z"]]], // (metabase#14605)
-      [
-        "month",
-        1,
-        [["2015-01-01T00:00:00.000Z"], ["2015-02-01T00:00:00.000Z"]],
-      ],
-      [
-        "quarter",
-        1,
-        [["2015-01-01T00:00:00.000Z"], ["2015-04-01T00:00:00.000Z"]],
-      ],
-      ["year", 1, [["2015-01-01T00:00:00.000Z"], ["2016-01-01T00:00:00.000Z"]]],
-      [
-        "year",
-        10,
-        [["2015-01-01T00:00:00.000Z"], ["2025-01-01T00:00:00.000Z"]],
-      ],
-      [
-        "year",
-        100,
-        [["2015-01-01T00:00:00.000Z"], ["2115-01-01T00:00:00.000Z"]],
-      ],
-      ["day", 1, [["2019-01-01T00:00:00.000Z"]]],
+    type DataIntervalTestCase = [
+      expectedUnit: TimeSeriesInterval["unit"],
+      expectedCount: number,
+      data: string[],
     ];
 
-    TEST_CASES.map(([expectedUnit, expectedCount, data]) => {
+    const TEST_CASES: DataIntervalTestCase[] = [
+      ["ms", 1, ["2015-01-01T00:00:00.000Z", "2016-05-04T03:02:01.001Z"]],
+      ["second", 1, ["2015-01-01T00:00:00.000Z", "2016-05-04T03:02:01.000Z"]],
+      ["second", 5, ["2015-01-01T00:00:00.000Z", "2016-05-04T03:02:05.000Z"]],
+      ["second", 15, ["2015-01-01T00:00:00.000Z", "2016-05-04T03:02:15.000Z"]],
+      ["second", 30, ["2015-01-01T00:00:00.000Z", "2016-05-04T03:02:30.000Z"]],
+      ["minute", 1, ["2015-01-01T00:00:00.000Z", "2016-05-04T03:02:00.000Z"]],
+      ["minute", 5, ["2015-01-01T00:00:00.000Z", "2016-05-04T03:05:00.000Z"]],
+      ["minute", 15, ["2015-01-01T00:00:00.000Z", "2016-05-04T03:15:00.000Z"]],
+      ["minute", 30, ["2015-01-01T00:00:00.000Z", "2016-05-04T03:30:00.000Z"]],
+      ["hour", 1, ["2015-01-01T00:00:00.000Z", "2016-05-04T01:00:00.000Z"]],
+      ["hour", 3, ["2015-01-01T00:00:00.000Z", "2016-05-04T03:00:00.000Z"]],
+      ["hour", 6, ["2015-01-01T00:00:00.000Z", "2016-05-04T06:00:00.000Z"]],
+      ["hour", 12, ["2015-01-01T00:00:00.000Z", "2016-05-04T12:00:00.000Z"]],
+      ["day", 1, ["2015-01-01T00:00:00.000Z", "2015-01-02T00:00:00.000Z"]],
+      ["week", 1, ["2015-01-01T00:00:00.000Z", "2015-01-08T00:00:00.000Z"]],
+      ["week", 1, ["2015-01-31T00:00:00.000Z", "2015-02-07T00:00:00.000Z"]], // (metabase#14605)
+      ["month", 1, ["2015-01-01T00:00:00.000Z", "2015-02-01T00:00:00.000Z"]],
+      ["quarter", 1, ["2015-01-01T00:00:00.000Z", "2015-04-01T00:00:00.000Z"]],
+      ["year", 1, ["2015-01-01T00:00:00.000Z", "2016-01-01T00:00:00.000Z"]],
+      ["year", 10, ["2015-01-01T00:00:00.000Z", "2025-01-01T00:00:00.000Z"]],
+      ["year", 100, ["2015-01-01T00:00:00.000Z", "2115-01-01T00:00:00.000Z"]],
+      ["day", 1, ["2019-01-01T00:00:00.000Z"]],
+    ];
+
+    TEST_CASES.forEach(([expectedUnit, expectedCount, data]) => {
       it(`should return ${expectedCount} ${expectedUnit}`, () => {
-        const { unit, count } = computeTimeseriesDataInterval(
-          data.map((d) => new Date(d)),
+        const { unit, count } = computeDefinedTimeseriesDataInterval(
+          data,
+          null,
         );
         expect(unit).toBe(expectedUnit);
         expect(count).toBe(expectedCount);
       });
     });
 
-    const units = ["minute", "hour", "day", "week", "month", "year"];
+    const units: DateTimeAbsoluteUnit[] = [
+      "minute",
+      "hour",
+      "day",
+      "week",
+      "month",
+      "year",
+    ];
 
     units.forEach((testUnit) => {
       it(`should return one ${testUnit} when ${testUnit} interval is set`, () => {
-        const { unit, count } = computeTimeseriesDataInterval(
+        const { unit, count } = computeDefinedTimeseriesDataInterval(
           [
             new Date("2019-01-01").toISOString(),
             new Date("2020-01-01").toISOString(),
@@ -124,7 +104,7 @@ describe("visualization.lib.timeseries", () => {
     });
 
     it("should return 1 quarter for quarter interval", () => {
-      const { unit, count } = computeTimeseriesDataInterval(
+      const { unit, count } = computeDefinedTimeseriesDataInterval(
         [
           new Date("2019-01-01").toISOString(),
           new Date("2020-01-01").toISOString(),
@@ -136,13 +116,16 @@ describe("visualization.lib.timeseries", () => {
     });
 
     it("should should ignore null X values", () => {
-      const { unit, count } = computeTimeseriesDataInterval([
+      const { unit, count } = computeDefinedTimeseriesDataInterval(
+        [
+          null,
+          new Date("2020-01-01").toISOString(),
+          null,
+          new Date("2020-03-01").toISOString(),
+          null,
+        ],
         null,
-        new Date("2020-01-01").toISOString(),
-        null,
-        new Date("2020-03-01").toISOString(),
-        null,
-      ]);
+      );
       expect(unit).toBe("month");
       expect(count).toBe(1);
     });
@@ -150,13 +133,26 @@ describe("visualization.lib.timeseries", () => {
 
   describe("computeTimeseriesTicksInterval", () => {
     // computeTimeseriesTicksInterval just uses tickFormat to measure the character length of the current formatting style
-    const fakeTickFormat = () => "2020-01-01";
-    const TEST_CASES = [
+    const fakeTickFormat = (_value: unknown) => "2020-01-01";
+    type TickInput = {
+      xDomain: Parameters<typeof computeTimeseriesTicksInterval>[0];
+      xInterval: TimeSeriesInterval;
+      chartWidth: number;
+      tickFormat: Parameters<typeof computeTimeseriesTicksInterval>[3];
+    };
+    type TickExpected = {
+      expectedUnit: ReturnType<typeof computeTimeseriesTicksInterval>["unit"];
+      expectedCount: number;
+    };
+    const TEST_CASES: [TickInput, TickExpected][] = [
       // on a wide chart, 12 month ticks shouldn't be changed
       [
         {
-          xDomain: [new Date("2020-01-01"), new Date("2021-01-01")],
-          xInterval: { interval: "month", count: 1 },
+          xDomain: [
+            new Date("2020-01-01").getTime(),
+            new Date("2021-01-01").getTime(),
+          ],
+          xInterval: { unit: "month", count: 1 },
           chartWidth: 1920,
           tickFormat: fakeTickFormat,
         },
@@ -165,8 +161,11 @@ describe("visualization.lib.timeseries", () => {
       // it should be bump to quarters on a narrower chart
       [
         {
-          xDomain: [new Date("2020-01-01"), new Date("2021-01-01")],
-          xInterval: { interval: "month", count: 1 },
+          xDomain: [
+            new Date("2020-01-01").getTime(),
+            new Date("2021-01-01").getTime(),
+          ],
+          xInterval: { unit: "month", count: 1 },
           chartWidth: 700,
           tickFormat: fakeTickFormat,
         },
@@ -175,8 +174,11 @@ describe("visualization.lib.timeseries", () => {
       // even narrower and we should show yearly ticks
       [
         {
-          xDomain: [new Date("2020-01-01"), new Date("2021-01-01")],
-          xInterval: { interval: "month", count: 1 },
+          xDomain: [
+            new Date("2020-01-01").getTime(),
+            new Date("2021-01-01").getTime(),
+          ],
+          xInterval: { unit: "month", count: 1 },
           chartWidth: 300,
           tickFormat: fakeTickFormat,
         },
@@ -196,8 +198,11 @@ describe("visualization.lib.timeseries", () => {
       // Long date formats should update the interval to have fewer ticks
       [
         {
-          xDomain: [new Date("2020-01-01"), new Date("2021-01-01")],
-          xInterval: { interval: "month", count: 1 },
+          xDomain: [
+            new Date("2020-01-01").getTime(),
+            new Date("2021-01-01").getTime(),
+          ],
+          xInterval: { unit: "month", count: 1 },
           chartWidth: 1920,
           tickFormat: () =>
             // thankfully no date format is actually this long
@@ -207,7 +212,7 @@ describe("visualization.lib.timeseries", () => {
       ],
     ];
 
-    TEST_CASES.map(
+    TEST_CASES.forEach(
       ([
         { xDomain, xInterval, chartWidth, tickFormat },
         { expectedUnit, expectedCount },
@@ -228,17 +233,30 @@ describe("visualization.lib.timeseries", () => {
 
   describe("getTimezoneOrOffset", () => {
     const showWarningMock = jest.fn();
-
-    const series = [
-      {
-        card: { visualization_settings: {}, display: "bar" },
-        data: {
-          results_timezone: "US/Eastern",
-          cols: [StringColumn({ name: "a" }), NumberColumn({ name: "b" })],
-          rows: [],
+    const createTimezoneSeries = ({
+      resultsTimezone,
+      requestedTimezone,
+    }: {
+      resultsTimezone?: string;
+      requestedTimezone?: string;
+    }): RawSeries => [
+      createMockSingleSeries(
+        { display: "bar" },
+        {
+          data: {
+            results_timezone: resultsTimezone,
+            requested_timezone: requestedTimezone,
+            cols: [
+              createMockColumn({ name: "a", base_type: "type/Text" }),
+              createMockColumn({ name: "b", base_type: "type/Integer" }),
+            ],
+            rows: [],
+          },
         },
-      },
+      ),
     ];
+
+    const series = createTimezoneSeries({ resultsTimezone: "US/Eastern" });
 
     beforeEach(() => {
       showWarningMock.mockClear();
@@ -256,14 +274,10 @@ describe("visualization.lib.timeseries", () => {
     });
 
     it("should return the correct timezone when there is only one timezone", () => {
-      const series = [
-        {
-          data: {
-            results_timezone: "America/New_York",
-            requested_timezone: "America/New_York",
-          },
-        },
-      ];
+      const series = createTimezoneSeries({
+        resultsTimezone: "America/New_York",
+        requestedTimezone: "America/New_York",
+      });
       const result = getTimezoneOrOffset(series, showWarningMock);
       expect(result).toEqual({
         timezone: "America/New_York",
@@ -273,14 +287,7 @@ describe("visualization.lib.timeseries", () => {
     });
 
     it("should return the default timezone when results_timezone is undefined", () => {
-      const series = [
-        {
-          data: {
-            results_timezone: undefined,
-            requested_timezone: undefined,
-          },
-        },
-      ];
+      const series = createTimezoneSeries({});
       const result = getTimezoneOrOffset(series, showWarningMock);
       expect(result).toEqual({
         timezone: "Etc/UTC",
@@ -290,32 +297,29 @@ describe("visualization.lib.timeseries", () => {
     });
 
     it("should return offsetMinutes when results_timezone is in offset format", () => {
-      const series = [
-        { data: { results_timezone: "+05:30", requested_timezone: "+05:30" } },
-      ];
+      const series = createTimezoneSeries({
+        resultsTimezone: "+05:30",
+        requestedTimezone: "+05:30",
+      });
       const result = getTimezoneOrOffset(series, showWarningMock);
       expect(result).toEqual({ timezone: undefined, offsetMinutes: 330 });
       expect(showWarningMock).not.toHaveBeenCalled();
     });
 
     it("should show warning when there are multiple timezones in the series", () => {
-      const series = [
-        { data: { results_timezone: "America/New_York" } },
-        { data: { results_timezone: "Europe/London" } },
+      const series: RawSeries = [
+        ...createTimezoneSeries({ resultsTimezone: "America/New_York" }),
+        ...createTimezoneSeries({ resultsTimezone: "Europe/London" }),
       ];
       getTimezoneOrOffset(series, showWarningMock);
       expect(showWarningMock).toHaveBeenCalledTimes(1);
     });
 
     it("should show warning when requested_timezone is different from results_timezone", () => {
-      const series = [
-        {
-          data: {
-            results_timezone: "America/New_York",
-            requested_timezone: "Europe/London",
-          },
-        },
-      ];
+      const series = createTimezoneSeries({
+        resultsTimezone: "America/New_York",
+        requestedTimezone: "Europe/London",
+      });
       getTimezoneOrOffset(series, showWarningMock);
       expect(showWarningMock).toHaveBeenCalledTimes(1);
     });
