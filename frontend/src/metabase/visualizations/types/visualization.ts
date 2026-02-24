@@ -331,7 +331,7 @@ export type VisualizationSettingDefinition<T, TValue, TProps extends object> = {
     object: T,
     vizSettings: ComputedVisualizationSettings,
     onChange: (value: TValue) => void,
-    extra: SettingsExtra,
+    extra: SettingsExtra | undefined,
     onChangeSettings: (value: Partial<VisualizationSettings>) => void,
   ) => Partial<TProps>;
   onUpdate?: (value: TValue, extra: SettingsExtra) => void;
