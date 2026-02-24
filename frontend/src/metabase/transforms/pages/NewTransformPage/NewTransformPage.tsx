@@ -38,6 +38,7 @@ import { CreateTransformModal } from "./CreateTransformModal";
 import {
   getDefaultValues,
   getInitialCardSource,
+  getInitialJavascriptSource,
   getInitialNativeSource,
   getInitialPythonSource,
   getInitialQuerySource,
@@ -156,7 +157,7 @@ function NewTransformPageBody({
             overflow: "hidden",
           }}
         >
-          {source.type === "python" ? (
+          {source.type !== "query" ? (
             <PLUGIN_TRANSFORMS_PYTHON.TransformEditor
               source={source}
               proposedSource={
@@ -225,6 +226,11 @@ type NewPythonTransformPageProps = {
 
 export function NewPythonTransformPage({ route }: NewPythonTransformPageProps) {
   const initialSource = useMemo(() => getInitialPythonSource(), []);
+  return <NewTransformPage initialSource={initialSource} route={route} />;
+}
+
+export function NewJavascriptTransformPage({ route }: NewPythonTransformPageProps) {
+  const initialSource = useMemo(() => getInitialJavascriptSource(), []);
   return <NewTransformPage initialSource={initialSource} route={route} />;
 }
 

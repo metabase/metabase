@@ -1,7 +1,10 @@
 import { Route } from "react-router";
 
 import { ModalRoute } from "metabase/hoc/ModalRoute";
-import { NewPythonTransformPage } from "metabase/transforms/pages/NewTransformPage";
+import {
+  NewJavascriptTransformPage,
+  NewPythonTransformPage,
+} from "metabase/transforms/pages/NewTransformPage";
 import { TransformListPage } from "metabase/transforms/pages/TransformListPage";
 
 import { PythonLibraryEditorPage } from "./pages/PythonLibraryEditorPage";
@@ -12,6 +15,7 @@ export function getPythonTransformsRoutes() {
     <>
       <Route path="library/:path" component={PythonLibraryEditorPage} />
       <Route path="new/python" component={NewPythonTransformPage} />
+      <Route path="new/javascript" component={NewJavascriptTransformPage} />
     </>
   );
 }
@@ -27,6 +31,11 @@ export function getPythonUpsellRoutes() {
       />
       <ModalRoute
         path="new/python"
+        modal={PythonTransformsUpsellModal}
+        noWrap
+      />
+      <ModalRoute
+        path="new/javascript"
         modal={PythonTransformsUpsellModal}
         noWrap
       />
