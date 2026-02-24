@@ -28,6 +28,8 @@ export type {
 export { CatalogGraph } from './catalog-graph'
 export { ContentGraph } from './content-graph'
 export { validateConsistency } from './consistency'
+export { buildDependencyGraph, pathKey } from './dependency-graph'
+export type { DependencyPath, DependencyPathSegment, DependencyEdge, DependencyIssue, DependencyGraphResult, EntityRef, Cycle } from './dependency-graph'
 export { parseDirectory } from './parser'
 export type { ParsedEntities, DatabaseEntity } from './parser'
 

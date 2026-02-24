@@ -1,25 +1,28 @@
 import {
-  computed,
   ref,
-  shallowRef,
   watch,
 } from "@reactive-vscode/reactivity";
 import {
   defineExtension,
   useFileSystemWatcher,
-  useWebviewView,
   useWorkspaceFolders,
 } from "reactive-vscode";
-import { Uri, workspace } from "vscode";
-import type { Webview } from "vscode";
-import { getWebviewHtml } from "./webview-html";
+import { commands, Uri, window, workspace } from "vscode";
+import { loadMetabaseExport } from "./metabase-lib";
+import { CatalogTreeProvider } from "./catalog-tree-provider";
+import { ContentTreeProvider } from "./content-tree-provider";
 
 const CONFIG_FILENAME = "metabase.config.json";
 
-const { activate, deactivate } = defineExtension((context) => {
-  const { extensionUri } = context;
+const { activate, deactivate } = defineExtension(() => {
   const workspaceFolders = useWorkspaceFolders();
   const configExists = ref(false);
+
+  const catalogProvider = new CatalogTreeProvider();
+  const contentProvider = new ContentTreeProvider();
+
+  window.registerTreeDataProvider("metabase.dataCatalog", catalogProvider);
+  window.registerTreeDataProvider("metabase.content", contentProvider);
 
   async function checkConfigExists() {
     const folders = workspaceFolders.value;
@@ -44,40 +47,34 @@ const { activate, deactivate } = defineExtension((context) => {
     onDidDelete: checkConfigExists,
   });
 
-  const webviewInstance = shallowRef<Webview | undefined>();
-
-  const html = computed(() => {
-    const webview = webviewInstance.value;
-    if (!webview) {
-      return "<!DOCTYPE html><html><body></body></html>";
+  async function loadExport() {
+    const folders = workspaceFolders.value;
+    if (!configExists.value || !folders?.length) {
+      catalogProvider.setGraph(null);
+      contentProvider.setGraph(null);
+      return;
     }
-    return getWebviewHtml(webview, extensionUri);
-  });
 
-  const { webview, postMessage } = useWebviewView(
-    "metabase.sidebarPanel",
-    html,
-    {
-      webviewOptions: {
-        enableScripts: true,
-        localResourceRoots: [
-          Uri.joinPath(extensionUri, "dist", "webview"),
-        ],
-      },
-      onDidReceiveMessage(message: { type: string }) {
-        if (message.type === "ready") {
-          postMessage({ type: "init", configExists: configExists.value });
-        }
-      },
-    },
-  );
-
-  watch(webview, (instance) => {
-    webviewInstance.value = instance;
-  });
+    try {
+      const rootPath = folders[0].uri.fsPath;
+      const { catalog, content } = await loadMetabaseExport(rootPath);
+      catalogProvider.setGraph(catalog);
+      contentProvider.setGraph(content);
+    } catch {
+      catalogProvider.setGraph(null);
+      contentProvider.setGraph(null);
+    }
+  }
 
   watch(configExists, (value) => {
-    postMessage({ type: "configExistsChanged", configExists: value });
+    commands.executeCommand("setContext", "metabase.configExists", value);
+    loadExport();
+  });
+
+  useFileSystemWatcher("**/*.yaml", {
+    onDidCreate: loadExport,
+    onDidChange: loadExport,
+    onDidDelete: loadExport,
   });
 });
 

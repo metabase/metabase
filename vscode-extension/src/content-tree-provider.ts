@@ -1,0 +1,77 @@
+import * as vscode from 'vscode'
+import type { ContentGraph } from './metabase-lib'
+import type { ContentNode } from './metabase-lib'
+
+export class ContentTreeProvider implements vscode.TreeDataProvider<ContentNode> {
+  private graph: ContentGraph | null = null
+  private changeEmitter = new vscode.EventEmitter<ContentNode | undefined | void>()
+  readonly onDidChangeTreeData = this.changeEmitter.event
+
+  setGraph(graph: ContentGraph | null): void {
+    this.graph = graph
+    this.changeEmitter.fire()
+  }
+
+  getTreeItem(element: ContentNode): vscode.TreeItem {
+    const label = this.getLabel(element)
+    const collapsible = this.hasChildren(element)
+      ? vscode.TreeItemCollapsibleState.Collapsed
+      : vscode.TreeItemCollapsibleState.None
+    const item = new vscode.TreeItem(label, collapsible)
+    item.iconPath = this.getIcon(element)
+    item.tooltip = element.description ?? undefined
+
+    if ('filePath' in element && element.filePath) {
+      item.command = {
+        command: 'vscode.open',
+        title: 'Open',
+        arguments: [vscode.Uri.file(element.filePath)],
+      }
+    }
+
+    return item
+  }
+
+  getChildren(element?: ContentNode): ContentNode[] {
+    if (!this.graph) {
+      return []
+    }
+    if (!element) {
+      return this.graph.getRoots()
+    }
+    return this.graph.getChildren(element)
+  }
+
+  private getLabel(node: ContentNode): string {
+    return node.name
+  }
+
+  private hasChildren(node: ContentNode): boolean {
+    if (node.kind !== 'collection') {
+      return false
+    }
+    return (
+      node.children.length > 0
+      || node.cards.length > 0
+      || node.dashboards.length > 0
+      || node.snippets.length > 0
+      || node.timelines.length > 0
+      || node.documents.length > 0
+    )
+  }
+
+  private getIcon(node: ContentNode): vscode.ThemeIcon {
+    switch (node.kind) {
+      case 'collection': return new vscode.ThemeIcon('folder-library')
+      case 'card':
+        if (node.cardType === 'metric') return new vscode.ThemeIcon('graph-line')
+        return new vscode.ThemeIcon('file')
+      case 'dashboard': return new vscode.ThemeIcon('layout')
+      case 'native_query_snippet': return new vscode.ThemeIcon('code')
+      case 'timeline': return new vscode.ThemeIcon('calendar')
+      case 'document': return new vscode.ThemeIcon('file-text')
+      case 'transform': return new vscode.ThemeIcon('arrow-swap')
+      case 'action': return new vscode.ThemeIcon('play')
+    }
+  }
+}

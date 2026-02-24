@@ -48,12 +48,27 @@
     "views": {
       "metabase": [
         {
-          "type": "webview",
-          "id": "metabase.sidebarPanel",
-          "name": "Metabase"
+          "id": "metabase.content",
+          "name": "Content"
+        },
+        {
+          "id": "metabase.dataCatalog",
+          "name": "Data Catalog"
         }
       ]
     },
+    "viewsWelcome": [
+      {
+        "view": "metabase.content",
+        "contents": "Open a folder with Metabase content exported via Remote Sync.",
+        "when": "!metabase.configExists"
+      },
+      {
+        "view": "metabase.dataCatalog",
+        "contents": "Open a folder with Metabase content exported via Remote Sync.",
+        "when": "!metabase.configExists"
+      }
+    ],
     "configuration": {
       "type": "object",
       "title": "ext-name",
