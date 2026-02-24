@@ -18,7 +18,7 @@ databaseChangeLog:
                     nullable: false
               - column:
                   name: description
-                  type: text
+                  type: ${text.type}
               - column:
                   name: is_enabled
                   type: boolean
