@@ -140,3 +140,72 @@
           (is (string? (:session-id claims)))
           (is (string? (:visit-id claims)))
           (is (= site-uuid (:website-id claims))))))))
+
+;;; ----------------------------------------- Session Cache Shortcut -------------------------------------------
+
+(deftest session-cache-shortcut-test
+  (mt/with-premium-features #{:product-analytics}
+    (mt/with-model-cleanup [:model/ProductAnalyticsEvent
+                            :model/ProductAnalyticsSession
+                            :model/ProductAnalyticsSite]
+      (let [site-uuid (str (random-uuid))
+            _         (t2/insert-returning-instance! :model/ProductAnalyticsSite
+                                                     {:name "Cache Test" :uuid site-uuid})
+            ;; First request — no cache token
+            resp1     (send-request (valid-payload site-uuid))
+            token1    (get-in resp1 [:headers "X-Umami-Cache"])
+            ;; Second request — pass the cache token back
+            resp2     (send-request (valid-payload site-uuid)
+                                    {:headers {"user-agent"    chrome-ua
+                                               "origin"        "https://example.com"
+                                               "x-umami-cache" token1}})]
+        (testing "second request with cache token succeeds"
+          (is (= 200 (:status resp2)))
+          (is (= true (get-in resp2 [:body :ok]))))
+        (testing "second response has a valid cache token"
+          (let [token2 (get-in resp2 [:headers "X-Umami-Cache"])
+                claims (pa.token/verify-session-token token2)]
+            (is (some? claims))
+            (is (= site-uuid (:website-id claims)))))))))
+
+;;; -------------------------------------------- Identify Support ----------------------------------------------
+
+(deftest identify-payload-test
+  (mt/with-premium-features #{:product-analytics}
+    (mt/with-model-cleanup [:model/ProductAnalyticsSessionData
+                            :model/ProductAnalyticsSession
+                            :model/ProductAnalyticsSite]
+      (let [site-uuid (str (random-uuid))
+            site      (t2/insert-returning-instance! :model/ProductAnalyticsSite
+                                                     {:name "Identify Test" :uuid site-uuid})
+            body      {:type    "identify"
+                       :payload {:website     site-uuid
+                                 :distinct_id "user-42"
+                                 :data        {"plan" "pro" "seats" 5}}}
+            response  (send-request body)]
+        (testing "identify returns 200 with {:ok true}"
+          (is (= 200 (:status response)))
+          (is (= true (get-in response [:body :ok]))))
+        (testing "response includes X-Umami-Cache header"
+          (is (string? (get-in response [:headers "X-Umami-Cache"]))))
+        (testing "session has distinct_id set"
+          (let [session (t2/select-one :model/ProductAnalyticsSession :site_id (:id site))]
+            (is (= "user-42" (:distinct_id session)))))
+        (testing "session data rows were persisted"
+          (let [session (t2/select-one :model/ProductAnalyticsSession :site_id (:id site))
+                rows    (t2/select :model/ProductAnalyticsSessionData :session_id (:id session))]
+            (is (= 2 (count rows)))))))))
+
+(deftest identify-without-data-test
+  (mt/with-premium-features #{:product-analytics}
+    (mt/with-model-cleanup [:model/ProductAnalyticsSession
+                            :model/ProductAnalyticsSite]
+      (let [site-uuid (str (random-uuid))
+            _         (t2/insert-returning-instance! :model/ProductAnalyticsSite
+                                                     {:name "Identify Minimal" :uuid site-uuid})
+            body      {:type    "identify"
+                       :payload {:website     site-uuid
+                                 :distinct_id "user-99"}}
+            response  (send-request body)]
+        (testing "identify without data succeeds"
+          (is (= 200 (:status response))))))))

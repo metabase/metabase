@@ -33,7 +33,7 @@
 (def ^:private IdentifyPayload
   [:map
    [:website     [:string {:max 36}]]
-   [:data        {:optional true} [:maybe [:map-of :string :any]]]
+   [:data        {:optional true} [:maybe [:map-of [:or :string :keyword] :any]]]
    [:distinct_id {:optional true} [:maybe [:string {:max 50}]]]])
 
 (def ^:private SendRequest
