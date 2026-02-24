@@ -284,7 +284,7 @@ export type SettingsExtra = {
 };
 
 export type VisualizationSettingDefinition<T, TValue, TProps extends object> = {
-  id: string | number;
+  id?: string | number;
   section?: string;
   title?: string;
   placeholder?: string;
