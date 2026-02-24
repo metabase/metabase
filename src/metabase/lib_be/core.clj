@@ -5,6 +5,7 @@
    [metabase.lib-be.metadata.jvm]
    [metabase.lib-be.models.transforms]
    [metabase.lib-be.settings]
+   [metabase.lib-be.swap-source]
    [potemkin :as p]))
 
 (comment
@@ -12,7 +13,8 @@
   metabase.lib-be.metadata.bootstrap/keep-me
   metabase.lib-be.metadata.jvm/keep-me
   metabase.lib-be.models.transforms/keep-me
-  metabase.lib-be.settings/keep-me)
+  metabase.lib-be.settings/keep-me
+  metabase.lib-be.swap-source/keep-me)
 
 (p/import-vars
  [metabase.lib-be.hash
@@ -32,4 +34,6 @@
   breakout-bin-width
   breakout-bins-num
   enable-nested-queries
-  start-of-week])
+  start-of-week]
+ [metabase.lib-be.swap-source
+  swap-source-in-query])

@@ -1,4 +1,4 @@
-(ns metabase.lib_be.swap-source
+(ns metabase.lib-be.swap-source
   (:require
    [metabase.lib.equality :as lib.equality]
    [metabase.lib.field :as lib.field]
@@ -14,16 +14,23 @@
    [metabase.util :as u]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
-   [metabase.util.performance :refer [mapv]]))
+   [metabase.util.performance  :as perf]))
 
-(mr/def ::source-type [:enum :table :card])
+(mr/def ::swap-source.type [:enum :table :card])
 
-(mr/def ::swap-source-options
+(mr/def ::swap-source.source
+  [:multi {:dispatch :type}
+   [:table [:map
+            [:type [:= :table]]
+            [:id ::id/table]]]
+   [:card  [:map
+            [:type [:= :card]]
+            [:id ::id/card]]]])
+
+(mr/def ::swap-source.options
   [:map
-   [:source-type ::source-type]
-   [:source-id [:or ::id/table ::id/card]]
-   [:target-type ::source-type]
-   [:target-id [:or ::id/table ::id/card]]])
+   [:source ::swap-source.source]
+   [:target ::swap-source.source]])
 
 (defn- walk-clause-field-refs
   [clause f]
@@ -50,9 +57,9 @@
    clauses      :- [:sequential :any]
    columns      :- [:sequential ::lib.schema.metadata/column]
    column-fn    :- fn?]
-  (mapv (fn [clause]
-          (walk-clause-field-refs clause #(update-field-ref query stage-number % columns column-fn)))
-        clauses))
+  (perf/mapv (fn [clause]
+               (walk-clause-field-refs clause #(update-field-ref query stage-number % columns column-fn)))
+             clauses))
 
 (mu/defn- update-field-refs-in-join :- ::lib.schema.join/join
   [query        :- ::lib.schema/query
@@ -70,7 +77,7 @@
    joins        :- [:sequential ::lib.schema.join/join]
    columns      :- [:sequential ::lib.schema.metadata/column]
    column-fn    :- fn?]
-  (mapv #(update-field-refs-in-join query stage-number % columns column-fn) joins))
+  (perf/mapv #(update-field-refs-in-join query stage-number % columns column-fn) joins))
 
 (mu/defn- update-field-refs-in-stage :- ::lib.schema/stage
   [query        :- ::lib.schema/query
@@ -98,38 +105,40 @@
                                              (update-field-refs-in-stage query stage-number column-fn))
                                            %))))
 
-(mu/defn- source-key :- [:enum :source-table :source-card]
-  [type :- ::source-type]
+(mu/defn- source-table-or-card-key :- [:enum :source-table :source-card]
+  [{:keys [type]} :- ::swap-source.source]
   (case type
     :table :source-table
-    :card :source-card))
+    :card  :source-card))
 
 (mu/defn- update-source-in-clause :- [:or ::lib.schema/stage ::lib.schema.join/join]
   [clause  :- [:or ::lib.schema/stage ::lib.schema.join/join]
-   options :- ::swap-source-options]
-  (let [source-key (source-key (:source-type options))
-        target-key (source-key (:target-type options))]
-    (if (= (:source-id options) (get clause source-key))
+   options :- ::swap-source.options]
+  (let [source     (:source options)
+        target     (:target options)
+        source-key (source-table-or-card-key source)
+        target-key (source-table-or-card-key target)]
+    (if (= (:id source) (get clause source-key))
       (-> clause
           (dissoc source-key)
-          (assoc target-key (:target-id options)))
+          (assoc target-key (:id target)))
       clause)))
 
 (mu/defn- update-source-in-stage :- ::lib.schema/stage
   [stage   :- ::lib.schema/stage
-   options :- ::swap-source-options]
+   options :- ::swap-source.options]
   (-> stage
       (update-source-in-clause options)
-      (u/update-some :joins #(mapv #(update-source-in-clause % options) %))))
+      (u/update-some :joins (fn [joins] (perf/mapv #(update-source-in-clause % options) joins)))))
 
 (mu/defn- update-source-in-query :- ::lib.schema/query
   [query   :- ::lib.schema/query
-   options :- ::swap-source-options]
-  (update query :stages (fn [stages] (mapv #(update-source-in-stage % options) stages))))
+   options :- ::swap-source.options]
+  (update query :stages (fn [stages] (perf/mapv #(update-source-in-stage % options) stages))))
 
 (mu/defn swap-source-in-query :- ::lib.schema/query
   [query   :- ::lib.schema/query
-   options :- ::swap-source-options]
+   options :- ::swap-source.options]
   (-> query
       (update-field-refs-in-query #(dissoc % :id))
       (update-source-in-query options)
