@@ -145,7 +145,7 @@ describe("Native SQL generation", () => {
 
       cy.log("manually editing query to add reviews extracts reviews table");
       H.NativeEditor.get().click();
-      H.NativeEditor.get().realPress([metaKey, "a"]);
+      H.NativeEditor.get().realPress([H.metaKey, "a"]);
       H.NativeEditor.get().realPress("Backspace");
       H.NativeEditor.type(
         "SELECT * FROM ORDERS JOIN REVIEWS ON ORDERS.PRODUCT_ID = REVIEWS.PRODUCT_ID",
