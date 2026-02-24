@@ -7,7 +7,7 @@ import {
   screen,
 } from "__support__/ui";
 import * as Lib from "metabase-lib";
-import { SAMPLE_DATABASE, SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
+import { SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
 import { createMockCard } from "metabase-types/api/mocks";
 import { ORDERS_ID } from "metabase-types/api/mocks/presets";
 import {

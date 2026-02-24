@@ -1,5 +1,6 @@
 import * as Lib from "metabase-lib";
 import { ORDERS_ID } from "metabase-types/api/mocks/presets";
+
 import { SAMPLE_PROVIDER } from "./test-helpers";
 
 describe("findColumnIndexesFromLegacyRefs", () => {

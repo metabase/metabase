@@ -10,8 +10,9 @@ import {
   within,
 } from "__support__/ui";
 import * as Lib from "metabase-lib";
-import { SAMPLE_DATABASE, SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
+import { SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
 import Question from "metabase-lib/v1/Question";
+import type { TemporalUnit } from "metabase-types/api";
 import { createMockCard } from "metabase-types/api/mocks";
 import {
   ORDERS_ID,
@@ -24,7 +25,6 @@ import { DEFAULT_QUESTION, createMockNotebookStep } from "../../test-utils";
 import type { NotebookStep } from "../../types";
 
 import { BreakoutStep } from "./BreakoutStep";
-import { TemporalUnit } from "metabase-types/api";
 
 function createQueryWithBreakout() {
   return Lib.createTestQuery(SAMPLE_PROVIDER, {

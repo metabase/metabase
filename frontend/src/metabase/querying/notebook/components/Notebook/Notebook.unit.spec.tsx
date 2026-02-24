@@ -1,5 +1,4 @@
 import userEvent from "@testing-library/user-event";
-import * as Lib from "metabase-lib";
 
 import {
   setupCollectionByIdEndpoint,
@@ -29,11 +28,8 @@ import {
 } from "metabase/browse/models/test-utils";
 import type { DataPickerValue } from "metabase/common/components/Pickers/DataPicker";
 import { checkNotNull } from "metabase/lib/types";
-import {
-  SAMPLE_DATABASE,
-  SAMPLE_METADATA,
-  SAMPLE_PROVIDER,
-} from "metabase-lib/test-helpers";
+import * as Lib from "metabase-lib";
+import { SAMPLE_METADATA, SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
 import Question from "metabase-lib/v1/Question";
 import type { CardType, RecentItem } from "metabase-types/api";
 import {

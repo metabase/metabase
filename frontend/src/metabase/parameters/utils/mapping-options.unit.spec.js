@@ -1,9 +1,6 @@
 import { createMockMetadata } from "__support__/metadata";
-import {
-  SAMPLE_DATABASE,
-  SAMPLE_METADATA,
-  SAMPLE_PROVIDER,
-} from "metabase-lib/test-helpers";
+import * as Lib from "metabase-lib";
+import { SAMPLE_METADATA, SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
 import Question from "metabase-lib/v1/Question";
 import {
   createMockCard,

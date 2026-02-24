@@ -1,7 +1,7 @@
 import { createMockMetadata } from "__support__/metadata";
 import { checkNotNull } from "metabase/lib/types";
 import * as Lib from "metabase-lib";
-import { SAMPLE_DATABASE, SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
+import { SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
 import Question from "metabase-lib/v1/Question";
 import type { StructuredQuery as StructuredQueryObject } from "metabase-types/api";
 import {
