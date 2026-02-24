@@ -36,6 +36,7 @@ const { activate, deactivate } = defineExtension((context) => {
   window.registerTreeDataProvider("metabase.connection", connectionProvider);
   window.registerTreeDataProvider("metabase.dataCatalog", catalogProvider);
   window.registerTreeDataProvider("metabase.content", contentProvider);
+  window.showInformationMessage(`Host: ${config.host}`)
 
   useCommand('metastudio.setHost', async () => {
     const current = config.host ?? ''
