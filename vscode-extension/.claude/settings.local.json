@@ -1,0 +1,20 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npx tsdown:*)",
+      "Bash(npm ls:*)",
+      "Bash(node:*)",
+      "WebSearch",
+      "WebFetch(domain:kermanx.com)",
+      "WebFetch(domain:github.com)",
+      "WebFetch(domain:hawkticehurst.com)",
+      "WebFetch(domain:githubnext.com)",
+      "WebFetch(domain:www.kenmuse.com)",
+      "WebFetch(domain:code.visualstudio.com)",
+      "WebFetch(domain:www.eliostruyf.com)",
+      "WebFetch(domain:dev.to)",
+      "WebFetch(domain:medium.com)",
+      "WebFetch(domain:vogella.com)"
+    ]
+  }
+}

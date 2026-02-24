@@ -1,0 +1,31 @@
+<svg width="24" height="28" viewBox="-19 -23 249 302" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Metabase dot logo - monochrome for VS Code sidebar -->
+  <!-- Row 0 -->
+  <circle cx="105.51" cy="15.55" r="15.55" fill="#C8C8C8" opacity="0.6"/>
+  <!-- Row 1 -->
+  <circle cx="15.55" cy="60.53" r="15.55" fill="#C8C8C8"/>
+  <circle cx="60.53" cy="60.53" r="15.55" fill="#C8C8C8" opacity="0.6"/>
+  <circle cx="105.51" cy="60.53" r="15.55" fill="#C8C8C8" opacity="0.6"/>
+  <circle cx="150.49" cy="60.53" r="15.55" fill="#C8C8C8" opacity="0.6"/>
+  <circle cx="195.47" cy="60.53" r="15.55" fill="#C8C8C8"/>
+  <!-- Row 2 -->
+  <circle cx="15.55" cy="105.51" r="15.55" fill="#C8C8C8"/>
+  <circle cx="60.53" cy="105.51" r="15.55" fill="#C8C8C8"/>
+  <circle cx="105.51" cy="105.51" r="15.55" fill="#C8C8C8" opacity="0.6"/>
+  <circle cx="150.49" cy="105.51" r="15.55" fill="#C8C8C8"/>
+  <circle cx="195.47" cy="105.51" r="15.55" fill="#C8C8C8"/>
+  <!-- Row 3 -->
+  <circle cx="15.55" cy="150.49" r="15.55" fill="#C8C8C8"/>
+  <circle cx="60.53" cy="150.49" r="15.55" fill="#C8C8C8" opacity="0.6"/>
+  <circle cx="105.51" cy="150.49" r="15.55" fill="#C8C8C8"/>
+  <circle cx="150.49" cy="150.49" r="15.55" fill="#C8C8C8" opacity="0.6"/>
+  <circle cx="195.47" cy="150.49" r="15.55" fill="#C8C8C8"/>
+  <!-- Row 4 -->
+  <circle cx="15.55" cy="195.47" r="15.55" fill="#C8C8C8"/>
+  <circle cx="60.53" cy="195.47" r="15.55" fill="#C8C8C8" opacity="0.6"/>
+  <circle cx="105.51" cy="195.47" r="15.55" fill="#C8C8C8" opacity="0.6"/>
+  <circle cx="150.49" cy="195.47" r="15.55" fill="#C8C8C8" opacity="0.6"/>
+  <circle cx="195.47" cy="195.47" r="15.55" fill="#C8C8C8"/>
+  <!-- Row 5 -->
+  <circle cx="105.51" cy="240.45" r="15.55" fill="#C8C8C8" opacity="0.6"/>
+</svg>

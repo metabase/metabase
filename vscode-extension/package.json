@@ -33,11 +33,27 @@
   "engines": {
     "vscode": "^1.97.0"
   },
-  "activationEvents": [
-    "onStartupFinished"
-  ],
+  "activationEvents": [],
   "contributes": {
     "commands": [],
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "metabase",
+          "title": "Metabase",
+          "icon": "res/sidebar-icon.svg"
+        }
+      ]
+    },
+    "views": {
+      "metabase": [
+        {
+          "type": "webview",
+          "id": "metabase.sidebarPanel",
+          "name": "Metabase"
+        }
+      ]
+    },
     "configuration": {
       "type": "object",
       "title": "ext-name",
@@ -45,8 +61,11 @@
     }
   },
   "scripts": {
-    "build": "tsdown src/index.ts --external vscode",
-    "dev": "nr build --watch --sourcemap",
+    "build": "nr build:ext && nr build:webview",
+    "build:ext": "tsdown src/index.ts --external vscode",
+    "build:webview": "cd webview && vite build",
+    "dev": "nr build:ext --watch --sourcemap",
+    "dev:webview": "cd webview && vite",
     "prepare": "nr update",
     "update": "vscode-ext-gen --output src/generated/meta.ts",
     "lint": "eslint .",
@@ -61,11 +80,16 @@
     "@antfu/eslint-config": "^6.7.3",
     "@antfu/ni": "^28.0.0",
     "@types/node": "^25.0.3",
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0",
     "@types/vscode": "^1.97.0",
+    "@vitejs/plugin-react": "^4.4.0",
     "@vscode/vsce": "^3.7.1",
     "bumpp": "^10.3.2",
     "eslint": "^9.39.2",
     "ovsx": "^0.10.7",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
     "reactive-vscode": "^1.0.0-beta.2",
     "taze": "^19.9.2",
     "tsdown": "^0.19.0-beta.3",
@@ -73,6 +97,7 @@
     "vite": "^7.3.0",
     "vitest": "^4.0.16",
     "vscode-ext-gen": "^1.5.1",
-    "vsxpub": "^0.1.2"
+    "vsxpub": "^0.1.2",
+    "yaml": "^2.8.2"
   }
 }
