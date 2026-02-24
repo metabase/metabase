@@ -349,8 +349,8 @@
                :base-type                        :type/Number
                :lib/source-uuid                  string?
                :lib/type                         :metadata/column
-               :metabase.lib.field/binning       {:strategy :num-bins, :num-bins 10, :bin-width 5, :min-value -100, :max-value 100}
-               :metabase.lib.field/temporal-unit :month}
+               :lib/binning       {:strategy :num-bins, :num-bins 10, :bin-width 5, :min-value -100, :max-value 100}
+               :lib/temporal-unit :month}
               (lib.field.resolution/resolve-field-ref query -1 (first (lib/fields query -1)))))
       (is (=? [{:display-name "Price: 10 bins: Month"}]
               (lib/returned-columns query -1))))))
@@ -373,8 +373,8 @@
                 :lib/original-display-name                         "Name"
                 :lib/original-name                                 "NAME"
                 :lib/source-uuid                                   string?
-                :metabase.lib.join/join-alias                      "Categories"
-                :metabase.lib.query/transformation-added-base-type true})
+                :lib/join-alias                      "Categories"
+                :lib/transformation-added-base-type true})
               (lib.field.resolution/resolve-field-ref query -1 (first (lib/fields query -1))))))))
 
 (deftest ^:parallel ref-test
@@ -470,9 +470,9 @@
                      :lib/source                       :source/card
                      :lib/source-uuid                  string?
                      :lib/type                         :metadata/column
-                     :metabase.lib.field/binning       (symbol "nil #_\"key is not present.\"")
-                     :metabase.lib.field/temporal-unit (symbol "nil #_\"key is not present.\"")
-                     :metabase.lib.join/join-alias     (symbol "nil #_\"key is not present.\"")}
+                     :lib/binning       (symbol "nil #_\"key is not present.\"")
+                     :lib/temporal-unit (symbol "nil #_\"key is not present.\"")
+                     :lib/join-alias     (symbol "nil #_\"key is not present.\"")}
           field-ref [:field {:lib/uuid (str (random-uuid)), :base-type :type/Text} "C__NAME"]]
       (binding [lib.metadata.calculation/*display-name-style* :long]
         (testing "with model as :source-card (current-stage-source-card-metadata pathway)"
@@ -514,7 +514,7 @@
                  :lib/breakout?                true
                  :lib/source-uuid              (lib.options/uuid breakout-ref)
                  :lib/type                     :metadata/column
-                 :metabase.lib.join/join-alias (symbol "nil #_\"key is not present.\"")
+                 :lib/join-alias (symbol "nil #_\"key is not present.\"")
                  :name                         "CATEGORY"
                  :preview-display              true
                  :semantic-type                :type/Category
@@ -535,7 +535,7 @@
                :lib/source                   :source/joins
                :lib/source-column-alias      "CATEGORY"
                :lib/original-join-alias      "Products"
-               :metabase.lib.join/join-alias "Products"}
+               :lib/join-alias "Products"}
               (lib.field.resolution/resolve-field-ref query -1 broken-ref))))))
 
 (deftest ^:parallel explict-join-against-implicit-join-test
@@ -704,7 +704,7 @@
           (testing "first stage (from Card 1)"
             (is (=? {:name                         "RATING"
                      :display-name                 "Product → Rating"
-                     :metabase.lib.join/join-alias "Product"}
+                     :lib/join-alias "Product"}
                     (m/find-first #(= (:name %) "RATING")
                                   (stage-cols 0)))))
           (testing "second stage (from Card 2)"
@@ -1000,11 +1000,11 @@
           ;; out anyway.
           bad-ref [:field {:base-type :type/UUID, :lib/uuid "00000000-0000-0000-0000-000000000000"} #_dogs.id 4]]
       (testing "Resolve in join in current stage"
-        (is (=? {:metabase.lib.join/join-alias "d"}
+        (is (=? {:lib/join-alias "d"}
                 (lib.field.resolution/resolve-field-ref query -1 bad-ref))))
       (testing "Resolve in join in previous stage"
         (is (=? {:lib/original-join-alias      "d"
-                 :metabase.lib.join/join-alias (symbol "nil #_\"key is not present.\"")}
+                 :lib/join-alias (symbol "nil #_\"key is not present.\"")}
                 (lib.field.resolution/resolve-field-ref (lib/append-stage query) -1 bad-ref)))))))
 
 (deftest ^:parallel resolve-id-ref-to-correct-column-test
@@ -1259,7 +1259,7 @@
                :id                           (meta/id :categories :name)
                :name                         "NAME"
                :lib/original-join-alias      "Cat"
-               :metabase.lib.join/join-alias (symbol "nil #_\"key is not present.\"")
+               :lib/join-alias (symbol "nil #_\"key is not present.\"")
                :lib/source-column-alias      "Cat__NAME"
                :lib/desired-column-alias     (symbol "nil #_\"key is not present.\"")}
               (lib.field.resolution/resolve-field-ref query -1 bad-ref))))))
@@ -1514,7 +1514,7 @@
                      :lib/original-name            "NAME"
                      :lib/source                   :source/joins
                      :lib/source-column-alias      "CATEGORIES__via__ID__NAME"
-                     :metabase.lib.join/join-alias "J"}
+                     :lib/join-alias "J"}
                     (lib.field.resolution/resolve-field-ref query 0 field-ref)))))
         (testing "CATEGORY_ID"
           (let [field-ref (field-ref (meta/id :venues :category-id))]
@@ -1527,7 +1527,7 @@
                      :lib/original-name            "NAME"
                      :lib/source                   :source/joins
                      :lib/source-column-alias      "CATEGORIES__via__CATEGORY_ID__NAME"
-                     :metabase.lib.join/join-alias "J"}
+                     :lib/join-alias "J"}
                     (lib.field.resolution/resolve-field-ref query 0 field-ref)))))))))
 
 (deftest ^:parallel resolve-implicit-column-test
@@ -1585,7 +1585,7 @@
                 :database (meta/id)})]
     (is (=? {:id                                       (meta/id :orders :id)
              :table-id                                 (meta/id :orders)
-             :metabase.lib.join/join-alias             "Q1"
+             :lib/join-alias             "Q1"
              :lib/source-column-alias                  "O__ID"
              ::lib.field.resolution/fallback-metadata? (symbol "nil #_\"key is not present.\"")}
             (lib.field.resolution/resolve-field-ref query -1 [:field {:base-type  :type/Integer

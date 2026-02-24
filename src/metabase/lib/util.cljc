@@ -79,14 +79,14 @@
        (lib.hierarchy/isa? (first clause) ::lib.schema.ref/ref)))
 
 ;;; TODO (Cam 8/28/25) -- base type is the original effective type!!! We shouldn't need a separate
-;;; `:metabase.lib.field/original-effective-type` key.
+;;; `:lib/original-effective-type` key.
 (defn original-isa?
   "Returns whether the type of `expression` isa? `typ`.
    If the expression has an original-effective-type due to bucketing, check that."
   [expression typ]
   (isa?
    (or (and (clause? expression)
-            ((some-fn :metabase.lib.field/original-effective-type :effective-type :base-type) (lib.options/options expression)))
+            ((some-fn :lib/original-effective-type :effective-type :base-type) (lib.options/options expression)))
        (lib.schema.expression/type-of-resolved expression))
    typ))
 
