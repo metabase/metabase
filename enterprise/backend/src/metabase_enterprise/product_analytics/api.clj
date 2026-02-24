@@ -57,7 +57,7 @@
   [_route-params
    _query-params
    {:keys [name allowed_domains]} :- CreateSiteRequest]
-  (let [site-uuid (str (java.util.UUID/randomUUID))
+  (let [site-uuid (str (random-uuid))
         site      (t2/insert-returning-instance! :model/ProductAnalyticsSite
                                                  {:name            name
                                                   :uuid            site-uuid
