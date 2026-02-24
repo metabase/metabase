@@ -7,7 +7,9 @@
 
 <!-- configs -->
 
-**No data**
+| Key               | Description           | Type     | Default |
+| ----------------- | --------------------- | -------- | ------- |
+| `metastudio.host` | Metabase instance URL | `string` | `""`    |
 
 <!-- configs -->
 
@@ -15,7 +17,10 @@
 
 <!-- commands -->
 
-**No data**
+| Command                      | Title                                 |
+| ---------------------------- | ------------------------------------- |
+| `metastudio.setApiKey`       | Metastudio: Set API Key               |
+| `metastudio.checkConnection` | Metastudio: Check Metabase Connection |
 
 <!-- commands -->
 

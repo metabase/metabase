@@ -1,24 +1,20 @@
 {
-  "publisher": "antfu",
-  "name": "ext-name",
-  "displayName": "ext-name",
-  "version": "0.0.0",
+  "publisher": "metabase",
+  "name": "metastudio",
+  "displayName": "Metastudio",
+  "version": "0.1.0",
   "private": true,
   "packageManager": "pnpm@10.27.0",
-  "description": "",
-  "author": "Anthony Fu <anthonyfu117@hotmail.com>",
+  "description": "Metabase Studio extension for VS Code",
+  "author": "Metabase",
   "license": "MIT",
-  "funding": "https://github.com/sponsors/antfu",
-  "homepage": "https://github.com/antfu/ext-name#readme",
+  "homepage": "https://github.com/metabase/metabase",
   "repository": {
     "type": "git",
-    "url": "https://github.com/antfu/ext-name"
+    "url": "https://github.com/metabase/metabase"
   },
   "bugs": {
-    "url": "https://github.com/antfu/ext-name/issues"
-  },
-  "sponsor": {
-    "url": "https://github.com/sponsors/antfu"
+    "url": "https://github.com/metabase/metabase/issues"
   },
   "categories": [
     "Other"
@@ -35,7 +31,46 @@
   },
   "activationEvents": [],
   "contributes": {
-    "commands": [],
+    "commands": [
+      {
+        "command": "metastudio.setApiKey",
+        "title": "Metastudio: Set API Key"
+      },
+      {
+        "command": "metastudio.checkConnection",
+        "title": "Metastudio: Check Metabase Connection"
+      }
+    ],
+    "walkthroughs": [
+      {
+        "id": "metastudio-setup",
+        "title": "Get Started with Metastudio",
+        "description": "Connect your Metabase instance to VS Code",
+        "steps": [
+          {
+            "id": "configure-host",
+            "title": "Configure Metabase Host",
+            "description": "Set the URL of your Metabase instance.\n\n[Open Settings](command:workbench.action.openSettings?%5B%22metastudio.host%22%5D)",
+            "media": { "markdown": "media/configure-host.md" },
+            "completionEvents": ["onSettingChanged:metastudio.host"]
+          },
+          {
+            "id": "set-api-key",
+            "title": "Set API Key",
+            "description": "Securely store your Metabase API key.\n\n[Set API Key](command:metastudio.setApiKey)",
+            "media": { "markdown": "media/set-api-key.md" },
+            "completionEvents": ["onCommand:metastudio.setApiKey"]
+          },
+          {
+            "id": "check-connection",
+            "title": "Check Connection",
+            "description": "Verify that Metastudio can connect to your Metabase instance.\n\n[Check Connection](command:metastudio.checkConnection)",
+            "media": { "markdown": "media/check-connection.md" },
+            "completionEvents": ["onCommand:metastudio.checkConnection"]
+          }
+        ]
+      }
+    ],
     "viewsContainers": {
       "activitybar": [
         {
@@ -71,8 +106,15 @@
     ],
     "configuration": {
       "type": "object",
-      "title": "ext-name",
-      "properties": {}
+      "title": "Metastudio",
+      "properties": {
+        "metastudio.host": {
+          "type": "string",
+          "format": "uri",
+          "default": "",
+          "description": "Metabase instance URL"
+        }
+      }
     }
   },
   "scripts": {
