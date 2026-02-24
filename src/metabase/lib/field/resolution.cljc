@@ -430,12 +430,13 @@
   ;; don't resolve name refs using [[field-metadata]] here, because it can cause us to trip up when there are multiple
   ;; fks to the same table. See
   ;; [[metabase.lib.field.resolution-test/multiple-remaps-between-tables-test]]
-  (when-some [col (or (field-metadata query nil id-or-name)
-                      (resolve-name-in-implicit-join-this-stage query source-field-id id-or-name))]
+  (let [source-field (lib.metadata/field query source-field-id)]
+    (when-some [col (or (field-metadata query (:table-id source-field) id-or-name)
+                        (resolve-name-in-implicit-join-this-stage query source-field-id id-or-name))]
     ;; if we managed to resolve it then update metadata appropriately.
-    (assoc col
-           :lib/source :source/implicitly-joinable
-           :fk-field-id source-field-id)))
+      (assoc col
+             :lib/source :source/implicitly-joinable
+             :fk-field-id source-field-id))))
 
 ;;; See for
 ;;; example [[metabase.query-processor.field-ref-repro-test/model-with-implicit-join-and-external-remapping-test]],

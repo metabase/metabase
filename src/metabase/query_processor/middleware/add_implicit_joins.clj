@@ -130,7 +130,7 @@
   (let [fk-field-infos (->> field-clauses-with-source-field
                             (keep (fn [clause]
                                     (lib.util.match/match-lite clause
-                                      [:field (opts :guard (and (:source-field opts) (not (:join-alias opts)))) (id :guard integer?)]
+                                      [:field (opts :guard (and (:source-field opts) (not (:join-alias opts)))) _id-or-name]
                                       (field-opts->fk-field-info metadata-providerable opts))))
                             distinct
                             not-empty)
