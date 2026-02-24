@@ -2,6 +2,7 @@
   height: 100%;
   display: flex;
   flex-direction: column;
+  position: relative;
 }
 
 .editorContent {
@@ -210,4 +211,58 @@
     box-shadow: 0 0 0 1px var(--mb-color-brand);
     border-radius: var(--mantine-radius-xs);
   }
+}
+
+/* Give a remote user a caret */
+:global(.collaboration-carets__caret) {
+  border-left: 1px solid var(--mb-color-text-dark);
+  border-right: 1px solid var(--mb-color-text-dark);
+  margin-left: -1px;
+  margin-right: -1px;
+  pointer-events: none;
+  position: relative;
+  word-break: normal;
+}
+
+/* Render the username above the caret */
+:global(.collaboration-carets__label) {
+  display: flex;
+  border-radius: 3px 3px 3px 0;
+  color: var(--mb-color-text-dark);
+  font-size: 14px;
+  font-style: normal;
+  font-weight: 600;
+  left: -1px;
+  line-height: normal;
+  padding: 0.1rem 0.3rem;
+  position: absolute;
+  top: -1.4em;
+  user-select: none;
+  white-space: nowrap;
+}
+
+.userCountDisplay {
+  position: absolute;
+  top: 0;
+  left: 100%;
+  transform: translate(-100%, -100%);
+  /* background-color: var(--mb-color-bg-light);
+  border-bottom: 1px solid var(--mb-color-border);
+  color: var(--mb-color-text-medium); */
+  font-size: 0.875rem;
+  font-weight: 500;
+  padding: 8px 16px;
+  display: flex;
+  justify-content: right;
+  align-items: right;
+}
+
+.usersList {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+.usersList > div {
+  --avatar-color: var(--mb-color-text-dark) !important;
 }

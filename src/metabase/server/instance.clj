@@ -11,12 +11,15 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [ring.adapter.jetty :as ring-jetty]
-   [ring.util.jakarta.servlet :as servlet])
+   [ring.util.jakarta.servlet :as servlet]
+   [ring.websocket :as ring.ws])
   (:import
    (jakarta.servlet AsyncContext)
    (jakarta.servlet.http HttpServletRequest HttpServletResponse)
    (org.eclipse.jetty.ee9.nested Request)
    (org.eclipse.jetty.ee9.servlet ServletContextHandler ServletHandler)
+   (org.eclipse.jetty.ee9.websocket.server.config
+    JettyWebSocketServletContainerInitializer)
    (org.eclipse.jetty.server Server)))
 
 (set! *warn-on-reflection* true)
@@ -82,11 +85,14 @@
           (handler
            request-map
            (fn [response-map]
-             (server.protocols/respond (:body response-map) {:request       request
-                                                             :request-map   request-map
-                                                             :async-context context
-                                                             :response      response
-                                                             :response-map  response-map}))
+             (if (ring.ws/websocket-response? response-map)
+               (do (#'ring-jetty/upgrade-to-websocket request response response-map {})
+                   (.complete context))
+               (server.protocols/respond (:body response-map) {:request       request
+                                                               :request-map   request-map
+                                                               :async-context context
+                                                               :response      response
+                                                               :response-map  response-map})))
            raise)
           (catch Throwable e
             (log/error e "Unexpected Exception in API request handler")
@@ -106,6 +112,7 @@
         handler         (async-proxy-handler handler timeout)
         servlet-handler (doto (ServletContextHandler.)
                           (.setAllowNullPathInfo true)
+                          (JettyWebSocketServletContainerInitializer/configure nil)
                           (.insertHandler (statistics-handler/new-handler))
                           (.setServletHandler handler))]
     (doto ^Server (#'ring-jetty/create-server (assoc options :async? true))

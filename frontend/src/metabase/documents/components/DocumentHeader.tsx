@@ -7,6 +7,7 @@ import {
   getFormattedTime,
 } from "metabase/common/components/DateTime";
 import { useSetting } from "metabase/common/hooks";
+import { useHasReleaseFlag } from "metabase/common/hooks/use-has-release-flag/use-has-release-flag";
 import CS from "metabase/css/core/index.css";
 import { isWithinIframe } from "metabase/lib/dom";
 import { useSelector } from "metabase/lib/redux";
@@ -73,6 +74,7 @@ export const DocumentHeader = ({
   onShowHistory,
   hasComments = false,
 }: DocumentHeaderProps) => {
+  const hasCollab = useHasReleaseFlag("document-collaboration");
   const isPublicSharingEnabled = useSetting("enable-public-sharing");
   const isAdmin = useSelector(getUserIsAdmin);
   const [isPublicLinkPopoverOpen, setIsPublicLinkPopoverOpen] = useState(false);
@@ -141,24 +143,26 @@ export const DocumentHeader = ({
         )}
       </Flex>
       <Flex gap="md" align="center" className={S.actionsContainer}>
-        <Transition
-          mounted={showSaveButton}
-          transition={saveButtonTransition}
-          duration={200}
-          keepMounted
-        >
-          {(style) => (
-            <Box
-              style={
-                style.display === "none" ? saveButtonTransition.out : style
-              }
-            >
-              <Button onClick={onSave} variant="filled" data-hide-on-print>
-                {t`Save`}
-              </Button>
-            </Box>
-          )}
-        </Transition>
+        {hasCollab && !isNewDocument ? null : (
+          <Transition
+            mounted={showSaveButton}
+            transition={saveButtonTransition}
+            duration={200}
+            keepMounted
+          >
+            {(style) => (
+              <Box
+                style={
+                  style.display === "none" ? saveButtonTransition.out : style
+                }
+              >
+                <Button onClick={onSave} variant="filled" data-hide-on-print>
+                  {t`Save`}
+                </Button>
+              </Box>
+            )}
+          </Transition>
+        )}
         {!isNewDocument && hasComments && !isWithinIframe() && (
           <Tooltip label={t`Show all comments`}>
             <Box>

@@ -1,4 +1,4 @@
-export type ReleaseFlag = "joke-of-the-day";
+export type ReleaseFlag = "joke-of-the-day" | "document-collaboration";
 
 export type ReleaseFlagInfo = {
   is_enabled: boolean;

@@ -1,13 +1,17 @@
+import type { HocuspocusProvider } from "@hocuspocus/provider";
+import Collaboration from "@tiptap/extension-collaboration";
+import CollaborationCaret from "@tiptap/extension-collaboration-caret";
 import Image from "@tiptap/extension-image";
 import { Placeholder } from "@tiptap/extension-placeholder";
 import type { JSONContent, Editor as TiptapEditor } from "@tiptap/react";
 import { EditorContent, useEditor } from "@tiptap/react";
 import cx from "classnames";
 import type React from "react";
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useLatest, usePrevious } from "react-use";
 import { t } from "ttag";
 
+import { getCurrentUser } from "metabase/admin/datamodel/selectors";
 import { DND_IGNORE_CLASS_NAME } from "metabase/common/components/dnd";
 import { getMentionsCache } from "metabase/documents/selectors";
 import { isMetabotBlock } from "metabase/documents/utils/editorNodeUtils";
@@ -38,11 +42,12 @@ import { SupportingText } from "metabase/rich_text_editing/tiptap/extensions/Sup
 import { DROP_ZONE_COLOR } from "metabase/rich_text_editing/tiptap/extensions/shared/constants";
 import { createSuggestionRenderer } from "metabase/rich_text_editing/tiptap/extensions/suggestionRenderer";
 import { getSetting } from "metabase/selectors/settings";
-import { Box, Loader } from "metabase/ui";
+import { Avatar, Box, Flex, Loader, Tooltip } from "metabase/ui";
 import type { State } from "metabase-types/store";
 import type { CardEmbedRef } from "metabase-types/store/documents";
 
 import S from "./Editor.module.css";
+import { colors } from "./collab";
 import { useCardEmbedsTracking, useQuestionSelection } from "./hooks";
 
 const BUBBLE_MENU_DISALLOWED_NODES: string[] = [
@@ -56,6 +61,8 @@ const BUBBLE_MENU_DISALLOWED_NODES: string[] = [
 const BUBBLE_MENU_DISALLOWED_FULLY_SELECTED_NODES: string[] = [
   SupportingText.name,
 ];
+
+const MAX_ACTIVE_USERS = 5;
 
 const getMetabotPromptSerializer =
   (getState: () => State): PromptSerializer =>
@@ -92,6 +99,8 @@ export interface EditorProps {
   isLoading?: boolean;
   /** Ref to the editor container for external access (e.g., anchor scrolling) */
   editorContainerRef?: React.RefObject<HTMLDivElement>;
+  ydoc?: Y.Doc;
+  provider?: HocuspocusProvider;
 }
 
 export const Editor: React.FC<EditorProps> = ({
@@ -103,9 +112,16 @@ export const Editor: React.FC<EditorProps> = ({
   onQuestionSelect,
   isLoading = false,
   editorContainerRef,
+  ydoc,
+  provider,
 }) => {
   const siteUrl = useSelector((state) => getSetting(state, "site-url"));
   const { getState } = useStore();
+  const currentUser = useSelector(getCurrentUser);
+  const [userCount, setUserCount] = useState(0);
+  const [activeUsers, setActiveUsers] = useState<
+    Array<{ name: string; color: string }>
+  >([]);
 
   const extensions = useMemo(
     () => [
@@ -115,6 +131,7 @@ export const Editor: React.FC<EditorProps> = ({
           width: 2,
           class: DropCursorS.dropCursor,
         },
+        undoRedo: !ydoc,
       }),
       Image.configure({
         inline: false,
@@ -161,12 +178,41 @@ export const Editor: React.FC<EditorProps> = ({
       }),
       ResizeNode,
       HandleEditorDrop,
+      ...(ydoc && provider
+        ? [
+            Collaboration.extend().configure({
+              document: ydoc,
+            }),
+            CollaborationCaret.extend().configure({
+              provider,
+              render: (user: any) => {
+                const cursor = document.createElement("span");
+                cursor.classList.add("collaboration-carets__caret");
+                cursor.setAttribute("style", `border-color: ${user.color}`);
+
+                const label = document.createElement("div");
+                label.classList.add("collaboration-carets__label");
+                label.setAttribute("style", `background-color: ${user.color};`);
+                label.insertBefore(document.createTextNode(user.name), null);
+
+                cursor.insertBefore(label, null);
+
+                return cursor;
+              },
+              user: {
+                name: currentUser?.common_name,
+                color: colors[Math.floor(Math.random() * colors.length)],
+              },
+            }),
+          ]
+        : []),
     ],
-    [siteUrl, getState],
+    [siteUrl, getState, ydoc, provider, currentUser?.common_name],
   );
 
   const editor = useEditor(
     {
+      enableContentCheck: true,
       extensions,
       content: initialContent || "",
       autofocus: false,
@@ -177,6 +223,16 @@ export const Editor: React.FC<EditorProps> = ({
           const currentContent = editor.getJSON();
           onChange(currentContent);
         }
+      },
+      onContentError: ({ disableCollaboration }) => {
+        disableCollaboration();
+      },
+      onCreate: ({ editor: currentEditor }) => {
+        provider.on("synced", () => {
+          if (currentEditor.isEmpty) {
+            currentEditor.commands.setContent(initialContent || "");
+          }
+        });
       },
     },
     [],
@@ -197,6 +253,35 @@ export const Editor: React.FC<EditorProps> = ({
       });
     }
   }, [editor, initialContent, previousContentRef]);
+
+  // Track collaboration users every 100ms
+  useEffect(() => {
+    if (!editor || !provider) {
+      return;
+    }
+
+    const updateUsers = () => {
+      const users = editor.storage?.collaborationCaret?.users;
+      if (users) {
+        setUserCount(users.length);
+        // Extract user data with names and colors
+        const userData = Object.values(users).map((user: any) => ({
+          name: user.name || "Unknown",
+          color: user.color || "",
+        }));
+        setActiveUsers(userData);
+      }
+    };
+
+    // Initial update
+    updateUsers();
+
+    // Set up interval to check every 100ms
+    const interval = setInterval(updateUsers, 100);
+    return () => {
+      clearInterval(interval);
+    };
+  }, [editor, provider]);
 
   // Notify parent when editor is ready
   useEffect(() => {
@@ -229,11 +314,37 @@ export const Editor: React.FC<EditorProps> = ({
 
   return (
     <Box className={cx(S.editor, DND_IGNORE_CLASS_NAME)}>
+      {/* Active users display */}
+      {activeUsers.length > 0 && (
+        <Box className={S.userCountDisplay}>
+          <Flex align="center" gap="xs">
+            <span>{userCount}</span>
+            <span>{t`active users:`}</span>
+            <Flex gap="xs" className={S.usersList}>
+              {activeUsers.slice(0, MAX_ACTIVE_USERS).map((user, index) => (
+                <Tooltip key={index} label={user.name} withArrow position="top">
+                  <Avatar
+                    name={user.name}
+                    color={user.color}
+                    size="md"
+                    // radius="xl"
+                  />
+                </Tooltip>
+              ))}
+              {activeUsers.length > MAX_ACTIVE_USERS && (
+                <span>{t`+ ${activeUsers.length - MAX_ACTIVE_USERS} more`}</span>
+              )}
+            </Flex>
+          </Flex>
+        </Box>
+      )}
+
       <Box
         className={S.editorContent}
         ref={editorContainerRef}
         onClick={(e) => {
           // Focus editor when clicking on empty space
+
           const target = e.target as HTMLElement;
           if (
             target.classList.contains(S.editorContent) ||

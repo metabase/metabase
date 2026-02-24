@@ -172,3 +172,4 @@ CLAUDE.local.md
 /resources/python-sources/sqlglot-*.dist-info/
 __pycache__/
 
+/document_collab_server/node_modules/

@@ -1,0 +1,17 @@
+{
+  "name": "document_collab_server",
+  "version": "1.0.0",
+  "description": "",
+  "license": "ISC",
+  "author": "",
+  "type": "module",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js"
+  },
+  "dependencies": {
+    "@hocuspocus/extension-webhook": "^3.2.5",
+    "@hocuspocus/server": "^3.2.5",
+    "@hocuspocus/transformer": "^3.2.5"
+  }
+}
