@@ -8,7 +8,7 @@
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.query-processor.compile :as qp.compile]
-   [metabase.sql-tools.common :as sql-tools.common]
+   ^{:clj-kondo/ignore [:metabase/modules]} [metabase.sql-tools.common :as sql-tools.common]
    [metabase.sql-tools.core :as sql-tools]
    [metabase.util :as u]
    [metabase.util.malli :as mu]))

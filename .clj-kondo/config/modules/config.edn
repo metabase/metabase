@@ -2112,6 +2112,7 @@
            query-processor
            request
            revisions
+           sql-tools
            settings
            task
            transforms
