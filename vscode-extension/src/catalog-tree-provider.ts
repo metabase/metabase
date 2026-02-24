@@ -1,3 +1,4 @@
+import * as path from 'node:path'
 import * as vscode from 'vscode'
 import type { CatalogGraph } from './metabase-lib'
 import type { CatalogNode } from './metabase-lib'
@@ -6,6 +7,11 @@ export class CatalogTreeProvider implements vscode.TreeDataProvider<CatalogNode>
   private graph: CatalogGraph | null = null
   private changeEmitter = new vscode.EventEmitter<CatalogNode | undefined | void>()
   readonly onDidChangeTreeData = this.changeEmitter.event
+  private iconsPath: string
+
+  constructor(extensionPath: string) {
+    this.iconsPath = path.join(extensionPath, 'res', 'icons')
+  }
 
   setGraph(graph: CatalogGraph | null): void {
     this.graph = graph
@@ -19,7 +25,7 @@ export class CatalogTreeProvider implements vscode.TreeDataProvider<CatalogNode>
       : vscode.TreeItemCollapsibleState.None
     const item = new vscode.TreeItem(label, collapsible)
     item.iconPath = this.getIcon(element)
-    item.tooltip = element.description ?? undefined
+    item.tooltip = ('description' in element ? element.description : undefined) ?? undefined
 
     if ('filePath' in element && element.filePath) {
       item.command = {
@@ -62,17 +68,24 @@ export class CatalogTreeProvider implements vscode.TreeDataProvider<CatalogNode>
     }
   }
 
-  private getIcon(node: CatalogNode): vscode.ThemeIcon {
+  private iconPath(name: string): { light: vscode.Uri, dark: vscode.Uri } {
+    return {
+      light: vscode.Uri.file(path.join(this.iconsPath, 'light', `${name}.svg`)),
+      dark: vscode.Uri.file(path.join(this.iconsPath, 'dark', `${name}.svg`)),
+    }
+  }
+
+  private getIcon(node: CatalogNode): { light: vscode.Uri, dark: vscode.Uri } {
     switch (node.kind) {
-      case 'database': return new vscode.ThemeIcon('database')
-      case 'schema': return new vscode.ThemeIcon('symbol-namespace')
-      case 'table': return new vscode.ThemeIcon('symbol-class')
+      case 'database': return this.iconPath('database')
+      case 'schema': return this.iconPath('boxes')
+      case 'table': return this.iconPath('table')
       case 'field':
-        if (node.semanticType === 'type/PK') return new vscode.ThemeIcon('key')
-        if (node.semanticType === 'type/FK') return new vscode.ThemeIcon('link')
-        return new vscode.ThemeIcon('symbol-field')
-      case 'measure': return new vscode.ThemeIcon('graph-line')
-      case 'segment': return new vscode.ThemeIcon('filter')
+        if (node.semanticType === 'type/PK') return this.iconPath('key-round')
+        if (node.semanticType === 'type/FK') return this.iconPath('link')
+        return this.iconPath('hash')
+      case 'measure': return this.iconPath('chart-line')
+      case 'segment': return this.iconPath('filter')
     }
   }
 }

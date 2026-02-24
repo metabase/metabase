@@ -33,12 +33,27 @@
   "contributes": {
     "commands": [
       {
+        "command": "metastudio.setHost",
+        "title": "Metastudio: Set Host URL",
+        "icon": "$(edit)"
+      },
+      {
         "command": "metastudio.setApiKey",
-        "title": "Metastudio: Set API Key"
+        "title": "Metastudio: Set API Key",
+        "icon": "$(edit)"
       },
       {
         "command": "metastudio.checkConnection",
         "title": "Metastudio: Check Metabase Connection"
+      },
+      {
+        "command": "metastudio.clearCredentials",
+        "title": "Metastudio: Clear Credentials",
+        "icon": "$(close)"
+      },
+      {
+        "command": "metabase.checkDependencies",
+        "title": "Metabase: Check Dependencies"
       }
     ],
     "walkthroughs": [
@@ -83,12 +98,40 @@
     "views": {
       "metabase": [
         {
+          "id": "metabase.connection",
+          "name": "Connection"
+        },
+        {
           "id": "metabase.content",
           "name": "Content"
         },
         {
           "id": "metabase.dataCatalog",
           "name": "Data Catalog"
+        }
+      ]
+    },
+    "menus": {
+      "view/item/context": [
+        {
+          "command": "metastudio.setHost",
+          "when": "view == metabase.connection && viewItem == connectionUrl",
+          "group": "inline@1"
+        },
+        {
+          "command": "metastudio.setApiKey",
+          "when": "view == metabase.connection && viewItem == connectionToken",
+          "group": "inline@1"
+        },
+        {
+          "command": "metastudio.clearCredentials",
+          "when": "view == metabase.connection && viewItem == connectionUrl",
+          "group": "inline@2"
+        },
+        {
+          "command": "metastudio.clearCredentials",
+          "when": "view == metabase.connection && viewItem == connectionToken",
+          "group": "inline@2"
         }
       ]
     },

@@ -17,10 +17,13 @@
 
 <!-- commands -->
 
-| Command                      | Title                                 |
-| ---------------------------- | ------------------------------------- |
-| `metastudio.setApiKey`       | Metastudio: Set API Key               |
-| `metastudio.checkConnection` | Metastudio: Check Metabase Connection |
+| Command                       | Title                                 |
+| ----------------------------- | ------------------------------------- |
+| `metastudio.setHost`          | Metastudio: Set Host URL              |
+| `metastudio.setApiKey`        | Metastudio: Set API Key               |
+| `metastudio.checkConnection`  | Metastudio: Check Metabase Connection |
+| `metastudio.clearCredentials` | Metastudio: Clear Credentials         |
+| `metabase.checkDependencies`  | Metabase: Check Dependencies          |
 
 <!-- commands -->
 

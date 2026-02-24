@@ -1,3 +1,4 @@
+import * as path from 'node:path'
 import * as vscode from 'vscode'
 import type { ContentGraph } from './metabase-lib'
 import type { ContentNode } from './metabase-lib'
@@ -6,6 +7,11 @@ export class ContentTreeProvider implements vscode.TreeDataProvider<ContentNode>
   private graph: ContentGraph | null = null
   private changeEmitter = new vscode.EventEmitter<ContentNode | undefined | void>()
   readonly onDidChangeTreeData = this.changeEmitter.event
+  private iconsPath: string
+
+  constructor(extensionPath: string) {
+    this.iconsPath = path.join(extensionPath, 'res', 'icons')
+  }
 
   setGraph(graph: ContentGraph | null): void {
     this.graph = graph
@@ -60,18 +66,25 @@ export class ContentTreeProvider implements vscode.TreeDataProvider<ContentNode>
     )
   }
 
-  private getIcon(node: ContentNode): vscode.ThemeIcon {
+  private iconPath(name: string): { light: vscode.Uri, dark: vscode.Uri } {
+    return {
+      light: vscode.Uri.file(path.join(this.iconsPath, 'light', `${name}.svg`)),
+      dark: vscode.Uri.file(path.join(this.iconsPath, 'dark', `${name}.svg`)),
+    }
+  }
+
+  private getIcon(node: ContentNode): { light: vscode.Uri, dark: vscode.Uri } {
     switch (node.kind) {
-      case 'collection': return new vscode.ThemeIcon('folder-library')
+      case 'collection': return this.iconPath('folder')
       case 'card':
-        if (node.cardType === 'metric') return new vscode.ThemeIcon('graph-line')
-        return new vscode.ThemeIcon('file')
-      case 'dashboard': return new vscode.ThemeIcon('layout')
-      case 'native_query_snippet': return new vscode.ThemeIcon('code')
-      case 'timeline': return new vscode.ThemeIcon('calendar')
-      case 'document': return new vscode.ThemeIcon('file-text')
-      case 'transform': return new vscode.ThemeIcon('arrow-swap')
-      case 'action': return new vscode.ThemeIcon('play')
+        if (node.cardType === 'metric') return this.iconPath('chart-line')
+        return this.iconPath('file-question')
+      case 'dashboard': return this.iconPath('layout-dashboard')
+      case 'native_query_snippet': return this.iconPath('code')
+      case 'timeline': return this.iconPath('calendar')
+      case 'document': return this.iconPath('file-text')
+      case 'transform': return this.iconPath('arrow-right-left')
+      case 'action': return this.iconPath('play')
     }
   }
 }
