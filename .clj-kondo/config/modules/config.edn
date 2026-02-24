@@ -1594,10 +1594,7 @@
   {:team "DevEx"
    :api  #{metabase.tracing.attributes
            metabase.tracing.core
-           metabase.tracing.init
-           metabase.tracing.pyroscope
-           metabase.tracing.quartz
-           metabase.tracing.sdk}
+           metabase.tracing.init}
    :uses #{config
            settings
            task

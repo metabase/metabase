@@ -18,10 +18,12 @@
      MB_TRACING_GROUPS=qp,api  MB_TRACING_SERVICE_NAME=metabase-prod-1"
   (:require
    [clojure.string :as str]
-   [metabase.tracing.pyroscope :as pyroscope]
+   [metabase.util.log :as log]
    [steffan-westcott.clj-otel.api.trace.span :as span])
   (:import
    (io.opentelemetry.api.trace Span SpanContext)
+   (io.opentelemetry.sdk.trace IdGenerator)
+   (java.time Duration)
    (org.apache.logging.log4j ThreadContext)))
 
 (set! *warn-on-reflection* true)
@@ -64,7 +66,6 @@
 
 (defn init-enabled-groups!
   "Parse the tracing-groups and log-level settings and cache the results.
-   Called by `metabase.tracing.sdk/init!`.
    `log-level-str` is the MB_TRACING_LOG_LEVEL value (e.g. \"DEBUG\", \"INFO\")."
   [groups-str log-level-str]
   (let [groups-str (or groups-str "all")]
@@ -77,7 +78,7 @@
   (reset! trace-log-level (or log-level-str "INFO")))
 
 (defn shutdown-groups!
-  "Clear cached enabled groups and trace log level. Called by `metabase.tracing.sdk/shutdown!`."
+  "Clear cached enabled groups and trace log level."
   []
   (reset! enabled-groups nil)
   (reset! trace-log-level nil))
@@ -92,14 +93,14 @@
 ;;; ------------------------------------------ Forced Trace ID (Frontend) ----------------------------------------
 
 ;; ThreadLocal for per-request trace ID override from frontend traceparent header.
-;; The custom IdGenerator in tracing.sdk reads (and clears) this value when creating
-;; a root span, so the span gets the frontend's trace ID without a parent-child link
+;; The custom IdGenerator reads (and clears) this value when creating a root span,
+;; so the span gets the frontend's trace ID without a parent-child link
 ;; (which would cause "root span not yet received" in Tempo).
 (def ^:private ^ThreadLocal forced-trace-id-holder (ThreadLocal.))
 
 (defn force-trace-id!
   "Set a trace ID to be used by the next root span created on this thread.
-   Consumed (and cleared) by the custom IdGenerator in tracing.sdk."
+   Consumed (and cleared) by the custom IdGenerator."
   [^String trace-id]
   (.set forced-trace-id-holder trace-id))
 
@@ -117,7 +118,7 @@
   []
   (.remove forced-trace-id-holder))
 
-;;; -------------------------------------------- MDC Injection (Log↔Trace) -----------------------------------------
+;;; -------------------------------------------- MDC Injection (Log<->Trace) -----------------------------------------
 
 (defn inject-trace-id-into-mdc!
   "Inject current span's trace_id, span_id, and trace_level into Log4j2 MDC.
@@ -148,6 +149,86 @@
   ^io.opentelemetry.api.trace.Tracer [^String library-name]
   (let [^io.opentelemetry.api.OpenTelemetry otel ((requiring-resolve 'steffan-westcott.clj-otel.api.otel/get-default-otel!))]
     (.getTracer otel library-name)))
+
+;;; --------------------------------------------- Pyroscope Integration --------------------------------------------
+;;; Optional integration with Pyroscope continuous profiling. When pyroscope.jar is on the
+;;; classpath, tags profiling samples with span_id for trace-to-profile linking in Grafana.
+;;; All functions are no-ops when Pyroscope is not available. Uses runtime reflection only.
+
+;; PyroscopeAsyncProfiler.getAsyncProfiler() -> AsyncProfiler instance
+(defonce ^:private async-profiler-instance
+  (delay
+    (try
+      (let [factory-cls (Class/forName "io.pyroscope.PyroscopeAsyncProfiler")
+            ^java.lang.reflect.Method getter (.getMethod factory-cls "getAsyncProfiler" (make-array Class 0))]
+        (.invoke getter nil (make-array Object 0)))
+      (catch ClassNotFoundException _
+        nil)
+      (catch Exception e
+        (log/debug e "Could not resolve PyroscopeAsyncProfiler")
+        nil))))
+
+;; AsyncProfiler.setTracingContext(long spanId, long spanNameId)
+(defonce ^:private set-tracing-ctx-method
+  (delay
+    (when-let [profiler @async-profiler-instance]
+      (try
+        (.getMethod (class profiler) "setTracingContext"
+                    (into-array Class [Long/TYPE Long/TYPE]))
+        (catch NoSuchMethodException _
+          (log/debug "AsyncProfiler.setTracingContext not available")
+          nil)
+        (catch Exception _ nil)))))
+
+;; Pyroscope.LabelsWrapper.registerConstant(String) -> long
+(defonce ^:private register-constant-method
+  (delay
+    (try
+      ;; v2.x package path
+      (let [cls (Class/forName "io.pyroscope.labels.v2.Pyroscope$LabelsWrapper")]
+        (.getMethod cls "registerConstant" (into-array Class [String])))
+      (catch ClassNotFoundException _
+        (try
+          ;; v1.x package path
+          (let [cls (Class/forName "io.pyroscope.labels.Pyroscope$LabelsWrapper")]
+            (.getMethod cls "registerConstant" (into-array Class [String])))
+          (catch ClassNotFoundException _ nil)
+          (catch Exception _ nil)))
+      (catch Exception _ nil))))
+
+(defn pyroscope-available?
+  "True if Pyroscope trace-to-profile integration is available.
+   Returns true when pyroscope.jar is on the classpath and the async-profiler
+   supports setTracingContext."
+  []
+  (boolean (and @async-profiler-instance @set-tracing-ctx-method)))
+
+(defn set-pyroscope-context!
+  "Tag current thread's profiling samples with span ID and name, and set the
+   `pyroscope.profile.id` attribute on the span (for Grafana trace-to-profile linking).
+   No-op if Pyroscope is not available."
+  [^Span span ^String span-id-hex ^String span-name]
+  (when-let [^java.lang.reflect.Method method @set-tracing-ctx-method]
+    (try
+      (let [span-id-long (Long/parseUnsignedLong span-id-hex 16)
+            span-name-id (if-let [^java.lang.reflect.Method rc @register-constant-method]
+                           (long (.invoke rc nil (into-array Object [span-name])))
+                           0)]
+        (.invoke method @async-profiler-instance
+                 (into-array Object [(Long/valueOf span-id-long)
+                                     (Long/valueOf span-name-id)]))
+        (.setAttribute span "pyroscope.profile.id" span-id-hex))
+      (catch Exception e
+        (log/debug e "Error setting Pyroscope profiling context")))))
+
+(defn clear-pyroscope-context!
+  "Clear profiling context for current thread. No-op if Pyroscope is not available."
+  []
+  (when-let [^java.lang.reflect.Method method @set-tracing-ctx-method]
+    (try
+      (.invoke method @async-profiler-instance
+               (into-array Object [(Long/valueOf 0) (Long/valueOf 0)]))
+      (catch Exception _))))
 
 ;;; ------------------------------------------------ Primary Macro -------------------------------------------------
 
@@ -182,16 +263,95 @@
            (let [^Span span#                   (Span/current)
                  ^SpanContext ctx#              (.getSpanContext span#)
                  span-id#                       (.getSpanId ctx#)]
-             (pyroscope/set-profiling-context! span-id# ~span-name)
-             (when (pyroscope/available?)
-               (.setAttribute span# "pyroscope.profile.id" span-id#))))
+             (set-pyroscope-context! span# span-id# ~span-name)))
          (try
            ~@body
            (finally
              (when root-span?#
-               (pyroscope/clear-profiling-context!))
+               (clear-pyroscope-context!))
              (if prev-trace-id#
                (do (ThreadContext/put "trace_id" prev-trace-id#)
                    (ThreadContext/put "span_id" prev-span-id#))
                (clear-trace-id-from-mdc!))))))
      (do ~@body)))
+
+;;; -------------------------------------------- SDK Lifecycle -------------------------------------------------
+;;; OpenTelemetry SDK initialization and shutdown. Initializes the OTel SDK with an OTLP
+;;; span exporter for pushing traces to a collector. Has no database dependency — can be
+;;; initialized very early in the startup process.
+
+;; Holds the initialized OpenTelemetrySdk instance for manual shutdown.
+(defonce ^:private otel-sdk-instance (atom nil))
+
+(defn- make-id-generator
+  "Create an IdGenerator that respects forced trace IDs from frontend traceparent
+   headers (via `force-trace-id!`), falling back to random generation.
+   This allows frontend-originated requests to share a trace ID without creating
+   a parent-child link to a non-existent browser span."
+  ^IdGenerator []
+  (let [^IdGenerator default-gen (IdGenerator/random)]
+    (reify IdGenerator
+      (generateTraceId [_]
+        (or (get-and-clear-forced-trace-id!)
+            (.generateTraceId default-gen)))
+      (generateSpanId [_]
+        (.generateSpanId default-gen)))))
+
+(defn- make-span-exporter
+  "Create an OTLP span exporter based on the configured protocol."
+  [protocol endpoint]
+  (case protocol
+    "grpc" ((requiring-resolve 'steffan-westcott.clj-otel.exporter.otlp.grpc.trace/span-exporter)
+            {:endpoint endpoint})
+    "http" ((requiring-resolve 'steffan-westcott.clj-otel.exporter.otlp.http.trace/span-exporter)
+            {:endpoint endpoint})))
+
+(defn init!
+  "Initialize the OTel SDK with OTLP exporter. No-op when MB_TRACING_ENABLED=false.
+   Should be called as early as possible in startup — has no database dependency.
+   Uses requiring-resolve for settings/SDK to avoid cyclic load dependency."
+  []
+  (if-not ((requiring-resolve 'metabase.tracing.settings/tracing-enabled))
+    (log/info "OpenTelemetry tracing is disabled (MB_TRACING_ENABLED=false)")
+    (try
+      (let [endpoint      ((requiring-resolve 'metabase.tracing.settings/tracing-endpoint))
+            protocol      ((requiring-resolve 'metabase.tracing.settings/tracing-protocol))
+            service-name  ((requiring-resolve 'metabase.tracing.settings/tracing-service-name))
+            groups-str    ((requiring-resolve 'metabase.tracing.settings/tracing-groups))
+            log-level-str ((requiring-resolve 'metabase.tracing.settings/tracing-log-level))
+            queue-size    ((requiring-resolve 'metabase.tracing.settings/tracing-max-queue-size))
+            timeout-ms    ((requiring-resolve 'metabase.tracing.settings/tracing-export-timeout-ms))
+            delay-ms      ((requiring-resolve 'metabase.tracing.settings/tracing-schedule-delay-ms))
+            exporter      (make-span-exporter protocol endpoint)]
+        (log/infof "Initializing OpenTelemetry tracing: service=%s endpoint=%s protocol=%s groups=%s log-level=%s"
+                   service-name endpoint protocol groups-str log-level-str)
+        (log/infof "Batch span processor config: max-queue-size=%d export-timeout-ms=%d schedule-delay-ms=%d"
+                   queue-size timeout-ms delay-ms)
+        (let [otel ((requiring-resolve 'steffan-westcott.clj-otel.sdk.otel-sdk/init-otel-sdk!)
+                    service-name
+                    {:set-as-default        true
+                     :register-shutdown-hook false  ;; we manage shutdown ourselves
+                     :tracer-provider
+                     {:id-generator    (make-id-generator)
+                      :span-processors [{:exporters        [exporter]
+                                         :max-queue-size   queue-size
+                                         :exporter-timeout (Duration/ofMillis timeout-ms)
+                                         :schedule-delay   (Duration/ofMillis delay-ms)}]}})]
+          (reset! otel-sdk-instance otel)
+          (init-enabled-groups! groups-str log-level-str)
+          (log/info "OpenTelemetry tracing initialized successfully")))
+      (catch Exception e
+        (log/error e "Failed to initialize OpenTelemetry tracing — tracing will be disabled")))))
+
+(defn shutdown!
+  "Shutdown the OTel SDK, flushing any pending spans. Called during application shutdown."
+  []
+  (when-let [otel @otel-sdk-instance]
+    (log/info "Shutting down OpenTelemetry tracing...")
+    (try
+      ((requiring-resolve 'steffan-westcott.clj-otel.sdk.otel-sdk/close-otel-sdk!) otel)
+      (catch Exception e
+        (log/warn e "Error shutting down OpenTelemetry SDK")))
+    (reset! otel-sdk-instance nil)
+    (shutdown-groups!)
+    (log/info "OpenTelemetry tracing shut down")))

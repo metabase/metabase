@@ -32,16 +32,16 @@
 (defsetting tracing-protocol
   (deferred-tru "OTLP export protocol: \"grpc\" or \"http\".")
   :type       :string
-  :default    "grpc"
+  :default    "http"
   :visibility :internal
   :export?    false
   :setter     :none
   :getter     (fn reading-tracing-protocol []
                 (let [v (or (setting/get-raw-value :tracing-protocol string? identity)
-                            "grpc")]
+                            "http")]
                   (when-not (#{"grpc" "http"} v)
-                    (log/warnf "MB_TRACING_PROTOCOL value '%s' is not valid, expected 'grpc' or 'http'. Defaulting to 'grpc'." v))
-                  (if (#{"grpc" "http"} v) v "grpc"))))
+                    (log/warnf "MB_TRACING_PROTOCOL value '%s' is not valid, expected 'grpc' or 'http'. Defaulting to 'http'." v))
+                  (if (#{"grpc" "http"} v) v "http"))))
 
 (defsetting tracing-groups
   (deferred-tru "Comma-separated list of trace groups to enable, or \"all\" for everything.")

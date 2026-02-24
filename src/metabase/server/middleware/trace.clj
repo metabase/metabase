@@ -2,7 +2,7 @@
   "Ring middleware that creates a root OpenTelemetry span per HTTP request.
 
    When a frontend `traceparent` header is present, the trace ID is extracted
-   and forced onto the root span via a custom IdGenerator (in tracing.sdk).
+   and forced onto the root span via a custom IdGenerator (in tracing.core).
    This correlates frontend and backend spans under the same trace WITHOUT
    creating a parent-child link to a non-existent browser span — avoiding
    the 'root span not yet received' message in Tempo.
@@ -13,7 +13,6 @@
    must stay open until `respond` or `raise` is called."
   (:require
    [metabase.tracing.core :as tracing]
-   [metabase.tracing.pyroscope :as pyroscope]
    [metabase.util.log :as log]
    [steffan-westcott.clj-otel.api.trace.span :as span])
   (:import
@@ -62,7 +61,7 @@
              (api-request? request))
       (do
         ;; If frontend sent a traceparent, force its trace ID for this thread.
-        ;; The custom IdGenerator in tracing.sdk will return it instead of a random one.
+        ;; The custom IdGenerator in tracing.core will return it instead of a random one.
         (when-let [tid (parse-frontend-trace-id request)]
           (tracing/force-trace-id! tid))
         (let [;; Create as root span — no parent context means no parent-child link
@@ -81,12 +80,9 @@
               ^Scope scope (.makeCurrent ^Context span-ctx)
               span-id    (.getSpanId (.getSpanContext span))]
           (tracing/inject-trace-id-into-mdc!)
-          ;; Tag profiling samples with this span's ID (no-op without Pyroscope agent).
-          ;; Uses the same mechanism as grafana/otel-profiling-java: sets the native
-          ;; async-profiler tracing context so CPU/alloc/lock samples get the span ID.
-          (pyroscope/set-profiling-context! span-id "api.request")
-          (when (pyroscope/available?)
-            (.setAttribute span "pyroscope.profile.id" span-id))
+          ;; Tag profiling samples with this span's ID and set pyroscope.profile.id
+          ;; attribute on the span (no-op without Pyroscope agent).
+          (tracing/set-pyroscope-context! span span-id "api.request")
           (try
             (handler request
                      (fn trace-respond [response]
@@ -114,7 +110,7 @@
               ;; For async handlers, the callback runs on a different thread — the scope
               ;; closure here is still correct (cleans up this thread's context).
               (.close scope)
-              (pyroscope/clear-profiling-context!)
+              (tracing/clear-pyroscope-context!)
               (tracing/clear-forced-trace-id!)
               (tracing/clear-trace-id-from-mdc!)))))
       (handler request respond raise))))

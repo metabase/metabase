@@ -1,4 +1,4 @@
----
+--b-
 name: add-tracing
 description: Add OpenTelemetry tracing spans to Clojure code following Metabase tracing conventions. Use when instrumenting backend code with trace coverage.
 ---
@@ -9,10 +9,52 @@ This skill helps you add OpenTelemetry (OTel) tracing spans to the Metabase back
 
 ## Reference Files
 
-- `src/metabase/tracing/core.clj` - The `with-span` macro, group registry, and built-in groups
+- `src/metabase/tracing/core.clj` - The `with-span` macro, group registry, SDK lifecycle, and Pyroscope integration
 - `src/metabase/tracing/attributes.clj` - Standard attribute builders and `sanitize-sql`
 - `src/metabase/task/impl.clj` - `defjob` macro that wraps Quartz jobs with root spans
 - `.clj-kondo/config/modules/config.edn` - Module boundary configuration
+
+## Module Architecture
+
+The tracing module has a deliberately minimal API surface. **Only 3 namespaces are public** (listed in `:api` in the module config):
+
+| Namespace | Role | Status |
+|---|---|---|
+| `tracing.core` | Primary API: `with-span`, groups, SDK lifecycle, Pyroscope, MDC | **Public API** |
+| `tracing.attributes` | Attribute builders: `sanitize-sql`, `query-attrs`, etc. | **Public API** |
+| `tracing.init` | Side-effect loader for `quartz` and `settings` | **Public API** (init convention) |
+| `tracing.settings` | Setting definitions (`MB_TRACING_*` env vars) | Internal |
+| `tracing.quartz` | Quartz JDBC proxy + JobListener | Internal |
+
+**Rules:**
+- **Do NOT add new API namespaces** to the tracing module. Add new public functions to `tracing.core` or `tracing.attributes` instead.
+- **Do NOT require internal namespaces** (`tracing.settings`, `tracing.quartz`) from outside the tracing module. They are loaded via `tracing.init` for side effects only.
+- Even the `core` module (which has `:uses :any`) cannot require non-API namespaces from other modules — `:uses :any` bypasses the consumer's restriction but NOT the target module's `:api` check.
+
+### Cyclic Dependency Avoidance
+
+`tracing/core.clj` is required by many modules across the codebase. It **must NOT** compile-time require heavy dependencies like `tracing.settings` or the OTel SDK, as this creates transitive cyclic load dependencies (e.g., `settings/core -> tracing/settings -> tracing/core -> events/impl -> events/core`).
+
+Instead, `tracing/core.clj` uses `requiring-resolve` for all settings and SDK access:
+
+```clojure
+;; CORRECT — lazy runtime resolution, no compile-time dependency
+((requiring-resolve 'metabase.tracing.settings/tracing-enabled))
+
+;; WRONG — creates cyclic load dependency
+(require '[metabase.tracing.settings :as settings])
+(settings/tracing-enabled)
+```
+
+**Important:** `requiring-resolve` must use **literal quoted symbols**. Kondo hooks validate that `required-namespaces` are all simple symbols, so dynamic construction fails:
+
+```clojure
+;; CORRECT — literal quoted symbol
+(requiring-resolve 'metabase.tracing.settings/tracing-endpoint)
+
+;; WRONG — kondo hook rejects this: "Assert failed: (every? simple-symbol? required-namespaces)"
+(requiring-resolve (symbol "metabase.tracing.settings" "tracing-endpoint"))
+```
 
 ## Quick Checklist
 
@@ -25,6 +67,8 @@ When adding tracing spans:
 - [ ] Span name follows dot-notation convention (`"domain.subsystem.operation"`)
 - [ ] Attributes use namespaced keywords (`:search/query-length`, `:db/id`)
 - [ ] No sensitive data in attributes (use `sanitize-sql` for HoneySQL, never raw SQL)
+- [ ] No new tracing namespaces created (add to `tracing.core` or `tracing.attributes` instead)
+- [ ] No `DO_NOT_ADD_NEW_FILES_HERE.txt` violations in the target directory
 - [ ] Run `clj-kondo --lint <files>` to verify 0 errors, 0 warnings
 - [ ] Add or update tests in the corresponding `test/` path (see Testing section below)
 - [ ] Run tests: `clojure -X:dev:test :only <test-ns>`
@@ -172,7 +216,7 @@ Only wrap code at **meaningful I/O boundaries**:
 
 Create or update tests in the corresponding `test/` path. Follow the patterns in existing tracing tests:
 
-- **Reference tests:** `test/metabase/task/tracing_test.clj`, `test/metabase/server/middleware/trace_test.clj`
+- **Reference tests:** `test/metabase/tracing/quartz_test.clj`, `test/metabase/server/middleware/trace_test.clj`
 - Use `tracing/init-enabled-groups!` / `tracing/shutdown-groups!` with `try`/`finally` to manage group lifecycle
 - Test both enabled and disabled paths (verify zero overhead when group is off)
 - Use `reify` mocks for Java interfaces (Connection, PreparedStatement, JobListener, etc.)
@@ -259,6 +303,8 @@ For code on plain `Thread`s (not Quartz), add the root span manually:
 
 ## What NOT to Do
 
+### Span Usage Mistakes
+
 ```clojure
 ;; WRONG - pure computation, no I/O
 (tracing/with-span :search "search.format-results" {}
@@ -282,12 +328,49 @@ For code on plain `Thread`s (not Quartz), add the root span manually:
       (format-results results))))
 ```
 
+### Architecture Mistakes
+
+```clojure
+;; WRONG - creating a new tracing namespace for your feature
+;; Instead, add public functions to tracing.core or tracing.attributes
+(ns metabase.tracing.my-feature ...)
+
+;; WRONG - requiring internal tracing namespaces from outside the module
+(ns metabase.my-module.thing
+  (:require [metabase.tracing.settings :as tracing.settings]  ;; internal!
+            [metabase.tracing.quartz :as tracing.quartz]))     ;; internal!
+
+;; WRONG - adding compile-time requires to tracing/core.clj for settings or SDK
+;; This creates cyclic load dependencies because tracing/core is widely required
+(ns metabase.tracing.core
+  (:require [metabase.tracing.settings :as settings]))  ;; causes cycle!
+
+;; WRONG - dynamic symbol construction with requiring-resolve (kondo rejects it)
+(requiring-resolve (symbol "metabase.tracing.settings" "tracing-enabled"))
+
+;; WRONG - 3-step pattern
+(pyroscope/set-profiling-context! span-id span-name)
+(when (pyroscope/available?)
+  (.setAttribute span "pyroscope.profile.id" span-id))
+;; CORRECT — single call, availability checked internally:
+(tracing/set-pyroscope-context! span span-id span-name)
+```
+
 ## Configuration
 
+All settings are env-var-only (defined in `src/metabase/tracing/settings.clj`):
+
 ```bash
-MB_TRACING_ENABLED=true              # Enable tracing
-MB_TRACING_ENDPOINT=host:4317        # OTel collector endpoint (gRPC)
-MB_TRACING_GROUPS=tasks,search,sync  # Comma-separated groups (or "all")
-MB_TRACING_SERVICE_NAME=metabase     # Service name in traces
-MB_TRACING_LOG_LEVEL=DEBUG           # Lower log threshold for traced threads
+# Core
+MB_TRACING_ENABLED=true              # Enable tracing (default: false)
+MB_TRACING_ENDPOINT=host:4317        # OTLP collector endpoint (default: http://localhost:4317)
+MB_TRACING_PROTOCOL=http             # Export protocol: "grpc" or "http" (default: http)
+MB_TRACING_GROUPS=tasks,search,sync  # Comma-separated groups or "all" (default: all)
+MB_TRACING_SERVICE_NAME=metabase     # Service name in traces (default: hostname)
+MB_TRACING_LOG_LEVEL=DEBUG           # Log threshold for traced threads: TRACE/DEBUG/INFO (default: INFO)
+
+# Batch span processor tuning
+MB_TRACING_MAX_QUEUE_SIZE=2048       # Max spans queued for export; drops when full (default: 2048)
+MB_TRACING_EXPORT_TIMEOUT_MS=10000   # Max wait for batch export to complete (default: 10000)
+MB_TRACING_SCHEDULE_DELAY_MS=5000    # Delay between consecutive batch exports (default: 5000)
 ```
