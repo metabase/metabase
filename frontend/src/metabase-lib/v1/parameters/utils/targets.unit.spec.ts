@@ -71,7 +71,7 @@ const queryNonDateBreakout = Lib.createTestQuery(provider, {
         {
           type: "column",
           name: "QUANTITY",
-          sourceName: "Orders",
+          sourceName: "ORDERS",
         },
       ],
     },
@@ -82,12 +82,12 @@ const query1DateBreakout = Lib.createTestQuery(SAMPLE_PROVIDER, {
   stages: [
     {
       source: { type: "table", id: ORDERS_ID },
-      aggregations: [{ type: "operator", operator: "count", args: [] }],
+      aggregations: [{ type: "operator", operator: "count" }],
       breakouts: [
         {
           type: "column",
           name: "CREATED_AT",
-          sourceName: "Orders",
+          sourceName: "ORDERS",
           unit: "month",
         },
       ],
@@ -99,18 +99,18 @@ const query2DateBreakouts = Lib.createTestQuery(SAMPLE_PROVIDER, {
   stages: [
     {
       source: { type: "table", id: ORDERS_ID },
-      aggregations: [{ type: "operator", operator: "count", args: [] }],
+      aggregations: [{ type: "operator", operator: "count" }],
       breakouts: [
         {
           type: "column",
           name: "CREATED_AT",
-          sourceName: "Orders",
+          sourceName: "ORDERS",
           unit: "month",
         },
         {
           type: "column",
           name: "CREATED_AT",
-          sourceName: "Product",
+          sourceName: "PRODUCTS",
           unit: "month",
         },
       ],
@@ -122,21 +122,22 @@ const queryDateBreakoutsMultiStage = Lib.createTestQuery(SAMPLE_PROVIDER, {
   stages: [
     {
       source: { type: "table", id: ORDERS_ID },
-      aggregations: [{ type: "operator", operator: "count", args: [] }],
+      aggregations: [{ type: "operator", operator: "count" }],
       breakouts: [
         {
           type: "column",
           name: "CREATED_AT",
-          sourceName: "Orders",
+          sourceName: "ORDERS",
           unit: "month",
         },
       ],
     },
     {
-      aggregations: [{ type: "operator", operator: "count", args: [] }],
+      aggregations: [{ type: "operator", operator: "count" }],
       breakouts: [
         {
           type: "column",
+          sourceName: "ORDERS",
           name: "CREATED_AT",
           unit: "year",
         },
@@ -622,12 +623,12 @@ function createComplex1StageQuery() {
                 left: {
                   type: "column",
                   name: "PRODUCT_ID",
-                  sourceName: "Orders",
+                  sourceName: "ORDERS",
                 },
                 right: {
                   type: "column",
                   name: "PRODUCT_ID",
-                  sourceName: "Reviews",
+                  sourceName: "REVIEWS",
                 },
               },
             ],
@@ -640,7 +641,7 @@ function createComplex1StageQuery() {
               type: "operator",
               operator: "datetime-add",
               args: [
-                { type: "column", name: "BIRTH_DATE", sourceName: "User" },
+                { type: "column", name: "BIRTH_DATE", sourceName: "PEOPLE" },
                 { type: "literal", value: 18 },
                 { type: "literal", value: "year" },
               ],
@@ -648,30 +649,31 @@ function createComplex1StageQuery() {
           },
         ],
         aggregations: [
-          { type: "operator", operator: "count", args: [] },
+          { type: "operator", operator: "count" },
           {
             type: "operator",
             operator: "sum",
-            args: [{ type: "column", name: "TOTAL", sourceName: "Orders" }],
+            args: [{ type: "column", name: "TOTAL", sourceName: "ORDERS" }],
           },
         ],
         breakouts: [
           {
             type: "column",
             name: "CREATED_AT",
-            sourceName: "Orders",
+            sourceName: "ORDERS",
             unit: "month",
           },
           {
             type: "column",
             name: "CREATED_AT",
-            sourceName: "Product",
+            sourceName: "PRODUCTS",
             unit: "year",
+            index: 0,
           },
           {
             type: "column",
             name: "CREATED_AT",
-            sourceName: "Reviews",
+            sourceName: "REVIEWS",
             unit: "quarter",
           },
           {
@@ -699,12 +701,12 @@ function createComplex2StageQuery() {
                 left: {
                   type: "column",
                   name: "PRODUCT_ID",
-                  sourceName: "Orders",
+                  sourceName: "ORDERS",
                 },
                 right: {
                   type: "column",
                   name: "PRODUCT_ID",
-                  sourceName: "Reviews",
+                  sourceName: "REVIEWS",
                 },
               },
             ],
@@ -717,7 +719,7 @@ function createComplex2StageQuery() {
               type: "operator",
               operator: "datetime-add",
               args: [
-                { type: "column", name: "BIRTH_DATE", sourceName: "User" },
+                { type: "column", name: "BIRTH_DATE", sourceName: "PEOPLE" },
                 { type: "literal", value: 18 },
                 { type: "literal", value: "year" },
               ],
@@ -729,23 +731,32 @@ function createComplex2StageQuery() {
           {
             type: "operator",
             operator: "sum",
-            args: [{ type: "column", name: "TOTAL", sourceName: "Orders" }],
+            args: [
+              {
+                type: "column",
+                name: "TOTAL",
+                sourceName: "ORDERS",
+              },
+            ],
           },
         ],
         breakouts: [
           {
             type: "column",
             name: "CREATED_AT",
+            sourceName: "ORDERS",
             unit: "month",
           },
           {
             type: "column",
             name: "CREATED_AT",
+            sourceName: "ORDERS",
             unit: "year",
           },
           {
             type: "column",
             name: "CREATED_AT",
+            sourceName: "REVIEWS",
             unit: "quarter",
           },
           {
@@ -765,12 +776,13 @@ function createComplex2StageQuery() {
                 left: {
                   type: "column",
                   name: "CREATED_AT",
-                  sourceName: "Summaries",
+                  sourceName: "ORDERS",
+                  index: 0,
                 },
                 right: {
                   type: "column",
                   name: "CREATED_AT",
-                  sourceName: "Reviews",
+                  sourceName: "REVIEWS",
                 },
               },
             ],
@@ -789,7 +801,7 @@ function createComplex2StageQuery() {
             },
           },
         ],
-        aggregations: [{ type: "operator", operator: "count", args: [] }],
+        aggregations: [{ type: "operator", operator: "count" }],
         breakouts: [
           {
             type: "column",
