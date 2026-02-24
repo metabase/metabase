@@ -64,6 +64,7 @@ export function PythonTransformEditor({
       source.body,
       sourceTables,
       tableInfo,
+      source.type
     );
 
     const newSource = {
