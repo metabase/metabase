@@ -8,6 +8,7 @@
    [metabase.analytics.core :as analytics]
    [metabase.config.core :as config]
    [metabase.embedding.settings :as embedding.settings]
+   [metabase.product-analytics.core :as pa]
    [metabase.request.core :as request]
    [metabase.server.settings :as server.settings]
 
@@ -275,34 +276,40 @@
 
 (defn security-headers
   "Fetch a map of security headers that should be added to a response based on the passed options."
-  [& {:keys [origin nonce allow-iframes? allow-cache?]
+  [& {:keys [origin nonce allow-iframes? allow-cache? request]
       :or   {allow-iframes? false, allow-cache? false}}]
-  (merge
-   (if allow-cache? cache-far-future-headers (cache-prevention-headers))
-   strict-transport-security-header
-   (content-security-policy-header-with-frame-ancestors allow-iframes? nonce)
-   (access-control-headers origin
-                           (or
-                            (setting/get-value-of-type :boolean :enable-embedding-sdk)
-                            (setting/get-value-of-type :boolean :enable-embedding-simple))
-                           (embedding.settings/embedding-app-origins-sdk))
-   (when-not allow-iframes?
-     ;; Tell browsers not to render our site as an iframe (prevent clickjacking)
-     {"X-Frame-Options"                 (if-let [eao (and (setting/get-value-of-type :boolean :enable-embedding-interactive)
-                                                          (setting/get-value-of-type :string :embedding-app-origins-interactive))]
-                                          (format "ALLOW-FROM %s" (-> eao (str/split #" ") first))
-                                          "DENY")})
-   {;; Tell browser to block suspected XSS attacks
-    "X-XSS-Protection"                  "1; mode=block"
-    ;; Prevent Flash / PDF files from including content from site.
-    "X-Permitted-Cross-Domain-Policies" "none"
-    ;; Tell browser not to use MIME sniffing to guess types of files -- protect against MIME type confusion attacks
-    "X-Content-Type-Options"            "nosniff"}
-   ;; Add Cross-Origin headers from environment variables if set
-   (when-let [corp (env/env :mb-cross-origin-resource-policy)]
-     {"Cross-Origin-Resource-Policy" corp})
-   (when-let [coep (env/env :mb-cross-origin-embedder-policy)]
-     {"Cross-Origin-Embedder-Policy" coep})))
+  (let [embedding-enabled? (or (setting/get-value-of-type :boolean :enable-embedding-sdk)
+                               (setting/get-value-of-type :boolean :enable-embedding-simple))
+        embedding-origins  (embedding.settings/embedding-app-origins-sdk)
+        pa-origins         (pa/product-analytics-approved-origins request)
+        cors-enabled?      (or embedding-enabled? (some? pa-origins))
+        combined-origins   (str/join " " (remove nil? [embedding-origins pa-origins]))]
+    (merge
+     (if allow-cache? cache-far-future-headers (cache-prevention-headers))
+     strict-transport-security-header
+     (content-security-policy-header-with-frame-ancestors allow-iframes? nonce)
+     (access-control-headers origin cors-enabled? combined-origins)
+     (when pa-origins
+       {"Access-Control-Expose-Headers" "Content-Disposition, X-Metabase-Anti-CSRF-Token, X-Metabase-Version, X-Umami-Cache"
+        "Access-Control-Allow-Headers"  "Content-Type, X-Umami-Cache"
+        "Access-Control-Allow-Methods"  "POST, OPTIONS"})
+     (when-not allow-iframes?
+       ;; Tell browsers not to render our site as an iframe (prevent clickjacking)
+       {"X-Frame-Options"                 (if-let [eao (and (setting/get-value-of-type :boolean :enable-embedding-interactive)
+                                                            (setting/get-value-of-type :string :embedding-app-origins-interactive))]
+                                            (format "ALLOW-FROM %s" (-> eao (str/split #" ") first))
+                                            "DENY")})
+     {;; Tell browser to block suspected XSS attacks
+      "X-XSS-Protection"                  "1; mode=block"
+      ;; Prevent Flash / PDF files from including content from site.
+      "X-Permitted-Cross-Domain-Policies" "none"
+      ;; Tell browser not to use MIME sniffing to guess types of files -- protect against MIME type confusion attacks
+      "X-Content-Type-Options"            "nosniff"}
+     ;; Add Cross-Origin headers from environment variables if set
+     (when-let [corp (env/env :mb-cross-origin-resource-policy)]
+       {"Cross-Origin-Resource-Policy" corp})
+     (when-let [coep (env/env :mb-cross-origin-embedder-policy)]
+       {"Cross-Origin-Embedder-Policy" coep}))))
 
 (defn- always-allow-cors?
   "Returns true if the request/response should have CORS headers added."
@@ -318,7 +325,8 @@
                  :origin         (get (:headers request) "origin")
                  :nonce          (:nonce request)
                  :allow-iframes? ((some-fn request/public? request/embed?) request)
-                 :allow-cache?   (request/cacheable? request))
+                 :allow-cache?   (request/cacheable? request)
+                 :request        request)
         cors-headers (when (always-allow-cors? request response)
                        {"Access-Control-Allow-Origin" "*"
                         "Access-Control-Allow-Headers" "*"

@@ -23,15 +23,6 @@
       (get headers "cf-connecting-ip")
       remote-addr))
 
-(defn- add-cors-headers
-  "Add CORS response headers. `origin` is the value of the request `Origin` header."
-  [response origin]
-  (cond-> response
-    origin (update :headers assoc
-                   "Access-Control-Allow-Origin" origin
-                   "Access-Control-Allow-Methods" "POST, OPTIONS"
-                   "Access-Control-Allow-Headers" "Content-Type, X-Umami-Cache")))
-
 (defn- handle-event-result
   "Persist event pipeline result and return a success response with a session cache JWT."
   [result body]
@@ -81,19 +72,16 @@
   (let [ua      (get-in request [:headers "user-agent"])
         ip      (client-ip request)
         headers (:headers request)
-        origin  (get headers "origin")
         token   (get headers "x-umami-cache")
         ctx     {:user-agent ua :ip ip :headers headers :token token}
         result  (pipeline/process-payload body ctx)]
     (if (:error result)
-      (-> {:status 400
-           :body   {:error   (subs (str (:error result)) 1)
-                    :message (:message result)}}
-          (add-cors-headers origin))
-      (-> (if (:identify result)
-            (handle-identify-result result body)
-            (handle-event-result result body))
-          (add-cors-headers origin)))))
+      {:status 400
+       :body   {:error   (subs (str (:error result)) 1)
+                :message (:message result)}}
+      (if (:identify result)
+        (handle-identify-result result body)
+        (handle-event-result result body)))))
 
 (def ^{:arglists '([request respond raise])} routes
   "`/api/ee/product-analytics/api/send` routes (public, no auth)."

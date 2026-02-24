@@ -49,7 +49,7 @@
                             :model/ProductAnalyticsSite]
       (let [site-uuid (str (random-uuid))
             _site     (t2/insert-returning-instance! :model/ProductAnalyticsSite
-                                                     {:name "Test Site" :uuid site-uuid})
+                                                     {:name "Test Site" :uuid site-uuid :allowed_domains "example.com"})
             response  (send-request (valid-payload site-uuid))]
         (testing "returns 200 with {:ok true}"
           (is (= 200 (:status response)))
@@ -91,7 +91,7 @@
     (mt/with-model-cleanup [:model/ProductAnalyticsSite]
       (let [site-uuid (str (random-uuid))
             _         (t2/insert-returning-instance! :model/ProductAnalyticsSite
-                                                     {:name "Bot Test" :uuid site-uuid})
+                                                     {:name "Bot Test" :uuid site-uuid :allowed_domains "example.com"})
             response  (send-request (valid-payload site-uuid)
                                     {:headers {"user-agent" "Googlebot/2.1"
                                                "origin"     "https://example.com"}})]
@@ -101,26 +101,77 @@
 
 ;;; ------------------------------------------------ CORS Headers ------------------------------------------------
 
-(deftest cors-headers-test
+(deftest cors-allows-configured-domain-test
   (mt/with-premium-features #{:product-analytics}
     (mt/with-model-cleanup [:model/ProductAnalyticsEvent
                             :model/ProductAnalyticsSession
                             :model/ProductAnalyticsSite]
       (let [site-uuid (str (random-uuid))
             _         (t2/insert-returning-instance! :model/ProductAnalyticsSite
-                                                     {:name "CORS Test" :uuid site-uuid})
+                                                     {:name "CORS Test" :uuid site-uuid
+                                                      :allowed_domains "example.com"})
             response  (send-request (valid-payload site-uuid))]
-        (testing "success response includes CORS headers"
+        (testing "success response includes CORS headers for configured domain"
           (is (= "https://example.com" (get-in response [:headers "Access-Control-Allow-Origin"])))
           (is (= "POST, OPTIONS" (get-in response [:headers "Access-Control-Allow-Methods"])))
           (is (= "Content-Type, X-Umami-Cache" (get-in response [:headers "Access-Control-Allow-Headers"]))))))))
 
+(deftest cors-rejects-unconfigured-domain-test
+  (mt/with-premium-features #{:product-analytics}
+    (mt/with-model-cleanup [:model/ProductAnalyticsEvent
+                            :model/ProductAnalyticsSession
+                            :model/ProductAnalyticsSite]
+      (let [site-uuid (str (random-uuid))
+            _         (t2/insert-returning-instance! :model/ProductAnalyticsSite
+                                                     {:name "CORS Reject Test" :uuid site-uuid
+                                                      :allowed_domains "example.com"})
+            response  (send-request (valid-payload site-uuid)
+                                    {:headers {"user-agent" chrome-ua
+                                               "origin"     "https://evil.com"}})]
+        (testing "event is still processed but no Access-Control-Allow-Origin for unconfigured origin"
+          (is (= 200 (:status response)))
+          (is (nil? (get-in response [:headers "Access-Control-Allow-Origin"]))))))))
+
+(deftest cors-allows-wildcard-subdomain-test
+  (mt/with-premium-features #{:product-analytics}
+    (mt/with-model-cleanup [:model/ProductAnalyticsEvent
+                            :model/ProductAnalyticsSession
+                            :model/ProductAnalyticsSite]
+      (let [site-uuid (str (random-uuid))
+            _         (t2/insert-returning-instance! :model/ProductAnalyticsSite
+                                                     {:name "Wildcard CORS Test" :uuid site-uuid
+                                                      :allowed_domains "*.example.com"})
+            response  (send-request (valid-payload site-uuid)
+                                    {:headers {"user-agent" chrome-ua
+                                               "origin"     "https://app.example.com"}})]
+        (testing "wildcard subdomain origin gets CORS headers"
+          (is (= 200 (:status response)))
+          (is (= "https://app.example.com" (get-in response [:headers "Access-Control-Allow-Origin"]))))))))
+
+(deftest cors-no-domains-no-cors-test
+  (mt/with-premium-features #{:product-analytics}
+    (mt/with-model-cleanup [:model/ProductAnalyticsEvent
+                            :model/ProductAnalyticsSession
+                            :model/ProductAnalyticsSite]
+      (let [site-uuid (str (random-uuid))
+            _         (t2/insert-returning-instance! :model/ProductAnalyticsSite
+                                                     {:name "No Domains CORS Test" :uuid site-uuid
+                                                      :allowed_domains ""})
+            response  (send-request (valid-payload site-uuid))]
+        (testing "no configured domains means no CORS headers (unless embedding is enabled)"
+          (is (= 200 (:status response)))
+          (is (nil? (get-in response [:headers "Access-Control-Allow-Origin"]))))))))
+
 (deftest cors-headers-on-error-test
   (mt/with-premium-features #{:product-analytics}
-    (testing "error responses also include CORS headers"
-      (let [response (send-request (valid-payload (str (random-uuid))))]
-        (is (= 400 (:status response)))
-        (is (= "https://example.com" (get-in response [:headers "Access-Control-Allow-Origin"])))))))
+    (mt/with-model-cleanup [:model/ProductAnalyticsSite]
+      (let [_         (t2/insert-returning-instance! :model/ProductAnalyticsSite
+                                                     {:name "CORS Error Test" :uuid (str (random-uuid))
+                                                      :allowed_domains "example.com"})
+            response  (send-request (valid-payload (str (random-uuid))))]
+        (testing "error responses from allowed origins still get CORS headers"
+          (is (= 400 (:status response)))
+          (is (= "https://example.com" (get-in response [:headers "Access-Control-Allow-Origin"]))))))))
 
 ;;; ------------------------------------------- Session Cache Token ----------------------------------------------
 
@@ -131,7 +182,7 @@
                             :model/ProductAnalyticsSite]
       (let [site-uuid (str (random-uuid))
             _         (t2/insert-returning-instance! :model/ProductAnalyticsSite
-                                                     {:name "Token Test" :uuid site-uuid})
+                                                     {:name "Token Test" :uuid site-uuid :allowed_domains "example.com"})
             response  (send-request (valid-payload site-uuid))
             token     (get-in response [:headers "X-Umami-Cache"])
             claims    (pa.token/verify-session-token token)]
@@ -150,7 +201,7 @@
                             :model/ProductAnalyticsSite]
       (let [site-uuid (str (random-uuid))
             _         (t2/insert-returning-instance! :model/ProductAnalyticsSite
-                                                     {:name "Cache Test" :uuid site-uuid})
+                                                     {:name "Cache Test" :uuid site-uuid :allowed_domains "example.com"})
             ;; First request — no cache token
             resp1     (send-request (valid-payload site-uuid))
             token1    (get-in resp1 [:headers "X-Umami-Cache"])
@@ -177,7 +228,7 @@
                             :model/ProductAnalyticsSite]
       (let [site-uuid (str (random-uuid))
             site      (t2/insert-returning-instance! :model/ProductAnalyticsSite
-                                                     {:name "Identify Test" :uuid site-uuid})
+                                                     {:name "Identify Test" :uuid site-uuid :allowed_domains "example.com"})
             body      {:type    "identify"
                        :payload {:website     site-uuid
                                  :distinct_id "user-42"
@@ -202,7 +253,7 @@
                             :model/ProductAnalyticsSite]
       (let [site-uuid (str (random-uuid))
             _         (t2/insert-returning-instance! :model/ProductAnalyticsSite
-                                                     {:name "Identify Minimal" :uuid site-uuid})
+                                                     {:name "Identify Minimal" :uuid site-uuid :allowed_domains "example.com"})
             body      {:type    "identify"
                        :payload {:website     site-uuid
                                  :distinct_id "user-99"}}
