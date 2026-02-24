@@ -156,16 +156,29 @@ cleanup() {
   docker compose down -v --remove-orphans 2>/dev/null || true
 }
 
+check_image_exists() {
+  local image="$1"
+  if ! docker manifest inspect "$image" > /dev/null 2>&1; then
+    error "Docker image not found: $image"
+    exit 1
+  fi
+}
+
 main() {
-  local direction=$(cli compare "$SOURCE_VERSION" "$TARGET_VERSION")
+  local direction source_image target_image
+
+  direction=$(cli compare "$SOURCE_VERSION" "$TARGET_VERSION") || exit 1
+  source_image=$(cli image "$SOURCE_VERSION") || exit 1
+  target_image=$(cli image "$TARGET_VERSION") || exit 1
 
   if [[ "$direction" == "same" ]]; then
     error "Source and target versions are the same"
     exit 1
   fi
 
-  local source_image=$(cli image "$SOURCE_VERSION")
-  local target_image=$(cli image "$TARGET_VERSION")
+  log "Checking if Docker images exist..."
+  check_image_exists "$source_image"
+  check_image_exists "$target_image"
 
   log "============================================"
   log "Cross-Version Migration Test"
