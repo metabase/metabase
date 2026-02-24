@@ -180,17 +180,17 @@
 (defn- start-stream
   "Start a Slack message stream. Returns the stream timestamp on success (acts as an identifier)."
   [client {:keys [channel thread_ts team_id user_id]}]
-  (let [response (slack-post-json client "/chat.startStream"
-                                  {:channel           channel
-                                   :thread_ts         thread_ts
-                                   :recipient_team_id team_id
-                                   :recipient_user_id user_id})]
-    (log/debugf "[slackbot] start-stream response: %s" (pr-str response))
-    (if (:ok response)
-      {:stream_ts (:ts response)
-       :channel   (:channel response)
+  (let [body (:body (slack-post-json client "/chat.startStream"
+                                     {:channel           channel
+                                      :thread_ts         thread_ts
+                                      :recipient_team_id team_id
+                                      :recipient_user_id user_id}))]
+    (log/debugf "[slackbot] start-stream response: %s" (pr-str body))
+    (if (:ok body)
+      {:stream_ts (:ts body)
+       :channel   (:channel body)
        :thread_ts thread_ts}
-      (log/warnf "[slackbot] start-stream failed: %s" (:error response)))))
+      (log/warnf "[slackbot] start-stream failed: %s" (:error body)))))
 
 (defn- append-stream
   "Append chunks to an active stream. Each chunk is a map with :type and type-specific keys,
@@ -199,10 +199,10 @@
   (let [payload  {:channel channel
                   :ts      stream-ts
                   :chunks  chunks}
-        response (slack-post-json client "/chat.appendStream" payload)]
-    (when-not (:ok response)
-      (log/warnf "[slackbot] append-stream failed: %s" (:error response)))
-    response))
+        body (:body (slack-post-json client "/chat.appendStream" payload))]
+    (when-not (:ok body)
+      (log/warnf "[slackbot] append-stream failed: %s" (:error body)))
+    body))
 
 (defn- append-markdown-text
   "Helper to append markdown text to a stream."
@@ -214,13 +214,13 @@
   ([client channel stream-ts]
    (stop-stream client channel stream-ts nil))
   ([client channel stream-ts blocks]
-   (let [response (slack-post-json client "/chat.stopStream"
-                                   (cond-> {:channel channel
-                                            :ts      stream-ts}
-                                     blocks (assoc :blocks blocks)))]
-     (when-not (:ok response)
-       (log/warnf "[slackbot] stop-stream failed: %s" (:error response)))
-     response)))
+   (let [body (:body (slack-post-json client "/chat.stopStream"
+                                      (cond-> {:channel channel
+                                               :ts      stream-ts}
+                                        blocks (assoc :blocks blocks))))]
+     (when-not (:ok body)
+       (log/warnf "[slackbot] stop-stream failed: %s" (:error body)))
+     body)))
 
 ;; -------------------- VISUALIZATION GENERATION ---------------------------
 
@@ -913,7 +913,7 @@
    (let [prompt      (:text event)
          thread      (-> (fetch-thread client event)
                          (update :messages #(remove (fn [m] (= (:ts m) (:ts event))) %)))
-         auth-info   (auth-test client)
+         auth-info   (:body (auth-test client))
          bot-user-id (:user_id auth-info)
          channel-id  (:channel event)
          message-ctx (event->reply-context event)
