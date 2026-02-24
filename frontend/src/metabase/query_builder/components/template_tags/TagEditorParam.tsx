@@ -84,6 +84,7 @@ interface OwnProps {
     config: ParameterValuesConfig,
   ) => void;
   setParameterValue: (tagId: TemplateTagId, value: RowValue) => void;
+  disableParameterSettings?: boolean;
 }
 
 function mapStateToProps(state: State) {
@@ -331,6 +332,7 @@ class TagEditorParamInner extends Component<
       parameter,
       embeddedParameterVisibility,
       setTemplateTagConfig,
+      disableParameterSettings = false,
     } = this.props;
 
     const isDimension = tag.type === "dimension";
@@ -385,16 +387,17 @@ class TagEditorParamInner extends Component<
           />
         )}
 
-        {((!isDimension && !isTable) || widgetOptions.length > 0) && (
-          <FilterWidgetLabelInput
-            tag={tag}
-            onChange={(value) =>
-              this.setTemplateTagAttribute("display-name", value)
-            }
-          />
-        )}
+        {!disableParameterSettings &&
+          ((!isDimension && !isTable) || widgetOptions.length > 0) && (
+            <FilterWidgetLabelInput
+              tag={tag}
+              onChange={(value) =>
+                this.setTemplateTagAttribute("display-name", value)
+              }
+            />
+          )}
 
-        {parameter && isTemporalUnit && (
+        {!disableParameterSettings && parameter && isTemporalUnit && (
           <>
             <ContainerLabel>{t`Time grouping options`}</ContainerLabel>
             <Box mb="xl">
@@ -420,26 +423,30 @@ class TagEditorParamInner extends Component<
           </>
         )}
 
-        {parameter && canUseCustomSource(parameter) && (
-          <InputContainer>
-            <ContainerLabel>{t`How should users filter on this variable?`}</ContainerLabel>
-            <ValuesSourceSettings
-              parameter={parameter}
-              onChangeQueryType={this.setQueryType}
-              onChangeSourceSettings={this.setSourceSettings}
-            />
-          </InputContainer>
-        )}
+        {!disableParameterSettings &&
+          parameter &&
+          canUseCustomSource(parameter) && (
+            <InputContainer>
+              <ContainerLabel>{t`How should users filter on this variable?`}</ContainerLabel>
+              <ValuesSourceSettings
+                parameter={parameter}
+                onChangeQueryType={this.setQueryType}
+                onChangeSourceSettings={this.setSourceSettings}
+              />
+            </InputContainer>
+          )}
 
-        {parameter && isSingleOrMultiSelectable(parameter) && (
-          <ParameterMultiSelectInput
-            tag={tag}
-            parameter={parameter}
-            onChangeMultiSelect={(isMultiSelect) =>
-              setTemplateTagConfig(tag, { isMultiSelect })
-            }
-          />
-        )}
+        {!disableParameterSettings &&
+          parameter &&
+          isSingleOrMultiSelectable(parameter) && (
+            <ParameterMultiSelectInput
+              tag={tag}
+              parameter={parameter}
+              onChangeMultiSelect={(isMultiSelect) =>
+                setTemplateTagConfig(tag, { isMultiSelect })
+              }
+            />
+          )}
 
         {parameter && (
           <DefaultRequiredValueControl
