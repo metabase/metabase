@@ -168,15 +168,22 @@ describe("scenarios > embedding > sdk iframe embedding > metabase-browser", () =
       cy.findByText("Pick your starting data").should("be.visible");
 
       cy.intercept("GET", "/api/table/*/query_metadata").as("tableMetadata");
+      cy.intercept("POST", "/api/dataset/query_metadata").as("datasetMetadata");
       cy.log("Clicking Orders");
       cy.findByText("Orders").click();
 
+      // Wait for both metadata requests triggered by updateQuestionSdk
+      // to complete. The GET loads table metadata, then the POST loads
+      // dataset query metadata. Both must finish before the breadcrumb
+      // click, otherwise the stale updateQuestion dispatch can race with
+      // loadAndQueryQuestion and overwrite the reset state.
       cy.log("Waiting for @tableMetadata intercept");
       cy.wait("@tableMetadata");
-      cy.log("@tableMetadata resolved");
+      cy.log("Waiting for @datasetMetadata intercept");
+      cy.wait("@datasetMetadata");
+      cy.log("Both metadata requests resolved");
 
       cy.findByTestId("data-step-cell").should("have.text", "Orders");
-      cy.log("data-step-cell confirmed Orders");
 
       cy.log("About to click breadcrumb");
       // Click the parent Badge element which has the onClick handler,
