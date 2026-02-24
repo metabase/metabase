@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { push, replace } from "react-router-redux";
+import { replace } from "react-router-redux";
 
 import { useDispatch } from "metabase/lib/redux";
 import { newAdvancedTransform } from "metabase/lib/urls";

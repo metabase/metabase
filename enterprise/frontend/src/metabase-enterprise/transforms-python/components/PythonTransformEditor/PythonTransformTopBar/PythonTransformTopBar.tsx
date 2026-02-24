@@ -31,8 +31,6 @@ type PythonTransformTopBarProps = {
   transform?: Transform;
   onDatabaseChange?: (databaseId: DatabaseId) => void;
   canChangeDatabase?: boolean;
-  isDirty?: boolean;
-  onConfirmTypeChange?: () => void;
 };
 
 export function PythonTransformTopBar({
@@ -43,8 +41,6 @@ export function PythonTransformTopBar({
   transform,
   onDatabaseChange,
   canChangeDatabase = true,
-  isDirty = false,
-  onConfirmTypeChange,
 }: PythonTransformTopBarProps) {
   const isRemoteSyncReadOnly = useSelector(getIsRemoteSyncReadOnly);
   const showEditButton =
@@ -96,15 +92,15 @@ export function PythonTransformTopBar({
         </Flex>
       )}
 
-      <Flex h="3rem" p="md" ml="auto" align="center" data-testid="transform-type">
-        {canChangeType ? (
-          <AdvancedTransformTypeSelect
-            defaultValue={sourceType}
-            isDirty={isDirty}
-            onConfirmNavigation={onConfirmTypeChange}
-          />
-        ) : (
-          sourceType
+      <Flex
+        h="3rem"
+        p="md"
+        ml="auto"
+        align="center"
+        data-testid="transform-type"
+      >
+        {canChangeType && (
+          <AdvancedTransformTypeSelect defaultValue={sourceType} />
         )}
       </Flex>
       {showEditButton && (
