@@ -53,7 +53,7 @@ export function getInitialJavascriptSource(): PythonTransformSourceDraft {
     "source-database": undefined,
     "source-tables": {},
     body: `// Write your Javascript transformation script here
-import "./common.js";
+import * as common from "./common.js";
 
 function transform() {
   /**

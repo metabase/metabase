@@ -2,6 +2,7 @@ import { useLayoutEffect, useState } from "react";
 import type { Route } from "react-router";
 import { t } from "ttag";
 
+import { skipToken } from "metabase/api";
 import { LeaveRouteConfirmModal } from "metabase/common/components/LeaveConfirmModal";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { PageContainer } from "metabase/data-studio/common/components/PageContainer";
@@ -15,6 +16,10 @@ import {
   useUpdatePythonLibraryMutation,
 } from "metabase-enterprise/api/python-transform-library";
 import { getIsRemoteSyncReadOnly } from "metabase-enterprise/remote_sync/selectors";
+import {
+  ADVANCED_TRANSFORM_TYPES,
+  type AdvancedTransformType,
+} from "metabase-types/api";
 
 import { PythonEditor } from "../../components/PythonEditor";
 
@@ -26,26 +31,43 @@ type PythonLibraryEditorPageProps = {
   route: Route;
 };
 
-const EMPTY_LIBRARY_SOURCE = `
-# This is your Python library.
-# You can add functions and classes here that can be reused in Python transforms.
+function getTypeFromPath(path: string): AdvancedTransformType | undefined {
+  if (path.endsWith(".py")) {
+    return "python";
+  }
+  if (path.endsWith(".js")) {
+    return "javascript";
+  }
+}
+
+function getEmptyLibrarySource(type?: AdvancedTransformType) {
+  if (type == null) {
+    return "";
+  }
+  const displayName = ADVANCED_TRANSFORM_TYPES[type];
+  return `
+# This is your ${displayName} library.
+# You can add code here that can be reused in ${displayName} transforms.
 `
-  .trim()
-  .concat("\n");
+    .trim()
+    .concat("\n");
+}
 
 export function PythonLibraryEditorPage({
   params,
   route,
 }: PythonLibraryEditorPageProps) {
   const { path } = params;
-  const [source, setSource] = useState(EMPTY_LIBRARY_SOURCE);
+  const type = getTypeFromPath(path);
+  const emptyLibrarySource = getEmptyLibrarySource(type);
+  const [source, setSource] = useState(emptyLibrarySource);
   const isRemoteSyncReadOnly = useSelector(getIsRemoteSyncReadOnly);
 
   const {
     data: library,
     isLoading,
     error,
-  } = useGetPythonLibraryQuery({ path });
+  } = useGetPythonLibraryQuery(type != null ? { path, type } : skipToken);
   const [updatePythonLibrary, { isLoading: isSaving }] =
     useUpdatePythonLibraryMutation();
   const { sendSuccessToast, sendErrorToast } = useMetadataToasts();
@@ -56,7 +78,7 @@ export function PythonLibraryEditorPage({
     }
 
     if (isResourceNotFoundError(error)) {
-      setSource(EMPTY_LIBRARY_SOURCE);
+      setSource(emptyLibrarySource);
       return;
     }
 
@@ -66,8 +88,11 @@ export function PythonLibraryEditorPage({
   }
 
   async function handleSave() {
+    if (type == null) {
+      return;
+    }
     try {
-      await updatePythonLibrary({ path, source }).unwrap();
+      await updatePythonLibrary({ path, source, type }).unwrap();
       sendSuccessToast(t`Python library saved`);
     } catch (error) {
       sendErrorToast(t`Python library could not be saved`);
@@ -79,13 +104,13 @@ export function PythonLibraryEditorPage({
     if (library?.source) {
       setSource(library.source);
     } else {
-      setSource(EMPTY_LIBRARY_SOURCE);
+      setSource(emptyLibrarySource);
     }
-  }, [library]);
+  }, [library, emptyLibrarySource]);
 
-  const isDirty = source !== (library?.source || EMPTY_LIBRARY_SOURCE);
+  const isDirty = source !== (library?.source || emptyLibrarySource);
 
-  if (isLoading || (error && !isResourceNotFoundError(error))) {
+  if (isLoading || (error && !isResourceNotFoundError(error)) || type == null) {
     return (
       <Box p="md">
         <LoadingAndErrorWrapper loading={isLoading} error={error} />
@@ -118,9 +143,9 @@ export function PythonLibraryEditorPage({
 
         <Card withBorder p={0}>
           <PythonEditor
+            type={type}
             value={source}
             onChange={setSource}
-            withPandasCompletions
             className={S.editor}
             data-testid="python-editor"
             readOnly={isRemoteSyncReadOnly}

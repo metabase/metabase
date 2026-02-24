@@ -8,6 +8,7 @@ import {
 } from "metabase/plugins/components/PluginPlaceholder";
 import type Question from "metabase-lib/v1/Question";
 import type {
+  AdvancedTransformType,
   CheckDependenciesResponse,
   GetDependencyGraphRequest,
   PythonTransformSourceDraft,
@@ -68,7 +69,7 @@ export type PythonTransformsPlugin = {
   PythonRunnerSettingsPage: ComponentType;
   getAdminRoutes: () => ReactNode;
   getTransformsNavLinks: () => ReactNode;
-  sharedLibImportPath: string;
+  sharedLibImportPaths: Record<AdvancedTransformType, string>;
 };
 
 type DependenciesPlugin = {
@@ -154,7 +155,7 @@ const getDefaultPluginTransformsPython = (): PythonTransformsPlugin => ({
   PythonRunnerSettingsPage: NotFoundPlaceholder,
   getAdminRoutes: () => null,
   getTransformsNavLinks: () => null,
-  sharedLibImportPath: "",
+  sharedLibImportPaths: {} as Record<AdvancedTransformType, string>,
 });
 
 export const PLUGIN_TRANSFORMS_PYTHON = getDefaultPluginTransformsPython();

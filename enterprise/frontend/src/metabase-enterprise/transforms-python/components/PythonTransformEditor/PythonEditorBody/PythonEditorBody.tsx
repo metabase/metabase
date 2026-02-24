@@ -11,11 +11,11 @@ import { RunButtonWithTooltip } from "metabase/query_builder/components/RunButto
 import { Button, Flex, Icon, Stack, Tooltip } from "metabase/ui";
 import type { AdvancedTransformType } from "metabase-types/api";
 
-import { SHARED_LIB_IMPORT_PATH } from "../../../constants";
+import { SHARED_LIB_IMPORT_PATHS } from "../../../constants";
 import { PythonEditor } from "../../PythonEditor";
 
 import { ResizableBoxHandle } from "./ResizableBoxHandle";
-import { createPythonImportTokenLocator } from "./utils";
+import { createImportTokenLocator } from "./utils";
 
 type PythonEditorBodyProps = {
   type: AdvancedTransformType;
@@ -66,7 +66,7 @@ export function PythonEditorBody({
     (e: MouseEvent) => {
       const openInNewTab = e.metaKey || e.ctrlKey || e.button === 1;
       const href = Urls.transformPythonLibrary({
-        path: SHARED_LIB_IMPORT_PATH,
+        path: SHARED_LIB_IMPORT_PATHS[type],
       });
       if (openInNewTab) {
         window.open(href, "_blank", "noopener,noreferrer");
@@ -74,18 +74,18 @@ export function PythonEditorBody({
         dispatch(push(href));
       }
     },
-    [dispatch],
+    [dispatch, type],
   );
 
   const clickableTokensExtension = useMemo(
     () =>
       clickableTokens([
         {
-          tokenLocator: createPythonImportTokenLocator("common"),
+          tokenLocator: createImportTokenLocator(type, "common"),
           onClick: (e) => navigateToCommonLibrary(e),
         },
       ]),
-    [navigateToCommonLibrary],
+    [navigateToCommonLibrary, type],
   );
 
   const editorContent = (

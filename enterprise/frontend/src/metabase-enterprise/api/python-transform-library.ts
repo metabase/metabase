@@ -10,29 +10,30 @@ import { idTag, invalidateTags, providePythonLibraryTags } from "./tags";
 export const pythonLibraryApi = EnterpriseApi.injectEndpoints({
   endpoints: (builder) => ({
     getPythonLibrary: builder.query<PythonLibrary, GetPythonLibraryRequest>({
-      query: ({ path }) => ({
+      query: ({ path, type }) => ({
         url: `/api/ee/transforms-python/library/${path}`,
         method: "GET",
+        params: { type },
       }),
       providesTags: (library) =>
         library ? providePythonLibraryTags(library) : [],
     }),
     updatePythonLibrary: builder.mutation<void, UpdatePythonLibraryRequest>({
-      query: ({ path, source }) => ({
+      query: ({ path, source, type }) => ({
         url: `/api/ee/transforms-python/library/${path}`,
         method: "PUT",
-        body: { source },
+        body: { source, type },
       }),
       invalidatesTags: (_, error, { path }) =>
         invalidateTags(error, [idTag("python-transform-library", path)]),
       onQueryStarted: async (
-        { path, ...patch },
+        { path, type, ...patch },
         { dispatch, queryFulfilled },
       ) => {
         const patchResult = dispatch(
           pythonLibraryApi.util.updateQueryData(
             "getPythonLibrary",
-            { path },
+            { path, type },
             (draft) => {
               Object.assign(draft, patch);
             },

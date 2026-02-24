@@ -1,6 +1,8 @@
 import type { EditorView } from "@codemirror/view";
 import type { SyntaxNodeRef } from "@lezer/common";
 
+import type { AdvancedTransformType } from "metabase-types/api";
+
 export function insertImport(source: string, path: string) {
   const lines = source.split("\n");
 
@@ -35,7 +37,7 @@ export function hasImport(source: string, path: string) {
   return regex.test(source);
 }
 
-export const createPythonImportTokenLocator =
+const createPythonImportTokenLocator =
   (moduleName: string) =>
   (view: EditorView, node: SyntaxNodeRef): boolean => {
     if (node.type.name !== "VariableName") {
@@ -54,3 +56,36 @@ export const createPythonImportTokenLocator =
     }
     return false;
   };
+
+const createJavascriptImportTokenLocator =
+  (moduleName: string) =>
+  (view: EditorView, node: SyntaxNodeRef): boolean => {
+    if (node.type.name !== "VariableDefinition") {
+      return false;
+    }
+    const variableName = view.state.doc.sliceString(node.from, node.to);
+    if (variableName !== moduleName) {
+      return false;
+    }
+    let cur: SyntaxNodeRef | null = node;
+    while (cur) {
+      if (cur.type.name === "ImportDeclaration") {
+        return true;
+      }
+      cur = cur.node.parent;
+    }
+    return false;
+  };
+
+export function createImportTokenLocator(
+  type: AdvancedTransformType,
+  moduleName: string,
+) {
+  if (type === "python") {
+    return createPythonImportTokenLocator(moduleName);
+  } else if (type === "javascript") {
+    return createJavascriptImportTokenLocator(moduleName);
+  }
+  const _exhaustive: never = type;
+  return _exhaustive;
+}
