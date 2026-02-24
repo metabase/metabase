@@ -145,7 +145,6 @@ export { PLUGIN_UPLOAD_MANAGEMENT } from "./oss/upload-management";
 export { PLUGIN_WHITELABEL } from "./oss/whitelabel";
 export { PLUGIN_SUPPORT } from "./oss/support";
 export { PLUGIN_TENANTS } from "./oss/tenants";
-export { PLUGIN_PRODUCT_ANALYTICS } from "./oss/product-analytics";
 
 // Re-export types that are used by other files
 export type {
