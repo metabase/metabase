@@ -147,11 +147,11 @@ function updateJavascriptTransformSignature(
   tableInfo: Table[]
 ): string {
   const tableAliases = Object.keys(tables);
-  const transformRegex = /^function\s+transform\s*\([^)]*\)\s*{\s*\n(\s*)/m;
-  const signatureOneLine = `function transform(${tableAliases.join(", ")}) {`;
+  const transformRegex = /^export\sfunction\s+transform\s*\([^)]*\)\s*{\s*\n(\s*)/m;
+  const signatureOneLine = `export function transform(${tableAliases.join(", ")}) {`;
   const newSignature =
     signatureOneLine.length > 80 && tableAliases.length > 0
-      ? `function transform(\n${tableAliases.map((alias) => `    ${alias}`).join(",\n")},\n) {`
+      ? `export function transform(\n${tableAliases.map((alias) => `    ${alias}`).join(",\n")},\n) {`
       : signatureOneLine;
 
   if (transformRegex.test(script)) {
