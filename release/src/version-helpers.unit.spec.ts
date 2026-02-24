@@ -941,6 +941,18 @@ describe("version-helpers", () => {
     ] as const)("%s -> %s = %s", (source, target, expected) => {
       expect(compareVersions(source, target)).toBe(expected);
     });
+
+    it("should throw for invalid source version", () => {
+      expect(() => compareVersions("invalid", "v0.58.7")).toThrow(
+        "Invalid version string: invalid",
+      );
+    });
+
+    it("should throw for invalid target version", () => {
+      expect(() => compareVersions("v0.58.7", "invalid")).toThrow(
+        "Invalid version string: invalid",
+      );
+    });
   });
 
   describe("getDockerImage", () => {
@@ -955,6 +967,12 @@ describe("version-helpers", () => {
       ["v1.50.13.5", "metabase/metabase-enterprise:v1.50.13.5"], // patch version
     ] as const)("%s -> %s", (version, expected) => {
       expect(getDockerImage(version)).toBe(expected);
+    });
+
+    it("should throw for invalid version", () => {
+      expect(() => getDockerImage("invalid")).toThrow(
+        "Invalid version string: invalid",
+      );
     });
   });
 
