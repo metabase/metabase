@@ -108,10 +108,19 @@
                                     :values                values
                                     :human_readable_values labels})))
 
+(def ^:private pa-visible-tables
+  "Set of table names that should be visible in the PA database.
+   All other tables (underlying PRODUCT_ANALYTICS_* tables) are hidden."
+  #{"V_PA_EVENTS" "V_PA_SESSIONS" "V_PA_SITES" "V_PA_EVENT_DATA" "V_PA_SESSION_DATA"})
+
 (defn- enhance-pa-metadata!
   "After sync, set entity types on PA tables, semantic types on key fields,
-   and internal remappings on enum fields."
+   and internal remappings on enum fields. Hides non-view tables."
   []
+  ;; Hide underlying tables, show only views
+  (t2/update! :model/Table {:db_id pa/product-analytics-db-id
+                            :name  [:not-in pa-visible-tables]}
+              {:visibility_type :hidden})
   (doseq [[table-name entity-type] pa-table-entity-types]
     (t2/update! :model/Table {:db_id pa/product-analytics-db-id :name table-name}
                 {:entity_type entity-type}))
