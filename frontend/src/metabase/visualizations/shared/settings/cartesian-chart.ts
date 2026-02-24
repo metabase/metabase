@@ -364,9 +364,9 @@ export const isXAxisScaleValid = (
     return false;
   }
 
-  return (
+  return Boolean(
     !isWaterfall ||
-    (xAxisScale && !WATERFALL_UNSUPPORTED_X_AXIS_SCALES.includes(xAxisScale))
+      (xAxisScale && !WATERFALL_UNSUPPORTED_X_AXIS_SCALES.includes(xAxisScale)),
   );
 };
 

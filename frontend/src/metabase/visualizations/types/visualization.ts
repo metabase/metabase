@@ -283,7 +283,9 @@ export type SettingsExtra = {
 export type VisualizationSettingDefinition<T, TValue, TProps extends object> = {
   section?: string;
   title?: string;
+  placeholder?: string;
   group?: string;
+  index?: number;
   widget?: string | ComponentType<TProps>;
   isValid?: (
     object: T,
