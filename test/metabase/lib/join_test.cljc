@@ -1605,8 +1605,8 @@
                                                               (meta/field-metadata :products :title)
                                                               (meta/field-metadata :products :category)
                                                               (meta/field-metadata :products :vendor)]))))
-          bad-field  (fn [[_field opts id :as _field-ref]]
-                       [:field opts (* id 1000)])
+          bad-field  (fn [[_field opts id-or-name :as _field-ref]]
+                       [:field opts (str id-or-name "_nonexistent")])
           bad-fields (fn [query indexes]
                        (reduce (fn [query field-index]
                                  (lib.util/update-query-stage

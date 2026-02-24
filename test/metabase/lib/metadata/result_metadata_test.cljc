@@ -26,7 +26,7 @@
   (testing "make sure columns are comming back the way we'd expect for :field clauses"
     (lib.tu.macros/$ids venues
       (is (=? [{::result-metadata/source    :fields
-                ::result-metadata/field-ref [:field "PRICE" nil]}]
+                ::result-metadata/field-ref $price}]
               (column-info
                (lib/query meta/metadata-provider (lib.tu.macros/mbql-query venues {:fields [$price]}))
                {:columns [:price], :cols [{}]}))))))
@@ -37,7 +37,7 @@
                   "info about the source Field")
       (is (=? [{:fk-field-id                %category-id
                 ::result-metadata/source    :fields
-                ::result-metadata/field-ref [:field "NAME" {:source-field (meta/id :venues :category-id)}]
+                ::result-metadata/field-ref $category-id->categories.name
                 ;; for whatever reason this is what the `annotate` middleware traditionally returns here, for
                 ;; some reason we use the `:long` style inside aggregations and the `:default` style elsewhere
                 ;; who knows why. See notes
@@ -190,7 +190,7 @@
                ;; type: the db type is different and we have a way to convert. Othertimes, it doesn't make sense:
                ;; when the info is inferred. the solution to this might be quite extensive renaming
                :name              "grandparent.parent"
-               ::result-metadata/field-ref         [:field "parent" {}]
+               ::result-metadata/field-ref         [:field "grandparent.parent" {}]
                :parent-id         1
                :visibility-type   :normal
                :display-name      "Grandparent: Parent"
@@ -204,7 +204,7 @@
                                 (lib/with-fields [(lib.metadata/field metadata-provider 3)]))]
       (is (=? {:table-id          (meta/id :venues)
                :name              "grandparent.parent.child"
-               ::result-metadata/field-ref         [:field "child" {}]
+               ::result-metadata/field-ref         [:field "grandparent.parent.child" {}]
                :parent-id         2
                :id                3
                :visibility-type   :normal
