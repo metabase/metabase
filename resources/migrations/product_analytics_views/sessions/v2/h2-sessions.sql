@@ -1,19 +1,19 @@
-DROP VIEW IF EXISTS v_pa_sessions;
+DROP VIEW IF EXISTS V_PA_SESSIONS;
 
-CREATE OR REPLACE VIEW v_pa_sessions AS
+CREATE OR REPLACE VIEW V_PA_SESSIONS AS
 SELECT
-  id,
-  session_uuid,
-  site_id,
-  distinct_id,
-  browser,
-  os,
-  device,
-  screen,
-  language,
-  country,
-  subdivision1,
-  city,
-  created_at,
-  updated_at
-FROM product_analytics_session;
+  ID,
+  SESSION_UUID,
+  SITE_ID,
+  DISTINCT_ID,
+  BROWSER,
+  OS,
+  DEVICE,
+  SCREEN,
+  LANGUAGE,
+  COUNTRY,
+  SUBDIVISION1,
+  CITY,
+  CREATED_AT,
+  UPDATED_AT
+FROM PRODUCT_ANALYTICS_SESSION;

@@ -1,13 +1,13 @@
-DROP VIEW IF EXISTS v_pa_session_data;
+DROP VIEW IF EXISTS V_PA_SESSION_DATA;
 
-CREATE OR REPLACE VIEW v_pa_session_data AS
+CREATE OR REPLACE VIEW V_PA_SESSION_DATA AS
 SELECT
-  id,
-  session_id,
-  data_key,
-  string_value,
-  number_value,
-  date_value,
-  data_type,
-  created_at
-FROM product_analytics_session_data;
+  ID,
+  SESSION_ID,
+  DATA_KEY,
+  STRING_VALUE,
+  NUMBER_VALUE,
+  DATE_VALUE,
+  DATA_TYPE,
+  CREATED_AT
+FROM PRODUCT_ANALYTICS_SESSION_DATA;

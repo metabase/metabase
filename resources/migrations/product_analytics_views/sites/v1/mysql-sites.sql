@@ -1,12 +1,12 @@
-DROP VIEW IF EXISTS v_pa_sites;
+DROP VIEW IF EXISTS V_PA_SITES;
 
-CREATE OR REPLACE SQL SECURITY INVOKER VIEW v_pa_sites AS
+CREATE OR REPLACE SQL SECURITY INVOKER VIEW V_PA_SITES AS
 SELECT
-  id,
-  uuid,
-  name,
-  allowed_domains,
-  archived,
-  created_at,
-  updated_at
-FROM product_analytics_site;
+  ID,
+  UUID,
+  NAME,
+  ALLOWED_DOMAINS,
+  ARCHIVED,
+  CREATED_AT,
+  UPDATED_AT
+FROM PRODUCT_ANALYTICS_SITE;

@@ -185,49 +185,66 @@ endpoint lands.
 
 ---
 
-## Phase 5 — Event postprocessing pipeline
+## Phase 5 — Event postprocessing pipeline (core)
 
-Build the server-side enrichment logic that transforms a raw inbound payload into
-a fully resolved event ready for storage. This phase has no HTTP surface; it is
-a pure-function pipeline consumed by the API layer in Phase 6.
+Build the server-side enrichment logic that transforms a raw inbound event
+payload into a fully resolved event ready for storage. This phase has no HTTP
+surface; it is a pure-function pipeline consumed by the API layer in Phase 6.
 
-**Payload types:**
-
-The pipeline handles two payload types, mirroring Umami's `/api/send`:
-
-- `type: "event"` — pageview or custom event. Processed through the full
-  enrichment pipeline and stored as an event row.
-- `type: "identify"` — user identification. Associates a distinct ID and/or
-  session-level attributes with the current session. No event row is created.
+This phase handles only `type: "event"` payloads (pageviews and custom events).
+Session cache shortcutting and `type: "identify"` payloads are added in
+Phase 5.5 after Phase 4 lands.
 
 **Processing steps (mirroring Umami):**
 
 1. **Payload validation** — enforce field presence and length limits.
 2. **Site lookup** — resolve the site UUID, reject if missing or inactive.
 3. **Bot filtering** — drop requests whose User-Agent matches known bot patterns.
-4. **Session cache check** — if a valid session cache JWT (from Phase 4) is
-   present, extract the session and visit IDs directly and skip steps 5–7.
-5. **Client-info extraction:**
+4. **Client-info extraction:**
    - Parse User-Agent → browser, OS, device type.
    - Derive geolocation from IP (MaxMind GeoLite2 or CDN headers).
    - IP is used for derivation only and never persisted.
-6. **Session resolution** — deterministic UUID from `hash(site-id, ip, user-agent, monthly-salt)`.
+5. **Session resolution** — deterministic UUID from `hash(site-id, ip, user-agent, monthly-salt)`.
    Salt rotates on the first of each month so cross-month correlation is impossible.
-7. **Visit bucketing** — `hash(session-id, hourly-salt)` to segment activity windows.
-8. **Identify handling** (identify payloads only) — if the payload includes a
-   distinct ID, call `set-distinct-id!`. If it includes `data`, call
-   `save-session-data!`. Return early without creating an event row.
-9. **URL/referrer parsing** (event payloads only) — extract path, query, domain,
-   UTM params, click IDs.
+6. **Visit bucketing** — `hash(session-id, hourly-salt)` to segment activity windows.
+7. **URL/referrer parsing** — extract path, query, domain, UTM params, click IDs.
 
 **Deliverables:**
 
-- `pipeline.clj` (or `pipeline/` directory) with a top-level `process-payload`
-  function that accepts a raw payload + request context and returns either an
-  event map ready for storage or an identify result.
+- `pipeline.clj` (or `pipeline/` directory) with a top-level `process-event`
+  function that accepts a raw event payload + request context and returns a map
+  ready for storage. The function signature should accept an optional
+  `resolved-session` parameter (nil for now) so Phase 5.5 can pass in
+  cache-resolved sessions without changing the interface.
 - Individual processing step functions, each independently testable.
 - Comprehensive unit tests for each step, including edge cases (missing fields,
-  bot UAs, IPv6, malformed URLs, identify-only payloads, distinct ID assignment).
+  bot UAs, IPv6, malformed URLs).
+
+---
+
+## Phase 5.5 — Identify handling and session cache integration
+
+Wire Phase 4's session cache JWT and identity/session-data storage into the
+event pipeline from Phase 5. This phase depends on both Phase 4 and Phase 5.
+
+**Additions to the pipeline:**
+
+1. **Session cache check** — if a valid session cache JWT (from Phase 4) is
+   present, extract the session and visit IDs directly and skip client-info
+   extraction, session resolution, and visit bucketing.
+2. **Identify handling** — support `type: "identify"` payloads. If the payload
+   includes a distinct ID, call `set-distinct-id!`. If it includes `data`, call
+   `save-session-data!`. Return early without creating an event row.
+3. **Payload type dispatch** — wrap the pipeline entry point (`process-payload`)
+   to dispatch on `type`: route `"event"` payloads through `process-event`
+   (Phase 5) and `"identify"` payloads through the new identify handler.
+
+**Deliverables:**
+
+- Updated `pipeline.clj` with `process-payload` dispatcher and identify handler.
+- Session cache check integrated before session resolution.
+- Tests for identify payloads, distinct ID assignment, session data storage,
+  and session cache shortcutting (valid token, expired token, tampered token).
 
 ---
 
@@ -264,6 +281,134 @@ CORS origins must be updated accordingly.
   registered site hostnames for the `/send` endpoint.
 - Integration tests hitting the endpoint end-to-end against the app-DB backend,
   including CORS preflight checks, event payloads, and identify payloads.
+
+---
+
+## Phase 6.5 — Lightweight event collector entrypoint [DONE]
+
+Provide an alternative Metabase entrypoint that boots only the subsystems
+required for event ingestion. This lets operators run a dedicated collector
+process — smaller, faster to start, and independently scalable — separate from
+the main Metabase instance that serves the UI and query workloads.
+
+**Motivation:**
+
+The full Metabase boot sequence initialises the task scheduler, queue
+listeners, plugin loader, sample data, sync/scan infrastructure, the complete
+API route tree, and the frontend static-asset handler. None of this is needed
+to accept `/send` requests and write events to storage. A collector-only
+process:
+
+- Starts in seconds instead of tens of seconds.
+- Uses a fraction of the memory (no query processor, no driver system).
+- Can be horizontally scaled behind a load balancer independently of the
+  Metabase UI nodes.
+- Reduces blast radius — a traffic spike on the collector doesn't affect
+  dashboard queries.
+
+**What boots:**
+
+| Subsystem | Why |
+|---|---|
+| Classloader | Required before anything else. |
+| App DB connection + migrations | Storage backend and site config live here. |
+| Settings cache | Reads storage-backend config, site allowed-domains, session secret. |
+| Premium feature check | Gates the endpoint behind the `:product-analytics` token flag. |
+| Product analytics storage layer | Multimethod dispatch to app-DB, Iceberg, or stream backend. |
+| Iceberg flush scheduler (if Iceberg) | Background thread that flushes the event buffer. |
+
+**What does NOT boot:**
+
+Task scheduler, queue listeners, notification system, sync/scan, plugin
+loader (beyond EE), analytics/telemetry, sample data, full API route tree,
+frontend static assets, embedding middleware, session/auth middleware (the
+`/send` endpoint is unauthenticated).
+
+**Entrypoint design:**
+
+A new namespace `metabase.core.collector` with a `-main` function, invocable
+as a Metabase command (`java -jar metabase.jar collector`) or via an
+environment variable (`MB_MODE=collector`). The startup sequence:
+
+1. Initialise classloader.
+2. Load EE plugins (product-analytics module only).
+3. Set up app DB connection, run migrations.
+4. Warm the settings cache.
+5. Build a minimal Ring handler:
+   - `POST /api/ee/product-analytics/send` — the Phase 6 endpoint.
+   - `GET /api/health` — returns 200 when ready (for load-balancer probes).
+   - `GET /livez` — liveness probe (no DB check).
+   - CORS middleware scoped to registered site hostnames.
+   - JSON body parsing, exception handling, request-id, gzip.
+   - No session/auth middleware, no paging, no frontend routes.
+6. Start Jetty on the configured port.
+7. Register shutdown hook (flush Iceberg buffer, close DB pool).
+
+**Middleware stack (minimal):**
+
+```
+wrap-gzip
+wrap-request-id
+bind-request
+catch-uncaught-exceptions
+catch-api-exceptions
+log-api-call
+wrap-json-body
+wrap-streamed-json-response
+wrap-keyword-params
+wrap-params
+add-content-type
+add-version
+```
+
+No session, auth, paging, metadata-provider, browser-cookie, or
+security-header middleware — none of it applies to a public event endpoint.
+
+**Shared code:**
+
+The collector reuses the same `defendpoint` handler from Phase 6 and the same
+storage multimethod implementations from Phase 2/8/9. No duplication — the
+only new code is the boot sequence and the minimal route/middleware assembly.
+
+**Configuration:**
+
+The collector reads the same application settings as the main process
+(storage backend, Iceberg config, session secret for JWT verification). It
+connects to the same app DB. The only new setting is:
+
+| Setting | Default | Description |
+|---|---|---|
+| `mb-mode` | `full` | `full` (normal Metabase) or `collector` (event ingestion only). Also selectable via the `collector` command. |
+
+**Deployment patterns:**
+
+```
+                  ┌─────────────────────┐
+  Browser ──────> │  Load balancer      │
+                  │  /api/ee/.../send   │──> collector (N replicas)
+                  │  everything else    │──> metabase  (M replicas)
+                  └─────────────────────┘
+                              │
+                    ┌─────────┴─────────┐
+                    │     App DB        │
+                    └───────────────────┘
+```
+
+Operators route `/api/ee/product-analytics/send` (and its CORS preflight) to
+the collector pool, and all other traffic to the main Metabase pool. Both
+pools share the app DB (and optionally the Iceberg catalog / S3 bucket).
+
+**Deliverables:**
+
+- `metabase.core.collector` namespace with `-main`, `start!`, and `destroy!`.
+- Minimal Ring handler assembly (route + middleware).
+- Registration as a Metabase command so `java -jar metabase.jar collector`
+  works out of the box.
+- `MB_MODE` environment variable support as an alternative to the command.
+- Health and liveness endpoints.
+- Documentation on the deployment pattern (load-balancer routing).
+- Integration test that boots the collector, sends an event, and verifies
+  storage.
 
 ---
 
@@ -559,17 +704,23 @@ Phase 2  (storage multimethods)
   v
 Phase 3  (site CRUD)
   │
-  v
-Phase 4  (user identification + session data + cache JWT)
-  │
-  v
-Phase 5  (pipeline)
+  ├──────────────────────────┐
+  v                          v
+Phase 4  (identification +   Phase 5  (pipeline core)
+          session data +       │
+          cache JWT)           │
+  │                          │
+  └──────────┬───────────────┘
+             v
+Phase 5.5  (identify handling + session cache integration)
   │
   v
 Phase 6  (HTTP endpoint)
   │
-  v
-Phase 7  (query integration)
+  ├──────────────────────────┐
+  v                          v
+Phase 6.5 (collector       Phase 7  (query integration)
+           entrypoint)
 
 Phase 8  (Iceberg)     ── depends on Phase 2
 Phase 9  (Stream)      ── depends on Phase 2
@@ -578,14 +729,17 @@ Phase 10 (ClickHouse)  ── depends on Phase 2 (deprioritized)
 
 ### Parallelism opportunities
 
-After Phase 2 completes, the following work streams can proceed in parallel:
+After Phase 3 completes, the following work streams can proceed in parallel:
 
 | Stream | Phases | Notes |
 |---|---|---|
-| **Admin API + Ingestion** | Phase 3 → 4 → 5 → 6 | Main sequential path. |
+| **Identity + session data** | Phase 4 | Schema, JWT, storage extensions. Can run in parallel with Phase 5. |
+| **Event pipeline (core)** | Phase 5 | Pure-function pipeline for event payloads. Can run in parallel with Phase 4. |
+| **Collector entrypoint** | Phase 6.5 | Minimal boot for event ingestion. Requires Phase 6 endpoint code to exist. Independent of Phase 7. |
 | **Iceberg backend** | Phase 8 | Primary alternative backend. Independent of Phases 3–7; can start any time after Phase 2. |
 | **Stream / ClickHouse** | Phase 9, 10 | Lower priority. Independent of all other backend phases. |
 
+Phase 5.5 merges the two streams and requires both Phase 4 and Phase 5 to be complete.
 Phases 8, 9, and 10 are independent of each other and of Phases 3–7.
 
 ---

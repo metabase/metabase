@@ -1,13 +1,13 @@
-DROP VIEW IF EXISTS v_pa_event_data;
+DROP VIEW IF EXISTS V_PA_EVENT_DATA;
 
-CREATE OR REPLACE SQL SECURITY INVOKER VIEW v_pa_event_data AS
+CREATE OR REPLACE SQL SECURITY INVOKER VIEW V_PA_EVENT_DATA AS
 SELECT
-  id,
-  event_id,
-  data_key,
-  string_value,
-  number_value,
-  date_value,
-  data_type,
-  created_at
-FROM product_analytics_event_data;
+  ID,
+  EVENT_ID,
+  DATA_KEY,
+  STRING_VALUE,
+  NUMBER_VALUE,
+  DATE_VALUE,
+  DATA_TYPE,
+  CREATED_AT
+FROM PRODUCT_ANALYTICS_EVENT_DATA;

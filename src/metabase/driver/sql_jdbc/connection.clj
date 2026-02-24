@@ -467,10 +467,10 @@
           details-hash (jdbc-spec-hash db)]
       (driver.conn/track-connection-acquisition! (driver.conn/effective-details db))
       (cond
-        ;; for the audit db, we pass the datasource for the app-db. This lets us use fewer db
-        ;; connections with *application-db* and 1 less connection pool. Note: This data-source is
-        ;; not in [[pool-cache-key->connection-pool]].
-        (or (:is-audit db) (get-in db [:details :is-audit-dev]))
+        ;; for the audit db and product analytics db, we pass the datasource for the app-db.
+        ;; This lets us use fewer db connections with *application-db* and 1 less connection pool.
+        ;; Note: This data-source is not in [[pool-cache-key->connection-pool]].
+        (or (:is-audit db) (:is-product-analytics db) (get-in db [:details :is-audit-dev]))
         {:datasource (driver-api/data-source)}
 
         ;; Swapped pool: use Guava cache with TTL

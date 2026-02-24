@@ -493,7 +493,7 @@ databaseChangeLog:
   - changeSet:
       id: v60.2026-02-24T00:00:19
       author: epaget
-      comment: Product Analytics; Create v_pa_sites view
+      comment: Product Analytics; Create V_PA_SITES view
       changes:
         - sqlFile:
             dbms: postgresql
@@ -510,12 +510,12 @@ databaseChangeLog:
       rollback:
         - sql:
             dbms: postgresql,mysql,mariadb,h2
-            sql: drop view if exists v_pa_sites;
+            sql: drop view if exists V_PA_SITES;
 
   - changeSet:
       id: v60.2026-02-24T00:00:20
       author: epaget
-      comment: Product Analytics; Create v_pa_sessions view
+      comment: Product Analytics; Create V_PA_SESSIONS view
       changes:
         - sqlFile:
             dbms: postgresql
@@ -532,12 +532,12 @@ databaseChangeLog:
       rollback:
         - sql:
             dbms: postgresql,mysql,mariadb,h2
-            sql: drop view if exists v_pa_sessions;
+            sql: drop view if exists V_PA_SESSIONS;
 
   - changeSet:
       id: v60.2026-02-24T00:00:21
       author: epaget
-      comment: Product Analytics; Create v_pa_events view
+      comment: Product Analytics; Create V_PA_EVENTS view
       changes:
         - sqlFile:
             dbms: postgresql
@@ -554,12 +554,12 @@ databaseChangeLog:
       rollback:
         - sql:
             dbms: postgresql,mysql,mariadb,h2
-            sql: drop view if exists v_pa_events;
+            sql: drop view if exists V_PA_EVENTS;
 
   - changeSet:
       id: v60.2026-02-24T00:00:22
       author: epaget
-      comment: Product Analytics; Create v_pa_event_data view
+      comment: Product Analytics; Create V_PA_EVENT_DATA view
       changes:
         - sqlFile:
             dbms: postgresql
@@ -576,7 +576,7 @@ databaseChangeLog:
       rollback:
         - sql:
             dbms: postgresql,mysql,mariadb,h2
-            sql: drop view if exists v_pa_event_data;
+            sql: drop view if exists V_PA_EVENT_DATA;
 
   # ──────────────────────────────────────────────────────────────────────────────
   # Phase 4: User Identification and Session Data
@@ -704,7 +704,7 @@ databaseChangeLog:
   - changeSet:
       id: v60.2026-02-24T00:00:29
       author: epaget
-      comment: Product Analytics; Update v_pa_sessions view to v2 (add distinct_id)
+      comment: Product Analytics; Update V_PA_SESSIONS view to v2 (add distinct_id)
       changes:
         - sqlFile:
             dbms: postgresql
@@ -721,12 +721,12 @@ databaseChangeLog:
       rollback:
         - sql:
             dbms: postgresql,mysql,mariadb,h2
-            sql: drop view if exists v_pa_sessions;
+            sql: drop view if exists V_PA_SESSIONS;
 
   - changeSet:
       id: v60.2026-02-24T00:00:30
       author: epaget
-      comment: Product Analytics; Create v_pa_session_data view
+      comment: Product Analytics; Create V_PA_SESSION_DATA view
       changes:
         - sqlFile:
             dbms: postgresql
@@ -743,4 +743,4 @@ databaseChangeLog:
       rollback:
         - sql:
             dbms: postgresql,mysql,mariadb,h2
-            sql: drop view if exists v_pa_session_data;
+            sql: drop view if exists V_PA_SESSION_DATA;

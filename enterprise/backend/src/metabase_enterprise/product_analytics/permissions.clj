@@ -14,7 +14,7 @@
 
 (def pa-view-names
   "Allowlist of view names for Product Analytics queries."
-  #{"v_pa_sites" "v_pa_sessions" "v_pa_events" "v_pa_event_data" "v_pa_session_data"})
+  #{"V_PA_SITES" "V_PA_SESSIONS" "V_PA_EVENTS" "V_PA_EVENT_DATA" "V_PA_SESSION_DATA"})
 
 (defn- pa-collection
   "Returns the Product Analytics collection."
@@ -38,6 +38,6 @@
     (qp.store/with-metadata-provider database-id
       (doseq [table-id table-ids]
         (when-not (pa-view-names
-                   (u/lower-case-en (:name (lib.metadata/table (qp.store/metadata-provider) table-id))))
+                   (u/upper-case-en (:name (lib.metadata/table (qp.store/metadata-provider) table-id))))
           (throw (ex-info (tru "Product analytics queries are only allowed on product analytics views")
                           outer-query)))))))

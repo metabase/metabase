@@ -1,25 +1,25 @@
-DROP VIEW IF EXISTS v_pa_events;
+DROP VIEW IF EXISTS V_PA_EVENTS;
 
-CREATE OR REPLACE VIEW v_pa_events AS
+CREATE OR REPLACE VIEW V_PA_EVENTS AS
 SELECT
-  id,
-  site_id,
-  session_id,
-  visit_id,
-  event_type,
-  event_name,
-  url_path,
-  url_query,
-  referrer_path,
-  referrer_query,
-  referrer_domain,
-  page_title,
-  utm_source,
-  utm_medium,
-  utm_campaign,
-  utm_content,
-  utm_term,
-  gclid,
-  fbclid,
-  created_at
-FROM product_analytics_event;
+  ID,
+  SITE_ID,
+  SESSION_ID,
+  VISIT_ID,
+  EVENT_TYPE,
+  EVENT_NAME,
+  URL_PATH,
+  URL_QUERY,
+  REFERRER_PATH,
+  REFERRER_QUERY,
+  REFERRER_DOMAIN,
+  PAGE_TITLE,
+  UTM_SOURCE,
+  UTM_MEDIUM,
+  UTM_CAMPAIGN,
+  UTM_CONTENT,
+  UTM_TERM,
+  GCLID,
+  FBCLID,
+  CREATED_AT
+FROM PRODUCT_ANALYTICS_EVENT;
