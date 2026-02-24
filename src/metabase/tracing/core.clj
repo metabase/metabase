@@ -23,7 +23,6 @@
    [potemkin :as p]
    [steffan-westcott.clj-otel.api.otel :as otel]
    [steffan-westcott.clj-otel.api.trace.span :as span]
-   [steffan-westcott.clj-otel.exporter.otlp.grpc.trace :as otlp-grpc]
    [steffan-westcott.clj-otel.exporter.otlp.http.trace :as otlp-http]
    [steffan-westcott.clj-otel.sdk.otel-sdk :as otel-sdk])
   (:import
@@ -307,15 +306,8 @@
       (generateSpanId [_]
         (.generateSpanId default-gen)))))
 
-(defn- make-span-exporter
-  "Create an OTLP span exporter based on the configured protocol."
-  [protocol endpoint]
-  (case protocol
-    "grpc" (otlp-grpc/span-exporter {:endpoint endpoint})
-    "http" (otlp-http/span-exporter {:endpoint endpoint})))
-
 (defn init!
-  "Initialize the OTel SDK with OTLP exporter. No-op when MB_TRACING_ENABLED=false.
+  "Initialize the OTel SDK with OTLP HTTP exporter. No-op when MB_TRACING_ENABLED=false.
    Should be called as early as possible in startup — has no database dependency.
    Uses requiring-resolve for settings to avoid cyclic load dependency."
   []
@@ -323,16 +315,15 @@
     (log/info "OpenTelemetry tracing is disabled (MB_TRACING_ENABLED=false)")
     (try
       (let [endpoint      ((requiring-resolve 'metabase.tracing.settings/tracing-endpoint))
-            protocol      ((requiring-resolve 'metabase.tracing.settings/tracing-protocol))
             service-name  ((requiring-resolve 'metabase.tracing.settings/tracing-service-name))
             groups-str    ((requiring-resolve 'metabase.tracing.settings/tracing-groups))
             log-level-str ((requiring-resolve 'metabase.tracing.settings/tracing-log-level))
             queue-size    ((requiring-resolve 'metabase.tracing.settings/tracing-max-queue-size))
             timeout-ms    ((requiring-resolve 'metabase.tracing.settings/tracing-export-timeout-ms))
             delay-ms      ((requiring-resolve 'metabase.tracing.settings/tracing-schedule-delay-ms))
-            exporter      (make-span-exporter protocol endpoint)]
-        (log/infof "Initializing OpenTelemetry tracing: service=%s endpoint=%s protocol=%s groups=%s log-level=%s"
-                   service-name endpoint protocol groups-str log-level-str)
+            exporter      (otlp-http/span-exporter {:endpoint endpoint})]
+        (log/infof "Initializing OpenTelemetry tracing: service=%s endpoint=%s groups=%s log-level=%s"
+                   service-name endpoint groups-str log-level-str)
         (log/infof "Batch span processor config: max-queue-size=%d export-timeout-ms=%d schedule-delay-ms=%d"
                    queue-size timeout-ms delay-ms)
         (let [otel (otel-sdk/init-otel-sdk!
