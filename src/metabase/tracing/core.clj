@@ -21,7 +21,11 @@
    [metabase.tracing.attributes :as trace-attrs]
    [metabase.util.log :as log]
    [potemkin :as p]
-   [steffan-westcott.clj-otel.api.trace.span :as span])
+   [steffan-westcott.clj-otel.api.otel :as otel]
+   [steffan-westcott.clj-otel.api.trace.span :as span]
+   [steffan-westcott.clj-otel.exporter.otlp.grpc.trace :as otlp-grpc]
+   [steffan-westcott.clj-otel.exporter.otlp.http.trace :as otlp-http]
+   [steffan-westcott.clj-otel.sdk.otel-sdk :as otel-sdk])
   (:import
    (io.opentelemetry.api.trace Span SpanContext)
    (io.opentelemetry.sdk.trace IdGenerator)
@@ -32,13 +36,7 @@
 
 (p/import-vars
  [trace-attrs
-  db-attrs
-  http-attrs
-  query-attrs
-  sanitize-sql
-  service-attrs
-  sync-attrs
-  task-attrs])
+  sanitize-sql])
 
 ;;; ------------------------------------------------ Group Registry ------------------------------------------------
 
@@ -159,8 +157,8 @@
    Uses the clj-otel default OTel instance (set during SDK init), NOT
    `GlobalOpenTelemetry` (which may be no-op if `:set-as-global` was false)."
   ^io.opentelemetry.api.trace.Tracer [^String library-name]
-  (let [^io.opentelemetry.api.OpenTelemetry otel ((requiring-resolve 'steffan-westcott.clj-otel.api.otel/get-default-otel!))]
-    (.getTracer otel library-name)))
+  (let [^io.opentelemetry.api.OpenTelemetry otel-instance (otel/get-default-otel!)]
+    (.getTracer otel-instance library-name)))
 
 ;;; --------------------------------------------- Pyroscope Integration --------------------------------------------
 ;;; Optional integration with Pyroscope continuous profiling. When pyroscope.jar is on the
@@ -313,15 +311,13 @@
   "Create an OTLP span exporter based on the configured protocol."
   [protocol endpoint]
   (case protocol
-    "grpc" ((requiring-resolve 'steffan-westcott.clj-otel.exporter.otlp.grpc.trace/span-exporter)
-            {:endpoint endpoint})
-    "http" ((requiring-resolve 'steffan-westcott.clj-otel.exporter.otlp.http.trace/span-exporter)
-            {:endpoint endpoint})))
+    "grpc" (otlp-grpc/span-exporter {:endpoint endpoint})
+    "http" (otlp-http/span-exporter {:endpoint endpoint})))
 
 (defn init!
   "Initialize the OTel SDK with OTLP exporter. No-op when MB_TRACING_ENABLED=false.
    Should be called as early as possible in startup — has no database dependency.
-   Uses requiring-resolve for settings/SDK to avoid cyclic load dependency."
+   Uses requiring-resolve for settings to avoid cyclic load dependency."
   []
   (if-not ((requiring-resolve 'metabase.tracing.settings/tracing-enabled))
     (log/info "OpenTelemetry tracing is disabled (MB_TRACING_ENABLED=false)")
@@ -339,7 +335,7 @@
                    service-name endpoint protocol groups-str log-level-str)
         (log/infof "Batch span processor config: max-queue-size=%d export-timeout-ms=%d schedule-delay-ms=%d"
                    queue-size timeout-ms delay-ms)
-        (let [otel ((requiring-resolve 'steffan-westcott.clj-otel.sdk.otel-sdk/init-otel-sdk!)
+        (let [otel (otel-sdk/init-otel-sdk!
                     service-name
                     {:set-as-default        true
                      :register-shutdown-hook false  ;; we manage shutdown ourselves
@@ -361,7 +357,7 @@
   (when-let [otel @otel-sdk-instance]
     (log/info "Shutting down OpenTelemetry tracing...")
     (try
-      ((requiring-resolve 'steffan-westcott.clj-otel.sdk.otel-sdk/close-otel-sdk!) otel)
+      (otel-sdk/close-otel-sdk! otel)
       (catch Exception e
         (log/warn e "Error shutting down OpenTelemetry SDK")))
     (reset! otel-sdk-instance nil)
