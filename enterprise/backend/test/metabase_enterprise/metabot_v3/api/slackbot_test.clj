@@ -1237,7 +1237,8 @@
       (testing "set all credentials"
         (mt/with-temporary-setting-values [sso-settings/slack-connect-client-id nil
                                            sso-settings/slack-connect-client-secret nil
-                                           metabot.settings/metabot-slack-signing-secret nil]
+                                           metabot.settings/metabot-slack-signing-secret nil
+                                           sso-settings/slack-connect-enabled false]
           (is (= {:ok true} (mt/user-http-request :crowberto :put 200 "ee/metabot-v3/slack/settings" creds)))
           (is (every? some? [(sso-settings/slack-connect-client-id)
                              (sso-settings/slack-connect-client-secret)
@@ -1247,7 +1248,8 @@
       (testing "clear all credentials"
         (mt/with-temporary-setting-values [sso-settings/slack-connect-client-id "x"
                                            sso-settings/slack-connect-client-secret "x"
-                                           metabot.settings/metabot-slack-signing-secret "x"]
+                                           metabot.settings/metabot-slack-signing-secret "x"
+                                           sso-settings/slack-connect-enabled true]
           (is (= {:ok true} (mt/user-http-request :crowberto :put 200 "ee/metabot-v3/slack/settings" clear)))
           (is (every? nil? [(sso-settings/slack-connect-client-id)
                             (sso-settings/slack-connect-client-secret)
