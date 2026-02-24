@@ -1,9 +1,9 @@
-(ns metabase.task.tracing-test
+(ns metabase.tracing.quartz-test
   (:require
    [clojure.test :refer [deftest is testing]]
    [metabase.task.bootstrap :as task.bootstrap]
-   [metabase.task.tracing :as task.tracing]
-   [metabase.tracing.core :as tracing])
+   [metabase.tracing.core :as tracing]
+   [metabase.tracing.quartz :as tracing.quartz])
   (:import
    (java.sql Connection PreparedStatement ResultSet Statement)
    (org.quartz JobDetail JobExecutionContext JobExecutionException JobKey JobListener)))
@@ -73,14 +73,14 @@
 
 (deftest sql-operation-test
   (testing "extracts SQL verb from various SQL statements"
-    (is (= "SELECT" (#'task.tracing/sql-operation "SELECT * FROM QRTZ_TRIGGERS")))
-    (is (= "UPDATE" (#'task.tracing/sql-operation "UPDATE QRTZ_TRIGGERS SET state = ?")))
-    (is (= "INSERT" (#'task.tracing/sql-operation "INSERT INTO QRTZ_FIRED_TRIGGERS VALUES (?)")))
-    (is (= "DELETE" (#'task.tracing/sql-operation "DELETE FROM QRTZ_FIRED_TRIGGERS WHERE id = ?"))))
+    (is (= "SELECT" (#'tracing.quartz/sql-operation "SELECT * FROM QRTZ_TRIGGERS")))
+    (is (= "UPDATE" (#'tracing.quartz/sql-operation "UPDATE QRTZ_TRIGGERS SET state = ?")))
+    (is (= "INSERT" (#'tracing.quartz/sql-operation "INSERT INTO QRTZ_FIRED_TRIGGERS VALUES (?)")))
+    (is (= "DELETE" (#'tracing.quartz/sql-operation "DELETE FROM QRTZ_FIRED_TRIGGERS WHERE id = ?"))))
   (testing "handles edge cases"
-    (is (= "SELECT" (#'task.tracing/sql-operation "  SELECT * FROM t  ")))
-    (is (= "COMMIT" (#'task.tracing/sql-operation "COMMIT")))
-    (is (nil? (#'task.tracing/sql-operation nil)))))
+    (is (= "SELECT" (#'tracing.quartz/sql-operation "  SELECT * FROM t  ")))
+    (is (= "COMMIT" (#'tracing.quartz/sql-operation "COMMIT")))
+    (is (nil? (#'tracing.quartz/sql-operation nil)))))
 
 ;;; ----------------------------------------- JDBC proxy tests --------------------------------------------------------
 
@@ -90,7 +90,7 @@
       (tracing/init-enabled-groups! "quartz" "INFO")
       (let [calls (atom [])
             conn  (mock-connection calls)
-            traced (#'task.tracing/traced-connection conn)]
+            traced (#'tracing.quartz/traced-connection conn)]
         (testing "returned connection implements Connection"
           (is (instance? Connection traced)))
         (testing "prepareStatement returns a PreparedStatement proxy"
@@ -111,7 +111,7 @@
       (tracing/init-enabled-groups! "quartz" "INFO")
       (let [calls (atom [])
             conn  (mock-connection calls)
-            traced (#'task.tracing/traced-connection conn)]
+            traced (#'tracing.quartz/traced-connection conn)]
         (testing "close delegates to original"
           (.close ^Connection traced)
           ;; no exception means the method was delegated
@@ -127,7 +127,7 @@
       (tracing/init-enabled-groups! "quartz" "INFO")
       (let [calls  (atom [])
             conn   (mock-connection calls)
-            traced (#'task.tracing/traced-connection conn)]
+            traced (#'tracing.quartz/traced-connection conn)]
         (testing "createStatement returns a Statement proxy"
           (let [^Statement stmt (.createStatement ^Connection traced)]
             (is (instance? Statement stmt))
@@ -148,7 +148,7 @@
       (tracing/init-enabled-groups! "quartz" "INFO")
       (let [calls  (atom [])
             conn   (mock-connection calls)
-            traced (#'task.tracing/traced-connection conn)]
+            traced (#'tracing.quartz/traced-connection conn)]
         (.rollback ^Connection traced)
         (is (= [:rollback] @calls)
             "rollback should delegate to the underlying connection"))
@@ -161,7 +161,7 @@
       (tracing/init-enabled-groups! "quartz" "INFO")
       (let [calls  (atom [])
             conn   (mock-connection calls)
-            traced (#'task.tracing/traced-connection conn)]
+            traced (#'tracing.quartz/traced-connection conn)]
         (.commit ^Connection traced)
         (is (= [:commit] @calls)
             "commit should delegate to the underlying connection"))
@@ -173,7 +173,7 @@
     (tracing/shutdown-groups!)
     (let [calls (atom [])
           conn  (mock-connection calls)
-          result (#'task.tracing/connection-interceptor conn)]
+          result (#'tracing.quartz/connection-interceptor conn)]
       (is (identical? conn result)
           "should return the exact same connection object when tracing disabled")))
   (testing "when :quartz group is enabled, returns wrapped connection"
@@ -181,7 +181,7 @@
       (tracing/init-enabled-groups! "quartz" "INFO")
       (let [calls (atom [])
             conn  (mock-connection calls)
-            result (#'task.tracing/connection-interceptor conn)]
+            result (#'tracing.quartz/connection-interceptor conn)]
         (is (not (identical? conn result))
             "should return a different (wrapped) connection when tracing enabled")
         (is (instance? Connection result)))
@@ -192,55 +192,55 @@
 
 (deftest job-listener-name-test
   (testing "listener has a descriptive name"
-    (let [^JobListener listener (#'task.tracing/create-tracing-job-listener)]
-      (is (= "metabase.task.tracing/quartz-tracing-listener" (.getName listener))))))
+    (let [^JobListener listener (#'tracing.quartz/create-tracing-job-listener)]
+      (is (= "metabase.tracing.quartz/quartz-tracing-listener" (.getName listener))))))
 
 (deftest job-listener-disabled-is-noop-test
   (testing "when :quartz group is disabled, jobToBeExecuted is a no-op"
     (tracing/shutdown-groups!)
-    (let [^JobListener listener (#'task.tracing/create-tracing-job-listener)
+    (let [^JobListener listener (#'tracing.quartz/create-tracing-job-listener)
           ctx      (mock-job-execution-context "TestJob")]
       (.jobToBeExecuted listener ctx)
       ;; No span should be in ThreadLocal
-      (is (nil? (.get ^ThreadLocal @#'task.tracing/listener-state)))
+      (is (nil? (.get ^ThreadLocal @#'tracing.quartz/listener-state)))
       ;; jobWasExecuted should also be safe to call (no-op since no state)
       (.jobWasExecuted listener ctx nil)
-      (is (nil? (.get ^ThreadLocal @#'task.tracing/listener-state))))))
+      (is (nil? (.get ^ThreadLocal @#'tracing.quartz/listener-state))))))
 
 (deftest job-listener-enabled-creates-and-ends-span-test
   (testing "when :quartz group is enabled, jobToBeExecuted creates a span"
     (try
       (tracing/init-enabled-groups! "quartz" "INFO")
-      (let [^JobListener listener (#'task.tracing/create-tracing-job-listener)
+      (let [^JobListener listener (#'tracing.quartz/create-tracing-job-listener)
             ctx      (mock-job-execution-context "TestSessionCleanup")]
         (.jobToBeExecuted listener ctx)
         (testing "span state is stored in ThreadLocal"
-          (let [state (.get ^ThreadLocal @#'task.tracing/listener-state)]
+          (let [state (.get ^ThreadLocal @#'tracing.quartz/listener-state)]
             (is (some? state))
             (is (contains? state :span))
             (is (contains? state :scope))))
         (testing "jobWasExecuted cleans up ThreadLocal"
           (.jobWasExecuted listener ctx nil)
-          (is (nil? (.get ^ThreadLocal @#'task.tracing/listener-state)))))
+          (is (nil? (.get ^ThreadLocal @#'tracing.quartz/listener-state)))))
       (finally
         ;; Safety: clean up any lingering state
-        (.remove ^ThreadLocal @#'task.tracing/listener-state)
+        (.remove ^ThreadLocal @#'tracing.quartz/listener-state)
         (tracing/shutdown-groups!)))))
 
 (deftest job-listener-records-exception-test
   (testing "when job fails, exception is recorded on the span"
     (try
       (tracing/init-enabled-groups! "quartz" "INFO")
-      (let [^JobListener listener (#'task.tracing/create-tracing-job-listener)
+      (let [^JobListener listener (#'tracing.quartz/create-tracing-job-listener)
             ctx       (mock-job-execution-context "FailingJob")
             exception (JobExecutionException. "something broke")]
         (.jobToBeExecuted listener ctx)
-        (is (some? (.get ^ThreadLocal @#'task.tracing/listener-state)))
+        (is (some? (.get ^ThreadLocal @#'tracing.quartz/listener-state)))
         ;; Should not throw — exception is recorded on span, not re-thrown
         (.jobWasExecuted listener ctx exception)
-        (is (nil? (.get ^ThreadLocal @#'task.tracing/listener-state))))
+        (is (nil? (.get ^ThreadLocal @#'tracing.quartz/listener-state))))
       (finally
-        (.remove ^ThreadLocal @#'task.tracing/listener-state)
+        (.remove ^ThreadLocal @#'tracing.quartz/listener-state)
         (tracing/shutdown-groups!)))))
 
 ;;; ----------------------------------- bootstrap interceptor tests ---------------------------------------------------

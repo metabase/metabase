@@ -32,7 +32,7 @@
    [metabase.startup.core :as startup]
    [metabase.system.core :as system]
    [metabase.task.core :as task]
-   [metabase.task.tracing :as task.tracing]
+   [metabase.tracing.quartz]
    [metabase.tracing.sdk :as tracing.sdk]
    [metabase.util :as u]
    [metabase.util.log :as log]
@@ -196,7 +196,6 @@
   (init-status/set-progress! 0.5)
   (task/init-scheduler!)
   (analytics/add-listeners-to-scheduler!)
-  (task.tracing/init-quartz-tracing!)
   ;; run a very quick check to see if we are doing a first time installation
   ;; the test we are using is if there is at least 1 User in the database
   (let [new-install? (not (setup/has-user-setup))]

@@ -1,4 +1,4 @@
-(ns metabase.task.tracing
+(ns metabase.tracing.quartz
   "Quartz scheduler tracing instrumentation.
 
    Provides two levels of observability for Quartz internals:
@@ -155,7 +155,7 @@
   ^JobListener []
   (reify JobListener
     (getName [_]
-      "metabase.task.tracing/quartz-tracing-listener")
+      "metabase.tracing.quartz/quartz-tracing-listener")
 
     (jobToBeExecuted [_ ctx]
       (when (tracing/group-enabled? :quartz)
@@ -186,10 +186,7 @@
 
 ;;; ------------------------------------------- Initialization -------------------------------------------------------
 
-(defn init-quartz-tracing!
-  "Register the Quartz tracing JobListener and JDBC connection interceptor.
-   Must be called after the scheduler is initialized."
-  []
+(defmethod task/init! ::QuartzTracing [_]
   (log/info "Initializing Quartz tracing instrumentation")
   (task/add-job-listener! (create-tracing-job-listener))
   (task.bootstrap/set-connection-interceptor! connection-interceptor))
