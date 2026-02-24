@@ -10,6 +10,7 @@
    [metabase.query-processor.compile :as qp.compile]
    [metabase.sql-tools.common :as sql-tools.common]
    [metabase.sql-tools.core :as sql-tools]
+   [metabase.util :as u]
    [metabase.util.malli :as mu]))
 
 (mu/defn- compile-query :- ::lib.schema/native-only-query
@@ -31,46 +32,37 @@
   [query]
   (some #(= (:type %) :card) (lib/all-template-tags query)))
 
-(defn- compile-toplevel-query
-  "Compile a query replacing card references with placeholder subqueries.
-   Card refs like {{#1}} are replaced with (SELECT NULL AS col1, NULL AS col2, ...)
-   based on the referenced card's result-metadata.
+(def ^:private card-placeholder-prefix
+  "Prefix used to generate placeholder table names for card references.
+   Card ref {{#N}} becomes mb__dummy_card__N in the SQL sent to SQLGlot."
+  "mb__dummy_card__")
 
-   Returns {:compiled <native-only-query>, :card-columns {card-id #{normalized-col-names}}}
-   or nil if any referenced card lacks result-metadata."
-  [driver query]
-  (let [mp        (lib/->metadata-provider query)
-        stage     (first (:stages query))
+(defn- parse-card-placeholder
+  "If table-name is a card placeholder (e.g. \"mb__dummy_card__42\" or \"MB__DUMMY_CARD__42\"),
+   return the card ID. Returns nil otherwise. Case-insensitive to handle driver normalization."
+  [table-name]
+  (let [lower (u/lower-case-en (str table-name))]
+    (when (str/starts-with? lower card-placeholder-prefix)
+      (parse-long (subs lower (count card-placeholder-prefix))))))
+
+(defn- compile-toplevel-query
+  "Compile a query replacing card references with placeholder table names.
+   Card refs like {{#1}} are replaced with mb__dummy_card__1.
+
+   Returns the compiled native-only-query, or nil if the original SQL contains
+   the placeholder prefix (collision guard)."
+  [query]
+  (let [stage     (first (:stages query))
+        sql       (:native stage)
         ttags     (:template-tags stage)
         card-tags (into {} (filter #(= (:type (val %)) :card)) ttags)]
-    (when (every? (fn [[_ tag]]
-                    (seq (:result-metadata (lib.metadata/card mp (:card-id tag)))))
-                  card-tags)
-      (let [card-columns
-            (into {}
-                  (map (fn [[_ tag]]
-                         (let [card (lib.metadata/card mp (:card-id tag))
-                               cols (into #{}
-                                          (map #(driver.sql/normalize-name driver (:name %)))
-                                          (:result-metadata card))]
-                           [(:card-id tag) cols])))
-                  card-tags)
-
-            make-placeholder
-            (fn [card-id]
-              (let [cols (:result-metadata (lib.metadata/card mp card-id))]
-                (str "(SELECT "
-                     (->> cols
-                          (map #(str "NULL AS " (:name %)))
-                          (str/join ", "))
-                     ")")))
-
-            modified-sql
-            (reduce (fn [sql [tag-name tag]]
-                      (str/replace sql
+    (when-not (str/includes? sql card-placeholder-prefix)
+      (let [modified-sql
+            (reduce (fn [s [tag-name tag]]
+                      (str/replace s
                                    (str "{{" tag-name "}}")
-                                   (make-placeholder (:card-id tag))))
-                    (:native stage)
+                                   (str card-placeholder-prefix (:card-id tag))))
+                    sql
                     card-tags)
 
             non-card-tags
@@ -80,15 +72,17 @@
             (-> query
                 (assoc-in [:stages 0 :native] modified-sql)
                 (assoc-in [:stages 0 :template-tags] non-card-tags))]
-        {:compiled     (compile-query modified-query)
-         :card-columns card-columns}))))
+        (compile-query modified-query)))))
 
 (defn- table-deps
   "Returns the set of table dep maps (e.g. {:table \"products\" :schema \"public\"})
-   referenced directly in the compiled native query."
+   referenced directly in the compiled native query.
+   Excludes card placeholder tables (mb__dummy_card__N)."
   [driver compiled]
   (into #{}
-        (filter :table)
+        (filter (fn [dep]
+                  (and (:table dep)
+                       (not (parse-card-placeholder (:table dep))))))
         (driver/native-query-deps driver compiled)))
 
 (defn- normalize-error
@@ -100,33 +94,39 @@
 
 (defn- extract-source-entity
   "Extract source entity info from a :single-column col-spec's source-columns.
+   Recognizes card placeholder table names (mb__dummy_card__N) as card sources.
    Returns:
-   - {:kind :table, :spec table-spec} for a single table source
-   - {:kind :card, :custom-field-aliases #{aliases}} for subquery/card sources
-   - :multiple for ambiguous sources (mixed table+card, or multiple tables)
+   - {:kind :table, :spec table-spec} for a single real table source
+   - {:kind :card, :card-id N} for a single card placeholder source
+   - :multiple for ambiguous sources (multiple sources of any kind)
    - nil otherwise (no recognizable sources, or not a :single-column spec)"
   [col-spec]
   (when (= (:type col-spec) :single-column)
     (let [first-sources   (first (:source-columns col-spec))
-          all-col-sources (filter #(= (:type %) :all-columns) first-sources)
-          custom-sources  (filter #(= (:type %) :custom-field) first-sources)]
+          all-col-sources (filter #(= (:type %) :all-columns) first-sources)]
       (cond
-        ;; Both table and subquery sources → ambiguous
-        (and (seq all-col-sources) (seq custom-sources))
-        :multiple
+        (empty? all-col-sources) nil
 
-        ;; Only table sources
-        (seq all-col-sources)
-        (if (= 1 (count all-col-sources))
-          {:kind :table, :spec (:table (first all-col-sources))}
-          :multiple)
+        (> (count all-col-sources) 1)
+        ;; Multiple sources — check if any are card placeholders
+        (let [cards  (keep #(some-> (:table %) :table parse-card-placeholder) all-col-sources)
+              tables (remove #(some-> (:table %) :table parse-card-placeholder) all-col-sources)]
+          (cond
+            ;; Single card, no tables
+            (and (= 1 (count cards)) (empty? tables))
+            {:kind :card, :card-id (first cards)}
+            ;; Single table, no cards
+            (and (empty? cards) (= 1 (count tables)))
+            {:kind :table, :spec (:table (first tables))}
+            :else :multiple))
 
-        ;; Only subquery/card sources
-        (seq custom-sources)
-        {:kind :card, :custom-field-aliases (into #{} (map :alias) custom-sources)}
-
-        ;; No recognizable sources
-        :else nil))))
+        :else
+        (let [source    (first all-col-sources)
+              table-name (-> source :table :table)
+              card-id   (some-> table-name parse-card-placeholder)]
+          (if card-id
+            {:kind :card, :card-id card-id}
+            {:kind :table, :spec (:table source)}))))))
 
 (defn- resolve-table-id
   "Map a SQL table spec {:table name, :schema schema} to a Metabase table ID.
@@ -138,25 +138,31 @@
            (lib.metadata/transforms mp)
            table-spec)))
 
-(defn- match-card-source
-  "Match a set of custom-field aliases against the card-columns map.
-   Returns card-id if exactly one card's column set contains all the aliases, nil otherwise."
-  [driver aliases card-columns]
-  (let [normalized (into #{} (map #(driver.sql/normalize-name driver %)) aliases)
-        matches    (keep (fn [[card-id col-names]]
-                           (when (every? col-names normalized)
-                             card-id))
-                         card-columns)]
-    (when (= 1 (count matches))
-      (first matches))))
+(defn- card-column-exists?
+  "Check if a column name exists in a card's result-metadata (normalized comparison)."
+  [driver mp card-id col-name]
+  (when-let [card (lib.metadata/card mp card-id)]
+    (let [normalized (driver.sql/normalize-name driver col-name)]
+      (some #(= (driver.sql/normalize-name driver (:name %)) normalized)
+            (:result-metadata card)))))
 
 (defn- enrich-error
   "Enrich a :missing-column error with source entity information from its col-spec.
-   For other error types, returns the error unchanged.
-   card-columns is a map of {card-id → #{normalized-col-names}} or nil for non-card queries."
-  [driver mp card-columns col-spec error]
-  (if (not= (:type error) :missing-column)
+   For card placeholder sources, checks the column against the card's result-metadata:
+   if the column exists in the card, returns nil (valid column, not an error).
+   Suppresses :missing-table-alias errors for card placeholder table names.
+   For other error types, returns the error unchanged."
+  [driver mp col-spec error]
+  (cond
+    ;; Suppress missing-table-alias for card placeholders (e.g. SELECT * FROM mb__dummy_card__1)
+    (and (= (:type error) :missing-table-alias)
+         (parse-card-placeholder (:name error)))
+    nil
+
+    (not= (:type error) :missing-column)
     error
+
+    :else
     (let [source (extract-source-entity col-spec)]
       (cond
         ;; Table source
@@ -165,14 +171,12 @@
           (assoc error :source-entity-type :table :source-entity-id table-id)
           error)
 
-        ;; Card/subquery source
+        ;; Card placeholder source — check column against card metadata
         (and (map? source) (= (:kind source) :card))
-        (if card-columns
-          (if-let [card-id (match-card-source driver (:custom-field-aliases source) card-columns)]
-            (assoc error :source-entity-type :card :source-entity-id card-id)
-            (assoc error :source-entity-type :unknown))
-          ;; No card-columns → regular subquery, leave unenriched for fallback
-          error)
+        (let [card-id (:card-id source)]
+          (if (card-column-exists? driver mp card-id (:name error))
+            nil ;; column is valid, suppress error
+            (assoc error :source-entity-type :card :source-entity-id card-id)))
 
         ;; Multiple/ambiguous sources
         (= source :multiple)
@@ -184,8 +188,8 @@
 (defn- validate-with-sources
   "Validate a compiled native query, enriching errors with source entity information
    derived from the col-spec's source-columns.
-   card-columns is a map of {card-id → #{normalized-col-names}} or nil for non-card queries."
-  [driver compiled card-columns]
+   For card placeholder sources, valid columns are filtered out (enrich-error returns nil)."
+  [driver compiled]
   (let [sql                                (lib/raw-native-query compiled)
         mp                                 (lib/->metadata-provider compiled)
         {:keys [used-fields returned-fields errors]} (sql-tools/field-references driver sql)
@@ -193,7 +197,7 @@
                        (mapcat (fn [col-spec]
                                  (->> (sql-tools.common/resolve-field driver mp col-spec)
                                       (keep :error)
-                                      (map (partial enrich-error driver mp card-columns col-spec))))
+                                      (keep (partial enrich-error driver mp col-spec))))
                                fields))]
     (into #{}
           (map (partial normalize-error driver))
@@ -236,15 +240,15 @@
   [driver :- :keyword
    query  :- ::lib.schema/query]
   (if (has-card-template-tags? query)
-    (if-let [{:keys [compiled card-columns]} (compile-toplevel-query driver query)]
-      (let [errors (validate-with-sources driver compiled card-columns)]
+    (if-let [compiled (compile-toplevel-query query)]
+      (let [errors (validate-with-sources driver compiled)]
         (if (empty? errors)
           errors
           (fallback-enrich driver compiled errors)))
-      ;; Fallback: cards without result-metadata, use full expansion
+      ;; Fallback: cards without result-metadata or placeholder collision
       (driver/validate-native-query-fields driver (compile-query query)))
     (let [compiled (compile-query query)
-          errors   (validate-with-sources driver compiled nil)]
+          errors   (validate-with-sources driver compiled)]
       (if (empty? errors)
         errors
         (fallback-enrich driver compiled errors)))))

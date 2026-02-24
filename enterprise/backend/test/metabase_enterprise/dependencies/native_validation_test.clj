@@ -416,15 +416,6 @@
               driver
               (fake-query mp "WITH cte AS (SELECT 1 AS id) SELECT bad FROM cte")))))))
 
-(deftest ^:parallel card-without-result-metadata-test
-  (testing "Card ref to card without result-metadata - falls back to full expansion"
-    (let [mp     (deps.tu/default-metadata-provider)
-          driver (:engine (lib.metadata/database mp))]
-      (is (nil? (:result-metadata @(def ca (lib.metadata/card mp 4))))
-          "Card 4 should have no result-metadata (native query)")
-      (validates? mp driver 29
-                  #{(lib/missing-column-error "BAD")}))))
-
 (deftest ^:parallel card-source-attribution-test
   (testing "errors are attributed to the correct card"
     (let [mp     (deps.tu/default-metadata-provider)
@@ -469,30 +460,42 @@
                              {:source-entity-type :card
                               :source-entity-id   36})})))))
 
-#_(deftest ^:parallel card-with-special-char-column-test
-    (testing "Card reference where card has special characters in column names"
-      (let [base-mp (deps.tu/mock-metadata-provider {:snippets []})
-            driver  (:engine (lib.metadata/database base-mp))
-            card    (deps.tu/mock-card base-mp
-                                       {:id      100
-                                        :query   "SELECT 1"
-                                        :details {:result-metadata [{:name "FIRST NAME" :base-type :type/Text}
-                                                                    {:name "ORDER-ID"   :base-type :type/Integer}
-                                                                    {:name "NORMAL"     :base-type :type/Text}]}})
-            mp      (deps.tu/mock-metadata-provider {:cards [card] :snippets []})
-            mkquery (fn [sql]
-                      (let [ttags (lib/extract-template-tags mp sql)]
-                        (fake-query mp sql ttags)))]
-        (testing "valid column produces no errors"
-          (is (= #{}
-                 (deps.native-validation/validate-native-query
-                  driver
-                  (mkquery "SELECT NORMAL FROM {{#100}}")))))
-        (testing "invalid column produces error attributed to card"
-          (is (= (normalize-error-names driver
-                                        #{(merge (lib/missing-column-error "BAD")
-                                                 {:source-entity-type :card
-                                                  :source-entity-id   100})})
-                 (deps.native-validation/validate-native-query
-                  driver
-                  (mkquery "SELECT BAD FROM {{#100}}"))))))))
+(deftest ^:parallel card-with-special-char-column-test
+  (testing "Card reference where card has special characters in column names"
+    (let [base-mp (deps.tu/mock-metadata-provider {:snippets []})
+          driver  (:engine (lib.metadata/database base-mp))
+          card    (deps.tu/mock-card base-mp
+                                     {:id      100
+                                      :query   "SELECT 1"
+                                      :details {:result-metadata [{:name "FIRST NAME" :base-type :type/Text}
+                                                                  {:name "ORDER-ID"   :base-type :type/Integer}
+                                                                  {:name "NORMAL"     :base-type :type/Text}]}})
+          mp      (deps.tu/mock-metadata-provider {:cards [card] :snippets []})
+          mkquery (fn [sql]
+                    (let [ttags (lib/extract-template-tags mp sql)]
+                      (fake-query mp sql ttags)))]
+      (testing "valid column produces no errors"
+        (is (= #{}
+               (deps.native-validation/validate-native-query
+                driver
+                (mkquery "SELECT NORMAL FROM {{#100}}")))))
+      (testing "invalid column produces error attributed to card"
+        (is (= (normalize-error-names driver
+                                      #{(merge (lib/missing-column-error "BAD")
+                                               {:source-entity-type :card
+                                                :source-entity-id   100})})
+               (deps.native-validation/validate-native-query
+                driver
+                (mkquery "SELECT BAD FROM {{#100}}"))))))))
+
+(deftest ^:parallel placeholder-collision-test
+  (testing "When SQL contains the placeholder prefix as a real table, validation runs without source attribution"
+    (let [mp     (deps.tu/default-metadata-provider)
+          driver (:engine (lib.metadata/database mp))
+          ttags  (lib/extract-template-tags mp "SELECT BAD FROM {{#1}}")
+          query  (fake-query mp
+                             "SELECT BAD FROM mb__dummy_card__99 JOIN {{#1}}"
+                             ttags)]
+      (is (= (normalize-error-names driver
+                                    #{(lib/missing-column-error "BAD")})
+             (deps.native-validation/validate-native-query driver query))))))
