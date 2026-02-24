@@ -53,19 +53,6 @@ export const DEFAULT_QUERY: DatasetQuery = {
   },
 };
 
-type QueryOpts = MetadataProviderOpts & {
-  query?: DatasetQuery;
-};
-
-export function createQuery({
-  databaseId = SAMPLE_DATABASE.id,
-  metadata = SAMPLE_METADATA,
-  query = DEFAULT_QUERY,
-}: QueryOpts = {}) {
-  const metadataProvider = createMetadataProvider({ databaseId, metadata });
-  return Lib.fromJsQuery(metadataProvider, query);
-}
-
 export const columnFinder =
   (query: Lib.Query, columns: Lib.ColumnMetadata[]) =>
   (
