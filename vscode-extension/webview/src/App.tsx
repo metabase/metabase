@@ -6,6 +6,7 @@ import {
   ReactFlow,
   ReactFlowProvider,
   useEdgesState,
+  useNodesInitialized,
   useNodesState,
   useReactFlow,
 } from "@xyflow/react";
@@ -79,6 +80,7 @@ function DependencyGraphInner() {
   const [colorMode, setColorMode] = useState<"light" | "dark">(getColorMode());
   const [pendingFocusKey, setPendingFocusKey] = useState<string | null>(null);
   const { fitView, getNodes } = useReactFlow<GraphNodeType>();
+  const nodesInitialized = useNodesInitialized();
 
   useEffect(() => {
     function handleMessage(event: MessageEvent) {
@@ -111,15 +113,17 @@ function DependencyGraphInner() {
   }, [setNodes, setEdges, setSelection]);
 
   useEffect(() => {
-    if (!pendingFocusKey) return;
+    if (!pendingFocusKey || !nodesInitialized) return;
     const flowNodes = getNodes();
     const targetNode = flowNodes.find((node) => node.id === pendingFocusKey);
     if (targetNode) {
       setSelection({ key: pendingFocusKey, model: targetNode.data.model });
-      fitView({ nodes: [targetNode], duration: 300 });
+      requestAnimationFrame(() => {
+        fitView({ nodes: [targetNode], duration: 300 });
+      });
       setPendingFocusKey(null);
     }
-  }, [pendingFocusKey, nodes, getNodes, fitView, setSelection]);
+  }, [pendingFocusKey, nodesInitialized, getNodes, fitView, setSelection]);
 
   useEffect(() => {
     const observer = new MutationObserver(() => {
