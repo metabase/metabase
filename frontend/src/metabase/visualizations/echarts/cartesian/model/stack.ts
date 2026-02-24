@@ -19,8 +19,13 @@ export const getStackModels = (
 
   const seriesModelsByDisplay = _.groupBy(
     visibleSeriesModels,
-    (seriesModel) =>
-      settings.series(seriesModel.legacySeriesSettingsObjectKey).display,
+    (seriesModel) => {
+      const series = settings.series?.(
+        seriesModel.legacySeriesSettingsObjectKey,
+      );
+
+      return series?.display ?? "no-display";
+    },
   );
 
   return getObjectKeys(seriesModelsByDisplay)
@@ -34,8 +39,8 @@ export const getStackModels = (
       } else {
         axis = stackSeriesModels.every(
           (seriesModel) =>
-            settings.series(seriesModel.legacySeriesSettingsObjectKey)?.axis ===
-            "right",
+            settings.series?.(seriesModel.legacySeriesSettingsObjectKey)
+              ?.axis === "right",
         )
           ? "right"
           : "left";
