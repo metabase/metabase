@@ -161,40 +161,27 @@ describe("scenarios > embedding > sdk iframe embedding > metabase-browser", () =
       `);
 
     H.getSimpleEmbedIframeContent().within(() => {
-      cy.log("Clicking New exploration");
       cy.findByText("New exploration").click();
 
-      cy.log("Waiting for Pick your starting data (first time)");
       cy.findByText("Pick your starting data").should("be.visible");
 
-      cy.intercept("GET", "/api/table/*/query_metadata").as("tableMetadata");
       cy.intercept("POST", "/api/dataset/query_metadata").as("datasetMetadata");
-      cy.log("Clicking Orders");
       cy.findByText("Orders").click();
 
-      // Wait for both metadata requests triggered by updateQuestionSdk
-      // to complete. The GET loads table metadata, then the POST loads
-      // dataset query metadata. Both must finish before the breadcrumb
-      // click, otherwise the stale updateQuestion dispatch can race with
-      // loadAndQueryQuestion and overwrite the reset state.
-      cy.log("Waiting for @tableMetadata intercept");
-      cy.wait("@tableMetadata");
-      cy.log("Waiting for @datasetMetadata intercept");
+      // Wait for the dataset metadata POST triggered by updateQuestionSdk
+      // to complete before clicking the breadcrumb. Without this, the stale
+      // updateQuestion dispatch can race with loadAndQueryQuestion and
+      // overwrite the reset state.
       cy.wait("@datasetMetadata");
-      cy.log("Both metadata requests resolved");
-
       cy.findByTestId("data-step-cell").should("have.text", "Orders");
 
-      cy.log("About to click breadcrumb");
       // Click the parent Badge element which has the onClick handler,
       // not the inner text span that findByText resolves to
       cy.findByTestId("sdk-breadcrumbs")
         .findByText("New exploration")
         .parent()
         .click();
-      cy.log("Breadcrumb clicked");
 
-      cy.log("Waiting for Pick your starting data (second time)");
       cy.findByText("Pick your starting data").should("be.visible");
       cy.findByText("Orders").should("not.exist");
     });
