@@ -169,7 +169,7 @@ const DashCardLoadingView = ({
  *
  * @param series the series to sanitize
  */
-function sanitizeSeriesData(series: RawSeries | { card: Card }[]) {
+function sanitizeSeriesData(series: Series): Series {
   return series.map((s) => {
     if ("data" in s) {
       // If the series already has data, we're good
@@ -177,6 +177,7 @@ function sanitizeSeriesData(series: RawSeries | { card: Card }[]) {
     }
 
     return {
+      // @ts-expect-error according to TS this branch is impossible - perhaps we should make "data" optional?
       ...s,
       data: { cols: [], rows: [] },
     };
