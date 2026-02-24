@@ -4,6 +4,23 @@
   font-weight: var(--vscode-font-weight);
   color: var(--vscode-foreground);
   background-color: transparent;
+
+  --graph-brand: #509ee3;
+  --graph-text-primary: var(--vscode-foreground);
+  --graph-text-secondary: var(--vscode-descriptionForeground);
+  --graph-background: var(--vscode-editor-background);
+  --graph-border: var(--vscode-panel-border, rgba(128, 128, 128, 0.35));
+  --graph-card-bg: var(--vscode-editorWidget-background);
+  --graph-pill-bg: var(
+    --vscode-badge-background,
+    rgba(128, 128, 128, 0.2)
+  );
+  --graph-color-brand: #509ee3;
+  --graph-color-summarize: #ef8c2a;
+  --graph-color-filter: #7c5cfc;
+  --graph-color-warning: #f9cf48;
+  --graph-color-error: #ed6e6e;
+  --graph-color-accent2: #70b75f;
 }
 
 * {
@@ -14,17 +31,448 @@
 
 body {
   min-height: 100vh;
-  padding: 16px;
+}
+
+#root {
+  width: 100vw;
+  height: 100vh;
 }
 
 .centered-message {
   display: flex;
   align-items: center;
   justify-content: center;
-  min-height: calc(100vh - 32px);
+  min-height: 100vh;
+  padding: 16px;
 }
 
 .centered-message p {
   text-align: center;
-  color: var(--vscode-descriptionForeground);
+  color: var(--graph-text-secondary);
+}
+
+/* React Flow overrides */
+.dependency-graph {
+  width: 100%;
+  height: 100%;
+}
+
+.graph-controls {
+  border: 1px solid var(--graph-border);
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+/* Graph Node */
+.graph-node-card {
+  min-width: 15rem;
+  max-width: 30rem;
+  background: var(--graph-card-bg);
+  border: 1px solid var(--graph-border);
+  border-radius: 8px;
+  padding: 16px;
+  cursor: pointer;
+  visibility: hidden;
+  transition: border-color 0.15s ease;
+}
+
+.graph-node-card.initialized {
+  visibility: visible;
+}
+
+.graph-node-card:hover,
+.graph-node-card.selected {
+  border-color: var(--graph-brand);
+}
+
+.graph-node-handle {
+  visibility: hidden;
+}
+
+.graph-node-handle.initialized {
+  visibility: visible;
+}
+
+.graph-node-content {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.graph-node-type {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.85em;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.graph-node-type-icon {
+  font-size: 1em;
+  flex-shrink: 0;
+}
+
+.graph-node-type-label {
+  line-height: 1rem;
+}
+
+.graph-node-name {
+  font-weight: 600;
+  line-height: 1rem;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+}
+
+.graph-node-deps {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  align-items: flex-start;
+  margin-top: 12px;
+}
+
+.graph-node-deps-title {
+  color: var(--graph-text-secondary);
+  font-size: 0.85em;
+  line-height: 1rem;
+}
+
+.graph-node-pill {
+  background: var(--graph-pill-bg);
+  color: var(--graph-text-primary);
+  border: none;
+  border-radius: 999px;
+  padding: 4px 12px;
+  font-size: 0.85em;
+  font-weight: 400;
+  cursor: pointer;
+  font-family: inherit;
+  transition:
+    background-color 0.15s ease,
+    color 0.15s ease;
+}
+
+.graph-node-pill:hover,
+.graph-node-pill.selected {
+  color: #fff;
+  background-color: var(--graph-brand);
+}
+
+/* Panels (shared) */
+.graph-left-panel {
+  right: 0;
+  pointer-events: none;
+}
+
+.graph-right-panel {
+  display: flex;
+  flex-direction: column;
+  bottom: 0;
+  pointer-events: none;
+}
+
+.graph-panel-content {
+  pointer-events: all;
+}
+
+.graph-panel {
+  width: 22rem;
+  max-height: calc(100vh - 2rem);
+  background: var(--graph-card-bg);
+  border: 1px solid var(--graph-border);
+  border-radius: 8px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  pointer-events: all;
+}
+
+.graph-panel-header {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  padding: 16px;
+  border-bottom: 1px solid var(--graph-border);
+  flex-wrap: nowrap;
+}
+
+.graph-panel-icon-badge {
+  width: 2.75rem;
+  height: 2.75rem;
+  border-radius: 50%;
+  background: var(--graph-pill-bg);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.25rem;
+  flex-shrink: 0;
+}
+
+.graph-panel-header-content {
+  flex: 1;
+  min-width: 0;
+}
+
+.graph-panel-title {
+  font-size: 1rem;
+  font-weight: 600;
+  line-height: 1.5rem;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+  margin: 0;
+}
+
+.graph-panel-subtitle {
+  font-size: 0.85em;
+  margin-top: 2px;
+}
+
+.graph-panel-actions {
+  display: flex;
+  gap: 4px;
+  flex-shrink: 0;
+  margin: -4px;
+}
+
+.graph-panel-action-button {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 1rem;
+  color: var(--graph-text-secondary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.graph-panel-action-button:hover {
+  background: var(--graph-pill-bg);
+}
+
+.graph-panel-body {
+  overflow-y: auto;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.graph-panel-section {
+  line-height: 1.5;
+}
+
+.graph-panel-section-label {
+  color: var(--graph-text-secondary);
+  font-size: 0.85em;
+  margin-right: 6px;
+}
+
+.graph-panel-section-title {
+  font-size: 0.85em;
+  font-weight: 600;
+  margin-bottom: 8px;
+}
+
+.graph-panel-fields-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.graph-panel-field-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.85em;
+}
+
+.graph-panel-field-icon {
+  color: var(--graph-text-secondary);
+  font-size: 1em;
+  width: 1.25em;
+  text-align: center;
+  flex-shrink: 0;
+}
+
+.graph-panel-field-name {
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+}
+
+/* Dependency Panel */
+.graph-panel-search {
+  padding: 8px 16px;
+  border-bottom: 1px solid var(--graph-border);
+}
+
+.graph-panel-search-input {
+  width: 100%;
+  padding: 6px 10px;
+  background: var(--vscode-input-background, transparent);
+  color: var(--vscode-input-foreground, inherit);
+  border: 1px solid
+    var(--vscode-input-border, var(--graph-border));
+  border-radius: 4px;
+  font-family: inherit;
+  font-size: inherit;
+  outline: none;
+}
+
+.graph-panel-search-input:focus {
+  border-color: var(--graph-brand);
+}
+
+.graph-panel-empty {
+  color: var(--graph-text-secondary);
+  text-align: center;
+  padding: 16px;
+}
+
+.graph-panel-list {
+  display: flex;
+  flex-direction: column;
+}
+
+.graph-panel-list-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 0;
+  border: none;
+  background: none;
+  cursor: pointer;
+  font-family: inherit;
+  font-size: inherit;
+  color: inherit;
+  text-align: left;
+  border-bottom: 1px solid var(--graph-border);
+}
+
+.graph-panel-list-item:last-child {
+  border-bottom: none;
+}
+
+.graph-panel-list-item:hover {
+  color: var(--graph-brand);
+}
+
+.graph-panel-list-icon {
+  flex-shrink: 0;
+}
+
+.graph-panel-list-name {
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+}
+
+/* Search Input */
+.graph-search-button {
+  background: var(--graph-card-bg);
+  border: 1px solid var(--graph-border);
+  border-radius: 4px;
+  padding: 6px 12px;
+  cursor: pointer;
+  font-size: 1rem;
+  color: var(--graph-text-primary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.graph-search-button:hover {
+  border-color: var(--graph-brand);
+}
+
+.graph-search-dropdown {
+  position: relative;
+  width: 20rem;
+}
+
+.graph-search-input-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--vscode-input-background, var(--graph-card-bg));
+  border: 1px solid
+    var(--vscode-input-border, var(--graph-border));
+  border-radius: 4px;
+  padding: 6px 10px;
+}
+
+.graph-search-input-wrapper:focus-within {
+  border-color: var(--graph-brand);
+}
+
+.graph-search-icon {
+  flex-shrink: 0;
+}
+
+.graph-search-input {
+  flex: 1;
+  background: none;
+  border: none;
+  color: var(--vscode-input-foreground, inherit);
+  font-family: inherit;
+  font-size: inherit;
+  outline: none;
+}
+
+.graph-search-results {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  margin-top: 4px;
+  background: var(--graph-card-bg);
+  border: 1px solid var(--graph-border);
+  border-radius: 4px;
+  max-height: 300px;
+  overflow-y: auto;
+  z-index: 10;
+}
+
+.graph-search-result-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  border: none;
+  background: none;
+  cursor: pointer;
+  font-family: inherit;
+  font-size: inherit;
+  color: inherit;
+  text-align: left;
+  width: 100%;
+}
+
+.graph-search-result-item:hover {
+  background: var(--graph-pill-bg);
+}
+
+.graph-search-result-icon {
+  flex-shrink: 0;
+}
+
+.graph-search-result-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.graph-search-more,
+.graph-search-empty {
+  padding: 8px 12px;
+  color: var(--graph-text-secondary);
+  font-size: 0.85em;
+}
+
+/* Dark theme adjustments for React Flow */
+[data-vscode-theme-kind="vscode-dark"] .dependency-graph,
+[data-vscode-theme-kind="vscode-high-contrast"] .dependency-graph {
+  --xy-background-color-default: transparent;
+  --xy-controls-button-background-color-default: transparent;
 }

@@ -52,8 +52,12 @@
         "icon": "$(close)"
       },
       {
-        "command": "metabase.checkDependencies",
-        "title": "Metabase: Check Dependencies"
+        "command": "metastudio.checkDependencyGraph",
+        "title": "Metastudio: Check Dependency Graph"
+      },
+      {
+        "command": "metastudio.showDependencyGraph",
+        "title": "Metastudio: Show Dependency Graph"
       }
     ],
     "walkthroughs": [
@@ -198,6 +202,8 @@
     "vitest": "^4.0.16",
     "vscode-ext-gen": "^1.5.1",
     "vsxpub": "^0.1.2",
+    "@dagrejs/dagre": "^1.1.4",
+    "@xyflow/react": "^12.6.0",
     "yaml": "^2.8.2"
   }
 }
