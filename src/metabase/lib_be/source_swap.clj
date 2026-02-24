@@ -93,7 +93,7 @@
   (or (when (lib.parameters/parameter-target-field-ref target)
         (let [opts         (lib.parameters/parameter-target-dimension-options target)
               stage-number (or (:stage-number opts) -1)]
-          (when (and (>= stage-number 0) (< stage-number (lib.query/stage-count query)))
+          (when (and (>= stage-number -1) (< stage-number (lib.query/stage-count query)))
             (let [columns (lib.metadata.calculation/visible-columns query stage-number)]
               (lib.parameters/update-parameter-target-field-ref
                target
