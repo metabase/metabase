@@ -1,10 +1,13 @@
 import type { NodeProps } from "@xyflow/react";
 import cx from "classnames";
 import { memo, useMemo } from "react";
+import { t } from "ttag";
 
 import { getAccentColors } from "metabase/lib/colors/groups";
-import { Box, FixedSizeIcon, Group, Stack } from "metabase/ui";
+import { Anchor, Box, FixedSizeIcon, Group, Stack, Tooltip } from "metabase/ui";
 import { isTypePK } from "metabase-lib/v1/types/utils/isa";
+
+import { TOOLTIP_OPEN_DELAY_MS } from "../../../constants";
 
 import { SchemaViewerFieldRow } from "./SchemaViewerFieldRow";
 import S from "./SchemaViewerTableNode.module.css";
@@ -37,6 +40,8 @@ export const SchemaViewerTableNode = memo(function SchemaViewerTableNode({
     return targetIds;
   }, [data.fields]);
 
+  const tableDetailsUrl = `/data-studio/data/database/${data.db_id}/schema/${data.db_id}:${data.schema ?? ""}/table/${data.table_id}`;
+
   return (
     <Stack className={cx(S.card, { [S.focal]: data.is_focal })} gap={0}>
       <Group className={S.header} gap={8} px={16} py={20} wrap="nowrap">
@@ -48,10 +53,21 @@ export const SchemaViewerTableNode = memo(function SchemaViewerTableNode({
             overflow: "hidden",
             textOverflow: "ellipsis",
             whiteSpace: "nowrap",
+            flex: 1,
           }}
         >
           {data.name}
         </Box>
+        <Tooltip label={t`View table details`} openDelay={TOOLTIP_OPEN_DELAY_MS}>
+          <Anchor
+            href={tableDetailsUrl}
+            target="_blank"
+            className={S.detailsLink}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <FixedSizeIcon name="external" c="text-tertiary" />
+          </Anchor>
+        </Tooltip>
       </Group>
       <Box className={S.fields}>
         {data.fields.map((field) => (

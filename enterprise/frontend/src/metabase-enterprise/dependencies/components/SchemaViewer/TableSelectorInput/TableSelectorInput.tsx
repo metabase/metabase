@@ -1,6 +1,6 @@
 import { useClickOutside } from "@mantine/hooks";
 import { useReactFlow } from "@xyflow/react";
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
 import { t } from "ttag";
 
 import {
@@ -9,6 +9,7 @@ import {
   Checkbox,
   FixedSizeIcon,
   Group,
+  Modal,
   Popover,
   Stack,
   Text,
@@ -131,16 +132,27 @@ export function TableSelectorInput({
     [selectedTableIds, onSelectionChange],
   );
 
-  const handleSelectAll = useCallback(
+  const [showSelectAllWarning, setShowSelectAllWarning] = useState(false);
+
+  const handleSelectAllClick = useCallback(
     (checked: boolean) => {
       if (checked) {
-        onSelectionChange(allTables.map((t) => t.id as ConcreteTableId));
+        setShowSelectAllWarning(true);
       } else {
         onSelectionChange([]);
       }
     },
-    [allTables, onSelectionChange],
+    [onSelectionChange],
   );
+
+  const handleConfirmSelectAll = useCallback(() => {
+    onSelectionChange(allTables.map((t) => t.id as ConcreteTableId));
+    setShowSelectAllWarning(false);
+  }, [allTables, onSelectionChange]);
+
+  const handleCancelSelectAll = useCallback(() => {
+    setShowSelectAllWarning(false);
+  }, []);
 
   if (allTables.length === 0) {
     return null;
@@ -198,7 +210,7 @@ export function TableSelectorInput({
                     label={t`Select all`}
                     checked={allSelected}
                     indeterminate={someSelected}
-                    onChange={(e) => handleSelectAll(e.currentTarget.checked)}
+                    onChange={(e) => handleSelectAllClick(e.currentTarget.checked)}
                     classNames={{ label: S.checkboxLabel }}
                   />
                 </Group>
@@ -225,6 +237,27 @@ export function TableSelectorInput({
           </Stack>
         </Popover.Dropdown>
       </Popover>
+
+      <Modal
+        opened={showSelectAllWarning}
+        onClose={handleCancelSelectAll}
+        title={t`Select all tables?`}
+        size="sm"
+      >
+        <Stack gap="lg">
+          <Text>
+            {t`Selecting all tables may result in slow performance and delayed rendering, especially for large databases.`}
+          </Text>
+          <Group justify="flex-end" gap="sm">
+            <Button variant="subtle" onClick={handleCancelSelectAll}>
+              {t`Cancel`}
+            </Button>
+            <Button onClick={handleConfirmSelectAll}>
+              {t`Select all`}
+            </Button>
+          </Group>
+        </Stack>
+      </Modal>
     </Box>
   );
 }
