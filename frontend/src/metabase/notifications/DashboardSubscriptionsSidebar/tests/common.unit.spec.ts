@@ -118,19 +118,6 @@ describe("DashboardSubscriptionsSidebar", () => {
         },
       ] satisfies (Partial<DashboardSubscription> & { id: number })[];
 
-      // Dynamically modify `pulses` so that we get the new updated list of pulses after archiving
-      fetchMock.put({
-        url: "express:/api/pulse/:id",
-        response: ({ expressParams = {} }) => {
-          const pulseId = parseInt(expressParams?.id);
-          pulses.splice(
-            pulses.findIndex((pulse) => pulse.id === pulseId),
-            1,
-          );
-          return {};
-        },
-      });
-
       const setSharing = jest.fn();
 
       setup({
@@ -281,10 +268,135 @@ describe("DashboardSubscriptionsSidebar", () => {
 
       await userEvent.click(await screen.findByText("Send email now"));
 
-      const lastCall = fetchMock.callHistory.lastCall("path:/api/pulse/test");
+      const lastCall = fetchMock.callHistory.lastCall(
+        "path:/api/notification/send",
+      );
       const payload = await lastCall?.request?.json();
-      expect(payload.cards).toHaveLength(1);
-      expect(payload.cards[0].id).toEqual(dashcard.id);
+      expect(payload.payload.dashboard_subscription_dashcards).toHaveLength(1);
+      expect(
+        payload.payload.dashboard_subscription_dashcards[0].card_id,
+      ).toEqual(dashcard.card_id);
+    });
+
+    it("should send correct notification shape with hourly cron schedule", async () => {
+      setup();
+
+      await userEvent.click(await screen.findByText("Email it"));
+      await userEvent.click(
+        await screen.findByPlaceholderText(
+          "Enter user names or email addresses",
+        ),
+      );
+
+      await userEvent.click(
+        await screen.findByText(`${user.first_name} ${user.last_name}`),
+      );
+
+      await userEvent.click(await screen.findByText("Send email now"));
+
+      const lastCall = fetchMock.callHistory.lastCall(
+        "path:/api/notification/send",
+      );
+      const payload = await lastCall?.request?.json();
+
+      // Verify notification shape
+      expect(payload.payload_type).toEqual("notification/dashboard");
+      expect(payload.handlers).toHaveLength(1);
+      expect(payload.handlers[0].channel_type).toEqual("channel/email");
+      expect(payload.handlers[0].recipients).toHaveLength(1);
+      expect(payload.handlers[0].recipients[0].type).toEqual(
+        "notification-recipient/user",
+      );
+
+      // Verify subscription has a valid hourly cron schedule
+      expect(payload.subscriptions).toHaveLength(1);
+      expect(payload.subscriptions[0].type).toEqual(
+        "notification-subscription/cron",
+      );
+      // Hourly cron: minute field should be specific (0 or *), hour should be *
+      const cron = payload.subscriptions[0].cron_schedule;
+      const [_seconds, _minutes, hours] = cron.split(" ");
+      expect(hours).toEqual("*");
+    });
+  });
+
+  describe("Notification API shape", () => {
+    it("should display existing subscriptions from notification API", async () => {
+      const pulses = [
+        {
+          id: 1,
+          channels: [
+            {
+              schedule_type: "daily" as const,
+              schedule_hour: 9,
+              channel_type: "email" as const,
+              enabled: true,
+              recipients: [
+                {
+                  id: 1,
+                  email: "test@example.com",
+                  common_name: "Test User",
+                },
+              ],
+            },
+          ],
+          skip_if_empty: true,
+        },
+      ] satisfies (Partial<DashboardSubscription> & { id: number })[];
+
+      setup({ pulses });
+
+      expect(await screen.findByText("Subscriptions")).toBeInTheDocument();
+      expect(await screen.findByText(/Emailed daily/)).toBeInTheDocument();
+      expect(await screen.findByText("Test User")).toBeInTheDocument();
+    });
+
+    it("should archive a subscription via notification PUT endpoint", async () => {
+      const pulses = [
+        {
+          id: 42,
+          channels: [
+            {
+              schedule_type: "weekly" as const,
+              schedule_hour: 10,
+              schedule_day: "mon" as const,
+              channel_type: "email" as const,
+              enabled: true,
+              recipients: [
+                {
+                  id: 1,
+                  email: "test@example.com",
+                  common_name: "Test User",
+                },
+              ],
+            },
+          ],
+        },
+      ] satisfies (Partial<DashboardSubscription> & { id: number })[];
+
+      setup({ pulses, isAdmin: true });
+
+      // Open the subscription
+      expect(await screen.findByText(/Emailed Monday/)).toBeInTheDocument();
+      await userEvent.click(await screen.findByText(/Emailed Monday/));
+
+      // Delete it
+      await userEvent.click(
+        await screen.findByText("Delete this subscription"),
+      );
+      const modal = screen.getByRole("dialog");
+      await userEvent.click(await within(modal).findByRole("checkbox"));
+      await userEvent.click(
+        within(modal).getByRole("button", { name: "Delete" }),
+      );
+
+      // Verify the PUT was called with active: false
+      const putCall = fetchMock.callHistory.lastCall(
+        "express:/api/notification/:id",
+      );
+      expect(putCall).toBeTruthy();
+      const putPayload = await putCall?.request?.json();
+      expect(putPayload.active).toBe(false);
     });
   });
 });

@@ -100,5 +100,9 @@ export type Channel = {
   channel_id?: number;
 } & Pick<
   ScheduleSettings,
-  "schedule_day" | "schedule_type" | "schedule_hour" | "schedule_frame"
+  | "schedule_day"
+  | "schedule_type"
+  | "schedule_hour"
+  | "schedule_frame"
+  | "schedule_minute"
 >;

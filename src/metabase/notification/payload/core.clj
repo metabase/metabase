@@ -51,18 +51,7 @@
     [:notification/dashboard
      [:map
       [:creator_id ms/PositiveInt]
-      ;; replacement of pulse
-      [:dashboard_subscription #_{:optional true}
-       [:map
-        [:dashboard_id ms/PositiveInt]
-        [:parameters {:optional true} [:maybe [:sequential :map]]]
-        [:dashboard_subscription_dashcards {:optional true}
-         [:sequential [:map
-                       [:card_id                        [:maybe ms/PositiveInt]]
-                       [:include_csv   {:optional true} [:maybe ms/BooleanValue]]
-                       [:include_xls   {:optional true} [:maybe ms/BooleanValue]]
-                       [:format_rows   {:optional true} [:maybe ms/BooleanValue]]
-                       [:pivot_results {:optional true} [:maybe ms/BooleanValue]]]]]]]]]
+      [:payload    {:optional true} ::models.notification/NotificationDashboard]]]
     ;; for testing only
     [:notification/testing :map]]])
 

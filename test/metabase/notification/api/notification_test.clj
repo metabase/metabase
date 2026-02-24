@@ -1124,3 +1124,101 @@
                (testing "success if recipients matches allowed domains"
                  (mt/user-http-request :crowberto :post 204 "notification/send"
                                        (assoc notification :handlers success-handlers)))))))))))
+
+;;; ------------------------------------------------ Dashboard Notification Tests -----------------------------------------------
+
+(deftest create-dashboard-notification-test
+  (testing "POST /api/notification with dashboard payload"
+    (mt/with-model-cleanup [:model/Notification]
+      (mt/with-temp [:model/Dashboard {dashboard-id :id} {}]
+        (let [notification {:payload_type  "notification/dashboard"
+                            :creator_id    (mt/user->id :crowberto)
+                            :payload       {:dashboard_id  dashboard-id
+                                            :skip_if_empty true
+                                            :parameters    []}
+                            :subscriptions [{:type          "notification-subscription/cron"
+                                             :cron_schedule "0 0 6 * * ? *"}]
+                            :handlers      [{:channel_type "channel/email"
+                                             :recipients   [{:type    "notification-recipient/user"
+                                                             :user_id (mt/user->id :crowberto)}]}]}]
+          (is (=? (assoc notification :id (mt/malli=? int?))
+                  (mt/user-http-request :crowberto :post 200 "notification" notification))))))))
+
+(deftest list-notifications-dashboard-filter-test
+  (testing "GET /api/notification with dashboard_id filter"
+    (mt/with-model-cleanup [:model/Notification]
+      (notification.tu/with-dashboard-notification [{dashboard-noti :id} {:notification {:creator_id (mt/user->id :rasta)}
+                                                                          :handlers     [{:channel_type "channel/email"
+                                                                                          :recipients   [{:type    :notification-recipient/user
+                                                                                                          :user_id (mt/user->id :lucky)}]}]}]
+        (let [dashboard-id (-> (t2/select-one :model/Notification dashboard-noti)
+                               models.notification/hydrate-notification
+                               :payload
+                               :dashboard_id)]
+          (letfn [(get-notification-ids [user & params]
+                    (->> (apply mt/user-http-request user :get 200 "notification" params)
+                         (map :id)
+                         (filter #{dashboard-noti})
+                         set))]
+
+            (testing "admin can filter by dashboard_id"
+              (is (= #{dashboard-noti}
+                     (get-notification-ids :crowberto :dashboard_id dashboard-id))))
+
+            (testing "creator can filter by dashboard_id"
+              (is (= #{dashboard-noti}
+                     (get-notification-ids :rasta :dashboard_id dashboard-id))))
+
+            (testing "recipient can filter by dashboard_id"
+              (is (= #{dashboard-noti}
+                     (get-notification-ids :lucky :dashboard_id dashboard-id))))
+
+            (testing "non-existent dashboard_id returns empty"
+              (is (= #{}
+                     (get-notification-ids :crowberto :dashboard_id Integer/MAX_VALUE))))))))))
+
+(deftest update-dashboard-notification-test
+  (testing "PUT /api/notification/:id for dashboard notification"
+    (notification.tu/with-dashboard-notification
+      [notification {:notification-dashboard {:skip_if_empty false}
+                     :subscriptions          [{:type          :notification-subscription/cron
+                                               :cron_schedule "0 0 6 * * ? *"}]
+                     :handlers               [{:channel_type :channel/email
+                                               :recipients   [{:type    :notification-recipient/user
+                                                               :user_id (mt/user->id :crowberto)}]}]}]
+      (let [notification-id (:id notification)]
+        (testing "can update subscription schedule"
+          (let [updated (mt/user-http-request :crowberto :put 200
+                                              (format "notification/%d" notification-id)
+                                              (assoc-in notification [:subscriptions 0 :cron_schedule] "0 0 8 * * ? *"))]
+            (is (=? [{:type          "notification-subscription/cron"
+                      :cron_schedule "0 0 8 * * ? *"}]
+                    (:subscriptions updated)))))
+
+        (testing "can update dashboard payload fields"
+          (let [updated (mt/user-http-request :crowberto :put 200
+                                              (format "notification/%d" notification-id)
+                                              (assoc-in notification [:payload :skip_if_empty] true))]
+            (is (true? (get-in updated [:payload :skip_if_empty])))))))))
+
+(deftest get-dashboard-notification-permissions-test
+  (mt/with-temp
+    [:model/User {third-user-id :id} {:is_superuser false}]
+    (notification.tu/with-dashboard-notification
+      [notification {:notification {:creator_id (mt/user->id :rasta)}
+                     :handlers     [{:channel_type "channel/email"
+                                     :recipients   [{:type    :notification-recipient/user
+                                                     :user_id (mt/user->id :lucky)}]}]}]
+      (let [get-notification (fn [user-or-id expected-status]
+                               (mt/user-http-request user-or-id :get expected-status (format "notification/%d" (:id notification))))]
+        (testing "admin can view"
+          (get-notification :crowberto 200))
+
+        (testing "creator can view"
+          (get-notification :rasta 200))
+
+        (testing "recipient can view"
+          (get-notification :lucky 200))
+
+        (testing "other than that no one can view"
+          (get-notification third-user-id 403))))))

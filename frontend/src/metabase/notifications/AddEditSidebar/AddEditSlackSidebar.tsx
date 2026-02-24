@@ -2,10 +2,8 @@ import cx from "classnames";
 import { t } from "ttag";
 import _ from "underscore";
 
-import {
-  type ScheduleChangeProp,
-  SchedulePicker,
-} from "metabase/common/components/SchedulePicker";
+import { scheduleSettingsToCron } from "metabase/admin/performance/utils";
+import { Schedule } from "metabase/common/components/Schedule";
 import { SendTestPulse } from "metabase/common/components/SendTestPulse";
 import { Toggle } from "metabase/common/components/Toggle";
 import CS from "metabase/css/core/index.css";
@@ -22,13 +20,25 @@ import type {
   ChannelSpecs,
   Dashboard,
   ScheduleSettings,
+  ScheduleType,
 } from "metabase-types/api";
 import type { DraftDashboardSubscription } from "metabase-types/store";
 
+import S from "./AddEditSidebar.module.css";
 import { CaveatMessage } from "./CaveatMessage";
 import DefaultParametersSection from "./DefaultParametersSection";
 import { DeleteSubscriptionAction } from "./DeleteSubscriptionAction";
 import { CHANNEL_NOUN_PLURAL } from "./constants";
+import Heading from "./Heading";
+
+const SUBSCRIPTION_SCHEDULE_OPTIONS: ScheduleType[] = [
+  "every_n_minutes",
+  "hourly",
+  "daily",
+  "weekly",
+  "monthly",
+  "cron",
+];
 
 interface AddEditSlackSidebarProps {
   pulse: DraftDashboardSubscription;
@@ -38,12 +48,14 @@ interface AddEditSlackSidebarProps {
   parameters: UiParameter[];
   hiddenParameters?: string;
   dashboard: Dashboard;
+  cronString?: string;
+  isCustomSchedule?: boolean;
   handleSave: () => void;
   onCancel: () => void;
   onChannelPropertyChange: (property: string, value: unknown) => void;
   onChannelScheduleChange: (
+    cronString: string,
     schedule: ScheduleSettings,
-    changedProp: ScheduleChangeProp,
   ) => void;
   testPulse: (pulse: DraftDashboardSubscription) => Promise<unknown>;
   toggleSkipIfEmpty: () => void;
@@ -59,6 +71,8 @@ export const AddEditSlackSidebar = ({
   parameters,
   hiddenParameters,
   dashboard,
+  cronString: cronStringProp,
+  isCustomSchedule,
   // form callbacks
   handleSave,
   onCancel,
@@ -95,22 +109,28 @@ export const AddEditSlackSidebar = ({
             onChannelPropertyChange={onChannelPropertyChange}
           />
         )}
-        <SchedulePicker
-          schedule={_.pick(
-            channel,
-            "schedule_day",
-            "schedule_frame",
-            "schedule_hour",
-            "schedule_type",
-          )}
-          scheduleOptions={channelSpec.schedules}
-          textBeforeInterval={t`Send`}
-          textBeforeSendTime={t`${
-            (channelSpec?.type && CHANNEL_NOUN_PLURAL[channelSpec.type]) ??
-            t`Messages`
-          } will be sent at`}
-          onScheduleChange={(newSchedule, changedProp) =>
-            onChannelScheduleChange(newSchedule, changedProp)
+        <Schedule
+          cronString={
+            cronStringProp ??
+            scheduleSettingsToCron(
+              _.pick(
+                channel,
+                "schedule_day",
+                "schedule_frame",
+                "schedule_hour",
+                "schedule_type",
+                "schedule_minute",
+              ),
+            )
+          }
+          scheduleOptions={SUBSCRIPTION_SCHEDULE_OPTIONS}
+          verb={t`Send`}
+          minutesOnHourPicker
+          labelAlignment="left"
+          className={S.schedule}
+          isCustomSchedule={isCustomSchedule}
+          onScheduleChange={(nextCronString, nextSchedule) =>
+            onChannelScheduleChange(nextCronString, nextSchedule)
           }
         />
         <div className={cx(CS.pt2, CS.pb1)}>

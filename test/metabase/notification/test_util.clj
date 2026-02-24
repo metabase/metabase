@@ -105,6 +105,7 @@
   [& body]
   `(mt/with-model-cleanup [:model/Notification
                            :model/NotificationCard
+                           :model/NotificationDashboard
                            :model/NotificationHandler
                            :model/NotificationSubscription
                            :model/NotificationRecipient]
@@ -171,6 +172,31 @@
                      :handlers          []}]"
   [[bindings props] & body]
   `(do-with-card-notification ~props (fn [~bindings] ~@body)))
+
+(defn do-with-dashboard-notification
+  [{:keys [dashboard notification-dashboard notification subscriptions handlers]} thunk]
+  (mt/with-temp
+    [:model/Dashboard {dashboard-id :id} (merge {:name "Dashboard notification test"} dashboard)]
+    (do-with-temp-notification
+     {:notification  (merge {:payload      (assoc notification-dashboard
+                                                  :dashboard_id dashboard-id)
+                             :payload_type :notification/dashboard
+                             :creator_id   (mt/user->id :crowberto)}
+                            notification)
+      :subscriptions subscriptions
+      :handlers      handlers}
+     thunk)))
+
+(defmacro with-dashboard-notification
+  "Macro that sets up a dashboard notification for testing.
+    (with-dashboard-notification
+      [notification {:dashboard              {:name \"My Dashboard\"}
+                     :notification           {:creator_id 1}
+                     :notification-dashboard {:skip_if_empty true}
+                     :subscriptions          []
+                     :handlers               []}]"
+  [[bindings props] & body]
+  `(do-with-dashboard-notification ~props (fn [~bindings] ~@body)))
 
 (defn do-with-system-event-notification!
   [{:keys [event notification subscriptions handlers]} thunk]
