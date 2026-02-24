@@ -74,7 +74,10 @@
                     "COUNTRY"       :type/Country
                     "SUBDIVISION1"  :type/State
                     "CITY"          :type/City
-                    "LANGUAGE"      :type/Category}})
+                    "LANGUAGE"      :type/Category}
+   "V_PA_SITES"    {"NAME"          :type/Name
+                    "CREATED_AT"    :type/CreationTimestamp
+                    "UPDATED_AT"    :type/UpdatedTimestamp}})
 
 (def ^:private pa-foreign-keys
   "Foreign key relationships between PA views.
