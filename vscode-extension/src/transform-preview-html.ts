@@ -80,17 +80,16 @@ function renderTarget(target: TransformTarget | null): string {
     : target.name;
 
   return `<footer>
-  <span class="target-label">Target</span>
-  <span class="target-arrow">${ICONS.arrowRight}</span>
-  <a class="ref-link target-name" data-action="openTable" data-ref='${escapeAttr(ref)}'>${escapeHtml(tableName)}</a>
+  <span class="target-label">${ICONS.arrowRight}Target table</span>
+  <a class="pill pill--brand" data-action="openTable" data-ref='${escapeAttr(ref)}'>${escapeHtml(tableName)}</a>
   <span class="badge">${ICONS.database}${escapeHtml(target.database)}</span>
 </footer>`;
 }
 
 function renderNativeQuery(query: NativeTransformQuery): string {
-  return `<div class="step step--brand">
-  <div class="step-header">${ICONS.code}Native Query</div>
-  <div class="step-body">
+  return `<div class="step">
+  <div class="step-label step-label--brand">${ICONS.code}Native Query</div>
+  <div class="step-cell step-cell--brand">
     <pre class="sql"><code>${highlightSql(query.sql)}</code></pre>
   </div>
 </div>`;
@@ -104,67 +103,67 @@ function renderStructuredQuery(query: StructuredTransformQuery): string {
     "brand",
     ICONS.table,
     query.sourceTable.display,
-    `<a class="ref-link" data-action="openTable" data-ref='${escapeAttr(tableRef)}'>${escapeHtml(query.sourceTable.display)}</a>`,
+    `<a class="pill pill--brand" data-action="openTable" data-ref='${escapeAttr(tableRef)}'>${escapeHtml(query.sourceTable.display)}</a>`,
   ));
 
   if (query.filters.length > 0) {
-    const items = query.filters
+    const pills = query.filters
       .map(
         (filter) =>
-          `<div class="clause">${renderFieldRef(filter.column)} <span class="clause-op">${escapeHtml(filter.operator)}</span> <span class="clause-val">${escapeHtml(filter.value)}</span></div>`,
+          `<span class="pill pill--filter">${renderFieldRefInPill(filter.column)} <span class="pill-op">${escapeHtml(filter.operator)}</span> <span class="pill-val">${escapeHtml(filter.value)}</span></span>`,
       )
       .join("");
-    sections.push(renderStep("filter", ICONS.filter, "Filter", items));
+    sections.push(renderStep("filter", ICONS.filter, "Filter", pills));
   }
 
   if (query.aggregations.length > 0) {
-    const items = query.aggregations
+    const pills = query.aggregations
       .map((aggregation) => {
         const col = aggregation.column
-          ? ` of ${renderFieldRef(aggregation.column)}`
+          ? ` of ${renderFieldRefInPill(aggregation.column)}`
           : "";
-        return `<div class="clause"><span class="clause-op">${escapeHtml(aggregation.operator)}</span>${col}</div>`;
+        return `<span class="pill pill--summarize">${escapeHtml(aggregation.operator)}${col}</span>`;
       })
       .join("");
-    sections.push(renderStep("summarize", ICONS.chartLine, "Summarize", items));
+    sections.push(renderStep("summarize", ICONS.chartLine, "Summarize", pills));
   }
 
   if (query.breakouts.length > 0) {
-    const items = query.breakouts
-      .map((breakout) => `<div class="clause">${renderFieldRef(breakout)}</div>`)
+    const pills = query.breakouts
+      .map((breakout) => `<span class="pill pill--breakout">${renderFieldRefInPill(breakout)}</span>`)
       .join("");
-    sections.push(renderStep("breakout", ICONS.boxes, "Group by", items));
+    sections.push(renderStep("breakout", ICONS.boxes, "Group by", pills));
   }
 
   if (query.orderBy.length > 0) {
-    const items = query.orderBy
+    const pills = query.orderBy
       .map(
         (order) =>
-          `<div class="clause">${renderFieldRef(order.column)} <span class="clause-dir">${order.direction === "desc" ? "descending" : "ascending"}</span></div>`,
+          `<span class="pill pill--muted">${renderFieldRefInPill(order.column)} <span class="pill-dir">${order.direction === "desc" ? "descending" : "ascending"}</span></span>`,
       )
       .join("");
-    sections.push(renderStep("muted", ICONS.arrowUpDown, "Sort", items));
+    sections.push(renderStep("muted", ICONS.arrowUpDown, "Sort", pills));
   }
 
   if (query.limit !== null) {
     sections.push(
-      renderStep("muted", ICONS.hash, "Row limit", `<div class="clause">${query.limit}</div>`),
+      renderStep("muted", ICONS.hash, "Row limit", `<span class="pill pill--muted">${query.limit}</span>`),
     );
   }
 
   return sections.join("");
 }
 
-function renderFieldRef(field: FieldReference): string {
+function renderFieldRefInPill(field: FieldReference): string {
   if (field.ref.length >= 4) {
     const ref = JSON.stringify(field.ref);
-    return `<a class="ref-link clause-col" data-action="openField" data-ref='${escapeAttr(ref)}'>${escapeHtml(field.display)}</a>`;
+    return `<a class="pill-ref" data-action="openField" data-ref='${escapeAttr(ref)}'>${escapeHtml(field.display)}</a>`;
   }
   if (field.ref.length >= 3) {
     const ref = JSON.stringify(field.ref);
-    return `<a class="ref-link clause-col" data-action="openTable" data-ref='${escapeAttr(ref)}'>${escapeHtml(field.display)}</a>`;
+    return `<a class="pill-ref" data-action="openTable" data-ref='${escapeAttr(ref)}'>${escapeHtml(field.display)}</a>`;
   }
-  return `<span class="clause-col">${escapeHtml(field.display)}</span>`;
+  return escapeHtml(field.display);
 }
 
 function renderStep(
@@ -173,9 +172,9 @@ function renderStep(
   title: string,
   content: string,
 ): string {
-  return `<div class="step step--${variant}">
-  <div class="step-header">${icon}${escapeHtml(title)}</div>
-  <div class="step-body">${content}</div>
+  return `<div class="step">
+  <div class="step-label step-label--${variant}">${icon}${escapeHtml(title)}</div>
+  <div class="step-cell step-cell--${variant}">${content}</div>
 </div>`;
 }
 
@@ -402,92 +401,90 @@ function getStyles(): string {
     .steps {
       display: flex;
       flex-direction: column;
-      gap: 2px;
+      gap: 16px;
     }
 
-    .step { border-radius: 8px; }
-    .step:first-child { border-radius: 12px 12px 8px 8px; }
-    .step:last-child { border-radius: 8px 8px 12px 12px; }
-    .step:only-child { border-radius: 12px; }
+    .step {}
 
-    .step-header {
+    /* Step label — colored bold text above the cell */
+    .step-label {
       display: flex;
       align-items: center;
-      gap: 8px;
-      padding: 10px 16px;
+      gap: 6px;
       font-weight: 700;
       font-size: 0.85em;
       letter-spacing: 0.01em;
+      margin-bottom: 6px;
     }
 
-    .step-header svg { flex-shrink: 0; }
+    .step-label svg { flex-shrink: 0; width: 14px; height: 14px; }
 
-    .step-body {
-      padding: 8px 16px 12px;
+    .step-label--brand { color: hsla(208, 72%, 60%, 1); }
+    .step-label--filter { color: hsla(240, 65%, 69%, 1); }
+    .step-label--summarize { color: hsla(89, 48%, 40%, 1); }
+    .step-label--breakout { color: hsla(46, 81%, 52%, 1); }
+    .step-label--muted { color: var(--vscode-descriptionForeground); }
+
+    /* Step cell — tinted container below the label */
+    .step-cell {
+      border-radius: 8px;
+      padding: 14px;
       display: flex;
-      flex-direction: column;
-      gap: 4px;
-    }
-
-    /* Step color variants — Metabase notebook palette */
-    .step--brand  { background: hsla(208, 72%, 60%, .08); }
-    .step--brand  .step-header { color: hsla(208, 72%, 60%, 1); }
-
-    .step--filter  { background: hsla(240, 65%, 69%, .08); }
-    .step--filter  .step-header { color: hsla(240, 65%, 69%, 1); }
-
-    .step--summarize  { background: hsla(89, 48%, 40%, .08); }
-    .step--summarize  .step-header { color: hsla(89, 48%, 40%, 1); }
-
-    .step--breakout  { background: hsla(46, 81%, 52%, .08); }
-    .step--breakout  .step-header { color: hsla(46, 81%, 52%, 1); }
-
-    .step--muted  { background: var(--vscode-editor-background); border: 1px solid var(--vscode-input-border, rgba(128,128,128,.2)); }
-    .step--muted  .step-header { color: var(--vscode-descriptionForeground); }
-
-    /* Clauses */
-    .clause {
-      display: flex;
-      align-items: baseline;
-      gap: 6px;
       flex-wrap: wrap;
-      line-height: 1.7;
+      align-items: center;
+      gap: 6px;
     }
 
-    .clause-col { font-weight: 600; }
+    .step-cell--brand { background: hsla(208, 72%, 60%, .1); }
+    .step-cell--filter { background: hsla(240, 65%, 69%, .1); }
+    .step-cell--summarize { background: hsla(89, 48%, 40%, .1); }
+    .step-cell--breakout { background: hsla(46, 81%, 52%, .1); }
+    .step-cell--muted { background: var(--vscode-input-background, rgba(128,128,128,.06)); }
 
-    .clause-op {
-      color: var(--vscode-descriptionForeground);
-      font-family: var(--vscode-editor-font-family, monospace);
-      font-size: 0.9em;
-    }
-
-    .clause-val { }
-
-    .clause-dir {
-      color: var(--vscode-descriptionForeground);
-      font-size: 0.9em;
-    }
-
-    /* Clickable references */
-    .ref-link {
-      cursor: pointer;
+    /* Pills — clause items inside the cell */
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 6px 12px;
+      border-radius: 6px;
+      font-weight: 700;
+      font-size: 0.85em;
+      line-height: 1.3;
+      white-space: nowrap;
+      cursor: default;
       text-decoration: none;
-      color: inherit;
-      border-bottom: 1px dashed var(--vscode-descriptionForeground);
-      transition: color 150ms, border-color 150ms;
     }
 
-    .ref-link:hover {
-      color: hsla(208, 72%, 60%, 1);
-      border-bottom-color: hsla(208, 72%, 60%, 1);
+    a.pill { cursor: pointer; }
+    a.pill:hover { opacity: .85; }
+
+    .pill--brand { background: hsla(208, 72%, 60%, 1); color: #fff; }
+    .pill--filter { background: hsla(240, 65%, 69%, 1); color: #fff; }
+    .pill--summarize { background: hsla(89, 48%, 40%, 1); color: #fff; }
+    .pill--breakout { background: hsla(46, 81%, 52%, 1); color: #fff; }
+    .pill--muted { background: var(--vscode-badge-background, rgba(128,128,128,.2)); color: var(--vscode-foreground); }
+
+    .pill-op { font-weight: 400; opacity: .85; }
+    .pill-val { font-weight: 400; }
+    .pill-dir { font-weight: 400; opacity: .85; }
+
+    /* Clickable references inside pills */
+    .pill-ref {
+      cursor: pointer;
+      text-decoration: underline;
+      text-decoration-style: dotted;
+      text-underline-offset: 2px;
+      color: inherit;
     }
+
+    .pill-ref:hover { text-decoration-style: solid; }
 
     /* SQL block */
-    .sql {
-      background: transparent;
+    .sql, .sql code {
+      background: #fff;
       border-radius: 6px;
-      padding: 16px;
+      padding: 14px;
       overflow-x: auto;
       font-family: var(--vscode-editor-font-family, 'Menlo', 'Consolas', monospace);
       font-size: var(--vscode-editor-font-size, 13px);
@@ -505,31 +502,22 @@ function getStyles(): string {
     footer {
       display: flex;
       align-items: center;
-      gap: 8px;
+      gap: 10px;
       margin-top: 24px;
       padding-top: 16px;
-      border-top: 1px solid var(--vscode-input-border, rgba(128,128,128,.2));
-      font-size: 0.9em;
+      border-top: 1px solid var(--vscode-input-border, rgba(128,128,128,.15));
     }
 
     .target-label {
-      color: var(--vscode-descriptionForeground);
-      font-weight: 600;
-      text-transform: uppercase;
-      font-size: 0.8em;
-      letter-spacing: 0.04em;
-    }
-
-    .target-arrow {
-      color: var(--vscode-descriptionForeground);
       display: flex;
       align-items: center;
+      gap: 5px;
+      color: var(--vscode-descriptionForeground);
+      font-weight: 600;
+      font-size: 0.85em;
     }
 
-    .target-name {
-      font-weight: 600;
-      font-family: var(--vscode-editor-font-family, monospace);
-    }
+    .target-label svg { width: 14px; height: 14px; opacity: .6; }
 
     .empty-state {
       color: var(--vscode-descriptionForeground);

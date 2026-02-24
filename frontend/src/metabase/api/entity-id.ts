@@ -23,6 +23,7 @@ const validEntityTypes = [
   "segment",
   "snippet",
   "timeline",
+  "transform",
   "user",
 ] as const;
 

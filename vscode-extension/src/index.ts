@@ -453,7 +453,7 @@ const { activate, deactivate } = defineExtension((context) => {
     return null;
   }
 
-  useCommand("metastudio.openInMetabase", (node: ContentNode) => {
+  useCommand("metastudio.openInMetabase", (node: ContentNode | CatalogNode) => {
     const host = config.host;
     if (!host) {
       window.showErrorMessage(
@@ -462,7 +462,9 @@ const { activate, deactivate } = defineExtension((context) => {
       return;
     }
 
+    const baseUrl = host.replace(/\/+$/, "");
     let urlPath: string;
+
     switch (node.kind) {
       case "card":
         urlPath = `/question/entity/${node.entityId}`;
@@ -473,12 +475,46 @@ const { activate, deactivate } = defineExtension((context) => {
       case "collection":
         urlPath = `/collection/entity/${node.entityId}`;
         break;
+      case "transform":
+        urlPath = `/data-studio/transforms/entity/${node.entityId}`;
+        break;
+      case "database": {
+        const params = new URLSearchParams({ database: node.name });
+        urlPath = `/data-studio/data/by-name?${params.toString()}`;
+        break;
+      }
+      case "schema": {
+        const params = new URLSearchParams({
+          database: node.databaseName,
+          schema: node.name,
+        });
+        urlPath = `/data-studio/data/by-name?${params.toString()}`;
+        break;
+      }
+      case "table": {
+        const params = new URLSearchParams({
+          database: node.databaseName,
+          schema: node.schemaName,
+          table: node.name,
+        });
+        urlPath = `/data-studio/data/by-name?${params.toString()}`;
+        break;
+      }
+      case "field": {
+        const params = new URLSearchParams({
+          database: node.databaseName,
+          schema: node.schemaName,
+          table: node.tableName,
+          field: node.name,
+        });
+        urlPath = `/data-studio/data/by-name?${params.toString()}`;
+        break;
+      }
       default:
         return;
     }
 
-    const url = `${host.replace(/\/+$/, "")}${urlPath}`;
-    env.openExternal(Uri.parse(url));
+    env.openExternal(Uri.parse(`${baseUrl}${urlPath}`));
   });
 
   useCommand(

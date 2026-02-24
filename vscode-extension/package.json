@@ -163,7 +163,12 @@
         },
         {
           "command": "metastudio.openInMetabase",
-          "when": "view == metabase.content && viewItem =~ /^(card|model|metric|dashboard|collection)$/ && metastudio.hostConfigured",
+          "when": "view == metabase.content && viewItem =~ /^(card|model|metric|dashboard|collection|transform)$/ && metastudio.hostConfigured",
+          "group": "navigation@1"
+        },
+        {
+          "command": "metastudio.openInMetabase",
+          "when": "view == metabase.dataCatalog && viewItem =~ /^(database|schema|table|field)$/ && metastudio.hostConfigured",
           "group": "navigation@1"
         },
         {

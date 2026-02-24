@@ -77,6 +77,7 @@ function DependencyGraphInner() {
   const [selection, setSelection] = useState<GraphSelection | null>(null);
   const [configExists, setConfigExists] = useState(false);
   const [colorMode, setColorMode] = useState<"light" | "dark">(getColorMode());
+  const [pendingFocusKey, setPendingFocusKey] = useState<string | null>(null);
   const { fitView, getNodes } = useReactFlow<GraphNodeType>();
 
   useEffect(() => {
@@ -97,20 +98,9 @@ function DependencyGraphInner() {
         case "themeChanged":
           setColorMode(message.colorMode);
           break;
-        case "focusNode": {
-          const flowNodes = getNodes();
-          const targetNode = flowNodes.find(
-            (node) => node.id === message.nodeKey,
-          );
-          if (targetNode) {
-            setSelection({
-              key: message.nodeKey,
-              model: targetNode.data.model,
-            });
-            fitView({ nodes: [targetNode], duration: 300 });
-          }
+        case "focusNode":
+          setPendingFocusKey(message.nodeKey);
           break;
-        }
       }
     }
 
@@ -118,7 +108,18 @@ function DependencyGraphInner() {
     vscode.postMessage({ type: "ready" });
 
     return () => window.removeEventListener("message", handleMessage);
-  }, [setNodes, setEdges, getNodes, fitView, setSelection]);
+  }, [setNodes, setEdges, setSelection]);
+
+  useEffect(() => {
+    if (!pendingFocusKey) return;
+    const flowNodes = getNodes();
+    const targetNode = flowNodes.find((node) => node.id === pendingFocusKey);
+    if (targetNode) {
+      setSelection({ key: pendingFocusKey, model: targetNode.data.model });
+      fitView({ nodes: [targetNode], duration: 300 });
+      setPendingFocusKey(null);
+    }
+  }, [pendingFocusKey, nodes, getNodes, fitView, setSelection]);
 
   useEffect(() => {
     const observer = new MutationObserver(() => {

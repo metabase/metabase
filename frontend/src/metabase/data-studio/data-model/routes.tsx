@@ -11,11 +11,13 @@ import { DataModelSegmentRevisionHistoryPage } from "metabase/data-studio/segmen
 import { PLUGIN_DEPENDENCIES } from "metabase/plugins";
 import { IsAdmin } from "metabase/route-guards";
 
+import { CatalogNameRedirect } from "./CatalogNameRedirect";
 import { DataModel } from "./pages/DataModel";
 
 export function getDataStudioMetadataRoutes() {
   return (
     <>
+      <Route path="by-name" component={CatalogNameRedirect} />
       <IndexRoute component={DataModel} />
       <Route path="database" component={DataModel} />
       <Route path="database/:databaseId" component={DataModel} />
