@@ -23,6 +23,7 @@
    [metabase.query-processor :as qp]
    ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.test-util :as qp.test-util]
+   [metabase.release-flags.guard :as guard]
    [metabase.request.core]
    [metabase.test-runner.assert-exprs :as test-runner.assert-exprs]
    [metabase.test.data :as data]
@@ -371,12 +372,21 @@
   "A modified version of `clojure.test/test-var` that:
   - logs every toucan2 query we run, with details on the query type, model, args, and resulting query
   - adds some context to any logs emitted during the test, so that we have information on what test ran
+  - fails the test if any guarded release-flag functions were called while the flag was disabled
   "
   [v]
   (let [test-n (-> v meta :name)
         test-ns (-> v meta :ns str)]
     (log/with-context {:test (str test-ns "/" test-n)}
-      (original-test-var v))))
+      (binding [guard/*blocked-calls* (atom [])]
+        (original-test-var v)
+        ;; report when blocked calls are used
+        (doseq [{:keys [flag fn call-site]} @guard/*blocked-calls*]
+          (clojure.test/do-report
+           {:type     :fail
+            :message  (str "Called guarded function " fn " while release flag \"" flag "\" is disabled")
+            :expected (str "Release flag \"" flag "\" to be enabled")
+            :actual   (str "Flag was disabled. Call site: " call-site)}))))))
 
 (alter-var-root #'clojure.test/test-var (constantly test-var-with-context))
 

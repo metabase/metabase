@@ -5,10 +5,11 @@
 
 (set! *warn-on-reflection* true)
 
-(def ^:private blocked-calls
-  "Atom recording calls to functions blocked by a disabled release flag.
-   Each entry is a map with :flag, :fn, and :call-site."
-  (atom []))
+(def ^:dynamic *blocked-calls*
+  "When bound to an atom, guarded function calls that are blocked by a disabled
+   release flag will be recorded here. Each entry is a map with :flag, :fn,
+   and :call-site. Bind to (atom []) in test fixtures to capture blocked calls."
+  nil)
 
 (defn- call-site
   "Returns the call site of the guarded function as a string, e.g. \"my.ns (my_ns.clj:42)\".
@@ -52,10 +53,12 @@
                   (catch Exception _
                     false))
               (apply original-fn args)
-              (let [site (call-site)]
-                (swap! blocked-calls conj {:flag      flag-name
-                                           :fn        qualified
-                                           :call-site site})
+              (let [site (call-site)
+                    entry {:flag      flag-name
+                           :fn        qualified
+                           :call-site site}]
+                (when *blocked-calls*
+                  (swap! *blocked-calls* conj entry))
                 (log/warnf "Release flag \"%s\" is not enabled. Skipping call to %s (called from %s)"
                            flag-name qualified site)
                 nil)))))))))
