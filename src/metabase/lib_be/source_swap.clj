@@ -1,4 +1,4 @@
-(ns metabase.lib-be.upgrade-refs
+(ns metabase.lib-be.source-swap
   (:require
    [metabase.lib.equality :as lib.equality]
    [metabase.lib.field :as lib.field]
@@ -6,7 +6,6 @@
    [metabase.lib.order-by :as lib.order-by]
    [metabase.lib.ref :as lib.ref]
    [metabase.lib.schema :as lib.schema]
-   [metabase.lib.schema.id :as id]
    [metabase.lib.schema.join :as lib.schema.join]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.lib.util :as lib.util]
@@ -15,22 +14,6 @@
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [metabase.util.performance  :as perf]))
-
-(mr/def ::swap-source.type [:enum :table :card])
-
-(mr/def ::swap-source.source
-  [:multi {:dispatch :type}
-   [:table [:map
-            [:type [:= :table]]
-            [:id ::id/table]]]
-   [:card  [:map
-            [:type [:= :card]]
-            [:id ::id/card]]]])
-
-(mr/def ::swap-source.options
-  [:map
-   [:source ::swap-source.source]
-   [:target ::swap-source.source]])
 
 (defn- walk-clause-field-refs
   [clause f]
@@ -45,8 +28,10 @@
    stage-number  :- :int
    field-ref     :- :mbql.clause/field
    columns       :- [:sequential ::lib.schema.metadata/column]]
-  (or (some-> (lib.equality/find-matching-column query stage-number field-ref columns)
-              lib.ref/ref)
+  (or (when-let [column (lib.equality/find-matching-column query stage-number field-ref columns)]
+        (-> (cond-> column
+              (:lib/card-id column) (dissoc :id))
+            lib.ref/ref))
       field-ref))
 
 (mu/defn- update-field-refs-in-clauses :- [:sequential :any]
@@ -92,7 +77,7 @@
         (u/update-some :breakout    #(update-field-refs-in-clauses query stage-number % visible-columns))
         (u/update-some :order-by    #(update-field-refs-in-clauses query stage-number % orderable-columns)))))
 
-(mu/defn update-refs-in-query :- ::lib.schema/query
+(mu/defn update-field-refs-in-query :- ::lib.schema/query
   [query     :- ::lib.schema/query]
   (update query :stages #(vec (map-indexed (fn [stage-number _]
                                              (update-field-refs-in-stage query stage-number))

@@ -1,6 +1,7 @@
 (ns metabase-enterprise.replacement.field-refs
   (:require
    [clojure.walk :as clojure.walk]
+   [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.models.visualization-settings :as vs]
    [toucan2.core :as t2]))
@@ -76,7 +77,7 @@
 (defn- card-upgrade-field-refs!
   [card-id]
   (let [dataset-query (t2/select-one-fn :dataset_query :model/Card card-id)
-        dataset-query' (lib/upgrade-field-refs dataset-query)]
+        dataset-query' (lib-be/update-field-refs-in-query dataset-query)]
     (when (not= dataset-query dataset-query')
       (t2/update! :model/Card card-id {:dataset_query dataset-query'}))
     (dashboard-card-upgrade-field-refs! dataset-query' card-id)))
@@ -86,21 +87,21 @@
   (let [source (t2/select-one-fn :source :model/Transform transform-id)]
     (when (= :query (:type source))
       (let [query (:query source)
-            query' (lib/upgrade-field-refs query)]
+            query' (lib-be/update-field-refs-in-query query)]
         (when (not= query query')
           (t2/update! :model/Transform transform-id {:source (assoc source :query query')}))))))
 
 (defn- segment-upgrade-field-refs!
   [segment-id]
   (let [definition  (t2/select-one-fn :definition :model/Segment segment-id)
-        definition' (lib/upgrade-field-refs definition)]
+        definition' (lib-be/update-field-refs-in-query definition)]
     (when (not= definition definition')
       (t2/update! :model/Segment segment-id {:definition definition'}))))
 
 (defn- measure-upgrade-field-refs!
   [measure-id]
   (let [definition  (t2/select-one-fn :definition :model/Measure measure-id)
-        definition' (lib/upgrade-field-refs definition)]
+        definition' (lib-be/update-field-refs-in-query definition)]
     (when (not= definition definition')
       (t2/update! :model/Measure measure-id {:definition definition'}))))
 
