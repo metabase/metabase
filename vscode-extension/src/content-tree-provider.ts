@@ -1,7 +1,6 @@
+import type { ContentGraph, ContentNode } from './metabase-lib'
 import * as path from 'node:path'
 import * as vscode from 'vscode'
-import type { ContentGraph } from './metabase-lib'
-import type { ContentNode } from './metabase-lib'
 
 export class ContentTreeProvider implements vscode.TreeDataProvider<ContentNode> {
   private graph: ContentGraph | null = null
@@ -77,7 +76,8 @@ export class ContentTreeProvider implements vscode.TreeDataProvider<ContentNode>
     switch (node.kind) {
       case 'collection': return this.iconPath('folder')
       case 'card':
-        if (node.cardType === 'metric') return this.iconPath('chart-line')
+        if (node.cardType === 'metric')
+          return this.iconPath('chart-line')
         return this.iconPath('file-question')
       case 'dashboard': return this.iconPath('layout-dashboard')
       case 'native_query_snippet': return this.iconPath('code')

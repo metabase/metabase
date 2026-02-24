@@ -70,22 +70,34 @@
             "id": "configure-host",
             "title": "Configure Metabase Host",
             "description": "Set the URL of your Metabase instance.\n\n[Open Settings](command:workbench.action.openSettings?%5B%22metastudio.host%22%5D)",
-            "media": { "markdown": "media/configure-host.md" },
-            "completionEvents": ["onSettingChanged:metastudio.host"]
+            "media": {
+              "markdown": "media/configure-host.md"
+            },
+            "completionEvents": [
+              "onSettingChanged:metastudio.host"
+            ]
           },
           {
             "id": "set-api-key",
             "title": "Set API Key",
             "description": "Securely store your Metabase API key.\n\n[Set API Key](command:metastudio.setApiKey)",
-            "media": { "markdown": "media/set-api-key.md" },
-            "completionEvents": ["onCommand:metastudio.setApiKey"]
+            "media": {
+              "markdown": "media/set-api-key.md"
+            },
+            "completionEvents": [
+              "onCommand:metastudio.setApiKey"
+            ]
           },
           {
             "id": "check-connection",
             "title": "Check Connection",
             "description": "Verify that Metastudio can connect to your Metabase instance.\n\n[Check Connection](command:metastudio.checkConnection)",
-            "media": { "markdown": "media/check-connection.md" },
-            "completionEvents": ["onCommand:metastudio.checkConnection"]
+            "media": {
+              "markdown": "media/check-connection.md"
+            },
+            "completionEvents": [
+              "onCommand:metastudio.checkConnection"
+            ]
           }
         ]
       }
@@ -183,12 +195,14 @@
   "devDependencies": {
     "@antfu/eslint-config": "^6.7.3",
     "@antfu/ni": "^28.0.0",
+    "@dagrejs/dagre": "^1.1.8",
     "@types/node": "^25.0.3",
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",
     "@types/vscode": "^1.97.0",
     "@vitejs/plugin-react": "^4.4.0",
     "@vscode/vsce": "^3.7.1",
+    "@xyflow/react": "^12.10.1",
     "bumpp": "^10.3.2",
     "eslint": "^9.39.2",
     "ovsx": "^0.10.7",
@@ -202,8 +216,6 @@
     "vitest": "^4.0.16",
     "vscode-ext-gen": "^1.5.1",
     "vsxpub": "^0.1.2",
-    "@dagrejs/dagre": "^1.1.4",
-    "@xyflow/react": "^12.6.0",
     "yaml": "^2.8.2"
   }
 }

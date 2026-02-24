@@ -272,6 +272,7 @@ const { activate, deactivate } = defineExtension((context) => {
       return;
     }
 
+    const rootPath = folders[0].uri.fsPath;
     const configUri = Uri.joinPath(folders[0].uri, CONFIG_FILENAME);
     try {
       await workspace.fs.stat(configUri);
@@ -282,9 +283,58 @@ const { activate, deactivate } = defineExtension((context) => {
       return;
     }
 
+    await window.withProgress(
+      {
+        location: { viewId: "metabase.content" },
+        title: "Checking dependency graph...",
+      },
+      async () => {
+        try {
+          const entities = await parseDirectory(rootPath);
+          const catalog = CatalogGraph.build(entities);
+          const content = ContentGraph.build(entities);
+          const result = buildDependencyGraph(entities, catalog, content);
+
+          publishDiagnostics(result);
+
+          const errorCount = result.issues.filter(
+            (issue) => issue.severity === "error",
+          ).length;
+          const warningCount = result.issues.filter(
+            (issue) => issue.severity === "warning",
+          ).length;
+          const cycleCount = result.cycles.length;
+
+          if (errorCount === 0 && warningCount === 0 && cycleCount === 0) {
+            window.showInformationMessage(
+              `Dependency check passed. ${result.entities.size} entities, ${result.edges.length} dependencies, no issues.`,
+            );
+          } else {
+            const parts: string[] = [];
+            if (errorCount > 0)
+              parts.push(`${errorCount} error${errorCount > 1 ? "s" : ""}`);
+            if (warningCount > 0)
+              parts.push(
+                `${warningCount} warning${warningCount > 1 ? "s" : ""}`,
+              );
+            if (cycleCount > 0)
+              parts.push(`${cycleCount} cycle${cycleCount > 1 ? "s" : ""}`);
+            window.showWarningMessage(
+              `Dependency check: ${parts.join(", ")}. See Problems panel.`,
+            );
+          }
+        } catch (error) {
+          window.showErrorMessage(
+            `Dependency check failed: ${error instanceof Error ? error.message : String(error)}`,
+          );
+        }
+      },
+    );
+  });
+
+  useCommand("metastudio.showDependencyGraph", async () => {
     if (graphPanel) {
       graphPanel.reveal(ViewColumn.One);
-      await sendGraphDataToWebview(graphPanel);
       return;
     }
 
@@ -322,10 +372,6 @@ const { activate, deactivate } = defineExtension((context) => {
     panel.onDidDispose(() => {
       graphPanel = null;
     });
-  });
-
-  useCommand("metastudio.showDependencyGraph", () => {
-    commands.executeCommand("metastudio.checkDependencyGraph");
   });
 
   useFileSystemWatcher("**/*.yaml", {
