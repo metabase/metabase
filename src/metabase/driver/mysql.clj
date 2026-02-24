@@ -112,10 +112,7 @@
     ;; Only supported for MySQL right now. Revise when a child driver is added.
     (= driver :mysql)))
 
-(mr/def ::database-flavor
-  [:enum "MySQL" "MariaDB"])
-
-(mu/defn- database-flavor :- [:maybe ::database-flavor]
+(mu/defn- database-flavor :- [:maybe :string]
   ^String [database :- [:maybe :map]]
   ;; avoid trying `:dbms_version` if `:dbms-version` is present but `nil`; this will cause snake-hating-map warnings
   (when-let [k (some #(when (contains? database %)
@@ -124,7 +121,7 @@
                       :dbms_version])]
     (get-in database [k :flavor])))
 
-(mu/defn- connection-flavor :- ::database-flavor
+(mu/defn- connection-flavor :- :string
   ^String [^Connection conn :- (lib.schema.common/instance-of-class Connection)]
   (.. conn getMetaData getDatabaseProductName))
 
