@@ -1,5 +1,6 @@
 (ns metabase.channel.render.card-test
   (:require
+   [clojure.string :as str]
    [clojure.test :refer :all]
    [hiccup.core :as hiccup]
    [hickory.core :as hik]
@@ -326,3 +327,65 @@
                                                                                 {:channel.render/include-title? true}))
               expected-href         (format "https://mb.com/dashboard/%d#scrollTo=%d" (:dashboard_id dc1) (:id dc1))]
           (is (every? #(= % expected-href) (lib.util.match/match-many rendered-card-content {:href href} href))))))))
+
+(deftest render-card-with-abbreviated-dates-test
+  (testing "Static-viz should render without error when date formatting is abbreviated (metabase#27020)"
+    (mt/with-temporary-setting-values [custom-formatting {:type/Temporal {:date_style "MMMM D, YYYY"}}]
+      (mt/with-temp [:model/Card card {:dataset_query          {:database (mt/id)
+                                                                :type     :native
+                                                                :native   {:query "select current_date as \"created_at\", 1 \"val\""}}
+                                       :display                :table
+                                       :visualization_settings {:column_settings {"[\"name\",\"created_at\"]" {:date_abbreviate true}}
+                                                                "table.pivot_column" "created_at"
+                                                                "table.cell_column" "val"}}]
+        (let [result (qp/process-query
+                      (assoc (:dataset_query card)
+                             :middleware {:process-viz-settings? true
+                                          :js-int-to-string?     false}))
+              ba     (channel.render/render-pulse-card-to-png (channel.render/defaulted-timezone card)
+                                                              card
+                                                              result
+                                                              400
+                                                              {:channel.render/include-title? true})]
+          (is (pos? (alength ba)) "PNG byte array should not be empty"))))))
+
+(deftest render-card-with-day-date-style-test
+  (testing "Static-viz should render without error when date formatting contains day (metabase#27105)"
+    (mt/with-temp [:model/Card card {:dataset_query          {:database (mt/id)
+                                                              :type     :native
+                                                              :native   {:query "select current_date::date, 1"}}
+                                     :display                :table
+                                     :visualization_settings {:column_settings {"[\"name\",\"CAST(CURRENT_DATE AS DATE)\"]" {:date_style "dddd, MMMM D, YYYY"}}
+                                                              "table.pivot_column" "CAST(CURRENT_DATE AS DATE)"
+                                                              "table.cell_column" "1"}}]
+      (let [result (qp/process-query
+                    (assoc (:dataset_query card)
+                           :middleware {:process-viz-settings? true
+                                        :js-int-to-string?     false}))
+            ba     (channel.render/render-pulse-card-to-png (channel.render/defaulted-timezone card)
+                                                            card
+                                                            result
+                                                            400
+                                                            {:channel.render/include-title? true})]
+        (is (pos? (alength ba)) "PNG byte array should not be empty")))))
+
+(deftest render-card-with-unused-column-test
+  (testing "Static-viz should not fail if there is an unused returned column (metabase#27427)"
+    (mt/with-temp [:model/Card card {:dataset_query          {:database (mt/id)
+                                                              :type     :native
+                                                              :native   {:query (str "select 1 as sortorder, year(current_timestamp), 1 v1, 2 v2"
+                                                                                     "\nunion all select 1, year(current_timestamp)-1, 1, 2")}}
+                                     :display                :bar
+                                     :visualization_settings {"graph.dimensions" ["EXTRACT(YEAR FROM CURRENT_TIMESTAMP)"]
+                                                              "graph.metrics"    ["V1" "V2"]
+                                                              "graph.series_order_dimension" nil
+                                                              "graph.series_order" nil}}]
+      (let [result (qp/process-query
+                    (assoc (:dataset_query card)
+                           :middleware {:process-viz-settings? true
+                                        :js-int-to-string?     false}))
+            rendered (channel.render/render-pulse-card-for-display
+                      (channel.render/defaulted-timezone card) card result
+                      {:channel.render/include-title? true})
+            html-str (hiccup/html rendered)]
+        (is (not (str/includes? html-str "An error occurred while displaying this card.")))))))
