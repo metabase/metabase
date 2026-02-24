@@ -65,6 +65,7 @@
   enable-metabot-v3?
   enable-official-collections?
   enable-preemptive-caching?
+  enable-product-analytics?
   enable-query-reference-validation?
   enable-remote-sync?
   enable-sandboxes?
