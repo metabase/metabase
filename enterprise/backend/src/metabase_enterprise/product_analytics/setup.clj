@@ -76,6 +76,12 @@
                     "CITY"          :type/City
                     "LANGUAGE"      :type/Category}})
 
+(def ^:private pa-foreign-keys
+  "Foreign key relationships between PA views.
+   Maps {source-table {source-field [target-table target-field]}}."
+  {"V_PA_EVENTS"   {"SITE_ID" ["V_PA_SITES" "ID"]}
+   "V_PA_SESSIONS" {"SITE_ID" ["V_PA_SITES" "ID"]}})
+
 (def ^:private pa-field-remappings
   "Internal dimension remappings for enum fields.
    Maps {table-name {field-name {:name display-name :values [v ...] :labels [s ...]}}}"
@@ -113,6 +119,15 @@
       (doseq [[field-name semantic-type] field-types]
         (t2/update! :model/Field {:table_id (:id table) :name field-name}
                     {:semantic_type semantic-type}))))
+  (doseq [[source-table-name fk-defs] pa-foreign-keys]
+    (when-let [source-table (t2/select-one :model/Table :db_id pa/product-analytics-db-id :name source-table-name)]
+      (doseq [[source-field-name [target-table-name target-field-name]] fk-defs]
+        (when-let [source-field (t2/select-one :model/Field :table_id (:id source-table) :name source-field-name)]
+          (when-let [target-table (t2/select-one :model/Table :db_id pa/product-analytics-db-id :name target-table-name)]
+            (when-let [target-field (t2/select-one :model/Field :table_id (:id target-table) :name target-field-name)]
+              (t2/update! :model/Field (:id source-field)
+                          {:semantic_type      :type/FK
+                           :fk_target_field_id (:id target-field)})))))))
   (doseq [[table-name field-remaps] pa-field-remappings]
     (when-let [table (t2/select-one :model/Table :db_id pa/product-analytics-db-id :name table-name)]
       (doseq [[field-name remap-config] field-remaps]
