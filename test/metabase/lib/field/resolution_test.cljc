@@ -497,7 +497,7 @@
   (testing "Handle busted references to joined Fields in broken breakouts from broken drill-thrus (#31482)"
     (let [query        (metabase.lib.breakout-test/legacy-query-with-broken-breakout)
           breakout-ref (first (lib/breakouts query))]
-      (is (=? [:field {:lib/uuid string?} "CATEGORY"]
+      (is (=? [:field {:lib/uuid string?, :base-type :type/Text} (meta/id :products :category)]
               breakout-ref))
       (binding [lib.metadata.calculation/*display-name-style* :long]
         (is (=? {:active                       true

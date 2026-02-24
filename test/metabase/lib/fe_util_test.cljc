@@ -590,7 +590,7 @@
           (fn [values] (mapv #(u.time/format-for-base-type % (if with-time? :type/DateTime :type/Date)) values))))
 
 (deftest ^:parallel specific-date-filter-parts-test
-  (let [query  (lib.tu/venues-query)
+  (let [query  (lib/query meta/metadata-provider (meta/table-metadata :checkins))
         column (-> (m/filter-vals some? (meta/field-metadata :checkins :date))
                    (assoc :base-type :type/DateTime :effective-type :type/DateTime))]
     (testing "clause to parts roundtrip"
@@ -652,11 +652,11 @@
       (are [clause] (nil? (lib.fe-util/specific-date-filter-parts query -1 clause))
         (lib.filter/is-null column)
         (lib.filter/< "2024-11-28" column)
-        (lib.filter/> (meta/field-metadata :venues :price) 10)
+        (lib.filter/> (meta/field-metadata :checkins :user-id) 10)
         (lib.filter/and (lib.filter/< column "2024-11-28") true)))))
 
 (deftest ^:parallel relative-date-filter-parts-test
-  (let [query  (lib.tu/venues-query)
+  (let [query  (lib/query meta/metadata-provider (meta/table-metadata :checkins))
         column (m/filter-vals some? (meta/field-metadata :checkins :date))]
     (testing "clause to parts roundtrip"
       (doseq [[clause parts] {(lib.filter/time-interval column 0 :day)
@@ -712,7 +712,7 @@
         (lib.filter/and (lib.filter/time-interval column -10 :month) true)))))
 
 (deftest ^:parallel exclude-date-filter-parts-test
-  (let [query  (lib.tu/venues-query)
+  (let [query  (lib/query meta/metadata-provider (meta/table-metadata :checkins))
         column (m/filter-vals some? (meta/field-metadata :checkins :date))]
     (testing "clause to parts roundtrip"
       (doseq [[clause parts] {(lib.filter/is-null column)
@@ -798,7 +798,7 @@
   (update parts :values (fn [values] (mapv #(u.time/format-for-base-type % :type/Time) values))))
 
 (deftest ^:parallel time-filter-parts-test
-  (let [query  (lib.tu/venues-query)
+  (let [query  (lib/query meta/metadata-provider (meta/table-metadata :checkins))
         column (assoc (m/filter-vals some? (meta/field-metadata :checkins :date))
                       :base-type      :type/Time
                       :effective-type :type/Time)]
@@ -841,7 +841,7 @@
       (are [clause] (nil? (lib.fe-util/time-filter-parts query -1 clause))
         (lib.filter/= column "10:20")
         (lib.filter/> "10:20" column)
-        (lib.filter/is-null (meta/field-metadata :venues :name))
+        (lib.filter/is-null (meta/field-metadata :checkins :user-id))
         (lib.filter/and (lib.filter/> column "10:20") true)))))
 
 (deftest ^:parallel default-filter-parts-test
@@ -1168,7 +1168,7 @@
   (let [update-temporal-unit (fn [expr temporal-type] (update-in expr [2 1] assoc :temporal-unit temporal-type))
         expr [:=
               {:lib/uuid "4fcaefe5-5c20-4cbc-98ed-6007b67843a4"}
-              [:field {:lib/uuid "3fcaefe5-5c20-4cbc-98ed-6007b67843a3"} 111]
+              [:field {:lib/uuid "3fcaefe5-5c20-4cbc-98ed-6007b67843a3"} "DATE"]
               "2024-05-13T16:35"]]
     (testing "Expandable temporal units"
       (are [unit start end] (=? [:between map? [:field {:temporal-unit unit} string?] start end]
