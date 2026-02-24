@@ -165,14 +165,16 @@ describe("scenarios > embedding > sdk iframe embedding > metabase-browser", () =
 
       cy.findByText("Pick your starting data").should("be.visible");
 
+      cy.intercept("GET", "/api/table/*/query_metadata").as("tableMetadata");
       cy.findByText("Orders").click();
 
-      // Wait for the notebook editor to fully render with the selected table,
-      // which ensures the useEffect that registers the breadcrumb's onNavigate
-      // callback has fired
+      // Wait for the table metadata request to complete, ensuring the
+      // updateQuestion async operation has fully settled before clicking
+      // the breadcrumb. Without this, a stale updateQuestion can race
+      // with loadAndQueryQuestion and overwrite the reset state.
+      cy.wait("@tableMetadata");
       cy.findByTestId("data-step-cell").should("have.text", "Orders");
 
-      cy.wait(5000);
       // Click the parent Badge element which has the onClick handler,
       // not the inner text span that findByText resolves to
       cy.findByTestId("sdk-breadcrumbs")
