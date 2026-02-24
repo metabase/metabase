@@ -28,13 +28,9 @@ import {
   getDefaultSize,
   getMinSize,
 } from "metabase/visualizations/shared/utils/sizes";
-import type {
-  ComputedVisualizationSettings,
-  VisualizationDefinition,
-  VisualizationSettingsDefinitions,
-} from "metabase/visualizations/types";
+import type { VisualizationDefinition } from "metabase/visualizations/types";
 import { isDimension, isMetric } from "metabase-lib/v1/types/utils/isa";
-import type { RawSeries, Series } from "metabase-types/api";
+import type { Series } from "metabase-types/api";
 
 import { DimensionsWidget } from "./DimensionsWidget";
 import { SliceNameWidget } from "./SliceNameWidget";
@@ -47,7 +43,7 @@ const pieRowsReadDeps = [
   "pie.slice_threshold",
 ];
 
-export const PIE_CHART_DEFINITION: VisualizationDefinition = {
+export const PIE_CHART_DEFINITION: VisualizationDefinition<Series> = {
   getUiName: () => t`Pie`,
   identifier: "pie",
   iconName: "pie",
@@ -98,7 +94,7 @@ export const PIE_CHART_DEFINITION: VisualizationDefinition = {
         return t`Measure`;
       },
       showColumnSetting: true,
-      getDefault: (rawSeries: Series) => getDefaultPieColumns(rawSeries).metric,
+      getDefault: (rawSeries) => getDefaultPieColumns(rawSeries).metric,
     }),
     ...columnSettings({ hidden: true }),
     ...dimensionSetting("pie.dimension", {
@@ -107,8 +103,7 @@ export const PIE_CHART_DEFINITION: VisualizationDefinition = {
         return t`Dimension`;
       },
       showColumnSetting: true,
-      getDefault: (rawSeries: Series) =>
-        getDefaultPieColumns(rawSeries).dimension,
+      getDefault: (rawSeries) => getDefaultPieColumns(rawSeries).dimension,
     }),
     "pie.rows": {
       hidden: true,
@@ -143,26 +138,14 @@ export const PIE_CHART_DEFINITION: VisualizationDefinition = {
       hidden: true,
       getDefault: getDefaultSortRows,
     },
-    ...nestedSettings(SERIES_SETTING_KEY, {
+    ...nestedSettings<Series, unknown, object>(SERIES_SETTING_KEY, {
       widget: SliceNameWidget,
-      getHidden: (
-        [{ card }]: RawSeries,
-        _settings: ComputedVisualizationSettings,
-        { isDashboard }: { isDashboard: boolean },
-      ) => !isDashboard || card?.display === "waterfall",
-      getSection: (
-        _series: RawSeries,
-        _settings: ComputedVisualizationSettings,
-        { isDashboard }: { isDashboard: boolean },
-      ) => (isDashboard ? t`Display` : t`Style`),
+      getHidden: ([{ card }], _settings, extra) =>
+        !extra?.isDashboard || card?.display === "waterfall",
+      getSection: (_series, _settings, extra) =>
+        extra?.isDashboard ? t`Display` : t`Style`,
       marginBottom: "0",
-      getProps: (
-        _series: any,
-        vizSettings: ComputedVisualizationSettings,
-        _onChange: any,
-        _extra: any,
-        onChangeSettings: (newSettings: ComputedVisualizationSettings) => void,
-      ) => {
+      getProps: (_series, vizSettings, _onChange, _extra, onChangeSettings) => {
         const pieRows = vizSettings["pie.rows"];
         if (pieRows == null) {
           return { pieRows: [], updateRowName: () => null };
@@ -183,20 +166,14 @@ export const PIE_CHART_DEFINITION: VisualizationDefinition = {
         };
       },
       readDependencies: ["pie.rows"],
-    } as any), // any type cast needed to avoid type error from confusion with destructured object params in `nestedSettings`
+    }), // any type cast needed to avoid type error from confusion with destructured object params in `nestedSettings`
 
     "pie._dimensions_widget": {
       get section() {
         return t`Data`;
       },
       widget: DimensionsWidget,
-      getProps: (
-        rawSeries: RawSeries,
-        settings: ComputedVisualizationSettings,
-        _onChange: any,
-        _extra: any,
-        onChangeSettings: (newSettings: ComputedVisualizationSettings) => void,
-      ) => ({
+      getProps: (rawSeries, settings, _onChange, _extra, onChangeSettings) => ({
         rawSeries,
         settings,
         onChangeSettings,
@@ -305,5 +282,5 @@ export const PIE_CHART_DEFINITION: VisualizationDefinition = {
       widget: "number",
       getDefault: getDefaultSliceThreshold,
     },
-  } as VisualizationSettingsDefinitions,
+  },
 };

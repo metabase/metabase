@@ -295,6 +295,7 @@ export type VisualizationSettingDefinition<
   placeholder?: string;
   group?: string;
   index?: number;
+  showColumnSetting?: boolean;
   widget?: string | ComponentType<TProps>;
   isValid?: (
     object: T,
@@ -379,7 +380,11 @@ export type Visualization = ComponentType<
 > &
   VisualizationDefinition;
 
-export type VisualizationDefinition = {
+export type VisualizationDefinition<
+  T = unknown,
+  TValue = unknown,
+  TProps extends object = object,
+> = {
   name?: string;
   noun?: string;
   getUiName: () => string;
@@ -403,7 +408,7 @@ export type VisualizationDefinition = {
   minSize: VisualizationGridSize;
   defaultSize: VisualizationGridSize;
 
-  settings: VisualizationSettingsDefinitions;
+  settings: VisualizationSettingsDefinitions<T, TValue, TProps>;
 
   transformSeries?: (series: Series) => TransformedSeries;
   isSensible: (data: DatasetData) => boolean;

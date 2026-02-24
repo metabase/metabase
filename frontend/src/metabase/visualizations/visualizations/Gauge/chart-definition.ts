@@ -10,15 +10,13 @@ import {
   getDefaultSize,
   getMinSize,
 } from "metabase/visualizations/shared/utils/sizes";
-import type {
-  VisualizationDefinition,
-  VisualizationSettingsDefinitions,
-} from "metabase/visualizations/types";
+import type { VisualizationDefinition } from "metabase/visualizations/types";
 import { isDate, isNumeric } from "metabase-lib/v1/types/utils/isa";
+import type { Series } from "metabase-types/api";
 
 import { isGaugeSegmentsArray } from "./types";
 
-export const GAUGE_CHART_DEFINITION: VisualizationDefinition = {
+export const GAUGE_CHART_DEFINITION: VisualizationDefinition<Series> = {
   getUiName: () => t`Gauge`,
   identifier: "gauge",
   iconName: "gauge",
@@ -51,7 +49,7 @@ export const GAUGE_CHART_DEFINITION: VisualizationDefinition = {
     }),
     "gauge.range": {
       // currently not exposed in settings, just computed from gauge.segments
-      getDefault(series, vizSettings) {
+      getDefault(_series, vizSettings) {
         const gaugeSegments = vizSettings["gauge.segments"];
         const segments = isGaugeSegmentsArray(gaugeSegments)
           ? gaugeSegments.filter((segment) => segmentIsValid(segment))
@@ -92,5 +90,5 @@ export const GAUGE_CHART_DEFINITION: VisualizationDefinition = {
       persistDefault: true,
       noPadding: true,
     },
-  } as VisualizationSettingsDefinitions,
+  },
 };
