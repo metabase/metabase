@@ -234,7 +234,7 @@
 (mr/def ::context
   "Context built for lens discovery and generation."
   [:map
-   [:source-type [:enum :mbql :native :python :javascript :julia :r :clojure]]
+   [:source-type :keyword]
    [:sources [:sequential ::transforms-inspector.schema/table]]
    [:target [:maybe ::transforms-inspector.schema/table]]
    [:db-id pos-int?]

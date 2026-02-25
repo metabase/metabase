@@ -339,13 +339,13 @@
     :runtime           - string passed to runner as language param (e.g. \"python\", \"javascript\")
     :label             - human-readable label for log messages (e.g. \"Python\", \"JavaScript\")
     :timing-key        - keyword for instrumentation (e.g. :python-execution, :javascript-execution)
-    :transform-type-pred - predicate to assert transform type (e.g. transforms.util/python-transform?)
 
   Blocks until the transform returns."
   [transform {:keys [run-method start-promise user-id]} lang-config]
-  (let [{:keys [runtime label timing-key transform-type-pred]} lang-config]
-    (assert (transform-type-pred transform)
-            (str "Transform must be a " (str/lower-case label) " transform"))
+  (let [{:keys [runtime label timing-key]} lang-config]
+    (assert (transforms.util/runner-transform? transform)
+            (str "Transform must be a runner-based transform, got: "
+                 (transforms.util/transform-type transform)))
     (try
       (let [message-log (empty-message-log)
             {:keys [target owner_user_id creator_id] transform-id :id} transform

@@ -1,8 +1,9 @@
 (ns metabase-enterprise.transforms-julia.impl
   (:require
    [metabase-enterprise.transforms-runner.execute :as runner.execute]
-   [metabase.transforms.interface :as transforms.i]
-   [metabase.transforms.util :as transforms.util]))
+   [metabase.transforms.interface :as transforms.i]))
+
+(transforms.i/register-runner! :julia)
 
 (defmethod transforms.i/target-db-id :julia
   [transform]
@@ -19,8 +20,7 @@
    transform options
    {:runtime "julia"
     :label "Julia"
-    :timing-key :julia-execution
-    :transform-type-pred #(= :julia (transforms.util/transform-type %))}))
+    :timing-key :julia-execution}))
 
 (defmethod transforms.i/table-dependencies :julia
   [transform]

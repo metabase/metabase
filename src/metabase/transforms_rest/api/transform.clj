@@ -294,7 +294,7 @@
   (let [transform (api/write-check :model/Transform id)
         run       (api/check-404 (transforms.core/running-run-for-transform-id id))]
     (transforms.core/mark-cancel-started-run! (:id run))
-    (when (transforms.util/python-transform? transform)
+    (when (transforms.util/runner-transform? transform)
       (transforms.core/cancel-run! (:id run))))
   nil)
 

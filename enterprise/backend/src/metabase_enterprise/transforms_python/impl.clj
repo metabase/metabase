@@ -1,8 +1,9 @@
 (ns metabase-enterprise.transforms-python.impl
   (:require
    [metabase-enterprise.transforms-runner.execute :as runner.execute]
-   [metabase.transforms.interface :as transforms.i]
-   [metabase.transforms.util :as transforms.util]))
+   [metabase.transforms.interface :as transforms.i]))
+
+(transforms.i/register-runner! :python)
 
 (defmethod transforms.i/target-db-id :python
   [transform]
@@ -19,8 +20,7 @@
    transform options
    {:runtime "python"
     :label "Python"
-    :timing-key :python-execution
-    :transform-type-pred transforms.util/python-transform?}))
+    :timing-key :python-execution}))
 
 (defmethod transforms.i/table-dependencies :python
   [transform]

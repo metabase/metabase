@@ -1,8 +1,9 @@
 (ns metabase-enterprise.transforms-r.impl
   (:require
    [metabase-enterprise.transforms-runner.execute :as runner.execute]
-   [metabase.transforms.interface :as transforms.i]
-   [metabase.transforms.util :as transforms.util]))
+   [metabase.transforms.interface :as transforms.i]))
+
+(transforms.i/register-runner! :r)
 
 (defmethod transforms.i/target-db-id :r
   [transform]
@@ -19,8 +20,7 @@
    transform options
    {:runtime "r"
     :label "R"
-    :timing-key :r-execution
-    :transform-type-pred #(= :r (transforms.util/transform-type %))}))
+    :timing-key :r-execution}))
 
 (defmethod transforms.i/table-dependencies :r
   [transform]

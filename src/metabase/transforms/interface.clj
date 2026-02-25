@@ -1,5 +1,30 @@
 (ns metabase.transforms.interface)
 
+(defonce ^{:doc "Hierarchy for transform language types. Runner-based languages derive from ::runner.
+  Use [[register-runner!]] to register new runner languages, and [[runner-language?]] / [[runner-languages]]
+  to query the registry. Follows the same pattern as [[metabase.driver.impl/hierarchy]]."}
+  hierarchy
+  (make-hierarchy))
+
+(defn register-runner!
+  "Register a runner-based transform language (e.g. :python, :javascript).
+  This derives `lang-kw` from `::runner` in the transforms hierarchy, making it
+  discoverable via [[runner-language?]] and [[runner-languages]].
+
+  Call this from enterprise init modules alongside multimethod implementations."
+  [lang-kw]
+  (alter-var-root #'hierarchy derive lang-kw ::runner))
+
+(defn runner-language?
+  "Is `kw` a registered runner-based transform language?"
+  [kw]
+  (isa? hierarchy kw ::runner))
+
+(defn runner-languages
+  "Returns the set of all registered runner language keywords (e.g. #{:python :javascript :clojure :r :julia})."
+  []
+  (descendants hierarchy ::runner))
+
 (defn- transform->transform-type
   [transform]
   (-> transform :source :type keyword))
