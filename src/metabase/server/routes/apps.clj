@@ -17,7 +17,7 @@
 
 (defn- app-page-html
   "Generate HTML page with embedded collection browser."
-  [app-name api-key auth-method theme collection-id]
+  [app-name api-key auth-method theme logo collection-id]
   (let [site-url (or (system/site-url) "")]
     (str "<!DOCTYPE html>
 <html lang=\"en\">
@@ -37,6 +37,13 @@
       font-size: 20px;
       font-weight: 600;
       flex-shrink: 0;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .app-header img {
+      height: 32px;
+      width: auto;
     }
     .app-content { flex: 1; overflow: hidden; }
   </style>
@@ -44,7 +51,10 @@
 <body>
   <div id=\"app-container\">
     <app-wrapper>
-      <div class=\"app-header\">" app-name "</div>
+      <div class=\"app-header\">"
+         (when logo
+           (str "<img src=\"" logo "\" alt=\"\" />"))
+         app-name "</div>
       <div class=\"app-content\">
         <metabase-browser initial-collection=\"" collection-id "\"></metabase-browser>
       </div>
@@ -86,9 +96,10 @@
                               (config/config-str :mb-apps-api-key))
               auth-method (:auth_method app)
               theme       (:theme app)
+              logo        (:logo app)
               coll-id     (:collection_id app)]
           (respond
-           (-> (response/response (app-page-html (:name app) api-key auth-method theme coll-id))
+           (-> (response/response (app-page-html (:name app) api-key auth-method theme logo coll-id))
                (response/content-type "text/html; charset=utf-8")
                (response/header "Content-Security-Policy"
                                 "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; connect-src *; frame-src *; img-src * data: blob:;"))))))))
