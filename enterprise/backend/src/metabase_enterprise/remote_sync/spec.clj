@@ -15,7 +15,7 @@
    [clojure.string :as str]
    [clojure.walk :as walk]
    [metabase-enterprise.remote-sync.settings :as rs-settings]
-   [metabase-enterprise.transforms-python.core :as transforms-python]
+   [metabase-enterprise.transforms-runner.models.transform-library :as transform-library]
    [metabase.collections.core :as collections]
    [metabase.collections.models.collection :as collection]
    [metabase.models.serialization :as serdes]
@@ -71,7 +71,7 @@
    - :export-scope   - Export scope for query-export-roots:
                        :root-collections - Query root-level remote-synced + namespace collections (Collection)
                        :root-only        - Query root instances with collection_id = nil (Transform)
-                       :all              - Query all instances (TransformTag, PythonLibrary, NativeQuerySnippet)
+                       :all              - Query all instances (TransformTag, TransformLibrary, NativeQuerySnippet)
                        nil/:derived      - No root query; derived from other models via serdes/descendants
    - :enabled?       - true, or setting keyword (e.g., :remote-sync-transforms, :library-synced).
                        When :library-synced, uses the library-is-remote-synced? setting."
@@ -302,18 +302,18 @@
     :export-scope   :all  ; query for all instances
     :enabled?       :remote-sync-transforms}
 
-   :model/PythonLibrary
-   {:model-type     "PythonLibrary"
-    :model-key      :model/PythonLibrary
+   :model/TransformLibrary
+   {:model-type "TransformLibrary"
+    :model-key :model/TransformLibrary
     :identity       :entity-id
-    :events         {:prefix :event/python-library
-                     :types  [:create :update]}  ; no delete - upsert only
+    :events {:prefix :event/transform-library
+             :types  [:create :update]}  ; no delete - upsert only
     :eligibility    {:type    :setting
                      :setting :remote-sync-transforms}
     :archived-key   nil  ; no archived field
     :tracking       {:select-fields  [:path]
                      :field-mappings {:model_name :path}}
-    :conditions     {:entity_id [:not= transforms-python/builtin-entity-id]}  ; exclude built-in common.py from sync
+    :conditions {:entity_id [:not-in (vals transform-library/builtin-entity-ids)]} ; exclude built-in libraries from sync
     :removal        {:statuses               #{"removed" "delete"}  ; no scope-key = global deletion
                      :all-on-setting-disable :remote-sync-transforms}
     :export-scope   :all  ; query for all instances
@@ -506,7 +506,7 @@
 
 (defn- has-unsynced-entities-for-feature?
   "Returns true if any model in the feature group has local entities not tracked in RemoteSyncObject.
-   Excludes built-in TransformTags and the built-in PythonLibrary from the count since they are
+   Excludes built-in TransformTags and built-in TransformLibrary entries from the count since they are
    system-created and not user data. Namespace collections are not checked here because they are
    organizational containers, not user data that would be lost on import."
   [specs-for-feature]
@@ -516,7 +516,7 @@
                 ;; Exclude built-in entities from count (they are system-created, not user data)
                 local-count (case model-key
                               :model/TransformTag   (t2/count model-key :built_in_type nil)
-                              :model/PythonLibrary  (t2/count model-key :entity_id [:not= transforms-python/builtin-entity-id])
+                              :model/TransformLibrary (t2/count model-key :entity_id [:not-in (vals transform-library/builtin-entity-ids)])
                               (t2/count model-key))
                 synced-count (t2/count :model/RemoteSyncObject :model_type model-type)]
             (and (pos? local-count)

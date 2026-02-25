@@ -35,8 +35,9 @@
     :model/DashboardFavorite
     :model/DatabaseRouter
     :model/Dependency
-    :model/JavaScriptLibrary
-    :model/PythonLibrary
+    :model/JavaScriptLibrary ;; TODO: remove after Task I deletes old model files
+    :model/PythonLibrary ;; TODO: remove after Task I deletes old model files
+    :model/TransformLibrary
     :model/PremiumFeaturesCache
     :model/Query
     :model/QueryCache

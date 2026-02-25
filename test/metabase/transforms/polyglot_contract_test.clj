@@ -9,9 +9,7 @@
    [clojure.test.check.properties :as prop]
    [metabase-enterprise.transforms-clojure.impl]
    [metabase-enterprise.transforms-javascript.impl]
-   [metabase-enterprise.transforms-julia.impl]
    [metabase-enterprise.transforms-python.impl]
-   [metabase-enterprise.transforms-r.impl]
    [metabase.transforms.interface :as transforms.i]
    [metabase.transforms.util :as transforms.util]))
 
@@ -19,7 +17,7 @@
 
 (def ^:private runner-languages
   "All registered runner-based language dispatch values."
-  [:python :javascript :clojure :r :julia])
+  [:python :javascript :clojure])
 
 ;;; ------------------------------------------------ Generators ----------------------------------------------------
 

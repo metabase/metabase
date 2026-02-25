@@ -371,10 +371,12 @@
 (deftest transform-function-with-library-test
   (testing "transform function can use libraries"
     (mt/test-drivers #{:postgres}
-      (mt/with-temp [:model/PythonLibrary _ {:path   "circle"
-                                             :source "import math\n\ndef calculate_circle_area(radius):\n    return math.pi * radius ** 2"}
-                     :model/PythonLibrary _ {:path   "utils"
-                                             :source "def format_currency(amount):\n    return f\"${amount:,.2f}\""}]
+      (mt/with-temp [:model/TransformLibrary _ {:language "python"
+                                                :path "circle"
+                                                :source "import math\n\ndef calculate_circle_area(radius):\n    return math.pi * radius ** 2"}
+                     :model/TransformLibrary _ {:language "python"
+                                                :path "utils"
+                                                :source "def format_currency(amount):\n    return f\"${amount:,.2f}\""}]
         (let [transform-code (str "import pandas as pd\n"
                                   "from circle import calculate_circle_area\n"
                                   "from utils import format_currency\n"
@@ -388,17 +390,17 @@
               result         (execute! {:code transform-code})]
           (is (=? {:output (jsonl-output [{:radius 5,  :area 78.5398163397, :price "$78.54"}
                                           {:radius 10, :area 314.159265359, :price "$314.16"}])
-                   :stdout (ok-stdout 2 3)
-                   #_#_:stderr ""}
+                   :stdout (ok-stdout 2 3)}
                   result)))))))
 
 (deftest transform-function-without-libraries-test
   (testing "transform function works when no libraries exist"
     (mt/test-drivers #{:postgres}
-      (with-redefs [t2/select-fn->fn (fn [k v model]
+      (with-redefs [t2/select-fn->fn (fn [k v model & conditions]
                                        (when (and (= k :path)
                                                   (= v :source)
-                                                  (= model :model/PythonLibrary))
+                                                  (= model :model/TransformLibrary)
+                                                  (= conditions [:language "python"]))
                                          {}))]
         (let [transform-code (str "import pandas as pd\n"
                                   "\n"
@@ -412,10 +414,11 @@
 (deftest transform-function-library-import-error-test
   (testing "transform function handles missing library gracefully"
     (mt/test-drivers #{:postgres}
-      (with-redefs [t2/select-fn->fn (fn [k v model]
+      (with-redefs [t2/select-fn->fn (fn [k v model & conditions]
                                        (when (and (= k :path)
                                                   (= v :source)
-                                                  (= model :model/PythonLibrary))
+                                                  (= model :model/TransformLibrary)
+                                                  (= conditions [:language "python"]))
                                          {"utils" "def helper():\n    return 42"}))]
         (let [transform-code (str "import pandas as pd\n"
                                   "from common import some_function  # This library doesn't exist\n"
@@ -423,7 +426,6 @@
                                   "def transform():\n"
                                   "    return pd.DataFrame({'value': [some_function()]})")
               result         (execute! {:code transform-code})]
-          ;; TODO this error message could still be improved a lot
           (is (=? {#_#_:error     "Execution failed"
                    :exit_code 1
                    :stderr    #(str/includes? % "No module named 'common'")}

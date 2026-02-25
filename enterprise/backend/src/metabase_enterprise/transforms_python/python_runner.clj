@@ -207,10 +207,7 @@
         table-name->url                         (update-vals table-name->id #(url-for-path [:table % :data]))
         table-name->manifest-url                (update-vals table-name->id #(url-for-path [:table % :manifest]))
         payload                                 {:code                code
-                                                 :library             (t2/select-fn->fn :path :source
-                                                                                        (if (= runtime "javascript")
-                                                                                          :model/JavaScriptLibrary
-                                                                                          :model/PythonLibrary))
+                                                 :library (t2/select-fn->fn :path :source :model/TransformLibrary :language runtime)
                                                  :timeout             (or timeout-secs (transforms-python.settings/python-runner-timeout-seconds))
                                                  :request_id          (or request-id run-id)
                                                  :output_url          (:url output)

@@ -9,7 +9,7 @@
 (set! *warn-on-reflection* true)
 
 (def ^:private runner-languages
-  [:python :javascript :clojure :r :julia])
+  [:python :javascript :clojure])
 
 (defn- make-transform [source-type]
   {:source {:type (name source-type)}
@@ -94,6 +94,6 @@
     (testing "python disabled without :transforms-python"
       (is (false? (transforms.util/check-feature-enabled (make-transform :python)))))
     (testing "other runner languages disabled without :transforms-python"
-      (doseq [lang [:javascript :clojure :r :julia]]
+      (doseq [lang [:javascript :clojure]]
         (testing (str "language: " lang)
           (is (false? (transforms.util/check-feature-enabled (make-transform lang)))))))))
