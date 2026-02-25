@@ -40,5 +40,9 @@
  [metabase.lib-be.query
   bulk-load-query-metadata]
  [metabase.lib-be.source-swap
+  build-field-id-mapping
+  can-upgrade-field-ref-in-parameter-target?
+  can-upgrade-field-refs-in-query?
+  swap-source-in-query
   upgrade-field-ref-in-parameter-target
   upgrade-field-refs-in-query])
