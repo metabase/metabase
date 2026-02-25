@@ -8,6 +8,7 @@ import { SdkAdHocQuestion } from "embedding-sdk-bundle/components/private/SdkAdH
 import { SdkQuestionDefaultView } from "embedding-sdk-bundle/components/private/SdkQuestionDefaultView";
 import { METABOT_SDK_EE_PLUGIN } from "embedding-sdk-bundle/components/public/MetabotQuestion/MetabotQuestion";
 import { EnsureSingleInstance } from "embedding-sdk-shared/components/EnsureSingleInstance/EnsureSingleInstance";
+import { useSetting } from "metabase/common/hooks";
 import { useLocale } from "metabase/common/hooks/use-locale";
 import { Stack } from "metabase/ui";
 import { useMetabotReactions } from "metabase-enterprise/metabot/hooks/use-metabot-reactions";
@@ -39,6 +40,7 @@ const MetabotQuestionInner = ({
   isSaveEnabled = false,
   targetCollection,
 }: MetabotQuestionProps) => {
+  const isEmbeddedMetabotEnabled = useSetting("is-embedded-metabot-enabled");
   const { isLocaleLoading } = useLocale();
   const { navigateToPath } = useMetabotReactions();
   const { ref: containerRef, width: containerWidth } = useElementSize();
@@ -60,6 +62,10 @@ const MetabotQuestionInner = ({
           : "sidebar";
       });
   }, [layout, containerWidth]);
+
+  if (isEmbeddedMetabotEnabled === false) {
+    return null;
+  }
 
   function renderQuestion() {
     if (!hasQuestion || isLocaleLoading) {

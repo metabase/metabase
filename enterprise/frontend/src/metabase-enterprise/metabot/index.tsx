@@ -1,5 +1,6 @@
 import { Route } from "react-router";
 
+import MetabaseSettings from "metabase/lib/settings";
 import type { MetabotContext as MetabotContextType } from "metabase/metabot";
 import { PLUGIN_METABOT, PLUGIN_REDUCERS } from "metabase/plugins";
 import { useLazyMetabotGenerateContentQuery } from "metabase-enterprise/api";
@@ -46,7 +47,7 @@ export function initializePlugin() {
   if (hasPremiumFeature("metabot_v3")) {
     Object.assign(PLUGIN_METABOT, {
       // helpers
-      isEnabled: () => true,
+      isEnabled: () => !!MetabaseSettings.get("is-metabot-enabled"),
       getNewMenuItemAIExploration,
       getMetabotVisible,
       // routes

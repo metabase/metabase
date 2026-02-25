@@ -1,4 +1,5 @@
 import { useDisclosure } from "@mantine/hooks";
+import type { ReactNode } from "react";
 import { useEffect, useMemo } from "react";
 import { IndexRoute, Route } from "react-router";
 import { push } from "react-router-redux";
@@ -14,6 +15,7 @@ import {
 import { SettingsSection } from "metabase/admin/components/SettingsSection";
 import { SettingHeader } from "metabase/admin/settings/components/SettingHeader";
 import { skipToken, useGetCollectionQuery } from "metabase/api";
+import { useAdminSetting } from "metabase/api/utils/settings";
 import { canonicalCollectionId } from "metabase/collections/utils";
 import { AdminSettingsLayout } from "metabase/common/components/AdminLayout/AdminSettingsLayout";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
@@ -43,6 +45,7 @@ import { hasPremiumFeature } from "metabase-enterprise/settings";
 import type {
   Collection,
   CollectionEssentials,
+  EnterpriseSettingKey,
   MetabotInfo,
 } from "metabase-types/api";
 
@@ -80,37 +83,46 @@ export function MetabotAdminPage() {
   const isEmbedMetabot =
     metabot.entity_id === FIXED_METABOT_ENTITY_IDS.EMBEDDED;
 
+  const enabledSettingKey: EnterpriseSettingKey = isEmbedMetabot
+    ? "is-embedded-metabot-enabled"
+    : "is-metabot-enabled";
+
   return (
     <AdminSettingsLayout sidebar={<MetabotNavPane />}>
       <ErrorBoundary>
         <SettingsSection key={metabotId}>
-          <Box>
-            <SettingHeader
-              id="configure-metabot"
-              title={c("{0} is the name of an AI assistant")
-                .t`Configure ${metabot.name}`}
-              description={c("{0} is the name of an AI assistant") // eslint-disable-next-line metabase/no-literal-metabase-strings -- admin ui
-                .t`${metabot.name} is Metabase's AI agent. To help ${metabot.name} more easily find and focus on the data you care about most, configure what content it should be able to access or use to create queries.`}
+          <Flex justify="space-between" align="flex-start">
+            <Box>
+              <SettingHeader
+                id="configure-metabot"
+                title={c("{0} is the name of an AI assistant")
+                  .t`Configure ${metabot.name}`}
+                description={c("{0} is the name of an AI assistant") // eslint-disable-next-line metabase/no-literal-metabase-strings -- admin ui
+                  .t`${metabot.name} is Metabase's AI agent. To help ${metabot.name} more easily find and focus on the data you care about most, configure what content it should be able to access or use to create queries.`}
+              />
+              {isEmbedMetabot && (
+                <Text c="text-secondary" maw="40rem">
+                  {t`If you're embedding the Metabot component in an app, you can specify a different collection that embedded Metabot is allowed to use for creating queries.`}
+                </Text>
+              )}
+            </Box>
+            <MetabotEnabledToggle settingKey={enabledSettingKey} />
+          </Flex>
+
+          <MetabotSettingsBody settingKey={enabledSettingKey}>
+            <MetabotVerifiedContentConfigurationPane metabot={metabot} />
+
+            <MetabotCollectionConfigurationPane
+              metabot={metabot}
+              title={
+                isEmbedMetabot
+                  ? undefined
+                  : t`Collection for natural language querying`
+              }
             />
-            {isEmbedMetabot && (
-              <Text c="text-secondary" maw="40rem">
-                {t`If you're embedding the Metabot component in an app, you can specify a different collection that embedded Metabot is allowed to use for creating queries.`}
-              </Text>
-            )}
-          </Box>
 
-          <MetabotVerifiedContentConfigurationPane metabot={metabot} />
-
-          <MetabotCollectionConfigurationPane
-            metabot={metabot}
-            title={
-              isEmbedMetabot
-                ? undefined
-                : t`Collection for natural language querying`
-            }
-          />
-
-          <MetabotPromptSuggestionPane metabot={metabot} />
+            <MetabotPromptSuggestionPane metabot={metabot} />
+          </MetabotSettingsBody>
         </SettingsSection>
       </ErrorBoundary>
     </AdminSettingsLayout>
@@ -149,6 +161,54 @@ function MetabotNavPane() {
         ))}
       </AdminNavWrapper>
     </Flex>
+  );
+}
+
+function MetabotEnabledToggle({
+  settingKey,
+}: {
+  settingKey: EnterpriseSettingKey;
+}) {
+  const { value, updateSetting, isLoading } = useAdminSetting(settingKey);
+
+  const handleToggle = async (checked: boolean) => {
+    await updateSetting({ key: settingKey, value: checked });
+  };
+
+  return (
+    <Switch
+      checked={!!value}
+      onChange={(e) => handleToggle(e.target.checked)}
+      disabled={isLoading}
+      w="auto"
+      size="sm"
+      mt="xs"
+    />
+  );
+}
+
+function MetabotSettingsBody({
+  settingKey,
+  children,
+}: {
+  settingKey: EnterpriseSettingKey;
+  children: ReactNode;
+}) {
+  const { value } = useAdminSetting(settingKey);
+  const isDisabled = value === false;
+
+  return (
+    <Stack
+      gap="lg"
+      opacity={isDisabled ? 0.4 : 1}
+      aria-disabled={isDisabled || undefined}
+      style={{
+        pointerEvents: isDisabled ? "none" : "auto",
+        transition: "opacity 150ms ease",
+      }}
+    >
+      {children}
+    </Stack>
   );
 }
 

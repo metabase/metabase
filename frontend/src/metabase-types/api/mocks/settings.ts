@@ -366,6 +366,8 @@ export const createMockSettings = (
   "show-homepage-data": false,
   "show-homepage-pin-message": false,
   "show-homepage-xrays": false,
+  "is-metabot-enabled": true,
+  "is-embedded-metabot-enabled": true,
   "show-metabase-links": true,
   "show-metabot": true,
   "show-updated-permission-modal": false,
