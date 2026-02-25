@@ -154,7 +154,7 @@
   #{})
 
 (defn- updated-result-metadata
-  "Get `:result-metadata` from Card, but merge in updated values of `:active`."
+  "Get `:result-metadata` from Card, but merge in updated values of `:active` and `:visibility-type`."
   [metadata-providerable card]
   (when-let [saved-metadata-cols (not-empty (:result-metadata card))]
     (let [ids                       (into #{} (keep :id) saved-metadata-cols)
@@ -163,7 +163,11 @@
               (merge
                saved-metadata-col
                (when-let [metadata-provider-col (id->metadata-provider-col (:id saved-metadata-col))]
-                 (select-keys metadata-provider-col [:active]))))
+                 (let [legacy? (contains? saved-metadata-col :base_type)]
+                   (cond-> (select-keys metadata-provider-col [:active])
+                     (contains? metadata-provider-col :visibility-type)
+                     (assoc (if legacy? :visibility_type :visibility-type)
+                            (:visibility-type metadata-provider-col)))))))
             saved-metadata-cols))))
 
 (mu/defn card->underlying-query :- ::lib.schema/query
