@@ -16,7 +16,7 @@ import * as Urls from "metabase/lib/urls";
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import EditorS from "metabase/query_builder/components/NativeQueryEditor/CodeMirrorEditor/CodeMirrorEditor.module.css";
 import { getMetadata } from "metabase/selectors/metadata";
-import { getIsWorkspace } from "metabase/selectors/routing";
+import { isWorkspacePath } from "metabase/selectors/routing";
 import {
   Button,
   Collapse,
@@ -109,7 +109,7 @@ export const AgentSuggestionMessage = ({
 }) => {
   const dispatch = useDispatch();
   const metadata = useSelector(getMetadata);
-  const isWorkspace = useSelector(getIsWorkspace);
+  const isWorkspace = isWorkspacePath(window.location.pathname);
   const suggestionActions = useMetabotSuggestionActions();
   const { sendErrorToast } = useMetadataToasts();
   const [isApplying, setIsApplying] = useState(false);

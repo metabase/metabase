@@ -10,7 +10,7 @@ import _ from "underscore";
 
 import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
 import { addUndo } from "metabase/redux/undo";
-import { getIsWorkspace } from "metabase/selectors/routing";
+import { isWorkspacePath } from "metabase/selectors/routing";
 import { getUser } from "metabase/selectors/user";
 import {
   type JSONValue,
@@ -313,7 +313,7 @@ export const sendAgentRequest = createAsyncThunk<
     payload,
     { dispatch, getState, signal, rejectWithValue, fulfillWithValue },
   ) => {
-    const isWorkspace = getIsWorkspace(getState());
+    const isWorkspace = isWorkspacePath(window.location.pathname);
     const { agentId, ...request } = payload;
 
     try {
