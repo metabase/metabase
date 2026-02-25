@@ -1,23 +1,22 @@
 # Release Flags
 
-The purpose of Metabase release flags is to allow developers to progressively merge good, tested, but incomplete code to master and avoid large, long-running feature branches. Release flags should be temporary, and should be removed at the completion of a project. Release flags are not required. You can do a traditional feature branch approach with just a PR. But release flags are available as an option to avoid long-running feature branches if you wish.
+The purpose of Metabase release flags is to allow developers to progressively merge good, tested, but incomplete code to master and avoid large, long-running feature branches. Release flags should be temporary, and should be removed at the completion of a project. Release flags are not required. You can do a traditional feature branch approach with just a PR, or even better, merge small, independently and immediately useful code to master. But release flags are available as an option to avoid long-running feature branches when necessary.
 
-At the beginning of any long-running project that intends to use a release flag, a developer should open a PR that:
+### Lifecycle
 
-1. adds the new release flag to the `.clj-kondo/config/release-flags/config.edn` file with a unique name and a brief description.
-2. adds the feature flag to the ReleaseFlag string enum in `metabase-types/api/release-flag.ts`.
-
-Have the PR reviewed and merge it. You have begun the lifecycle!
-
-Throughout development of the feature, you can now create small PRs with code protected behind the release flag. The code can exist in master and production builds, but your functions won't be called until the release flag is enabled.
+1. Create a PR which adds a new, unique flag to `release-flags/config.edn` and update `metabase-types/api/release-flg.ts` to include the new key. Have it reviewed and merged.
+2. Subsequent PRs for the feature should have all code behind the release flag. The code should be disabled at the highest possible level to reduce the number of places where the flag is invoked.
+3. When you are ready to launch your feature, create a PR which removes the flag from `release-flags/config.edn` and `metabase-types/api/release-flg.ts`. This will trigger linting and TypeScript errors. Remove the conditionals using the flag. Have it reviewed and merged. You’re done!
 
 ## Protecting Code
 
 Develop your code as normal. Require it from namespaces. This will load your code as normal. However, you should protect the call sites of the functions in your code.
 
-Throughout development, all code that should be behind the release flag should be disabled at the highest possible level in the calling code. Good encapsulation principles should be used to minimize the number of needed release flag conditionals. Nesting release flags should be avoided wherever possible. Care should be taken that release flagging code should not diminish the maintainability or readability of code. During development, you can toggle release flags from the ui at `/release-flags`.
+Throughout development, all code that should be behind the release flag should be disabled at the highest possible level in the calling code. Good encapsulation principles should be used to minimize the number of needed release flag conditionals. Nesting release flags should be avoided wherever possible. Care should be taken that release flagging code should not diminish the maintainability or readability of code. During development, you can toggle release flags from the ui at `/release-flags` or via the API at `PUT /api/release-flags`.
 
-Here's how to protect code behind a release flag:
+💡 If you find yourself needing to use the same flag in lots of places, you may need to:
+1. Reconsider whether a release flag is appropriate for this feature, or
+2. Consider whether your feature code could be better encapsulated
 
 ### Clojure
 
@@ -37,7 +36,7 @@ A new feature often requires new namespaces to be created to support the feature
 (release-flags/guard-namespace! :my-new-feature)
 ```
 
-This function will instrument the functions in the namespace with code that tacks whether the release flag was enabled. If the code was called but the release flag wasn’t enabled, it will fail a test, preventing it from merging to master. This line should be removed when the feature is released. Similar code will happen in TypeScript.
+This function will instrument the functions in the namespace with code that tacks whether the release flag was enabled. If the code was called but the release flag wasn’t enabled, it will fail a test, preventing it from merging to master. This line should be removed when the feature is released.
 
 A clj-kondo rule will check that `has-release-flag?` and `guard-namespace!` is only called with flags listed in `release-flags/config.edn`.
 
@@ -63,27 +62,14 @@ API endpoints that you want to protect behind a release flag should use `check-4
 
 ### TypeScript
 
-The main way to protect code in TypeScript is with `useHasReleaseFlag()`.
+TypeScript code is toggled with `hasReleaseFlag("flag-name")`.
 
-
-```tsx
+```ts
 import { hasReleaseFlag } from "metabase/lib/release-flags";
 
 ...
 
 if (hasReleaseFlag("cool-feature")) {
-...
+  return <CoolFeature />;
+}
 ```
-
-### Lifecycle
-
-1. Create a PR which adds a new, unique flag to `release-flags.json` . Have it reviewed and merged.
-2. Subsequent PRs for the feature should have all code behind the release flag. The code should be disabled at the highest possible level to reduce the number of places where the flag is invoked.
-3. Clojure
-    1. Creating a new namespace.
-    Creating a namespace is done as normal. It should be required as normal in all of the namespaces that might depend on the code. The only difference is that `guard-namespace!` should be called at the end of the file.
-    2. Calling code for the new feature
-    Whenever you call code that should be protected by a release flag, wrap it in a conditional that calls `has-release-flag?` .
-    3. Adding tests
-    Add tests for your new feature as normal. You can allow protected functions to be called by adding the `bypass-guard-fixture`.
-4. Create a PR which removes the flag from `release-flags/config.edn`. This will trigger linting and TypeScript errors. Remove the conditionals using the flag. Have it reviewed and merged. You’re done!
