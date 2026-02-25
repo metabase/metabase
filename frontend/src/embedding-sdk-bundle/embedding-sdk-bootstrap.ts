@@ -23,9 +23,6 @@ log("Starting...");
 waitForAuthConfigAndStart({ startTime });
 log("Early auth watcher started");
 
-// __SDK_BUNDLE_HASH__ is kept for backward compat (replaced at build time).
-const _bundleHash = "__SDK_BUNDLE_HASH__";
-
 // Chunk manifest is injected at build time by the inject-bundle-manifest plugin.
 // The runtime chunk is inlined into this bootstrap file by the build plugin,
 // so the manifest only contains the split chunks to load in parallel.

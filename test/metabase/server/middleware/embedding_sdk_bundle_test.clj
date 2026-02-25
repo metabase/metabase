@@ -69,32 +69,6 @@
         (is (= "no-store" (get-in resp [:headers "Cache-Control"])))
         (is (nil? (get-in resp [:headers "Vary"])))))))
 
-(deftest serve-bundle-handler-prod-versioned-returns-far-future-cache
-  (testing "Prod + ?v=<hash> → 200 with far-future Cache-Control, no ETag"
-    (with-redefs [config/is-prod? true
-                  response/resource-response (constantly {:status 200 :headers {} :body "dummy"})
-                  lib.etag-cache/with-etag (fn [& _]
-                                             (throw (ex-info "with-etag should not be called for versioned requests" {})))]
-      (let [handler (mw.embedding-sdk-bundle/serve-bundle-handler)
-            resp    (handler {:headers {} :query-params {"v" "abc123"}})]
-        (is (= 200 (:status resp)))
-        (is (= far-future-cache-header (get-in resp [:headers "Cache-Control"])))
-        (is (= js-ct (get-in resp [:headers "Content-Type"])))
-        (is (= "Accept-Encoding" (get-in resp [:headers "Vary"])))
-        (is (nil? (get-in resp [:headers "ETag"])) "Versioned URL should not have ETag")
-        (is (= "dummy" (:body resp))))))
-
-  (testing "Prod + no ?v → normal 60s cache with ETag"
-    (with-redefs [config/is-prod? true
-                  response/resource-response (constantly {:status 200 :headers {} :body "dummy"})
-                  lib.etag-cache/with-etag (fn [base _req]
-                                             (update base :headers assoc "ETag" "\"abc\""))]
-      (let [handler (mw.embedding-sdk-bundle/serve-bundle-handler)
-            resp    (handler {:headers {} :query-params {}})]
-        (is (= 200 (:status resp)))
-        (is (= cache-header (get-in resp [:headers "Cache-Control"])))
-        (is (= "\"abc\"" (get-in resp [:headers "ETag"])))))))
-
 ;; -- Chunk handler (dynamic filenames with content hashes) --
 
 (deftest serve-chunk-handler-returns-far-future-cache
