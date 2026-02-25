@@ -167,3 +167,13 @@
 (deftest set-distinct-id-nonexistent-session-test
   (testing "set-distinct-id! returns false for a nonexistent session"
     (is (false? (storage/store-set-distinct-id! Integer/MAX_VALUE "ghost")))))
+
+;;; ------------------------------------------ ensure-backend-ready! -----------------------------------------------
+
+(deftest ensure-backend-ready-default-is-noop-test
+  (testing "ensure-backend-ready! with app-db backend returns nil (no-op)"
+    (is (nil? (storage/store-ensure-backend-ready!)))))
+
+(deftest ensure-backend-ready-unknown-backend-is-noop-test
+  (testing "ensure-backend-ready! with unknown backend returns nil (default method)"
+    (is (nil? (storage/ensure-backend-ready! :some/unknown-backend)))))

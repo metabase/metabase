@@ -3,7 +3,7 @@
   (:import
    (org.apache.iceberg PartitionSpec Schema)
    (org.apache.iceberg.types Types$BooleanType Types$DoubleType Types$IntegerType Types$LongType
-                             Types$MapType Types$NestedField Types$StringType Types$TimestampType)))
+                             Types$NestedField Types$StringType Types$TimestampType)))
 
 (set! *warn-on-reflection* true)
 
@@ -62,17 +62,11 @@
     (optional-field 20 "click_id_msclkid"   (Types$StringType/get))
     (optional-field 21 "click_id_twclid"    (Types$StringType/get))
     (optional-field 22 "click_id_ttclid"    (Types$StringType/get))
-    (optional-field 23 "event_data"         (Types$MapType/ofOptional
-                                             (int 24) (int 25)
-                                             (Types$StringType/get)
-                                             (Types$StringType/get)))
-    (required-field 26 "created_at"         (Types$TimestampType/withZone))]))
+    (required-field 23 "created_at"         (Types$TimestampType/withZone))]))
 
 (def events-partition-spec
-  "Partition spec for `pa_events` — partitioned by day(created_at) and site_id."
+  "Partition spec for `pa_events` — unpartitioned for now (writer doesn't support partitioned writes yet)."
   (-> (PartitionSpec/builderFor events-schema)
-      (.day "created_at")
-      (.identity "site_id")
       (.build)))
 
 ;;; ------------------------------------------------ pa_sessions ---------------------------------------------------
@@ -96,10 +90,18 @@
     (required-field 14 "updated_at"    (Types$TimestampType/withZone))]))
 
 (def sessions-partition-spec
-  "Partition spec for `pa_sessions` — partitioned by day(created_at)."
+  "Partition spec for `pa_sessions` — unpartitioned for now (writer doesn't support partitioned writes yet)."
   (-> (PartitionSpec/builderFor sessions-schema)
-      (.day "created_at")
       (.build)))
+
+(def sessions-equality-field-ids
+  "Field IDs used for equality deletes on pa_sessions (session_uuid = field 2)."
+  [2])
+
+(def sessions-delete-schema
+  "Schema for equality delete files — just the session_uuid column."
+  (Schema.
+   [(required-field 2 "session_uuid" (Types$StringType/get))]))
 
 ;;; ---------------------------------------------- pa_session_data -------------------------------------------------
 
@@ -115,9 +117,8 @@
     (required-field 7 "created_at"    (Types$TimestampType/withZone))]))
 
 (def session-data-partition-spec
-  "Partition spec for `pa_session_data` — partitioned by day(created_at)."
+  "Partition spec for `pa_session_data` — unpartitioned for now (writer doesn't support partitioned writes yet)."
   (-> (PartitionSpec/builderFor session-data-schema)
-      (.day "created_at")
       (.build)))
 
 ;;; ------------------------------------------------ Table registry ------------------------------------------------

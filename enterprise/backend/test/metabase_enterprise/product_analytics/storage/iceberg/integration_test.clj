@@ -139,6 +139,39 @@
         (is (= "plan_type" (:data_key (first records))))
         (is (= "pro" (:string_value (first records))))))))
 
+;;; ---------------------------------------- Equality deletes (session dedup) ----------------------------------------
+
+(deftest write-sessions-dedup-by-equality-delete-test
+  (testing "write-sessions! with the same session_uuid overwrites previous rows via equality deletes"
+    (let [now  (now-odt)
+          uuid (str (java.util.UUID/randomUUID))]
+      ;; Write a session
+      (writer/write-sessions! [{:session_id   9001
+                                :session_uuid uuid
+                                :site_id      1
+                                :browser      "Chrome"
+                                :os           "macOS"
+                                :created_at   now
+                                :updated_at   now}])
+      ;; Write again with the same session_uuid but different data (simulates cross-node duplicate)
+      (writer/write-sessions! [{:session_id   9002
+                                :session_uuid uuid
+                                :site_id      1
+                                :browser      "Firefox"
+                                :os           "Linux"
+                                :created_at   now
+                                :updated_at   now}])
+      ;; Read back — equality deletes should ensure only 1 row for this uuid
+      (let [table   (.loadTable ^Catalog iceberg.tu/*test-catalog*
+                                (iceberg.tu/test-table-id "pa_sessions"))
+            records (iceberg.tu/read-all-records table)
+            ours    (filter #(= uuid (:session_uuid %)) records)]
+        (is (= 1 (count ours))
+            "Equality deletes should ensure only one row per session_uuid")
+        (is (= "Firefox" (:browser (first ours)))
+            "The latest write should win")
+        (is (= 9002 (:session_id (first ours))))))))
+
 ;;; ------------------------------------------------ S3 access ------------------------------------------------------
 
 (deftest s3-client-connectivity-test

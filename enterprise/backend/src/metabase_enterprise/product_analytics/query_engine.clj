@@ -35,6 +35,8 @@
   (when-let [pa-db (t2/select-one :model/Database :id pa/product-analytics-db-id)]
     (log/info "Re-syncing Product Analytics database after query engine change...")
     (sync/sync-database! pa-db {:scan :schema})
+    (let [table-count (t2/count :model/Table :db_id pa/product-analytics-db-id :active true)]
+      (log/infof "Product Analytics sync discovered %d active tables" table-count))
     ;; enhance-pa-metadata! is called by setup, require at runtime to avoid circular deps
     ((requiring-resolve 'metabase-enterprise.product-analytics.setup/enhance-pa-metadata!))))
 

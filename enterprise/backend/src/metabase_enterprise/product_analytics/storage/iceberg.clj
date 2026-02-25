@@ -10,6 +10,7 @@
    [metabase.util.log :as log]
    [toucan2.core :as t2])
   (:import
+   (java.util.concurrent ConcurrentHashMap)
    (java.util.concurrent.atomic AtomicLong)))
 
 (set! *warn-on-reflection* true)
@@ -27,6 +28,15 @@
 ;; Monotonically increasing ID generators for Iceberg records
 (def ^:private event-id-counter (AtomicLong. (System/currentTimeMillis)))
 (def ^:private session-id-counter (AtomicLong. (System/currentTimeMillis)))
+
+;; Per-node session dedup cache: session_uuid -> session_id.
+;; Reduces duplicate rows buffered on the same node. Cross-node duplicates are
+;; handled by equality deletes at flush time.
+(def ^:private ^ConcurrentHashMap session-id-cache (ConcurrentHashMap.))
+
+;; Reverse lookup: session_id -> full session map.
+;; Used by set-distinct-id! to reconstruct a full session row for equality-delete writes.
+(def ^:private ^ConcurrentHashMap session-map-cache (ConcurrentHashMap.))
 
 ;;; ------------------------------------------------ Site cache helpers --------------------------------------------
 
@@ -64,13 +74,15 @@
       (log/infof "Flushed %d events to Iceberg successfully" (count events)))))
 
 (defn- flush-sessions!
-  "Drain the session buffer and write to Iceberg."
+  "Drain the session buffer, deduplicate by session_uuid, and write to Iceberg
+   with equality deletes to handle cross-node duplicates."
   []
-  (let [sessions (buffer/drain! session-buffer)]
-    (when (seq sessions)
-      (log/infof "Flushing %d sessions to Iceberg" (count sessions))
-      (writer/write-sessions! sessions)
-      (log/infof "Flushed %d sessions to Iceberg successfully" (count sessions)))))
+  (let [sessions (buffer/drain! session-buffer)
+        deduped  (vals (reduce (fn [m s] (assoc m (:session_uuid s) s)) {} sessions))]
+    (when (seq deduped)
+      (log/infof "Flushing %d sessions to Iceberg (from %d buffered)" (count deduped) (count sessions))
+      (writer/write-sessions! deduped)
+      (log/infof "Flushed %d sessions to Iceberg successfully" (count deduped)))))
 
 (defn- flush-session-data!
   "Drain the session-data buffer and write to Iceberg."
@@ -82,14 +94,15 @@
       (log/infof "Flushed %d session-data rows to Iceberg successfully" (count rows)))))
 
 (defn- flush-session-updates!
-  "Drain session update buffer (distinct_id changes) and write to Iceberg."
+  "Drain session update buffer (distinct_id changes) and write to Iceberg.
+   Updates contain full session maps so equality deletes work correctly."
   []
-  (let [updates (buffer/drain! session-update-buffer)]
-    (when (seq updates)
-      (log/infof "Flushing %d session updates to Iceberg" (count updates))
-      ;; Session updates are appended as new rows; deduplication happens on read
-      (writer/write-sessions! updates)
-      (log/infof "Flushed %d session updates to Iceberg successfully" (count updates)))))
+  (let [updates (buffer/drain! session-update-buffer)
+        deduped (vals (reduce (fn [m s] (assoc m (:session_uuid s) s)) {} updates))]
+    (when (seq deduped)
+      (log/infof "Flushing %d session updates to Iceberg (from %d buffered)" (count deduped) (count updates))
+      (writer/write-sessions! deduped)
+      (log/infof "Flushed %d session updates to Iceberg successfully" (count deduped)))))
 
 (defn- flush-all!
   "Flush all buffers to Iceberg."
@@ -105,16 +118,21 @@
 (def ^{:private true :tag 'clojure.lang.Atom} started? (atom false))
 
 (defn start!
-  "Initialize the Iceberg backend: ensure tables exist and start the flush scheduler."
+  "Initialize the Iceberg backend: ensure tables exist and start the flush scheduler.
+   Resets `started?` on failure so subsequent calls can retry."
   []
   (when (compare-and-set! started? false true)
-    (log/info "Starting Iceberg storage backend")
-    (writer/ensure-tables!)
-    (reload-sites-cache!)
-    (let [interval (iceberg.settings/product-analytics-iceberg-flush-interval-seconds)]
-      (reset! flush-task (buffer/start-flush-task! flush-all! interval)))
-    (log/infof "Iceberg storage backend started (flush interval: %ds)"
-               (iceberg.settings/product-analytics-iceberg-flush-interval-seconds))))
+    (try
+      (log/info "Starting Iceberg storage backend")
+      (writer/ensure-tables!)
+      (reload-sites-cache!)
+      (let [interval (iceberg.settings/product-analytics-iceberg-flush-interval-seconds)]
+        (reset! flush-task (buffer/start-flush-task! flush-all! interval)))
+      (log/infof "Iceberg storage backend started (flush interval: %ds)"
+                 (iceberg.settings/product-analytics-iceberg-flush-interval-seconds))
+      (catch Throwable t
+        (reset! started? false)
+        (throw t)))))
 
 (defn- ensure-started!
   "Ensure the Iceberg backend is initialized. Called lazily on first use."
@@ -123,13 +141,15 @@
     (start!)))
 
 (defn stop!
-  "Stop the Iceberg backend: stop the flush scheduler and drain remaining events."
+  "Stop the Iceberg backend: stop the flush scheduler, drain remaining events, and clear caches."
   []
   (when (compare-and-set! started? true false)
     (log/info "Stopping Iceberg storage backend")
     (when-let [task @flush-task]
       (buffer/stop-flush-task! task flush-all!)
       (reset! flush-task nil))
+    (.clear session-id-cache)
+    (.clear session-map-cache)
     (log/info "Iceberg storage backend stopped")))
 
 ;;; ---------------------------------------- Storage multimethod implementations ------------------------------------
@@ -150,35 +170,40 @@
 (defmethod storage/upsert-session! ::storage/iceberg
   [_backend session-data]
   (ensure-started!)
-  (let [session-id (.incrementAndGet session-id-counter)
-        now        (java.time.OffsetDateTime/now java.time.ZoneOffset/UTC)
-        session    (merge session-data
-                          {:session_id session-id
-                           :created_at now
-                           :updated_at now})]
-    (log/debugf "Iceberg: buffering session %d (buffer size: %d)" session-id (buffer/size session-buffer))
-    (buffer/offer! session-buffer session)
-    ;; Check if batch size exceeded
-    (when (>= (buffer/size session-buffer)
-              (iceberg.settings/product-analytics-iceberg-flush-batch-size))
-      (flush-sessions!))
-    session-id))
+  (let [session-uuid (:session_uuid session-data)]
+    ;; Fast path: if this node already saw this session_uuid, return the cached session_id
+    ;; without buffering a duplicate row. Cross-node duplicates are handled by equality deletes.
+    (if-let [existing-id (.get session-id-cache session-uuid)]
+      (do
+        (log/debugf "Iceberg: session %s already cached (id=%d), skipping buffer" session-uuid existing-id)
+        existing-id)
+      (let [session-id (.incrementAndGet session-id-counter)
+            now        (java.time.OffsetDateTime/now java.time.ZoneOffset/UTC)
+            session    (merge session-data
+                              {:session_id session-id
+                               :created_at now
+                               :updated_at now})]
+        ;; putIfAbsent is atomic — if another thread raced us, use their session_id
+        (if-let [race-id (.putIfAbsent session-id-cache session-uuid session-id)]
+          (do
+            (log/debugf "Iceberg: session %s lost race (id=%d), skipping buffer" session-uuid race-id)
+            race-id)
+          (do
+            (.put session-map-cache session-id session)
+            (log/debugf "Iceberg: buffering session %d (buffer size: %d)" session-id (buffer/size session-buffer))
+            (buffer/offer! session-buffer session)
+            (when (>= (buffer/size session-buffer)
+                      (iceberg.settings/product-analytics-iceberg-flush-batch-size))
+              (flush-sessions!))
+            session-id))))))
 
 (defmethod storage/save-event! ::storage/iceberg
-  [_backend {:keys [event properties]}]
+  [_backend {:keys [event]}]
   (ensure-started!)
   (let [event-id (.incrementAndGet event-id-counter)
         now      (java.time.OffsetDateTime/now java.time.ZoneOffset/UTC)
-        ;; Fold properties into the event_data map column
-        event-data (when (seq properties)
-                     (into {}
-                           (map (fn [p] [(:data_key p) (or (:string_value p)
-                                                           (some-> (:number_value p) str)
-                                                           "")]))
-                           properties))
         event-row (merge event
                          {:event_id   event-id
-                          :event_data event-data
                           :created_at now})]
     (log/debugf "Iceberg: buffering event %d type=%s (buffer size: %d)"
                 event-id (:event_type event) (buffer/size event-buffer))
@@ -206,10 +231,17 @@
   [_backend session-id distinct-id]
   (ensure-started!)
   (let [now (java.time.OffsetDateTime/now java.time.ZoneOffset/UTC)]
-    (buffer/offer! session-update-buffer {:session_id  session-id
-                                          :distinct_id distinct-id
-                                          :updated_at  now})
-    true))
+    ;; Look up the full session map so the update buffer contains all fields needed
+    ;; for equality deletes (especially session_uuid).
+    (if-let [session (.get session-map-cache session-id)]
+      (do
+        (buffer/offer! session-update-buffer (assoc session
+                                                    :distinct_id distinct-id
+                                                    :updated_at  now))
+        true)
+      (do
+        (log/warnf "Iceberg: set-distinct-id! for unknown session_id %d — session not in cache" session-id)
+        false))))
 
 (defmethod storage/flush! ::storage/iceberg
   [_backend]

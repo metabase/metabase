@@ -171,7 +171,7 @@
   []
   (let [{:keys [table-names visible-tables semantic-types foreign-keys remappings]}
         (active-table-config)
-        lower-visible (mapv u/lower-case-en visible-tables)]
+        lower-visible #p (mapv u/lower-case-en visible-tables)]
     ;; Hide underlying tables, show only the relevant visible set
     (t2/update! :model/Table {:db_id        pa/product-analytics-db-id
                               :%lower.name  [:not-in lower-visible]}
@@ -237,8 +237,8 @@
   (when-let [pa-db (t2/select-one :model/Database :is_product_analytics true)]
     (log/info "Starting sync of Product Analytics Database...")
     (let [sync-future (future
-                        (log/with-no-logs
-                          (sync/sync-database! pa-db {:scan :schema}))
+                        #_(log/with-no-logs)
+                        (sync/sync-database! pa-db {:scan :schema})
                         (enhance-pa-metadata!)
                         (log/info "Product Analytics Database sync complete."))]
       (when config/is-test?

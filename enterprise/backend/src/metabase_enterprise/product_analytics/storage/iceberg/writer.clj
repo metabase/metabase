@@ -10,10 +10,11 @@
    (java.io File)
    (java.time Instant OffsetDateTime ZoneOffset)
    (java.util HashMap UUID)
-   (org.apache.iceberg Files PartitionSpec Schema Table)
+   (org.apache.iceberg DataFile DeleteFile Files PartitionSpec Schema Table)
    (org.apache.iceberg.catalog Catalog Namespace SupportsNamespaces TableIdentifier)
    (org.apache.iceberg.data GenericRecord Record)
    (org.apache.iceberg.data.parquet GenericParquetWriter)
+   (org.apache.iceberg.deletes EqualityDeleteWriter)
    (org.apache.iceberg.io DataWriter OutputFile)
    (org.apache.iceberg.parquet Parquet)
    (org.apache.iceberg.types Type$TypeID Types$NestedField)))
@@ -44,13 +45,17 @@
                           {:namespace "product_analytics"})))))))
 
 (defn- ensure-table!
-  "Create a table if it doesn't exist. Returns the Table instance."
+  "Create a table if it doesn't exist. Creates as format v2 (required for equality deletes).
+   Returns the Table instance."
   ^Table [^Catalog catalog ^String table-name ^Schema schema partition-spec]
   (let [tid (table-identifier table-name)]
     (if (.tableExists catalog tid)
       (.loadTable catalog tid)
       (try
-        (.createTable catalog tid schema partition-spec)
+        (-> (.buildTable catalog tid schema)
+            (.withPartitionSpec partition-spec)
+            (.withProperty "format-version" "2")
+            (.create))
         (catch org.apache.iceberg.exceptions.AlreadyExistsException _
           (.loadTable catalog tid))))))
 
@@ -126,9 +131,9 @@
        (toInputFile [_] (.toInputFile ^OutputFile delegate)))
      temp-file]))
 
-(defn- write-records-native!
-  "Write directly via Iceberg's S3FileIO (works with real AWS S3)."
-  [^Table table ^Schema schema records]
+(defn- write-data-file-native!
+  "Write records to a Parquet file via Iceberg's S3FileIO. Returns the DataFile."
+  ^DataFile [^Table table ^Schema schema records]
   (let [file-name    (str (UUID/randomUUID) ".parquet")
         s3-location  (str (.location table) "/data/" file-name)
         output-file  (.newOutputFile (.io table) s3-location)
@@ -146,14 +151,12 @@
         (.write data-writer record))
       (finally
         (.close data-writer)))
-    (-> (.newAppend table)
-        (.appendFile (.toDataFile data-writer))
-        (.commit))
-    (log/debugf "Wrote %d records to Iceberg table %s (native)" (count records) (.name table))))
+    (log/debugf "Wrote %d records to data file for %s (native)" (count records) (.name table))
+    (.toDataFile data-writer)))
 
-(defn- write-records-staged!
-  "Write to local temp file, upload with our S3 client (for S3-compat services)."
-  [^Table table ^Schema schema records]
+(defn- write-data-file-staged!
+  "Write records to local temp file, upload to S3. Returns the DataFile."
+  ^DataFile [^Table table ^Schema schema records]
   (let [file-name    (str (UUID/randomUUID) ".parquet")
         s3-location  (str (.location table) "/data/" file-name)
         [output-file
@@ -174,24 +177,100 @@
       (finally
         (.close data-writer)))
     (try
-      ;; Upload the local Parquet file to S3 using our client (chunked encoding disabled)
       (iceberg.s3/upload-file! s3-location temp-file)
-      ;; Append the data file metadata to the Iceberg table
-      (-> (.newAppend table)
-          (.appendFile (.toDataFile data-writer))
-          (.commit))
-      (log/debugf "Wrote %d records to Iceberg table %s (staged)" (count records) (.name table))
+      (log/debugf "Wrote %d records to data file for %s (staged)" (count records) (.name table))
+      (.toDataFile data-writer)
       (finally
         (.delete temp-file)))))
+
+(defn- write-data-file!
+  "Write records as a Parquet DataFile. Dispatches native vs staged. Returns DataFile."
+  ^DataFile [^Table table ^Schema schema records]
+  (if (iceberg.settings/product-analytics-iceberg-s3-staging-uploads)
+    (write-data-file-staged! table schema records)
+    (write-data-file-native! table schema records)))
 
 (defn- write-records!
   "Write a batch of GenericRecords to the given Iceberg table as a Parquet data file.
    Dispatches between native S3FileIO and staged upload based on settings."
   [^Table table ^Schema schema records]
   (when (seq records)
-    (if (iceberg.settings/product-analytics-iceberg-s3-staging-uploads)
-      (write-records-staged! table schema records)
-      (write-records-native! table schema records))))
+    (let [data-file (write-data-file! table schema records)]
+      (-> (.newAppend table)
+          (.appendFile data-file)
+          (.commit)))))
+
+;;; --------------------------------------------- Equality deletes ---------------------------------------------------
+
+(defn- write-equality-delete-file-native!
+  "Write an equality delete Parquet file via Iceberg's S3FileIO. Returns the DeleteFile."
+  ^DeleteFile [^Table table session-uuids]
+  (let [delete-schema  iceberg.schema/sessions-delete-schema
+        eq-field-ids   (int-array iceberg.schema/sessions-equality-field-ids)
+        file-name      (str (UUID/randomUUID) "-deletes.parquet")
+        s3-location    (str (.location table) "/data/" file-name)
+        output-file    (.newOutputFile (.io table) s3-location)
+        ^EqualityDeleteWriter writer
+        (-> (Parquet/writeDeletes output-file)
+            (.forTable table)
+            (.rowSchema delete-schema)
+            (.createWriterFunc
+             (reify java.util.function.Function
+               (apply [_ msg-type]
+                 (GenericParquetWriter/buildWriter ^org.apache.parquet.schema.MessageType msg-type))))
+            (.equalityFieldIds eq-field-ids)
+            (.overwrite)
+            (.buildEqualityWriter))]
+    (try
+      (doseq [uuid session-uuids]
+        (let [^GenericRecord record (GenericRecord/create ^Schema delete-schema)]
+          (.setField record "session_uuid" uuid)
+          (.write writer record)))
+      (finally
+        (.close writer)))
+    (.toDeleteFile writer)))
+
+(defn- write-equality-delete-file-staged!
+  "Write an equality delete Parquet file via staged upload. Returns the DeleteFile."
+  ^DeleteFile [^Table table session-uuids]
+  (let [delete-schema  iceberg.schema/sessions-delete-schema
+        eq-field-ids   (int-array iceberg.schema/sessions-equality-field-ids)
+        file-name      (str (UUID/randomUUID) "-deletes.parquet")
+        s3-location    (str (.location table) "/data/" file-name)
+        [output-file
+         ^File
+         temp-file]    (staging-output-file s3-location)
+        ^EqualityDeleteWriter writer
+        (-> (Parquet/writeDeletes ^OutputFile output-file)
+            (.forTable table)
+            (.rowSchema delete-schema)
+            (.createWriterFunc
+             (reify java.util.function.Function
+               (apply [_ msg-type]
+                 (GenericParquetWriter/buildWriter ^org.apache.parquet.schema.MessageType msg-type))))
+            (.equalityFieldIds eq-field-ids)
+            (.overwrite)
+            (.buildEqualityWriter))]
+    (try
+      (doseq [uuid session-uuids]
+        (let [^GenericRecord record (GenericRecord/create ^Schema delete-schema)]
+          (.setField record "session_uuid" uuid)
+          (.write writer record)))
+      (finally
+        (.close writer)))
+    (try
+      (iceberg.s3/upload-file! s3-location temp-file)
+      (.toDeleteFile writer)
+      (finally
+        (.delete temp-file)))))
+
+(defn- write-equality-deletes!
+  "Write an equality delete Parquet file for the given session_uuid values.
+   Returns the DeleteFile metadata for use with RowDelta."
+  ^DeleteFile [^Table table session-uuids]
+  (if (iceberg.settings/product-analytics-iceberg-s3-staging-uploads)
+    (write-equality-delete-file-staged! table session-uuids)
+    (write-equality-delete-file-native! table session-uuids)))
 
 (defn- load-table
   "Load an Iceberg table by its keyword name, creating it if necessary."
@@ -212,13 +291,21 @@
       (write-records! table schema records))))
 
 (defn write-sessions!
-  "Write a batch of session maps to the pa-sessions Iceberg table."
+  "Write session records with equality deletes to deduplicate by session_uuid.
+   Uses Iceberg v2 RowDelta to atomically delete existing rows for the given
+   session_uuids and append the new rows."
   [session-maps]
   (when (seq session-maps)
-    (let [table   (load-table :pa_sessions)
-          schema  iceberg.schema/sessions-schema
-          records (mapv #(map->record schema %) session-maps)]
-      (write-records! table schema records))))
+    (let [table         (load-table :pa_sessions)
+          schema        iceberg.schema/sessions-schema
+          records       (mapv #(map->record schema %) session-maps)
+          session-uuids (into [] (distinct) (map :session_uuid session-maps))
+          data-file     (write-data-file! table schema records)
+          delete-file   (write-equality-deletes! table session-uuids)]
+      (-> (.newRowDelta table)
+          (.addDeletes delete-file)
+          (.addRows data-file)
+          (.commit)))))
 
 (defn write-session-data!
   "Write a batch of session-data maps to the pa-session-data Iceberg table."

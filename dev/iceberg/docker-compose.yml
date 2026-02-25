@@ -1,0 +1,73 @@
+# Local Iceberg dev stack: Garage (S3) + Trino (query engine) + Postgres (catalog)
+#
+# Usage:
+#   ./dev/iceberg/setup.sh     # one command does everything
+#
+# All credentials are deterministic — no manual copy-paste needed.
+
+services:
+  garage:
+    image: dxflrs/garage:v2.2.0
+    container_name: pa-garage
+    ports:
+      - "3900:3900"   # S3 API
+      - "3901:3901"   # RPC
+      - "3903:3903"   # Admin API
+    volumes:
+      - garage-meta:/var/lib/garage/meta
+      - garage-data:/var/lib/garage/data
+      - ./garage.toml:/etc/garage.toml
+    healthcheck:
+      test: ["CMD", "/garage", "-c", "/etc/garage.toml", "status"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  # One-shot init: assigns layout, imports known API key, creates bucket.
+  garage-init:
+    image: alpine:3.19
+    container_name: pa-garage-init
+    depends_on:
+      garage:
+        condition: service_healthy
+    volumes:
+      - ./garage-init.sh:/init.sh:ro
+    entrypoint: /bin/sh
+    command: ["/init.sh"]
+
+  # Lightweight Postgres for Iceberg JDBC catalog metadata
+  iceberg-catalog-db:
+    image: postgres:16-alpine
+    container_name: pa-iceberg-catalog-db
+    ports:
+      - "5434:5432"   # Non-default port to avoid conflict with app-db Postgres
+    environment:
+      POSTGRES_DB: iceberg_catalog
+      POSTGRES_USER: iceberg
+      POSTGRES_PASSWORD: iceberg
+    volumes:
+      - catalog-pgdata:/var/lib/postgresql/data
+      - ./init-catalog.sql:/docker-entrypoint-initdb.d/init-catalog.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U iceberg -d iceberg_catalog"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  trino:
+    image: trinodb/trino:latest
+    container_name: pa-trino
+    depends_on:
+      garage:
+        condition: service_healthy
+      iceberg-catalog-db:
+        condition: service_healthy
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./product_analytics.properties:/etc/trino/catalog/product_analytics.properties
+
+volumes:
+  garage-meta:
+  garage-data:
+  catalog-pgdata:

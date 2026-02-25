@@ -212,7 +212,7 @@
   (deferred-tru "Iceberg catalog name configured in Starburst/Trino.")
   :type       :string
   :visibility :admin
-  :default    "iceberg"
+  :default    "product_analytics"
   :feature    :product-analytics
   :doc        false
   :export?    false

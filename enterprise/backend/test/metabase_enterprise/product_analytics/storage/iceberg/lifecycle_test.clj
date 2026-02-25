@@ -103,27 +103,48 @@
 
 ;;; ------------------------------------------- set-distinct-id! roundtrip -----------------------------------------
 
-;; NOTE: The set-distinct-id! → flush path currently fails because flush-session-updates!
-;; calls write-sessions! with partial rows ({:session_id :distinct_id :updated_at}) that
-;; are missing required fields (session_uuid, site_id). This is a known issue that needs
-;; a separate fix (either store full session rows in the update buffer, or use a dedicated
-;; update/merge mechanism). Uncomment this test once that's resolved.
-#_(deftest buffer-flush-read-distinct-id-test
-    (testing "set-distinct-id! buffers a session update that is flushed and readable"
-      (let [sess-uuid  (str (java.util.UUID/randomUUID))
-            session-id (storage/store-upsert-session!
-                        {:session_uuid sess-uuid
-                         :site_id      1
-                         :browser      "Safari"
-                         :os           "iOS"
-                         :device       "Mobile"})]
-        (storage/store-set-distinct-id! session-id "user-42@example.com")
-        (storage/store-flush!)
-      ;; The distinct_id update is appended as a new session row
-        (let [table   (.loadTable ^Catalog iceberg.tu/*test-catalog*
-                                  (iceberg.tu/test-table-id "pa_sessions"))
-              records (iceberg.tu/read-all-records table)
-              ours    (filter #(= "user-42@example.com" (:distinct_id %)) records)]
-          (is (>= (count ours) 1)
-              "Should find at least one session row with the distinct_id")))))
+(deftest buffer-flush-read-distinct-id-test
+  (testing "set-distinct-id! buffers a full session update that is flushed with equality deletes"
+    (let [sess-uuid  (str (java.util.UUID/randomUUID))
+          session-id (storage/store-upsert-session!
+                      {:session_uuid sess-uuid
+                       :site_id      1
+                       :browser      "Safari"
+                       :os           "iOS"
+                       :device       "Mobile"})]
+      (storage/store-set-distinct-id! session-id "user-42@example.com")
+      (storage/store-flush!)
+      ;; The distinct_id update replaces the original session row via equality deletes
+      (let [table   (.loadTable ^Catalog iceberg.tu/*test-catalog*
+                                (iceberg.tu/test-table-id "pa_sessions"))
+            records (iceberg.tu/read-all-records table)
+            ours    (filter #(= sess-uuid (:session_uuid %)) records)]
+        (is (= 1 (count ours))
+            "Equality deletes should ensure only one row per session_uuid")
+        (is (= "user-42@example.com" (:distinct_id (first ours)))
+            "The distinct_id should be set on the session row")))))
+
+;;; ------------------------------------------- Session dedup roundtrip ---------------------------------------------
+
+(deftest upsert-session-dedup-test
+  (testing "Calling upsert-session! multiple times for the same session_uuid only produces one row"
+    (let [sess-uuid (str (java.util.UUID/randomUUID))
+          session-data {:session_uuid sess-uuid
+                        :site_id      1
+                        :browser      "Chrome"
+                        :os           "macOS"
+                        :device       "Desktop"}
+          id1 (storage/store-upsert-session! session-data)
+          id2 (storage/store-upsert-session! session-data)
+          id3 (storage/store-upsert-session! session-data)]
+      ;; Per-node cache should return the same session_id
+      (is (= id1 id2 id3)
+          "Same session_uuid should return the same session_id from cache")
+      (storage/store-flush!)
+      (let [table   (.loadTable ^Catalog iceberg.tu/*test-catalog*
+                                (iceberg.tu/test-table-id "pa_sessions"))
+            records (iceberg.tu/read-all-records table)
+            ours    (filter #(= sess-uuid (:session_uuid %)) records)]
+        (is (= 1 (count ours))
+            "Should find exactly one session row after multiple upserts and flush")))))
 
