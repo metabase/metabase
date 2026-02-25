@@ -328,6 +328,7 @@ export type VisualizationSettingDefinition<
     settings: ComputedVisualizationSettings,
     extra?: SettingsExtra,
   ) => string;
+  autoOpenWhenUnset?: boolean;
   disabled?: boolean;
   default?: TValue;
   marginBottom?: string;
