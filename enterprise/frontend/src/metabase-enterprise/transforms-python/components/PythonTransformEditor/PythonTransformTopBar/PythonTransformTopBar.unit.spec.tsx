@@ -70,6 +70,7 @@ function setup({
           isEditMode={isEditMode}
           transform={transform}
           onDatabaseChange={onDatabaseChange}
+          sourceType="python"
         />
       )}
       path="/"
