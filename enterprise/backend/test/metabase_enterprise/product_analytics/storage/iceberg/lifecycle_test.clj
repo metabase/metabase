@@ -46,7 +46,7 @@
         (let [result (storage/store-save-event!
                       {:event      {:site_id    1
                                     :session_id session-id
-                                    :event_type "pageview"
+                                    :event_type 1
                                     :event_name (str "lifecycle-test-" i)
                                     :url_path   (str "/lifecycle-" i)}
                        :properties [{:data_key     "page_title"
@@ -62,7 +62,7 @@
             ours    (filter #(re-matches #"/lifecycle-\d+" (or (:url_path %) "")) records)]
         (is (= 3 (count ours))
             "Should find 3 events written via flush")
-        (is (every? #(= "pageview" (:event_type %)) ours)))
+        (is (every? #(= 1 (:event_type %)) ours)))
       ;; Read sessions back from Iceberg
       (let [table   (.loadTable ^Catalog iceberg.tu/*test-catalog*
                                 (iceberg.tu/test-table-id "pa_sessions"))
@@ -86,11 +86,11 @@
        [{:session_id   session-id
          :data_key     "user_plan"
          :string_value "enterprise"
-         :data_type    "string"}
+         :data_type    1}
         {:session_id   session-id
          :data_key     "account_age"
          :string_value "365"
-         :data_type    "string"}])
+         :data_type    1}])
       ;; Flush everything
       (storage/store-flush!)
       (let [table   (.loadTable ^Catalog iceberg.tu/*test-catalog*

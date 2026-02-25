@@ -43,7 +43,7 @@
    [(required-field  1 "event_id"           (Types$LongType/get))
     (required-field  2 "site_id"            (Types$IntegerType/get))
     (required-field  3 "session_id"         (Types$LongType/get))
-    (required-field  4 "event_type"         (Types$StringType/get))
+    (required-field  4 "event_type"         (Types$IntegerType/get))
     (optional-field  5 "event_name"         (Types$StringType/get))
     (required-field  6 "url_path"           (Types$StringType/get))
     (optional-field  7 "url_query"          (Types$StringType/get))
@@ -111,7 +111,7 @@
     (optional-field 3 "string_value"  (Types$StringType/get))
     (optional-field 4 "number_value"  (Types$DoubleType/get))
     (optional-field 5 "date_value"    (Types$TimestampType/withZone))
-    (required-field 6 "data_type"     (Types$StringType/get))
+    (required-field 6 "data_type"     (Types$IntegerType/get))
     (required-field 7 "created_at"    (Types$TimestampType/withZone))]))
 
 (def session-data-partition-spec

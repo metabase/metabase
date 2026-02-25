@@ -61,14 +61,14 @@
     (let [events [{:event_id   1001
                    :site_id    1
                    :session_id 1
-                   :event_type "pageview"
+                   :event_type 1
                    :event_name "home"
                    :url_path   "/home"
                    :created_at (now-odt)}
                   {:event_id   1002
                    :site_id    1
                    :session_id 1
-                   :event_type "click"
+                   :event_type 2
                    :event_name "signup"
                    :url_path   "/signup"
                    :created_at (now-odt)}]]
@@ -78,7 +78,7 @@
             all-records (iceberg.tu/read-all-records table)
             records     (filter #(#{1001 1002} (:event_id %)) all-records)]
         (is (= 2 (count records)))
-        (is (= #{"pageview" "click"} (set (map :event_type records))))
+        (is (= #{1 2} (set (map :event_type records))))
         (is (= #{"/home" "/signup"} (set (map :url_path records))))))))
 
 (deftest write-and-read-sessions-test
@@ -124,12 +124,12 @@
           session-data [{:session_id   3001
                          :data_key     "plan_type"
                          :string_value "pro"
-                         :data_type    "string"
+                         :data_type    1
                          :created_at   now}
                         {:session_id   3001
                          :data_key     "signup_date"
                          :date_value   now
-                         :data_type    "date"
+                         :data_type    2
                          :created_at   now}]]
       (writer/write-session-data! session-data)
       (let [table   (.loadTable ^Catalog iceberg.tu/*test-catalog*
@@ -169,13 +169,13 @@
           events [{:event_id   5001
                    :site_id    1
                    :session_id 1
-                   :event_type "pageview"
+                   :event_type 1
                    :url_path   "/buffer-test"
                    :created_at now}
                   {:event_id   5002
                    :site_id    1
                    :session_id 1
-                   :event_type "click"
+                   :event_type 2
                    :url_path   "/buffer-test-2"
                    :created_at now}]]
       ;; Offer events into the buffer

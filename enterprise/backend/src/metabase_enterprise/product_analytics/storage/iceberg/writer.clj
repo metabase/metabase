@@ -94,9 +94,6 @@
       (and (= org.apache.iceberg.types.Type$TypeID/FLOAT type-id) (instance? Double v))
       (float v)
 
-      (and (= org.apache.iceberg.types.Type$TypeID/STRING type-id) (not (instance? CharSequence v)))
-      (str v)
-
       :else
       v)))
 

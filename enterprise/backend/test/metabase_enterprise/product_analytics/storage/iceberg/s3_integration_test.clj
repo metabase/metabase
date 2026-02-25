@@ -34,14 +34,14 @@
     (let [events [{:event_id   8001
                    :site_id    1
                    :session_id 1
-                   :event_type "pageview"
+                   :event_type 1
                    :event_name "staged-test"
                    :url_path   "/staged-s3-test"
                    :created_at (now-odt)}
                   {:event_id   8002
                    :site_id    1
                    :session_id 1
-                   :event_type "click"
+                   :event_type 2
                    :event_name "staged-click"
                    :url_path   "/staged-s3-click"
                    :created_at (now-odt)}]]
@@ -53,7 +53,7 @@
             ours    (filter #(#{8001 8002} (:event_id %)) records)]
         (is (= 2 (count ours))
             "Should write 2 events via staged upload to S3")
-        (is (= #{"pageview" "click"} (set (map :event_type ours))))
+        (is (= #{1 2} (set (map :event_type ours))))
         (is (= #{"/staged-s3-test" "/staged-s3-click"} (set (map :url_path ours))))))))
 
 ;;; ---------------------------------------------- Native upload path ------------------------------------------------
@@ -64,14 +64,14 @@
     (let [events [{:event_id   8101
                    :site_id    1
                    :session_id 1
-                   :event_type "pageview"
+                   :event_type 1
                    :event_name "native-test"
                    :url_path   "/native-s3-test"
                    :created_at (now-odt)}
                   {:event_id   8102
                    :site_id    1
                    :session_id 1
-                   :event_type "click"
+                   :event_type 2
                    :event_name "native-click"
                    :url_path   "/native-s3-click"
                    :created_at (now-odt)}]]
@@ -83,7 +83,7 @@
             ours    (filter #(#{8101 8102} (:event_id %)) records)]
         (is (= 2 (count ours))
             "Should write 2 events via native S3FileIO")
-        (is (= #{"pageview" "click"} (set (map :event_type ours))))
+        (is (= #{1 2} (set (map :event_type ours))))
         (is (= #{"/native-s3-test" "/native-s3-click"} (set (map :url_path ours))))))))
 
 ;;; ------------------------------------------- Sessions via S3 ----------------------------------------------------
