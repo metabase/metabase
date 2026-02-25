@@ -14,9 +14,12 @@ import S from "./Breadcrumbs.module.css";
 // - Or just a string `title` which gets normalized to [title]
 type CrumbTuple =
   | [title: ReactNode]
-  | [title: ReactNode, urlOrAction: string | MouseEventHandler<HTMLSpanElement>];
+  | [
+      title: ReactNode,
+      urlOrAction: string | MouseEventHandler<HTMLSpanElement>,
+    ];
 
-type Crumb = ReactNode | CrumbTuple;
+export type Crumb = ReactNode | CrumbTuple;
 
 type BreadcrumbsProps = {
   className?: string;
@@ -49,8 +52,9 @@ export function Breadcrumbs({
         </span>
       ) : (
         crumbs
-          .map((breadcrumb): CrumbTuple =>
-            Array.isArray(breadcrumb) ? breadcrumb : [breadcrumb],
+          .map(
+            (breadcrumb): CrumbTuple =>
+              Array.isArray(breadcrumb) ? breadcrumb : [breadcrumb],
           )
           .map((breadcrumb, index) => (
             <Ellipsified
@@ -66,7 +70,13 @@ export function Breadcrumbs({
               {breadcrumb.length > 1 && typeof breadcrumb[1] === "string" ? (
                 <Link to={breadcrumb[1]}>{breadcrumb[0]}</Link>
               ) : (
-                <span onClick={breadcrumb[1] as MouseEventHandler<HTMLSpanElement> | undefined}>
+                <span
+                  onClick={
+                    breadcrumb[1] as
+                      | MouseEventHandler<HTMLSpanElement>
+                      | undefined
+                  }
+                >
                   {breadcrumb[0]}
                 </span>
               )}

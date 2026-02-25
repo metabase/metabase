@@ -23,12 +23,12 @@ describe("getCrumbs", () => {
     const callbackMock = jest.fn();
     const crumbs = getCrumbs(collectionsById[2], collectionsById, callbackMock);
 
-    const [_rootName, rootCallback] = crumbs[0];
-    (rootCallback as any)();
+    const [_rootName, rootCallback] = crumbs[0] as [unknown, unknown];
+    (rootCallback as () => void)();
     expect(callbackMock).toHaveBeenCalledWith("root");
 
-    const [_parentName, parentCallback] = crumbs[1];
-    (parentCallback as any)();
+    const [_parentName, parentCallback] = crumbs[1] as [unknown, unknown];
+    (parentCallback as () => void)();
     expect(callbackMock).toHaveBeenCalledWith(1);
   });
 });
