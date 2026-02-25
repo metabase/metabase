@@ -5,7 +5,12 @@ import { formatValue } from "metabase/lib/formatting";
 import { isEmpty } from "metabase/lib/validate";
 import { getComputedSettingsForSeries } from "metabase/visualizations/lib/settings/visualization";
 import { MAX_SERIES } from "metabase/visualizations/lib/utils";
-import type { RawSeries, RowValue, SingleSeries } from "metabase-types/api";
+import type {
+  DatasetColumn,
+  RawSeries,
+  RowValue,
+  SingleSeries,
+} from "metabase-types/api";
 
 // TODO: this series transformation is used only for the visualization settings computation which is excessive.
 // Replace this with defining settings models per visualization type which will contain all necessary info
@@ -28,7 +33,7 @@ type RowWithOrigin = RowValue[] & {
     seriesIndex: number;
     rowIndex: number;
     row: RowValue[];
-    cols: any[];
+    cols: DatasetColumn[];
   };
 };
 
@@ -73,7 +78,7 @@ function transformSingleSeries(
     );
 
     const breakoutValues: RowValue[] = [];
-    const breakoutRowsByValue = new Map<RowValue, any[]>();
+    const breakoutRowsByValue = new Map<RowValue, RowWithOrigin[]>();
 
     for (let rowIndex = 0; rowIndex < rows.length; rowIndex++) {
       const row = rows[rowIndex];

@@ -11,6 +11,8 @@ import type {
   DatasetColumn,
   RowValue,
   Series,
+  SmartScalarComparison,
+  SmartScalarComparisonType,
   VisualizationSettings,
 } from "metabase-types/api";
 import type { Insight } from "metabase-types/api/insight";
@@ -578,14 +580,14 @@ describe("SmartScalar > compute", () => {
         const comparisonType = COMPARISON_TYPES.PERIODS_AGO;
         const getComparisonProperties =
           createGetComparisonProperties(comparisonType);
-        const createSettings = (value: number | string | null) =>
+        const createSettings = (value: number) =>
           createMockVisualizationSettings({
             "scalar.field": "Count",
             "scalar.comparisons": [
               {
                 id: "1",
                 type: comparisonType,
-                value: value as unknown as number,
+                value,
               },
             ],
           });
@@ -896,7 +898,8 @@ describe("SmartScalar > compute", () => {
                 {
                   id: "1",
                   type: comparisonType,
-                  value: value as unknown as number,
+                  // casting is required for testing of invalid values
+                  value: value as number,
                 },
               ],
             });
@@ -1228,7 +1231,11 @@ describe("SmartScalar > compute", () => {
           createMockVisualizationSettings({
             "scalar.field": "Count",
             "scalar.comparisons": [
-              { id: "1", type: type as unknown as "previousValue" },
+              // type casting is required for invalid values testing
+              {
+                id: "1",
+                type: type as SmartScalarComparisonType,
+              } as SmartScalarComparison,
             ],
           });
 
@@ -1754,14 +1761,14 @@ describe("SmartScalar > compute", () => {
         const comparisonType = COMPARISON_TYPES.PERIODS_AGO;
         const getComparisonProperties =
           createGetComparisonProperties(comparisonType);
-        const createSettings = (value: number | null | undefined) =>
+        const createSettings = (value: number) =>
           createMockVisualizationSettings({
             "scalar.field": "Count",
             "scalar.comparisons": [
               {
                 id: "1",
                 type: comparisonType,
-                value: value as unknown as number,
+                value,
               },
             ],
           });
@@ -2203,14 +2210,14 @@ describe("SmartScalar > compute", () => {
         createGetComparisonProperties(COMPARISON_TYPE);
 
       const COUNT_FIELD = "Count";
-      const createSettings = (value: number | string | null) =>
+      const createSettings = (value: number) =>
         createMockVisualizationSettings({
           "scalar.field": COUNT_FIELD,
           "scalar.comparisons": [
             {
               id: "1",
               type: COMPARISON_TYPE,
-              value: value as unknown as number,
+              value: value,
             },
           ],
         });
@@ -2404,10 +2411,7 @@ function getComparisonValueProperties({
         comparisonValue: CHANGE_TYPE_OPTIONS.SAME.COMPARISON_VALUE_STR,
         percentChange: CHANGE_TYPE_OPTIONS.SAME.PERCENT_CHANGE_STR,
       },
-      percentChange: computeChange(
-        comparisonValue as number,
-        metricValue as number,
-      ),
+      percentChange: computeChange(comparisonValue, metricValue),
     };
   }
 
@@ -2415,15 +2419,10 @@ function getComparisonValueProperties({
     comparisonValue: comparisonValue,
     comparisonDescStr: `vs. ${dateStr}`,
     display: {
-      percentChange: formatChange(
-        computeChange(comparisonValue as number, metricValue as number),
-      ),
+      percentChange: formatChange(computeChange(comparisonValue, metricValue)),
       comparisonValue: formatValue(comparisonValue),
     },
-    percentChange: computeChange(
-      comparisonValue as number,
-      metricValue as number,
-    ),
+    percentChange: computeChange(comparisonValue, metricValue),
   };
 }
 

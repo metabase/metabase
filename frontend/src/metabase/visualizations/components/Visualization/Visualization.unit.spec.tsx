@@ -7,11 +7,13 @@ import { color } from "metabase/lib/colors";
 import { registerVisualization } from "metabase/visualizations";
 import VisualizationComponent from "metabase/visualizations/components/Visualization";
 import registerVisualizations from "metabase/visualizations/register";
+import type { VisualizationProps } from "metabase/visualizations/types";
 import type {
-  Visualization,
-  VisualizationProps,
-} from "metabase/visualizations/types";
-import type { DatasetColumn, RawSeries, Settings } from "metabase-types/api";
+  DatasetColumn,
+  RawSeries,
+  Settings,
+  VisualizationDisplay,
+} from "metabase-types/api";
 import {
   createMockCard,
   createMockCategoryColumn,
@@ -28,6 +30,8 @@ registerVisualizations();
 const makeData = (cols: DatasetColumn[], rows: Array<Array<string | number>>) =>
   createMockDatasetData({ cols, rows });
 
+const MOCK_DISPLAY = "mocked-visualization" as VisualizationDisplay;
+
 const MockedVisualization = Object.assign(
   ({ onRenderError }: Pick<VisualizationProps, "onRenderError">) => {
     onRenderError("This is an error message");
@@ -36,10 +40,16 @@ const MockedVisualization = Object.assign(
   },
   {
     getUiName: () => "Mocked Visualization",
-    identifier: "mocked-visualization",
+    identifier: MOCK_DISPLAY,
+    iconName: "unknown" as const,
     noHeader: true,
+    minSize: { width: 1, height: 1 },
+    defaultSize: { width: 4, height: 4 },
+    settings: {},
+    isSensible: () => false,
+    checkRenderable: () => undefined,
   },
-) as unknown as Visualization;
+);
 
 registerVisualization(MockedVisualization);
 
@@ -56,7 +66,7 @@ describe("Visualization", () => {
       settings: mockSettings(settings),
     });
 
-    await renderWithProviders(
+    renderWithProviders(
       <VisualizationComponent rawSeries={series} {...props} />,
       {
         storeInitialState,
@@ -97,7 +107,7 @@ describe("Visualization", () => {
             },
             card: createMockCard({
               name: "Products, Count, Grouped by Category and Vendor",
-              display: "mocked-visualization" as any,
+              display: MOCK_DISPLAY,
               visualization_settings: createMockVisualizationSettings({
                 "graph.dimensions": ["CATEGORY", "VENDOR"],
                 "graph.metrics": ["count"],
