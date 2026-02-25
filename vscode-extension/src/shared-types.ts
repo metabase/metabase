@@ -71,6 +71,10 @@ export type ExtensionToWebviewMessage =
   | {
       type: "themeChanged";
       colorMode: "light" | "dark";
+    }
+  | {
+      type: "focusNode";
+      nodeKey: string;
     };
 
 export type WebviewToExtensionMessage =

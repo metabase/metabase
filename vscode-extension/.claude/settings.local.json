@@ -14,7 +14,9 @@
       "WebFetch(domain:www.eliostruyf.com)",
       "WebFetch(domain:dev.to)",
       "WebFetch(domain:medium.com)",
-      "WebFetch(domain:vogella.com)"
+      "WebFetch(domain:vogella.com)",
+      "Bash(find:*)",
+      "Bash(ls:*)"
     ]
   }
 }

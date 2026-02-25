@@ -1,7 +1,6 @@
-import { useContext } from "react";
 import type { GraphViewNode } from "../../src/shared-types";
-import { GraphContext } from "./GraphContext";
-import { getNodeIcon, getNodeTypeInfo, getFieldIcon } from "./graph-utils";
+import { Icon } from "./icons";
+import { getNodeIconName, getNodeTypeInfo, getFieldIconName } from "./graph-utils";
 import { vscode } from "./vscode";
 
 interface GraphInfoPanelProps {
@@ -10,7 +9,7 @@ interface GraphInfoPanelProps {
 }
 
 export function GraphInfoPanel({ node, onClose }: GraphInfoPanelProps) {
-  const icon = getNodeIcon(node);
+  const iconName = getNodeIconName(node);
   const typeInfo = getNodeTypeInfo(node);
 
   const handleOpenFile = () => {
@@ -22,9 +21,9 @@ export function GraphInfoPanel({ node, onClose }: GraphInfoPanelProps) {
       <div className="graph-panel-header">
         <div
           className="graph-panel-icon-badge"
-          style={{ color: typeInfo.color }}
+          style={{ color: "var(--graph-color-brand)" }}
         >
-          {icon}
+          <Icon name={iconName} size={20} />
         </div>
         <div className="graph-panel-header-content">
           <h3 className="graph-panel-title">{node.name}</h3>
@@ -39,7 +38,7 @@ export function GraphInfoPanel({ node, onClose }: GraphInfoPanelProps) {
               onClick={handleOpenFile}
               title="Open YAML"
             >
-              📂
+              <Icon name="folder" size={16} />
             </button>
           )}
           <button
@@ -47,7 +46,7 @@ export function GraphInfoPanel({ node, onClose }: GraphInfoPanelProps) {
             onClick={onClose}
             title="Close"
           >
-            ✕
+            <Icon name="close" size={16} />
           </button>
         </div>
       </div>
@@ -115,7 +114,10 @@ function FieldsSection({
         {fields.map((field, index) => (
           <div key={index} className="graph-panel-field-item">
             <span className="graph-panel-field-icon">
-              {getFieldIcon(field.semanticType)}
+              <Icon
+                name={getFieldIconName(field.semanticType)}
+                size={14}
+              />
             </span>
             <span className="graph-panel-field-name">{field.name}</span>
           </div>

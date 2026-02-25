@@ -4,7 +4,7 @@
   "displayName": "Metastudio",
   "version": "0.1.0",
   "private": true,
-  "packageManager": "pnpm@10.27.0",
+  "packageManager": "bun@1.3.7",
   "description": "Metabase Studio extension for VS Code",
   "author": "Metabase",
   "license": "MIT",
@@ -58,6 +58,18 @@
       {
         "command": "metastudio.showDependencyGraph",
         "title": "Metastudio: Show Dependency Graph"
+      },
+      {
+        "command": "metastudio.showTransformPreview",
+        "title": "Metastudio: Show Transform Preview"
+      },
+      {
+        "command": "metastudio.openInMetabase",
+        "title": "Open in Metabase"
+      },
+      {
+        "command": "metastudio.showInDependencyGraph",
+        "title": "Show in Dependency Graph"
       }
     ],
     "walkthroughs": [
@@ -148,6 +160,26 @@
           "command": "metastudio.clearCredentials",
           "when": "view == metabase.connection && viewItem == connectionToken",
           "group": "inline@2"
+        },
+        {
+          "command": "metastudio.openInMetabase",
+          "when": "view == metabase.content && viewItem =~ /^(card|model|metric|dashboard|collection|transform)$/ && metastudio.hostConfigured",
+          "group": "navigation@1"
+        },
+        {
+          "command": "metastudio.openInMetabase",
+          "when": "view == metabase.dataCatalog && viewItem =~ /^(database|schema|table|field)$/ && metastudio.hostConfigured",
+          "group": "navigation@1"
+        },
+        {
+          "command": "metastudio.showInDependencyGraph",
+          "when": "view == metabase.content && viewItem =~ /^(card|model|metric|dashboard|collection|transform|native_query_snippet|document|action|measure|segment)$/",
+          "group": "navigation@2"
+        },
+        {
+          "command": "metastudio.showInDependencyGraph",
+          "when": "view == metabase.dataCatalog && viewItem == table",
+          "group": "navigation@1"
         }
       ]
     },
