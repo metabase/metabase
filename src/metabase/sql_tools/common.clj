@@ -189,9 +189,9 @@
 ;;;; in `sql-tools.interface`.
 
 (defmethod sql-tools/resolve-field-shim :default
-  [_parser driver metadata-provider col-spec]
+  [driver metadata-provider col-spec]
   (resolve-field driver metadata-provider col-spec))
 
 (defmethod sql-tools/find-table-or-transform-shim :default
-  [_parser driver tables transforms search-spec]
+  [driver tables transforms search-spec]
   (find-table-or-transform driver tables transforms search-spec))
