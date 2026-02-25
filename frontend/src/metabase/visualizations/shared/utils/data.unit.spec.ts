@@ -270,7 +270,7 @@ describe("data utils", () => {
     });
 
     describe("with untranslatedRows", () => {
-      it("should use untranslated breakout values for series keys", () => {
+      it("should use untranslated breakout values for series keys and translated for display", () => {
         const data = createMockDatasetData({
           cols: [dimensionColumn, breakoutColumn, countMetricColumn],
           rows: [
@@ -292,17 +292,52 @@ describe("data utils", () => {
         expect(series).toHaveLength(2);
         expect(series[0]).toMatchObject({
           seriesKey: "Doohickey",
-          seriesName: "Doohickey",
+          seriesName: "Appareil",
           seriesInfo: {
             breakoutValue: "Doohickey",
           },
         });
         expect(series[1]).toMatchObject({
           seriesKey: "Gadget",
-          seriesName: "Gadget",
+          seriesName: "Bidule",
           seriesInfo: {
             breakoutValue: "Gadget",
           },
+        });
+      });
+
+      it("should apply custom title from settings using untranslated keys", () => {
+        const data = createMockDatasetData({
+          cols: [dimensionColumn, breakoutColumn, countMetricColumn],
+          rows: [
+            [2020, "Appareil", 400, 90],
+            [2020, "Bidule", 450, 100],
+            [2021, "Appareil", 500, 110],
+            [2021, "Bidule", 550, 120],
+          ],
+          untranslatedRows: rows,
+        });
+
+        const settings = createMockVisualizationSettings({
+          series_settings: {
+            Doohickey: { title: "Custom Name" },
+          },
+        });
+
+        const series = getSeries(
+          data,
+          breakoutChartColumns,
+          columnFormatter,
+          settings,
+        );
+
+        expect(series[0]).toMatchObject({
+          seriesKey: "Doohickey",
+          seriesName: "Custom Name",
+        });
+        expect(series[1]).toMatchObject({
+          seriesKey: "Gadget",
+          seriesName: "Bidule",
         });
       });
     });

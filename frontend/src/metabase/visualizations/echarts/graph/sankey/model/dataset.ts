@@ -66,6 +66,19 @@ export const getSankeyData = (
     isMetric: isMetric(column),
   }));
 
+  const displayNameMap = new Map<RowValue, RowValue>();
+  if (rawSeries[0].data.untranslatedRows) {
+    const untranslatedRows = rawSeries[0].data.untranslatedRows;
+    untranslatedRows.forEach((untranslatedRow, index) => {
+      for (const column of [sankeyColumns.source, sankeyColumns.target]) {
+        const key = untranslatedRow[column.index];
+        if (!displayNameMap.has(key)) {
+          displayNameMap.set(key, rows[index][column.index]);
+        }
+      }
+    });
+  }
+
   const valueToNode = new Map<RowValue, SankeyNode>();
 
   function updateNode(
@@ -76,6 +89,7 @@ export const getSankeyData = (
   ): SankeyNode {
     const node = valueToNode.get(value) ?? {
       rawName: value,
+      displayName: displayNameMap.get(value) ?? value,
       level,
       hasInputs: false,
       hasOutputs: false,

@@ -411,12 +411,12 @@ describe("series", () => {
         expect(result[0]).toMatchObject({
           dataKey: "2:count:type1",
           vizSettingsKey: "type1",
-          name: "type1",
+          name: "Translated1",
         });
         expect(result[1]).toMatchObject({
           dataKey: "2:count:type2",
           vizSettingsKey: "type2",
-          name: "type2",
+          name: "Translated2",
         });
       });
 
@@ -455,7 +455,7 @@ describe("series", () => {
         });
         expect(result[1]).toMatchObject({
           dataKey: "2:count:type2",
-          name: "type2",
+          name: "Type Two",
         });
       });
     });
