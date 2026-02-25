@@ -192,14 +192,11 @@
         source-field-id (:source-field (lib.options/options field-ref))
         new-field-id-or-name (get column-mapping field-id)
         new-source-field-id-or-name (when source-field-id (get column-mapping source-field-id))]
-    (when (string? new-source-field-id-or-name)
-      (throw (ex-info "Found an implicit join with a source field from the original table. It cannot be replaced with a card."
-                      {:field-ref field-ref})))
     (cond-> field-ref
       (some? new-field-id-or-name)
       (lib.ref/update-field-ref-id-or-name new-field-id-or-name)
 
-      (some? new-source-field-id-or-name)
+      (and (some? new-source-field-id-or-name) (pos-int? new-source-field-id-or-name))
       (lib.options/update-options assoc :source-field new-source-field-id-or-name))))
 
 (mu/defn- swap-field-ids-in-clauses :- [:sequential :any]
