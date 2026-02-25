@@ -42,7 +42,7 @@
   (Schema.
    [(required-field  1 "event_id"           (Types$LongType/get))
     (required-field  2 "site_id"            (Types$IntegerType/get))
-    (required-field  3 "session_id"         (Types$IntegerType/get))
+    (required-field  3 "session_id"         (Types$LongType/get))
     (required-field  4 "event_type"         (Types$StringType/get))
     (optional-field  5 "event_name"         (Types$StringType/get))
     (required-field  6 "url_path"           (Types$StringType/get))

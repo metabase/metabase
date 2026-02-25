@@ -114,6 +114,17 @@
   [_backend]
   nil)
 
+(defmulti ensure-backend-ready!
+  "Ensure the storage backend is initialized and ready for use.
+   For app-db this is a no-op (tables exist via migrations).
+   For Iceberg this creates tables in the catalog and starts the flush scheduler."
+  {:arglists '([backend])}
+  identity)
+
+(defmethod ensure-backend-ready! :default
+  [_backend]
+  nil)
+
 ;;; ---------------------------------------------- Public wrappers -----------------------------------------------
 
 (defn store-get-site
@@ -145,6 +156,11 @@
   "Flush any buffered data to durable storage using the active storage backend."
   []
   (flush! (active-backend)))
+
+(defn store-ensure-backend-ready!
+  "Ensure the active storage backend is initialized."
+  []
+  (ensure-backend-ready! (active-backend)))
 
 ;;; Ensure the default app-db backend is loaded.
 (require 'metabase-enterprise.product-analytics.storage.app-db)

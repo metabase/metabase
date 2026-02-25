@@ -45,6 +45,11 @@
   (when-let [pa-db (t2/select-one :model/Database :id pa/product-analytics-db-id)]
     (if (use-starburst?)
       (let [details (starburst-details)]
+        ;; Ensure Iceberg tables exist before syncing
+        (try
+          (storage/ensure-backend-ready! (storage/active-backend))
+          (catch Exception e
+            (log/warn e "Failed to initialize Iceberg backend (catalog may not be configured yet)")))
         (log/info "Switching PA database to Starburst query engine")
         (t2/update! :model/Database pa/product-analytics-db-id
                     {:engine  :starburst

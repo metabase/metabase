@@ -3,6 +3,8 @@
    Uses the dev JDBC catalog (Postgres on localhost:5434) with a local filesystem warehouse
    for data files, avoiding S3/Garage compatibility issues."
   (:require
+   [metabase-enterprise.product-analytics.storage :as storage]
+   [metabase-enterprise.product-analytics.storage.iceberg :as iceberg]
    [metabase-enterprise.product-analytics.storage.iceberg.catalog :as iceberg.catalog]
    [metabase-enterprise.product-analytics.storage.iceberg.s3 :as iceberg.s3]
    [metabase-enterprise.product-analytics.storage.iceberg.settings :as iceberg.settings]
@@ -192,6 +194,41 @@
                         iceberg.settings/product-analytics-iceberg-s3-staging-uploads (constantly false)]
             (thunk)))
         (finally
+          (drop-test-tables! catalog ns)
+          (delete-dir-recursively! (java.io.File. ^String tmp-dir)))))))
+
+;;; ---------------------------------------- Lifecycle (start!/stop!) fixture -----------------------------------------
+
+(defn with-iceberg-lifecycle-test-ns
+  "`:once` fixture: like [[with-iceberg-test-ns]] but exercises the full `start!` → buffer → flush
+   lifecycle through the storage multimethods. The Iceberg backend is NOT pre-initialized; instead,
+   `ensure-started!` fires lazily on first multimethod call, just like in production.
+   Uses a local filesystem warehouse."
+  [thunk]
+  (if-not (iceberg-dev-stack-available?)
+    (log/infof "Skipping Iceberg lifecycle tests: dev stack not available (%s:%d unreachable)"
+               catalog-host catalog-port)
+    (let [tmp-dir  (str (Files/createTempDirectory "iceberg-lifecycle-test"
+                                                   (into-array java.nio.file.attribute.FileAttribute [])))
+          catalog  (create-test-catalog tmp-dir)
+          ns       (unique-test-namespace)]
+      (try
+        (.createNamespace ^SupportsNamespaces catalog ns (HashMap.))
+        (log/infof "Created lifecycle test namespace %s with warehouse %s" ns tmp-dir)
+        ;; Ensure the backend is stopped before we start, so ensure-started! will trigger
+        (iceberg/stop!)
+        (binding [*test-catalog*       catalog
+                  *test-namespace*     ns
+                  *test-warehouse-dir* tmp-dir]
+          (with-redefs [writer/pa-namespace    ns
+                        iceberg.catalog/catalog (fn [] catalog)
+                        ;; Local filesystem warehouse has no S3
+                        iceberg.settings/product-analytics-iceberg-s3-staging-uploads (constantly false)
+                        ;; Override the storage backend to iceberg
+                        storage/active-backend  (fn [] ::storage/iceberg)]
+            (thunk)))
+        (finally
+          (iceberg/stop!)
           (drop-test-tables! catalog ns)
           (delete-dir-recursively! (java.io.File. ^String tmp-dir)))))))
 

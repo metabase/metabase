@@ -173,14 +173,14 @@
   "Shutdown function for the collector."
   []
   (log/info "Collector Shutting Down ...")
-  ;; Flush any buffered storage data (e.g. Iceberg)
+  ;; Stop the Iceberg storage backend (drains buffers and stops scheduler)
   (try
     #_{:clj-kondo/ignore [:metabase/modules]}
-    (classloader/require 'metabase-enterprise.product-analytics.storage)
-    (when-let [flush-fn (resolve 'metabase-enterprise.product-analytics.storage/store-flush!)]
-      (flush-fn))
+    (classloader/require 'metabase-enterprise.product-analytics.storage.iceberg)
+    (when-let [stop-fn (resolve 'metabase-enterprise.product-analytics.storage.iceberg/stop!)]
+      (stop-fn))
     (catch Exception e
-      (log/warn e "Error flushing storage during shutdown")))
+      (log/warn e "Error stopping Iceberg storage during shutdown")))
   (server/stop-web-server!)
   (let [timeout-seconds 20]
     (mdb/release-migration-locks! timeout-seconds))
