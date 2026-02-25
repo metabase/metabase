@@ -246,6 +246,8 @@ describe("user > settings", () => {
   });
 
   describe("dark mode", () => {
+    const isMac = Cypress.platform === "darwin";
+
     it("should toggle through light and dark mode when clicking on the label or icon", () => {
       cy.visit("/account/profile");
 
@@ -257,9 +259,22 @@ describe("user > settings", () => {
       H.popover().findByText("Light").click();
       assertLightMode();
 
-      //Need to take focus off the inpout
+      //Need to take focus off the input
       H.navigationSidebar().findByRole("link", { name: /Home/ }).click();
-      cy.realPress([H.metaKey, "Shift", "L"]);
+      // Wait for navigation to complete so kbar shortcut handlers are re-registered
+      cy.location("pathname").should("eq", "/");
+      // Use eventConstructor: "KeyboardEvent" so tinykeys' instanceof check
+      // passes. cy.trigger() defaults to generic Event which kbar rejects.
+      // Chrome v123+ headless also intercepts cy.realPress() CDP keyboard
+      // events before they reach the page.
+      cy.get("body").trigger("keydown", {
+        eventConstructor: "KeyboardEvent",
+        key: "L",
+        code: "KeyL",
+        metaKey: isMac,
+        ctrlKey: !isMac,
+        shiftKey: true,
+      });
       assertDarkMode();
     });
 

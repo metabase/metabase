@@ -1,20 +1,11 @@
-import { useState } from "react";
-
-import { skipToken, useGetTransformQuery } from "metabase/api";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { PageContainer } from "metabase/data-studio/common/components/PageContainer";
 import * as Urls from "metabase/lib/urls";
 import { useTransformPermissions } from "metabase/transforms/hooks/use-transform-permissions";
+import { useTransformWithPolling } from "metabase/transforms/hooks/use-transform-with-polling";
 import { Center } from "metabase/ui";
-import type { Transform } from "metabase-types/api";
 
 import { TransformHeader } from "../../components/TransformHeader";
-import { POLLING_INTERVAL } from "../../constants";
-import {
-  isTransformCanceling,
-  isTransformRunning,
-  isTransformSyncing,
-} from "../../utils";
 
 import { RunSection } from "./RunSection";
 
@@ -26,26 +17,19 @@ type TransformRunPageProps = {
   params: TransformRunPageParams;
 };
 
-export function TransformRunPage({ params }: TransformRunPageProps) {
-  const [isPolling, setIsPolling] = useState(false);
+export const TransformRunPage = ({ params }: TransformRunPageProps) => {
   const transformId = Urls.extractEntityId(params.transformId);
   const {
-    data: transform,
+    transform,
     isLoading: isLoadingTransform,
     error: transformError,
-  } = useGetTransformQuery(transformId ?? skipToken, {
-    pollingInterval: isPolling ? POLLING_INTERVAL : undefined,
-  });
+  } = useTransformWithPolling(transformId);
   const { readOnly, isLoadingDatabases, databasesError } =
     useTransformPermissions({ transform });
   const isLoading = isLoadingTransform || isLoadingDatabases;
   const error = transformError || databasesError;
 
-  if (isPolling !== isPollingNeeded(transform)) {
-    setIsPolling(isPollingNeeded(transform));
-  }
-
-  if (isLoading || error || transform == null) {
+  if (isLoading || error || !transform) {
     return (
       <Center h="100%">
         <LoadingAndErrorWrapper loading={isLoading} error={error} />
@@ -59,13 +43,4 @@ export function TransformRunPage({ params }: TransformRunPageProps) {
       <RunSection transform={transform} readOnly={readOnly} />
     </PageContainer>
   );
-}
-
-function isPollingNeeded(transform?: Transform) {
-  return (
-    transform != null &&
-    (isTransformRunning(transform) ||
-      isTransformCanceling(transform) ||
-      isTransformSyncing(transform))
-  );
-}
+};
