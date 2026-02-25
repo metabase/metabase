@@ -326,4 +326,4 @@
                                     {:source_entity_id   (:id old-source)
                                      :source_entity_type :card
                                      :target_entity_id   (:id new-source)
-                                     :target_entity_type :card})))))))))
+                                     :target_entity_type :card}))))))))

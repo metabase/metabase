@@ -19,7 +19,7 @@
   (reify execute/IRunnerProgress
     (set-total! [_ _total])
     (advance! [_])
-    (advance! [_ _message])
+    (advance! [_ _n])
     (canceled? [_] false)))
 
 (defn- build-field-id-mapping
