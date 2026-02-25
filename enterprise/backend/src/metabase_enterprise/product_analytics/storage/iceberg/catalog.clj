@@ -3,7 +3,6 @@
   (:require
    [metabase-enterprise.product-analytics.storage.iceberg.s3 :as iceberg.s3]
    [metabase-enterprise.product-analytics.storage.iceberg.settings :as iceberg.settings]
-   [metabase.app-db.connection :as mdb.connection]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log])
   (:import
@@ -11,6 +10,7 @@
    (org.apache.hadoop.conf Configuration)
    (org.apache.iceberg CatalogProperties)
    (org.apache.iceberg.catalog Catalog)
+   (org.apache.iceberg.io FileIO)
    (org.apache.iceberg.jdbc JdbcCatalog)))
 
 (set! *warn-on-reflection* true)
@@ -28,17 +28,32 @@
                   {:catalog-type catalog-type
                    :available    #{:jdbc}})))
 
+(defn- patch-catalog-file-io!
+  "Patch the catalog's S3FileIO client if path-style access is enabled (S3-compatible service).
+   Must be called after catalog initialization and before any table operations."
+  [^JdbcCatalog catalog]
+  (when (iceberg.settings/product-analytics-iceberg-s3-path-style-access)
+    (let [io-field (doto (.getDeclaredField JdbcCatalog "io")
+                     (.setAccessible true))
+          ^FileIO file-io (.get io-field catalog)]
+      (iceberg.s3/patch-file-io-s3-client! file-io))))
+
 (defmethod create-catalog* :jdbc
   [_catalog-type {:keys [^String warehouse-uri]}]
-  (let [data-source (mdb.connection/data-source)
-        props       (doto (HashMap.)
-                      (.put CatalogProperties/WAREHOUSE_LOCATION warehouse-uri)
-                      (.putAll (iceberg.s3/s3-file-io-properties)))
-        catalog     (JdbcCatalog.)]
-    ;; JdbcCatalog supports direct DataSource injection via the supplier overload
+  (let [jdbc-uri  (iceberg.settings/product-analytics-iceberg-catalog-uri)
+        jdbc-user (iceberg.settings/product-analytics-iceberg-catalog-user)
+        jdbc-pass (iceberg.settings/product-analytics-iceberg-catalog-password)
+        props     (doto (HashMap.)
+                    (.put CatalogProperties/URI jdbc-uri)
+                    (.put CatalogProperties/WAREHOUSE_LOCATION warehouse-uri)
+                    (.putAll (iceberg.s3/s3-file-io-properties)))
+        _         (when jdbc-user (.put props "jdbc.user" jdbc-user))
+        _         (when jdbc-pass (.put props "jdbc.password" jdbc-pass))
+        catalog   (JdbcCatalog.)]
     (.setConf catalog (Configuration.))
     (.initialize catalog "product_analytics" props)
-    (log/infof "Initialized JDBC Iceberg catalog with warehouse=%s" warehouse-uri)
+    (patch-catalog-file-io! catalog)
+    (log/infof "Initialized JDBC Iceberg catalog (uri=%s, warehouse=%s)" jdbc-uri warehouse-uri)
     catalog))
 
 ;;; -------------------------------------------- Cached catalog access ---------------------------------------------

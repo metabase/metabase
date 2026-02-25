@@ -17,14 +17,37 @@
   :audit      :getter)
 
 (setting/defsetting product-analytics-iceberg-catalog-uri
-  (deferred-tru "URI for the Iceberg catalog (REST or Glue endpoint).")
+  (deferred-tru "JDBC connection URI for the Iceberg catalog database.")
   :type       :string
   :visibility :admin
+  :default    (when (not config/is-prod?) "jdbc:postgresql://localhost:5434/iceberg_catalog")
   :feature    :product-analytics
   :doc        false
   :export?    false
   :encryption :no
   :audit      :getter)
+
+(setting/defsetting product-analytics-iceberg-catalog-user
+  (deferred-tru "Username for the Iceberg catalog database.")
+  :type       :string
+  :visibility :admin
+  :default    (when (not config/is-prod?) "iceberg")
+  :feature    :product-analytics
+  :doc        false
+  :export?    false
+  :encryption :no
+  :audit      :getter)
+
+(setting/defsetting product-analytics-iceberg-catalog-password
+  (deferred-tru "Password for the Iceberg catalog database.")
+  :type       :string
+  :visibility :admin
+  :default    (when (not config/is-prod?) "iceberg")
+  :feature    :product-analytics
+  :doc        false
+  :export?    false
+  :encryption :when-encryption-key-set
+  :audit      :never)
 
 (setting/defsetting product-analytics-iceberg-s3-bucket
   (deferred-tru "S3 bucket for Iceberg data files.")
@@ -74,7 +97,7 @@
   (deferred-tru "AWS access key ID for Iceberg S3 storage.")
   :type       :string
   :visibility :admin
-  :default    (when (not config/is-prod?) "test")
+  :default    (when (not config/is-prod?) "GKdeadbeefdeadbeefdeadbeef")
   :feature    :product-analytics
   :doc        false
   :export?    false
@@ -85,7 +108,7 @@
   (deferred-tru "AWS secret access key for Iceberg S3 storage.")
   :type       :string
   :visibility :admin
-  :default    (when (not config/is-prod?) "test")
+  :default    (when (not config/is-prod?) "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef")
   :feature    :product-analytics
   :doc        false
   :export?    false
@@ -94,6 +117,17 @@
 
 (setting/defsetting product-analytics-iceberg-s3-path-style-access
   (deferred-tru "Use path-style access for S3 requests (required for Garage and most S3-compatible services).")
+  :type       :boolean
+  :visibility :admin
+  :default    (boolean (not config/is-prod?))
+  :feature    :product-analytics
+  :doc        false
+  :export?    false
+  :encryption :no
+  :audit      :getter)
+
+(setting/defsetting product-analytics-iceberg-s3-staging-uploads
+  (deferred-tru "Stage Parquet files locally before uploading to S3. Required for S3-compatible services (Garage, MinIO) that don't support chunked payload signing.")
   :type       :boolean
   :visibility :admin
   :default    (boolean (not config/is-prod?))
