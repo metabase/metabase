@@ -272,8 +272,11 @@
             ;; unique/unambiguous if multiple versions of the column (e.g. with different bucketing units) are
             ;; returned
             (when-some [col (resolve-in-previous-stage-returned-columns-and-update-keys query card-cols (:lib/source-column-alias col))]
-              (let [col (assoc col :lib/source :source/card, :lib/card-id card-id)
-                    propagated-keys (if (= (:type card) :model)
+              (let [col             (assoc col :lib/source :source/card, :lib/card-id card-id)
+                    model?          (= (:type card) :model)
+                    col             (cond-> col
+                                      model? (assoc :lib/from-model? true))
+                    propagated-keys (if model?
                                       model-propagated-keys
                                       regular-card-propagated-keys)]
                 (select-keys col propagated-keys))))))
