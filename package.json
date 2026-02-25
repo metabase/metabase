@@ -225,7 +225,7 @@
     "@swc/core": "^1.13.5",
     "@swc/plugin-emotion": "^11.1.0",
     "@tanstack/table-core": "^8.21.3",
-    "@testing-library/cypress": "^10.0.2",
+    "@testing-library/cypress": "^10.1.0",
     "@testing-library/dom": "^10.4.1",
     "@testing-library/jest-dom": "^6.4.8",
     "@testing-library/react": "^16.0.0",
