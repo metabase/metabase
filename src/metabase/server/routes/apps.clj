@@ -50,7 +50,7 @@
            (str ",\n      apiKey: \"" api-key "\"")
            (str ",\n      preferredAuthMethod: \"" (name auth-method) "\""))
          (when theme
-           (str ",\n      theme: \"" theme "\""))
+           (str ",\n      theme: " theme))
          "
     });
   </script>
