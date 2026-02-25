@@ -242,7 +242,7 @@
    source           :- ::swap-source.source
    target           :- ::swap-source.source
    column-mapping :- ::swap-source.column-mapping]
-  (mapv #(swap-source-and-field-ids-in-join % source target column-mapping) joins))
+  (perf/mapv #(swap-source-and-field-ids-in-join % source target column-mapping) joins))
 
 (mu/defn- swap-field-ids-in-stage :- ::lib.schema/stage
   "Updates the field IDs in the stage using the provided mapping."
