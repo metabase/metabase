@@ -805,7 +805,7 @@ describe("no native access", { tags: ["@external", "@skip"] }, () => {
 
     cy.log("#32387");
     cy.findByRole("button", { name: /New/ }).click();
-    H.popover().findByText("SQL query").click();
+    H.popover().findByText(/SQL/).click();
 
     cy.wait("@database");
     cy.go("back");
