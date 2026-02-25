@@ -9,7 +9,7 @@
   decoupled from AppDb."
   (:require
    [clojure.string :as str]
-   [metabase-enterprise.transforms-runner.runner :as python-runner]
+   [metabase-enterprise.transforms-runner.runner :as runner]
    [metabase.api.common :as api]
    [metabase.query-processor :as qp]
    [metabase.sql-tools.core :as sql-tools]
@@ -115,7 +115,7 @@
         remapped-source        (remap-python-source table-mapping source)
         resolved-source-tables (transforms.util/resolve-source-tables (:source-tables remapped-source))
         {:as   result
-         :keys [cols rows]}    (python-runner/execute-and-read-output!
+         :keys [cols rows]}    (runner/execute-and-read-output!
                                 {:code          (:body remapped-source)
                                  :source-tables resolved-source-tables
                                  :row-limit     preview-row-limit})

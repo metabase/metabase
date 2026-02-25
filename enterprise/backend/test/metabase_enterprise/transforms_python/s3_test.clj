@@ -8,7 +8,7 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase-enterprise.transforms-runner.s3 :as s3]
-   [metabase-enterprise.transforms-runner.settings :as transforms-python.settings]
+   [metabase-enterprise.transforms-runner.settings :as runner.settings]
    [metabase.test :as mt]
    [metabase.util.log :as log])
   (:import
@@ -24,7 +24,7 @@
 
 (defn- s3-endpoint-running? []
   (try
-    (http/head (transforms-python.settings/python-runner-url) {:throw-exceptions false})
+    (http/head (runner.settings/python-runner-url) {:throw-exceptions false})
     (catch ConnectException _
       false)))
 
@@ -38,7 +38,7 @@
   (testing "We can open an s3 connection, and read and write things"
     (with-open [s3-client (s3/create-s3-client)]
       (is (instance? S3Client s3-client))
-      (let [bucket (transforms-python.settings/python-storage-s-3-bucket)
+      (let [bucket (runner.settings/python-storage-s-3-bucket)
             key    (str "test-object-" (random-uuid) ".txt")
             body   (str "Hello, S3! My secret is:" (random-uuid))]
 

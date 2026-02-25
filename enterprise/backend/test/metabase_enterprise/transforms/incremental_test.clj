@@ -5,7 +5,7 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [honey.sql :as sql]
-   [metabase-enterprise.transforms-runner.runner :as python-runner]
+   [metabase-enterprise.transforms-runner.runner :as runner]
    [metabase.driver :as driver]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql.query-processor :as sql.qp]
@@ -61,10 +61,10 @@
       query)))
 
 (defmacro with-python-order-by!
-  "Execute body with python-runner/build-table-query redef'd to include ORDER BY for deterministic test results."
+  "Execute body with runner/build-table-query redef'd to include ORDER BY for deterministic test results."
   [checkpoint-field & body]
-  `(let [original-fn# @#'python-runner/build-table-query]
-     (with-redefs [python-runner/build-table-query
+  `(let [original-fn# @#'runner/build-table-query]
+     (with-redefs [runner/build-table-query
                    (fn [table-id# source-incremental-strategy# transform-id# limit#]
                      (build-table-query-with-order-by original-fn# table-id# source-incremental-strategy# transform-id# limit# ~checkpoint-field))]
        ~@body)))
