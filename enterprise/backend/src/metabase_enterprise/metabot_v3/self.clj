@@ -10,12 +10,30 @@
   TODO:
   - figure out what's lacking compared to ai-service"
   (:require
+   [clojure.string :as str]
+   [metabase-enterprise.metabot-v3.self.claude :as claude]
    [metabase-enterprise.metabot-v3.self.core :as core]
+   [metabase-enterprise.metabot-v3.self.openai :as openai]
    [metabase-enterprise.metabot-v3.self.openrouter :as openrouter]
    [metabase.util.log :as log]
    [metabase.util.o11y :refer [with-span]]))
 
 (set! *warn-on-reflection* true)
+
+(defn- resolve-adapter [provider]
+  ;; a `case` inside of function instead of a map so that with-redefs work well
+  (case provider
+    "anthropic"  claude/claude
+    "openai"     openai/openai
+    "openrouter" openrouter/openrouter
+    (throw (ex-info (str "Unknown LLM provider: " provider)
+                    {:provider provider}))))
+
+(defn- parse-provider-model [s]
+  (let [[prov model] (str/split s #"/" 2)]
+    {:provider  prov
+     :stream-fn (resolve-adapter prov)
+     :model     model}))
 
 ;;; General LLM calling
 ;; Matches the Python ai-service retry behavior:
@@ -116,6 +134,10 @@
 (defn call-llm
   "Call an LLM and stream processed parts.
 
+  `provider-and-model` is a string like `anthropic/claude-haiku-4-5` or
+  `openrouter/anthropic/claude-haiku-4-5`.  The first segment selects the
+  provider adapter; the rest is the model name passed to the API.
+
   `parts` is a sequence of AISDK parts (`:text`, `:tool-input`, `:tool-output`)
   and user messages (`{:role :user, :content ...}`).  Each adapter converts
   these into its own wire format.
@@ -124,22 +146,24 @@
   (HTTP call + streaming response) as an OTel span. Retries transient errors
   (429 rate limit, 529 overloaded, connection errors) up to 3 attempts with
   exponential backoff, matching the Python ai-service retry behavior."
-  [model system-msg parts tools]
-  (log/info "Calling LLM" {:model model :parts (count parts) :tools (count tools)})
-  (let [opts (cond-> {:model model :input parts :tools (vec tools)}
-               system-msg (assoc :system system-msg))
-        make-source (fn []
-                      (eduction (comp (core/tool-executor-xf tools)
-                                      (core/lite-aisdk-xf))
-                                (openrouter/openrouter opts)))]
-    (reify clojure.lang.IReduceInit
-      (reduce [_ rf init]
-        (with-span :info {:name       :metabot-v3.agent/call-llm
-                          :model      model
-                          :part-count (count parts)
-                          :tool-count (count tools)}
-          (with-retries
-            #(reduce rf init (make-source))))))))
+  [provider-and-model system-msg parts tools]
+  (let [{:keys [provider stream-fn model]} (parse-provider-model provider-and-model)]
+    (log/info "Calling LLM" {:provider provider :model model :parts (count parts) :tools (count tools)})
+    (let [opts (cond-> {:model model :input parts :tools (vec tools)}
+                 system-msg (assoc :system system-msg))
+          make-source (fn []
+                        (eduction (comp (core/tool-executor-xf tools)
+                                        (core/lite-aisdk-xf))
+                                  (stream-fn opts)))]
+      (reify clojure.lang.IReduceInit
+        (reduce [_ rf init]
+          (with-span :info {:name       :metabot-v3.agent/call-llm
+                            :provider   provider
+                            :model      model
+                            :part-count (count parts)
+                            :tool-count (count tools)}
+            (with-retries
+              #(reduce rf init (make-source)))))))))
 
 (defn call-llm-structured
   "Make an LLM call that returns structured JSON output.
@@ -149,7 +173,7 @@
   Includes the same retry logic as [[call-llm]] for transient errors.
 
   Args:
-    model       - Model identifier (e.g. \"anthropic/claude-haiku-4-5\")
+    model       - Model identifier (e.g. \"openrouter/anthropic/claude-haiku-4-5\")
     messages    - Sequence of Chat Completions message maps
                   (e.g. [{:role \"user\" :content \"...\"}])
     json-schema - JSON Schema map for the expected response shape
@@ -157,9 +181,10 @@
     max-tokens  - Maximum tokens in the response
 
   Returns the parsed JSON map from the forced tool call."
-  [model messages json-schema temperature max-tokens]
-  (log/info "Calling LLM (structured)" {:model model :msg-count (count messages)})
-  (let [raw-tools   [{:type     "function"
+  [provider-and-model messages json-schema temperature max-tokens]
+  (let [{:keys [provider stream-fn model]} (parse-provider-model provider-and-model)
+        _ (log/info "Calling LLM (structured)" {:provider provider :model model :msg-count (count messages)})
+        raw-tools   [{:type     "function"
                       :function {:name        "json"
                                  :description "Respond with a JSON object"
                                  :parameters  json-schema}}]
@@ -175,7 +200,7 @@
                       :msg-count (count messages)}
       (with-retries
         (fn []
-          (let [parts (into [] (core/aisdk-xf) (openrouter/openrouter opts))
+          (let [parts (into [] (core/aisdk-xf) (stream-fn opts))
                 result (some (fn [{:keys [type arguments]}]
                                (when (= type :tool-input)
                                  arguments))
