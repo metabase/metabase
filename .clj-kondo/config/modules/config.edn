@@ -745,17 +745,10 @@
   {:team "Querying"
    :api  #{metabase.lib.core
            metabase.lib.equality
-           metabase.lib.field
            metabase.lib.init
            metabase.lib.metadata
-           metabase.lib.metadata.cached-provider
-           metabase.lib.metadata.column
-           metabase.lib.metadata.invocation-tracker
            metabase.lib.metadata.protocols
-           metabase.lib.metadata.result-metadata
-           metabase.lib.normalize
            metabase.lib.options
-           metabase.lib.query
            metabase.lib.schema
            metabase.lib.schema.actions
            metabase.lib.schema.aggregation
@@ -779,14 +772,17 @@
            metabase.lib.schema.validate
            metabase.lib.types.isa
            metabase.lib.util
-           metabase.lib.util.match
-           metabase.lib.walk}
+           metabase.lib.util.match}
    :uses #{config
            graph
            legacy-mbql
            types
            util}
-   :friends #{query-processor legacy-mbql}}
+   :friends #{legacy-mbql         ;; Reuses internal schemas and a few helper functions. Deeply coupled to MBQL.
+              lib-be              ;; BE-specific extension of lib; tight coupling is acceptable.
+              query-processor     ;; Necessarily manipulates MBQL; better to pull most logic into a new module.
+              enterprise/sandbox  ;; Really part of the QP, though its lives in the enterprise/ tree.
+              }}
 
   lib-be
   {:team "Querying"
