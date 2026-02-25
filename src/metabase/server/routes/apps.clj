@@ -17,7 +17,7 @@
 
 (defn- app-page-html
   "Generate HTML page with embedded collection browser."
-  [app-name api-key auth-method collection-id]
+  [app-name api-key auth-method theme collection-id]
   (let [site-url (or (system/site-url) "")]
     (str "<!DOCTYPE html>
 <html lang=\"en\">
@@ -49,6 +49,8 @@
          (if api-key
            (str ",\n      apiKey: \"" api-key "\"")
            (str ",\n      preferredAuthMethod: \"" (name auth-method) "\""))
+         (when theme
+           (str ",\n      theme: \"" theme "\""))
          "
     });
   </script>
@@ -69,9 +71,10 @@
         (let [api-key     (or (get-in request [:params :api_key])
                               (config/config-str :mb-apps-api-key))
               auth-method (:auth_method app)
+              theme       (:theme app)
               coll-id     (:collection_id app)]
           (respond
-           (-> (response/response (app-page-html (:name app) api-key auth-method coll-id))
+           (-> (response/response (app-page-html (:name app) api-key auth-method theme coll-id))
                (response/content-type "text/html; charset=utf-8")
                (response/header "Content-Security-Policy"
                                 "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; connect-src *; frame-src *; img-src * data: blob:;"))))))))
