@@ -1,25 +1,27 @@
 (ns metabase-enterprise.metabot-v3.agent.profiles-test
   (:require
    [clojure.test :refer :all]
-   [metabase-enterprise.metabot-v3.agent.profiles :as profiles]))
+   [metabase-enterprise.llm.settings :as llm]
+   [metabase-enterprise.metabot-v3.agent.profiles :as profiles]
+   [metabase.test :as mt]))
 
 (deftest get-profile-test
   (letfn [(tool-names [profile]
             (set (map (comp :tool-name meta) (:tools profile))))]
-    (testing "retrieves embedding_next profile"
+    (testing "retrieves embedding_next profile with default provider"
       (let [profile (profiles/get-profile :embedding_next)]
         (is (some? profile))
-        (is (= "anthropic/claude-haiku-4-5" (:model profile)))
+        (is (= "openrouter/anthropic/claude-haiku-4-5" (:model profile)))
         (is (= 10 (:max-iterations profile)))
         (is (= 0.3 (:temperature profile)))
         (is (vector? (:tools profile)))
         (is (contains? (tool-names profile) "construct_notebook_query"))
         (is (contains? (tool-names profile) "list_available_data_sources"))))
 
-    (testing "retrieves internal profile"
+    (testing "retrieves internal profile with default provider"
       (let [profile (profiles/get-profile :internal)]
         (is (some? profile))
-        (is (= "anthropic/claude-haiku-4-5" (:model profile)))
+        (is (= "openrouter/anthropic/claude-haiku-4-5" (:model profile)))
         (is (= 10 (:max-iterations profile)))
         (is (= 0.3 (:temperature profile)))
         (is (vector? (:tools profile)))
@@ -32,7 +34,7 @@
     (testing "retrieves transforms_codegen profile"
       (let [profile (profiles/get-profile :transforms_codegen)]
         (is (some? profile))
-        (is (= "anthropic/claude-haiku-4-5" (:model profile)))
+        (is (= "openrouter/anthropic/claude-haiku-4-5" (:model profile)))
         (is (= 30 (:max-iterations profile)))
         (is (= 0.3 (:temperature profile)))
         (is (vector? (:tools profile)))
@@ -43,7 +45,7 @@
     (testing "retrieves sql profile"
       (let [profile (profiles/get-profile :sql)]
         (is (some? profile))
-        (is (= "anthropic/claude-haiku-4-5" (:model profile)))
+        (is (= "openrouter/anthropic/claude-haiku-4-5" (:model profile)))
         (is (= 10 (:max-iterations profile)))
         (is (= 0.3 (:temperature profile)))
         (is (contains? (tool-names profile) "search"))
@@ -52,7 +54,7 @@
     (testing "retrieves nlq profile"
       (let [profile (profiles/get-profile :nlq)]
         (is (some? profile))
-        (is (= "anthropic/claude-haiku-4-5" (:model profile)))
+        (is (= "openrouter/anthropic/claude-haiku-4-5" (:model profile)))
         (is (= 10 (:max-iterations profile)))
         (is (= 0.3 (:temperature profile)))
         (is (contains? (tool-names profile) "search"))
@@ -69,6 +71,13 @@
           (is (contains? profile :temperature))
           (is (contains? profile :tools))
           (is (every? var? (:tools profile))))))))
+
+(deftest get-profile-respects-provider-setting-test
+  (testing "model reflects ee-ai-metabot-provider setting"
+    (mt/with-temporary-setting-values [llm/ee-ai-metabot-provider "openai/gpt-4.1-mini"]
+      (is (= "openai/gpt-4.1-mini" (:model (profiles/get-profile :internal)))))
+    (mt/with-temporary-setting-values [llm/ee-ai-metabot-provider "openrouter/google/gemini-2.5-flash"]
+      (is (= "openrouter/google/gemini-2.5-flash" (:model (profiles/get-profile :embedding_next)))))))
 
 (deftest get-tools-for-profile-capabilities-test
   (testing "filters tools by capabilities"
