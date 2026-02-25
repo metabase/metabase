@@ -10,8 +10,10 @@ import {
 } from "metabase/common/components/Pickers";
 import { useDashboardQuery } from "metabase/common/hooks";
 import CS from "metabase/css/core/index.css";
-import { ClickMappings } from "metabase/dashboard/components/ClickMappings/ClickMappings";
-import { clickTargetObjectType } from "metabase/dashboard/components/ClickMappings/utils";
+import {
+  ClickMappings,
+  clickTargetObjectType,
+} from "metabase/dashboard/components/ClickMappings";
 import { getDashboard } from "metabase/dashboard/selectors";
 import { ROOT_COLLECTION } from "metabase/entities/collections/constants";
 import { Dashboards } from "metabase/entities/dashboards";
