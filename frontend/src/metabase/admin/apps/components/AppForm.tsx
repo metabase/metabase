@@ -1,3 +1,4 @@
+import { useDisclosure } from "@mantine/hooks";
 import { useFormik } from "formik";
 import { useCallback, useEffect } from "react";
 import { t } from "ttag";
@@ -5,18 +6,25 @@ import { t } from "ttag";
 import {
   useCreateAppMutation,
   useGetAppQuery,
+  useGetCollectionQuery,
   useUpdateAppMutation,
 } from "metabase/api";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
+import { CollectionPickerModal } from "metabase/common/components/Pickers";
+import { useSetting } from "metabase/common/hooks";
 import { useRouter } from "metabase/router";
 import {
+  Alert,
+  Anchor,
   Button,
   Group,
-  NumberInput,
+  Input,
   Select,
   Stack,
   Switch,
+  Text,
   TextInput,
+  Textarea,
   Title,
 } from "metabase/ui";
 
@@ -28,10 +36,19 @@ interface AppFormValues {
   published: boolean;
 }
 
-const AUTH_METHOD_OPTIONS = [
-  { value: "jwt", label: "JWT" },
-  { value: "saml", label: "SAML" },
-];
+function useAuthMethodOptions() {
+  const jwtEnabled = useSetting("jwt-enabled");
+  const samlEnabled = useSetting("saml-enabled");
+
+  const data = [
+    { value: "jwt", label: "JWT", disabled: !jwtEnabled },
+    { value: "saml", label: "SAML", disabled: !samlEnabled },
+  ];
+
+  const noneEnabled = !jwtEnabled && !samlEnabled;
+
+  return { data, noneEnabled };
+}
 
 export function AppForm() {
   const { params, router } = useRouter();
@@ -56,6 +73,16 @@ export function AppForm() {
       collection_id: 0,
       theme: "",
       published: false,
+    },
+    validate: (values) => {
+      const errors: Partial<Record<keyof AppFormValues, string>> = {};
+      if (!values.name.trim()) {
+        errors.name = t`Name is required`;
+      }
+      if (!values.collection_id) {
+        errors.collection_id = t`Collection is required`;
+      }
+      return errors;
     },
     onSubmit: async (values) => {
       const payload = {
@@ -123,6 +150,21 @@ function AppFormContent({
   isEditing: boolean;
   onCancel: () => void;
 }) {
+  const [pickerOpened, { open: openPicker, close: closePicker }] =
+    useDisclosure(false);
+
+  const collectionId = formik.values.collection_id;
+  const { data: collection } = useGetCollectionQuery(
+    { id: collectionId },
+    { skip: !collectionId },
+  );
+
+  const { data: authMethodData, noneEnabled: noAuthEnabled } =
+    useAuthMethodOptions();
+
+  const canPublish =
+    !!formik.values.name.trim() && !!collectionId && !noAuthEnabled;
+
   return (
     <Stack p="lg" maw="40rem" gap="lg">
       <Title order={2}>{isEditing ? t`Edit App` : t`Create App`}</Title>
@@ -135,24 +177,62 @@ function AppFormContent({
           />
           <Select
             label={t`Auth Method`}
-            data={AUTH_METHOD_OPTIONS}
+            required
+            data={authMethodData}
             value={formik.values.auth_method}
             onChange={(value) =>
               formik.setFieldValue("auth_method", value ?? "jwt")
             }
           />
-          <NumberInput
-            label={t`Collection ID`}
-            required
-            min={1}
-            value={formik.values.collection_id}
-            onChange={(value) =>
-              formik.setFieldValue("collection_id", value ?? 0)
-            }
+          {noAuthEnabled && (
+            <Alert variant="light" color="warning">
+              {t`No authentication method is configured.`}{" "}
+              <Anchor href="/admin/settings/authentication">
+                {t`Configure JWT or SAML in authentication settings.`}
+              </Anchor>
+            </Alert>
+          )}
+          <Stack gap={4}>
+            <Input.Label required>{t`Collection`}</Input.Label>
+            {collectionId ? (
+              <Group gap="xs">
+                <Text>{collection?.name ?? "…"}</Text>
+                <Anchor onClick={openPicker}>{t`Change collection`}</Anchor>
+              </Group>
+            ) : (
+              <Anchor onClick={openPicker}>{t`Select a collection`}</Anchor>
+            )}
+            {formik.touched.collection_id && formik.errors.collection_id && (
+              <Text size="xs" c="error">
+                {formik.errors.collection_id}
+              </Text>
+            )}
+          </Stack>
+          {pickerOpened && (
+            <CollectionPickerModal
+              value={
+                collectionId
+                  ? { id: collectionId, model: "collection" }
+                  : undefined
+              }
+              onChange={(item) => {
+                formik.setFieldValue("collection_id", item.id);
+                closePicker();
+              }}
+              onClose={closePicker}
+            />
+          )}
+          <Textarea
+            label={t`Theme`}
+            autosize
+            minRows={4}
+            maxRows={12}
+            styles={{ input: { fontFamily: "monospace" } }}
+            {...formik.getFieldProps("theme")}
           />
-          <TextInput label={t`Theme`} {...formik.getFieldProps("theme")} />
           <Switch
             label={t`Published`}
+            disabled={!canPublish}
             checked={formik.values.published}
             onChange={(e) =>
               formik.setFieldValue("published", e.currentTarget.checked)
