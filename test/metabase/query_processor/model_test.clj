@@ -82,7 +82,7 @@
                   (mapv :display_name)))))))
 
 (deftest ^:parallel preserve-model-display-names-test
-  (testing "Edited display names for columns in Models should get preserved (#66532)"
+  (testing "Edited display names for columns in Models should get preserved (#65532)"
     ;; 1. Create a Model of ORDERS joining PRODUCTS
     ;;
     ;; 2. Edit display name for "Products → ID", change to "[RENAMED]"
