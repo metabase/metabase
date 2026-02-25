@@ -50,6 +50,16 @@ export function registerConnectionCommands(ctx: ExtensionCtx) {
     }
   })
 
+  useCommand("metastudio.showApiKey", () => {
+    const key = ctx.apiKey.value
+    if (!key) {
+      window.showWarningMessage("No API key is set.")
+      return
+    }
+    const masked = `${"*".repeat(Math.max(0, key.length - 4))}${key.slice(-4)}`
+    window.showInformationMessage(`API key: ${masked}`)
+  })
+
   useCommand("metastudio.clearCredentials", async () => {
     await workspace.getConfiguration("metastudio").update("host", "", true)
     await ctx.apiKey.set("")

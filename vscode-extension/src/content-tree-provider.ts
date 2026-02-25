@@ -1,4 +1,4 @@
-import type { ContentGraph, ContentNode } from './metabase-lib'
+import type { ContentGraph, ContentNode, TransformNode } from './metabase-lib'
 import * as path from 'node:path'
 import * as vscode from 'vscode'
 
@@ -15,6 +15,10 @@ export class ContentTreeProvider implements vscode.TreeDataProvider<ContentNode>
   setGraph(graph: ContentGraph | null): void {
     this.graph = graph
     this.changeEmitter.fire()
+  }
+
+  get transforms(): TransformNode[] {
+    return this.graph?.transforms ?? []
   }
 
   getTreeItem(element: ContentNode): vscode.TreeItem {

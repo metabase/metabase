@@ -22,6 +22,7 @@
 | `metastudio.setHost`               | Metastudio: Set Host URL              |
 | `metastudio.setApiKey`             | Metastudio: Set API Key               |
 | `metastudio.checkConnection`       | Metastudio: Check Metabase Connection |
+| `metastudio.showApiKey`            | Metastudio: Show API Key              |
 | `metastudio.clearCredentials`      | Metastudio: Clear Credentials         |
 | `metastudio.checkDependencyGraph`  | Metastudio: Check Dependency Graph    |
 | `metastudio.showDependencyGraph`   | Metastudio: Show Dependency Graph     |

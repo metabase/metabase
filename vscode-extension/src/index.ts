@@ -21,6 +21,7 @@ import {ConnectionTreeProvider} from "./connection-tree-provider"
 import {ContentTreeProvider} from "./content-tree-provider"
 import {EmbeddedCodeProvider} from "./embedded-code-provider"
 import {registerExportLoader} from "./export-loader"
+import {registerLmTools} from "./lm-tools"
 import {setOutputChannel} from "./metabase-client"
 import {WorkspaceManager} from "./workspace-manager"
 
@@ -127,6 +128,7 @@ const {activate, deactivate} = defineExtension((context) => {
   registerDependencyGraphCommands(ctx)
   registerTransformPreviewCommand(ctx)
   registerOpenInMetabaseCommand()
+  registerLmTools(ctx, context)
 })
 
 export {activate, deactivate}

@@ -27,7 +27,7 @@
     "res/*"
   ],
   "engines": {
-    "vscode": "^1.97.0"
+    "vscode": "^1.108.0"
   },
   "activationEvents": ["onStartupFinished"],
   "contributes": {
@@ -46,6 +46,11 @@
         "command": "metastudio.checkConnection",
         "title": "Metastudio: Check Metabase Connection",
         "icon": "$(plug)"
+      },
+      {
+        "command": "metastudio.showApiKey",
+        "title": "Metastudio: Show API Key",
+        "icon": "$(key)"
       },
       {
         "command": "metastudio.clearCredentials",
@@ -219,6 +224,104 @@
         "when": "!metabase.configExists"
       }
     ],
+    "chatSkills": [
+      {
+        "path": "./skills/metastudio/SKILL.md"
+      }
+    ],
+    "languageModelTools": [
+      {
+        "name": "metastudio_setHost",
+        "displayName": "Set Metabase Host",
+        "toolReferenceName": "metastudioSetHost",
+        "modelDescription": "Sets the Metabase instance URL in workspace configuration. Call this before checking the connection or running transforms.",
+        "canBeReferencedInPrompt": true,
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "host": {
+              "type": "string",
+              "description": "The full URL of the Metabase instance, e.g. https://my-metabase.example.com"
+            }
+          },
+          "required": ["host"]
+        }
+      },
+      {
+        "name": "metastudio_setApiKey",
+        "displayName": "Set or Check Metabase API Key",
+        "toolReferenceName": "metastudioSetApiKey",
+        "modelDescription": "Optionally sets the Metabase API key in secure storage, then reports the current key status (whether it is set and its last 4 characters). Omit 'apiKey' to check status without changing anything.",
+        "canBeReferencedInPrompt": true,
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "apiKey": {
+              "type": "string",
+              "description": "The Metabase API key to store. Omit this property to only check the current status."
+            }
+          },
+          "required": []
+        }
+      },
+      {
+        "name": "metastudio_checkConnection",
+        "displayName": "Check Metabase Connection",
+        "toolReferenceName": "metastudioCheckConnection",
+        "modelDescription": "Tests connectivity to the configured Metabase instance using the stored API key. Returns the connection result including the authenticated user's name on success.",
+        "canBeReferencedInPrompt": true,
+        "inputSchema": {
+          "type": "object",
+          "properties": {},
+          "required": []
+        }
+      },
+      {
+        "name": "metastudio_runTransform",
+        "displayName": "Run Metabase Transform",
+        "toolReferenceName": "metastudioRunTransform",
+        "modelDescription": "Looks up a transform by name (case-insensitive) or by entityId in the loaded content graph and executes it. Provide 'entityId' when multiple transforms share the same name.",
+        "canBeReferencedInPrompt": true,
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "name": {
+              "type": "string",
+              "description": "The display name of the transform to run (case-insensitive). At least one of 'name' or 'entityId' must be provided."
+            },
+            "entityId": {
+              "type": "string",
+              "description": "The unique entity ID of the transform to run. Takes precedence over 'name' when both are supplied."
+            }
+          },
+          "required": []
+        }
+      },
+      {
+        "name": "metastudio_getApiKey",
+        "displayName": "Get Metabase API Key Status",
+        "toolReferenceName": "metastudioGetApiKey",
+        "modelDescription": "Returns the current API key with all but the last 4 characters masked (e.g. ********abcd). Returns 'not set' if no key has been stored.",
+        "canBeReferencedInPrompt": true,
+        "inputSchema": {
+          "type": "object",
+          "properties": {},
+          "required": []
+        }
+      },
+      {
+        "name": "metastudio_getHost",
+        "displayName": "Get Metabase Host",
+        "toolReferenceName": "metastudioGetHost",
+        "modelDescription": "Returns the currently configured Metabase instance URL, or indicates that no host has been set.",
+        "canBeReferencedInPrompt": true,
+        "inputSchema": {
+          "type": "object",
+          "properties": {},
+          "required": []
+        }
+      }
+    ],
     "configuration": {
       "type": "object",
       "title": "Metastudio",
@@ -255,7 +358,7 @@
     "@types/node": "^25.0.3",
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",
-    "@types/vscode": "^1.97.0",
+    "@types/vscode": "^1.108.0",
     "@vitejs/plugin-react": "^4.4.0",
     "@vscode/vsce": "^3.7.1",
     "@xyflow/react": "^12.10.1",
