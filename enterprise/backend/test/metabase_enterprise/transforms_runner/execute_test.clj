@@ -116,9 +116,9 @@
         (is (= "Started\nRunning\nPython execution failure (exit code 1)"
                (#'runner.execute/exceptional-run-message ml ex))))))
   (testing "uses generic message when no :transform-message"
-    (let [ml (#'runner.execute/empty-message-log)]
-      (let [ex (ex-info "boom" {})]
-        (is (string? (#'runner.execute/exceptional-run-message ml ex)))))))
+    (let [ml (#'runner.execute/empty-message-log)
+          ex (ex-info "boom" {})]
+      (is (string? (#'runner.execute/exceptional-run-message ml ex))))))
 
 ;;; ------------------------------------------------ table-schema -------------------------------------------------
 

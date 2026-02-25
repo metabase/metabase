@@ -1601,6 +1601,7 @@
            util}
    :friends #{models
               enterprise/transforms-python
+              enterprise/transforms-runner
               enterprise/workspaces}}
 
   transforms-inspector
@@ -2261,7 +2262,8 @@
               util
               warehouses
               enterprise/dependencies
-              enterprise/transforms-python}}
+           enterprise/transforms-python
+           enterprise/transforms-runner}}
 
   enterprise/permission-debug
   {:team "UX West"
@@ -2296,7 +2298,8 @@
            task-history
            util
            enterprise/serialization
-           enterprise/transforms-python}}
+           enterprise/transforms-python
+           enterprise/transforms-runner}}
 
   enterprise/sandbox
   {:team "UX West"
@@ -2463,10 +2466,26 @@
 
   enterprise/transforms-python
   {:team "Querying"
+   :api #{metabase-enterprise.transforms-python.core
+          metabase-enterprise.transforms-python.init}
+   :uses #{transforms}}
+
+  enterprise/transforms-javascript
+  {:team "Querying"
+   :api #{metabase-enterprise.transforms-javascript.init}
+   :uses #{transforms}}
+
+  enterprise/transforms-clojure
+  {:team "Querying"
+   :api #{metabase-enterprise.transforms-clojure.init}
+   :uses #{transforms}}
+
+  enterprise/transforms-runner
+  {:team "Querying"
    :api #{metabase-enterprise.transforms-runner.api
-           metabase-enterprise.transforms-python.core
-           metabase-enterprise.transforms-python.init
-          metabase-enterprise.transforms-runner.runner}
+          metabase-enterprise.transforms-runner.runner
+          metabase-enterprise.transforms-runner.init
+          metabase-enterprise.transforms-runner.models.transform-library}
    :uses #{analytics
            api
            app-db
@@ -2514,7 +2533,8 @@
            system
            transforms
            util
-           enterprise/transforms-python}}}
+           enterprise/transforms-python
+           enterprise/transforms-runner}}}
 
  ;; namespaces matching these patterns (with `re-find`) are excluded from the module linter. Since regex literals
  ;; aren't allowed in EDN just used the `(str <regex>)` version i.e. two slashes instead of one.

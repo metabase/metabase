@@ -53,6 +53,7 @@
    (perms/has-any-transforms-permission? api/*current-user-id*)))
 
 (def builtin-entity-ids
+  "Map of language name to the stable entity-id for its built-in common library."
   {"python" "cWWH9qJPvHNB3rP2vLZrK"
    "javascript" "aHWo_0yPLwKqpQPlFNzCg"})
 
@@ -68,12 +69,14 @@
                        :language language})))))
 
 (defn get-library-by-path
+  "Look up a TransformLibrary record by `language` and `path`, validating the path first."
   [language path]
   (let [normalized (normalize-path language path)]
     (validate-path! language normalized)
     (t2/select-one :model/TransformLibrary :language language :path normalized)))
 
 (defn update-library-source!
+  "Create or update the TransformLibrary record for `language` and `path` with the given `source`."
   [language path source]
   (let [normalized (normalize-path language path)]
     (validate-path! language normalized)
