@@ -4,7 +4,10 @@ import {
   columnsAreValid,
   getDefaultDimensionAndMetric,
 } from "metabase/visualizations/lib/utils";
-import type { VisualizationSettingsDefinitions } from "metabase/visualizations/types";
+import type {
+  VisualizationSettingDefinition,
+  VisualizationSettingsDefinitions,
+} from "metabase/visualizations/types";
 import { isDimension, isMetric } from "metabase-lib/v1/types/utils/isa";
 import type {
   DatasetColumn,
@@ -22,7 +25,7 @@ export function getOptionFromColumn(col: DatasetColumn) {
 
 export function metricSetting(
   id: string,
-  def: Partial<VisualizationSettingsDefinitions[string]> = {},
+  def: Partial<VisualizationSettingDefinition<Series>> = {},
 ): VisualizationSettingsDefinitions<Series> {
   return fieldSetting(id, {
     fieldFilter: isMetric,
@@ -33,7 +36,7 @@ export function metricSetting(
 
 export function dimensionSetting(
   id: string,
-  def: Partial<VisualizationSettingsDefinitions[string]> = {},
+  def: Partial<VisualizationSettingDefinition<Series>> = {},
 ): VisualizationSettingsDefinitions<Series> {
   return fieldSetting(id, {
     fieldFilter: isDimension,
@@ -62,7 +65,7 @@ export function fieldSetting(
     showColumnSetting,
     autoOpenWhenUnset,
     ...def
-  }: Partial<VisualizationSettingsDefinitions[string]> & {
+  }: Partial<VisualizationSettingDefinition<Series>> & {
     fieldFilter?: FieldFilterFn;
     showColumnSetting?: boolean;
     autoOpenWhenUnset?: boolean;
@@ -71,11 +74,11 @@ export function fieldSetting(
   return {
     [id]: {
       widget: "field",
-      isValid: ([{ card, data }]: Series) =>
+      isValid: ([{ card, data }]) =>
         columnsAreValid(card.visualization_settings[id], data, fieldFilter),
-      getDefault: (series: Series, vizSettings: VisualizationSettings) =>
+      getDefault: (series, vizSettings) =>
         getDefaultColumn(series, vizSettings, fieldFilter),
-      getProps: ([{ data }]: Series) => ({
+      getProps: ([{ data }]) => ({
         options: data.cols.filter(fieldFilter).map(getOptionFromColumn),
         columns: data.cols,
         showColumnSetting,
