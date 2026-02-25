@@ -18,7 +18,6 @@ import type {
   NativeQuerySnippetId,
   SegmentId,
   TableId,
-  TransformId,
 } from "metabase-types/api";
 import { createMockCard } from "metabase-types/api/mocks";
 
@@ -71,6 +70,7 @@ describe("scenarios > dependencies > dependency graph", () => {
     H.activateToken("bleeding-edge");
     H.resyncDatabase({ dbId: WRITABLE_DB_ID, tableName: TABLE_NAME });
     H.getTableId({ name: TABLE_NAME }).as(TABLE_ID_ALIAS);
+    H.resetSnowplow();
   });
 
   describe("entity search", () => {
@@ -86,6 +86,12 @@ describe("scenarios > dependencies > dependency graph", () => {
       cy.log(`verify that "${itemName}" can be found via search`);
       H.DependencyGraph.entrySearchInput().clear().type(itemName);
       H.popover().findByText(itemName).click();
+      H.expectUnstructuredSnowplowEvent({
+        event: "dependency_entity_selected",
+        triggered_from: "dependency-graph",
+        event_detail: "table",
+      });
+
       H.DependencyGraph.entryButton().should("have.text", itemName);
       H.DependencyGraph.entryButton().icon(itemIcon).should("be.visible");
       H.DependencyGraph.entryButton().icon("close").click();
@@ -486,7 +492,7 @@ describe("scenarios > dependencies > dependency graph", () => {
     it("should display dependencies for a transform and navigate to them", () => {
       createTableBasedTransform({ tableName: TABLE_NAME }).then(
         ({ body: transform }) => {
-          runTransformAndWaitForSuccess(transform.id);
+          H.runTransformAndWaitForSuccess(transform.id);
           visitGraphForEntity(transform.id, "transform");
         },
       );
@@ -1063,11 +1069,6 @@ function createSnippetBasedTransform({
       name: TRANSFORM_TABLE_NAME,
     },
   });
-}
-
-function runTransformAndWaitForSuccess(transformId: TransformId) {
-  cy.request("POST", `/api/transform/${transformId}/run`);
-  H.waitForSucceededTransformRuns();
 }
 
 function createEmptySnippet() {

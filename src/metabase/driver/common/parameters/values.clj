@@ -49,6 +49,7 @@
 (def ^:private FieldFilter            (lib.schema.common/instance-of-class metabase.driver.common.parameters.FieldFilter))
 (def ^:private ReferencedQuerySnippet (lib.schema.common/instance-of-class metabase.driver.common.parameters.ReferencedQuerySnippet))
 (def ^:private ReferencedCardQuery    (lib.schema.common/instance-of-class metabase.driver.common.parameters.ReferencedCardQuery))
+(def ^:private ReferencedTableQuery    (lib.schema.common/instance-of-class metabase.driver.common.parameters.ReferencedTableQuery))
 
 (defmulti ^:private parse-tag
   "Parse a tag by its `:type`, returning an appropriate record type such as
@@ -255,6 +256,10 @@
                  :tag               tag
                  :type              qp.error-type/invalid-parameter}
                 e))))))
+
+(mu/defmethod parse-tag :table :- ReferencedTableQuery
+  [{:keys [table-id]} _params]
+  (params/map->ReferencedTableQuery {:table-id table-id}))
 
 (mu/defmethod parse-tag :snippet :- ReferencedQuerySnippet
   [{:keys [snippet-name snippet-id], :as tag} :- ::mbql.s/TemplateTag

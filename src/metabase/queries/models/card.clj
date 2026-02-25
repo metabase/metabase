@@ -17,10 +17,8 @@
    [metabase.dashboards.autoplace :as autoplace]
    [metabase.events.core :as events]
    [metabase.lib-be.core :as lib-be]
-   [metabase.lib.convert :as lib.convert]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
-   [metabase.lib.normalize :as lib.normalize]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
@@ -738,8 +736,8 @@
              (pr-str (dissoc post-cleaning-query :lib/metadata))
              (:legacy_query untransformed-card)))
 
-;; Dynamically binds [[lib.convert/*card-clean-hook*]] to a function that logs the impact of cleaning,
-;; during `transform-out`, so that we can log whenever a card gets converted and [[lib.convert/clean]] makes material
+;; Uses [[lib/with-card-clean-hook]] to bind a callback which logs the impact of the cleaning process during
+;; `transform-out`, so that we can log whenever a card gets converted and [[lib.convert/clean]] makes material
 ;; changes, which likely indicates a bug.
 (methodical/defmethod t2.pipeline/results-transform [:toucan.result-type/instances :model/Card]
   [query-type model]
@@ -751,7 +749,7 @@
           ([acc]
            (rf' acc))
           ([acc card]
-           (binding [lib.convert/*card-clean-hook* (partial mbql5-conversion-clean-callback card)]
+           (lib/with-card-clean-hook (partial mbql5-conversion-clean-callback card)
              (rf' acc card))))))))
 
 (t2/define-after-select :model/Card
@@ -811,7 +809,7 @@
             (not verified-result-metadata?)
             (contains? (t2/changes card) :type))
         (card.metadata/populate-result-metadata changes))
-      (m/update-existing :result_metadata #(some->> % (lib.normalize/normalize [:sequential ::lib.schema.metadata/lib-or-legacy-column])))))
+      (m/update-existing :result_metadata #(some->> % (lib/normalize [:sequential ::lib.schema.metadata/lib-or-legacy-column])))))
 
 (t2/define-before-update :model/Card
   [{:keys [verified-result-metadata?] :as card}]

@@ -14,7 +14,7 @@ fi
 # Generate the current OpenAPI spec from Malli schemas using write-openapi-spec-to-file!
 # This creates $OPENAPI_SPEC directly
 # Using the generate-openapi-spec command from metabase.cmd.core
-yarn generate-openapi
+bun run generate-openapi
 ret=$?
 
 if [[ $ret -ne 0 ]]; then
@@ -82,7 +82,7 @@ if ! git diff --exit-code "$OPENAPI_SPEC" >/dev/null 2>&1; then
         echo ""
         echo "To fix this:"
         echo "  1. Pull the latest changes from master: git pull origin master"
-        echo "  2. Run 'yarn generate-openapi' to update $OPENAPI_SPEC"
+        echo "  2. Run 'bun run generate-openapi' to update $OPENAPI_SPEC"
         echo "  3. Commit the updated openapi.json file"
         echo ""
         echo "Differences:"

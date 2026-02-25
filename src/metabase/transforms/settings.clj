@@ -17,7 +17,7 @@
   :audit      :getter)
 
 (setting/defsetting transforms-enabled
-  (deferred-tru "Enable transforms for instances that have not explicetly purchased the transform add-on")
+  (deferred-tru "Enable transforms for instances that have not explicitly purchased the transform add-on.")
   :type       :boolean
   :visibility :authenticated
   :default    false

@@ -16,6 +16,7 @@
    [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
    [metabase.driver.sql-jdbc.sync.describe-database :as sql-jdbc.describe-database]
    [metabase.driver.sql.query-processor :as sql.qp]
+   [metabase.driver.sql.query-processor.like-escape-char-built-in :as-alias like-escape-char-built-in]
    [metabase.driver.sync :as driver.s]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
@@ -35,7 +36,8 @@
 
 (set! *warn-on-reflection* true)
 
-(driver/register! :redshift, :parent #{:postgres})
+(driver/register! :redshift, :parent #{:postgres
+                                       ::like-escape-char-built-in/like-escape-char-built-in})
 
 (doseq [[feature supported?] {:atomic-renames                   true
                               :connection-impersonation         true
@@ -548,9 +550,9 @@
                 (if (contains? param :name)
                   [(:name param) (:value param)]
 
-                  (when-let [field-id (driver-api/match-one param
+                  (when-let [field-id (driver-api/match-lite param
                                         [:field (field-id :guard integer?) _]
-                                        (when (contains? (set &parents) :dimension)
+                                        (when (perf/some #{:dimension} &parents)
                                           field-id))]
                     [(:name (driver-api/field (driver-api/metadata-provider) field-id))
                      (:value param)]))))

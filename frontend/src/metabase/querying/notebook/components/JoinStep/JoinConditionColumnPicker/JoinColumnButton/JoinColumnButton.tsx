@@ -2,6 +2,7 @@ import cx from "classnames";
 import { type Ref, forwardRef, useMemo } from "react";
 import { t } from "ttag";
 
+import { useLocale } from "metabase/common/hooks";
 import { useTranslateContent } from "metabase/i18n/hooks";
 import type { ContentTranslationFunction } from "metabase/i18n/types";
 import { PLUGIN_CONTENT_TRANSLATION } from "metabase/plugins";
@@ -37,10 +38,11 @@ export const JoinColumnButton = forwardRef(function JoinColumnTarget(
   ref: Ref<HTMLButtonElement>,
 ) {
   const tc = useTranslateContent();
+  const { locale } = useLocale();
   const expression = isLhsPicker ? lhsExpression : rhsExpression;
   const buttonLabel = useMemo(
-    () => getButtonLabel(query, stageIndex, expression, tc),
-    [query, stageIndex, expression, tc],
+    () => getButtonLabel(query, stageIndex, expression, tc, locale),
+    [query, stageIndex, expression, tc, locale],
   );
   const isEmpty = expression == null;
   const isLiteral =
@@ -90,6 +92,7 @@ function getButtonLabel(
   stageIndex: number,
   expression: Lib.ExpressionClause | undefined,
   tc: ContentTranslationFunction,
+  locale: string,
 ) {
   if (expression == null) {
     return t`Pick a column…`;
@@ -99,10 +102,11 @@ function getButtonLabel(
     Lib.isJoinConditionLHSorRHSLiteral(expression) ||
     Lib.isJoinConditionLHSorRHSColumn(expression)
   ) {
-    return PLUGIN_CONTENT_TRANSLATION.translateColumnDisplayName(
-      Lib.displayInfo(query, stageIndex, expression).displayName,
+    return PLUGIN_CONTENT_TRANSLATION.translateColumnDisplayName({
+      displayName: Lib.displayInfo(query, stageIndex, expression).displayName,
       tc,
-    );
+      locale,
+    });
   }
 
   return t`Custom expression`;

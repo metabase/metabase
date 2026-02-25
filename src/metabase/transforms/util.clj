@@ -7,20 +7,23 @@
    [java-time.api :as t]
    [metabase.api.common :as api]
    [metabase.driver :as driver]
+   [metabase.driver.sql-jdbc :as sql-jdbc]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.util :as driver.u]
    [metabase.events.core :as events]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
-   [metabase.lib.query :as lib.query]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.models.interface :as mi]
    [metabase.models.transforms.transform-run :as transform-run]
    [metabase.query-processor :as qp]
    [metabase.query-processor.compile :as qp.compile]
+   [metabase.query-processor.middleware.add-remaps :as remap]
+   [metabase.query-processor.middleware.catch-exceptions :as qp.catch-exceptions]
    [metabase.query-processor.parameters.dates :as params.dates]
    [metabase.query-processor.pipeline :as qp.pipeline]
+   [metabase.query-processor.preprocess :as qp.preprocess]
    [metabase.sync.core :as sync]
    [metabase.transforms.canceling :as canceling]
    [metabase.transforms.feature-gating :as transforms.gating]
@@ -36,6 +39,7 @@
    [metabase.util.malli.registry :as mr]
    [toucan2.core :as t2])
   (:import
+   (java.sql SQLException)
    (java.time Instant LocalDate LocalDateTime LocalTime OffsetDateTime OffsetTime ZonedDateTime)
    (java.util Date)))
 
@@ -157,15 +161,25 @@
           transform-or-transforms)
     (assoc transform-or-transforms :source_readable (source-tables-readable? transform-or-transforms))))
 
+(defn- duplicate-key-violation?
+  "Check if an exception is a duplicate key violation.
+   Returns true for Postgres, MySQL/MariaDB, and H2 duplicate key errors."
+  [e]
+  (or (and (instance? SQLException e)
+           (let [sql-state (sql-jdbc/get-sql-state e)]
+             (str/starts-with? sql-state "23")))
+      (some-> (ex-cause e) duplicate-key-violation?)))
+
 (defn try-start-unless-already-running
-  "Start a transform run, throwing an informative error if already running.
+  "Start a transform run. Throws ex-info with {:error :already-running} if another
+   run is already active (duplicate key violation). Other errors are rethrown.
    If `user-id` is provided, it will be stored with the run for attribution purposes."
   [id run-method user-id]
   (try
     (transform-run/start-run! id (cond-> {:run_method run-method}
                                    user-id (assoc :user_id user-id)))
-    (catch java.sql.SQLException e
-      (if (= (.getSQLState e) "23505")
+    (catch Exception e
+      (if (duplicate-key-violation? e)
         (throw (ex-info "Transform is already running"
                         {:error        :already-running
                          :transform-id id}
@@ -271,7 +285,9 @@
 (defn massage-sql-query
   "Adjusts mbql query for use in a transform."
   [query]
-  (assoc-in query [:middleware :disable-remaps?] true))
+  (-> query
+      remap/disable-remaps
+      lib/disable-default-limit))
 
 (defn- checkpoint-incremental?
   "Returns true if `source` uses checkpoint-based incremental strategy."
@@ -366,7 +382,7 @@
   Returns the query unchanged on first run (no checkpoint) or for native queries without the checkpoint tag."
   [query source-incremental-strategy checkpoint]
   (if-let [checkpoint-value (next-checkpoint-value checkpoint)]
-    (if (lib.query/native? query)
+    (if (lib/native? query)
       ;; native query with explicit checkpoint filter
       (if (get-in query [:stages 0 :template-tags "checkpoint"])
         (update query :parameters conj
@@ -384,7 +400,7 @@
   Generates SQL that wraps the original query as a subquery and filters by `checkpoint_filter > (checkpoint_query)`. "
   [outer-query driver {:keys [source-incremental-strategy] :as source} {checkpoint-query :query :as checkpoint}]
   (let [{:keys [checkpoint-filter]} source-incremental-strategy]
-    (if (and (lib.query/native? (:query source))
+    (if (and (lib/native? (:query source))
              (not (get-in (:query source) [:stages 0 :template-tags "checkpoint"]))
              (next-checkpoint-value checkpoint))
       (let [wrap-query (fn [query]
@@ -395,6 +411,17 @@
                            (first (sql.qp/format-honeysql driver honeysql-query))))]
         (update outer-query :query wrap-query))
       outer-query)))
+
+(mu/defn validate-transform-query :- [:maybe [:map [:error :string]]]
+  "Verifies that a query transform's query can actually be run as is.  Returns nil on success and an error map on failure."
+  [{:keys [source]}]
+  (case (keyword (:type source))
+    :query
+    (try
+      (qp.preprocess/preprocess (:query source))
+      nil
+      (catch Exception e
+        (qp.catch-exceptions/exception-response e)))))
 
 (defn compile-source
   "Compile the source query of a transform to SQL, applying incremental filtering if required."

@@ -1,12 +1,14 @@
 (ns metabase.lib.schema.test-spec
   "Schemas for creating a query for testing purposes."
   (:require
+   [malli.core :as mc]
    [metabase.lib.schema.binning :as lib.schema.binning]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.join :as lib.schema.join]
    [metabase.lib.schema.literal :as literal]
    [metabase.lib.schema.order-by :as lib.schema.order-by]
+   [metabase.lib.schema.template-tag :as lib.schema.template-tag]
    [metabase.lib.schema.temporal-bucketing :as lib.schema.temporal-bucketing]
    [metabase.util.malli.registry :as mr]))
 
@@ -56,7 +58,7 @@
 
 (mr/def ::test-order-by-spec
   [:merge
-   ::test-column-spec
+   ::test-column-with-binning-spec
    [:map
     [:direction {:optional true} [:maybe [:ref ::lib.schema.order-by/direction]]]]])
 
@@ -73,7 +75,7 @@
   [:map
    [:type [:= {:decode/normalize lib.schema.common/normalize-keyword} :operator]]
    [:operator ::test-operator-spec]
-   [:args [:sequential [:ref ::test-expression-spec]]]])
+   [:args {:default []} [:sequential [:ref ::test-expression-spec]]]])
 
 (mr/def ::test-expression-spec
   [:multi {:dispatch (comp keyword :type)}
@@ -124,3 +126,63 @@
 (mr/def ::test-query-spec
   [:map
    [:stages [:sequential ::test-stage-spec]]])
+
+(mr/def ::test-common-spec
+  [:map
+   [:name         {:optional true} [:ref ::lib.schema.template-tag/name]]
+   [:display-name {:optional true} [:ref ::lib.schema.common/non-blank-string]]])
+
+(mr/def ::test-field-filter-spec
+  [:merge
+   [:ref ::lib.schema.template-tag/field-filter]
+   [:ref ::test-common-spec]
+   [:map
+    [:dimension   [:or ::lib.schema.id/field string?]]
+    [:widget-type {:default :text} [:ref ::lib.schema.template-tag/widget-type]]]])
+
+(mr/def ::test-temporal-unit-spec
+  [:merge
+   [:ref ::lib.schema.template-tag/temporal-unit]
+   [:ref ::test-common-spec]
+   [:map
+    [:dimension   [:or ::lib.schema.id/field string?]]]])
+
+(mr/def ::test-snippet-spec
+  [:merge
+   [:ref ::lib.schema.template-tag/snippet]
+   [:ref ::test-common-spec]
+   [:map
+    [:snippet-name {:optional true} ::lib.schema.common/non-blank-string]]])
+
+(mr/def ::test-source-query-spec
+  [:merge
+   [:ref ::lib.schema.template-tag/source-query]
+   [:ref ::test-common-spec]
+   [:map
+    [:card-id {:optional true} ::lib.schema.id/card]]])
+
+(mr/def ::test-raw-value-spec
+  [:merge
+   [:ref ::lib.schema.template-tag/raw-value]
+   [:ref ::test-common-spec]])
+
+(mr/def ::test-template-tag-spec
+  [:map
+   [:type ::lib.schema.template-tag/type]]
+  [:multi {:dispatch (comp keyword :type)}
+   [:temporal-unit [:ref ::test-temporal-unit-spec]]
+   [:dimension     [:ref ::test-field-filter-spec]]
+   [:snippet       [:ref ::test-snippet-spec]]
+   [:card          [:ref ::test-source-query-spec]]
+    ;; :number, :text, :date, :boolean
+   [::mc/default   [:ref ::test-raw-value-spec]]])
+
+(mr/def ::test-template-tags-spec
+  [:map-of
+   ::lib.schema.template-tag/name
+   ::test-template-tag-spec])
+
+(mr/def ::test-native-query-spec
+  [:map
+   [:query         string?]
+   [:template-tags {:optional true :default {}} [:maybe [:ref ::test-template-tags-spec]]]])

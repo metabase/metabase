@@ -30,7 +30,7 @@
 (mu/defn- desugar-inside :- ::clause
   "Rewrite `:inside` filter clauses as a pair of `:between` clauses."
   [expr :- ::clause]
-  (lib.util.match/replace expr
+  (lib.util.match/replace-lite expr
     [:inside opts lat-field lon-field lat-max lon-min lat-min lon-max]
     (-> (lib.filter/and
          (lib.filter/between lat-field lat-min lat-max)
@@ -40,13 +40,13 @@
 (mu/defn- desugar-is-null-and-not-null :- ::clause
   "Rewrite `:is-null` and `:not-null` filter clauses as simpler `:=` and `:!=`, respectively."
   [expr :- ::clause]
-  (lib.util.match/replace expr
+  (lib.util.match/replace-lite expr
     [:is-null  opts x] [:=  opts x nil]
     [:not-null opts x] [:!= opts x nil]))
 
 (defn- emptyable?
   [expr]
-  (isa? (lib.schema.expression/type-of expr) ::lib.schema.expression/emptyable))
+  (isa? (lib.schema.expression/type-of-resolved expr) ::lib.schema.expression/emptyable))
 
 (mu/defn- desugar-is-empty-and-not-empty :- ::clause
   "Rewrite `:is-empty` and `:not-empty` filter clauses as simpler `:=` and `:!=`, respectively.
@@ -54,7 +54,7 @@
    If `:not-empty` is called on `::lib.schema.expression/emptyable` type, expand check for empty string. For
    non-`emptyable` types act as `:is-null`. If field has nil base type it is considered not emptyable expansion wise."
   [expr :- ::clause]
-  (lib.util.match/replace expr
+  (lib.util.match/replace-lite expr
     [:is-empty opts arg]
     (-> (if (emptyable? arg)
           (lib.filter/or
@@ -75,51 +75,51 @@
   "Replace a field or expression inside :time-interval"
   [expr :- ::clause
    unit :- ::lib.schema.temporal-bucketing/unit]
-  (lib.util.match/replace expr
-    #{:field :expression}
+  (lib.util.match/replace-lite expr
+    [#{:field :expression} & _]
     (lib.options/update-options &match assoc :temporal-unit unit)))
 
 (mu/defn- desugar-time-interval :- ::clause
   "Rewrite `:time-interval` filter clauses as simpler ones like `:=` or `:between`."
   [expr :- ::clause]
-  (lib.util.match/replace expr
+  (lib.util.match/replace-lite expr
     ;; replace current/last/next with corresponding value of n and recur
-    [:time-interval opts field-or-expression :current unit] (recur [:time-interval opts field-or-expression  0 unit])
-    [:time-interval opts field-or-expression :last    unit] (recur [:time-interval opts field-or-expression -1 unit])
-    [:time-interval opts field-or-expression :next    unit] (recur [:time-interval opts field-or-expression  1 unit])
+    [:time-interval opts field-or-expression :current unit] (&recur [:time-interval opts field-or-expression  0 unit])
+    [:time-interval opts field-or-expression :last    unit] (&recur [:time-interval opts field-or-expression -1 unit])
+    [:time-interval opts field-or-expression :next    unit] (&recur [:time-interval opts field-or-expression  1 unit])
 
-    [:time-interval (opts :guard :include-current) field-or-expression (n :guard neg?) unit]
-    (-> (lib.filter/between
-         (update-temporal-unit-in-refs field-or-expression unit)
-         (lib.expression/relative-datetime n unit)
-         (lib.expression/relative-datetime 0 unit))
-        (merge-options opts))
-
-    [:time-interval (opts :guard :include-current) field-or-expression n unit]
-    (-> (lib.filter/between
-         (update-temporal-unit-in-refs field-or-expression unit)
-         (lib.expression/relative-datetime 0 unit)
-         (lib.expression/relative-datetime n unit))
-        (merge-options opts))
-
-    [:time-interval opts field-or-expression (n :guard #{-1 0 1}) unit]
-    (-> (lib.filter/= (update-temporal-unit-in-refs field-or-expression unit)
-                      (lib.expression/relative-datetime n unit))
-        (merge-options opts))
-
-    [:time-interval opts field-or-expression (n :guard neg?) unit]
-    (-> (lib.filter/between
-         (update-temporal-unit-in-refs field-or-expression unit)
-         (lib.expression/relative-datetime n unit)
-         (lib.expression/relative-datetime -1 unit))
-        (merge-options opts))
+    [:time-interval (opts :guard (:include-current opts)) field-or-expression n unit]
+    (if (neg? n)
+      (-> (lib.filter/between
+           (update-temporal-unit-in-refs field-or-expression unit)
+           (lib.expression/relative-datetime n unit)
+           (lib.expression/relative-datetime 0 unit))
+          (merge-options opts))
+      (-> (lib.filter/between
+           (update-temporal-unit-in-refs field-or-expression unit)
+           (lib.expression/relative-datetime 0 unit)
+           (lib.expression/relative-datetime n unit))
+          (merge-options opts)))
 
     [:time-interval opts field-or-expression n unit]
-    (-> (update-temporal-unit-in-refs field-or-expression unit)
-        (lib.filter/between
-         (lib.expression/relative-datetime 1 unit)
-         (lib.expression/relative-datetime n unit))
-        (merge-options opts))))
+    (cond (#{-1 0 1} n)
+          (-> (lib.filter/= (update-temporal-unit-in-refs field-or-expression unit)
+                            (lib.expression/relative-datetime n unit))
+              (merge-options opts))
+
+          (neg? n)
+          (-> (lib.filter/between
+               (update-temporal-unit-in-refs field-or-expression unit)
+               (lib.expression/relative-datetime n unit)
+               (lib.expression/relative-datetime -1 unit))
+              (merge-options opts))
+
+          :else
+          (-> (update-temporal-unit-in-refs field-or-expression unit)
+              (lib.filter/between
+               (lib.expression/relative-datetime 1 unit)
+               (lib.expression/relative-datetime n unit))
+              (merge-options opts)))))
 
 (defn- with-default-temporal-bucket-in-refs [arg]
   (lib.util/fresh-uuids (update-temporal-unit-in-refs arg :default)))
@@ -127,7 +127,7 @@
 (mu/defn- desugar-relative-time-interval :- ::clause
   "Transform `:relative-time-interval` to `:and` expression."
   [expr :- ::clause]
-  (lib.util.match/replace expr
+  (lib.util.match/replace-lite expr
     [:relative-time-interval opts arg (value :guard int?) bucket offset-value offset-bucket]
     (let [bucket            #(lib.util/fresh-uuids bucket)
           offset-value      #(lib.util/fresh-uuids offset-value)
@@ -149,7 +149,7 @@
 (mu/defn- desugar-during :- ::clause
   "Transform a `:during` expression to an `:and` expression."
   [expr :- ::clause]
-  (lib.util.match/replace expr
+  (lib.util.match/replace-lite expr
     [:during opts arg value unit]
     (let [lower-bound (u.time/truncate value unit)
           upper-bound (u.time/add lower-bound unit 1)]
@@ -166,7 +166,7 @@
               (lib.util/clause? fragment) (desugar-if fragment)
               (vector? fragment) (mapv process-fragment fragment)
               :else fragment))]
-    (lib.util.match/replace expr
+    (lib.util.match/replace-lite expr
       [:if opts & args]
       (-> (map process-fragment args)
           (->> (apply lib.expression/case))
@@ -175,7 +175,7 @@
 (mu/defn- desugar-in :- ::clause
   "Transform `:in` and `:not-in` expressions to `:=` and `:!=` expressions."
   [expr :- ::clause]
-  (lib.util.match/replace expr
+  (lib.util.match/replace-lite expr
     [:in opts & args]
     (-> (apply lib.filter/= args)
         (merge-options opts))
@@ -191,7 +191,7 @@
   several `[:and [:does-not-contain ...] [:does-not-contain ...] ...]` clauses, which then get rewritten here into
   `[:and [:not [:contains ...]] [:not [:contains ...]]]`."
   [expr :- ::clause]
-  (lib.util.match/replace expr
+  (lib.util.match/replace-lite expr
     [:does-not-contain opts whole & parts]
     (-> (lib.filter/not (-> (apply lib.filter/contains whole parts)
                             ;; need to preserve stuff like `:case-sensitive`. Prefer values in each clause over `opts`
@@ -212,7 +212,7 @@
   Multi-argument forms use pMBQL style with the options at index 1, **even if there are no options**:
   `[:contains {} field x y z]`."
   [expr :- ::clause]
-  (lib.util.match/replace expr
+  (lib.util.match/replace-lite expr
     [:= opts field a b & more]
     (-> (apply lib.filter/or (map (fn [expr]
                                     (lib.filter/= (lib.util/fresh-uuids field) expr))
@@ -244,18 +244,17 @@
   "Replace `relative-datetime` clauses like `[:relative-datetime :current]` with `[:relative-datetime 0 <unit>]`.
   `<unit>` is inferred from the `:field` the clause is being compared to (if any), otherwise falls back to `default.`"
   [expr :- ::clause]
-  (lib.util.match/replace expr
-    [tag opts field & (args :guard (fn [args]
-                                     (some (fn [arg]
-                                             (lib.util.match/match-one arg [:relative-datetime _opts :current]))
-                                           args)))]
+  (lib.util.match/replace-lite expr
+    [tag opts field & (args :guard (some (fn [arg]
+                                           (lib.util.match/match-lite arg [:relative-datetime _opts :current] true))
+                                         args))]
     (let [temporal-unit (or (lib.util.match/match-lite field
                               [:field {:temporal-unit temporal-unit} _]
                               temporal-unit)
                             :default)]
       (into [tag opts field]
             (map (fn [arg]
-                   (lib.util.match/replace arg
+                   (lib.util.match/replace-lite arg
                      [:relative-datetime relative-datetime-opts :current]
                      (-> (lib.expression/relative-datetime 0 temporal-unit)
                          (merge-options relative-datetime-opts)))))
@@ -286,16 +285,16 @@
 (mu/defn- desugar-temporal-extract :- ::clause
   "Replace datetime extractions clauses like `[:get-year field]` with `[:temporal-extract field :year]`."
   [expr :- ::clause]
-  (lib.util.match/replace expr
+  (lib.util.match/replace-lite expr
     [(tag :guard temporal-extract-ops) opts field & args]
     [:temporal-extract opts field (temporal-extract-ops->unit [tag (first args)])]))
 
 (mu/defn- desugar-divide-with-extra-args :- ::clause
   [expression :- ::clause]
-  (lib.util.match/replace expression
+  (lib.util.match/replace-lite expression
     [:/ opts x y z & more]
-    (recur (-> (apply lib.expression// (lib.expression// x y) z more)
-               (merge-options opts)))))
+    (&recur (-> (apply lib.expression// (lib.expression// x y) z more)
+                (merge-options opts)))))
 
 (mu/defn- temporal-case-expression :- :mbql.clause/case
   "Creates a `:case` expression with a condition for each value of the given unit."
@@ -319,10 +318,10 @@
   Uses the user's locale rather than the site locale, so the results will depend on the runner of the query, not just
   the query itself. Filtering should be done based on the number, rather than the name."
   [expression :- ::clause]
-  (lib.util.match/replace expression
-    [:month-name   opts expr] (recur (temporal-case-expression expr opts :month-of-year   12))
-    [:quarter-name opts expr] (recur (temporal-case-expression expr opts :quarter-of-year  4))
-    [:day-name     opts expr] (recur (temporal-case-expression expr opts :day-of-week      7))))
+  (lib.util.match/replace-lite expression
+    [:month-name   opts expr] (&recur (temporal-case-expression expr opts :month-of-year   12))
+    [:quarter-name opts expr] (&recur (temporal-case-expression expr opts :quarter-of-year  4))
+    [:day-name     opts expr] (&recur (temporal-case-expression expr opts :day-of-week      7))))
 
 (mu/defn- desugar-expression :- ::clause
   "Rewrite various 'syntactic sugar' expressions like `:/` with more than two args into something simpler for drivers

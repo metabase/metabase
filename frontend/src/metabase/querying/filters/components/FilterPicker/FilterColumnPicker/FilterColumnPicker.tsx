@@ -10,6 +10,7 @@ import {
   HoverParent,
   QueryColumnInfoIcon,
 } from "metabase/common/components/MetadataInfo/ColumnInfoIcon";
+import { useLocale } from "metabase/common/hooks";
 import { getColumnGroupIcon } from "metabase/common/utils/column-groups";
 import { useTranslateContent } from "metabase/i18n/hooks";
 import { isNotNull } from "metabase/lib/types";
@@ -86,6 +87,7 @@ export function FilterColumnPicker({
   withColumnItemIcon = true,
 }: FilterColumnPickerProps) {
   const tc = useTranslateContent();
+  const { locale } = useLocale();
   const [searchText, setSearchText] = useState("");
   const isSearching = searchText !== "";
 
@@ -114,11 +116,12 @@ export function FilterColumnPicker({
       searchText
         ? // When searching, show the untranslated display name to match the search text
           item.displayName
-        : PLUGIN_CONTENT_TRANSLATION.translateColumnDisplayName(
-            item.displayName,
+        : PLUGIN_CONTENT_TRANSLATION.translateColumnDisplayName({
+            displayName: item.displayName,
             tc,
-          ),
-    [tc, searchText],
+            locale,
+          }),
+    [tc, locale, searchText],
   );
 
   const handleSectionChange = (section: Section) => {

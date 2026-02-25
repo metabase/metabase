@@ -145,6 +145,7 @@ export const setup = async ({
   });
 
   fetchMock.get("path:/api/cloud-migration", { status: 204 });
+  fetchMock.get("path:/api/ee/sso/oidc", []);
 
   const user = createMockUser({
     is_superuser: isAdmin,

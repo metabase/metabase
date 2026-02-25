@@ -10,6 +10,7 @@ import {
   HoverParent,
   QueryColumnInfoIcon,
 } from "metabase/common/components/MetadataInfo/ColumnInfoIcon";
+import { useLocale } from "metabase/common/hooks";
 import { getColumnGroupIcon } from "metabase/common/utils/column-groups";
 import { useTranslateContent } from "metabase/i18n/hooks";
 import type { ColorName } from "metabase/lib/colors/types";
@@ -103,6 +104,7 @@ export function QueryColumnPicker({
   disableSearch,
 }: QueryColumnPickerProps) {
   const tc = useTranslateContent();
+  const { locale } = useLocale();
   const withCustomExpressions = onSelectExpression != null;
   const [isSearching, setIsSearching] = useState(false);
 
@@ -321,11 +323,12 @@ export function QueryColumnPicker({
     (item: Item) =>
       isSearching
         ? item.displayName
-        : PLUGIN_CONTENT_TRANSLATION.translateColumnDisplayName(
-            item.displayName,
+        : PLUGIN_CONTENT_TRANSLATION.translateColumnDisplayName({
+            displayName: item.displayName,
             tc,
-          ),
-    [tc, isSearching],
+            locale,
+          }),
+    [tc, locale, isSearching],
   );
 
   return (

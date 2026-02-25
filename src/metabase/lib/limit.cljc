@@ -35,6 +35,12 @@
     stage-number :- :int]
    (:limit (lib.util/query-stage query stage-number))))
 
+(defn ^:export disable-default-limit
+  "Sets the `disable-max-results?` middleware option on `query`, which disables the default limit on
+  query results. Used by transforms to allow unlimited result rows."
+  [query]
+  (assoc-in query [:middleware :disable-max-results?] true))
+
 (mu/defn max-rows-limit :- [:maybe ::lib.schema.common/int-greater-than-or-equal-to-zero]
   "Calculate the absolute maximum number of results that should be returned by this query (MBQL or native), useful for
   doing the equivalent of

@@ -133,7 +133,7 @@ export const ChartTypeDropdownInner = (props: ChartTypeDropdownInnerProps) => {
           </Menu.Item>
         ))}
 
-        <Menu.Label>{t`Other charts`}</Menu.Label>
+        <Menu.Label>{t`More charts`}</Menu.Label>
         {nonsensibleItems.map(({ iconName, label, value }, index) => (
           <Menu.Item
             key={`${value}/${index}`}

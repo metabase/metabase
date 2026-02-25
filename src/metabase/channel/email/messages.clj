@@ -51,7 +51,7 @@
   []
   (:image-src (logo-bundle)))
 
-(defn logo-attachment
+(defn- logo-attachment
   "Return the logo attachment map for embedding in emails, or nil if not needed."
   []
   (:attachment (logo-bundle)))
