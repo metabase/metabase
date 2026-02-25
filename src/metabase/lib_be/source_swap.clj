@@ -117,13 +117,6 @@
   [query :- ::lib.schema/query]
   (can-upgrade-field-refs-in-clause? query))
 
-(mu/defn can-upgrade-field-ref-in-parameter-target? :- :boolean
-  "If the parameter target is a field ref, check if it can be upgraded to use a name-based field ref."
-  [target :- ::lib.schema.parameter/target]
-  (if-let [field-ref (lib.parameters/parameter-target-field-ref target)]
-    (can-upgrade-field-ref? field-ref)
-    false))
-
 (mu/defn upgrade-field-ref-in-parameter-target :- ::lib.schema.parameter/target
   "If the parameter target is a field ref, upgrade it to use a name-based field ref when possible."
   [query  :- ::lib.schema/query
@@ -137,6 +130,13 @@
                target
                #(upgrade-field-ref query stage-number % columns))))))
       target))
+
+(mu/defn can-upgrade-field-ref-in-parameter-target? :- :boolean
+  "If the parameter target is a field ref, check if it can be upgraded to use a name-based field ref."
+  [target :- ::lib.schema.parameter/target]
+  (if-let [field-ref (lib.parameters/parameter-target-field-ref target)]
+    (can-upgrade-field-ref? field-ref)
+    false))
 
 (mr/def ::swap-source.source
   [:map [:type [:enum :table :card]]
