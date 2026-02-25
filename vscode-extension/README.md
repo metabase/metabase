@@ -29,6 +29,7 @@
 | `metastudio.openInMetabase`        | Open in Metabase                      |
 | `metastudio.showInDependencyGraph` | Show in Dependency Graph              |
 | `metastudio.runTransform`          | Run Transform                         |
+| `metastudio.openEmbeddedCode`      | Metastudio: Edit Query in Editor      |
 
 <!-- commands -->
 

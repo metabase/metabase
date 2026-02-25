@@ -71,8 +71,14 @@ function renderToolbar(data: TransformPreviewData): string {
     ? `<button class="toolbar-btn toolbar-btn--run" data-action="runTransform">${ICONS.play}Run</button>`
     : `<button class="toolbar-btn toolbar-btn--disabled" disabled title="Transforms based on the query builder cannot be run in a workspace">${ICONS.play}Run</button>`;
 
+  const canEdit = data.sourceQueryType === 'native' || data.sourceQueryType === 'python';
+  const editButton = canEdit
+    ? `<button class="toolbar-btn" data-action="editInEditor" data-path="${escapeAttr(data.filePath)}" data-lang="${data.sourceQueryType === 'python' ? 'python' : 'sql'}" data-name="${escapeAttr(data.name)}">${ICONS.code}Edit in Editor</button>`
+    : '';
+
   return `<nav class="toolbar">
   ${runButton}
+  ${editButton}
   <button class="toolbar-btn" data-action="openFile" data-path="${escapeAttr(data.filePath)}">${ICONS.fileText}View YAML</button>
   <button class="toolbar-btn" data-action="openGraph" data-entity-id="${escapeAttr(data.entityId)}">${ICONS.link}Dependency Graph</button>
 </nav>`;
@@ -315,6 +321,8 @@ function getScript(nonce: string): string {
           if (el.dataset.ref) msg.ref = JSON.parse(el.dataset.ref);
           if (el.dataset.path) msg.filePath = el.dataset.path;
           if (el.dataset.entityId) msg.entityId = el.dataset.entityId;
+          if (el.dataset.lang) msg.lang = el.dataset.lang;
+          if (el.dataset.name) msg.name = el.dataset.name;
           vscode.postMessage(msg);
           return;
         }

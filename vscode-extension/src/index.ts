@@ -3,11 +3,12 @@ import type {PanelState} from "./extension-context"
 import {ref, watch} from "@reactive-vscode/reactivity"
 import {
   defineExtension,
+  useCommand,
   useExtensionSecret,
   useWorkspaceFolders,
   useWorkspaceState,
 } from "reactive-vscode"
-import {languages, window} from "vscode"
+import {languages, Uri, ViewColumn, window, workspace} from "vscode"
 
 import {CatalogTreeProvider} from "./catalog-tree-provider"
 import {registerConnectionCommands} from "./commands/connection"
@@ -18,6 +19,7 @@ import {registerTransformPreviewCommand} from "./commands/transform-preview"
 import {config} from "./config"
 import {ConnectionTreeProvider} from "./connection-tree-provider"
 import {ContentTreeProvider} from "./content-tree-provider"
+import {EmbeddedCodeProvider} from "./embedded-code-provider"
 import {registerExportLoader} from "./export-loader"
 import {setOutputChannel} from "./metabase-client"
 import {WorkspaceManager} from "./workspace-manager"
@@ -99,6 +101,25 @@ const {activate, deactivate} = defineExtension((context) => {
     workspaceManager,
     panels,
   }
+
+  const embeddedProvider = new EmbeddedCodeProvider()
+  context.subscriptions.push(
+    workspace.registerFileSystemProvider('metastudio-embedded', embeddedProvider, {
+      isCaseSensitive: true,
+      isReadonly: false,
+    }),
+  )
+
+  useCommand("metastudio.openEmbeddedCode", async (args: { filePath: string; lang: string; name: string }) => {
+    const ext = args.lang === 'python' ? '.py' : '.sql'
+    const uri = Uri.from({
+      scheme: 'metastudio-embedded',
+      path: `/${args.name}${ext}`,
+      query: `yaml=${encodeURIComponent(args.filePath)}&lang=${args.lang}`,
+    })
+    const doc = await workspace.openTextDocument(uri)
+    await window.showTextDocument(doc, {viewColumn: ViewColumn.Beside})
+  })
 
   registerConnectionCommands(ctx)
   registerExportLoader(ctx)

@@ -1,5 +1,8 @@
+import * as fs from "node:fs/promises"
 import {useCommand} from "reactive-vscode"
-import {commands, Uri, ViewColumn, window} from "vscode"
+import {parse as parseYaml} from "yaml"
+import {commands, Uri, ViewColumn, window, workspace} from "vscode"
+import type {FileSystemWatcher} from "vscode"
 
 import type {TransformNode} from "../metabase-lib"
 import type {TransformPreviewData} from "../transform-preview-html"
@@ -32,6 +35,57 @@ function buildTransformPreviewData(
     filePath: node.filePath,
     entityId: node.entityId,
     sourceQueryType: node.sourceQueryType,
+  }
+}
+
+function strOrNull(value: unknown): string | null {
+  return typeof value === 'string' ? value : null
+}
+
+async function refreshPreview(ctx: ExtensionCtx) {
+  const panel = ctx.panels.transformPanel
+  const currentNode = ctx.panels.currentTransformNode
+  if (!panel || !currentNode) return
+
+  try {
+    const content = await fs.readFile(currentNode.filePath, "utf-8")
+    const raw = parseYaml(content) as Record<string, unknown>
+    if (!raw || typeof raw !== "object") return
+
+    const source = raw.source as Record<string, unknown> | undefined
+    const query = source?.query as Record<string, unknown> | undefined
+    const queryType = query?.type as string | undefined
+
+    const updatedNode: TransformNode = {
+      kind: "transform",
+      entityId: String(raw.entity_id ?? currentNode.entityId),
+      name: String(raw.name ?? currentNode.name),
+      description: strOrNull(raw.description),
+      sourceDatabaseId: strOrNull(raw.source_database_id),
+      sourceQueryType: (queryType === "native" || queryType === "query" || queryType === "python") ? queryType : null,
+      collectionId: strOrNull(raw.collection_id),
+      filePath: currentNode.filePath,
+      raw,
+    }
+
+    ctx.panels.currentTransformNode = updatedNode
+
+    const data: TransformPreviewData = {
+      name: updatedNode.name,
+      description: updatedNode.description,
+      query: parseTransformQuery(raw),
+      target: parseTransformTarget(raw),
+      filePath: updatedNode.filePath,
+      entityId: updatedNode.entityId,
+      sourceQueryType: updatedNode.sourceQueryType,
+    }
+
+    const nonce = generateNonce()
+    const html = getTransformPreviewHtml(data, nonce)
+    panel.title = updatedNode.name
+    panel.webview.html = html
+  } catch {
+    // File may have been deleted or be temporarily unreadable; ignore
   }
 }
 
@@ -72,6 +126,15 @@ async function handleTransformMessage(ctx: ExtensionCtx, message: Record<string,
       }
       break
     }
+    case "editInEditor": {
+      const filePath = message.filePath as string | undefined
+      const lang = message.lang as string | undefined
+      const name = message.name as string | undefined
+      if (filePath && lang && name) {
+        commands.executeCommand("metastudio.openEmbeddedCode", {filePath, lang, name})
+      }
+      break
+    }
     case "openField": {
       const fieldRef = message.ref as string[] | undefined
       if (!fieldRef || fieldRef.length < 4 || !ctx.panels.currentCatalog) break
@@ -94,6 +157,14 @@ async function handleTransformMessage(ctx: ExtensionCtx, message: Record<string,
 }
 
 export function registerTransformPreviewCommand(ctx: ExtensionCtx) {
+  let currentWatcher: FileSystemWatcher | null = null
+
+  function watchTransformFile(filePath: string) {
+    if (currentWatcher) currentWatcher.dispose()
+    currentWatcher = workspace.createFileSystemWatcher(filePath)
+    currentWatcher.onDidChange(() => refreshPreview(ctx))
+  }
+
   useCommand("metastudio.showTransformPreview", (node: TransformNode) => {
     const data = buildTransformPreviewData(ctx, node)
     const nonce = generateNonce()
@@ -117,7 +188,13 @@ export function registerTransformPreviewCommand(ctx: ExtensionCtx) {
 
       panel.onDidDispose(() => {
         ctx.panels.transformPanel = null
+        if (currentWatcher) {
+          currentWatcher.dispose()
+          currentWatcher = null
+        }
       })
     }
+
+    watchTransformFile(node.filePath)
   })
 }

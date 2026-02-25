@@ -76,6 +76,11 @@
         "command": "metastudio.runTransform",
         "title": "Run Transform",
         "icon": "$(play)"
+      },
+      {
+        "command": "metastudio.openEmbeddedCode",
+        "title": "Metastudio: Edit Query in Editor",
+        "icon": "$(edit)"
       }
     ],
     "walkthroughs": [
