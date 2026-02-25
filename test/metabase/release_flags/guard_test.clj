@@ -32,7 +32,7 @@
 (deftest guard-namespace-allows-when-enabled-test
   (let [[ns-sym test-fn-var] (setup-guard-ns! "guard-enabled-flag")]
     (try
-      (mt/with-temp [:model/ReleaseFlag _ {:flag "guard-enabled-flag" :description "Test" :start_date "2026-01-01" :is_enabled true}]
+      (mt/with-temp [:model/ReleaseFlag _ {:flag "guard-enabled-flag" :description "Test" :is_enabled true}]
         (testing "guarded function runs normally when flag is enabled"
           (is (= :original-value (test-fn-var)))))
       (finally
