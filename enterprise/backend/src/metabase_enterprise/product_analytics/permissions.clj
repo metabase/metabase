@@ -17,7 +17,7 @@
    Includes both app-db (PRODUCT_ANALYTICS_*) and iceberg (PA_*) names, compared uppercase."
   #{"PRODUCT_ANALYTICS_SITE" "PRODUCT_ANALYTICS_SESSION" "PRODUCT_ANALYTICS_EVENT"
     "PRODUCT_ANALYTICS_EVENT_DATA" "PRODUCT_ANALYTICS_SESSION_DATA"
-    "PA_SITES" "PA_SESSIONS" "PA_EVENTS" "PA_SESSION_DATA"})
+    "PA_SITES" "PA_SESSIONS" "PA_EVENTS" "PA_SESSION_DATA" "V_PA_USER_FLOWS"})
 
 (defn- pa-collection
   "Returns the Product Analytics collection."

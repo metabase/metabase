@@ -3,13 +3,16 @@
   (:require
    [metabase-enterprise.product-analytics.settings]
    [metabase.app-db.core :as mdb]
+   [metabase.audit-app.impl :as audit-impl]
    [metabase.collections.models.collection :as collection]
    [metabase.config.core :as config]
+   [metabase.events.core :as events]
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.product-analytics.core :as pa]
    [metabase.sync.core :as sync]
    [metabase.util :as u]
    [metabase.util.log :as log]
+   [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -31,16 +34,29 @@
   (t2/delete! :model/Permissions {:where [:like :object (str "%/db/" pa/product-analytics-db-id "/%")]}))
 
 (defn- ensure-pa-collection!
-  "Ensures the Product Analytics collection exists."
+  "Ensures the Product Analytics collection exists, nested inside the Usage Analytics collection."
   []
-  (when-not (t2/select-one :model/Collection :entity_id pa/product-analytics-collection-entity-id)
-    (log/info "Creating Product Analytics collection...")
-    (t2/insert! :model/Collection
-                {:name        "Product Analytics"
-                 :entity_id   pa/product-analytics-collection-entity-id
-                 :type        collection/instance-analytics-collection-type
-                 :namespace   "product-analytics"
-                 :description "Collection for Product Analytics dashboards and questions."})))
+  (let [audit-coll      (t2/select-one :model/Collection :entity_id audit-impl/default-audit-collection-entity-id)
+        target-location (if audit-coll (collection/children-location audit-coll) "/")]
+    (if-let [existing (t2/select-one :model/Collection :entity_id pa/product-analytics-collection-entity-id)]
+      ;; Fix existing collections that were created with wrong values.
+      ;; Namespace must be patched via raw SQL — the model hook blocks namespace changes via t2/update!.
+      (do
+        (when (not= "analytics" (:namespace existing))
+          (t2/query {:update :collection
+                     :set    {:namespace "analytics"}
+                     :where  [:= :entity_id pa/product-analytics-collection-entity-id]}))
+        (when (and audit-coll (not= target-location (:location existing)))
+          (t2/update! :model/Collection (:id existing) {:location target-location})))
+      (do
+        (log/info "Creating Product Analytics collection...")
+        (t2/insert! :model/Collection
+                    {:name        "Product Analytics"
+                     :entity_id   pa/product-analytics-collection-entity-id
+                     :type        collection/instance-analytics-collection-type
+                     :namespace   "analytics"
+                     :location    target-location
+                     :description "Collection for Product Analytics dashboards and questions."})))))
 
 ;;; ------------------------------------------------- Metadata Enhancement -------------------------------------------------
 
@@ -163,6 +179,11 @@
                                     :values                values
                                     :human_readable_values labels})))
 
+(def ^:private user-flows-card-entity-id
+  "Stable entity ID for the default User Flows card.
+   Fixed so we can check for its existence across restarts."
+  "pA_uFl0ws-R2kQeeHWB8v")
+
 (defn enhance-pa-metadata!
   "After sync, set entity types on PA tables, semantic types on key fields,
    and internal remappings on enum fields. Hides non-visible tables.
@@ -228,6 +249,34 @@
                                             :%lower.name  (u/lower-case-en field-name))]
               (ensure-field-remapping! (:id field) remap-config))))))))
 
+;;; ------------------------------------------------- Default Content -------------------------------------------------
+
+(defn- ensure-user-flows-card!
+  "Creates the default User Flows question (Sankey visualization) in the PA collection
+   if it does not already exist. Safe to call on every startup."
+  []
+  (when-let [collection (t2/select-one :model/Collection :entity_id pa/product-analytics-collection-entity-id)]
+    (when-let [flows-table (t2/select-one :model/Table :db_id pa/product-analytics-db-id :name "V_PA_USER_FLOWS")]
+      (when-not (t2/select-one :model/Card :entity_id user-flows-card-entity-id)
+        (when-let [creator-id (t2/select-one-pk :model/User :is_superuser true {:order-by [[:id :asc]]})]
+          (log/info "Creating default User Flows question...")
+          (t2/insert! :model/Card
+                      {:entity_id              user-flows-card-entity-id
+                       :name                   "User Flows"
+                       :description            "Visualize navigation paths through your product."
+                       :display                "sankey"
+                       :collection_id          (:id collection)
+                       :creator_id             creator-id
+                       :dataset_query          {:database pa/product-analytics-db-id
+                                                :type     "query"
+                                                :query    {:source-table (:id flows-table)}}
+                       :visualization_settings {:sankey.source           "SOURCE"
+                                                :sankey.target           "TARGET"
+                                                :sankey.value            "VALUE"
+                                                :sankey.edge_color       "source"
+                                                :sankey.node_align       "left"
+                                                :sankey.show_edge_labels true}}))))))
+
 ;;; ------------------------------------------------- Sync -------------------------------------------------
 
 (defn- sync-pa-database!
@@ -240,9 +289,20 @@
                         (log/with-no-logs
                           (sync/sync-database! pa-db {:scan :schema}))
                         (enhance-pa-metadata!)
+                        (ensure-user-flows-card!)
                         (log/info "Product Analytics Database sync complete."))]
       (when config/is-test?
         @sync-future))))
+
+;;; ------------------------------------------------- Event Handlers -------------------------------------------------
+
+;; When the first admin is created during initial setup, the sync future may have already completed
+;; with no creator available. This handler ensures the default card is created as soon as a user exists.
+(derive :event/user-joined ::pa-user-joined)
+
+(methodical/defmethod events/publish-event! ::pa-user-joined
+  [_topic _event]
+  (ensure-user-flows-card!))
 
 ;;; ------------------------------------------------- Entry Point -------------------------------------------------
 
@@ -265,4 +325,5 @@
                (do (ensure-pa-collection!)
                    (reconcile-pa-engine! pa-db)
                    (enhance-pa-metadata!)
+                   (ensure-user-flows-card!)
                    ::no-op)))))

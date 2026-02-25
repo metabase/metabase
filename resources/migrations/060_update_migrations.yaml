@@ -608,3 +608,25 @@ databaseChangeLog:
             referencedTableName: product_analytics_session
             referencedColumnNames: id
             constraintName: fk_pa_session_data_session_id
+
+  - changeSet:
+      id: v60.2026-02-24T00:00:31
+      author: dberezin
+      comment: Product Analytics; Create V_PA_USER_FLOWS view for Sankey chart visualization
+      changes:
+        - sqlFile:
+            dbms: postgresql
+            path: product_analytics_views/user_flows/v1/postgres-user_flows.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            dbms: mysql,mariadb
+            path: product_analytics_views/user_flows/v1/mysql-user_flows.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            dbms: h2
+            path: product_analytics_views/user_flows/v1/h2-user_flows.sql
+            relativeToChangelogFile: true
+      rollback:
+        - sql:
+            dbms: postgresql,mysql,mariadb,h2
+            sql: drop view if exists V_PA_USER_FLOWS;
