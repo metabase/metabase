@@ -2,5 +2,26 @@
   height: 100%;
   min-height: 0;
   overflow: auto;
+  position: relative;
   width: 100%;
+}
+
+.typeLabel {
+  background-color: var(--mb-color-background-primary);
+  border-color: var(--mb-color-border);
+  border-radius: var(--mantine-spacing-sm) 0 0 0;
+  border-style: solid;
+  border-width: 1px 0 0 1px;
+  bottom: 0;
+  color: var(--mb-color-text-secondary);
+  right: 0;
+  padding: 0 0.5rem;
+  position: absolute;
+
+  &.editMode {
+    border-radius: 0 var(--mantine-spacing-sm) 0 0;
+    border-width: 1px 1px 0 0;
+    left: 0;
+    right: auto;
+  }
 }

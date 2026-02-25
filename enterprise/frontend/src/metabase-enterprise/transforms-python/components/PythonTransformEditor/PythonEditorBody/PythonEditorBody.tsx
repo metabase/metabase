@@ -36,7 +36,7 @@ type PythonEditorBodyProps = {
   onRejectProposed?: () => void;
 };
 
-const EDITOR_HEIGHT = 400;
+const EDITOR_HEIGHT = 330;
 const HEADER_HEIGHT = 65 + 50; // Top bar height + transform header height
 const PREVIEW_MAX_INITIAL_HEIGHT = 192;
 
