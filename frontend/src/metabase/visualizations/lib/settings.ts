@@ -198,12 +198,7 @@ function getSettingWidget<T, TValue, TProps extends object>(
   ) => void,
   extra: SettingsExtra = {},
 ): VisualizationSettingDefinition<T, TValue, TProps> {
-  const settingDefUntyped = settingDefs[settingId] ?? {};
-  const settingDef = settingDefUntyped as VisualizationSettingDefinition<
-    T,
-    TValue,
-    TProps
-  >;
+  const settingDef = settingDefs[settingId] ?? {};
   const value = computedSettings[settingId];
 
   const onChange = (newValue: TValue, question?: Question) => {
