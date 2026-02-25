@@ -56,6 +56,7 @@
                    :type     :query
                    :query    {:source-table (u/the-id table)}})))))))))
 
-(deftest session-data-view-in-allowlist-test
-  (testing "V_PA_SESSION_DATA is in the PA view allowlist"
-    (is (contains? pa.perms/pa-view-names "V_PA_SESSION_DATA"))))
+(deftest session-data-in-allowlist-test
+  (testing "PRODUCT_ANALYTICS_SESSION_DATA and PA_SESSION_DATA are in the PA table allowlist"
+    (is (contains? pa.perms/pa-view-names "PRODUCT_ANALYTICS_SESSION_DATA"))
+    (is (contains? pa.perms/pa-view-names "PA_SESSION_DATA"))))

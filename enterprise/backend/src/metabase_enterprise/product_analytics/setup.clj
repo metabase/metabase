@@ -44,96 +44,82 @@
 
 ;;; ------------------------------------------------- Metadata Enhancement -------------------------------------------------
 
-;;; ---- App-DB metadata (V_PA_* views, uppercase columns) ----
+;;; ---- Shared column-level configs (lowercase names) ----
 
-(def ^:private pa-table-entity-types
-  "Mapping of table-name → entity_type for PA tables.
+(def ^:private table-entity-types
+  "Mapping of logical table name -> entity_type for PA tables.
    The :analyze phase is skipped during schema-only sync, so entity_type is not
    set automatically. We set it explicitly so that the x-ray template system
    can match dimensions (e.g. GenericTable.Category requires tables to have an
    entity_type that isa? :entity/GenericTable)."
-  {"V_PA_EVENTS"       :entity/EventTable
-   "V_PA_SESSIONS"     :entity/GenericTable
-   "V_PA_SITES"        :entity/GenericTable
-   "V_PA_EVENT_DATA"   :entity/GenericTable
-   "V_PA_SESSION_DATA" :entity/GenericTable})
+  {"events"       :entity/EventTable
+   "sessions"     :entity/GenericTable
+   "sites"        :entity/GenericTable
+   "event_data"   :entity/GenericTable
+   "session_data" :entity/GenericTable})
 
-(def ^:private pa-field-semantic-types
-  "Mapping of {table-name {field-name semantic-type}} for post-sync enhancement."
-  {"V_PA_EVENTS"   {"CREATED_AT"      :type/CreationTimestamp
-                    "URL_PATH"        :type/URL
-                    "EVENT_NAME"      :type/Category
-                    "UTM_SOURCE"      :type/Category
-                    "UTM_MEDIUM"      :type/Category
-                    "UTM_CAMPAIGN"    :type/Category
-                    "REFERRER_DOMAIN" :type/Category
-                    "EVENT_TYPE"      :type/Category}
-   "V_PA_SESSIONS" {"CREATED_AT"    :type/CreationTimestamp
-                    "UPDATED_AT"    :type/UpdatedTimestamp
-                    "BROWSER"       :type/Category
-                    "OS"            :type/Category
-                    "DEVICE"        :type/Category
-                    "COUNTRY"       :type/Country
-                    "SUBDIVISION1"  :type/State
-                    "CITY"          :type/City
-                    "LANGUAGE"      :type/Category}
-   "V_PA_SITES"    {"NAME"          :type/Name
-                    "CREATED_AT"    :type/CreationTimestamp
-                    "UPDATED_AT"    :type/UpdatedTimestamp}})
+(def ^:private field-semantic-types
+  "Mapping of {logical-table-name {field-name semantic-type}} for post-sync enhancement.
+   All field names are lowercase; lookups are case-insensitive."
+  {"events"   {"created_at"      :type/CreationTimestamp
+               "url_path"        :type/URL
+               "event_name"      :type/Category
+               "utm_source"      :type/Category
+               "utm_medium"      :type/Category
+               "utm_campaign"    :type/Category
+               "referrer_domain" :type/Category
+               "event_type"      :type/Category}
+   "sessions" {"created_at"    :type/CreationTimestamp
+               "updated_at"    :type/UpdatedTimestamp
+               "browser"       :type/Category
+               "os"            :type/Category
+               "device"        :type/Category
+               "country"       :type/Country
+               "subdivision1"  :type/State
+               "city"          :type/City
+               "language"      :type/Category}
+   "sites"    {"name"          :type/Name
+               "created_at"    :type/CreationTimestamp
+               "updated_at"    :type/UpdatedTimestamp}})
 
-(def ^:private pa-foreign-keys
-  "Foreign key relationships between PA views.
-   Maps {source-table {source-field [target-table target-field]}}."
-  {"V_PA_EVENTS"   {"SITE_ID"    ["V_PA_SITES" "ID"]
-                    "SESSION_ID" ["V_PA_SESSIONS" "ID"]}
-   "V_PA_SESSIONS" {"SITE_ID"    ["V_PA_SITES" "ID"]}})
-
-(def ^:private pa-field-remappings
+(def ^:private field-remappings
   "Internal dimension remappings for enum fields.
-   Maps {table-name {field-name {:name display-name :values [v ...] :labels [s ...]}}}"
-  {"V_PA_EVENTS" {"EVENT_TYPE" {:name   "Event Type"
-                                :values [1 2]
-                                :labels ["Pageview" "Custom Event"]}}})
+   Maps {logical-table-name {field-name {:name display-name :values [v ...] :labels [s ...]}}}"
+  {"events" {"event_type" {:name   "Event Type"
+                           :values [1 2]
+                           :labels ["Pageview" "Custom Event"]}}})
 
-(def ^:private pa-visible-tables
-  "Set of table names that should be visible in the PA database.
-   All other tables (underlying PRODUCT_ANALYTICS_* tables) are hidden."
-  #{"V_PA_EVENTS" "V_PA_SESSIONS" "V_PA_SITES" "V_PA_EVENT_DATA" "V_PA_SESSION_DATA"})
+;;; ---- Engine-specific table name mappings (logical -> actual) ----
 
-;;; ---- Iceberg/Trino metadata (pa_* tables, lowercase columns) ----
+(def ^:private app-db-table-names
+  "Maps logical table names to actual app-db table names."
+  {"events"       "product_analytics_event"
+   "sessions"     "product_analytics_session"
+   "sites"        "product_analytics_site"
+   "event_data"   "product_analytics_event_data"
+   "session_data" "product_analytics_session_data"})
 
-(def ^:private iceberg-table-entity-types
-  {"pa_events"       :entity/EventTable
-   "pa_sessions"     :entity/GenericTable
-   "pa_sites"        :entity/GenericTable
-   "pa_session_data" :entity/GenericTable})
+(def ^:private iceberg-table-names
+  "Maps logical table names to actual iceberg/Trino table names."
+  {"events"       "pa_events"
+   "sessions"     "pa_sessions"
+   "sites"        "pa_sites"
+   "session_data" "pa_session_data"})
 
-(def ^:private iceberg-field-semantic-types
-  {"pa_events"   {"created_at"      :type/CreationTimestamp
-                  "url_path"        :type/URL
-                  "event_name"      :type/Category
-                  "utm_source"      :type/Category
-                  "utm_medium"      :type/Category
-                  "utm_campaign"    :type/Category
-                  "referrer_domain" :type/Category
-                  "event_type"      :type/Category}
-   "pa_sessions" {"created_at"    :type/CreationTimestamp
-                  "updated_at"    :type/UpdatedTimestamp
-                  "browser"       :type/Category
-                  "os"            :type/Category
-                  "device"        :type/Category
-                  "country"       :type/Country
-                  "subdivision1"  :type/State
-                  "city"          :type/City
-                  "language"      :type/Category}})
+;;; Foreign keys use logical names but differ per engine (session target field differs).
+
+(def ^:private app-db-foreign-keys
+  "Foreign key relationships for app-db tables (logical names).
+   Maps {source-logical {source-field [target-logical target-field]}}."
+  {"events"   {"site_id"    ["sites" "id"]
+               "session_id" ["sessions" "id"]}
+   "sessions" {"site_id"    ["sites" "id"]}})
 
 (def ^:private iceberg-foreign-keys
-  {"pa_events"   {"site_id"    ["pa_sites" "id"]
-                  "session_id" ["pa_sessions" "session_id"]}
-   "pa_sessions" {"site_id"    ["pa_sites" "id"]}})
-
-(def ^:private iceberg-visible-tables
-  #{"pa_events" "pa_sessions" "pa_sites" "pa_session_data"})
+  "Foreign key relationships for iceberg tables (logical names)."
+  {"events"   {"site_id"    ["sites" "id"]
+               "session_id" ["sessions" "session_id"]}
+   "sessions" {"site_id"    ["sites" "id"]}})
 
 ;;; ---- Config dispatch ----
 
@@ -148,17 +134,14 @@
 (defn- active-table-config
   "Returns the metadata configuration maps appropriate for the current PA query engine."
   []
-  (if (iceberg-query-engine?)
-    {:entity-types   iceberg-table-entity-types
-     :semantic-types iceberg-field-semantic-types
-     :foreign-keys   iceberg-foreign-keys
-     :visible-tables iceberg-visible-tables
-     :remappings     {}}
-    {:entity-types   pa-table-entity-types
-     :semantic-types pa-field-semantic-types
-     :foreign-keys   pa-foreign-keys
-     :visible-tables pa-visible-tables
-     :remappings     pa-field-remappings}))
+  (let [iceberg?    (iceberg-query-engine?)
+        table-names (if iceberg? iceberg-table-names app-db-table-names)]
+    {:table-names    table-names
+     :visible-tables (set (vals table-names))
+     :entity-types   table-entity-types
+     :semantic-types field-semantic-types
+     :foreign-keys   (if iceberg? iceberg-foreign-keys app-db-foreign-keys)
+     :remappings     (if iceberg? {} field-remappings)}))
 
 ;;; ---- Enhancement helpers ----
 
@@ -182,37 +165,68 @@
 
 (defn enhance-pa-metadata!
   "After sync, set entity types on PA tables, semantic types on key fields,
-   and internal remappings on enum fields. Hides non-view tables.
-   Selects the correct metadata maps based on the PA database's current engine."
+   and internal remappings on enum fields. Hides non-visible tables.
+   Selects the correct metadata maps based on the PA database's current engine.
+   All table/field lookups are case-insensitive to handle H2 (uppercase) vs Postgres (lowercase)."
   []
-  (let [{:keys [entity-types semantic-types foreign-keys visible-tables remappings]}
-        (active-table-config)]
+  (let [{:keys [table-names visible-tables semantic-types foreign-keys remappings]}
+        (active-table-config)
+        lower-visible (mapv u/lower-case-en visible-tables)]
     ;; Hide underlying tables, show only the relevant visible set
-    (t2/update! :model/Table {:db_id pa/product-analytics-db-id
-                              :name  [:not-in visible-tables]}
+    (t2/update! :model/Table {:db_id        pa/product-analytics-db-id
+                              :%lower.name  [:not-in lower-visible]}
                 {:visibility_type :hidden})
-    (doseq [[table-name entity-type] entity-types]
-      (t2/update! :model/Table {:db_id pa/product-analytics-db-id :name table-name}
-                  {:entity_type entity-type}))
-    (doseq [[table-name field-types] semantic-types]
-      (when-let [table (t2/select-one :model/Table :db_id pa/product-analytics-db-id :name table-name)]
-        (doseq [[field-name semantic-type] field-types]
-          (t2/update! :model/Field {:table_id (:id table) :name field-name}
-                      {:semantic_type semantic-type}))))
-    (doseq [[source-table-name fk-defs] foreign-keys]
-      (when-let [source-table (t2/select-one :model/Table :db_id pa/product-analytics-db-id :name source-table-name)]
-        (doseq [[source-field-name [target-table-name target-field-name]] fk-defs]
-          (when-let [source-field (t2/select-one :model/Field :table_id (:id source-table) :name source-field-name)]
-            (when-let [target-table (t2/select-one :model/Table :db_id pa/product-analytics-db-id :name target-table-name)]
-              (when-let [target-field (t2/select-one :model/Field :table_id (:id target-table) :name target-field-name)]
-                (t2/update! :model/Field (:id source-field)
-                            {:semantic_type      :type/FK
-                             :fk_target_field_id (:id target-field)})))))))
-    (doseq [[table-name field-remaps] remappings]
-      (when-let [table (t2/select-one :model/Table :db_id pa/product-analytics-db-id :name table-name)]
-        (doseq [[field-name remap-config] field-remaps]
-          (when-let [field (t2/select-one :model/Field :table_id (:id table) :name field-name)]
-            (ensure-field-remapping! (:id field) remap-config)))))))
+    ;; Ensure visible tables are not hidden (important when switching engines)
+    (t2/update! :model/Table {:db_id        pa/product-analytics-db-id
+                              :%lower.name  [:in lower-visible]}
+                {:visibility_type nil})
+    ;; Entity types
+    (doseq [[logical-name entity-type] table-entity-types]
+      (when-let [actual-name (table-names logical-name)]
+        (t2/update! :model/Table {:db_id        pa/product-analytics-db-id
+                                  :%lower.name  (u/lower-case-en actual-name)}
+                    {:entity_type entity-type})))
+    ;; Semantic types
+    (doseq [[logical-name field-types] semantic-types]
+      (when-let [actual-name (table-names logical-name)]
+        (when-let [table (t2/select-one :model/Table
+                                        :db_id        pa/product-analytics-db-id
+                                        :%lower.name  (u/lower-case-en actual-name))]
+          (doseq [[field-name semantic-type] field-types]
+            (t2/update! :model/Field {:table_id     (:id table)
+                                      :%lower.name  (u/lower-case-en field-name)}
+                        {:semantic_type semantic-type})))))
+    ;; Foreign keys
+    (doseq [[logical-source fk-defs] foreign-keys]
+      (when-let [source-actual (table-names logical-source)]
+        (when-let [source-table (t2/select-one :model/Table
+                                               :db_id        pa/product-analytics-db-id
+                                               :%lower.name  (u/lower-case-en source-actual))]
+          (doseq [[source-field-name [logical-target target-field-name]] fk-defs]
+            (when-let [target-actual (table-names logical-target)]
+              (when-let [source-field (t2/select-one :model/Field
+                                                     :table_id     (:id source-table)
+                                                     :%lower.name  (u/lower-case-en source-field-name))]
+                (when-let [target-table (t2/select-one :model/Table
+                                                       :db_id        pa/product-analytics-db-id
+                                                       :%lower.name  (u/lower-case-en target-actual))]
+                  (when-let [target-field (t2/select-one :model/Field
+                                                         :table_id     (:id target-table)
+                                                         :%lower.name  (u/lower-case-en target-field-name))]
+                    (t2/update! :model/Field (:id source-field)
+                                {:semantic_type      :type/FK
+                                 :fk_target_field_id (:id target-field)})))))))))
+    ;; Remappings
+    (doseq [[logical-name field-remaps] remappings]
+      (when-let [actual-name (table-names logical-name)]
+        (when-let [table (t2/select-one :model/Table
+                                        :db_id        pa/product-analytics-db-id
+                                        :%lower.name  (u/lower-case-en actual-name))]
+          (doseq [[field-name remap-config] field-remaps]
+            (when-let [field (t2/select-one :model/Field
+                                            :table_id     (:id table)
+                                            :%lower.name  (u/lower-case-en field-name))]
+              (ensure-field-remapping! (:id field) remap-config))))))))
 
 ;;; ------------------------------------------------- Sync -------------------------------------------------
 

@@ -13,8 +13,11 @@
    [toucan2.core :as t2]))
 
 (def pa-view-names
-  "Allowlist of view names for Product Analytics queries."
-  #{"V_PA_SITES" "V_PA_SESSIONS" "V_PA_EVENTS" "V_PA_EVENT_DATA" "V_PA_SESSION_DATA"})
+  "Allowlist of table names for Product Analytics queries.
+   Includes both app-db (PRODUCT_ANALYTICS_*) and iceberg (PA_*) names, compared uppercase."
+  #{"PRODUCT_ANALYTICS_SITE" "PRODUCT_ANALYTICS_SESSION" "PRODUCT_ANALYTICS_EVENT"
+    "PRODUCT_ANALYTICS_EVENT_DATA" "PRODUCT_ANALYTICS_SESSION_DATA"
+    "PA_SITES" "PA_SESSIONS" "PA_EVENTS" "PA_SESSION_DATA"})
 
 (defn- pa-collection
   "Returns the Product Analytics collection."
