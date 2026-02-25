@@ -30,7 +30,8 @@
   "Extract source table information for a transform.
    Returns a seq of maps with :table-id, :table-name, :schema, and :db-id."
   {:arglists '([transform])}
-  (fn [transform] (transforms.util/transform-source-type (:source transform))))
+  (fn [transform] (transforms.util/transform-source-type (:source transform)))
+  :hierarchy #'transforms.i/hierarchy)
 
 (defmethod extract-sources :mbql
   [{:keys [source]}]
@@ -59,7 +60,7 @@
       (log/warn e "Failed to extract sources from native transform")
       nil)))
 
-(defmethod extract-sources :python
+(defmethod extract-sources ::transforms.i/runner
   [transform]
   (try
     (let [source-tables (get-in transform [:source :source-tables])
@@ -67,7 +68,7 @@
           table-ids (keep (fn [[_ v]] (:table_id v)) normalized)]
       (table-ids->source-info table-ids))
     (catch Exception e
-      (log/warn e "Failed to extract sources from Python transform")
+      (log/warn e "Failed to extract sources from runner transform")
       nil)))
 
 (defmethod extract-sources :default

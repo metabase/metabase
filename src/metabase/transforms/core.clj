@@ -32,7 +32,7 @@
   transform-type
   is-temp-transform-table?]
  [metabase.transforms.crud
-  python-source-table-ref->table-id
+  runner-source-table-ref->table-id
   check-database-feature
   check-feature-enabled!
   extract-all-columns-from-query

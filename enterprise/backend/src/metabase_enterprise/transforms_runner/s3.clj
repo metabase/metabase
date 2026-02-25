@@ -1,6 +1,6 @@
-(ns metabase-enterprise.transforms-python.s3
+(ns metabase-enterprise.transforms-runner.s3
   (:require
-   [metabase-enterprise.transforms-python.settings :as transforms-python.settings]
+   [metabase-enterprise.transforms-runner.settings :as transforms-python.settings]
    [metabase.util.log :as log])
   (:import
    (clojure.lang IDeref)

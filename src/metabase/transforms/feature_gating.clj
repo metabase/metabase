@@ -17,8 +17,10 @@
        (premium-features/has-feature? :transforms-python)))
 
 (defn runner-transforms-enabled?
-  "Runner-based transforms (JavaScript, Clojure, R, Julia, etc.): EE only,
-  requires both :transforms and :transforms-python (shared runner infrastructure)."
+  "Runner-based transforms (JavaScript, Clojure, etc.): EE only,
+  requires both :transforms and :transforms-python.
+  All runner languages piggyback on the :transforms-python feature flag because adding
+  per-language flags requires coordination with product/token teams. This is intentional."
   []
   (and (premium-features/has-feature? :transforms)
        (premium-features/has-feature? :transforms-python)))

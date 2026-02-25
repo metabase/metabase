@@ -1,12 +1,12 @@
-(ns metabase-enterprise.transforms-python.python-runner
+(ns metabase-enterprise.transforms-runner.runner
   (:require
    [clj-http.client :as http]
    [clojure.core.async :as a]
    [clojure.java.io :as io]
    [clojure.string :as str]
    [medley.core :as m]
-   [metabase-enterprise.transforms-python.s3 :as s3]
-   [metabase-enterprise.transforms-python.settings :as transforms-python.settings]
+   [metabase-enterprise.transforms-runner.s3 :as s3]
+   [metabase-enterprise.transforms-runner.settings :as transforms-python.settings]
    [metabase.analytics.prometheus :as prometheus]
    [metabase.config.core :as config]
    [metabase.lib-be.core :as lib-be]

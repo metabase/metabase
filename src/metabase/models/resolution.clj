@@ -74,8 +74,6 @@
     :model/PermissionsRevision               metabase.permissions.models.permissions-revision
     :model/PersistedInfo                     metabase.model-persistence.models.persisted-info
     :model/PremiumFeaturesCache              metabase.premium-features.models.premium-features-cache
-    :model/JavaScriptLibrary metabase-enterprise.transforms-javascript.models.javascript-library ;; TODO: remove after Task I
-    :model/PythonLibrary metabase-enterprise.transforms-python.models.python-library ;; TODO: remove after Task I
     :model/TransformLibrary metabase-enterprise.transforms-runner.models.transform-library
     :model/Pulse                             metabase.pulse.models.pulse
     :model/PulseCard                         metabase.pulse.models.pulse-card

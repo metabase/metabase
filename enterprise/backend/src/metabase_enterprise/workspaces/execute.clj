@@ -9,7 +9,7 @@
   decoupled from AppDb."
   (:require
    [clojure.string :as str]
-   [metabase-enterprise.transforms-python.python-runner :as python-runner]
+   [metabase-enterprise.transforms-runner.runner :as python-runner]
    [metabase.api.common :as api]
    [metabase.query-processor :as qp]
    [metabase.sql-tools.core :as sql-tools]
