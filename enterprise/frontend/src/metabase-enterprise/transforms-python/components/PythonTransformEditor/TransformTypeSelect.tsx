@@ -37,12 +37,12 @@ export function TransformTypeSelect({
           pl="xs"
           pr={0}
           py={0}
-          size="xs"
+          h="1.5rem"
           variant="subtle"
         >
           <Group fz="sm" gap="sm" align="center" fw="normal">
             {ADVANCED_TRANSFORM_TYPES[value].displayName}
-            <Icon name="chevrondown" size={9} />
+            <Icon name="chevrondown" size={8} />
           </Group>
         </Button>
       </Combobox.Target>
