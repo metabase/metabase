@@ -391,15 +391,12 @@ export const TOOLTIP_SETTINGS: VisualizationSettingsDefinitions<Series> = {
       return getAvailableAdditionalColumns(rawSeries, vizSettings).length === 0;
     },
     getProps: (rawSeries, vizSettings) => {
-      const isAggregatedChart = rawSeries[0].card.display !== "scatter";
-      const options = getAvailableAdditionalColumns(
-        rawSeries,
-        vizSettings,
-        isAggregatedChart,
-      ).map((col) => ({
-        label: col.display_name,
-        value: getColumnKey(col),
-      }));
+      const options = getAvailableAdditionalColumns(rawSeries, vizSettings).map(
+        (col) => ({
+          label: col.display_name,
+          value: getColumnKey(col),
+        }),
+      );
 
       return {
         options,
