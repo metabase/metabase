@@ -7,7 +7,7 @@
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.mbql-clause :as lib.schema.mbql-clause]
-   [metabase.lib.schema.metadata :as lib.schema.metadata]
+
    [metabase.lib.schema.template-tag :as lib.schema.template-tag]
    [metabase.lib.util.match :as lib.util.match]
    [metabase.lib.walk :as lib.walk]
@@ -246,7 +246,6 @@
   [:map
    [:table [:set ::lib.schema.id/table]]
    [:card [:set ::lib.schema.id/card]]
-   [:field [:set ::lib.schema.id/field]]
    [:metric [:set ::lib.schema.id/metric]]
    [:measure [:set ::lib.schema.id/measure]]
    [:segment [:set ::lib.schema.id/segment]]
@@ -262,24 +261,14 @@
         template-tag-snippet-ids (into #{} (mapcat all-template-tag-snippet-ids) queries)
         metric-ids (into #{} (mapcat all-metric-ids) queries)
         measure-ids (into #{} (mapcat all-measure-ids) queries)
-        segment-ids (into #{} (mapcat all-segment-ids) queries)]
-    {:table source-table-ids
-     :card source-card-ids
-     :field (set/union implicitly-joined-field-ids template-tag-field-ids)
+        segment-ids (into #{} (mapcat all-segment-ids) queries)
+        all-field-ids (set/union implicitly-joined-field-ids template-tag-field-ids)
+        all-field-table-ids (when (seq queries)
+                              (->> (lib.metadata/bulk-metadata (first queries) :metadata/column all-field-ids)
+                                   (into #{} (keep :table-id))))]
+    {:table (set/union source-table-ids all-field-table-ids)
      :card (set/union source-card-ids template-tag-card-ids)
      :metric metric-ids
      :measure measure-ids
      :segment segment-ids
      :snippet template-tag-snippet-ids}))
-
-(mu/defn bulk-load-query-metadata
-  [metadata-providerable :- ::lib.schema.metadata/metadata-providerable
-   {:keys [table card field metric measure segment snippet]} :- ::query-dependencies]
-  (let [table-ids-from-fields (->> (lib.metadata/bulk-metadata metadata-providerable :metadata/column field)
-                                   (into #{} (keep :table-id)))]
-    (lib.metadata/bulk-metadata metadata-providerable :metadata/table (set/union table table-ids-from-fields))
-    (lib.metadata/bulk-metadata metadata-providerable :metadata/card card)
-    (lib.metadata/bulk-metadata metadata-providerable :metadata/metric metric)
-    (lib.metadata/bulk-metadata metadata-providerable :metadata/measure measure)
-    (lib.metadata/bulk-metadata metadata-providerable :metadata/segment segment)
-    (lib.metadata/bulk-metadata metadata-providerable :metadata/snippet snippet)))

@@ -434,6 +434,7 @@
   parse]
  [lib.query
   ->query
+  bulk-load-query-metadata
   can-preview
   can-run
   can-save
@@ -523,6 +524,7 @@
   validation-exception-error]
  [metabase.lib.walk.util
   all-field-ids
+  all-query-dependencies
   all-implicitly-joined-field-ids
   all-implicitly-joined-table-ids
   all-measure-ids

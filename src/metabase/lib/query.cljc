@@ -24,6 +24,7 @@
    [metabase.lib.types.isa :as lib.types.isa]
    [metabase.lib.util :as lib.util]
    [metabase.lib.util.match :as lib.util.match]
+   [metabase.lib.walk.util :as lib.walk.util]
    [metabase.util :as u]
    [metabase.util.i18n :as i18n]
    [metabase.util.log :as log]
@@ -540,3 +541,14 @@
   (build-card-snippet-graph [:card card-id] new-query new-query)
   ;; return nil if nothing throws
   nil)
+
+(mu/defn bulk-load-query-metadata
+  "Bulk-load all metadata referenced by `deps` into `metadata-providerable`'s cache."
+  [metadata-providerable :- ::lib.schema.metadata/metadata-providerable
+   {:keys [table card metric measure segment snippet]} :- ::lib.walk.util/query-dependencies]
+  (lib.metadata/bulk-metadata metadata-providerable :metadata/table table)
+  (lib.metadata/bulk-metadata metadata-providerable :metadata/card card)
+  (lib.metadata/bulk-metadata metadata-providerable :metadata/metric metric)
+  (lib.metadata/bulk-metadata metadata-providerable :metadata/measure measure)
+  (lib.metadata/bulk-metadata metadata-providerable :metadata/segment segment)
+  (lib.metadata/bulk-metadata metadata-providerable :metadata/snippet snippet))
