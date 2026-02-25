@@ -1243,6 +1243,16 @@
            users
            util}}
 
+  release-flags
+  {:team "UX West"
+   :api  #{metabase.release-flags.api
+           metabase.release-flags.core
+           metabase.release-flags.guard
+           metabase.release-flags.init}
+   :uses #{api
+           task
+           util}}
+
   remote-sync
   {:team "UX West"
    :api  #{metabase.remote-sync.core
@@ -1260,20 +1270,10 @@
            api
            config
            embedding
-           permissions ; FIXME
+           permissions                  ; FIXME
            session
            settings
            users
-           util}}
-
-  release-flags
-  {:team "UX West"
-   :api  #{metabase.release-flags.api
-           metabase.release-flags.core
-           metabase.release-flags.guard
-           metabase.release-flags.init}
-   :uses #{api
-           task
            util}}
 
   revisions
@@ -1386,7 +1386,7 @@
    :api  #{metabase.session.api
            metabase.session.core
            metabase.session.init
-           metabase.session.settings}      ; TODO -- shouldn't be exposed as an API namespace
+           metabase.session.settings}   ; TODO -- shouldn't be exposed as an API namespace
    :uses #{api
            app-db
            auth-identity
