@@ -3606,11 +3606,22 @@ databaseChangeLog:
   - changeSet:
       id: v59.2026-02-24T12:00:02
       author: galdre
-      comment: Drop old path-only unique constraint, add (language, path) unique constraint
+      comment: Drop old path-only unique constraint (replaced by language+path constraint)
       changes:
         - dropUniqueConstraint:
             tableName: transform_library
             constraintName: uk_python_library_path
+      rollback:
+        - addUniqueConstraint:
+            tableName: transform_library
+            columnNames: path
+            constraintName: uk_python_library_path
+
+  - changeSet:
+      id: v59.2026-02-24T12:01:00
+      author: galdre
+      comment: Add (language, path) unique constraint to transform_library
+      changes:
         - addUniqueConstraint:
             tableName: transform_library
             columnNames: language, path
@@ -3619,13 +3630,9 @@ databaseChangeLog:
         - dropUniqueConstraint:
             tableName: transform_library
             constraintName: uk_transform_library_language_path
-        - addUniqueConstraint:
-            tableName: transform_library
-            columnNames: path
-            constraintName: uk_python_library_path
 
   - changeSet:
-      id: v59.2026-02-24T12:00:03
+      id: v59.2026-02-24T12:02:00
       author: galdre
       comment: Insert default common.js entry in transform_library
       preConditions:
