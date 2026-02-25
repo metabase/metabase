@@ -8,6 +8,7 @@
    [metabase.lib.convert :as lib.convert]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.lib.test-util.notebook-helpers :as notebook-helpers]
    [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
    [metabase.queries.models.card :as card]
@@ -1363,3 +1364,40 @@
                  (count (:result_metadata card))))
           (finally
             (t2/delete! :model/Card (:id card))))))))
+
+(deftest create-model-internal-remap-query-test
+  (testing "Internal remapping (custom values) should work when querying through a model (#57978)"
+    (mt/with-column-remappings [orders.quantity {0 "Zero" 1 "A" 2 "B" 3 "C" 4 "D"}]
+      (mt/with-current-user (mt/user->id :crowberto)
+        (mt/with-model-cleanup [:model/Card]
+          (let [mp    (mt/metadata-provider)
+                query (lib/query mp (lib.metadata/table mp (mt/id :orders)))
+                card  (card/create-card! {:database_id            (mt/id)
+                                          :display                :table
+                                          :visualization_settings {}
+                                          :type                   :model
+                                          :name                   "Orders Model for remap test"
+                                          :dataset_query          query}
+                                         @api/*current-user*)]
+            (testing "model result_metadata should not include remap columns"
+              (is (not-any? #(re-find #"(?i)remap" (:name %))
+                            (:result_metadata card))))
+            (let [mp          (mt/metadata-provider)
+                  model-query (-> (lib/query mp (lib.metadata/card mp (:id card)))
+                                  (lib/aggregate (lib/count))
+                                  (notebook-helpers/add-breakout "Quantity")
+                                  (lib/limit 5))
+                  result      (mt/user-http-request :crowberto :post 202 "dataset" model-query)
+                  cols        (get-in result [:data :cols])
+                  rows        (get-in result [:data :rows])
+                  qty-col     (first (filter #(= (:display_name %) "Quantity") cols))
+                  remap-col   (first (filter :remapped_from cols))]
+              (testing "original column has :remapped_to pointing to remap column"
+                (is (some? (:remapped_to qty-col)))
+                (is (= (:name remap-col) (:remapped_to qty-col))))
+              (testing "remap column has :remapped_from pointing to original column"
+                (is (some? (:remapped_from remap-col)))
+                (is (= (:name qty-col) (:remapped_from remap-col))))
+              (testing "remapped values appear correctly"
+                (is (= ["Zero" "A" "B" "C" "D"]
+                       (map last rows)))))))))))
