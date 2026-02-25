@@ -1,7 +1,7 @@
 (ns metabase-enterprise.metabot-v3.tools.transforms
   (:require
    [metabase-enterprise.metabot-v3.tools.util :as metabot-v3.tools.u]
-   [metabase-enterprise.transforms-python.api :as transforms-python.api]
+   [metabase-enterprise.transforms-runner.api :as transforms-python.api]
    [metabase.transforms.core :as transforms]
    [metabase.transforms.schema :as transforms.schema]
    [metabase.util.malli.registry :as mr]))

@@ -2,9 +2,9 @@
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
-   [metabase-enterprise.transforms-python.execute :as transforms-python.execute]
    [metabase-enterprise.transforms-python.init]
-   [metabase-enterprise.transforms-python.python-runner :as transforms-python.python-runner]
+   [metabase-enterprise.transforms-runner.execute :as runner.execute]
+   [metabase-enterprise.transforms-runner.runner :as transforms-python.python-runner]
    [metabase.driver :as driver]
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.test :as mt]
@@ -237,10 +237,10 @@
                 (transforms.tu/wait-for-table (:name target) 5000)))
 
             (run-scenario [scenario schema]
-              (with-redefs [transforms-python.execute/python-message-loop-sleep-duration (Duration/ofMillis fast-log-polling-ms)
-                            transforms-python.execute/transfer-file-to-db                (if-some [e (:writeback-ex scenario)]
-                                                                                           (fn [& _] (throw e))
-                                                                                           @#'transforms-python.execute/transfer-file-to-db)]
+              (with-redefs [runner.execute/message-loop-sleep-duration (Duration/ofMillis fast-log-polling-ms)
+                            runner.execute/transfer-file-to-db (if-some [e (:writeback-ex scenario)]
+                                                                 (fn [& _] (throw e))
+                                                                 @#'runner.execute/transfer-file-to-db)]
                 (with-transform-cleanup! [target {:type   "table"
                                                   :schema schema
                                                   :name   "result"}]
@@ -384,7 +384,7 @@
                  (fn [os fields-meta col-meta]
                    (rf-proxy ready-signal wait-signal (f os fields-meta col-meta)))})
               :write
-              (let [f-ref #'transforms-python.execute/transfer-file-to-db
+              (let [f-ref #'runner.execute/transfer-file-to-db
                     f     @f-ref]
                 {f-ref
                  (fn [& args]
@@ -397,11 +397,11 @@
             (let [ready-signal    (promise)                 ; test blocks: until the run is ready to be cancelled
                   wait-signal     (promise)                 ; run blocks:  until the test has cancelled
                   finished-signal (promise)                 ; test blocks: until the run has finished (exceptionally or not)
-                  exec-fn         @#'transforms-python.execute/execute-python-transform!
+                  exec-fn @#'runner.execute/execute-runner-transform!
                   redefs          (blocking-redefs scenario ready-signal wait-signal)]
               (with-redefs-fn
                 (merge
-                 {#'transforms-python.execute/execute-python-transform!
+                 {#'runner.execute/execute-runner-transform!
                   (fn [& args]
                     (try
                       (apply exec-fn args)
@@ -471,7 +471,7 @@
           (mt/with-premium-features #{:transforms :transforms-python}
             (mt/dataset transforms-dataset/transforms-test
               (let [schema (t2/select-one-fn :schema :model/Table (mt/id :transforms_products))]
-                (with-redefs [transforms-python.execute/python-message-loop-sleep-duration (Duration/ofMillis fast-log-polling-ms)]
+                (with-redefs [runner.execute/message-loop-sleep-duration (Duration/ofMillis fast-log-polling-ms)]
                   (with-transform-cleanup! [target {:type   "table"
                                                     :schema schema
                                                     :name   "result"}]

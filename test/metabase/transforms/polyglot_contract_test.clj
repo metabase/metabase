@@ -10,6 +10,7 @@
    [metabase-enterprise.transforms-clojure.impl]
    [metabase-enterprise.transforms-javascript.impl]
    [metabase-enterprise.transforms-python.impl]
+   [metabase.models.transforms.transform]
    [metabase.transforms.interface :as transforms.i]
    [metabase.transforms.util :as transforms.util]))
 
@@ -177,3 +178,16 @@
     (is (= [:transforms/table]
            (transforms.util/required-database-features
             {:source {:type "query"}})))))
+
+(deftest search-index-query-text-all-runner-languages-test
+  (testing "maybe-extract-transform-query-text extracts :body for all runner languages, not just :python"
+    (let [extract-fn @#'metabase.models.transforms.transform/maybe-extract-transform-query-text
+          body "print('hello world')"]
+      (doseq [lang runner-languages]
+        (testing (str "language: " lang)
+          (let [transform {:source_type (name lang)
+                           :source {:type (name lang)
+                                    :body body
+                                    :source-tables {}}}]
+            (is (= body (extract-fn transform))
+                (str "Expected body extraction for " lang))))))))

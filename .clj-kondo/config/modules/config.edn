@@ -2463,10 +2463,10 @@
 
   enterprise/transforms-python
   {:team "Querying"
-   :api  #{metabase-enterprise.transforms-python.api
+   :api #{metabase-enterprise.transforms-runner.api
            metabase-enterprise.transforms-python.core
            metabase-enterprise.transforms-python.init
-           metabase-enterprise.transforms-python.python-runner}
+          metabase-enterprise.transforms-runner.runner}
    :uses #{analytics
            api
            app-db

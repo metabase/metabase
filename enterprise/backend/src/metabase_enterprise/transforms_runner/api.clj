@@ -1,9 +1,9 @@
-(ns metabase-enterprise.transforms-python.api
+(ns metabase-enterprise.transforms-runner.api
   (:require
    [clojure.string :as str]
-   [metabase-enterprise.transforms-python.python-runner :as python-runner]
-   [metabase-enterprise.transforms-python.settings :as transforms-python.settings]
    [metabase-enterprise.transforms-runner.models.transform-library :as transform-library]
+   [metabase-enterprise.transforms-runner.runner :as python-runner]
+   [metabase-enterprise.transforms-runner.settings :as transforms-python.settings]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
@@ -91,6 +91,6 @@
        :error {:message (:message result)}})))
 
 (def ^{:arglists '([request respond raise])} routes
-  "`/api/ee/transforms-python` routes."
+  "`/api/ee/advanced-transforms` routes."
   (handlers/routes
    (api.macros/ns-handler *ns* +auth)))

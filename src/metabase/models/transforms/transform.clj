@@ -363,14 +363,15 @@
 
 (defn- maybe-extract-transform-query-text
   "Return the query text (truncated to `max-searchable-value-length`) from transform source; else nil.
-  Extracts SQL from query-type transforms and Python code from python-type transforms."
+  Extracts SQL from query-type transforms and source code from runner-type transforms."
   [{transform-source-type :source_type source :source}]
   (let [source-data (transform-source-out source)
-        ;; Use the top-level :source_type field since it differentiates between MBQL vs native transforms
-        query-text (case (keyword transform-source-type)
-                     :native (lib/raw-native-query (:query source-data))
-                     :python (:body source-data)
-                     nil)]
+        query-text (cond
+                     (= :native (keyword transform-source-type))
+                     (lib/raw-native-query (:query source-data))
+
+                     (transforms.i/runner-language? (keyword transform-source-type))
+                     (:body source-data))]
     (when query-text
       (subs query-text 0 (min (count query-text) search/max-searchable-value-length)))))
 

@@ -199,6 +199,19 @@
       (is (contains? table-ids (mt/id :orders)))
       (is (contains? table-ids (mt/id :products))))))
 
+(deftest extract-sources-all-runner-languages-test
+  (testing "extract-sources works for all registered runner languages, not just :python"
+    (doseq [lang [:python :javascript :clojure]]
+      (testing (str lang)
+        (let [transform {:source {:type lang
+                                  :source-tables {"orders" (mt/id :orders)}
+                                  :source-database (mt/id)}
+                         :name "test"}
+              sources (context/extract-sources transform)]
+          (is (seq sources) (str "Expected sources for " lang))
+          (is (= (mt/id :orders) (:table-id (first sources))))
+          (is (= (mt/id) (:db-id (first sources)))))))))
+
 ;;; -------------------------------------------------- build-context integration --------------------------------------------------
 
 (deftest build-context-mbql-sources-test

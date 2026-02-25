@@ -7,8 +7,8 @@
    [clj-http.client :as http]
    [clojure.string :as str]
    [clojure.test :refer :all]
-   [metabase-enterprise.transforms-python.s3 :as s3]
-   [metabase-enterprise.transforms-python.settings :as transforms-python.settings]
+   [metabase-enterprise.transforms-runner.s3 :as s3]
+   [metabase-enterprise.transforms-runner.settings :as transforms-python.settings]
    [metabase.test :as mt]
    [metabase.util.log :as log])
   (:import
