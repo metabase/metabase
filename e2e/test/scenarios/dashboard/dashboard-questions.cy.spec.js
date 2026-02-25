@@ -404,9 +404,9 @@ describe("Dashboard > Dashboard Questions", () => {
         cy.button("Save").click();
       });
 
-      cy.wait(5000);
-
-      cy.findByTestId("edit-bar").button("Save").click();
+      cy.findByTestId("edit-bar", { timeout: 10 * 1000 }) // time for this to appear in CI can be > 5 seconds
+        .button("Save")
+        .click();
       H.dashboardCards().findByText("Half Orders");
     });
 
