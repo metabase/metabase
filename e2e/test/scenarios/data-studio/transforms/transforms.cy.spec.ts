@@ -179,7 +179,7 @@ describe("scenarios > admin > transforms", () => {
         visitTransformListPage();
         cy.button("Create a transform").click();
         H.popover()
-          .findByText(/Advanced/)
+          .findByText(/Python/)
           .click();
         H.expectUnstructuredSnowplowEvent({
           event: "transform_create",
@@ -2173,7 +2173,7 @@ LIMIT
         visitTransformListPage();
         cy.button("Create a transform").click();
         H.popover()
-          .findByText(/Advanced/)
+          .findByText(/Python/)
           .click();
 
         cy.log("import common should be included by default");
@@ -2248,7 +2248,7 @@ LIMIT
         visitTransformListPage();
         cy.button("Create a transform").click();
         H.popover()
-          .findByText(/Advanced/)
+          .findByText(/Python/)
           .click();
         cy.get(".cm-clickable-token").should("be.visible").click();
         H.modal().button("Discard changes").click();
@@ -2267,7 +2267,7 @@ LIMIT
         });
         cy.button("Create a transform").click();
         H.popover()
-          .findByText(/Advanced/)
+          .findByText(/Python/)
           .click();
         cy.get(".cm-clickable-token")
           .should("be.visible")
@@ -2289,7 +2289,7 @@ LIMIT
         visitTransformListPage();
         cy.button("Create a transform").click();
         H.popover()
-          .findByText(/Advanced/)
+          .findByText(/Python/)
           .click();
 
         cy.log("import common should be included by default");
@@ -3800,7 +3800,7 @@ describe("scenarios > admin > transforms", () => {
     visitTransformListPage();
     cy.button("Create a transform").click();
     H.popover()
-      .findByText(/Advanced/)
+      .findByText(/Python/)
       .click();
 
     cy.findByTestId("python-transform-top-bar")

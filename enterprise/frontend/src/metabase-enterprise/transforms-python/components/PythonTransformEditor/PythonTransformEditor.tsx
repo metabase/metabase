@@ -1,13 +1,15 @@
 import { useHotkeys } from "@mantine/hooks";
+import cx from "classnames";
 import { useEffect } from "react";
 import { usePrevious } from "react-use";
 
 import type { PythonTransformEditorProps } from "metabase/plugins";
-import { Flex, Stack } from "metabase/ui";
-import type {
-  DatabaseId,
-  PythonTransformTableAliases,
-  Table,
+import { Box, Flex, Stack, Text } from "metabase/ui";
+import {
+  ADVANCED_TRANSFORM_TYPES,
+  type DatabaseId,
+  type PythonTransformTableAliases,
+  type Table,
 } from "metabase-types/api";
 
 import { isPythonTransformSource } from "../../utils";
@@ -17,6 +19,7 @@ import { PythonEditorBody } from "./PythonEditorBody";
 import { PythonEditorResults } from "./PythonEditorResults";
 import S from "./PythonTransformEditor.module.css";
 import { PythonTransformTopBar } from "./PythonTransformTopBar";
+import { TransformTypeSelect } from "./TransformTypeSelect";
 import { useTestPythonTransform } from "./hooks";
 import { updateTransformSignature } from "./utils";
 
@@ -120,11 +123,11 @@ export function PythonTransformEditor({
   };
 
   useHotkeys([["mod+Enter", handleCmdEnter]], []);
+  const canChangeType = !transform?.id;
 
   return (
     <Flex h="100%" w="100%" direction="column">
       <PythonTransformTopBar
-        sourceType={source.type}
         databaseId={source["source-database"]}
         isEditMode={isEditMode}
         readOnly={uiOptions?.readOnly}
@@ -166,6 +169,17 @@ export function PythonTransformEditor({
             />
           )}
         </Stack>
+        {!!source?.type && (
+          <Box className={cx(S.typeLabel, { [S.editMode]: isEditMode })}>
+            {canChangeType ? (
+              <TransformTypeSelect value={source.type} />
+            ) : (
+              <Text fz="sm" c="text-secondary" px="xs">
+                {ADVANCED_TRANSFORM_TYPES[source.type].displayName}
+              </Text>
+            )}
+          </Box>
+        )}
       </Flex>
     </Flex>
   );
