@@ -13,13 +13,16 @@
 
 (defn- api-model?
   [model]
-  (isa? (t2/resolve-model model) :hook/entity-id))
+  (let [resolved (t2/resolve-model model)]
+    (or (isa? resolved :hook/entity-id)
+        (= resolved :model/Database))))
 
 ;;; This is no longer calculated dynamically so we don't have to load ~20 model namespaces just to figure out which ones
 ;;; derive from `:hook/entity-id` just to generate Malli schemas. -- Cam
 (def ^:private api-name->model
   "Map of model names used on the API to their corresponding model. A test makes sure this map stays in sync."
-  {:action            :model/Action
+  {:database          :model/Database
+   :action            :model/Action
    :card              :model/Card
    :collection        :model/Collection
    :dashboard         :model/Dashboard
@@ -78,6 +81,13 @@
     (eid-translation.settings/entity-id-translation-counter!
      (merge-with + processed-result (eid-translation.settings/entity-id-translation-counter)))))
 
+(defn- select-eid->id
+  "Look up entity identifiers. Database uses :name; everything else uses :entity_id."
+  [model eids]
+  (if (= model :model/Database)
+    (into {} (t2/select-fn->fn :name :id [model :id :name] :name [:in eids]))
+    (into {} (t2/select-fn->fn :entity_id :id [model :id :entity_id] :entity_id [:in eids]))))
+
 (mu/defn- entity-ids->id-for-model :- [:sequential [:tuple
                                                     ;; We want to pass incorrectly formatted entity-ids through here,
                                                     ;; but this is assumed to be an entity-id:
@@ -86,17 +96,19 @@
   "Given a model and a sequence of entity ids on that model, return a pairs of entity-id, id."
   [api-name eids]
   (let [model (->model api-name) ;; This lookup is safe because we've already validated the api-names
-        eid->id (into {} (t2/select-fn->fn :entity_id :id [model :id :entity_id] :entity_id [:in eids]))]
+        eid->id (select-eid->id model eids)]
     (mapv (fn entity-id-info [entity-id]
             [entity-id (if-let [id (get eid->id entity-id)]
                          {:id id :type api-name :status :ok}
                          ;; handle errors
-                         (if (mr/validate EntityId entity-id)
-                           {:type api-name
-                            :status :not-found}
-                           {:type api-name
-                            :status :invalid-format
-                            :reason (me/humanize (mr/explain EntityId entity-id))}))])
+                         (if (= model :model/Database)
+                           {:type api-name :status :not-found}
+                           (if (mr/validate EntityId entity-id)
+                             {:type api-name
+                              :status :not-found}
+                             {:type api-name
+                              :status :invalid-format
+                              :reason (me/humanize (mr/explain EntityId entity-id))})))])
           eids)))
 
 (defn model->entity-ids->ids

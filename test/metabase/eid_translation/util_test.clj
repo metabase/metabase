@@ -132,6 +132,20 @@
                :timeline          [timeline_eid]
                :user              [core_user_eid]}))))))
 
+(deftest ^:parallel database-translation-test
+  (testing "Database translation by name"
+    (mt/with-temp [:model/Database {db-id :id db-name :name} {:name "test-eid-db" :engine :h2}]
+      (is (= {db-name {:id db-id :type :database :status :ok}}
+             (eid-translation.util/model->entity-ids->ids {:database [db-name]})))))
+  (testing "Database not found returns :not-found (never :invalid-format)"
+    (is (= {"nonexistent-db-name" {:type :database :status :not-found}}
+           (eid-translation.util/model->entity-ids->ids {:database ["nonexistent-db-name"]}))))
+  (testing "->id works with :database and :model/Database"
+    (mt/with-temp [:model/Database {db-id :id db-name :name} {:name "test-eid-db-2" :engine :h2}]
+      (is (= db-id (eid-translation.util/->id :database db-name)))
+      (is (= db-id (eid-translation.util/->id :model/Database db-name)))
+      (is (= db-id (eid-translation.util/->id :database db-id))))))
+
 (deftest ^:parallel missing-entity-translations-test
   (is (= {"abcdefghijklmnopqrstu" {:type :card, :status :not-found}}
          (eid-translation.util/model->entity-ids->ids {:card ["abcdefghijklmnopqrstu"]}))))
