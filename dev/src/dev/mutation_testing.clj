@@ -31,7 +31,8 @@
    - :project-id — Linear project ID (can be set after creating a project)
 
    Optional keys:
-   - :base-branch — git branch to create feature branches from (default: \"master\")"
+   - :base-branch — git branch to create feature branches from (default: \"master\")
+   - :project-id  — Linear project ID to add issues to (skips project creation in run!)"
   [m]
   (swap! config merge m))
 
@@ -726,11 +727,14 @@
    - team-id configured via (set-config! {:team-id \"...\"})
 
    Options (optional second arg):
-   - :base-branch — git branch to create feature branches from (default: from config, or \"master\")"
+   - :base-branch — git branch to create feature branches from (default: from config, or \"master\")
+   - :project-id  — existing Linear project ID to use (skips creating a new project)"
   ([target-ns-sym] (run! target-ns-sym {}))
   ([target-ns-sym opts]
    (when-let [bb (:base-branch opts)]
      (set-config! {:base-branch bb}))
+   (when-let [pid (:project-id opts)]
+     (set-config! {:project-id pid}))
    (let [parsed (parse-namespace target-ns-sym)
          {:keys [target-ns test-ns report-path]} parsed]
      ;; 1. Generate report
@@ -738,10 +742,15 @@
      (coverage/generate-report target-ns [test-ns] report-path)
      (println "Report written to" report-path)
 
-     ;; 2. Create Linear project
-     (println "Creating Linear project...")
-     (let [project (create-project-for-namespace! (str target-ns) report-path)]
-       (println "Created project:" (:name project))
+     ;; 2. Create or reuse Linear project
+     (let [project (if (:project-id @config)
+                     (do (println "Using existing Linear project:" (:project-id @config))
+                         {:project-id (:project-id @config)
+                          :name (str "Existing project " (:project-id @config))})
+                     (do (println "Creating Linear project...")
+                         (let [p (create-project-for-namespace! (str target-ns) report-path)]
+                           (println "Created project:" (:name p))
+                           p)))]
 
        ;; 3. Run coverage and group functions
        (println "Running coverage analysis and grouping...")

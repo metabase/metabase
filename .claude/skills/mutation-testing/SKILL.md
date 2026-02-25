@@ -26,9 +26,12 @@ The argument is a Clojure namespace, optionally followed by a base branch:
 ```
 /mutation-testing metabase.lib.order-by
 /mutation-testing metabase.lib.order-by --base-branch release-x.52.x
+/mutation-testing metabase.lib.order-by --project-id abc-123
+/mutation-testing metabase.lib.order-by --base-branch release-x.52.x --project-id abc-123
 ```
 
-If `--base-branch` is not specified, it defaults to the value in config (set via `set-config!`), or `"master"` if not configured.
+- `--base-branch`: defaults to the value in config (set via `set-config!`), or `"master"` if not configured.
+- `--project-id`: if provided, issues are added to this existing Linear project instead of creating a new one.
 
 ## Steps
 
@@ -37,6 +40,7 @@ If `--base-branch` is not specified, it defaults to the value in config (set via
 Parse `$ARGUMENTS` to extract:
 - **namespace** (required) — the first positional argument
 - **`--base-branch`** (optional) — if present, the next argument is the base branch name
+- **`--project-id`** (optional) — if present, the next argument is an existing Linear project ID
 
 ### 2. Load and configure
 
@@ -56,11 +60,13 @@ If this is the first invocation (or the REPL was restarted), set up the Linear t
 
 ```clojure
 (mut-test/run! '<target-ns>)
-;; Or with a specific base branch:
+;; Or with options:
 (mut-test/run! '<target-ns> {:base-branch "release-x.52.x"})
+(mut-test/run! '<target-ns> {:project-id "abc-123"})
+(mut-test/run! '<target-ns> {:base-branch "release-x.52.x" :project-id "abc-123"})
 ```
 
-Pass the `{:base-branch "..."}` opts map if `--base-branch` was provided in the arguments.
+Pass the opts map with `:base-branch` and/or `:project-id` if those flags were provided in the arguments.
 
 This will:
 1. Generate a baseline mutation testing report
@@ -105,3 +111,4 @@ To inspect what Claude will see without invoking it:
 - **Team ID**: Set once per REPL session via `(mut-test/list-teams!)` and `(mut-test/set-config! {:team-id "..."})`
 - **Project ID**: Set automatically when `run!` calls `create-project-for-namespace!`
 - **Base Branch**: Defaults to `"master"`. Override via `(mut-test/set-config! {:base-branch "release-x.52.x"})` or pass `{:base-branch "..."}` as the second arg to `run!`
+- **Project ID**: If set (via `set-config!` or `run!` opts), `run!` reuses the existing Linear project instead of creating a new one
