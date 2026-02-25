@@ -297,7 +297,7 @@
     "cypress-multi-reporters": "^2.0.5",
     "cypress-on-fix": "^1.1.0",
     "cypress-real-events": "^1.15.0",
-    "cypress-split": "^1.24.20",
+    "cypress-split": "^1.24.28",
     "cypress-terminal-report": "^6.1.2",
     "dnd-core": "^16.0.1",
     "esbuild": "^0.25.0",
