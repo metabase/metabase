@@ -17,7 +17,7 @@
 
 (defn- app-page-html
   "Generate HTML page with embedded collection browser."
-  [app-name api-key collection-id]
+  [app-name api-key auth-method collection-id]
   (let [site-url (or (system/site-url) "")]
     (str "<!DOCTYPE html>
 <html lang=\"en\">
@@ -46,8 +46,9 @@
   <script>
     defineMetabaseConfig({
       instanceUrl: \"" site-url "\""
-         (when api-key
-           (str ",\n      apiKey: \"" api-key "\""))
+         (if api-key
+           (str ",\n      apiKey: \"" api-key "\"")
+           (str ",\n      preferredAuthMethod: \"" (name auth-method) "\""))
          "
     });
   </script>
@@ -65,9 +66,10 @@
           app      (get-app-by-name app-name)]
       (if-not app
         (respond {:status 404 :body (str "App not found: " app-name)})
-        (let [api-key (or (get-in request [:params :api_key])
-                          (config/config-str :mb-apps-api-key))
-              coll-id (:collection_id app)]
+        (let [api-key     (or (get-in request [:params :api_key])
+                              (config/config-str :mb-apps-api-key))
+              auth-method (:auth_method app)
+              coll-id     (:collection_id app)]
           (respond
-           (-> (response/response (app-page-html (:name app) api-key coll-id))
+           (-> (response/response (app-page-html (:name app) api-key auth-method coll-id))
                (response/content-type "text/html; charset=utf-8"))))))))
