@@ -21,15 +21,24 @@ This skill runs mutation testing end-to-end: generates a coverage report, groups
 
 ## Invocation
 
-The argument is a Clojure namespace, e.g.:
+The argument is a Clojure namespace, optionally followed by a base branch:
 
 ```
 /mutation-testing metabase.lib.order-by
+/mutation-testing metabase.lib.order-by --base-branch release-x.52.x
 ```
+
+If `--base-branch` is not specified, it defaults to the value in config (set via `set-config!`), or `"master"` if not configured.
 
 ## Steps
 
-### 1. Load and configure
+### 1. Parse arguments
+
+Parse `$ARGUMENTS` to extract:
+- **namespace** (required) — the first positional argument
+- **`--base-branch`** (optional) — if present, the next argument is the base branch name
+
+### 2. Load and configure
 
 ```clojure
 (require '[dev.mutation-testing :as mut-test] :reload)
@@ -43,11 +52,15 @@ If this is the first invocation (or the REPL was restarted), set up the Linear t
 (mut-test/set-config! {:team-id "<id>"})
 ```
 
-### 2. Run
+### 3. Run
 
 ```clojure
 (mut-test/run! '<target-ns>)
+;; Or with a specific base branch:
+(mut-test/run! '<target-ns> {:base-branch "release-x.52.x"})
 ```
+
+Pass the `{:base-branch "..."}` opts map if `--base-branch` was provided in the arguments.
 
 This will:
 1. Generate a baseline mutation testing report
@@ -56,7 +69,7 @@ This will:
 4. For each group: create branch → invoke Claude to write tests → verify → retry if needed → commit & push → create Linear issue → create draft PR
 5. Print a summary with PR links
 
-### 3. Handle failures
+### 4. Handle failures
 
 If a group fails mid-processing, `run!` catches the error and continues to the next group. To retry a single group manually:
 
@@ -74,7 +87,7 @@ If a group fails mid-processing, `run!` catches the error and continues to the n
 (mut-test/process-group! parsed (nth groups <index>))
 ```
 
-### 4. Verify the prompt (dry run)
+### 5. Verify the prompt (dry run)
 
 To inspect what Claude will see without invoking it:
 
@@ -91,3 +104,4 @@ To inspect what Claude will see without invoking it:
 
 - **Team ID**: Set once per REPL session via `(mut-test/list-teams!)` and `(mut-test/set-config! {:team-id "..."})`
 - **Project ID**: Set automatically when `run!` calls `create-project-for-namespace!`
+- **Base Branch**: Defaults to `"master"`. Override via `(mut-test/set-config! {:base-branch "release-x.52.x"})` or pass `{:base-branch "..."}` as the second arg to `run!`

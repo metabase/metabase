@@ -24,13 +24,19 @@
 (defonce ^:private config (atom {}))
 
 (defn set-config!
-  "Set configuration for Linear API calls.
+  "Set configuration for mutation testing.
 
    Required keys:
    - :team-id   — Linear team ID
-   - :project-id — Linear project ID (can be set after creating a project)"
+   - :project-id — Linear project ID (can be set after creating a project)
+
+   Optional keys:
+   - :base-branch — git branch to create feature branches from (default: \"master\")"
   [m]
   (swap! config merge m))
+
+(defn- base-branch []
+  (get @config :base-branch "master"))
 
 (defn- api-key []
   (or (System/getenv "LINEAR_API_KEY")
@@ -223,10 +229,10 @@
     (str "mutation-testing-lib-" short-ns "-" fn-name)))
 
 (defn create-branch!
-  "Create and checkout a new branch from master for mutation testing a function."
+  "Create and checkout a new branch from the base branch for mutation testing a function."
   [target-ns fn-name]
   (let [branch (branch-name target-ns fn-name)]
-    (sh "git" "checkout" "master")
+    (sh "git" "checkout" (base-branch))
     (sh "git" "pull")
     (sh "git" "checkout" "-b" branch)
     branch))
@@ -259,6 +265,7 @@
   (let [title (pr-title target-ns fn-name)
         body (pr-description opts)
         result (sh "gh" "pr" "create" "--draft"
+                   "--base" (base-branch)
                    "--title" title
                    "--body" body
                    "--label" "no-backport")]
@@ -312,11 +319,16 @@
                       "-f" "start_side=RIGHT"]))]
     (apply sh args)))
 
-(defn return-to-master!
-  "Checkout master branch."
+(defn return-to-base!
+  "Checkout the configured base branch."
   []
-  (sh "git" "checkout" "master")
+  (sh "git" "checkout" (base-branch))
   nil)
+
+(defn return-to-master!
+  "Checkout the configured base branch. Deprecated: use return-to-base! instead."
+  []
+  (return-to-base!))
 
 ;;; --- Report helpers ---
 
@@ -664,8 +676,8 @@
                                          survived)
                        :suggested-changes []})]
 
-          ;; 8. Return to master
-          (return-to-master!)
+          ;; 8. Return to base branch
+          (return-to-base!)
 
           (println "  Done! PR:" pr-url)
           {:pr-url pr-url
@@ -711,45 +723,51 @@
    - nREPL running
    - LINEAR_API_KEY env var set
    - gh CLI authenticated
-   - team-id configured via (set-config! {:team-id \"...\"})"
-  [target-ns-sym]
-  (let [parsed (parse-namespace target-ns-sym)
-        {:keys [target-ns test-ns report-path]} parsed]
-    ;; 1. Generate report
-    (println "Generating mutation testing report for" (str target-ns) "...")
-    (coverage/generate-report target-ns [test-ns] report-path)
-    (println "Report written to" report-path)
+   - team-id configured via (set-config! {:team-id \"...\"})
 
-    ;; 2. Create Linear project
-    (println "Creating Linear project...")
-    (let [project (create-project-for-namespace! (str target-ns) report-path)]
-      (println "Created project:" (:name project))
+   Options (optional second arg):
+   - :base-branch — git branch to create feature branches from (default: from config, or \"master\")"
+  ([target-ns-sym] (run! target-ns-sym {}))
+  ([target-ns-sym opts]
+   (when-let [bb (:base-branch opts)]
+     (set-config! {:base-branch bb}))
+   (let [parsed (parse-namespace target-ns-sym)
+         {:keys [target-ns test-ns report-path]} parsed]
+     ;; 1. Generate report
+     (println "Generating mutation testing report for" (str target-ns) "...")
+     (coverage/generate-report target-ns [test-ns] report-path)
+     (println "Report written to" report-path)
 
-      ;; 3. Run coverage and group functions
-      (println "Running coverage analysis and grouping...")
-      (let [coverage-results (coverage/test-namespace target-ns [test-ns])
-            groups (group-functions coverage-results)]
-        (println "Found" (count groups) "function groups to process")
+     ;; 2. Create Linear project
+     (println "Creating Linear project...")
+     (let [project (create-project-for-namespace! (str target-ns) report-path)]
+       (println "Created project:" (:name project))
 
-        ;; 4. Process each group
-        (let [results (vec
-                       (for [group groups]
-                         (do
-                           (println "\n--- Processing:" (:primary-fn group)
-                                    "(" (count (:mutations group)) "surviving mutations) ---")
-                           (try
-                             (process-group! parsed group)
-                             (catch Exception e
-                               (println "ERROR:" (.getMessage e))
-                               (try (return-to-master!) (catch Exception _))
-                               {:error (.getMessage e)
-                                :primary-fn (:primary-fn group)})))))]
+       ;; 3. Run coverage and group functions
+       (println "Running coverage analysis and grouping...")
+       (let [coverage-results (coverage/test-namespace target-ns [test-ns])
+             groups (group-functions coverage-results)]
+         (println "Found" (count groups) "function groups to process")
 
-          ;; 5. Print summary
-          (print-summary! {:project project
-                           :groups groups
-                           :results results})
-          results)))))
+         ;; 4. Process each group
+         (let [results (vec
+                        (for [group groups]
+                          (do
+                            (println "\n--- Processing:" (:primary-fn group)
+                                     "(" (count (:mutations group)) "surviving mutations) ---")
+                            (try
+                              (process-group! parsed group)
+                              (catch Exception e
+                                (println "ERROR:" (.getMessage e))
+                                (try (return-to-base!) (catch Exception _))
+                                {:error (.getMessage e)
+                                 :primary-fn (:primary-fn group)})))))]
+
+           ;; 5. Print summary
+           (print-summary! {:project project
+                            :groups groups
+                            :results results})
+           results))))))
 
 (comment
   ;; Setup:
