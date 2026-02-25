@@ -10,10 +10,8 @@ import {
 } from "metabase/common/components/Pickers";
 import { useDashboardQuery } from "metabase/common/hooks";
 import CS from "metabase/css/core/index.css";
-import {
-  ClickMappingsConnected,
-  clickTargetObjectType,
-} from "metabase/dashboard/components/ClickMappings";
+import { ClickMappings } from "metabase/dashboard/components/ClickMappings/ClickMappings";
+import { clickTargetObjectType } from "metabase/dashboard/components/ClickMappings/utils";
 import { getDashboard } from "metabase/dashboard/selectors";
 import { ROOT_COLLECTION } from "metabase/entities/collections/constants";
 import { Dashboards } from "metabase/entities/dashboards";
@@ -157,7 +155,7 @@ function TargetClickMappings({
   return (
     <div className={CS.pt1}>
       <Heading>{getTargetClickMappingsHeading(checkNotNull(object))}</Heading>
-      <ClickMappingsConnected
+      <ClickMappings
         object={object}
         dashcard={dashcard}
         isDashboard={isDashboard}
