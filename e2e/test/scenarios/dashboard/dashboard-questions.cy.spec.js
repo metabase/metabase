@@ -392,6 +392,8 @@ describe("Dashboard > Dashboard Questions", () => {
     });
 
     it("can save a native question to a dashboard", () => {
+      cy.intercept("POST", "/api/card").as("createCard");
+
       H.startNewNativeQuestion({ query: "SELECT 123" });
 
       // this reduces the flakiness
@@ -404,9 +406,8 @@ describe("Dashboard > Dashboard Questions", () => {
         cy.button("Save").click();
       });
 
-      cy.findByTestId("edit-bar", { timeout: 10 * 1000 }) // time for this to appear in CI can be > 5 seconds
-        .button("Save")
-        .click();
+      cy.wait("@createCard", { timeout: 30 * 1000 }); // trying something dumb...
+      cy.findByTestId("edit-bar").button("Save").click();
       H.dashboardCards().findByText("Half Orders");
     });
 
