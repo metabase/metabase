@@ -53,11 +53,13 @@
 
 (defn- card-upgrade-field-refs!
   [card-id]
-  (let [dataset-query (t2/select-one-fn :dataset_query :model/Card card-id)
-        dataset-query' (lib-be/upgrade-field-refs-in-query dataset-query)]
-    (when (not= dataset-query dataset-query')
-      (t2/update! :model/Card card-id {:dataset_query dataset-query'}))
-    (dashboard-card-upgrade-field-refs! dataset-query' card-id)))
+  (let [dataset-query (t2/select-one-fn :dataset_query :model/Card card-id)]
+    ;; todo: can this work on transforms, segments, and measures?
+    (when (lib-be/should-upgrade-field-refs-in-query? dataset-query)
+      (let [dataset-query' (lib-be/upgrade-field-refs-in-query dataset-query)]
+        (when (not= dataset-query dataset-query')
+          (t2/update! :model/Card card-id {:dataset_query dataset-query'}))
+        (dashboard-card-upgrade-field-refs! dataset-query' card-id)))))
 
 (defn- transform-upgrade-field-refs!
   [transform-id]
