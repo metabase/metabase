@@ -1489,7 +1489,7 @@ describe("issue 66210", () => {
 
 describe("issue #67903", () => {
   beforeEach(() => {
-    cy.viewport(1000, 800);
+    cy.viewport(630, 800);
     H.restore();
     cy.signInAsAdmin();
   });
@@ -1501,6 +1501,29 @@ describe("issue #67903", () => {
     H.getNotebookStep("data").findByTestId("step-preview-button").click();
     H.queryBuilderHeader().findByLabelText("View SQL").click();
     cy.findByTestId("table-header").should("not.be.visible");
+  });
+});
+
+describe("issue #67767", () => {
+  const SCREEN_WIDTH = 630;
+
+  beforeEach(() => {
+    cy.viewport(SCREEN_WIDTH, 800);
+    H.restore();
+    cy.signInAsAdmin();
+  });
+
+  it("only show preview query at full width on small screens (metabase#67767)", () => {
+    H.startNewQuestion();
+    H.miniPickerBrowseAll().click();
+    H.pickEntity({ path: ["Databases", /Sample Database/, "Orders"] });
+    H.getNotebookStep("data").findByTestId("step-preview-button").click();
+    H.queryBuilderHeader().findByLabelText("View SQL").click();
+    H.sidebar()
+      .findByText("SQL for this question")
+      .then(($el) => {
+        expect($el.get(0).scrollWidth).to.eq(SCREEN_WIDTH);
+      });
   });
 });
 

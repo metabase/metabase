@@ -124,6 +124,7 @@
            :scalar
            :pie
            :scatter
+           :boxplot
            :waterfall
            :row
            :line

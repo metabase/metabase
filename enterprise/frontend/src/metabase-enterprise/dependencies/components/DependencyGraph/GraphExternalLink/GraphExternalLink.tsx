@@ -9,9 +9,14 @@ import { GraphContext } from "../GraphContext";
 type GraphExternalLinkProps = {
   label: string;
   url: string;
+  isCompact?: boolean;
 };
 
-export function GraphExternalLink({ label, url }: GraphExternalLinkProps) {
+export function GraphExternalLink({
+  label,
+  url,
+  isCompact,
+}: GraphExternalLinkProps) {
   const { openLinksInNewTab } = useContext(GraphContext);
 
   return (
@@ -20,7 +25,7 @@ export function GraphExternalLink({ label, url }: GraphExternalLinkProps) {
         component={ForwardRefLink}
         to={url}
         target={openLinksInNewTab ? "_blank" : undefined}
-        m="-sm"
+        m={isCompact ? "-sm" : undefined}
         aria-label={label}
       >
         <FixedSizeIcon name="external" />

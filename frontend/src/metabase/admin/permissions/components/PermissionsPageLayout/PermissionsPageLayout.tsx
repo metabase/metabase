@@ -40,7 +40,7 @@ import { ToolbarButton } from "../ToolbarButton";
 import { PermissionsEditBar } from "./PermissionsEditBar";
 import { PermissionsTabs } from "./PermissionsTabs";
 
-type PermissionsPageTab =
+export type PermissionsPageTab =
   | "data"
   | "collections"
   | "application"

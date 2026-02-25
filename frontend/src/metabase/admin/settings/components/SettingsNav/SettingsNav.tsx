@@ -23,6 +23,7 @@ export function SettingsNav() {
   const hasWhitelabel = useHasTokenFeature("whitelabel");
   const hasSaml = useHasTokenFeature("sso_saml");
   const hasJwt = useHasTokenFeature("sso_jwt");
+  const hasOidc = useHasTokenFeature("sso_oidc");
   const hasScim = useHasTokenFeature("scim");
   const hasPythonTransforms = useHasTokenFeature("transforms-python");
   const isHosted = useSetting("is-hosted?");
@@ -47,6 +48,7 @@ export function SettingsNav() {
         <SettingsNavItem path="authentication/ldap" label="LDAP" />
         {hasSaml && <SettingsNavItem path="authentication/saml" label="SAML" />}
         {hasJwt && <SettingsNavItem path="authentication/jwt" label="JWT" />}
+        {hasOidc && <SettingsNavItem path="authentication/oidc" label="OIDC" />}
       </SettingsNavItem>
       <PLUGIN_REMOTE_SYNC.LibraryNav />
       <NavDivider />

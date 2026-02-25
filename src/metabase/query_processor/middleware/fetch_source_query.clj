@@ -5,8 +5,8 @@
    [metabase.driver.ddl.interface :as ddl.i]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.card :as lib.card]
+   [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
-   [metabase.lib.query :as lib.query]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.id :as lib.schema.id]
@@ -73,7 +73,7 @@
                                                        persisted-info)))]
                 (conj (vec (butlast stages)) last-stage)))
             (update-query [query]
-              (-> (lib.query/query metadata-providerable query)
+              (-> (lib/query metadata-providerable query)
                   ;; Now that cards' queries can come out of the AppDB already in MBQL 5, complete with `:lib/uuid`s,
                   ;; a card getting joined twice creates duplicate UUID errors!
                   ;; This safely re-rolls all the `:lib/uuid`s on the card's query so they won't collide.

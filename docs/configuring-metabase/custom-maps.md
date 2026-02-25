@@ -12,7 +12,7 @@ By default, Metabase uses OpenStreetMaps for map visualizations, but there are a
 
 To find the map settings:
 
-1. At the top right of the screen, click **gear** icon > **Admin settings** > **Settings**.
+1. At the top right of the screen, click **grid** icon > **Admin** > **Settings**.
 2. Select `Maps` from the navigation on the left.
 
 ![Map Settings](images/MapSettings.png)
@@ -41,7 +41,7 @@ Your GeoJSON file should:
 
 To add a custom map:
 
-1. Go to **Admin Settings > Maps > Custom Maps**.
+1. Click the **grid icon**, then go to **Admin** > **Settings** > **Maps** > **Custom Maps**.
 2. Click **Add a Map**.
 3. Enter a name for your map.
 4. Provide the URL to your GeoJSON file.

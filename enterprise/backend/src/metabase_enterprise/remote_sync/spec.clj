@@ -38,6 +38,10 @@
    - :path-keys      - For :path or :hybrid identity: vector of path components [:database :schema :table :field]
    - :parent-model   - For :parent-table eligibility: the parent model key to check eligibility against
                        (e.g., :model/Table for Field, Segment, Measure)
+   - :parent-fk      - For child models: the FK column pointing to the parent (e.g., :table_id)
+   - :cascade-filter  - Optional map of additional filter conditions for cascade queries.
+                       Only needed when the filter differs from {archived-key false}.
+                       E.g., Field needs {:active true} since it has no :archived-key.
    - :delete-after   - Optional vector of model keys that must be deleted AFTER this model.
                        Used to handle FK constraints during import cleanup. For example, if Card
                        has :delete-after [:model/Collection], Card will be deleted before Collection.
@@ -179,7 +183,7 @@
     :identity       :path
     :path-keys      [:database :schema :table]
     :events         {:prefix :event/table
-                     :types  [:create :update :delete]}
+                     :types  [:create :update :delete :publish :unpublish]}
     :eligibility    {:type :published-table}
     :archived-key   :archived_at  ; tables use archived_at, not archived
     :tracking       {:select-fields  [:name :collection_id]
@@ -196,6 +200,8 @@
     :identity       :path
     :path-keys      [:database :schema :table :field]
     :parent-model   :model/Table
+    :parent-fk      :table_id
+    :cascade-filter {:active true}
     :events         {:prefix :event/field
                      :types  [:create :update :delete]}
     :eligibility    {:type :parent-table}
@@ -344,6 +350,15 @@
   [model-key]
   (get remote-sync-specs model-key))
 
+(defn children-specs
+  "Returns child specs for a given parent model key, derived from :parent-model references."
+  [parent-model-key]
+  (into []
+        (comp (map val)
+              (filter #(and (= (:parent-model %) parent-model-key)
+                            (:parent-fk %))))
+        remote-sync-specs))
+
 (defn specs-by-identity-type
   "Returns a map of model-key -> spec filtered by identity type."
   [identity-type]
@@ -429,6 +444,14 @@
     :library-synced         "Snippets"
     (str/capitalize (name setting-kw))))
 
+(defn- setting->namespace
+  "Converts a setting keyword to the corresponding collection namespace keyword, or nil."
+  [setting-kw]
+  (case setting-kw
+    :remote-sync-transforms :transforms
+    :library-synced         :snippets
+    nil))
+
 (defn models-for-setting
   "Returns set of model-type strings for specs with the given `:enabled?` setting."
   [setting-kw]
@@ -439,8 +462,10 @@
 
 (def transform-models
   "Models that indicate transforms content in a snapshot.
-   Derived from specs with `:enabled? :remote-sync-transforms`."
-  (disj (models-for-setting :remote-sync-transforms) :model/TransformTag))
+   Derived from specs with `:enabled? :remote-sync-transforms`.
+   Excludes TransformTag since built-in tags are always present and don't indicate
+   user transform content. Non-built-in TransformTags are checked separately."
+  (disj (models-for-setting :remote-sync-transforms) "TransformTag"))
 
 (defn models-in-import
   "Returns set of model-type strings present in the import.
@@ -481,7 +506,9 @@
 
 (defn- has-unsynced-entities-for-feature?
   "Returns true if any model in the feature group has local entities not tracked in RemoteSyncObject.
-   Excludes built-in TransformTags from the count since they are system-created and not user data."
+   Excludes built-in TransformTags and the built-in PythonLibrary from the count since they are
+   system-created and not user data. Namespace collections are not checked here because they are
+   organizational containers, not user data that would be lost on import."
   [specs-for-feature]
   (some (fn [[_ spec]]
           (let [model-key (:model-key spec)
@@ -500,18 +527,59 @@
   "Checks if import contains models that conflict with existing local entities that are NOT already remote synced.
    Derives conflict categories from specs with keyword `:enabled?` values (optional features).
    Only triggers conflict when local has unsynced entities AND import has matching entities.
-   If local entities are already synced, dirty tracking handles conflicts instead."
-  [models-present]
+   If local entities are already synced, dirty tracking handles conflicts instead.
+
+   `import-namespace-collections` is a set of namespace strings (e.g., #{\"transforms\" \"snippets\"})
+   found in Collection entities in the import."
+  [models-present import-namespace-collections]
   (let [feature-groups (optional-feature-specs)]
     (into []
           (for [[setting-kw specs-for-feature] feature-groups
-                :let [feature-model-types (into #{} (map (fn [[_ s]] (:model-type s))) specs-for-feature)]
-                :when (some feature-model-types models-present)
+                :let [feature-model-types (into #{} (map (fn [[_ s]] (:model-type s))) specs-for-feature)
+                      feature-namespace (setting->namespace setting-kw)]
+                :when (or (some feature-model-types models-present)
+                          (and feature-namespace
+                               (contains? import-namespace-collections (name feature-namespace))))
                 :when (has-unsynced-entities-for-feature? specs-for-feature)
                 :let [category (setting->category setting-kw)]]
             {:type     (keyword (str (u/lower-case-en category) "-conflict"))
              :category category
              :message  (format "Import contains %s but local instance has unsynced %s"
+                               category category)}))))
+
+(defn check-namespace-collection-conflicts
+  "Checks if import contains namespace collections (transforms/snippets) that conflict with local
+   unsynced namespace collections. Only flags a conflict when the local collections were NOT created
+   by the sync system (i.e., have no matching entity_id in the import).
+
+   `import-namespace-collections` is a set of namespace strings found in the import.
+   `import-ns-collection-entity-ids` is a map of namespace string -> set of entity_ids from the import."
+  [import-namespace-collections import-ns-collection-entity-ids]
+  (let [ns-configs [{:ns-name "transforms" :setting-kw :remote-sync-transforms :category "Transforms"}
+                    {:ns-name "snippets"   :setting-kw :library-synced         :category "Snippets"}]]
+    (into []
+          (for [{:keys [ns-name setting-kw category]} ns-configs
+                :when (contains? import-namespace-collections ns-name)
+                :let [setting-enabled? (cond
+                                         (= setting-kw :library-synced) (rs-settings/library-is-remote-synced?)
+                                         (keyword? setting-kw) (boolean (setting/get-value-of-type :boolean setting-kw))
+                                         :else false)]
+                :when (not setting-enabled?)
+                :let [local-ns-colls (t2/select [:model/Collection :id :entity_id] :namespace ns-name)
+                      import-eids (get import-ns-collection-entity-ids ns-name #{})
+                      ;; Only consider local collections that are NOT in the import (truly local-only)
+                      ;; and NOT tracked in RemoteSyncObject
+                      unsynced-local (remove
+                                      (fn [coll]
+                                        (or (contains? import-eids (:entity_id coll))
+                                            (t2/exists? :model/RemoteSyncObject
+                                                        :model_type "Collection"
+                                                        :model_id (:id coll))))
+                                      local-ns-colls)]
+                :when (seq unsynced-local)]
+            {:type     (keyword (str (u/lower-case-en category) "-conflict"))
+             :category category
+             :message  (format "Import contains %s but local instance has unsynced %s namespace collections"
                                category category)}))))
 
 ;;; ------------------------------------------------ Eligibility Checking ----------------------------------------------

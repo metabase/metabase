@@ -60,6 +60,10 @@ export const getSettingsRoutes = () => (
       component={() => <PLUGIN_AUTH_PROVIDERS.SettingsJWTForm />}
     />
     <Route
+      path="authentication/oidc"
+      component={() => <PLUGIN_AUTH_PROVIDERS.SettingsOIDCForm />}
+    />
+    <Route
       path="remote-sync"
       component={() => <PLUGIN_REMOTE_SYNC.RemoteSyncSettings />}
     />
