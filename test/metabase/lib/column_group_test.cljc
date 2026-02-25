@@ -497,4 +497,22 @@
                {::lib.column-group/group-type :group-type/join.implicit
                 :fk-join-alias                "Reviews - Product"
                 :fk-field-id                  (meta/id :reviews :product-id)}]
-              (lib/group-columns cols))))))
+              (lib/group-columns cols)))))
+
+  (testing "Multiple joins to the same table should have distinguishable display names (#37025)"
+    (let [query (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
+                    (lib/join (lib/join-clause (meta/table-metadata :products)
+                                               [(lib/= (meta/field-metadata :orders :product-id)
+                                                       (meta/field-metadata :products :id))]))
+                    (lib/join (lib/join-clause (meta/table-metadata :products)
+                                               [(lib/= (meta/field-metadata :orders :product-id)
+                                                       (meta/field-metadata :products :id))])))
+          cols   (lib/visible-columns query)
+          groups (lib/group-columns cols)
+          infos  (mapv #(lib/display-info query %) groups)
+          join-infos (filterv :is-from-join infos)]
+      (is (= 2 (count join-infos))
+          "There should be two join column groups")
+      (is (not= (:display-name (first join-infos))
+                (:display-name (second join-infos)))
+          "Join column groups for the same table should have different display names"))))
