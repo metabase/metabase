@@ -4,6 +4,7 @@ import type {CatalogGraph, TransformNode} from "./metabase-lib"
 import type {CatalogTreeProvider} from "./catalog-tree-provider"
 import type {ConnectionTreeProvider} from "./connection-tree-provider"
 import type {ContentTreeProvider} from "./content-tree-provider"
+import type {WorkspaceDataTreeProvider} from "./workspace-data-tree-provider"
 import type {WorkspaceManager} from "./workspace-manager"
 
 export interface ExtensionCtx {
@@ -19,6 +20,7 @@ export interface ExtensionCtx {
   readonly connectionProvider: ConnectionTreeProvider
   readonly catalogProvider: CatalogTreeProvider
   readonly contentProvider: ContentTreeProvider
+  readonly workspaceDataProvider: WorkspaceDataTreeProvider
   readonly outputChannel: OutputChannel
   readonly diagnosticCollection: DiagnosticCollection
   readonly workspaceManager: WorkspaceManager
@@ -28,6 +30,7 @@ export interface ExtensionCtx {
 export interface PanelState {
   graphPanel: WebviewPanel | null
   transformPanel: WebviewPanel | null
+  tableDataPanel: WebviewPanel | null
   currentCatalog: CatalogGraph | null
   pendingFocusNodeKey: string | null
   currentTransformNode: TransformNode | null

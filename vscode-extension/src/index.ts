@@ -17,6 +17,7 @@ import { registerDependencyGraphCommands } from './commands/dependency-graph'
 import { registerOpenInMetabaseCommand } from './commands/open-in-metabase'
 import { registerRunTransformCommand } from './commands/run-transform'
 import { registerTransformPreviewCommand } from './commands/transform-preview'
+import { registerViewTableDataCommand } from './commands/view-table-data'
 import { config } from './config'
 import { ConnectionTreeProvider } from './connection-tree-provider'
 import { ContentTreeProvider } from './content-tree-provider'
@@ -24,6 +25,7 @@ import { EmbeddedCodeProvider } from './embedded-code-provider'
 import { registerExportLoader } from './export-loader'
 import { registerLmTools } from './lm-tools'
 import { setOutputChannel } from './metabase-client'
+import { WorkspaceDataTreeProvider } from './workspace-data-tree-provider'
 import { WorkspaceManager } from './workspace-manager'
 
 const outputChannel = window.createOutputChannel('Metastudio')
@@ -44,6 +46,7 @@ const { activate, deactivate } = defineExtension((context) => {
   )
   const catalogProvider = new CatalogTreeProvider(extensionPath)
   const contentProvider = new ContentTreeProvider(extensionPath)
+  const workspaceDataProvider = new WorkspaceDataTreeProvider(extensionPath, outputChannel)
 
   const metastudioId = useWorkspaceState<string>('metastudio.id', '')
   if (!metastudioId.value) {
@@ -76,6 +79,23 @@ const { activate, deactivate } = defineExtension((context) => {
   window.registerTreeDataProvider('metabase.connection', connectionProvider)
   window.registerTreeDataProvider('metabase.dataCatalog', catalogProvider)
   window.registerTreeDataProvider('metabase.content', contentProvider)
+  window.registerTreeDataProvider('metabase.workspaceData', workspaceDataProvider)
+
+  // Refresh workspace data when credentials are available.
+  // Watch both secrets: value===null means still loading, so skip until both have resolved.
+  watch(
+    () => [apiKey.value, workspacesSecret.value] as const,
+    ([key, wsSecret]) => {
+      if (key === null || wsSecret === null) return // still loading from secure storage
+      if (key && config.host) {
+        workspaceDataProvider.setContext(config.host, key, workspaceManager)
+        workspaceDataProvider.refresh().catch((err: unknown) => {
+          outputChannel.appendLine(`workspaceData refresh error: ${err instanceof Error ? err.message : String(err)}`)
+        })
+      }
+    },
+    { immediate: true },
+  )
 
   const diagnosticCollection = languages.createDiagnosticCollection(
     'metabase-dependencies',
@@ -85,6 +105,7 @@ const { activate, deactivate } = defineExtension((context) => {
   const panels: PanelState = {
     graphPanel: null,
     transformPanel: null,
+    tableDataPanel: null,
     currentCatalog: null,
     pendingFocusNodeKey: null,
     currentTransformNode: null,
@@ -99,6 +120,7 @@ const { activate, deactivate } = defineExtension((context) => {
     connectionProvider,
     catalogProvider,
     contentProvider,
+    workspaceDataProvider,
     outputChannel,
     diagnosticCollection,
     workspaceManager,
@@ -124,6 +146,16 @@ const { activate, deactivate } = defineExtension((context) => {
     await window.showTextDocument(doc, { viewColumn: ViewColumn.Beside })
   })
 
+  useCommand('metastudio.refreshWorkspaceData', () => {
+    const key = apiKey.value
+    if (key && config.host) {
+      workspaceDataProvider.setContext(config.host, key, workspaceManager)
+      workspaceDataProvider.refresh().catch((err: unknown) => {
+        outputChannel.appendLine(`workspaceData refresh error: ${err instanceof Error ? err.message : String(err)}`)
+      })
+    }
+  })
+
   registerConnectionCommands(ctx)
   registerCreateTransformCommand(ctx)
   registerExportLoader(ctx)
@@ -131,6 +163,7 @@ const { activate, deactivate } = defineExtension((context) => {
   registerDependencyGraphCommands(ctx)
   registerTransformPreviewCommand(ctx)
   registerOpenInMetabaseCommand()
+  registerViewTableDataCommand(ctx)
   registerLmTools(ctx, context)
 })
 

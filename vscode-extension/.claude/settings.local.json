@@ -16,7 +16,14 @@
       "WebFetch(domain:medium.com)",
       "WebFetch(domain:vogella.com)",
       "Bash(find:*)",
-      "Bash(ls:*)"
+      "Bash(ls:*)",
+      "Bash(pnpm run build:ext)",
+      "Bash(npx tsc --noEmit)",
+      "Bash(npx vitest run)",
+      "Bash(bun run typecheck)",
+      "Bash(bun run build:ext)",
+      "Bash(bun run update)",
+      "Bash(bunx tsc --noEmit)"
     ]
   }
 }

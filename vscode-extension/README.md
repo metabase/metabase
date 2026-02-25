@@ -32,6 +32,8 @@
 | `metastudio.runTransform`          | Run Transform                         |
 | `metastudio.createSqlTransform`    | Metastudio: New SQL Transform         |
 | `metastudio.openEmbeddedCode`      | Metastudio: Edit Query in Editor      |
+| `metastudio.viewTableData`         | View Data                             |
+| `metastudio.refreshWorkspaceData`  | Refresh Workspace Data                |
 
 <!-- commands -->
 

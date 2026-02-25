@@ -291,6 +291,146 @@ export interface TransformRunResult {
   table: { name: string; schema: string }
 }
 
+export interface WorkspaceOutputTableEntry {
+  transform_id: string | number | null
+  schema: string | null
+  table: string
+  table_id: number | null
+}
+
+export interface WorkspaceOutputTable {
+  db_id: number
+  global: WorkspaceOutputTableEntry
+  isolated: WorkspaceOutputTableEntry
+}
+
+export interface WorkspaceTablesResult {
+  inputs: unknown[]
+  outputs: WorkspaceOutputTable[]
+}
+
+export async function getWorkspaceTables(
+  host: string,
+  workspaceApiKey: string,
+  workspaceId: number,
+): Promise<{ status: 'success'; result: WorkspaceTablesResult } | { status: 'error'; message: string }> {
+  const baseUrl = host.replace(/\/+$/, '')
+  const url = `${baseUrl}/api/ee/workspace/${workspaceId}/table`
+  log?.appendLine(`getWorkspaceTables: GET ${url}`)
+
+  let response: Response
+  try {
+    response = await fetch(url, {
+      headers: {'x-api-key': workspaceApiKey},
+    })
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error)
+    log?.appendLine(`getWorkspaceTables: network error - ${message}`)
+    return {status: 'error', message}
+  }
+
+  log?.appendLine(`getWorkspaceTables: response ${response.status} ${response.statusText}`)
+
+  if (!response.ok) {
+    const body = await response.text().catch(() => '(unreadable)')
+    log?.appendLine(`getWorkspaceTables: error body - ${body}`)
+    return {status: 'error', message: `HTTP ${response.status}: ${response.statusText}`}
+  }
+
+  const data = await response.json() as WorkspaceTablesResult
+  log?.appendLine(`getWorkspaceTables: ${data.outputs?.length ?? 0} outputs, raw=${JSON.stringify(data).slice(0, 500)}`)
+  return {status: 'success', result: data}
+}
+
+export interface TableSchemaResult {
+  fields: { name: string; base_type: string }[]
+}
+
+export async function getTableSchema(
+  host: string,
+  workspaceApiKey: string,
+  dbId: number,
+  tableId: number,
+): Promise<{ status: 'success'; result: TableSchemaResult } | { status: 'error'; message: string }> {
+  const baseUrl = host.replace(/\/+$/, '')
+  const url = `${baseUrl}/api/dataset`
+  log?.appendLine(`getTableSchema: POST ${url} db=${dbId} table=${tableId}`)
+
+  let response: Response
+  try {
+    response = await fetch(url, {
+      method: 'POST',
+      headers: {'x-api-key': workspaceApiKey, 'content-type': 'application/json'},
+      body: JSON.stringify({
+        database: dbId,
+        type: 'query',
+        query: {'source-table': tableId, limit: 0},
+      }),
+    })
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error)
+    log?.appendLine(`getTableSchema: network error - ${message}`)
+    return {status: 'error', message}
+  }
+
+  log?.appendLine(`getTableSchema: response ${response.status} ${response.statusText}`)
+
+  if (!response.ok) {
+    const body = await response.text().catch(() => '(unreadable)')
+    log?.appendLine(`getTableSchema: error body - ${body}`)
+    return {status: 'error', message: `HTTP ${response.status}: ${response.statusText}`}
+  }
+
+  const data = await response.json()
+  const result: TableSchemaResult = {
+    fields: (data.data?.cols ?? []).map((c: {name: string; base_type: string}) => ({name: c.name, base_type: c.base_type})),
+  }
+  log?.appendLine(`getTableSchema: got ${result.fields.length} fields`)
+  return {status: 'success', result}
+}
+
+export interface TableDataResult {
+  cols: { name: string; base_type: string }[]
+  rows: unknown[][]
+}
+
+export async function getTableData(
+  host: string,
+  apiKey: string,
+  tableId: number,
+): Promise<{ status: 'success'; result: TableDataResult } | { status: 'error'; message: string }> {
+  const baseUrl = host.replace(/\/+$/, '')
+  const url = `${baseUrl}/api/table/${tableId}/data`
+  log?.appendLine(`getTableData: GET ${url}`)
+
+  let response: Response
+  try {
+    response = await fetch(url, {
+      headers: {'x-api-key': apiKey},
+    })
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error)
+    log?.appendLine(`getTableData: network error - ${message}`)
+    return {status: 'error', message}
+  }
+
+  log?.appendLine(`getTableData: response ${response.status} ${response.statusText}`)
+
+  if (!response.ok) {
+    const body = await response.text().catch(() => '(unreadable)')
+    log?.appendLine(`getTableData: error body - ${body}`)
+    return {status: 'error', message: `HTTP ${response.status}: ${response.statusText}`}
+  }
+
+  const data = await response.json()
+  const result: TableDataResult = {
+    cols: data.data?.cols ?? [],
+    rows: data.data?.rows ?? [],
+  }
+  log?.appendLine(`getTableData: got ${result.rows.length} rows, ${result.cols.length} cols`)
+  return {status: 'success', result}
+}
+
 export async function runTransform(
   host: string,
   workspaceApiKey: string,

@@ -118,3 +118,31 @@ export type PreviewToExtensionMessage =
   | { type: "openField"; ref: string[] }
   | { type: "runTransform" }
   | { type: "editInEditor"; filePath: string; lang: string; name: string };
+
+// -- Table data viewer types --
+
+export interface TableViewColumn {
+  name: string;
+  baseType: string;
+}
+
+export interface TableSchemaData {
+  tableName: string;
+  schema: string | null;
+  columns: TableViewColumn[];
+}
+
+export interface TableViewData extends TableSchemaData {
+  rows: unknown[][];
+}
+
+export type ExtensionToTableDataMessage =
+  | { type: "tableSchemaInit"; data: TableSchemaData }
+  | { type: "tableDataInit"; data: TableViewData }
+  | { type: "tableDataLoading"; tableName: string }
+  | { type: "tableDataError"; message: string };
+
+export type TableDataToExtensionMessage =
+  | { type: "ready" }
+  | { type: "refresh" }
+  | { type: "loadData" };

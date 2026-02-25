@@ -11,6 +11,7 @@ export default defineConfig({
       input: {
         index: resolve(__dirname, "index.html"),
         preview: resolve(__dirname, "preview.html"),
+        "table-data": resolve(__dirname, "table-data.html"),
       },
       output: {
         entryFileNames: "assets/[name].js",

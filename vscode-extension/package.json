@@ -91,6 +91,16 @@
         "command": "metastudio.openEmbeddedCode",
         "title": "Metastudio: Edit Query in Editor",
         "icon": "$(edit)"
+      },
+      {
+        "command": "metastudio.viewTableData",
+        "title": "View Data",
+        "icon": "$(table)"
+      },
+      {
+        "command": "metastudio.refreshWorkspaceData",
+        "title": "Refresh Workspace Data",
+        "icon": "$(refresh)"
       }
     ],
     "walkthroughs": [
@@ -158,6 +168,11 @@
         {
           "id": "metabase.dataCatalog",
           "name": "Data Catalog"
+        },
+        {
+          "id": "metabase.workspaceData",
+          "name": "Workspace Data",
+          "visibility": "collapsed"
         }
       ]
     },
@@ -166,6 +181,11 @@
         {
           "command": "metastudio.checkConnection",
           "when": "view == metabase.connection",
+          "group": "navigation"
+        },
+        {
+          "command": "metastudio.refreshWorkspaceData",
+          "when": "view == metabase.workspaceData",
           "group": "navigation"
         }
       ],
@@ -218,6 +238,16 @@
         {
           "command": "metastudio.showInDependencyGraph",
           "when": "view == metabase.dataCatalog && viewItem == table",
+          "group": "navigation@1"
+        },
+        {
+          "command": "metastudio.viewTableData",
+          "when": "view == metabase.workspaceData && viewItem == outputTable",
+          "group": "inline"
+        },
+        {
+          "command": "metastudio.viewTableData",
+          "when": "view == metabase.workspaceData && viewItem == outputTable",
           "group": "navigation@1"
         }
       ]
