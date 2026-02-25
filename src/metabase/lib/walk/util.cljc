@@ -7,10 +7,12 @@
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.mbql-clause :as lib.schema.mbql-clause]
+   [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.lib.schema.template-tag :as lib.schema.template-tag]
    [metabase.lib.util.match :as lib.util.match]
    [metabase.lib.walk :as lib.walk]
    [metabase.util.malli :as mu]
+   [metabase.util.malli.registry :as mr]
    [metabase.util.performance :refer [not-empty]]))
 
 (defn- transduce-stages
@@ -239,3 +241,45 @@
          (comp (filter #(= (:type %) :snippet))
                (keep :snippet-id))
          (all-template-tags query))))
+
+(mr/def ::query-dependencies
+  [:map
+   [:table [:set ::lib.schema.id/table]]
+   [:card [:set ::lib.schema.id/card]]
+   [:field [:set ::lib.schema.id/field]]
+   [:metric [:set ::lib.schema.id/metric]]
+   [:measure [:set ::lib.schema.id/measure]]
+   [:segment [:set ::lib.schema.id/segment]]
+   [:snippet [:set ::lib.schema.id/snippet]]])
+
+(mu/defn all-query-dependencies
+  [queries :- [:sequential ::lib.schema/query]]
+  (let [source-table-ids (into #{} (mapcat all-source-table-ids) queries)
+        source-card-ids (into #{} (mapcat all-source-card-ids) queries)
+        implicitly-joined-field-ids (into #{} (mapcat all-implicitly-joined-field-ids) queries)
+        template-tag-field-ids (into #{} (mapcat all-template-tag-field-ids) queries)
+        template-tag-card-ids (into #{} (mapcat all-template-tag-card-ids) queries)
+        template-tag-snippet-ids (into #{} (mapcat all-template-tag-snippet-ids) queries)
+        metric-ids (into #{} (mapcat all-metric-ids) queries)
+        measure-ids (into #{} (mapcat all-measure-ids) queries)
+        segment-ids (into #{} (mapcat all-segment-ids) queries)]
+    {:table source-table-ids
+     :card source-card-ids
+     :field (set/union implicitly-joined-field-ids template-tag-field-ids)
+     :card (set/union source-card-ids template-tag-card-ids)
+     :metric metric-ids
+     :measure measure-ids
+     :segment segment-ids
+     :snippet template-tag-snippet-ids}))
+
+(mu/defn bulk-load-query-metadata
+  [metadata-providerable :- ::lib.schema.metadata/metadata-providerable
+   {:keys [table card field metric measure segment snippet]} :- ::query-dependencies]
+  (let [table-ids-from-fields (->> (lib.metadata/bulk-metadata metadata-providerable :metadata/column field)
+                                   (into #{} (keep :table-id)))]
+    (lib.metadata/bulk-metadata metadata-providerable :metadata/table (set/union table table-ids-from-fields))
+    (lib.metadata/bulk-metadata metadata-providerable :metadata/card card)
+    (lib.metadata/bulk-metadata metadata-providerable :metadata/metric metric)
+    (lib.metadata/bulk-metadata metadata-providerable :metadata/measure measure)
+    (lib.metadata/bulk-metadata metadata-providerable :metadata/segment segment)
+    (lib.metadata/bulk-metadata metadata-providerable :metadata/snippet snippet)))
