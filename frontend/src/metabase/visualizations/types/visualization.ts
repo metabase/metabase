@@ -347,7 +347,7 @@ export type VisualizationSettingDefinition<
     onChange: (value: TValue) => void,
     extra: SettingsExtra | undefined,
     onChangeSettings: (value: Partial<VisualizationSettings>) => void,
-  ) => Partial<TProps>;
+  ) => TProps;
   onChange?: (value: TValue) => void;
   onChangeSettings?: (value: Partial<VisualizationSettings>) => void;
   onUpdate?: (value: TValue, extra: SettingsExtra) => void;

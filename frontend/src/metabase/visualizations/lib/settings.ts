@@ -227,6 +227,7 @@ function getSettingWidget<T, TValue, TProps extends object>(
 
   const getHiddenFn = settingDef.getHidden;
   const getPropsFn = settingDef.getProps;
+  const defaultProps = {} as TProps;
 
   return {
     ...settingDef,
@@ -247,7 +248,7 @@ function getSettingWidget<T, TValue, TProps extends object>(
     props: {
       ...(settingDef.props && typeof settingDef.props === "object"
         ? settingDef.props
-        : {}),
+        : defaultProps),
       ...(getPropsFn
         ? getPropsFn(
             resolvedObject,
@@ -256,7 +257,7 @@ function getSettingWidget<T, TValue, TProps extends object>(
             extra,
             onChangeSettings,
           )
-        : {}),
+        : defaultProps),
     },
     set: settingId in storedSettings,
     widget:
