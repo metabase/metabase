@@ -8,6 +8,7 @@
    [metabase-enterprise.metabot-v3.agent.streaming :as streaming]
    [metabase-enterprise.metabot-v3.agent.tools :as agent-tools]
    [metabase-enterprise.metabot-v3.self :as self]
+   [metabase.analytics.prometheus :as prometheus]
    [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
@@ -198,7 +199,7 @@
                    :tools     (mapv (fn [[name _]] name) tools)}))
     (eduction (streaming/post-process-xf (get-in memory [:state :queries] {})
                                          (get-in memory [:state :charts] {}))
-              (self/call-llm model (:content system-msg) input-parts tools))))
+              (self/call-llm model "agent" (:content system-msg) input-parts tools))))
 
 ;;; Memory management
 
@@ -418,24 +419,30 @@
             [:context {:optional true} [:maybe ::context]]
             [:debug? {:optional true} [:maybe :boolean]]]]
   (let [profile-id (:profile-id opts)
-        debug?     (:debug? opts)]
+        debug?     (:debug? opts)
+        labels     {:profile-id (name profile-id)}]
     (reify clojure.lang.IReduceInit
       (reduce [_ rf init]
         (with-span :info {:name       :metabot-v3.agent/run-agent-loop
                           :profile-id profile-id
                           :msg-count  (count (:messages opts))}
-          (binding [*debug-log* (when debug? (atom []))]
-            (try
-              (let [result (->> (initial-loop-state (init-agent opts) rf init (atom {}))
-                                (iterate loop-step)
-                                (drop-while #(= :continue (:status %)))
-                                first
-                                :result)]
-                ;; Emit debug log as a data part if debug mode was active
-                (if (and debug? (seq @*debug-log*))
-                  (rf result (debug-log-part @*debug-log*))
-                  result))
-              (catch Exception e
-                (when-not (:api-error (ex-data e))
-                  (log/error e "Agent loop error"))
-                (rf init (error-part e))))))))))
+          (prometheus/inc! :metabase-metabot/agent-requests labels)
+          (let [start-ms (u/start-timer)]
+            (binding [*debug-log* (when debug? (atom []))]
+              (try
+                (let [{:keys [result iteration]} (->> (initial-loop-state (init-agent opts) rf init (atom {}))
+                                                      (iterate loop-step)
+                                                      (drop-while #(= :continue (:status %)))
+                                                      first)]
+                  (prometheus/observe! :metabase-metabot/agent-iterations labels iteration)
+                  ;; Emit debug log as a data part if debug mode was active
+                  (if (and debug? (seq @*debug-log*))
+                    (rf result (debug-log-part @*debug-log*))
+                    result))
+                (catch Exception e
+                  (prometheus/inc! :metabase-metabot/agent-errors labels)
+                  (when-not (:api-error (ex-data e))
+                    (log/error e "Agent loop error"))
+                  (rf init (error-part e)))
+                (finally
+                  (prometheus/observe! :metabase-metabot/agent-duration-ms labels (u/since-ms start-ms)))))))))))
