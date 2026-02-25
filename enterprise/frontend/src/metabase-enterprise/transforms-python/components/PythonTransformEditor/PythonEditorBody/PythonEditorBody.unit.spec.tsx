@@ -41,6 +41,7 @@ function setup({
       onCancel={jest.fn()}
       onAcceptProposed={onAcceptProposed}
       onRejectProposed={onRejectProposed}
+      type="python"
     />,
   );
 }
