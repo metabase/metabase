@@ -27,7 +27,7 @@
     "res/*"
   ],
   "engines": {
-    "vscode": "^1.108.0"
+    "vscode": "^1.101.0"
   },
   "activationEvents": ["onStartupFinished"],
   "contributes": {
@@ -81,6 +81,11 @@
         "command": "metastudio.runTransform",
         "title": "Run Transform",
         "icon": "$(play)"
+      },
+      {
+        "command": "metastudio.createSqlTransform",
+        "title": "Metastudio: New SQL Transform",
+        "icon": "$(add)"
       },
       {
         "command": "metastudio.openEmbeddedCode",
@@ -171,6 +176,11 @@
           "group": "inline"
         },
         {
+          "command": "metastudio.createSqlTransform",
+          "when": "viewItem == collectionLibrary",
+          "group": "inline"
+        },
+        {
           "command": "metastudio.setHost",
           "when": "view == metabase.connection && viewItem == connectionUrl",
           "group": "inline@1"
@@ -192,7 +202,7 @@
         },
         {
           "command": "metastudio.openInMetabase",
-          "when": "view == metabase.content && viewItem =~ /^(card|model|metric|dashboard|collection|transform)$/ && metastudio.hostConfigured",
+          "when": "view == metabase.content && viewItem =~ /^(card|model|metric|dashboard|collection|collectionLibrary|transform)$/ && metastudio.hostConfigured",
           "group": "navigation@1"
         },
         {
@@ -202,7 +212,7 @@
         },
         {
           "command": "metastudio.showInDependencyGraph",
-          "when": "view == metabase.content && viewItem =~ /^(card|model|metric|dashboard|collection|transform|native_query_snippet|document|action|measure|segment)$/",
+          "when": "view == metabase.content && viewItem =~ /^(card|model|metric|dashboard|collection|collectionLibrary|transform|native_query_snippet|document|action|measure|segment)$/",
           "group": "navigation@2"
         },
         {
@@ -358,7 +368,7 @@
     "@types/node": "^25.0.3",
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",
-    "@types/vscode": "^1.108.0",
+    "@types/vscode": "^1.101.0",
     "@vitejs/plugin-react": "^4.4.0",
     "@vscode/vsce": "^3.7.1",
     "@xyflow/react": "^12.10.1",

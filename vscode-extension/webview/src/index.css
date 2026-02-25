@@ -95,6 +95,21 @@ body {
   border-color: var(--graph-color-brand);
 }
 
+.graph-node-card.isolated {
+  border-color: var(--graph-color-summarize);
+}
+
+.graph-node-card.isolated:hover,
+.graph-node-card.isolated.selected {
+  border-color: var(--graph-color-brand);
+}
+
+.graph-node-card.dimmed {
+  opacity: 0.25;
+  cursor: default;
+  pointer-events: none;
+}
+
 .graph-node-handle {
   visibility: hidden;
 }
@@ -179,6 +194,8 @@ body {
 
 .graph-panel-content {
   pointer-events: all;
+  display: flex;
+  gap: 8px;
 }
 
 /* Panel card */
@@ -255,6 +272,11 @@ body {
 }
 
 .graph-panel-action-button:hover {
+  background: var(--graph-pill-bg);
+}
+
+.graph-panel-action-button.active {
+  color: var(--graph-color-brand);
   background: var(--graph-pill-bg);
 }
 
@@ -487,4 +509,110 @@ body {
 [data-vscode-theme-kind="vscode-high-contrast"] .graph-controls {
   border: 1px solid var(--graph-border);
   background-color: var(--graph-card-bg);
+}
+
+/* Filter Dropdown */
+.graph-filter-container {
+  position: relative;
+}
+
+.graph-filter-button {
+  background: var(--graph-card-bg);
+  border: 1px solid var(--graph-border);
+  border-radius: 4px;
+  padding: 6px 12px;
+  cursor: pointer;
+  color: var(--graph-text-primary);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.graph-filter-button:hover {
+  border-color: var(--graph-color-brand);
+}
+
+.graph-filter-button.active {
+  border-color: var(--graph-color-brand);
+  color: var(--graph-color-brand);
+}
+
+.graph-filter-badge {
+  background: var(--graph-color-brand);
+  color: white;
+  font-size: 10px;
+  font-weight: 600;
+  padding: 1px 5px;
+  border-radius: 8px;
+  min-width: 16px;
+  text-align: center;
+}
+
+.graph-filter-dropdown {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  margin-top: 4px;
+  background: var(--graph-card-bg);
+  border: 1px solid var(--graph-border);
+  border-radius: 6px;
+  min-width: 12rem;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  z-index: 100;
+}
+
+.graph-filter-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--graph-border);
+}
+
+.graph-filter-title {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--graph-text-secondary);
+}
+
+.graph-filter-clear {
+  background: none;
+  border: none;
+  font-size: 11px;
+  color: var(--graph-color-brand);
+  cursor: pointer;
+  padding: 2px 4px;
+}
+
+.graph-filter-clear:hover {
+  text-decoration: underline;
+}
+
+.graph-filter-list {
+  padding: 6px 0;
+  max-height: 300px;
+  overflow-y: auto;
+}
+
+.graph-filter-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px;
+  cursor: pointer;
+  font-size: 13px;
+  transition: background 0.1s ease;
+}
+
+.graph-filter-item:hover {
+  background: var(--graph-pill-bg);
+}
+
+.graph-filter-item.hidden {
+  opacity: 0.5;
+}
+
+.graph-filter-item input[type="checkbox"] {
+  margin: 0;
+  cursor: pointer;
 }

@@ -1,56 +1,65 @@
+import type { Node, NodeProps } from '@xyflow/react'
+import type { MouseEvent } from 'react'
+import type { GraphViewNode } from '../../src/shared-types'
+import type { DependentGroup } from './graph-utils'
+import type { GraphSelection } from './GraphContext'
 import {
   Handle,
-  type NodeProps,
-  type Node,
+
   Position,
   useNodesInitialized,
-} from "@xyflow/react";
-import { type MouseEvent, memo, useContext } from "react";
-import type { GraphViewNode } from "../../src/shared-types";
-import { GraphContext } from "./GraphContext";
-import type { GraphSelection } from "./GraphContext";
-import { Icon } from "./icons";
+} from '@xyflow/react'
+import { memo, useContext } from 'react'
 import {
-  getNodeTypeInfo,
-  getNodeIconName,
-  getDependentGroups,
+
   getDependencyGroupTitle,
   getDependentGroupLabel,
-  type DependentGroup,
-} from "./graph-utils";
+  getDependentGroups,
+  getNodeIconName,
+  getNodeTypeInfo,
+} from './graph-utils'
+import { GraphContext } from './GraphContext'
+import { Icon } from './icons'
 
-export type GraphNodeType = Node<GraphViewNode>;
+export type GraphNodeType = Node<GraphViewNode>
 
-type GraphNodeComponentProps = NodeProps<GraphNodeType>;
+type GraphNodeComponentProps = NodeProps<GraphNodeType>
 
-export const GraphNodeComponent = memo(function GraphNodeComponent({
+export const GraphNodeComponent = memo(({
   data: node,
-}: GraphNodeComponentProps) {
-  const { selection, setSelection } = useContext(GraphContext);
-  const typeInfo = getNodeTypeInfo(node);
-  const iconName = getNodeIconName(node);
-  const groups = getDependentGroups(node);
-  const isSelected = selection !== null && selection.key === node.key && selection.groupType == null;
-  const isInitialized = useNodesInitialized();
+}: GraphNodeComponentProps) => {
+  const { selection, setSelection, isolatedPath, visibleModels } = useContext(GraphContext)
+  const typeInfo = getNodeTypeInfo(node)
+  const iconName = getNodeIconName(node)
+  const groups = getDependentGroups(node)
+  const isSelected = selection !== null && selection.key === node.key && selection.groupType == null
+  const isInitialized = useNodesInitialized()
+  const isInIsolatedPath = isolatedPath !== null && isolatedPath.nodeKeys.has(node.key)
+  const isFiltered = visibleModels.size > 0 && !visibleModels.has(node.model)
+  const isDimmed = (isolatedPath !== null && !isInIsolatedPath) || isFiltered
 
   const cardClassName = [
-    "graph-node-card",
-    isInitialized ? "initialized" : "",
-    isSelected ? "selected" : "",
+    'graph-node-card',
+    isInitialized ? 'initialized' : '',
+    isSelected ? 'selected' : '',
+    isInIsolatedPath ? 'isolated' : '',
+    isDimmed ? 'dimmed' : '',
   ]
     .filter(Boolean)
-    .join(" ");
+    .join(' ')
 
   const handleClassName = [
-    "graph-node-handle",
-    isInitialized ? "initialized" : "",
+    'graph-node-handle',
+    isInitialized ? 'initialized' : '',
   ]
     .filter(Boolean)
-    .join(" ");
+    .join(' ')
 
   const handleClick = () => {
-    setSelection({ key: node.key, model: node.model });
-  };
+    if (isDimmed)
+      return
+    setSelection({ key: node.key, model: node.model })
+  }
 
   return (
     <>
@@ -58,9 +67,10 @@ export const GraphNodeComponent = memo(function GraphNodeComponent({
         className={cardClassName}
         onClick={handleClick}
         role="button"
-        tabIndex={0}
+        tabIndex={isDimmed ? -1 : 0}
         aria-label={node.name}
         aria-selected={isSelected}
+        aria-disabled={isDimmed}
       >
         <div className="graph-node-content">
           <div className="graph-node-type" style={{ color: typeInfo.color }}>
@@ -73,7 +83,7 @@ export const GraphNodeComponent = memo(function GraphNodeComponent({
           <div className="graph-node-deps-title">
             {getDependencyGroupTitle(node, groups)}
           </div>
-          {groups.map((group) => (
+          {groups.map(group => (
             <DependencyGroupPill
               key={group.type}
               nodeKey={node.key}
@@ -102,15 +112,15 @@ export const GraphNodeComponent = memo(function GraphNodeComponent({
         />
       )}
     </>
-  );
-});
+  )
+})
 
 interface DependencyGroupPillProps {
-  nodeKey: string;
-  nodeModel: string;
-  group: DependentGroup;
-  selection: GraphSelection | null;
-  onSelectionChange: (selection: GraphSelection) => void;
+  nodeKey: string
+  nodeModel: string
+  group: DependentGroup
+  selection: GraphSelection | null
+  onSelectionChange: (selection: GraphSelection) => void
 }
 
 function DependencyGroupPill({
@@ -120,30 +130,30 @@ function DependencyGroupPill({
   selection,
   onSelectionChange,
 }: DependencyGroupPillProps) {
-  const isSelected =
-    selection !== null &&
-    selection.key === nodeKey &&
-    selection.groupType === group.type;
+  const isSelected
+    = selection !== null
+      && selection.key === nodeKey
+      && selection.groupType === group.type
 
   const className = [
-    "graph-node-pill",
-    isSelected ? "selected" : "",
+    'graph-node-pill',
+    isSelected ? 'selected' : '',
   ]
     .filter(Boolean)
-    .join(" ");
+    .join(' ')
 
   const handleClick = (event: MouseEvent) => {
-    event.stopPropagation();
+    event.stopPropagation()
     onSelectionChange({
       key: nodeKey,
-      model: nodeModel as GraphSelection["model"],
+      model: nodeModel as GraphSelection['model'],
       groupType: group.type,
-    });
-  };
+    })
+  }
 
   return (
     <button className={className} onClick={handleClick}>
       {getDependentGroupLabel(group)}
     </button>
-  );
+  )
 }

@@ -29,6 +29,7 @@
    [metabase.server.core :as server]
    [metabase.settings.core :as setting]
    [metabase.setup.core :as setup]
+   [metabase.sidecar :as sidecar]
    [metabase.startup.core :as startup]
    [metabase.system.core :as system]
    [metabase.task.core :as task]
@@ -287,5 +288,7 @@
     ;; run a command like `java --add-opens java.base/java.nio=ALL-UNNAMED -jar metabase.jar migrate release-locks` or
     ;; `clojure -M:run migrate release-locks`
     (run-cmd cmd init! args)
-    ;; with no command line args just start Metabase normally
-    (start-normally)))
+    ;; with no command line args just start Metabase normally (or in sidecar mode)
+    (if config/is-sidecar?
+      (sidecar/start!)
+      (start-normally))))

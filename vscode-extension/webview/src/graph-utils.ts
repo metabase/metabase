@@ -1,4 +1,5 @@
-import type { GraphNodeModel, GraphViewNode, DependentsCount } from "../../src/shared-types";
+import type { GraphNodeModel, GraphViewNode, GraphViewEdge, DependentsCount } from "../../src/shared-types";
+import type { IsolatedPath } from "./GraphContext";
 import type { IconName } from "./icons";
 
 export interface NodeTypeInfo {
@@ -169,4 +170,47 @@ export function getFieldIconName(semanticType: string | null): IconName {
   if (semanticType.includes("PK") || semanticType === "type/PK") return "key";
   if (semanticType.includes("FK") || semanticType === "type/FK") return "connections";
   return "hash";
+}
+
+/**
+ * Compute the isolated path to a target node.
+ * This finds all ancestors (nodes that the target depends on) using BFS.
+ * The path includes the target node itself plus all upstream dependencies.
+ */
+export function computeIsolatedPath(
+  targetKey: string,
+  edges: GraphViewEdge[]
+): IsolatedPath {
+  const nodeKeys = new Set<string>([targetKey]);
+  const edgeIds = new Set<string>();
+
+  // Build a map of node -> outgoing edges (edges where this node is the source)
+  // In this graph, edges go from dependent -> dependency (source depends on target)
+  // So to find ancestors, we look at edges where our node is the source
+  const outgoingMap = new Map<string, GraphViewEdge[]>();
+  for (const edge of edges) {
+    const existing = outgoingMap.get(edge.sourceKey) ?? [];
+    existing.push(edge);
+    outgoingMap.set(edge.sourceKey, existing);
+  }
+
+  // BFS to find all ancestors (upstream dependencies)
+  const queue = [targetKey];
+  while (queue.length > 0) {
+    const currentKey = queue.shift()!;
+    const outgoingEdges = outgoingMap.get(currentKey) ?? [];
+
+    for (const edge of outgoingEdges) {
+      const ancestorKey = edge.targetKey;
+      const edgeId = `${edge.sourceKey}->${edge.targetKey}`;
+      edgeIds.add(edgeId);
+
+      if (!nodeKeys.has(ancestorKey)) {
+        nodeKeys.add(ancestorKey);
+        queue.push(ancestorKey);
+      }
+    }
+  }
+
+  return { targetKey, nodeKeys, edgeIds };
 }

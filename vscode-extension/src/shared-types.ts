@@ -1,3 +1,5 @@
+import type { TransformQuery, TransformTarget } from "./transform-query";
+
 export type GraphNodeModel =
   | "question"
   | "model"
@@ -43,6 +45,7 @@ export interface GraphViewNode {
   queryType?: string;
   display?: string;
   createdAt?: string | null;
+  collectionId?: string | null;
   dependentsCount: DependentsCount;
   fields?: GraphViewField[];
   incomingCount: number;
@@ -81,3 +84,37 @@ export type WebviewToExtensionMessage =
   | { type: "ready" }
   | { type: "openFile"; filePath: string }
   | { type: "selectNode"; key: string };
+
+// -- Transform preview types --
+
+export type {
+  TransformQuery,
+  NativeTransformQuery,
+  StructuredTransformQuery,
+  TransformTarget,
+  FieldReference,
+  TableReference,
+} from "./transform-query";
+
+export interface TransformPreviewData {
+  name: string;
+  description: string | null;
+  query: TransformQuery | null;
+  target: TransformTarget | null;
+  filePath: string;
+  entityId: string;
+  sourceQueryType: "native" | "query" | "python" | null;
+}
+
+export type ExtensionToPreviewMessage =
+  | { type: "previewInit"; data: TransformPreviewData }
+  | { type: "previewUpdate"; data: TransformPreviewData };
+
+export type PreviewToExtensionMessage =
+  | { type: "ready" }
+  | { type: "openFile"; filePath: string }
+  | { type: "openGraph"; entityId: string }
+  | { type: "openTable"; ref: string[] }
+  | { type: "openField"; ref: string[] }
+  | { type: "runTransform" }
+  | { type: "editInEditor"; filePath: string; lang: string; name: string };
