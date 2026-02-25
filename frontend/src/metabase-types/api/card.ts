@@ -124,7 +124,7 @@ export type SeriesSettings = {
   title?: string;
   color?: string;
   show_series_values?: boolean;
-  display?: string;
+  display?: VisualizationDisplay;
   axis?: string;
   "line.size"?: LineSize;
   "line.style"?: "solid" | "dashed" | "dotted";

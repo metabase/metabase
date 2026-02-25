@@ -55,13 +55,15 @@ import type {
 } from "metabase/visualizations/types";
 import { getColumnKey } from "metabase-lib/v1/queries/utils/column-key";
 import { isNumeric } from "metabase-lib/v1/types/utils/isa";
-import type { Series } from "metabase-types/api";
+import type { Series, VisualizationDisplay } from "metabase-types/api";
 
 export const getSeriesDisplays = (
   transformedSeries: Series,
   settings: ComputedVisualizationSettings,
-): string[] => {
-  return transformedSeries.map((single) => settings.series(single).display);
+): VisualizationDisplay[] => {
+  return transformedSeries
+    .map((single) => settings.series?.(single).display)
+    .filter((display) => display != null);
 };
 
 export function getDefaultDimensionLabel(
@@ -342,7 +344,9 @@ export const STACKABLE_SETTINGS: VisualizationSettingsDefinitions<Series> = {
       return getDefaultStackingValue(settings, card);
     },
     getHidden: (series, settings) => {
-      const displays = series.map((single) => settings.series(single).display);
+      const displays = series
+        .map((single) => settings.series?.(single).display)
+        .filter((display) => display != null);
       const stackableDisplays = displays.filter((display) =>
         STACKABLE_SERIES_DISPLAY_TYPES.has(display),
       );

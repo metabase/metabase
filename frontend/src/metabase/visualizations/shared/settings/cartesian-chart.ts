@@ -32,6 +32,7 @@ import type {
   DatasetData,
   RawSeries,
   SeriesOrderSetting,
+  VisualizationDisplay,
 } from "metabase-types/api";
 
 export function getDefaultDimensionFilter(display: string) {
@@ -121,11 +122,14 @@ export function getDefaultMetrics(
   return defaultMetrics.slice(0, getMaxMetricsSupported(card.display));
 }
 
-export const STACKABLE_SERIES_DISPLAY_TYPES = new Set(["area", "bar"]);
+export const STACKABLE_SERIES_DISPLAY_TYPES = new Set<VisualizationDisplay>([
+  "area",
+  "bar",
+]);
 
 export const isStackingValueValid = (
   settings: ComputedVisualizationSettings,
-  seriesDisplays: string[],
+  seriesDisplays: VisualizationDisplay[],
 ) => {
   if (settings["stackable.stack_type"] == null) {
     return true;

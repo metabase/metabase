@@ -35,7 +35,7 @@ export type VizSettingsKey = string;
 
 export type LegacySeriesSettingsObjectKey = {
   card: Partial<Card> & {
-    _seriesKey: VizSettingsKey;
+    _seriesKey?: VizSettingsKey;
   };
 };
 
