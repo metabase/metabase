@@ -101,7 +101,7 @@ export function TableSelector({
         <DataPickerModal
           title={t`Pick a table`}
           value={getDataPickerValue(table) ?? getDefaultDatabase(database)}
-          onlyDatabaseId={database}
+          //onlyDatabaseId={database}
           onChange={handleChange}
           onClose={close}
           shouldDisableItem={shouldDisableItem}
