@@ -125,6 +125,7 @@
 .preview-step-cell--summarize { background: hsla(89, 48%, 40%, .1); }
 .preview-step-cell--breakout { background: hsla(46, 81%, 52%, .1); }
 .preview-step-cell--muted { background: var(--vscode-input-background, rgba(128, 128, 128, .06)); }
+.preview-step-cell--code { background: var(--vscode-textCodeBlock-background, rgba(128, 128, 128, .08)); }
 
 /* Pills — clause items inside the cell */
 .preview-pill {
@@ -174,21 +175,21 @@ a.preview-pill:hover { opacity: .85; }
 /* SQL block */
 .preview-sql {
   background: transparent;
-  border-radius: 6px;
-  padding: 14px;
+  padding: 0;
   overflow-x: auto;
   font-family: var(--vscode-editor-font-family, 'Menlo', 'Consolas', monospace);
   font-size: var(--vscode-editor-font-size, 13px);
   line-height: 1.7;
   white-space: pre-wrap;
   word-wrap: break-word;
-  width: 100%;
 }
 
-.preview-sql-keyword { color: var(--vscode-symbolIcon-keywordForeground, #569cd6); font-weight: 600; text-transform: uppercase; }
-.preview-sql-string  { color: var(--vscode-symbolIcon-stringForeground, #ce9178); }
-.preview-sql-number  { color: var(--vscode-symbolIcon-numberForeground, #b5cea8); }
-.preview-sql-comment { color: var(--vscode-symbolIcon-commentForeground, #6a9955); font-style: italic; }
+.preview-sql code {
+  background: transparent !important;
+  padding: 0 !important;
+  border: none !important;
+  border-radius: 0 !important;
+}
 
 /* Footer */
 .preview-footer {

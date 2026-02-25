@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { ReadOnlyNotebook } from "../../../vendor/notebook-component.esm.js";
 import type {
   PreviewData,
@@ -186,11 +186,7 @@ function NotebookSection({ notebookData }: { notebookData: NotebookData }) {
 
   if (!question) {
     if (notebookData.queryType === "native" && notebookData.nativeSql) {
-      return (
-        <div className="preview-steps">
-          <SqlBlock sql={notebookData.nativeSql} />
-        </div>
-      );
+      return <SqlBlock sql={notebookData.nativeSql} />;
     }
     return <p className="preview-empty-state">Unable to parse query</p>;
   }
@@ -206,7 +202,7 @@ function NativeQueryBlock({ query }: { query: NativeTransformQuery }) {
           <CodeIcon size={14} />
           Native Query
         </div>
-        <div className="preview-step-cell preview-step-cell--brand">
+        <div className="preview-step-cell preview-step-cell--code">
           <SqlBlock sql={query.sql} />
         </div>
       </div>
@@ -214,80 +210,10 @@ function NativeQueryBlock({ query }: { query: NativeTransformQuery }) {
   );
 }
 
-interface SqlToken {
-  start: number;
-  end: number;
-  className: string;
-  text: string;
-}
-
-function tokenizeSql(sql: string): SqlToken[] {
-  const keywords =
-    /\b(SELECT|FROM|WHERE|AND|OR|NOT|IN|EXISTS|BETWEEN|LIKE|ILIKE|IS|NULL|AS|ON|JOIN|INNER|LEFT|RIGHT|OUTER|FULL|CROSS|GROUP\s+BY|ORDER\s+BY|HAVING|LIMIT|OFFSET|UNION|ALL|DISTINCT|INSERT|INTO|VALUES|UPDATE|SET|DELETE|CREATE|TABLE|ALTER|DROP|INDEX|VIEW|WITH|CASE|WHEN|THEN|ELSE|END|ASC|DESC|COUNT|SUM|AVG|MIN|MAX|COALESCE|CAST|NULLIF|TRUE|FALSE)\b/gi;
-  const strings = /('[^']*')/g;
-  const numbers = /\b(\d+(?:\.\d+)?)\b/g;
-  const singleLineComments = /(--[^\n]*)/g;
-  const multiLineComments = /(\/\*[\s\S]*?\*\/)/g;
-
-  const tokens: SqlToken[] = [];
-
-  function collect(pattern: RegExp, className: string) {
-    let match;
-    while ((match = pattern.exec(sql)) !== null) {
-      tokens.push({
-        start: match.index,
-        end: match.index + match[0].length,
-        className,
-        text: match[0],
-      });
-    }
-  }
-
-  collect(multiLineComments, "preview-sql-comment");
-  collect(singleLineComments, "preview-sql-comment");
-  collect(strings, "preview-sql-string");
-  collect(keywords, "preview-sql-keyword");
-  collect(numbers, "preview-sql-number");
-
-  tokens.sort((a, b) => a.start - b.start || b.end - a.end);
-
-  const filtered: SqlToken[] = [];
-  let lastEnd = 0;
-  for (const token of tokens) {
-    if (token.start >= lastEnd) {
-      filtered.push(token);
-      lastEnd = token.end;
-    }
-  }
-
-  return filtered;
-}
-
 function SqlBlock({ sql }: { sql: string }) {
-  const tokens = tokenizeSql(sql);
-  const elements: ReactNode[] = [];
-  let cursor = 0;
-
-  for (let index = 0; index < tokens.length; index++) {
-    const token = tokens[index];
-    if (cursor < token.start) {
-      elements.push(sql.slice(cursor, token.start));
-    }
-    elements.push(
-      <span key={index} className={token.className}>
-        {token.text}
-      </span>,
-    );
-    cursor = token.end;
-  }
-
-  if (cursor < sql.length) {
-    elements.push(sql.slice(cursor));
-  }
-
   return (
     <pre className="preview-sql">
-      <code>{elements}</code>
+      <code>{sql}</code>
     </pre>
   );
 }
