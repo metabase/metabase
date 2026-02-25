@@ -105,6 +105,7 @@
   [rendered-prompt]
   (self/call-llm-structured
    "anthropic/claude-haiku-4-5"
+   "example-question-generation"
    [{:role "user" :content rendered-prompt}]
    questions-json-schema
    temperature
