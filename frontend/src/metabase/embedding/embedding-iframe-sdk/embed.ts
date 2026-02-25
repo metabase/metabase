@@ -575,6 +575,29 @@ const MetabaseMetabotElement = createCustomElement("metabase-metabot", [
   "target-collection",
 ]);
 
+/** User info received from the SDK */
+type UserInfo = {
+  id: number;
+  email: string;
+  commonName: string;
+};
+
+/** List of user info change callbacks (used by app-wrapper) */
+const _userInfoCallbacks: Set<(userInfo: UserInfo | null) => void> = new Set();
+let _currentUserInfo: UserInfo | null = null;
+
+// Listen for user info messages from iframe
+if (typeof window !== "undefined") {
+  window.addEventListener("message", (event) => {
+    if (event.data?.type === "metabase.embed.userInfo") {
+      _currentUserInfo = event.data.data;
+      _userInfoCallbacks.forEach((callback) => {
+        callback(_currentUserInfo);
+      });
+    }
+  });
+}
+
 /**
  * AppWrapper component that applies theme CSS variables to nested content.
  * This allows regular HTML elements (like headers) to use theme colors.
@@ -582,10 +605,12 @@ const MetabaseMetabotElement = createCustomElement("metabase-metabot", [
 class AppWrapperElement extends HTMLElement {
   private _styleElement: HTMLStyleElement | null = null;
   private _boundApplyTheme: () => void;
+  private _boundUpdateUser: (userInfo: UserInfo | null) => void;
 
   constructor() {
     super();
     this._boundApplyTheme = this._applyTheme.bind(this);
+    this._boundUpdateUser = this._updateUser.bind(this);
   }
 
   connectedCallback() {
@@ -596,13 +621,28 @@ class AppWrapperElement extends HTMLElement {
     // Register for config change notifications
     _configChangeCallbacks.add(this._boundApplyTheme);
     this._applyTheme();
+
+    // Register for user info notifications
+    _userInfoCallbacks.add(this._boundUpdateUser);
+    // Apply current user info if already available
+    if (_currentUserInfo) {
+      this._updateUser(_currentUserInfo);
+    }
   }
 
   disconnectedCallback() {
     _configChangeCallbacks.delete(this._boundApplyTheme);
+    _userInfoCallbacks.delete(this._boundUpdateUser);
     if (this._styleElement) {
       this._styleElement.remove();
       this._styleElement = null;
+    }
+  }
+
+  private _updateUser(userInfo: UserInfo | null) {
+    const userElement = this.querySelector(".app-user");
+    if (userElement && userInfo) {
+      userElement.textContent = userInfo.commonName;
     }
   }
 
