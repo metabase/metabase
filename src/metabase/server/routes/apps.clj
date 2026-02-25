@@ -27,9 +27,10 @@
   <title>" app-name " - Metabase App</title>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
-    html, body { height: 100%; }
+    html, body { height: 100%; overflow: hidden; }
     body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; }
-    #app-container { height: 100vh; width: 100%; }
+    #app-container { height: 100vh; width: 100%; display: flex; flex-direction: column; }
+    #app-container > * { flex: 1; height: 100%; }
   </style>
 </head>
 <body>
