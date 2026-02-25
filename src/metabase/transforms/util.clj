@@ -578,7 +578,7 @@
         int-id->metadata (when (seq int-table-ids)
                            (t2/select-pk->fn (fn [{:keys [db_id schema name]}]
                                                {:database_id db_id :schema schema :table name})
-                                             [:model/Table :id :db_id :schema :name]
+                                             :model/Table
                                              :id [:in int-table-ids]))
         missing-ids      (when (seq int-table-ids)
                            (remove int-id->metadata int-table-ids))
