@@ -289,7 +289,7 @@
         "css-loader": "^6.10.0",
         "cypress": "^15.10.0",
         "cypress-iframe": "^1.0.1",
-        "cypress-multi-reporters": "^1.6.4",
+        "cypress-multi-reporters": "^2.0.5",
         "cypress-on-fix": "^1.1.0",
         "cypress-real-events": "^1.15.0",
         "cypress-split": "^1.24.20",
@@ -2575,7 +2575,7 @@
 
     "cypress-iframe": ["cypress-iframe@1.0.1", "", {}, "sha512-Ne+xkZmWMhfq3x6wbfzK/SzsVTCrJru3R3cLXsoSAZyfUtJDamXyaIieHXeea3pQDXF4wE2w4iUuvCYHhoD31g=="],
 
-    "cypress-multi-reporters": ["cypress-multi-reporters@1.6.4", "", { "dependencies": { "debug": "^4.3.4", "lodash": "^4.17.21" } }, "sha512-3xU2t6pZjZy/ORHaCvci5OT1DAboS4UuMMM8NBAizeb2C9qmHt+cgAjXgurazkwkPRdO7ccK39M5ZaPCju0r6A=="],
+    "cypress-multi-reporters": ["cypress-multi-reporters@2.0.5", "", { "dependencies": { "debug": "^4.4.0", "lodash": "^4.17.21", "semver": "^7.6.3" }, "peerDependencies": { "mocha": ">=3.1.2" } }, "sha512-5ReXlNE7C/9/rpDI3z0tAJbPXsTHK7P3ogvUtBntQlmctRQ+sSMts7dIQY5MTb0XfBSge3CuwvNvaoqtw90KSQ=="],
 
     "cypress-on-fix": ["cypress-on-fix@1.1.0", "", { "dependencies": { "debug": "^4.3.7" } }, "sha512-qGdbC0vZLmR3lYPpWWZvMqgDTeA2v04zu3DBdBmJHbG+BjwlFNYGnL7Y+X4LBrB+AyCCCeCuXhV80UXA90UhWg=="],
 
@@ -6050,6 +6050,10 @@
     "cypress/lodash": ["lodash@4.17.23", "", {}, "sha512-LgVTMpQtIopCi79SJeDiP0TfWi5CNEc/L/aRdTh3yIvmZXTnheWpKjSZhnvMl8iXbC1tFg9gdHHDMLoV7CnG+w=="],
 
     "cypress/supports-color": ["supports-color@8.1.1", "", { "dependencies": { "has-flag": "^4.0.0" } }, "sha512-MpUEN2OodtUzxvKQl72cUF7RQ5EiHsGvSsVG0ia9c5RbWGL2CI4C7EpPS8UTBIplnlzZiNuV56w+FuNxy3ty2Q=="],
+
+    "cypress-multi-reporters/lodash": ["lodash@4.17.23", "", {}, "sha512-LgVTMpQtIopCi79SJeDiP0TfWi5CNEc/L/aRdTh3yIvmZXTnheWpKjSZhnvMl8iXbC1tFg9gdHHDMLoV7CnG+w=="],
+
+    "cypress-multi-reporters/semver": ["semver@7.7.4", "", { "bin": { "semver": "bin/semver.js" } }, "sha512-vFKC2IEtQnVhpT78h1Yp8wzwrf8CM+MzKMHGJZfBtzhZNycRFnXsHk6E5TxIkkMsgNS7mdX3AGB7x2QM2di4lA=="],
 
     "cypress-split/globby": ["globby@11.1.0", "", { "dependencies": { "array-union": "^2.1.0", "dir-glob": "^3.0.1", "fast-glob": "^3.2.9", "ignore": "^5.2.0", "merge2": "^1.4.1", "slash": "^3.0.0" } }, "sha512-jhIXaOzy1sb8IyocaruWSn1TjmnBVs8Ayhcy83rmxNJ8q2uWKCAj3CnJY+KpGSXCueAPc0i05kVvVKtP1t9S3g=="],
 

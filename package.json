@@ -294,7 +294,7 @@
     "css-loader": "^6.10.0",
     "cypress": "^15.10.0",
     "cypress-iframe": "^1.0.1",
-    "cypress-multi-reporters": "^1.6.4",
+    "cypress-multi-reporters": "^2.0.5",
     "cypress-on-fix": "^1.1.0",
     "cypress-real-events": "^1.15.0",
     "cypress-split": "^1.24.20",
