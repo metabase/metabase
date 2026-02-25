@@ -3,4 +3,6 @@
 ;; See docs/developers-guide/release-flags.md for usage.
 {:metabase/release-flags
  {"joke-of-the-day" {:description "Whether to show the joke of the day on the homepage."
-                     :start-date  "2026-02-24"}}}
+                     :start-date  "2026-02-24"}}
+ {"cross-db-joins" {:description "Supporting cross db joins EZ."
+                     :start-date  "2026-02-25"}}}

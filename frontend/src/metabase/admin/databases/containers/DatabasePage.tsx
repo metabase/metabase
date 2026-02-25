@@ -6,6 +6,7 @@ import { t } from "ttag";
 import { SettingsSection } from "metabase/admin/components/SettingsSection";
 import { getEngines } from "metabase/databases/selectors";
 import { useSelector } from "metabase/lib/redux";
+import { hasReleaseFlag } from "metabase/lib/release-flags";
 import {
   Box,
   Button,
@@ -13,6 +14,7 @@ import {
   Flex,
   Icon,
   ScrollArea,
+  Switch,
   Text,
   Title,
 } from "metabase/ui";
@@ -104,6 +106,11 @@ export function DatabasePage({ params, route }: DatabasePageProps) {
               onEngineChange={onEngineChange}
             />
           </SettingsSection>
+          {hasReleaseFlag("cross-db-joins") && (
+            <SettingsSection>
+              <Switch mt="lg" label={t`Enable cross database joins`} />
+            </SettingsSection>
+          )}
         </Box>
       </Box>
       {showSidePanel && (
