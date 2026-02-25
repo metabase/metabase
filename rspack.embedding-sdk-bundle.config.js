@@ -290,7 +290,14 @@ const config = {
                 if (entrypoint) {
                   for (const chunk of entrypoint.chunks) {
                     for (const file of chunk.files) {
-                      if (file.endsWith(".js")) {
+                      // In hot mode rspack may attach HMR payload files
+                      // (*.hot-update.js) to chunk.files. Those are not
+                      // executable bundle chunks and must never be loaded
+                      // by the bootstrap manifest.
+                      if (
+                        file.endsWith(".js") &&
+                        !file.includes(".hot-update.")
+                      ) {
                         chunkFiles.push(file);
                       }
                     }
@@ -300,9 +307,11 @@ const config = {
 
                 // Separate the runtime from the rest — runtime gets inlined
                 // into the bootstrap so we avoid an extra sequential request.
-                const runtimeFile = chunkFiles.find((f) =>
-                  f.includes("chunk-runtime"),
-                );
+                const runtimeFile =
+                  chunkFiles.find((f) =>
+                    /^chunks\/embedding-sdk-chunk-runtime\.[^/]+\.js$/.test(f),
+                  ) ||
+                  chunkFiles.find((f) => f.includes("chunk-runtime"));
                 const otherFiles = chunkFiles.filter((f) => f !== runtimeFile);
 
                 // Paths are relative to /app/ (the bootstrap's baseUrl).

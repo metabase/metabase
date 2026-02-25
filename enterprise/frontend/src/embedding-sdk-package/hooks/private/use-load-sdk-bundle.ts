@@ -26,6 +26,8 @@ const SDK_PACKAGE_VERSION = process.env.VERSION || "unknown";
  * - First signal wins; all listeners are cleaned up after settling.
  */
 const waitForScriptLoading = (script: HTMLScriptElement) => {
+  // eslint-disable-next-line no-console
+  console.log("SDK loader: waiting for script loading");
   return new Promise<void>((resolve, reject) => {
     let settled = false;
 
@@ -56,7 +58,7 @@ const waitForScriptLoading = (script: HTMLScriptElement) => {
         // index.ts will dispatch the custom event when done.
         // eslint-disable-next-line no-console
         console.log(
-          "SDK loader: script loaded, no bundle global → waiting for chunks",
+          "SDK loader: script loaded, no bundle global → waiting for chunks..  wtf.",
         );
       }
     };
@@ -65,13 +67,19 @@ const waitForScriptLoading = (script: HTMLScriptElement) => {
       settle(() => reject(new Error(ERROR_MESSAGE)));
     };
 
+    const onBundleError = () => {
+      settle(() => reject(new Error(ERROR_MESSAGE)));
+    };
+
     const cleanup = () => {
       document.removeEventListener("metabase-sdk-bundle-loaded", onBundleEvent);
+      document.removeEventListener("metabase-sdk-bundle-error", onBundleError);
       script.removeEventListener("load", onScriptLoad);
       script.removeEventListener("error", onScriptError);
     };
 
     document.addEventListener("metabase-sdk-bundle-loaded", onBundleEvent);
+    document.addEventListener("metabase-sdk-bundle-error", onBundleError);
     script.addEventListener("load", onScriptLoad);
     script.addEventListener("error", onScriptError);
   });
