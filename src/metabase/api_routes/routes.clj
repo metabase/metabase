@@ -184,9 +184,9 @@
    "/field"                (+auth metabase.warehouse-schema-rest.api/field-routes)
    "/frontend-errors"      'metabase.frontend-errors.api
    "/geojson"              'metabase.geojson.api
-   "/joke-of-the-day"      'metabase.joke-of-the-day.api
    "/glossary"             (+auth 'metabase.glossary.api)
    "/google"               (+auth metabase.sso.api/google-auth-routes)
+   "/joke-of-the-day"      'metabase.joke-of-the-day.api
    "/ldap"                 (+auth metabase.sso.api/ldap-routes)
    "/llm"                  (+auth metabase.llm.api/routes)
    "/logger"               (+auth 'metabase.logger.api)
