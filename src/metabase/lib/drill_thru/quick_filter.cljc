@@ -105,6 +105,12 @@
         {:name   label
          :filter (operator op field-ref value)})
 
+      (lib.types.isa/boolean? column)
+      [{:name   "="
+        :filter (operator := field-ref value)}
+       {:name   "≠"
+        :filter (operator := field-ref (not value))}]
+
       :else
       (for [[op label] [[:=  "="]
                         [:!= "≠"]]]
