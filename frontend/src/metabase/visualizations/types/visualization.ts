@@ -289,7 +289,7 @@ export type VisualizationSettingDefinition<
   TValue = unknown,
   TProps extends object = object,
 > = {
-  id?: string | number;
+  id?: string;
   section?: string;
   title?: string;
   placeholder?: string;

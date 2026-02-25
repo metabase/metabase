@@ -18,7 +18,6 @@ import type {
   StackModel,
   StackTotalDataKey,
   StackedSeriesFormatters,
-  VizSettingsKey,
   WaterFallChartDataDensity,
 } from "metabase/visualizations/echarts/cartesian/model/types";
 import { getHexColor } from "metabase/visualizations/lib/color";
@@ -39,6 +38,7 @@ import type {
   RowValue,
   SeriesSettings,
   SingleSeries,
+  VisualizationSettingKey,
 } from "metabase-types/api";
 
 import {
@@ -57,7 +57,7 @@ export const getSeriesVizSettingsKey = (
   metricsCount: number,
   breakoutName: string | null,
   cardName?: string,
-): VizSettingsKey => {
+): VisualizationSettingKey => {
   const isBreakoutSeries = breakoutName != null;
   const isSingleMetricCard = metricsCount === 1 && !isBreakoutSeries;
 

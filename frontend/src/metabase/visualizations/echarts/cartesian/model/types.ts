@@ -13,6 +13,7 @@ import type {
   DatasetColumn,
   DateTimeAbsoluteUnit,
   RowValue,
+  VisualizationSettingKey,
 } from "metabase-types/api";
 
 export type BreakoutValue = Exclude<RowValue, object>;
@@ -31,11 +32,9 @@ export type DataKey =
   | typeof X_AXIS_DATA_KEY
   | typeof INDEX_KEY;
 
-export type VizSettingsKey = string;
-
 export type LegacySeriesSettingsObjectKey = {
   card: Partial<Card> & {
-    _seriesKey?: VizSettingsKey;
+    _seriesKey?: VisualizationSettingKey;
   };
 };
 
@@ -49,7 +48,7 @@ export type BaseSeriesModel = {
 };
 
 export type RegularSeriesModel = BaseSeriesModel & {
-  vizSettingsKey: VizSettingsKey;
+  vizSettingsKey: VisualizationSettingKey;
 
   // TODO: remove when the settings definitions are updated for the dynamic combo chart.
   // This object is used as a key for the `series` function of the computed

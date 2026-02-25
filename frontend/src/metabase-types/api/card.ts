@@ -371,7 +371,10 @@ export type EmbedVisualizationSettings = {
   iframe?: string;
 };
 
-export type VisualizationSettingKey = keyof VisualizationSettings;
+export type VisualizationSettingKey = Exclude<
+  keyof VisualizationSettings,
+  number // TS infers number because of `[key: string]: any` in VisualizationSettings
+>;
 
 export type CardId = number;
 
