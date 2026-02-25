@@ -23,7 +23,10 @@ export type ReplaceSourceColumnInfo = Pick<
   | "semantic_type"
 >;
 
-export const REPLACE_SOURCE_ERROR_TYPES = ["cycle-detected"] as const;
+export const REPLACE_SOURCE_ERROR_TYPES = [
+  "database-mismatch",
+  "cycle-detected",
+] as const;
 export type ReplaceSourceErrorType =
   (typeof REPLACE_SOURCE_ERROR_TYPES)[number];
 

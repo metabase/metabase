@@ -19,6 +19,8 @@ export function getGenericErrorMessage(): string {
 
 export function getEntityErrorMessage(error: ReplaceSourceErrorType): string {
   switch (error) {
+    case "database-mismatch":
+      return t`The replacement data source is in a different database than the original data source.`;
     case "cycle-detected":
       return t`The replacement data source can't be based on the original data source.`;
   }
