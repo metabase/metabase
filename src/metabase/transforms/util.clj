@@ -461,11 +461,13 @@
               (post-process-incremental-query driver source checkpoint)))))))
 
 (defn required-database-features
-  "Returns the database features necessary to execute `transform`."
+  "Returns the database features necessary to execute `transform`.
+  All runner-based transforms (Python, JavaScript, Clojure, R, Julia) share the same
+  runner infrastructure and require :transforms/python."
   [transform]
   (let [t (transform-type transform)]
     (if (contains? runner-types t)
-      [(keyword "transforms" (name t))]
+      [:transforms/python]
       [:transforms/table])))
 
 (defn ->instant
