@@ -5,22 +5,12 @@ import {commands, Uri, ViewColumn, window, workspace} from "vscode"
 import type {FileSystemWatcher} from "vscode"
 
 import type {TransformNode} from "../metabase-lib"
-import type {TransformPreviewData} from "../transform-preview-html"
+import type {TransformPreviewData, PreviewToExtensionMessage} from "../shared-types"
 import type {ExtensionCtx} from "../extension-context"
 
-import {getTransformPreviewHtml} from "../transform-preview-html"
 import {parseTransformQuery, parseTransformTarget} from "../transform-query"
+import {getPreviewWebviewHtml} from "../webview-html"
 import {showDependencyGraph} from "./dependency-graph"
-
-function generateNonce(): string {
-  const possible =
-    "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789"
-  let text = ""
-  for (let i = 0; i < 32; i++) {
-    text += possible.charAt(Math.floor(Math.random() * possible.length))
-  }
-  return text
-}
 
 function buildTransformPreviewData(
   ctx: ExtensionCtx,
@@ -80,35 +70,39 @@ async function refreshPreview(ctx: ExtensionCtx) {
       sourceQueryType: updatedNode.sourceQueryType,
     }
 
-    const nonce = generateNonce()
-    const html = getTransformPreviewHtml(data, nonce)
     panel.title = updatedNode.name
-    panel.webview.html = html
+    panel.webview.postMessage({ type: "previewUpdate", data })
   } catch {
     // File may have been deleted or be temporarily unreadable; ignore
   }
 }
 
-async function handleTransformMessage(ctx: ExtensionCtx, message: Record<string, unknown>) {
+async function handleTransformMessage(ctx: ExtensionCtx, message: PreviewToExtensionMessage) {
   switch (message.type) {
+    case "ready": {
+      const currentNode = ctx.panels.currentTransformNode
+      if (currentNode && ctx.panels.transformPanel) {
+        const data = buildTransformPreviewData(ctx, currentNode)
+        ctx.panels.transformPanel.webview.postMessage({ type: "previewInit", data })
+      }
+      break
+    }
     case "openFile": {
-      const filePath = message.filePath as string | undefined
-      if (filePath) {
-        window.showTextDocument(Uri.file(filePath))
+      if (message.filePath) {
+        window.showTextDocument(Uri.file(message.filePath))
       }
       break
     }
     case "openGraph": {
-      const entityId = message.entityId as string | undefined
-      if (entityId) {
-        await showDependencyGraph(ctx, `Transform:${entityId}`)
+      if (message.entityId) {
+        await showDependencyGraph(ctx, `Transform:${message.entityId}`)
       } else {
         await showDependencyGraph(ctx)
       }
       break
     }
     case "openTable": {
-      const tableRef = message.ref as string[] | undefined
+      const tableRef = message.ref
       if (!tableRef || tableRef.length < 3 || !ctx.panels.currentCatalog) break
       const tableNode = ctx.panels.currentCatalog.getTable(
         tableRef[0],
@@ -127,16 +121,17 @@ async function handleTransformMessage(ctx: ExtensionCtx, message: Record<string,
       break
     }
     case "editInEditor": {
-      const filePath = message.filePath as string | undefined
-      const lang = message.lang as string | undefined
-      const name = message.name as string | undefined
-      if (filePath && lang && name) {
-        commands.executeCommand("metastudio.openEmbeddedCode", {filePath, lang, name})
+      if (message.filePath && message.lang && message.name) {
+        commands.executeCommand("metastudio.openEmbeddedCode", {
+          filePath: message.filePath,
+          lang: message.lang,
+          name: message.name,
+        })
       }
       break
     }
     case "openField": {
-      const fieldRef = message.ref as string[] | undefined
+      const fieldRef = message.ref
       if (!fieldRef || fieldRef.length < 4 || !ctx.panels.currentCatalog) break
       const table = ctx.panels.currentCatalog.getTable(
         fieldRef[0],
@@ -167,21 +162,23 @@ export function registerTransformPreviewCommand(ctx: ExtensionCtx) {
 
   useCommand("metastudio.showTransformPreview", (node: TransformNode) => {
     const data = buildTransformPreviewData(ctx, node)
-    const nonce = generateNonce()
-    const html = getTransformPreviewHtml(data, nonce)
 
     if (ctx.panels.transformPanel) {
       ctx.panels.transformPanel.title = node.name
-      ctx.panels.transformPanel.webview.html = html
+      ctx.panels.transformPanel.webview.postMessage({ type: "previewInit", data })
       ctx.panels.transformPanel.reveal(ViewColumn.One, true)
     } else {
+      const extensionUri = Uri.file(ctx.extensionPath)
       const panel = window.createWebviewPanel(
         "metabaseTransformPreview",
         node.name,
         {viewColumn: ViewColumn.One, preserveFocus: true},
-        {enableScripts: true},
+        {
+          enableScripts: true,
+          localResourceRoots: [Uri.joinPath(extensionUri, "dist", "webview")],
+        },
       )
-      panel.webview.html = html
+      panel.webview.html = getPreviewWebviewHtml(panel.webview, extensionUri)
       ctx.panels.transformPanel = panel
 
       panel.webview.onDidReceiveMessage((msg) => handleTransformMessage(ctx, msg))

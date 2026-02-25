@@ -11,7 +11,7 @@
         "@types/node": "^25.0.3",
         "@types/react": "^19.0.0",
         "@types/react-dom": "^19.0.0",
-        "@types/vscode": "^1.97.0",
+        "@types/vscode": "^1.101.0",
         "@vitejs/plugin-react": "^4.4.0",
         "@vscode/vsce": "^3.7.1",
         "@xyflow/react": "^12.10.1",
