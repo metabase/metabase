@@ -201,26 +201,26 @@
   "Calls the /execute endpoint of the python runner. Blocks until the run either succeeds or fails and returns
   the response from the server."
   [{:keys [server-url code request-id run-id table-name->id shared-storage timeout-secs runtime]}]
-  (let [{:keys [objects]} shared-storage
+  (let [{:keys [objects]}                       shared-storage
         {:keys [output output-manifest events]} objects
-        url-for-path             (fn [path] (:url (get objects path)))
-        table-name->url          (update-vals table-name->id #(url-for-path [:table % :data]))
-        table-name->manifest-url (update-vals table-name->id #(url-for-path [:table % :manifest]))
-        payload                  {:code                code
-                                  :library (t2/select-fn->fn :path :source
-                                                             (if (= runtime "javascript")
-                                                               :model/JavaScriptLibrary
-                                                               :model/PythonLibrary))
-                                  :timeout             (or timeout-secs (transforms-python.settings/python-runner-timeout-seconds))
-                                  :request_id          (or request-id run-id)
-                                  :output_url          (:url output)
-                                  :output_manifest_url (:url output-manifest)
-                                  :events_url          (:url events)
-                                  :table_mapping       table-name->url
-                                  :manifest_mapping table-name->manifest-url
-                                  :language (or runtime "python")}
-        response                 (with-python-api-timing [run-id]
-                                   (python-runner-request server-url :post "/execute" {:body (json/encode payload)}))]
+        url-for-path                            (fn [path] (:url (get objects path)))
+        table-name->url                         (update-vals table-name->id #(url-for-path [:table % :data]))
+        table-name->manifest-url                (update-vals table-name->id #(url-for-path [:table % :manifest]))
+        payload                                 {:code                code
+                                                 :library             (t2/select-fn->fn :path :source
+                                                                                        (if (= runtime "javascript")
+                                                                                          :model/JavaScriptLibrary
+                                                                                          :model/PythonLibrary))
+                                                 :timeout             (or timeout-secs (transforms-python.settings/python-runner-timeout-seconds))
+                                                 :request_id          (or request-id run-id)
+                                                 :output_url          (:url output)
+                                                 :output_manifest_url (:url output-manifest)
+                                                 :events_url          (:url events)
+                                                 :table_mapping       table-name->url
+                                                 :manifest_mapping    table-name->manifest-url
+                                                 :runtime             (or runtime "python")}
+        response                                (with-python-api-timing [run-id]
+                                                  (python-runner-request server-url :post "/execute" {:body (json/encode payload)}))]
     ;; when a 500 is returned we observe a string in the body (despite the python returning json)
     ;; always try to parse the returned string as json before yielding (could tighten this up at some point)
     (update response :body (fn [string-if-error]
