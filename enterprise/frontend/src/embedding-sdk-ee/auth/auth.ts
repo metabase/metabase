@@ -104,9 +104,15 @@ PLUGIN_EMBEDDING_SDK_AUTH.initAuth = async (
       // eslint-disable-next-line no-console
       console.log("INITH AUTH Auth is completed and the data is available");
       return;
-    } else {
-      throw new Error("Auth is not completed or the data is not available");
     }
+    // Bootstrap auth failed or returned incomplete data.
+    // We don't throw otherwise the sdk will show the error component, the main bundle logic will
+    // retry its own auth logic and handle the errors if it happens again.
+    console.warn(
+      "SDK: Bootstrap auth did not complete successfully (status: " +
+        authState.status +
+        "). Falling back to normal auth flow.",
+    );
   }
 
   // Setup JWT or API key

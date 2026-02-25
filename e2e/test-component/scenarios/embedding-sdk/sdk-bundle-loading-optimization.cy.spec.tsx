@@ -89,9 +89,12 @@ describe(
       });
     });
 
-    it("bootstrap=true (default): loads bootstrap, renders question, correct URL and script element", () => {
+    it("bootstrap=true (default): loads bootstrap + chunks, renders question, correct URL and script element", () => {
       cy.log("Intercepting bundle request");
       cy.intercept("GET", "**/app/embedding-sdk.js*").as("bundleRequest");
+      cy.intercept("GET", "**/app/embedding-sdk/chunks/*.js").as(
+        "chunkRequest",
+      );
 
       cy.log("Mounting with default bootstrap (true)");
       mountSdkContent(<InteractiveQuestion questionId={ORDERS_QUESTION_ID} />);
@@ -106,6 +109,10 @@ describe(
       cy.get("@bundleRequest.all").then((interceptions: any) => {
         expect(interceptions.length).to.be.greaterThan(0);
         expect(interceptions[0].request.url).to.include("packageVersion=");
+      });
+      cy.log("Checking chunk requests happened (proves bootstrap path)");
+      cy.get("@chunkRequest.all").then((interceptions: any) => {
+        expect(interceptions.length).to.be.greaterThan(0);
       });
 
       cy.log("Checking window.METABASE_EMBEDDING_SDK_BUNDLE");
@@ -188,7 +195,9 @@ describe(
       cy.mount(<></>);
 
       cy.log("Checking METABASE_PROVIDER_PROPS_STORE cleaned up");
-      cy.window().its("METABASE_PROVIDER_PROPS_STORE").should("not.exist");
+      cy.window().should((win) => {
+        expect((win as any).METABASE_PROVIDER_PROPS_STORE).to.be.undefined;
+      });
     });
 
     it("remount after loaded skips re-download", () => {
@@ -221,7 +230,7 @@ describe(
       });
     });
 
-    it("request counts without jwtProviderUri: makes SSO discovery and token exchange", () => {
+    it("request counts without jwtProviderUri: no runaway duplicates", () => {
       cy.log("Intercepting auth endpoints");
       cy.intercept("GET", /\/auth\/sso(\?preferred_method=\w+)?$/).as(
         "authSsoDiscovery",
@@ -241,28 +250,30 @@ describe(
       });
 
       cy.log("Checking request counts");
-      // SSO discovery should happen at least once (bootstrap and/or bundle)
+      cy.wait(500);
       cy.get("@authSsoDiscovery.all").then((i: any) => {
         cy.log(`SSO discovery: ${i.length}`);
         expect(i.length).to.be.at.least(1);
+        expect(i.length).to.be.at.most(2);
       });
-      // Token exchange should happen at least once
       cy.get("@authSsoTokenExchange.all").then((i: any) => {
         cy.log(`SSO token exchange: ${i.length}`);
         expect(i.length).to.be.at.least(1);
+        expect(i.length).to.be.at.most(2);
       });
-      // User and settings should be fetched
       cy.get("@getCurrentUser.all").then((i: any) => {
         cy.log(`getCurrentUser: ${i.length}`);
         expect(i.length).to.be.at.least(1);
+        expect(i.length).to.be.at.most(2);
       });
       cy.get("@getSessionProperties.all").then((i: any) => {
         cy.log(`getSessionProperties: ${i.length}`);
         expect(i.length).to.be.at.least(1);
+        expect(i.length).to.be.at.most(2);
       });
     });
 
-    it("request counts with jwtProviderUri: skips SSO discovery", () => {
+    it("request counts with jwtProviderUri: skips discovery, no runaway duplicates", () => {
       cy.log("Intercepting auth endpoints");
       cy.intercept("GET", /\/auth\/sso(\?preferred_method=\w+)?$/).as(
         "authSsoDiscovery",
@@ -286,32 +297,60 @@ describe(
       });
 
       cy.log("Checking request counts");
-      // With jwtProviderUri, SSO discovery should be skipped entirely
+      cy.wait(500);
       cy.get("@authSsoDiscovery.all").then((i: any) => {
         cy.log(`SSO discovery: ${i.length} (expected 0)`);
         expect(i.length).to.equal(0);
       });
-      // Token exchange should happen at least once
       cy.get("@authSsoTokenExchange.all").then((i: any) => {
         cy.log(`SSO token exchange: ${i.length}`);
         expect(i.length).to.be.at.least(1);
+        expect(i.length).to.be.at.most(2);
       });
-      // User and settings should be fetched
       cy.get("@getCurrentUser.all").then((i: any) => {
         cy.log(`getCurrentUser: ${i.length}`);
         expect(i.length).to.be.at.least(1);
+        expect(i.length).to.be.at.most(2);
       });
       cy.get("@getSessionProperties.all").then((i: any) => {
         cy.log(`getSessionProperties: ${i.length}`);
         expect(i.length).to.be.at.least(1);
+        expect(i.length).to.be.at.most(2);
       });
     });
 
-    it("extra CustomEvent after settle is harmless", () => {
+    it("extra CustomEvent after settle is harmless (no extra requests)", () => {
+      cy.intercept("GET", "**/app/embedding-sdk.js*").as("bundleRequest");
+      cy.intercept("GET", /\/auth\/sso(\?preferred_method=\w+)?$/).as(
+        "authSsoDiscovery",
+      );
+      cy.intercept("GET", /\/auth\/sso\?.*jwt=/).as("authSsoTokenExchange");
+      cy.intercept("GET", "/api/user/current").as("getCurrentUser");
+      cy.intercept("GET", "/api/session/properties").as("getSessionProperties");
+
       mountSdkContent(<InteractiveQuestion questionId={ORDERS_QUESTION_ID} />);
 
       getSdkRoot().within(() => {
         cy.findByText("Orders").should("exist");
+      });
+
+      cy.wait(500);
+      cy.log("Capturing baseline request counts");
+      const baseline: Record<string, number> = {};
+      cy.get("@bundleRequest.all").then((i: any) => {
+        baseline.bundleRequest = i.length;
+      });
+      cy.get("@authSsoDiscovery.all").then((i: any) => {
+        baseline.authSsoDiscovery = i.length;
+      });
+      cy.get("@authSsoTokenExchange.all").then((i: any) => {
+        baseline.authSsoTokenExchange = i.length;
+      });
+      cy.get("@getCurrentUser.all").then((i: any) => {
+        baseline.getCurrentUser = i.length;
+      });
+      cy.get("@getSessionProperties.all").then((i: any) => {
+        baseline.getSessionProperties = i.length;
       });
 
       cy.log("Dispatching extra metabase-sdk-bundle-loaded event");
@@ -321,9 +360,26 @@ describe(
 
       cy.wait(500);
 
-      cy.log("Checking question still renders (no crash)");
+      cy.log(
+        "Checking question still renders and no extra requests were fired",
+      );
       getSdkRoot().within(() => {
         cy.findByText("Orders").should("exist");
+      });
+      cy.get("@bundleRequest.all").then((i: any) => {
+        expect(i.length).to.equal(baseline.bundleRequest);
+      });
+      cy.get("@authSsoDiscovery.all").then((i: any) => {
+        expect(i.length).to.equal(baseline.authSsoDiscovery);
+      });
+      cy.get("@authSsoTokenExchange.all").then((i: any) => {
+        expect(i.length).to.equal(baseline.authSsoTokenExchange);
+      });
+      cy.get("@getCurrentUser.all").then((i: any) => {
+        expect(i.length).to.equal(baseline.getCurrentUser);
+      });
+      cy.get("@getSessionProperties.all").then((i: any) => {
+        expect(i.length).to.equal(baseline.getSessionProperties);
       });
     });
 
@@ -344,8 +400,15 @@ describe(
       );
     });
 
-    it("rapid unmount during loading, then remount renders correctly", () => {
-      cy.log("First mount — starts bundle loading");
+    it("rapid unmount during active loading, then remount renders correctly", () => {
+      cy.log("Intercepting bundle request with delay to keep loading active");
+      cy.intercept("GET", "**/app/embedding-sdk.js*", (req) => {
+        req.continue((res) => {
+          res.setDelay(1500);
+        });
+      }).as("bundleRequest");
+
+      cy.log("First mount — starts delayed bundle loading");
       mountSdkContent(<InteractiveQuestion questionId={ORDERS_QUESTION_ID} />, {
         waitForUser: false,
       });
@@ -364,6 +427,11 @@ describe(
 
       cy.log("Checking bundle global is set");
       cy.window().its("METABASE_EMBEDDING_SDK_BUNDLE").should("exist");
+
+      cy.log("Checking delayed bundle was requested only once");
+      cy.get("@bundleRequest.all").then((interceptions: any) => {
+        expect(interceptions.length).to.equal(1);
+      });
     });
 
     it("shows error when chunk loading fails", () => {
@@ -405,6 +473,51 @@ describe(
       cy.get("@consoleWarn").should(
         "be.calledWithMatch",
         "Multiple instances of MetabaseProvider detected",
+      );
+    });
+
+    it("falls back to normal auth when bootstrap auth fails", () => {
+      cy.log(
+        "Intercepting first SSO discovery call to make bootstrap auth fail",
+      );
+      let bootstrapSsoFailed = false;
+      cy.intercept("GET", "**/auth/sso*", (req) => {
+        // Fail only the first SSO discovery call (no jwt= param).
+        // This is the one made by the bootstrap auth.
+        // Subsequent calls (normal auth fallback) pass through.
+        if (!req.url.includes("jwt=") && !bootstrapSsoFailed) {
+          bootstrapSsoFailed = true;
+          req.reply({
+            statusCode: 500,
+            body: { error: "simulated bootstrap SSO failure" },
+          });
+          return;
+        }
+        req.continue();
+      }).as("ssoRequest");
+
+      cy.window().then((win) => {
+        cy.spy(win.console, "warn").as("consoleWarn");
+      });
+
+      cy.log("Mounting with bootstrap=true (bootstrap auth will fail)");
+      mountSdkContent(<InteractiveQuestion questionId={ORDERS_QUESTION_ID} />, {
+        sdkProviderProps: {
+          bootstrap: true,
+          authConfig: { metabaseInstanceUrl: METABASE_INSTANCE_URL },
+        },
+      });
+
+      cy.log("Checking question renders via normal auth fallback");
+      getSdkRoot().within(() => {
+        cy.findByText("Orders").should("exist");
+        cy.findByTestId("visualization-root").should("be.visible");
+      });
+
+      cy.log("Checking fallback warning was logged");
+      cy.get("@consoleWarn").should(
+        "be.calledWithMatch",
+        /Falling back to normal auth flow/,
       );
     });
   },
