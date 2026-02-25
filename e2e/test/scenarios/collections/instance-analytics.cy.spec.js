@@ -215,7 +215,7 @@ describe("scenarios > Metabase Analytics Collection (AuditV2) ", () => {
         H.visitModel(id);
       });
 
-      H.newButton("SQL query").click();
+      H.newButton(/SQL/).click();
 
       // sample DB should be the only one
       cy.findByTestId("gui-builder-data")

@@ -138,7 +138,7 @@ describe("scenarios > admin > transforms", () => {
       cy.log("create a new transform");
       visitTransformListPage();
       cy.button("Create a transform").click();
-      H.popover().findByText("SQL query").click();
+      H.popover().findByText(/SQL/).click();
       H.expectUnstructuredSnowplowEvent({
         event: "transform_create",
         event_detail: "native",
@@ -183,7 +183,7 @@ describe("scenarios > admin > transforms", () => {
           .click();
         H.expectUnstructuredSnowplowEvent({
           event: "transform_create",
-          event_detail: "python",
+          event_detail: "advanced",
         });
 
         cy.findByTestId("python-transform-top-bar")
@@ -563,7 +563,7 @@ LIMIT
       visitTransformListPage();
       cy.button("Create a transform").click();
 
-      H.popover().findByText("SQL query").click();
+      H.popover().findByText(/SQL/).click();
 
       cy.findByTestId("gui-builder-data")
         .findByText("Writable Postgres12")
@@ -1828,7 +1828,7 @@ LIMIT
         cy.log("create a new SQL transform with a complex query");
         visitTransformListPage();
         cy.button("Create a transform").click();
-        H.popover().findByText("SQL query").click();
+        H.popover().findByText(/SQL/).click();
         H.popover().findByText(DB_NAME).click();
 
         H.NativeEditor.type(
@@ -2251,7 +2251,6 @@ LIMIT
           .findByText(/Python/)
           .click();
         cy.get(".cm-clickable-token").should("be.visible").click();
-        H.modal().button("Discard changes").click();
         cy.url().should("include", "/data-studio/transforms/library/common.py");
         cy.findByTestId("python-library-header").should("be.visible");
       },
@@ -3788,7 +3787,7 @@ describe("scenarios > admin > transforms", () => {
     cy.log("create a new transform");
     visitTransformListPage();
     cy.button("Create a transform").click();
-    H.popover().findByText("SQL query").click();
+    H.popover().findByText(/SQL/).click();
 
     cy.findByTestId("gui-builder-data")
       .findByText("Select a database")
