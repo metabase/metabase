@@ -35,6 +35,7 @@ import type { AppErrorDescriptor, State } from "metabase-types/store";
 
 import { AppContainer, AppContent, AppContentContainer } from "./App.styled";
 import ErrorBoundary from "./ErrorBoundary";
+import { useGetReleaseFlagsQuery } from "./api/release-flags";
 import { useTokenRefresh } from "./api/utils/use-token-refresh";
 import { NewModals } from "./new/components/NewModals/NewModals";
 import { Palette } from "./palette/components/Palette";
@@ -101,6 +102,7 @@ function App({
 }: AppProps) {
   const [viewportElement, setViewportElement] = useState<HTMLElement | null>();
   const applicationName = useSelector(getApplicationName);
+  useGetReleaseFlagsQuery();
 
   usePageTitle(applicationName, { titleIndex: 0 });
   useTokenRefresh();
