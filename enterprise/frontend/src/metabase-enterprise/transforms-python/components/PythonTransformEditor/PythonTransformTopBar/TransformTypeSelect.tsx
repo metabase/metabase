@@ -9,11 +9,13 @@ import {
   isAdvancedTransformType,
 } from "metabase-types/api";
 
+import { getTypeLabel } from "./utils";
+
 type AdvancedTransformTypeSelectProps = {
   defaultValue: AdvancedTransformType;
 };
 
-export function AdvancedTransformTypeSelect({
+export function TransformTypeSelect({
   defaultValue,
 }: AdvancedTransformTypeSelectProps) {
   const dispatch = useDispatch();
@@ -53,13 +55,4 @@ export function AdvancedTransformTypeSelect({
       </Combobox.Dropdown>
     </Combobox>
   );
-}
-
-function getTypeLabel(type: AdvancedTransformType) {
-  const map: Record<AdvancedTransformType, string> = {
-    python: "Python",
-    javascript: "JavaScript",
-  };
-
-  return map[type];
 }
