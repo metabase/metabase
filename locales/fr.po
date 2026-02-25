@@ -11799,7 +11799,7 @@ msgstr "A partir de..."
 
 #: frontend/src/metabase/querying/common/components/DatePicker/RelativeDatePicker/DateOffsetIntervalPicker/DateOffsetIntervalPicker.tsx:112
 msgid "Starting from"
-msgstr "À partir de"
+msgstr "À partir d'il y a"
 
 #: frontend/src/metabase/querying/common/components/DatePicker/RelativeDatePicker/DateOffsetIntervalPicker/DateOffsetIntervalPicker.tsx:115
 msgid "Starting from interval"
@@ -27512,7 +27512,7 @@ msgstr "Grouper par"
 #: frontend/src/metabase/querying/common/components/DatePicker/RelativeDatePicker/DateOffsetIntervalPicker/utils.ts:76
 #, javascript-format
 msgid "{0} ago"
-msgstr "Il y a {0} ans"
+msgstr "{0}"
 
 #: frontend/src/metabase/querying/common/components/DatePicker/RelativeDatePicker/DateOffsetIntervalPicker/utils.ts:76
 msgid "{0} from now"
