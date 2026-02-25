@@ -454,7 +454,8 @@
  [lib.ref
   field-ref-id
   field-ref-name
-  ref]
+  ref
+  update-field-ref-id-or-name]
  [lib.remove-replace
   remove-clause
   remove-join

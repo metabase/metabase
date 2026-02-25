@@ -1,6 +1,7 @@
 (ns metabase.lib-be.source-swap
   (:require
    [medley.core :as m]
+   [metabase.lib.card :as lib.card]
    [metabase.lib.equality :as lib.equality]
    [metabase.lib.expression :as lib.expression]
    [metabase.lib.field :as lib.field]
@@ -142,9 +143,9 @@
    [:id [:or ::lib.schema.id/table ::lib.schema.id/card]]])
 
 (mr/def ::swap-source.field-id-mapping
-  [:map-of ::lib.schema.id/field ::lib.schema.id/field])
+  [:map-of ::lib.schema.id/field [:or ::lib.schema.id/field :string]])
 
-(mu/defn- build-field-id-mapping-for-table :- ::swap-source.field-id-mapping
+(mu/defn- build-field-id-mapping-for-table :- [:maybe ::swap-source.field-id-mapping]
   "Builds a mapping of field IDs of the source table to field IDs of the target table."
   [query :- ::lib.schema/query
    source-table-id :- ::lib.schema.id/table
@@ -152,40 +153,51 @@
   (let [source-fields (lib.metadata/fields query source-table-id)
         target-fields (lib.metadata/fields query target-table-id)
         target-fields-by-name (m/index-by :name target-fields)]
-    (into {} (keep (fn [source-field]
+    (not-empty (into {} (keep (fn [source-field]
                      (when-let [target-field (get target-fields-by-name (:name source-field))]
                        [(:id source-field) (:id target-field)]))
+                   source-fields)))))
+
+(mu/defn- build-field-id-mapping-for-card :- [:maybe ::swap-source.field-id-mapping]
+  "Builds a mapping of field IDs of the source table to desired column aliases of the target card."
+  [query :- ::lib.schema/query
+   source-table-id :- ::lib.schema.id/table
+   target-card-id  :- ::lib.schema.id/card]
+  (let [source-fields (lib.metadata/fields query source-table-id)
+        target-columns (lib.card/saved-question-metadata query target-card-id)
+        target-columns-by-name (m/index-by :lib/desired-column-alias target-columns)]
+    (not-empty (into {} (keep (fn [source-field]
+                     (when-let [target-column (get target-columns-by-name (:name source-field))]
+                       [(:id source-field) (:lib/desired-column-alias target-column)]))
                    source-fields))))
 
-(mu/defn build-field-id-mapping :- ::swap-source.field-id-mapping
+(mu/defn build-field-id-mapping :- [:maybe ::swap-source.field-id-mapping]
   "Builds a mapping of field IDs of the source table to what should replace them in a field ref."
   [query      :- ::lib.schema/query
    old-source :- ::swap-source.source
    new-source :- ::swap-source.source]
-  (when (and (= (:type old-source) :table) (= (:type new-source) :table))
-    (build-field-id-mapping-for-table query (:id old-source) (:id new-source))))
+  (cond
+    (and (= (:type old-source) :table) (= (:type new-source) :table))
+    (build-field-id-mapping-for-table query (:id old-source) (:id new-source))
 
-(mu/defn- can-swap-field-id-in-field-ref? :- :boolean
-  "Check if the field ref is swappable."
-  [field-ref :- :mbql.clause/field
-   field-id-mapping :- ::swap-source.field-id-mapping]
-  (let [field-id (lib.ref/field-ref-id field-ref)
-        source-field-id (:source-field (lib.options/options field-ref))
-        new-field-id (get field-id-mapping field-id)
-        new-source-field-id (when source-field-id (get field-id-mapping source-field-id))]
-    (or (some? new-field-id) (some? new-source-field-id))))
+    (and (= (:type old-source) :table) (= (:type new-source) :card))
+    (build-field-id-mapping-for-card query (:id old-source) (:id new-source))))
 
 (mu/defn- swap-field-id-in-ref :- :mbql.clause/field
-  "If this field ref is field-id-based and there is a mapping for the field ID, update the ref to use the target field ID or desired column alias."
-  [field-ref :- :mbql.clause/field
+  "If this field ref is field-id-based and there is a mapping for the field ID, 
+  update the ref to use the target field ID or desired column alias."
+  [field-ref        :- :mbql.clause/field
    field-id-mapping :- ::swap-source.field-id-mapping]
   (let [field-id (lib.ref/field-ref-id field-ref)
         source-field-id (:source-field (lib.options/options field-ref))
-        new-field-id (get field-id-mapping field-id)
-        new-source-field-id (when source-field-id (get field-id-mapping source-field-id))]
+        new-field-id-or-name (get field-id-mapping field-id)
+        new-source-field-id-or-name (when source-field-id (get field-id-mapping source-field-id))]
     (cond-> field-ref
-      (some? new-field-id) (lib.ref/update-field-ref-id new-field-id)
-      (some? new-source-field-id) (lib.options/update-options assoc :source-field new-source-field-id))))
+      (some? new-field-id-or-name) 
+      (lib.ref/update-field-ref-id-or-name new-field-id-or-name)
+
+      (some? new-source-field-id-or-name)
+      (lib.options/update-options assoc :source-field new-source-field-id-or-name))))
 
 (mu/defn- swap-field-ids-in-clauses :- [:sequential :any]
   "Updates the field IDs in the clauses using the provided mapping."
@@ -225,7 +237,7 @@
   "Updates the field IDs in all joins using the provided mapping."
   [joins            :- [:sequential ::lib.schema.join/join]
    source           :- ::swap-source.source
-   target :- ::swap-source.source
+   target           :- ::swap-source.source
    field-id-mapping :- ::swap-source.field-id-mapping]
   (mapv #(swap-source-and-field-ids-in-join % source target field-id-mapping) joins))
 
@@ -236,22 +248,36 @@
    source           :- ::swap-source.source
    target           :- ::swap-source.source
    field-id-mapping :- ::swap-source.field-id-mapping]
-  (-> (lib.util/query-stage query stage-number)
-      (swap-source-table-or-card source target)
-      (u/update-some :fields swap-field-ids-in-clauses field-id-mapping)
-      (u/update-some :joins swap-source-and-field-ids-in-joins source target field-id-mapping)
-      (u/update-some :expressions swap-field-ids-in-clauses field-id-mapping)
-      (u/update-some :filters swap-field-ids-in-clauses field-id-mapping)
-      (u/update-some :aggregation swap-field-ids-in-clauses field-id-mapping)
-      (u/update-some :breakout swap-field-ids-in-clauses field-id-mapping)
-      (u/update-some :order-by swap-field-ids-in-clauses field-id-mapping)))
+  (let [stage (-> (lib.util/query-stage query stage-number)
+                  (swap-source-table-or-card source target))]
+    (if (some? field-id-mapping)
+      (-> stage
+          (u/update-some :fields      swap-field-ids-in-clauses field-id-mapping)
+          (u/update-some :joins       swap-source-and-field-ids-in-joins source target field-id-mapping)
+          (u/update-some :expressions swap-field-ids-in-clauses field-id-mapping)
+          (u/update-some :filters     swap-field-ids-in-clauses field-id-mapping)
+          (u/update-some :aggregation swap-field-ids-in-clauses field-id-mapping)
+          (u/update-some :breakout    swap-field-ids-in-clauses field-id-mapping)
+          (u/update-some :order-by    swap-field-ids-in-clauses field-id-mapping))
+      stage)))
 
 (mu/defn swap-source-in-query :- ::lib.schema/query
   "Updates the query to use the new source table or card."
   [query            :- ::lib.schema/query
    source           :- ::swap-source.source
    target           :- ::swap-source.source
-   field-id-mapping :- ::swap-source.field-id-mapping]
+   field-id-mapping :- [:maybe ::swap-source.field-id-mapping]]
   (update query :stages #(vec (map-indexed (fn [stage-number _]
                                              (swap-field-ids-in-stage query stage-number source target field-id-mapping))
                                            %))))
+
+(mu/defn swap-source-in-parameter-target :- ::lib.schema.parameter/target
+  "If the parameter target is a field ref, swap its field ID using the provided mapping."
+  [target           :- ::lib.schema.parameter/target
+   field-id-mapping :- [:maybe ::swap-source.field-id-mapping]]
+  (or (when (and (some? field-id-mapping) 
+                 (lib.parameters/parameter-target-field-ref target))
+        (lib.parameters/update-parameter-target-field-ref
+         target
+         #(swap-field-id-in-ref % field-id-mapping)))
+      target))
