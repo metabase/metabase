@@ -8,7 +8,7 @@ import { useSelector } from "metabase/lib/redux";
 import { DatabaseDataSelector } from "metabase/query_builder/components/DataSelector";
 import { EditDefinitionButton } from "metabase/transforms/components/TransformEditor/EditDefinitionButton";
 import { doesDatabaseSupportTransforms } from "metabase/transforms/utils";
-import { Flex, Text } from "metabase/ui";
+import { Box, Flex, Text } from "metabase/ui";
 import { EditTransformMenu } from "metabase-enterprise/data-studio/workspaces/components/EditTransformMenu";
 import { getIsRemoteSyncReadOnly } from "metabase-enterprise/remote_sync/selectors";
 import { hasPremiumFeature } from "metabase-enterprise/settings";
@@ -92,24 +92,15 @@ export function PythonTransformTopBar({
           {database?.name}
         </Flex>
       )}
-
-      <Flex
-        h="3rem"
-        p="md"
-        ml="auto"
-        align="center"
-        data-testid="transform-type"
-      >
+      <Flex ml="auto" align="center" h="3rem" mr="sm">
         {canChangeType && <TransformTypeSelect defaultValue={sourceType} />}
-      </Flex>
-      <Flex ml="auto" mr="lg" align="center" h="3rem">
         {!canChangeType && !!sourceType && (
           <Text mr="md" fz="md">
             {getTypeLabel(sourceType)}
           </Text>
         )}
         {showEditButton && (
-          <>
+          <Box mr="md">
             {hasPremiumFeature("workspaces") ? (
               <EditTransformMenu transform={transform} />
             ) : (
@@ -122,7 +113,7 @@ export function PythonTransformTopBar({
                 transformId={transform.id}
               />
             )}
-          </>
+          </Box>
         )}
       </Flex>
     </Flex>
