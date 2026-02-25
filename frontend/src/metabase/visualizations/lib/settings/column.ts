@@ -551,7 +551,7 @@ export function tableColumnSettings({
 } = {}): VisualizationSettingsDefinitions<
   Series,
   unknown,
-  Partial<ChartSettingTableColumnsProps>
+  ChartSettingTableColumnsProps
 > {
   return {
     "table.columns": {
