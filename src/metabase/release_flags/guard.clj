@@ -48,39 +48,44 @@
                       (.getLineNumber frame))))))))
 
 (defn guard-namespace!
-  "Protects all public functions in the current namespace behind a release flag.
+  "Protects all public functions in a namespace behind a release flag.
    Call this at the end of a namespace. When a guarded function is called:
    - If the flag is enabled, the original function runs normally.
    - If the flag is not enabled (or does not exist), the call is recorded in
-     [[blocked-calls]], a warning is logged, and nil is returned."
-  [flag]
-  (let [flag-name (if (keyword? flag)
-                    (if (namespace flag)
-                      (str (namespace flag) "/" (name flag))
-                      (name flag))
-                    (str flag))
-        ns-name   (ns-name *ns*)]
-    (doseq [[sym v] (ns-interns *ns*)
-            :when (and (var? v) (fn? @v))]
-      (let [original-fn @v
-            qualified   (str ns-name "/" sym)]
-        (alter-var-root
-         v
-         (constantly
-          (fn [& args]
-            (if (or (contains? *bypass-guard* flag-name)
-                    (try
-                      #_{:clj-kondo/ignore [:metabase/non-literal-release-flag]}
-                      (models/has-release-flag? flag-name)
-                      (catch Exception _
-                        false)))
-              (apply original-fn args)
-              (let [site (call-site)
-                    entry {:flag      flag-name
-                           :fn        qualified
-                           :call-site site}]
-                (when *blocked-calls*
-                  (swap! *blocked-calls* conj entry))
-                (log/warnf "Release flag \"%s\" is not enabled. Skipping call to %s (called from %s)"
-                           flag-name qualified site)
-                nil)))))))))
+     [[blocked-calls]], a warning is logged, and nil is returned.
+   If `target-ns` is not provided, defaults to `*ns*`."
+  ([flag]
+   #_{:clj-kondo/ignore [:metabase/non-literal-release-flag]}
+   (guard-namespace! flag *ns*))
+  ([flag target-ns]
+   (let [flag-name (if (keyword? flag)
+                     (if (namespace flag)
+                       (str (namespace flag) "/" (name flag))
+                       (name flag))
+                     (str flag))
+         ns-name   (ns-name target-ns)]
+     (doseq [[sym v] (ns-interns target-ns)
+             :when (and (var? v) (fn? @v))]
+       (let [original-fn @v
+             qualified   (str ns-name "/" sym)]
+         (alter-var-root
+          v
+          (constantly
+           (fn [& args]
+             (if (or (contains? *bypass-guard* flag-name)
+                     (try
+                       #_{:clj-kondo/ignore [:metabase/non-literal-release-flag]}
+                       (models/has-release-flag? flag-name)
+                       (catch Exception _
+                         false)))
+               (apply original-fn args)
+               (let [site (call-site)
+                     entry {:flag      flag-name
+                            :fn        qualified
+                            :call-site site}]
+                 (when *blocked-calls*
+                   (swap! *blocked-calls* conj entry))
+                 (log/warnf "Release flag \"%s\" is not enabled. Skipping call to %s (called from %s)"
+                            flag-name qualified site)
+                 nil))))))))))
+

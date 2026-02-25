@@ -1907,6 +1907,7 @@
            oauth-server
            premium-features
            query-processor
+           release-flags
            request
            session
            settings
