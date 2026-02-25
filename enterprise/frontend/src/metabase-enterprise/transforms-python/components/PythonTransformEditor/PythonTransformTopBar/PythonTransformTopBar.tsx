@@ -8,24 +8,15 @@ import { useSelector } from "metabase/lib/redux";
 import { DatabaseDataSelector } from "metabase/query_builder/components/DataSelector";
 import { EditDefinitionButton } from "metabase/transforms/components/TransformEditor/EditDefinitionButton";
 import { doesDatabaseSupportTransforms } from "metabase/transforms/utils";
-import { Box, Flex, Text } from "metabase/ui";
+import { Flex } from "metabase/ui";
 import { EditTransformMenu } from "metabase-enterprise/data-studio/workspaces/components/EditTransformMenu";
 import { getIsRemoteSyncReadOnly } from "metabase-enterprise/remote_sync/selectors";
 import { hasPremiumFeature } from "metabase-enterprise/settings";
-import {
-  type AdvancedTransformType,
-  type Database,
-  type DatabaseId,
-  type Transform,
-  isAdvancedTransformType,
-} from "metabase-types/api";
+import type { Database, DatabaseId, Transform } from "metabase-types/api";
 
 import S from "./PythonTransformTopBar.module.css";
-import { TransformTypeSelect } from "./TransformTypeSelect";
-import { getTypeLabel } from "./utils";
 
 type PythonTransformTopBarProps = {
-  sourceType: AdvancedTransformType;
   databaseId?: DatabaseId;
   isEditMode?: boolean;
   readOnly?: boolean;
@@ -35,7 +26,6 @@ type PythonTransformTopBarProps = {
 };
 
 export function PythonTransformTopBar({
-  sourceType,
   databaseId,
   isEditMode,
   readOnly,
@@ -58,7 +48,6 @@ export function PythonTransformTopBar({
       onDatabaseChange?.(newDatabaseId);
     }
   };
-  const canChangeType = isAdvancedTransformType(sourceType) && !transform?.id;
 
   return (
     <Flex
@@ -92,30 +81,22 @@ export function PythonTransformTopBar({
           {database?.name}
         </Flex>
       )}
-      <Flex ml="auto" align="center" h="3rem" mr="sm">
-        {canChangeType && <TransformTypeSelect value={sourceType} />}
-        {!canChangeType && !!sourceType && (
-          <Text mr="md" fz="md">
-            {getTypeLabel(sourceType)}
-          </Text>
-        )}
-        {showEditButton && (
-          <Box mr="md">
-            {hasPremiumFeature("workspaces") ? (
-              <EditTransformMenu transform={transform} />
-            ) : (
-              <EditDefinitionButton
-                bg="transparent"
-                fz="sm"
-                h="1.5rem"
-                px="sm"
-                size="xs"
-                transformId={transform.id}
-              />
-            )}
-          </Box>
-        )}
-      </Flex>
+      {showEditButton && (
+        <Flex ml="auto" mr="lg" align="center" h="3rem">
+          {hasPremiumFeature("workspaces") ? (
+            <EditTransformMenu transform={transform} />
+          ) : (
+            <EditDefinitionButton
+              bg="transparent"
+              fz="sm"
+              h="1.5rem"
+              px="sm"
+              size="xs"
+              transformId={transform.id}
+            />
+          )}
+        </Flex>
+      )}
     </Flex>
   );
 }

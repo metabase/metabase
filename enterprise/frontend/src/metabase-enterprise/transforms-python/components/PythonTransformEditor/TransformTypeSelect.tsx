@@ -29,17 +29,20 @@ export function TransformTypeSelect({
   };
 
   return (
-    <Combobox onOptionSubmit={onChange} store={combobox}>
+    <Combobox onOptionSubmit={onChange} store={combobox} position="top">
       <Combobox.Target>
         <Button
+          c="text-secondary"
           onClick={() => combobox.toggleDropdown()}
-          variant="subtle"
+          pl="xs"
+          pr={0}
+          py={0}
           size="xs"
-          c="text-primary"
+          variant="subtle"
         >
-          <Group gap="sm" align="center">
+          <Group fz="sm" gap="sm" align="center" fw="normal">
             {ADVANCED_TRANSFORM_TYPES[value].displayName}
-            <Icon name="chevrondown" size={10} />
+            <Icon name="chevrondown" size={9} />
           </Group>
         </Button>
       </Combobox.Target>
