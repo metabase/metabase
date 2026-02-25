@@ -62,16 +62,14 @@ const COMMON_SETTINGS: VisualizationSettingsDefinitions<Series> = {
 
 function getSettingDefinitionsForSeries(
   series: Series | null | undefined,
-): VisualizationSettingsDefinitions & {
+): VisualizationSettingsDefinitions<Series> & {
   [id: string]: { id?: string };
 } {
   if (!series) {
     return {};
   }
   const visualization = getVisualizationRaw(series);
-  const definitions: VisualizationSettingsDefinitions & {
-    [id: string]: { id?: string };
-  } = {
+  const definitions = {
     ...COMMON_SETTINGS,
     ...(visualization?.settings || {}),
   };
