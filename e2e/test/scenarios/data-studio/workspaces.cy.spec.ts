@@ -1685,7 +1685,7 @@ describe("scenarios > data studio > workspaces", () => {
       cy.log("Create transform via UI with model reference");
       Workspaces.visitTransformListPage();
       cy.button("Create a transform").click();
-      H.popover().findByText("SQL query").click();
+      H.popover().findByText(/SQL/).click();
       H.popover().findByText("Writable Postgres12").click();
 
       cy.get("@modelId").then((modelId) => {
@@ -2269,7 +2269,7 @@ describe("scenarios > data studio > workspaces", () => {
     it("should not show error when editing a new transform in a workspace (GDGT-1445)", () => {
       Workspaces.visitTransformListPage();
       cy.findByLabelText("Create a transform").click();
-      H.popover().findByText("SQL query").click();
+      H.popover().findByText(/SQL/).click();
       // to avoid flakiness on editor's focus
       cy.findByTestId("native-query-top-bar").should(
         "contain.text",
