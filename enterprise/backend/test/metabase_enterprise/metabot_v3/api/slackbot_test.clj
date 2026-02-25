@@ -27,19 +27,47 @@
 (def ^:private test-signing-secret "test-signing-secret")
 (def ^:private test-encryption-key (byte-array (repeat 64 42)))
 
-(defmacro with-slackbot-setup
+(def ^:private base-dm-event
+  {:type  "event_callback"
+   :event {:type         "message"
+           :text         "Hello!"
+           :user         "U123"
+           :channel      "C123"
+           :ts           "1234567890.000001"
+           :event_ts     "1234567890.000001"
+           :channel_type "im"}})
+
+(def ^:private base-mention-event
+  {:type  "event_callback"
+   :event {:type     "app_mention"
+           :text     "<@UBOT123> Hello!"
+           :user     "U123"
+           :channel  "C123"
+           :ts       "1234567890.000001"
+           :event_ts "1234567890.000001"}})
+
+(defmacro ^:private with-ensure-encryption
+  "Use the existing encryption key if one is configured, otherwise set a test key.
+   Avoids conflicts with encrypted settings in the DB that were written with the real key."
+  [& body]
+  `(if (encryption/default-encryption-enabled?)
+     (do ~@body)
+     (with-redefs [encryption/default-secret-key test-encryption-key]
+       ~@body)))
+
+(defmacro ^:private with-slackbot-setup
   "Wrap body with all required settings for slackbot to be fully configured."
   [& body]
-  `(with-redefs [slackbot/validate-bot-token! (constantly {:ok true})
-                 encryption/default-secret-key test-encryption-key]
-     (mt/with-premium-features #{:metabot-v3 :sso-slack}
-       (mt/with-temporary-setting-values [site-url "https://localhost:3000"
-                                          metabot.settings/metabot-slack-signing-secret test-signing-secret
-                                          channel.settings/slack-app-token "xoxb-test"
-                                          sso-settings/slack-connect-client-id "test-client-id"
-                                          sso-settings/slack-connect-client-secret "test-secret"
-                                          sso-settings/slack-connect-enabled true]
-         ~@body))))
+  `(with-redefs [slackbot/validate-bot-token! (constantly {:ok true})]
+     (with-ensure-encryption
+       (mt/with-premium-features #{:metabot-v3 :sso-slack}
+         (mt/with-temporary-setting-values [site-url "https://localhost:3000"
+                                            metabot.settings/metabot-slack-signing-secret test-signing-secret
+                                            channel.settings/slack-app-token "xoxb-test"
+                                            sso-settings/slack-connect-client-id "test-client-id"
+                                            sso-settings/slack-connect-client-secret "test-secret"
+                                            sso-settings/slack-connect-enabled true]
+           ~@body)))))
 
 (defn- compute-slack-signature
   "Compute a valid Slack signature for testing"
@@ -101,14 +129,9 @@
           (is (= "ok" response))))
 
       (testing "handles message.im events"
-        (let [body {:type "event_callback"
-                    :event {:type "message"
-                            :channel "D123"
-                            :user "U123"
-                            :ts "1234567890.000001"
-                            :event_ts "1234567890.000001"
-                            :channel_type "im"
-                            :text "Hello from DM"}}
+        (let [body     (-> base-dm-event
+                           (assoc-in [:event :channel] "D123")
+                           (assoc-in [:event :text] "Hello from DM"))
               response (mt/client :post 200 "ee/metabot-v3/slack/events"
                                   (slack-request-options body)
                                   body)]
@@ -125,24 +148,12 @@
 (deftest feature-flag-test
   (testing "POST /api/ee/metabot-v3/slack/events"
     (testing "ack events even when metabot-v3 feature is disabled to prevent Slack retries"
-      (with-redefs [slackbot/validate-bot-token! (constantly {:ok true})
-                    encryption/default-secret-key test-encryption-key
-                    mw.auth/metabot-slack-signing-secret-setting (constantly test-signing-secret)]
-        (mt/with-premium-features #{:sso-slack}
-          (mt/with-temporary-setting-values [site-url "https://localhost:3000"
-                                             metabot.settings/metabot-slack-signing-secret test-signing-secret
-                                             channel.settings/slack-app-token "xoxb-test"
-                                             sso-settings/slack-connect-client-id "test-client-id"
-                                             sso-settings/slack-connect-client-secret "test-secret"
-                                             sso-settings/slack-connect-enabled true]
-            (let [body {:type "event_callback"
-                        :event {:type "message"
-                                :text "Hello!"
-                                :user "U123"
-                                :channel "D123"
-                                :ts "1234567890.000001"
-                                :event_ts "1234567890.000001"
-                                :channel_type "im"}}
+      ;; with-slackbot-setup enables #{:metabot-v3 :sso-slack}; the inner with-premium-features
+      ;; overrides that to only #{:sso-slack}, verifying we still ACK when :metabot-v3 is absent.
+      (with-slackbot-setup
+        (with-redefs [mw.auth/metabot-slack-signing-secret-setting (constantly test-signing-secret)]
+          (mt/with-premium-features #{:sso-slack}
+            (let [body     (assoc-in base-dm-event [:event :channel] "D123")
                   response (mt/client :post 200 "ee/metabot-v3/slack/events"
                                       (slack-request-options body)
                                       body)]
@@ -261,15 +272,7 @@
       (doseq [[desc event-mod] [["with :edited key" {:edited {:user "U123" :ts "123"}}]
                                 ["with message_changed subtype" {:subtype "message_changed"}]]]
         (testing desc
-          (let [event-body {:type "event_callback"
-                            :event (merge {:type "message"
-                                           :text "Edited message"
-                                           :user "U123"
-                                           :channel "C123"
-                                           :ts "1234567890.000001"
-                                           :event_ts "1234567890.000001"
-                                           :channel_type "im"}
-                                          event-mod)}]
+          (let [event-body (update base-dm-event :event merge {:text "Edited message"} event-mod)]
             (with-slackbot-mocks
               {:ai-text "Should not be called"}
               (fn [{:keys [post-calls ephemeral-calls]}]
@@ -287,23 +290,8 @@
     (with-slackbot-setup
       (mt/with-temporary-setting-values [sso-settings/slack-connect-enabled false]
         (doseq [[desc event-body]
-                [["message.im event"
-                  {:type "event_callback"
-                   :event {:type "message"
-                           :text "Hello!"
-                           :user "U123"
-                           :channel "D123"
-                           :ts "1234567890.000001"
-                           :event_ts "1234567890.000001"
-                           :channel_type "im"}}]
-                 ["app_mention event"
-                  {:type "event_callback"
-                   :event {:type "app_mention"
-                           :text "<@UBOT123> Hello!"
-                           :user "U123"
-                           :channel "C123"
-                           :ts "1234567890.000001"
-                           :event_ts "1234567890.000001"}}]]]
+                [["message.im event"  (assoc-in base-dm-event [:event :channel] "D123")]
+                 ["app_mention event" base-mention-event]]]
           (testing desc
             (with-slackbot-mocks
               {:ai-text "Should not be called"}
@@ -322,14 +310,7 @@
   (testing "POST /events with user message triggers AI response via Slack streaming"
     (with-slackbot-setup
       (let [mock-ai-text "Here is your answer"
-            event-body {:type "event_callback"
-                        :event {:type "message"
-                                :text "Hello!"
-                                :user "U123"
-                                :channel "C123"
-                                :ts "1234567890.000001"
-                                :event_ts "1234567890.000001"
-                                :channel_type "im"}}]
+            event-body   base-dm-event]
         (with-slackbot-mocks
           {:ai-text mock-ai-text}
           (fn [{:keys [stream-calls append-text-calls stop-stream-calls]}]
@@ -353,13 +334,7 @@
   (testing "POST /events with app_mention triggers AI response via streaming"
     (with-slackbot-setup
       (let [mock-ai-text "Here is your answer"
-            event-body {:type "event_callback"
-                        :event {:type "app_mention"
-                                :text "<@UBOT123> Hello!"
-                                :user "U123"
-                                :channel "C123"
-                                :ts "1234567890.000001"
-                                :event_ts "1234567890.000001"}}]
+            event-body   base-mention-event]
         (with-slackbot-mocks
           {:ai-text mock-ai-text}
           (fn [{:keys [stream-calls append-text-calls stop-stream-calls]}]
@@ -382,14 +357,7 @@
 (deftest stream-start-failure-test
   (testing "When start-stream fails, falls back to a regular message"
     (with-slackbot-setup
-      (let [event-body {:type "event_callback"
-                        :event {:type "message"
-                                :text "Hello!"
-                                :user "U123"
-                                :channel "C123"
-                                :ts "1234567890.000001"
-                                :event_ts "1234567890.000001"
-                                :channel_type "im"}}]
+      (let [event-body base-dm-event]
         (with-slackbot-mocks
           {:ai-text "Here is your answer"}
           (fn [{:keys [post-calls stop-stream-calls]}]
@@ -412,14 +380,7 @@
 (deftest ai-request-error-stops-stream-test
   (testing "When the AI request throws after the stream has started, the stream is stopped"
     (with-slackbot-setup
-      (let [event-body {:type "event_callback"
-                        :event {:type "message"
-                                :text "Hello!"
-                                :user "U123"
-                                :channel "C123"
-                                :ts "1234567890.000001"
-                                :event_ts "1234567890.000001"
-                                :channel_type "im"}}]
+      (let [event-body base-dm-event]
         (with-slackbot-mocks
           {:ai-text "unused"}
           (fn [{:keys [stop-stream-calls stream-calls append-text-calls]}]
@@ -450,23 +411,8 @@
   (testing "POST /events passes correct arguments to streaming-request-with-callback"
     (with-slackbot-setup
       (doseq [[desc event-body]
-              [["DM message"
-                {:type "event_callback"
-                 :event {:type "message"
-                         :text "Hello!"
-                         :user "U123"
-                         :channel "D-MY-DM-CHANNEL"
-                         :ts "1234567890.000001"
-                         :event_ts "1234567890.000001"
-                         :channel_type "im"}}]
-               ["app_mention in channel"
-                {:type "event_callback"
-                 :event {:type "app_mention"
-                         :text "<@UBOT123> Hello!"
-                         :user "U123"
-                         :channel "C-PUBLIC-CHANNEL"
-                         :ts "1234567890.000001"
-                         :event_ts "1234567890.000001"}}]]]
+              [["DM message"            (assoc-in base-dm-event [:event :channel] "D-MY-DM-CHANNEL")]
+               ["app_mention in channel" (assoc-in base-mention-event [:event :channel] "C-PUBLIC-CHANNEL")]]]
         (testing desc
           (with-slackbot-mocks
             {:ai-text "response"}
@@ -497,15 +443,12 @@
                              {:type "static_viz" :value {:entity_id 202}}
                              ;; Include a non-viz data part to verify filtering
                              {:type "other_type" :value {:foo "bar"}}]
-            event-body {:type "event_callback"
-                        :event {:type "message"
-                                :text "Show me charts"
-                                :user "U123"
-                                :channel "C456"
-                                :ts "1234567890.000002"
-                                :event_ts "1234567890.000002"
-                                :channel_type "im"
-                                :thread_ts "1234567890.000000"}}]
+            event-body (update base-dm-event :event merge
+                               {:text      "Show me charts"
+                                :channel   "C456"
+                                :ts        "1234567890.000002"
+                                :event_ts  "1234567890.000002"
+                                :thread_ts "1234567890.000000"})]
         (with-slackbot-mocks
           {:ai-text mock-ai-text
            :data-parts mock-data-parts}
@@ -546,14 +489,7 @@
 (deftest user-not-linked-sends-auth-message-test
   (testing "POST /events with unlinked user sends ephemeral auth message"
     (with-slackbot-setup
-      (let [event-body {:type "event_callback"
-                        :event {:type "message"
-                                :text "Hello!"
-                                :user "U-UNKNOWN-USER"
-                                :channel "C123"
-                                :ts "1234567890.000001"
-                                :event_ts "1234567890.000001"
-                                :channel_type "im"}}]
+      (let [event-body (assoc-in base-dm-event [:event :user] "U-UNKNOWN-USER")]
         (with-slackbot-mocks
           {:ai-text "Should not be called"
            :user-id ::no-user} ;; Simulate no linked user
@@ -583,14 +519,11 @@
                ;; @mention in thread should thread (to keep context)
                ["@mention in thread" "1234567890.000001" "1234567890.000001"]]]
         (testing desc
-          (let [event-body {:type "event_callback"
-                            :event (cond-> {:type "app_mention"
-                                            :text "<@UBOT123> Hello!"
-                                            :user "U-UNKNOWN"
-                                            :channel "C123"
-                                            :ts "1234567890.000002"
-                                            :event_ts "1234567890.000002"}
-                                     thread-ts (assoc :thread_ts thread-ts))}]
+          (let [event-body (cond-> (update base-mention-event :event merge
+                                           {:user     "U-UNKNOWN"
+                                            :ts       "1234567890.000002"
+                                            :event_ts "1234567890.000002"})
+                             thread-ts (assoc-in [:event :thread_ts] thread-ts))]
             (with-slackbot-mocks
               {:ai-text "Should not be called"
                :user-id ::no-user}
@@ -606,62 +539,42 @@
 
 ;; -------------------------------- Setup Complete Tests --------------------------------
 
-(defn- do-with-setup-override!
-  "Helper to test setup-complete? with one setting disabled.
-   `override` is a map that can contain:
-   - :encryption - set to nil to disable encryption
-   - :site-url - set to nil to disable site-url
-   - :sso-slack - set to false to disable sso-slack feature
-   - :signing-secret, :bot-token, :client-id, :client-secret - set to nil to disable"
-  [{:keys [encryption site-url sso-slack signing-secret bot-token client-id client-secret]
-    :or {encryption test-encryption-key
-         site-url "https://localhost:3000"
-         sso-slack true
-         signing-secret test-signing-secret
-         bot-token "xoxb-test"
-         client-id "test-client-id"
-         client-secret "test-secret"}}
-   thunk]
-  (with-redefs [slackbot/validate-bot-token! (constantly {:ok true})
-                encryption/default-secret-key encryption
-                premium-features/enable-sso-slack? (constantly sso-slack)]
-    (mt/with-premium-features #{:metabot-v3 :sso-slack}
-      (mt/with-temporary-setting-values [site-url site-url
-                                         metabot.settings/metabot-slack-signing-secret signing-secret
-                                         channel.settings/slack-app-token bot-token
-                                         sso-settings/slack-connect-client-id client-id
-                                         sso-settings/slack-connect-client-secret client-secret]
-        (thunk)))))
-
 (deftest setup-complete-test
-  (let [request-body {:type "event_callback"
-                      :event {:type "message"
-                              :text "test"
-                              :user "U123"
-                              :channel "C123"
-                              :ts "1234567890.000001"
-                              :event_ts "1234567890.000001"
-                              :channel_type "im"}}
-        post-events  #(mt/client :post %1 "ee/metabot-v3/slack/events"
-                                 (slack-request-options request-body) request-body)]
-    (testing "succeeds when all settings are configured"
-      (do-with-setup-override! {}
-                               #(is (= "ok" (post-events 200)))))
+  (with-slackbot-setup
+    (let [request-body (assoc-in base-dm-event [:event :text] "test")
+          post-events  #(mt/client :post %1 "ee/metabot-v3/slack/events"
+                                   (slack-request-options request-body) request-body)]
+      (testing "succeeds when all settings are configured"
+        (is (= "ok" (post-events 200))))
 
-    (doseq [[desc override] [["sso-slack feature disabled"    {:sso-slack false}]
-                             ["client-id missing"             {:client-id nil}]
-                             ["client-secret missing"         {:client-secret nil}]
-                             ["bot-token missing"             {:bot-token nil}]
-                             ["encryption disabled"           {:encryption nil}]
-                             ["site-url disabled"             {:site-url nil}]]]
-      (testing (str "returns 503 when " desc)
-        (do-with-setup-override! override
-                                 #(is (= "Slack integration is not fully configured." (post-events 503))))))
+      (testing "returns 503 when sso-slack feature disabled"
+        (with-redefs [premium-features/enable-sso-slack? (constantly false)]
+          (is (= "Slack integration is not fully configured." (post-events 503)))))
 
-    (testing "returns 503 when signing-secret is missing (can't sign request)"
-      (do-with-setup-override! {:signing-secret nil}
-                               #(is (= "Slack integration is not fully configured."
-                                       (mt/client :post 503 "ee/metabot-v3/slack/events" request-body)))))))
+      (testing "returns 503 when client-id missing"
+        (mt/with-temporary-setting-values [sso-settings/slack-connect-client-id nil]
+          (is (= "Slack integration is not fully configured." (post-events 503)))))
+
+      (testing "returns 503 when client-secret missing"
+        (mt/with-temporary-setting-values [sso-settings/slack-connect-client-secret nil]
+          (is (= "Slack integration is not fully configured." (post-events 503)))))
+
+      (testing "returns 503 when bot-token missing"
+        (mt/with-temporary-setting-values [channel.settings/slack-app-token nil]
+          (is (= "Slack integration is not fully configured." (post-events 503)))))
+
+      (testing "returns 503 when encryption disabled"
+        (with-redefs [encryption/default-secret-key nil]
+          (is (= "Slack integration is not fully configured." (post-events 503)))))
+
+      (testing "returns 503 when site-url missing"
+        (mt/with-temporary-setting-values [site-url nil]
+          (is (= "Slack integration is not fully configured." (post-events 503)))))
+
+      (testing "returns 503 when signing-secret missing (can't sign request)"
+        (mt/with-temporary-setting-values [metabot.settings/metabot-slack-signing-secret nil]
+          (is (= "Slack integration is not fully configured."
+                 (mt/client :post 503 "ee/metabot-v3/slack/events" request-body))))))))
 
 ;; -------------------------------- Ad-Hoc Query Visualization Tests --------------------------------
 
@@ -676,15 +589,12 @@
             mock-data-parts [{:type  "adhoc_viz"
                               :value {:query   mock-query
                                       :display "bar"}}]
-            event-body      {:type  "event_callback"
-                             :event {:type         "message"
-                                     :text         "Show me sales data"
-                                     :user         "U123"
-                                     :channel      "C789"
-                                     :ts           "1234567890.000003"
-                                     :event_ts     "1234567890.000003"
-                                     :channel_type "im"
-                                     :thread_ts    "1234567890.000000"}}]
+            event-body      (update base-dm-event :event merge
+                                    {:text      "Show me sales data"
+                                     :channel   "C789"
+                                     :ts        "1234567890.000003"
+                                     :event_ts  "1234567890.000003"
+                                     :thread_ts "1234567890.000000"})]
         (with-slackbot-mocks
           {:ai-text    mock-ai-text
            :data-parts mock-data-parts}
@@ -719,14 +629,10 @@
       (let [mock-query      {:database 1 :type "query" :query {:source-table 2}}
             mock-data-parts [{:type  "adhoc_viz"
                               :value {:query mock-query}}] ;; no :display
-            event-body      {:type  "event_callback"
-                             :event {:type         "message"
-                                     :text         "Show data"
-                                     :user         "U123"
-                                     :channel      "C123"
-                                     :ts           "1234567890.000004"
-                                     :event_ts     "1234567890.000004"
-                                     :channel_type "im"}}]
+            event-body      (update base-dm-event :event merge
+                                    {:text     "Show data"
+                                     :ts       "1234567890.000004"
+                                     :event_ts "1234567890.000004"})]
         (with-slackbot-mocks
           {:ai-text    "Here's your table"
            :data-parts mock-data-parts}
@@ -750,15 +656,12 @@
             mock-data-parts [{:type "static_viz" :value {:entity_id 101}}
                              {:type "adhoc_viz" :value {:query mock-query :display "line"}}
                              {:type "static_viz" :value {:entity_id 202}}]
-            event-body      {:type  "event_callback"
-                             :event {:type         "message"
-                                     :text         "Show me everything"
-                                     :user         "U123"
-                                     :channel      "C456"
-                                     :ts           "1234567890.000005"
-                                     :event_ts     "1234567890.000005"
-                                     :channel_type "im"
-                                     :thread_ts    "1234567890.000000"}}]
+            event-body      (update base-dm-event :event merge
+                                    {:text      "Show me everything"
+                                     :channel   "C456"
+                                     :ts        "1234567890.000005"
+                                     :event_ts  "1234567890.000005"
+                                     :thread_ts "1234567890.000000"})]
         (with-slackbot-mocks
           {:ai-text    "Here's everything"
            :data-parts mock-data-parts}
@@ -844,20 +747,14 @@
 (deftest csv-upload-disabled-test
   (testing "POST /events with file upload when uploads are disabled"
     (with-slackbot-setup
-      (let [event-body {:type "event_callback"
-                        :event {:type "message"
-                                :subtype "file_share"
-                                :text "Here's my data"
-                                :user "U123"
-                                :channel "C123"
-                                :channel_type "im"
-                                :ts "1234567890.000001"
-                                :event_ts "1234567890.000001"
-                                :files [{:id "F123"
-                                         :name "data.csv"
-                                         :filetype "csv"
-                                         :url_private "https://files.slack.com/files/data.csv"
-                                         :size 100}]}}]
+      (let [event-body (update base-dm-event :event merge
+                               {:subtype "file_share"
+                                :text    "Here's my data"
+                                :files   [{:id          "F123"
+                                           :name        "data.csv"
+                                           :filetype    "csv"
+                                           :url_private "https://files.slack.com/files/data.csv"
+                                           :size        100}]})]
         (with-upload-mocks!
           {:uploads-enabled? false}
           (fn [{:keys [upload-calls]}]
@@ -880,20 +777,14 @@
 (deftest csv-upload-success-test
   (testing "POST /events with successful CSV upload"
     (with-slackbot-setup
-      (let [event-body {:type "event_callback"
-                        :event {:type "message"
-                                :subtype "file_share"
-                                :text "Here's my data"
-                                :user "U123"
-                                :channel "C123"
-                                :channel_type "im"
-                                :ts "1234567890.000001"
-                                :event_ts "1234567890.000001"
-                                :files [{:id "F123"
-                                         :name "sales_data.csv"
-                                         :filetype "csv"
-                                         :url_private "https://files.slack.com/files/sales_data.csv"
-                                         :size 100}]}}]
+      (let [event-body (update base-dm-event :event merge
+                               {:subtype "file_share"
+                                :text    "Here's my data"
+                                :files   [{:id          "F123"
+                                           :name        "sales_data.csv"
+                                           :filetype    "csv"
+                                           :url_private "https://files.slack.com/files/sales_data.csv"
+                                           :size        100}]})]
         (with-upload-mocks!
           {:uploads-enabled? true
            :can-create-upload? true
@@ -923,20 +814,14 @@
 (deftest csv-upload-non-csv-skipped-test
   (testing "POST /events with non-CSV file is skipped"
     (with-slackbot-setup
-      (let [event-body {:type "event_callback"
-                        :event {:type "message"
-                                :subtype "file_share"
-                                :text "Here's my file"
-                                :user "U123"
-                                :channel "C123"
-                                :channel_type "im"
-                                :ts "1234567890.000001"
-                                :event_ts "1234567890.000001"
-                                :files [{:id "F123"
-                                         :name "document.pdf"
-                                         :filetype "pdf"
-                                         :url_private "https://files.slack.com/files/document.pdf"
-                                         :size 100}]}}]
+      (let [event-body (update base-dm-event :event merge
+                               {:subtype "file_share"
+                                :text    "Here's my file"
+                                :files   [{:id          "F123"
+                                           :name        "document.pdf"
+                                           :filetype    "pdf"
+                                           :url_private "https://files.slack.com/files/document.pdf"
+                                           :size        100}]})]
         (with-upload-mocks!
           {:uploads-enabled? true}
           (fn [{:keys [upload-calls download-calls]}]
@@ -961,20 +846,16 @@
 (deftest csv-upload-non-csv-no-text-test
   (testing "POST /events with non-CSV file and no text responds directly without AI"
     (with-slackbot-setup
-      (let [event-body {:type "event_callback"
-                        :event {:type "message"
-                                :subtype "file_share"
-                                ;; No :text field - user uploaded file without typing anything
-                                :user "U123"
-                                :channel "C123"
-                                :channel_type "im"
-                                :ts "1234567890.000001"
-                                :event_ts "1234567890.000001"
-                                :files [{:id "F123"
-                                         :name "query_result.xlsx"
-                                         :filetype "xlsx"
-                                         :url_private "https://files.slack.com/files/query_result.xlsx"
-                                         :size 100}]}}]
+      ;; No :text field - user uploaded file without typing anything
+      (let [event-body (-> base-dm-event
+                           (update :event merge
+                                   {:subtype "file_share"
+                                    :files   [{:id          "F123"
+                                               :name        "query_result.xlsx"
+                                               :filetype    "xlsx"
+                                               :url_private "https://files.slack.com/files/query_result.xlsx"
+                                               :size        100}]})
+                           (update :event dissoc :text))]
         (with-upload-mocks!
           {:uploads-enabled? true}
           (fn [{:keys [upload-calls download-calls]}]
@@ -1006,30 +887,24 @@
 (deftest csv-upload-mixed-files-test
   (testing "POST /events with mix of CSV and non-CSV files"
     (with-slackbot-setup
-      (let [event-body {:type "event_callback"
-                        :event {:type "message"
-                                :subtype "file_share"
-                                :text "Here are my files"
-                                :user "U123"
-                                :channel "C123"
-                                :channel_type "im"
-                                :ts "1234567890.000001"
-                                :event_ts "1234567890.000001"
-                                :files [{:id "F1"
-                                         :name "data.csv"
-                                         :filetype "csv"
-                                         :url_private "https://files.slack.com/files/data.csv"
-                                         :size 100}
-                                        {:id "F2"
-                                         :name "report.pdf"
-                                         :filetype "pdf"
-                                         :url_private "https://files.slack.com/files/report.pdf"
-                                         :size 200}
-                                        {:id "F3"
-                                         :name "more_data.tsv"
-                                         :filetype "tsv"
-                                         :url_private "https://files.slack.com/files/more_data.tsv"
-                                         :size 150}]}}]
+      (let [event-body (update base-dm-event :event merge
+                               {:subtype "file_share"
+                                :text    "Here are my files"
+                                :files   [{:id          "F1"
+                                           :name        "data.csv"
+                                           :filetype    "csv"
+                                           :url_private "https://files.slack.com/files/data.csv"
+                                           :size        100}
+                                          {:id          "F2"
+                                           :name        "report.pdf"
+                                           :filetype    "pdf"
+                                           :url_private "https://files.slack.com/files/report.pdf"
+                                           :size        200}
+                                          {:id          "F3"
+                                           :name        "more_data.tsv"
+                                           :filetype    "tsv"
+                                           :url_private "https://files.slack.com/files/more_data.tsv"
+                                           :size        150}]})]
         (with-upload-mocks!
           {:uploads-enabled? true
            :upload-result {:id 789 :name "Uploaded Data"}}
@@ -1056,20 +931,14 @@
   (testing "POST /events with file exceeding size limit"
     (with-slackbot-setup
       (let [too-large-size (inc (* 1024 1024 1024)) ;; Just over 1GB
-            event-body {:type "event_callback"
-                        :event {:type "message"
-                                :subtype "file_share"
-                                :text "Here's my huge file"
-                                :user "U123"
-                                :channel "C123"
-                                :channel_type "im"
-                                :ts "1234567890.000001"
-                                :event_ts "1234567890.000001"
-                                :files [{:id "F123"
-                                         :name "huge_data.csv"
-                                         :filetype "csv"
-                                         :url_private "https://files.slack.com/files/huge_data.csv"
-                                         :size too-large-size}]}}]
+            event-body    (update base-dm-event :event merge
+                                  {:subtype "file_share"
+                                   :text    "Here's my huge file"
+                                   :files   [{:id          "F123"
+                                              :name        "huge_data.csv"
+                                              :filetype    "csv"
+                                              :url_private "https://files.slack.com/files/huge_data.csv"
+                                              :size        too-large-size}]})]
         (with-upload-mocks!
           {:uploads-enabled? true}
           (fn [{:keys [upload-calls download-calls]}]
@@ -1091,20 +960,14 @@
 (deftest csv-upload-no-permission-test
   (testing "POST /events with file upload when user lacks permission"
     (with-slackbot-setup
-      (let [event-body {:type "event_callback"
-                        :event {:type "message"
-                                :subtype "file_share"
-                                :text "Here's my data"
-                                :user "U123"
-                                :channel "C123"
-                                :channel_type "im"
-                                :ts "1234567890.000001"
-                                :event_ts "1234567890.000001"
-                                :files [{:id "F123"
-                                         :name "data.csv"
-                                         :filetype "csv"
-                                         :url_private "https://files.slack.com/files/data.csv"
-                                         :size 100}]}}]
+      (let [event-body (update base-dm-event :event merge
+                               {:subtype "file_share"
+                                :text    "Here's my data"
+                                :files   [{:id          "F123"
+                                           :name        "data.csv"
+                                           :filetype    "csv"
+                                           :url_private "https://files.slack.com/files/data.csv"
+                                           :size        100}]})]
         (with-upload-mocks!
           {:uploads-enabled? true
            :can-create-upload? false}
@@ -1179,14 +1042,10 @@
 (deftest channel-message-without-mention-no-auth-test
   (testing "POST /events with channel message (no @mention) from unlinked user should NOT send auth message"
     (with-slackbot-setup
-      (let [event-body {:type "event_callback"
-                        :event {:type "message"
-                                :text "Hello everyone!"
-                                :user "U-UNKNOWN-USER"
-                                :channel "C123"
-                                :ts "1234567890.000001"
-                                :event_ts "1234567890.000001"
-                                :channel_type "channel"}}]
+      (let [event-body (update base-dm-event :event merge
+                               {:text         "Hello everyone!"
+                                :user         "U-UNKNOWN-USER"
+                                :channel_type "channel"})]
         (with-slackbot-mocks
           {:ai-text "Should not be called"
            :user-id ::no-user}
@@ -1205,14 +1064,9 @@
 (deftest channel-message-without-mention-linked-user-test
   (testing "POST /events with channel message from linked user should be silently ignored"
     (with-slackbot-setup
-      (let [event-body {:type "event_callback"
-                        :event {:type "message"
-                                :text "Hello team!"
-                                :user "U123"
-                                :channel "C123"
-                                :ts "1234567890.000001"
-                                :event_ts "1234567890.000001"
-                                :channel_type "channel"}}]
+      (let [event-body (update base-dm-event :event merge
+                               {:text         "Hello team!"
+                                :channel_type "channel"})]
         (with-slackbot-mocks
           {:ai-text "Should not be called"}
           (fn [{:keys [post-calls ephemeral-calls]}]
