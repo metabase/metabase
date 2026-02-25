@@ -331,6 +331,8 @@ export type VisualizationSettingDefinition<
   disabled?: boolean;
   default?: TValue;
   marginBottom?: string;
+  value?: TValue;
+  set?: boolean;
   getMarginBottom?: (
     object: T,
     settings: ComputedVisualizationSettings,
@@ -347,6 +349,7 @@ export type VisualizationSettingDefinition<
     onChangeSettings: (value: Partial<VisualizationSettings>) => void,
   ) => Partial<TProps>;
   onChange?: (value: TValue) => void;
+  onChangeSettings?: (value: Partial<VisualizationSettings>) => void;
   onUpdate?: (value: TValue, extra: SettingsExtra) => void;
   readDependencies?: string[];
   writeDependencies?: string[];
