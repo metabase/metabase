@@ -5,7 +5,11 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase-enterprise.metabot-v3.api.slackbot :as slackbot]
+   [metabase-enterprise.metabot-v3.api.slackbot.client :as slackbot.client]
+   [metabase-enterprise.metabot-v3.api.slackbot.config :as slackbot.config]
    [metabase-enterprise.metabot-v3.api.slackbot.query :as slackbot.query]
+   [metabase-enterprise.metabot-v3.api.slackbot.streaming :as slackbot.streaming]
+   [metabase-enterprise.metabot-v3.api.slackbot.uploads :as slackbot.uploads]
    [metabase-enterprise.metabot-v3.client :as metabot-v3.client]
    [metabase-enterprise.metabot-v3.settings :as metabot.settings]
    [metabase-enterprise.sso.settings :as sso-settings]
@@ -58,7 +62,7 @@
 (defmacro ^:private with-slackbot-setup
   "Wrap body with all required settings for slackbot to be fully configured."
   [& body]
-  `(with-redefs [slackbot/validate-bot-token! (constantly {:ok true})]
+  `(with-redefs [slackbot.config/validate-bot-token! (constantly {:ok true})]
      (with-ensure-encryption
        (mt/with-premium-features #{:metabot-v3 :sso-slack}
          (mt/with-temporary-setting-values [site-url "https://localhost:3000"
@@ -194,32 +198,32 @@
                                       :else user-id)]
     (mt/with-dynamic-fn-redefs
       [slackbot/slack-id->user-id (constantly mock-user-id)
-       slackbot/get-bot-user-id (constantly "UBOT123")
-       slackbot/auth-test            (constantly {:ok true :user_id "UBOT123" :team_id "T123"})
-       slackbot/fetch-thread         (constantly {:ok true, :messages []})
+       slackbot.client/get-bot-user-id (constantly "UBOT123")
+       slackbot.client/auth-test            (constantly {:ok true :user_id "UBOT123" :team_id "T123"})
+       slackbot.client/fetch-thread         (constantly {:ok true, :messages []})
        ;; Mock Slack streaming APIs
-       slackbot/start-stream         (fn [_ opts]
-                                       (swap! stream-calls conj opts)
-                                       {:stream_ts "stream123" :channel (:channel opts) :thread_ts (:thread_ts opts)})
-       slackbot/append-stream        (constantly {:ok true})
-       slackbot/append-markdown-text (fn [_ _channel _stream-ts text]
-                                       (swap! append-text-calls conj text)
-                                       {:ok true})
-       slackbot/stop-stream          (fn [_ channel stream-ts]
-                                       (swap! stop-stream-calls conj {:channel channel :stream_ts stream-ts})
-                                       {:ok true})
-       slackbot/post-message (fn [_ msg]
-                               (swap! post-calls conj msg)
-                               {:ok true
-                                :ts "123"
-                                :channel (:channel msg)
-                                :message msg})
-       slackbot/post-ephemeral-message (fn [_ msg]
-                                         (swap! ephemeral-calls conj msg)
-                                         {:ok true, :message_ts "1234567890.123456"})
-       slackbot/delete-message (fn [_ msg]
-                                 (swap! delete-calls conj msg)
-                                 {:ok true})
+       slackbot.client/start-stream         (fn [_ opts]
+                                              (swap! stream-calls conj opts)
+                                              {:stream_ts "stream123" :channel (:channel opts) :thread_ts (:thread_ts opts)})
+       slackbot.client/append-stream        (constantly {:ok true})
+       slackbot.client/append-markdown-text (fn [_ _channel _stream-ts text]
+                                              (swap! append-text-calls conj text)
+                                              {:ok true})
+       slackbot.client/stop-stream          (fn [_ channel stream-ts]
+                                              (swap! stop-stream-calls conj {:channel channel :stream_ts stream-ts})
+                                              {:ok true})
+       slackbot.client/post-message (fn [_ msg]
+                                      (swap! post-calls conj msg)
+                                      {:ok true
+                                       :ts "123"
+                                       :channel (:channel msg)
+                                       :message msg})
+       slackbot.client/post-ephemeral-message (fn [_ msg]
+                                                (swap! ephemeral-calls conj msg)
+                                                {:ok true, :message_ts "1234567890.123456"})
+       slackbot.client/delete-message (fn [_ msg]
+                                        (swap! delete-calls conj msg)
+                                        {:ok true})
        ;; Mock the streaming client - returns AISDK-formatted lines
        metabot-v3.client/streaming-request-with-callback
        (fn [opts]
@@ -233,25 +237,25 @@
              (doseq [line mock-lines]
                (on-line line)))
            mock-lines))
-       slackbot/generate-card-png        (fn [card-id & _opts]
-                                           (swap! generate-png-calls conj card-id)
-                                           fake-png-bytes)
-       slackbot/generate-card-output     (fn [card-id]
-                                           (swap! generate-card-output-calls conj {:card-id card-id})
+       slackbot.query/generate-card-png        (fn [card-id & _opts]
+                                                 (swap! generate-png-calls conj card-id)
+                                                 fake-png-bytes)
+       slackbot.query/generate-card-output     (fn [card-id]
+                                                 (swap! generate-card-output-calls conj {:card-id card-id})
                                            ;; Mock returns image by default (simulating a chart card)
-                                           {:type :image :content fake-png-bytes})
+                                                 {:type :image :content fake-png-bytes})
        slackbot.query/generate-adhoc-output (fn [query & {:keys [display]}]
                                               (swap! generate-adhoc-output-calls conj {:query query :display display})
                                               ;; Chart display types return images, others return table
                                               (if (#{:bar :line :pie :area :row :scatter :funnel :waterfall :combo :progress :gauge :map} display)
                                                 {:type :image :content fake-png-bytes}
                                                 {:type :table :content [{:type "table" :rows [] :column_settings []}]}))
-       slackbot/post-image               (fn [_client image-bytes filename channel thread-ts]
-                                           (swap! image-calls conj {:image-bytes image-bytes
-                                                                    :filename    filename
-                                                                    :channel     channel
-                                                                    :thread-ts   thread-ts})
-                                           {:ok true :file_id "F123"})]
+       slackbot.client/post-image               (fn [_client image-bytes filename channel thread-ts]
+                                                  (swap! image-calls conj {:image-bytes image-bytes
+                                                                           :filename    filename
+                                                                           :channel     channel
+                                                                           :thread-ts   thread-ts})
+                                                  {:ok true :file_id "F123"})]
       (body-fn {:post-calls                  post-calls
                 :delete-calls                delete-calls
                 :image-calls                 image-calls
@@ -363,7 +367,7 @@
           (fn [{:keys [post-calls stop-stream-calls]}]
             ;; Override start-stream to simulate failure
             (mt/with-dynamic-fn-redefs
-              [slackbot/start-stream (constantly nil)]
+              [slackbot.client/start-stream (constantly nil)]
               (let [response (mt/client :post 200 "ee/metabot-v3/slack/events"
                                         (slack-request-options event-body)
                                         event-body)]
@@ -390,7 +394,7 @@
                (fn [opts]
                  ;; Send enough text to trigger a flush (which starts the stream)
                  (when-let [on-line (:on-line opts)]
-                   (on-line (str "0:" (json/encode (apply str (repeat (inc @#'slackbot/min-text-batch-size) "x"))))))
+                   (on-line (str "0:" (json/encode (apply str (repeat (inc @#'slackbot.streaming/min-text-batch-size) "x"))))))
                  (throw (ex-info "AI service unavailable" {})))]
               (let [response (mt/client :post 200 "ee/metabot-v3/slack/events"
                                         (slack-request-options event-body)
@@ -689,8 +693,8 @@
           mock-results {:data {:cols [{:name "x" :base_type :type/Integer}]
                                :rows [[1] [2]]}}]
       (mt/with-dynamic-fn-redefs
-        [slackbot/generate-card-png (constantly fake-png-bytes)
-         slackbot/pulse-card-query-results (constantly mock-results)]
+        [slackbot.query/generate-card-png (constantly fake-png-bytes)
+         slackbot.query/pulse-card-query-results (constantly mock-results)]
 
         (testing "supported display types return :image"
           (doseq [display [:bar :line :pie :area :row :scatter :funnel
@@ -698,14 +702,14 @@
                            :smartscalar :boxplot :sankey]]
             (testing (str "display type: " display)
               (mt/with-temp [:model/Card {card-id :id} {:display display}]
-                (let [result (#'slackbot/generate-card-output card-id)]
+                (let [result (#'slackbot.query/generate-card-output card-id)]
                   (is (= :image (:type result))))))))
 
         (testing "unsupported display types return :table"
           (doseq [display [:table :pin_map :state :country :map :pivot]]
             (testing (str "display type: " display)
               (mt/with-temp [:model/Card {card-id :id} {:display display}]
-                (let [result (#'slackbot/generate-card-output card-id)]
+                (let [result (#'slackbot.query/generate-card-output card-id)]
                   (is (= :table (:type result))))))))))))
 
 ;; -------------------------------- CSV Upload Tests --------------------------------
@@ -738,7 +742,7 @@
        upload.impl/create-csv-upload! (fn [params]
                                         (swap! upload-calls conj params)
                                         upload-result)
-       slackbot/download-slack-file   (fn [url]
+       slackbot.client/download-file  (fn [_client url]
                                         (swap! download-calls conj url)
                                         download-content)]
       (body-fn {:upload-calls   upload-calls
@@ -990,12 +994,12 @@
 
 (deftest csv-file-detection-test
   (testing "csv-file? correctly identifies CSV/TSV files"
-    (is (true? (#'slackbot/csv-file? {:filetype "csv"})))
-    (is (true? (#'slackbot/csv-file? {:filetype "tsv"})))
-    (is (false? (#'slackbot/csv-file? {:filetype "pdf"})))
-    (is (false? (#'slackbot/csv-file? {:filetype "xlsx"})))
-    (is (false? (#'slackbot/csv-file? {:filetype nil})))
-    (is (false? (#'slackbot/csv-file? {})))))
+    (is (true? (#'slackbot.uploads/csv-file? {:filetype "csv"})))
+    (is (true? (#'slackbot.uploads/csv-file? {:filetype "tsv"})))
+    (is (false? (#'slackbot.uploads/csv-file? {:filetype "pdf"})))
+    (is (false? (#'slackbot.uploads/csv-file? {:filetype "xlsx"})))
+    (is (false? (#'slackbot.uploads/csv-file? {:filetype nil})))
+    (is (false? (#'slackbot.uploads/csv-file? {})))))
 
 (deftest slack-id->user-id-test
   (testing "slack-id->user-id only returns active users with sso_source 'slack'"
