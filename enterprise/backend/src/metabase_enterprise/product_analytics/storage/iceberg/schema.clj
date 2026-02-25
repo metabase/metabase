@@ -124,7 +124,7 @@
 
 (def table-definitions
   "Map of table name keyword to {:schema ... :partition-spec ...} for all PA tables."
-  {:pa-sites        {:schema sites-schema        :partition-spec sites-partition-spec}
-   :pa-events       {:schema events-schema       :partition-spec events-partition-spec}
-   :pa-sessions     {:schema sessions-schema     :partition-spec sessions-partition-spec}
-   :pa-session-data {:schema session-data-schema :partition-spec session-data-partition-spec}})
+  {:pa_sites        {:schema sites-schema        :partition-spec sites-partition-spec}
+   :pa_events       {:schema events-schema       :partition-spec events-partition-spec}
+   :pa_sessions     {:schema sessions-schema     :partition-spec sessions-partition-spec}
+   :pa_session_data {:schema session-data-schema :partition-spec session-data-partition-spec}})

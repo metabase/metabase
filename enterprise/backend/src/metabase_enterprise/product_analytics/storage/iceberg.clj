@@ -7,7 +7,8 @@
    [metabase-enterprise.product-analytics.storage.iceberg.buffer :as buffer]
    [metabase-enterprise.product-analytics.storage.iceberg.settings :as iceberg.settings]
    [metabase-enterprise.product-analytics.storage.iceberg.writer :as writer]
-   [metabase.util.log :as log])
+   [metabase.util.log :as log]
+   [toucan2.core :as t2])
   (:import
    (java.util.concurrent.atomic AtomicLong)))
 
@@ -26,6 +27,30 @@
 ;; Monotonically increasing ID generators for Iceberg records
 (def ^:private event-id-counter (AtomicLong. (System/currentTimeMillis)))
 (def ^:private session-id-counter (AtomicLong. (System/currentTimeMillis)))
+
+;;; ------------------------------------------------ Site cache helpers --------------------------------------------
+
+(defn cache-site!
+  "Add a site to the in-memory cache. Called when a site is created or updated."
+  [site-map]
+  (when-let [uuid (:uuid site-map)]
+    (swap! sites-cache assoc uuid site-map)))
+
+(defn uncache-site!
+  "Remove a site from the in-memory cache."
+  [site-uuid]
+  (swap! sites-cache dissoc site-uuid))
+
+(defn reload-sites-cache!
+  "Load all active sites from app-db into the in-memory cache and sync to Iceberg."
+  []
+  (let [sites (t2/select :model/ProductAnalyticsSite :archived false)]
+    (reset! sites-cache (into {} (map (juxt :uuid identity)) sites))
+    (when (seq sites)
+      (try
+        (writer/write-sites! sites)
+        (catch Exception e
+          (log/warn e "Failed to sync sites to Iceberg during reload"))))))
 
 ;;; ------------------------------------------------- Flush logic ---------------------------------------------------
 
@@ -79,6 +104,7 @@
   []
   (log/info "Starting Iceberg storage backend")
   (writer/ensure-tables!)
+  (reload-sites-cache!)
   (let [interval (iceberg.settings/product-analytics-iceberg-flush-interval-seconds)]
     (reset! flush-task (buffer/start-flush-task! flush-all! interval)))
   (log/info "Iceberg storage backend started"))
@@ -96,8 +122,15 @@
 
 (defmethod storage/get-site ::storage/iceberg
   [_backend site-uuid]
-  ;; Sites are cached in-memory; the cache is populated when sites are written
-  (get @sites-cache site-uuid))
+  (or (get @sites-cache site-uuid)
+      ;; Cache miss — check app-db and sync to Iceberg lazily
+      (when-let [site (t2/select-one :model/ProductAnalyticsSite :uuid site-uuid :archived false)]
+        (cache-site! site)
+        (try
+          (writer/write-sites! [site])
+          (catch Exception e
+            (log/warnf e "Failed to sync site %s to Iceberg" site-uuid)))
+        site)))
 
 (defmethod storage/upsert-session! ::storage/iceberg
   [_backend session-data]
@@ -159,23 +192,3 @@
 (defmethod storage/flush! ::storage/iceberg
   [_backend]
   (flush-all!))
-
-;;; ------------------------------------------------ Site cache helpers --------------------------------------------
-
-(defn cache-site!
-  "Add a site to the in-memory cache. Called when a site is created or updated."
-  [site-map]
-  (when-let [uuid (:uuid site-map)]
-    (swap! sites-cache assoc uuid site-map)))
-
-(defn uncache-site!
-  "Remove a site from the in-memory cache."
-  [site-uuid]
-  (swap! sites-cache dissoc site-uuid))
-
-(defn reload-sites-cache!
-  "Reload the sites cache. Currently a no-op placeholder — will scan the Iceberg table when
-   Iceberg read support is implemented."
-  []
-  ;; TODO: Scan pa_sites Iceberg table and populate cache
-  nil)
