@@ -3,6 +3,9 @@ import { IndexRedirect, IndexRoute, Redirect, Route } from "react-router";
 import { t } from "ttag";
 
 import AdminApp from "metabase/admin/app/components/AdminApp";
+import { AppForm } from "metabase/admin/apps/components/AppForm";
+import { AppsList } from "metabase/admin/apps/components/AppsList";
+import { AdminAppsApp } from "metabase/admin/apps/containers/AdminAppsApp";
 import { DatabaseEditApp } from "metabase/admin/databases/containers/DatabaseEditApp";
 import { DatabaseListApp } from "metabase/admin/databases/containers/DatabaseListApp";
 import { DatabasePage } from "metabase/admin/databases/containers/DatabasePage";
@@ -230,6 +233,15 @@ export const getRoutes = (store, CanAccessSettings, IsAdmin) => {
           from="/admin/settings/embedding-in-other-applications/sdk"
           to="/admin/embedding"
         />
+
+        {/* APPS */}
+        <Route path="apps" component={createAdminRouteGuard("apps")}>
+          <Route title={t`Apps`} component={AdminAppsApp}>
+            <IndexRoute component={AppsList} />
+            <Route path="create" component={AppForm} />
+            <Route path=":id" component={AppForm} />
+          </Route>
+        </Route>
 
         {/* SETTINGS */}
         <Route path="settings" component={createAdminRouteGuard("settings")}>

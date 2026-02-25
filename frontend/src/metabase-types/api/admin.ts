@@ -1,3 +1,26 @@
+export type AppId = number;
+
+export type App = {
+  id: AppId;
+  name: string;
+  auth_method: "jwt" | "saml";
+  theme: string | null;
+  published: boolean;
+  collection_id: number;
+  created_at: string;
+  updated_at: string;
+};
+
+export type CreateAppRequest = {
+  name: string;
+  auth_method: "jwt" | "saml";
+  collection_id: number;
+  theme?: string | null;
+  published?: boolean;
+};
+
+export type UpdateAppRequest = Partial<CreateAppRequest> & { id: AppId };
+
 export type ApiKeyId = number;
 
 export type ApiKey = {
