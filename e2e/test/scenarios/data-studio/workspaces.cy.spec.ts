@@ -1763,7 +1763,7 @@ describe("scenarios > data studio > workspaces", () => {
           databaseId: WRITABLE_DB_ID,
           schema: "Schema B",
         }).then((id2) => {
-          createPythonTransform({
+          createAdvancedTransform({
             body: TEST_PYTHON_TRANSFORM,
             sourceTables: { foo: id1, bar: id2 },
             visitTransform: true,
@@ -1906,7 +1906,7 @@ describe("scenarios > data studio > workspaces", () => {
             databaseId: WRITABLE_DB_ID,
             schema: "Schema B",
           }).then((id2) => {
-            createPythonTransform({
+            createAdvancedTransform({
               body: TEST_PYTHON_TRANSFORM_MULTI_TABLE,
               sourceTables: { animals_a: id1, animals_b: id2 },
               visitTransform: true,
@@ -2515,7 +2515,7 @@ function createTransforms({ visit }: { visit?: boolean } = { visit: false }) {
   });
 
   H.getTableId({ name: "Animals", databaseId: WRITABLE_DB_ID }).then((id) => {
-    createPythonTransform({
+    createAdvancedTransform({
       body: TEST_PYTHON_TRANSFORM,
       sourceTables: { foo: id },
     });
@@ -2561,7 +2561,7 @@ function createSqlTransform(opts: {
   });
 }
 
-function createPythonTransform(opts: {
+function createAdvancedTransform(opts: {
   body: string;
   sourceTables: PythonTransformTableAliases;
   targetTable?: string;
@@ -2569,7 +2569,7 @@ function createPythonTransform(opts: {
   tagIds?: TransformTagId[];
   visitTransform?: boolean;
 }) {
-  return H.createPythonTransform({
+  return H.createAdvancedTransform({
     targetTable: TARGET_TABLE_PYTHON,
     targetSchema: TARGET_SCHEMA,
     ...opts,

@@ -182,7 +182,10 @@ describe(
 
           cy.log("Should be able to visit and the see new transform");
           viewLastSuggestion();
-          cy.url().should("include", "/data-studio/transforms/new/python");
+          cy.url().should(
+            "include",
+            "/data-studio/transforms/new/advanced/python",
+          );
           assertEditorDiffState({ exists: false }); // nothing to diff, so we shouldn't show the UI for it
           assertEditorContent("python", "pd.DataFrame({'value': [1]})");
 
@@ -375,7 +378,7 @@ describe(
         it("should update existing Python transform via metabot", () => {
           H.getTableId({ name: SOURCE_TABLE, databaseId: WRITABLE_DB_ID }).then(
             (tableId) => {
-              H.createPythonTransform({
+              H.createAdvancedTransform({
                 targetTable: "transform_table",
                 targetSchema: "Schema A",
                 body: dedent`

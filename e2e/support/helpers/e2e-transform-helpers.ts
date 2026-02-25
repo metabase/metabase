@@ -1,5 +1,6 @@
 import { WRITABLE_DB_ID } from "e2e/support/cypress_data";
 import type {
+  AdvancedTransformType,
   Collection,
   CollectionId,
   PythonTransformTableAliases,
@@ -166,7 +167,9 @@ export function createSqlTransform({
   );
 }
 
-export function createPythonTransform({
+export function createAdvancedTransform({
+  name = "Python transform",
+  type = "python",
   body,
   sourceTables,
   targetTable,
@@ -174,6 +177,8 @@ export function createPythonTransform({
   tagIds,
   visitTransform,
 }: {
+  name?: string;
+  type?: AdvancedTransformType;
   body: string;
   sourceTables: PythonTransformTableAliases;
   targetTable: string;
@@ -183,9 +188,9 @@ export function createPythonTransform({
 }) {
   return createTransform(
     {
-      name: "Python transform",
+      name,
       source: {
-        type: "python",
+        type,
         "source-database": WRITABLE_DB_ID,
         "source-tables": sourceTables,
         body,
