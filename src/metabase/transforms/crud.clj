@@ -26,12 +26,12 @@
 (set! *warn-on-reflection* true)
 
 (defn python-source-table-ref->table-id
-  "Change source of python transform from name->table-ref to name->table-id.
+  "Change source of runner transform from name->table-ref to name->table-id.
 
   We now supported table-ref as source but since FE is still expecting table-id we need to temporarily do this.
   Should update FE to fully use table-ref"
   [transform]
-  (if (transforms.util/python-transform? transform)
+  (if (transforms.util/runner-transform? transform)
     (update-in transform [:source :source-tables]
                (fn [source-tables]
                  (update-vals source-tables #(if (int? %) % (:table_id %)))))
