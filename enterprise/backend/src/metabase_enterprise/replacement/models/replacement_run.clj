@@ -17,7 +17,7 @@
    :source_entity_type mi/transform-keyword
    :target_entity_type mi/transform-keyword})
 
-(defn start-run!
+(defn create-run!
   "Insert a new active run. Throws on duplicate key if one is already active."
   [source-type source-id target-type target-id user-id]
   (t2/insert-returning-instance! :model/ReplacementRun
@@ -31,13 +31,12 @@
                                   :progress           0.0}))
 
 (defn update-progress!
-  "Update progress and message on the active run."
-  [run-id progress message]
+  "Update progress on the active run."
+  [run-id progress]
   (t2/update! :model/ReplacementRun
               :id run-id
               :is_active true
-              {:progress progress
-               :message  message}))
+              {:progress progress}))
 
 (defn succeed-run!
   "Mark the active run as succeeded."

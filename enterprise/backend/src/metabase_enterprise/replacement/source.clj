@@ -7,6 +7,12 @@
    [metabase.util :as u]
    [toucan2.core :as t2]))
 
+(defn- has-incoming-fks?
+  "Returns true if any active field has a FK pointing to a field in `table-id`."
+  [table-id]
+  (when-let [field-ids (not-empty (t2/select-pks-set :model/Field :table_id table-id :active true))]
+    (t2/exists? :model/Field :fk_target_field_id [:in field-ids] :active true)))
+
 (defn- format-column [col]
   {:id             (:id col)
    :name           ((some-fn :lib/desired-column-alias :name) col)
@@ -52,11 +58,12 @@
           mappings       (format-column-mappings (lib-be/check-column-mappings source-query target-query))
           has-missing?   (some (fn [m] (and (:source m) (nil? (:target m)))) mappings)
           has-col-errors? (seq (mapcat :errors mappings))
-          success?       (not (or db-mismatch? cycle? has-missing? has-col-errors?))
-          ;; Only report :cycle-detected in top-level errors
+          implicit-joins? (and (= old-type :table) (= new-type :card) (has-incoming-fks? old-id))
+          success?       (not (or db-mismatch? cycle? has-missing? has-col-errors? implicit-joins?))
           reported-errors (cond-> []
-                            db-mismatch? (conj :database-mismatch)
-                            cycle? (conj :cycle-detected))]
+                            db-mismatch?    (conj :database-mismatch)
+                            cycle?          (conj :cycle-detected)
+                            implicit-joins? (conj :incompatible-implicit-joins))]
       (cond-> {:success success?}
         (seq reported-errors) (assoc :errors reported-errors)
         (seq mappings)        (assoc :column_mappings mappings)))))

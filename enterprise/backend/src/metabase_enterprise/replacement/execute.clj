@@ -19,9 +19,8 @@
 (p.types/defprotocol+ IRunnerProgress
   (set-total! [this total]
     "Set the total number of items to process (across all phases). Called once.")
-  (advance! [this] [this message]
-    "Mark one item complete, optionally with a status message.
-     Writes progress to DB every `progress-batch-size` items and on the final item.")
+  (advance! [this] [this n]
+    "Mark n items complete (default 1). Writes progress to DB periodically.")
   (canceled? [this]
     "Returns true if cancellation has been requested."))
 
@@ -39,25 +38,25 @@
   [{:keys [source-type source-id target-type target-id user-id]} work-fn]
   (when (replacement-run/active-run)
     (throw (ex-info "A source replacement is already running" {:status-code 409})))
-  (let [run        (replacement-run/start-run! source-type source-id target-type target-id user-id)
+  (let [run        (replacement-run/create-run! source-type source-id target-type target-id user-id)
         run-id     (:id run)
         progress   (let [total*     (atom 0)
                          completed* (atom 0)]
                      (reify IRunnerProgress
                        (set-total! [_ total] (reset! total* total))
-                       (advance! [this] (advance! this nil))
-                       (advance! [this message]
-                         (let [c (swap! completed* inc)
-                               t @total*]
-                           (when (or
-                                  ;; progress-batch-size'th item
-                                  (zero? (mod c progress-batch-size))
-                                  ;; last item
-                                  (= c t))
+                       (advance! [this] (advance! this 1))
+                       (advance! [this n]
+                         (let [c    (swap! completed* + n)
+                               t    @total*
+                               prev (- c n)
+                               crossed-boundary? (or (= c t)
+                                                     (not= (quot prev progress-batch-size)
+                                                           (quot c progress-batch-size)))]
+                           (when crossed-boundary?
                              (let [progress (if (pos? t) (double (/ c t)) 0.0)]
-                               (replacement-run/update-progress! run-id progress message))
-                             (when (canceled? this)
-                               (throw (ex-info "Run canceled" {:run-id run-id}))))))
+                               (replacement-run/update-progress! run-id progress)
+                               (when (canceled? this)
+                                 (throw (ex-info "Run canceled" {:run-id run-id})))))))
                        (canceled? [_]
                          (not (:is_active (t2/select-one [:model/ReplacementRun :is_active] :id run-id))))))]
     (u.jvm/in-virtual-thread*

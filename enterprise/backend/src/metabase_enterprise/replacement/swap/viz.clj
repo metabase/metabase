@@ -1,78 +1,17 @@
 (ns metabase-enterprise.replacement.swap.viz
   (:require
    [clojure.walk]
-   [metabase.lib.core :as lib]
-   [metabase.lib.metadata :as lib.metadata]
+   [metabase.lib-be.source-swap :as lib-be.source-swap]
    [metabase.models.visualization-settings :as vs]
    [metabase.util.log :as log]
    [toucan2.core :as t2]))
 
-(defn- ultimate-table-id
-  [mp [source-type source-id]]
-  (case source-type
-    :table
-    source-id
-
-    :card
-    (or (:table-id (lib.metadata/card mp source-id))
-        (throw (ex-info "Cannot find ulimate card for source"
-                        {:source-type source-type
-                         :source-id   source-id})))))
-
-(defn- query-source
-  [mp [source-type source-id]]
-  (case source-type
-    :card
-    (lib/query mp (lib.metadata/card mp source-id))
-
-    :table
-    (lib/query mp (lib.metadata/table mp source-id))))
-
-(defn- swap-field-ref
-  [field-ref mp old-source new-source]
-  (if (lib/field-ref-name field-ref)
-    field-ref ;; don't need to update if it's a name
-    (let [source-table-id (ultimate-table-id mp old-source)
-          field (lib.metadata/field mp (lib/field-ref-id field-ref))
-          field-table-id (:table-id field)]
-      (cond
-        (not= source-table-id field-table-id)
-        field-ref ;; not related to old-source
-
-        (:source-field (lib/options field-ref))
-        (throw (ex-info "Can't handle field-refs with joins"
-                        {:field-ref field-ref
-                         :old-source old-source
-                         :new-source new-source}))
-
-        :else ;; okay, we just have to switch it now
-        (let [query   (query-source mp new-source)
-              columns (lib/fieldable-columns query)
-              column-matches (filter #(= (:name field) (:name %)) columns)]
-          (if (= 1 (count column-matches))
-            (lib/ref (first column-matches))
-            (do (log/warnf "Expected 1 match for field %s, got %d; keeping original ref"
-                           (:name field) (count column-matches))
-                field-ref)))))))
-
-(defn- swap-legacy-target
-  [target mp old-source new-source]
-  (let [field-ref (lib/parameter-target-field-ref         target)
-        options   (lib/parameter-target-dimension-options target)]
-    [:dimension (lib/->legacy-MBQL (swap-field-ref field-ref mp old-source new-source)) options]))
-
-(defn- swap-target
-  [target mp old-source new-source]
-  (let [field-ref (lib/parameter-target-field-ref         target)
-        options   (lib/parameter-target-dimension-options target)]
-    [:dimension (swap-field-ref field-ref mp old-source new-source) options]))
-
-(defn- swap-parameter-mappings
-  [parameter-mapping mp old-source new-source]
-  (update parameter-mapping :target swap-legacy-target mp old-source new-source))
+(defn- swap-parameter-mapping
+  [parameter-mapping field-id-mapping]
+  (update parameter-mapping :target lib-be.source-swap/swap-source-in-parameter-target field-id-mapping))
 
 (defn- swap-column-settings-field-refs
-  [column-settings mp old-source new-source]
+  [column-settings field-id-mapping]
   (clojure.walk/postwalk
    (fn [form]
      ;; some forms don't get converted to keywords, so hack it
@@ -83,26 +22,42 @@
                        (update 0 keyword)
                        (update-in [1 0] keyword)
                        (update-in [1 2 :base-type] keyword))]
-           (swap-target dim mp old-source new-source))
-         (catch Exception _
+           (lib-be.source-swap/swap-source-in-parameter-target dim field-id-mapping))
+         (catch Exception e
+           (log/tracef e "Could not swap field refs in column_settings dimension: %s" (pr-str form))
            form))
        form))
    column-settings))
 
-(defn dashboard-card-update-field-refs!
-  "After a card's query has been updated, swap the column_settings keys on all
-  DashboardCards that display this card."
-  [card-id query old-source new-source]
-  (doseq [dashcard (t2/select :model/DashboardCard :card_id card-id)]
-    (let [viz      (vs/db->norm (:visualization_settings dashcard))
-          viz'     (update viz ::vs/column-settings swap-column-settings-field-refs query old-source new-source)
-          parameter-mappings (:parameter_mappings dashcard)
-          parameter-mappings' (mapv #(swap-parameter-mappings % query old-source new-source) parameter-mappings)
-          changes (cond-> {}
-                    (not= viz viz')
-                    (assoc :visualization_settings (vs/norm->db viz'))
+(defn- update-dashcard-field-refs!
+  [dashcard field-id-mapping]
+  (let [viz      (vs/db->norm (:visualization_settings dashcard))
+        viz'     (update viz ::vs/column-settings swap-column-settings-field-refs field-id-mapping)
+        parameter-mappings (:parameter_mappings dashcard)
+        parameter-mappings' (mapv #(swap-parameter-mapping % field-id-mapping) parameter-mappings)
+        changes (cond-> {}
+                  (not= viz viz')
+                  (assoc :visualization_settings (vs/norm->db viz'))
 
-                    (not= parameter-mappings parameter-mappings')
-                    (assoc :parameter_mappings parameter-mappings'))]
-      (when (seq changes)
-        (t2/update! :model/DashboardCard (:id dashcard) changes)))))
+                  (not= parameter-mappings parameter-mappings')
+                  (assoc :parameter_mappings parameter-mappings'))]
+    (when (seq changes)
+      (t2/update! :model/DashboardCard (:id dashcard) changes))))
+
+(defn dashboard-card-update-field-refs!
+  "After a card's query has been updated, swap the field refs in parameter_mappings
+  and column_settings on all DashboardCards that display this card."
+  [card-id field-id-mapping]
+  (when (some? field-id-mapping)
+    (doseq [dashcard (t2/select :model/DashboardCard :card_id card-id)]
+      (update-dashcard-field-refs! dashcard field-id-mapping))))
+
+(defn dashboard-update-field-refs!
+  "Swap field refs in parameter_mappings and column_settings on all DashboardCards
+  in the given dashboard. Skips dashcards whose card_id is in `exclude-card-ids`
+  (those were already processed by [[dashboard-card-update-field-refs!]])."
+  [dashboard-id field-id-mapping exclude-card-ids]
+  (when (some? field-id-mapping)
+    (doseq [dashcard (t2/select :model/DashboardCard :dashboard_id dashboard-id)
+            :when (not (contains? exclude-card-ids (:card_id dashcard)))]
+      (update-dashcard-field-refs! dashcard field-id-mapping))))

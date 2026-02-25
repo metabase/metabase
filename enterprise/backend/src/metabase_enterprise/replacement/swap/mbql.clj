@@ -1,9 +1,7 @@
 (ns metabase-enterprise.replacement.swap.mbql
   (:require
-   [metabase.lib.query.field-ref-update :as lib.query.field-ref-update]))
+   [metabase.lib-be.source-swap :as lib-be.source-swap]))
 
 (defn swap-mbql-stages
-  [query old-source new-source]
-  (lib.query.field-ref-update/update-field-refs query old-source new-source))
-
-
+  [query old-source new-source field-id-mapping]
+  (lib-be.source-swap/swap-source-in-query query old-source new-source field-id-mapping))
