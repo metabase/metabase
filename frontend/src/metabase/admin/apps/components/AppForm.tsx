@@ -177,7 +177,17 @@ function AppFormContent({
 
   return (
     <Stack p="lg" maw="40rem" gap="lg">
-      <Title order={2}>{isEditing ? t`Edit App` : t`Create App`}</Title>
+      <Group justify="space-between" align="center">
+        <Title order={2}>{isEditing ? t`Edit App` : t`Create App`}</Title>
+        {isEditing && formik.values.name && (
+          <Anchor
+            href={`/apps/${encodeURIComponent(formik.values.name)}?useCurrentSession=true`}
+            target="_blank"
+          >
+            {t`Preview`}
+          </Anchor>
+        )}
+      </Group>
       <form onSubmit={formik.handleSubmit}>
         <Stack gap="md">
           <TextInput
