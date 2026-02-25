@@ -494,7 +494,7 @@
           driver (:engine (lib.metadata/database mp))
           ttags  (lib/extract-template-tags mp "SELECT BAD FROM {{#1}}")
           query  (fake-query mp
-                             "SELECT BAD FROM mb__dummy_card__99 JOIN {{#1}}"
+                             "SELECT BAD FROM mb__validat_card__99 JOIN {{#1}}"
                              ttags)]
       (is (= (normalize-error-names driver
                                     #{(lib/missing-column-error "BAD")})
@@ -505,7 +505,7 @@
     (let [mp     (deps.tu/default-metadata-provider)
           driver (:engine (lib.metadata/database mp))
           query  (fake-query mp
-                             "SELECT BAD FROM mb__dummy_card__99")]
+                             "SELECT BAD FROM mb__validat_card__99")]
       (is (= (normalize-error-names driver
                                     #{(lib/missing-column-error "BAD")})
              (deps.native-validation/validate-native-query driver query))))))

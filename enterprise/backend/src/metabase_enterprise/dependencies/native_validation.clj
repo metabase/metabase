@@ -33,11 +33,11 @@
 
 (def ^:private card-placeholder-prefix
   "Prefix used to generate placeholder table names for card references.
-   Card ref {{#N}} becomes mb__dummy_card__N in the SQL sent to SQLGlot."
-  "mb__dummy_card__")
+   Card ref {{#N}} becomes mb__validat_card__N in the SQL sent to SQLGlot."
+  "mb__validat_card__")
 
 (defn- parse-card-placeholder
-  "If table-name is a card placeholder (e.g. \"mb__dummy_card__42\" or \"MB__DUMMY_CARD__42\"),
+  "If table-name is a card placeholder (e.g. \"mb__VALIDAT_card__42\" or \"MB__VALIDAT_CARD__42\"),
    return the card ID. Returns nil otherwise. Case-insensitive to handle driver normalization."
   [table-name]
   (let [lower (u/lower-case-en (str table-name))]
@@ -46,7 +46,7 @@
 
 (defn- compile-toplevel-query
   "Compile a query replacing card references with placeholder table names.
-   Card refs like {{#1}} are replaced with mb__dummy_card__1.
+   Card refs like {{#1}} are replaced with mb__validat_card__1.
 
    Returns the compiled native-only-query, or nil if the original SQL contains
    the placeholder prefix (collision guard)."
@@ -76,7 +76,7 @@
 (defn- table-deps
   "Returns the set of table dep maps (e.g. {:table \"products\" :schema \"public\"})
    referenced directly in the compiled native query.
-   Excludes card placeholder tables (mb__dummy_card__N)."
+   Excludes card placeholder tables (mb__validat_card__N)."
   [driver compiled]
   (into #{}
         (filter (fn [dep]
@@ -86,7 +86,7 @@
 
 (defn- extract-source-entity
   "Extract source entity info from a :single-column col-spec's source-columns.
-   When card-placeholders? is true, recognizes card placeholder table names (mb__dummy_card__N).
+   When card-placeholders? is true, recognizes card placeholder table names (mb__validat_card__N).
    Returns:
    - {:kind :table, :spec table-spec} for a single real table source
    - {:kind :card, :card-id N} for a single card placeholder source (only when card-placeholders?)
@@ -145,7 +145,7 @@
    For other error types, returns the error unchanged."
   [driver mp card-placeholders? col-spec error]
   (cond
-    ;; Suppress missing-table-alias for card placeholders (e.g. SELECT * FROM mb__dummy_card__1)
+    ;; Suppress missing-table-alias for card placeholders (e.g. SELECT * FROM mb__validat_card__1)
     (and card-placeholders?
          (= (:type error) :missing-table-alias)
          (parse-card-placeholder (:name error)))
