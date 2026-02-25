@@ -142,10 +142,10 @@
   [:map [:type [:enum :table :card]]
    [:id [:or ::lib.schema.id/table ::lib.schema.id/card]]])
 
-(mr/def ::swap-source.column-mapping
+(mr/def ::swap-source.field-id-mapping
   [:map-of ::lib.schema.id/field [:or ::lib.schema.id/field :string]])
 
-(mu/defn- build-swap-column-mapping-for-table :- [:maybe ::swap-source.column-mapping]
+(mu/defn- build-swap-field-id-mapping-for-table :- [:maybe ::swap-source.field-id-mapping]
   "Builds a mapping of field IDs of the source table to field IDs of the target table."
   [query           :- ::lib.schema/query
    source-table-id :- ::lib.schema.id/table
@@ -158,7 +158,7 @@
                                   [(:id source-field) (:id target-field)]))
                               source-fields)))))
 
-(mu/defn- build-swap-column-mapping-for-card :- [:maybe ::swap-source.column-mapping]
+(mu/defn- build-swap-field-id-mapping-for-card :- [:maybe ::swap-source.field-id-mapping]
   "Builds a mapping of field IDs of the source table to desired column aliases of the target card."
   [query           :- ::lib.schema/query
    source-table-id :- ::lib.schema.id/table
@@ -171,27 +171,27 @@
                                   [(:id source-field) (:lib/desired-column-alias target-column)]))
                               source-fields)))))
 
-(mu/defn build-swap-column-mapping :- [:maybe ::swap-source.column-mapping]
+(mu/defn build-swap-field-id-mapping :- [:maybe ::swap-source.field-id-mapping]
   "Builds a mapping of field IDs of the source table to what should replace them in a field ref."
   [query      :- ::lib.schema/query
    old-source :- ::swap-source.source
    new-source :- ::swap-source.source]
   (cond
     (and (= (:type old-source) :table) (= (:type new-source) :table))
-    (build-swap-column-mapping-for-table query (:id old-source) (:id new-source))
+    (build-swap-field-id-mapping-for-table query (:id old-source) (:id new-source))
 
     (and (= (:type old-source) :table) (= (:type new-source) :card))
-    (build-swap-column-mapping-for-card query (:id old-source) (:id new-source))))
+    (build-swap-field-id-mapping-for-card query (:id old-source) (:id new-source))))
 
 (mu/defn- swap-field-id-in-ref :- :mbql.clause/field
   "If this field ref is field-id-based and there is a mapping for the field ID, 
   update the ref to use the target field ID or desired column alias."
   [field-ref      :- :mbql.clause/field
-   column-mapping :- ::swap-source.column-mapping]
+   field-id-mapping :- ::swap-source.field-id-mapping]
   (let [field-id (lib.ref/field-ref-id field-ref)
         source-field-id (:source-field (lib.options/options field-ref))
-        new-field-id-or-name (get column-mapping field-id)
-        new-source-field-id-or-name (when source-field-id (get column-mapping source-field-id))]
+        new-field-id-or-name (get field-id-mapping field-id)
+        new-source-field-id-or-name (when source-field-id (get field-id-mapping source-field-id))]
     (cond-> field-ref
       (some? new-field-id-or-name)
       (lib.ref/update-field-ref-id-or-name new-field-id-or-name)
@@ -202,9 +202,9 @@
 (mu/defn- swap-field-ids-in-clauses :- [:sequential :any]
   "Updates the field IDs in the clauses using the provided mapping."
   [clauses        :- [:sequential :any]
-   column-mapping :- ::swap-source.column-mapping]
+   field-id-mapping :- ::swap-source.field-id-mapping]
   (perf/mapv (fn [clause]
-               (walk-clause-field-refs clause #(swap-field-id-in-ref % column-mapping)))
+               (walk-clause-field-refs clause #(swap-field-id-in-ref % field-id-mapping)))
              clauses))
 
 (defn- swap-source-table-or-card
@@ -224,22 +224,22 @@
   [join           :- ::lib.schema.join/join
    source         :- ::swap-source.source
    target         :- ::swap-source.source
-   column-mapping :- ::swap-source.column-mapping]
+   field-id-mapping :- ::swap-source.field-id-mapping]
   (-> join
       (swap-source-table-or-card source target)
       (u/update-some :fields (fn [fields]
                                (if (keyword? fields)
                                  fields
-                                 (swap-field-ids-in-clauses fields column-mapping))))
-      (u/update-some :conditions swap-field-ids-in-clauses column-mapping)))
+                                 (swap-field-ids-in-clauses fields field-id-mapping))))
+      (u/update-some :conditions swap-field-ids-in-clauses field-id-mapping)))
 
 (mu/defn- swap-source-and-field-ids-in-joins :- [:sequential ::lib.schema.join/join]
   "Updates the field IDs in all joins using the provided mapping."
   [joins          :- [:sequential ::lib.schema.join/join]
    source         :- ::swap-source.source
    target         :- ::swap-source.source
-   column-mapping :- ::swap-source.column-mapping]
-  (perf/mapv #(swap-source-and-field-ids-in-join % source target column-mapping) joins))
+   field-id-mapping :- ::swap-source.field-id-mapping]
+  (perf/mapv #(swap-source-and-field-ids-in-join % source target field-id-mapping) joins))
 
 (mu/defn- swap-field-ids-in-stage :- ::lib.schema/stage
   "Updates the field IDs in the stage using the provided mapping."
@@ -247,18 +247,18 @@
    stage-number   :- :int
    source         :- ::swap-source.source
    target         :- ::swap-source.source
-   column-mapping :- ::swap-source.column-mapping]
+   field-id-mapping :- ::swap-source.field-id-mapping]
   (let [stage (-> (lib.util/query-stage query stage-number)
                   (swap-source-table-or-card source target))]
-    (if (some? column-mapping)
+    (if (some? field-id-mapping)
       (-> stage
-          (u/update-some :fields      swap-field-ids-in-clauses column-mapping)
-          (u/update-some :joins       swap-source-and-field-ids-in-joins source target column-mapping)
-          (u/update-some :expressions swap-field-ids-in-clauses column-mapping)
-          (u/update-some :filters     swap-field-ids-in-clauses column-mapping)
-          (u/update-some :aggregation swap-field-ids-in-clauses column-mapping)
-          (u/update-some :breakout    swap-field-ids-in-clauses column-mapping)
-          (u/update-some :order-by    swap-field-ids-in-clauses column-mapping))
+          (u/update-some :fields      swap-field-ids-in-clauses field-id-mapping)
+          (u/update-some :joins       swap-source-and-field-ids-in-joins source target field-id-mapping)
+          (u/update-some :expressions swap-field-ids-in-clauses field-id-mapping)
+          (u/update-some :filters     swap-field-ids-in-clauses field-id-mapping)
+          (u/update-some :aggregation swap-field-ids-in-clauses field-id-mapping)
+          (u/update-some :breakout    swap-field-ids-in-clauses field-id-mapping)
+          (u/update-some :order-by    swap-field-ids-in-clauses field-id-mapping))
       stage)))
 
 (mu/defn swap-source-in-query :- ::lib.schema/query
@@ -266,18 +266,18 @@
   [query          :- ::lib.schema/query
    source         :- ::swap-source.source
    target         :- ::swap-source.source
-   column-mapping :- [:maybe ::swap-source.column-mapping]]
+   field-id-mapping :- [:maybe ::swap-source.field-id-mapping]]
   (update query :stages #(vec (map-indexed (fn [stage-number _]
-                                             (swap-field-ids-in-stage query stage-number source target column-mapping))
+                                             (swap-field-ids-in-stage query stage-number source target field-id-mapping))
                                            %))))
 
 (mu/defn swap-source-in-parameter-target :- ::lib.schema.parameter/target
   "If the parameter target is a field ref, swap its field ID using the provided mapping."
   [target         :- ::lib.schema.parameter/target
-   column-mapping :- [:maybe ::swap-source.column-mapping]]
-  (or (when (and (some? column-mapping)
+   field-id-mapping :- [:maybe ::swap-source.field-id-mapping]]
+  (or (when (and (some? field-id-mapping)
                  (lib.parameters/parameter-target-field-ref target))
         (lib.parameters/update-parameter-target-field-ref
          target
-         #(swap-field-id-in-ref % column-mapping)))
+         #(swap-field-id-in-ref % field-id-mapping)))
       target))
