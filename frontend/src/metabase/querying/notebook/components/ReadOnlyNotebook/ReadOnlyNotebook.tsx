@@ -46,7 +46,7 @@ function ReadOnlyNotebookInner({ question }: ReadOnlyNotebookProps) {
       <Global styles={cssVariables} />
       <Global styles={fontStyles} />
       <NotebookProvider>
-        <Box pos="relative" p={{ base: "1rem", sm: "2rem" }}>
+        <Box pos="relative">
           <NotebookStepList
             question={question}
             reportTimezone=""
