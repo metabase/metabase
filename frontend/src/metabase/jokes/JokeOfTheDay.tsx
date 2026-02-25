@@ -1,5 +1,5 @@
 import { useGetJokeQuery } from "metabase/api/joke";
-import { Card, Text, Title } from "metabase/ui";
+import { Box, Card, Flex, Text, Title } from "metabase/ui";
 
 export function JokeOfTheDay() {
   const { data: joke, isLoading } = useGetJokeQuery();
@@ -9,10 +9,19 @@ export function JokeOfTheDay() {
   }
 
   return (
-    <Card p="lg" my="lg" bd="1px solid var(--mb-color-border)">
-      <Title order={3}>😂</Title>
-      <Text fw="bold">{joke.setup}</Text>
-      <Text>{joke.punchline}</Text>
+    <Card
+      p="lg"
+      my="lg"
+      bd="1px solid var(--mb-color-border)"
+      data-testid="joke-of-the-day"
+    >
+      <Flex align="center" gap="lg">
+        <Title order={1}>😂</Title>
+        <Box>
+          <Text fw="bold">{joke.setup}</Text>
+          <Text>{joke.punchline}</Text>
+        </Box>
+      </Flex>
     </Card>
   );
 }
