@@ -25,7 +25,8 @@
   (let [[ns-sym test-fn-var] (setup-guard-ns! "guard-test-flag")]
     (try
       (testing "guarded function returns nil when flag does not exist"
-        (is (nil? (test-fn-var))))
+        (binding [guard/*blocked-calls* nil]
+          (is (nil? (test-fn-var)))))
       (finally
         (teardown-guard-ns! ns-sym)))))
 
@@ -50,7 +51,8 @@
             (is (string? (:fn (first calls))))
             (is (string? (:call-site (first calls)))))))
       (testing "blocked calls are not recorded when *blocked-calls* is nil"
-        (is (nil? (test-fn-var))))
+        (binding [guard/*blocked-calls* nil]
+          (is (nil? (test-fn-var)))))
       (finally
         (teardown-guard-ns! ns-sym)))))
 
@@ -61,7 +63,8 @@
         (binding [guard/*bypass-guard* #{"bypass-test-flag"}]
           (is (= :original-value (test-fn-var)))))
       (testing "non-bypassed flag still blocks"
-        (binding [guard/*bypass-guard* #{"some-other-flag"}]
+        (binding [guard/*blocked-calls* nil
+                  guard/*bypass-guard* #{"some-other-flag"}]
           (is (nil? (test-fn-var)))))
       (testing "bypass-guard-fixture returns a working fixture"
         (let [fixture #_{:clj-kondo/ignore [:metabase/unknown-release-flag]}
@@ -81,7 +84,8 @@
         (guard/guard-namespace! "explicit-flag" (the-ns ns-sym))
         (let [v (ns-resolve (the-ns ns-sym) 'explicit-fn)]
           (testing "function is guarded"
-            (is (nil? (v))))
+            (binding [guard/*blocked-calls* nil]
+              (is (nil? (v)))))
           (testing "bypass works"
             (binding [guard/*bypass-guard* #{"explicit-flag"}]
               (is (= :explicit-value (v))))))
