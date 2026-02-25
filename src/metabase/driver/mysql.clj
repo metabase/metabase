@@ -34,7 +34,6 @@
    [metabase.util.i18n :refer [deferred-tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.registry :as mr]
    [metabase.util.performance :as perf :refer [get-in not-empty some]])
   (:import
    (java.io File)
