@@ -11,8 +11,8 @@
     (testing "returns all flags"
       (mt/with-temp [:model/ReleaseFlag _ {:flag "get-test" :description "Test" :is_enabled false}]
         (let [resp (mt/user-http-request :rasta :get 200 "release-flags")]
-          (is (contains? resp "get-test"))
-          (is (= false (get-in resp ["get-test" "is_enabled"]))))))))
+          (is (contains? resp :get-test))
+          (is (= false (get-in resp [:get-test :is_enabled]))))))))
 
 (deftest put-flags-test
   (testing "PUT /api/release-flags"
