@@ -543,9 +543,9 @@
   nil)
 
 (mu/defn bulk-load-query-metadata
-  "Bulk-load all metadata referenced by `deps` into `metadata-providerable`'s cache."
+  "Bulk-load all metadata referenced by `referenced-entity-ids` into `metadata-providerable`'s cache."
   [metadata-providerable :- ::lib.schema.metadata/metadata-providerable
-   {:keys [table card metric measure segment snippet]} :- ::lib.walk.util/query-dependencies]
+   {:keys [table card metric measure segment snippet]} :- ::lib.walk.util/referenced-entity-ids]
   (lib.metadata/bulk-metadata metadata-providerable :metadata/table table)
   (lib.metadata/bulk-metadata metadata-providerable :metadata/card card)
   (lib.metadata/bulk-metadata metadata-providerable :metadata/metric metric)

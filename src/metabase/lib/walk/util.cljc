@@ -241,7 +241,7 @@
                (keep :snippet-id))
          (all-template-tags query))))
 
-(mr/def ::query-dependencies
+(mr/def ::referenced-entity-ids
   [:map
    [:table [:set ::lib.schema.id/table]]
    [:card [:set ::lib.schema.id/card]]
@@ -250,7 +250,8 @@
    [:segment [:set ::lib.schema.id/segment]]
    [:snippet [:set ::lib.schema.id/snippet]]])
 
-(mu/defn all-query-dependencies
+(mu/defn all-referenced-entity-ids :- ::referenced-entity-ids
+  "Return a map of all referenced entity IDs in `queries`."
   [queries :- [:sequential ::lib.schema/query]]
   (let [source-table-ids (into #{} (mapcat all-source-table-ids) queries)
         source-card-ids (into #{} (mapcat all-source-card-ids) queries)

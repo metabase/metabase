@@ -524,7 +524,7 @@
   validation-exception-error]
  [metabase.lib.walk.util
   all-field-ids
-  all-query-dependencies
+  all-referenced-entity-ids
   all-implicitly-joined-field-ids
   all-implicitly-joined-table-ids
   all-measure-ids
