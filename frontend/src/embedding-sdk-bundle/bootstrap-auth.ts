@@ -125,13 +125,6 @@ function startAuth(
     return;
   }
 
-  // Bail out: skipPackageAuth is set
-  if ("skipPackageAuth" in authConfig && authConfig.skipPackageAuth) {
-    log("skipPackageAuth is set, skipping");
-    setAuthState({ status: "skipped" });
-    return;
-  }
-
   log("Starting auth flow");
   setAuthState({ status: "in-progress" });
 
