@@ -2588,8 +2588,8 @@ LIMIT
       getTransformsList().findByText("Name").click();
 
       getRowNames().should("deep.equal", [
+        "Code library",
         "Middle Transform",
-        "Python library",
         "Reports",
         "Alpha Transform",
         "Zebra Transform",
@@ -2601,8 +2601,8 @@ LIMIT
         "Zebra Transform",
         "Reports",
         "Alpha Transform",
-        "Python library",
         "Middle Transform",
+        "Code library",
       ]);
 
       cy.log("verify sorting by output table column ascending");
@@ -2610,7 +2610,7 @@ LIMIT
       getRowNames().should("deep.equal", [
         "Reports",
         "Alpha Transform",
-        "Python library",
+        "Code library",
         "Middle Transform",
         "Zebra Transform",
       ]);
@@ -2622,7 +2622,7 @@ LIMIT
         "Middle Transform",
         "Reports",
         "Alpha Transform",
-        "Python library",
+        "Code library",
       ]);
     });
 
@@ -2719,6 +2719,7 @@ LIMIT
 
       cy.log("Python library should be visible in the list");
       getTransformsList().within(() => {
+        cy.findByText("Code library").click();
         cy.findByText("Python library").should("be.visible");
       });
 
@@ -2814,6 +2815,7 @@ LIMIT
       cy.button("Create a transform").should("not.exist");
 
       cy.log("clicking Python library navigates to the library editor");
+      getTransformsList().findByText("Code library").click();
       getTransformsList().findByText("Python library").click();
 
       cy.log("python library editor is read-only");
