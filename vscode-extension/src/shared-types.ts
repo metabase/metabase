@@ -43,6 +43,7 @@ export interface GraphViewNode {
   queryType?: string;
   display?: string;
   createdAt?: string | null;
+  collectionId?: string | null;
   dependentsCount: DependentsCount;
   fields?: GraphViewField[];
   incomingCount: number;

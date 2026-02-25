@@ -195,6 +195,7 @@ export function buildGraphViewData(
     let queryType: string | undefined;
     let display: string | undefined;
     let createdAt: string | null | undefined;
+    let collectionId: string | null | undefined;
     let fields: GraphViewField[] | undefined;
 
     if (entityRef.model === "Card") {
@@ -205,6 +206,7 @@ export function buildGraphViewData(
         cardType = card.cardType;
         queryType = card.queryType;
         display = card.display;
+        collectionId = card.collectionId;
         createdAt = (card.raw.created_at as string) ?? null;
 
         const resultMetadata = card.raw.result_metadata;
@@ -224,6 +226,7 @@ export function buildGraphViewData(
       const table = findTableByName(entities.tables, entityRef.id);
       if (table) {
         description = table.description;
+        collectionId = table.collectionId;
         fields = table.fields.map((field) => ({
           name: field.displayName || field.name,
           semanticType: field.semanticType,
@@ -283,11 +286,55 @@ export function buildGraphViewData(
       queryType,
       display,
       createdAt,
+      collectionId,
       dependentsCount,
       fields,
       incomingCount: inboundCount.get(nodeKey) ?? 0,
       outgoingCount: outboundCount.get(nodeKey) ?? 0,
     });
+  }
+
+  const dataCollection = entities.collections.find(
+    (collection) => collection.collectionType === "library-data",
+  );
+
+  if (dataCollection) {
+    const dataCollectionKey = `Collection:${dataCollection.entityId}`;
+    const publishedTables = entities.tables.filter(
+      (table) => table.isPublished,
+    );
+
+    if (!seenKeys.has(dataCollectionKey)) {
+      seenKeys.add(dataCollectionKey);
+      nodes.push({
+        key: dataCollectionKey,
+        model: "collection",
+        name: dataCollection.name,
+        description: dataCollection.description,
+        filePath: dataCollection.filePath,
+        collectionId: dataCollection.parentId
+          ? `Collection:${dataCollection.parentId}`
+          : null,
+        dependentsCount: { table: publishedTables.length },
+        incomingCount: publishedTables.length,
+        outgoingCount: 0,
+      });
+    }
+
+    for (const table of publishedTables) {
+      const tableNodeKey = `Table:${table.name}`;
+      if (seenKeys.has(tableNodeKey)) {
+        const tableNode = nodes.find((node) => node.key === tableNodeKey);
+        if (tableNode) {
+          tableNode.collectionId = dataCollectionKey;
+        }
+        validEdges.push({
+          sourceKey: tableNodeKey,
+          targetKey: dataCollectionKey,
+          referenceType: "Collection",
+        });
+      }
+    }
   }
 
   const nodeKeySet = new Set(nodes.map((node) => node.key));

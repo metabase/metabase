@@ -6,6 +6,7 @@ import {config} from "../config"
 
 export const CONTENT_KIND_TO_MODEL: Record<ContentNode["kind"], string> = {
   card: "Card",
+  table: "Table",
   dashboard: "Dashboard",
   collection: "Collection",
   native_query_snippet: "NativeQuerySnippet",
@@ -22,9 +23,8 @@ export function getGraphNodeKey(node: ContentNode | CatalogNode): string | null 
   if (node.kind === "measure" || node.kind === "segment") {
     return `${node.kind === "measure" ? "Measure" : "Segment"}:${node.entityId}`
   }
-  if (node.kind in CONTENT_KIND_TO_MODEL) {
-    const contentNode = node as ContentNode
-    return `${CONTENT_KIND_TO_MODEL[contentNode.kind]}:${contentNode.entityId}`
+  if (node.kind in CONTENT_KIND_TO_MODEL && 'entityId' in node) {
+    return `${CONTENT_KIND_TO_MODEL[node.kind as ContentNode["kind"]]}:${node.entityId}`
   }
   return null
 }

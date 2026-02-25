@@ -7,6 +7,7 @@ import type {
   DashboardNode,
   DocumentNode,
   NativeQuerySnippetNode,
+  TableNode,
   TimelineNode,
   TransformNode,
 } from './types'
@@ -98,6 +99,7 @@ export class ContentGraph {
       case 'collection':
         return [
           ...node.children,
+          ...node.tables,
           ...node.cards,
           ...node.dashboards,
           ...node.snippets,
@@ -163,6 +165,18 @@ export class ContentGraph {
 
     for (const transform of entities.transforms) {
       graph.transformIndex.set(transform.entityId, transform)
+    }
+
+    const dataCollection = [...graph.collectionIndex.values()].find(
+      collection => collection.collectionType === 'library-data',
+    )
+    if (dataCollection) {
+      for (const table of entities.tables) {
+        if (table.isPublished) {
+          dataCollection.tables.push(table)
+        }
+      }
+      dataCollection.tables.sort((tableA, tableB) => tableA.name.localeCompare(tableB.name))
     }
 
     for (const collection of graph.collectionIndex.values()) {

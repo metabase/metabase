@@ -79,6 +79,7 @@ export class ContentTreeProvider implements vscode.TreeDataProvider<ContentNode>
     }
     return (
       node.children.length > 0
+      || node.tables.length > 0
       || node.cards.length > 0
       || node.dashboards.length > 0
       || node.snippets.length > 0
@@ -97,6 +98,7 @@ export class ContentTreeProvider implements vscode.TreeDataProvider<ContentNode>
   private getIcon(node: ContentNode): { light: vscode.Uri, dark: vscode.Uri } {
     switch (node.kind) {
       case 'collection': return this.iconPath('folder')
+      case 'table': return this.iconPath('table')
       case 'card':
         if (node.cardType === 'model')
           return this.iconPath('model')

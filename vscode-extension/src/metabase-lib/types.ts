@@ -32,6 +32,7 @@ export interface TableNode {
   schemaName: string
   entityType: string | null
   active: boolean
+  isPublished: boolean
   collectionId: string | null
   transformId: string | null
   fields: FieldNode[]
@@ -97,6 +98,7 @@ export interface CollectionNode {
   parentId: string | null
   archived: boolean
   children: CollectionNode[]
+  tables: TableNode[]
   cards: CardNode[]
   dashboards: DashboardNode[]
   snippets: NativeQuerySnippetNode[]
@@ -230,6 +232,7 @@ export interface TransformNode {
 export type CatalogNode = DatabaseNode | SchemaNode | TableNode | FieldNode | MeasureNode | SegmentNode
 export type ContentNode =
   | CollectionNode
+  | TableNode
   | CardNode
   | DashboardNode
   | NativeQuerySnippetNode
