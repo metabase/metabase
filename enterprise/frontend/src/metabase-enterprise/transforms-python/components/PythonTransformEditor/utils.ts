@@ -9,17 +9,17 @@ export function updateTransformSignature(
   script: string,
   tables: PythonTransformTableAliases,
   tableInfo: Table[],
-  type: AdvancedTransformType
+  type: AdvancedTransformType,
 ): string {
   return type === "python"
     ? updatePythonTransformSignature(script, tables, tableInfo)
-    : updateJavascriptTransformSignature(script, tables, tableInfo)
+    : updateJavascriptTransformSignature(script, tables, tableInfo);
 }
 
 function updatePythonTransformSignature(
   script: string,
   tables: PythonTransformTableAliases,
-  tableInfo: Table[]
+  tableInfo: Table[],
 ): string {
   const tableAliases = Object.keys(tables);
   const transformRegex = /^def\s+transform\s*\([^)]*\)\s*:\s*\n(\s*)/m;
@@ -144,10 +144,11 @@ ${tableAliases
 function updateJavascriptTransformSignature(
   script: string,
   tables: PythonTransformTableAliases,
-  tableInfo: Table[]
+  tableInfo: Table[],
 ): string {
   const tableAliases = Object.keys(tables);
-  const transformRegex = /^export\sfunction\s+transform\s*\([^)]*\)\s*{\s*\n(\s*)/m;
+  const transformRegex =
+    /^export\sfunction\s+transform\s*\([^)]*\)\s*{\s*\n(\s*)/m;
   const signatureOneLine = `export function transform(${tableAliases.join(", ")}) {`;
   const newSignature =
     signatureOneLine.length > 80 && tableAliases.length > 0
@@ -238,23 +239,23 @@ ${newSignature}
     /**
     Transform function that processes the input data.
     ${
-    tableAliases.length > 0
-      ? `
+      tableAliases.length > 0
+        ? `
 
     Args:
 ${tableAliases
-        .map((alias) => {
-          const padding = " ".repeat(maxAliasLength - alias.length);
-          const tableId = tables[alias];
-          const tableName = getTableName(tableInfo, tableId);
-          if (alias === tableName) {
-            return `  ${alias}:${padding} Array containing the data from the corresponding table`;
-          }
-          return `  ${alias}:${padding} Array containing the data from table "${tableName}"`;
-        })
-        .join("\n")}`
-      : ""
-  }
+  .map((alias) => {
+    const padding = " ".repeat(maxAliasLength - alias.length);
+    const tableId = tables[alias];
+    const tableName = getTableName(tableInfo, tableId);
+    if (alias === tableName) {
+      return `  ${alias}:${padding} Array containing the data from the corresponding table`;
+    }
+    return `  ${alias}:${padding} Array containing the data from table "${tableName}"`;
+  })
+  .join("\n")}`
+        : ""
+    }
 
   Returns:
       The transformed data object array
