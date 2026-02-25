@@ -42,8 +42,8 @@ export function ClausePopover({
     }
   }, [active]);
 
-  const content = renderPopover(handleClose);
-  const hasPopover = content !== null && !disabled;
+  const content = disabled ? null : renderPopover(handleClose);
+  const hasPopover = content !== null;
 
   return (
     <PreventPopoverExitProvider>

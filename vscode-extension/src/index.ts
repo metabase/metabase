@@ -14,6 +14,7 @@ import { CatalogTreeProvider } from './catalog-tree-provider'
 import { registerConnectionCommands } from './commands/connection'
 import { registerCreateTransformCommand } from './commands/create-transform'
 import { registerDependencyGraphCommands } from './commands/dependency-graph'
+import { registerNotebookViewCommand } from './commands/notebook-view'
 import { registerOpenInMetabaseCommand } from './commands/open-in-metabase'
 import { registerRunTransformCommand } from './commands/run-transform'
 import { registerTransformPreviewCommand } from './commands/transform-preview'
@@ -105,10 +106,12 @@ const { activate, deactivate } = defineExtension((context) => {
   const panels: PanelState = {
     graphPanel: null,
     transformPanel: null,
+    notebookPanel: null,
     tableDataPanel: null,
     currentCatalog: null,
     pendingFocusNodeKey: null,
     currentTransformNode: null,
+    currentNotebookNode: null,
   }
 
   const ctx = {
@@ -162,6 +165,7 @@ const { activate, deactivate } = defineExtension((context) => {
   registerRunTransformCommand(ctx)
   registerDependencyGraphCommands(ctx)
   registerTransformPreviewCommand(ctx)
+  registerNotebookViewCommand(ctx)
   registerOpenInMetabaseCommand()
   registerViewTableDataCommand(ctx)
   registerLmTools(ctx, context)

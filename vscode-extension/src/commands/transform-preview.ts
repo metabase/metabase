@@ -4,32 +4,55 @@ import {parse as parseYaml} from "yaml"
 import {commands, Uri, ViewColumn, window, workspace} from "vscode"
 import type {FileSystemWatcher} from "vscode"
 
-import type {TransformNode} from "../metabase-lib"
-import type {TransformPreviewData, PreviewToExtensionMessage} from "../shared-types"
+import type {CardNode, TransformNode} from "../metabase-lib"
+import type {PreviewData, PreviewToExtensionMessage} from "../shared-types"
 import type {ExtensionCtx} from "../extension-context"
 
 import {parseTransformQuery, parseTransformTarget} from "../transform-query"
+import {buildNotebookDataFromCard, buildNotebookDataFromTransform} from "../metabase-lib/question-builder"
 import {getPreviewWebviewHtml} from "../webview-html"
 import {showDependencyGraph} from "./dependency-graph"
 
-function buildTransformPreviewData(
+type PreviewSource = CardNode | TransformNode
+
+function buildPreviewData(
   ctx: ExtensionCtx,
-  node: TransformNode,
-): TransformPreviewData {
-  ctx.panels.currentTransformNode = node
+  node: PreviewSource,
+): PreviewData {
+  const catalog = ctx.panels.currentCatalog
+
+  if (node.kind === "transform") {
+    return {
+      kind: "transform",
+      data: {
+        name: node.name,
+        description: node.description,
+        query: parseTransformQuery(node.raw),
+        target: parseTransformTarget(node.raw),
+        filePath: node.filePath,
+        entityId: node.entityId,
+        sourceQueryType: node.sourceQueryType,
+        notebookData: buildNotebookDataFromTransform(node, catalog),
+      },
+    }
+  }
+
   return {
-    name: node.name,
-    description: node.description,
-    query: parseTransformQuery(node.raw),
-    target: parseTransformTarget(node.raw),
-    filePath: node.filePath,
-    entityId: node.entityId,
-    sourceQueryType: node.sourceQueryType,
+    kind: "card",
+    data: {
+      name: node.name,
+      description: node.description,
+      database: node.databaseId ?? null,
+      cardType: node.cardType,
+      filePath: node.filePath,
+      entityId: node.entityId,
+      notebookData: buildNotebookDataFromCard(node, catalog),
+    },
   }
 }
 
 function strOrNull(value: unknown): string | null {
-  return typeof value === 'string' ? value : null
+  return typeof value === "string" ? value : null
 }
 
 async function refreshPreview(ctx: ExtensionCtx) {
@@ -42,47 +65,48 @@ async function refreshPreview(ctx: ExtensionCtx) {
     const raw = parseYaml(content) as Record<string, unknown>
     if (!raw || typeof raw !== "object") return
 
-    const source = raw.source as Record<string, unknown> | undefined
-    const query = source?.query as Record<string, unknown> | undefined
-    const queryType = query?.type as string | undefined
+    let updatedNode: PreviewSource
+    if (currentNode.kind === "transform") {
+      const source = raw.source as Record<string, unknown> | undefined
+      const query = source?.query as Record<string, unknown> | undefined
+      const queryType = query?.type as string | undefined
 
-    const updatedNode: TransformNode = {
-      kind: "transform",
-      entityId: String(raw.entity_id ?? currentNode.entityId),
-      name: String(raw.name ?? currentNode.name),
-      description: strOrNull(raw.description),
-      sourceDatabaseId: strOrNull(raw.source_database_id),
-      sourceQueryType: (queryType === "native" || queryType === "query" || queryType === "python") ? queryType : null,
-      collectionId: strOrNull(raw.collection_id),
-      filePath: currentNode.filePath,
-      raw,
+      updatedNode = {
+        kind: "transform",
+        entityId: String(raw.entity_id ?? currentNode.entityId),
+        name: String(raw.name ?? currentNode.name),
+        description: strOrNull(raw.description),
+        sourceDatabaseId: strOrNull(raw.source_database_id),
+        sourceQueryType: (queryType === "native" || queryType === "query" || queryType === "python") ? queryType : null,
+        collectionId: strOrNull(raw.collection_id),
+        filePath: currentNode.filePath,
+        raw,
+      }
+    } else {
+      updatedNode = {
+        ...currentNode,
+        name: String(raw.name ?? currentNode.name),
+        description: strOrNull(raw.description),
+        raw,
+      }
     }
 
     ctx.panels.currentTransformNode = updatedNode
-
-    const data: TransformPreviewData = {
-      name: updatedNode.name,
-      description: updatedNode.description,
-      query: parseTransformQuery(raw),
-      target: parseTransformTarget(raw),
-      filePath: updatedNode.filePath,
-      entityId: updatedNode.entityId,
-      sourceQueryType: updatedNode.sourceQueryType,
-    }
+    const data = buildPreviewData(ctx, updatedNode)
 
     panel.title = updatedNode.name
     panel.webview.postMessage({ type: "previewUpdate", data })
   } catch {
-    // File may have been deleted or be temporarily unreadable; ignore
+    // ignore
   }
 }
 
-async function handleTransformMessage(ctx: ExtensionCtx, message: PreviewToExtensionMessage) {
+async function handlePreviewMessage(ctx: ExtensionCtx, message: PreviewToExtensionMessage) {
   switch (message.type) {
     case "ready": {
       const currentNode = ctx.panels.currentTransformNode
       if (currentNode && ctx.panels.transformPanel) {
-        const data = buildTransformPreviewData(ctx, currentNode)
+        const data = buildPreviewData(ctx, currentNode)
         ctx.panels.transformPanel.webview.postMessage({ type: "previewInit", data })
       }
       break
@@ -95,7 +119,9 @@ async function handleTransformMessage(ctx: ExtensionCtx, message: PreviewToExten
     }
     case "openGraph": {
       if (message.entityId) {
-        await showDependencyGraph(ctx, `Transform:${message.entityId}`)
+        const currentNode = ctx.panels.currentTransformNode
+        const kind = currentNode?.kind === "transform" ? "Transform" : "Card"
+        await showDependencyGraph(ctx, `${kind}:${message.entityId}`)
       } else {
         await showDependencyGraph(ctx)
       }
@@ -104,18 +130,14 @@ async function handleTransformMessage(ctx: ExtensionCtx, message: PreviewToExten
     case "openTable": {
       const tableRef = message.ref
       if (!tableRef || tableRef.length < 3 || !ctx.panels.currentCatalog) break
-      const tableNode = ctx.panels.currentCatalog.getTable(
-        tableRef[0],
-        tableRef[1],
-        tableRef[2],
-      )
+      const tableNode = ctx.panels.currentCatalog.getTable(tableRef[0], tableRef[1], tableRef[2])
       if (tableNode?.filePath) {
         window.showTextDocument(Uri.file(tableNode.filePath))
       }
       break
     }
     case "runTransform": {
-      if (ctx.panels.currentTransformNode) {
+      if (ctx.panels.currentTransformNode?.kind === "transform") {
         commands.executeCommand("metastudio.runTransform", ctx.panels.currentTransformNode)
       }
       break
@@ -133,14 +155,8 @@ async function handleTransformMessage(ctx: ExtensionCtx, message: PreviewToExten
     case "openField": {
       const fieldRef = message.ref
       if (!fieldRef || fieldRef.length < 4 || !ctx.panels.currentCatalog) break
-      const table = ctx.panels.currentCatalog.getTable(
-        fieldRef[0],
-        fieldRef[1],
-        fieldRef[2],
-      )
-      const field = table?.fields.find(
-        (fieldNode) => fieldNode.name === fieldRef[3],
-      )
+      const table = ctx.panels.currentCatalog.getTable(fieldRef[0], fieldRef[1], fieldRef[2])
+      const field = table?.fields.find((fieldNode) => fieldNode.name === fieldRef[3])
       if (field?.filePath) {
         window.showTextDocument(Uri.file(field.filePath))
       } else if (table?.filePath) {
@@ -154,14 +170,15 @@ async function handleTransformMessage(ctx: ExtensionCtx, message: PreviewToExten
 export function registerTransformPreviewCommand(ctx: ExtensionCtx) {
   let currentWatcher: FileSystemWatcher | null = null
 
-  function watchTransformFile(filePath: string) {
+  function watchFile(filePath: string) {
     if (currentWatcher) currentWatcher.dispose()
     currentWatcher = workspace.createFileSystemWatcher(filePath)
     currentWatcher.onDidChange(() => refreshPreview(ctx))
   }
 
-  useCommand("metastudio.showTransformPreview", (node: TransformNode) => {
-    const data = buildTransformPreviewData(ctx, node)
+  function showPreview(node: PreviewSource) {
+    ctx.panels.currentTransformNode = node
+    const data = buildPreviewData(ctx, node)
 
     if (ctx.panels.transformPanel) {
       ctx.panels.transformPanel.title = node.name
@@ -170,9 +187,9 @@ export function registerTransformPreviewCommand(ctx: ExtensionCtx) {
     } else {
       const extensionUri = Uri.file(ctx.extensionPath)
       const panel = window.createWebviewPanel(
-        "metabaseTransformPreview",
+        "metabasePreview",
         node.name,
-        {viewColumn: ViewColumn.One, preserveFocus: true},
+        { viewColumn: ViewColumn.One, preserveFocus: true },
         {
           enableScripts: true,
           localResourceRoots: [Uri.joinPath(extensionUri, "dist", "webview")],
@@ -181,10 +198,11 @@ export function registerTransformPreviewCommand(ctx: ExtensionCtx) {
       panel.webview.html = getPreviewWebviewHtml(panel.webview, extensionUri)
       ctx.panels.transformPanel = panel
 
-      panel.webview.onDidReceiveMessage((msg) => handleTransformMessage(ctx, msg))
+      panel.webview.onDidReceiveMessage((msg) => handlePreviewMessage(ctx, msg))
 
       panel.onDidDispose(() => {
         ctx.panels.transformPanel = null
+        ctx.panels.currentTransformNode = null
         if (currentWatcher) {
           currentWatcher.dispose()
           currentWatcher = null
@@ -192,6 +210,14 @@ export function registerTransformPreviewCommand(ctx: ExtensionCtx) {
       })
     }
 
-    watchTransformFile(node.filePath)
+    watchFile(node.filePath)
+  }
+
+  useCommand("metastudio.showTransformPreview", (node: TransformNode) => {
+    showPreview(node)
+  })
+
+  useCommand("metastudio.showCardPreview", (node: CardNode) => {
+    showPreview(node)
   })
 }

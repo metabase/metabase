@@ -34,6 +34,8 @@
 | `metastudio.openEmbeddedCode`      | Metastudio: Edit Query in Editor      |
 | `metastudio.viewTableData`         | View Data                             |
 | `metastudio.refreshWorkspaceData`  | Refresh Workspace Data                |
+| `metastudio.showNotebook`          | Metastudio: Show Notebook Query       |
+| `metastudio.showCardPreview`       | Metastudio: Show Card Preview         |
 
 <!-- commands -->
 

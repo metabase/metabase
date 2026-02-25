@@ -85,6 +85,78 @@ export type WebviewToExtensionMessage =
   | { type: "openFile"; filePath: string }
   | { type: "selectNode"; key: string };
 
+// -- Notebook view types --
+
+export interface NotebookClauseData {
+  displayName: string;
+  fieldRef: string[] | null;
+}
+
+export interface NotebookStepData {
+  type: string;
+  title: string | null;
+  clauses: NotebookClauseData[];
+}
+
+export interface NotebookMetadataField {
+  id: number;
+  table_id: number;
+  name: string;
+  display_name: string;
+  base_type: string;
+  semantic_type: string | null;
+}
+
+export interface NotebookMetadataTable {
+  id: number;
+  db_id: number;
+  name: string;
+  display_name: string;
+  schema: string;
+  fields: number[];
+}
+
+export interface NotebookMetadataDatabase {
+  id: number;
+  name: string;
+  engine: string;
+  features: string[];
+}
+
+export interface NotebookMetadata {
+  databases: Record<number, NotebookMetadataDatabase>;
+  tables: Record<number, NotebookMetadataTable>;
+  fields: Record<number, NotebookMetadataField>;
+}
+
+export interface NotebookData {
+  name: string;
+  description: string | null;
+  database: string | null;
+  cardType: string | null;
+  queryType: string | null;
+  nativeSql: string | null;
+  datasetQuery: Record<string, unknown> | null;
+  metadata: NotebookMetadata | null;
+  steps: NotebookStepData[] | null;
+  target: { database: string; schema: string; name: string } | null;
+  filePath: string;
+  entityId: string;
+}
+
+export type ExtensionToNotebookMessage =
+  | { type: "notebookInit"; data: NotebookData }
+  | { type: "notebookUpdate"; data: NotebookData };
+
+export type NotebookToExtensionMessage =
+  | { type: "ready" }
+  | { type: "openFile"; filePath: string }
+  | { type: "openGraph"; entityId: string }
+  | { type: "openTable"; ref: string[] }
+  | { type: "openField"; ref: string[] }
+  | { type: "runTransform" }
+  | { type: "editInEditor"; filePath: string; lang: string; name: string };
+
 // -- Transform preview types --
 
 export type {
@@ -104,11 +176,26 @@ export interface TransformPreviewData {
   filePath: string;
   entityId: string;
   sourceQueryType: "native" | "query" | "python" | null;
+  notebookData: NotebookData | null;
 }
 
+export interface CardPreviewData {
+  name: string;
+  description: string | null;
+  database: string | null;
+  cardType: string | null;
+  filePath: string;
+  entityId: string;
+  notebookData: NotebookData;
+}
+
+export type PreviewData =
+  | { kind: "transform"; data: TransformPreviewData }
+  | { kind: "card"; data: CardPreviewData };
+
 export type ExtensionToPreviewMessage =
-  | { type: "previewInit"; data: TransformPreviewData }
-  | { type: "previewUpdate"; data: TransformPreviewData };
+  | { type: "previewInit"; data: PreviewData }
+  | { type: "previewUpdate"; data: PreviewData };
 
 export type PreviewToExtensionMessage =
   | { type: "ready" }

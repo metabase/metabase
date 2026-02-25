@@ -1,6 +1,6 @@
 import type {DiagnosticCollection, OutputChannel, WebviewPanel, WorkspaceFolder} from "vscode"
 import type {Ref} from "@reactive-vscode/reactivity"
-import type {CatalogGraph, TransformNode} from "./metabase-lib"
+import type {CatalogGraph, CardNode, TransformNode} from "./metabase-lib"
 import type {CatalogTreeProvider} from "./catalog-tree-provider"
 import type {ConnectionTreeProvider} from "./connection-tree-provider"
 import type {ContentTreeProvider} from "./content-tree-provider"
@@ -31,7 +31,9 @@ export interface PanelState {
   graphPanel: WebviewPanel | null
   transformPanel: WebviewPanel | null
   tableDataPanel: WebviewPanel | null
+  notebookPanel: WebviewPanel | null
   currentCatalog: CatalogGraph | null
   pendingFocusNodeKey: string | null
-  currentTransformNode: TransformNode | null
+  currentTransformNode: CardNode | TransformNode | null
+  currentNotebookNode: CardNode | TransformNode | null
 }
