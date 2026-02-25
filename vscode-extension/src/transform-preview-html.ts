@@ -13,6 +13,7 @@ export interface TransformPreviewData {
   target: TransformTarget | null;
   filePath: string;
   entityId: string;
+  sourceQueryType: 'native' | 'query' | 'python' | null;
 }
 
 export function getTransformPreviewHtml(
@@ -65,7 +66,13 @@ function renderHeader(data: TransformPreviewData): string {
 }
 
 function renderToolbar(data: TransformPreviewData): string {
+  const canRun = data.sourceQueryType !== 'query';
+  const runButton = canRun
+    ? `<button class="toolbar-btn toolbar-btn--run" data-action="runTransform">${ICONS.play}Run</button>`
+    : `<button class="toolbar-btn toolbar-btn--disabled" disabled title="Transforms based on the query builder cannot be run in a workspace">${ICONS.play}Run</button>`;
+
   return `<nav class="toolbar">
+  ${runButton}
   <button class="toolbar-btn" data-action="openFile" data-path="${escapeAttr(data.filePath)}">${ICONS.fileText}View YAML</button>
   <button class="toolbar-btn" data-action="openGraph" data-entity-id="${escapeAttr(data.entityId)}">${ICONS.link}Dependency Graph</button>
 </nav>`;
@@ -291,6 +298,9 @@ const ICONS = {
   arrowRight: svg(
     '<path d="M5 12h14"/><path d="m12 5 7 7-7 7"/>',
   ),
+  play: svg(
+    '<polygon points="6 3 20 12 6 21 6 3"/>',
+  ),
 };
 
 function getScript(nonce: string): string {
@@ -396,6 +406,13 @@ function getStyles(): string {
     }
 
     .toolbar-btn svg { flex-shrink: 0; opacity: .6; }
+
+    .toolbar-btn--run { color: var(--vscode-testing-iconPassed, #89d185); border-color: var(--vscode-testing-iconPassed, #89d185); }
+    .toolbar-btn--run:hover { background: rgba(137, 209, 133, .12); }
+    .toolbar-btn--run svg { opacity: .9; }
+
+    .toolbar-btn--disabled { opacity: 0.4; cursor: not-allowed; }
+    .toolbar-btn--disabled:hover { background: transparent; }
 
     /* ---- Steps ---- */
     .steps {

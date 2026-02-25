@@ -29,7 +29,7 @@
   "engines": {
     "vscode": "^1.97.0"
   },
-  "activationEvents": [],
+  "activationEvents": ["onStartupFinished"],
   "contributes": {
     "commands": [
       {
@@ -44,7 +44,8 @@
       },
       {
         "command": "metastudio.checkConnection",
-        "title": "Metastudio: Check Metabase Connection"
+        "title": "Metastudio: Check Metabase Connection",
+        "icon": "$(plug)"
       },
       {
         "command": "metastudio.clearCredentials",
@@ -70,6 +71,11 @@
       {
         "command": "metastudio.showInDependencyGraph",
         "title": "Show in Dependency Graph"
+      },
+      {
+        "command": "metastudio.runTransform",
+        "title": "Run Transform",
+        "icon": "$(play)"
       }
     ],
     "walkthroughs": [
@@ -140,7 +146,19 @@
       ]
     },
     "menus": {
+      "view/title": [
+        {
+          "command": "metastudio.checkConnection",
+          "when": "view == metabase.connection",
+          "group": "navigation"
+        }
+      ],
       "view/item/context": [
+        {
+          "command": "metastudio.runTransform",
+          "when": "viewItem == transform",
+          "group": "inline"
+        },
         {
           "command": "metastudio.setHost",
           "when": "view == metabase.connection && viewItem == connectionUrl",

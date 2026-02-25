@@ -219,6 +219,7 @@ export interface TransformNode {
   name: string
   description: string | null
   sourceDatabaseId: string | null
+  sourceQueryType: 'native' | 'query' | 'python' | null
   collectionId: string | null
   filePath: string
   raw: Record<string, unknown>

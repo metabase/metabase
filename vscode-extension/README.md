@@ -28,6 +28,7 @@
 | `metastudio.showTransformPreview`  | Metastudio: Show Transform Preview    |
 | `metastudio.openInMetabase`        | Open in Metabase                      |
 | `metastudio.showInDependencyGraph` | Show in Dependency Graph              |
+| `metastudio.runTransform`          | Run Transform                         |
 
 <!-- commands -->
 

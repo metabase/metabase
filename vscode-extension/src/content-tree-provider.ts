@@ -33,6 +33,12 @@ export class ContentTreeProvider implements vscode.TreeDataProvider<ContentNode>
     }
 
     if (element.kind === 'transform') {
+      if (element.sourceQueryType === 'query') {
+        item.contextValue = 'transformStructured'
+        item.tooltip = 'Transforms based on the query builder cannot be run in a workspace'
+      } else {
+        item.contextValue = 'transform'
+      }
       item.command = {
         command: 'metastudio.showTransformPreview',
         title: 'Preview Transform',

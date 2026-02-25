@@ -392,12 +392,16 @@ function buildDocument(parsed: ParsedYaml): DocumentNode {
 
 function buildTransform(parsed: ParsedYaml): TransformNode {
   const { data, filePath } = parsed
+  const source = data.source as Record<string, unknown> | undefined
+  const query = source?.query as Record<string, unknown> | undefined
+  const queryType = query?.type as string | undefined
   return {
     kind: 'transform',
     entityId: str(data.entity_id),
     name: str(data.name),
     description: strOrNull(data.description),
     sourceDatabaseId: strOrNull(data.source_database_id),
+    sourceQueryType: (queryType === 'native' || queryType === 'query' || queryType === 'python') ? queryType : null,
     collectionId: strOrNull(data.collection_id),
     filePath,
     raw: data,
