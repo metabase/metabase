@@ -4,14 +4,17 @@
    [metabase.config.core :as config]
    [metabase.initialization-status.core :as init-status]
    [metabase.system.core :as system]
+   [metabase.util :as u]
    [metabase.util.json :as json]
    [ring.util.response :as response]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
-;; Hardcoded collection ID for now
-(def ^:private collection-id 7)
+(defn- get-app-by-name
+  "Find an App by its name (case-insensitive)."
+  [app-name]
+  (t2/select-one :model/App :%lower.name (u/lower-case-en app-name)))
 
 (defn- get-dashboards-in-collection
   "Get all dashboards in a collection."
@@ -162,17 +165,19 @@
 
 (defn app-handler
   "Handler for /apps/:name routes. Serves an HTML page with embedded dashboards from a collection.
-   API key can be provided via ?api_key query param or MB_APPS_API_KEY env var.
-   Collection ID can be provided via ?collection_id query param (defaults to 1)."
+   Looks up the App by name and uses its collection_id to find dashboards.
+   API key can be provided via ?api_key query param or MB_APPS_API_KEY env var."
   [request respond _raise]
   (if-not (init-status/complete?)
     (respond {:status 503 :body "Metabase is still initializing..."})
-    (let [app-name      (get-in request [:route-params :name] "App")
-          api-key       (or (get-in request [:params :api_key])
-                            (config/config-str :mb-apps-api-key))
-          coll-id       (or (some-> (get-in request [:params :collection_id]) parse-long)
-                            collection-id)
-          dashboards    (get-dashboards-in-collection coll-id)]
-      (respond
-       (-> (response/response (app-page-html app-name api-key dashboards))
-           (response/content-type "text/html; charset=utf-8"))))))
+    (let [app-name (get-in request [:route-params :name] "App")
+          app      (get-app-by-name app-name)]
+      (if-not app
+        (respond {:status 404 :body (str "App not found: " app-name)})
+        (let [api-key    (or (get-in request [:params :api_key])
+                             (config/config-str :mb-apps-api-key))
+              coll-id    (:collection_id app)
+              dashboards (get-dashboards-in-collection coll-id)]
+          (respond
+           (-> (response/response (app-page-html (:name app) api-key dashboards))
+               (response/content-type "text/html; charset=utf-8"))))))))
