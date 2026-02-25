@@ -250,7 +250,7 @@ export function seriesSetting({
   };
 
   return {
-    ...nestedSettings<Series>(SERIES_SETTING_KEY, {
+    ...nestedSettings<SingleSeries>(SERIES_SETTING_KEY, {
       getHidden: ([{ card }], _settings, extra) =>
         !extra?.isDashboard || card?.display === "waterfall",
       getSection: (_series, _settings, extra) =>
