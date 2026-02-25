@@ -64,6 +64,7 @@ Promise.all(manifest.chunks.map((filename) => loadScript(filename)))
   })
   .catch((error) => {
     console.error("SDK Bootstrap: Failed to load bundle chunks:", error);
+    document.dispatchEvent(new CustomEvent("metabase-sdk-bundle-error"));
   });
 
 // Log bootstrap timing
