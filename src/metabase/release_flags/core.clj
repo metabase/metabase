@@ -8,4 +8,5 @@
  [metabase.release-flags.guard
   guard-namespace!]
  [metabase.release-flags.models
+  all-flags
   has-release-flag?])
