@@ -8,6 +8,7 @@
    [metabase-enterprise.metabot-v3.self.openrouter :as openrouter]
    [metabase-enterprise.metabot-v3.test-util :as mut]
    [metabase-enterprise.metabot-v3.tools.search :as metabot-search]
+   [metabase.analytics.prometheus :as prometheus]
    [metabase.test :as mt]
    [metabase.util.malli :as mu]))
 
@@ -430,3 +431,69 @@
             "Should get the response from the successful retry")
         (is (= 2 @call-count)
             "Should have called LLM twice (1 failure + 1 success)")))))
+
+;;; ===================== Prometheus Metrics Tests =====================
+
+(deftest run-agent-loop-prometheus-test
+  (mt/with-prometheus-system! [_ system]
+    (testing "records agent-requests, agent-iterations, and llm-requests metrics"
+      (let [call-count (atom 0)]
+        (with-redefs [openrouter/openrouter
+                      (fn [_]
+                        (let [n (swap! call-count inc)]
+                          (if (= 1 n)
+                            (mut/mock-llm-response
+                             [{:type      :tool-input
+                               :id        "t1"
+                               :function  "search"
+                               :arguments {:query "test"}}])
+                            (mut/mock-llm-response
+                             [{:type :text :text "Done"}]))))]
+          (mt/with-log-level [metabase-enterprise.metabot-v3.agent.core :warn]
+            (into [] (agent/run-agent-loop
+                      {:messages   [{:role :user :content "test"}]
+                       :state      {}
+                       :profile-id :internal
+                       :context    {}})))))
+      (is (== 1 (mt/metric-value system :metabase-metabot/agent-requests
+                                 {:profile-id "internal"})))
+      (is (== 2 (:sum (mt/metric-value system :metabase-metabot/agent-iterations
+                                       {:profile-id "internal"}))))
+      (is (== 0 (mt/metric-value system :metabase-metabot/agent-errors
+                                 {:profile-id "internal"})))
+      (is (== 2 (mt/metric-value system :metabase-metabot/llm-requests
+                                 {:model "anthropic/claude-haiku-4-5"
+                                  :source "agent"})))
+      (is (== 1 (:count (mt/metric-value system :metabase-metabot/agent-duration-ms
+                                         {:profile-id "internal"}))))
+      (is (pos? (:sum (mt/metric-value system :metabase-metabot/agent-duration-ms
+                                       {:profile-id "internal"})))))
+
+    ;; clear! is much faster than a new mt/with-prometheus-system!
+    (prometheus/clear! :metabase-metabot/agent-requests)
+    (prometheus/clear! :metabase-metabot/agent-iterations)
+    (prometheus/clear! :metabase-metabot/agent-errors)
+    (prometheus/clear! :metabase-metabot/agent-duration-ms)
+    (prometheus/clear! :metabase-metabot/llm-requests)
+
+    (testing "records agent-errors on failure"
+      (with-redefs [openrouter/openrouter (fn [_] (throw (ex-info "boom" {})))]
+        (mt/with-log-level [metabase-enterprise.metabot-v3.agent.core :fatal]
+          (into [] (agent/run-agent-loop
+                    {:messages   [{:role :user :content "test"}]
+                     :state      {}
+                     :profile-id :internal
+                     :context    {}}))))
+      (is (== 1 (mt/metric-value system :metabase-metabot/agent-requests
+                                 {:profile-id "internal"})))
+      (is (== 0 (:sum (mt/metric-value system :metabase-metabot/agent-iterations
+                                       {:profile-id "internal"}))))
+      (is (== 1 (mt/metric-value system :metabase-metabot/agent-errors
+                                 {:profile-id "internal"})))
+      (is (== 1 (mt/metric-value system :metabase-metabot/llm-requests
+                                 {:model "anthropic/claude-haiku-4-5"
+                                  :source "agent"})))
+      (is (== 1 (:count (mt/metric-value system :metabase-metabot/agent-duration-ms
+                                         {:profile-id "internal"}))))
+      (is (pos? (:sum (mt/metric-value system :metabase-metabot/agent-duration-ms
+                                       {:profile-id "internal"})))))))
