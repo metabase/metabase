@@ -120,12 +120,6 @@
   (and (some? (lib.ref/field-ref-id field-ref))
        (not (contains? (lib.options/options field-ref) :source-field))))
 
-(mu/defn- should-upgrade-field-refs-in-clause? :- :boolean
-  [clause :- :any]
-  (boolean (lib.util.match/match-lite clause
-             (field-ref :guard (every-pred lib.field/is-field-clause? should-upgrade-field-ref?))
-             true)))
-
 (mu/defn- upgrade-field-ref :- :mbql.clause/field
   [query         :- ::lib.schema/query
    stage-number  :- :int
@@ -194,10 +188,25 @@
                                              (upgrade-field-refs-in-stage query stage-number))
                                            %))))
 
+(mu/defn- should-upgrade-field-refs-in-clause? :- :boolean
+  [clause :- :any]
+  (boolean (lib.util.match/match-lite clause
+             (field-ref :guard (every-pred lib.field/is-field-clause? should-upgrade-field-ref?))
+             true)))
+
+(mu/defn- should-upgrade-field-refs-in-stage? :- :boolean
+  [query        :- ::lib.schema/query
+   stage-number :- :int]
+  (let [{:keys [source-table joins] :as stage} (lib.util/query-stage query stage-number)
+        all-source-tables? (and (some? source-table) (every? #(some? (:source-table %)) joins))]
+    (and (or (pos? stage-number) (not all-source-tables?))
+         (should-upgrade-field-refs-in-clause? stage))))
+
 (mu/defn should-upgrade-field-refs-in-query? :- :boolean
   "Check if any field refs in `query` can be upgraded to use name-based field refs."
   [query :- ::lib.schema/query]
-  (should-upgrade-field-refs-in-clause? query))
+  (boolean (some #(should-upgrade-field-refs-in-stage? query %)
+                 (range (lib.query/stage-count query)))))
 
 (mu/defn upgrade-field-ref-in-parameter-target :- ::lib.schema.parameter/target
   "If the parameter target is a field ref, upgrade it to use a name-based field ref when possible."
