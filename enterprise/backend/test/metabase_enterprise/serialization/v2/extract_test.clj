@@ -2550,12 +2550,12 @@
           (testing "has no dependencies"
             (is (empty? (serdes/dependencies ser)))))))))
 
-(deftest ^:parallel export-parameters-sorts-by-id-test
+(deftest ^:parallel export-parameters-preserves-order-test
   (let [params [{:id "zebra" :name "Z param" :type :category}
                 {:id "alpha" :name "A param" :type :category}
                 {:id "middle" :name "M param" :type :category}]
         result (serdes/export-parameters params)]
-    (is (= ["alpha" "middle" "zebra"]
+    (is (= ["zebra" "alpha" "middle"]
            (map :id result)))))
 
 (deftest ^:parallel export-parameters-empty-input-test
@@ -2569,12 +2569,12 @@
         result (serdes/export-parameters params)]
     (is (= ["only"] (map :id result)))))
 
-(deftest ^:parallel export-parameters-nil-id-sorts-first-test
+(deftest ^:parallel export-parameters-nil-id-preserves-order-test
   (let [params [{:id "beta" :name "B"}
                 {:id nil :name "Nil"}
                 {:id "alpha" :name "A"}]
         result (serdes/export-parameters params)]
-    (is (= [nil "alpha" "beta"] (map :id result)))))
+    (is (= ["beta" nil "alpha"] (map :id result)))))
 
 (deftest ^:parallel export-parameter-mappings-sorts-by-parameter-id-test
   (let [mappings [{:parameter_id "z-param" :target [:dimension [:field 1 nil]]}
@@ -2614,7 +2614,8 @@
                                                                      :card_id card-id
                                                                      :target [:dimension [:field 2 nil]]}]}]
       (let [ser (ts/extract-one "Dashboard" dash-id)]
-        (is (= ["alpha" "beta" "zebra"]
-               (map :id (:parameters ser))))
+        (is (= ["zebra" "alpha" "beta"]
+               (map :id (:parameters ser)))
+            "Dashboard parameters should preserve their original display order")
         (is (= ["alpha" "zebra"]
                (map :parameter_id (-> ser :dashcards first :parameter_mappings))))))))
