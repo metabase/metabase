@@ -138,7 +138,8 @@
       "metabase": [
         {
           "id": "metabase.connection",
-          "name": "Connection"
+          "name": "Connection",
+          "visibility": "collapsed"
         },
         {
           "id": "metabase.content",
