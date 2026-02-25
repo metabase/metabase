@@ -83,8 +83,10 @@
        [:output_row_limit    {:optional true} [:and :int [:> 1] [:<= 100]]]
        [:per_input_row_limit {:optional true} [:and :int [:> 1] [:<= 100]]]]]
   (let [db-ids (t2/select-fn-set :db_id [:model/Table :db_id] :id [:in (vals source_tables)])]
-    (api/check-400 (= (count db-ids) 1) (i18n/deferred-tru "All source tables must belong to the same database."))
-    (api/check-403 (perms/has-db-transforms-permission? api/*current-user-id* (first db-ids))))
+    (map
+     (fn [db-id]
+       (api/check-403 (perms/has-db-transforms-permission? api/*current-user-id* db-id)))
+     db-ids))
   ;; NOTE: we do not test database support, as there is no write target.
   (let [result (python-runner/execute-and-read-output!
                 {:code            code
