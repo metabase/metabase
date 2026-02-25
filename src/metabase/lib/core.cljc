@@ -285,6 +285,8 @@
   fieldable-columns
   fields
   find-visible-column-for-ref
+  infer-has-field-values ; Single-use
+  json-field? ; Single-use
   remove-field
   with-fields]
  [metabase.lib.field.util
@@ -437,6 +439,7 @@
   can-run
   can-save
   check-card-overwrite
+  native?
   preview-query
   query
   query-from-legacy-inner-query

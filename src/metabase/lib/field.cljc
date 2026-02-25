@@ -714,9 +714,9 @@
                   query stage-number)]
      (lib.equality/find-matching-column query stage-number field-ref columns))))
 
-(defn json-field?
+(mu/defn json-field? :- :boolean
   "Return true if field is a JSON field, false if not."
-  [field]
+  [field :- [:maybe ::lib.schema.metadata/column]]
   (some? (:nfc-path field)))
 
 ;;; yes, this is intentionally different from the version in `:metabase.lib.schema.metadata/column.has-field-values`.
