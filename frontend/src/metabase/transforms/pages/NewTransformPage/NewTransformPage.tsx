@@ -224,16 +224,20 @@ export function NewNativeTransformPage({ route }: NewNativeTransformPageProps) {
   return <NewTransformPage initialSource={initialSource} route={route} />;
 }
 
+type NewAdvancedTransformPageParams = {
+  type?: string;
+};
+
 type NewAdvancedTransformPageProps = {
+  params: NewAdvancedTransformPageParams;
   route: Route;
-  location: { query: { type?: string } };
 };
 
 export function NewAdvancedTransformPage({
+  params,
   route,
-  location,
 }: NewAdvancedTransformPageProps) {
-  const typeParam = location?.query?.type || "";
+  const typeParam = params?.type || "";
   const type: AdvancedTransformType = isAdvancedTransformType(typeParam)
     ? typeParam
     : "python";

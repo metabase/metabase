@@ -93,7 +93,7 @@ export function PythonTransformTopBar({
         </Flex>
       )}
       <Flex ml="auto" align="center" h="3rem" mr="sm">
-        {canChangeType && <TransformTypeSelect defaultValue={sourceType} />}
+        {canChangeType && <TransformTypeSelect value={sourceType} />}
         {!canChangeType && !!sourceType && (
           <Text mr="md" fz="md">
             {getTypeLabel(sourceType)}

@@ -9,6 +9,7 @@ import type {
   ConcreteTableId,
   Engine,
   RelatedDashboardXRays,
+  Transform,
   TransformId,
   VisualizationDisplay,
 } from "metabase-types/api";
@@ -292,12 +293,13 @@ export type TransformJobTriggerManualRunEvent = ValidateEvent<{
 
 export type TransformCreateEvent = ValidateEvent<{
   event: "transform_create";
-  event_detail: "query" | "native" | "python" | "saved-question";
+  event_detail: "query" | "native" | "advanced" | "saved-question";
 }>;
 
 export type TransformCreatedEvent = ValidateEvent<{
   event: "transform_created";
   target_id: number;
+  event_detail: Transform["source_type"];
 }>;
 
 export type TransformRunTagsUpdated = ValidateEvent<{

@@ -46,8 +46,8 @@ export function newNativeTransform() {
   return `${TRANSFORMS_ROOT_URL}/new/native`;
 }
 
-export function newAdvancedTransform(type?: AdvancedTransformType) {
-  return `${TRANSFORMS_ROOT_URL}/new/advanced` + (type ? `?type=${type}` : "");
+export function newAdvancedTransform(type: AdvancedTransformType = "python") {
+  return `${TRANSFORMS_ROOT_URL}/new/advanced/${type}`;
 }
 
 export function newTransformFromCard(cardId: CardId) {

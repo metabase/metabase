@@ -32,7 +32,9 @@ export const useCreateTransform = (
       databaseId,
     );
     const transform = await createTransformMutation(request).unwrap();
-    trackTransformCreated({ transformId: transform.id });
+    trackTransformCreated({
+      transform,
+    });
     return transform;
   };
 
