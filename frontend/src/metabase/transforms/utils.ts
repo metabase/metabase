@@ -18,6 +18,7 @@ import {
   type TransformRunMethod,
   type TransformRunStatus,
   type TransformSource,
+  isAdvancedTransformSource,
   isAdvancedTransformType,
 } from "metabase-types/api";
 
@@ -137,10 +138,14 @@ export function isSameSource(
     return Lib.areLegacyQueriesEqual(source1.query, source2.query);
   }
   if (
-    isAdvancedTransformType(source1.type) &&
-    isAdvancedTransformType(source2.type)
+    isAdvancedTransformSource(source1) &&
+    isAdvancedTransformSource(source2)
   ) {
-    return _.isEqual(source1, source2);
+    // source-database is not set as part of the initialSource, so we omit it from the comparison
+    return _.isEqual(
+      _.omit(source1, "source-database"),
+      _.omit(source2, "source-database"),
+    );
   }
   return false;
 }
