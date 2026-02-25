@@ -471,26 +471,15 @@ const COMMON_COLUMN_SETTINGS: VisualizationSettingsDefinitions<DatasetColumn> =
     },
   };
 
-type VisualizationWithColumnSettings = ReturnType<
-  typeof getVisualizationRaw
-> & {
-  columnSettings?:
-    | VisualizationSettingsDefinitions
-    | ((column: DatasetColumn) => VisualizationSettingsDefinitions);
-};
-
 export function getSettingDefinitionsForColumn(
   series: Series,
   column: DatasetColumn,
-): VisualizationSettingsDefinitions {
-  const visualization = getVisualizationRaw(series) as
-    | VisualizationWithColumnSettings
-    | undefined;
+) {
+  const visualization = getVisualizationRaw(series);
   const extraColumnSettings =
     visualization && typeof visualization.columnSettings === "function"
       ? visualization.columnSettings(column)
-      : (visualization?.columnSettings as VisualizationSettingsDefinitions) ||
-        {};
+      : visualization?.columnSettings || {};
 
   if (isDate(column) || (column.unit && column.unit !== "default")) {
     return {
@@ -562,7 +551,7 @@ export function tableColumnSettings({
 } = {}): VisualizationSettingsDefinitions<
   Series,
   unknown,
-  ChartSettingTableColumnsProps
+  Partial<ChartSettingTableColumnsProps>
 > {
   return {
     "table.columns": {

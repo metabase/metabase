@@ -415,6 +415,11 @@ export type VisualizationDefinition<
 
   transformSeries?: (series: Series) => TransformedSeries;
   isSensible: (data: DatasetData) => boolean;
+  columnSettings?:
+    | VisualizationSettingsDefinitions<T, TValue, TProps>
+    | ((
+        column: DatasetColumn,
+      ) => VisualizationSettingsDefinitions<T, TValue, TProps>);
   // checkRenderable throws an error if a visualization is not renderable
   checkRenderable: (
     series: Series,
