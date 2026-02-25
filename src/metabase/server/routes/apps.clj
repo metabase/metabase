@@ -34,22 +34,22 @@
   <meta name=\"viewport\" content=\"width=device-width, initial-scale=1\" />
   <title>" app-name " - Metabase App</title>
 </head>
-<body style=\"font-family: -apple-system, BlinkMacSystemFont, sans-serif; margin: 0;\">
-  <table id=\"app-table\" style=\"width: 100%; height: 100vh; border-collapse: collapse; table-layout: fixed;\">
+<body>
+  <table id=\"app-table\">
     <tr>
-      <td colspan=\"2\" style=\"background: #509EE3; color: white; padding: 16px 24px; font-size: 20px; font-weight: 600; height: 60px;\">" app-name "</td>
+      <td id=\"header\" colspan=\"2\">" app-name "</td>
     </tr>
-    <tr style=\"height: 100%;\">
-      <td id=\"sidebar\" style=\"width: 280px; background: #f8f9fa; border-right: 1px solid #e0e0e0; vertical-align: top;\">
+    <tr id=\"main-row\">
+      <td id=\"sidebar\">
         <div id=\"sidebar-content\">
-          <div style=\"padding: 16px; font-weight: 600; color: #666; font-size: 12px; text-transform: uppercase; border-bottom: 1px solid #e0e0e0;\">Dashboards</div>
-          <ul id=\"dashboard-list\" style=\"list-style: none; margin: 0; padding: 0;\"></ul>
+          <div id=\"sidebar-header\">Dashboards</div>
+          <ul id=\"dashboard-list\"></ul>
         </div>
       </td>
-      <td id=\"dashboard-container\" style=\"height: 100%; vertical-align: top;\">
+      <td id=\"dashboard-container\">
         " (if first-dashboard-id
             (str "<metabase-dashboard id=\"embedded-dashboard\" dashboard-id=\"" first-dashboard-id "\" with-title=\"true\" with-downloads=\"true\"></metabase-dashboard>")
-            "<div style=\"padding:20px;color:#888\">No dashboards found in this collection</div>")
+            "<div class=\"empty-state\">No dashboards found in this collection</div>")
          "
       </td>
     </tr>
