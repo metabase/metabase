@@ -41,9 +41,11 @@
 
 (defmethod mi/can-write? :model/Transform
   ([instance]
-   (and (mi/can-read? instance)
-        (perms/has-db-transforms-permission? api/*current-user-id* (:source_database_id instance))
-        (remote-sync/transforms-editable?)))
+   (let [db-ids (conj (into #{} (map :database_id) (-> instance :source :source-tables vals))
+                      (:source_database_id instance))]
+     (and (mi/can-read? instance)
+          (every? #(perms/has-db-transforms-permission? api/*current-user-id* %) db-ids)
+          (remote-sync/transforms-editable?))))
   ([_model pk]
    (when-let [transform (t2/select-one :model/Transform :id pk)]
      (mi/can-write? transform))))
