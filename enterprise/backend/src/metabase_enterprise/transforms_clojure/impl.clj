@@ -1,8 +1,9 @@
 (ns metabase-enterprise.transforms-clojure.impl
   (:require
    [metabase-enterprise.transforms-runner.execute :as runner.execute]
-   [metabase.transforms.interface :as transforms.i]
-   [metabase.transforms.util :as transforms.util]))
+   [metabase.transforms.interface :as transforms.i]))
+
+(transforms.i/register-runner! :clojure)
 
 (defmethod transforms.i/target-db-id :clojure
   [transform]
@@ -19,8 +20,7 @@
    transform options
    {:runtime "clojure"
     :label "Clojure"
-    :timing-key :clojure-execution
-    :transform-type-pred #(= :clojure (transforms.util/transform-type %))}))
+    :timing-key :clojure-execution}))
 
 (defmethod transforms.i/table-dependencies :clojure
   [transform]

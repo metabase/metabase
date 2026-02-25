@@ -15,7 +15,7 @@
   (try
     {:structured_output
      (->> (transforms/get-transforms)
-          (into [] (comp (filter #(or (transforms/python-transform? %)
+          (into [] (comp (filter #(or (transforms/runner-transform? %)
                                       (transforms/native-query-transform? %)))
                          (filter :source_readable)
                          (map #(select-keys % [:id :entity_id :name :type :description :source])))))}

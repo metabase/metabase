@@ -1,8 +1,9 @@
 (ns metabase-enterprise.transforms-javascript.impl
   (:require
    [metabase-enterprise.transforms-runner.execute :as runner.execute]
-   [metabase.transforms.interface :as transforms.i]
-   [metabase.transforms.util :as transforms.util]))
+   [metabase.transforms.interface :as transforms.i]))
+
+(transforms.i/register-runner! :javascript)
 
 (defmethod transforms.i/target-db-id :javascript
   [transform]
@@ -19,8 +20,7 @@
    transform options
    {:runtime "javascript"
     :label "JavaScript"
-    :timing-key :javascript-execution
-    :transform-type-pred transforms.util/javascript-transform?}))
+    :timing-key :javascript-execution}))
 
 (defmethod transforms.i/table-dependencies :javascript
   [transform]

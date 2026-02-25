@@ -71,24 +71,10 @@
     (let [query (-> transform :source :query)]
       (lib/native-only-query? query))))
 
-(defn python-transform?
-  "Check if this is a Python transform."
-  [transform]
-  (= :python (transform-type transform)))
-
-(defn javascript-transform?
-  "Check if this is a JavaScript transform."
-  [transform]
-  (= :javascript (transform-type transform)))
-
-(def ^:private runner-types
-  "Set of all runner-based transform types (including Python)."
-  #{:python :javascript :clojure :r :julia})
-
 (defn runner-transform?
-  "Check if this is any runner-based transform (Python, JavaScript, Clojure, R, Julia)."
+  "Check if this is any runner-based transform (registered via [[transforms.i/register-runner!]])."
   [transform]
-  (contains? runner-types (transform-type transform)))
+  (transforms.i/runner-language? (transform-type transform)))
 
 (defn transform-source-database
   "Get the source database from a transform"
@@ -126,7 +112,6 @@
   [transform]
   (cond
     (query-transform? transform) (transforms.gating/query-transforms-enabled?)
-    (python-transform? transform) (transforms.gating/python-transforms-enabled?)
     (runner-transform? transform) (transforms.gating/runner-transforms-enabled?)
     :else false))
 

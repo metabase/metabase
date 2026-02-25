@@ -3,6 +3,7 @@
    [metabase.lib.metadata.column :as lib.metadata.column]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.queries.schema :as queries.schema]
+   [metabase.transforms.interface :as transforms.i]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]))
 
@@ -32,14 +33,16 @@
   [:multi {:dispatch :type}
    ["checkpoint" ::checkpoint-strategy]])
 
-(defn- runner-source-schema
-  "Schema for a runner-based transform source (Python, JavaScript, Clojure, R, Julia).
-  All runner languages share the same shape — only the :type keyword differs."
-  [type-kw]
+(defn runner-source-schema
+  "Schema for a runner-based transform source. The :type must be a registered runner language
+  (registered via [[transforms.i/register-runner!]]). All runner languages share the same shape."
+  []
   [:map
    [:source-database {:optional true} :int]
    [:source-tables [:map-of :string ::source-table-value]]
-   [:type {:decode/normalize lib.schema.common/normalize-keyword} [:= type-kw]]
+   [:type {:decode/normalize lib.schema.common/normalize-keyword}
+    [:fn {:error/message "must be a registered runner language"}
+     transforms.i/runner-language?]]
    [:body :string]
    [:source-incremental-strategy {:optional true} ::source-incremental-strategy]])
 
@@ -50,11 +53,8 @@
      [:type {:decode/normalize lib.schema.common/normalize-keyword} [:= :query]]
      [:query ::queries.schema/query]
      [:source-incremental-strategy {:optional true} ::source-incremental-strategy]]]
-   [:python (runner-source-schema :python)]
-   [:javascript (runner-source-schema :javascript)]
-   [:clojure (runner-source-schema :clojure)]
-   [:r (runner-source-schema :r)]
-   [:julia (runner-source-schema :julia)]])
+   [:malli.core/default
+    (runner-source-schema)]])
 
 (mr/def ::append-config
   [:map [:type [:= "append"]]])
