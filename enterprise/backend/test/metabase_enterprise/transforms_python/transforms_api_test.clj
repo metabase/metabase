@@ -353,7 +353,7 @@
                                    :source {:type            "python"
                                             :body            (str/join "\n" program)
                                             :source-database (mt/id)
-                                            :source-tables   {"transforms_customers" (mt/id :transforms_customers)}}
+                                            :source-tables   [{:alias "transforms_customers" :table (mt/id :transforms_customers)}]}
                                    :target (assoc target :database (mt/id))}))
 
           ;; using clojure-ey coordination with promises (I know j.u.c could be better here)
@@ -573,9 +573,9 @@
                                             :schema (get-test-schema)
                                             :name   "table_ref_test"}]
             (let [;; Use a name-based ref instead of table ID
-                  source-tables {"input" {:database_id (mt/id)
-                                          :schema      (get-test-schema)
-                                          :table       "transforms_products"}}
+                  source-tables [{:alias "input" :table {:database_id (mt/id)
+                                                         :schema      (get-test-schema)
+                                                         :table       "transforms_products"}}]
                   transform-payload {:name   "Transform with table ref"
                                      :source {:type            "python"
                                               :body            "def transform(input):\n    return input"
