@@ -4,6 +4,7 @@
    [metabase.lib.expression :as lib.expression]
    [metabase.lib.field :as lib.field]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
+   [metabase.lib.options :as lib.options]
    [metabase.lib.order-by :as lib.order-by]
    [metabase.lib.parameters :as lib.parameters]
    [metabase.lib.query :as lib.query]
@@ -13,6 +14,7 @@
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.lib.schema.parameter :as lib.schema.parameter]
    [metabase.lib.util :as lib.util]
+   [metabase.lib.util.match :as lib.util.match]
    [metabase.lib.walk :as lib.walk]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
@@ -27,25 +29,32 @@
                             (lib.field/is-field-clause? clause)
                             f))))
 
+(mu/defn- upgradable-field-ref? :- :boolean
+  [field-ref :- :mbql.clause/field]
+  ;; name-based field ref is already upgraded
+  ;; implicitly joined field ref cannot be upgraded
+  (not (or (lib.ref/field-ref-name field-ref)
+           (contains? (lib.options/options field-ref) :source-field))))
+
+(mu/defn- upgradable-field-refs-in-clause? :- :boolean
+  [clause :- :any]
+  (boolean (lib.util.match/match-lite clause
+             (field-ref :guard (every-pred lib.field/is-field-clause? upgradable-field-ref?))
+             true)))
+
 (mu/defn- upgrade-field-ref :- :mbql.clause/field
   [query         :- ::lib.schema/query
    stage-number  :- :int
    field-ref     :- :mbql.clause/field
    columns       :- [:sequential ::lib.schema.metadata/column]]
-  ;; optimization: name-based field ref is already upgraded
-  (or (when (lib.ref/field-ref-name field-ref)
-        field-ref)
-      ;; optimization: implicitly joined field ref cannot be upgraded
-      (when (contains (lib.options/options field-ref) :source-field)
-        field-ref)
-      (when-let [column (lib.equality/find-matching-column query stage-number field-ref columns)]
-        ;; for card-based columns, drop the :id to force a name-based field ref
-        ;; preserve the expression name if this field ref is an identity expression
-        (let [column (cond-> column (:lib/card-id column) (dissoc :id))
-              expression-name (lib.util/expression-name field-ref)]
-          (cond-> (lib.ref/ref column)
-            expression-name (lib.expression/with-expression-name expression-name))))
-      ;; otherwise, return the original field ref
+  (or (when (upgradable-field-ref? field-ref)
+        (when-let [column (lib.equality/find-matching-column query stage-number field-ref columns)]
+          ;; for card-based columns, drop the :id to force a name-based field ref
+          ;; preserve the expression name if this field ref is an identity expression
+          (let [column (cond-> column (:lib/card-id column) (dissoc :id))
+                expression-name (lib.util/expression-name field-ref)]
+            (cond-> (lib.ref/ref column)
+              expression-name (lib.expression/with-expression-name expression-name)))))
       field-ref))
 
 (mu/defn- upgrade-field-refs-in-clauses :- [:sequential :any]
@@ -92,12 +101,26 @@
         (u/update-some :order-by    #(upgrade-field-refs-in-clauses query stage-number % orderable-columns)))))
 
 (mu/defn upgrade-field-refs-in-query :- ::lib.schema/query
+  "Upgrade all field refs in `query` to use name-based field refs when possible."
   [query     :- ::lib.schema/query]
   (update query :stages #(vec (map-indexed (fn [stage-number _]
                                              (upgrade-field-refs-in-stage query stage-number))
                                            %))))
 
+(mu/defn upgradable-field-refs-in-query? :- :boolean
+  "Check if any field refs in `query` can be upgraded to use name-based field refs."
+  [query :- ::lib.schema/query]
+  (upgradable-field-refs-in-clause? query))
+
+(mu/defn upgradable-field-ref-in-parameter-target? :- :boolean
+  "If the parameter target is a field ref, check if it can be upgraded to use a name-based field ref."
+  [target :- ::lib.schema.parameter/target]
+  (if-let [field-ref (lib.parameters/parameter-target-field-ref target)]
+    (upgradable-field-ref? field-ref)
+    false))
+
 (mu/defn upgrade-field-ref-in-parameter-target :- ::lib.schema.parameter/target
+  "If the parameter target is a field ref, upgrade it to use a name-based field ref when possible."
   [query  :- ::lib.schema/query
    target :- ::lib.schema.parameter/target]
   (or (when (lib.parameters/parameter-target-field-ref target)
