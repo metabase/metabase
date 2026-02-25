@@ -4,7 +4,7 @@
    [clojure.test :refer :all]
    [metabase-enterprise.transforms-python.init]
    [metabase-enterprise.transforms-runner.execute :as runner.execute]
-   [metabase-enterprise.transforms-runner.runner :as transforms-python.python-runner]
+   [metabase-enterprise.transforms-runner.runner :as runner]
    [metabase.driver :as driver]
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.test :as mt]
@@ -378,7 +378,7 @@
           (blocking-redefs [{:keys [block]} ready-signal wait-signal]
             (case block
               :read
-              (let [f-ref #'transforms-python.python-runner/write-jsonl-row-to-os-rff
+              (let [f-ref #'runner/write-jsonl-row-to-os-rff
                     f     @f-ref]
                 {f-ref
                  (fn [os fields-meta col-meta]

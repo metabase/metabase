@@ -2,8 +2,8 @@
   (:require
    [clojure.string :as str]
    [metabase-enterprise.transforms-runner.models.transform-library :as transform-library]
-   [metabase-enterprise.transforms-runner.runner :as python-runner]
-   [metabase-enterprise.transforms-runner.settings :as transforms-python.settings]
+   [metabase-enterprise.transforms-runner.runner :as runner]
+   [metabase-enterprise.transforms-runner.settings :as runner.settings]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
@@ -75,12 +75,12 @@
     (doseq [db-id db-ids]
       (api/check-403 (perms/has-db-transforms-permission? api/*current-user-id* db-id))))
   ;; NOTE: we do not test database support, as there is no write target.
-  (let [result (python-runner/execute-and-read-output!
+  (let [result (runner/execute-and-read-output!
                 {:code            code
                  :source-tables   source_tables
                  :per-input-limit per_input_row_limit
                  :row-limit       output_row_limit
-                 :timeout-secs    (transforms-python.settings/python-runner-test-run-timeout-seconds)
+                 :timeout-secs (runner.settings/python-runner-test-run-timeout-seconds)
                  :runtime (or type "python")})
         logs   (str/join "\n" (map :message (:logs result)))]
     (if (= :succeeded (:status result))

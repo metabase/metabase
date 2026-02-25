@@ -6,7 +6,7 @@
    [clojure.string :as str]
    [medley.core :as m]
    [metabase-enterprise.transforms-runner.s3 :as s3]
-   [metabase-enterprise.transforms-runner.settings :as transforms-python.settings]
+   [metabase-enterprise.transforms-runner.settings :as runner.settings]
    [metabase.analytics.prometheus :as prometheus]
    [metabase.config.core :as config]
    [metabase.lib-be.core :as lib-be]
@@ -33,7 +33,7 @@
   "Returns HTTP headers with Authorization bearer token if configured.
   Throws configuration error in production if token is not set."
   []
-  (let [api-token (transforms-python.settings/python-runner-api-token)]
+  (let [api-token (runner.settings/python-runner-api-token)]
     (if api-token
       {"Authorization" (str "Bearer " api-token)}
       (if config/is-prod?
@@ -175,7 +175,7 @@
 (defn get-logs
   "Return the logs of the current running python process"
   [run-id]
-  (let [server-url (transforms-python.settings/python-runner-url)]
+  (let [server-url (runner.settings/python-runner-url)]
     (python-runner-request server-url :get "/logs" {:query-params {:request_id run-id}})))
 
 (mu/defn record-python-api-call!
@@ -208,7 +208,7 @@
         table-name->manifest-url                (update-vals table-name->id #(url-for-path [:table % :manifest]))
         payload                                 {:code                code
                                                  :library (t2/select-fn->fn :path :source :model/TransformLibrary :language runtime)
-                                                 :timeout             (or timeout-secs (transforms-python.settings/python-runner-timeout-seconds))
+                                                 :timeout             (or timeout-secs (runner.settings/python-runner-timeout-seconds))
                                                  :request_id          (or request-id run-id)
                                                  :output_url          (:url output)
                                                  :output_manifest_url (:url output-manifest)
@@ -354,7 +354,7 @@
 "
   [{:keys [code source-tables per-input-limit row-limit timeout-secs runtime]}]
   (with-open [shared-storage-ref (s3/open-shared-storage! source-tables)]
-    (let [server-url (transforms-python.settings/python-runner-url)
+    (let [server-url (runner.settings/python-runner-url)
           _          (copy-tables-to-s3! {:shared-storage @shared-storage-ref
                                           :source         {:source-tables source-tables}
                                           :limit          (or per-input-limit row-limit)})

@@ -12,9 +12,9 @@
    [clojure.core.async :as a]
    [clojure.java.io :as io]
    [clojure.string :as str]
-   [metabase-enterprise.transforms-runner.runner :as python-runner]
+   [metabase-enterprise.transforms-runner.runner :as runner]
    [metabase-enterprise.transforms-runner.s3 :as s3]
-   [metabase-enterprise.transforms-runner.settings :as transforms-python.settings]
+   [metabase-enterprise.transforms-runner.settings :as runner.settings]
    [metabase.app-db.core :as app-db]
    [metabase.driver :as driver]
    [metabase.driver.connection :as driver.conn]
@@ -88,7 +88,7 @@
         (log/debug "Message update loop interrupted")
         (do (let [sleep-ms (.toMillis message-loop-sleep-duration)]
               (when (pos? sleep-ms) (Thread/sleep sleep-ms)))
-            (let [{:keys [status body]} (python-runner/get-logs run-id)]
+            (let [{:keys [status body]} (runner/get-logs run-id)]
               (cond
                 (<= 200 status 299)
                 (let [{:keys [execution_id events]} body]
@@ -149,7 +149,7 @@
   {:name (if (keyword? table-name) table-name (keyword table-name))
    :columns (mapv (fn [{:keys [name base_type]}]
                     {:name name
-                     :type (python-runner/restricted-insert-type base_type)
+                     :type (runner/restricted-insert-type base_type)
                      :nullable? true})
                   (:fields metadata))})
 
@@ -252,7 +252,7 @@
 (defn- start-cancellation-process!
   [server-url run-id cancel-chan]
   (a/go (when (a/<! cancel-chan)
-          (python-runner/cancel-python-code-http-call! server-url run-id))))
+          (runner/cancel-python-code-http-call! server-url run-id))))
 
 (defn- run-runner-transform!
   "Core execution: upload tables to S3, call runner, read output, transfer to DB.
@@ -265,16 +265,16 @@
                   (open-message-update-future! run-id message-log))
                 shared-storage-ref (s3/open-shared-storage! resolved-source-tables)]
       (let [driver (:engine db)
-            server-url (transforms-python.settings/python-runner-url)
-            _ (python-runner/copy-tables-to-s3! {:run-id run-id
-                                                 :shared-storage @shared-storage-ref
-                                                 :source (assoc source :source-tables resolved-source-tables)
-                                                 :cancel-chan cancel-chan
-                                                 :limit (:limit source)
-                                                 :transform-id (:id transform)})
+            server-url (runner.settings/python-runner-url)
+            _ (runner/copy-tables-to-s3! {:run-id run-id
+                                          :shared-storage @shared-storage-ref
+                                          :source (assoc source :source-tables resolved-source-tables)
+                                          :cancel-chan cancel-chan
+                                          :limit (:limit source)
+                                          :transform-id (:id transform)})
             _ (start-cancellation-process! server-url run-id cancel-chan)
             {:keys [status body] :as response}
-            (python-runner/execute-python-code-http-call!
+            (runner/execute-python-code-http-call!
              {:server-url server-url
               :code (:body source)
               :run-id run-id
@@ -282,8 +282,8 @@
               :shared-storage @shared-storage-ref
               :runtime runtime})
 
-            output-manifest (python-runner/read-output-manifest @shared-storage-ref)
-            events (python-runner/read-events @shared-storage-ref)]
+            output-manifest (runner/read-output-manifest @shared-storage-ref)
+            events (runner/read-events @shared-storage-ref)]
         (.close ^Closeable log-future-ref)
         (replace-runner-logs! message-log events)
         (if (not= 200 status)
@@ -307,7 +307,7 @@
                                  :raw-body body
                                  :events events})))
               (try
-                (with-open [in (python-runner/open-output @shared-storage-ref)]
+                (with-open [in (runner/open-output @shared-storage-ref)]
                   (io/copy in temp-file))
                 (let [file-size (.length temp-file)]
                   (transforms.instrumentation/with-stage-timing [run-id [:import :file-to-dwh]]

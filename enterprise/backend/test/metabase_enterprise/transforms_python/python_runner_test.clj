@@ -5,9 +5,9 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [java-time.api :as t]
-   [metabase-enterprise.transforms-runner.runner :as python-runner]
+   [metabase-enterprise.transforms-runner.runner :as runner]
    [metabase-enterprise.transforms-runner.s3 :as s3]
-   [metabase-enterprise.transforms-runner.settings :as transforms-python.settings]
+   [metabase-enterprise.transforms-runner.settings :as runner.settings]
    [metabase.driver :as driver]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.sync.core :as sync]
@@ -57,24 +57,24 @@
 
 (defn execute! [{:keys [code tables]}]
   (with-open [shared-storage-ref (s3/open-shared-storage! (or tables {}))]
-    (let [server-url     (transforms-python.settings/python-runner-url)
+    (let [server-url     (runner.settings/python-runner-url)
           cancel-chan    (a/promise-chan)
           table-name->id (or tables {})
           test-id        (next-job-run-id)
-          _              (python-runner/copy-tables-to-s3! {:run-id         test-id
-                                                            :shared-storage @shared-storage-ref
-                                                            :source         {:source-tables table-name->id}
-                                                            :cancel-chan    cancel-chan})
-          response       (python-runner/execute-python-code-http-call! {:server-url     server-url
-                                                                        :code           code
-                                                                        :run-id         test-id
-                                                                        :table-name->id table-name->id
-                                                                        :shared-storage @shared-storage-ref})
-          events (python-runner/read-events @shared-storage-ref)
-          output-manifest (python-runner/read-output-manifest @shared-storage-ref)]
+          _              (runner/copy-tables-to-s3! {:run-id         test-id
+                                                     :shared-storage @shared-storage-ref
+                                                     :source         {:source-tables table-name->id}
+                                                     :cancel-chan    cancel-chan})
+          response       (runner/execute-python-code-http-call! {:server-url     server-url
+                                                                 :code           code
+                                                                 :run-id         test-id
+                                                                 :table-name->id table-name->id
+                                                                 :shared-storage @shared-storage-ref})
+          events (runner/read-events @shared-storage-ref)
+          output-manifest (runner/read-output-manifest @shared-storage-ref)]
       ;; not sure about munging this all together but its what tests expect for now
       (merge (:body response)
-             {:output          (when-some [in (python-runner/open-output @shared-storage-ref)] (with-open [in in] (slurp in)))
+             {:output          (when-some [in (runner/open-output @shared-storage-ref)] (with-open [in in] (slurp in)))
               :output-manifest output-manifest
               :stdout          (->> events (filter #(= "stdout" (:stream %))) (map :message) (str/join "\n"))
               :stderr          (->> events (filter #(= "stderr" (:stream %))) (map :message) (str/join "\n"))}))))
@@ -366,7 +366,7 @@
                   "updated_at"    :type/DateTime
                   "scheduled_for" :type/DateTimeWithLocalTZ}
                  (u/for-map [{:keys [name base_type]} (:fields metadata)]
-                   [name (python-runner/restricted-insert-type base_type)]))))))))
+                   [name (runner/restricted-insert-type base_type)]))))))))
 
 (deftest transform-function-with-library-test
   (testing "transform function can use libraries"
@@ -493,7 +493,7 @@
                   "created_date" :type/Date
                   "description"  :type/Text}
                  (u/for-map [{:keys [name base_type]} (:fields metadata)]
-                   [name (python-runner/restricted-insert-type base_type)]))))
+                   [name (runner/restricted-insert-type base_type)]))))
 
        ;; cleanup
         (driver/drop-table! driver db-id qualified-table-name)))))
