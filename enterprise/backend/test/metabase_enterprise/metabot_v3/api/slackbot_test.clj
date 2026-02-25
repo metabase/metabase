@@ -27,19 +27,28 @@
 (def ^:private test-signing-secret "test-signing-secret")
 (def ^:private test-encryption-key (byte-array (repeat 64 42)))
 
+(defmacro ^:private with-ensure-encryption
+  "Use the existing encryption key if one is configured, otherwise set a test key.
+   Avoids conflicts with encrypted settings in the DB that were written with the real key."
+  [& body]
+  `(if (encryption/default-encryption-enabled?)
+     (do ~@body)
+     (with-redefs [encryption/default-secret-key test-encryption-key]
+       ~@body)))
+
 (defmacro with-slackbot-setup
   "Wrap body with all required settings for slackbot to be fully configured."
   [& body]
-  `(with-redefs [slackbot/validate-bot-token! (constantly {:ok true})
-                 encryption/default-secret-key test-encryption-key]
-     (mt/with-premium-features #{:metabot-v3 :sso-slack}
-       (mt/with-temporary-setting-values [site-url "https://localhost:3000"
-                                          metabot.settings/metabot-slack-signing-secret test-signing-secret
-                                          channel.settings/slack-app-token "xoxb-test"
-                                          sso-settings/slack-connect-client-id "test-client-id"
-                                          sso-settings/slack-connect-client-secret "test-secret"
-                                          sso-settings/slack-connect-enabled true]
-         ~@body))))
+  `(with-redefs [slackbot/validate-bot-token! (constantly {:ok true})]
+     (with-ensure-encryption
+       (mt/with-premium-features #{:metabot-v3 :sso-slack}
+         (mt/with-temporary-setting-values [site-url "https://localhost:3000"
+                                            metabot.settings/metabot-slack-signing-secret test-signing-secret
+                                            channel.settings/slack-app-token "xoxb-test"
+                                            sso-settings/slack-connect-client-id "test-client-id"
+                                            sso-settings/slack-connect-client-secret "test-secret"
+                                            sso-settings/slack-connect-enabled true]
+           ~@body)))))
 
 (defn- compute-slack-signature
   "Compute a valid Slack signature for testing"
@@ -125,16 +134,9 @@
 (deftest feature-flag-test
   (testing "POST /api/ee/metabot-v3/slack/events"
     (testing "ack events even when metabot-v3 feature is disabled to prevent Slack retries"
-      (with-redefs [slackbot/validate-bot-token! (constantly {:ok true})
-                    encryption/default-secret-key test-encryption-key
-                    mw.auth/metabot-slack-signing-secret-setting (constantly test-signing-secret)]
-        (mt/with-premium-features #{:sso-slack}
-          (mt/with-temporary-setting-values [site-url "https://localhost:3000"
-                                             metabot.settings/metabot-slack-signing-secret test-signing-secret
-                                             channel.settings/slack-app-token "xoxb-test"
-                                             sso-settings/slack-connect-client-id "test-client-id"
-                                             sso-settings/slack-connect-client-secret "test-secret"
-                                             sso-settings/slack-connect-enabled true]
+      (with-slackbot-setup
+        (with-redefs [mw.auth/metabot-slack-signing-secret-setting (constantly test-signing-secret)]
+          (mt/with-premium-features #{:sso-slack}
             (let [body {:type "event_callback"
                         :event {:type "message"
                                 :text "Hello!"
@@ -606,62 +608,49 @@
 
 ;; -------------------------------- Setup Complete Tests --------------------------------
 
-(defn- do-with-setup-override!
-  "Helper to test setup-complete? with one setting disabled.
-   `override` is a map that can contain:
-   - :encryption - set to nil to disable encryption
-   - :site-url - set to nil to disable site-url
-   - :sso-slack - set to false to disable sso-slack feature
-   - :signing-secret, :bot-token, :client-id, :client-secret - set to nil to disable"
-  [{:keys [encryption site-url sso-slack signing-secret bot-token client-id client-secret]
-    :or {encryption test-encryption-key
-         site-url "https://localhost:3000"
-         sso-slack true
-         signing-secret test-signing-secret
-         bot-token "xoxb-test"
-         client-id "test-client-id"
-         client-secret "test-secret"}}
-   thunk]
-  (with-redefs [slackbot/validate-bot-token! (constantly {:ok true})
-                encryption/default-secret-key encryption
-                premium-features/enable-sso-slack? (constantly sso-slack)]
-    (mt/with-premium-features #{:metabot-v3 :sso-slack}
-      (mt/with-temporary-setting-values [site-url site-url
-                                         metabot.settings/metabot-slack-signing-secret signing-secret
-                                         channel.settings/slack-app-token bot-token
-                                         sso-settings/slack-connect-client-id client-id
-                                         sso-settings/slack-connect-client-secret client-secret]
-        (thunk)))))
-
 (deftest setup-complete-test
-  (let [request-body {:type "event_callback"
-                      :event {:type "message"
-                              :text "test"
-                              :user "U123"
-                              :channel "C123"
-                              :ts "1234567890.000001"
-                              :event_ts "1234567890.000001"
-                              :channel_type "im"}}
-        post-events  #(mt/client :post %1 "ee/metabot-v3/slack/events"
-                                 (slack-request-options request-body) request-body)]
-    (testing "succeeds when all settings are configured"
-      (do-with-setup-override! {}
-                               #(is (= "ok" (post-events 200)))))
+  (with-slackbot-setup
+    (let [request-body {:type  "event_callback"
+                        :event {:type         "message"
+                                :text         "test"
+                                :user         "U123"
+                                :channel      "C123"
+                                :ts           "1234567890.000001"
+                                :event_ts     "1234567890.000001"
+                                :channel_type "im"}}
+          post-events  #(mt/client :post %1 "ee/metabot-v3/slack/events"
+                                   (slack-request-options request-body) request-body)]
+      (testing "succeeds when all settings are configured"
+        (is (= "ok" (post-events 200))))
 
-    (doseq [[desc override] [["sso-slack feature disabled"    {:sso-slack false}]
-                             ["client-id missing"             {:client-id nil}]
-                             ["client-secret missing"         {:client-secret nil}]
-                             ["bot-token missing"             {:bot-token nil}]
-                             ["encryption disabled"           {:encryption nil}]
-                             ["site-url disabled"             {:site-url nil}]]]
-      (testing (str "returns 503 when " desc)
-        (do-with-setup-override! override
-                                 #(is (= "Slack integration is not fully configured." (post-events 503))))))
+      (testing "returns 503 when sso-slack feature disabled"
+        (with-redefs [premium-features/enable-sso-slack? (constantly false)]
+          (is (= "Slack integration is not fully configured." (post-events 503)))))
 
-    (testing "returns 503 when signing-secret is missing (can't sign request)"
-      (do-with-setup-override! {:signing-secret nil}
-                               #(is (= "Slack integration is not fully configured."
-                                       (mt/client :post 503 "ee/metabot-v3/slack/events" request-body)))))))
+      (testing "returns 503 when client-id missing"
+        (mt/with-temporary-setting-values [sso-settings/slack-connect-client-id nil]
+          (is (= "Slack integration is not fully configured." (post-events 503)))))
+
+      (testing "returns 503 when client-secret missing"
+        (mt/with-temporary-setting-values [sso-settings/slack-connect-client-secret nil]
+          (is (= "Slack integration is not fully configured." (post-events 503)))))
+
+      (testing "returns 503 when bot-token missing"
+        (mt/with-temporary-setting-values [channel.settings/slack-app-token nil]
+          (is (= "Slack integration is not fully configured." (post-events 503)))))
+
+      (testing "returns 503 when encryption disabled"
+        (with-redefs [encryption/default-secret-key nil]
+          (is (= "Slack integration is not fully configured." (post-events 503)))))
+
+      (testing "returns 503 when site-url missing"
+        (mt/with-temporary-setting-values [site-url nil]
+          (is (= "Slack integration is not fully configured." (post-events 503)))))
+
+      (testing "returns 503 when signing-secret missing (can't sign request)"
+        (mt/with-temporary-setting-values [metabot.settings/metabot-slack-signing-secret nil]
+          (is (= "Slack integration is not fully configured."
+                 (mt/client :post 503 "ee/metabot-v3/slack/events" request-body))))))))
 
 ;; -------------------------------- Ad-Hoc Query Visualization Tests --------------------------------
 
