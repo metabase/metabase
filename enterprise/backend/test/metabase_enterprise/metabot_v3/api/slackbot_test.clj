@@ -68,19 +68,21 @@
        ~@body)))
 
 (defmacro ^:private with-slackbot-setup
-  "Wrap body with all required settings for slackbot to be fully configured."
+  "Wrap body with all required settings for slackbot to be fully configured.
+   Uses `with-temporary-raw-setting-values` for secrets whose getters mask the value,
+   since `with-temporary-setting-values` would save and restore the masked value."
   [& body]
   `(with-redefs [slackbot.config/validate-bot-token! (constantly {:ok true})
                  slackbot.client/get-bot-user-id     (constantly "UBOT123")]
      (with-ensure-encryption
        (mt/with-premium-features #{:metabot-v3 :sso-slack}
          (mt/with-temporary-setting-values [site-url "https://localhost:3000"
-                                            metabot.settings/metabot-slack-signing-secret test-signing-secret
-                                            channel.settings/slack-app-token "xoxb-test"
                                             sso-settings/slack-connect-client-id "test-client-id"
-                                            sso-settings/slack-connect-client-secret "test-secret"
                                             sso-settings/slack-connect-enabled true]
-           ~@body)))))
+           (mt/with-temporary-raw-setting-values [metabot-slack-signing-secret test-signing-secret
+                                                  slack-app-token "xoxb-test"
+                                                  slack-connect-client-secret "test-secret"]
+             ~@body))))))
 
 (defn- compute-slack-signature
   "Compute a valid Slack signature for testing"
