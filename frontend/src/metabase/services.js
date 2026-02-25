@@ -262,7 +262,6 @@ export const PulseApi = {
   update: PUT("/api/pulse/:id"),
   test: POST("/api/pulse/test"),
   form_input: GET("/api/pulse/form_input"),
-  preview_card: GET("/api/pulse/preview_card_info/:id"),
   unsubscribe: DELETE("/api/pulse/:id/subscription"),
 };
 
