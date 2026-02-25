@@ -66,6 +66,7 @@
    [honey.sql :as sql]
    [java-time.api :as t]
    [malli.dev :as malli-dev]
+   [metabase.api-routes.sidecar :as sidecar-routes]
    [metabase.api.common :as api]
    [metabase.app-db.core :as mdb]
    [metabase.app-db.env :as mdb.env]
@@ -176,14 +177,28 @@
   (when-let [outdated-ids (seq (map :id (deleted-inmem-databases)))]
     (t2/delete! :model/Database :id [:in outdated-ids])))
 
+(defn start-sidecar!
+  "Start Metabase in sidecar mode. Requires MB_SIDECAR_DIR env var to be set
+  to the serdes export directory path."
+  []
+  (assert config/sidecar-dir
+          "MB_SIDECAR_DIR env var must be set to the serdes export directory path")
+  (let [server-routes (server/make-sidecar-routes #'sidecar-routes/routes)
+        handler       (server/make-sidecar-handler server-routes)]
+    (server/start-web-server! handler))
+  ((requiring-resolve 'metabase.sidecar/init!)))
+
 (defn start!
   "Start Metabase"
   []
-  (server/start-web-server! (server.test-handler/test-handler))
-  (init!)
-  (when config/is-dev?
-    (prune-deleted-inmem-databases!)
-    (with-out-str (malli-dev/start!))))
+  (if config/is-sidecar?
+    (start-sidecar!)
+    (do
+      (server/start-web-server! (server.test-handler/test-handler))
+      (init!)
+      (when config/is-dev?
+        (prune-deleted-inmem-databases!)
+        (with-out-str (malli-dev/start!))))))
 
 (defn stop!
   "Stop Metabase"
