@@ -16,14 +16,11 @@ Example:
 ```
 
 ```tsx
-const hasCoolFeature = useHasReleaseFlag('cool-feature');
-
-if (hasCoolFeature) {
+if (hasReleaseFlag("cool-feature")) {
   return <CoolFeature />;
 }
 
 return <OldFeature />;
-
 ```
 
 A new feature often requires new namespaces to be created to support the feature. That code will be committed to master much more quickly than with a feature branch approach. However, the code is not ready to be called normally. This creates a conflict: There is code in master that is not ready to be called. In order to prevent/detect code that incorrectly calls this code, a namespace should also add a single line to the end.

@@ -3,10 +3,10 @@ import { replace } from "react-router-redux";
 import { t } from "ttag";
 
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
-import { useHasReleaseFlag } from "metabase/common/hooks/use-has-release-flag/use-has-release-flag";
 import { useHomepageDashboard } from "metabase/common/hooks/use-homepage-dashboard";
 import { JokeOfTheDay } from "metabase/jokes";
 import { useDispatch, useSelector } from "metabase/lib/redux";
+import { hasReleaseFlag } from "metabase/lib/release-flags";
 import { updateUserSetting } from "metabase/redux/settings";
 import { addUndo } from "metabase/redux/undo";
 import { getHasDismissedCustomHomePageToast } from "metabase/selectors/app";
@@ -16,7 +16,6 @@ import { HomeLayout } from "../HomeLayout";
 
 export const HomePage = (): JSX.Element => {
   const { isLoadingDash } = useDashboardRedirect();
-  const hasJokeOfTheDayFlag = useHasReleaseFlag("joke-of-the-day");
 
   if (isLoadingDash) {
     return <LoadingAndErrorWrapper loading={isLoadingDash} />;
@@ -24,7 +23,7 @@ export const HomePage = (): JSX.Element => {
 
   return (
     <HomeLayout>
-      {hasJokeOfTheDayFlag && <JokeOfTheDay />}
+      {hasReleaseFlag("joke-of-the-day") && <JokeOfTheDay />}
       <HomeContent />
     </HomeLayout>
   );
