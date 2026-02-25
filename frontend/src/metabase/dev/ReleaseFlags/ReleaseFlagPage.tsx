@@ -4,11 +4,16 @@ import {
   useGetReleaseFlagsQuery,
   useSetReleaseFlagMutation,
 } from "metabase/api/release-flags";
+import { isProduction } from "metabase/env";
 import { Box, Center, Loader, Stack, Switch, Title } from "metabase/ui";
 import type { ReleaseFlag } from "metabase-types/api";
 
 export function ReleaseFlagPage() {
   const { data: flags, isLoading } = useGetReleaseFlagsQuery();
+
+  if (isProduction) {
+    return null;
+  }
 
   if (isLoading) {
     return (
