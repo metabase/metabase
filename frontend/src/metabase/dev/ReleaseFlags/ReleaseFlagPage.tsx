@@ -40,7 +40,7 @@ export function ReleaseFlagPage() {
     }));
 
   return (
-    <Box p="xl">
+    <Box p="xl" data-testid="release-flags-page">
       <Title pb="xl">{t`Release Flags`}</Title>
       <Stack>
         {flagList.map(({ name, description, value }) => (

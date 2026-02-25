@@ -402,12 +402,6 @@
     "punchline": "They say the business is toast."
   },
   {
-    "id": 87,
-    "type": "general",
-    "setup": "Did you hear about the chameleon who couldn't change color?",
-    "punchline": "They had a reptile dysfunction."
-  },
-  {
     "id": 88,
     "type": "general",
     "setup": "Did you hear about the cheese factory that exploded in France?",
@@ -438,12 +432,6 @@
     "punchline": "It's ok, he woke up."
   },
   {
-    "id": 93,
-    "type": "general",
-    "setup": "Did you hear about the Mexican train killer?",
-    "punchline": "He had loco motives"
-  },
-  {
     "id": 94,
     "type": "general",
     "setup": "Did you hear about the new restaurant on the moon?",
@@ -472,12 +460,6 @@
     "type": "general",
     "setup": "Did you hear that David lost his ID in prague?",
     "punchline": "Now we just have to call him Dav."
-  },
-  {
-    "id": 99,
-    "type": "general",
-    "setup": "Did you hear that the police have a warrant out on a midget psychic ripping people off?",
-    "punchline": "It reads \"Small medium at large.\""
   },
   {
     "id": 100,
@@ -660,12 +642,6 @@
     "punchline": "Put a little boogie in it."
   },
   {
-    "id": 130,
-    "type": "general",
-    "setup": "How do you make holy water?",
-    "punchline": "You boil the hell out of it."
-  },
-  {
     "id": 131,
     "type": "general",
     "setup": "How do you organize a space party?",
@@ -682,12 +658,6 @@
     "type": "general",
     "setup": "How do you tell the difference between a crocodile and an alligator?",
     "punchline": "You will see one later and one in a while."
-  },
-  {
-    "id": 134,
-    "type": "general",
-    "setup": "How does a dyslexic poet write?",
-    "punchline": "Inverse."
   },
   {
     "id": 135,
@@ -730,12 +700,6 @@
     "type": "general",
     "setup": "How many hipsters does it take to change a lightbulb?",
     "punchline": "Oh, it's a really obscure number. You've probably never heard of it."
-  },
-  {
-    "id": 142,
-    "type": "general",
-    "setup": "How many kids with ADD does it take to change a lightbulb?",
-    "punchline": "Let's go ride bikes!"
   },
   {
     "id": 143,
@@ -1396,12 +1360,6 @@
     "type": "general",
     "setup": "What is the leading cause of dry skin?",
     "punchline": "Towels"
-  },
-  {
-    "id": 261,
-    "type": "general",
-    "setup": "What is the least spoken language in the world?",
-    "punchline": "Sign Language"
   },
   {
     "id": 262,
