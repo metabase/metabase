@@ -3,6 +3,7 @@ declare global {
   interface Window {
     MetabaseBootstrap: any;
     MetabaseReleaseFlags?: Record<ReleaseFlag, boolean>;
+    hasReleaseFlag?: (flag: ReleaseFlag) => boolean;
     MetabaseRoot?: string;
     MetabaseNonce?: string;
     MetabaseUserColorScheme?: string;

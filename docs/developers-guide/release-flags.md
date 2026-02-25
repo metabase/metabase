@@ -2,7 +2,10 @@
 
 The purpose of Metabase release flags is to allow developers to progressively merge good, tested, but incomplete code to master and avoid large, long-running feature branches. Release flags should be temporary, and should be removed at the completion of a project.
 
-At the beginning of any long-running project that intends to use a release flag, a developer should open a pr adding the new release flag to the `release-flags.json` file with a unique name and a brief description.
+At the beginning of any long-running project that intends to use a release flag, a developer should open a PR that:
+
+1. adds the new release flag to the `release-flags.json` file with a unique name and a brief description.
+2. adds the feature flag to the ReleaseFlag string enum in `metabase-types/api/release-flag.ts`.
 
 Throughout development, all code that should be behind the release flag should be disabled at the highest possible level in the calling code. Good encapsulation principles should be used to minimize the number of needed release flag conditionals. Nesting release flags should be avoided wherever possible. Care should be taken that release flagging code should not diminish the maintainability or readability of code. During development, you can toggle release flags from the ui at `/release-flags`.
 
