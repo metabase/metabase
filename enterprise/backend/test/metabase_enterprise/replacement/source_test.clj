@@ -48,8 +48,15 @@
               (testing (str "table: " (:name table))
                 (testing "card -> table"
                   (is (empty? (replacement.source/check-replace-source [:card (:id card)] [:table (:id table)]))))
+                ;; table -> card is blocked for tables with incoming FKs (implicit joins check)
+                ;; so we only assert empty for tables without incoming FKs
                 (testing "table -> card"
-                  (is (empty? (replacement.source/check-replace-source [:table (:id table)] [:card (:id card)]))))))))))))
+                  (let [result (replacement.source/check-replace-source [:table (:id table)] [:card (:id card)])]
+                    (if (t2/exists? :model/Field
+                                    :fk_target_field_id [:in (t2/select-pks-set :model/Field :table_id (:id table) :active true)]
+                                    :active true)
+                      (is (some #{:incompatible-implicit-joins} (:errors result)))
+                      (is (empty? result)))))))))))))
 
 (deftest two-cards-on-same-table-swappable-test
   (testing "Two cards built on the same table are swappable in both directions"
@@ -133,6 +140,38 @@
   (let [visible-count (count (lib/returned-columns (lib/query mp table)))
         total-count   (t2/count :model/Field :table_id (:id table) :active true)]
     (not= visible-count total-count)))
+
+(deftest implicit-joins-check-test
+  (testing "table→card with incoming FKs reports :incompatible-implicit-joins"
+    (mt/dataset test-data
+      (let [mp    (mt/metadata-provider)
+            ;; PEOPLE has incoming FKs (ORDERS.USER_ID → PEOPLE.ID)
+            table (lib.metadata/table mp (mt/id :people))
+            query (lib/query mp table)]
+        (mt/with-temp [:model/Card card {:dataset_query query
+                                         :database_id   (mt/id)
+                                         :type          :question}]
+          (let [result (replacement.source/check-replace-source [:table (:id table)] [:card (:id card)])]
+            (is (false? (:success result)))
+            (is (some #{:incompatible-implicit-joins} (:errors result))))))))
+  (testing "table→card without incoming FKs does not report :incompatible-implicit-joins"
+    (mt/dataset test-data
+      (let [mp    (mt/metadata-provider)
+            ;; REVIEWS has no incoming FKs
+            table (lib.metadata/table mp (mt/id :reviews))
+            query (lib/query mp table)]
+        (mt/with-temp [:model/Card card {:dataset_query query
+                                         :database_id   (mt/id)
+                                         :type          :question}]
+          (let [result (replacement.source/check-replace-source [:table (:id table)] [:card (:id card)])]
+            (is (true? (:success result)))
+            (is (not (some #{:incompatible-implicit-joins} (:errors result)))))))))
+  (testing "table→table does not trigger implicit joins check"
+    (mt/dataset test-data
+      ;; PEOPLE has incoming FKs, but table→table swap should not trigger the check
+      ;; Use two different tables to avoid the same-ref early return
+      (let [result (replacement.source/check-replace-source [:table (mt/id :people)] [:table (mt/id :products)])]
+        (is (not (some #{:incompatible-implicit-joins} (:errors result))))))))
 
 (deftest native-card-on-fk-table-reports-fk-mismatch-test
   ;; Native query result_metadata does not include :type/FK semantic types or
