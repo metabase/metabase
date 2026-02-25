@@ -1,10 +1,13 @@
 (ns ^{:added "0.51.0"} metabase.channel.models.channel
   (:require
    [malli.core :as mc]
+   [metabase.analytics.prometheus :as prometheus]
+   [metabase.api.common :as api]
    [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
    [metabase.permissions.core :as perms]
    [metabase.util :as u]
+   [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
@@ -113,15 +116,43 @@
   [channel-template]
   (mu/validate-throw ::ChannelTemplate channel-template))
 
+(defn- user-provided-template?
+  "Returns true if the template details represent a user-provided inline template (handlebars-text)
+  as opposed to a built-in resource template."
+  [details]
+  (= :email/handlebars-text (keyword (:type details))))
+
+(defn- log-template-change!
+  "Log template creation or update with relevant details for observability."
+  [action {:keys [channel_type details] :as _instance}]
+  (let [template-type (keyword (:type details))]
+    (if (user-provided-template? details)
+      (log/infof "ChannelTemplate %s: channel_type=%s template_type=%s user_id=%s body=%s"
+                 (name action) channel_type template-type api/*current-user-id* (pr-str (:body details)))
+      (log/infof "ChannelTemplate %s: channel_type=%s template_type=%s user_id=%s"
+                 (name action) channel_type template-type api/*current-user-id*))
+    (prometheus/inc! (case action
+                       :create :metabase-notification/template-create
+                       :update :metabase-notification/template-update)
+                     {:channel-type channel_type})))
+
 (t2/define-before-insert :model/ChannelTemplate
   [instance]
   (check-valid-channel-template instance)
+  (log-template-change! :create instance)
   instance)
 
 (t2/define-before-update :model/ChannelTemplate
   [instance]
   (check-valid-channel-template instance)
+  (log-template-change! :update instance)
   instance)
+
+;; Currently only email channel has templates, but this is extensible
+(def ^:private template-channel-labels [{:channel-type :channel/email}])
+
+(defmethod prometheus/known-labels :metabase-notification/template-create [_] template-channel-labels)
+(defmethod prometheus/known-labels :metabase-notification/template-update [_] template-channel-labels)
 
 (defmethod mi/can-write? :model/ChannelTemplate
   [& _]

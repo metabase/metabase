@@ -434,6 +434,15 @@
                         :labels [:payload-type :channel-type]})
    (prometheus/gauge :metabase-notification/concurrent-tasks
                      {:description "Number of concurrent notification sends."})
+   (prometheus/counter :metabase-notification/template-render
+                       {:description "Number of notification template renders."
+                        :labels [:template-type :channel-type]})
+   (prometheus/counter :metabase-notification/template-create
+                       {:description "Number of notification templates created."
+                        :labels [:channel-type]})
+   (prometheus/counter :metabase-notification/template-update
+                       {:description "Number of notification templates updated."
+                        :labels [:channel-type]})
    (prometheus/counter :metabase-gsheets/connection-creation-began
                        {:description "How many times the instance has initiated a Google Sheets connection creation."})
    (prometheus/counter :metabase-gsheets/connection-creation-error
