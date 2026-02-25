@@ -35,6 +35,15 @@
   (-> (PartitionSpec/builderFor sites-schema)
       (.build)))
 
+(def sites-equality-field-ids
+  "Field IDs used for equality deletes on pa_sites (uuid = field 2)."
+  [2])
+
+(def sites-delete-schema
+  "Schema for equality delete files — just the uuid column."
+  (Schema.
+   [(required-field 2 "uuid" (Types$StringType/get))]))
+
 ;;; ------------------------------------------------- pa_events ----------------------------------------------------
 
 (def events-schema

@@ -203,13 +203,15 @@
 ;;; --------------------------------------------- Equality deletes ---------------------------------------------------
 
 (defn- write-equality-delete-file-native!
-  "Write an equality delete Parquet file via Iceberg's S3FileIO. Returns the DeleteFile."
-  ^DeleteFile [^Table table session-uuids]
-  (let [delete-schema  iceberg.schema/sessions-delete-schema
-        eq-field-ids   (int-array iceberg.schema/sessions-equality-field-ids)
-        file-name      (str (UUID/randomUUID) "-deletes.parquet")
-        s3-location    (str (.location table) "/data/" file-name)
-        output-file    (.newOutputFile (.io table) s3-location)
+  "Write an equality delete Parquet file via Iceberg's S3FileIO. Returns the DeleteFile.
+   `delete-schema` is the schema containing only the equality field(s),
+   `eq-field-ids` is a vector of field IDs, `field-name` is the delete field name,
+   and `values` is a seq of values to delete on."
+  ^DeleteFile [^Table table ^Schema delete-schema eq-field-ids ^String field-name values]
+  (let [eq-field-ids-arr (int-array eq-field-ids)
+        file-name        (str (UUID/randomUUID) "-deletes.parquet")
+        s3-location      (str (.location table) "/data/" file-name)
+        output-file      (.newOutputFile (.io table) s3-location)
         ^EqualityDeleteWriter writer
         (-> (Parquet/writeDeletes output-file)
             (.forTable table)
@@ -218,28 +220,30 @@
              (reify java.util.function.Function
                (apply [_ msg-type]
                  (GenericParquetWriter/buildWriter ^org.apache.parquet.schema.MessageType msg-type))))
-            (.equalityFieldIds eq-field-ids)
+            (.equalityFieldIds eq-field-ids-arr)
             (.overwrite)
             (.buildEqualityWriter))]
     (try
-      (doseq [uuid session-uuids]
-        (let [^GenericRecord record (GenericRecord/create ^Schema delete-schema)]
-          (.setField record "session_uuid" uuid)
+      (doseq [v values]
+        (let [^GenericRecord record (GenericRecord/create delete-schema)]
+          (.setField record field-name v)
           (.write writer record)))
       (finally
         (.close writer)))
     (.toDeleteFile writer)))
 
 (defn- write-equality-delete-file-staged!
-  "Write an equality delete Parquet file via staged upload. Returns the DeleteFile."
-  ^DeleteFile [^Table table session-uuids]
-  (let [delete-schema  iceberg.schema/sessions-delete-schema
-        eq-field-ids   (int-array iceberg.schema/sessions-equality-field-ids)
-        file-name      (str (UUID/randomUUID) "-deletes.parquet")
-        s3-location    (str (.location table) "/data/" file-name)
+  "Write an equality delete Parquet file via staged upload. Returns the DeleteFile.
+   `delete-schema` is the schema containing only the equality field(s),
+   `eq-field-ids` is a vector of field IDs, `field-name` is the delete field name,
+   and `values` is a seq of values to delete on."
+  ^DeleteFile [^Table table ^Schema delete-schema eq-field-ids ^String field-name values]
+  (let [eq-field-ids-arr (int-array eq-field-ids)
+        file-name        (str (UUID/randomUUID) "-deletes.parquet")
+        s3-location      (str (.location table) "/data/" file-name)
         [output-file
          ^File
-         temp-file]    (staging-output-file s3-location)
+         temp-file]      (staging-output-file s3-location)
         ^EqualityDeleteWriter writer
         (-> (Parquet/writeDeletes ^OutputFile output-file)
             (.forTable table)
@@ -248,13 +252,13 @@
              (reify java.util.function.Function
                (apply [_ msg-type]
                  (GenericParquetWriter/buildWriter ^org.apache.parquet.schema.MessageType msg-type))))
-            (.equalityFieldIds eq-field-ids)
+            (.equalityFieldIds eq-field-ids-arr)
             (.overwrite)
             (.buildEqualityWriter))]
     (try
-      (doseq [uuid session-uuids]
-        (let [^GenericRecord record (GenericRecord/create ^Schema delete-schema)]
-          (.setField record "session_uuid" uuid)
+      (doseq [v values]
+        (let [^GenericRecord record (GenericRecord/create delete-schema)]
+          (.setField record field-name v)
           (.write writer record)))
       (finally
         (.close writer)))
@@ -265,12 +269,12 @@
         (.delete temp-file)))))
 
 (defn- write-equality-deletes!
-  "Write an equality delete Parquet file for the given session_uuid values.
+  "Write an equality delete Parquet file for the given values.
    Returns the DeleteFile metadata for use with RowDelta."
-  ^DeleteFile [^Table table session-uuids]
+  ^DeleteFile [^Table table ^Schema delete-schema eq-field-ids ^String field-name values]
   (if (iceberg.settings/product-analytics-iceberg-s3-staging-uploads)
-    (write-equality-delete-file-staged! table session-uuids)
-    (write-equality-delete-file-native! table session-uuids)))
+    (write-equality-delete-file-staged! table delete-schema eq-field-ids field-name values)
+    (write-equality-delete-file-native! table delete-schema eq-field-ids field-name values)))
 
 (defn- load-table
   "Load an Iceberg table by its keyword name, creating it if necessary."
@@ -301,7 +305,11 @@
           records       (mapv #(map->record schema %) session-maps)
           session-uuids (into [] (distinct) (map :session_uuid session-maps))
           data-file     (write-data-file! table schema records)
-          delete-file   (write-equality-deletes! table session-uuids)]
+          delete-file   (write-equality-deletes! table
+                                                 iceberg.schema/sessions-delete-schema
+                                                 iceberg.schema/sessions-equality-field-ids
+                                                 "session_uuid"
+                                                 session-uuids)]
       (-> (.newRowDelta table)
           (.addDeletes delete-file)
           (.addRows data-file)
@@ -317,10 +325,22 @@
       (write-records! table schema records))))
 
 (defn write-sites!
-  "Write a batch of site maps to the pa-sites Iceberg table."
+  "Write site records with equality deletes to deduplicate by uuid.
+   Uses Iceberg v2 RowDelta to atomically delete existing rows for the given
+   site uuids and append the new rows."
   [site-maps]
   (when (seq site-maps)
-    (let [table   (load-table :pa_sites)
-          schema  iceberg.schema/sites-schema
-          records (mapv #(map->record schema %) site-maps)]
-      (write-records! table schema records))))
+    (let [table       (load-table :pa_sites)
+          schema      iceberg.schema/sites-schema
+          records     (mapv #(map->record schema %) site-maps)
+          site-uuids  (into [] (distinct) (map :uuid site-maps))
+          data-file   (write-data-file! table schema records)
+          delete-file (write-equality-deletes! table
+                                               iceberg.schema/sites-delete-schema
+                                               iceberg.schema/sites-equality-field-ids
+                                               "uuid"
+                                               site-uuids)]
+      (-> (.newRowDelta table)
+          (.addDeletes delete-file)
+          (.addRows data-file)
+          (.commit)))))
