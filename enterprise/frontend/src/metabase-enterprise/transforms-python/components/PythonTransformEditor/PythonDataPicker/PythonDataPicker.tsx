@@ -55,7 +55,7 @@ export function PythonDataPicker({
   } = useListTablesQuery(
     database
       ? {
-          dbId: database,
+          //dbId: database,
           include_hidden: false,
           include_editable_data_model: true,
         }
@@ -74,7 +74,8 @@ export function PythonDataPicker({
   }
 
   const availableTables = (tablesData || []).filter(
-    (tbl: Table) => tbl.db_id === database && tbl.active,
+    //(tbl: Table) => tbl.db_id === database && tbl.active,
+    (tbl: Table) => tbl.active,
   );
 
   const usedAliases = new Set(tableSelections.map((s) => s.alias));
