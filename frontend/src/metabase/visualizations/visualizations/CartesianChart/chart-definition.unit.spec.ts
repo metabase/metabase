@@ -1,5 +1,5 @@
 import { SERIES_SETTING_KEY } from "metabase/visualizations/shared/settings/series";
-import type { ComputedVisualizationSettings } from "metabase/visualizations/types";
+import type { VisualizationSettings } from "metabase/visualizations/types";
 
 import { getCartesianChartDefinition } from "./chart-definition";
 
@@ -8,7 +8,7 @@ describe("chart-definition", () => {
     const onDisplayUpdate = getCartesianChartDefinition({}).onDisplayUpdate!;
 
     it("should reset individual series display", () => {
-      const settings: ComputedVisualizationSettings = {
+      const settings: VisualizationSettings = {
         "graph.y_axis.min": 50,
         [SERIES_SETTING_KEY]: {
           foo: {
@@ -32,7 +32,7 @@ describe("chart-definition", () => {
     });
 
     it("should remove series settings when they contain only series displays", () => {
-      const settings: ComputedVisualizationSettings = {
+      const settings: VisualizationSettings = {
         "graph.y_axis.min": 50,
         [SERIES_SETTING_KEY]: {
           foo: {
@@ -49,7 +49,7 @@ describe("chart-definition", () => {
     });
 
     it("should return unchanged settings when no series settings", () => {
-      const settings: ComputedVisualizationSettings = {
+      const settings: VisualizationSettings = {
         "graph.y_axis.min": 50,
       };
       expect(onDisplayUpdate(settings)).toStrictEqual({
