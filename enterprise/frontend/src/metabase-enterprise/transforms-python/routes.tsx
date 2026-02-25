@@ -11,8 +11,9 @@ export function getPythonTransformsRoutes() {
   return (
     <>
       <Route path="library/:path" component={PythonLibraryEditorPage} />
-      <Redirect from="new/python" to="new/advanced" />
-      <Route path="new/advanced" component={NewAdvancedTransformPage} />
+      <Redirect from="new/python" to="new/advanced/python" />
+      <Redirect from="new/advanced" to="new/advanced/python" />
+      <Route path="new/advanced/:type" component={NewAdvancedTransformPage} />
     </>
   );
 }
@@ -26,9 +27,9 @@ export function getPythonUpsellRoutes() {
         modal={PythonTransformsUpsellModal}
         noWrap
       />
-      <Redirect from="new/python" to="new/advanced" />
+      <Redirect from="new/python" to="new/advanced/python" />
       <ModalRoute
-        path="new/javascript"
+        path="new/advanced/:type"
         modal={PythonTransformsUpsellModal}
         noWrap
       />

@@ -40,7 +40,7 @@ export const CreateTransformMenu = () => {
     dispatch(push(Urls.newAdvancedTransform())); // Route will show upsell modal if feature is not enabled
 
     if (hasPythonTransformsFeature) {
-      trackTransformCreate({ creationType: "python" });
+      trackTransformCreate({ creationType: "advanced" });
     }
   };
 
