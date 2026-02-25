@@ -723,8 +723,8 @@
 
 ;; -------------------------------- Visualization Error Handling Tests --------------------------------
 
-(deftest viz-error-card-not-found-test
-  (testing "posts error to Slack when a static_viz references a nonexistent card"
+(deftest viz-error-posts-message-test
+  (testing "posts error to Slack when visualization generation fails"
     (with-slackbot-setup
       (let [event-body (update base-dm-event :event merge
                                {:text      "Show me a chart"
@@ -736,20 +736,17 @@
           {:ai-text    "Here's your chart"
            :data-parts [{:type "static_viz" :value {:entity_id 999999}}]}
           (fn [{:keys [post-calls stop-stream-calls]}]
-            ;; Let generate-card-output run for real — card 999999 doesn't exist
             (mt/with-dynamic-fn-redefs
-              [slackbot/generate-card-output (fn [card-id]
-                                               (#'slackbot/generate-card-output card-id))]
+              [slackbot/generate-card-output (fn [_card-id]
+                                               (throw (ex-info "Card not found" {})))]
               (mt/client :post 200 "ee/metabot-v3/slack/events"
                          (slack-request-options event-body) event-body)
-              (u/poll {:thunk      (fn []
-                                     (and (>= (count @stop-stream-calls) 1)
-                                          (some #(str/includes? (str (:text %)) "saved question")
-                                                @post-calls)))
-                       :done?      true?
-                       :timeout-ms 5000})
-              (is (some #(= "This saved question no longer exists or has been deleted." (:text %))
-                        @post-calls)))))))))
+              (let [error-msg "Something went wrong while generating this visualization."]
+                (u/poll {:thunk      #(and (>= (count @stop-stream-calls) 1)
+                                           (some (fn [m] (= error-msg (:text m))) @post-calls))
+                         :done?      true?
+                         :timeout-ms 5000})
+                (is (some #(= error-msg (:text %)) @post-calls))))))))))
 
 (deftest viz-error-does-not-block-other-vizs-test
   (testing "a failing viz does not prevent subsequent vizs from rendering"
@@ -761,30 +758,38 @@
                                 :ts        "1234567890.000011"
                                 :event_ts  "1234567890.000011"
                                 :thread_ts "1234567890.000000"})]
-        (mt/with-temp [:model/Card {good-card-id :id} {:display :bar}]
-          (with-slackbot-mocks
-            {:ai-text    "Here are your charts"
-             :data-parts [{:type "static_viz" :value {:entity_id 999999}}
-                          {:type "static_viz" :value {:entity_id good-card-id}}]}
-            (fn [{:keys [post-calls image-calls stop-stream-calls]}]
-              (mt/with-dynamic-fn-redefs
-                [slackbot/generate-card-output (fn [card-id]
-                                                 (if (= card-id 999999)
-                                                   (throw (ex-info "Card not found" {:card-id card-id}))
-                                                   {:type :image :content fake-png}))]
-                (mt/client :post 200 "ee/metabot-v3/slack/events"
-                           (slack-request-options event-body) event-body)
-                (u/poll {:thunk      #(and (>= (count @stop-stream-calls) 1)
-                                           (>= (count @image-calls) 1))
-                         :done?      true?
-                         :timeout-ms 5000})
-                (testing "error message posted for missing card"
-                  (is (some #(= "This saved question no longer exists or has been deleted." (:text %))
-                            @post-calls)))
-                (testing "second card still rendered"
-                  (is (= 1 (count @image-calls))))))))))))
+        (with-slackbot-mocks
+          {:ai-text    "Here are your charts"
+           :data-parts [{:type "static_viz" :value {:entity_id 999999}}
+                        {:type "static_viz" :value {:entity_id 123}}]}
+          (fn [{:keys [post-calls image-calls stop-stream-calls]}]
+            (mt/with-dynamic-fn-redefs
+              [slackbot/generate-card-output (fn [card-id]
+                                               (if (= card-id 999999)
+                                                 (throw (ex-info "Card not found" {}))
+                                                 {:type :image :content fake-png}))]
+              (mt/client :post 200 "ee/metabot-v3/slack/events"
+                         (slack-request-options event-body) event-body)
+              (u/poll {:thunk      #(and (>= (count @stop-stream-calls) 1)
+                                         (>= (count @image-calls) 1))
+                       :done?      true?
+                       :timeout-ms 5000})
+              (testing "error message posted for failing viz"
+                (is (some #(= "Something went wrong while generating this visualization." (:text %))
+                          @post-calls)))
+              (testing "second card still rendered"
+                (is (= 1 (count @image-calls)))))))))))
 
-(deftest generate-adhoc-output-failed-qp-result-test
+(deftest generate-card-output-failed-qp-result-test
+  (testing "throws when QP returns :status :failed for table card"
+    (mt/with-temp [:model/Card {card-id :id} {:display :table}]
+      (mt/with-dynamic-fn-redefs
+        [slackbot/pulse-card-query-results (constantly {:status :failed
+                                                        :error  "Permission denied"})]
+        (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Permission denied"
+                              (#'slackbot/generate-card-output card-id)))))))
+
+(deftest ^:parallel generate-adhoc-output-failed-qp-result-test
   (testing "throws when QP returns :status :failed"
     (mt/with-dynamic-fn-redefs
       [slackbot.query/execute-adhoc-query (constantly {:status :failed
@@ -1056,7 +1061,7 @@
                     (is (some #(= "You don't have permission to upload files." %)
                               @append-text-calls))))))))))))
 
-(deftest csv-file-detection-test
+(deftest ^:parallel csv-file-detection-test
   (testing "csv-file? correctly identifies CSV/TSV files"
     (is (true? (#'slackbot.uploads/csv-file? {:filetype "csv"})))
     (is (true? (#'slackbot.uploads/csv-file? {:filetype "tsv"})))

@@ -186,27 +186,36 @@
 
 (defn- send-visualizations
   "Send visualization data-parts as separate Slack messages after the stream ends.
-   Uses prefetched results when available (submitted during streaming) to reduce latency."
+   Uses prefetched results when available (submitted during streaming) to reduce latency.
+   Posts a temporary indicator message while visualizations are being generated."
   [client channel thread-ts data-parts prefetched-viz]
   (let [vizs (keep-indexed (fn [idx part]
                              (when (#{"static_viz" "adhoc_viz"} (:type part))
                                [idx part]))
                            data-parts)]
-    (doseq [[idx data-part] vizs]
-      (try
-        (let [output   (resolve-viz-output data-part (get prefetched-viz idx))
-              filename (case (:type data-part)
-                         "static_viz" (str "chart-" (:entity_id (:value data-part)))
-                         "adhoc_viz"  (str "adhoc-" (System/currentTimeMillis)))]
-          (send-viz-output client channel thread-ts output filename))
-        (catch Exception e
-          (log/errorf e "Failed to generate visualization for %s" (:type data-part))
-          (try
-            (slackbot.client/post-message client {:channel   channel
-                                                  :thread_ts thread-ts
-                                                  :text      (viz-error-message e data-part)})
-            (catch Exception post-e
-              (log/error post-e "Failed to post visualization error message to Slack"))))))))
+    (when (seq vizs)
+      (let [indicator (slackbot.client/post-message client {:channel   channel
+                                                            :thread_ts thread-ts
+                                                            :text      "_Generating visualizations..._"})]
+        (try
+          (doseq [[idx data-part] vizs]
+            (try
+              (let [output   (resolve-viz-output data-part (get prefetched-viz idx))
+                    filename (case (:type data-part)
+                               "static_viz" (str "chart-" (:entity_id (:value data-part)))
+                               "adhoc_viz"  (str "adhoc-" (System/currentTimeMillis)))]
+                (send-viz-output client channel thread-ts output filename))
+              (catch Exception e
+                (log/errorf e "Failed to generate visualization for %s" (:type data-part))
+                (try
+                  (slackbot.client/post-message client {:channel   channel
+                                                        :thread_ts thread-ts
+                                                        :text      (viz-error-message e data-part)})
+                  (catch Exception post-e
+                    (log/error post-e "Failed to post visualization error message to Slack"))))))
+          (finally
+            (when-let [ts (:ts indicator)]
+              (slackbot.client/delete-message client {:channel channel :ts ts}))))))))
 
 (defn- make-streaming-callbacks
   "Create streaming callback functions and associated control functions.
@@ -384,6 +393,7 @@
              (send-visualizations client channel thread-ts data-parts @prefetched-viz))
            (slackbot.client/post-message client (merge message-ctx {:text "I wasn't able to generate a response. Please try again."}))))
        (catch Exception e
+         (run! #(.cancel ^Future % true) (vals @prefetched-viz))
          (log/error e "[slackbot] Error in streaming response")
          (await slack-writer)
          (if-let [{:keys [stream_ts channel]} @stream-state]
