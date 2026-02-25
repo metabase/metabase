@@ -1,6 +1,7 @@
 import { useDisclosure } from "@mantine/hooks";
 import { useFormik } from "formik";
-import { useCallback, useEffect } from "react";
+import type { ChangeEvent } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { t } from "ttag";
 
 import {
@@ -17,8 +18,10 @@ import {
   Alert,
   Anchor,
   Button,
+  Flex,
   Group,
   Input,
+  Paper,
   Select,
   Stack,
   Switch,
@@ -28,11 +31,15 @@ import {
   Title,
 } from "metabase/ui";
 
+const MB = 1024 * 1024;
+const IMAGE_SIZE_LIMIT = 2 * MB;
+
 interface AppFormValues {
   name: string;
   auth_method: "jwt" | "saml";
   collection_id: number;
   theme: string;
+  logo: string | null;
   published: boolean;
 }
 
@@ -72,6 +79,7 @@ export function AppForm() {
       auth_method: "jwt",
       collection_id: 0,
       theme: "",
+      logo: null,
       published: false,
     },
     validate: (values) => {
@@ -90,6 +98,7 @@ export function AppForm() {
         auth_method: values.auth_method,
         collection_id: values.collection_id,
         theme: values.theme || null,
+        logo: values.logo || null,
         published: values.published,
       };
 
@@ -109,6 +118,7 @@ export function AppForm() {
         auth_method: existingApp.auth_method,
         collection_id: existingApp.collection_id,
         theme: existingApp.theme ?? "",
+        logo: existingApp.logo ?? null,
         published: existingApp.published,
       });
     }
@@ -230,6 +240,10 @@ function AppFormContent({
             styles={{ input: { fontFamily: "monospace" } }}
             {...formik.getFieldProps("theme")}
           />
+          <LogoUploadField
+            value={formik.values.logo}
+            onChange={(logo) => formik.setFieldValue("logo", logo)}
+          />
           <Switch
             label={t`Published`}
             disabled={!canPublish}
@@ -250,4 +264,119 @@ function AppFormContent({
       </form>
     </Stack>
   );
+}
+
+function LogoUploadField({
+  value,
+  onChange,
+}: {
+  value: string | null;
+  onChange: (logo: string | null) => void;
+}) {
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [fileName, setFileName] = useState("");
+  const [errorMessage, setErrorMessage] = useState("");
+
+  function handleFileUpload(event: ChangeEvent<HTMLInputElement>) {
+    setErrorMessage("");
+    const file = event.target.files?.[0];
+    if (!file) {
+      return;
+    }
+    if (file.size > IMAGE_SIZE_LIMIT) {
+      setErrorMessage(
+        t`The image you chose is larger than 2MB. Please choose another one.`,
+      );
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = async (readerEvent) => {
+      const dataUri = readerEvent.target?.result as string;
+      if (!(await isImageIntact(dataUri))) {
+        setErrorMessage(
+          t`The image you chose is corrupted. Please choose another one.`,
+        );
+        return;
+      }
+      setFileName(file.name);
+      onChange(dataUri);
+    };
+    reader.readAsDataURL(file);
+  }
+
+  function handleRemove() {
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
+    }
+    setFileName("");
+    setErrorMessage("");
+    onChange(null);
+  }
+
+  return (
+    <Stack gap={4}>
+      <Input.Label>{t`Logo`}</Input.Label>
+      {errorMessage && (
+        <Text size="xs" c="error">
+          {errorMessage}
+        </Text>
+      )}
+      <Paper withBorder shadow="none">
+        <Flex>
+          <Flex
+            align="center"
+            justify="center"
+            w="7.5rem"
+            style={{ borderRight: "1px solid var(--mb-color-border)" }}
+          >
+            {value && (
+              <img
+                src={value}
+                alt={t`Logo preview`}
+                style={{
+                  maxWidth: "6rem",
+                  maxHeight: "4rem",
+                  objectFit: "contain",
+                }}
+              />
+            )}
+          </Flex>
+          <Flex p="md" gap="sm" align="center" style={{ flex: 1 }}>
+            <Button
+              size="compact-md"
+              variant="default"
+              onClick={() => fileInputRef.current?.click()}
+            >
+              {t`Choose file`}
+            </Button>
+            <input
+              ref={fileInputRef}
+              hidden
+              type="file"
+              accept="image/jpeg,image/png,image/svg+xml"
+              multiple={false}
+              onChange={handleFileUpload}
+            />
+            <Text size="sm" c="text-medium" truncate style={{ flex: 1 }}>
+              {fileName || (value ? t`Logo uploaded` : t`No file chosen`)}
+            </Text>
+            {value && (
+              <Anchor size="sm" onClick={handleRemove}>
+                {t`Remove`}
+              </Anchor>
+            )}
+          </Flex>
+        </Flex>
+      </Paper>
+    </Stack>
+  );
+}
+
+async function isImageIntact(dataUri: string): Promise<boolean> {
+  return new Promise((resolve) => {
+    const img = document.createElement("img");
+    img.onload = () => resolve(true);
+    img.onerror = () => resolve(false);
+    img.src = dataUri;
+  });
 }
