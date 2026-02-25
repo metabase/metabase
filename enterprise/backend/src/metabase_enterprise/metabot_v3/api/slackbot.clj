@@ -215,6 +215,15 @@
 
 ;; -------------------- VISUALIZATION GENERATION ---------------------------
 
+(def ^:private supported-png-display-types
+  "Display types that can be rendered as PNG images for Slack.
+   These correspond to the render methods in channel.render.body and
+   frontend static-viz components. Map types (pin_map, state, country)
+   are explicitly unsupported per channel.render.card/detect-pulse-chart-type."
+  #{:scalar :smartscalar :gauge :progress
+    :bar :line :area :combo :row :pie
+    :scatter :boxplot :waterfall :funnel :sankey})
+
 (defn- pulse-card-query-results
   {:arglists '([card])}
   [{query :dataset_query, card-id :id}]
@@ -263,13 +272,13 @@
   "Generate output for a saved card based on its display type.
    Returns a map with :type (:table or :image) and :content.
 
-   - Chart display types (bar, line, pie, etc.) render as PNG
-   - Table display renders as native Slack table blocks"
+   - `table` and display types not supported by static viz render as native Slack table blocks
+   - static viz chart types render as PNG"
   [card-id]
   (let [card (t2/select-one :model/Card :id card-id)]
     (when-not card
       (throw (ex-info "Card not found" {:card-id card-id :agent-error? true})))
-    (if-not (= (keyword (:display card)) :table)
+    (if (-> card :display keyword supported-png-display-types)
       {:type    :image
        :content (generate-card-png card-id)}
       (let [results (pulse-card-query-results card)]

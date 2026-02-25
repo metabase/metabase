@@ -124,7 +124,7 @@
 
 (def ^:private chart-display-types
   "Display types that should render as PNG images rather than Slack tables."
-  #{:bar :line :pie :area :row :scatter :funnel :waterfall :combo :progress :gauge :map})
+  #{:bar :line :pie :area :row :scatter :funnel :waterfall :combo :progress :gauge})
 
 (defn generate-adhoc-output
   "Generate output for an ad-hoc query based on display type.

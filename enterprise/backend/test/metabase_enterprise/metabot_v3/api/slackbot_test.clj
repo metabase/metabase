@@ -780,6 +780,31 @@
                      (set (filter #(str/starts-with? % "chart-") (map :filename @image-calls)))))
               (is (= 1 (count (filter #(str/starts-with? % "adhoc-") (map :filename @image-calls))))))))))))
 
+(deftest generate-card-output-display-type-test
+  (testing "generate-card-output returns correct type based on card display"
+    (let [fake-png-bytes (byte-array [0x89 0x50 0x4E 0x47])
+          mock-results {:data {:cols [{:name "x" :base_type :type/Integer}]
+                               :rows [[1] [2]]}}]
+      (mt/with-dynamic-fn-redefs
+        [slackbot/generate-card-png (constantly fake-png-bytes)
+         slackbot/pulse-card-query-results (constantly mock-results)]
+
+        (testing "supported display types return :image"
+          (doseq [display [:bar :line :pie :area :row :scatter :funnel
+                           :waterfall :combo :progress :gauge :scalar
+                           :smartscalar :boxplot :sankey]]
+            (testing (str "display type: " display)
+              (mt/with-temp [:model/Card {card-id :id} {:display display}]
+                (let [result (#'slackbot/generate-card-output card-id)]
+                  (is (= :image (:type result))))))))
+
+        (testing "unsupported display types return :table"
+          (doseq [display [:table :pin_map :state :country :map :pivot]]
+            (testing (str "display type: " display)
+              (mt/with-temp [:model/Card {card-id :id} {:display display}]
+                (let [result (#'slackbot/generate-card-output card-id)]
+                  (is (= :table (:type result))))))))))))
+
 ;; -------------------------------- CSV Upload Tests --------------------------------
 
 (defn- with-upload-mocks!
