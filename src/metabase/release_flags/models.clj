@@ -54,14 +54,11 @@
 
 (mu/defn has-release-flag? :- :boolean
   "Is this release flag enabled?
-  If the release flag does not exist, we throw an exception."
+  If the release flag does not exist, we always return false."
   [flag :- schema/FlagName]
   (let [flag (if (keyword? flag)
                (if (namespace flag)
                  (str (namespace flag) "/" (name flag))
                  (name flag))
                flag)]
-    (if-some [flag (t2/select-one :model/ReleaseFlag :flag flag)]
-      (:is_enabled flag)
-      (throw (ex-info (str "Release flag `" flag "` not found.")
-                      {:flag flag})))))
+    (boolean (t2/select-one-fn :is_enabled :model/ReleaseFlag :flag flag))))
