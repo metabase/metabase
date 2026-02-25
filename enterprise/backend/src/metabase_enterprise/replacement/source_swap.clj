@@ -10,6 +10,11 @@
    [metabase.lib.metadata :as lib.metadata]
    [toucan2.core :as t2]))
 
+(defn source-ref->source-map
+  "Convert a [type id] source ref to a {:type type :id id} map for lib-be APIs."
+  [[source-type source-id]]
+  {:type source-type :id source-id})
+
 (defn- ultimate-table-id
   [mp [source-type source-id]]
   (case source-type
@@ -19,31 +24,33 @@
     :card
     (:table-id (lib.metadata/card mp source-id))))
 
-(defn- update-query [query old-source new-source id-updates]
+(defn- update-query [query old-source new-source id-updates field-id-mapping]
   (cond-> query
     (lib/any-native-stage? query)
     (swap.native/update-native-stages old-source new-source id-updates)
 
     (not (lib/native-only-query? query))
-    (swap.mbql/swap-mbql-stages old-source new-source)))
+    (swap.mbql/swap-mbql-stages (source-ref->source-map old-source)
+                                (source-ref->source-map new-source)
+                                field-id-mapping)))
 
 (defn- transform-swap!
-  [[entity-type entity-id] old-source new-source]
+  [[entity-type entity-id] old-source new-source field-id-mapping]
   (assert (= :transform entity-type))
   (let [transform (t2/select-one :model/Transform :id entity-id)]
     (when-let [query (get-in transform [:source :query])]
-      (let [new-query (update-query query old-source new-source {})]
+      (let [new-query (update-query query old-source new-source {} field-id-mapping)]
         (when (not= query new-query)
           (t2/update! :model/Transform entity-id
                       {:source (assoc (:source transform) :query new-query)}))))))
 
 (defn- card-swap!
-  [[entity-type entity-id] old-source new-source]
+  [[entity-type entity-id] old-source new-source field-id-mapping]
   (assert (= :card entity-type))
   (let [card (t2/select-one :model/Card :id entity-id)]
     (assert (some? card))
     (let [query (:dataset_query card)
-          query' (update-query query old-source new-source {})
+          query' (update-query query old-source new-source {} field-id-mapping)
           changes (cond-> {}
                     (not= query query')
                     (assoc :dataset_query query')
@@ -56,22 +63,22 @@
         ;; TODO: not sure we really want this code to have to know about dependency tracking
         ;; TODO: publishing this event twice per update seems bad
         #_(events/publish-event! :event/card-update
-                               {:object (merge card changes)
-                                :user-id (:id @api/*current-user*)
-                                :previous-object card})
+                                 {:object (merge card changes)
+                                  :user-id (:id @api/*current-user*)
+                                  :previous-object card})
         ;; todo: we still want to publish the card changed event here, but we should suppress the depdency analysis
         ;; and do it ourselves. This probably should be moved higher up so it's a bit more generic than this
         ;; paritcular spot
         (models.dependency/swap-dependency! :card entity-id old-source new-source))
-      (swap.viz/dashboard-card-update-field-refs! entity-id query' old-source new-source))))
+      (swap.viz/dashboard-card-update-field-refs! entity-id field-id-mapping))))
 
 (defn- segment-swap!
-  [[entity-type entity-id] old-source new-source]
+  [[entity-type entity-id] old-source new-source field-id-mapping]
   (assert (= :segment entity-type))
   (let [segment (t2/select-one :model/Segment entity-id)]
     (assert (some? segment))
     (let [query (:definition segment)
-          new-query (update-query query old-source new-source {})
+          new-query (update-query query old-source new-source {} field-id-mapping)
           table  (:table_id segment)
           table' (ultimate-table-id query new-source)
           changes (cond-> {}
@@ -87,12 +94,12 @@
                                {:object (merge segment changes) :user-id (:id @api/*current-user*)})))))
 
 (defn- measure-swap!
-  [[entity-type entity-id] old-source new-source]
+  [[entity-type entity-id] old-source new-source field-id-mapping]
   (assert (= :measure entity-type))
   (let [measure (t2/select-one :model/Measure entity-id)]
     (assert (some? measure))
     (let [query (:definition measure)
-          new-query (update-query query old-source new-source {})
+          new-query (update-query query old-source new-source {} field-id-mapping)
           table  (:table_id measure)
           table' (ultimate-table-id query new-source)
           changes (cond-> {}
@@ -108,10 +115,12 @@
                                {:object (merge measure changes) :user-id (:id @api/*current-user*)})))))
 
 (defn do-swap!
-  [[entity-type _entity-id :as entity] old-source new-source]
-  (case entity-type
-    :card      (card-swap!      entity old-source new-source)
-    :transform (transform-swap! entity old-source new-source)
-    :segment   (segment-swap!   entity old-source new-source)
-    :measure   (measure-swap!   entity old-source new-source)
-    :dashboard nil))
+  ([entity old-source new-source]
+   (do-swap! entity old-source new-source nil))
+  ([[entity-type _entity-id :as entity] old-source new-source field-id-mapping]
+   (case entity-type
+     :card      (card-swap!      entity old-source new-source field-id-mapping)
+     :transform (transform-swap! entity old-source new-source field-id-mapping)
+     :segment   (segment-swap!   entity old-source new-source field-id-mapping)
+     :measure   (measure-swap!   entity old-source new-source field-id-mapping)
+     :dashboard nil)))
