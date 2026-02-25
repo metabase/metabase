@@ -29,6 +29,11 @@
                             (lib.field/is-field-clause? clause)
                             f))))
 
+;;; ----------------------------------------------------------------------------------------------------
+;;; Upgrading field refs 
+;;; These functions are used to upgrade field refs to use name-based field refs when possible.
+;;; ----------------------------------------------------------------------------------------------------
+
 (mu/defn- upgradable-field-ref? :- :boolean
   [field-ref :- :mbql.clause/field]
   ;; name-based field ref is already upgraded
@@ -125,13 +130,16 @@
    target :- ::lib.schema.parameter/target]
   (or (when (lib.parameters/parameter-target-field-ref target)
         (let [stage-number (lib.parameters/parameter-target-stage-number target)
-              stage-count  (lib.query/stage-count query)
-              abs-stage    (if (neg? stage-number)
-                             (+ stage-count stage-number)
-                             stage-number)]
-          (when (and (>= abs-stage 0) (< abs-stage stage-count))
-            (let [columns (lib.metadata.calculation/visible-columns query abs-stage)]
+              stage-count  (lib.query/stage-count query)]
+          (when (and (>= stage-number -1) (< stage-number stage-count) (pos-int? stage-count))
+            (let [columns (lib.metadata.calculation/visible-columns query stage-number)]
               (lib.parameters/update-parameter-target-field-ref
                target
-               #(upgrade-field-ref query abs-stage % columns))))))
+               #(upgrade-field-ref query stage-number % columns))))))
       target))
+
+;;; ----------------------------------------------------------------------------------------------------
+;;; Updating field refs 
+;;; These functions are used to swap field ids in field refs to match the new source.
+;;; ----------------------------------------------------------------------------------------------------
+
