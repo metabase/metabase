@@ -184,7 +184,7 @@
         "@bahmutov/cypress-esbuild-preprocessor": "^2.2.7",
         "@csstools/postcss-global-data": "^3.1.0",
         "@cypress/grep": "^4.0.1",
-        "@cypress/react": "^8",
+        "@cypress/react": "^9",
         "@cypress/skip-test": "^2.6.1",
         "@emotion/babel-plugin": "^11.11.0",
         "@esbuild-plugins/node-modules-polyfill": "^0.2.2",
@@ -827,7 +827,7 @@
 
     "@cypress/grep": ["@cypress/grep@4.0.1", "", { "dependencies": { "debug": "^4.3.4", "find-test-names": "^1.19.0", "globby": "^11.0.4" } }, "sha512-i3mWy4mG6nxF7m93W0nzsMZkl0PflGa4+SygA9P92tELayYYAaRKlr07I4fo5PnwoPk1H9IEbXoMFJkhfTMxtg=="],
 
-    "@cypress/react": ["@cypress/react@8.0.2", "", {}, "sha512-7TgXXEeJ/GnGiIQhO8mAfkyychyMv5hNyISV3ti/vceriTI0uGtbjwRqLQhuVgOSHLtboUZUIoRlR6BkgIdVVg=="],
+    "@cypress/react": ["@cypress/react@9.0.1", "", { "peerDependencies": { "@types/react": "^18 || ^19", "@types/react-dom": "^18 || ^19", "cypress": "*", "react": "^18 || ^19", "react-dom": "^18 || ^19" }, "optionalPeers": ["@types/react"] }, "sha512-qu6ziP2smdlfy3Yvrhm6PadxEtkc/cl6YhZu3h6KCtz+0s54joqxp6uGYOglpwyMBp3qjtSil1JVlFX0hUi5LQ=="],
 
     "@cypress/request": ["@cypress/request@3.0.10", "", { "dependencies": { "aws-sign2": "~0.7.0", "aws4": "^1.8.0", "caseless": "~0.12.0", "combined-stream": "~1.0.6", "extend": "~3.0.2", "forever-agent": "~0.6.1", "form-data": "~4.0.4", "http-signature": "~1.4.0", "is-typedarray": "~1.0.0", "isstream": "~0.1.2", "json-stringify-safe": "~5.0.1", "mime-types": "~2.1.19", "performance-now": "^2.1.0", "qs": "~6.14.1", "safe-buffer": "^5.1.2", "tough-cookie": "^5.0.0", "tunnel-agent": "^0.6.0", "uuid": "^8.3.2" } }, "sha512-hauBrOdvu08vOsagkZ/Aju5XuiZx6ldsLfByg1htFeldhex+PeMrYauANzFsMJeAA0+dyPLbDoX2OYuvVoLDkQ=="],
 
