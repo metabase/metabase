@@ -136,9 +136,12 @@
           ;; for inheried card columns, drop the :id to force a name-based field ref
           ;; preserve the expression name if this field ref is an identity expression
           (let [column (cond-> column (:lib/card-id column) (dissoc :id))
-                expression-name (lib.util/expression-name field-ref)]
-            (cond-> (lib.ref/ref column)
-              expression-name (lib.expression/with-expression-name expression-name)))))
+                expression-name (lib.util/expression-name field-ref)
+                new-field-ref (cond-> (lib.ref/ref column)
+                                expression-name (lib.expression/with-expression-name expression-name))]
+            ;; only replace the ref if it becomes a name-based field ref
+            (when-not (lib.ref/field-ref-id new-field-ref)
+              new-field-ref))))
       field-ref))
 
 (mu/defn- upgrade-field-refs-in-clauses :- [:sequential :any]
