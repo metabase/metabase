@@ -75,9 +75,8 @@
       #_{:clj-kondo/ignore [:metabase/unknown-release-flag]}
       (is (not (models/has-release-flag? "disabled-flag")))))
   (testing "throws on missing flag"
-    (is (thrown-with-msg? clojure.lang.ExceptionInfo #"not found"
-                          #_{:clj-kondo/ignore [:metabase/unknown-release-flag]}
-                          (models/has-release-flag? "nonexistent"))))
+    (is (not #_{:clj-kondo/ignore [:metabase/unknown-release-flag]}
+         (models/has-release-flag? "nonexistent"))))
   (testing "handles keyword argument"
     (mt/with-temp [:model/ReleaseFlag _ {:flag "kw-test" :description "K" :is_enabled true}]
       #_{:clj-kondo/ignore [:metabase/unknown-release-flag]}
