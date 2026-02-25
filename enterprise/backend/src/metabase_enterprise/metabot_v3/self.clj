@@ -15,6 +15,8 @@
    [metabase-enterprise.metabot-v3.self.core :as core]
    [metabase-enterprise.metabot-v3.self.openai :as openai]
    [metabase-enterprise.metabot-v3.self.openrouter :as openrouter]
+   [metabase.analytics.prometheus :as prometheus]
+   [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.o11y :refer [with-span]]))
 
@@ -108,28 +110,63 @@
          backoff-ms)
        jitter)))
 
+(defn- report-aisdk-errors-xf
+  "Transducer that increments the llm-errors counter for :error parts in the aisdk stream."
+  [model source]
+  (map (fn [part]
+         (when (= (:type part) :error)
+           (prometheus/inc! :metabase-metabot/llm-errors
+                            {:model model
+                             :source source
+                             :error-type "llm-sse-error"}))
+         part)))
+
+(defn- report-token-usage-xf
+  "Transducer that reports prometheus metrics for :usage parts in the aisdk stream."
+  [model source]
+  (map (fn [part]
+         (when (= (:type part) :usage)
+           (let [usage      (:usage part)
+                 part-model (or (:model part) model)
+                 labels     {:model part-model :source source}
+                 prompt     (:promptTokens usage 0)
+                 completion (:completionTokens usage 0)]
+             (prometheus/inc! :metabase-metabot/llm-input-tokens labels prompt)
+             (prometheus/inc! :metabase-metabot/llm-output-tokens labels completion)
+             (prometheus/observe! :metabase-metabot/llm-tokens-per-call labels (+ prompt completion))))
+         part)))
+
 (defn- with-retries
   "Execute `(thunk)` with retry logic for transient LLM errors.
-  Retries up to `max-llm-retries` attempts with exponential backoff."
-  [thunk]
-  (loop [attempt 1]
-    (let [result (try
-                   {:ok (thunk)}
-                   (catch Exception e
-                     (if (and (< attempt max-llm-retries)
-                              (retryable-error? e))
-                       (let [delay (retry-delay-ms attempt e)]
-                         (log/warn e "LLM call failed with retryable error, retrying"
-                                   {:attempt attempt
-                                    :max     max-llm-retries
-                                    :delay   delay
-                                    :status  (:status (ex-data e))})
-                         {:retry delay})
-                       (throw e))))]
-      (if-let [delay (:retry result)]
-        (do (Thread/sleep ^long delay)
-            (recur (inc attempt)))
-        (:ok result)))))
+  Retries up to `max-llm-retries` attempts with exponential backoff.
+  Records prometheus metrics with `model` and `source` as labels."
+  [model source thunk]
+  (let [labels {:model model :source source}]
+    (loop [attempt 1]
+      (prometheus/inc! :metabase-metabot/llm-requests labels)
+      (let [timer  (u/start-timer)
+            result (try
+                     {:ok (thunk)}
+                     (catch Exception e
+                       (if (and (< attempt max-llm-retries)
+                                (retryable-error? e))
+                         (let [delay (retry-delay-ms attempt e)]
+                           (log/warn e "LLM call failed with retryable error, retrying"
+                                     {:attempt attempt
+                                      :max     max-llm-retries
+                                      :delay   delay
+                                      :status  (:status (ex-data e))})
+                           (prometheus/inc! :metabase-metabot/llm-retries labels)
+                           {:retry delay})
+                         (do (prometheus/inc! :metabase-metabot/llm-errors
+                                              (assoc labels :error-type (.getSimpleName (class e))))
+                             (throw e))))
+                     (finally
+                       (prometheus/observe! :metabase-metabot/llm-duration-ms labels (u/since-ms timer))))]
+        (if-let [delay (:retry result)]
+          (do (Thread/sleep ^long delay)
+              (recur (inc attempt)))
+          (:ok result))))))
 
 (defn call-llm
   "Call an LLM and stream processed parts.
@@ -146,14 +183,16 @@
   (HTTP call + streaming response) as an OTel span. Retries transient errors
   (429 rate limit, 529 overloaded, connection errors) up to 3 attempts with
   exponential backoff, matching the Python ai-service retry behavior."
-  [provider-and-model system-msg parts tools]
+  [provider-and-model source system-msg parts tools]
   (let [{:keys [provider stream-fn model]} (parse-provider-model provider-and-model)]
     (log/info "Calling LLM" {:provider provider :model model :parts (count parts) :tools (count tools)})
     (let [opts (cond-> {:model model :input parts :tools (vec tools)}
                  system-msg (assoc :system system-msg))
           make-source (fn []
                         (eduction (comp (core/tool-executor-xf tools)
-                                        (core/lite-aisdk-xf))
+                                        (core/lite-aisdk-xf)
+                                        (report-aisdk-errors-xf model source)
+                                        (report-token-usage-xf model source))
                                   (stream-fn opts)))]
       (reify clojure.lang.IReduceInit
         (reduce [_ rf init]
@@ -162,7 +201,7 @@
                             :model      model
                             :part-count (count parts)
                             :tool-count (count tools)}
-            (with-retries
+            (with-retries model source
               #(reduce rf init (make-source)))))))))
 
 (defn call-llm-structured
@@ -174,6 +213,7 @@
 
   Args:
     model       - Model identifier (e.g. \"openrouter/anthropic/claude-haiku-4-5\")
+    source      - Label for prometheus metrics (e.g. \"agent\", \"example-question-generation\")
     messages    - Sequence of Chat Completions message maps
                   (e.g. [{:role \"user\" :content \"...\"}])
     json-schema - JSON Schema map for the expected response shape
@@ -181,7 +221,7 @@
     max-tokens  - Maximum tokens in the response
 
   Returns the parsed JSON map from the forced tool call."
-  [provider-and-model messages json-schema temperature max-tokens]
+  [provider-and-model source messages json-schema temperature max-tokens]
   (let [{:keys [provider stream-fn model]} (parse-provider-model provider-and-model)
         _ (log/info "Calling LLM (structured)" {:provider provider :model model :msg-count (count messages)})
         raw-tools   [{:type     "function"
@@ -198,9 +238,13 @@
     (with-span :info {:name      :metabot-v3.agent/call-llm-structured
                       :model     model
                       :msg-count (count messages)}
-      (with-retries
+      (with-retries model source
         (fn []
-          (let [parts (into [] (core/aisdk-xf) (stream-fn opts))
+          (let [parts (into []
+                            (comp (core/aisdk-xf)
+                                  (report-aisdk-errors-xf model source)
+                                  (report-token-usage-xf model source))
+                            (stream-fn opts))
                 result (some (fn [{:keys [type arguments]}]
                                (when (= type :tool-input)
                                  arguments))
