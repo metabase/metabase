@@ -238,16 +238,16 @@
                    ["parent.child.yaml"]}
                  (file-set (io/file dump-dir "databases" "mydb" "tables" "table" "fields")))))))))
 
-(deftest python-library-storage-test
+(deftest transform-library-storage-test
   (ts/with-random-dump-dir [dump-dir "serdesv2-"]
     (mt/with-empty-h2-app-db!
-      (t2/delete! :model/PythonLibrary)
-      (ts/with-temp-dpc [:model/PythonLibrary lib {:path "common" :source "def test(): pass"}]
+      (t2/delete! :model/TransformLibrary)
+      (ts/with-temp-dpc [:model/TransformLibrary lib {:language "python" :path "common" :source "def test(): pass"}]
         (let [export (into [] (extract/extract {:no-settings true :no-data-model true}))]
           (storage/store! export dump-dir)
-          (testing "python library stored at top-level python-libraries/"
+          (testing "transform library stored at top-level transform-libraries/"
             (is (= #{[(str (:entity_id lib) ".yaml")]}
-                   (file-set (io/file dump-dir "python-libraries"))))))))))
+                   (file-set (io/file dump-dir "transform-libraries"))))))))))
 
 (deftest name-too-long-test
   (ts/with-random-dump-dir [dump-dir "serdesv2-"]

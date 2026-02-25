@@ -99,7 +99,7 @@
   [source]
   (let [t (keyword (:type source))]
     (cond
-      (contains? runner-types t) t
+      (contains? (transforms.i/runner-languages) t) t
       (= :query t) (if (lib/native-only-query? (:query source))
                      :native
                      :mbql)
@@ -133,7 +133,7 @@
         (boolean (mi/can-query? (t2/select-one :model/Database db-id)))
         false)
 
-      (contains? runner-types t)
+      (contains? (transforms.i/runner-languages) t)
       (let [source-tables (:source-tables source)]
         (if (empty? source-tables)
           true
@@ -450,7 +450,7 @@
   runner infrastructure and require :transforms/python."
   [transform]
   (let [t (transform-type transform)]
-    (if (contains? runner-types t)
+    (if (contains? (transforms.i/runner-languages) t)
       [:transforms/python]
       [:transforms/table])))
 

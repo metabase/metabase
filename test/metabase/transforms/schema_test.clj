@@ -8,7 +8,7 @@
 (set! *warn-on-reflection* true)
 
 (def ^:private runner-languages
-  [:python :javascript :clojure :r :julia])
+  [:python :javascript :clojure])
 
 (def ^:private valid-runner-source
   {:source-database 1

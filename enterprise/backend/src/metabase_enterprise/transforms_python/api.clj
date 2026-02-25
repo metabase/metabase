@@ -1,10 +1,9 @@
 (ns metabase-enterprise.transforms-python.api
   (:require
    [clojure.string :as str]
-   [metabase-enterprise.transforms-javascript.models.javascript-library :as javascript-library]
-   [metabase-enterprise.transforms-python.models.python-library :as python-library]
    [metabase-enterprise.transforms-python.python-runner :as python-runner]
    [metabase-enterprise.transforms-python.settings :as transforms-python.settings]
+   [metabase-enterprise.transforms-runner.models.transform-library :as transform-library]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
@@ -14,19 +13,12 @@
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
-(defn- javascript?
-  [type]
-  (= type "javascript"))
-
 (defn get-library-by-path
-  "Get library details by path. Type is \"python\" (default) or \"javascript\"."
+  "Get library details by path. Type is \"python\" (default), \"javascript\", or \"clojure\"."
   [path type]
-  (let [get-fn (if (javascript? type)
-                 javascript-library/get-javascript-library-by-path
-                 python-library/get-python-library-by-path)]
-    (-> (get-fn path)
-        api/read-check
-        (select-keys [:source :path :created_at :updated_at]))))
+  (-> (transform-library/get-library-by-path (or type "python") path)
+      api/read-check
+      (select-keys [:source :path :created_at :updated_at])))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
@@ -51,11 +43,8 @@
             [:type {:optional true} [:maybe :string]]]]
   ;; Check permission directly since this is an upsert endpoint - the library may not exist yet.
   (api/check-403 (perms/has-any-transforms-permission? api/*current-user-id*))
-  (let [{:keys [source type]} body
-        update-fn (if (javascript? type)
-                    javascript-library/update-javascript-library-source!
-                    python-library/update-python-library-source!)]
-    (update-fn path source)))
+  (let [{:keys [source type]} body]
+    (transform-library/update-library-source! (or type "python") path source)))
 
 (api.macros/defendpoint :post "/test-run"
   :- [:map
@@ -92,7 +81,7 @@
                  :per-input-limit per_input_row_limit
                  :row-limit       output_row_limit
                  :timeout-secs    (transforms-python.settings/python-runner-test-run-timeout-seconds)
-                 :runtime         (if (javascript? type) "javascript" "python")})
+                 :runtime (or type "python")})
         logs   (str/join "\n" (map :message (:logs result)))]
     (if (= :succeeded (:status result))
       {:logs   logs

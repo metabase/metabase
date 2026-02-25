@@ -60,7 +60,7 @@
                          "direction"     "import"
                          "duration_ms"   pos?
                          "source"        "cli"
-                         "models"        "Card,Collection,PythonLibrary,Setting,TransformJob,TransformTag"
+                         "models" "Card,Collection,Setting,TransformJob,TransformLibrary,TransformTag"
                          "count"         12
                          "success"       true
                          "error_message" nil}

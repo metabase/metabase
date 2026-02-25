@@ -1360,9 +1360,9 @@
     (let [conversation-id (str (random-uuid))
           rasta-ai-token (ai-session-token)
           crowberto-ai-token (ai-session-token :crowberto (str (random-uuid)))
-          saved-python-library (t2/select-one :model/PythonLibrary :path "common.py")]
+          saved-python-library (t2/select-one :model/TransformLibrary :language "python" :path "common.py")]
       (when (seq saved-python-library)
-        (t2/delete! :model/PythonLibrary))
+        (t2/delete! :model/TransformLibrary :language "python"))
       (try
         (testing "With no Python library present"
           (is (= "Not found."
@@ -1370,8 +1370,9 @@
                                        {:request-options {:headers {"x-metabase-session" crowberto-ai-token}}}
                                        {:arguments {:path "common.py"}
                                         :conversation_id conversation-id}))))
-        (mt/with-temp [:model/PythonLibrary lib1 {:path "common.py"
-                                                  :source "def hello():\n    return 'world'"}]
+        (mt/with-temp [:model/TransformLibrary lib1 {:language "python"
+                                                     :path "common.py"
+                                                     :source "def hello():\n    return 'world'"}]
           (testing "With insufficient permissions"
             (is (= "You don't have permissions to do that."
                    (mt/user-http-request :rasta :post 403 "ee/metabot-tools/get-transform-python-library-details"
@@ -1395,7 +1396,7 @@
                                            :conversation_id conversation-id})))))
         (finally
           (when (seq saved-python-library)
-            (t2/insert! :model/PythonLibrary saved-python-library)))))))
+            (t2/insert! :model/TransformLibrary saved-python-library)))))))
 
 (deftest get-snippets-test
   (mt/with-premium-features #{:metabot-v3}
