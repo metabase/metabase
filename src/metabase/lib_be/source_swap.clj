@@ -331,7 +331,7 @@
    stage-number   :- :int
    source         :- ::swap-source.source
    target         :- ::swap-source.source
-   field-id-mapping :- ::swap-source.field-id-mapping]
+   field-id-mapping :- [:maybe ::swap-source.field-id-mapping]]
   (let [stage (-> (lib.util/query-stage query stage-number)
                   (swap-source-table-or-card source target))]
     (if (some? field-id-mapping)
