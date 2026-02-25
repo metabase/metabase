@@ -296,7 +296,7 @@
     "cypress-iframe": "^1.0.1",
     "cypress-multi-reporters": "^1.6.4",
     "cypress-on-fix": "^1.1.0",
-    "cypress-real-events": "^1.14.0",
+    "cypress-real-events": "^1.15.0",
     "cypress-split": "^1.24.20",
     "cypress-terminal-report": "^6.1.2",
     "dnd-core": "^16.0.1",

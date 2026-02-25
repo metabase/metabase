@@ -291,7 +291,7 @@
         "cypress-iframe": "^1.0.1",
         "cypress-multi-reporters": "^1.6.4",
         "cypress-on-fix": "^1.1.0",
-        "cypress-real-events": "^1.14.0",
+        "cypress-real-events": "^1.15.0",
         "cypress-split": "^1.24.20",
         "cypress-terminal-report": "^6.1.2",
         "dnd-core": "^16.0.1",
@@ -2579,7 +2579,7 @@
 
     "cypress-on-fix": ["cypress-on-fix@1.1.0", "", { "dependencies": { "debug": "^4.3.7" } }, "sha512-qGdbC0vZLmR3lYPpWWZvMqgDTeA2v04zu3DBdBmJHbG+BjwlFNYGnL7Y+X4LBrB+AyCCCeCuXhV80UXA90UhWg=="],
 
-    "cypress-real-events": ["cypress-real-events@1.14.0", "", {}, "sha512-XmI8y3OZLh6cjRroPalzzS++iv+pGCaD9G9kfIbtspgv7GVsDt30dkZvSXfgZb4rAN+3pOkMVB7e0j4oXydW7Q=="],
+    "cypress-real-events": ["cypress-real-events@1.15.0", "", { "peerDependencies": { "cypress": "^4.x || ^5.x || ^6.x || ^7.x || ^8.x || ^9.x || ^10.x || ^11.x || ^12.x || ^13.x || ^14.x || ^15.x" } }, "sha512-in98xxTnnM9Z7lZBvvVozm99PBT2eEOjXRG5LKWyYvQnj9mGWXMiPNpfw7e7WiraBFh7XlXIxnE9Cu5o+52kQQ=="],
 
     "cypress-split": ["cypress-split@1.24.20", "", { "dependencies": { "@actions/core": "^1.10.0", "arg": "^5.0.2", "console.table": "^0.10.0", "debug": "^4.3.4", "fast-shuffle": "^6.1.0", "find-cypress-specs": "1.54.5", "globby": "^11.1.0", "humanize-duration": "^3.28.0" }, "bin": { "cypress-split-merge": "bin/merge.js", "cypress-split-preview": "bin/preview.js" } }, "sha512-jBl9nxzks1sY9vbDvg0FQWUk1S1GFrOXKzFg1tlVeiSbaeS4+5rauAKkEeCJTI8Y9Kxwb0jEANb6u60V0k2Xeg=="],
 
