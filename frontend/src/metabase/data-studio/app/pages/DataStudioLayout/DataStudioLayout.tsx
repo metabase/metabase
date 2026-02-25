@@ -135,13 +135,22 @@ function DataStudioNav({ isNavbarOpened, onNavbarToggle }: DataStudioNavProps) {
           />
 
           {canAccessDataModel && (
-            <DataStudioTab
-              label={t`Data structure`}
-              icon="open_folder"
-              to={Urls.dataStudioData()}
-              isSelected={currentTab === "data"}
-              showLabel={isNavbarOpened}
-            />
+            <>
+              <DataStudioTab
+                label={t`Data structure`}
+                icon="open_folder"
+                to={Urls.dataStudioData()}
+                isSelected={currentTab === "data"}
+                showLabel={isNavbarOpened}
+              />
+              <DataStudioTab
+                label={t`Models`}
+                icon="model"
+                to={Urls.dataStudioModels()}
+                isSelected={currentTab === "models"}
+                showLabel={isNavbarOpened}
+              />
+            </>
           )}
           <DataStudioTab
             label={t`Glossary`}

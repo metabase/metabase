@@ -1,0 +1,12 @@
+.column {
+  overflow: auto;
+  border-right: 1px solid var(--mb-color-border);
+}
+
+.header {
+  z-index: 10;
+}
+
+.treeContainer {
+  overflow: hidden;
+}

@@ -2,6 +2,7 @@ import * as Urls from "metabase/lib/urls";
 
 type TabName =
   | "data"
+  | "models"
   | "library"
   | "transforms"
   | "jobs"
@@ -32,6 +33,8 @@ export const getCurrentTab = (pathname: string): TabName => {
       return "transforms";
     case pathname.startsWith(Urls.dataStudioWorkspaceList()):
       return "workspace";
+    case pathname.startsWith(Urls.dataStudioModels()):
+      return "models";
     default:
       return "data";
   }

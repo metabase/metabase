@@ -17,10 +17,12 @@ import { DataSectionLayout } from "./app/pages/DataSectionLayout";
 import { DataStudioLayout } from "./app/pages/DataStudioLayout";
 import { DependenciesSectionLayout } from "./app/pages/DependenciesSectionLayout";
 import { GitSyncSectionLayout } from "./app/pages/GitSyncSectionLayout";
+import { ModelsSectionLayout } from "./app/pages/ModelsSectionLayout";
 import { TransformsSectionLayout } from "./app/pages/TransformsSectionLayout";
 import { WorkspacesSectionLayout } from "./app/pages/WorkspacesSectionLayout";
 import { getDataStudioMetadataRoutes } from "./data-model/routes";
 import { getDataStudioGlossaryRoutes } from "./glossary/routes";
+import { ModelsPage } from "./models/pages/ModelsPage";
 import {
   DependenciesUpsellPage,
   DependencyDiagnosticsUpsellPage,
@@ -44,6 +46,11 @@ export function getDataStudioRoutes(
         <Route path="data" component={CanAccessDataModel}>
           <Route component={DataSectionLayout}>
             {getDataStudioMetadataRoutes()}
+          </Route>
+        </Route>
+        <Route path="models" component={CanAccessDataModel}>
+          <Route component={ModelsSectionLayout}>
+            <IndexRoute component={ModelsPage} />
           </Route>
         </Route>
         <Route path="transforms" component={TransformsSectionLayout}>
