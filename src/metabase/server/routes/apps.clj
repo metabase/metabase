@@ -33,128 +33,27 @@
   <meta charset=\"utf-8\" />
   <meta name=\"viewport\" content=\"width=device-width, initial-scale=1\" />
   <title>" app-name " - Metabase App</title>
-  <style>
-    * { margin: 0; padding: 0; box-sizing: border-box; }
-    html, body { height: 100%; width: 100%; }
-    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; }
-
-    .app-container { height: 100vh; display: flex; flex-direction: column; }
-
-    header {
-      padding: 16px 24px;
-      background: #509EE3;
-      color: white;
-      flex-shrink: 0;
-    }
-    header h1 { font-size: 20px; font-weight: 600; }
-
-    .main-content {
-      flex: 1;
-      display: flex;
-      overflow: hidden;
-    }
-
-    .sidebar {
-      width: 280px;
-      background: #f8f9fa;
-      border-right: 1px solid #e0e0e0;
-      overflow-y: auto;
-      flex-shrink: 0;
-    }
-
-    .sidebar-header {
-      padding: 16px;
-      font-weight: 600;
-      color: #666;
-      font-size: 12px;
-      text-transform: uppercase;
-      letter-spacing: 0.5px;
-      border-bottom: 1px solid #e0e0e0;
-    }
-
-    .dashboard-list {
-      list-style: none;
-    }
-
-    .dashboard-link {
-      display: block;
-      padding: 12px 16px;
-      text-decoration: none;
-      color: inherit;
-      border-bottom: 1px solid #eee;
-      transition: background 0.15s;
-    }
-
-    .dashboard-link:hover {
-      background: #e8f4fd;
-    }
-
-    .dashboard-link.active {
-      background: #509EE3;
-      color: white;
-    }
-
-    .dashboard-link-name {
-      font-weight: 500;
-      font-size: 14px;
-    }
-
-    .dashboard-link-desc {
-      font-size: 12px;
-      color: #888;
-      margin-top: 4px;
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-    }
-
-    .dashboard-link.active .dashboard-link-desc {
-      color: rgba(255,255,255,0.8);
-    }
-
-    .dashboard-container {
-      flex: 1;
-      overflow: auto;
-      background: #fff;
-    }
-
-    metabase-dashboard {
-      display: block;
-      height: 100%;
-      width: 100%;
-    }
-
-    .empty-state {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      height: 100%;
-      color: #888;
-      font-size: 16px;
-    }
-  </style>
 </head>
-<body>
-  <div class=\"app-container\">
-    <header>
-      <h1>" app-name "</h1>
-    </header>
-
-    <div class=\"main-content\">
-      <nav class=\"sidebar\">
-        <div class=\"sidebar-header\">Dashboards</div>
-        <ul class=\"dashboard-list\" id=\"dashboard-list\">
-        </ul>
-      </nav>
-
-      <main class=\"dashboard-container\" id=\"dashboard-container\">
+<body style=\"font-family: -apple-system, BlinkMacSystemFont, sans-serif; margin: 0;\">
+  <table id=\"app-table\" style=\"width: 100%; height: 100vh; border-collapse: collapse; table-layout: fixed;\">
+    <tr>
+      <td colspan=\"2\" style=\"background: #509EE3; color: white; padding: 16px 24px; font-size: 20px; font-weight: 600; height: 60px;\">" app-name "</td>
+    </tr>
+    <tr style=\"height: 100%;\">
+      <td id=\"sidebar\" style=\"width: 280px; background: #f8f9fa; border-right: 1px solid #e0e0e0; vertical-align: top;\">
+        <div id=\"sidebar-content\">
+          <div style=\"padding: 16px; font-weight: 600; color: #666; font-size: 12px; text-transform: uppercase; border-bottom: 1px solid #e0e0e0;\">Dashboards</div>
+          <ul id=\"dashboard-list\" style=\"list-style: none; margin: 0; padding: 0;\"></ul>
+        </div>
+      </td>
+      <td id=\"dashboard-container\" style=\"height: 100%; vertical-align: top;\">
         " (if first-dashboard-id
             (str "<metabase-dashboard id=\"embedded-dashboard\" dashboard-id=\"" first-dashboard-id "\" with-title=\"true\" with-downloads=\"true\"></metabase-dashboard>")
-            "<div class=\"empty-state\">No dashboards found in this collection</div>")
+            "<div style=\"padding:20px;color:#888\">No dashboards found in this collection</div>")
          "
-      </main>
-    </div>
-  </div>
+      </td>
+    </tr>
+  </table>
 
   <script defer src=\"" site-url "/app/embed.js\"></script>
   <script>
@@ -241,6 +140,21 @@
 
       // Initial render
       renderDashboardList();
+
+      // Force table reflow after SDK loads (fixes width and vertical alignment)
+      setTimeout(function() {
+        const table = document.getElementById('app-table');
+        const sidebar = document.getElementById('sidebar');
+        if (table) {
+          table.style.width = '99.9%';
+          requestAnimationFrame(function() {
+            table.style.width = '100%';
+          });
+        }
+        if (sidebar) {
+          sidebar.style.verticalAlign = 'top';
+        }
+      }, 100);
     })();
   </script>
 </body>
