@@ -25,6 +25,85 @@
    [metabase.util.malli.registry :as mr]
    [metabase.util.performance  :as perf]))
 
+(mr/def ::swap-source.source
+  [:map [:type [:enum :table :card]]
+   [:id [:or ::lib.schema.id/table ::lib.schema.id/card]]])
+
+(mr/def ::swap-source.source-error
+  [:enum :database-mismatch
+   :cycle-detected])
+
+(mr/def ::swap-source.column-error
+  [:enum :column-type-mismatch
+   :missing-primary-key
+   :extra-primary-key
+   :missing-foreign-key
+   :foreign-key-mismatch])
+
+(mr/def ::swap-source.column-mapping
+  [:map
+   [:source {:optional true} ::lib.schema.metadata/column]
+   [:target {:optional true} ::lib.schema.metadata/column]
+   [:errors {:optional true} [:sequential ::swap-source.column-error]]])
+
+(mr/def ::swap-source.field-id-mapping
+  [:map-of ::lib.schema.id/field [:or ::lib.schema.id/field :string]])
+
+(mu/defn- column-match-key :- :string
+  [column :- ::lib.schema.metadata/column]
+  (or (:lib/desired-column-alias column) (:name column)))
+
+(mu/defn- column-errors :- [:sequential ::swap-source.column-error]
+  "Compute errors for a source/target column pair."
+  [old-column :- ::lib.schema.metadata/column
+   new-column :- ::lib.schema.metadata/column]
+  (cond-> []
+    (and new-column (not= (:effective-type old-column) (:effective-type new-column)))
+    (conj :column-type-mismatch)
+
+    (and new-column
+         (= :type/PK (:semantic-type old-column))
+         (not= :type/PK (:semantic-type new-column)))
+    (conj :missing-primary-key)
+
+    (and new-column
+         (not= :type/PK (:semantic-type old-column))
+         (= :type/PK (:semantic-type new-column)))
+    (conj :extra-primary-key)
+
+    (and new-column
+         (= :type/FK (:semantic-type old-column))
+         (not= :type/FK (:semantic-type new-column)))
+    (conj :missing-foreign-key)
+
+    (and new-column
+         (= :type/FK (:semantic-type old-column))
+         (= :type/FK (:semantic-type new-column))
+         (not= (:fk-target-field-id old-column)
+               (:fk-target-field-id new-column)))
+    (conj :foreign-key-mismatch)))
+
+(mu/defn check-column-mappings :- [:sequential ::swap-source.column-mapping]
+  "Build column mappings between source and target query columns."
+  [source-query :- ::lib.schema/query
+   target-query :- ::lib.schema/query]
+  (let [old-columns    (into [] (remove :remapped-from) (lib.metadata.calculation/returned-columns source-query))
+        new-columns    (into [] (remove :remapped-from) (lib.metadata.calculation/returned-columns target-query))
+        old-by-name    (m/index-by column-match-key old-columns)
+        new-by-name    (m/index-by column-match-key new-columns)
+        all-names      (distinct (concat (map column-match-key old-columns)
+                                         (map column-match-key new-columns)))]
+    (mapv (fn [column-name]
+            (let [old-column (get old-by-name column-name)
+                  new-column (get new-by-name column-name)
+                  errors     (when (and old-column new-column)
+                               (not-empty (column-errors old-column new-column)))]
+              (cond-> {}
+                old-column (assoc :source old-column)
+                new-column (assoc :target new-column)
+                errors     (assoc :errors errors))))
+          all-names)))
+
 (mu/defn- walk-clause-field-refs :- :any
   [clause :- :any
    f      :- fn?]
@@ -137,13 +216,6 @@
   (if-let [field-ref (lib.parameters/parameter-target-field-ref target)]
     (can-upgrade-field-ref? field-ref)
     false))
-
-(mr/def ::swap-source.source
-  [:map [:type [:enum :table :card]]
-   [:id [:or ::lib.schema.id/table ::lib.schema.id/card]]])
-
-(mr/def ::swap-source.field-id-mapping
-  [:map-of ::lib.schema.id/field [:or ::lib.schema.id/field :string]])
 
 (mu/defn- build-swap-field-id-mapping-for-table :- [:maybe ::swap-source.field-id-mapping]
   "Builds a mapping of field IDs of the source table to field IDs of the target table."

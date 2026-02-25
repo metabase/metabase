@@ -41,6 +41,7 @@
   bulk-load-query-metadata]
  [metabase.lib-be.source-swap
   build-swap-field-id-mapping
+  check-column-mappings
   can-upgrade-field-ref-in-parameter-target?
   can-upgrade-field-refs-in-query?
   swap-source-in-parameter-target
