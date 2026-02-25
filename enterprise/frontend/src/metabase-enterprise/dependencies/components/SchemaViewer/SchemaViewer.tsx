@@ -1,19 +1,17 @@
+import { useClipboard } from "@mantine/hooks";
 import {
   Background,
   Controls,
-  MarkerType,
   Panel,
   ReactFlow,
   useEdgesState,
   useNodesState,
 } from "@xyflow/react";
-import { useClipboard } from "@mantine/hooks";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { t } from "ttag";
 
 import { skipToken, useListDatabaseSchemaTablesQuery } from "metabase/api";
 import { getErrorMessage } from "metabase/api/utils/errors";
-import { usePalette } from "metabase/common/hooks/use-palette";
 import { useUserKeyValue } from "metabase/common/hooks/use-user-key-value";
 import {
   ActionIcon,
@@ -36,16 +34,15 @@ import type {
 import { SchemaViewerEdge } from "./Edge";
 import { HopsInput } from "./HopsInput";
 import { SchemaViewerNodeLayout } from "./NodeLayout";
-import S from "./SchemaViewer.module.css";
 import { SchemaPickerInput } from "./SchemaPickerInput";
+import S from "./SchemaViewer.module.css";
 import { SchemaViewerContext } from "./SchemaViewerContext";
-import { TableSelectorInput } from "./TableSelectorInput";
 import { SchemaViewerTableNode } from "./TableNode";
+import { TableSelectorInput } from "./TableSelectorInput";
 import { MAX_ZOOM, MIN_ZOOM } from "./constants";
-import { useSchemaViewerShareUrl } from "./useSchemaViewerShareUrl";
 import type { SchemaViewerFlowEdge, SchemaViewerFlowNode } from "./types";
+import { useSchemaViewerShareUrl } from "./useSchemaViewerShareUrl";
 import { toFlowGraph } from "./utils";
-import { Slider } from "@mantine/core";
 
 const NODE_TYPES = {
   schemaViewerTable: SchemaViewerTableNode,
@@ -352,7 +349,6 @@ export function SchemaViewer({
     [],
   );
   const { colorScheme } = useColorScheme();
-  const palette = usePalette();
   const hasEntry = modelId != null || databaseId != null;
 
   // Set of currently visible table IDs on the canvas
@@ -407,17 +403,12 @@ export function SchemaViewer({
     [visibleTableIds, handleExpandToTable],
   );
 
-  const markerEnd = useMemo(
-    () => ({ type: MarkerType.Arrow, strokeWidth: 2, color: palette.border }),
-    [palette.border],
-  );
-
   const graph = useMemo(() => {
     if (data == null) {
       return null;
     }
-    return toFlowGraph(data, markerEnd);
-  }, [data, markerEnd]);
+    return toFlowGraph(data);
+  }, [data]);
 
   // User explicitly cleared all tables - show empty canvas
   const isExplicitlyEmpty =

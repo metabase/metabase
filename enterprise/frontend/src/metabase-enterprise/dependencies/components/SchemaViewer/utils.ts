@@ -1,5 +1,3 @@
-import type { EdgeMarker } from "@xyflow/react";
-
 import { isTypeFK, isTypePK } from "metabase-lib/v1/types/utils/isa";
 import type {
   ErdEdge,
@@ -62,10 +60,7 @@ function toFlowNode(
   };
 }
 
-function toFlowEdge(
-  edge: ErdEdge,
-  markerEnd: EdgeMarker,
-): SchemaViewerFlowEdge {
+function toFlowEdge(edge: ErdEdge): SchemaViewerFlowEdge {
   const isSelfRef = edge.source_table_id === edge.target_table_id;
   return {
     id: `edge-${edge.source_field_id}-${edge.target_field_id}`,
@@ -76,17 +71,13 @@ function toFlowEdge(
       ? `field-${edge.target_field_id}-right`
       : `field-${edge.target_field_id}`,
     type: "schemaViewerEdge",
-    markerEnd,
     data: {
       relationship: edge.relationship,
     },
   };
 }
 
-export function toFlowGraph(
-  data: ErdResponse,
-  markerEnd: EdgeMarker,
-): {
+export function toFlowGraph(data: ErdResponse): {
   nodes: SchemaViewerFlowNode[];
   edges: SchemaViewerFlowEdge[];
 } {
@@ -108,6 +99,6 @@ export function toFlowGraph(
     nodes: data.nodes.map((node) =>
       toFlowNode(node, connectedByTable.get(node.table_id) ?? emptySet),
     ),
-    edges: data.edges.map((edge) => toFlowEdge(edge, markerEnd)),
+    edges: data.edges.map((edge) => toFlowEdge(edge)),
   };
 }
