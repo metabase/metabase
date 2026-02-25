@@ -6,6 +6,7 @@
 
 (p/import-vars
  [metabase.release-flags.guard
+  bypass-guard-fixture
   guard-namespace!]
  [metabase.release-flags.models
   all-flags

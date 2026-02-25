@@ -1,7 +1,7 @@
 (ns metabase.joke-of-the-day.jokes
   (:require
    [clojure.java.io :as io]
-   [metabase.release-flags.guard :as guard]
+   [metabase.release-flags.core :as release-flags]
    [metabase.util.json :as json]))
 
 (defn jokes
@@ -12,4 +12,4 @@
 ;; guard-namespace! must be called at the end, after all functions are defined.
 ;; Add functions above this line.
 
-(guard/guard-namespace! "joke-of-the-day")
+(release-flags/guard-namespace! "joke-of-the-day")

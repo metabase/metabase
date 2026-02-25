@@ -1243,7 +1243,6 @@
   {:team "UX West"
    :api  #{metabase.release-flags.api
            metabase.release-flags.core
-           metabase.release-flags.guard
            metabase.release-flags.init}
    :uses #{api
            task
