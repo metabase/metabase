@@ -3628,6 +3628,37 @@ databaseChangeLog:
                   constraints:
                     nullable: false
 
+  - changeSet:
+      id: v59.2026-02-25T00:00:00
+      author: apps-hackathon
+      comment: Expand app.theme column from varchar(254) to text to support large theme objects
+      changes:
+        - modifyDataType:
+            tableName: app
+            columnName: theme
+            newDataType: ${text.type}
+      rollback:
+        - modifyDataType:
+            tableName: app
+            columnName: theme
+            newDataType: varchar(254)
+
+  - changeSet:
+      id: v59.2026-02-25T00:00:01
+      author: apps-hackathon
+      comment: Add logo blob column to app table
+      changes:
+        - addColumn:
+            tableName: app
+            columns:
+              - column:
+                  name: logo
+                  type: ${text.type}
+      rollback:
+        - dropColumn:
+            tableName: app
+            columnName: logo
+
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
 ########################################################################################################################

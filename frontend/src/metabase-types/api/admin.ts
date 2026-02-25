@@ -5,6 +5,7 @@ export type App = {
   name: string;
   auth_method: "jwt" | "saml";
   theme: string | null;
+  logo: string | null;
   published: boolean;
   collection_id: number;
   created_at: string;
@@ -16,6 +17,7 @@ export type CreateAppRequest = {
   auth_method: "jwt" | "saml";
   collection_id: number;
   theme?: string | null;
+  logo?: string | null;
   published?: boolean;
 };
 
