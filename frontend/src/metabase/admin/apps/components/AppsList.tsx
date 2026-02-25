@@ -32,6 +32,10 @@ export function AppsList() {
     [deleteApp],
   );
 
+  const handlePreview = useCallback((name: string) => {
+    window.open(`/apps/${encodeURIComponent(name)}`, "_blank");
+  }, []);
+
   return (
     <Stack p="lg" gap="lg">
       <Group justify="space-between">
@@ -65,6 +69,13 @@ export function AppsList() {
                   <td>{app.collection_id}</td>
                   <td>
                     <Group gap="xs" justify="flex-end">
+                      <Button
+                        size="xs"
+                        variant="subtle"
+                        onClick={() => handlePreview(app.name)}
+                      >
+                        {t`Preview`}
+                      </Button>
                       <Button
                         size="xs"
                         variant="subtle"
