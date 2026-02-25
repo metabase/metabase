@@ -4,6 +4,7 @@
    [clojure.test :refer [deftest is testing]]
    [metabase-enterprise.dependencies.events]
    [metabase-enterprise.replacement.field-refs :as field-refs]
+   [metabase-enterprise.replacement.runner :as runner]
    [metabase-enterprise.replacement.source-swap :as source-swap]
    [metabase-enterprise.replacement.swap.native :as swap.native]
    [metabase-enterprise.replacement.usages :as usages]
@@ -1641,3 +1642,30 @@
                                   [:measure (:id measure)])))
               (is (contains? (set (usages/transitive-usages [:table (mt/id :orders_b)]))
                              [:measure (:id measure)])))))))))
+
+;;; ---------------------------------------- Runner: second-level dashboard tests ----------------------------------------
+
+(deftest run-swap-table-to-table-updates-second-level-dashboard-params-test
+  (testing "table→table swap via runner: dashboard parameter mappings on cards using the old table are remapped"
+    (mt/dataset source-swap
+      (mt/with-premium-features #{:dependencies}
+        (mt/with-temp [:model/User user {:email "run-swap-dash-params@test.com"}]
+          (mt/with-model-cleanup [:model/Card :model/Dependency]
+            (let [card (card/create-card! (card-with-query "Products A card" :products_a) user)]
+              (field-refs/upgrade! [:card (:id card)])
+              (mt/with-temp [:model/Dashboard {dashboard-id :id} {:name "Test Dashboard"}
+                             :model/DashboardCard {dashcard-id :id}
+                             {:dashboard_id       dashboard-id
+                              :card_id            (:id card)
+                              :parameter_mappings [{:parameter_id "my-param"
+                                                    :card_id      (:id card)
+                                                    :target       [:dimension [:field (mt/id :products_a :id) nil]]}]}]
+                (runner/run-swap [:table (mt/id :products_a)] [:table (mt/id :products_b)])
+                ;; Card's source-table should be updated
+                (let [updated-query (t2/select-one-fn :dataset_query :model/Card :id (:id card))]
+                  (is (= (mt/id :products_b) (get-in updated-query [:stages 0 :source-table]))))
+                ;; DashboardCard parameter mapping should reference products_b field, not products_a
+                (let [updated-dc (t2/select-one :model/DashboardCard :id dashcard-id)
+                      target     (get-in updated-dc [:parameter_mappings 0 :target])]
+                  (is (= [:dimension [:field (mt/id :products_b :id) nil]] target)
+                      "Parameter mapping target should be remapped to the products_b field"))))))))))
