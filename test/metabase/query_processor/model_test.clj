@@ -7,9 +7,37 @@
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
    [metabase.lib.metadata.result-metadata :as lib.metadata.result-metadata]
    [metabase.lib.test-util :as lib.tu]
-   [metabase.query-processor :as qp]
    [metabase.query-processor.preprocess :as qp.preprocess]
    [metabase.test :as mt]))
+
+(deftest ^:parallel join-in-model-display-name-test
+  (let [mp       (mt/metadata-provider)
+        mp       (lib.tu/mock-metadata-provider
+                  mp
+                  {:cards [{:id            1
+                            :dataset-query (-> (lib/query mp (lib.metadata/table mp (mt/id :products)))
+                                               ;; I guess this join is named `Reviews`
+                                               (lib/join (-> (lib/join-clause (lib.metadata/table mp (mt/id :reviews))
+                                                                              [(lib/=
+                                                                                (lib.metadata/field mp (mt/id :products :id))
+                                                                                (lib.metadata/field mp (mt/id :reviews :product_id)))])
+                                                             (lib/with-join-fields :all))))
+                            :database-id   (mt/id)
+                            :name          "Products+Reviews"
+                            :type          :model}]})
+        question (binding [lib.metadata.calculation/*display-name-style* :long]
+                   (as-> (lib/query mp (lib.metadata/card mp 1)) $q
+                     (lib/breakout $q (-> (m/find-first (comp #{"Reviews → Created At"} :display-name)
+                                                        (lib/breakoutable-columns $q))
+                                          (lib/with-temporal-bucket :month)))
+                     (lib/aggregate $q (lib/avg (->> $q
+                                                     lib/available-aggregation-operators
+                                                     (m/find-first (comp #{:avg} :short))
+                                                     :columns
+                                                     (m/find-first (comp #{"Rating"} :display-name)))))))]
+    (is (= ["Reviews → Created At: Month"
+            "Average of Rating"]
+           (mapv :display_name (qp.preprocess/query->expected-cols question))))))
 
 ;;; see also [[metabase.lib.field-test/model-self-join-test-display-name-test]]
 (deftest ^:parallel model-self-join-test
@@ -77,9 +105,7 @@
               #_"Products+Reviews Summary - Reviews → Created At: Month → Created At"
               "Products+Reviews Summary - Reviews → Created At: Month → Created At: Month"
               "Products+Reviews Summary - Reviews → Created At: Month → Sum of Price"]
-             (->> (qp/process-query question)
-                  mt/cols
-                  (mapv :display_name)))))))
+             (mapv :display_name (qp.preprocess/query->expected-cols question)))))))
 
 (deftest ^:parallel preserve-model-display-names-test
   (testing "Edited display names for columns in Models should get preserved (#65532)"

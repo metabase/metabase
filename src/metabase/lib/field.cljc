@@ -116,13 +116,17 @@
     simple-display-name   :lib/simple-display-name
     original-display-name :lib/original-display-name
     ref-display-name      :lib/ref-display-name
+    from-model?           :lib/from-model?
     source                :lib/source
     source-uuid           :lib/source-uuid
     :as                   col}
    style]
   (let [humanized-name     (u.humanization/name->human-readable-name :simple field-name)
         field-display-name (or ref-display-name
-                               original-display-name
+                               ;; TODO EXPLAIN HACK
+                               (when (or (not from-model?)
+                                         (= source :source/joins))
+                                 original-display-name)
                                field-display-name)
         fk-field-id        (or fk-field-id original-fk-field-id)]
     (or simple-display-name
