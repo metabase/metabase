@@ -136,33 +136,34 @@
 (defn- report-token-usage-xf
   "Transducer that reports prometheus metrics and snowplow token_usage event
   for :usage parts in the aisdk stream."
-  [tracking-opts]
+  [{:keys [model profile-name request-id session-id source tag]}]
   (let [start-ms (u/start-timer)]
     (map (fn [part]
            (when (= (:type part) :usage)
              (let [usage      (:usage part)
-                   part-model (or (:model part) (:model tracking-opts))
-                   labels     {:model part-model :source (:tag tracking-opts)}
+                   model      (or (:model part) model "unknown")
+                   labels     {:model model :source (or tag "none")}
                    prompt     (:promptTokens usage 0)
                    completion (:completionTokens usage 0)]
                (prometheus/inc! :metabase-metabot/llm-input-tokens labels prompt)
                (prometheus/inc! :metabase-metabot/llm-output-tokens labels completion)
                (prometheus/observe! :metabase-metabot/llm-tokens-per-call labels (+ prompt completion))
-               (when (seq tracking-opts)
+               ;; The caller can omit snowplot opts to skip snowplow tracking.
+               (when request-id
                  (analytics/track-event! :snowplow/token_usage
                                          {:hashed_metabase_license_token (hashed-license-token)
                                           :user_id                       api/*current-user-id*
-                                          :model_id                      part-model
+                                          :model_id                      model
                                           :duration_ms                   (long (u/since-ms start-ms))
                                           :total_tokens                  (+ prompt completion)
                                           :prompt_tokens                 prompt
                                           :completion_tokens             completion
                                           :estimated_costs_usd           0.0
-                                          :profile                       (:profile-name tracking-opts)
-                                          :request_id                    (:request-id tracking-opts)
-                                          :session_id                    (:session-id tracking-opts)
-                                          :source                        (:source tracking-opts)
-                                          :tag                           (:tag tracking-opts)}))))
+                                          :profile                       profile-name
+                                          :request_id                    request-id
+                                          :session_id                    session-id
+                                          :source                        source
+                                          :tag                           tag}))))
            part))))
 
 (defn- with-retries
