@@ -200,7 +200,7 @@
                    :tools     (mapv (fn [[name _]] name) tools)}))
     (eduction (streaming/post-process-xf (get-in memory [:state :queries] {})
                                          (get-in memory [:state :charts] {}))
-              (self/call-llm model "agent" (:content system-msg) input-parts tools tracking-opts))))
+              (self/call-llm model (:content system-msg) input-parts tools tracking-opts))))
 
 ;;; Memory management
 

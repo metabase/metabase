@@ -106,7 +106,6 @@
   [rendered-prompt]
   (self/call-llm-structured
    (llm/ee-ai-metabot-provider)
-   "example-question-generation"
    [{:role "user" :content rendered-prompt}]
    questions-json-schema
    temperature

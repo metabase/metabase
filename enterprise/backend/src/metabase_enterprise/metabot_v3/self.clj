@@ -117,12 +117,12 @@
 
 (defn- report-aisdk-errors-xf
   "Transducer that increments the llm-errors counter for :error parts in the aisdk stream."
-  [model source]
+  [tracking-opts]
   (map (fn [part]
          (when (= (:type part) :error)
            (prometheus/inc! :metabase-metabot/llm-errors
-                            {:model model
-                             :source source
+                            {:model      (:model tracking-opts)
+                             :source     (:tag tracking-opts)
                              :error-type "llm-sse-error"}))
          part)))
 
@@ -136,13 +136,13 @@
 (defn- report-token-usage-xf
   "Transducer that reports prometheus metrics and snowplow token_usage event
   for :usage parts in the aisdk stream."
-  [model source tracking-opts]
+  [tracking-opts]
   (let [start-ms (u/start-timer)]
     (map (fn [part]
            (when (= (:type part) :usage)
              (let [usage      (:usage part)
-                   part-model (or (:model part) model)
-                   labels     {:model part-model :source source}
+                   part-model (or (:model part) (:model tracking-opts))
+                   labels     {:model part-model :source (:tag tracking-opts)}
                    prompt     (:promptTokens usage 0)
                    completion (:completionTokens usage 0)]
                (prometheus/inc! :metabase-metabot/llm-input-tokens labels prompt)
@@ -168,9 +168,9 @@
 (defn- with-retries
   "Execute `(thunk)` with retry logic for transient LLM errors.
   Retries up to `max-llm-retries` attempts with exponential backoff.
-  Records prometheus metrics with `model` and `source` as labels."
-  [model source thunk]
-  (let [labels {:model model :source source}]
+  Records prometheus metrics with `:model` and `:tag` from `tracking-opts` as labels."
+  [tracking-opts thunk]
+  (let [labels {:model (:model tracking-opts) :source (:tag tracking-opts)}]
     (loop [attempt 1]
       (prometheus/inc! :metabase-metabot/llm-requests labels)
       (let [timer  (u/start-timer)
@@ -208,29 +208,32 @@
   and user messages (`{:role :user, :content ...}`).  Each adapter converts
   these into its own wire format.
 
-  `tracking-opts` is an optional map with analytics context. When non-empty,
-  fires a `:snowplow/token_usage` event for each `:usage` part in the stream:
+  `tracking-opts` is a map with analytics context. `:model` and `:tag` drive
+  Prometheus labels (`:tag` maps to the `:source` label). When non-empty,
+  also fires a `:snowplow/token_usage` event for each `:usage` part:
+    - `:model`        — model identifier, added automatically from the `model` arg
+    - `:tag`          — Prometheus source label + Snowplow tag (e.g. `\"agent\"`)
+    - `:source`       — Snowplow-only source string (e.g. `\"metabot_agent\"`)
     - `:profile-name` — keyword profile identifier (e.g. `:internal`)
     - `:request-id`   — UUID string for this agent request
     - `:session-id`   — conversation UUID string
-    - `:source`       — string source label (default \"metabot_agent\")
-    - `:tag`          — string tag (e.g. \"agent\", \"sql-generation\")
 
   Returns a reducible that, when consumed, traces the full LLM round-trip
   (HTTP call + streaming response) as an OTel span. Retries transient errors
   (429 rate limit, 529 overloaded, connection errors) up to 3 attempts with
   exponential backoff, matching the Python ai-service retry behavior."
-  [provider-and-model source system-msg parts tools tracking-opts]
+  [provider-and-model system-msg parts tools tracking-opts]
   (let [{:keys [provider stream-fn model]} (parse-provider-model provider-and-model)]
     (log/info "Calling LLM" {:provider provider :model model :parts (count parts) :tools (count tools)})
-    (let [opts (cond-> {:model model :input parts :tools (vec tools)}
-                 system-msg (assoc :system system-msg))
-          make-source (fn []
-                        (eduction (comp (core/tool-executor-xf tools)
-                                        (core/lite-aisdk-xf)
-                                        (report-aisdk-errors-xf model source)
-                                        (report-token-usage-xf model source tracking-opts))
-                                  (stream-fn opts)))]
+    (let [tracking-opts  (assoc tracking-opts :model model)
+          streaming-opts (cond-> {:model model :input parts :tools (vec tools)}
+                           system-msg (assoc :system system-msg))
+          make-source    (fn []
+                           (eduction (comp (core/tool-executor-xf tools)
+                                           (core/lite-aisdk-xf)
+                                           (report-aisdk-errors-xf tracking-opts)
+                                           (report-token-usage-xf tracking-opts))
+                                     (stream-fn streaming-opts)))]
       (reify clojure.lang.IReduceInit
         (reduce [_ rf init]
           (with-span :info {:name       :metabot-v3.agent/call-llm
@@ -238,7 +241,8 @@
                             :model      model
                             :part-count (count parts)
                             :tool-count (count tools)}
-            (with-retries model source
+            (with-retries
+              tracking-opts
               #(reduce rf init (make-source)))))))))
 
 (defn call-llm-structured
@@ -249,39 +253,41 @@
   Includes the same retry logic as [[call-llm]] for transient errors.
 
   Args:
-    model       - Model identifier (e.g. \"openrouter/anthropic/claude-haiku-4-5\")
-    source      - Label for prometheus metrics (e.g. \"agent\", \"example-question-generation\")
-    messages    - Sequence of Chat Completions message maps
-                  (e.g. [{:role \"user\" :content \"...\"}])
-    json-schema - JSON Schema map for the expected response shape
-    temperature - Sampling temperature
-    max-tokens  - Maximum tokens in the response
+    model         - Model identifier (e.g. \"openrouter/anthropic/claude-haiku-4-5\")
+    messages      - Sequence of Chat Completions message maps
+                    (e.g. [{:role \"user\" :content \"...\"}])
+    json-schema   - JSON Schema map for the expected response shape
+    temperature   - Sampling temperature
+    max-tokens    - Maximum tokens in the response
+    tracking-opts - See [[call-llm]] for fields; `:model` is added automatically
 
   Returns the parsed JSON map from the forced tool call."
-  [provider-and-model source messages json-schema temperature max-tokens tracking-opts]
+  [provider-and-model messages json-schema temperature max-tokens tracking-opts]
   (let [{:keys [provider stream-fn model]} (parse-provider-model provider-and-model)
         _ (log/info "Calling LLM (structured)" {:provider provider :model model :msg-count (count messages)})
-        raw-tools   [{:type     "function"
-                      :function {:name        "json"
-                                 :description "Respond with a JSON object"
-                                 :parameters  json-schema}}]
-        tool-choice {:type "function" :function {:name "json"}}
-        opts        {:model       model
-                     :input       messages
-                     :raw-tools   raw-tools
-                     :tool_choice tool-choice
-                     :temperature temperature
-                     :max-tokens  max-tokens}]
+        raw-tools      [{:type     "function"
+                         :function {:name        "json"
+                                    :description "Respond with a JSON object"
+                                    :parameters  json-schema}}]
+        tool-choice    {:type "function" :function {:name "json"}}
+        tracking-opts  (assoc tracking-opts :model model)
+        streaming-opts {:model       model
+                        :input       messages
+                        :raw-tools   raw-tools
+                        :tool_choice tool-choice
+                        :temperature temperature
+                        :max-tokens  max-tokens}]
     (with-span :info {:name      :metabot-v3.agent/call-llm-structured
                       :model     model
                       :msg-count (count messages)}
-      (with-retries model source
+      (with-retries
+        tracking-opts
         (fn []
           (let [parts (into []
                             (comp (core/aisdk-xf)
-                                  (report-aisdk-errors-xf model source)
-                                  (report-token-usage-xf model source tracking-opts))
-                            (stream-fn opts))
+                                  (report-aisdk-errors-xf tracking-opts)
+                                  (report-token-usage-xf tracking-opts))
+                            (stream-fn streaming-opts))
                 result (some (fn [{:keys [type arguments]}]
                                (when (= type :tool-input)
                                  arguments))
