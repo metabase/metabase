@@ -139,6 +139,9 @@
             :or   {display :table}}]
   (let [display (keyword display)
         results (execute-adhoc-query query)]
+    (when (= :failed (:status results))
+      (throw (ex-info (or (:error results) "Query execution failed")
+                      (select-keys results [:error :status]))))
     (if (contains? chart-display-types display)
       {:type    :image
        :content (generate-adhoc-png results display)}
@@ -186,11 +189,15 @@
         (when-not card
           (throw (ex-info "Card not found" {:card-id card-or-id})))
         ;; TODO: should we use the user's timezone for this?
-        (channel.render/render-pulse-card-to-png (channel.render/defaulted-timezone card)
-                                                 card
-                                                 (pulse-card-query-results card)
-                                                 width
-                                                 options))
+        (let [results (pulse-card-query-results card)]
+          (when (= :failed (:status results))
+            (throw (ex-info (or (:error results) "Query execution failed")
+                            (select-keys results [:error :status]))))
+          (channel.render/render-pulse-card-to-png (channel.render/defaulted-timezone card)
+                                                   card
+                                                   results
+                                                   width
+                                                   options)))
       ;; Ad-hoc card path
       (let [{:keys [display visualization_settings results name]} card-or-id]
         (channel.render/render-adhoc-card-to-png
@@ -215,5 +222,8 @@
       {:type    :image
        :content (generate-card-png card-id)}
       (let [results (pulse-card-query-results card)]
+        (when (= :failed (:status results))
+          (throw (ex-info (or (:error results) "Query execution failed")
+                          (select-keys results [:error :status]))))
         {:type    :table
          :content (format-results-as-table-blocks results)}))))
