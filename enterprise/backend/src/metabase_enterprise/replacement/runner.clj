@@ -16,6 +16,27 @@
     (advance! [_ _message])
     (canceled? [_] false)))
 
+(defn- run-swap* [{:keys [direct transitive]} old-source new-source progress]
+  (execute/set-total! progress (+ (count transitive)
+                                  (count direct)))
+
+  ;; phase 1: Upgrade all field refs
+  (doseq [entity transitive]
+    (field-refs/upgrade! entity)
+    (execute/advance! progress))
+
+  ;; phase 2: Swap the sources
+  (let [failures (atom [])]
+    (doseq [entity direct]
+      (try
+        (source-swap/do-swap! entity old-source new-source)
+        (catch Exception e
+          (log/warnf e "Failed to swap %s, continuing with next entity" entity)
+          (swap! failures conj {:entity entity :error (ex-message e)})))
+      (execute/advance! progress))
+    (when (seq @failures)
+      {:failures @failures})))
+
 (mu/defn run-swap
   "Replace all usages of `old-source` with `new-source` across all dependent entities.
 
@@ -31,29 +52,14 @@
    Returns {:swapped [...]} with the list of entities that were updated."
   ([old-source new-source]
    (run-swap old-source new-source noop-progress))
-  ([old-source :- ::source/source-ref
-    new-source :- ::source/source-ref
+  ;; todo: replace schemas of  :- ::source/source-ref
+  ([old-source
+    new-source
     progress]
    (assert (:success (source/check-replace-source old-source new-source)))
 
    (let [transitive (usages/transitive-usages old-source)
          direct     (usages/direct-usages     old-source)]
-     (execute/set-total! progress (+ (count transitive)
-                                     (count direct)))
+     (run-swap* {:transitive transitive :direct direct}
+                old-source new-source progress))))
 
-     ;; phase 1: Upgrade all field refs
-     (doseq [entity transitive]
-       (field-refs/upgrade! entity)
-       (execute/advance! progress))
-
-     ;; phase 2: Swap the sources
-     (let [failures (atom [])]
-       (doseq [entity direct]
-         (try
-           (source-swap/do-swap! entity old-source new-source)
-           (catch Exception e
-             (log/warnf e "Failed to swap %s, continuing with next entity" entity)
-             (swap! failures conj {:entity entity :error (ex-message e)})))
-         (execute/advance! progress))
-       (when (seq @failures)
-         {:failures @failures})))))
