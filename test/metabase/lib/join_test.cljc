@@ -252,7 +252,7 @@
       (is (=? [(merge (m/filter-vals some? (meta/field-metadata :categories :name))
                       {:display-name         "Name"
                        :lib/source           :source/joins
-                       ::lib.join/join-alias "CATEGORIES__via__CATEGORY_ID"})]
+                       :lib/join-alias "CATEGORIES__via__CATEGORY_ID"})]
               metadata))
       (is (=? "CATEGORIES__via__CATEGORY_ID"
               (lib.join.util/current-join-alias (first metadata))))
@@ -293,11 +293,11 @@
               :name                    "USER_ID"
               :lib/source              :source/joins
               :lib/source-column-alias "USER_ID"
-              ::lib.join/join-alias    "checkins_by_user"}
+              :lib/join-alias    "checkins_by_user"}
              {:name                    "count"
               :lib/source              :source/joins
               :lib/source-column-alias "count"
-              ::lib.join/join-alias    "checkins_by_user"}]
+              :lib/join-alias    "checkins_by_user"}]
             (lib.join/join-returned-columns-relative-to-parent-stage query -1 join)))
     (is (=? (-> (lib.metadata/card metadata-provider 1)
                 (update :dataset-query lib.schema.util/remove-lib-uuids))
@@ -321,12 +321,12 @@
              {:name                     "ID_2"
               :lib/source-column-alias  "ID"
               :lib/desired-column-alias "Cat__ID"
-              ::lib.join/join-alias     "Cat"
+              :lib/join-alias     "Cat"
               :lib/source               :source/joins}
              {:name                     "NAME"
               :lib/source-column-alias  "NAME"
               :lib/desired-column-alias "Cat__NAME"
-              ::lib.join/join-alias     "Cat"
+              :lib/join-alias     "Cat"
               :lib/source               :source/joins}]
             (lib/returned-columns query)))
     (is (=? {:lib/type :metadata/table
@@ -731,7 +731,7 @@
                    [nil   "LONGITUDE"]
                    [nil   "PRICE"]
                    ["Cat" "NAME"]]
-                  (map (juxt :metabase.lib.join/join-alias :lib/source-column-alias)
+                  (map (juxt :lib/join-alias :lib/source-column-alias)
                        (lib/join-condition-lhs-columns query nil nil rhs))))
           (is (= (lib/join-condition-lhs-columns query nil nil rhs)
                  (lib/join-condition-lhs-columns query -1 nil nil rhs))))))))
@@ -752,7 +752,7 @@
               join-3))
       (are [join expected] (= expected
                               (map (fn [col]
-                                     (if-let [join-alias (::lib.join/join-alias col)]
+                                     (if-let [join-alias (:lib/join-alias col)]
                                        [join-alias (:lib/source-column-alias col)]
                                        (:lib/source-column-alias col)))
                                    (lib/join-condition-lhs-columns query join nil nil)))
@@ -875,8 +875,8 @@
 (deftest ^:parallel join-condition-rhs-columns-existing-join-test
   (testing "RHS columns for existing join"
     (let [cols (lib/join-condition-rhs-columns (lib.tu/query-with-join) join-for-query-with-join nil nil)]
-      (is (=? [{:display-name "ID",   :lib/source :source/joins, ::lib.join/join-alias "Cat"}
-               {:display-name "Name", :lib/source :source/joins, ::lib.join/join-alias "Cat"}]
+      (is (=? [{:display-name "ID",   :lib/source :source/joins, :lib/join-alias "Cat"}
+               {:display-name "Name", :lib/source :source/joins, :lib/join-alias "Cat"}]
               cols))
       (testing `lib/display-info
         (is (=? [{:display-name "ID", :is-from-join true}
@@ -1272,14 +1272,12 @@
               query (assoc-in query [:stages 0 :joins] [join])
               cols  (lib/joinable-columns query -1 join)]
           (is (=? [{:name                         "ID"
-                    :metabase.lib.join/join-alias "Cat"
-                    :source-alias                 "Cat"
+                    :lib/join-alias "Cat"
                     :lib/source                   :source/joins
                     :lib/source-column-alias      "ID"
                     :selected?                    id-selected?}
                    {:name                         "NAME"
-                    :metabase.lib.join/join-alias "Cat"
-                    :source-alias                 "Cat"
+                    :lib/join-alias "Cat"
                     :lib/source                   :source/joins
                     :lib/source-column-alias      "NAME"
                     :selected?                    name-selected?}]
@@ -1745,7 +1743,7 @@
       (binding [lib.metadata.calculation/*display-name-style* :long]
         (is (= [["TITLE" "Orders" "TITLE" "Orders → Title"]
                 ["sum"   "Orders" "sum"   "Orders → Sum of Quantity"]]
-               (map (juxt :name :metabase.lib.join/join-alias :lib/source-column-alias :display-name)
+               (map (juxt :name :lib/join-alias :lib/source-column-alias :display-name)
                     (lib.join/join-fields-to-add-to-parent-stage
                      query -1 join {:include-remaps? true}))))))))
 
@@ -1767,7 +1765,7 @@
         (is (= [["PRODUCT_ID" "Orders" "PRODUCT_ID" "Orders → Product ID"]
                 ;; should get added because it is a remap
                 ["TITLE"      "Orders" "TITLE"      "Orders → Title"]]
-               (map (juxt :name :metabase.lib.join/join-alias :lib/source-column-alias :display-name)
+               (map (juxt :name :lib/join-alias :lib/source-column-alias :display-name)
                     (lib.join/join-fields-to-add-to-parent-stage
                      query -1 join {:include-remaps? true}))))))))
 
@@ -1792,7 +1790,7 @@
       (binding [lib.metadata.calculation/*display-name-style* :long]
         (is (= [["PRODUCT_ID" "Orders" "PRODUCT_ID" "Orders → Product ID"]
                 ["TITLE"      "Orders" "TITLE"      "Orders → Title"]]
-               (map (juxt :name ::lib.join/join-alias :lib/source-column-alias :display-name)
+               (map (juxt :name :lib/join-alias :lib/source-column-alias :display-name)
                     (lib.join/join-fields-to-add-to-parent-stage
                      query -1 join {:include-remaps? true}))))))))
 
@@ -1843,13 +1841,13 @@
                     :lib/card-id                  2
                     :lib/source                   :source/joins ; not really sure if this makes sense or not
                     :lib/original-join-alias      "Products"
-                    :metabase.lib.join/join-alias (symbol "nil #_\"key is not present.\"")}
+                    :lib/join-alias (symbol "nil #_\"key is not present.\"")}
                    {:name                         "count"
                     :display-name                 "Distinct values of ID"
                     :lib/card-id                  2
                     :lib/source                   :source/joins
                     :lib/original-join-alias      (symbol "nil #_\"key is not present.\"")
-                    :metabase.lib.join/join-alias (symbol "nil #_\"key is not present.\"")}]
+                    :lib/join-alias (symbol "nil #_\"key is not present.\"")}]
                   cols))
           (testing `lib/group-columns
             (is (=? [{:display-name "18512#2"}]
@@ -1880,17 +1878,17 @@
                                         :alias        "Q2"
                                         :condition    [:= !month.created-at !month.&Q2.birth-date]
                                         :fields       fields}]}))]
-          ;; these SHOULD NOT include `:metabase.lib.field/temporal-unit`, so don't change this to `=?`.
+          ;; these SHOULD NOT include `:lib/temporal-unit`, so don't change this to `=?`.
           (is (=? [{:lib/source                       :source/joins
                     :lib/source-column-alias          "BIRTH_DATE"
-                    ::lib.join/join-alias             "Q2"
+                    :lib/join-alias             "Q2"
                     :lib/original-name                "BIRTH_DATE"
-                    :metabase.lib.field/temporal-unit (symbol "nil #_\"key is not present.\"")
+                    :lib/temporal-unit (symbol "nil #_\"key is not present.\"")
                     :inherited-temporal-unit          :month}
                    {:lib/source                       :source/joins
                     :lib/source-column-alias          "count"
-                    ::lib.join/join-alias             "Q2"
-                    :metabase.lib.field/temporal-unit (symbol "nil #_\"key is not present.\"")
+                    :lib/join-alias             "Q2"
+                    :lib/temporal-unit (symbol "nil #_\"key is not present.\"")
                     :lib/original-name                "count"}]
                   (lib.join/join-fields-to-add-to-parent-stage query -1 (first (lib/joins query -1)) {}))))))))
 
@@ -1910,10 +1908,10 @@
                                     :condition    [:= !month.created-at !month.&Q2.birth-date]
                                     :fields       [[:field (meta/id :people :birth-date) {:join-alias "Q2", :temporal-unit :month}]
                                                    [:field "count" {:base-type :type/Integer, :join-alias "Q2"}]]}]}))]
-      (is (=? [{::lib.join/join-alias             "Q2"
+      (is (=? [{:lib/join-alias             "Q2"
                 :lib/source-column-alias          "BIRTH_DATE"
-                :metabase.lib.field/temporal-unit :month
+                :lib/temporal-unit :month
                 :inherited-temporal-unit          :year}
-               {::lib.join/join-alias    "Q2"
+               {:lib/join-alias    "Q2"
                 :lib/source-column-alias "count"}]
               (lib.join/join-fields-to-add-to-parent-stage query -1 (first (lib/joins query -1)) {}))))))

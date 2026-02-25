@@ -1,10 +1,8 @@
 import { useMemo } from "react";
 
 import { trackSimpleEvent } from "metabase/lib/analytics";
-import { useSelector } from "metabase/lib/redux";
 import { Center, Icon, SegmentedControl } from "metabase/ui";
 import visualizations from "metabase/visualizations";
-import { getVisualizerRawSeries } from "metabase/visualizer/selectors";
 import type { VisualizationDisplay } from "metabase-types/api";
 
 import S from "./VisualizationPicker.module.css";
@@ -17,11 +15,7 @@ export function VisualizationPicker({
   value,
   onChange,
 }: VisualizationPickerProps) {
-  const series = useSelector(getVisualizerRawSeries);
-
   const options = useMemo(() => {
-    const [mainSeries] = series ?? [];
-    const { data } = mainSeries ?? {};
     return Array.from(visualizations)
       .filter(([, viz]) => !viz.hidden && viz.supportsVisualizer)
       .map(([vizType, viz]) => {
@@ -29,10 +23,9 @@ export function VisualizationPicker({
           label: viz.getUiName(),
           value: vizType,
           icon: viz.iconName,
-          isSensible: Boolean(data && viz.isSensible?.(data)),
         };
       });
-  }, [series]);
+  }, []);
 
   const selectedOption = useMemo(
     () => options.find((option) => option.value === value),

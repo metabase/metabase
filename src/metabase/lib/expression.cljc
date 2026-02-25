@@ -40,7 +40,7 @@
                  {:lib/uuid       (str (random-uuid))
                   :base-type      (:base-type metadata)
                   :effective-type ((some-fn :effective-type :base-type) metadata)}
-                 (when-let [unit (:metabase.lib.field/temporal-unit metadata)]
+                 (when-let [unit (:lib/temporal-unit metadata)]
                    {:temporal-unit unit}))]
     [:expression options ((some-fn :lib/expression-name :name) metadata)]))
 
@@ -106,7 +106,7 @@
                 :effective-type          (or (:effective-type opts) base-type)
                 :lib/source              :source/expressions}
                (when-let [unit (lib.temporal-bucket/raw-temporal-bucket expression-ref-clause)]
-                 {:metabase.lib.field/temporal-unit unit})
+                 {:lib/temporal-unit unit})
                (when lib.metadata.calculation/*propagate-binning-and-bucketing*
                  (when-let [unit (lib.temporal-bucket/raw-temporal-bucket expression-ref-clause)]
                    {:inherited-temporal-unit unit})))))))
@@ -235,6 +235,18 @@
   (str (lib.metadata.calculation/column-name query stage-number x)
        \_
        (interval-column-name amount unit)))
+
+(defmethod lib.metadata.calculation/display-name-method :datetime-subtract
+  [query stage-number [_datetime-subtract _opts x amount unit] style]
+  (str (lib.metadata.calculation/display-name query stage-number x style)
+       \space
+       (interval-display-name (clojure.core/- amount) unit)))
+
+(defmethod lib.metadata.calculation/column-name-method :datetime-subtract
+  [query stage-number [_datetime-subtract _opts x amount unit]]
+  (str (lib.metadata.calculation/column-name query stage-number x)
+       \_
+       (interval-column-name (clojure.core/- amount) unit)))
 
 ;;; for now we'll just pretend `:coalesce` isn't a present and just use the display name for the expr it wraps.
 (defmethod lib.metadata.calculation/display-name-method :coalesce
@@ -567,9 +579,7 @@
 
 (defn- referred-expressions
   [expr]
-  (into #{}
-        (map #(get % 2))
-        (lib.util.match/match expr :expression)))
+  (set (lib.util.match/match-many expr [:expression _opts x & _] x)))
 
 (defn- aggregation->name
   [query stage-number aggregation]
@@ -577,9 +587,7 @@
 
 (defn- referred-aggregations
   [agg]
-  (into #{}
-        (map #(get % 2))
-        (lib.util.match/match agg :aggregation)))
+  (set (lib.util.match/match-many agg [:aggregation _opts x & _] x)))
 
 (defn- cyclic-definition
   ([node->children]

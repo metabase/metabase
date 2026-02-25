@@ -19,6 +19,8 @@ import type {
   RefObject,
 } from "react";
 
+export type RenderSubRow<TData> = (row: Row<TData>) => ReactNode;
+
 /**
  * Base interface that all tree node data must extend.
  * IDs can be strings or numbers - getNodeId converts them to strings for TanStack Table.
@@ -254,6 +256,11 @@ export interface TreeTableProps<TData extends TreeNodeData>
    */
   getRowHref?: (row: Row<TData>) => string | null;
 
+  renderSubRow?: RenderSubRow<TData>;
+
+  /** When false, renders as a flat table without expand buttons or indentation. Defaults to true. */
+  hierarchical?: boolean;
+
   ariaLabel?: string;
   ariaLabelledBy?: string;
 }
@@ -287,6 +294,8 @@ export interface TreeTableRowProps<TData extends TreeNodeData>
   getRowProps?: (row: Row<TData>) => Record<string, unknown>;
   /** When provided, renders the row as a link for Cmd+Click support */
   href?: string | null;
+  renderSubRow?: RenderSubRow<TData>;
+  hierarchical?: boolean;
 }
 
 /**

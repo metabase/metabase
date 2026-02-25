@@ -944,15 +944,15 @@
 (defn- replace-exclude-date-filters
   "Replaces legacy exclude date filter clauses that rely on temporal bucketing with `:temporal-extract` function calls."
   [filter-clause]
-  (lib.util.match/replace filter-clause
+  (lib.util.match/replace-lite filter-clause
     [:!=
-     [:field id-or-name (opts :guard #(= (:temporal-unit %) :hour-of-day))]
-     & (args :guard #(every? number? %))]
+     [:field id-or-name (opts :guard (= (:temporal-unit opts) :hour-of-day))]
+     & (args :guard (every? number? args))]
     (into [:!= [:get-hour [:field id-or-name (not-empty (dissoc opts :temporal-unit))]]] args)
 
     [:!=
-     [:field id-or-name (opts :guard #(#{:day-of-week :month-of-year :quarter-of-year} (:temporal-unit %)))]
-     & (args :guard #(every? u.time/timestamp-coercible? %))]
+     [:field id-or-name (opts :guard (#{:day-of-week :month-of-year :quarter-of-year} (:temporal-unit opts)))]
+     & (args :guard (every? u.time/timestamp-coercible? args))]
     (let [args (mapv u.time/coerce-to-timestamp args)]
       (if (every? u.time/valid? args)
         (let [unit         (:temporal-unit opts)
@@ -1009,7 +1009,7 @@
   expression and convert it to a `:relative-time-interval` call, honoring the original user intent. See #46211 and
   #46438 for details."
   [clause]
-  (lib.util.match/replace clause
+  (lib.util.match/replace-lite clause
     [:between
      [:+
       field
@@ -1489,7 +1489,7 @@
 
 (mr/def ::TemplateTagType
   "Schema for valid values of template tag `:type`."
-  [:enum {:decode/normalize keyword} :snippet :card :dimension :number :text :date])
+  [:enum {:decode/normalize keyword} :snippet :card :dimension :number :text :date :table])
 
 (mr/def ::TemplateTag.Common
   "Things required by all template tag types."
@@ -1535,6 +1535,21 @@
    [:map
     [:type    [:= {:decode/normalize helpers/normalize-keyword} :card]]
     [:card-id ::lib.schema.id/card]]])
+
+;; Example:
+;;
+;;    {:id           "fc5e14d9-7d14-67af-66b2-b2a6e25afeaf"
+;;     :name         "#1635"
+;;     :display-name "#1635"
+;;     :type         :table
+;;     :table-id     2}
+(mr/def ::TemplateTag.SourceTable
+  "Schema for a source query template tag."
+  [:merge
+   ::TemplateTag.Common
+   [:map
+    [:type                  [:= {:decode/normalize helpers/normalize-keyword} :table]]
+    [:table-id              ::lib.schema.id/table]]])
 
 (mr/def ::TemplateTag.Value.Common
   "Stuff shared between the Field filter and raw value template tag schemas."
@@ -1656,6 +1671,7 @@
    [:dimension     [:ref ::TemplateTag.FieldFilter]]
    [:snippet       [:ref ::TemplateTag.Snippet]]
    [:card          [:ref ::TemplateTag.SourceQuery]]
+   [:table         [:ref ::TemplateTag.SourceTable]]
    [:temporal-unit [:ref ::TemplateTag.TemporalUnit]]
    [::mc/default   [:ref ::TemplateTag.RawValue]]])
 
