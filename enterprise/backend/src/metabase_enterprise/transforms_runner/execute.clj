@@ -401,3 +401,28 @@
 
     :else
     {:table-ref (select-keys v [:database_id :schema :table])}))
+
+;;; ---------------------------------------- Shared ::runner defmethods ----------------------------------------
+;; All runner-based languages share these implementations. Per-language dispatch
+;; is handled via the hierarchy in transforms.i — each language only needs to
+;; define (defmethod transforms.i/lang-config :lang-kw ...).
+
+(defmethod transforms.i/target-db-id ::transforms.i/runner
+  [transform]
+  (-> transform :target :database))
+
+(defmethod transforms.i/source-db-id ::transforms.i/runner
+  [transform]
+  (-> transform :source :source-database))
+
+(defmethod transforms.i/table-dependencies ::transforms.i/runner
+  [transform]
+  (into #{}
+        (map source-table-value->dependency)
+        (vals (get-in transform [:source :source-tables]))))
+
+#_{:clj-kondo/ignore [:discouraged-var]}
+(defmethod transforms.i/execute! ::transforms.i/runner
+  [transform options]
+  (let [lang-kw (-> transform :source :type keyword)]
+    (execute-runner-transform! transform options (transforms.i/lang-config lang-kw))))
