@@ -467,7 +467,7 @@
   [driver ^Connection conn catalog schema]
   (with-open [stmt (.createStatement conn)]
     (let [sql (describe-schema-sql driver catalog schema)
-          rs (sql-jdbc.execute/execute-statement! driver stmt #p sql)]
+          rs (sql-jdbc.execute/execute-statement! driver stmt sql)]
       (into
        #{}
        (comp (filter (fn [{table-name :table :as _full}]
@@ -491,15 +491,15 @@
 
 (defmethod driver/describe-database* :starburst
   [driver database]
-  (let [{:keys [catalog schema]} #p (driver.conn/effective-details database)]
+  (let [{:keys [catalog schema]} (driver.conn/effective-details database)]
     (sql-jdbc.execute/do-with-connection-with-options
      driver
      database
      nil
      (fn [^Connection conn]
-       (let [schemas #p (if #p schema
-                          #{(describe-schema driver conn catalog schema)}
-                          (all-schemas driver conn catalog))]
+       (let [schemas (if schema
+                       #{(describe-schema driver conn catalog schema)}
+                       (all-schemas driver conn catalog))]
          {:tables (reduce set/union #{} schemas)})))))
 
 (defmethod driver/describe-table :starburst

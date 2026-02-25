@@ -351,7 +351,7 @@
   implementation of `describe-database`.
   Also syncs the database metadata taken from describe-database if there is any"
   ([database :- i/DatabaseInstance]
-   (sync-tables-and-database! #p database (fetch-metadata/db-metadata database)))
+   (sync-tables-and-database! database (fetch-metadata/db-metadata database)))
 
   ([database :- i/DatabaseInstance db-metadata]
    ;; determine what's changed between what info we have and what's in the DB
