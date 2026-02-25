@@ -117,7 +117,7 @@
   [field-ref :- :mbql.clause/field]
   ;; name-based field ref is already upgraded
   ;; implicitly joined field ref cannot be upgraded
-  (and (lib.ref/field-ref-id field-ref)
+  (and (some? (lib.ref/field-ref-id field-ref))
        (not (contains? (lib.options/options field-ref) :source-field))))
 
 (mu/defn- should-upgrade-field-refs-in-clause? :- :boolean
