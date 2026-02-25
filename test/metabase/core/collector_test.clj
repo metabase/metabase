@@ -104,4 +104,46 @@
                            (assoc-in [:headers "user-agent"] "Mozilla/5.0 Chrome/120"))
               response (call-handler handler request)]
           ;; 400 = handler processed it (validation error for unknown site), not 404
-          (is (contains? #{200 400} (:status response))))))))))
+          (is (contains? #{200 400} (:status response))))))))
+
+;;; ------------------------------------------ CORS Headers on Collector ------------------------------------------
+
+(deftest collector-cors-headers-test
+  (let [site-uuid (str (random-uuid))
+        origin    "https://myapp.example.com"]
+    (mt/with-temp [:model/ProductAnalyticsSite _site {:uuid            site-uuid
+                                                      :name            "CORS Test Site"
+                                                      :allowed_domains origin
+                                                      :archived        false}]
+      (mt/with-premium-features #{:product-analytics}
+        (let [routes  (collector/collector-routes)
+              handler (collector/apply-collector-middleware routes)]
+
+          (testing "OPTIONS preflight with matching origin returns CORS headers"
+            (let [request  (-> (ring.mock/request :options "/api/ee/product-analytics/send")
+                               (assoc-in [:headers "origin"] origin))
+                  response (call-handler handler request)]
+              (is (= 200 (:status response)))
+              (is (= origin (get-in response [:headers "Access-Control-Allow-Origin"])))
+              (is (some? (get-in response [:headers "Access-Control-Allow-Methods"])))
+              (is (some? (get-in response [:headers "Access-Control-Allow-Headers"])))))
+
+          (testing "OPTIONS preflight with non-matching origin omits Allow-Origin"
+            (let [request  (-> (ring.mock/request :options "/api/ee/product-analytics/send")
+                               (assoc-in [:headers "origin"] "https://evil.example.com"))
+                  response (call-handler handler request)]
+              (is (= 200 (:status response)))
+              (is (nil? (get-in response [:headers "Access-Control-Allow-Origin"])))))
+
+          (testing "POST with matching origin returns CORS headers on response"
+            ;; Use a nonexistent UUID so no event is persisted (avoids FK constraint
+            ;; when with-temp cleans up the site), but the middleware still adds CORS
+            ;; headers based on the request URI + Origin header.
+            (let [request  (-> (ring.mock/request :post "/api/ee/product-analytics/send")
+                               (ring.mock/content-type "application/json")
+                               (ring.mock/body "{\"type\":\"event\",\"payload\":{\"website\":\"00000000-0000-0000-0000-000000000000\",\"url\":\"https://example.com\"}}")
+                               (assoc-in [:headers "origin"] origin)
+                               (assoc-in [:headers "user-agent"] "Mozilla/5.0 Chrome/120"))
+                  response (call-handler handler request)]
+              (is (= origin (get-in response [:headers "Access-Control-Allow-Origin"])))
+              (is (some? (get-in response [:headers "Access-Control-Allow-Methods"]))))))))))

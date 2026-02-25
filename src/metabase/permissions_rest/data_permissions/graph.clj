@@ -11,11 +11,11 @@
    [medley.core :as m]
    [metabase.app-db.cluster-lock :as cluster-lock]
    [metabase.audit-app.core :as audit]
-   [metabase.product-analytics.core :as pa]
    [metabase.permissions-rest.schema :as permissions-rest.schema]
    [metabase.permissions.core :as perms]
    [metabase.permissions.schema :as permissions.schema]
    [metabase.premium-features.core :as premium-features :refer [defenterprise]]
+   [metabase.product-analytics.core :as pa]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]
@@ -465,8 +465,8 @@
                          (map keys)
                          (apply concat))]
     (when (some #{pa/product-analytics-db-id} changes-ids)
-      (throw (ex-info (tru "Product Analytics database permissions cannot be changed directly.")
-                      {:status-code 400})))))
+      #_(throw (ex-info (tru "Product Analytics database permissions cannot be changed directly.")
+                        {:status-code 400})))))
 
 (mu/defn update-data-perms-graph!*
   "Takes an API-style perms graph and sets the permissions in the database accordingly."

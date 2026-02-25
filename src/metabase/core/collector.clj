@@ -23,6 +23,7 @@
    [metabase.server.middleware.misc :as mw.misc]
    [metabase.server.middleware.premium-features-cache :as mw.pf-cache]
    [metabase.server.middleware.request-id :as mw.request-id]
+   [metabase.server.middleware.security :as mw.security]
    [metabase.server.middleware.settings-cache :as mw.settings-cache]
    [metabase.settings.core :as setting]
    [metabase.util.i18n :refer [deferred-tru]]
@@ -86,11 +87,12 @@
 
 (def ^:private collector-middleware
   "Minimal middleware stack for the collector — no session/auth, no paging, no
-   browser cookies, no security headers (no HTML), no SSL redirect.
+   browser cookies, no SSL redirect.
    Applied top-to-bottom; requests see handlers bottom-to-top."
   [#'mw.exceptions/catch-uncaught-exceptions
    #'mw.exceptions/catch-api-exceptions
    #'mw.log/log-api-call
+   #'mw.security/add-security-headers
    #'mw.json/wrap-json-body
    #'mw.json/wrap-streamed-json-response
    #'wrap-keyword-params
@@ -160,6 +162,9 @@
   (log/info "Setting up and migrating Metabase DB. Please sit tight, this may take a minute...")
   (mdb/setup-db! :create-sample-content? false)
   (init-status/set-progress! 0.6)
+  ;; Load the Iceberg storage backend multimethods so dispatching works
+  #_{:clj-kondo/ignore [:metabase/modules]}
+  (classloader/require 'metabase-enterprise.product-analytics.storage.iceberg)
   ;; Ensure PA virtual DB and tables exist
   #_{:clj-kondo/ignore [:metabase/modules]}
   (classloader/require 'metabase-enterprise.product-analytics.setup)
