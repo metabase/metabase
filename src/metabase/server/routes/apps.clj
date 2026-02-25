@@ -72,4 +72,6 @@
               coll-id     (:collection_id app)]
           (respond
            (-> (response/response (app-page-html (:name app) api-key auth-method coll-id))
-               (response/content-type "text/html; charset=utf-8"))))))))
+               (response/content-type "text/html; charset=utf-8")
+               (response/header "Content-Security-Policy"
+                                "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; connect-src *; frame-src *; img-src * data: blob:;"))))))))
