@@ -359,7 +359,7 @@
     }
   },
   "scripts": {
-    "build": "nr build:ext && nr build:webview",
+    "build": "nr build:notebook-component && nr build:ext && nr build:webview",
     "build:metabase-lib": "bun run scripts/bundle-metabase-lib.ts",
     "build:notebook-component": "cd .. && rspack --config rspack.notebook-component.config.js",
     "build:ext": "tsdown src/index.ts --external vscode",
