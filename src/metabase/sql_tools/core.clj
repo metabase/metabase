@@ -182,3 +182,17 @@
   (let [parser (sql-tools.settings/current-parser-backend)]
     (metrics/with-operation-timing [parser "add-into-clause"]
       (interface/add-into-clause-impl parser driver sql table-name))))
+
+(defn find-table-or-transform
+  "Wrapper for `sql-tools.common/find-table-or-transform` that can be provided to outside world. For details see
+  the comments in `sql-tools.interface`."
+  [driver tables transform spec]
+  (interface/find-table-or-transform-shim
+   driver tables transform spec))
+
+(defn resolve-field
+  "Wrapper for `sql-tools.common/find-table-or-transform` that can be provided to outside world. For details see
+  the comments in `sql-tools.interface`."
+  [driver mp col-spec]
+  (interface/resolve-field-shim
+   driver mp col-spec))

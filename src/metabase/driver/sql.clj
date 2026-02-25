@@ -252,4 +252,4 @@
 
 (p/import-vars
  [sql.params.substitution ->prepared-substitution PreparedStatementSubstitution]
- [sql.normalize normalize-name reserved-literal])
+ [sql.normalize normalize-error normalize-name reserved-literal])

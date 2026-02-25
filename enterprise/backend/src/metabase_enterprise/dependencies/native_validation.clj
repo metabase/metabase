@@ -8,7 +8,6 @@
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.query-processor.compile :as qp.compile]
-   ^{:clj-kondo/ignore [:metabase/modules]} [metabase.sql-tools.common :as sql-tools.common]
    [metabase.sql-tools.core :as sql-tools]
    [metabase.util :as u]
    [metabase.util.malli :as mu]))
@@ -85,13 +84,6 @@
                        (not (parse-card-placeholder (:table dep))))))
         (driver/native-query-deps driver compiled)))
 
-(defn- normalize-error
-  "Normalize error :name using driver-specific case conventions."
-  [driver error]
-  (if-let [error-name (:name error)]
-    (assoc error :name (driver.sql/normalize-name driver error-name))
-    error))
-
 (defn- extract-source-entity
   "Extract source entity info from a :single-column col-spec's source-columns.
    When card-placeholders? is true, recognizes card placeholder table names (mb__dummy_card__N).
@@ -131,7 +123,7 @@
   "Map a SQL table spec {:table name, :schema schema} to a Metabase table ID.
    Returns table ID or nil if not found."
   [driver mp table-spec]
-  (:table (sql-tools.common/find-table-or-transform
+  (:table (sql-tools/find-table-or-transform
            driver
            (lib.metadata/tables mp)
            (lib.metadata/transforms mp)
@@ -196,12 +188,12 @@
         {:keys [used-fields returned-fields errors]} (sql-tools/field-references driver sql)
         check-fields (fn [fields]
                        (mapcat (fn [col-spec]
-                                 (->> (sql-tools.common/resolve-field driver mp col-spec)
+                                 (->> (sql-tools/resolve-field driver mp col-spec)
                                       (keep :error)
                                       (keep (partial enrich-error driver mp card-placeholders? col-spec))))
                                fields))]
     (into #{}
-          (map (partial normalize-error driver))
+          (map (partial driver.sql/normalize-error driver))
           (concat errors
                   (check-fields used-fields)
                   (check-fields returned-fields)))))

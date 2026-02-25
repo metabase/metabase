@@ -65,3 +65,19 @@
   SELECT INTO syntax."
   {:arglists '([parser driver sql table-name])}
   parser-driver-dispatch)
+
+;;;; Following methods enable providing _specific_ functionality from sql-tools.common to outside world, without
+;;;; creating circular dependencies.
+;;
+;;   E.g. sql-tools is currently required by driver.sql. sql-tools.common uses driver.sql. Hence the sql-tools
+;;   can not require and re-export symbols from common.
+
+(defmulti resolve-field-shim
+  "Shim for `metabase.sql-tools.common/resolve-field` so it can be provided by `sql-tools.core`"
+  {:arglists '([driver metadata-provider col-spec])}
+  (constantly nil))
+
+(defmulti find-table-or-transform-shim
+  "Shim for `metabase.sql-tools.common/find-table-or-transform so it can be provided by `sql-tools.core`"
+  {:arglists '([driver tables transforms search-spec])}
+  (constantly nil))

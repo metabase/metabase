@@ -10,11 +10,16 @@
    [metabase.util.humanization :as u.humanization]
    [metabase.util.malli :as mu]))
 
+(defn normalize-name
+  "Normalize a name by per driver rules."
+  [driver name*]
+  (driver.sql/normalize-name driver name*))
+
 (defn normalize-table-spec
   "Return tables spec with normalized values."
   [driver {:keys [table schema]}]
-  {:table (driver.sql/normalize-name driver table)
-   :schema (some->> schema (driver.sql/normalize-name driver))})
+  {:table (normalize-name driver table)
+   :schema (some->> schema (normalize-name driver))})
 
 (defn find-table-or-transform
   "Given a table and schema that has been parsed out of a native query, finds either a matching table or a matching transform.
@@ -22,7 +27,7 @@
   [driver tables transforms {search-table :table raw-schema :schema}]
   (let [search-schema (or raw-schema
                           (driver.sql/default-schema driver))
-        normalize (partial driver.sql/normalize-name driver)
+        normalize (partial normalize-name driver)
         matches? (fn [db-table db-schema]
                    (and (= (normalize search-table) (normalize db-table))
                         (= (some-> search-schema normalize) (some-> db-schema normalize))))]
@@ -101,8 +106,8 @@
                                               :semantic-type :Semantic/*}])
                                           (keep :col (resolve-field driver metadata-provider current-col))))
                                       source-col-set)
-                              (some #(when (= (driver.sql/normalize-name driver (:name %))
-                                              (driver.sql/normalize-name driver (:column col-spec)))
+                              (some #(when (= (normalize-name driver (:name %))
+                                              (normalize-name driver (:column col-spec)))
                                        %))))))]
      {:col (assoc found :lib/desired-column-alias (or alias name))}
      {:error (lib/missing-column-error (:column col-spec))})])
@@ -157,14 +162,6 @@
                        (keep :col))
                  returned-fields))))
 
-(defn- normalize-error
-  "Normalize error names using driver-specific case normalization.
-   This ensures error names match database metadata conventions."
-  [driver error]
-  (if-let [error-name (:name error)]
-    (assoc error :name (driver.sql/normalize-name driver error-name))
-    error))
-
 (defn validate-query
   "Validate native query."
   [parser driver native-query]
@@ -176,7 +173,7 @@
     (->> (-> errors
              (into (check-fields used-fields))
              (into (check-fields returned-fields)))
-         (map (partial normalize-error driver))
+         (map (partial driver.sql/normalize-error driver))
          set)))
 
 (defn referenced-fields
@@ -187,3 +184,14 @@
           (mapcat #(->> (resolve-field driver native-query %)
                         (keep :col)))
           used-fields)))
+
+;;;; Implmenetations make the functionality providable to outside world. For details see the comment
+;;;; in `sql-tools.interface`.
+
+(defmethod sql-tools/resolve-field-shim :default
+  [_parser driver metadata-provider col-spec]
+  (resolve-field driver metadata-provider col-spec))
+
+(defmethod sql-tools/find-table-or-transform-shim :default
+  [_parser driver tables transforms search-spec]
+  (find-table-or-transform driver tables transforms search-spec))
