@@ -257,18 +257,6 @@ const config = {
                   return;
                 }
 
-                const crypto = require("crypto");
-                const computeHash = (asset) => {
-                  if (!asset) {
-                    return "missing";
-                  }
-                  return crypto
-                    .createHash("md5")
-                    .update(asset.source())
-                    .digest("hex")
-                    .substring(0, 8);
-                };
-
                 // Collect ALL chunk files for the chunked entry using the
                 // compilation's entrypoint API. This includes split chunks
                 // with any name (e.g. default-vendors-*), not just those
@@ -300,8 +288,7 @@ const config = {
                 const runtimeFile =
                   chunkFiles.find((f) =>
                     /^chunks\/embedding-sdk-chunk-runtime\.[^/]+\.js$/.test(f),
-                  ) ||
-                  chunkFiles.find((f) => f.includes("chunk-runtime"));
+                  ) || chunkFiles.find((f) => f.includes("chunk-runtime"));
                 const otherFiles = chunkFiles.filter((f) => f !== runtimeFile);
 
                 // Paths are relative to /app/ (the bootstrap's baseUrl).
@@ -324,12 +311,6 @@ const config = {
                 }
 
                 let newSource = bootstrapAsset.source();
-
-                // Legacy monolithic bundle hash (for backward compat path)
-                newSource = newSource.replace(
-                  /__SDK_BUNDLE_HASH__/g,
-                  computeHash(assets[`legacy/${SDK_BUNDLE_FILENAME}`]),
-                );
 
                 // Inject the chunk manifest as JSON
                 newSource = newSource.replace(
@@ -373,14 +354,6 @@ config.resolve.alias = {
   // Allows importing side effects that applies only to the SDK.
   "sdk-specific-imports": SDK_BUNDLE_SRC_PATH + "/lib/sdk-specific-imports.ts",
 };
-
-// The SDK bundle is loaded as a standalone script, not through the dev
-// server's HMR WebSocket, so HMR can never reach it. Remove devServer
-// and ReactRefreshPlugin to avoid HMR runtime errors in the chunks.
-delete config.devServer;
-config.plugins = (config.plugins || []).filter(
-  (p) => p && p.constructor?.name !== "ReactRefreshRspackPlugin",
-);
 
 if (config.cache) {
   config.cache.cacheDirectory = resolve(

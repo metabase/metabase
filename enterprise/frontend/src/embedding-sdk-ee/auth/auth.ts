@@ -57,11 +57,7 @@ PLUGIN_EMBEDDING_SDK_AUTH.initAuth = async (
   console.log("[DEBUG] PLUGIN_EMBEDDING_SDK_AUTH.initAuth");
   const { metabaseInstanceUrl, apiKey, isLocalHost } = authConfig;
 
-  // This is needed because of how MetabaseAuthConfig is typed
-  const _jwtProviderUri =
-    "jwtProviderUri" in authConfig ? authConfig.jwtProviderUri : undefined;
-
-  // remove any stale tokens that might be there from a previous session=
+  // remove any stale tokens that might be there from a previous session
   samlTokenStorage.remove();
 
   // eslint-disable-next-line no-console
@@ -87,7 +83,7 @@ PLUGIN_EMBEDDING_SDK_AUTH.initAuth = async (
     ) {
       api.sessionToken = authState.session.id;
       dispatch(refreshCurrentUser.fulfilled(authState.user, "", undefined));
-      dispatch(loadSettings(authState.siteSettings as any));
+      dispatch(loadSettings(authState.siteSettings as Settings));
       MetabaseSettings.setAll(authState.siteSettings as Settings);
 
       // Set up the refresh handler so API calls can renew the token later.

@@ -24,25 +24,13 @@
       (response/content-type content-type)
       (update :headers merge no-store-cache-header)))
 
-(defn- versioned-request?
-  "True when the request has a `v` query parameter (e.g. ?v=abc123),
-   indicating the URL is cache-busted and can be cached forever."
-  [request]
-  (contains? (:query-params request) "v"))
-
 (defn- serve-for-prod [base request]
-  (if (versioned-request? request)
-    ;; Versioned URL (loaded via bootstrap) → cache forever, no ETag needed
-    (-> base
-        (update :headers merge far-future-cache-header vary-accept-encoding-header)
-        (response/content-type content-type))
-    ;; Bare URL (old customers) → short cache + ETag revalidation
-    (let [resp (lib.etag-cache/with-etag base request)]
-      (cond-> resp
-        true                    (update :headers merge
-                                        default-cache-header
-                                        vary-accept-encoding-header)
-        (= 200 (:status resp)) (response/content-type content-type)))))
+  (let [resp (lib.etag-cache/with-etag base request)]
+    (cond-> resp
+      true                    (update :headers merge
+                                      default-cache-header
+                                      vary-accept-encoding-header)
+      (= 200 (:status resp)) (response/content-type content-type))))
 
 (defn- serve-resource-handler
   "Serve a JS resource with ETag + 60s caching in prod, no-store in dev."
