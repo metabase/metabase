@@ -145,7 +145,7 @@
 (mr/def ::swap-source.field-id-mapping
   [:map-of ::lib.schema.id/field [:or ::lib.schema.id/field :string]])
 
-(mu/defn- build-field-id-mapping-for-table :- [:maybe ::swap-source.field-id-mapping]
+(mu/defn- build-swap-field-id-mapping-for-table :- [:maybe ::swap-source.field-id-mapping]
   "Builds a mapping of field IDs of the source table to field IDs of the target table."
   [query :- ::lib.schema/query
    source-table-id :- ::lib.schema.id/table
@@ -154,11 +154,11 @@
         target-fields (lib.metadata/fields query target-table-id)
         target-fields-by-name (m/index-by :name target-fields)]
     (not-empty (into {} (keep (fn [source-field]
-                     (when-let [target-field (get target-fields-by-name (:name source-field))]
-                       [(:id source-field) (:id target-field)]))
-                   source-fields)))))
+                                (when-let [target-field (get target-fields-by-name (:name source-field))]
+                                  [(:id source-field) (:id target-field)]))
+                              source-fields)))))
 
-(mu/defn- build-field-id-mapping-for-card :- [:maybe ::swap-source.field-id-mapping]
+(mu/defn- build-swap-field-id-mapping-for-card :- [:maybe ::swap-source.field-id-mapping]
   "Builds a mapping of field IDs of the source table to desired column aliases of the target card."
   [query :- ::lib.schema/query
    source-table-id :- ::lib.schema.id/table
@@ -167,21 +167,21 @@
         target-columns (lib.card/saved-question-metadata query target-card-id)
         target-columns-by-name (m/index-by :lib/desired-column-alias target-columns)]
     (not-empty (into {} (keep (fn [source-field]
-                     (when-let [target-column (get target-columns-by-name (:name source-field))]
-                       [(:id source-field) (:lib/desired-column-alias target-column)]))
-                   source-fields))))
+                                (when-let [target-column (get target-columns-by-name (:name source-field))]
+                                  [(:id source-field) (:lib/desired-column-alias target-column)]))
+                              source-fields)))))
 
-(mu/defn build-field-id-mapping :- [:maybe ::swap-source.field-id-mapping]
+(mu/defn build-swap-field-id-mapping :- [:maybe ::swap-source.field-id-mapping]
   "Builds a mapping of field IDs of the source table to what should replace them in a field ref."
   [query      :- ::lib.schema/query
    old-source :- ::swap-source.source
    new-source :- ::swap-source.source]
   (cond
     (and (= (:type old-source) :table) (= (:type new-source) :table))
-    (build-field-id-mapping-for-table query (:id old-source) (:id new-source))
+    (build-swap-field-id-mapping-for-table query (:id old-source) (:id new-source))
 
     (and (= (:type old-source) :table) (= (:type new-source) :card))
-    (build-field-id-mapping-for-card query (:id old-source) (:id new-source))))
+    (build-swap-field-id-mapping-for-card query (:id old-source) (:id new-source))))
 
 (mu/defn- swap-field-id-in-ref :- :mbql.clause/field
   "If this field ref is field-id-based and there is a mapping for the field ID, 
@@ -278,7 +278,7 @@
   "If the parameter target is a field ref, swap its field ID using the provided mapping."
   [target           :- ::lib.schema.parameter/target
    field-id-mapping :- [:maybe ::swap-source.field-id-mapping]]
-  (or (when (and (some? field-id-mapping) 
+  (or (when (and (some? field-id-mapping)
                  (lib.parameters/parameter-target-field-ref target))
         (lib.parameters/update-parameter-target-field-ref
          target
