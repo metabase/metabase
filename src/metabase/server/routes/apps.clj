@@ -3,7 +3,6 @@
   (:require
    [metabase.config.core :as config]
    [metabase.initialization-status.core :as init-status]
-   [metabase.system.core :as system]
    [metabase.util :as u]
    [ring.util.response :as response]
    [toucan2.core :as t2]))
@@ -18,8 +17,7 @@
 (defn- app-page-html
   "Generate HTML page with embedded collection browser."
   [app-name api-key auth-method theme logo collection-id]
-  (let [site-url (or (system/site-url) "")]
-    (str "<!DOCTYPE html>
+  (str "<!DOCTYPE html>
 <html lang=\"en\">
 <head>
   <meta charset=\"utf-8\" />
@@ -45,6 +43,12 @@
       height: 32px;
       width: auto;
     }
+    .app-header-title { flex: 1; }
+    .app-user {
+      font-size: 14px;
+      font-weight: 400;
+      opacity: 0.7;
+    }
     .app-content { flex: 1; overflow: hidden; }
   </style>
 </head>
@@ -52,16 +56,24 @@
   <div id=\"app-container\">
     <app-wrapper>
       <div class=\"app-header\">"
-         (when logo
-           (str "<img src=\"" logo "\" alt=\"\" />"))
-         app-name "</div>
+       (when logo
+         (str "<img src=\"" logo "\" alt=\"\" />"))
+       "<span class=\"app-header-title\">" app-name "</span>
+        <span class=\"app-user\"></span>
+      </div>
       <div class=\"app-content\">
         <metabase-browser initial-collection=\"" collection-id "\"></metabase-browser>
       </div>
     </app-wrapper>
   </div>
 
-  <script defer src=\"" site-url "/app/embed.js\"></script>
+  <script>
+    var INSTANCE_URL = window.location.origin;
+    var script = document.createElement('script');
+    script.src = INSTANCE_URL + '/app/embed.js';
+    script.defer = true;
+    document.head.appendChild(script);
+  </script>
   <script>
     function defineMetabaseConfig(config) {
       window.metabaseConfig = config;
@@ -69,17 +81,17 @@
   </script>
   <script>
     defineMetabaseConfig({
-      instanceUrl: \"" site-url "\""
-         (if api-key
-           (str ",\n      apiKey: \"" api-key "\"")
-           (str ",\n      preferredAuthMethod: \"" (name auth-method) "\""))
-         (when theme
-           (str ",\n      theme: " theme))
-         "
+      instanceUrl: window.location.origin"
+       (if api-key
+         (str ",\n      apiKey: \"" api-key "\"")
+         (str ",\n      preferredAuthMethod: \"" (name auth-method) "\""))
+       (when theme
+         (str ",\n      theme: " theme))
+       "
     });
   </script>
 </body>
-</html>")))
+</html>"))
 
 (defn app-handler
   "Handler for /apps/:name routes. Serves an HTML page with embedded collection browser.
