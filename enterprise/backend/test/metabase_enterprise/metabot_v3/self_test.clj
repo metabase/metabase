@@ -13,6 +13,32 @@
 
 (set! *warn-on-reflection* true)
 
+;;; provider resolution tests
+
+(deftest ^:parallel parse-provider-model-test
+  (testing "parses provider/model format correctly"
+    (is (=? {:provider "anthropic" :model "claude-haiku-4-5"}
+            (#'self/parse-provider-model "anthropic/claude-haiku-4-5")))
+    (is (=? {:provider "openai" :model "gpt-4.1-mini"}
+            (#'self/parse-provider-model "openai/gpt-4.1-mini")))
+    (is (=? {:provider "openrouter" :model "anthropic/claude-haiku-4-5"}
+            (#'self/parse-provider-model "openrouter/anthropic/claude-haiku-4-5")))
+    (is (=? {:provider "openrouter" :model "google/gemini-2.5-flash"}
+            (#'self/parse-provider-model "openrouter/google/gemini-2.5-flash"))))
+  (testing "throws for invalid formats/models"
+    (is (thrown-with-msg? Exception #"Unknown LLM provider: no-slash" (#'self/parse-provider-model "no-slash")))
+    (is (thrown-with-msg? Exception #"Unknown LLM provider: " (#'self/parse-provider-model "")))
+    (is (thrown-with-msg? Exception #"Unknown LLM provider: " (#'self/parse-provider-model "/leading-slash")))))
+
+(deftest ^:parallel resolve-adapter-test
+  (testing "resolves known providers to adapter functions"
+    (is (fn? (#'self/resolve-adapter "anthropic")))
+    (is (fn? (#'self/resolve-adapter "openai")))
+    (is (fn? (#'self/resolve-adapter "openrouter"))))
+  (testing "throws for unknown provider"
+    (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Unknown LLM provider"
+                          (#'self/resolve-adapter "unknown")))))
+
 ;;; utils tests
 
 (deftest sse-reducible-test
