@@ -3887,7 +3887,7 @@ msgstr "Notre {0} est une chaîne de 5 champs, commençant par les minutes, sép
 #: frontend/src/metabase/admin/tools/components/LogLevelsModal/DurationInput.tsx:56
 #: frontend/src/metabase/common/components/CronExpressioInput/CronExpressionInput.tsx:112
 msgid "Minutes"
-msgstr "Procès-verbal"
+msgstr "Minutes"
 
 #: frontend/src/metabase/admin/tools/components/LogLevelsModal/DurationInput.tsx:57
 #: frontend/src/metabase/common/components/CronExpressioInput/CronExpressionInput.tsx:113
@@ -13109,7 +13109,7 @@ msgstr "Vérifiez toutes les {0}"
 msgid "Minute"
 msgid_plural "{0} Minutes"
 msgstr[0] "Minute"
-msgstr[1] "Procès-verbal"
+msgstr[1] "Minutes"
 
 #: frontend/src/metabase/lib/notifications.ts:264
 msgid "Check hourly"
