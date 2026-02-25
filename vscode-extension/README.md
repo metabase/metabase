@@ -32,6 +32,7 @@
 | `metastudio.runTransform`          | Run Transform                         |
 | `metastudio.createSqlTransform`    | Metastudio: New SQL Transform         |
 | `metastudio.openEmbeddedCode`      | Metastudio: Edit Query in Editor      |
+| `metastudio.showNotebook`          | Metastudio: Show Notebook Query       |
 
 <!-- commands -->
 

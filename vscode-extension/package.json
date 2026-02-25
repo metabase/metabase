@@ -91,6 +91,10 @@
         "command": "metastudio.openEmbeddedCode",
         "title": "Metastudio: Edit Query in Editor",
         "icon": "$(edit)"
+      },
+      {
+        "command": "metastudio.showNotebook",
+        "title": "Metastudio: Show Notebook Query"
       }
     ],
     "walkthroughs": [
@@ -211,9 +215,14 @@
           "group": "navigation@1"
         },
         {
+          "command": "metastudio.showNotebook",
+          "when": "view == metabase.content && viewItem =~ /^(card|model|metric|transform|transformStructured)$/",
+          "group": "navigation@2"
+        },
+        {
           "command": "metastudio.showInDependencyGraph",
           "when": "view == metabase.content && viewItem =~ /^(card|model|metric|dashboard|collection|collectionLibrary|transform|native_query_snippet|document|action|measure|segment)$/",
-          "group": "navigation@2"
+          "group": "navigation@3"
         },
         {
           "command": "metastudio.showInDependencyGraph",
@@ -347,6 +356,7 @@
   },
   "scripts": {
     "build": "nr build:ext && nr build:webview",
+    "build:metabase-lib": "bun run scripts/bundle-metabase-lib.ts",
     "build:ext": "tsdown src/index.ts --external vscode",
     "build:webview": "cd webview && vite build",
     "dev": "nr build:ext --watch --sourcemap",
@@ -373,6 +383,7 @@
     "@vscode/vsce": "^3.7.1",
     "@xyflow/react": "^12.10.1",
     "bumpp": "^10.3.2",
+    "esbuild": "^0.25.0",
     "eslint": "^9.39.2",
     "ovsx": "^0.10.7",
     "react": "^19.0.0",
