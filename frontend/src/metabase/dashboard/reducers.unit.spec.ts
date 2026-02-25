@@ -1,4 +1,5 @@
 import { createMockDashboard } from "metabase-types/api/mocks";
+import { createMockStoreDashboard } from "metabase-types/store/mocks";
 
 import {
   ADD_DASHCARD_IDS_TO_LOADING_QUEUE,
@@ -16,10 +17,10 @@ import { dashboardReducers as reducer } from "./reducers";
 const TEST_DASHBOARD = createMockDashboard();
 
 describe("dashboard reducers", () => {
-  let initState;
+  let initState: ReturnType<typeof reducer>;
 
   beforeEach(() => {
-    initState = reducer(undefined, {});
+    initState = reducer(undefined, { type: "__INIT__" });
   });
 
   it("should return the initial state", () => {
@@ -59,11 +60,11 @@ describe("dashboard reducers", () => {
       expect(
         reducer(undefined, {
           type: SET_SIDEBAR,
-          payload: { name: "foo", props: { abc: 123 } },
+          payload: { name: "sharing", props: { abc: 123 } },
         }),
       ).toEqual({
         ...initState,
-        sidebar: { name: "foo", props: { abc: 123 } },
+        sidebar: { name: "sharing", props: { abc: 123 } },
       });
     });
 
@@ -71,11 +72,11 @@ describe("dashboard reducers", () => {
       expect(
         reducer(undefined, {
           type: SET_SIDEBAR,
-          payload: { name: "foo" },
+          payload: { name: "sharing" },
         }),
       ).toEqual({
         ...initState,
-        sidebar: { name: "foo", props: {} },
+        sidebar: { name: "sharing", props: {} },
       });
     });
   });
@@ -86,7 +87,7 @@ describe("dashboard reducers", () => {
         reducer(
           {
             ...initState,
-            sidebar: { name: "foo", props: { abc: 123 } },
+            sidebar: { name: "sharing", props: { abc: 123 } },
           },
           {
             type: CLOSE_SIDEBAR,
@@ -102,7 +103,7 @@ describe("dashboard reducers", () => {
         reducer(
           {
             ...initState,
-            sidebar: { name: "foo", props: { abc: 123 } },
+            sidebar: { name: "sharing", props: { abc: 123 } },
           },
           {
             type: INITIALIZE,
@@ -156,8 +157,8 @@ describe("dashboard reducers", () => {
     it("should clear sidebar state when entering edit mode", () => {
       const state = {
         ...initState,
-        sidebar: { name: "foo", props: { abc: 123 } },
-      };
+        sidebar: { name: "sharing", props: { abc: 123 } },
+      } satisfies ReturnType<typeof reducer>;
       expect(
         reducer(state, {
           type: SET_EDITING_DASHBOARD,
@@ -173,8 +174,8 @@ describe("dashboard reducers", () => {
     it("should clear sidebar state when leaving edit mode", () => {
       const state = {
         ...initState,
-        sidebar: { name: "foo", props: { abc: 123 } },
-      };
+        sidebar: { name: "sharing", props: { abc: 123 } },
+      } satisfies ReturnType<typeof reducer>;
       expect(
         reducer(state, {
           type: SET_EDITING_DASHBOARD,
@@ -190,7 +191,7 @@ describe("dashboard reducers", () => {
         reducer(
           {
             ...initState,
-            sidebar: { name: "foo", props: { abc: 123 } },
+            sidebar: { name: "sharing", props: { abc: 123 } },
             parameterValues: { 123: "abc", 456: "def" },
           },
           {
@@ -203,26 +204,11 @@ describe("dashboard reducers", () => {
   });
 
   describe("SET_DASHBOARD_ATTRIBUTES", () => {
-    const emptyDashboard = {
-      archived: false,
-      dashcards: [],
-      can_write: true,
-      enable_embedding: false,
-      show_in_getting_started: false,
-      name: "Dashboard",
-      creator_id: 1,
-      updated_at: "2021-01-01T01:01:01.001",
+    const emptyDashboard = createMockStoreDashboard({
       id: 1,
-      "last-edit-info": {
-        id: 1,
-        email: "testing@metabase.com",
-        first_name: "Test",
-        last_name: "Metabase",
-        timestamp: "2021-01-01T01:01:01.001",
-      },
+      dashcards: [],
       parameters: [],
-      created_at: "2021-01-01T01:01:01.001",
-    };
+    });
 
     it("should set attribute and isDirty", () => {
       expect(
@@ -296,6 +282,9 @@ describe("dashboard reducers", () => {
             ...initState,
             loadingDashCards: {
               loadingIds: dashcardIds,
+              loadingStatus: "idle",
+              startTime: null,
+              endTime: null,
             },
           },
           {
@@ -335,10 +324,11 @@ describe("dashboard reducers", () => {
               loadingIds: [3],
               loadingStatus: "running",
               startTime: 100,
+              endTime: null,
             },
           },
           {
-            type: fetchCardDataAction.fulfilled,
+            type: fetchCardDataAction.fulfilled.type,
             payload: {
               dashcard_id: 3,
               card_id: 1,
@@ -367,6 +357,7 @@ describe("dashboard reducers", () => {
             loadingIds: [3],
             loadingStatus: "running",
             startTime: 100,
+            endTime: null,
           },
         },
         {
