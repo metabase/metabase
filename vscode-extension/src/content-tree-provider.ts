@@ -32,6 +32,8 @@ export class ContentTreeProvider implements vscode.TreeDataProvider<ContentNode>
 
     if (element.kind === 'card') {
       item.contextValue = element.cardType === 'model' ? 'model' : element.cardType === 'metric' ? 'metric' : 'card'
+    } else if (element.kind === 'collection' && element.collectionType === 'library') {
+      item.contextValue = 'collectionLibrary'
     } else {
       item.contextValue = element.kind
     }

@@ -83,6 +83,11 @@
         "icon": "$(play)"
       },
       {
+        "command": "metastudio.createSqlTransform",
+        "title": "Metastudio: New SQL Transform",
+        "icon": "$(add)"
+      },
+      {
         "command": "metastudio.openEmbeddedCode",
         "title": "Metastudio: Edit Query in Editor",
         "icon": "$(edit)"
@@ -171,6 +176,11 @@
           "group": "inline"
         },
         {
+          "command": "metastudio.createSqlTransform",
+          "when": "viewItem == collectionLibrary",
+          "group": "inline"
+        },
+        {
           "command": "metastudio.setHost",
           "when": "view == metabase.connection && viewItem == connectionUrl",
           "group": "inline@1"
@@ -192,7 +202,7 @@
         },
         {
           "command": "metastudio.openInMetabase",
-          "when": "view == metabase.content && viewItem =~ /^(card|model|metric|dashboard|collection|transform)$/ && metastudio.hostConfigured",
+          "when": "view == metabase.content && viewItem =~ /^(card|model|metric|dashboard|collection|collectionLibrary|transform)$/ && metastudio.hostConfigured",
           "group": "navigation@1"
         },
         {
@@ -202,7 +212,7 @@
         },
         {
           "command": "metastudio.showInDependencyGraph",
-          "when": "view == metabase.content && viewItem =~ /^(card|model|metric|dashboard|collection|transform|native_query_snippet|document|action|measure|segment)$/",
+          "when": "view == metabase.content && viewItem =~ /^(card|model|metric|dashboard|collection|collectionLibrary|transform|native_query_snippet|document|action|measure|segment)$/",
           "group": "navigation@2"
         },
         {
