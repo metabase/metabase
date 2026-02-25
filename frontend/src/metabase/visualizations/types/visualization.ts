@@ -331,6 +331,7 @@ export type VisualizationSettingDefinition<
   disabled?: boolean;
   default?: TValue;
   marginBottom?: string;
+  noPadding?: boolean;
   value?: TValue;
   set?: boolean;
   getMarginBottom?: (
