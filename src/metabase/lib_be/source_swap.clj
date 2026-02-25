@@ -147,7 +147,7 @@
 
 (mu/defn- build-swap-column-mapping-for-table :- [:maybe ::swap-source.column-mapping]
   "Builds a mapping of field IDs of the source table to field IDs of the target table."
-  [query :- ::lib.schema/query
+  [query           :- ::lib.schema/query
    source-table-id :- ::lib.schema.id/table
    target-table-id :- ::lib.schema.id/table]
   (let [source-fields (lib.metadata/fields query source-table-id)
@@ -160,7 +160,7 @@
 
 (mu/defn- build-swap-column-mapping-for-card :- [:maybe ::swap-source.column-mapping]
   "Builds a mapping of field IDs of the source table to desired column aliases of the target card."
-  [query :- ::lib.schema/query
+  [query           :- ::lib.schema/query
    source-table-id :- ::lib.schema.id/table
    target-card-id  :- ::lib.schema.id/card]
   (let [source-fields (lib.metadata/fields query source-table-id)
@@ -186,7 +186,7 @@
 (mu/defn- swap-field-id-in-ref :- :mbql.clause/field
   "If this field ref is field-id-based and there is a mapping for the field ID, 
   update the ref to use the target field ID or desired column alias."
-  [field-ref        :- :mbql.clause/field
+  [field-ref      :- :mbql.clause/field
    column-mapping :- ::swap-source.column-mapping]
   (let [field-id (lib.ref/field-ref-id field-ref)
         source-field-id (:source-field (lib.options/options field-ref))
@@ -204,7 +204,7 @@
 
 (mu/defn- swap-field-ids-in-clauses :- [:sequential :any]
   "Updates the field IDs in the clauses using the provided mapping."
-  [clauses          :- [:sequential :any]
+  [clauses        :- [:sequential :any]
    column-mapping :- ::swap-source.column-mapping]
   (perf/mapv (fn [clause]
                (walk-clause-field-refs clause #(swap-field-id-in-ref % column-mapping)))
@@ -224,9 +224,9 @@
 
 (mu/defn- swap-source-and-field-ids-in-join :- ::lib.schema.join/join
   "Updates the source table or card and field IDs in the join conditions using the provided mapping."
-  [join             :- ::lib.schema.join/join
-   source           :- ::swap-source.source
-   target           :- ::swap-source.source
+  [join           :- ::lib.schema.join/join
+   source         :- ::swap-source.source
+   target         :- ::swap-source.source
    column-mapping :- ::swap-source.column-mapping]
   (-> join
       (swap-source-table-or-card source target)
@@ -238,18 +238,18 @@
 
 (mu/defn- swap-source-and-field-ids-in-joins :- [:sequential ::lib.schema.join/join]
   "Updates the field IDs in all joins using the provided mapping."
-  [joins            :- [:sequential ::lib.schema.join/join]
-   source           :- ::swap-source.source
-   target           :- ::swap-source.source
+  [joins          :- [:sequential ::lib.schema.join/join]
+   source         :- ::swap-source.source
+   target         :- ::swap-source.source
    column-mapping :- ::swap-source.column-mapping]
   (perf/mapv #(swap-source-and-field-ids-in-join % source target column-mapping) joins))
 
 (mu/defn- swap-field-ids-in-stage :- ::lib.schema/stage
   "Updates the field IDs in the stage using the provided mapping."
-  [query            :- ::lib.schema/query
-   stage-number     :- :int
-   source           :- ::swap-source.source
-   target           :- ::swap-source.source
+  [query          :- ::lib.schema/query
+   stage-number   :- :int
+   source         :- ::swap-source.source
+   target         :- ::swap-source.source
    column-mapping :- ::swap-source.column-mapping]
   (let [stage (-> (lib.util/query-stage query stage-number)
                   (swap-source-table-or-card source target))]
@@ -266,9 +266,9 @@
 
 (mu/defn swap-source-in-query :- ::lib.schema/query
   "Updates the query to use the new source table or card."
-  [query            :- ::lib.schema/query
-   source           :- ::swap-source.source
-   target           :- ::swap-source.source
+  [query          :- ::lib.schema/query
+   source         :- ::swap-source.source
+   target         :- ::swap-source.source
    column-mapping :- [:maybe ::swap-source.column-mapping]]
   (update query :stages #(vec (map-indexed (fn [stage-number _]
                                              (swap-field-ids-in-stage query stage-number source target column-mapping))
@@ -276,7 +276,7 @@
 
 (mu/defn swap-source-in-parameter-target :- ::lib.schema.parameter/target
   "If the parameter target is a field ref, swap its field ID using the provided mapping."
-  [target           :- ::lib.schema.parameter/target
+  [target         :- ::lib.schema.parameter/target
    column-mapping :- [:maybe ::swap-source.column-mapping]]
   (or (when (and (some? column-mapping)
                  (lib.parameters/parameter-target-field-ref target))
