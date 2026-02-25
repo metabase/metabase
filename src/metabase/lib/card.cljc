@@ -214,8 +214,9 @@
   (cond-> [:description :display-name :semantic-type :fk-target-field-id :settings :visibility-type :lib/source-display-name]
     native-model? (conj :id)))
 
-;;; TODO (Cam 6/13/25) -- duplicated/overlapping responsibility with [[metabase.lib.field/previous-stage-metadata]] as
-;;; well as [[metabase.lib.metadata.result-metadata/merge-model-metadata]] -- find a way to deduplicate these
+;;; TODO (Cam 6/13/25) -- duplicated/overlapping responsibility
+;;; with [[metabase.lib.field.resolution/previous-stage-metadata]] as well
+;;; as [[metabase.lib.metadata.result-metadata/merge-model-metadata]] -- find a way to deduplicate these
 (mu/defn merge-model-metadata :- [:sequential ::lib.schema.metadata/column]
   "Merge metadata from source model metadata into result cols.
 
@@ -239,7 +240,8 @@
                ;; not because the calculated one e.g. 'Sum of ____' is going to be better than '____'
                (when-not (= (:lib/source result-col) :source/aggregations)
                  (when-let [model-col (get name->model-col (:name result-col))]
-                   (let [model-col     (u/select-non-nil-keys model-col (model-preserved-keys native-model?))
+                   (let [model-col     (-> (u/select-non-nil-keys model-col (model-preserved-keys native-model?))
+                                           (assoc :lib/from-model? true))
                          temporal-unit (lib.temporal-bucket/raw-temporal-bucket result-col)
                          binning       (lib.binning/binning result-col)
                          semantic-type ((some-fn model-col result-col) :semantic-type)]

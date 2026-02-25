@@ -5,8 +5,10 @@
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
+   [metabase.lib.metadata.result-metadata :as lib.metadata.result-metadata]
    [metabase.lib.test-util :as lib.tu]
    [metabase.query-processor :as qp]
+   [metabase.query-processor.preprocess :as qp.preprocess]
    [metabase.test :as mt]))
 
 ;;; see also [[metabase.lib.field-test/model-self-join-test-display-name-test]]
@@ -78,3 +80,42 @@
              (->> (qp/process-query question)
                   mt/cols
                   (mapv :display_name)))))))
+
+(deftest ^:parallel preserve-model-display-names-test
+  (testing "Edited display names for columns in Models should get preserved (#66532)"
+    ;; 1. Create a Model of ORDERS joining PRODUCTS
+    ;;
+    ;; 2. Edit display name for "Products → ID", change to "[RENAMED]"
+    ;;
+    ;; 3. Create a new Saved Question using the first Model as its source
+    ;;
+    ;; 4. Run the Saved Question; results metadata incorrectly returns "Products → [RENAMED]"
+    (let [mp                    (as-> (mt/metadata-provider) $mp
+                                  (lib.tu/mock-metadata-provider
+                                   $mp
+                                   {:cards [(let [query (-> (lib/query $mp (lib.metadata/table $mp (mt/id :orders)))
+                                                            (lib/join (lib.metadata/table $mp (mt/id :products))))]
+                                              {:id              1
+                                               :type            :model
+                                               :dataset-query   query
+                                               :result-metadata (for [col (lib.metadata.result-metadata/returned-columns query)]
+                                                                  (cond-> col
+                                                                    (= (:display-name col) "Products → ID")
+                                                                    (assoc :display-name "[RENAMED]")))})]})
+                                  (lib.tu/mock-metadata-provider
+                                   $mp
+                                   {:cards [(let [query (lib/query $mp (lib.metadata/card $mp 1))]
+                                              {:id             2
+                                               :dataset-query  query
+                                               :source-card-id 1})]}))
+          query                 (lib/query mp (lib.metadata/card mp 2))
+          returned-display-name (fn [query]
+                                  (-> (lib.metadata.result-metadata/returned-columns query)
+                                      (->> (m/find-first #(= (:lib/desired-column-alias %) "Products__ID")))
+                                      :display-name))]
+      (is (= "[RENAMED]"
+             (returned-display-name query)))
+      ;; the bug only seems to trigger if we preprocess the query first
+      (testing "preprocessed query should have the same returned display name"
+        (is (= "[RENAMED]"
+               (returned-display-name (qp.preprocess/preprocess query))))))))

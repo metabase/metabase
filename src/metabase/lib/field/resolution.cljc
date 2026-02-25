@@ -226,32 +226,31 @@
                   [k v])))
         opts-metadata-fns))
 
-(def ^:private model-propagated-keys
-  #{:lib/card-id
-    :lib/original-display-name
-    :lib/original-expression-name
-    :lib/original-fk-field-id
-    :lib/original-fk-field-name
-    :lib/original-fk-join-alias
-    :lib/original-join-alias
-    :lib/original-name
-    :lib/type
-    :active
-    :base-type
-    :converted-timezone
-    :description
-    :display-name
-    :fingerprint
-    :id
-    :semantic-type
-    :table-id
-    :visibility-type})
-
 (def ^:private regular-card-propagated-keys
   #{:lib/card-id
+    :lib/from-model?
     :active
     :fingerprint
     :visibility-type})
+
+(def ^:private model-propagated-keys
+  (set/union
+   regular-card-propagated-keys
+   #{:lib/original-display-name
+     :lib/original-expression-name
+     :lib/original-fk-field-id
+     :lib/original-fk-field-name
+     :lib/original-fk-join-alias
+     :lib/original-join-alias
+     :lib/original-name
+     :lib/type
+     :base-type
+     :converted-timezone
+     :description
+     :display-name
+     :id
+     :semantic-type
+     :table-id}))
 
 (declare resolve-in-previous-stage-returned-columns-and-update-keys)
 
