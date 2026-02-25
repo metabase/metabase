@@ -34,7 +34,7 @@ export const TransformSourceTablesDiff = ({
         const sourceNameChanged = oldAlias !== newAlias;
 
         return (
-          <Fragment key={`${entry.table}-${index}`}>
+          <Fragment key={entry.alias}>
             <Group gap="xs">
               {sourceNameChanged && oldAlias && (
                 <Text c="danger" component="s" td="line-through">
@@ -52,9 +52,9 @@ export const TransformSourceTablesDiff = ({
         );
       })}
 
-      {removedEntries.map((entry, index) => {
+      {removedEntries.map((entry) => {
         return (
-          <Fragment key={`removed-${entry.table}-${index}`}>
+          <Fragment key={entry.alias}>
             <Text c="danger" component="s" td="line-through">
               {entry.alias}
             </Text>
