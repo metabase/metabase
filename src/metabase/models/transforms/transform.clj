@@ -94,6 +94,7 @@
 
 (defn- transform-source-in [m]
   (-> m
+      (m/update-existing :source-tables source-tables-map->vec)
       (m/update-existing :source-tables transforms.util/normalize-source-tables)
       (m/update-existing :query (comp lib/prepare-for-serialization lib-be/normalize-query))
       mi/json-in))

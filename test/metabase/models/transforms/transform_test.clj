@@ -48,4 +48,4 @@
           (is (every? #(and (contains? % :alias) (contains? % :table)) source-tables)))
         (testing "all aliases and table IDs are present"
           (is (= #{"orders" "products"} (into #{} (map :alias) source-tables)))
-          (is (= #{(mt/id :orders) (mt/id :products)} (into #{} (map :table) source-tables))))))))
+          (is (= #{(mt/id :orders) (mt/id :products)} (into #{} (map (comp :table_id :table)) source-tables))))))))
