@@ -174,7 +174,7 @@ export function PythonTransformEditor({
             {canChangeType ? (
               <TransformTypeSelect value={source.type} />
             ) : (
-              <Text fz="sm">
+              <Text fz="sm" c="text-secondary" px="xs">
                 {ADVANCED_TRANSFORM_TYPES[source.type].displayName}
               </Text>
             )}
