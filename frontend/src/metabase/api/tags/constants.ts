@@ -4,6 +4,7 @@ export const TAG_TYPES = [
   "action",
   "alert",
   "api-key",
+  "app",
   "bookmark",
   "cache-config",
   "card",
