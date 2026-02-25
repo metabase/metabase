@@ -73,15 +73,13 @@ export const LensContent = ({
     collectedCardStats,
   } = useTriggerEvaluation(lens);
 
-  const { markCardLoaded, markCardStartedLoading } = useCardLoadingTracker(
-    lens,
-    () => {
+  const { markCardLoaded, markCardStartedLoading, subscribeToCardLoaded } =
+    useCardLoadingTracker(lens, () => {
       if (lens) {
         onAllCardsLoaded(lens.id);
         trackLensLoaded();
       }
-    },
-  );
+    });
 
   const cardsBySection = useMemo(
     () => _.groupBy(lens?.cards ?? [], (c) => c.section_id ?? "default"),
@@ -105,9 +103,10 @@ export const LensContent = ({
       drillLensesByCardId={drillLensesByCardId}
       collectedCardStats={collectedCardStats}
       navigateToLens={navigateToLens}
-      onStatsReady={pushNewStats}
-      onCardStartedLoading={markCardStartedLoading}
-      onCardLoaded={markCardLoaded}
+      pushNewStats={pushNewStats}
+      markCardStartedLoading={markCardStartedLoading}
+      markCardLoaded={markCardLoaded}
+      subscribeToCardLoaded={subscribeToCardLoaded}
     >
       <Stack gap="xl">
         {match(lens.id)

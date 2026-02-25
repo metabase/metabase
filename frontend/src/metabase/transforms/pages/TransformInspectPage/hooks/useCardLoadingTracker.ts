@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 
+import { useSubscriber } from "metabase/common/hooks";
 import type {
   InspectorCardId,
   InspectorLens,
@@ -15,6 +16,8 @@ export const useCardLoadingTracker = (
   const [cardsStates, setCardsStates] = useState<
     Record<InspectorCardId, CardState>
   >({});
+
+  const { emit, subscribe } = useSubscriber<InspectorCardId>();
 
   useEffect(() => {
     if (!lens) {
@@ -32,15 +35,19 @@ export const useCardLoadingTracker = (
       setCardsStates((prev) =>
         prev[cardId] === state ? prev : { ...prev, [cardId]: state },
       );
+      if (state === "loaded") {
+        emit(cardId);
+      }
     },
-    [],
+    [emit],
   );
 
   return useMemo(
     () => ({
       markCardLoaded: markCard("loaded"),
       markCardStartedLoading: markCard("loading"),
+      subscribeToCardLoaded: subscribe,
     }),
-    [markCard],
+    [markCard, subscribe],
   );
 };

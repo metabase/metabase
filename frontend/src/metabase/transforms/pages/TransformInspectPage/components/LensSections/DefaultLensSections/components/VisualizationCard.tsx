@@ -1,10 +1,10 @@
 import { useGetAdhocQueryMetadataQuery } from "metabase/api";
-import { useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
-import { getMetadata } from "metabase/selectors/metadata";
+import type { getMetadata } from "metabase/selectors/metadata";
 import { Box, Card, Loader, Stack } from "metabase/ui";
 import Visualization from "metabase/visualizations/components/Visualization";
 import * as Lib from "metabase-lib";
+import type Metadata from "metabase-lib/v1/metadata/Metadata";
 import { defaultDisplay } from "metabase-lib/viz/display";
 import type {
   CardDisplayType,
@@ -23,6 +23,7 @@ import { useLensContentContext } from "../../../LensContent/LensContentContext";
 
 type VisualizationCardProps = {
   card: InspectorCard;
+  metadata: Metadata;
   height?: number;
 };
 
@@ -30,6 +31,7 @@ const DEFAULT_HEIGHT = 235;
 
 export const VisualizationCard = ({
   card,
+  metadata,
   height = DEFAULT_HEIGHT,
 }: VisualizationCardProps) => {
   const { alertsByCardId, drillLensesByCardId } = useLensContentContext();
@@ -38,7 +40,6 @@ export const VisualizationCard = ({
   const { isLoading: isMetadataLoading } = useGetAdhocQueryMetadataQuery(
     card.dataset_query,
   );
-  const metadata = useSelector(getMetadata);
 
   if (card.display === "hidden") {
     return null;
@@ -94,11 +95,11 @@ export const VisualizationCard = ({
   );
 };
 
-function getDisplayConfig(
+const getDisplayConfig = (
   metadata: ReturnType<typeof getMetadata>,
   card: InspectorCard,
   isMetadataLoading: boolean,
-) {
+) => {
   if (isMetadataLoading) {
     return { displayType: card.display, displaySettings: {} };
   }
@@ -112,14 +113,14 @@ function getDisplayConfig(
   } catch {
     return { displayType: card.display, displaySettings: {} };
   }
-}
+};
 
-function buildRawSeries(
+const buildRawSeries = (
   dataset: Dataset | undefined,
   card: InspectorCard,
   displayType: InspectorCardDisplayType,
   displaySettings: Partial<VisualizationSettings>,
-): RawSeries | undefined {
+): RawSeries | undefined => {
   if (!dataset) {
     return;
   }
@@ -137,7 +138,7 @@ function buildRawSeries(
         visualization_settings: {
           "graph.y_axis.labels_enabled": false,
           "graph.x_axis.labels_enabled": false,
-          "table.row_index": false, // hide row index column
+          "table.row_index": false,
           ...displaySettings,
           ...card.visualization_settings,
         },
@@ -145,4 +146,4 @@ function buildRawSeries(
       data: dataset.data,
     },
   ];
-}
+};

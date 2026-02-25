@@ -1,6 +1,7 @@
 import { interestingFields } from "metabase/transforms/lib/transforms-inspector";
 import type {
   InspectorCard,
+  InspectorCardId,
   InspectorSource,
   InspectorVisitedFields,
 } from "metabase-types/api";
@@ -97,3 +98,24 @@ const getTableOrderInSources = (
   tableOrdersInSources: Map<number | undefined, number>,
 ): number =>
   tableOrdersInSources.get(card.metadata.table_id) ?? Number.POSITIVE_INFINITY;
+
+export const getGroupsByCards = (groups: CardGroup[]) => {
+  const map = new Map<InspectorCardId, CardGroup>();
+  for (const group of groups) {
+    for (const card of [...group.inputCards, ...group.outputCards]) {
+      map.set(card.id, group);
+    }
+  }
+  return map;
+};
+
+export const getGroupCardCounts = (groups: CardGroup[]) => {
+  const counts = new Map<string, number>();
+  for (const group of groups) {
+    counts.set(
+      group.groupId,
+      group.inputCards.length + group.outputCards.length,
+    );
+  }
+  return counts;
+};

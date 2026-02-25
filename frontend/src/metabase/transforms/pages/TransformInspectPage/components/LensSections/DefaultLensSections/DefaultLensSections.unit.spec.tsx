@@ -107,9 +107,9 @@ function setup({
       drillLensesByCardId={drillLensesByCardId}
       collectedCardStats={{}}
       navigateToLens={jest.fn()}
-      onStatsReady={jest.fn()}
-      onCardStartedLoading={jest.fn()}
-      onCardLoaded={jest.fn()}
+      pushNewStats={jest.fn()}
+      markCardStartedLoading={jest.fn()}
+      markCardLoaded={jest.fn()}
     >
       <DefaultLensSections
         sections={sections}

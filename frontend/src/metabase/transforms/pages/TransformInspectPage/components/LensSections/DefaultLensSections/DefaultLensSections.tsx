@@ -1,5 +1,7 @@
 import { match } from "ts-pattern";
 
+import { useSelector } from "metabase/lib/redux";
+import { getMetadata } from "metabase/selectors/metadata";
 import { Box, Stack, Title } from "metabase/ui";
 import type {
   InspectorCard,
@@ -25,6 +27,7 @@ export const DefaultLensSections = ({
   sources,
   visitedFields,
 }: DefaultLensSectionsProps) => {
+  const metadata = useSelector(getMetadata);
   return (
     <Box>
       {sections.map((section) => {
@@ -40,9 +43,10 @@ export const DefaultLensSections = ({
               cards={cards}
               sources={sources}
               visitedFields={visitedFields}
+              metadata={metadata}
             />
           ))
-          .with("flat", () => <FlatLayout cards={cards} />)
+          .with("flat", () => <FlatLayout cards={cards} metadata={metadata} />)
           .exhaustive();
 
         return (

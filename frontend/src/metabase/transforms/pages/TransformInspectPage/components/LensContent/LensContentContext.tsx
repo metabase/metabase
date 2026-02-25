@@ -24,9 +24,10 @@ type LensContentContextValue = {
   drillLensesByCardId: Record<InspectorCardId, InspectorDrillLensTrigger[]>;
   collectedCardStats: Record<InspectorCardId, CardStats>;
   navigateToLens: (lensHandle: LensHandle) => void;
-  onStatsReady: (cardId: InspectorCardId, stats: CardStats | null) => void;
-  onCardStartedLoading: (cardId: InspectorCardId) => void;
-  onCardLoaded: (cardId: InspectorCardId) => void;
+  pushNewStats: (cardId: InspectorCardId, stats: CardStats | null) => void;
+  markCardStartedLoading: (cardId: InspectorCardId) => void;
+  markCardLoaded: (cardId: InspectorCardId) => void;
+  subscribeToCardLoaded: (cb: (cardId: InspectorCardId) => void) => () => void;
 };
 
 const LensEvaluationContext = createContext<
@@ -50,9 +51,10 @@ export const LensContentProvider = ({
   alertsByCardId,
   drillLensesByCardId,
   collectedCardStats,
-  onStatsReady,
-  onCardStartedLoading,
-  onCardLoaded,
+  pushNewStats,
+  markCardStartedLoading,
+  markCardLoaded,
+  subscribeToCardLoaded,
   navigateToLens,
   children,
 }: PropsWithChildren<LensContentContextValue>) => {
@@ -64,9 +66,10 @@ export const LensContentProvider = ({
       alertsByCardId,
       drillLensesByCardId,
       collectedCardStats,
-      onStatsReady,
-      onCardStartedLoading,
-      onCardLoaded,
+      pushNewStats,
+      markCardStartedLoading,
+      markCardLoaded,
+      subscribeToCardLoaded,
       navigateToLens,
     }),
     [
@@ -76,9 +79,10 @@ export const LensContentProvider = ({
       alertsByCardId,
       drillLensesByCardId,
       collectedCardStats,
-      onStatsReady,
-      onCardStartedLoading,
-      onCardLoaded,
+      pushNewStats,
+      markCardStartedLoading,
+      markCardLoaded,
+      subscribeToCardLoaded,
       navigateToLens,
     ],
   );
