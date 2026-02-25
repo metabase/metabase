@@ -434,7 +434,6 @@
   parse]
  [lib.query
   ->query
-  bulk-load-query-metadata
   can-preview
   can-run
   can-save

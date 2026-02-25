@@ -4,6 +4,7 @@
    [metabase.lib-be.metadata.bootstrap]
    [metabase.lib-be.metadata.jvm]
    [metabase.lib-be.models.transforms]
+   [metabase.lib-be.query]
    [metabase.lib-be.settings]
    [metabase.lib-be.source-swap]
    [potemkin :as p]))
@@ -13,6 +14,7 @@
   metabase.lib-be.metadata.bootstrap/keep-me
   metabase.lib-be.metadata.jvm/keep-me
   metabase.lib-be.models.transforms/keep-me
+  metabase.lib-be.query/keep-me
   metabase.lib-be.settings/keep-me
   metabase.lib-be.source-swap/keep-me)
 
@@ -35,6 +37,8 @@
   breakout-bins-num
   enable-nested-queries
   start-of-week]
+ [metabase.lib-be.query
+  bulk-load-query-metadata]
  [metabase.lib-be.source-swap
   upgrade-field-ref-in-parameter-target
   upgrade-field-refs-in-query])
