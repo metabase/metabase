@@ -6,7 +6,9 @@
    [clojure.test :refer :all]
    [metabase-enterprise.metabot-v3.self :as self]
    [metabase-enterprise.metabot-v3.self.core :as self.core]
+   [metabase-enterprise.metabot-v3.self.openrouter :as openrouter]
    [metabase-enterprise.metabot-v3.test-util :as test-util]
+   [metabase.analytics.prometheus :as prometheus]
    [metabase.test :as mt]
    [metabase.util.json :as json]
    [ring.adapter.jetty :as jetty]))
@@ -473,12 +475,17 @@
   (with-redefs [self/retry-delay-ms (constantly 0)]
     (testing "succeeds on first attempt without retrying"
       (let [calls (atom 0)]
-        (is (= :ok (#'self/with-retries (fn [] (swap! calls inc) :ok))))
+        (is (= :ok (#'self/with-retries
+                    "test-model"
+                    "agent"
+                    (fn [] (swap! calls inc) :ok))))
         (is (= 1 @calls))))
     (testing "retries on retryable error and succeeds"
       (let [calls (atom 0)]
         (is (= :ok (mt/with-log-level [metabase-enterprise.metabot-v3.self :fatal]
                      (#'self/with-retries
+                      "test-model"
+                      "agent"
                       (fn []
                         (when (< (swap! calls inc) 3)
                           (throw (ex-info "rate limited" {:status 429})))
@@ -489,6 +496,8 @@
         (is (thrown-with-msg?
              clojure.lang.ExceptionInfo #"unauthorized"
              (#'self/with-retries
+              "test-model"
+              "agent"
               (fn []
                 (swap! calls inc)
                 (throw (ex-info "unauthorized" {:status 401}))))))
@@ -499,6 +508,8 @@
              clojure.lang.ExceptionInfo #"overloaded"
              (mt/with-log-level [metabase-enterprise.metabot-v3.self :fatal]
                (#'self/with-retries
+                "test-model"
+                "agent"
                 (fn []
                   (swap! calls inc)
                   (throw (ex-info "overloaded" {:status 529})))))))
@@ -507,8 +518,88 @@
       (let [calls (atom 0)]
         (is (= :ok (mt/with-log-level [metabase-enterprise.metabot-v3.self :fatal]
                      (#'self/with-retries
+                      "test-model"
+                      "agent"
                       (fn []
                         (when (< (swap! calls inc) 2)
                           (throw (java.net.ConnectException. "refused")))
                         :ok)))))
         (is (= 2 @calls))))))
+
+;;; ===================== Prometheus Metrics Tests =====================
+
+(deftest call-llm-prometheus-test
+  (mt/with-prometheus-system! [_ system]
+    (with-redefs [self/retry-delay-ms (constantly 0)]
+      (let [labels {:model "test-model" :source "agent"}]
+        (testing "increments llm-requests and observes duration on success"
+          (with-redefs [openrouter/openrouter (constantly (test-util/mock-llm-response [{:type :start :id "m1"}]))]
+            (run! identity (self/call-llm "openrouter/test-model" "agent" nil [] {})))
+          (is (== 1 (mt/metric-value system :metabase-metabot/llm-requests labels)))
+          (is (== 0 (mt/metric-value system :metabase-metabot/llm-retries labels)))
+          (is (== 0 (mt/metric-value system :metabase-metabot/llm-errors
+                                     (assoc labels :error-type "ExceptionInfo"))))
+          (is (pos? (:sum (mt/metric-value system :metabase-metabot/llm-duration-ms labels)))))
+
+        ;; mt/with-prometheus-system! is slow, so clear! metrics between tests rather than creating a fresh system
+        (prometheus/clear! :metabase-metabot/llm-requests)
+        (prometheus/clear! :metabase-metabot/llm-duration-ms)
+
+        (testing "increments llm-retries on transient failures, no errors on eventual success"
+          (let [calls (atom 0)]
+            (mt/with-log-level [metabase-enterprise.metabot-v3.self :fatal]
+              (with-redefs [openrouter/openrouter
+                            (fn [_opts]
+                              (reify clojure.lang.IReduceInit
+                                (reduce [_ rf init]
+                                  (if (< (swap! calls inc) 3)
+                                    (throw (ex-info "rate limited" {:status 429}))
+                                    (reduce rf init (test-util/mock-llm-response [{:type :start :id "m1"}]))))))]
+                (run! identity (self/call-llm "openrouter/test-model" "agent" nil [] {}))))
+            (is (== 3 (mt/metric-value system :metabase-metabot/llm-requests labels)))
+            (is (== 2 (mt/metric-value system :metabase-metabot/llm-retries labels)))
+            (is (== 0 (mt/metric-value system :metabase-metabot/llm-errors
+                                       (assoc labels :error-type "ExceptionInfo"))))
+            (is (pos? (:sum (mt/metric-value system :metabase-metabot/llm-duration-ms labels))))))
+
+        (prometheus/clear! :metabase-metabot/llm-requests)
+        (prometheus/clear! :metabase-metabot/llm-retries)
+        (prometheus/clear! :metabase-metabot/llm-duration-ms)
+
+        (testing "increments llm-errors on non-retryable failure, no retries"
+          (with-redefs [openrouter/openrouter
+                        (fn [_opts]
+                          (reify clojure.lang.IReduceInit
+                            (reduce [_ _rf _init]
+                              (throw (ex-info "unauthorized" {:status 401})))))]
+            (is (thrown? Exception (run! identity (self/call-llm "openrouter/test-model" "agent" nil [] {})))))
+          (is (== 1 (mt/metric-value system :metabase-metabot/llm-requests labels)))
+          (is (== 0 (mt/metric-value system :metabase-metabot/llm-retries labels)))
+          (is (== 1 (mt/metric-value system :metabase-metabot/llm-errors
+                                     (assoc labels :error-type "ExceptionInfo"))))
+          (is (pos? (:sum (mt/metric-value system :metabase-metabot/llm-duration-ms labels)))))
+
+        (prometheus/clear! :metabase-metabot/llm-requests)
+        (prometheus/clear! :metabase-metabot/llm-errors)
+        (prometheus/clear! :metabase-metabot/llm-duration-ms)
+
+        (testing "increments llm-errors with :error-type llm-sse-error on inline SSE errors"
+          (with-redefs [openrouter/openrouter
+                        (constantly (test-util/mock-llm-response [{:type :error :errorText "content policy violation"}]))]
+            (run! identity (self/call-llm "openrouter/test-model" "agent" nil [] {})))
+          (is (== 1 (mt/metric-value system :metabase-metabot/llm-requests labels)))
+          (is (== 1 (mt/metric-value system :metabase-metabot/llm-errors
+                                     (assoc labels :error-type "llm-sse-error")))))
+
+        (testing "reports token usage metrics on :usage parts"
+          (with-redefs [openrouter/openrouter
+                        (constantly (test-util/mock-llm-response
+                                     [{:type  :start
+                                       :id    "m1"}
+                                      {:type  :usage
+                                       :usage {:promptTokens 100 :completionTokens 25}
+                                       :model "test-model"}]))]
+            (run! identity (self/call-llm "openrouter/test-model" "agent" nil [] {})))
+          (is (== 100 (mt/metric-value system :metabase-metabot/llm-input-tokens labels)))
+          (is (==  25 (mt/metric-value system :metabase-metabot/llm-output-tokens labels)))
+          (is (== 125 (:sum (mt/metric-value system :metabase-metabot/llm-tokens-per-call labels)))))))))
