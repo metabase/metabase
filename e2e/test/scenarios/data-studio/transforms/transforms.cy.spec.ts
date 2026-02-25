@@ -13,6 +13,7 @@ import {
 import { createLibraryWithItems } from "e2e/support/test-library-data";
 import { DataPermissionValue } from "metabase/admin/permissions/types";
 import type {
+  AdvancedTransformType,
   CardType,
   CollectionId,
   PythonTransformTableAliases,
@@ -177,7 +178,9 @@ describe("scenarios > admin > transforms", () => {
         cy.log("create a new transform");
         visitTransformListPage();
         cy.button("Create a transform").click();
-        H.popover().findByText("Python script").click();
+        H.popover()
+          .findByText(/Advanced/)
+          .click();
         H.expectUnstructuredSnowplowEvent({
           event: "transform_create",
           event_detail: "python",
@@ -1616,7 +1619,7 @@ LIMIT
       cy.log("create a new transform");
       H.getTableId({ name: "Animals", databaseId: WRITABLE_DB_ID }).then(
         (id) => {
-          createPythonTransform({
+          createAdvancedTransform({
             body: dedent`
           import pandas as pd
 
@@ -1654,7 +1657,7 @@ LIMIT
         cy.log("create a new Python transform");
         H.getTableId({ name: "Animals", databaseId: WRITABLE_DB_ID }).then(
           (id) => {
-            createPythonTransform({
+            createAdvancedTransform({
               body: dedent`
               import pandas as pd
 
@@ -1694,7 +1697,7 @@ LIMIT
         cy.log("create a new Python transform");
         H.getTableId({ name: "Animals", databaseId: WRITABLE_DB_ID }).then(
           (id) => {
-            createPythonTransform({
+            createAdvancedTransform({
               body: dedent`
               import pandas as pd
 
@@ -1730,7 +1733,7 @@ LIMIT
         cy.log("create a new Python transform");
         H.getTableId({ name: "Animals", databaseId: WRITABLE_DB_ID }).then(
           (id) => {
-            createPythonTransform({
+            createAdvancedTransform({
               body: dedent`
               import pandas as pd
 
@@ -2169,7 +2172,9 @@ LIMIT
 
         visitTransformListPage();
         cy.button("Create a transform").click();
-        H.popover().findByText("Python script").click();
+        H.popover()
+          .findByText(/Advanced/)
+          .click();
 
         cy.log("import common should be included by default");
         H.PythonEditor.value().should("contain", "import common");
@@ -2242,7 +2247,9 @@ LIMIT
       () => {
         visitTransformListPage();
         cy.button("Create a transform").click();
-        H.popover().findByText("Python script").click();
+        H.popover()
+          .findByText(/Advanced/)
+          .click();
         cy.get(".cm-clickable-token").should("be.visible").click();
         H.modal().button("Discard changes").click();
         cy.url().should("include", "/data-studio/transforms/library/common.py");
@@ -2259,7 +2266,9 @@ LIMIT
           cy.stub(win, "open").as("windowOpen");
         });
         cy.button("Create a transform").click();
-        H.popover().findByText("Python script").click();
+        H.popover()
+          .findByText(/Advanced/)
+          .click();
         cy.get(".cm-clickable-token")
           .should("be.visible")
           .click({ metaKey: true });
@@ -2279,7 +2288,9 @@ LIMIT
 
         visitTransformListPage();
         cy.button("Create a transform").click();
-        H.popover().findByText("Python script").click();
+        H.popover()
+          .findByText(/Advanced/)
+          .click();
 
         cy.log("import common should be included by default");
         H.PythonEditor.value().should("contain", "import common");
@@ -2811,7 +2822,7 @@ LIMIT
       cy.log("python library editor is read-only");
       cy.url().should("include", "/data-studio/transforms/library/common.py");
       cy.findByRole("alert")
-        .contains(/The Python library is not editable/)
+        .contains(/The library is not editable/)
         .should("be.visible");
 
       H.DataStudio.PythonLibrary.editor().within(() => {
@@ -3670,7 +3681,7 @@ describe(
       H.expectNoBadSnowplowEvents();
     });
 
-    it("should be possible to test run a Python script", () => {
+    it("should be possible to test run a Python transform", () => {
       H.getTableId({ name: "Animals", databaseId: WRITABLE_DB_ID }).then(
         (id) => {
           createPythonLibrary(
@@ -3681,7 +3692,7 @@ describe(
             `,
           );
 
-          createPythonTransform({
+          createAdvancedTransform({
             body: dedent`
           import pandas as pd
           import common
@@ -3726,7 +3737,7 @@ describe(
     it("should display preview notice message", () => {
       H.getTableId({ name: "Animals", databaseId: WRITABLE_DB_ID }).then(
         (id) => {
-          createPythonTransform({
+          createAdvancedTransform({
             body: dedent`
               import pandas as pd
 
@@ -3788,7 +3799,9 @@ describe("scenarios > admin > transforms", () => {
     cy.log("create a new transform");
     visitTransformListPage();
     cy.button("Create a transform").click();
-    H.popover().findByText("Python script").click();
+    H.popover()
+      .findByText(/Advanced/)
+      .click();
 
     cy.findByTestId("python-transform-top-bar")
       .findByText("Select a database")
@@ -4004,7 +4017,9 @@ function createSqlTransform(opts: {
   });
 }
 
-function createPythonTransform(opts: {
+function createAdvancedTransform(opts: {
+  name?: string;
+  type?: AdvancedTransformType;
   body: string;
   sourceTables: PythonTransformTableAliases;
   targetTable?: string;
@@ -4012,7 +4027,7 @@ function createPythonTransform(opts: {
   tagIds?: TransformTagId[];
   visitTransform?: boolean;
 }) {
-  return H.createPythonTransform({
+  return H.createAdvancedTransform({
     targetTable: TARGET_TABLE,
     targetSchema: TARGET_SCHEMA,
     ...opts,

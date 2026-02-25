@@ -30,7 +30,7 @@ describe("scenarios > data studio > transforms > python library", () => {
       .findByText(/# This is your Python library/)
       .should("be.visible");
     H.DataStudio.PythonLibrary.editor()
-      .findByText(/# You can add functions and classes here/)
+      .findByText(/# You can add code here that can be reused/)
       .should("be.visible");
 
     cy.log("modify and save the python library");
@@ -42,7 +42,41 @@ describe("scenarios > data studio > transforms > python library", () => {
     cy.findByRole("button", { name: "Save" }).should("be.visible").click();
 
     H.undoToast()
-      .findByText(/Python library saved/)
+      .findByText(/library saved/i)
+      .should("be.visible");
+
+    cy.log("refresh the page and check the content is persisted");
+    cy.url().reload();
+
+    H.DataStudio.PythonLibrary.editor()
+      .findByText(/hello world/)
+      .should("be.visible");
+  });
+
+  it("should allow editing the JavaScript library", () => {
+    H.DataStudio.Transforms.visit();
+    cy.findByRole("link", { name: /JavaScript library/ }).click();
+
+    H.DataStudio.PythonLibrary.editor().should("be.visible");
+
+    cy.log("make sure placeholder with help comment is displayed");
+    H.DataStudio.PythonLibrary.editor()
+      .findByText(/\/\/ This is your JavaScript library/)
+      .should("be.visible");
+    H.DataStudio.PythonLibrary.editor()
+      .findByText(/\/\/ You can add code here that can be reused/)
+      .should("be.visible");
+
+    cy.log("modify and save the JavaScript library");
+    H.DataStudio.PythonLibrary.editor()
+      .findByRole("textbox")
+      .click()
+      .realType("console.log('hello world');");
+
+    cy.findByRole("button", { name: "Save" }).should("be.visible").click();
+
+    H.undoToast()
+      .findByText(/library saved/i)
       .should("be.visible");
 
     cy.log("refresh the page and check the content is persisted");
