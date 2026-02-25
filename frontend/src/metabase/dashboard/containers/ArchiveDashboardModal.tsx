@@ -29,8 +29,11 @@ const ArchiveDashboardModal = ({
 
   const archive = async () => {
     setLoading(true);
-    await dispatch(setArchivedDashboard(true));
-    setLoading(false);
+    try {
+      await dispatch(setArchivedDashboard(true));
+    } finally {
+      setLoading(false);
+    }
   };
 
   const hasDashboardQuestions = dashboard.dashcards
@@ -43,11 +46,7 @@ const ArchiveDashboardModal = ({
 
   return (
     <ArchiveModal
-      title={
-        "is_app_age" in dashboard && dashboard.is_app_age
-          ? t`Move this page to trash?`
-          : t`Move this dashboard to trash?`
-      }
+      title={t`Move this dashboard to trash?`}
       model="dashboard"
       modelId={Number(dashboard.id)}
       message={message}
