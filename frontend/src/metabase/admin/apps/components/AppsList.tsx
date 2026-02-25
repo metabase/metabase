@@ -37,10 +37,6 @@ export function AppsList() {
     [deleteApp],
   );
 
-  const handleOpen = useCallback((name: string) => {
-    window.open(`/apps/${encodeURIComponent(name)}`, "_blank");
-  }, []);
-
   return (
     <Stack p="lg" gap="lg">
       <Group justify="space-between">
@@ -68,7 +64,6 @@ export function AppsList() {
                 <AppRow
                   key={app.id}
                   app={app}
-                  onOpen={handleOpen}
                   onEdit={handleEdit}
                   onDelete={handleDelete}
                 />
@@ -83,12 +78,10 @@ export function AppsList() {
 
 function AppRow({
   app,
-  onOpen,
   onEdit,
   onDelete,
 }: {
   app: App;
-  onOpen: (name: string) => void;
   onEdit: (id: number) => void;
   onDelete: (id: number) => void;
 }) {
@@ -107,9 +100,6 @@ function AppRow({
       <td>{collection?.name ?? app.collection_id}</td>
       <td>
         <Group gap="xs" justify="flex-end">
-          <Button size="xs" variant="subtle" onClick={() => onOpen(app.name)}>
-            {t`Open`}
-          </Button>
           <Button size="xs" variant="subtle" onClick={() => onEdit(app.id)}>
             {t`Edit`}
           </Button>

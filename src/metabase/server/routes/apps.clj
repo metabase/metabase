@@ -16,7 +16,7 @@
 
 (defn- app-page-html
   "Generate HTML page with embedded collection browser."
-  [app-name api-key auth-method theme logo collection-id]
+  [app-name api-key auth-method theme logo collection-id use-current-session]
   (str "<!DOCTYPE html>
 <html lang=\"en\">
 <head>
@@ -82,11 +82,14 @@
   <script>
     defineMetabaseConfig({
       instanceUrl: window.location.origin"
-       (if api-key
-         (str ",\n      apiKey: \"" api-key "\"")
-         (str ",\n      preferredAuthMethod: \"" (name auth-method) "\""))
+       (cond
+         api-key             (str ",\n      apiKey: \"" api-key "\"")
+         use-current-session nil
+         :else               (str ",\n      preferredAuthMethod: \"" (name auth-method) "\""))
        (when theme
          (str ",\n      theme: " theme))
+       (when use-current-session
+         ",\n      \"useExistingUserSession\": true")
        "
     });
   </script>
@@ -106,12 +109,13 @@
         (respond {:status 404 :body (str "App not found: " app-name)})
         (let [api-key     (or (get-in request [:params :api_key])
                               (config/config-str :mb-apps-api-key))
-              auth-method (:auth_method app)
-              theme       (:theme app)
-              logo        (:logo app)
-              coll-id     (:collection_id app)]
+              auth-method         (:auth_method app)
+              theme               (:theme app)
+              logo                (:logo app)
+              coll-id             (:collection_id app)
+              use-current-session (= "true" (get-in request [:params :useCurrentSession]))]
           (respond
-           (-> (response/response (app-page-html (:name app) api-key auth-method theme logo coll-id))
+           (-> (response/response (app-page-html (:name app) api-key auth-method theme logo coll-id use-current-session))
                (response/content-type "text/html; charset=utf-8")
                (response/header "Content-Security-Policy"
                                 "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; connect-src *; frame-src *; img-src * data: blob:;"))))))))
