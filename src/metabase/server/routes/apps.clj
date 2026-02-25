@@ -31,11 +31,24 @@
     body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; }
     #app-container { height: 100vh; width: 100%; display: flex; flex-direction: column; }
     #app-container > * { flex: 1; height: 100%; }
+    app-wrapper { display: flex; flex-direction: column; }
+    .app-header {
+      padding: 16px 24px;
+      font-size: 20px;
+      font-weight: 600;
+      flex-shrink: 0;
+    }
+    .app-content { flex: 1; overflow: hidden; }
   </style>
 </head>
 <body>
   <div id=\"app-container\">
-    <metabase-browser initial-collection=\"" collection-id "\"></metabase-browser>
+    <app-wrapper>
+      <div class=\"app-header\">" app-name "</div>
+      <div class=\"app-content\">
+        <metabase-browser initial-collection=\"" collection-id "\"></metabase-browser>
+      </div>
+    </app-wrapper>
   </div>
 
   <script defer src=\"" site-url "/app/embed.js\"></script>
