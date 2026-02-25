@@ -13,7 +13,7 @@ type Props = {
   hint?: string;
   hidden?: boolean;
   disabled?: boolean;
-  widget?: React.ComponentType<{ id: string }>;
+  widget?: React.ComponentType<{ id: string }> | string;
   inline?: boolean;
   marginBottom?: string;
   props?: Record<string, unknown>;

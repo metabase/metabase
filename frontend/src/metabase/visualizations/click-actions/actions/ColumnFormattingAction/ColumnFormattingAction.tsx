@@ -54,7 +54,7 @@ export const ColumnFormattingAction: LegacyDrill = ({ question, clicked }) => {
       (widget) => widget.id === "column_settings",
     );
 
-    const extraProps = {
+    const { id, ...extraProps } = {
       ...columnSettingsWidget,
       props: {
         ...columnSettingsWidget?.props,
@@ -62,10 +62,15 @@ export const ColumnFormattingAction: LegacyDrill = ({ question, clicked }) => {
       },
     };
 
+    if (!columnSettingsWidget || id == null) {
+      return <span />;
+    }
+
     return (
       <PopoverRoot>
         <ChartSettingsWidget
           {...extraProps}
+          id={id}
           key={columnSettingsWidget?.id}
           hidden={false}
           dataTestId={POPOVER_TEST_ID}

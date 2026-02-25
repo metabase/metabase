@@ -296,7 +296,7 @@ export type VisualizationSettingDefinition<
   group?: string;
   index?: number;
   showColumnSetting?: boolean;
-  widget?: string | ComponentType<TProps>;
+  widget?: string | ComponentType<TProps & { id: string }>;
   isValid?: (
     object: T,
     settings: ComputedVisualizationSettings,
