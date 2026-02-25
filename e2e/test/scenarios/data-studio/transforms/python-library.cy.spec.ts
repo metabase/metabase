@@ -21,6 +21,7 @@ describe("scenarios > data studio > transforms > python library", () => {
 
   it("should allow editing the python library", () => {
     H.DataStudio.Transforms.visit();
+    H.DataStudio.Transforms.list().findByText("Code library").click();
     cy.findByRole("link", { name: /Python library/ }).click();
 
     H.DataStudio.PythonLibrary.editor().should("be.visible");
@@ -55,6 +56,7 @@ describe("scenarios > data studio > transforms > python library", () => {
 
   it("should allow editing the JavaScript library", () => {
     H.DataStudio.Transforms.visit();
+    H.DataStudio.Transforms.list().findByText("Code library").click();
     cy.findByRole("link", { name: /JavaScript library/ }).click();
 
     H.DataStudio.PythonLibrary.editor().should("be.visible");
