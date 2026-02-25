@@ -61,7 +61,7 @@
                  (str (namespace flag) "/" (name flag))
                  (name flag))
                flag)]
-    (if-some [status (t2/select-one-fn :is_enabled :model/ReleaseFlag :flag flag)]
-      status
+    (if-some [flag (t2/select-one :model/ReleaseFlag :flag flag)]
+      (:is_enabled flag)
       (throw (ex-info (str "Release flag `" flag "` not found.")
                       {:flag flag})))))
