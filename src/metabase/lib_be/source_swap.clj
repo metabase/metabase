@@ -113,17 +113,17 @@
                             (lib.field/is-field-clause? clause)
                             f))))
 
-(mu/defn- can-upgrade-field-ref? :- :boolean
+(mu/defn- should-upgrade-field-ref? :- :boolean
   [field-ref :- :mbql.clause/field]
   ;; name-based field ref is already upgraded
   ;; implicitly joined field ref cannot be upgraded
   (not (or (lib.ref/field-ref-name field-ref)
            (contains? (lib.options/options field-ref) :source-field))))
 
-(mu/defn- can-upgrade-field-refs-in-clause? :- :boolean
+(mu/defn- should-upgrade-field-refs-in-clause? :- :boolean
   [clause :- :any]
   (boolean (lib.util.match/match-lite clause
-             (field-ref :guard (every-pred lib.field/is-field-clause? can-upgrade-field-ref?))
+             (field-ref :guard (every-pred lib.field/is-field-clause? should-upgrade-field-ref?))
              true)))
 
 (mu/defn- upgrade-field-ref :- :mbql.clause/field
@@ -131,7 +131,7 @@
    stage-number  :- :int
    field-ref     :- :mbql.clause/field
    columns       :- [:sequential ::lib.schema.metadata/column]]
-  (or (when (can-upgrade-field-ref? field-ref)
+  (or (when (should-upgrade-field-ref? field-ref)
         (when-let [column (lib.equality/find-matching-column query stage-number field-ref columns)]
           ;; for inheried card columns, drop the :id to force a name-based field ref
           ;; preserve the expression name if this field ref is an identity expression
@@ -191,10 +191,10 @@
                                              (upgrade-field-refs-in-stage query stage-number))
                                            %))))
 
-(mu/defn can-upgrade-field-refs-in-query? :- :boolean
+(mu/defn should-upgrade-field-refs-in-query? :- :boolean
   "Check if any field refs in `query` can be upgraded to use name-based field refs."
   [query :- ::lib.schema/query]
-  (can-upgrade-field-refs-in-clause? query))
+  (should-upgrade-field-refs-in-clause? query))
 
 (mu/defn upgrade-field-ref-in-parameter-target :- ::lib.schema.parameter/target
   "If the parameter target is a field ref, upgrade it to use a name-based field ref when possible."
@@ -210,11 +210,11 @@
                #(upgrade-field-ref query stage-number % columns))))))
       target))
 
-(mu/defn can-upgrade-field-ref-in-parameter-target? :- :boolean
+(mu/defn should-upgrade-field-ref-in-parameter-target? :- :boolean
   "If the parameter target is a field ref, check if it can be upgraded to use a name-based field ref."
   [target :- ::lib.schema.parameter/target]
   (if-let [field-ref (lib.parameters/parameter-target-field-ref target)]
-    (can-upgrade-field-ref? field-ref)
+    (should-upgrade-field-ref? field-ref)
     false))
 
 (mu/defn- build-swap-field-id-mapping-for-table :- [:maybe ::swap-source.field-id-mapping]
