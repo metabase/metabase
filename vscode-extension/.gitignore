@@ -11,4 +11,5 @@ logs
 node_modules
 temp
 src/generated
+vendor/
 .env

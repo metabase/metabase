@@ -33,6 +33,7 @@
 | `metastudio.createSqlTransform`    | Metastudio: New SQL Transform         |
 | `metastudio.openEmbeddedCode`      | Metastudio: Edit Query in Editor      |
 | `metastudio.showNotebook`          | Metastudio: Show Notebook Query       |
+| `metastudio.showCardPreview`       | Metastudio: Show Card Preview         |
 
 <!-- commands -->
 

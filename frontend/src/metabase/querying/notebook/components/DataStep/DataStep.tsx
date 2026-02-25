@@ -57,7 +57,7 @@ export const DataStep = ({
 
   return (
     <NotebookCell color={color}>
-      {isOpened || !table || isEmbed ? (
+      {!readOnly && (isOpened || !table || isEmbed) ? (
         <NotebookDataPicker
           query={query}
           stageIndex={stageIndex}

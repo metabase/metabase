@@ -1,23 +1,303 @@
-import type { CardNode, TransformNode, TableNode, FieldNode } from "./types"
+import type { CardNode, TransformNode, FieldNode, TableNode } from "./types"
 import type { CatalogGraph } from "./catalog-graph"
-import type { NotebookData, NotebookStepData, NotebookClauseData } from "../shared-types"
+import type {
+  NotebookData,
+  NotebookMetadata,
+  NotebookMetadataDatabase,
+  NotebookMetadataTable,
+  NotebookMetadataField,
+} from "../shared-types"
 
 /**
- * Builds NotebookData from a CardNode (metric/model/question) for rendering
- * in the ReadOnlyNotebook webview.
- *
- * The YAML uses symbolic names (["neondb", "public", "orders"]) which we parse
- * directly to produce display-friendly step data without needing metabase-lib CLJS.
+ * Deterministic numeric ID from a string key.
+ * Uses a simple hash to produce stable positive integers.
  */
+function syntheticId(key: string): number {
+  let hash = 5381
+  for (let index = 0; index < key.length; index++) {
+    hash = ((hash << 5) + hash + key.charCodeAt(index)) | 0
+  }
+  return Math.abs(hash) || 1
+}
+
+function databaseId(databaseName: string): number {
+  return syntheticId(`db:${databaseName}`)
+}
+
+function tableId(databaseName: string, schemaName: string | null, tableName: string): number {
+  return syntheticId(`table:${databaseName}\0${schemaName ?? ""}\0${tableName}`)
+}
+
+function fieldId(
+  databaseName: string,
+  schemaName: string | null,
+  tableName: string,
+  fieldName: string,
+): number {
+  return syntheticId(`field:${databaseName}\0${schemaName ?? ""}\0${tableName}\0${fieldName}`)
+}
+
+class MetadataCollector {
+  private databases = new Map<number, NotebookMetadataDatabase>()
+  private tables = new Map<number, NotebookMetadataTable>()
+  private fields = new Map<number, NotebookMetadataField>()
+
+  constructor(private catalog: CatalogGraph | null) {}
+
+  ensureDatabase(databaseName: string): number {
+    const numericId = databaseId(databaseName)
+    if (!this.databases.has(numericId)) {
+      const databaseNode = this.catalog?.getDatabase(databaseName)
+      this.databases.set(numericId, {
+        id: numericId,
+        name: databaseName,
+        engine: databaseNode?.engine ?? "postgres",
+        features: [
+          "left-join", "right-join", "inner-join", "full-join",
+          "expressions", "native-parameters", "nested-queries",
+          "case-sensitivity-string-filter-options", "binning",
+          "expression-aggregations", "foreign-keys",
+          "native-query-snippets", "window-functions",
+        ],
+      })
+    }
+    return numericId
+  }
+
+  ensureTable(databaseName: string, schemaName: string | null, tableName: string): number {
+    const numericTableId = tableId(databaseName, schemaName, tableName)
+    if (!this.tables.has(numericTableId)) {
+      const tableNode = this.catalog?.getTable(databaseName, schemaName, tableName)
+      const numericDatabaseId = this.ensureDatabase(databaseName)
+
+      this.tables.set(numericTableId, {
+        id: numericTableId,
+        db_id: numericDatabaseId,
+        name: tableName,
+        display_name: tableNode?.displayName ?? tableName,
+        schema: schemaName ?? "public",
+        fields: [],
+      })
+
+      if (tableNode) {
+        for (const field of tableNode.fields) {
+          this.ensureField(field)
+        }
+        const tableEntry = this.tables.get(numericTableId)!
+        tableEntry.fields = tableNode.fields.map(field =>
+          fieldId(field.databaseName, field.schemaName, field.tableName, field.name),
+        )
+      }
+    }
+    return numericTableId
+  }
+
+  ensureField(fieldNode: FieldNode): number {
+    const numericFieldId = fieldId(
+      fieldNode.databaseName,
+      fieldNode.schemaName,
+      fieldNode.tableName,
+      fieldNode.name,
+    )
+    if (!this.fields.has(numericFieldId)) {
+      const numericTableId = tableId(
+        fieldNode.databaseName,
+        fieldNode.schemaName,
+        fieldNode.tableName,
+      )
+      this.fields.set(numericFieldId, {
+        id: numericFieldId,
+        table_id: numericTableId,
+        name: fieldNode.name,
+        display_name: fieldNode.displayName,
+        base_type: fieldNode.baseType || "type/Text",
+        semantic_type: fieldNode.semanticType,
+      })
+    }
+    return numericFieldId
+  }
+
+  ensureFieldByRef(
+    databaseName: string,
+    schemaName: string | null,
+    tableName: string,
+    fieldName: string,
+  ): number {
+    const numericFieldId = fieldId(databaseName, schemaName, tableName, fieldName)
+    if (!this.fields.has(numericFieldId)) {
+      const catalogField = this.catalog?.getField(databaseName, schemaName, tableName, fieldName)
+      if (catalogField) {
+        return this.ensureField(catalogField)
+      }
+      const numericTableId = tableId(databaseName, schemaName, tableName)
+      this.fields.set(numericFieldId, {
+        id: numericFieldId,
+        table_id: numericTableId,
+        name: fieldName,
+        display_name: fieldName.replace(/_/g, " "),
+        base_type: "type/Text",
+        semantic_type: null,
+      })
+    }
+    return numericFieldId
+  }
+
+  toMetadata(): NotebookMetadata {
+    return {
+      databases: Object.fromEntries(this.databases),
+      tables: Object.fromEntries(this.tables),
+      fields: Object.fromEntries(this.fields),
+    }
+  }
+}
+
+/**
+ * Deep-walks the dataset_query and replaces all symbolic references with numeric IDs.
+ */
+function rewriteDatasetQuery(
+  datasetQuery: Record<string, unknown>,
+  collector: MetadataCollector,
+): Record<string, unknown> {
+  const databaseName = String(datasetQuery.database ?? "")
+  const numericDatabaseId = collector.ensureDatabase(databaseName)
+
+  const result: Record<string, unknown> = {
+    ...datasetQuery,
+    database: numericDatabaseId,
+  }
+
+  if (datasetQuery.type === "query" && datasetQuery.query) {
+    result.query = rewriteQueryClause(
+      datasetQuery.query as Record<string, unknown>,
+      databaseName,
+      collector,
+    )
+  }
+
+  return result
+}
+
+function rewriteQueryClause(
+  query: Record<string, unknown>,
+  defaultDatabase: string,
+  collector: MetadataCollector,
+): Record<string, unknown> {
+  const result: Record<string, unknown> = { ...query }
+
+  if (query["source-table"]) {
+    result["source-table"] = rewriteTableRef(query["source-table"], defaultDatabase, collector)
+  }
+
+  if (Array.isArray(query.filter)) {
+    result.filter = rewriteValue(query.filter, defaultDatabase, collector)
+  }
+
+  if (Array.isArray(query.aggregation)) {
+    result.aggregation = query.aggregation.map((item: unknown) =>
+      rewriteValue(item, defaultDatabase, collector),
+    )
+  }
+
+  if (Array.isArray(query.breakout)) {
+    result.breakout = query.breakout.map((item: unknown) =>
+      rewriteValue(item, defaultDatabase, collector),
+    )
+  }
+
+  if (Array.isArray(query["order-by"])) {
+    result["order-by"] = query["order-by"].map((item: unknown) =>
+      rewriteValue(item, defaultDatabase, collector),
+    )
+  }
+
+  if (query.expressions && typeof query.expressions === "object") {
+    const expressions: Record<string, unknown> = {}
+    for (const [key, value] of Object.entries(query.expressions as Record<string, unknown>)) {
+      expressions[key] = Array.isArray(value)
+        ? rewriteValue(value, defaultDatabase, collector)
+        : value
+    }
+    result.expressions = expressions
+  }
+
+  if (Array.isArray(query.joins)) {
+    result.joins = query.joins.map((join: unknown) => {
+      if (!join || typeof join !== "object") return join
+      const joinObj = join as Record<string, unknown>
+      const rewritten: Record<string, unknown> = { ...joinObj }
+      if (joinObj["source-table"]) {
+        rewritten["source-table"] = rewriteTableRef(joinObj["source-table"], defaultDatabase, collector)
+      }
+      if (Array.isArray(joinObj.condition)) {
+        rewritten.condition = rewriteValue(joinObj.condition, defaultDatabase, collector)
+      }
+      return rewritten
+    })
+  }
+
+  return result
+}
+
+function rewriteTableRef(
+  ref: unknown,
+  defaultDatabase: string,
+  collector: MetadataCollector,
+): unknown {
+  if (Array.isArray(ref) && ref.length >= 3 && ref.every(item => typeof item === "string" || item === null)) {
+    const [databaseName, schemaName, tableName] = ref.map((item) =>
+      item === null ? null : String(item),
+    )
+    return collector.ensureTable(databaseName ?? defaultDatabase, schemaName, tableName!)
+  }
+  return ref
+}
+
+function rewriteValue(
+  value: unknown,
+  defaultDatabase: string,
+  collector: MetadataCollector,
+): unknown {
+  if (!Array.isArray(value)) {
+    return value
+  }
+
+  // Field reference: ["field", ["db", "schema", "table", "col"], opts]
+  if (value[0] === "field" && Array.isArray(value[1]) && value[1].length >= 4) {
+    const [databaseName, schemaName, tableName, fieldName] = value[1].map(
+      (part: unknown) => (part === null ? null : String(part)),
+    )
+    const numericId = collector.ensureFieldByRef(
+      databaseName ?? defaultDatabase,
+      schemaName,
+      tableName!,
+      fieldName!,
+    )
+    collector.ensureTable(databaseName ?? defaultDatabase, schemaName, tableName!)
+    return ["field", numericId, value[2] ?? null]
+  }
+
+  // Expression reference: ["expression", name] — leave as-is
+  if (value[0] === "expression") {
+    return value
+  }
+
+  // Aggregation reference: ["aggregation", index] — leave as-is
+  if (value[0] === "aggregation") {
+    return value
+  }
+
+  // Recursively rewrite sub-expressions
+  return value.map((item: unknown) => rewriteValue(item, defaultDatabase, collector))
+}
+
 export function buildNotebookDataFromCard(
   card: CardNode,
   catalog: CatalogGraph | null,
 ): NotebookData {
   const raw = card.raw
   const datasetQuery = raw.dataset_query as Record<string, unknown> | undefined
-  const resultMetadata = raw.result_metadata as Record<string, unknown>[] | undefined
 
-  const database = datasetQuery
+  const databaseName = datasetQuery
     ? String((datasetQuery as Record<string, unknown>).database ?? "")
     : card.databaseId ?? ""
 
@@ -30,10 +310,12 @@ export function buildNotebookDataFromCard(
     return {
       name: card.name,
       description: card.description,
-      database: database ? String(database) : null,
+      database: databaseName || null,
       cardType: card.cardType,
       queryType: "native",
       nativeSql: native ? String(native.query ?? "") : null,
+      datasetQuery: null,
+      metadata: null,
       steps: null,
       target: null,
       filePath: card.filePath,
@@ -41,26 +323,42 @@ export function buildNotebookDataFromCard(
     }
   }
 
-  const query = (datasetQuery as Record<string, unknown>)?.query as Record<string, unknown> | undefined
-  const steps = query ? buildStructuredSteps(query, catalog) : []
+  if (!datasetQuery) {
+    return {
+      name: card.name,
+      description: card.description,
+      database: databaseName || null,
+      cardType: card.cardType,
+      queryType: queryType || null,
+      nativeSql: null,
+      datasetQuery: null,
+      metadata: null,
+      steps: null,
+      target: null,
+      filePath: card.filePath,
+      entityId: card.entityId,
+    }
+  }
+
+  const collector = new MetadataCollector(catalog)
+  const rewrittenQuery = rewriteDatasetQuery(datasetQuery, collector)
 
   return {
     name: card.name,
     description: card.description,
-    database: database ? String(database) : null,
+    database: databaseName || null,
     cardType: card.cardType,
     queryType: "query",
     nativeSql: null,
-    steps,
+    datasetQuery: rewrittenQuery,
+    metadata: collector.toMetadata(),
+    steps: null,
     target: null,
     filePath: card.filePath,
     entityId: card.entityId,
   }
 }
 
-/**
- * Builds NotebookData from a TransformNode for rendering in the ReadOnlyNotebook webview.
- */
 export function buildNotebookDataFromTransform(
   transform: TransformNode,
   catalog: CatalogGraph | null,
@@ -77,6 +375,8 @@ export function buildNotebookDataFromTransform(
       cardType: "transform",
       queryType: transform.sourceQueryType,
       nativeSql: null,
+      datasetQuery: null,
+      metadata: null,
       steps: null,
       target: buildTarget(raw),
       filePath: transform.filePath,
@@ -84,18 +384,19 @@ export function buildNotebookDataFromTransform(
     }
   }
 
-  const database = String(queryWrapper.database ?? "")
   const queryType = String(queryWrapper.type ?? "query")
 
-  if (queryType === "native") {
+  if (queryType === "native" || queryType === "python") {
     const native = queryWrapper.native as Record<string, unknown> | undefined
     return {
       name: transform.name,
       description: transform.description,
-      database,
+      database: String(queryWrapper.database ?? ""),
       cardType: "transform",
-      queryType: "native",
+      queryType,
       nativeSql: native ? String(native.query ?? "") : null,
+      datasetQuery: null,
+      metadata: null,
       steps: null,
       target: buildTarget(raw),
       filePath: transform.filePath,
@@ -103,33 +404,19 @@ export function buildNotebookDataFromTransform(
     }
   }
 
-  if (queryType === "python") {
-    const native = queryWrapper.native as Record<string, unknown> | undefined
-    return {
-      name: transform.name,
-      description: transform.description,
-      database,
-      cardType: "transform",
-      queryType: "python",
-      nativeSql: native ? String(native.query ?? "") : null,
-      steps: null,
-      target: buildTarget(raw),
-      filePath: transform.filePath,
-      entityId: transform.entityId,
-    }
-  }
-
-  const query = queryWrapper.query as Record<string, unknown> | undefined
-  const steps = query ? buildStructuredSteps(query, catalog) : []
+  const collector = new MetadataCollector(catalog)
+  const rewrittenQuery = rewriteDatasetQuery(queryWrapper, collector)
 
   return {
     name: transform.name,
     description: transform.description,
-    database,
+    database: String(queryWrapper.database ?? ""),
     cardType: "transform",
     queryType: "query",
     nativeSql: null,
-    steps,
+    datasetQuery: rewrittenQuery,
+    metadata: collector.toMetadata(),
+    steps: null,
     target: buildTarget(raw),
     filePath: transform.filePath,
     entityId: transform.entityId,
@@ -147,287 +434,4 @@ function buildTarget(
     schema: String(target.schema ?? ""),
     name: String(target.name ?? ""),
   }
-}
-
-function buildStructuredSteps(
-  query: Record<string, unknown>,
-  catalog: CatalogGraph | null,
-): NotebookStepData[] {
-  const steps: NotebookStepData[] = []
-
-  // Data step (source table)
-  const sourceTable = query["source-table"]
-  if (sourceTable) {
-    const tableDisplay = formatSourceTable(sourceTable)
-    const tableRef = Array.isArray(sourceTable)
-      ? sourceTable.map(String).slice(0, 3)
-      : null
-
-    steps.push({
-      type: "data",
-      title: tableDisplay,
-      clauses: [
-        {
-          displayName: tableDisplay,
-          fieldRef: tableRef,
-        },
-      ],
-    })
-  }
-
-  // Joins
-  const joins = query.joins as unknown[] | undefined
-  if (Array.isArray(joins) && joins.length > 0) {
-    for (const join of joins) {
-      const joinObj = join as Record<string, unknown>
-      const joinSourceTable = joinObj["source-table"]
-      const joinAlias = joinObj.alias ? String(joinObj.alias) : null
-      const tableDisplay = formatSourceTable(joinSourceTable)
-      const label = joinAlias ?? tableDisplay
-
-      steps.push({
-        type: "join",
-        title: `Join: ${label}`,
-        clauses: [
-          {
-            displayName: tableDisplay,
-            fieldRef: Array.isArray(joinSourceTable)
-              ? joinSourceTable.map(String).slice(0, 3)
-              : null,
-          },
-        ],
-      })
-    }
-  }
-
-  // Expressions (custom columns)
-  const expressions = query.expressions as Record<string, unknown> | undefined
-  if (expressions && typeof expressions === "object") {
-    const expressionNames = Object.keys(expressions)
-    if (expressionNames.length > 0) {
-      steps.push({
-        type: "expression",
-        title: null,
-        clauses: expressionNames.map((name) => ({
-          displayName: name,
-          fieldRef: null,
-        })),
-      })
-    }
-  }
-
-  // Filters
-  const filter = query.filter
-  if (filter) {
-    const filterClauses = parseFilterClauses(filter, catalog)
-    if (filterClauses.length > 0) {
-      steps.push({
-        type: "filter",
-        title: null,
-        clauses: filterClauses,
-      })
-    }
-  }
-
-  // Aggregations + Breakouts → Summarize step
-  const aggregation = query.aggregation
-  const breakout = query.breakout
-
-  const aggregationClauses = aggregation
-    ? parseAggregationClauses(aggregation)
-    : []
-  const breakoutClauses = breakout ? parseBreakoutClauses(breakout) : []
-
-  if (aggregationClauses.length > 0) {
-    steps.push({
-      type: "summarize",
-      title: null,
-      clauses: aggregationClauses,
-    })
-  }
-
-  if (breakoutClauses.length > 0) {
-    steps.push({
-      type: "breakout",
-      title: null,
-      clauses: breakoutClauses,
-    })
-  }
-
-  // Sort
-  const orderBy = query["order-by"]
-  if (Array.isArray(orderBy) && orderBy.length > 0) {
-    steps.push({
-      type: "sort",
-      title: null,
-      clauses: orderBy.filter(Array.isArray).map((clause: unknown[]) => {
-        const direction = String(clause[0] ?? "asc")
-        const field = extractFieldDisplay(clause[1])
-        const dirLabel = direction === "desc" ? " (descending)" : " (ascending)"
-        return {
-          displayName: field.display + dirLabel,
-          fieldRef: field.ref,
-        }
-      }),
-    })
-  }
-
-  // Limit
-  if (typeof query.limit === "number") {
-    steps.push({
-      type: "limit",
-      title: null,
-      clauses: [
-        {
-          displayName: String(query.limit),
-          fieldRef: null,
-        },
-      ],
-    })
-  }
-
-  return steps
-}
-
-function formatSourceTable(sourceTable: unknown): string {
-  if (Array.isArray(sourceTable)) {
-    const parts = sourceTable.map(String)
-    if (parts.length >= 3) {
-      return `${parts[1]}.${parts[2]}`
-    }
-    return parts.join(".")
-  }
-  return String(sourceTable ?? "unknown")
-}
-
-function extractFieldDisplay(
-  fieldRef: unknown,
-): { display: string; ref: string[] | null } {
-  if (!Array.isArray(fieldRef)) {
-    return { display: String(fieldRef ?? "?"), ref: null }
-  }
-
-  // ["field", [db, schema, table, column], opts]
-  if (fieldRef[0] === "field" && Array.isArray(fieldRef[1])) {
-    const parts = fieldRef[1].map(String)
-    if (parts.length >= 4) {
-      return { display: parts[3], ref: parts }
-    }
-    return { display: parts.join("."), ref: parts.length >= 3 ? parts : null }
-  }
-
-  // ["field", columnName, opts]
-  if (fieldRef[0] === "field" && typeof fieldRef[1] === "string") {
-    return { display: fieldRef[1], ref: null }
-  }
-
-  // ["expression", expressionName]
-  if (fieldRef[0] === "expression" && typeof fieldRef[1] === "string") {
-    return { display: fieldRef[1], ref: null }
-  }
-
-  // ["aggregation", index]
-  if (fieldRef[0] === "aggregation") {
-    return { display: `Aggregation ${fieldRef[1]}`, ref: null }
-  }
-
-  return { display: String(fieldRef), ref: null }
-}
-
-function parseFilterClauses(
-  filter: unknown,
-  _catalog: CatalogGraph | null,
-): NotebookClauseData[] {
-  if (!Array.isArray(filter)) return []
-
-  // Single filter: ["=", ["field", ...], value]
-  if (typeof filter[0] === "string" && filter[0] !== "and" && filter[0] !== "or") {
-    const parsed = formatSingleFilter(filter)
-    return parsed ? [parsed] : []
-  }
-
-  // Compound: ["and", filter1, filter2, ...]
-  if (filter[0] === "and" || filter[0] === "or") {
-    return filter
-      .slice(1)
-      .map((subFilter: unknown) =>
-        Array.isArray(subFilter) ? formatSingleFilter(subFilter) : null,
-      )
-      .filter((result): result is NotebookClauseData => result !== null)
-  }
-
-  return []
-}
-
-function formatSingleFilter(filter: unknown[]): NotebookClauseData | null {
-  if (filter.length < 2) return null
-
-  const operator = String(filter[0])
-  const field = extractFieldDisplay(filter[1])
-  const value = filter.length > 2 ? formatFilterValue(filter.slice(2)) : ""
-
-  const displayName = value
-    ? `${field.display} ${operator} ${value}`
-    : `${field.display} ${operator}`
-
-  return {
-    displayName,
-    fieldRef: field.ref,
-  }
-}
-
-function formatFilterValue(values: unknown[]): string {
-  if (values.length === 1) {
-    const value = values[0]
-    if (value === null || value === undefined) return "null"
-    if (Array.isArray(value)) return value.map(String).join(", ")
-    return String(value)
-  }
-  return values.map(String).join(", ")
-}
-
-function parseAggregationClauses(aggregation: unknown): NotebookClauseData[] {
-  if (!Array.isArray(aggregation)) return []
-
-  // Single aggregation: ["count"] or ["sum", ["field", ...]]
-  if (typeof aggregation[0] === "string") {
-    return [formatSingleAggregation(aggregation)]
-  }
-
-  // Multiple: [["count"], ["sum", ["field", ...]]]
-  return aggregation
-    .filter(Array.isArray)
-    .map((agg: unknown[]) => formatSingleAggregation(agg))
-}
-
-function formatSingleAggregation(aggregation: unknown[]): NotebookClauseData {
-  const operator = String(aggregation[0])
-  if (aggregation.length > 1) {
-    const field = extractFieldDisplay(aggregation[1])
-    return {
-      displayName: `${operator} of ${field.display}`,
-      fieldRef: field.ref,
-    }
-  }
-  return {
-    displayName: operator,
-    fieldRef: null,
-  }
-}
-
-function parseBreakoutClauses(breakout: unknown): NotebookClauseData[] {
-  if (!Array.isArray(breakout)) return []
-  return breakout.map((item: unknown) => {
-    if (Array.isArray(item)) {
-      const field = extractFieldDisplay(item)
-      return {
-        displayName: field.display,
-        fieldRef: field.ref,
-      }
-    }
-    return {
-      displayName: String(item),
-      fieldRef: null,
-    }
-  })
 }

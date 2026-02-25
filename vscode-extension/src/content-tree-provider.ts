@@ -50,6 +50,12 @@ export class ContentTreeProvider implements vscode.TreeDataProvider<ContentNode>
         title: 'Preview Transform',
         arguments: [element],
       }
+    } else if (element.kind === 'card' && element.cardType === 'metric') {
+      item.command = {
+        command: 'metastudio.showCardPreview',
+        title: 'Preview Metric',
+        arguments: [element],
+      }
     } else if ('filePath' in element && element.filePath) {
       item.command = {
         command: 'vscode.open',

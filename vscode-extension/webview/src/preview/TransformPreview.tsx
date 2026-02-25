@@ -1,29 +1,26 @@
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { ReadOnlyNotebook } from "../../../vendor/notebook-component.esm.js";
 import type {
+  PreviewData,
   TransformPreviewData,
+  CardPreviewData,
   ExtensionToPreviewMessage,
-  FieldReference,
-  StructuredTransformQuery,
   NativeTransformQuery,
+  NotebookData,
 } from "../../../src/shared-types";
 import {
-  TableIcon,
-  FilterIcon,
-  ChartLineIcon,
-  BoxesIcon,
   CodeIcon,
   DatabaseIcon,
   FileTextIcon,
   LinkIcon,
-  HashIcon,
-  ArrowUpDownIcon,
   ArrowRightIcon,
   PlayIcon,
 } from "./icons";
 import { vscode } from "../vscode";
+import { buildMetadata, buildQuestion } from "../notebook/question-proxy";
 
 export function TransformPreview() {
-  const [data, setData] = useState<TransformPreviewData | null>(null);
+  const [data, setData] = useState<PreviewData | null>(null);
 
   useEffect(() => {
     function handleMessage(event: MessageEvent<ExtensionToPreviewMessage>) {
@@ -43,273 +40,178 @@ export function TransformPreview() {
     return null;
   }
 
+  if (data.kind === "card") {
+    return <CardPreview data={data.data} />;
+  }
+
+  return <TransformPreviewView data={data.data} />;
+}
+
+function CardPreview({ data }: { data: CardPreviewData }) {
   return (
     <div className="preview-root">
-      <PreviewHeader data={data} />
-      <PreviewToolbar data={data} />
-      <PreviewSteps data={data} />
+      <header className="preview-header">
+        <div className="preview-title-row">
+          <h1 className="preview-title">{data.name}</h1>
+          {data.cardType && (
+            <span className="preview-badge" style={{ textTransform: "capitalize" }}>
+              {data.cardType}
+            </span>
+          )}
+          {data.database && (
+            <span className="preview-badge">
+              <DatabaseIcon size={12} />
+              {data.database}
+            </span>
+          )}
+        </div>
+        {data.description && (
+          <p className="preview-description">{data.description}</p>
+        )}
+      </header>
+      <nav className="preview-toolbar">
+        <button
+          className="preview-toolbar-btn"
+          onClick={() => vscode.postMessage({ type: "openFile", filePath: data.filePath })}
+        >
+          <FileTextIcon />
+          View YAML
+        </button>
+        <button
+          className="preview-toolbar-btn"
+          onClick={() => vscode.postMessage({ type: "openGraph", entityId: data.entityId })}
+        >
+          <LinkIcon />
+          Dependency Graph
+        </button>
+      </nav>
+      <NotebookSection notebookData={data.notebookData} />
+    </div>
+  );
+}
+
+function TransformPreviewView({ data }: { data: TransformPreviewData }) {
+  const database = data.query?.database ?? "";
+  const canRun = data.sourceQueryType !== "query";
+  const canEdit = data.sourceQueryType === "native" || data.sourceQueryType === "python";
+
+  return (
+    <div className="preview-root">
+      <header className="preview-header">
+        <div className="preview-title-row">
+          <h1 className="preview-title">{data.name}</h1>
+          {database && (
+            <span className="preview-badge">
+              <DatabaseIcon size={12} />
+              {database}
+            </span>
+          )}
+        </div>
+        {data.description && (
+          <p className="preview-description">{data.description}</p>
+        )}
+      </header>
+      <nav className="preview-toolbar">
+        {canRun ? (
+          <button
+            className="preview-toolbar-btn preview-toolbar-btn--run"
+            onClick={() => vscode.postMessage({ type: "runTransform" })}
+          >
+            <PlayIcon />
+            Run
+          </button>
+        ) : (
+          <button
+            className="preview-toolbar-btn preview-toolbar-btn--disabled"
+            disabled
+            title="Transforms based on the query builder cannot be run in a workspace"
+          >
+            <PlayIcon />
+            Run
+          </button>
+        )}
+        {canEdit && (
+          <button
+            className="preview-toolbar-btn"
+            onClick={() =>
+              vscode.postMessage({
+                type: "editInEditor",
+                filePath: data.filePath,
+                lang: data.sourceQueryType === "python" ? "python" : "sql",
+                name: data.name,
+              })
+            }
+          >
+            <CodeIcon />
+            Edit in Editor
+          </button>
+        )}
+        <button
+          className="preview-toolbar-btn"
+          onClick={() => vscode.postMessage({ type: "openFile", filePath: data.filePath })}
+        >
+          <FileTextIcon />
+          View YAML
+        </button>
+        <button
+          className="preview-toolbar-btn"
+          onClick={() => vscode.postMessage({ type: "openGraph", entityId: data.entityId })}
+        >
+          <LinkIcon />
+          Dependency Graph
+        </button>
+      </nav>
+
+      {data.query?.type === "native" ? (
+        <NativeQueryBlock query={data.query} />
+      ) : data.notebookData ? (
+        <NotebookSection notebookData={data.notebookData} />
+      ) : (
+        <p className="preview-empty-state">Unable to parse query</p>
+      )}
+
       <PreviewFooter target={data.target} />
     </div>
   );
 }
 
-function PreviewHeader({ data }: { data: TransformPreviewData }) {
-  const database = data.query?.database ?? "";
+function NotebookSection({ notebookData }: { notebookData: NotebookData }) {
+  const question = useMemo(() => {
+    if (!notebookData.datasetQuery || !notebookData.metadata) {
+      return null;
+    }
+    const metadata = buildMetadata(notebookData.metadata);
+    return buildQuestion(notebookData.datasetQuery, metadata, notebookData.cardType);
+  }, [notebookData.datasetQuery, notebookData.metadata, notebookData.cardType]);
 
-  return (
-    <header className="preview-header">
-      <div className="preview-title-row">
-        <h1 className="preview-title">{data.name}</h1>
-        {database && (
-          <span className="preview-badge">
-            <DatabaseIcon size={12} />
-            {database}
-          </span>
-        )}
-      </div>
-      {data.description && (
-        <p className="preview-description">{data.description}</p>
-      )}
-    </header>
-  );
-}
-
-function PreviewToolbar({ data }: { data: TransformPreviewData }) {
-  const canRun = data.sourceQueryType !== "query";
-  const canEdit = data.sourceQueryType === "native" || data.sourceQueryType === "python";
-
-  return (
-    <nav className="preview-toolbar">
-      {canRun ? (
-        <button
-          className="preview-toolbar-btn preview-toolbar-btn--run"
-          onClick={() => vscode.postMessage({ type: "runTransform" })}
-        >
-          <PlayIcon />
-          Run
-        </button>
-      ) : (
-        <button
-          className="preview-toolbar-btn preview-toolbar-btn--disabled"
-          disabled
-          title="Transforms based on the query builder cannot be run in a workspace"
-        >
-          <PlayIcon />
-          Run
-        </button>
-      )}
-      {canEdit && (
-        <button
-          className="preview-toolbar-btn"
-          onClick={() =>
-            vscode.postMessage({
-              type: "editInEditor",
-              filePath: data.filePath,
-              lang: data.sourceQueryType === "python" ? "python" : "sql",
-              name: data.name,
-            })
-          }
-        >
-          <CodeIcon />
-          Edit in Editor
-        </button>
-      )}
-      <button
-        className="preview-toolbar-btn"
-        onClick={() => vscode.postMessage({ type: "openFile", filePath: data.filePath })}
-      >
-        <FileTextIcon />
-        View YAML
-      </button>
-      <button
-        className="preview-toolbar-btn"
-        onClick={() => vscode.postMessage({ type: "openGraph", entityId: data.entityId })}
-      >
-        <LinkIcon />
-        Dependency Graph
-      </button>
-    </nav>
-  );
-}
-
-function PreviewSteps({ data }: { data: TransformPreviewData }) {
-  if (!data.query) {
+  if (!question) {
+    if (notebookData.queryType === "native" && notebookData.nativeSql) {
+      return (
+        <div className="preview-steps">
+          <SqlBlock sql={notebookData.nativeSql} />
+        </div>
+      );
+    }
     return <p className="preview-empty-state">Unable to parse query</p>;
   }
 
-  if (data.query.type === "native") {
-    return (
-      <div className="preview-steps">
-        <NativeQueryStep query={data.query} />
-      </div>
-    );
-  }
+  return <ReadOnlyNotebook question={question as any} />;
+}
 
+function NativeQueryBlock({ query }: { query: NativeTransformQuery }) {
   return (
     <div className="preview-steps">
-      <StructuredQuerySteps query={data.query} />
-    </div>
-  );
-}
-
-function NativeQueryStep({ query }: { query: NativeTransformQuery }) {
-  return (
-    <Step variant="brand" icon={<CodeIcon size={14} />} title="Native Query">
-      <SqlBlock sql={query.sql} />
-    </Step>
-  );
-}
-
-function StructuredQuerySteps({ query }: { query: StructuredTransformQuery }) {
-  return (
-    <>
-      <Step variant="brand" icon={<TableIcon size={14} />} title={query.sourceTable.display}>
-        <Pill
-          variant="brand"
-          onClick={() => vscode.postMessage({ type: "openTable", ref: query.sourceTable.ref })}
-        >
-          {query.sourceTable.display}
-        </Pill>
-      </Step>
-
-      {query.filters.length > 0 && (
-        <Step variant="filter" icon={<FilterIcon size={14} />} title="Filter">
-          {query.filters.map((filter, index) => (
-            <Pill key={index} variant="filter">
-              <FieldRefLink field={filter.column} />
-              <span className="preview-pill-op">{filter.operator}</span>
-              <span className="preview-pill-val">{filter.value}</span>
-            </Pill>
-          ))}
-        </Step>
-      )}
-
-      {query.aggregations.length > 0 && (
-        <Step variant="summarize" icon={<ChartLineIcon size={14} />} title="Summarize">
-          {query.aggregations.map((aggregation, index) => (
-            <Pill key={index} variant="summarize">
-              {aggregation.operator}
-              {aggregation.column && (
-                <>
-                  {" of "}
-                  <FieldRefLink field={aggregation.column} />
-                </>
-              )}
-            </Pill>
-          ))}
-        </Step>
-      )}
-
-      {query.breakouts.length > 0 && (
-        <Step variant="breakout" icon={<BoxesIcon size={14} />} title="Group by">
-          {query.breakouts.map((breakout, index) => (
-            <Pill key={index} variant="breakout">
-              <FieldRefLink field={breakout} />
-            </Pill>
-          ))}
-        </Step>
-      )}
-
-      {query.orderBy.length > 0 && (
-        <Step variant="muted" icon={<ArrowUpDownIcon size={14} />} title="Sort">
-          {query.orderBy.map((order, index) => (
-            <Pill key={index} variant="muted">
-              <FieldRefLink field={order.column} />
-              <span className="preview-pill-dir">
-                {order.direction === "desc" ? "descending" : "ascending"}
-              </span>
-            </Pill>
-          ))}
-        </Step>
-      )}
-
-      {query.limit !== null && (
-        <Step variant="muted" icon={<HashIcon size={14} />} title="Row limit">
-          <Pill variant="muted">{query.limit}</Pill>
-        </Step>
-      )}
-    </>
-  );
-}
-
-function Step({
-  variant,
-  icon,
-  title,
-  children,
-}: {
-  variant: string;
-  icon: ReactNode;
-  title: string;
-  children: ReactNode;
-}) {
-  return (
-    <div>
-      <div className={`preview-step-label preview-step-label--${variant}`}>
-        {icon}
-        {title}
-      </div>
-      <div className={`preview-step-cell preview-step-cell--${variant}`}>
-        {children}
+      <div>
+        <div className="preview-step-label preview-step-label--brand">
+          <CodeIcon size={14} />
+          Native Query
+        </div>
+        <div className="preview-step-cell preview-step-cell--brand">
+          <SqlBlock sql={query.sql} />
+        </div>
       </div>
     </div>
   );
-}
-
-function Pill({
-  variant,
-  children,
-  onClick,
-}: {
-  variant: string;
-  children: ReactNode;
-  onClick?: () => void;
-}) {
-  if (onClick) {
-    return (
-      <a className={`preview-pill preview-pill--${variant}`} onClick={onClick}>
-        {children}
-      </a>
-    );
-  }
-
-  return (
-    <span className={`preview-pill preview-pill--${variant}`}>
-      {children}
-    </span>
-  );
-}
-
-function FieldRefLink({ field }: { field: FieldReference }) {
-  if (field.ref.length >= 4) {
-    return (
-      <button
-        className="preview-pill-ref"
-        onClick={(event) => {
-          event.stopPropagation();
-          vscode.postMessage({ type: "openField", ref: field.ref });
-        }}
-      >
-        {field.display}
-      </button>
-    );
-  }
-
-  if (field.ref.length >= 3) {
-    return (
-      <button
-        className="preview-pill-ref"
-        onClick={(event) => {
-          event.stopPropagation();
-          vscode.postMessage({ type: "openTable", ref: field.ref });
-        }}
-      >
-        {field.display}
-      </button>
-    );
-  }
-
-  return <>{field.display}</>;
 }
 
 interface SqlToken {
@@ -406,12 +308,12 @@ function PreviewFooter({ target }: { target: TransformPreviewData["target"] }) {
         <ArrowRightIcon size={14} />
         Target table
       </span>
-      <Pill
-        variant="brand"
+      <span className="preview-pill preview-pill--brand"
+        style={{ cursor: "pointer" }}
         onClick={() => vscode.postMessage({ type: "openTable", ref })}
       >
         {tableName}
-      </Pill>
+      </span>
       <span className="preview-badge">
         <DatabaseIcon size={12} />
         {target.database}

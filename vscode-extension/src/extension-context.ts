@@ -31,6 +31,6 @@ export interface PanelState {
   notebookPanel: WebviewPanel | null
   currentCatalog: CatalogGraph | null
   pendingFocusNodeKey: string | null
-  currentTransformNode: TransformNode | null
+  currentTransformNode: CardNode | TransformNode | null
   currentNotebookNode: CardNode | TransformNode | null
 }
