@@ -225,16 +225,6 @@ const config = {
 
   plugins: [
     new rspack.BannerPlugin(getBannerOptions(LICENSE_TEXT)),
-    new rspack.BannerPlugin({
-      banner: 'performance.mark("metabase-react-sdk.big-bundle-first-line");',
-      raw: true,
-      test: /legacy\/embedding-sdk\.js$/,
-    }),
-    new rspack.BannerPlugin({
-      banner: 'performance.mark("metabase-react-sdk.bootstrap-first-line");',
-      raw: true,
-      test: /chunks\/embedding-sdk\.js$/,
-    }),
     new NodePolyfillPlugin(), // for crypto, among others
     // https://github.com/remarkjs/remark/discussions/903
     new rspack.ProvidePlugin({

@@ -278,8 +278,6 @@ export abstract class MetabaseEmbedElement<T extends string[] = string[]>
   }
 
   connectedCallback() {
-    // eslint-disable-next-line no-console
-    console.log("[embed.js] connectedCallback", this._componentName);
     this.style.display = "block";
 
     if (this._iframe) {
@@ -420,9 +418,6 @@ export abstract class MetabaseEmbedElement<T extends string[] = string[]>
       return;
     }
 
-    // eslint-disable-next-line no-console
-    console.log("[embed.js] received message:", event.data.type, event.data);
-
     if (event.data.type === "metabase.embed.iframeReady") {
       if (this._isEmbedReady) {
         return;
@@ -438,13 +433,7 @@ export abstract class MetabaseEmbedElement<T extends string[] = string[]>
     }
 
     if (event.data.type === "metabase.embed.requestSessionToken") {
-      // eslint-disable-next-line no-console
-      console.log(
-        "[embed.js] requestSessionToken received, calling _authenticate()",
-      );
       await this._authenticate();
-      // eslint-disable-next-line no-console
-      console.log("[embed.js] _authenticate() done");
     }
 
     // Note: if we wrap other functions like this, let's come up with a generic utility function
