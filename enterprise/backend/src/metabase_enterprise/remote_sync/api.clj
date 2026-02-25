@@ -122,28 +122,39 @@
   (api/check-superuser)
   (api/check-400 (not (and (remote-sync.object/dirty-global?) (= :read-only remote-sync-type)))
                  "There are unsaved changes in the Remote Sync collection which will be overwritten switching to read-only mode.")
-  ;; Check if trying to change collections while in read-only mode
-  (let [effective-type (or remote-sync-type (settings/remote-sync-type))]
-    (api/check-400 (not (and (seq collections) (= :read-only effective-type)))
-                   "Cannot change synced collections when remote-sync-type is read-only."))
-  (when (seq collections)
+  ;; Filter out no-op collection changes before checking read-only mode or running bulk-set
+  (let [collections (when (seq collections)
+                      (let [current-states (into {}
+                                                 (map (juxt :id :is_remote_synced))
+                                                 (t2/select [:model/Collection :id :is_remote_synced]
+                                                            :id [:in (keys collections)]))]
+                        (not-empty
+                         (into {}
+                               (filter (fn [[id desired]]
+                                         (not= (boolean desired)
+                                               (boolean (get current-states id)))))
+                               collections))))]
+    ;; Check if trying to change collections while in read-only mode
+    (let [effective-type (or remote-sync-type (settings/remote-sync-type))]
+      (api/check-400 (not (and (seq collections) (= :read-only effective-type)))
+                     "Cannot change synced collections when remote-sync-type is read-only."))
+    (when (seq collections)
+      (try
+        (remote-sync.core/bulk-set-remote-sync collections)
+        (catch Exception e
+          (throw (ex-info (or (ex-message e) "Invalid collection settings")
+                          {:error       (ex-message e)
+                           :status-code 400} e)))))
     (try
-      (remote-sync.core/bulk-set-remote-sync collections)
+      (settings/check-and-update-remote-settings! (dissoc settings :collections))
       (catch Exception e
-        (throw (ex-info (or (ex-message e) "Invalid collection settings")
+        (throw (ex-info (or (ex-message e) "Invalid settings")
                         {:error       (ex-message e)
-                         :status-code 400} e)))))
-  (try
-    (settings/check-and-update-remote-settings! (dissoc settings :collections))
-    (catch Exception e
-      (throw (ex-info (or (ex-message e) "Invalid settings")
-                      {:error       (ex-message e)
-                       :status-code 400} e))))
-  (events/publish-event! :event/remote-sync-settings-update
-                         {:details {:remote-sync-type remote-sync-type}
-                          :user-id api/*current-user-id*})
-  (let [task-id (impl/finish-remote-config!)]
-    (if task-id
+                         :status-code 400} e))))
+    (events/publish-event! :event/remote-sync-settings-update
+                           {:details {:remote-sync-type remote-sync-type}
+                            :user-id api/*current-user-id*})
+    (if-let [task-id (impl/finish-remote-config!)]
       {:success true
        :task_id task-id}
       {:success true})))

@@ -932,3 +932,19 @@
                                              :lib/uuid       "1fe5dc66-54af-4368-9e4a-1e64a1fbe484"}
                                      "CREATED_AT"]
                                     "2023-01-01T00:00:00Z"])))))
+
+(deftest ^:parallel boolean-literal-filter-test
+  (testing "Boolean literals can be used as filters"
+    (doseq [bool [false true]]
+      (testing (str bool " literal is wrapped in :value clause with :lib/uuid for removal support")
+        (let [query  (lib/query meta/metadata-provider (meta/table-metadata :orders))
+              query' (lib/filter query bool)]
+          (is (=? {:stages [{:filters [[:value {:lib/uuid string?
+                                                :effective-type :type/Boolean
+                                                :base-type :type/Boolean}
+                                        bool]]}]}
+                  query'))
+          (testing "can be removed"
+            (let [filters (lib/filters query')
+                  query'' (lib/remove-clause query' (first filters))]
+              (is (empty? (lib/filters query''))))))))))

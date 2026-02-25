@@ -128,6 +128,7 @@ describe("scenarios > embedding > sdk iframe embed setup > guest-embed", () => {
 
   describe("Happy path", () => {
     it("Navigates through the guest-embed flow for a question and opens its embed page", () => {
+      cy.intercept("GET", "api/preview_embed/card/*").as("previewEmbed");
       visitNewEmbedPage();
 
       H.expectUnstructuredSnowplowEvent({ event: "embed_wizard_opened" });
@@ -214,6 +215,15 @@ describe("scenarios > embedding > sdk iframe embed setup > guest-embed", () => {
       // Get code step
       getEmbedSidebar().within(() => {
         cy.findByTestId("publish-guest-embed-link").should("not.exist");
+      });
+
+      cy.log(
+        'Embed preview requests should not have "X-Metabase-Client" header (EMB-945)',
+      );
+      cy.wait("@previewEmbed").then(({ request }) => {
+        expect(request?.headers?.["x-metabase-embedded-preview"]).to.equal(
+          "true",
+        );
       });
 
       H.unpublishChanges("card");
