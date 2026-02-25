@@ -12,15 +12,15 @@
 (defn- products-source []
   {:type :table :id (meta/id :products)})
 
-(defn- orders->products-field-mapping []
+(defn- orders->products-column-mapping []
   {(meta/id :orders :id)         (meta/id :products :id)
    (meta/id :orders :created-at) (meta/id :products :created-at)})
 
-(deftest ^:parallel build-swap-field-id-mapping-table-to-table-test
+(deftest ^:parallel build-swap-column-mapping-table-to-table-test
   (testing "should build a map of shared fields between orders and products"
     (let [query (lib/query meta/metadata-provider (meta/table-metadata :orders))]
-      (is (= (orders->products-field-mapping)
-             (source-swap/build-swap-field-id-mapping query (orders-source) (products-source)))))))
+      (is (= (orders->products-column-mapping)
+             (source-swap/build-swap-column-mapping query (orders-source) (products-source)))))))
 
 (deftest ^:parallel swap-source-in-query-table-to-table-test
   (testing "should replace source table and remap field IDs in all clauses"
@@ -54,11 +54,11 @@
               (source-swap/swap-source-in-query query
                                                 (orders-source)
                                                 (products-source)
-                                                (orders->products-field-mapping)))))))
+                                                (orders->products-column-mapping)))))))
 
 (deftest ^:parallel swap-source-in-parameter-target-test
   (testing "should swap field ID in a dimension target"
     (is (= [:dimension [:field (meta/id :products :id) nil]]
            (source-swap/swap-source-in-parameter-target
             [:dimension [:field (meta/id :orders :id) nil]]
-            (orders->products-field-mapping))))))
+            (orders->products-column-mapping))))))
