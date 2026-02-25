@@ -178,6 +178,7 @@
       :dbms-version       (js->clj v :keywordize-keys true)
       :features           (into #{} (map keyword) v)
       :native-permissions (keyword v)
+      :settings           (js->clj v :keywordize-keys true)
       v)))
 
 (defmethod parse-objects-default-key :database
@@ -589,7 +590,9 @@
        (metadatas [_this metadata-spec]
          (metadatas metadata database-id metadata-spec))
        (setting [_this setting-key]
-         (setting unparsed-metadata setting-key))
+         (get (:settings (database metadata database-id))
+              setting-key
+              (setting unparsed-metadata setting-key)))
 
       ;; for debugging: call [[clojure.datafy/datafy]] on one of these to parse all of our metadata and see the whole
       ;; thing at once.
