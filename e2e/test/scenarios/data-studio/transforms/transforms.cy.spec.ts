@@ -4070,7 +4070,7 @@ function getPythonDataPicker() {
 }
 
 function createPythonLibrary(path: string, source: string) {
-  cy.request("PUT", `/api/ee/transforms-python/library/${path}`, {
+  cy.request("PUT", `/api/ee/advanced-transforms/library/${path}`, {
     source,
   });
 }
