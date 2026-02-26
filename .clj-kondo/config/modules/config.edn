@@ -2262,7 +2262,6 @@
               util
               warehouses
               enterprise/dependencies
-           enterprise/transforms-python
            enterprise/transforms-runner}}
 
   enterprise/permission-debug
@@ -2298,7 +2297,6 @@
            task-history
            util
            enterprise/serialization
-           enterprise/transforms-python
            enterprise/transforms-runner}}
 
   enterprise/sandbox
@@ -2464,10 +2462,9 @@
    :api  #{}
    :uses #{premium-features}}
 
-  enterprise/transforms-python
+  enterprise/transforms-clojure
   {:team "Querying"
-   :api #{metabase-enterprise.transforms-python.core
-          metabase-enterprise.transforms-python.init}
+   :api #{metabase-enterprise.transforms-clojure.init}
    :uses #{transforms}}
 
   enterprise/transforms-javascript
@@ -2475,17 +2472,17 @@
    :api #{metabase-enterprise.transforms-javascript.init}
    :uses #{transforms}}
 
-  enterprise/transforms-clojure
+  enterprise/transforms-python
   {:team "Querying"
-   :api #{metabase-enterprise.transforms-clojure.init}
+   :api #{metabase-enterprise.transforms-python.init}
    :uses #{transforms}}
 
   enterprise/transforms-runner
   {:team "Querying"
    :api #{metabase-enterprise.transforms-runner.api
-          metabase-enterprise.transforms-runner.runner
           metabase-enterprise.transforms-runner.init
-          metabase-enterprise.transforms-runner.models.transform-library}
+          metabase-enterprise.transforms-runner.models.transform-library
+          metabase-enterprise.transforms-runner.runner}
    :uses #{analytics
            api
            app-db
@@ -2533,7 +2530,6 @@
            system
            transforms
            util
-           enterprise/transforms-python
            enterprise/transforms-runner}}}
 
  ;; namespaces matching these patterns (with `re-find`) are excluded from the module linter. Since regex literals
