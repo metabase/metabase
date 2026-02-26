@@ -299,35 +299,35 @@
   (let [db-id (mt/id)]
     (doseq [[label table-mapping input-sql expected-sql]
             [["remaps qualified table reference to isolated table"
-              {[db-id "public" "orders"] {:schema "ws_isolated_123" :table "public__orders"}}
+              {[db-id "public" "orders"] {:db-id db-id :schema "ws_isolated_123" :table "public__orders" :id 456}}
               "SELECT * FROM public.orders"
               "SELECT * FROM ws_isolated_123.public__orders"]
 
              ["remaps unqualified table reference using nil-schema mapping"
-              {[db-id nil "orders"] {:schema "ws_isolated_123" :table "public__orders"}}
+              {[db-id nil "orders"] {:db-id db-id :schema "ws_isolated_123" :table "public__orders" :id 456}}
               "SELECT * FROM orders"
               "SELECT * FROM ws_isolated_123.public__orders"]
 
              ["qualifies unqualified input table reference (no isolation, just adds schema)"
-              {[db-id nil "orders"] {:schema "public" :table "orders"}}
+              {[db-id nil "orders"] {:db-id db-id :schema "public" :table "orders" :id 123}}
               "SELECT * FROM orders"
               "SELECT * FROM public.orders"]
 
              ["leaves unmapped tables unchanged"
-              {[db-id nil "other_table"] {:schema "public" :table "other_table"}}
+              {[db-id nil "other_table"] {:db-id db-id :schema "public" :table "other_table" :id 789}}
               "SELECT * FROM orders"
               "SELECT * FROM orders"]
 
              ;; Note: macaw only renames tables in FROM/JOIN clauses, not table qualifiers in column references.
              ;; The output SQL is semantically valid since orders resolves to public.orders in scope.
              ["handles multiple tables in same query"
-              {[db-id nil "orders"]   {:schema "public" :table "orders"}
-               [db-id nil "products"] {:schema "public" :table "products"}}
+              {[db-id nil "orders"]   {:db-id db-id :schema "public" :table "orders" :id 123}
+               [db-id nil "products"] {:db-id db-id :schema "public" :table "products" :id 124}}
               "SELECT * FROM orders JOIN products ON orders.product_id = products.id"
               "SELECT * FROM public.orders JOIN public.products ON orders.product_id = products.id"]
 
              ["ignores numeric keys in table-mapping"
-              {123 {:schema "ws_isolated_123" :table "public__orders"}}
+              {123 {:db-id db-id :schema "ws_isolated_123" :table "public__orders" :id 456}}
               "SELECT * FROM orders"
               "SELECT * FROM orders"]]]
       (testing label
