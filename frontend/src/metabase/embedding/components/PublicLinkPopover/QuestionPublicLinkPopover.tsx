@@ -42,8 +42,13 @@ export const QuestionPublicLinkPopover = ({
   const [createPublicQuestionLink] = useCreateCardPublicLinkMutation();
   const [deletePublicQuestionLink] = useDeleteCardPublicLinkMutation();
 
-  const handleCreatePublicQuestionLink = async () => {
-    await createPublicQuestionLink({ id: question.id() });
+  const handleCreatePublicQuestionLink = async (
+    expiresInMinutes?: number | null,
+  ) => {
+    await createPublicQuestionLink({
+      id: question.id(),
+      expires_in_minutes: expiresInMinutes ?? undefined,
+    });
   };
   const handleDeletePublicQuestionLink = async () => {
     trackPublicLinkRemoved({
@@ -60,6 +65,8 @@ export const QuestionPublicLinkPopover = ({
     });
   };
 
+  const card = question.card();
+
   return (
     <PublicLinkPopover
       target={target}
@@ -72,6 +79,16 @@ export const QuestionPublicLinkPopover = ({
       selectedExtension={extension}
       setSelectedExtension={setExtension}
       onCopyLink={onCopyLink}
+      expiresAt={
+        "public_link_expires_at" in card
+          ? (card as any).public_link_expires_at
+          : null
+      }
+      expired={
+        "public_link_expired" in card
+          ? (card as any).public_link_expired
+          : false
+      }
     />
   );
 };

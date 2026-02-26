@@ -15,6 +15,7 @@
    [metabase.models.interface :as mi]
    [metabase.parameters.dashboard :as parameters.dashboard]
    [metabase.parameters.params :as params]
+   [metabase.public-sharing.expiring-links :as expiring-links]
    [metabase.public-sharing.validation :as public-sharing.validation]
    [metabase.queries.core :as queries]
    [metabase.query-processor.card :as qp.card]
@@ -87,7 +88,16 @@
         combine-parameters-and-template-tags
         (t2/hydrate :param_fields))))
 
-(defn- card-with-uuid [uuid] (public-card :public_uuid uuid))
+(defn- check-card-link-not-expired!
+  "Check that a card's public link has not expired. Throws 404 if expired."
+  [uuid]
+  (when-let [card (t2/select-one [:model/Card :public_link_expires_at :public_link_expired]
+                                 :public_uuid uuid :archived false)]
+    (expiring-links/check-link-not-expired card)))
+
+(defn- card-with-uuid [uuid]
+  (check-card-link-not-expired! uuid)
+  (public-card :public_uuid uuid))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
@@ -171,6 +181,7 @@
   `StreamingResponse` object that should be returned as the result of an API endpoint."
   [uuid export-format parameters & options]
   (public-sharing.validation/check-public-sharing-enabled)
+  (check-card-link-not-expired! uuid)
   (let [card-id (api/check-404 (t2/select-one-pk :model/Card :public_uuid uuid, :archived false))]
     (apply process-query-for-card-with-id card-id export-format parameters options)))
 
@@ -261,7 +272,16 @@
                                                        (remove-card-non-public-columns series))))
                                    (m/update-existing :action public-action))))))))
 
-(defn- dashboard-with-uuid [uuid] (public-dashboard :public_uuid uuid))
+(defn- check-dashboard-link-not-expired!
+  "Check that a dashboard's public link has not expired. Throws 404 if expired."
+  [uuid]
+  (when-let [dashboard (t2/select-one [:model/Dashboard :public_link_expires_at :public_link_expired]
+                                      :public_uuid uuid :archived false)]
+    (expiring-links/check-link-not-expired dashboard)))
+
+(defn- dashboard-with-uuid [uuid]
+  (check-dashboard-link-not-expired! uuid)
+  (public-dashboard :public_uuid uuid))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
@@ -323,6 +343,7 @@
    {:keys [parameters]} :- [:map
                             [:parameters {:optional true} [:maybe ms/JSONString]]]]
   (public-sharing.validation/check-public-sharing-enabled)
+  (check-dashboard-link-not-expired! uuid)
   (api/check-404 (t2/select-one-pk :model/Card :id card-id :archived false))
   (let [dashboard-id (api/check-404 (t2/select-one-pk :model/Dashboard :public_uuid uuid, :archived false))]
     (process-query-for-dashcard
@@ -356,6 +377,7 @@
                                                       [:format_rows   {:default false} ms/BooleanValue]
                                                       [:pivot_results {:default false} ms/BooleanValue]]]
   (public-sharing.validation/check-public-sharing-enabled)
+  (check-dashboard-link-not-expired! uuid)
   (api/check-404 (t2/select-one-pk :model/Card :id card-id :archived false))
   (let [dashboard-id (api/check-404 (t2/select-one-pk :model/Dashboard :public_uuid uuid, :archived false))]
     (u/prog1 (process-query-for-dashcard

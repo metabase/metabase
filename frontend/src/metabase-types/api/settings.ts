@@ -353,6 +353,7 @@ export const tokenFeatures = [
   "development_mode",
   "etl_connections",
   "etl_connections_pg",
+  "expiring_links",
   "table_data_editing",
   "remote_sync",
   "dependencies",

@@ -115,6 +115,11 @@ export {
   PLUGIN_SEMANTIC_SEARCH,
   type SearchSettingsWidgetProps,
 } from "./oss/semantic-search";
+export {
+  PLUGIN_PUBLIC_SHARING,
+  type ExpiryOptionProps,
+  type ExpiryDisplayProps,
+} from "./oss/public-sharing";
 export { PLUGIN_ADMIN_SETTINGS } from "./oss/settings";
 export { PLUGIN_SMTP_OVERRIDE } from "./oss/smtp-override";
 export {
@@ -176,6 +181,7 @@ import { reinitialize as reinitializeLibrary } from "./oss/library";
 import { reinitialize as reinitializeModelPersistence } from "./oss/model-persistence";
 import { reinitialize as reinitializeModeration } from "./oss/moderation";
 import { reinitialize as reinitializePermissions } from "./oss/permissions";
+import { reinitialize as reinitializePublicSharing } from "./oss/public-sharing";
 import { reinitialize as reinitializeRemoteSync } from "./oss/remote-sync";
 import { reinitialize as reinitializeResourceDownloads } from "./oss/resource-downloads";
 import { reinitialize as reinitializeSemanticSearch } from "./oss/semantic-search";
@@ -216,6 +222,7 @@ export function reinitialize() {
   reinitializeModelPersistence();
   reinitializeModeration();
   reinitializePermissions();
+  reinitializePublicSharing();
   reinitializeRemoteSync();
   reinitializeResourceDownloads();
   reinitializeSemanticSearch();

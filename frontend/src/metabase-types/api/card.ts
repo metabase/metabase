@@ -48,6 +48,8 @@ export interface Card<Q extends DatasetQuery = DatasetQuery>
   description: string | null;
   type: CardType;
   public_uuid: string | null;
+  public_link_expires_at?: string | null;
+  public_link_expired?: boolean;
 
   /* Indicates whether static embedding for this card has been published */
   enable_embedding: boolean;

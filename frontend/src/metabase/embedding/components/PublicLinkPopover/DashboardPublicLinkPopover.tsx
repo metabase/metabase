@@ -29,9 +29,12 @@ export const DashboardPublicLinkPopover = ({
   const [createPublicDashboardLink] = useCreateDashboardPublicLinkMutation();
   const [deletePublicDashboardLink] = useDeleteDashboardPublicLinkMutation();
 
-  const handleCreatePublicDashboardLink = async () => {
+  const handleCreatePublicDashboardLink = async (
+    expiresInMinutes?: number | null,
+  ) => {
     await createPublicDashboardLink({
       id: dashboard.id,
+      expires_in_minutes: expiresInMinutes ?? undefined,
     });
   };
   const handleDeletePublicDashboardLink = () => {
@@ -59,6 +62,8 @@ export const DashboardPublicLinkPopover = ({
       deletePublicLink={handleDeletePublicDashboardLink}
       url={url}
       onCopyLink={onCopyLink}
+      expiresAt={dashboard.public_link_expires_at ?? null}
+      expired={dashboard.public_link_expired ?? false}
     />
   );
 };

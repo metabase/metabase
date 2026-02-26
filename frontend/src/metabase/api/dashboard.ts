@@ -219,18 +219,27 @@ export const dashboardApi = Api.injectEndpoints({
         ],
       }),
       createDashboardPublicLink: builder.mutation<
-        Pick<Dashboard, "id"> & { uuid: Dashboard["public_uuid"] },
-        Pick<Dashboard, "id">
+        Pick<Dashboard, "id"> & {
+          uuid: Dashboard["public_uuid"];
+          public_link_expires_at?: string | null;
+        },
+        Pick<Dashboard, "id"> & { expires_in_minutes?: number }
       >({
-        query: ({ id }) => ({
+        query: ({ id, expires_in_minutes }) => ({
           method: "POST",
           url: `/api/dashboard/${id}/public_link`,
+          body: expires_in_minutes ? { expires_in_minutes } : undefined,
         }),
         invalidatesTags: (_, error) =>
           invalidateTags(error, [listTag("public-dashboard")]),
-        transformResponse: ({ uuid }, _meta, { id }) => ({
+        transformResponse: (
+          { uuid, public_link_expires_at },
+          _meta,
+          { id },
+        ) => ({
           id,
           uuid,
+          public_link_expires_at,
         }),
       }),
       deleteDashboardPublicLink: builder.mutation<

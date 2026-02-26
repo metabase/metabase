@@ -31,6 +31,7 @@
    [metabase.parameters.params :as params]
    [metabase.parameters.schema :as parameters.schema]
    [metabase.permissions.core :as perms]
+   [metabase.public-sharing.expiring-links :as expiring-links]
    [metabase.public-sharing.validation :as public-sharing.validation]
    [metabase.pulse.core :as pulse]
    [metabase.queries.core :as queries]
@@ -1149,26 +1150,33 @@
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
 ;;
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-route-uses-kebab-case
-                      :metabase/validate-defendpoint-has-response-schema]}
+                      :metabase/validate-defendpoint-has-response-schema
+                      :metabase/validate-defendpoint-query-params-use-kebab-case]}
 (api.macros/defendpoint :post "/:dashboard-id/public_link"
   "Generate publicly-accessible links for this Dashboard. Returns UUID to be used in public links. (If this
   Dashboard has already been shared, it will return the existing public link rather than creating a new one.) Public
   sharing must be enabled."
   [{:keys [dashboard-id]} :- [:map
-                              [:dashboard-id ms/PositiveInt]]]
+                              [:dashboard-id ms/PositiveInt]]
+   body :- [:map
+            [:expires_in_minutes {:optional true} [:maybe ms/PositiveInt]]]]
   (api/check-superuser)
   (public-sharing.validation/check-public-sharing-enabled)
   (api/check-not-archived (api/read-check :model/Dashboard dashboard-id))
   (let [existing-public-uuid (t2/select-one-fn :public_uuid :model/Dashboard :id dashboard-id)
+        expires-at (expiring-links/compute-expiry-timestamp (:expires_in_minutes body))
         uuid (or existing-public-uuid
                  (u/prog1 (str (random-uuid))
                    (events/publish-event! :event/dashboard-public-link-created
                                           {:object-id dashboard-id
                                            :user-id api/*current-user-id*})
                    (t2/update! :model/Dashboard dashboard-id
-                               {:public_uuid       <>
-                                :made_public_by_id api/*current-user-id*})))]
-    {:uuid uuid}))
+                               (merge {:public_uuid       <>
+                                       :made_public_by_id api/*current-user-id*}
+                                      (when expires-at
+                                        {:public_link_expires_at expires-at})))))]
+    (cond-> {:uuid uuid}
+      expires-at (assoc :public_link_expires_at (str expires-at)))))
 
 ;; TODO (Cam 10/28/25) -- fix this endpoint route to use kebab-case for consistency with the rest of our REST API
 ;;

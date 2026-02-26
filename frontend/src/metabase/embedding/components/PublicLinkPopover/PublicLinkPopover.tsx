@@ -1,9 +1,11 @@
+import { useState } from "react";
 import { useAsync } from "react-use";
 import { t } from "ttag";
 
 import { useSelector } from "metabase/lib/redux";
+import { PLUGIN_PUBLIC_SHARING } from "metabase/plugins";
 import { getUserIsAdmin } from "metabase/selectors/user";
-import { Box, Popover, Text, Title } from "metabase/ui";
+import { Box, Button, Popover, Text, Title } from "metabase/ui";
 
 import { PublicLinkCopyPanel } from "./PublicLinkCopyPanel";
 import type { ExportFormatType } from "./types";
@@ -12,13 +14,15 @@ export type PublicLinkPopoverProps = {
   target: JSX.Element;
   isOpen: boolean;
   onClose: () => void;
-  createPublicLink: () => Promise<void>;
+  createPublicLink: (expiresInMinutes?: number | null) => Promise<void>;
   deletePublicLink: () => void;
   url: string | null;
   extensions?: ExportFormatType[];
   selectedExtension?: ExportFormatType | null;
   setSelectedExtension?: (extension: ExportFormatType) => void;
   onCopyLink?: () => void;
+  expiresAt?: string | null;
+  expired?: boolean;
 };
 
 export const PublicLinkPopover = ({
@@ -32,15 +36,34 @@ export const PublicLinkPopover = ({
   selectedExtension,
   setSelectedExtension,
   onCopyLink,
+  expiresAt,
+  expired,
 }: PublicLinkPopoverProps) => {
   const isAdmin = useSelector(getUserIsAdmin);
+  const hasExpiryFeature = PLUGIN_PUBLIC_SHARING.isExpiringLinksEnabled();
+  const [expiresInMinutes, setExpiresInMinutes] = useState<number | null>(null);
+
+  // When expiry feature is enabled and no link exists yet, don't auto-create.
+  // Instead, show a "Create link" button so user can set expiry first.
+  const shouldAutoCreate = !hasExpiryFeature;
 
   const { loading } = useAsync(async () => {
-    if (isOpen && !url) {
+    if (isOpen && !url && shouldAutoCreate) {
       return createPublicLink();
     }
     return null;
-  }, [url, isOpen]);
+  }, [url, isOpen, shouldAutoCreate]);
+
+  const [isCreating, setIsCreating] = useState(false);
+
+  const handleCreateWithExpiry = async () => {
+    setIsCreating(true);
+    try {
+      await createPublicLink(expiresInMinutes);
+    } finally {
+      setIsCreating(false);
+    }
+  };
 
   const onRemoveLink = () => {
     onClose();
@@ -54,6 +77,11 @@ export const PublicLinkPopover = ({
 
     return "auto";
   };
+
+  const ExpiryOptionComponent = PLUGIN_PUBLIC_SHARING.ExpiryOptionComponent;
+  const ExpiryDisplayComponent = PLUGIN_PUBLIC_SHARING.ExpiryDisplayComponent;
+
+  const showPreCreationUI = hasExpiryFeature && !url && !loading && !isCreating;
 
   return (
     <Popover
@@ -77,17 +105,41 @@ export const PublicLinkPopover = ({
             size="sm"
             mb="xs"
           >{t`Anyone can view this if you give them the link.`}</Text>
-          <PublicLinkCopyPanel
-            loading={loading}
-            url={url}
-            onRemoveLink={isAdmin ? onRemoveLink : undefined}
-            extensions={extensions}
-            selectedExtension={selectedExtension}
-            onChangeExtension={setSelectedExtension}
-            removeButtonLabel={t`Remove public link`}
-            removeTooltipLabel={t`Affects both public link and embed URL for this dashboard`}
-            onCopy={onCopyLink}
-          />
+          {showPreCreationUI ? (
+            <Box>
+              {ExpiryOptionComponent && (
+                <ExpiryOptionComponent
+                  expiresInMinutes={expiresInMinutes}
+                  onChangeExpiresInMinutes={setExpiresInMinutes}
+                />
+              )}
+              <Button
+                mt="md"
+                fullWidth
+                onClick={handleCreateWithExpiry}
+              >{t`Create public link`}</Button>
+            </Box>
+          ) : (
+            <>
+              <PublicLinkCopyPanel
+                loading={loading || isCreating}
+                url={url}
+                onRemoveLink={isAdmin ? onRemoveLink : undefined}
+                extensions={extensions}
+                selectedExtension={selectedExtension}
+                onChangeExtension={setSelectedExtension}
+                removeButtonLabel={t`Remove public link`}
+                removeTooltipLabel={t`Affects both public link and embed URL for this dashboard`}
+                onCopy={onCopyLink}
+              />
+              {ExpiryDisplayComponent && url && (
+                <ExpiryDisplayComponent
+                  expiresAt={expiresAt ?? null}
+                  expired={expired ?? false}
+                />
+              )}
+            </>
+          )}
         </Box>
       </Popover.Dropdown>
     </Popover>

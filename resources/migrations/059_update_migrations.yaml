@@ -3574,6 +3574,60 @@ databaseChangeLog:
             path: instance_analytics_views/query_log/v2/h2-query_log.sql
             relativeToChangelogFile: true
 
+  - changeSet:
+      id: v59.2026-02-26T00:00:00
+      author: alberto
+      comment: Add public link expiry columns to report_card
+      changes:
+        - addColumn:
+            tableName: report_card
+            columns:
+              - column:
+                  name: public_link_expires_at
+                  type: ${timestamp_type}
+                  remarks: Timestamp when the public link should expire
+              - column:
+                  name: public_link_expired
+                  type: boolean
+                  defaultValueBoolean: false
+                  remarks: Whether the public link has been expired by the cleanup job
+                  constraints:
+                    nullable: false
+      rollback:
+        - dropColumn:
+            tableName: report_card
+            columnName: public_link_expires_at
+        - dropColumn:
+            tableName: report_card
+            columnName: public_link_expired
+
+  - changeSet:
+      id: v59.2026-02-26T00:00:01
+      author: alberto
+      comment: Add public link expiry columns to report_dashboard
+      changes:
+        - addColumn:
+            tableName: report_dashboard
+            columns:
+              - column:
+                  name: public_link_expires_at
+                  type: ${timestamp_type}
+                  remarks: Timestamp when the public link should expire
+              - column:
+                  name: public_link_expired
+                  type: boolean
+                  defaultValueBoolean: false
+                  remarks: Whether the public link has been expired by the cleanup job
+                  constraints:
+                    nullable: false
+      rollback:
+        - dropColumn:
+            tableName: report_dashboard
+            columnName: public_link_expires_at
+        - dropColumn:
+            tableName: report_dashboard
+            columnName: public_link_expired
+
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
 ########################################################################################################################

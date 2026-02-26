@@ -81,6 +81,8 @@ export interface Dashboard {
   archived: boolean;
   is_remote_synced?: boolean;
   public_uuid: string | null;
+  public_link_expires_at?: string | null;
+  public_link_expired?: boolean;
   initially_published_at: string | null;
   embedding_params?: EmbeddingParameters | null;
   width: DashboardWidth;

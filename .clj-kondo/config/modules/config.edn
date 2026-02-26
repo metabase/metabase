@@ -1039,9 +1039,11 @@
   public-sharing
   {:team "UX West"
    :api  #{metabase.public-sharing.core
+           metabase.public-sharing.expiring-links
            metabase.public-sharing.init
            metabase.public-sharing.validation}
    :uses #{api
+           premium-features
            settings
            util}}
 
@@ -2273,6 +2275,15 @@
   {:team "UX West"
    :api  #{}
    :uses #{premium-features
+           util}}
+
+  enterprise/public-sharing
+  {:team "UX West"
+   :api  #{metabase-enterprise.public-sharing.expiring-links
+           metabase-enterprise.public-sharing.init}
+   :uses #{api
+           premium-features
+           task
            util}}
 
   enterprise/remote-sync

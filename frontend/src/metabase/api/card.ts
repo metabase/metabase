@@ -282,12 +282,14 @@ export const cardApi = Api.injectEndpoints({
       createCardPublicLink: builder.mutation<
         {
           uuid: Card["public_uuid"];
+          public_link_expires_at?: string | null;
         },
-        Pick<Card, "id">
+        Pick<Card, "id"> & { expires_in_minutes?: number }
       >({
-        query: ({ id }) => ({
+        query: ({ id, expires_in_minutes }) => ({
           method: "POST",
           url: `/api/card/${id}/public_link`,
+          body: expires_in_minutes ? { expires_in_minutes } : undefined,
         }),
         invalidatesTags: (_, error) =>
           invalidateTags(error, [listTag("public-card")]),

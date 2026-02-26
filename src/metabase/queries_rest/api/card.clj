@@ -18,6 +18,7 @@
    [metabase.models.interface :as mi]
    [metabase.parameters.schema :as parameters.schema]
    [metabase.permissions.core :as perms]
+   [metabase.public-sharing.expiring-links :as expiring-links]
    [metabase.public-sharing.validation :as public-sharing.validation]
    [metabase.queries.core :as queries]
    [metabase.queries.schema :as queries.schema]
@@ -940,26 +941,33 @@
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
 ;;
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-route-uses-kebab-case
-                      :metabase/validate-defendpoint-has-response-schema]}
+                      :metabase/validate-defendpoint-has-response-schema
+                      :metabase/validate-defendpoint-query-params-use-kebab-case]}
 (api.macros/defendpoint :post "/:card-id/public_link"
   "Generate publicly-accessible links for this Card. Returns UUID to be used in public links. (If this Card has
   already been shared, it will return the existing public link rather than creating a new one.)  Public sharing must
   be enabled."
   [{:keys [card-id]} :- [:map
-                         [:card-id ms/PositiveInt]]]
+                         [:card-id ms/PositiveInt]]
+   body :- [:map
+            [:expires_in_minutes {:optional true} [:maybe ms/PositiveInt]]]]
   (perms/check-has-application-permission :setting)
   (public-sharing.validation/check-public-sharing-enabled)
   (api/check-not-archived (api/read-check :model/Card card-id))
   (let [{existing-public-uuid :public_uuid} (t2/select-one [:model/Card :public_uuid :card_schema] :id card-id)
+        expires-at (expiring-links/compute-expiry-timestamp (:expires_in_minutes body))
         uuid (or existing-public-uuid
                  (u/prog1 (str (random-uuid))
                    (events/publish-event! :event/card-public-link-created
                                           {:object-id card-id
                                            :user-id api/*current-user-id*})
                    (t2/update! :model/Card card-id
-                               {:public_uuid       <>
-                                :made_public_by_id api/*current-user-id*})))]
-    {:uuid uuid}))
+                               (merge {:public_uuid       <>
+                                       :made_public_by_id api/*current-user-id*}
+                                      (when expires-at
+                                        {:public_link_expires_at expires-at})))))]
+    (cond-> {:uuid uuid}
+      expires-at (assoc :public_link_expires_at (str expires-at)))))
 
 ;; TODO (Cam 10/28/25) -- fix this endpoint route to use kebab-case for consistency with the rest of our REST API
 ;;
