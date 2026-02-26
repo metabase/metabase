@@ -5,6 +5,7 @@
    [metabase.lib.expression :as lib.expression]
    [metabase.lib.field :as lib.field]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
+   [metabase.lib.options :as lib.options]
    [metabase.lib.order-by :as lib.order-by]
    [metabase.lib.parameters :as lib.parameters]
    [metabase.lib.query :as lib.query]
@@ -42,6 +43,8 @@
    [:source {:optional true} ::lib.schema.metadata/column]
    [:target {:optional true} ::lib.schema.metadata/column]
    [:errors {:optional true} [:sequential ::swap-source.column-error]]])
+
+;;; ------------------------------------------------ column matching ---------------------------------------------------
 
 (mu/defn- column-match-key :- :string
   [column :- ::lib.schema.metadata/column]
@@ -90,6 +93,18 @@
                 errors     (assoc :errors errors))))
           all-names)))
 
+;;; ------------------------------------------------ upgrade-field-refs ------------------------------------------------
+
+(mu/defn- field-id-ref? :- :boolean
+  [field-ref :- :mbql.clause/field]
+  (some? (lib.ref/field-ref-id field-ref)))
+
+(mu/defn- same-field-ref? :- :boolean
+  [field-ref-1 :- :mbql.clause/field
+   field-ref-2 :- :mbql.clause/field]
+  (= (lib.options/update-options field-ref-1 dissoc :lib/uuid :base-type :effective-type)
+     (lib.options/update-options field-ref-2 dissoc :lib/uuid :base-type :effective-type)))
+
 (mu/defn- walk-clause-field-refs :- :any
   [clause :- :any
    f      :- fn?]
@@ -98,12 +113,6 @@
                           (cond-> clause
                             (lib.field/is-field-clause? clause)
                             f))))
-
-(mu/defn- field-id-ref? :- :boolean
-  [field-ref :- :mbql.clause/field]
-  (some? (lib.ref/field-ref-id field-ref)))
-
-;;; ------------------------------------------------ upgrade-field-refs ------------------------------------------------
 
 (mu/defn- upgrade-field-ref :- :mbql.clause/field
   [query         :- ::lib.schema/query
@@ -116,8 +125,7 @@
               expression-name (lib.util/expression-name field-ref)
               new-field-ref (cond-> (lib.ref/ref column)
                               expression-name (lib.expression/with-expression-name expression-name))]
-          (when (or (not= (lib.ref/field-ref-id field-ref) (lib.ref/field-ref-id new-field-ref))
-                    (not= (lib.ref/field-ref-name field-ref) (lib.ref/field-ref-name new-field-ref)))
+          (when-not (same-field-ref? field-ref new-field-ref)
             new-field-ref)))
       field-ref))
 
@@ -185,6 +193,26 @@
                                              (upgrade-field-refs-in-stage query stage-number))
                                            %))))
 
+(mu/defn- parameter-target-stage-number :- [:maybe :int]
+  [query  :- ::lib.schema/query
+   target :- ::lib.schema.parameter/target]
+  (let [stage-number (lib.parameters/parameter-target-stage-number target)
+        stage-count  (lib.query/stage-count query)]
+    (when (and (>= stage-number -1) (< stage-number stage-count) (pos-int? stage-count))
+      stage-number)))
+
+(mu/defn upgrade-field-ref-in-parameter-target :- ::lib.schema.parameter/target
+  "If the parameter target is a field ref, upgrade it to use a name-based field ref when possible."
+  [query  :- ::lib.schema/query
+   target :- ::lib.schema.parameter/target]
+  (or (when (lib.parameters/parameter-target-field-ref target)
+        (when-let [stage-number (parameter-target-stage-number query target)]
+          (let [columns (lib.metadata.calculation/visible-columns query stage-number)]
+            (lib.parameters/update-parameter-target-field-ref
+             target
+             #(upgrade-field-ref query stage-number % columns)))))
+      target))
+
 ;;; ------------------------------------------------ should-upgrade? ---------------------------------------------------
 
 (mu/defn- field-id-ref-stage? :- :boolean
@@ -210,28 +238,6 @@
   [query :- ::lib.schema/query]
   (boolean (some #(should-upgrade-field-refs-in-stage? query %)
                  (range (lib.query/stage-count query)))))
-
-;;; ------------------------------------------------ parameter targets -------------------------------------------------
-
-(mu/defn- parameter-target-stage-number :- [:maybe :int]
-  [query  :- ::lib.schema/query
-   target :- ::lib.schema.parameter/target]
-  (let [stage-number (lib.parameters/parameter-target-stage-number target)
-        stage-count  (lib.query/stage-count query)]
-    (when (and (>= stage-number -1) (< stage-number stage-count) (pos-int? stage-count))
-      stage-number)))
-
-(mu/defn upgrade-field-ref-in-parameter-target :- ::lib.schema.parameter/target
-  "If the parameter target is a field ref, upgrade it to use a name-based field ref when possible."
-  [query  :- ::lib.schema/query
-   target :- ::lib.schema.parameter/target]
-  (or (when (lib.parameters/parameter-target-field-ref target)
-        (when-let [stage-number (parameter-target-stage-number query target)]
-          (let [columns (lib.metadata.calculation/visible-columns query stage-number)]
-            (lib.parameters/update-parameter-target-field-ref
-             target
-             #(upgrade-field-ref query stage-number % columns)))))
-      target))
 
 (mu/defn should-upgrade-field-ref-in-parameter-target? :- :boolean
   "If the parameter target is a field ref, check if it can be upgraded to use a name-based field ref."
@@ -289,8 +295,7 @@
   (or (when-let [old-column (lib.equality/find-matching-column old-query stage-number field-ref old-columns)]
         (when-let [new-column (get new-column-by-key (column-match-key old-column))]
           (let [new-field-ref (lib.ref/ref new-column)]
-            (when (or (not= (lib.ref/field-ref-id field-ref) (lib.ref/field-ref-id new-field-ref))
-                      (not= (lib.ref/field-ref-name field-ref) (lib.ref/field-ref-name new-field-ref)))
+            (when-not (same-field-ref? field-ref new-field-ref)
               new-field-ref))))
       field-ref))
 
@@ -298,8 +303,8 @@
   [old-query    :- ::lib.schema/query
    new-query    :- ::lib.schema/query
    stage-number :- :int]
-  (let [old-columns (maybe-visible-columns old-query stage-number)
-        new-columns (maybe-visible-columns new-query stage-number)
+  (let [old-columns (lib.metadata.calculation/visible-columns old-query stage-number)
+        new-columns (lib.metadata.calculation/visible-columns new-query stage-number)
         new-columns-by-key (m/index-by column-match-key new-columns)]
     {:old-query old-query
      :stage-number stage-number
@@ -369,16 +374,9 @@
    new-source :- ::swap-source.source]
   (or (when (lib.parameters/parameter-target-field-ref target)
         (when-let [stage-number (parameter-target-stage-number query target)]
-          (let [new-query        (swap-source-table-or-card-in-query query old-source new-source)
-                old-columns      (lib.metadata.calculation/visible-columns query stage-number)
-                new-columns      (lib.metadata.calculation/visible-columns new-query stage-number)
-                new-by-key       (m/index-by column-match-key new-columns)
-                options          {:old-query         query
-                                  :stage-number      stage-number
-                                  :old-columns       old-columns
-                                  :new-column-by-key new-by-key}]
+          (let [new-query        (swap-source-table-or-card-in-query query old-source new-source)]
             (when (not= query new-query)
               (lib.parameters/update-parameter-target-field-ref
                target
-               #(swap-field-ref % options))))))
+               #(swap-field-ref % (swap-field-ref-options query new-query stage-number)))))))
       target))

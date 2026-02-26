@@ -168,7 +168,7 @@
 
 (deftest ^:parallel upgrade-field-ref-in-parameter-target-table-test
   (let [query  (lib/query meta/metadata-provider (meta/table-metadata :orders))
-        target [:dimension [:field (meta/id :orders :total) {:stage-number 0}]]]
+        target [:dimension [:field (meta/id :orders :total) nil] {:stage-number 0}]]
     (testing "should not need upgrading"
       (is (false? (lib-be/should-upgrade-field-ref-in-parameter-target? query target))))
     (testing "should return the identical target for a table query"
