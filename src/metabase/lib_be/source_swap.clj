@@ -114,16 +114,15 @@
    stage-number  :- :int
    field-ref     :- :mbql.clause/field
    columns       :- [:sequential ::lib.schema.metadata/column]]
-  (or (when (field-id-ref? field-ref)
-        (when-let [column (lib.equality/find-matching-column query stage-number field-ref columns)]
+  (or (when-let [column (lib.equality/find-matching-column query stage-number field-ref columns)]
           ;; TODO (Alex P 2/26/26) -- drop the :lib/card-id hack when Braden fixes join refs
-          (let [column (cond-> column (:lib/card-id column) (dissoc :id))
-                expression-name (lib.util/expression-name field-ref)
-                new-field-ref (cond-> (lib.ref/ref column)
-                                expression-name (lib.expression/with-expression-name expression-name))]
-            ;; only replace the ref if it becomes a name-based field ref
-            (when-not (field-id-ref? new-field-ref)
-              new-field-ref))))
+        (let [column (cond-> column (:lib/card-id column) (dissoc :id))
+              expression-name (lib.util/expression-name field-ref)
+              new-field-ref (cond-> (lib.ref/ref column)
+                              expression-name (lib.expression/with-expression-name expression-name))]
+          (when (or (not= (lib.ref/field-ref-id field-ref) (lib.ref/field-ref-id new-field-ref))
+                    (not= (lib.ref/field-ref-name field-ref) (lib.ref/field-ref-name new-field-ref)))
+            new-field-ref)))
       field-ref))
 
 (mu/defn- upgrade-field-refs-in-clauses :- [:sequential :any]
@@ -176,23 +175,23 @@
                                              (upgrade-field-refs-in-stage query stage-number))
                                            %))))
 
-(mu/defn- table-only-stage? :- :boolean
+(mu/defn- field-id-ref-stage? :- :boolean
   [{:keys [source-table joins]} :- ::lib.schema/stage]
   (and (some? source-table)
-       (every? #(and (= 1 (count (:stages %)))
-                     (table-only-stage? (first (:stages %))))
+       (every? (fn [{:keys [stages]}]
+                 (and (= 1 (count stages))
+                      (field-id-ref-stage? (first stages))))
                joins)))
 
 (mu/defn- should-upgrade-field-refs-in-stage? :- :boolean
   [query        :- ::lib.schema/query
    stage-number :- :int]
   (let [stage (lib.util/query-stage query stage-number)]
-    (and (or (pos? stage-number)
-             (not (table-only-stage? stage)))
-         (some? (lib.util.match/match-lite
-                  stage
-                  (field-ref :guard (every-pred lib.field/is-field-clause? field-id-ref?))
-                  field-ref)))))
+    (not (and (field-id-ref-stage? stage)
+              (nil? (lib.util.match/match-lite
+                      stage
+                      (field-ref :guard lib.field/is-field-clause?)
+                      (when-not (field-id-ref? field-ref) field-ref)))))))
 
 (mu/defn should-upgrade-field-refs-in-query? :- :boolean
   "Check if any field refs in `query` can be upgraded to use name-based field refs."
@@ -227,9 +226,8 @@
   (or (when-let [field-ref (lib.parameters/parameter-target-field-ref target)]
         (when-let [stage-number (parameter-target-stage-number query target)]
           (let [stage (lib.util/query-stage query stage-number)]
-            (and (or (pos? stage-number)
-                     (not (table-only-stage? stage)))
-                 (field-id-ref? field-ref)))))
+            (not (and (field-id-ref-stage? stage)
+                      (field-id-ref? field-ref))))))
       false))
 
 (mu/defn- build-swap-field-id-mapping-for-table :- [:maybe ::swap-source.field-id-mapping]
