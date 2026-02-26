@@ -289,11 +289,9 @@
   "`/api/ee/metabot-v3/slack` routes."
   (api.macros/ns-handler *ns*))
 
-;; -------------- DEV SETUP -------------------
+;; -------------- LOCAL DEV SETUP -------------------
 
 (comment
-  ;; Guide to set yourself up for local development
-  ;;
   ;; New slack app
   ;; 1. create a tunnel via `ngrok http 3000`
   ;; 2. update your site url to the provided tunnel url
