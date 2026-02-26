@@ -1,7 +1,9 @@
 (ns metabase-enterprise.replacement.models.replacement-run
   (:require
    [metabase.app-db.core :as mdb]
+   [metabase-enterprise.replacement.protocols :as replacement.protocols]
    [metabase.models.interface :as mi]
+   [metabase.util.log :as log]
    [metabase.util.honey-sql-2 :as h2x]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
@@ -26,9 +28,17 @@
                                   :target_entity_type target-type
                                   :target_entity_id   target-id
                                   :user_id            user-id
-                                  :status             :started
-                                  :is_active          true
+                                  :status             :pending
+                                  :is_active          false
                                   :progress           0.0}))
+
+(defn start-run!
+  "Mark the active run as succeeded."
+  [run-id]
+  (t2/update! :model/ReplacementRun
+              :id run-id
+              {:status    :started
+               :is_active true}))
 
 (defn update-progress!
   "Update progress on the active run."
@@ -86,3 +96,39 @@
   "Return the single active run, or nil."
   []
   (t2/select-one :model/ReplacementRun :is_active true))
+
+(def ^:private ^:const progress-batch-size
+  "Write progress to DB every N items (and always on the final item)."
+  50)
+
+(defn run-row->progress
+  [row]
+  (let [run-id     (:id row)
+        total*     (atom 0)
+        completed* (atom 0)]
+    (reify replacement.protocols/IRunnerProgress
+      (set-total! [_ total] (reset! total* total))
+      (advance! [this] (replacement.protocols/advance! this 1))
+      (advance! [this n]
+        (let [c    (swap! completed* + n)
+              t    @total*
+              prev (- c n)
+              crossed-boundary? (or (= c t)
+                                    (not= (quot prev progress-batch-size)
+                                          (quot c progress-batch-size)))]
+          (when crossed-boundary?
+            (let [progress (if (pos? t) (double (/ c t)) 0.0)]
+              (update-progress! run-id progress)
+              (when (replacement.protocols/canceled? this)
+                (log/infof "Replacement run %d was canceled" run-id)
+                (throw (ex-info "Run canceled" {:run-id run-id})))))))
+      (canceled? [_]
+        (not (:is_active (t2/select-one [:model/ReplacementRun :is_active] :id run-id))))
+      (start-run! [_]
+        (start-run! run-id))
+      (succeed-run! [_]
+        (log/infof "Replacement run %d succeeded." run-id)
+        (succeed-run! run-id))
+      (fail-run! [_ throwable]
+        (log/errorf throwable "Replacement run %d failed" run-id)
+        (fail-run! run-id (ex-message throwable))))))
