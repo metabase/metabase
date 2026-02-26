@@ -1,8 +1,12 @@
 import { useElementSize } from "@mantine/hooks";
 import { useId, useMemo } from "react";
 import { P, match } from "ts-pattern";
+import { t } from "ttag";
 
-import { withPublicComponentWrapper } from "embedding-sdk-bundle/components/private/PublicComponentWrapper";
+import {
+  SdkError,
+  withPublicComponentWrapper,
+} from "embedding-sdk-bundle/components/private/PublicComponentWrapper";
 import { ResizeWrapper } from "embedding-sdk-bundle/components/private/ResizeWrapper";
 import { SdkAdHocQuestion } from "embedding-sdk-bundle/components/private/SdkAdHocQuestion";
 import { SdkQuestionDefaultView } from "embedding-sdk-bundle/components/private/SdkQuestionDefaultView";
@@ -64,7 +68,9 @@ const MetabotQuestionInner = ({
   }, [layout, containerWidth]);
 
   if (isEmbeddedMetabotEnabled === false) {
-    return null;
+    return (
+      <SdkError message={t`Metabot is not enabled for embedded analytics.`} />
+    );
   }
 
   function renderQuestion() {
