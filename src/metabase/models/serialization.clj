@@ -1354,9 +1354,11 @@
 (defn export-parameters
   "Given the :parameter field of a `Card` or `Dashboard`, as a vector of maps, converts
   it to a portable form with the CardIds/FieldIds replaced with `[db schema table field]` references.
-  The order of parameters is significant (it determines dashboard filter display order) and must be preserved."
+  Parameters are sorted by `:id` for stable serialization output."
   [parameters]
-  (mapv ids->fully-qualified-names parameters))
+  (->> parameters
+       (sort-by :id)
+       (mapv ids->fully-qualified-names)))
 
 (defn import-parameters
   "Given the :parameter field as exported by serialization convert its field references
