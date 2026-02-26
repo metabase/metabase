@@ -303,9 +303,9 @@
     stage))
 
 (mu/defn- swap-source-and-field-ids-in-join :- ::lib.schema.join/join
-  [join           :- ::lib.schema.join/join
-   source         :- ::swap-source.source
-   target         :- ::swap-source.source
+  [join             :- ::lib.schema.join/join
+   source           :- ::swap-source.source
+   target           :- ::swap-source.source
    field-id-mapping :- ::swap-source.field-id-mapping]
   (-> join
       (swap-source-table-or-card source target)
@@ -316,17 +316,17 @@
       (u/update-some :conditions swap-field-ids-in-clauses field-id-mapping)))
 
 (mu/defn- swap-source-and-field-ids-in-joins :- [:sequential ::lib.schema.join/join]
-  [joins          :- [:sequential ::lib.schema.join/join]
-   source         :- ::swap-source.source
-   target         :- ::swap-source.source
+  [joins            :- [:sequential ::lib.schema.join/join]
+   source           :- ::swap-source.source
+   target           :- ::swap-source.source
    field-id-mapping :- ::swap-source.field-id-mapping]
   (perf/mapv #(swap-source-and-field-ids-in-join % source target field-id-mapping) joins))
 
 (mu/defn- swap-field-ids-in-stage :- ::lib.schema/stage
-  [query          :- ::lib.schema/query
-   stage-number   :- :int
-   source         :- ::swap-source.source
-   target         :- ::swap-source.source
+  [query            :- ::lib.schema/query
+   stage-number     :- :int
+   source           :- ::swap-source.source
+   target           :- ::swap-source.source
    field-id-mapping :- [:maybe ::swap-source.field-id-mapping]]
   (let [stage (-> (lib.util/query-stage query stage-number)
                   (swap-source-table-or-card source target))]
@@ -343,9 +343,9 @@
 
 (mu/defn swap-source-in-query :- ::lib.schema/query
   "Updates the query to use the new source table or card."
-  [query          :- ::lib.schema/query
-   source         :- ::swap-source.source
-   target         :- ::swap-source.source
+  [query            :- ::lib.schema/query
+   source           :- ::swap-source.source
+   target           :- ::swap-source.source
    field-id-mapping :- [:maybe ::swap-source.field-id-mapping]]
   (update query :stages #(vec (map-indexed (fn [stage-number _]
                                              (swap-field-ids-in-stage query stage-number source target field-id-mapping))
