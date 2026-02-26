@@ -696,13 +696,13 @@
               (with-redefs [dependencies/errors-from-proposed-edits
                             (constantly {:transform {(:id transform) #{:some-error}}})]
                 (testing "Admin sees broken transforms in response"
-                  (let [response (mt/user-http-request :crowberto :post 200 "ee/dependencies/check-card"
+                  (let [response (mt/user-http-request :crowberto :post 200 "ee/dependencies/check_card"
                                                        proposed-card)]
                     (is (false? (:success response)))
                     (is (=? [{:id (:id transform)}]
                             (:bad_transforms response)))))
                 (testing "Non-admin user cannot see broken transforms they lack read permission for"
-                  (let [response (mt/user-http-request :rasta :post 200 "ee/dependencies/check-card"
+                  (let [response (mt/user-http-request :rasta :post 200 "ee/dependencies/check_card"
                                                        proposed-card)]
                     (is (= [] (:bad_transforms response)))))))))))))
 
