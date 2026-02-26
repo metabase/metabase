@@ -6,10 +6,12 @@ import { t } from "ttag";
 
 import {
   useCreateAppMutation,
+  useDeleteAppMutation,
   useGetAppQuery,
   useGetCollectionQuery,
   useUpdateAppMutation,
 } from "metabase/api";
+import { ConfirmModal } from "metabase/common/components/ConfirmModal";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { CollectionPickerModal } from "metabase/common/components/Pickers";
 import { useSetting } from "metabase/common/hooks";
@@ -18,13 +20,13 @@ import {
   Alert,
   Anchor,
   Button,
+  Divider,
   Flex,
   Group,
   Input,
   Paper,
   Select,
   Stack,
-  Switch,
   Text,
   TextInput,
   Textarea,
@@ -40,7 +42,6 @@ interface AppFormValues {
   collection_id: number;
   theme: string;
   logo: string | null;
-  published: boolean;
 }
 
 function useAuthMethodOptions() {
@@ -64,6 +65,7 @@ export function AppForm() {
   const isEditing = id !== undefined;
   const [createApp] = useCreateAppMutation();
   const [updateApp] = useUpdateAppMutation();
+  const [deleteApp] = useDeleteAppMutation();
 
   const {
     data: existingApp,
@@ -80,7 +82,6 @@ export function AppForm() {
       collection_id: 0,
       theme: "",
       logo: null,
-      published: false,
     },
     validate: (values) => {
       const errors: Partial<Record<keyof AppFormValues, string>> = {};
@@ -99,7 +100,6 @@ export function AppForm() {
         collection_id: values.collection_id,
         theme: values.theme || null,
         logo: values.logo || null,
-        published: values.published,
       };
 
       if (isEditing) {
@@ -119,7 +119,6 @@ export function AppForm() {
         collection_id: existingApp.collection_id,
         theme: existingApp.theme ?? "",
         logo: existingApp.logo ?? null,
-        published: existingApp.published,
       });
     }
     // We only want to run this once when the app loads
@@ -130,13 +129,20 @@ export function AppForm() {
     router.push("/admin/apps");
   }, [router]);
 
+  const handleDelete = useCallback(async () => {
+    await deleteApp(id!);
+    router.push("/admin/apps");
+  }, [deleteApp, id, router]);
+
   if (isEditing) {
     return (
       <LoadingAndErrorWrapper loading={isLoading} error={error}>
         <AppFormContent
           formik={formik}
           isEditing={isEditing}
+          appName={existingApp?.name ?? ""}
           onCancel={handleCancel}
+          onDelete={handleDelete}
         />
       </LoadingAndErrorWrapper>
     );
@@ -146,7 +152,9 @@ export function AppForm() {
     <AppFormContent
       formik={formik}
       isEditing={isEditing}
+      appName=""
       onCancel={handleCancel}
+      onDelete={null}
     />
   );
 }
@@ -154,14 +162,22 @@ export function AppForm() {
 function AppFormContent({
   formik,
   isEditing,
+  appName,
   onCancel,
+  onDelete,
 }: {
   formik: ReturnType<typeof useFormik<AppFormValues>>;
   isEditing: boolean;
+  appName: string;
   onCancel: () => void;
+  onDelete: (() => Promise<void>) | null;
 }) {
   const [pickerOpened, { open: openPicker, close: closePicker }] =
     useDisclosure(false);
+  const [
+    deleteModalOpened,
+    { open: openDeleteModal, close: closeDeleteModal },
+  ] = useDisclosure(false);
 
   const collectionId = formik.values.collection_id;
   const { data: collection } = useGetCollectionQuery(
@@ -172,20 +188,19 @@ function AppFormContent({
   const { data: authMethodData, noneEnabled: noAuthEnabled } =
     useAuthMethodOptions();
 
-  const canPublish =
-    !!formik.values.name.trim() && !!collectionId && !noAuthEnabled;
-
   return (
     <Stack p="lg" maw="40rem" gap="lg">
       <Group justify="space-between" align="center">
         <Title order={2}>{isEditing ? t`Edit App` : t`Create App`}</Title>
-        {isEditing && formik.values.name && (
-          <Anchor
-            href={`/apps/${encodeURIComponent(formik.values.name)}?useCurrentSession=true`}
+        {isEditing && appName && (
+          <Button
+            component="a"
+            href={`/apps/${encodeURIComponent(appName)}?useCurrentSession=true`}
             target="_blank"
+            variant="outline"
           >
             {t`Preview`}
-          </Anchor>
+          </Button>
         )}
       </Group>
       <form onSubmit={formik.handleSubmit}>
@@ -254,22 +269,35 @@ function AppFormContent({
             value={formik.values.logo}
             onChange={(logo) => formik.setFieldValue("logo", logo)}
           />
-          <Switch
-            label={t`Published`}
-            disabled={!canPublish}
-            checked={formik.values.published}
-            onChange={(e) =>
-              formik.setFieldValue("published", e.currentTarget.checked)
-            }
-          />
-          <Group justify="flex-end">
-            <Button variant="subtle" onClick={onCancel}>
-              {t`Cancel`}
-            </Button>
-            <Button type="submit" variant="filled">
-              {isEditing ? t`Save` : t`Create`}
-            </Button>
+          <Divider mt="md" />
+          <Group justify="space-between" align="center">
+            {onDelete ? (
+              <Button color="error" variant="subtle" onClick={openDeleteModal}>
+                {t`Delete app`}
+              </Button>
+            ) : (
+              <span />
+            )}
+            <Group gap="sm">
+              <Button variant="default" onClick={onCancel}>
+                {t`Cancel`}
+              </Button>
+              <Button type="submit" variant="filled" disabled={!formik.dirty}>
+                {isEditing ? t`Save` : t`Create`}
+              </Button>
+            </Group>
           </Group>
+          {onDelete && (
+            <ConfirmModal
+              opened={deleteModalOpened}
+              title={t`Delete this app?`}
+              message={t`This will permanently delete the app and cannot be undone.`}
+              confirmButtonText={t`Delete`}
+              confirmButtonProps={{ color: "error" }}
+              onConfirm={onDelete}
+              onClose={closeDeleteModal}
+            />
+          )}
         </Stack>
       </form>
     </Stack>
