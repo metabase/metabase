@@ -72,7 +72,7 @@
    Raises if called outside a `streaming-response` context."
   [code]
   (assert-response-bound!)
-  (when-not (.isCommitted ^HttpServletResponse *response*)
+  (when-not (committed?)
     (.setStatus ^HttpServletResponse *response* (int code))))
 
 (defn set-header!
@@ -80,7 +80,7 @@
    Raises if called outside a `streaming-response` context."
   [name value]
   (assert-response-bound!)
-  (when-not (.isCommitted ^HttpServletResponse *response*)
+  (when-not (committed?)
     (.setHeader ^HttpServletResponse *response* (str name) (str value))))
 
 (defn set-content-type!
@@ -88,7 +88,7 @@
    Raises if called outside a `streaming-response` context."
   [ct]
   (assert-response-bound!)
-  (when-not (.isCommitted ^HttpServletResponse *response*)
+  (when-not (committed?)
     (.setContentType ^HttpServletResponse *response* (str ct))))
 
 (defn write-error!
