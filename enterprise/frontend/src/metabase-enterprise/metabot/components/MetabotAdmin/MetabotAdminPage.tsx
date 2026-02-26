@@ -191,6 +191,7 @@ function MetabotEnabledToggle({
       />
       <Flex align="center" gap="md" mt="md">
         <Switch
+          data-testid="metabot-enabled-toggle"
           checked={!!value}
           onChange={(e) => handleToggle(e.target.checked)}
           disabled={isLoading}
