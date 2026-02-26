@@ -193,3 +193,17 @@
           target     [:dimension [:field (meta/id :orders :product-id) nil] {:stage-number 1}]]
       (is (= [:dimension [:field "PRODUCT_ID" {:base-type :type/Integer}] {:stage-number 1}]
              (lib-be/upgrade-field-ref-in-parameter-target query target))))))
+
+(deftest ^:parallel upgrade-field-ref-in-parameter-target-template-tag-test
+  (testing "should return the identical target for a template tag dimension"
+    (let [query  (lib/query meta/metadata-provider (meta/table-metadata :orders))
+          target [:dimension [:template-tag "total"]]]
+      (is (= target
+             (lib-be/upgrade-field-ref-in-parameter-target query target))))))
+
+(deftest ^:parallel upgrade-field-ref-in-parameter-target-variable-test
+  (testing "should return the identical target for a variable template tag"
+    (let [query  (lib/query meta/metadata-provider (meta/table-metadata :orders))
+          target [:variable [:template-tag "total"]]]
+      (is (= target
+             (lib-be/upgrade-field-ref-in-parameter-target query target))))))
