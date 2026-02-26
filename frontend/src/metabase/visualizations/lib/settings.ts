@@ -6,7 +6,6 @@ import {
   convertLinkColumnToClickBehavior,
   removeInternalClickBehaviors,
 } from "metabase/embedding-sdk/lib/links";
-import { checkNotNull } from "metabase/lib/types";
 import { ChartSettingColorPicker } from "metabase/visualizations/components/settings/ChartSettingColorPicker";
 import { ChartSettingColorsPicker } from "metabase/visualizations/components/settings/ChartSettingColorsPicker";
 import { ChartSettingFieldPicker } from "metabase/visualizations/components/settings/ChartSettingFieldPicker";
@@ -250,7 +249,7 @@ function getSettingWidget<T, TValue, TProps extends Record<string, unknown>>(
     ...settingDef,
     id: settingId,
     value,
-    section: checkNotNull(section),
+    section,
     hidden: getHiddenFn
       ? getHiddenFn(resolvedObject, computedSettings, extra)
       : (settingDef.hidden ?? false),
