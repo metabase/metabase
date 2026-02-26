@@ -281,6 +281,23 @@
                                            {:type :table, :id (meta/id :orders)}
                                            {:type :table, :id (meta/id :reviews)}))))))
 
+(deftest ^:parallel swap-source-in-query-source-card-join-table-test
+  (let [products-query (lib/query meta/metadata-provider (meta/table-metadata :products))
+        mp             (lib.tu/metadata-provider-with-card-from-query 1 products-query)
+        query          (-> (lib/query mp (lib.metadata/card mp 1))
+                           (lib/join (lib/join-clause (meta/table-metadata :orders)
+                                                      [(lib/= (meta/field-metadata :products :id)
+                                                              (meta/field-metadata :orders :product-id))])))]
+    (testing "should swap the join source and rewrite the join condition"
+      (is (=? {:stages [{:source-card 1
+                         :joins       [{:stages     [{:source-table (meta/id :reviews)}]
+                                        :conditions [[:= {}
+                                                      [:field {} "ID"]
+                                                      [:field {} (meta/id :reviews :product-id)]]]}]}]}
+              (lib-be/swap-source-in-query query
+                                           {:type :table, :id (meta/id :orders)}
+                                           {:type :table, :id (meta/id :reviews)}))))))
+
 (deftest ^:parallel swap-source-in-parameter-target-source-table-noop-test
   (let [query  (lib/query meta/metadata-provider (meta/table-metadata :orders))
         target [:dimension [:field (meta/id :orders :created-at) nil] {:stage-number 0}]]
