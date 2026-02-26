@@ -2119,8 +2119,8 @@
     (testing "Shouldn't be able to fetch a public Document if public sharing is disabled"
       (mt/with-temporary-setting-values [enable-public-sharing false]
         (mt/with-temp [:model/Document document (document-with-public-link {})]
-          (is (= "API endpoint does not exist."
-                 (mt/client :get 404 (str "public/document/" (:public_uuid document))))))))
+          (is (= "An error occurred."
+                 (mt/client :get 400 (str "public/document/" (:public_uuid document))))))))
 
     (testing "Should get a 404 if the Document doesn't exist"
       (mt/with-temporary-setting-values [enable-public-sharing true]

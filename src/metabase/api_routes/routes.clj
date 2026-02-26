@@ -171,7 +171,7 @@
    "/premium-features"     (+auth metabase.premium-features.api/routes)
    "/preview_embed"        (+auth metabase.embedding-rest.api/preview-embedding-routes)
    "/product-feedback"     'metabase.product-feedback.api
-   "/public"               (+public-exceptions 'metabase.public-sharing-rest.api)
+   "/public"               (+public-exceptions metabase.public-sharing-rest.api/routes)
    "/pulse"                metabase.pulse.api/pulse-routes
    "/revision"             (+auth 'metabase.revisions.api)
    "/search"               (+auth metabase.search.api/routes)
