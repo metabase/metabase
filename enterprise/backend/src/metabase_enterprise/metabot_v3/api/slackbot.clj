@@ -202,41 +202,38 @@
   (when-not (slackbot.config/setup-complete?)
     (throw (ex-info (str (tru "Slack integration is not fully configured.")) {:status-code 503}))))
 
-(defn assert-enabled
-  "Asserts that all required Slack settings have been configured."
-  []
-  (when-not (sso-settings/slack-connect-enabled)
-    (throw (ex-info (str (tru "Slack integration is not enabled.")) {:status-code 403}))))
-
 (mu/defn- handle-event-callback :- slackbot.events/SlackEventsResponse
   "Respond to an event_callback request"
   [payload :- slackbot.events/SlackEventCallbackEvent]
   (assert-setup-complete)
-  (assert-enabled)
-  (let [client {:token (channel.settings/unobfuscated-slack-app-token)}
-        event (:event payload)]
-    (log/debugf "[slackbot] Event callback: event_type=%s user=%s channel=%s"
-                (:type event) (:user event) (:channel event))
-    (cond
-      ((some-fn
-        slackbot.events/bot-message? ;; ignore the bot's own messages
-        slackbot.events/edited-message? ;; no support regenerating responses for now
-        slackbot.events/app-mention-with-files? ;; we'll get another file_share event
-        slackbot.events/channel-message?) ;; only responsd for app mentions
-       event)
-      (ignore-event event)
+  (when (sso-settings/slack-connect-enabled)
+    (let [client {:token (channel.settings/unobfuscated-slack-app-token)}
+          event (:event payload)
+          ;; TODO: cache this value somehow
+          bot-id (slackbot.client/get-bot-user-id client)]
+      (log/debugf "[slackbot] Event callback: event_type=%s user=%s channel=%s"
+                  (:type event) (:user event) (:channel event))
+      (cond
+        ((some-fn
+          slackbot.events/bot-message? ;; ignore the bot's own messages
+          slackbot.events/edited-message? ;; ignore message edits
+          slackbot.events/app-mention-with-files?) ;; processed via the separate file_share event
+         event)
+        (ignore-event event)
 
-      (slackbot.events/app-mention? event)
-      (process-async handle-app-mention client event)
+        (and
+         (slackbot.events/file-share? event)
+         (slackbot.events/dm-or-channel-mention? event bot-id))
+        (process-async handle-message-file-share client event)
 
-      (slackbot.events/file-share? event)
-      (process-async handle-message-file-share client event)
+        (slackbot.events/app-mention? event)
+        (process-async handle-app-mention client event)
 
-      (slackbot.events/dm? event)
-      (process-async handle-message-im client event)
+        (slackbot.events/dm? event)
+        (process-async handle-message-im client event)
 
-      :else
-      (ignore-event event)))
+        :else
+        (ignore-event event))))
   ack-msg)
 
 ;; ----------------------- ROUTES --------------------------

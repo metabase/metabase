@@ -1,5 +1,6 @@
 (ns metabase-enterprise.metabot-v3.api.slackbot.events
-  "Event definitions for slackbot.")
+  "Event definitions for slackbot."
+  (:require    [clojure.string :as str]))
 
 (def SlackEventsResponse
   "Malli schema for Slack events API response"
@@ -120,6 +121,21 @@
   [event]
   (and (app-mention? event)
        (has-files? event)))
+
+(defn mentions-bot?
+  "Check if event @mentions the bot.
+   Some events, like file uploads in channels, don't come through as app_mention."
+  [event bot-user-id]
+  (some-> (:text event)
+          (str/includes? (str "<@" bot-user-id ">"))))
+
+(defn dm-or-channel-mention?
+  "Check if event is an dm or channel w/ mention of the bot."
+  [event bot-id]
+  (or
+   (dm? event)
+   (and (channel-message? event)
+        (mentions-bot? event bot-id))))
 
 (defn event->reply-context
   "Extract the necessary context for a reply from the given `event`"
