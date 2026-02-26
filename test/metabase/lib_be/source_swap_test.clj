@@ -256,25 +256,50 @@
   (let [query (as-> (lib/query meta/metadata-provider (meta/table-metadata :orders)) q
                 (lib/with-fields q [(meta/field-metadata :orders :id)
                                     (meta/field-metadata :orders :created-at)])
+                (lib/join q (lib/join-clause (meta/table-metadata :products)))
                 (lib/expression q "id-plus-one" (lib/+ (meta/field-metadata :orders :id) 1))
                 (lib/filter q (lib/> (meta/field-metadata :orders :id) 5))
                 (lib/aggregate q (lib/count))
                 (lib/breakout q (meta/field-metadata :orders :created-at))
                 (lib/order-by q (meta/field-metadata :orders :created-at)))]
     (testing "should swap source table and field refs to matching columns"
-      (is (=? {:stages [{:source-table (meta/id :products)
-                         :fields       [[:field {} (meta/id :products :id)]
-                                        [:field {} (meta/id :products :created-at)]
+      (is (=? {:stages [{:source-table (meta/id :reviews)
+                         :fields       [[:field {} (meta/id :reviews :id)]
+                                        [:field {} (meta/id :reviews :created-at)]
                                         [:expression {} "id-plus-one"]]
+                         :joins        [{:stages     [{:source-table (meta/id :products)}]
+                                         :conditions [[:= {}
+                                                       [:field {} (meta/id :reviews :product-id)]
+                                                       [:field {} (meta/id :products :id)]]]}]
                          :expressions  [[:+ {:lib/expression-name "id-plus-one"}
-                                         [:field {} (meta/id :products :id)] 1]]
-                         :filters      [[:> {} [:field {} (meta/id :products :id)] 5]]
+                                         [:field {} (meta/id :reviews :id)] 1]]
+                         :filters      [[:> {} [:field {} (meta/id :reviews :id)] 5]]
                          :aggregation  [[:count {}]]
-                         :breakout     [[:field {} (meta/id :products :created-at)]]
-                         :order-by     [[:asc {} [:field {} (meta/id :products :created-at)]]]}]}
+                         :breakout     [[:field {} (meta/id :reviews :created-at)]]
+                         :order-by     [[:asc {} [:field {} (meta/id :reviews :created-at)]]]}]}
               (lib-be/swap-source-in-query query
                                            {:type :table, :id (meta/id :orders)}
-                                           {:type :table, :id (meta/id :products)}))))))
+                                           {:type :table, :id (meta/id :reviews)}))))))
+
+(deftest ^:parallel swap-source-in-parameter-target-source-table-noop-test
+  (let [query  (lib/query meta/metadata-provider (meta/table-metadata :orders))
+        target [:dimension [:field (meta/id :orders :created-at) nil] {:stage-number 0}]]
+    (testing "should return the same target when swapping to the same table"
+      (is (= target
+             (lib-be/swap-source-in-parameter-target query target
+                                                     {:type :table, :id (meta/id :orders)}
+                                                     {:type :table, :id (meta/id :orders)}))))))
+
+(deftest ^:parallel swap-source-in-parameter-target-source-card-noop-test
+  (let [base-query (lib/query meta/metadata-provider (meta/table-metadata :orders))
+        mp         (lib.tu/metadata-provider-with-card-from-query 1 base-query)
+        query      (lib/query mp (lib.metadata/card mp 1))
+        target     [:dimension [:field "CREATED_AT" {:base-type :type/DateTimeWithLocalTZ}] {:stage-number 0}]]
+    (testing "should return the same target when swapping to the same card"
+      (is (= target
+             (lib-be/swap-source-in-parameter-target query target
+                                                     {:type :card, :id 1}
+                                                     {:type :card, :id 1}))))))
 
 (deftest ^:parallel swap-source-in-parameter-target-source-table-test
   (let [query  (lib/query meta/metadata-provider (meta/table-metadata :orders))

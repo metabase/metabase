@@ -285,15 +285,16 @@
 (mr/def ::swap-field-ref.options
   [:map
    [:old-query ::lib.schema/query]
+   [:new-query ::lib.schema/query]
    [:stage-number :int]
    [:old-columns [:sequential ::lib.schema.metadata/column]]
-   [:new-column-by-key [:map-of :string ::lib.schema.metadata/column]]])
+   [:new-columns [:sequential ::lib.schema.metadata/column]]])
 
 (mu/defn- swap-field-ref :- :mbql.clause/field
   [field-ref :- :mbql.clause/field
-   {:keys [old-query stage-number old-columns new-column-by-key]} :- ::swap-field-ref.options]
+   {:keys [old-query new-query stage-number old-columns new-columns]} :- ::swap-field-ref.options]
   (or (when-let [old-column (lib.equality/find-matching-column old-query stage-number field-ref old-columns)]
-        (when-let [new-column (get new-column-by-key (column-match-key old-column))]
+        (when-let [new-column (lib.equality/find-matching-column new-query stage-number (dissoc old-column :id) new-columns)]
           (let [new-field-ref (lib.ref/ref new-column)]
             (when-not (same-field-ref? field-ref new-field-ref)
               new-field-ref))))
@@ -303,13 +304,11 @@
   [old-query    :- ::lib.schema/query
    new-query    :- ::lib.schema/query
    stage-number :- :int]
-  (let [old-columns (lib.metadata.calculation/visible-columns old-query stage-number)
-        new-columns (lib.metadata.calculation/visible-columns new-query stage-number)
-        new-columns-by-key (m/index-by column-match-key new-columns)]
-    {:old-query old-query
-     :stage-number stage-number
-     :old-columns old-columns
-     :new-column-by-key new-columns-by-key}))
+  {:old-query    old-query
+   :new-query    new-query
+   :stage-number stage-number
+   :old-columns  (lib.metadata.calculation/visible-columns old-query stage-number)
+   :new-columns  (lib.metadata.calculation/visible-columns new-query stage-number)})
 
 (mu/defn- swap-field-refs-in-clauses :- [:sequential :any]
   [clauses :- [:sequential :any]
