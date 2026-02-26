@@ -133,7 +133,7 @@ export function nestedSettings<
     getSettingsWidgetsForObject,
   })(component);
 
-  const idDef: SeriesSettingDefinition = {
+  const idDef: SeriesSettingDefinition<TValue, TProps> = {
     section: t`Display`,
     default: {},
     getProps: (series, settings, onChange, extra) => {
