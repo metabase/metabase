@@ -19,7 +19,7 @@ interface Props {
   title: string;
   value?: OmniPickerValue;
   models?: DataPickerValue["model"][];
-  onChange: (value: TableId) => void;
+  onChange: (value: TableId, item: OmniPickerItem) => void;
   onClose: () => void;
   onlyDatabaseId?: DatabaseId;
   shouldDisableItem?: (item: OmniPickerItem) => boolean;
@@ -77,7 +77,7 @@ export const DataPickerModal = ({
 
       const id =
         item.model === "table" ? item.id : getQuestionVirtualTableId(item.id);
-      onChange(id);
+      onChange(id, item);
       onClose();
     },
     [onChange, onClose],
