@@ -378,7 +378,6 @@ export type SingleSeriesSettingDefinition<
 > = VisualizationSettingDefinition<SingleSeries, TValue, TProps>;
 
 export type VisualizationSettingsDefinitions<
-  _T = unknown,
   TValue = unknown,
   TProps extends Record<string, unknown> = Record<string, unknown>,
 > = {

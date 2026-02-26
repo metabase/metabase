@@ -33,7 +33,7 @@ export interface NestedSettingsOptions<
   getSettingDefinitionsForObject: (
     series: Series,
     object: T,
-  ) => VisualizationSettingsDefinitions<T, TValue, TProps>;
+  ) => VisualizationSettingsDefinitions<TValue, TProps>;
   getInheritedSettingsForObject?: (object: T) => VisualizationSettings;
   component: React.ComponentType<ChartNestedSettingSeriesProps>;
   getExtraProps?: (

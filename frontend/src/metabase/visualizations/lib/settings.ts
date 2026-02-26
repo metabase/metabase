@@ -53,7 +53,7 @@ export function getComputedSettings<
   TValue,
   TProps extends Record<string, unknown>,
 >(
-  settingsDefs: VisualizationSettingsDefinitions<T, TValue, TProps>,
+  settingsDefs: VisualizationSettingsDefinitions<TValue, TProps>,
   object: T,
   storedSettings: VisualizationSettings,
   extra: SettingsExtra = {},
@@ -90,7 +90,7 @@ export function getComputedSettings<
 
 function getComputedSetting<T, TValue, TProps extends Record<string, unknown>>(
   computedSettings: ComputedVisualizationSettings, // MUTATED!
-  settingDefs: VisualizationSettingsDefinitions<T, TValue, TProps>,
+  settingDefs: VisualizationSettingsDefinitions<TValue, TProps>,
   settingId: VisualizationSettingKey,
   object: T,
   storedSettings: VisualizationSettings,
@@ -170,7 +170,7 @@ export function getSettingsWidgets<
   TValue,
   TProps extends Record<string, unknown>,
 >(
-  settingDefs: VisualizationSettingsDefinitions<T, TValue, TProps>,
+  settingDefs: VisualizationSettingsDefinitions<TValue, TProps>,
   storedSettings: VisualizationSettings,
   computedSettings: ComputedVisualizationSettings,
   object: T,
@@ -196,7 +196,7 @@ export function getSettingsWidgets<
 }
 
 function getSettingWidget<T, TValue, TProps extends Record<string, unknown>>(
-  settingDefs: VisualizationSettingsDefinitions<T, TValue, TProps>,
+  settingDefs: VisualizationSettingsDefinitions<TValue, TProps>,
   settingId: VisualizationSettingKey,
   storedSettings: VisualizationSettings,
   computedSettings: ComputedVisualizationSettings,
