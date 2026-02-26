@@ -1,6 +1,7 @@
 (ns metabase.lib-be.source-swap-test
   (:require
    [clojure.test :refer :all]
+   [medley.core :as m]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
@@ -18,18 +19,20 @@
 
 (deftest ^:parallel upgrade-field-refs-in-query-source-table-test
   (testing "should preserve field id refs in the same stage as the table, but upgrade next stages"
-    (let [query (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
-                    (lib/with-fields [(meta/field-metadata :orders :id)
+    (let [query (as-> (lib/query meta/metadata-provider (meta/table-metadata :orders)) q
+                  (lib/with-fields q [(meta/field-metadata :orders :id)
                                       (meta/field-metadata :orders :total)
                                       (meta/field-metadata :orders :created-at)])
-                    (lib/join (lib/join-clause (meta/table-metadata :products)))
-                    (lib/expression "double-tax" (lib/* (meta/field-metadata :orders :tax) 2))
-                    (lib/filter (lib/> (meta/field-metadata :orders :total) 10))
-                    (lib/aggregate (lib/sum (meta/field-metadata :orders :total)))
-                    (lib/breakout (meta/field-metadata :orders :product-id))
-                    (lib/order-by (meta/field-metadata :orders :product-id))
-                    (lib/append-stage)
-                    (lib/filter (lib/> (meta/field-metadata :orders :product-id) 5)))]
+                  (lib/join q (lib/join-clause (meta/table-metadata :products)))
+                  (lib/expression q "double-tax" (lib/* (meta/field-metadata :orders :tax) 2))
+                  (lib/filter q (lib/> (meta/field-metadata :orders :total) 10))
+                  (lib/aggregate q (lib/sum (meta/field-metadata :orders :total)))
+                  (lib/breakout q (meta/field-metadata :orders :product-id))
+                  (lib/breakout q (m/find-first #(= (:id %) (meta/id :people :state))
+                                                (lib/breakoutable-columns q)))
+                  (lib/order-by q (meta/field-metadata :orders :product-id))
+                  (lib/append-stage q)
+                  (lib/filter q (lib/> (meta/field-metadata :orders :product-id) 5)))]
       (is (=? {:stages [{:source-table (meta/id :orders)
                          :fields       [[:field {} (meta/id :orders :id)]
                                         [:field {} (meta/id :orders :total)]
@@ -42,7 +45,8 @@
                          :expressions  [[:* {:lib/expression-name "double-tax"} [:field {} (meta/id :orders :tax)] 2]]
                          :filters      [[:> {} [:field {} (meta/id :orders :total)] 10]]
                          :aggregation  [[:sum {} [:field {} (meta/id :orders :total)]]]
-                         :breakout     [[:field {} (meta/id :orders :product-id)]]
+                         :breakout     [[:field {} (meta/id :orders :product-id)]
+                                        [:field {:source-field (meta/id :orders :user-id)} (meta/id :people :state)]]
                          :order-by     [[:asc {} [:field {} (meta/id :orders :product-id)]]]}
                         {:filters [[:> {} [:field {} "PRODUCT_ID"] 5]]}]}
               (lib-be/upgrade-field-refs-in-query query))))))
@@ -51,18 +55,20 @@
   (testing "should upgrade field id refs for a card"
     (let [base-query (lib/query meta/metadata-provider (meta/table-metadata :orders))
           mp         (lib.tu/metadata-provider-with-card-from-query 1 base-query)
-          query      (-> (lib/query mp (lib.metadata/card mp 1))
-                         (lib/with-fields [(meta/field-metadata :orders :id)
+          query      (as-> (lib/query mp (lib.metadata/card mp 1)) q
+                       (lib/with-fields q [(meta/field-metadata :orders :id)
                                            (meta/field-metadata :orders :total)
                                            (meta/field-metadata :orders :created-at)])
-                         (lib/join (lib/join-clause (meta/table-metadata :products)))
-                         (lib/expression "double-tax" (lib/* (meta/field-metadata :orders :tax) 2))
-                         (lib/filter (lib/> (meta/field-metadata :orders :total) 10))
-                         (lib/aggregate (lib/sum (meta/field-metadata :orders :total)))
-                         (lib/breakout (meta/field-metadata :orders :product-id))
-                         (lib/order-by (meta/field-metadata :orders :product-id))
-                         (lib/append-stage)
-                         (lib/filter (lib/> (meta/field-metadata :orders :product-id) 5)))]
+                       (lib/join q (lib/join-clause (meta/table-metadata :products)))
+                       (lib/expression q "double-tax" (lib/* (meta/field-metadata :orders :tax) 2))
+                       (lib/filter q (lib/> (meta/field-metadata :orders :total) 10))
+                       (lib/aggregate q (lib/sum (meta/field-metadata :orders :total)))
+                       (lib/breakout q (meta/field-metadata :orders :product-id))
+                       (lib/breakout q (m/find-first #(= (:id %) (meta/id :people :state))
+                                                     (lib/breakoutable-columns q)))
+                       (lib/order-by q (meta/field-metadata :orders :product-id))
+                       (lib/append-stage q)
+                       (lib/filter q (lib/> (meta/field-metadata :orders :product-id) 5)))]
       (is (=? {:stages [{:source-card  1
                          :fields       [[:field {} "ID"]
                                         [:field {} "TOTAL"]
@@ -75,7 +81,8 @@
                          :expressions  [[:* {:lib/expression-name "double-tax"} [:field {} "TAX"] 2]]
                          :filters      [[:> {} [:field {} "TOTAL"] 10]]
                          :aggregation  [[:sum {} [:field {} "TOTAL"]]]
-                         :breakout     [[:field {} "PRODUCT_ID"]]
+                         :breakout     [[:field {} "PRODUCT_ID"]
+                                        [:field {:source-field (meta/id :orders :user-id)} (meta/id :people :state)]]
                          :order-by     [[:asc {} [:field {} "PRODUCT_ID"]]]}
                         {:filters [[:> {} [:field {} "PRODUCT_ID"] 5]]}]}
               (lib-be/upgrade-field-refs-in-query query))))))
