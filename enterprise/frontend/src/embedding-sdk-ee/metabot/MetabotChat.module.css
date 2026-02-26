@@ -1,0 +1,131 @@
+.container {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  color: var(--mb-color-text-primary);
+  background-color: var(--mb-color-background-primary);
+}
+
+/* Prompt suggestions */
+.promptSuggestionsContainer {
+  flex-shrink: 0;
+  max-width: 30rem;
+}
+
+.promptSuggestionButton {
+  display: block;
+  height: auto;
+  text-align: left;
+  line-height: 1.4;
+  padding: 0.5rem 0.75rem;
+  width: fit-content;
+  border-radius: 8px;
+  border: 1px solid var(--mb-color-border);
+  background-color: var(--mb-color-background-primary);
+  color: var(--mb-color-text-secondary);
+  font-size: 0.875rem;
+}
+
+.promptSuggestionButton span {
+  text-wrap-mode: wrap;
+  justify-content: flex-start;
+}
+
+/* Chat input */
+.chatInput {
+  border: none;
+  border-radius: 0;
+  padding-block: 8px;
+  color: var(--mb-color-text-primary);
+  line-height: 24px;
+  background-color: transparent !important;
+
+  &::placeholder {
+    color: var(--mb-color-text-tertiary);
+  }
+
+  &:focus {
+    outline: none;
+    border-color: transparent;
+  }
+}
+
+.chatButton {
+  display: flex;
+  padding: 0.25rem;
+  border-radius: 4px;
+  transition: background-color 0.2s ease;
+
+  &:hover {
+    background-color: var(--mb-color-background-hover);
+  }
+}
+
+.stopGenerationButton {
+  width: 1.3rem;
+  height: 1.3rem;
+}
+
+/* FAB trigger */
+.fabTrigger {
+  position: fixed;
+  bottom: 1.5rem;
+  right: 1.5rem;
+  z-index: 1000;
+  width: 3.5rem;
+  height: 3.5rem;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: var(--mb-color-brand);
+  color: var(--mb-color-text-white);
+  cursor: pointer;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+
+  &:hover {
+    transform: scale(1.05);
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.2);
+  }
+}
+
+.fabPanel {
+  position: fixed;
+  bottom: 6rem;
+  right: 1.5rem;
+  z-index: 1000;
+  border-radius: 12px;
+  overflow: hidden;
+  border: 1px solid var(--mb-color-border);
+  background-color: var(--mb-color-background-primary);
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.12);
+}
+
+/* Command bar */
+.commandBarContainer {
+  position: fixed;
+  bottom: 1.5rem;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 1000;
+}
+
+.commandBarInput {
+  border-radius: 12px;
+  overflow: hidden;
+  border: 1px solid var(--mb-color-border);
+  background-color: var(--mb-color-background-primary);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
+}
+
+.commandBarPanel {
+  border-radius: 12px;
+  overflow: hidden;
+  border: 1px solid var(--mb-color-border);
+  background-color: var(--mb-color-background-primary);
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.12);
+  margin-bottom: 0.5rem;
+}
