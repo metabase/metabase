@@ -10,4 +10,5 @@
   guard-namespace!]
  [metabase.release-flags.models
   all-flags
-  has-release-flag?])
+  has-release-flag?
+  release-flags-enabled?])

@@ -8,15 +8,20 @@
 
 (deftest get-flags-test
   (testing "GET /api/release-flags"
+    (testing "requires authentication"
+      (is (= "Unauthenticated"
+             (mt/client :get 401 "release-flags"))))
     (testing "returns all flags"
-      (mt/with-temp [:model/ReleaseFlag _ {:flag "get-test" :description "Test" :is_enabled false}]
+      (mt/with-temp [:model/ReleaseFlag _ {:flag "get-test" :description "Test" :is_enabled false
+                                           :start_date (java.time.LocalDate/parse "2026-01-01")}]
         (let [resp (mt/user-http-request :rasta :get 200 "release-flags")]
           (is (contains? resp :get-test))
           (is (= false (get-in resp [:get-test :is_enabled]))))))))
 
 (deftest put-flags-test
   (testing "PUT /api/release-flags"
-    (mt/with-temp [:model/ReleaseFlag _ {:flag "put-flag" :description "Put test" :is_enabled false}]
+    (mt/with-temp [:model/ReleaseFlag _ {:flag "put-flag" :description "Put test" :is_enabled false
+                                         :start_date (java.time.LocalDate/parse "2026-01-01")}]
       (testing "requires superuser"
         (is (= "You don't have permissions to do that."
                (mt/user-http-request :rasta :put 403 "release-flags" {"put-flag" true}))))

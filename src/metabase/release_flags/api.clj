@@ -7,9 +7,12 @@
    [metabase.release-flags.schema :as schema]))
 
 (api.macros/defendpoint :get "/" :- schema/FlagMap
-  "Return the status of all feature flags."
+  "Return the status of all feature flags.
+  Returns an empty map in prod mode."
   []
-  (models/all-flags))
+  (if (models/release-flags-enabled?)
+    (models/all-flags)
+    {}))
 
 (api.macros/defendpoint :put "/" :- schema/FlagMap
   "Modify the release flags."
