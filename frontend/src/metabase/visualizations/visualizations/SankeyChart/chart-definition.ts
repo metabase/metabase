@@ -15,6 +15,7 @@ import {
 import type {
   ComputedVisualizationSettings,
   VisualizationDefinition,
+  VisualizationSettingsDefinitions,
 } from "metabase/visualizations/types";
 import { isDate, isDimension, isMetric } from "metabase-lib/v1/types/utils/isa";
 import type { DatasetData, RawSeries, Series } from "metabase-types/api";
@@ -23,7 +24,7 @@ import { hasCyclicFlow } from "./utils/cycle-detection";
 
 const MAX_SANKEY_NODES = 150;
 
-export const SETTINGS_DEFINITIONS: VisualizationDefinition<Series> = {
+export const SETTINGS_DEFINITIONS: VisualizationSettingsDefinitions<Series> = {
   ...columnSettings({ hidden: true }),
   ...dimensionSetting("sankey.source", {
     // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
