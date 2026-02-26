@@ -99,6 +99,9 @@ export function DashboardHeaderView({
     return () => clearTimeout(timerId);
   }, [isLastEditInfoVisible]);
 
+  // eslint-disable-next-line no-console
+  console.log("hello!");
+
   return (
     <div className={S.DashboardHeader}>
       {isEditing && <EditBar title={editingTitle} buttons={editingButtons} />}
