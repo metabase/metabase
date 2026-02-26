@@ -1,9 +1,9 @@
 import { Link } from "react-router";
 
 import { Ellipsified } from "metabase/common/components/Ellipsified";
-import type { ColorName } from "metabase/lib/colors/types";
 import type { IconName } from "metabase/ui";
 import { Card, Flex, Icon, Stack, Text } from "metabase/ui";
+import type { ColorName } from "metabase/ui/colors/types";
 
 import S from "./EntityListItem.module.css";
 

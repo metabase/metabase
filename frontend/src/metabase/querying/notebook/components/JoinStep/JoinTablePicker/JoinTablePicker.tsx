@@ -5,8 +5,8 @@ import { t } from "ttag";
 import { IconButtonWrapper } from "metabase/common/components/IconButtonWrapper";
 import { isEmbedding } from "metabase/embedding/config";
 import { METAKEY } from "metabase/lib/browser";
-import type { ColorName } from "metabase/lib/colors/types";
 import { Box, Icon, Popover, Tooltip } from "metabase/ui";
+import type { ColorName } from "metabase/ui/colors/types";
 import type * as Lib from "metabase-lib";
 
 import { NotebookCellItem } from "../../NotebookCell";

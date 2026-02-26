@@ -5,8 +5,7 @@ import cx from "classnames";
 import type { MouseEvent, ReactNode, SVGAttributes } from "react";
 import { forwardRef } from "react";
 
-import type { ColorName } from "metabase/lib/colors/types";
-
+import type { ColorName } from "../../../../colors/types";
 import { Tooltip } from "../../overlays/Tooltip";
 
 import type { IconName } from "./icons";

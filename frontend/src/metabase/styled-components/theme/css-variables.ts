@@ -9,10 +9,10 @@ import {
   SDK_TO_MAIN_APP_TOOLTIP_COLORS_MAPPING,
   SDK_UNCHANGEABLE_COLORS,
 } from "metabase/embedding-sdk/theme/embedding-color-palette";
-import type { ResolvedColorScheme } from "metabase/lib/color-scheme";
-import { deriveFullMetabaseTheme } from "metabase/lib/colors";
-import type { ColorName } from "metabase/lib/colors/types";
 import type { MantineTheme } from "metabase/ui";
+import { deriveFullMetabaseTheme } from "metabase/ui/colors";
+import type { ResolvedColorScheme } from "metabase/ui/colors/color-scheme";
+import type { ColorName } from "metabase/ui/colors/types";
 import type { ColorSettings } from "metabase-types/api";
 
 const createColorVars = (
@@ -78,7 +78,7 @@ export function getMetabaseSdkCssVariables({
  * These CSS variables are part of the core design system colors.
  *
  * Only keep colors that depend on the theme and are not specified anywhere else here.
- * You don't need to add new colors from `frontend/src/metabase/lib/colors/colors.ts` here since
+ * You don't need to add new colors from `frontend/src/metabase/ui/colors/colors.ts` here since
  * they're already included in `getMetabaseSdkCssVariables`
  **/
 function getSdkDesignSystemCssVariables(theme: MantineTheme) {

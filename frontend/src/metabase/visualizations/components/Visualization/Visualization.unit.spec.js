@@ -4,7 +4,7 @@ import { mockSettings } from "__support__/settings";
 import { renderWithProviders, screen } from "__support__/ui";
 import { delay } from "__support__/utils";
 import { NumberColumn, StringColumn } from "__support__/visualizations";
-import { color } from "metabase/lib/colors";
+import { color } from "metabase/ui/colors";
 import { registerVisualization } from "metabase/visualizations";
 import Visualization from "metabase/visualizations/components/Visualization";
 import registerVisualizations from "metabase/visualizations/register";

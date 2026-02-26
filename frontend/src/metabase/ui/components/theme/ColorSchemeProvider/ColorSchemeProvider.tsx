@@ -11,11 +11,12 @@ import { useMedia } from "react-use";
 import { noop } from "underscore";
 
 import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
+import { getIsEmbeddingIframe } from "metabase/selectors/embed";
+
 import type {
   ColorScheme,
   ResolvedColorScheme,
-} from "metabase/lib/color-scheme";
-import { getIsEmbeddingIframe } from "metabase/selectors/embed";
+} from "../../../../colors/color-scheme";
 
 interface ColorSchemeContextType {
   colorScheme: ColorScheme;

@@ -6,13 +6,13 @@ import _ from "underscore";
 
 import { ColorSelector } from "metabase/common/components/ColorSelector";
 import type { DragEndEvent } from "metabase/common/components/Sortable";
-import { color } from "metabase/lib/colors";
-import { getAccentColors } from "metabase/lib/colors/groups";
-import type { AccentColorOptions } from "metabase/lib/colors/types";
 import { NULL_DISPLAY_VALUE } from "metabase/lib/constants";
 import { getEventTarget } from "metabase/lib/dom";
 import { isEmpty } from "metabase/lib/validate";
 import { Box, Button, Flex, Group, Icon, Select, Text } from "metabase/ui";
+import { color } from "metabase/ui/colors";
+import { getAccentColors } from "metabase/ui/colors/groups";
+import type { AccentColorOptions } from "metabase/ui/colors/types";
 import type { Series } from "metabase-types/api";
 
 import { ChartSettingMessage } from "./ChartSettingMessage";

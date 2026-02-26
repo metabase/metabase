@@ -22,7 +22,9 @@ import storybookPlugin from "eslint-plugin-storybook";
 import i18nextPlugin from "eslint-plugin-i18next";
 import ttagPlugin from "eslint-plugin-ttag";
 
-import { elements as boundaryElements, rules as boundaryRules } from "./frontend/src/.boundaries.js";
+import boundaries from "eslint-plugin-boundaries";
+import boundaryConfig from "./frontend/src/.boundaries.js";
+const { elements: boundaryElements, rules: boundaryRules } = boundaryConfig;
 
 import metabasePlugin from "./frontend/lint/eslint-plugin-metabase/index.js";
 
@@ -117,8 +119,11 @@ const configs = [
       ttag: fixupPluginRules(ttagPlugin),
       i18next: fixupPluginRules(i18nextPlugin),
       depend: fixupPluginRules(dependPlugin),
+      boundaries,
     },
     settings: {
+      "boundaries/elements": boundaryElements,
+      "boundaries/ignore": ["**/*.unit.spec.*", "**/e2e/**", "*.stories.*", "test/**"],
       "import-x/internal-regex":
         "^metabase($|/)|^metabase-lib($|/)|^metabase-types($|/)|^metabase-enterprise($|/)|^embedding-sdk-bundle($|/)|^embedding-sdk-shared($|/)|^embedding-sdk-package($|/)|^e2e($|/)|^__support__($|/)|^assets/|^cljs/|^ee-plugins($|/)|^sdk-ee-plugins($|/)|^build-configs/",
       "import-x/resolver": {
@@ -167,7 +172,7 @@ const configs = [
 
       // module boundaries,
       "boundaries/element-types": ["error", {
-          default: "allow",
+          default: "disallow",
           rules: boundaryRules,
         }],
 
@@ -736,14 +741,12 @@ const configs = [
       ttag: fixupPluginRules(ttagPlugin),
     },
     settings: {
-      "boundaries/elements": boundaryElements,
-      "boundaries/ignore": ["**/*.unit.spec.*", "**/e2e/**", "*.stories.*", "test/**"],
       "import-x/resolver": {
         node: true,
         webpack: {
           config: path.resolve(
             __dirname,
-            "./rspack.embedding-sdk-bundle.config.js",
+            "./rspack.eslint-resolve.enterprise.js",
           ),
           typescript: true,
         },
@@ -754,7 +757,7 @@ const configs = [
         webpack: {
           config: path.resolve(
             __dirname,
-            "./rspack.embedding-sdk-bundle.config.js",
+            "./rspack.eslint-resolve.enterprise.js",
           ),
           typescript: true,
         },

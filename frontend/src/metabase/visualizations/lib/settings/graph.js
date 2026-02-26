@@ -1,7 +1,7 @@
 import { t } from "ttag";
 import _ from "underscore";
 
-import { color } from "metabase/lib/colors";
+import { color } from "metabase/ui/colors";
 import {
   getMaxDimensionsSupported,
   getMaxMetricsSupported,

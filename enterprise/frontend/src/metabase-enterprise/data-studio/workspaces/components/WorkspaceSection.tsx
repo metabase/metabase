@@ -8,7 +8,6 @@ import { t } from "ttag";
 import { ConfirmModal } from "metabase/common/components/ConfirmModal/ConfirmModal";
 import { ForwardRefLink } from "metabase/common/components/Link";
 import S from "metabase/data-studio/app/pages/DataStudioLayout/DataStudioLayout.module.css";
-import type { MetabaseColorKey } from "metabase/lib/colors/types";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { useMetadataToasts } from "metabase/metadata/hooks";
@@ -29,6 +28,7 @@ import {
   Tooltip,
   UnstyledButton,
 } from "metabase/ui";
+import type { MetabaseColorKey } from "metabase/ui/colors/types";
 import {
   useArchiveWorkspaceMutation,
   useCreateWorkspaceMutation,

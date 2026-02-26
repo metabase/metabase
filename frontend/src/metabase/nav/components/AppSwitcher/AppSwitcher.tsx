@@ -13,7 +13,6 @@ import {
   getCanAccessOnboardingPage,
   getIsNewInstance,
 } from "metabase/home/selectors";
-import type { ColorName } from "metabase/lib/colors/types";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { openDiagnostics } from "metabase/redux/app";
@@ -32,6 +31,7 @@ import {
   Stack,
   Text,
 } from "metabase/ui";
+import type { ColorName } from "metabase/ui/colors/types";
 
 import { AboutModal } from "../AboutModal/AboutModal";
 

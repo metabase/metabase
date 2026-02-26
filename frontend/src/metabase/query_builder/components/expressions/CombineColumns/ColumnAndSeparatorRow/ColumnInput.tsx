@@ -4,8 +4,8 @@ import { useMemo, useRef, useState } from "react";
 import { t } from "ttag";
 
 import { QueryColumnPicker } from "metabase/common/components/QueryColumnPicker";
-import { color } from "metabase/lib/colors";
 import { Button, FocusTrap, Icon, Input, Popover } from "metabase/ui";
+import { color } from "metabase/ui/colors";
 import { getThemeOverrides } from "metabase/ui/theme";
 import * as Lib from "metabase-lib";
 

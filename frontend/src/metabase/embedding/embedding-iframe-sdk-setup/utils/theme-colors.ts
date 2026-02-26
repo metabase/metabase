@@ -1,7 +1,7 @@
 import { t } from "ttag";
 
 import type { MetabaseColors } from "embedding-sdk-bundle/types/ui";
-import type { ColorName } from "metabase/lib/colors/types";
+import type { ColorName } from "metabase/ui/colors/types";
 
 export const getConfigurableThemeColors = () =>
   [

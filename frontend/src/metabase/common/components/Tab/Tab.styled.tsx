@@ -2,8 +2,8 @@
 import styled from "@emotion/styled";
 
 import { focusOutlineStyle } from "metabase/common/style/input";
-import { alpha } from "metabase/lib/colors";
 import { Icon } from "metabase/ui";
+import { alpha } from "metabase/ui/colors";
 import { color } from "metabase/ui/utils/colors";
 
 interface TabProps {

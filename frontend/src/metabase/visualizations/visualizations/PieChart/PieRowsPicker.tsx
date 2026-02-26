@@ -1,6 +1,6 @@
 import { useMemo } from "react";
 
-import { color } from "metabase/lib/colors";
+import { color } from "metabase/ui/colors";
 import {
   ChartSettingSeriesOrder,
   type SortableChartSettingOrderedItem,

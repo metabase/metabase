@@ -1,4 +1,3 @@
-export * from "./formatting/colors";
 export * from "./formatting/column";
 export * from "./formatting/currency";
 export * from "./formatting/date";

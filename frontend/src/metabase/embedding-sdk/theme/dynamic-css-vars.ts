@@ -2,8 +2,8 @@
 import { css } from "@emotion/react";
 import Color from "color";
 
-import { isDark, isLight } from "metabase/lib/colors";
 import type { MantineTheme, MantineThemeOverride } from "metabase/ui";
+import { isDark, isLight } from "metabase/ui/colors";
 
 import type { ColorOperation } from "../types/private/css-variables";
 

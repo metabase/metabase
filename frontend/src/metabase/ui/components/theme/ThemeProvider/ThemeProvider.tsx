@@ -19,20 +19,20 @@ import {
 import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
 import { PUT } from "metabase/lib/api";
 import { parseHashOptions } from "metabase/lib/browser";
+import MetabaseSettings from "metabase/lib/settings";
+import type { DisplayTheme } from "metabase/public/lib/types";
+
 import type {
   ColorScheme,
   ResolvedColorScheme,
-} from "metabase/lib/color-scheme";
+} from "../../../../colors/color-scheme";
 import {
   getUserColorScheme,
   isValidColorScheme,
   setUserColorSchemeAfterUpdate,
-} from "metabase/lib/color-scheme";
-import { mutateColors } from "metabase/lib/colors/colors";
-import type { ColorName } from "metabase/lib/colors/types";
-import MetabaseSettings from "metabase/lib/settings";
-import type { DisplayTheme } from "metabase/public/lib/types";
-
+} from "../../../../colors/color-scheme";
+import { mutateColors } from "../../../../colors/colors";
+import type { ColorName } from "../../../../colors/types";
 import { getThemeOverrides } from "../../../theme";
 import { ColorSchemeProvider, useColorScheme } from "../ColorSchemeProvider";
 import { DatesProvider } from "../DatesProvider";
