@@ -16,7 +16,7 @@ import {
 import type { EnterpriseSettings } from "metabase-types/api";
 
 interface EmbeddingControlCardProps {
-  embeddingType: string;
+  embeddingType: "guest-embeds" | "modular-embedding";
   isEnabled: boolean;
   termsAccepted: boolean;
   settingsToUpdate: Partial<EnterpriseSettings>;
@@ -53,6 +53,11 @@ export const EnableEmbeddingCard = ({
     return null;
   }
 
+  const embeddingTypeLocalized = match(embeddingType)
+    .with("guest-embeds", () => t`guest embeds`)
+    .with("modular-embedding", () => t`modular embedding`)
+    .exhaustive();
+
   const data = match(initialDataRef.current)
     .with(
       {
@@ -61,8 +66,8 @@ export const EnableEmbeddingCard = ({
       },
       () => ({
         title:
-          embeddingType === "guest embeds"
-            ? jt`To continue, enable ${embeddingType} and agree to the ${(
+          embeddingType === "guest-embeds"
+            ? jt`To continue, enable ${embeddingTypeLocalized} and agree to the ${(
                 <Anchor
                   key="usage-conditions"
                   href="https://metabase.com/license/embedding"
@@ -71,7 +76,7 @@ export const EnableEmbeddingCard = ({
                   {t`usage conditions`}
                 </Anchor>
               )}.`
-            : t`To continue, enable ${embeddingType} and agree to the usage conditions.`,
+            : t`To continue, enable ${embeddingTypeLocalized} and agree to the usage conditions.`,
         buttonCaption: t`Agree and enable`,
       }),
     )
@@ -82,7 +87,7 @@ export const EnableEmbeddingCard = ({
       },
       () => ({
         title:
-          embeddingType === "guest embeds"
+          embeddingType === "guest-embeds"
             ? jt`Agree to the ${(
                 <Anchor
                   key="usage-conditions"
@@ -102,7 +107,7 @@ export const EnableEmbeddingCard = ({
         termsAccepted: true,
       },
       () => ({
-        title: t`Enable ${embeddingType} to get started.`,
+        title: t`Enable ${embeddingTypeLocalized} to get started.`,
         buttonCaption: t`Enable and continue`,
       }),
     )
@@ -133,39 +138,12 @@ export const EnableEmbeddingCard = ({
 
             <HoverCard.Dropdown>
               <Stack maw={340} p="md" gap="md">
-                {embeddingType === "guest embeds" ? (
-                  <>
-                    <Text fz="sm" lh="lg">
-                      {/* eslint-disable-next-line metabase/no-literal-metabase-strings -- User facing text */}
-                      {t`When you embed charts or dashboards from Metabase in your
-                        own application that application isn't subject to the Affero
-                        General Public License that covers the rest of Metabase,
-                        provided you keep the Metabase logo and the "Powered by
-                        Metabase" visible on those embeds.`}
-                    </Text>
-
-                    <Text fz="sm" lh="lg">
-                      {t`You should, however, read the license text linked above as that is the actual license that you will be agreeing to by enabling this feature.`}
-                    </Text>
-                  </>
-                ) : (
-                  <>
-                    <Text fz="sm" lh="lg">
-                      {/* eslint-disable-next-line metabase/no-literal-metabase-strings -- User facing text */}
-                      {t`When using modular embedding, each end user must have their own Metabase account.`}
-                    </Text>
-
-                    <Text fz="sm" lh="lg">
-                      {/* eslint-disable-next-line metabase/no-literal-metabase-strings -- User facing text */}
-                      {t`Sharing Metabase accounts is a security risk. Even if you filter data on the client side, each user could use their token to view any data visible to that shared user account.`}
-                    </Text>
-
-                    <Text fz="sm" lh="lg">
-                      {/* eslint-disable-next-line metabase/no-literal-metabase-strings -- User facing text */}
-                      {t`That, and we consider shared accounts to be unfair usage. Fair usage involves giving each end-user of the embedded analytics their own Metabase account.`}
-                    </Text>
-                  </>
-                )}
+                {match(embeddingType)
+                  .with("guest-embeds", () => <GuestEmbedsTooltipContent />)
+                  .with("modular-embedding", () => (
+                    <ModularEmbeddingTooltipContent />
+                  ))
+                  .exhaustive()}
               </Stack>
             </HoverCard.Dropdown>
           </HoverCard>
@@ -185,3 +163,39 @@ export const EnableEmbeddingCard = ({
     </Stack>
   );
 };
+
+const GuestEmbedsTooltipContent = () => (
+  <>
+    <Text fz="sm" lh="lg">
+      {/* eslint-disable-next-line metabase/no-literal-metabase-strings -- User facing text */}
+      {t`When you embed charts or dashboards from Metabase in your
+        own application that application isn't subject to the Affero
+        General Public License that covers the rest of Metabase,
+        provided you keep the Metabase logo and the "Powered by
+        Metabase" visible on those embeds.`}
+    </Text>
+
+    <Text fz="sm" lh="lg">
+      {t`You should, however, read the license text linked above as that is the actual license that you will be agreeing to by enabling this feature.`}
+    </Text>
+  </>
+);
+
+const ModularEmbeddingTooltipContent = () => (
+  <>
+    <Text fz="sm" lh="lg">
+      {/* eslint-disable-next-line metabase/no-literal-metabase-strings -- User facing text */}
+      {t`When using modular embedding, each end user must have their own Metabase account.`}
+    </Text>
+
+    <Text fz="sm" lh="lg">
+      {/* eslint-disable-next-line metabase/no-literal-metabase-strings -- User facing text */}
+      {t`Sharing Metabase accounts is a security risk. Even if you filter data on the client side, each user could use their token to view any data visible to that shared user account.`}
+    </Text>
+
+    <Text fz="sm" lh="lg">
+      {/* eslint-disable-next-line metabase/no-literal-metabase-strings -- User facing text */}
+      {t`That, and we consider shared accounts to be unfair usage. Fair usage involves giving each end-user of the embedded analytics their own Metabase account.`}
+    </Text>
+  </>
+);
