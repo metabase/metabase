@@ -294,6 +294,18 @@
               new-field-ref))))
       field-ref))
 
+(mu/defn- swap-field-ref-options :- ::swap-field-ref.options
+  [old-query    :- ::lib.schema/query
+   new-query    :- ::lib.schema/query
+   stage-number :- :int]
+  (let [old-columns (maybe-visible-columns old-query stage-number)
+        new-columns (maybe-visible-columns new-query stage-number)
+        new-columns-by-key (m/index-by column-match-key new-columns)]
+    {:old-query old-query
+     :stage-number stage-number
+     :old-columns old-columns
+     :new-column-by-key new-columns-by-key}))
+
 (mu/defn- swap-field-refs-in-clauses :- [:sequential :any]
   [clauses :- [:sequential :any]
    options :- ::swap-field-ref.options]
@@ -320,13 +332,7 @@
   [old-query    :- ::lib.schema/query
    new-query    :- ::lib.schema/query
    stage-number :- :int]
-  (let [old-columns        (maybe-visible-columns old-query stage-number)
-        new-columns        (maybe-visible-columns new-query stage-number)
-        new-columns-by-key (m/index-by column-match-key new-columns)
-        options            {:old-query         old-query
-                            :stage-number      stage-number
-                            :old-columns       old-columns
-                            :new-column-by-key new-columns-by-key}]
+  (let [options (swap-field-ref-options old-query new-query stage-number)]
     (-> (lib.util/query-stage new-query stage-number)
         (u/update-some :fields      #(swap-field-refs-in-clauses % options))
         (u/update-some :joins       #(swap-field-refs-in-joins % options))
@@ -357,7 +363,22 @@
 
 (mu/defn swap-source-in-parameter-target :- ::lib.schema.parameter/target
   "If the parameter target is a field ref, swap it to reference the new source."
-  [_query :- ::lib.schema/query
-   target :- ::lib.schema.parameter/target]
-  ;; TODO: implement parameter target field ref swapping
-  target)
+  [query      :- ::lib.schema/query
+   target     :- ::lib.schema.parameter/target
+   old-source :- ::swap-source.source
+   new-source :- ::swap-source.source]
+  (or (when (lib.parameters/parameter-target-field-ref target)
+        (when-let [stage-number (parameter-target-stage-number query target)]
+          (let [new-query        (swap-source-table-or-card-in-query query old-source new-source)
+                old-columns      (lib.metadata.calculation/visible-columns query stage-number)
+                new-columns      (lib.metadata.calculation/visible-columns new-query stage-number)
+                new-by-key       (m/index-by column-match-key new-columns)
+                options          {:old-query         query
+                                  :stage-number      stage-number
+                                  :old-columns       old-columns
+                                  :new-column-by-key new-by-key}]
+            (when (not= query new-query)
+              (lib.parameters/update-parameter-target-field-ref
+               target
+               #(swap-field-ref % options))))))
+      target))

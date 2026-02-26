@@ -38,12 +38,6 @@
   (when (string? id-or-name)
     id-or-name))
 
-(mu/defn update-field-ref-id-or-name :- :mbql.clause/field
-  "Update the ID or name in a `:field` ref."
-  [[tag opts _id-or-name] :- :mbql.clause/field
-   field-id-or-name       :- [:or ::lib.schema.id/field :string]]
-  [tag opts field-id-or-name])
-
 (mu/defn expression-ref-name :- [:maybe :string]
   "Return the expression name from an `:expression` ref."
   [[_tag _opts expression-name, :as _expression-ref] :- :mbql.clause/expression]
