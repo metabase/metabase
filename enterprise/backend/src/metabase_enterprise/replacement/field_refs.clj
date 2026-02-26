@@ -52,52 +52,68 @@
         (t2/update! :model/DashboardCard (:id dashcard) changes)))))
 
 (defn- card-upgrade-field-refs!
-  [card-id]
-  (let [dataset-query (t2/select-one-fn :dataset_query :model/Card card-id)]
-    ;; todo: can this work on transforms, segments, and measures?
+  [card]
+  (let [dataset-query (:dataset_query card)]
     (when (lib-be/should-upgrade-field-refs-in-query? dataset-query)
       (let [dataset-query' (lib-be/upgrade-field-refs-in-query dataset-query)]
         (when (not= dataset-query dataset-query')
-          (t2/update! :model/Card card-id {:dataset_query dataset-query'}))
-        (dashboard-card-upgrade-field-refs! dataset-query' card-id)))))
+          (t2/update! :model/Card (:id card) {:dataset_query dataset-query'}))
+        (dashboard-card-upgrade-field-refs! dataset-query' (:id card))))))
 
 (defn- transform-upgrade-field-refs!
-  [transform-id]
-  (let [source (t2/select-one-fn :source :model/Transform transform-id)]
+  [transform]
+  (let [source (:source transform)]
     (when (= :query (:type source))
       (let [query (:query source)
             query' (lib-be/upgrade-field-refs-in-query query)]
         (when (not= query query')
-          (t2/update! :model/Transform transform-id {:source (assoc source :query query')}))))))
+          (t2/update! :model/Transform (:id transform) {:source (assoc source :query query')}))))))
 
 (defn- segment-upgrade-field-refs!
-  [segment-id]
-  (let [definition  (t2/select-one-fn :definition :model/Segment segment-id)
+  [segment]
+  (let [definition  (:definition segment)
         definition' (lib-be/upgrade-field-refs-in-query definition)]
     (when (not= definition definition')
-      (t2/update! :model/Segment segment-id {:definition definition'}))))
+      (t2/update! :model/Segment (:id segment) {:definition definition'}))))
 
 (defn- measure-upgrade-field-refs!
-  [measure-id]
-  (let [definition  (t2/select-one-fn :definition :model/Measure measure-id)
+  [measure]
+  (let [definition  (:definition measure)
         definition' (lib-be/upgrade-field-refs-in-query definition)]
     (when (not= definition definition')
-      (t2/update! :model/Measure measure-id {:definition definition'}))))
+      (t2/update! :model/Measure (:id measure) {:definition definition'}))))
 
 (defn upgrade!
-  [[entity-type entity-id]]
-  (case entity-type
-    :card
-    (card-upgrade-field-refs! entity-id)
+  "Upgrade field refs in an entity object.
 
-    :transform
-    (transform-upgrade-field-refs! entity-id)
+  The entity can be:
+  - A card map with :dataset_query
+  - A transform map with :source
+  - A segment map with :definition
+  - A measure map with :definition
+  - nil or other (no-op)"
+  [entity]
+  (when entity
+    (cond
+      ;; Card (has dataset_query)
+      (:dataset_query entity)
+      (card-upgrade-field-refs! entity)
 
-    :segment
-    (segment-upgrade-field-refs! entity-id)
+      ;; Transform (has source)
+      (and (:source entity) (:id entity))
+      (transform-upgrade-field-refs! entity)
 
-    :measure
-    (measure-upgrade-field-refs! entity-id)
+      ;; Segment (has definition and typically comes from :model/Segment)
+      ;; We differentiate from measure by checking if it has :table_id (segments do, measures might not)
+      (and (:definition entity)
+           (:table_id entity)
+           (not (:aggregation entity))) ; measures have :aggregation in definition
+      (segment-upgrade-field-refs! entity)
 
-    (:dashboard :document :table)
-    :do-nothing))
+      ;; Measure (has definition)
+      (:definition entity)
+      (measure-upgrade-field-refs! entity)
+
+      ;; Dashboard, document, table, or nil - no-op
+      :else
+      :do-nothing)))
