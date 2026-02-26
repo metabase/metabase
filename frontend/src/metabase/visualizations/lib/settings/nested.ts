@@ -32,14 +32,14 @@ export interface NestedSettingsOptions<
   getSettingDefinitionsForObject: (
     series: Series,
     object: T,
-  ) => VisualizationSettingsDefinitions<T>;
+  ) => VisualizationSettingsDefinitions<T, TValue, TProps>;
   getInheritedSettingsForObject?: (object: T) => VisualizationSettings;
   component: React.ComponentType<ChartNestedSettingSeriesProps>;
   getExtraProps?: (
     series: Series,
     settings: VisualizationSettings,
-    onChange: (value: unknown) => void,
-    extra: SettingsExtra,
+    onChange: (value: TValue) => void,
+    extra?: SettingsExtra,
   ) => Record<string, unknown>;
 }
 
@@ -59,7 +59,7 @@ export function nestedSettings<
     component,
     ...def
   }: NestedSettingsOptions<T, TValue, TProps>,
-): ComputedVisualizationSettings {
+): VisualizationSettingsDefinitions<Series, TValue, TProps> {
   function getComputedSettingsForObject(
     series: Series,
     object: T,
