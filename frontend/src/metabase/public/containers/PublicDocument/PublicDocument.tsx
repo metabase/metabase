@@ -10,6 +10,7 @@ import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErr
 import CS from "metabase/css/core/index.css";
 import { initializeIframeResizer } from "metabase/lib/dom";
 import { useDispatch, useSelector } from "metabase/lib/redux";
+import { PLUGIN_METABOT } from "metabase/plugins";
 import { EmbedFrame } from "metabase/public/components/EmbedFrame";
 import { PublicDocumentProvider } from "metabase/public/contexts/PublicDocumentContext";
 import { useEmbedFrameOptions } from "metabase/public/hooks";
@@ -17,7 +18,6 @@ import { setErrorPage } from "metabase/redux/app";
 import { CardEmbed } from "metabase/rich_text_editing/tiptap/extensions/CardEmbed/CardEmbedNode";
 import { CustomStarterKit } from "metabase/rich_text_editing/tiptap/extensions/CustomStarterKit/CustomStarterKit";
 import { FlexContainer } from "metabase/rich_text_editing/tiptap/extensions/FlexContainer/FlexContainer";
-import { MetabotNode } from "metabase/rich_text_editing/tiptap/extensions/MetabotEmbed";
 import { ResizeNode } from "metabase/rich_text_editing/tiptap/extensions/ResizeNode/ResizeNode";
 import { SmartLink } from "metabase/rich_text_editing/tiptap/extensions/SmartLink/SmartLinkNode";
 import { SupportingText } from "metabase/rich_text_editing/tiptap/extensions/SupportingText/SupportingText";
@@ -87,7 +87,7 @@ export const PublicDocument = ({ location, params }: PublicDocumentProps) => {
       FlexContainer,
       ResizeNode,
       SupportingText,
-      MetabotNode,
+      ...(PLUGIN_METABOT.MetabotNode ? [PLUGIN_METABOT.MetabotNode] : []),
     ],
     [siteUrl],
   );

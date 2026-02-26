@@ -5,7 +5,6 @@
    [clojure.core.async :as a]
    [clojure.string :as str]
    [metabase-enterprise.metabot-v3.agent.core :as agent]
-   [metabase-enterprise.metabot-v3.api.document]
    [metabase-enterprise.metabot-v3.api.metabot]
    [metabase-enterprise.metabot-v3.client :as metabot-v3.client]
    [metabase-enterprise.metabot-v3.client.schema :as metabot-v3.client.schema]
@@ -271,5 +270,4 @@
   (handlers/routes
    (api.macros/ns-handler *ns* +auth)
    (handlers/route-map-handler
-    {"/metabot" metabase-enterprise.metabot-v3.api.metabot/routes
-     "/document" metabase-enterprise.metabot-v3.api.document/routes})))
+    {"/metabot" metabase-enterprise.metabot-v3.api.metabot/routes})))

@@ -273,13 +273,15 @@
               {:type      :tool-input
                :id        "call-construct-1"
                :function  "construct_notebook_query"
-               :arguments {:reasoning     "User wants to see orders"
-                           :query         {:query_type "raw"
-                                           :source     {:table_id orders-table-id}
-                                           :filters    []
-                                           :fields     []
-                                           :order_by   []
-                                           :limit      10}
+               :arguments {:reasoning    "User wants to see orders"
+                           :name         "Orders sample query"
+                           :description  "Top 10 rows from the orders table"
+                           :query        {:query_type "raw"
+                                          :source      {:table_id orders-table-id}
+                                          :filters     []
+                                          :fields      []
+                                          :order_by    []
+                                          :limit       10}
                            :visualization {:chart_type "table"}}}
               {:type :usage :usage {:promptTokens 200 :completionTokens 30} :model "test" :id "msg-2"}]
              ;; Iteration 3: Final text response

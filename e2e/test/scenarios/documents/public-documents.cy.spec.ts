@@ -226,6 +226,8 @@ describe("scenarios > documents > public", () => {
   });
 
   it("should display metabot blocks in a read-only state", () => {
+    H.activateToken("bleeding-edge");
+
     const text = "Some metabot prompt";
     H.createDocument({
       name: "Document with metabot block",

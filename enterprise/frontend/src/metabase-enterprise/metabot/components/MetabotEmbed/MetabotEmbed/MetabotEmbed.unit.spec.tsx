@@ -13,6 +13,18 @@ import {
   createMockProseMirrorNode,
 } from "./__support__/node-view-mocks";
 
+jest.mock("metabase-enterprise/metabot/hooks", () => ({
+  useMetabotAgent: () => ({
+    submitInput: jest.fn(),
+    resetConversation: jest.fn(),
+    setProfileOverride: jest.fn(),
+    errorMessages: [],
+    cancelRequest: jest.fn(),
+    isDoingScience: false,
+    messages: [],
+  }),
+}));
+
 describe("MetabotEmbed", () => {
   const defaultProps = createMockNodeViewProps({
     node: createMockProseMirrorNode({

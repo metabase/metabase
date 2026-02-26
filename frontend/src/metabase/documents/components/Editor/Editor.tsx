@@ -9,10 +9,9 @@ import { useLatest, usePrevious } from "react-use";
 import { t } from "ttag";
 
 import { DND_IGNORE_CLASS_NAME } from "metabase/common/components/dnd";
-import { getMentionsCache } from "metabase/documents/selectors";
 import { isMetabotBlock } from "metabase/documents/utils/editorNodeUtils";
-import { getMentionsCacheKey } from "metabase/documents/utils/mentionsUtils";
 import { useSelector, useStore } from "metabase/lib/redux";
+import { PLUGIN_METABOT } from "metabase/plugins";
 import { EditorBubbleMenu } from "metabase/rich_text_editing/tiptap/components/EditorBubbleMenu/EditorBubbleMenu";
 import { CardEmbed } from "metabase/rich_text_editing/tiptap/extensions/CardEmbed/CardEmbedNode";
 import { CommandExtension } from "metabase/rich_text_editing/tiptap/extensions/Command/CommandExtension";
@@ -25,21 +24,19 @@ import { HandleEditorDrop } from "metabase/rich_text_editing/tiptap/extensions/H
 import { LinkHoverMenu } from "metabase/rich_text_editing/tiptap/extensions/LinkHoverMenu/LinkHoverMenu";
 import { MentionExtension } from "metabase/rich_text_editing/tiptap/extensions/Mention/MentionExtension";
 import { MentionSuggestion } from "metabase/rich_text_editing/tiptap/extensions/Mention/MentionSuggestion";
-import {
-  MetabotNode,
-  type PromptSerializer,
-} from "metabase/rich_text_editing/tiptap/extensions/MetabotEmbed";
 import { MetabotMentionExtension } from "metabase/rich_text_editing/tiptap/extensions/MetabotMention/MetabotMentionExtension";
-import { MetabotMentionSuggestion } from "metabase/rich_text_editing/tiptap/extensions/MetabotMention/MetabotSuggestion";
+import { createMetabotMentionSuggestion } from "metabase/rich_text_editing/tiptap/extensions/MetabotMention/MetabotSuggestion";
 import { PlainLink } from "metabase/rich_text_editing/tiptap/extensions/PlainLink/PlainLink";
 import { ResizeNode } from "metabase/rich_text_editing/tiptap/extensions/ResizeNode/ResizeNode";
 import { SmartLink } from "metabase/rich_text_editing/tiptap/extensions/SmartLink/SmartLinkNode";
 import { SupportingText } from "metabase/rich_text_editing/tiptap/extensions/SupportingText/SupportingText";
 import { DROP_ZONE_COLOR } from "metabase/rich_text_editing/tiptap/extensions/shared/constants";
-import { createSuggestionRenderer } from "metabase/rich_text_editing/tiptap/extensions/suggestionRenderer";
+import {
+  createBareSuggestionRenderer,
+  createSuggestionRenderer,
+} from "metabase/rich_text_editing/tiptap/extensions/suggestionRenderer";
 import { getSetting } from "metabase/selectors/settings";
 import { Box, Loader } from "metabase/ui";
-import type { State } from "metabase-types/store";
 import type { CardEmbedRef } from "metabase-types/store/documents";
 
 import S from "./Editor.module.css";
@@ -47,7 +44,9 @@ import { useCardEmbedsTracking, useQuestionSelection } from "./hooks";
 
 const BUBBLE_MENU_DISALLOWED_NODES: string[] = [
   CardEmbed.name,
-  MetabotNode.name,
+  ...(PLUGIN_METABOT.MetabotNode?.name
+    ? [PLUGIN_METABOT.MetabotNode.name]
+    : []),
   SmartLink.name,
   Image.name,
   "codeBlock",
@@ -56,31 +55,6 @@ const BUBBLE_MENU_DISALLOWED_NODES: string[] = [
 const BUBBLE_MENU_DISALLOWED_FULLY_SELECTED_NODES: string[] = [
   SupportingText.name,
 ];
-
-const getMetabotPromptSerializer =
-  (getState: () => State): PromptSerializer =>
-  (node) => {
-    const payload: ReturnType<PromptSerializer> = { instructions: "" };
-    return node.content.content.reduce((acc, child) => {
-      // Serialize @ mentions in the metabot prompt
-      if (child.type.name === SmartLink.name) {
-        const { model, entityId } = child.attrs;
-        const key = getMentionsCacheKey({ model, entityId });
-        const value = getMentionsCache(getState())[key];
-        if (!value) {
-          return acc;
-        }
-        acc.instructions += `[${value.name}](${key})`;
-        if (!acc.references) {
-          acc.references = {};
-        }
-        acc.references[key] = value.name;
-      } else {
-        acc.instructions += child.textContent;
-      }
-      return acc;
-    }, payload);
-  };
 
 export interface EditorProps {
   onEditorReady?: (editor: TiptapEditor) => void;
@@ -149,14 +123,29 @@ export const Editor: React.FC<EditorProps> = ({
           render: createSuggestionRenderer(CommandSuggestion),
         },
       }),
-      MetabotNode.configure({
-        serializePrompt: getMetabotPromptSerializer(getState),
-      }),
+      ...(PLUGIN_METABOT.MetabotNode
+        ? [
+            PLUGIN_METABOT.MetabotNode.configure({
+              getState,
+            }),
+          ]
+        : []),
       DisableMetabotSidebar,
       MetabotMentionExtension.configure({
         suggestion: {
           allow: ({ state }) => isMetabotBlock(state),
-          render: createSuggestionRenderer(MetabotMentionSuggestion),
+          render: createBareSuggestionRenderer(
+            createMetabotMentionSuggestion({
+              searchModels: [
+                "dataset",
+                "metric",
+                "card",
+                "table",
+                "database",
+                "dashboard",
+              ],
+            }),
+          ),
         },
       }),
       ResizeNode,

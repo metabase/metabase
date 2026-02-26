@@ -13,6 +13,7 @@ import { MetabotChat } from "./components/MetabotChat";
 import MetabotThinkingStyles from "./components/MetabotChat/MetabotThinking.module.css";
 import { MetabotDataStudioButton } from "./components/MetabotDataStudioButton";
 import { MetabotDataStudioSidebar } from "./components/MetabotDataStudioSidebar";
+import { MetabotNode } from "./components/MetabotEmbed/MetabotEmbed";
 import { MetabotQueryBuilder } from "./components/MetabotQueryBuilder";
 import { getMetabotQuickLinks } from "./components/MetabotQuickLinks";
 import { getNewMenuItemAIExploration } from "./components/NewMenuItemAIExploration";
@@ -62,6 +63,7 @@ export function initializePlugin() {
       MetabotDataStudioButton,
       MetabotDataStudioSidebar,
       MetabotThinkingStyles,
+      MetabotNode,
       // hooks
       useMetabotSQLSuggestion: useMetabotSQLSuggestionEE,
       useLazyMetabotGenerateContentQuery,
