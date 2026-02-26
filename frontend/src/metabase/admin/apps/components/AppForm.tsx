@@ -75,7 +75,6 @@ function getColorLabel(key: string): string {
 
 interface ThemeConfig {
   preset?: "light" | "dark";
-  fontFamily?: string;
   colors?: Record<string, string>;
 }
 
@@ -507,9 +506,6 @@ function ThemeEditor({
       if (!newConfig.preset) {
         delete newConfig.preset;
       }
-      if (!newConfig.fontFamily) {
-        delete newConfig.fontFamily;
-      }
       if (newConfig.colors && Object.keys(newConfig.colors).length === 0) {
         delete newConfig.colors;
       }
@@ -554,15 +550,6 @@ function ThemeEditor({
         value={themeConfig.preset ?? null}
         onChange={(preset) =>
           updateTheme({ preset: (preset as "light" | "dark") || undefined })
-        }
-      />
-
-      <TextInput
-        label={t`Font Family`}
-        placeholder="Lato, sans-serif"
-        value={themeConfig.fontFamily ?? ""}
-        onChange={(e) =>
-          updateTheme({ fontFamily: e.target.value || undefined })
         }
       />
 
