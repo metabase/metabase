@@ -230,7 +230,7 @@
        (if-let [source-card-id (some-> query
                                        not-empty
                                        (->> (lib-be/normalize-query metadata-provider))
-                                       lib/source-card-id)]
+                                       lib/primary-source-card-id)]
          {:paths (source-card-read-perms source-card-id)}
          ;; otherwise if there's no source card then calculate perms based on the Tables referenced in the query
          (let [query                                                (cond-> query
