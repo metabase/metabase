@@ -159,7 +159,7 @@
 (deftest ^:parallel upgrade-field-ref-in-parameter-target-table-test
   (testing "should return the identical target for a table query"
     (let [query  (lib/query meta/metadata-provider (meta/table-metadata :orders))
-          target [:dimension [:field (meta/id :orders :total) nil]]]
+          target [:dimension [:field (meta/id :orders :total) {:stage-number 0}]]]
       (is (= target
              (lib-be/upgrade-field-ref-in-parameter-target query target))))))
 
@@ -168,7 +168,7 @@
     (let [base-query (lib/query meta/metadata-provider (meta/table-metadata :orders))
           mp         (lib.tu/metadata-provider-with-card-from-query 1 base-query)
           query      (lib/query mp (lib.metadata/card mp 1))
-          target     [:dimension [:field (meta/id :orders :total) nil]]]
+          target     [:dimension [:field (meta/id :orders :total) {:stage-number 0}]]]
       (is (= [:dimension [:field "TOTAL" {:base-type :type/Float}]]
              (lib-be/upgrade-field-ref-in-parameter-target query target))))))
 
