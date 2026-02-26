@@ -7,9 +7,7 @@ import {
   isVisualizerSupportedVisualization,
 } from "./dashboard-card-supports-visualizer";
 
-const isDataSetting = ({
-  widget,
-}: VisualizationSettingDefinition<unknown, unknown, object>) => {
+const isDataSetting = ({ widget }: VisualizationSettingDefinition) => {
   // TODO Come up with a better condition
   return widget === "field" || widget === "fields";
 };

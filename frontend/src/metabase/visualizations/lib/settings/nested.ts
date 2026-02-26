@@ -20,7 +20,7 @@ import { getComputedSettings, getSettingsWidgets } from "../settings";
 export interface NestedSettingsOptions<
   T,
   TValue = unknown,
-  TProps extends object = object,
+  TProps extends Record<string, unknown> = Record<string, unknown>,
 > extends VisualizationSettingDefinition<T, TValue, TProps> {
   objectName?: string;
   getObjects: (series: Series, settings: VisualizationSettings) => T[];
@@ -46,7 +46,7 @@ export interface NestedSettingsOptions<
 export function nestedSettings<
   T,
   TValue = unknown,
-  TProps extends object = object,
+  TProps extends Record<string, unknown> = Record<string, unknown>,
 >(
   id: VisualizationSettingKey,
   {

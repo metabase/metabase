@@ -287,7 +287,7 @@ export type SettingsExtra = {
 export type VisualizationSettingDefinition<
   T = unknown,
   TValue = unknown,
-  TProps extends object = object,
+  TProps extends Record<string, unknown> = Record<string, unknown>,
 > = {
   id?: string;
   section?: string;
@@ -364,9 +364,27 @@ export type VisualizationSettingDefinition<
 export type VisualizationSettingsDefinitions<
   T = unknown,
   TValue = unknown,
-  TProps extends object = object,
+  TProps extends Record<string, unknown> = Record<string, unknown>,
 > = {
   [key: string]: VisualizationSettingDefinition<T, TValue, TProps>;
+};
+
+export type CompleteVisualizationSettingDefinition<
+  T = unknown,
+  TValue = unknown,
+  TProps extends Record<string, unknown> = Record<string, unknown>,
+> = VisualizationSettingDefinition<T, TValue, TProps> & {
+  id: string;
+  section: string;
+};
+
+export type Widget = {
+  id: string;
+  section: string;
+  hidden?: boolean;
+  props?: Record<string, unknown>;
+  title?: string;
+  widget?: string | React.ComponentType<any>;
 };
 
 export type VisualizationGridSize = {
@@ -388,7 +406,7 @@ export type Visualization = ComponentType<
 export type VisualizationDefinition<
   T = unknown,
   TValue = unknown,
-  TProps extends object = object,
+  TProps extends Record<string, unknown> = Record<string, unknown>,
 > = {
   name?: string;
   noun?: string;

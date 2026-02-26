@@ -12,12 +12,12 @@ import {
 } from "metabase/visualizations/lib/settings";
 import { getSettingDefinitionsForColumn } from "metabase/visualizations/lib/settings/column";
 import { keyForSingleSeries } from "metabase/visualizations/lib/settings/series";
+import type { Widget } from "metabase/visualizations/types";
 import { getColumnKey } from "metabase-lib/v1/queries/utils/column-key";
 import type { DatasetColumn } from "metabase-types/api";
 
 import ChartSettingsWidgetList from "../../ChartSettingsWidgetList";
 import { ChartSettingsWidgetPopover } from "../../ChartSettingsWidgetPopover";
-import type { Widget } from "../types";
 
 import {
   ChartSettingsListContainer,
@@ -78,7 +78,7 @@ export const BaseChartSettings = ({
     [chartSettings, series],
   );
 
-  const styleWidget = useMemo(() => {
+  const styleWidget = useMemo<Widget | null>(() => {
     const seriesSettingsWidget =
       currentWidget &&
       widgets.find((widget) => widget.id === "series_settings");
@@ -136,7 +136,7 @@ export const BaseChartSettings = ({
     return null;
   }, [computedSettings, currentWidget, transformedSeries, widgets]);
 
-  const formattingWidget = useMemo(() => {
+  const formattingWidget = useMemo<Widget | null>(() => {
     const widget =
       currentWidget && widgets.find((widget) => widget.id === currentWidget.id);
 

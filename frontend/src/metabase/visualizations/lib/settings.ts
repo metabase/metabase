@@ -6,6 +6,7 @@ import {
   convertLinkColumnToClickBehavior,
   removeInternalClickBehaviors,
 } from "metabase/embedding-sdk/lib/links";
+import { checkNotNull } from "metabase/lib/types";
 import { ChartSettingColorPicker } from "metabase/visualizations/components/settings/ChartSettingColorPicker";
 import { ChartSettingColorsPicker } from "metabase/visualizations/components/settings/ChartSettingColorsPicker";
 import { ChartSettingFieldPicker } from "metabase/visualizations/components/settings/ChartSettingFieldPicker";
@@ -19,9 +20,9 @@ import { ChartSettingSegmentedControl } from "metabase/visualizations/components
 import { ChartSettingSelect } from "metabase/visualizations/components/settings/ChartSettingSelect";
 import { ChartSettingToggle } from "metabase/visualizations/components/settings/ChartSettingToggle";
 import type {
+  CompleteVisualizationSettingDefinition,
   ComputedVisualizationSettings,
   SettingsExtra,
-  VisualizationSettingDefinition,
   VisualizationSettingsDefinitions,
 } from "metabase/visualizations/types";
 import type Question from "metabase-lib/v1/Question";
@@ -160,7 +161,11 @@ function isObjectWithRaw<T>(object: T): object is T & { _raw?: T } {
   return isObject(object) && "_raw" in object;
 }
 
-export function getSettingsWidgets<T, TValue, TProps extends object>(
+export function getSettingsWidgets<
+  T,
+  TValue,
+  TProps extends Record<string, unknown>,
+>(
   settingDefs: VisualizationSettingsDefinitions<T, TValue, TProps>,
   storedSettings: VisualizationSettings,
   computedSettings: ComputedVisualizationSettings,
@@ -170,7 +175,7 @@ export function getSettingsWidgets<T, TValue, TProps extends object>(
     question?: Question,
   ) => void,
   extra: SettingsExtra = {},
-) {
+): CompleteVisualizationSettingDefinition<T, TValue, TProps>[] {
   return Object.keys(settingDefs)
     .map((settingId) =>
       getSettingWidget(
@@ -186,7 +191,7 @@ export function getSettingsWidgets<T, TValue, TProps extends object>(
     .filter((widget) => widget.widget);
 }
 
-function getSettingWidget<T, TValue, TProps extends object>(
+function getSettingWidget<T, TValue, TProps extends Record<string, unknown>>(
   settingDefs: VisualizationSettingsDefinitions<T, TValue, TProps>,
   settingId: VisualizationSettingKey,
   storedSettings: VisualizationSettings,
@@ -197,7 +202,7 @@ function getSettingWidget<T, TValue, TProps extends object>(
     question?: Question,
   ) => void,
   extra: SettingsExtra = {},
-): VisualizationSettingDefinition<T, TValue, TProps> {
+): CompleteVisualizationSettingDefinition<T, TValue, TProps> {
   const settingDef = settingDefs[settingId] ?? {};
   const value = computedSettings[settingId];
 
@@ -229,13 +234,15 @@ function getSettingWidget<T, TValue, TProps extends object>(
   const getPropsFn = settingDef.getProps;
   const defaultProps = {} as TProps;
 
+  const section = settingDef.getSection
+    ? settingDef.getSection(resolvedObject, computedSettings, extra)
+    : settingDef.section;
+
   return {
     ...settingDef,
     id: settingId,
     value,
-    section: settingDef.getSection
-      ? settingDef.getSection(resolvedObject, computedSettings, extra)
-      : settingDef.section,
+    section: checkNotNull(section),
     hidden: getHiddenFn
       ? getHiddenFn(resolvedObject, computedSettings, extra)
       : (settingDef.hidden ?? false),

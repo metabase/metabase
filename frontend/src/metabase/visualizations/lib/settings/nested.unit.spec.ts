@@ -3,7 +3,7 @@ import { nestedSettings } from "metabase/visualizations/lib/settings/nested";
 
 describe("nestedSettings", () => {
   it("should add a nested setting function to settings", () => {
-    const defs = nestedSettings<number, unknown, object>("nested_settings", {
+    const defs = nestedSettings("nested_settings", {
       objectName: "nested",
       getObjects: () => [1, 2, 3],
       getObjectKey: (object) => String(object),

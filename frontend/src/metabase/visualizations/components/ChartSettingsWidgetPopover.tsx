@@ -5,13 +5,9 @@ import { TippyPopover } from "metabase/common/components/Popover/TippyPopover";
 import CS from "metabase/css/core/index.css";
 import { Box, Space, Tabs } from "metabase/ui";
 
-import ChartSettingsWidget from "./ChartSettingsWidget";
+import type { Widget } from "../types";
 
-interface Widget {
-  id: string;
-  section: string;
-  props: Record<string, unknown>;
-}
+import ChartSettingsWidget from "./ChartSettingsWidget";
 
 interface ChartSettingsWidgetPopoverProps {
   anchor: HTMLElement;

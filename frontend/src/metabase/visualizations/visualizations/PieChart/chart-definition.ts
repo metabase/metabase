@@ -138,35 +138,44 @@ export const PIE_CHART_DEFINITION: VisualizationDefinition<Series> = {
       hidden: true,
       getDefault: getDefaultSortRows,
     },
-    ...nestedSettings<Series, unknown, object>(SERIES_SETTING_KEY, {
-      widget: SliceNameWidget,
-      getHidden: ([{ card }], _settings, extra) =>
-        !extra?.isDashboard || card?.display === "waterfall",
-      getSection: (_series, _settings, extra) =>
-        extra?.isDashboard ? t`Display` : t`Style`,
-      marginBottom: "0",
-      getProps: (_series, vizSettings, _onChange, _extra, onChangeSettings) => {
-        const pieRows = vizSettings["pie.rows"];
-        if (pieRows == null) {
-          return { pieRows: [], updateRowName: () => null };
-        }
+    ...nestedSettings<Series, unknown, Record<string, unknown>>(
+      SERIES_SETTING_KEY,
+      {
+        widget: SliceNameWidget,
+        getHidden: ([{ card }], _settings, extra) =>
+          !extra?.isDashboard || card?.display === "waterfall",
+        getSection: (_series, _settings, extra) =>
+          extra?.isDashboard ? t`Display` : t`Style`,
+        marginBottom: "0",
+        getProps: (
+          _series,
+          vizSettings,
+          _onChange,
+          _extra,
+          onChangeSettings,
+        ) => {
+          const pieRows = vizSettings["pie.rows"];
+          if (pieRows == null) {
+            return { pieRows: [], updateRowName: () => null };
+          }
 
-        return {
-          pieRows,
-          updateRowName: (newName: string, key: string | number) => {
-            onChangeSettings({
-              "pie.rows": pieRows.map((row) => {
-                if (row.key !== key) {
-                  return row;
-                }
-                return { ...row, name: newName };
-              }),
-            });
-          },
-        };
+          return {
+            pieRows,
+            updateRowName: (newName: string, key: string | number) => {
+              onChangeSettings({
+                "pie.rows": pieRows.map((row) => {
+                  if (row.key !== key) {
+                    return row;
+                  }
+                  return { ...row, name: newName };
+                }),
+              });
+            },
+          };
+        },
+        readDependencies: ["pie.rows"],
       },
-      readDependencies: ["pie.rows"],
-    }), // any type cast needed to avoid type error from confusion with destructured object params in `nestedSettings`
+    ), // any type cast needed to avoid type error from confusion with destructured object params in `nestedSettings`
 
     "pie._dimensions_widget": {
       get section() {
