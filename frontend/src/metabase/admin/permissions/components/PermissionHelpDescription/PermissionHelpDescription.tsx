@@ -1,8 +1,8 @@
 import type { ReactNode } from "react";
 
-import type { ColorName } from "metabase/lib/colors/types";
 import type { IconName } from "metabase/ui";
 import { Flex, Icon, Text, Title } from "metabase/ui";
+import type { ColorName } from "metabase/ui/colors/types";
 
 import { PermissionIconContainer } from "./PermissionHelpDescription.styled";
 

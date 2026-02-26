@@ -1,8 +1,8 @@
 import { jt } from "ttag";
 
-import type { ColorName } from "metabase/lib/colors/types";
 import { isEmpty } from "metabase/lib/validate";
 import { Text } from "metabase/ui";
+import type { ColorName } from "metabase/ui/colors/types";
 
 import type { ComparisonResult } from "../compute";
 

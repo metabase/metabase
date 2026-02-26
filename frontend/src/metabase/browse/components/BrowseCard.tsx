@@ -3,7 +3,6 @@ import cx from "classnames";
 import { Ellipsified } from "metabase/common/components/Ellipsified";
 import { Link } from "metabase/common/components/Link";
 import CS from "metabase/css/core/index.css";
-import type { ColorName } from "metabase/lib/colors/types";
 import {
   Box,
   Card,
@@ -12,6 +11,7 @@ import {
   type IconName,
   Title,
 } from "metabase/ui";
+import type { ColorName } from "metabase/ui/colors/types";
 
 const sizeOptions = {
   md: {

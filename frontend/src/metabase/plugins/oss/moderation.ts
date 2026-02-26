@@ -1,6 +1,6 @@
-import type { ColorName } from "metabase/lib/colors/types";
 import { PluginPlaceholder } from "metabase/plugins/components/PluginPlaceholder";
 import type { IconName, IconProps } from "metabase/ui";
+import type { ColorName } from "metabase/ui/colors/types";
 import type Question from "metabase-lib/v1/Question";
 import type { BaseUser, Card, Dashboard } from "metabase-types/api";
 

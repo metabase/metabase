@@ -4,8 +4,8 @@ import { forwardRef, useCallback, useMemo } from "react";
 import _ from "underscore";
 
 import CS from "metabase/css/core/index.css";
-import { getColorScale } from "metabase/lib/colors/scales";
 import { Box, Flex, type FlexProps } from "metabase/ui";
+import { getColorScale } from "metabase/ui/colors/scales";
 
 export interface ColorRangeProps extends Omit<FlexProps, "onSelect"> {
   colors: string[];

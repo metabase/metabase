@@ -2,10 +2,11 @@ import type { MantineThemeOverride } from "@mantine/core";
 import Color from "color";
 
 import { render, screen } from "__support__/ui";
-import { getThemeOverrides } from "metabase/ui/theme";
-import { getColorShades } from "metabase/ui/utils/colors";
 
 import { Text } from "../..";
+import { getThemeOverrides } from "../../../theme";
+import { getColorShades } from "../../../utils/colors";
+
 
 import { ThemeProvider } from "./ThemeProvider";
 

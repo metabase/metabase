@@ -1,5 +1,3 @@
-const { create } = require("underscore");
-
 const createElement = ({ type, name }) => ({
   type: `${type}/${name}`,
   pattern: `frontend/src/metabase/${name}/**`,
@@ -53,6 +51,14 @@ const rules = [
     message: "Basic modules can only import from types",
   },
   {
+    from: ["basic/lib"],
+    allow: ["basic/mlv2"],
+  },
+  {
+    from: ["basic/mlv2"],
+    allow: ["basic/lib"],
+  },
+  {
     from: ["shared/*"],
     allow: ["types", "basic/*", "shared/*"],
     message: "Shared modules cannot import from feature modules",
@@ -68,7 +74,11 @@ const rules = [
   },
   {
     from: ["other"],
-    allow: ["types", "basic/*", "shared/*"],
+    allow: ["types", "basic/*", "shared/*", "feature/*", "app/*", "other"],
+  },
+  {
+    from: ["types", "basic/*", "shared/*", "feature/*", "app/*"],
+    allow: ["other"],
   },
 ];
 

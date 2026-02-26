@@ -4,7 +4,6 @@ import { t } from "ttag";
 
 import { Ellipsified } from "metabase/common/components/Ellipsified";
 import CS from "metabase/css/core/index.css";
-import { color } from "metabase/lib/colors";
 import {
   formatChangeWithSign,
   formatNumber,
@@ -12,6 +11,7 @@ import {
 } from "metabase/lib/formatting";
 import { formatNullable } from "metabase/lib/formatting/nullable";
 import { isNotNull } from "metabase/lib/types";
+import { color } from "metabase/ui/colors";
 import {
   FunnelNormalRoot,
   FunnelStart,

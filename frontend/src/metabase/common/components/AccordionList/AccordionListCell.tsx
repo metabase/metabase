@@ -15,9 +15,9 @@ import { ListSearchField } from "metabase/common/components/ListSearchField";
 import { LoadingSpinner } from "metabase/common/components/LoadingSpinner";
 import ListS from "metabase/css/components/list.module.css";
 import CS from "metabase/css/core/index.css";
-import type { ColorName } from "metabase/lib/colors/types";
 import type { TextInputProps } from "metabase/ui";
 import { Box, Icon, Text, isValidIconName } from "metabase/ui";
+import type { ColorName } from "metabase/ui/colors/types";
 import { color } from "metabase/ui/utils/colors";
 
 import styles from "./AccordionListCell.module.css";

@@ -18,12 +18,12 @@ import {
   SDK_TO_MAIN_APP_COLORS_MAPPING,
   SDK_TO_MAIN_APP_TOOLTIP_COLORS_MAPPING,
 } from "metabase/embedding-sdk/theme/embedding-color-palette";
+import type { MantineThemeOverride } from "metabase/ui";
 import type {
   MetabaseAccentColorKey,
   MetabaseColorKey,
-} from "metabase/lib/colors";
-import { mapChartColorsToAccents } from "metabase/lib/colors/accents";
-import type { MantineThemeOverride } from "metabase/ui";
+} from "metabase/ui/colors";
+import { mapChartColorsToAccents } from "metabase/ui/colors/accents";
 import type { ColorSettings } from "metabase-types/api";
 
 import { colorTuple } from "./color-tuple";
