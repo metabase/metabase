@@ -1,11 +1,7 @@
 import { useCallback } from "react";
 import { t } from "ttag";
 
-import {
-  useDeleteAppMutation,
-  useGetCollectionQuery,
-  useListAppsQuery,
-} from "metabase/api";
+import { useGetCollectionQuery, useListAppsQuery } from "metabase/api";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import AdminS from "metabase/css/admin.module.css";
 import { useRouter } from "metabase/router";
@@ -14,27 +10,17 @@ import type { App } from "metabase-types/api/admin";
 
 export function AppsList() {
   const { data: apps, isLoading, error } = useListAppsQuery();
-  const [deleteApp] = useDeleteAppMutation();
   const { router } = useRouter();
 
   const handleCreate = useCallback(() => {
     router.push("/admin/apps/create");
   }, [router]);
 
-  const handleEdit = useCallback(
+  const handleConfigure = useCallback(
     (id: number) => {
       router.push(`/admin/apps/${id}`);
     },
     [router],
-  );
-
-  const handleDelete = useCallback(
-    async (id: number) => {
-      if (window.confirm(t`Are you sure you want to delete this app?`)) {
-        await deleteApp(id);
-      }
-    },
-    [deleteApp],
   );
 
   return (
@@ -61,12 +47,7 @@ export function AppsList() {
             </thead>
             <tbody>
               {apps?.map((app) => (
-                <AppRow
-                  key={app.id}
-                  app={app}
-                  onEdit={handleEdit}
-                  onDelete={handleDelete}
-                />
+                <AppRow key={app.id} app={app} onConfigure={handleConfigure} />
               ))}
             </tbody>
           </table>
@@ -78,12 +59,10 @@ export function AppsList() {
 
 function AppRow({
   app,
-  onEdit,
-  onDelete,
+  onConfigure,
 }: {
   app: App;
-  onEdit: (id: number) => void;
-  onDelete: (id: number) => void;
+  onConfigure: (id: number) => void;
 }) {
   const { data: collection } = useGetCollectionQuery(
     { id: app.collection_id },
@@ -100,16 +79,12 @@ function AppRow({
       <td>{collection?.name ?? app.collection_id}</td>
       <td>
         <Group gap="xs" justify="flex-end">
-          <Button size="xs" variant="subtle" onClick={() => onEdit(app.id)}>
-            {t`Edit`}
-          </Button>
           <Button
             size="xs"
             variant="subtle"
-            color="error"
-            onClick={() => onDelete(app.id)}
+            onClick={() => onConfigure(app.id)}
           >
-            {t`Delete`}
+            {t`Configure`}
           </Button>
         </Group>
       </td>
