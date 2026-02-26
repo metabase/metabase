@@ -7,8 +7,10 @@ import {
   renderWithProviders,
   screen,
 } from "__support__/ui";
+import type { ParameterMappingOption } from "metabase/parameters/utils/mapping-options";
 import { getMetadata } from "metabase/selectors/metadata";
 import Question from "metabase-lib/v1/Question";
+import type { Card, VirtualCard } from "metabase-types/api";
 import {
   createMockActionDashboardCard,
   createMockCard,
@@ -40,14 +42,36 @@ const state = createMockState({
 
 const metadata = getMetadata(state); // metabase-lib Metadata instance
 
-const setup = (options) => {
+type MapperProps = React.ComponentProps<typeof DashCardCardParameterMapper>;
+type SetupOptions = Partial<MapperProps>;
+
+const DEFAULT_MAPPING_OPTIONS: ParameterMappingOption[] = [
+  {
+    target: ["dimension", ["field", 1, null]],
+    icon: "string",
+    isForeign: false,
+    sectionName: "Section",
+    name: "Name",
+  },
+];
+
+const getQuestion = (card: Card | VirtualCard) => {
+  return card.name !== null ? new Question(card, metadata) : undefined;
+};
+
+const setup = (options: SetupOptions = {}) => {
   const card = options.card ?? createMockCard();
+  const dashcard =
+    options.dashcard ??
+    (card.name !== null
+      ? createMockDashboardCard({ card })
+      : createMockDashboardCard());
 
   const { rerender } = renderWithProviders(
     <DashCardCardParameterMapper
       card={card}
-      dashcard={createMockDashboardCard({ card })}
-      question={new Question(card, metadata)}
+      dashcard={dashcard}
+      question={getQuestion(card)}
       editingParameter={createMockParameter()}
       isRecentlyAutoConnected={false}
       mappingOptions={[]}
@@ -56,14 +80,19 @@ const setup = (options) => {
     />,
   );
 
-  const resultRerender = (newOptions) => {
+  const resultRerender = (newOptions: SetupOptions) => {
     const card = newOptions.card ?? createMockCard();
+    const dashcard =
+      newOptions.dashcard ??
+      (card.name !== null
+        ? createMockDashboardCard({ card })
+        : createMockDashboardCard());
 
     return rerender(
       <DashCardCardParameterMapper
         card={card}
-        dashcard={createMockDashboardCard({ card })}
-        question={new Question(card, metadata)}
+        dashcard={dashcard}
+        question={getQuestion(card)}
         editingParameter={createMockParameter()}
         isRecentlyAutoConnected={false}
         mappingOptions={[]}
@@ -146,11 +175,8 @@ describe("DashCardCardParameterMapper", () => {
 
       setup({
         card: textCard,
-        dashcard: createMockVirtualDashCard({
-          card: textCard,
-          size_y: 3,
-        }),
-        mappingOptions: ["foo", "bar"],
+        dashcard: createMockVirtualDashCard({ size_y: 3 }),
+        mappingOptions: DEFAULT_MAPPING_OPTIONS,
       });
 
       expect(screen.getByText(/Variable to map to/i)).toBeInTheDocument();
@@ -167,11 +193,11 @@ describe("DashCardCardParameterMapper", () => {
         size_y: 4,
       });
 
-      const expectCardText = (text) => {
+      const expectCardText = (text: string) => {
         expect(screen.getByText(text)).toBeInTheDocument();
       };
 
-      const expectTooltipText = async (text) => {
+      const expectTooltipText = async (text: string) => {
         const infoIcon = getIcon("info");
         expect(infoIcon).toBeInTheDocument();
 
@@ -218,14 +244,8 @@ describe("DashCardCardParameterMapper", () => {
 
     setup({
       card,
-      mappingOptions: [
-        {
-          target: ["dimension", ["field", 1]],
-          sectionName: "Section",
-          name: "Name",
-        },
-      ],
-      target: ["dimension", ["field", 1]],
+      mappingOptions: DEFAULT_MAPPING_OPTIONS,
+      target: ["dimension", ["field", 1, null]],
     });
 
     expect(screen.getByText("Section.Name")).toBeInTheDocument();
@@ -242,14 +262,8 @@ describe("DashCardCardParameterMapper", () => {
       setup({
         dashcard,
         card,
-        mappingOptions: [
-          {
-            target: ["dimension", ["field", 1]],
-            sectionName: "Section",
-            name: "Name",
-          },
-        ],
-        target: ["dimension", ["field", 1]],
+        mappingOptions: DEFAULT_MAPPING_OPTIONS,
+        target: ["dimension", ["field", 1, null]],
         isRecentlyAutoConnected: true,
       });
 
@@ -278,14 +292,8 @@ describe("DashCardCardParameterMapper", () => {
       setup({
         dashcard,
         card,
-        mappingOptions: [
-          {
-            target: ["dimension", ["field", 1]],
-            sectionName: "Section",
-            name: "Name",
-          },
-        ],
-        target: ["dimension", ["field", 1]],
+        mappingOptions: DEFAULT_MAPPING_OPTIONS,
+        target: ["dimension", ["field", 1, null]],
         isRecentlyAutoConnected: true,
       });
 
@@ -302,14 +310,8 @@ describe("DashCardCardParameterMapper", () => {
       setup({
         dashcard,
         card,
-        mappingOptions: [
-          {
-            target: ["dimension", ["field", 1]],
-            sectionName: "Section",
-            name: "Name",
-          },
-        ],
-        target: ["dimension", ["field", 1]],
+        mappingOptions: DEFAULT_MAPPING_OPTIONS,
+        target: ["dimension", ["field", 1, null]],
         isRecentlyAutoConnected: true,
       });
 
@@ -332,8 +334,8 @@ describe("DashCardCardParameterMapper", () => {
       dashcard: createMockDashboardCard({
         card,
       }),
-      mappingOptions: [{ target: ["dimension", ["field", 1]] }],
-      target: ["dimension", ["field", 2]],
+      mappingOptions: DEFAULT_MAPPING_OPTIONS,
+      target: ["dimension", ["field", 2, null]],
       isMobile: true,
     });
     expect(screen.getByText(/unknown field/i)).toBeInTheDocument();
@@ -370,7 +372,7 @@ describe("DashCardCardParameterMapper", () => {
         card: numberCard,
         size_y: 3,
       }),
-      mappingOptions: ["foo", "bar"],
+      mappingOptions: DEFAULT_MAPPING_OPTIONS,
     });
     expect(screen.getByText(/Column to filter on/i)).toBeInTheDocument();
   });
@@ -386,7 +388,7 @@ describe("DashCardCardParameterMapper", () => {
         card: numberCard,
         size_y: 2,
       }),
-      mappingOptions: ["foo", "bar"],
+      mappingOptions: DEFAULT_MAPPING_OPTIONS,
     });
     expect(screen.queryByText(/Column to filter on/i)).not.toBeInTheDocument();
   });
@@ -479,12 +481,12 @@ describe("DashCardCardParameterMapper", () => {
     it("should not show native question variable warning if a native question variable is used", () => {
       const card = createMockCard({
         dataset_query: createMockNativeDatasetQuery({
-          dataset_query: {
-            native: createMockNativeQuery({
-              query: "SELECT * FROM ACCOUNTS WHERE source = {{ source }}",
-              "template-tags": [createMockTemplateTag({ name: "source" })],
-            }),
-          },
+          native: createMockNativeQuery({
+            query: "SELECT * FROM ACCOUNTS WHERE source = {{ source }}",
+            "template-tags": {
+              source: createMockTemplateTag({ name: "source" }),
+            },
+          }),
         }),
       });
       setup({
@@ -498,17 +500,15 @@ describe("DashCardCardParameterMapper", () => {
     it("should not show native question variable warning without single value explanation if parameter is date type", () => {
       const card = createMockCard({
         dataset_query: createMockNativeDatasetQuery({
-          dataset_query: {
-            native: createMockNativeQuery({
-              query: "SELECT * FROM ORDERS WHERE created_at = {{ created_at }}",
-              "template-tags": [
-                createMockTemplateTag({
-                  name: "created_at",
-                  type: "date/month-year",
-                }),
-              ],
-            }),
-          },
+          native: createMockNativeQuery({
+            query: "SELECT * FROM ORDERS WHERE created_at = {{ created_at }}",
+            "template-tags": {
+              created_at: createMockTemplateTag({
+                name: "created_at",
+                type: "date",
+              }),
+            },
+          }),
         }),
       });
       setup({
@@ -533,7 +533,7 @@ describe("DashCardCardParameterMapper", () => {
           card: numberCard,
           size_y: 2,
         }),
-        mappingOptions: ["foo", "bar"],
+        mappingOptions: DEFAULT_MAPPING_OPTIONS,
         isMobile: true,
       });
       expect(screen.getByText(/Column to filter on/i)).toBeInTheDocument();
@@ -544,11 +544,8 @@ describe("DashCardCardParameterMapper", () => {
 
       setup({
         card: textCard,
-        dashcard: createMockVirtualCard({
-          card: textCard,
-          size_y: 3,
-        }),
-        mappingOptions: ["foo", "bar"],
+        dashcard: createMockVirtualDashCard({ card: textCard, size_y: 2 }),
+        mappingOptions: DEFAULT_MAPPING_OPTIONS,
         isMobile: true,
       });
       expect(screen.queryByText(/Variable to map to/i)).not.toBeInTheDocument();

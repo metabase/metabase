@@ -178,6 +178,7 @@
       :dbms-version       (js->clj v :keywordize-keys true)
       :features           (into #{} (map keyword) v)
       :native-permissions (keyword v)
+      :settings           (js->clj v :keywordize-keys true)
       v)))
 
 (defmethod parse-objects-default-key :database
@@ -225,9 +226,9 @@
 (defmethod rename-key-fn :field
   [_object-type]
   {:source          :lib/source
-   :unit            :metabase.lib.field/temporal-unit
+   :unit            :lib/temporal-unit
    :expression-name :lib/expression-name
-   :binning-info    :metabase.lib.field/binning
+   :binning-info    :lib/binning
    :dimensions      ::dimension
    :values          ::field-values})
 
@@ -314,12 +315,12 @@
                                           (if (str/starts-with? v "source/")
                                             (keyword v)
                                             (keyword "source" v)))
-      :metabase.lib.field/temporal-unit (keyword v)
+      :lib/temporal-unit (keyword v)
       :inherited-temporal-unit          (keyword v)
       :semantic-type                    (keyword v)
       :visibility-type                  (keyword v)
       :id                               (parse-field-id v)
-      :metabase.lib.field/binning       (parse-binning-info v)
+      :lib/binning       (parse-binning-info v)
       :lib/original-binning             (parse-binning-info v)
       ::field-values                    (parse-field-values v)
       ::dimension                       (parse-dimension v)
@@ -589,7 +590,9 @@
        (metadatas [_this metadata-spec]
          (metadatas metadata database-id metadata-spec))
        (setting [_this setting-key]
-         (setting unparsed-metadata setting-key))
+         (get (:settings (database metadata database-id))
+              setting-key
+              (setting unparsed-metadata setting-key)))
 
       ;; for debugging: call [[clojure.datafy/datafy]] on one of these to parse all of our metadata and see the whole
       ;; thing at once.

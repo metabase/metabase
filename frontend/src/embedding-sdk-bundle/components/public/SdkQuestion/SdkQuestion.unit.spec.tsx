@@ -289,9 +289,9 @@ describe("InteractiveQuestion", () => {
     for (const visType of VISUALIZATION_TYPES) {
       await userEvent.click(screen.getByTestId("chart-type-selector-button"));
       await userEvent.click(
-        await within(screen.getByRole("menu")).findByText(visType),
+        await within(screen.getByRole("listbox")).findByText(visType),
       );
-      expect(screen.queryByRole("menu")).not.toBeInTheDocument();
+      expect(screen.queryByRole("listbox")).not.toBeInTheDocument();
       expect(
         within(screen.getByTestId("chart-type-selector-button")).getByText(
           visType,

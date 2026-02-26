@@ -569,7 +569,7 @@
                    {:display-name "Date"
                     :effective-type :type/Date
                     :lib/source :source/table-defaults
-                    :metabase.lib.field/temporal-unit :quarter
+                    :lib/temporal-unit :quarter
                     :selected? true}
                    {:display-name "User ID"
                     :effective-type :type/Integer

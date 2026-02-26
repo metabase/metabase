@@ -7,11 +7,12 @@ import { color } from "metabase/lib/colors";
 import { registerVisualization } from "metabase/visualizations";
 import VisualizationComponent from "metabase/visualizations/components/Visualization";
 import registerVisualizations from "metabase/visualizations/register";
+import type { VisualizationProps } from "metabase/visualizations/types";
 import type {
-  Visualization,
-  VisualizationProps,
-} from "metabase/visualizations/types";
-import type { DatasetColumn, RawSeries, Settings } from "metabase-types/api";
+  RawSeries,
+  Settings,
+  VisualizationDisplay,
+} from "metabase-types/api";
 import {
   createMockCard,
   createMockCategoryColumn,
@@ -25,8 +26,7 @@ import { createMockState } from "metabase-types/store/mocks";
 
 registerVisualizations();
 
-const makeData = (cols: DatasetColumn[], rows: Array<Array<string | number>>) =>
-  createMockDatasetData({ cols, rows });
+const MOCK_DISPLAY = "mocked-visualization" as VisualizationDisplay;
 
 const MockedVisualization = Object.assign(
   ({ onRenderError }: Pick<VisualizationProps, "onRenderError">) => {
@@ -36,10 +36,16 @@ const MockedVisualization = Object.assign(
   },
   {
     getUiName: () => "Mocked Visualization",
-    identifier: "mocked-visualization",
+    identifier: MOCK_DISPLAY,
+    iconName: "unknown" as const,
     noHeader: true,
+    minSize: { width: 1, height: 1 },
+    defaultSize: { width: 4, height: 4 },
+    settings: {},
+    isSensible: () => false,
+    checkRenderable: () => undefined,
   },
-) as unknown as Visualization;
+);
 
 registerVisualization(MockedVisualization);
 
@@ -56,7 +62,7 @@ describe("Visualization", () => {
       settings: mockSettings(settings),
     });
 
-    await renderWithProviders(
+    renderWithProviders(
       <VisualizationComponent rawSeries={series} {...props} />,
       {
         storeInitialState,
@@ -82,22 +88,22 @@ describe("Visualization", () => {
         [
           {
             data: {
-              ...makeData(
-                [
+              ...createMockDatasetData({
+                cols: [
                   createMockCategoryColumn({ name: "CATEGORY" }),
                   createMockCategoryColumn({ name: "VENDOR" }),
                   createMockNumericColumn({ name: "count" }),
                 ],
-                [
+                rows: [
                   ["Doohickey", "Annetta Wyman and Sons", 1],
                   ["Doohickey", "Balistreri-Ankunding", 1],
                   ["Doohickey", "Bernhard-Grady", 1],
                 ],
-              ),
+              }),
             },
             card: createMockCard({
               name: "Products, Count, Grouped by Category and Vendor",
-              display: "mocked-visualization" as any,
+              display: MOCK_DISPLAY,
               visualization_settings: createMockVisualizationSettings({
                 "graph.dimensions": ["CATEGORY", "VENDOR"],
                 "graph.metrics": ["count"],
@@ -123,16 +129,16 @@ describe("Visualization", () => {
       [
         {
           card: createMockCard({ name: "Card", display: "bar" }),
-          data: makeData(
-            [
+          data: createMockDatasetData({
+            cols: [
               createMockCategoryColumn({ name: "Dimension" }),
               createMockNumericColumn({ name: "Count" }),
             ],
-            [
+            rows: [
               ["foo", 1],
               ["bar", 2],
             ],
-          ),
+          }),
         },
       ],
       {},
@@ -153,7 +159,10 @@ describe("Visualization", () => {
       await renderViz([
         {
           card: createMockCard({ display: "scalar" }),
-          data: makeData([createMockNumericColumn({ name: "Count" })], [[1]]),
+          data: createMockDatasetData({
+            cols: [createMockNumericColumn({ name: "Count" })],
+            rows: [[1]],
+          }),
         },
       ]);
 
@@ -167,16 +176,16 @@ describe("Visualization", () => {
         await renderViz([
           {
             card: createMockCard({ name: "Card", display: "bar" }),
-            data: makeData(
-              [
+            data: createMockDatasetData({
+              cols: [
                 createMockCategoryColumn({ name: "Dimension" }),
                 createMockNumericColumn({ name: "Count" }),
               ],
-              [
+              rows: [
                 ["foo", 1],
                 ["bar", 2],
               ],
-            ),
+            }),
           },
         ]);
 
@@ -189,17 +198,17 @@ describe("Visualization", () => {
         await renderViz([
           {
             card: createMockCard({ name: "Card", display: "bar" }),
-            data: makeData(
-              [
+            data: createMockDatasetData({
+              cols: [
                 createMockCategoryColumn({ name: "Dimension" }),
                 createMockNumericColumn({ name: "Count" }),
                 createMockNumericColumn({ name: "Sum" }),
               ],
-              [
+              rows: [
                 ["foo", 1, 3],
                 ["bar", 2, 4],
               ],
-            ),
+            }),
           },
         ]);
 
@@ -213,19 +222,19 @@ describe("Visualization", () => {
         await renderViz([
           {
             card: createMockCard({ name: "Card", display: "bar" }),
-            data: makeData(
-              [
+            data: createMockDatasetData({
+              cols: [
                 createMockCategoryColumn({ name: "Dimension1" }),
                 createMockCategoryColumn({ name: "Dimension2" }),
                 createMockNumericColumn({ name: "Count" }),
               ],
-              [
+              rows: [
                 ["foo", "a", 1],
                 ["bar", "a", 2],
                 ["foo", "b", 1],
                 ["bar", "b", 2],
               ],
-            ),
+            }),
           },
         ]);
 
@@ -239,29 +248,29 @@ describe("Visualization", () => {
         await renderViz([
           {
             card: createMockCard({ id: 1, name: "Card1", display: "bar" }),
-            data: makeData(
-              [
+            data: createMockDatasetData({
+              cols: [
                 createMockCategoryColumn({ id: 1, name: "Dimension" }),
                 createMockNumericColumn({ id: 2, name: "Count" }),
               ],
-              [
+              rows: [
                 ["foo", 1],
                 ["bar", 2],
               ],
-            ),
+            }),
           },
           {
             card: createMockCard({ id: 2, name: "Card2", display: "bar" }),
-            data: makeData(
-              [
+            data: createMockDatasetData({
+              cols: [
                 createMockCategoryColumn({ id: 1, name: "Dimension" }),
                 createMockNumericColumn({ id: 2, name: "Count" }),
               ],
-              [
+              rows: [
                 ["foo", 3],
                 ["bar", 4],
               ],
-            ),
+            }),
           },
         ]);
 

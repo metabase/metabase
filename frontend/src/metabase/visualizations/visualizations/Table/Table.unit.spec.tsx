@@ -243,13 +243,31 @@ describe("table.pivot", () => {
 
 describe("text_wrapping", () => {
   describe("in columnSettings", () => {
+    function assertDefined<T>(
+      value: T | undefined | null,
+      name: string,
+    ): asserts value is T {
+      if (value == null) {
+        throw new Error(`${name} should be defined`);
+      }
+    }
+
     const getTextWrappingSetting = (column: DatasetColumn) => {
       const textWrappingSetting = Table.columnSettings(column)["text_wrapping"];
-      expect(textWrappingSetting).toBeDefined();
-      if (!textWrappingSetting) {
-        throw new Error("text_wrapping setting should be defined");
-      }
+      assertDefined(textWrappingSetting, "text_wrapping setting");
       return textWrappingSetting;
+    };
+
+    const getGetHidden = (column: DatasetColumn) => {
+      const textWrappingSetting = getTextWrappingSetting(column);
+      assertDefined(textWrappingSetting.getHidden, "text_wrapping getHidden");
+      return textWrappingSetting.getHidden;
+    };
+
+    const getIsValid = (column: DatasetColumn) => {
+      const textWrappingSetting = getTextWrappingSetting(column);
+      assertDefined(textWrappingSetting.isValid, "text_wrapping isValid");
+      return textWrappingSetting.isValid;
     };
 
     it("should be available for string columns", () => {
@@ -268,12 +286,7 @@ describe("text_wrapping", () => {
 
     it("should be hidden when view_as is image", () => {
       const stringColumn = createMockCategoryColumn();
-      const textWrappingSetting = getTextWrappingSetting(stringColumn);
-      const getHidden = textWrappingSetting.getHidden;
-      expect(getHidden).toBeDefined();
-      if (!getHidden) {
-        throw new Error("text_wrapping getHidden should be defined");
-      }
+      const getHidden = getGetHidden(stringColumn);
 
       const isHidden = getHidden(stringColumn, {
         view_as: "image",
@@ -284,12 +297,7 @@ describe("text_wrapping", () => {
 
     it("should be not valid when view_as is image", () => {
       const stringColumn = createMockCategoryColumn();
-      const textWrappingSetting = getTextWrappingSetting(stringColumn);
-      const isValid = textWrappingSetting.isValid;
-      expect(isValid).toBeDefined();
-      if (!isValid) {
-        throw new Error("text_wrapping isValid should be defined");
-      }
+      const isValid = getIsValid(stringColumn);
 
       const valueIsValid = isValid(stringColumn, {
         view_as: "image",
@@ -300,12 +308,7 @@ describe("text_wrapping", () => {
 
     it("should be visible when view_as is null", () => {
       const stringColumn = createMockCategoryColumn();
-      const textWrappingSetting = getTextWrappingSetting(stringColumn);
-      const getHidden = textWrappingSetting.getHidden;
-      expect(getHidden).toBeDefined();
-      if (!getHidden) {
-        throw new Error("text_wrapping getHidden should be defined");
-      }
+      const getHidden = getGetHidden(stringColumn);
 
       const isHidden = getHidden(stringColumn, {
         view_as: null,
@@ -316,12 +319,7 @@ describe("text_wrapping", () => {
 
     it("should be visible when view_as is auto", () => {
       const stringColumn = createMockCategoryColumn();
-      const textWrappingSetting = getTextWrappingSetting(stringColumn);
-      const getHidden = textWrappingSetting.getHidden;
-      expect(getHidden).toBeDefined();
-      if (!getHidden) {
-        throw new Error("text_wrapping getHidden should be defined");
-      }
+      const getHidden = getGetHidden(stringColumn);
 
       const isHidden = getHidden(stringColumn, {
         view_as: "auto",
@@ -332,12 +330,7 @@ describe("text_wrapping", () => {
 
     it("should be visible when view_as is link", () => {
       const stringColumn = createMockCategoryColumn();
-      const textWrappingSetting = getTextWrappingSetting(stringColumn);
-      const getHidden = textWrappingSetting.getHidden;
-      expect(getHidden).toBeDefined();
-      if (!getHidden) {
-        throw new Error("text_wrapping getHidden should be defined");
-      }
+      const getHidden = getGetHidden(stringColumn);
 
       const isHidden = getHidden(stringColumn, {
         view_as: "link",
@@ -348,12 +341,7 @@ describe("text_wrapping", () => {
 
     it("should be valid when view_as is link", () => {
       const stringColumn = createMockCategoryColumn();
-      const textWrappingSetting = getTextWrappingSetting(stringColumn);
-      const isValid = textWrappingSetting.isValid;
-      expect(isValid).toBeDefined();
-      if (!isValid) {
-        throw new Error("text_wrapping isValid should be defined");
-      }
+      const isValid = getIsValid(stringColumn);
 
       const valueIsValid = isValid(stringColumn, {
         view_as: "link",

@@ -1,3 +1,5 @@
+import type { EntityId } from "../types";
+
 import {
   isDatabaseEntityId,
   isSchemaEntityId,
@@ -7,7 +9,9 @@ import {
 export const DATABASES_BASE_PATH = `/admin/permissions/data/database`;
 export const GROUPS_BASE_PATH = `/admin/permissions/data/group`;
 
-export const getDatabaseFocusPermissionsUrl = (entityId) => {
+export const getDatabaseFocusPermissionsUrl = (
+  entityId?: Partial<EntityId> | null,
+) => {
   if (entityId == null) {
     return DATABASES_BASE_PATH;
   }
@@ -33,7 +37,10 @@ export const getDatabaseFocusPermissionsUrl = (entityId) => {
   }
 };
 
-export const getGroupFocusPermissionsUrl = (groupId, entityId) => {
+export const getGroupFocusPermissionsUrl = (
+  groupId?: number | null,
+  entityId?: Partial<EntityId> | null,
+) => {
   if (groupId == null) {
     return GROUPS_BASE_PATH;
   }
