@@ -29,7 +29,12 @@ import type {
 } from "metabase/visualizations/types";
 import { BarChart } from "metabase/visualizations/visualizations/BarChart";
 import { funnelToBarTransform } from "metabase/visualizations/visualizations/Funnel/funnel-bar-transform";
-import type { DatasetData, RawSeries, RowValue } from "metabase-types/api";
+import {
+  type DatasetData,
+  type RawSeries,
+  type RowValue,
+  getRowsForStableKeys,
+} from "metabase-types/api";
 
 import { FunnelNormal } from "../../components/FunnelNormal";
 
@@ -99,13 +104,10 @@ Object.assign(Funnel, {
       section: t`Data`,
       widget: ChartSettingOrderedSimple,
       getValue: (
-        [
-          {
-            data: { cols, rows },
-          },
-        ]: RawSeries,
+        rawSeries: RawSeries,
         settings: ComputedVisualizationSettings,
       ) => {
+        const { cols } = rawSeries[0].data;
         const dimensionIndex = cols.findIndex(
           (col) => col.name === settings["funnel.dimension"],
         );
@@ -113,7 +115,10 @@ Object.assign(Funnel, {
         const dimension = settings["funnel.dimension"];
 
         const rowsOrder = settings["funnel.rows"];
-        const rowsKeys = rows.map((row) => formatNullable(row[dimensionIndex]));
+        const rowsForKeys = getRowsForStableKeys(rawSeries[0].data);
+        const rowsKeys = rowsForKeys.map((row) =>
+          formatNullable(row[dimensionIndex]),
+        );
 
         const getDefault = (keys: RowValue[]) =>
           keys.map((key) => ({
