@@ -106,7 +106,7 @@ PLUGIN_EMBEDDING_SDK_AUTH.initAuth = async (
 
   if (isValidApiKeyConfig) {
     // API key setup
-    api.apiKey = apiKey!;
+    api.apiKey = apiKey;
   } else if (EMBEDDING_SDK_IFRAME_EMBEDDING_CONFIG.useExistingUserSession) {
     // Use existing user session. Do nothing.
   } else if (isValidInstanceUrl) {
