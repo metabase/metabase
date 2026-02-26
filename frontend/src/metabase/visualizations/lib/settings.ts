@@ -23,11 +23,13 @@ import type {
   CompleteVisualizationSettingDefinition,
   ComputedVisualizationSettings,
   SettingsExtra,
+  VisualizationSettingDefinition,
   VisualizationSettingsDefinitions,
 } from "metabase/visualizations/types";
 import type Question from "metabase-lib/v1/Question";
 import type {
   ColumnSettings,
+  Series,
   VisualizationSettingKey,
   VisualizationSettings,
 } from "metabase-types/api";
@@ -100,7 +102,8 @@ function getComputedSetting<T, TValue, TProps extends Record<string, unknown>>(
     return;
   }
 
-  const settingDef = settingDefs[settingId] ?? {};
+  const settingDef: VisualizationSettingDefinition<T, TValue, TProps> =
+    settingDefs[settingId] ?? {};
 
   for (const dependentId of settingDef.readDependencies || []) {
     getComputedSetting(
@@ -207,7 +210,8 @@ function getSettingWidget<T, TValue, TProps extends Record<string, unknown>>(
   ) => void,
   extra: SettingsExtra = {},
 ): CompleteVisualizationSettingDefinition<T, TValue, TProps> {
-  const settingDef = settingDefs[settingId] ?? {};
+  const settingDef: VisualizationSettingDefinition<T, TValue, TProps> =
+    settingDefs[settingId] ?? {};
   const value = computedSettings[settingId];
 
   const onChange = (newValue: TValue, question?: Question) => {
@@ -287,7 +291,8 @@ export function getPersistableDefaultSettings(
   const persistableDefaultSettings: ComputedVisualizationSettings = {};
 
   for (const settingId in settingsDefs) {
-    const settingDef = settingsDefs[settingId];
+    const settingDef: VisualizationSettingDefinition<Series> =
+      settingsDefs[settingId];
 
     if (settingDef.persistDefault) {
       persistableDefaultSettings[settingId] = completeSettings[settingId];
