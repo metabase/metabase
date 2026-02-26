@@ -98,10 +98,11 @@ const setup = async (
   metabots = defaultMetabots,
   seedCollections = defaultSeedCollections,
   error = false,
+  settings = createMockSettings(),
 ) => {
   mockGetBoundingClientRect();
   mockPathParam(initialPathParam);
-  setupPropertiesEndpoints(createMockSettings());
+  setupPropertiesEndpoints(settings);
   setupSettingsEndpoints([]);
   setupMetabotsEndpoints(metabots, error ? 500 : undefined);
   setupCollectionByIdEndpoint({
@@ -141,6 +142,30 @@ describe("MetabotAdminPage", () => {
   it("should render the page", async () => {
     await setup();
     expect(screen.getByText(/Configure Metabot/)).toBeInTheDocument();
+  });
+
+  it("should show 'Enable Metabot' setting with title and description", async () => {
+    await setup();
+    expect(await screen.findByText("Enable Metabot")).toBeInTheDocument();
+    expect(
+      await screen.findByText(/Metabot is Metabase's AI assistant/),
+    ).toBeInTheDocument();
+  });
+
+  it("should show 'Metabot is enabled' status text when enabled", async () => {
+    await setup();
+    expect(await screen.findByText("Metabot is enabled")).toBeInTheDocument();
+  });
+
+  it("should show 'Metabot is disabled' status text when disabled", async () => {
+    await setup(
+      FIXED_METABOT_IDS.DEFAULT,
+      defaultMetabots,
+      defaultSeedCollections,
+      false,
+      createMockSettings({ "is-metabot-enabled": false }),
+    );
+    expect(await screen.findByText("Metabot is disabled")).toBeInTheDocument();
   });
 
   it("should render the metabots list", async () => {
@@ -225,6 +250,15 @@ describe("MetabotAdminPage", () => {
     expect(
       await screen.findByText(/embedding the metabot component/i),
     ).toBeInTheDocument();
+  });
+
+  it("should not show 'Enable Metabot' description for embedded metabot", async () => {
+    await setup(FIXED_METABOT_IDS.EMBEDDED);
+
+    expect(await screen.findByText("Enable Metabot")).toBeInTheDocument();
+    expect(
+      screen.queryByText(/Metabot is Metabase's AI assistant/),
+    ).not.toBeInTheDocument();
   });
 
   it("should show an error message when a request fails", async () => {

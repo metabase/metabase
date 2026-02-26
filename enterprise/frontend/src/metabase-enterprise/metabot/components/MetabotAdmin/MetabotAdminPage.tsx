@@ -91,23 +91,24 @@ export function MetabotAdminPage() {
     <AdminSettingsLayout sidebar={<MetabotNavPane />}>
       <ErrorBoundary>
         <SettingsSection key={metabotId}>
-          <Flex justify="space-between" align="flex-start">
-            <Box>
-              <SettingHeader
-                id="configure-metabot"
-                title={c("{0} is the name of an AI assistant")
-                  .t`Configure ${metabot.name}`}
-                description={c("{0} is the name of an AI assistant") // eslint-disable-next-line metabase/no-literal-metabase-strings -- admin ui
-                  .t`${metabot.name} is Metabase's AI agent. To help ${metabot.name} more easily find and focus on the data you care about most, configure what content it should be able to access or use to create queries.`}
-              />
-              {isEmbedMetabot && (
-                <Text c="text-secondary" maw="40rem">
-                  {t`If you're embedding the Metabot component in an app, you can specify a different collection that embedded Metabot is allowed to use for creating queries.`}
-                </Text>
-              )}
-            </Box>
-            <MetabotEnabledToggle settingKey={enabledSettingKey} />
-          </Flex>
+          <Box>
+            <SettingHeader
+              id="configure-metabot"
+              title={c("{0} is the name of an AI assistant")
+                .t`Configure ${metabot.name}`}
+              description={c("{0} is the name of an AI assistant") // eslint-disable-next-line metabase/no-literal-metabase-strings -- admin ui
+                .t`${metabot.name} is Metabase's AI agent. To help ${metabot.name} more easily find and focus on the data you care about most, configure what content it should be able to access or use to create queries.`}
+            />
+            {isEmbedMetabot && (
+              <Text c="text-secondary" maw="40rem">
+                {t`If you're embedding the Metabot component in an app, you can specify a different collection that embedded Metabot is allowed to use for creating queries.`}
+              </Text>
+            )}
+            <MetabotEnabledToggle
+              settingKey={enabledSettingKey}
+              showDescription={!isEmbedMetabot}
+            />
+          </Box>
 
           <MetabotSettingsBody settingKey={enabledSettingKey}>
             <MetabotVerifiedContentConfigurationPane metabot={metabot} />
@@ -166,8 +167,10 @@ function MetabotNavPane() {
 
 function MetabotEnabledToggle({
   settingKey,
+  showDescription = true,
 }: {
   settingKey: EnterpriseSettingKey;
+  showDescription?: boolean;
 }) {
   const { value, updateSetting, isLoading } = useAdminSetting(settingKey);
 
@@ -176,14 +179,29 @@ function MetabotEnabledToggle({
   };
 
   return (
-    <Switch
-      checked={!!value}
-      onChange={(e) => handleToggle(e.target.checked)}
-      disabled={isLoading}
-      w="auto"
-      size="sm"
-      mt="xs"
-    />
+    <Box mt="lg">
+      <SettingHeader
+        id="enable-metabot"
+        title={t`Enable Metabot`}
+        description={
+          showDescription
+            ? t`Metabot is Metabase's AI assistant. When enabled, Metabot will be available to help users create queries, analyze data, and answer questions about your data.` // eslint-disable-line metabase/no-literal-metabase-strings -- admin UI
+            : undefined
+        }
+      />
+      <Flex align="center" gap="md" mt="md">
+        <Switch
+          checked={!!value}
+          onChange={(e) => handleToggle(e.target.checked)}
+          disabled={isLoading}
+          w="auto"
+          size="sm"
+        />
+        <Text c={value ? "text-primary" : "text-secondary"} fw="500">
+          {value ? t`Metabot is enabled` : t`Metabot is disabled`}
+        </Text>
+      </Flex>
+    </Box>
   );
 }
 
