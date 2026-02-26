@@ -69,7 +69,8 @@
 ;;; -------------------------------------------------- Native CTE / subquery tests --------------------------------------------------
 
 (deftest analyze-native-query-cte-join-source-table-is-nil-test
-  (mt/test-drivers (mt/normal-drivers-with-feature :left-join)
+  (mt/test-drivers (mt/normal-driver-select {:+parent :sql
+                                             :+features [:left-join]})
     (testing "join against a CTE alias produces nil :source-table"
       (let [query     (lib/native-query
                        (mt/metadata-provider)
@@ -86,7 +87,8 @@
             "CTE alias should not resolve to a real table ID")))))
 
 (deftest analyze-native-query-mixed-simple-and-cte-joins-test
-  (mt/test-drivers (mt/normal-drivers-with-feature :left-join)
+  (mt/test-drivers (mt/normal-driver-select {:+parent :sql
+                                             :+features [:left-join]})
     (testing "mix of simple table join and CTE join: only simple table has source-table"
       (let [query     (lib/native-query
                        (mt/metadata-provider)
