@@ -62,10 +62,13 @@ describe("Embedding SDK: shared Host Apps compatibility tests", () => {
       cy.findByText("Filtro").click();
     });
 
-    cy.get('[data-element-id="mantine-popover"]').within(() => {
-      cy.findByText("Started At").click();
-      cy.findByText(/Rango de fechas relativo…/).click();
-    });
+    cy.get('[data-element-id="mantine-popover"]')
+      .should("have.length.above", 0)
+      .last()
+      .within(() => {
+        cy.findByText("Started At").click();
+        cy.findByText(/Rango de fechas relativo…/).click();
+      });
 
     cy.findByTestId("date-filter-picker").within(() => {
       cy.findByText(/^dic.*2024/).should("exist");
@@ -85,10 +88,13 @@ describe("Embedding SDK: shared Host Apps compatibility tests", () => {
     }).within(() => {
       cy.findByText("Filtro").click();
     });
-    cy.get('[data-element-id="mantine-popover"]').within(() => {
-      cy.findByText("Started At").click();
-      cy.findByText(/Rango de fechas fijo…/).click();
-    });
+    cy.get('[data-element-id="mantine-popover"]')
+      .should("have.length.above", 0)
+      .last()
+      .within(() => {
+        cy.findByText("Started At").click();
+        cy.findByText(/Rango de fechas fijo…/).click();
+      });
 
     cy.findByTestId("date-filter-picker").within(() => {
       cy.findByText("enero 2025").should("exist");
