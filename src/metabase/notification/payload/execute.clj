@@ -142,15 +142,10 @@
   (update-in qp-result [:data :viz-settings] merge (-> (get-in qp-result [:json_query :viz-settings])
                                                        viz-settings/db->norm)))
 
-(defn- notification-result
-  "Construct a purpose-built result map for the notification pipeline from a QP result.
-  Only includes keys that downstream consumers actually need, preventing internal QP
-  state (like :json_query containing :lib/metadata with DB credentials) from leaking
-  into notification templates.
-
-  The :data sub-map is passed through as-is since it's produced by QP result reducers
-  and doesn't contain credentials. The security boundary is at the top level, where
-  :json_query contains :lib/metadata with DB connection details."
+(defn- format-qp-result
+  "Extracts only the keys that the notification pipeline needs from a QP result.
+  The full QP result contains many internal bookkeeping keys that are irrelevant
+  to rendering notifications, so we select just the ones downstream consumers use."
   [qp-result]
   {:status                  (:status qp-result)
    :row_count               (:row_count qp-result)
@@ -203,7 +198,7 @@
                                                                      :card_id card-id
                                                                      :dashcard_id (u/the-id dashcard)})))))
                                               fixup-viz-settings
-                                              notification-result)})
+                                              format-qp-result)})
               result         (result-fn card_id)
               series-results (mapv (comp result-fn :id) multi-cards)]
           (log/debugf "Dashcard has %d series" (count multi-cards))
@@ -322,7 +317,7 @@
                                                                         cells-to-disk-threshold
                                                                         {:card-id card-id})))))
                      fixup-viz-settings
-                     notification-result))]
+                     format-qp-result))]
 
     (log/debugf "Result has %d rows" (:row_count result))
     {:card   (t2/select-one :model/Card card-id)
