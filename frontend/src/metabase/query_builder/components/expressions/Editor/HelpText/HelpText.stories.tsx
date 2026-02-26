@@ -2,7 +2,11 @@ import type { StoryFn } from "@storybook/react";
 
 import { createMockMetadata } from "__support__/metadata";
 import { ReduxProvider } from "__support__/storybook";
-import { createQuery } from "metabase-lib/test-helpers";
+import * as Lib from "metabase-lib";
+import {
+  DEFAULT_TEST_QUERY,
+  createMetadataProvider,
+} from "metabase-lib/test-helpers";
 import { createMockDatabase } from "metabase-types/api/mocks";
 
 import { HelpText } from "./HelpText";
@@ -15,9 +19,11 @@ export default {
 const Template: StoryFn<typeof HelpText> = () => {
   const database = createMockDatabase();
   const metadata = createMockMetadata({ databases: [database] });
-  const query = createQuery({
+  const provider = createMetadataProvider({
     databaseId: database.id,
+    metadata,
   });
+  const query = Lib.createTestQuery(provider, DEFAULT_TEST_QUERY);
 
   return (
     <ReduxProvider>

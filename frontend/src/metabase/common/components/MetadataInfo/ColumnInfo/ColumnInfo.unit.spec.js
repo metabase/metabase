@@ -3,7 +3,11 @@ import { createMockEntitiesState } from "__support__/store";
 import { renderWithProviders, screen } from "__support__/ui";
 import { getMetadata } from "metabase/selectors/metadata";
 import * as Lib from "metabase-lib";
-import { columnFinder, createQuery } from "metabase-lib/test-helpers";
+import {
+  DEFAULT_TEST_QUERY,
+  SAMPLE_PROVIDER,
+  columnFinder,
+} from "metabase-lib/test-helpers";
 import {
   PRODUCTS,
   PRODUCT_CATEGORY_VALUES,
@@ -29,7 +33,7 @@ function setup(field) {
 }
 
 function setupMLv2(table, column) {
-  const query = createQuery();
+  const query = Lib.createTestQuery(SAMPLE_PROVIDER, DEFAULT_TEST_QUERY);
   const columns = Lib.visibleColumns(query, 0);
   const findColumn = columnFinder(query, columns);
   const col = findColumn(table, column);
