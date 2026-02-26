@@ -59,7 +59,7 @@ export function nestedSettings<
     component,
     ...def
   }: NestedSettingsOptions<T, TValue, TProps>,
-): VisualizationSettingDefinition<Series, TValue, TProps> {
+): VisualizationSettingDefinition<T, TValue, TProps> {
   function getComputedSettingsForObject(
     series: Series,
     object: T,
