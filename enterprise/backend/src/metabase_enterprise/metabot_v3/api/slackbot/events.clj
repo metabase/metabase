@@ -1,6 +1,7 @@
 (ns metabase-enterprise.metabot-v3.api.slackbot.events
   "Event definitions for slackbot."
-  (:require    [clojure.string :as str]))
+  (:require
+   [clojure.string :as str]))
 
 (def SlackEventsResponse
   "Malli schema for Slack events API response"
@@ -37,14 +38,6 @@
    [:event_ts :string]
    [:bot_id {:optional true} [:maybe :string]]])
 
-(def SlackMessageImEvent
-  "Schema for message.im events (direct messages)"
-  [:merge SlackMessageEvent
-   [:map
-    [:channel_type [:= "im"]]
-    [:text :string]
-    [:thread_ts {:optional true} [:maybe :string]]]])
-
 (def SlackMessageFileShareEvent
   "Schema for file_share message events"
   [:merge SlackMessageEvent
@@ -54,17 +47,6 @@
     [:files [:sequential SlackFile]]
     [:text {:optional true} [:maybe :string]]
     [:thread_ts {:optional true} [:maybe :string]]]])
-
-(def SlackAppMentionEvent
-  "Schema for app_mention events (when bot is @mentioned)"
-  [:map
-   [:type [:= "app_mention"]]
-   [:channel :string]
-   [:user :string]
-   [:text :string]
-   [:ts :string]
-   [:event_ts :string]
-   [:thread_ts {:optional true} [:maybe :string]]])
 
 (def SlackEventCallbackEvent
   "Malli schema for Slack event_callback event"

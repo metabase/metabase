@@ -62,7 +62,8 @@
 (defmacro ^:private with-slackbot-setup
   "Wrap body with all required settings for slackbot to be fully configured."
   [& body]
-  `(with-redefs [slackbot.config/validate-bot-token! (constantly {:ok true})]
+  `(with-redefs [slackbot.config/validate-bot-token! (constantly {:ok true})
+                 slackbot.client/get-bot-user-id     (constantly "UBOT123")]
      (with-ensure-encryption
        (mt/with-premium-features #{:metabot-v3 :sso-slack}
          (mt/with-temporary-setting-values [site-url "https://localhost:3000"

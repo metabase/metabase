@@ -120,14 +120,6 @@
    :headers {"Content-Type" "text/plain"}
    :body    "ok"})
 
-(mu/defn- handle-message-im
-  "Process a direct message (message.im)"
-  [client  :- slackbot.client/SlackClient
-   event   :- slackbot.events/SlackMessageImEvent
-   user-id :- :int]
-  (request/with-current-user user-id
-    (slackbot.streaming/send-response client event)))
-
 (defn- all-files-skipped?
   "Returns true if all files were skipped (none were CSV/TSV)."
   [{:keys [upload-result]}]
@@ -137,56 +129,47 @@
 
 (mu/defn- handle-message-file-share
   "Process a file_share message - handles CSV uploads"
-  [client  :- slackbot.client/SlackClient
-   event   :- slackbot.events/SlackMessageFileShareEvent
-   user-id :- :int]
-  (request/with-current-user user-id
-    (let [files (:files event)
-          text (:text event)
-          has-text? (not (str/blank? text))
-          file-handling (when (seq files)
-                          (slackbot.uploads/handle-file-uploads files))
-          extra-history (cond
-                          ;; Pre-flight error (uploads disabled, no permission)
-                          (:error file-handling)
-                          [{:role :assistant
-                            :content (:error file-handling)}]
+  [client :- slackbot.client/SlackClient
+   event  :- slackbot.events/SlackMessageFileShareEvent]
+  (let [files         (:files event)
+        text          (:text event)
+        has-text?     (not (str/blank? text))
+        file-handling (when (seq files)
+                        (slackbot.uploads/handle-file-uploads files))
+        extra-history (cond
+                        ;; Pre-flight error (uploads disabled, no permission)
+                        (:error file-handling)
+                        [{:role :assistant
+                          :content (:error file-handling)}]
 
-                          ;; Upload results to communicate to AI
-                          (:system-messages file-handling)
-                          (:system-messages file-handling))
-          all-skipped? (all-files-skipped? file-handling)
-          should-skip-ai? (and (not has-text?)
-                               (not (:error file-handling))
-                               all-skipped?)]
-      ;; If all files were skipped (non-CSV) and there's no text, respond directly
-      ;; without calling the AI to avoid sending an empty prompt
-      (if should-skip-ai?
-        (let [skipped-files (get-in file-handling [:upload-result :skipped])]
-          (slackbot.client/post-message client
-                                        (merge (slackbot.events/event->reply-context event)
-                                               {:text (format "I can only process CSV and TSV files. The following files were skipped: %s"
-                                                              (str/join ", " skipped-files))})))
-        (slackbot.streaming/send-response client event extra-history)))))
-
-(mu/defn- handle-app-mention
-  "Handle an app_mention event (when bot is @mentioned in a channel)."
-  [client  :- slackbot.client/SlackClient
-   event   :- slackbot.events/SlackAppMentionEvent
-   user-id :- :int]
-  (request/with-current-user user-id
-    (slackbot.streaming/send-response client event)))
+                        ;; Upload results to communicate to AI
+                        (:system-messages file-handling)
+                        (:system-messages file-handling))
+        all-skipped?    (all-files-skipped? file-handling)
+        should-skip-ai? (and (not has-text?)
+                             (not (:error file-handling))
+                             all-skipped?)]
+    ;; If all files were skipped (non-CSV) and there's no text, respond directly
+    ;; without calling the AI to avoid sending an empty prompt
+    (if should-skip-ai?
+      (let [skipped-files (get-in file-handling [:upload-result :skipped])]
+        (slackbot.client/post-message client
+                                      (merge (slackbot.events/event->reply-context event)
+                                             {:text (format "I can only process CSV and TSV files. The following files were skipped: %s"
+                                                            (str/join ", " skipped-files))})))
+      (slackbot.streaming/send-response client event extra-history))))
 
 (defn- process-async
   "Process an event asynchronously with logging and error handling.
-   Authenticates the user and calls handler with [client event user-id]."
+   Authenticates the user and calls handler with [client event]."
   [handler client event]
   (let [event-type (or (:subtype event) (:channel_type event) (:type event))]
     (log/debugf "[slackbot] Processing %s event" event-type)
     (future
       (try
         (when-let [user-id (require-authenticated-slack-user! client event)]
-          (handler client event user-id))
+          (request/with-current-user user-id
+            (handler client event)))
         (catch Exception e
           (log/errorf e "[slackbot] Error processing %s: %s" event-type (ex-message e)))))))
 
@@ -227,10 +210,10 @@
         (process-async handle-message-file-share client event)
 
         (slackbot.events/app-mention? event)
-        (process-async handle-app-mention client event)
+        (process-async slackbot.streaming/send-response client event)
 
         (slackbot.events/dm? event)
-        (process-async handle-message-im client event)
+        (process-async slackbot.streaming/send-response client event)
 
         :else
         (ignore-event event))))
