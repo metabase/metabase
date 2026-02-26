@@ -221,7 +221,7 @@
                     io/input-stream)
             ba  (#'api.serialization/ba-copy res)]
         (testing "Archive contains correct number of files with proper log entries"
-          (is (= 13
+          (is (= 14
                  (with-open [tar (open-tar ba)]
                    (count
                     (for [^TarArchiveEntry e (u.compress/entries tar)
@@ -229,7 +229,7 @@
                       (do
                         (condp re-find (.getName e)
                           #"/export.log$" (testing "Log contains extract and store entries"
-                                            (is (= (+ #_extract 12 #_store 12)
+                                            (is (= (+ #_extract 13 #_store 13)
                                                    (count (line-seq (io/reader tar))))))
                           nil)
                         (.getName e))))))))
@@ -243,7 +243,7 @@
                    "settings"        false
                    "field_values"    false
                    "duration_ms"     (every-pred number? pos?)
-                   "count"           12
+                   "count"           13
                    "error_count"     0
                    "source"          "api"
                    "secrets"         false
@@ -285,8 +285,8 @@
                      "direction"     "import"
                      "duration_ms"   pos?
                      "source"        "api"
-                     "models" "Card,Collection,Dashboard,TransformJob,TransformLibrary,TransformTag"
-                     "count"         12
+                     "models"        "Card,Collection,Dashboard,TransformJob,TransformLibrary,TransformTag"
+                     "count"         13
                      "error_count"   0
                      "success"       true
                      "error_message" nil}
@@ -359,9 +359,9 @@
                        "direction"   "import"
                        "source"      "api"
                        "duration_ms" int?
-                       "count"       11
+                       "count"       12
                        "error_count" 1
-                       "models" "Collection,Dashboard,TransformJob,TransformLibrary,TransformTag"}
+                       "models"      "Collection,Dashboard,TransformJob,TransformLibrary,TransformTag"}
                       (-> (snowplow-test/pop-event-data-and-user-id!) last :data))))))))))
 
 (deftest import-invalid-archive-test
@@ -429,7 +429,7 @@
             (doseq [^TarArchiveEntry e (u.compress/entries tar)]
               (condp re-find (.getName e)
                 #"/export.log$" (testing "Log shows extract entries, error, and store entries"
-                                  (is (= (+ #_extract 12 #_error 1 #_store 11)
+                                  (is (= (+ #_extract 13 #_error 1 #_store 12)
                                          (count (line-seq (io/reader tar))))))
                 nil))))
 
@@ -442,7 +442,7 @@
                    "settings"        false
                    "field_values"    false
                    "duration_ms"     pos?
-                   "count"           11
+                   "count"           13
                    "error_count"     1
                    "source"          "api"
                    "secrets"         false
