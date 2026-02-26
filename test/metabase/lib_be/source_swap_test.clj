@@ -8,6 +8,45 @@
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]))
 
+(deftest ^:parallel should-upgrade-field-refs-in-query?-table-test
+  (let [query (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
+                  (lib/with-fields [(meta/field-metadata :orders :id)
+                                    (meta/field-metadata :orders :total)
+                                    (meta/field-metadata :orders :created-at)]))]
+    (is (false? (lib-be/should-upgrade-field-refs-in-query? query)))))
+
+(deftest ^:parallel should-upgrade-field-refs-in-query?-card-test
+  (let [base-query (lib/query meta/metadata-provider (meta/table-metadata :orders))
+        mp         (lib.tu/metadata-provider-with-card-from-query 1 base-query)
+        query      (-> (lib/query mp (lib.metadata/card mp 1))
+                       (lib/with-fields [(meta/field-metadata :orders :id)
+                                         (meta/field-metadata :orders :total)
+                                         (meta/field-metadata :orders :created-at)]))]
+    (is (true? (lib-be/should-upgrade-field-refs-in-query? query)))))
+
+(deftest ^:parallel should-upgrade-field-refs-in-query?-table-join-table-test
+  (let [query (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
+                  (lib/join (lib/join-clause (meta/table-metadata :products))))]
+    (is (false? (lib-be/should-upgrade-field-refs-in-query? query)))))
+
+(deftest ^:parallel should-upgrade-field-refs-in-query?-table-join-card-test
+  (let [products-query (lib/query meta/metadata-provider (meta/table-metadata :products))
+        mp             (lib.tu/metadata-provider-with-card-from-query 1 products-query)
+        query          (-> (lib/query mp (meta/table-metadata :orders))
+                           (lib/join (lib/join-clause (lib.metadata/card mp 1)
+                                                      [(lib/= (meta/field-metadata :orders :product-id)
+                                                              (meta/field-metadata :products :id))])))]
+    (is (true? (lib-be/should-upgrade-field-refs-in-query? query)))))
+
+(deftest ^:parallel should-upgrade-field-refs-in-query?-card-join-table-test
+  (let [orders-query (lib/query meta/metadata-provider (meta/table-metadata :orders))
+        mp           (lib.tu/metadata-provider-with-card-from-query 1 orders-query)
+        query        (-> (lib/query mp (lib.metadata/card mp 1))
+                         (lib/join (lib/join-clause (meta/table-metadata :products)
+                                                    [(lib/= (meta/field-metadata :orders :product-id)
+                                                            (meta/field-metadata :products :id))])))]
+    (is (true? (lib-be/should-upgrade-field-refs-in-query? query)))))
+
 (deftest ^:parallel upgrade-field-refs-in-query-noop-test
   (testing "should return the identical query when no refs are upgraded"
     (let [query (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
@@ -17,7 +56,7 @@
       (is (= query
              (lib-be/upgrade-field-refs-in-query query))))))
 
-(deftest ^:parallel upgrade-field-refs-in-query-source-table-test
+(deftest ^:parallel upgrade-field-refs-in-query-source-table-multi-stage-test
   (testing "should preserve field id refs in the same stage as the table, but upgrade next stages"
     (let [query (as-> (lib/query meta/metadata-provider (meta/table-metadata :orders)) q
                   (lib/with-fields q [(meta/field-metadata :orders :id)
@@ -51,7 +90,7 @@
                         {:filters [[:> {} [:field {} "PRODUCT_ID"] 5]]}]}
               (lib-be/upgrade-field-refs-in-query query))))))
 
-(deftest ^:parallel upgrade-field-refs-in-query-source-card-test
+(deftest ^:parallel upgrade-field-refs-in-query-source-card-multi-stage-test
   (testing "should upgrade field id refs for a card"
     (let [base-query (lib/query meta/metadata-provider (meta/table-metadata :orders))
           mp         (lib.tu/metadata-provider-with-card-from-query 1 base-query)
@@ -102,7 +141,7 @@
                                                       [:field {} (meta/id :products :id)]]]}]}]}
               (lib-be/upgrade-field-refs-in-query query))))))
 
-(deftest ^:parallel upgrade-field-refs-in-query-join-card-test
+(deftest ^:parallel upgrade-field-refs-in-query-table-join-card-test
   (testing "should upgrade field id refs in the RHS of a join condition for a card"
     (let [products-query (lib/query meta/metadata-provider (meta/table-metadata :products))
           mp             (lib.tu/metadata-provider-with-card-from-query 1 products-query)

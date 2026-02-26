@@ -178,18 +178,18 @@
                                            %))))
 
 (mu/defn- table-only-stage? :- :boolean
-  [query        :- ::lib.schema/query
-   stage-number :- :int]
-  (let [{:keys [source-table joins]} (lib.util/query-stage query stage-number)]
-    (and (zero? stage-number)
-         (some? source-table)
-         (every? #(some? (:source-table %)) joins))))
+  [{:keys [source-table joins]} :- ::lib.schema/stage]
+  (and (some? source-table)
+       (every? #(and (= 1 (count (:stages %)))
+                     (table-only-stage? (first (:stages %))))
+               joins)))
 
 (mu/defn- should-upgrade-field-refs-in-stage? :- :boolean
   [query        :- ::lib.schema/query
    stage-number :- :int]
   (let [stage (lib.util/query-stage query stage-number)]
-    (and (not (table-only-stage? query stage-number))
+    (and (or (pos? stage-number)
+             (not (table-only-stage? stage)))
          (some? (lib.util.match/match-lite
                   stage
                   (field-ref :guard (every-pred lib.field/is-field-clause? should-upgrade-field-ref?))
@@ -227,8 +227,10 @@
    target :- ::lib.schema.parameter/target]
   (or (when-let [field-ref (lib.parameters/parameter-target-field-ref target)]
         (when-let [stage-number (parameter-target-stage-number query target)]
-          (and (not (table-only-stage? query stage-number))
-               (should-upgrade-field-ref? field-ref))))
+          (let [stage (lib.util/query-stage query stage-number)]
+            (and (or (pos? stage-number)
+                     (not (table-only-stage? stage)))
+                 (should-upgrade-field-ref? field-ref)))))
       false))
 
 (mu/defn- build-swap-field-id-mapping-for-table :- [:maybe ::swap-source.field-id-mapping]
