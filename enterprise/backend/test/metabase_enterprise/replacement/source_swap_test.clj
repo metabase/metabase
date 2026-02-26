@@ -9,8 +9,6 @@
    [metabase-enterprise.replacement.swap.native :as swap.native]
    [metabase-enterprise.replacement.usages :as usages]
    [metabase.events.core :as events]
-   [metabase.lib-be.core]
-   [metabase.lib-be.source-swap]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.queries.models.card :as card]
@@ -84,22 +82,6 @@
      :type                   :question
      :dataset_query          (lib/native-query mp (str "SELECT * FROM {{#" (:id inner-card) "}}"))
      :visualization_settings {}}))
-
-(defn- build-field-id-mapping
-  "Build a field-id-mapping for a swap, matching runner/build-field-id-mapping."
-  [[old-type old-id] [new-type new-id]]
-  (let [db-id  (case old-type
-                 :card  (t2/select-one-fn :database_id :model/Card :id old-id)
-                 :table (t2/select-one-fn :db_id :model/Table :id old-id))
-        mp     (metabase.lib-be.core/application-database-metadata-provider db-id)
-        source (case old-type
-                 :card  (lib.metadata/card mp old-id)
-                 :table (lib.metadata/table mp old-id))
-        query  (lib/query mp source)]
-    (metabase.lib-be.source-swap/build-swap-field-id-mapping
-     query
-     {:type old-type :id old-id}
-     {:type new-type :id new-id})))
 
 (defmacro ^:private with-restored-card-queries
   "Snapshots every card's `dataset_query` before `body` and restores them
@@ -1400,8 +1382,7 @@
                       results (qp/process-query (:dataset_query card))]
                   (source-swap/do-swap! [:card (:id card)]
                                         old-source
-                                        new-source
-                                        (build-field-id-mapping old-source new-source))
+                                        new-source)
                   (let [card' (t2/select-one :model/Card (:id card))
                         results' (qp/process-query (:dataset_query card'))]
                     (is (= (mt/id :orders_c) (-> card' :table_id)))
