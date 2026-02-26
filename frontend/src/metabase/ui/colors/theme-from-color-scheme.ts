@@ -1,4 +1,4 @@
-import type { ResolvedColorScheme } from "../color-scheme";
+import type { ResolvedColorScheme } from "metabase/lib/color-scheme";
 
 import { METABASE_DARK_THEME } from "./constants/themes/dark";
 import { METABASE_LIGHT_THEME } from "./constants/themes/light";

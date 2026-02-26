@@ -50,12 +50,16 @@ const rules = [
     allow: ["types"],
     message: "Basic modules can only import from types",
   },
-  {
-    from: ["basic/lib"],
-    allow: ["basic/mlv2"],
+{
+    from: ["basic/mlv2"],
+    allow: ["basic/lib"],
   },
   {
-    from: ["basic/mlv2"],
+    from: ["basic/ui"],
+    allow: ["basic/lib"],
+  },
+  {
+    from: ["basic/api"],
     allow: ["basic/lib"],
   },
   {
