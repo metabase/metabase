@@ -5,10 +5,14 @@
    [metabase-enterprise.workspaces.common :as ws.common]
    [metabase-enterprise.workspaces.execute :as ws.execute]
    [metabase-enterprise.workspaces.impl :as ws.impl]
+   [metabase-enterprise.workspaces.query-processor.middleware :as ws.qp.middleware]
    [metabase-enterprise.workspaces.test-util :as ws.tu]
+   [metabase.lib.core :as lib]
+   [metabase.query-processor.compile :as qp.compile]
    [metabase.test :as mt]
    [metabase.transforms.test-util :as transforms.tu]
-   [toucan2.core :as t2]))
+   [toucan2.core :as t2])
+  (:import (clojure.lang ExceptionInfo)))
 
 (set! *warn-on-reflection* true)
 
@@ -291,42 +295,58 @@
                 :source-tables {"orders" 456}}
                (remap-python-source table-mapping source)))))))
 
-(deftest remap-sql-source-test
-  (let [remap-sql-source #'ws.execute/remap-sql-source
-        make-source      (fn [sql] {:type "query", :query {:database 1, :type :native, :stages [{:native sql}]}})]
-    ;; Test cases as [label, table-mapping, input-sql, expected-sql]
+(deftest workspace-sql-remapping-test
+  (let [db-id (mt/id)]
     (doseq [[label table-mapping input-sql expected-sql]
             [["remaps qualified table reference to isolated table"
-              {[1 "public" "orders"] {:db-id 1, :schema "ws_isolated_123", :table "public__orders", :id 456}}
+              {[db-id "public" "orders"] {:schema "ws_isolated_123" :table "public__orders"}}
               "SELECT * FROM public.orders"
               "SELECT * FROM ws_isolated_123.public__orders"]
 
              ["remaps unqualified table reference using nil-schema mapping"
-              {[1 nil "orders"] {:db-id 1, :schema "ws_isolated_123", :table "public__orders", :id 456}}
+              {[db-id nil "orders"] {:schema "ws_isolated_123" :table "public__orders"}}
               "SELECT * FROM orders"
               "SELECT * FROM ws_isolated_123.public__orders"]
 
-             ;; This is what build-remapping creates for unqualified input tables
              ["qualifies unqualified input table reference (no isolation, just adds schema)"
-              {[1 nil "orders"] {:db-id 1, :schema "public", :table "orders", :id 123}}
+              {[db-id nil "orders"] {:schema "public" :table "orders"}}
               "SELECT * FROM orders"
               "SELECT * FROM public.orders"]
 
              ["leaves unmapped tables unchanged"
-              {[1 nil "other_table"] {:db-id 1, :schema "public", :table "other_table", :id 999}}
+              {[db-id nil "other_table"] {:schema "public" :table "other_table"}}
               "SELECT * FROM orders"
               "SELECT * FROM orders"]
 
              ;; Note: macaw only renames tables in FROM/JOIN clauses, not table qualifiers in column references.
-             ;; The output SQL is semantically valid since `orders` resolves to `public.orders` in scope.
+             ;; The output SQL is semantically valid since orders resolves to public.orders in scope.
              ["handles multiple tables in same query"
-              {[1 nil "orders"]   {:db-id 1, :schema "public", :table "orders", :id 123}
-               [1 nil "products"] {:db-id 1, :schema "public", :table "products", :id 456}}
+              {[db-id nil "orders"]   {:schema "public" :table "orders"}
+               [db-id nil "products"] {:schema "public" :table "products"}}
               "SELECT * FROM orders JOIN products ON orders.product_id = products.id"
-              "SELECT * FROM public.orders JOIN public.products ON orders.product_id = products.id"]]]
+              "SELECT * FROM public.orders JOIN public.products ON orders.product_id = products.id"]
+
+             ["ignores numeric keys in table-mapping"
+              {123 {:schema "ws_isolated_123" :table "public__orders"}}
+              "SELECT * FROM orders"
+              "SELECT * FROM orders"]]]
       (testing label
-        (is (= (make-source expected-sql)
-               (remap-sql-source table-mapping (make-source input-sql))))))))
+        (let [source   (#'ws.execute/remap-sql-source table-mapping
+                                                      {:type "query", :query (lib/native-query (mt/metadata-provider) input-sql)})
+              compiled (qp.compile/compile (:query source))]
+          (is (= expected-sql (:query compiled))))))))
+
+(deftest workspace-mbql-remapping-throws-test
+  (testing "workspace remapping throws on MBQL queries (not yet supported)"
+    (let [query {:lib/type             :mbql/query
+                 :database             1
+                 :stages               [{:lib/type     :mbql.stage/mbql
+                                         :source-table 1}]
+                 :workspace-remapping  {:tables {{:schema "public" :table "orders"}
+                                                 {:schema "ws_isolated" :table "public__orders"}}}}]
+      (is (thrown-with-msg? ExceptionInfo
+                            #"Workspace remapping is currently only supported for native queries"
+                            (ws.qp.middleware/apply-workspace-remapping query))))))
 
 (deftest run-transform-marks-not-stale-on-success
   (testing "Successful transform run marks definition_changed=false"
