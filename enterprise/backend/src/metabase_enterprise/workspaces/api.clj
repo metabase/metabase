@@ -28,6 +28,7 @@
    [metabase.queries.schema :as queries.schema]
    [metabase.request.core :as request]
    [metabase.transforms.core :as transforms]
+   [metabase.transforms.crud :as transforms.crud]
    [metabase.transforms.feature-gating :as transforms.gating]
    [metabase.transforms.util :as transforms.util]
    [metabase.util :as u]
@@ -828,7 +829,9 @@
                                    (deferred-tru "Another transform in this workspace already targets that table"))
           transform (ws.common/add-to-changeset! api/*current-user-id* workspace :transform global-id body
                                                  :ref-id ref-id)]
-      (attach-isolated-target (select-malli-keys WorkspaceTransform workspace-transform-alias transform)))))
+      (-> (select-malli-keys WorkspaceTransform workspace-transform-alias transform)
+          attach-isolated-target
+          transforms.crud/python-source-table-ref->table-id))))
 
 (api.macros/defendpoint :post "/:ws-id/transform"
   :- WorkspaceTransform
@@ -876,7 +879,8 @@
   (-> (select-model-malli-keys :model/WorkspaceTransform WorkspaceTransform workspace-transform-alias)
       (t2/select-one :workspace_id ws-id :ref_id tx-id)
       api/check-404
-      attach-isolated-target))
+      attach-isolated-target
+      transforms.crud/python-source-table-ref->table-id))
 
 (api.macros/defendpoint :get "/:ws-id/transform/:tx-id" :- WorkspaceTransform
   "Get a specific transform in a workspace."
