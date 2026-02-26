@@ -46,7 +46,7 @@ export type StructuredQuerySectionOption = {
   name: string;
   icon: string;
   target: StructuredParameterDimensionTarget;
-  isForeign: boolean;
+  isForeign?: boolean;
 };
 
 function buildStructuredQuerySectionOptions(

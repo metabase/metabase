@@ -1,5 +1,7 @@
 import _ from "underscore";
 
+import type { ParameterSectionId } from "metabase-lib/v1/parameters/utils/operators";
+
 import { getDashboardParameterSections } from "./dashboard-options";
 
 describe("parameters/utils/dashboard-options", () => {
@@ -15,7 +17,7 @@ describe("parameters/utils/dashboard-options", () => {
         id: "location",
       });
       expect(
-        locationSection.options.every((option) =>
+        locationSection?.options.every((option) =>
           option.type.startsWith("string"),
         ),
       ).toBe(true);
@@ -23,7 +25,9 @@ describe("parameters/utils/dashboard-options", () => {
 
     it("should have a string section", () => {
       expect(
-        _.findWhere(getDashboardParameterSections(), { id: "category" }),
+        _.findWhere(getDashboardParameterSections(), {
+          id: "bad-section-id" as ParameterSectionId,
+        }),
       ).not.toBeDefined();
 
       expect(
