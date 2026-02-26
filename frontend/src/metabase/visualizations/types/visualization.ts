@@ -34,7 +34,12 @@ import type {
 import type { VisualizationDisplay } from "metabase-types/api/visualization";
 import type { Dispatch, QueryBuilderMode } from "metabase-types/store";
 
+import type { ChartSettingEnumToggleProps } from "../components/settings/ChartSettingEnumToggle";
+import type { ChartSettingMaxCategoriesProps } from "../components/settings/ChartSettingMaxCategories";
+import type { ChartSettingSeriesOrderProps } from "../components/settings/ChartSettingSeriesOrder";
 import type { LegacySeriesSettingsObjectKey } from "../echarts/cartesian/model/types";
+import type { DimensionsWidgetProps } from "../visualizations/PieChart/DimensionsWidget";
+import type { SmartScalarComparisonWidgetProps } from "../visualizations/SmartScalar/SettingsComponents/SmartScalarSettingsWidgets";
 
 import type { RemappingHydratedDatasetColumn } from "./columns";
 import type { HoveredObject } from "./hover";
@@ -343,7 +348,7 @@ export type VisualizationSettingDefinition<
   ) => string;
   persistDefault?: boolean;
   inline?: boolean;
-  props?: TProps;
+  props?: Partial<TProps>;
   getProps?: (
     object: T,
     vizSettings: ComputedVisualizationSettings,
@@ -407,9 +412,15 @@ export type VisualizationSettingsDefinitions<
   "graph.colors"?: SeriesSettingDefinition<TValue, TProps>;
   "graph.dimensions"?: SeriesSettingDefinition<TValue, TProps>;
   "graph.metrics"?: SeriesSettingDefinition<TValue, TProps>;
-  "graph.label_value_frequency"?: SeriesSettingDefinition<TValue, TProps>;
+  "graph.label_value_frequency"?: SeriesSettingDefinition<
+    TValue,
+    ChartSettingEnumToggleProps<string>
+  >;
   "graph.label_value_formatting"?: SeriesSettingDefinition<TValue, TProps>;
-  "graph.max_categories"?: SeriesSettingDefinition<TValue, TProps>;
+  "graph.max_categories"?: SeriesSettingDefinition<
+    TValue,
+    ChartSettingMaxCategoriesProps
+  >;
   "graph.max_categories_enabled"?: SeriesSettingDefinition<TValue, TProps>;
   "graph.other_category_color"?: SeriesSettingDefinition<TValue, TProps>;
   "graph.other_category_aggregation_fn"?: SeriesSettingDefinition<
@@ -417,7 +428,10 @@ export type VisualizationSettingsDefinitions<
     TProps
   >;
   "graph.series_labels"?: SeriesSettingDefinition<TValue, TProps>;
-  "graph.series_order"?: SeriesSettingDefinition<TValue, TProps>;
+  "graph.series_order"?: SeriesSettingDefinition<
+    TValue,
+    ChartSettingSeriesOrderProps
+  >;
   "graph.series_order_dimension"?: SeriesSettingDefinition<TValue, TProps>;
   "graph.show_mean"?: SeriesSettingDefinition<TValue, TProps>;
   "graph.show_stack_values"?: SeriesSettingDefinition<TValue, TProps>;
@@ -451,7 +465,10 @@ export type VisualizationSettingsDefinitions<
   markdown_template?: DatasetColumnSettingDefinition<TValue, TProps>;
   number_separators?: DatasetColumnSettingDefinition<TValue, TProps>;
   number_style?: DatasetColumnSettingDefinition<TValue, TProps>;
-  "pie._dimensions_widget"?: SeriesSettingDefinition<TValue, TProps>;
+  "pie._dimensions_widget"?: SeriesSettingDefinition<
+    TValue,
+    DimensionsWidgetProps
+  >;
   "pie.decimal_places"?: SeriesSettingDefinition<TValue, TProps>;
   "pie.dimension"?: SeriesSettingDefinition<TValue, TProps>;
   "pie.metric"?: SeriesSettingDefinition<TValue, TProps>;
@@ -476,7 +493,10 @@ export type VisualizationSettingsDefinitions<
   "sankey.target"?: SeriesSettingDefinition<TValue, TProps>;
   "sankey.value"?: SeriesSettingDefinition<TValue, TProps>;
   "scalar.compact_primary_number"?: SeriesSettingDefinition<TValue, TProps>;
-  "scalar.comparisons"?: SeriesSettingDefinition<TValue, TProps>;
+  "scalar.comparisons"?: SeriesSettingDefinition<
+    TValue,
+    SmartScalarComparisonWidgetProps
+  >;
   "scalar.field"?: SeriesSettingDefinition<TValue, TProps>;
   "scalar.switch_positive_negative"?: SeriesSettingDefinition<TValue, TProps>;
   scale?: DatasetColumnSettingDefinition<TValue, TProps>;
@@ -498,7 +518,6 @@ export type CompleteVisualizationSettingDefinition<
   TProps extends Record<string, unknown> = Record<string, unknown>,
 > = VisualizationSettingDefinition<T, TValue, TProps> & {
   id: string;
-  section: string;
 };
 
 export type Widget = {

@@ -471,20 +471,8 @@ export const GRAPH_DISPLAY_VALUES_SETTINGS: VisualizationSettingsDefinitions = {
       return !canHaveDataLabels(series, vizSettings);
     },
     props: {
-      options: [
-        {
-          get name() {
-            return t`Some`;
-          },
-          value: "fit",
-        },
-        {
-          get name() {
-            return t`All`;
-          },
-          value: "all",
-        },
-      ],
+      checkedValue: "fit",
+      uncheckedValue: "all",
     },
     getDefault: getDefaultDataLabelsFrequency,
     readDependencies: ["graph.show_values"],
