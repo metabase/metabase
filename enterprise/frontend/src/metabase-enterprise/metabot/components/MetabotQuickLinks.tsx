@@ -2,6 +2,7 @@ import { Route } from "react-router";
 import { replace } from "react-router-redux";
 import { useMount } from "react-use";
 
+import { useSetting } from "metabase/common/hooks";
 import { useDispatch } from "metabase/lib/redux";
 import { useMetabotAgent } from "metabase-enterprise/metabot/hooks";
 
@@ -11,6 +12,7 @@ export const getMetabotQuickLinks = () => {
       key="metabot"
       path="metabot/new"
       component={(props) => {
+        const isMetabotEnabled = useSetting("is-metabot-enabled");
         const { submitInput } = useMetabotAgent("omnibot");
         const prompt = String(props.location.query?.q ?? "");
         const dispatch = useDispatch();
@@ -18,7 +20,7 @@ export const getMetabotQuickLinks = () => {
         useMount(() => {
           dispatch(replace("/"));
 
-          if (prompt) {
+          if (prompt && isMetabotEnabled) {
             submitInput(prompt, { focusInput: true });
           }
         });

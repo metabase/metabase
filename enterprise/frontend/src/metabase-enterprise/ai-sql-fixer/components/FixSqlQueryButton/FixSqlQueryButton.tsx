@@ -1,5 +1,6 @@
 import { t } from "ttag";
 
+import { useSetting } from "metabase/common/hooks";
 import { Button } from "metabase/ui";
 import { useMetabotAgent } from "metabase-enterprise/metabot/hooks";
 
@@ -14,7 +15,12 @@ export function FixSqlQueryButton({
   rawSql,
   errorMessage,
 }: FixSqlQueryButtonProps) {
+  const isMetabotEnabled = useSetting("is-metabot-enabled");
   const { submitInput } = useMetabotAgent("omnibot");
+
+  if (!isMetabotEnabled) {
+    return null;
+  }
 
   const handleClick = () => {
     trackQueryFixClicked();

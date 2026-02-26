@@ -1,6 +1,8 @@
 import userEvent from "@testing-library/user-event";
 
+import { mockSettings } from "__support__/settings";
 import { renderWithProviders, screen } from "__support__/ui";
+import { createMockState } from "metabase-types/store/mocks";
 
 import { FixSqlQueryButton } from "./FixSqlQueryButton";
 
@@ -12,8 +14,16 @@ jest.mock("metabase-enterprise/metabot/hooks", () => ({
   }),
 }));
 
-function setup() {
-  renderWithProviders(<FixSqlQueryButton />);
+function setup({
+  isMetabotEnabled = true,
+}: { isMetabotEnabled?: boolean } = {}) {
+  const settings = mockSettings({
+    "is-metabot-enabled": isMetabotEnabled,
+  });
+
+  renderWithProviders(<FixSqlQueryButton />, {
+    storeInitialState: createMockState({ settings }),
+  });
 }
 
 describe("FixSqlQueryButton", () => {
@@ -21,15 +31,22 @@ describe("FixSqlQueryButton", () => {
     jest.clearAllMocks();
   });
 
-  it("should render the button with correct text", () => {
-    setup();
+  it("should render the button with correct text when metabot is enabled", () => {
+    setup({ isMetabotEnabled: true });
     expect(
       screen.getByRole("button", { name: /Have Metabot fix it/ }),
     ).toBeInTheDocument();
   });
 
+  it("should not render the button when metabot is disabled", () => {
+    setup({ isMetabotEnabled: false });
+    expect(
+      screen.queryByRole("button", { name: /Have Metabot fix it/ }),
+    ).not.toBeInTheDocument();
+  });
+
   it("should submit a prompt to the metabot agent when clicked", async () => {
-    setup();
+    setup({ isMetabotEnabled: true });
 
     await userEvent.click(
       screen.getByRole("button", { name: /Have Metabot fix it/ }),

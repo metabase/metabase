@@ -223,6 +223,14 @@ d:{"finishReason":"stop","usage":{"promptTokens":4916,"completionTokens":8}}`,
         H.assertChatVisibility("visible");
         H.lastChatMessage().should("have.text", "You, but don't tell anyone.");
       });
+
+      it("should not submit a prompt via /metabot/new when metabot is disabled", () => {
+        H.updateSetting("is-metabot-enabled", false);
+        cy.visit("/metabot/new?q=Who%20is%20your%20favorite%3F");
+        cy.url().should("eq", Cypress.config().baseUrl + "/");
+        H.assertChatVisibility("not.visible");
+        cy.get("@agentReq.all").should("have.length", 0);
+      });
     });
   });
 });

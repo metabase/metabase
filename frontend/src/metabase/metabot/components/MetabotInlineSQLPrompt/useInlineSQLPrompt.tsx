@@ -67,6 +67,9 @@ export function useInlineSQLPrompt(
 ): UseInlineSqlEditResult {
   const isTableBarEnabled = !useHasTokenFeature("metabot_v3");
   const llmSqlGenerationEnabled = useSetting("llm-sql-generation-enabled");
+  const isMetabotEnabled = useSetting("is-metabot-enabled");
+
+  const isEnabled = !!llmSqlGenerationEnabled && !!isMetabotEnabled;
 
   const databaseId = question.databaseId();
 
@@ -224,7 +227,7 @@ export function useInlineSQLPrompt(
 
   const extensions = useMemo(
     () =>
-      llmSqlGenerationEnabled
+      isEnabled
         ? [
             createPromptInputExtension(setPortalTarget),
             keymap.of([
@@ -263,13 +266,13 @@ export function useInlineSQLPrompt(
             }),
           ]
         : [],
-    [llmSqlGenerationEnabled],
+    [isEnabled],
   );
 
   return {
     extensions,
     portalElement:
-      llmSqlGenerationEnabled && portalTarget
+      isEnabled && portalTarget
         ? createPortal(
             <MetabotInlineSQLPrompt
               databaseId={databaseId}
@@ -289,12 +292,8 @@ export function useInlineSQLPrompt(
             portalTarget.container,
           )
         : null,
-    proposedQuestion: llmSqlGenerationEnabled ? proposedQuestion : undefined,
-    handleRejectProposed: llmSqlGenerationEnabled
-      ? handleRejectProposed
-      : undefined,
-    handleAcceptProposed: llmSqlGenerationEnabled
-      ? handleAcceptProposed
-      : undefined,
+    proposedQuestion: isEnabled ? proposedQuestion : undefined,
+    handleRejectProposed: isEnabled ? handleRejectProposed : undefined,
+    handleAcceptProposed: isEnabled ? handleAcceptProposed : undefined,
   };
 }

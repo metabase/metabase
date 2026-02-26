@@ -6,8 +6,10 @@ import {
   findRequests,
   setupCollectionByIdEndpoint,
   setupCollectionsEndpoints,
+  setupPropertiesEndpoints,
   setupRecentViewsAndSelectionsEndpoints,
   setupRootCollectionItemsEndpoint,
+  setupSettingsEndpoints,
 } from "__support__/server-mocks";
 import {
   setupMetabotPromptSuggestionsEndpoint,
@@ -29,6 +31,7 @@ import type { MetabotId, RecentItem } from "metabase-types/api";
 import {
   createMockCollection,
   createMockMetabotInfo,
+  createMockSettings,
 } from "metabase-types/api/mocks";
 
 import { MetabotAdminPage } from "./MetabotAdminPage";
@@ -98,6 +101,8 @@ const setup = async (
 ) => {
   mockGetBoundingClientRect();
   mockPathParam(initialPathParam);
+  setupPropertiesEndpoints(createMockSettings());
+  setupSettingsEndpoints([]);
   setupMetabotsEndpoints(metabots, error ? 500 : undefined);
   setupCollectionByIdEndpoint({
     collections: seedCollections.map((c: any) => ({ id: c.model_id, ...c })),
