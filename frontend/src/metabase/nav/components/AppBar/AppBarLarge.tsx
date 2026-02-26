@@ -94,25 +94,23 @@ const AppBarLarge = ({
           ) : null}
         </AppBarInfoContainer>
       </Flex>
-      {(isSearchVisible || isNewButtonVisible || isAppSwitcherVisible) && (
-        <Flex
-          align="center"
-          gap="sm"
-          justify="flex-end"
-          maw="32.5rem"
-          flex="1 1 auto"
-        >
-          {isSearchVisible &&
-            (isEmbeddingIframe ? <SearchBar /> : <SearchButton mr="md" />)}
-          {isNewButtonVisible && <NewItemButton collectionId={collectionId} />}
-          {<PLUGIN_METABOT.MetabotAppBarButton />}
-          {isAppSwitcherVisible && (
-            <Box c="text-primary" aria-label={t`Settings menu`}>
-              <AppSwitcher />
-            </Box>
-          )}
-        </Flex>
-      )}
+      <Flex
+        align="center"
+        gap="sm"
+        justify="flex-end"
+        maw="32.5rem"
+        flex="1 1 auto"
+      >
+        {isSearchVisible &&
+          (isEmbeddingIframe ? <SearchBar /> : <SearchButton mr="md" />)}
+        {isNewButtonVisible && <NewItemButton collectionId={collectionId} />}
+        {<PLUGIN_METABOT.MetabotAppBarButton />}
+        {isAppSwitcherVisible && (
+          <Box c="text-primary" aria-label={t`Settings menu`}>
+            <AppSwitcher />
+          </Box>
+        )}
+      </Flex>
     </AppBarRoot>
   );
 };

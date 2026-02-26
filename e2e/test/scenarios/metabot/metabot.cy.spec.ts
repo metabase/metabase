@@ -235,6 +235,34 @@ d:{"finishReason":"stop","usage":{"promptTokens":4916,"completionTokens":8}}`,
   });
 });
 
+describe("Metabot in full-app embedding", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsAdmin();
+    H.activateToken("bleeding-edge");
+  });
+
+  it("should show the metabot button when is-embedded-metabot-enabled is true", () => {
+    cy.request("PUT", "/api/setting/is-embedded-metabot-enabled", {
+      value: true,
+    });
+
+    H.visitFullAppEmbeddingUrl({ url: "/", qs: {} });
+
+    H.appBar().icon("metabot").should("be.visible");
+  });
+
+  it("should not show the metabot button when is-embedded-metabot-enabled is false", () => {
+    cy.request("PUT", "/api/setting/is-embedded-metabot-enabled", {
+      value: false,
+    });
+
+    H.visitFullAppEmbeddingUrl({ url: "/", qs: {} });
+
+    H.appBar().icon("metabot").should("not.exist");
+  });
+});
+
 const whoIsYourFavoriteResponse = `0:"You, but don't tell anyone."
 2:{"type":"state","version":1,"value":{"queries":{}}}
 d:{"finishReason":"stop","usage":{"promptTokens":4916,"completionTokens":8}}`;
