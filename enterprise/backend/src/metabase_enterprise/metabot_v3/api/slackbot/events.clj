@@ -1,7 +1,5 @@
 (ns metabase-enterprise.metabot-v3.api.slackbot.events
-  "Event definitions for slackbot."
-  (:require
-   [metabase.util.malli.registry :as mr]))
+  "Event definitions for slackbot.")
 
 (def SlackEventsResponse
   "Malli schema for Slack events API response"
@@ -46,14 +44,6 @@
     [:text :string]
     [:thread_ts {:optional true} [:maybe :string]]]])
 
-(def SlackMessageChannelsEvent
-  "Schema for message.channels events (public channel messages)"
-  [:merge SlackMessageEvent
-   [:map
-    [:channel_type [:= "channel"]]
-    [:text :string]
-    [:thread_ts {:optional true} [:maybe :string]]]])
-
 (def SlackMessageFileShareEvent
   "Schema for file_share message events"
   [:merge SlackMessageEvent
@@ -75,54 +65,48 @@
    [:event_ts :string]
    [:thread_ts {:optional true} [:maybe :string]]])
 
-(def SlackKnownMessageEvent
-  "Schema for event_callback events that we handle."
-  [:or
-   ;; Events based on :subtype come first as :subtype is unambiguous.
-   SlackMessageFileShareEvent
-   ;; Events based on :channel_type. These are generic message events that might overlap with the above. For example,
-   ;; a SlackMessageFileShareEvent might have either :channel_type. Maybe these should be "mixins", but for now we
-   ;; only need to distinguish file_share vs im vs channel messages.
-   SlackMessageImEvent
-   SlackMessageChannelsEvent])
-
 (def SlackEventCallbackEvent
   "Malli schema for Slack event_callback event"
   [:map
    [:type [:= "event_callback"]]
-   [:event [:or
-            SlackAppMentionEvent
-            SlackKnownMessageEvent
-            ;; Fallback for any other valid event type
-            [:map
-             [:type :string]
-             [:event_ts :string]]]]])
+   [:event [:map
+            [:type :string]
+            [:event_ts :string]]]])
 
-(defn known-user-message?
-  "Check if event is a user message (not bot/system message).
-   Returns true if the event has no bot_id and matches a known message schema."
+(defn user-message?
+  "Check if event is from a user (not a bot)."
   [event]
-  (and (nil? (:bot_id event))
-       (mr/validate SlackKnownMessageEvent event)))
+  (nil? (:bot_id event)))
 
-(defn dm-message?
-  "Check if event is a direct message from a user (not bot/system).
-   Returns true if the event matches SlackMessageImEvent and has no bot_id."
+(defn bot-message?
+  "Check if event is from a bot."
   [event]
-  (and (nil? (:bot_id event))
-       (mr/validate SlackMessageImEvent event)))
+  (not (user-message? event)))
 
-(defn file-share-message?
-  "Check if event is a file share message from a user (not bot/system).
-   Returns true if the event matches SlackMessageFileShareEvent and has no bot_id."
+(defn dm?
+  "Check if event is a direct message."
   [event]
-  (and (nil? (:bot_id event))
-       (mr/validate SlackMessageFileShareEvent event)))
+  (= (:channel_type event) "im"))
+
+(defn channel-message?
+  "Check if event is a public channel message."
+  [event]
+  (= (:channel_type event) "channel"))
+
+(defn file-share?
+  "Check if event is a file share."
+  [event]
+  (= (:subtype event) "file_share"))
+
+(defn has-files?
+  "Check if event has files."
+  [event]
+  (boolean (seq (:files event))))
 
 (defn app-mention?
-  "Check if event is an app_mention event (when bot is @mentioned)."
+  "Check if event is an app_mention event."
   [event]
-  (mr/validate SlackAppMentionEvent event))
+  (= (:type event) "app_mention"))
 
 (defn edited-message?
   "Check if event is an edited message (message_changed subtype or has :edited key)."
@@ -131,14 +115,11 @@
       (some? (:edited event))))
 
 (defn app-mention-with-files?
-  "Check if event is an app_mention that has file attachments.
-   When a user @mentions the bot with a file in a channel, Slack sends two events:
-   1. message.channels with subtype: file_share (handled by process-message-file-share)
-   2. app_mention (this duplicate needs to be skipped)
-   We skip app_mention events with files to avoid duplicate processing."
+  "Check if event is an app_mention with file attachments.
+   These are skipped because file_share events handle file uploads."
   [event]
   (and (app-mention? event)
-       (seq (:files event))))
+       (has-files? event)))
 
 (defn event->reply-context
   "Extract the necessary context for a reply from the given `event`"

@@ -7,8 +7,7 @@
    [metabase.channel.settings :as channel.settings]
    [metabase.premium-features.core :as premium-features]
    [metabase.system.core :as system]
-   [metabase.util.encryption :as encryption]
-   [metabase.util.i18n :refer [tru]]))
+   [metabase.util.encryption :as encryption]))
 
 (set! *warn-on-reflection* true)
 
@@ -70,12 +69,6 @@
         (metabot.settings/metabot-slack-signing-secret)
         (channel.settings/unobfuscated-slack-app-token)
         (encryption/default-encryption-enabled?))))
-
-(defn assert-setup-complete
-  "Asserts that all required Slack settings have been configured."
-  []
-  (when-not (setup-complete?)
-    (throw (ex-info (str (tru "Slack integration is not fully configured.")) {:status-code 503}))))
 
 #_{:clj-kondo/ignore [:clojure-lsp/unused-public-var]}
 (defn validate-bot-token!

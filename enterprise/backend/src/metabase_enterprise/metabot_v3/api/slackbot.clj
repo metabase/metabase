@@ -14,7 +14,8 @@
    [metabase.channel.api.slack :as channel.api.slack]
    [metabase.channel.settings :as channel.settings]
    [metabase.permissions.core :as perms]
-   [metabase.premium-features.core :as premium-features :refer [defenterprise defenterprise-schema]]
+   [metabase.premium-features.core :as premium-features :refer [defenterprise
+                                                                defenterprise-schema]]
    [metabase.request.core :as request]
    [metabase.settings.core :as setting]
    [metabase.system.core :as system]
@@ -119,7 +120,7 @@
    :headers {"Content-Type" "text/plain"}
    :body    "ok"})
 
-(mu/defn- process-message-im
+(mu/defn- handle-message-im
   "Process a direct message (message.im)"
   [client  :- slackbot.client/SlackClient
    event   :- slackbot.events/SlackMessageImEvent
@@ -134,7 +135,7 @@
     (and (seq skipped)
          (empty? results))))
 
-(mu/defn- process-message-file-share
+(mu/defn- handle-message-file-share
   "Process a file_share message - handles CSV uploads"
   [client  :- slackbot.client/SlackClient
    event   :- slackbot.events/SlackMessageFileShareEvent
@@ -168,65 +169,74 @@
                                                               (str/join ", " skipped-files))})))
         (slackbot.streaming/send-response client event extra-history)))))
 
-(mu/defn- process-app-mention :- :nil
+(mu/defn- handle-app-mention
   "Handle an app_mention event (when bot is @mentioned in a channel)."
-  [client :- slackbot.client/SlackClient
-   event  :- slackbot.events/SlackAppMentionEvent]
-  (when-let [user-id (require-authenticated-slack-user! client event)]
-    (request/with-current-user user-id
-      (slackbot.streaming/send-response client event)))
-  nil)
+  [client  :- slackbot.client/SlackClient
+   event   :- slackbot.events/SlackAppMentionEvent
+   user-id :- :int]
+  (request/with-current-user user-id
+    (slackbot.streaming/send-response client event)))
+
+(defn- process-async
+  "Process an event asynchronously with logging and error handling.
+   Authenticates the user and calls handler with [client event user-id]."
+  [handler client event]
+  (let [event-type (or (:subtype event) (:channel_type event) (:type event))]
+    (log/debugf "[slackbot] Processing %s event" event-type)
+    (future
+      (try
+        (when-let [user-id (require-authenticated-slack-user! client event)]
+          (handler client event user-id))
+        (catch Exception e
+          (log/errorf e "[slackbot] Error processing %s: %s" event-type (ex-message e)))))))
+
+(defn ignore-event
+  "Handle any event we don't care to process"
+  [event]
+  (log/debugf "[slackbot] Ignoring event type=%s channel_type=%s subtype=%s ts=%s"
+              (:type event) (:channel_type event) (:subtype event) (:ts event)))
+
+(defn assert-setup-complete
+  "Asserts that all required Slack settings have been configured."
+  []
+  (when-not (slackbot.config/setup-complete?)
+    (throw (ex-info (str (tru "Slack integration is not fully configured.")) {:status-code 503}))))
+
+(defn assert-enabled
+  "Asserts that all required Slack settings have been configured."
+  []
+  (when-not (sso-settings/slack-connect-enabled)
+    (throw (ex-info (str (tru "Slack integration is not enabled.")) {:status-code 403}))))
 
 (mu/defn- handle-event-callback :- slackbot.events/SlackEventsResponse
   "Respond to an event_callback request"
   [payload :- slackbot.events/SlackEventCallbackEvent]
-  (when (and (premium-features/enable-metabot-v3?)
-             (sso-settings/slack-connect-enabled))
-    (let [client {:token (channel.settings/unobfuscated-slack-app-token)}
-          event (:event payload)]
-      (log/debugf "[slackbot] Event callback: event_type=%s user=%s channel=%s"
-                  (:type event) (:user event) (:channel event))
-      (cond
-        (slackbot.events/edited-message? event)
-        (log/debug "[slackbot] Ignoring edited message")
+  (assert-setup-complete)
+  (assert-enabled)
+  (let [client {:token (channel.settings/unobfuscated-slack-app-token)}
+        event (:event payload)]
+    (log/debugf "[slackbot] Event callback: event_type=%s user=%s channel=%s"
+                (:type event) (:user event) (:channel event))
+    (cond
+      ((some-fn
+        slackbot.events/bot-message? ;; ignore the bot's own messages
+        slackbot.events/edited-message? ;; no support regenerating responses for now
+        slackbot.events/app-mention-with-files? ;; we'll get another file_share event
+        slackbot.events/channel-message?) ;; only responsd for app mentions
+       event)
+      (ignore-event event)
 
-        (slackbot.events/app-mention-with-files? event)
-        (log/debugf "[slackbot] Skipping app_mention with files (will be handled by file_share): ts=%s"
-                    (:ts event))
+      (slackbot.events/app-mention? event)
+      (process-async handle-app-mention client event)
 
-        (slackbot.events/app-mention? event)
-        (do
-          (log/debug "[slackbot] Processing app_mention event")
-          (future
-            (try
-              (process-app-mention client event)
-              (catch Exception e
-                (log/errorf e "[slackbot] Error processing app_mention: %s" (ex-message e))))))
+      (slackbot.events/file-share? event)
+      (process-async handle-message-file-share client event)
 
-        (slackbot.events/file-share-message? event)
-        (do
-          (log/debug "[slackbot] Processing file_share event")
-          (future
-            (try
-              (when-let [user-id (require-authenticated-slack-user! client event)]
-                (process-message-file-share client event user-id))
-              (catch Exception e
-                (log/errorf e "[slackbot] Error processing file_share: %s" (ex-message e))))))
+      (slackbot.events/dm? event)
+      (process-async handle-message-im client event)
 
-        (slackbot.events/dm-message? event)
-        (do
-          (log/debug "[slackbot] Processing DM event")
-          (future
-            (try
-              (when-let [user-id (require-authenticated-slack-user! client event)]
-                (process-message-im client event user-id))
-              (catch Exception e
-                (log/errorf e "[slackbot] Error processing DM: %s" (ex-message e))))))
-
-        ;; All other message types (channel messages without @mention) are ignored
-        :else
-        (log/debugf "[slackbot] Ignoring event type=%s channel_type=%s subtype=%s"
-                    (:type event) (:channel_type event) (:subtype event)))))
+      :else
+      (ignore-event event)))
   ack-msg)
 
 ;; ----------------------- ROUTES --------------------------
@@ -244,13 +254,12 @@
   (assert-valid-slack-req request)
   (log/debugf "[slackbot] Received Slack event type=%s" (:type body))
   ;; all handlers must respond within 3 seconds or slack will retry
-  (if-not (premium-features/enable-metabot-v3?)
-    ack-msg ;; prevent retries if metabot becomes disabled after app is configured
+  (if (premium-features/enable-metabot-v3?)
     (case (:type body)
       "url_verification" (handle-url-verification body)
-      "event_callback" (do (slackbot.config/assert-setup-complete)
-                           (handle-event-callback body))
-      ack-msg)))
+      "event_callback"   (handle-event-callback body)
+      ack-msg)
+    ack-msg))
 
 (def SlackBotSettingsRequest
   "Malli schema for the request body of PUT /api/ee/metabot-v3/slack/settings.
