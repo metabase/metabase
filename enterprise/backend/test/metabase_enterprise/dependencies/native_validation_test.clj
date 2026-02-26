@@ -186,8 +186,7 @@
           driver (:engine (lib.metadata/database mp))]
       (testing "Multi-card query, unqualified - source is unknown"
         (validates? mp driver 24
-                    #{(merge (lib/missing-column-error "BAD")
-                             {:source-entity-type :unknown})}))
+                    #{(lib/missing-column-error "BAD")}))
       (testing "Multi-card query, qualified - source attributed to specific card"
         (validates? mp driver 25
                     #{(merge (lib/missing-column-error "BAD")
@@ -200,8 +199,7 @@
           driver (:engine (lib.metadata/database mp))]
       (testing "Mixed table+card, unqualified - source is unknown"
         (validates? mp driver 26
-                    #{(merge (lib/missing-column-error "BAD")
-                             {:source-entity-type :unknown})}))
+                    #{(lib/missing-column-error "BAD")}))
       (testing "Mixed table+card, qualified to table - source attributed to table"
         (validates? mp driver 27
                     #{(merge (lib/missing-column-error "BAD")
@@ -334,8 +332,7 @@
       (testing "multi-table query, unqualified - source is unknown"
         (is (= (normalize-error-names driver
                                       #{{:type               :missing-column
-                                         :name               "bad"
-                                         :source-entity-type :unknown}})
+                                         :name               "bad"}})
                (deps.native-validation/validate-native-query
                 driver
                 (fake-query mp "select bad from products join orders on products.id = orders.product_id")))))
@@ -377,13 +374,12 @@
               (fake-query mp "WITH cte AS (SELECT id, title FROM products) SELECT bad FROM cte")))))))
 
 (deftest ^:parallel fallback-multi-table-cte-test
-  (testing "CTE with multiple tables - fallback produces :unknown source"
+  (testing "CTE with multiple tables - fallback produces unknown source"
     (let [mp     (deps.tu/default-metadata-provider)
           driver (:engine (lib.metadata/database mp))]
       (is (= (normalize-error-names driver
                                     #{{:type               :missing-column
-                                       :name               "bad"
-                                       :source-entity-type :unknown}})
+                                       :name               "bad"}})
              (deps.native-validation/validate-native-query
               driver
               (fake-query mp "WITH cte AS (SELECT p.id, o.total FROM products p JOIN orders o ON p.id = o.product_id) SELECT bad FROM cte")))))))

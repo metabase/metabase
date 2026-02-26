@@ -236,19 +236,21 @@
    Returns a set of errors, each enriched with source entity information when possible."
   [driver :- :keyword
    query  :- ::lib.schema/query]
-  (if (has-card-template-tags? query)
-    (if-let [compiled (compile-toplevel-query query)]
-      (let [errors (validate-with-sources driver compiled true)]
-        (if (empty? errors)
-          errors
-          (fallback-enrich driver compiled errors)))
-      ;; Fallback: cards with placeholder collision
-      (driver/validate-native-query-fields driver (compile-query query)))
-    (let [compiled (compile-query query)
-          errors   (validate-with-sources driver compiled false)]
-      (if (empty? errors)
-        errors
-        (fallback-enrich driver compiled errors)))))
+  (into #{}
+        (map #(cond-> % (= :unknown (:source-entity-type %)) (dissoc :source-entity-type :source-entity-id)))
+        (if (has-card-template-tags? query)
+          (if-let [compiled (compile-toplevel-query query)]
+            (let [errors (validate-with-sources driver compiled true)]
+              (if (empty? errors)
+                errors
+                (fallback-enrich driver compiled errors)))
+            ;; Fallback: cards with placeholder collision
+            (driver/validate-native-query-fields driver (compile-query query)))
+          (let [compiled (compile-query query)
+                errors   (validate-with-sources driver compiled false)]
+            (if (empty? errors)
+              errors
+              (fallback-enrich driver compiled errors))))))
 
 (mu/defn native-result-metadata
   "Compiles a (native) query and calculates its result metadata"

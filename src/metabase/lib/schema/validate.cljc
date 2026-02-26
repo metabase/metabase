@@ -41,9 +41,8 @@
     [:validation-exception-error [:ref ::validation-exception-error]]]])
 
 (mr/def ::source-entity-type
-  "The type of the source entity causing an error.
-   :unknown is used when the source cannot be determined (e.g., multiple tables and unqualified column)."
-  [:enum :table :card :unknown])
+  "The type of the source entity causing an error."
+  [:enum :table :card])
 
 (mr/def ::source-entity
   "Optional source entity tracking fields for dependency analysis."
