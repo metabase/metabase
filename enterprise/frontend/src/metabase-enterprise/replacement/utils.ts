@@ -38,7 +38,5 @@ export function getColumnErrorMessage(
       return t`This column is a primary key, while the original column is not.`;
     case "missing-foreign-key":
       return t`This column is not a foreign key, while the original column is.`;
-    case "foreign-key-mismatch":
-      return t`This foreign key references a different primary key than the original foreign key.`;
   }
 }

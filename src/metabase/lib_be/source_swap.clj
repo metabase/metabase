@@ -37,8 +37,7 @@
   [:enum :column-type-mismatch
    :missing-primary-key
    :extra-primary-key
-   :missing-foreign-key
-   :foreign-key-mismatch])
+   :missing-foreign-key])
 
 (mr/def ::swap-source.column-mapping
   [:map
@@ -73,14 +72,7 @@
     (and new-column
          (= :type/FK (:semantic-type old-column))
          (not= :type/FK (:semantic-type new-column)))
-    (conj :missing-foreign-key)
-
-    (and new-column
-         (= :type/FK (:semantic-type old-column))
-         (= :type/FK (:semantic-type new-column))
-         (not= (:fk-target-field-id old-column)
-               (:fk-target-field-id new-column)))
-    (conj :foreign-key-mismatch)))
+    (conj :missing-foreign-key)))
 
 (mu/defn check-column-mappings :- [:sequential ::swap-source.column-mapping]
   "Build column mappings between source and target query columns."
@@ -246,10 +238,13 @@
   (let [source-fields (lib.metadata/fields query source-table-id)
         target-fields (lib.metadata/fields query target-table-id)
         target-fields-by-name (m/index-by :name target-fields)]
-    (not-empty (into {} (keep (fn [source-field]
-                                (when-let [target-field (get target-fields-by-name (:name source-field))]
-                                  [(:id source-field) (:id target-field)]))
-                              source-fields)))))
+    (not-empty (into {} (mapcat (fn [{source-id :id source-name :name source-fk-target-field-id :fk-target-field-id}]
+                                  (when-let [{target-id :id target-fk-target-field-id :fk-target-field-id}
+                                             (get target-fields-by-name source-name)]
+                                    (cond-> [[source-id target-id]]
+                                      (and (some? source-fk-target-field-id) (some? target-fk-target-field-id))
+                                      (conj [source-fk-target-field-id target-fk-target-field-id]))))
+                                source-fields)))))
 
 (mu/defn- build-swap-field-id-mapping-for-card :- [:maybe ::swap-source.field-id-mapping]
   [query           :- ::lib.schema/query
