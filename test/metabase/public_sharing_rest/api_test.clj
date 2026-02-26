@@ -1733,3 +1733,31 @@
     (let [response (client/client :get 200 "public/oembed?url=path/to/url&format=json")]
       (is (= "1.0" (:version response)))
       (is (= "rich" (:type response))))))
+
+(deftest all-endpoints-require-public-sharing-enabled-test
+  (testing "Public endpoints return 400 when public sharing is disabled"
+    (mt/with-temporary-setting-values [enable-public-sharing true]
+      (with-temp-public-dashboard-and-card [dash card dashcard]
+        (let [card-uuid   (:public_uuid card)
+              dash-uuid   (:public_uuid dash)
+              dashcard-id (u/the-id dashcard)
+              card-id     (u/the-id card)
+              endpoints   [[:get  (format "public/card/%s" card-uuid)]
+                           [:get  (format "public/card/%s/query" card-uuid)]
+                           [:get  (format "public/card/%s/query/json" card-uuid)]
+                           [:get  (format "public/card/%s/params/_STATIC_CATEGORY_/values" card-uuid)]
+                           [:get  (format "public/card/%s/params/_STATIC_CATEGORY_/search/A" card-uuid)]
+                           [:get  (format "public/card/%s/params/_STATIC_CATEGORY_/remapping" card-uuid)
+                            :value "foo"]
+                           [:get  (format "public/dashboard/%s" dash-uuid)]
+                           [:get  (format "public/dashboard/%s/dashcard/%d/card/%d" dash-uuid dashcard-id card-id)]
+                           [:post (format "public/dashboard/%s/dashcard/%d/card/%d/json" dash-uuid dashcard-id card-id)]
+                           [:get  (format "public/dashboard/%s/params/_VENUE_ID_/values" dash-uuid)]
+                           [:get  (format "public/dashboard/%s/params/_VENUE_ID_/search/foo" dash-uuid)]
+                           [:get  (format "public/dashboard/%s/params/_VENUE_ID_/remapping" dash-uuid)
+                            :value "1"]]]
+          (mt/with-temporary-setting-values [enable-public-sharing false]
+            (doseq [[method url & kvs] endpoints]
+              (testing (str (name method) " " url)
+                (is (= "An error occurred."
+                       (apply client/client method 400 url kvs)))))))))))
