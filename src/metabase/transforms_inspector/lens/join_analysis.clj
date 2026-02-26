@@ -182,7 +182,9 @@
 
 (defmethod lens.core/lens-applicable? :join-analysis
   [_ ctx]
-  (:has-joins? ctx))
+  (and (:has-joins? ctx)
+       (pos-int? (:from-table-id ctx))
+       (every? #(pos-int? (:source-table %)) (get-join-structure ctx))))
 
 (defmethod lens.core/lens-metadata :join-analysis
   [_ _ctx]
