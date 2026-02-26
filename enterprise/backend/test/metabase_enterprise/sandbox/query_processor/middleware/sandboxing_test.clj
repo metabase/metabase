@@ -629,7 +629,7 @@
                                                    [tag id opts]))
                               (dissoc :fk_target_field_id
                                       :lib/original-display-name
-                                      :metabase.lib.query/transformation-added-base-type))))]
+                                      :lib/transformation-added-base-type))))]
     (f {:cols cols, :expected-cols expected-cols})))
 
 (deftest correct-metadata-test

@@ -195,7 +195,7 @@
                :visibility-type   :normal
                :display-name      "Grandparent: Parent"
                :base-type         :type/Text}
-              (first (column-info query {:cols [{:metabase.lib.query/transformation-added-base-type true}]})))))))
+              (first (column-info query {:cols [{:lib/transformation-added-base-type true}]})))))))
 
 (deftest ^:parallel col-info-combine-grandparent-field-names-test
   (testing "nested-nested fields should include grandparent name (etc)"
@@ -210,7 +210,7 @@
                :visibility-type   :normal
                :display-name      "Grandparent: Parent: Child"
                :base-type         :type/Text}
-              (first (column-info query {:cols [{:metabase.lib.query/transformation-added-base-type false}]})))))))
+              (first (column-info query {:cols [{:lib/transformation-added-base-type false}]})))))))
 
 (deftest ^:parallel col-info-field-literals-test
   (testing "field literals should get the information from the matching `:source-metadata` if it was supplied"
@@ -932,8 +932,8 @@
                   :lib/breakout?                              true
                   :lib/source-column-alias                    "CREATED_AT"
                   :lib/type                                   :metadata/column
-                  :metabase.lib.field/original-effective-type :type/DateTimeWithLocalTZ
-                  :metabase.lib.field/temporal-unit           :year}]
+                  :lib/original-effective-type :type/DateTimeWithLocalTZ
+                  :lib/temporal-unit           :year}]
                 (column-info query {})))))))
 
 (deftest ^:parallel preserve-edited-metadata-test
@@ -1120,13 +1120,13 @@
                 (-> (meta/field-metadata :venues :name)
                     (assoc :lib/source               :source/joins
                            ::result-metadata/field-ref                [:field (meta/id :venues :name) nil]
-                           :metabase.lib.join/join-alias "v1"
+                           :lib/join-alias "v1"
                            :lib/source-column-alias      "NAME"
                            :lib/desired-column-alias     "v1__NAME"))
                 (-> (meta/field-metadata :venues :name)
                     (assoc :lib/source               :source/joins
                            ::result-metadata/field-ref                [:field (meta/id :venues :name) nil]
-                           :metabase.lib.join/join-alias "v2"
+                           :lib/join-alias "v2"
                            :lib/source-column-alias      "NAME"
                            :lib/desired-column-alias     "v2__NAME"))]
           cols (lib.field.util/add-deduplicated-names cols)]

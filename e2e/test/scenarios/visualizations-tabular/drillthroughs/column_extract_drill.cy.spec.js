@@ -256,7 +256,7 @@ describe("extract action", () => {
     });
 
     EMAIL_CASES.forEach(({ option, value, example }) => {
-      it(option, () => {
+      it(option, { viewportWidth: 1600 }, () => {
         H.openPeopleTable({ limit: 1 });
         extractColumnAndCheck({
           column: "Email",

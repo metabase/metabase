@@ -1,10 +1,14 @@
 import * as Lib from "metabase-lib";
-import { columnFinder, createQuery } from "metabase-lib/test-helpers";
+import {
+  DEFAULT_TEST_QUERY,
+  SAMPLE_PROVIDER,
+  columnFinder,
+} from "metabase-lib/test-helpers";
 
 import { getColumnIcon } from "./columns";
 
 describe("common/utils/columns", () => {
-  const query = createQuery();
+  const query = Lib.createTestQuery(SAMPLE_PROVIDER, DEFAULT_TEST_QUERY);
   const columns = Lib.orderableColumns(query, 0);
   const getColumn = columnFinder(query, columns);
 

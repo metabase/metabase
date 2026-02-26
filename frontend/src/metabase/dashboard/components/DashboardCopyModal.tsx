@@ -18,7 +18,6 @@ import { getDashboardComplete } from "../selectors";
 
 type OwnProps = {
   onClose: () => void;
-  overwriteOnInitialValuesChange?: boolean;
 };
 
 const mapStateToProps = (state: State, props: OwnProps) => {
@@ -93,11 +92,9 @@ const DashboardCopyModal = ({
         await copyDashboard({ id: dashboardIdFromSlug }, dissoc(object, "id"))
       }
       onClose={onClose}
-      onSaved={(savedDashboard) => {
-        if (savedDashboard) {
-          onReplaceLocation(Urls.dashboard(savedDashboard));
-        }
-      }}
+      onSaved={(savedDashboard: Dashboard) =>
+        onReplaceLocation(Urls.dashboard(savedDashboard))
+      }
       onValuesChange={handleValuesChange}
     />
   );
