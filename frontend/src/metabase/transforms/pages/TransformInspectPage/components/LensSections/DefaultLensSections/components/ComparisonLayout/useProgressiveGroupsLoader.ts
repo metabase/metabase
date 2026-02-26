@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo } from "react";
+import { useCallback, useEffect, useMemo, useRef } from "react";
 
 import { useProgressiveLoader } from "metabase/common/hooks";
 import type { InspectorCardId } from "metabase-types/api";
@@ -20,10 +20,7 @@ export const useProgressiveGroupsLoader = (groups: CardGroup[]) => {
 
   const groupCardCounts = useMemo(() => getGroupCardCounts(groups), [groups]);
 
-  const loadedPerGroupRef = useMemo(
-    () => new Map<string, Set<InspectorCardId>>(),
-    [],
-  );
+  const loadedPerGroupRef = useRef(new Map<string, Set<InspectorCardId>>());
 
   const handleCardLoaded = useCallback(
     (cardId: string) => {
@@ -31,16 +28,16 @@ export const useProgressiveGroupsLoader = (groups: CardGroup[]) => {
       if (!groupId) {
         return;
       }
-      const loaded = loadedPerGroupRef.get(groupId) ?? new Set();
-      if (!loadedPerGroupRef.has(groupId)) {
-        loadedPerGroupRef.set(groupId, loaded);
+      const loaded = loadedPerGroupRef.current.get(groupId) ?? new Set();
+      if (!loadedPerGroupRef.current.has(groupId)) {
+        loadedPerGroupRef.current.set(groupId, loaded);
       }
       loaded.add(cardId);
       if (loaded.size === groupCardCounts.get(groupId)) {
         markGroupAsReady(groupId);
       }
     },
-    [groupsByCardMap, groupCardCounts, markGroupAsReady, loadedPerGroupRef],
+    [groupsByCardMap, groupCardCounts, markGroupAsReady],
   );
 
   useEffect(

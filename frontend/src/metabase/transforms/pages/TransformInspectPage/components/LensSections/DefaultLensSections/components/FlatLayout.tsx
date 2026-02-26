@@ -2,7 +2,6 @@ import { useEffect } from "react";
 
 import { useProgressiveLoader } from "metabase/common/hooks";
 import { SimpleGrid, Stack } from "metabase/ui";
-import type Metadata from "metabase-lib/v1/metadata/Metadata";
 import type { InspectorCard } from "metabase-types/api";
 
 import { useLensContentContext } from "../../../LensContent/LensContentContext";
@@ -12,10 +11,9 @@ import { VisualizationCard } from "./VisualizationCard";
 
 type FlatLayoutProps = {
   cards: InspectorCard[];
-  metadata: Metadata;
 };
 
-export const FlatLayout = ({ cards, metadata }: FlatLayoutProps) => {
+export const FlatLayout = ({ cards }: FlatLayoutProps) => {
   const { subscribeToCardLoaded } = useLensContentContext();
   const [visibleCards, markCardAsReady] = useProgressiveLoader({
     items: cards,
@@ -41,7 +39,7 @@ export const FlatLayout = ({ cards, metadata }: FlatLayoutProps) => {
         </SimpleGrid>
       )}
       {otherCards.map((card) => (
-        <VisualizationCard key={card.id} card={card} metadata={metadata} />
+        <VisualizationCard key={card.id} card={card} />
       ))}
     </Stack>
   );

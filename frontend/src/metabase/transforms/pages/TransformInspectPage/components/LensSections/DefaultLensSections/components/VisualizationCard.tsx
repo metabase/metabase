@@ -1,6 +1,9 @@
+import { memo } from "react";
+
 import { useGetAdhocQueryMetadataQuery } from "metabase/api";
+import { useSnapshotSelector } from "metabase/common/hooks";
 import * as Urls from "metabase/lib/urls";
-import type { getMetadata } from "metabase/selectors/metadata";
+import { getMetadata } from "metabase/selectors/metadata";
 import { Box, Card, Loader, Stack } from "metabase/ui";
 import Visualization from "metabase/visualizations/components/Visualization";
 import * as Lib from "metabase-lib";
@@ -23,80 +26,80 @@ import { useLensContentContext } from "../../../LensContent/LensContentContext";
 
 type VisualizationCardProps = {
   card: InspectorCard;
-  metadata: Metadata;
   height?: number;
 };
 
 const DEFAULT_HEIGHT = 235;
 
-export const VisualizationCard = ({
-  card,
-  metadata,
-  height = DEFAULT_HEIGHT,
-}: VisualizationCardProps) => {
-  const { alertsByCardId, drillLensesByCardId } = useLensContentContext();
-  const { data, isLoading: isDataLoading } = useLensCardLoader({ card });
+export const VisualizationCard = memo(
+  ({ card, height = DEFAULT_HEIGHT }: VisualizationCardProps) => {
+    const { alertsByCardId, drillLensesByCardId } = useLensContentContext();
+    const { data, isLoading: isDataLoading } = useLensCardLoader({ card });
 
-  const { isLoading: isMetadataLoading } = useGetAdhocQueryMetadataQuery(
-    card.dataset_query,
-  );
+    const { isLoading: isMetadataLoading } = useGetAdhocQueryMetadataQuery(
+      card.dataset_query,
+    );
 
-  if (card.display === "hidden") {
-    return null;
-  }
+    const metadata = useSnapshotSelector(getMetadata, [isMetadataLoading]);
 
-  const alerts = alertsByCardId[card.id] ?? [];
-  const drillLenses = drillLensesByCardId[card.id] ?? [];
+    if (card.display === "hidden") {
+      return null;
+    }
 
-  const { displayType, displaySettings } = getDisplayConfig(
-    metadata,
-    card,
-    isMetadataLoading,
-  );
+    const alerts = alertsByCardId[card.id] ?? [];
+    const drillLenses = drillLensesByCardId[card.id] ?? [];
 
-  const rawSeries = buildRawSeries(data, card, displayType, displaySettings);
-  const isLoading = isMetadataLoading || isDataLoading;
+    const { displayType, displaySettings } = getDisplayConfig(
+      metadata,
+      card,
+      isMetadataLoading,
+    );
 
-  const questionUrl = rawSeries?.[0]?.card
-    ? Urls.serializedQuestion(rawSeries[0].card)
-    : undefined;
+    const rawSeries = buildRawSeries(data, card, displayType, displaySettings);
+    const isLoading = isMetadataLoading || isDataLoading;
 
-  const getHref = questionUrl ? () => questionUrl : undefined;
+    const questionUrl = rawSeries?.[0]?.card
+      ? Urls.serializedQuestion(rawSeries[0].card)
+      : undefined;
 
-  const onChangeCardAndRun = questionUrl
-    ? () => Urls.openInNewTab(questionUrl)
-    : undefined;
+    const getHref = questionUrl ? () => questionUrl : undefined;
 
-  return (
-    <Card p="md" shadow="none" withBorder>
-      <Stack gap="sm">
-        {isLoading || !rawSeries ? (
-          <Stack gap="sm" align="center" justify="center" h={height}>
-            <Loader size="sm" />
-          </Stack>
-        ) : (
-          <Box h={height}>
-            <Visualization
-              rawSeries={rawSeries}
-              showTitle={true}
-              // we want to have dashboard like experience: e.g. leaner UI, no column reordering, prevent row detail clicks
-              isDashboard={true}
-              getHref={getHref}
-              onChangeCardAndRun={onChangeCardAndRun}
-            />
-          </Box>
-        )}
+    const onChangeCardAndRun = questionUrl
+      ? () => Urls.openInNewTab(questionUrl)
+      : undefined;
 
-        <CardAlerts alerts={alerts} />
+    return (
+      <Card p="md" shadow="none" withBorder>
+        <Stack gap="sm">
+          {isLoading || !rawSeries ? (
+            <Stack gap="sm" align="center" justify="center" h={height}>
+              <Loader size="sm" />
+            </Stack>
+          ) : (
+            <Box h={height}>
+              <Visualization
+                rawSeries={rawSeries}
+                showTitle={true}
+                isDashboard={true}
+                getHref={getHref}
+                onChangeCardAndRun={onChangeCardAndRun}
+              />
+            </Box>
+          )}
 
-        <CardDrills drillLenses={drillLenses} />
-      </Stack>
-    </Card>
-  );
-};
+          <CardAlerts alerts={alerts} />
+
+          <CardDrills drillLenses={drillLenses} />
+        </Stack>
+      </Card>
+    );
+  },
+);
+
+VisualizationCard.displayName = "VisualizationCard";
 
 const getDisplayConfig = (
-  metadata: ReturnType<typeof getMetadata>,
+  metadata: Metadata,
   card: InspectorCard,
   isMetadataLoading: boolean,
 ) => {

@@ -110,6 +110,7 @@ function setup({
       pushNewStats={jest.fn()}
       markCardStartedLoading={jest.fn()}
       markCardLoaded={jest.fn()}
+      subscribeToCardLoaded={jest.fn(() => jest.fn())}
     >
       <DefaultLensSections
         sections={sections}

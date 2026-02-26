@@ -3,7 +3,6 @@ import { match } from "ts-pattern";
 
 import { useProgressiveGroupsLoader } from "metabase/transforms/pages/TransformInspectPage/components/LensSections/DefaultLensSections/components/ComparisonLayout/useProgressiveGroupsLoader";
 import { SimpleGrid, Stack } from "metabase/ui";
-import type Metadata from "metabase-lib/v1/metadata/Metadata";
 import type {
   InspectorCard,
   InspectorSource,
@@ -19,14 +18,12 @@ type ComparisonLayoutProps = {
   cards: InspectorCard[];
   sources: InspectorSource[];
   visitedFields?: InspectorVisitedFields;
-  metadata: Metadata;
 };
 
 export const ComparisonLayout = ({
   cards,
   sources,
   visitedFields,
-  metadata,
 }: ComparisonLayoutProps) => {
   const groups = useMemo(
     () => groupCardsBySource(cards, sources),
@@ -43,9 +40,7 @@ export const ComparisonLayout = ({
   const renderCard = (card: InspectorCard) =>
     match(card.display)
       .with("scalar", () => <ScalarCard card={card} key={card.id} />)
-      .otherwise(() => (
-        <VisualizationCard card={card} metadata={metadata} key={card.id} />
-      ));
+      .otherwise(() => <VisualizationCard card={card} key={card.id} />);
 
   return (
     <Stack gap="lg">
