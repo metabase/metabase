@@ -7,6 +7,7 @@ import { t } from "ttag";
 import { clickableTokens } from "metabase/common/components/CodeMirror";
 import { useDispatch } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
+import type { PythonTransformSourceValidationResult } from "metabase/plugins/oss/transforms";
 import { RunButtonWithTooltip } from "metabase/query_builder/components/RunButtonWithTooltip";
 import { Button, Flex, Icon, Stack, Tooltip } from "metabase/ui";
 import type { AdvancedTransformType } from "metabase-types/api";
@@ -22,7 +23,7 @@ type PythonEditorBodyProps = {
   disabled?: boolean;
   source: string;
   proposedSource?: string;
-  isRunnable: boolean;
+  sourceValidationResult: PythonTransformSourceValidationResult;
   isEditMode?: boolean;
   hideRunButton?: boolean;
   onChange: (source: string) => void;
@@ -46,7 +47,7 @@ export function PythonEditorBody({
   source,
   proposedSource,
   onChange,
-  isRunnable,
+  sourceValidationResult,
   isEditMode,
   hideRunButton,
   onRun,
@@ -132,12 +133,14 @@ export function PythonEditorBody({
           )}
           {!hideRunButton && (
             <RunButtonWithTooltip
-              disabled={!isRunnable}
+              disabled={!sourceValidationResult.isValid}
               isRunning={isRunning}
               isDirty={isDirty}
               onRun={onRun}
               onCancel={onCancel}
-              getTooltip={() => t`Run transform`}
+              getTooltip={() =>
+                sourceValidationResult.errorMessage ?? t`Run transform`
+              }
             />
           )}
         </Stack>

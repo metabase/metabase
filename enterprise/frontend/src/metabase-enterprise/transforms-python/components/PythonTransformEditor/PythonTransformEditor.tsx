@@ -7,11 +7,10 @@ import type { PythonTransformEditorProps } from "metabase/plugins";
 import { Box, Flex, Stack, Text } from "metabase/ui";
 import {
   ADVANCED_TRANSFORM_TYPES,
-  type DatabaseId,
   type PythonTransformTableAliases,
 } from "metabase-types/api";
 
-import { isPythonTransformSource } from "../../utils";
+import { getPythonSourceValidationResult } from "../../utils";
 
 import { PythonDataPicker } from "./PythonDataPicker";
 import { PythonEditorBody } from "./PythonEditorBody";
@@ -43,16 +42,6 @@ export function PythonTransformEditor({
     const newSource = {
       ...source,
       body,
-    };
-    onChangeSource(newSource);
-  };
-
-  const handleDatabaseChange = (databaseId: DatabaseId) => {
-    // Clear table selections when database changes
-    const newSource = {
-      ...source,
-      "source-database": databaseId,
-      "source-tables": {},
     };
     onChangeSource(newSource);
   };
@@ -110,7 +99,7 @@ export function PythonTransformEditor({
     // }
     if (isRunning) {
       cancel();
-    } else if (isPythonTransformSource(source)) {
+    } else if (getPythonSourceValidationResult(source).isValid) {
       handleRun();
     }
   };
@@ -121,12 +110,9 @@ export function PythonTransformEditor({
   return (
     <Flex h="100%" w="100%" direction="column">
       <PythonTransformTopBar
-        databaseId={source["source-database"]}
         isEditMode={isEditMode}
         readOnly={uiOptions?.readOnly}
         transform={transform}
-        onDatabaseChange={handleDatabaseChange}
-        canChangeDatabase={uiOptions?.canChangeDatabase}
       />
       <Flex className={S.editorBodyWrapper}>
         {isEditMode && (
@@ -140,7 +126,7 @@ export function PythonTransformEditor({
           <PythonEditorBody
             type={source.type}
             disabled={uiOptions?.readOnly}
-            isRunnable={isPythonTransformSource(source)}
+            sourceValidationResult={getPythonSourceValidationResult(source)}
             isRunning={isRunning}
             isDirty={isDirty}
             isEditMode={isEditMode}
