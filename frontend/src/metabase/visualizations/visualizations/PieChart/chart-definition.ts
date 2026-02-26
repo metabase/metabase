@@ -30,7 +30,6 @@ import {
 } from "metabase/visualizations/shared/utils/sizes";
 import type { VisualizationDefinition } from "metabase/visualizations/types";
 import { isDimension, isMetric } from "metabase-lib/v1/types/utils/isa";
-import type { Series } from "metabase-types/api";
 
 import { DimensionsWidget } from "./DimensionsWidget";
 import { SliceNameWidget } from "./SliceNameWidget";
@@ -43,7 +42,7 @@ const pieRowsReadDeps = [
   "pie.slice_threshold",
 ];
 
-export const PIE_CHART_DEFINITION: VisualizationDefinition<Series> = {
+export const PIE_CHART_DEFINITION: VisualizationDefinition = {
   getUiName: () => t`Pie`,
   identifier: "pie",
   iconName: "pie",
@@ -138,44 +137,35 @@ export const PIE_CHART_DEFINITION: VisualizationDefinition<Series> = {
       hidden: true,
       getDefault: getDefaultSortRows,
     },
-    ...nestedSettings<Series, unknown, Record<string, unknown>>(
-      SERIES_SETTING_KEY,
-      {
-        widget: SliceNameWidget,
-        getHidden: ([{ card }], _settings, extra) =>
-          !extra?.isDashboard || card?.display === "waterfall",
-        getSection: (_series, _settings, extra) =>
-          extra?.isDashboard ? t`Display` : t`Style`,
-        marginBottom: "0",
-        getProps: (
-          _series,
-          vizSettings,
-          _onChange,
-          _extra,
-          onChangeSettings,
-        ) => {
-          const pieRows = vizSettings["pie.rows"];
-          if (pieRows == null) {
-            return { pieRows: [], updateRowName: () => null };
-          }
+    ...nestedSettings(SERIES_SETTING_KEY, {
+      widget: SliceNameWidget,
+      getHidden: ([{ card }], _settings, extra) =>
+        !extra?.isDashboard || card?.display === "waterfall",
+      getSection: (_series, _settings, extra) =>
+        extra?.isDashboard ? t`Display` : t`Style`,
+      marginBottom: "0",
+      getProps: (_series, vizSettings, _onChange, _extra, onChangeSettings) => {
+        const pieRows = vizSettings["pie.rows"];
+        if (pieRows == null) {
+          return { pieRows: [], updateRowName: () => null };
+        }
 
-          return {
-            pieRows,
-            updateRowName: (newName: string, key: string | number) => {
-              onChangeSettings({
-                "pie.rows": pieRows.map((row) => {
-                  if (row.key !== key) {
-                    return row;
-                  }
-                  return { ...row, name: newName };
-                }),
-              });
-            },
-          };
-        },
-        readDependencies: ["pie.rows"],
+        return {
+          pieRows,
+          updateRowName: (newName: string, key: string | number) => {
+            onChangeSettings({
+              "pie.rows": pieRows.map((row) => {
+                if (row.key !== key) {
+                  return row;
+                }
+                return { ...row, name: newName };
+              }),
+            });
+          },
+        };
       },
-    ), // any type cast needed to avoid type error from confusion with destructured object params in `nestedSettings`
+      readDependencies: ["pie.rows"],
+    }), // any type cast needed to avoid type error from confusion with destructured object params in `nestedSettings`
 
     "pie._dimensions_widget": {
       get section() {

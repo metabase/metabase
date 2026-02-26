@@ -5,6 +5,7 @@ import type { ChartNestedSettingSeriesProps } from "metabase/visualizations/comp
 import { chartSettingNestedSettings } from "metabase/visualizations/components/settings/ChartSettingNestedSettings";
 import type {
   ComputedVisualizationSettings,
+  SeriesSettingDefinition,
   SettingsExtra,
   VisualizationSettingDefinition,
   VisualizationSettingsDefinitions,
@@ -59,7 +60,7 @@ export function nestedSettings<
     component,
     ...def
   }: NestedSettingsOptions<T, TValue, TProps>,
-): VisualizationSettingDefinition<T, TValue, TProps> {
+): VisualizationSettingsDefinitions {
   function getComputedSettingsForObject(
     series: Series,
     object: T,
@@ -132,65 +133,59 @@ export function nestedSettings<
     getSettingsWidgetsForObject,
   })(component);
 
+  const idDef: SeriesSettingDefinition = {
+    section: t`Display`,
+    default: {},
+    getProps: (series, settings, onChange, extra) => {
+      const objects = getObjects(series, settings);
+      const allComputedSettings = getComputedSettingsForAllObjects(
+        series,
+        objects,
+        settings[id],
+        { series, settings, ...extra },
+      );
+      return {
+        series,
+        settings,
+        objects,
+        allComputedSettings,
+        extra: { series, settings },
+        ...(def.getExtraProps?.(series, settings, onChange, extra) ?? {}),
+        ...extra,
+      };
+    },
+    widget,
+    ...def,
+  };
+
+  const objectDef: SeriesSettingDefinition = {
+    getDefault(series, settings, extra) {
+      const cache = new Map<string, VisualizationSettings>();
+      return (object: T) => {
+        const key = getObjectKey(object);
+        if (!cache.has(key)) {
+          const inheritedSettings = getInheritedSettingsForObject(object);
+          const storedSettings = getObjectSettings(settings[id], object) ?? {};
+          cache.set(key, {
+            ...getComputedSettingsForObject(
+              series,
+              object,
+              {
+                ...inheritedSettings,
+                ...storedSettings,
+              },
+              { series, settings, ...extra },
+            ),
+          });
+        }
+        return cache.get(key);
+      };
+    },
+    readDependencies: [id],
+  };
+
   return {
-    [id]: {
-      section: t`Display`,
-      default: {},
-      getProps: (
-        series: Series,
-        settings: VisualizationSettings,
-        onChange: (value: unknown) => void,
-        extra: SettingsExtra,
-      ) => {
-        const objects = getObjects(series, settings);
-        const allComputedSettings = getComputedSettingsForAllObjects(
-          series,
-          objects,
-          settings[id],
-          { series, settings, ...extra },
-        );
-        return {
-          series,
-          settings,
-          objects,
-          allComputedSettings,
-          extra: { series, settings },
-          ...(def.getExtraProps?.(series, settings, onChange, extra) ?? {}),
-          ...extra,
-        };
-      },
-      widget,
-      ...def,
-    },
-    [objectName]: {
-      getDefault(
-        series: Series,
-        settings: VisualizationSettings,
-        extra: SettingsExtra,
-      ) {
-        const cache = new Map<string, VisualizationSettings>();
-        return (object: T) => {
-          const key = getObjectKey(object);
-          if (!cache.has(key)) {
-            const inheritedSettings = getInheritedSettingsForObject(object);
-            const storedSettings =
-              getObjectSettings(settings[id], object) ?? {};
-            cache.set(key, {
-              ...getComputedSettingsForObject(
-                series,
-                object,
-                {
-                  ...inheritedSettings,
-                  ...storedSettings,
-                },
-                { series, settings, ...extra },
-              ),
-            });
-          }
-          return cache.get(key);
-        };
-      },
-      readDependencies: [id],
-    },
+    [id]: idDef,
+    [objectName]: objectDef,
   };
 }

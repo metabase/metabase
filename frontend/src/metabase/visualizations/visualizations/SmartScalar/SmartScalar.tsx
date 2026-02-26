@@ -162,7 +162,7 @@ export function SmartScalar({
   );
 }
 
-export const SETTINGS_DEFINITIONS: VisualizationSettingsDefinitions<Series> = {
+export const SETTINGS_DEFINITIONS: VisualizationSettingsDefinitions = {
   ...fieldSetting("scalar.field", {
     // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
     section: t`Data`,

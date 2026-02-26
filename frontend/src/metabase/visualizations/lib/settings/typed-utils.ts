@@ -2,7 +2,10 @@ import { getIn } from "icepick";
 import _ from "underscore";
 
 import { getVisualization } from "metabase/visualizations";
-import type { VisualizationSettingDefinition } from "metabase/visualizations/types";
+import type {
+  VisualizationSettingDefinition,
+  VisualizationSettingsDefinitions,
+} from "metabase/visualizations/types";
 import type {
   Card,
   TableColumnOrderSetting,
@@ -78,7 +81,7 @@ export const isSettingHiddenOnDashboards = (
  */
 export function sanitizeDashcardSettings(
   settings: VisualizationSettings,
-  vizSettingsDefs: Record<string, VisualizationSettingDefinition>,
+  vizSettingsDefs: VisualizationSettingsDefinitions,
 ): VisualizationSettings {
   return _.pick(settings, (_, key) => {
     const settingDef = vizSettingsDefs[key];

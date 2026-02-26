@@ -10,11 +10,10 @@ import {
 } from "metabase/visualizations/shared/utils/sizes";
 import type { VisualizationDefinition } from "metabase/visualizations/types";
 import { isNumeric } from "metabase-lib/v1/types/utils/isa";
-import type { Series } from "metabase-types/api";
 
 import { findProgressColumn } from "./utils";
 
-export const PROGRESS_CHART_DEFINITION: VisualizationDefinition<Series> = {
+export const PROGRESS_CHART_DEFINITION: VisualizationDefinition = {
   getUiName: () => t`Progress`,
   identifier: "progress",
   iconName: "progress",

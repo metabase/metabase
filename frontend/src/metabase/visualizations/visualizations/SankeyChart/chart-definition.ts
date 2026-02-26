@@ -18,13 +18,13 @@ import type {
   VisualizationSettingsDefinitions,
 } from "metabase/visualizations/types";
 import { isDate, isDimension, isMetric } from "metabase-lib/v1/types/utils/isa";
-import type { DatasetData, RawSeries, Series } from "metabase-types/api";
+import type { DatasetData, RawSeries } from "metabase-types/api";
 
 import { hasCyclicFlow } from "./utils/cycle-detection";
 
 const MAX_SANKEY_NODES = 150;
 
-export const SETTINGS_DEFINITIONS: VisualizationSettingsDefinitions<Series> = {
+export const SETTINGS_DEFINITIONS: VisualizationSettingsDefinitions = {
   ...columnSettings({ hidden: true }),
   ...dimensionSetting("sankey.source", {
     // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
@@ -111,10 +111,7 @@ export const SETTINGS_DEFINITIONS: VisualizationSettingsDefinitions<Series> = {
         { name: t`Full`, value: "full" },
       ],
     },
-    getHidden: (
-      _series: Series,
-      vizSettings: ComputedVisualizationSettings,
-    ) => {
+    getHidden: (_series, vizSettings) => {
       return !vizSettings["sankey.show_edge_labels"];
     },
     default: "auto",
@@ -139,7 +136,7 @@ export const SETTINGS_DEFINITIONS: VisualizationSettingsDefinitions<Series> = {
   },
 };
 
-export const SANKEY_CHART_DEFINITION: VisualizationDefinition<Series> = {
+export const SANKEY_CHART_DEFINITION: VisualizationDefinition = {
   getUiName: () => t`Sankey`,
   identifier: "sankey",
   iconName: "sankey",

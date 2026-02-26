@@ -63,7 +63,7 @@ export function seriesSetting({
   readDependencies = [],
   def = {},
 }: SeriesSettingOptions = {}): Record<string, unknown> {
-  const COMMON_SETTINGS: VisualizationSettingsDefinitions<SingleSeries> = {
+  const COMMON_SETTINGS: VisualizationSettingsDefinitions = {
     // title, and color don't need widgets because they're handled directly in ChartNestedSettingSeries
     title: {
       getDefault: (single, _settings, extra = {}) => {

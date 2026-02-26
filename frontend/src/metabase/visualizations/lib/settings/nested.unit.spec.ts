@@ -9,7 +9,9 @@ describe("nestedSettings", () => {
       getObjectKey: (object) => String(object),
       getObjectSettings: (objects, key) => objects[String(key)],
       getSettingDefinitionsForObject: () => ({
-        foo: { getDefault: (object) => `foo${object}` },
+        foo: {
+          getDefault: (object: string) => `foo${object}`,
+        },
       }),
       component: () => null,
     });

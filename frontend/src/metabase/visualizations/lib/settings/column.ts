@@ -143,330 +143,327 @@ function getTimeEnabledOptionsForUnit(
   return options;
 }
 
-export const DATE_COLUMN_SETTINGS: VisualizationSettingsDefinitions<DatasetColumn> =
-  {
-    date_style: {
-      get title() {
-        return t`Date style`;
-      },
-      widget: "select",
-      getDefault: ({ unit }) => {
-        // Grab the first option's value. If there were no options (for
-        // hour-of-day probably), use an empty format string instead.
-        if (!unit) {
-          return "";
-        }
+export const DATE_COLUMN_SETTINGS: VisualizationSettingsDefinitions = {
+  date_style: {
+    get title() {
+      return t`Date style`;
+    },
+    widget: "select",
+    getDefault: ({ unit }) => {
+      // Grab the first option's value. If there were no options (for
+      // hour-of-day probably), use an empty format string instead.
+      if (!unit) {
+        return "";
+      }
 
-        const [{ value = "" } = {}] = getDateStyleOptionsForUnit(unit);
-        return value;
-      },
-      isValid: ({ unit }, settings: ColumnSettings) => {
-        const options = getDateStyleOptionsForUnit(unit ?? "default");
-        return !!_.findWhere(options, { value: settings.date_style });
-      },
-      getProps: ({ unit }, settings: ColumnSettings) => ({
-        options: getDateStyleOptionsForUnit(
-          unit ?? "default",
-          settings["date_abbreviate"] != null
-            ? Boolean(settings["date_abbreviate"])
-            : undefined,
-          settings["date_separator"] != null
-            ? String(settings["date_separator"])
-            : undefined,
-        ),
-      }),
-      getHidden: ({ unit }) =>
-        getDateStyleOptionsForUnit(unit ?? "default").length < 2,
+      const [{ value = "" } = {}] = getDateStyleOptionsForUnit(unit);
+      return value;
     },
-    date_separator: {
-      get title() {
-        return t`Date separators`;
-      },
-      widget: "radio",
-      default: "/",
-      getProps: (_column, settings: ColumnSettings) => {
-        const style = /\//.test(settings.date_style)
-          ? settings.date_style
-          : "M/D/YYYY";
-        return {
-          options: [
-            { name: style, value: "/" },
-            { name: style.replace(/\//g, "-"), value: "-" },
-            { name: style.replace(/\//g, "."), value: "." },
-          ],
-        };
-      },
-      getHidden: (_column, settings: ColumnSettings) =>
-        !/\//.test(String(settings.date_style ?? "")),
+    isValid: ({ unit }, settings: ColumnSettings) => {
+      const options = getDateStyleOptionsForUnit(unit ?? "default");
+      return !!_.findWhere(options, { value: settings.date_style });
     },
-    date_abbreviate: {
-      get title() {
-        return t`Abbreviate days and months`;
-      },
-      widget: "toggle",
-      default: false,
-      inline: true,
-      getHidden: ({ unit }, settings: ColumnSettings) => {
-        const format = getDateFormatFromStyle(
-          settings.date_style,
-          unit ?? "default",
-        );
-        return !format.match(/MMMM|dddd/);
-      },
-      readDependencies: ["date_style"],
+    getProps: ({ unit }, settings: ColumnSettings) => ({
+      options: getDateStyleOptionsForUnit(
+        unit ?? "default",
+        settings["date_abbreviate"] != null
+          ? Boolean(settings["date_abbreviate"])
+          : undefined,
+        settings["date_separator"] != null
+          ? String(settings["date_separator"])
+          : undefined,
+      ),
+    }),
+    getHidden: ({ unit }) =>
+      getDateStyleOptionsForUnit(unit ?? "default").length < 2,
+  },
+  date_separator: {
+    get title() {
+      return t`Date separators`;
     },
-    time_enabled: {
-      get title() {
-        return t`Show the time`;
-      },
-      widget: "radio",
-      isValid: ({ unit }, settings: ColumnSettings) => {
-        const options = getTimeEnabledOptionsForUnit(unit);
-        return !!_.findWhere(options, { value: settings.time_enabled });
-      },
-      getProps: ({ unit }) => {
-        const options = getTimeEnabledOptionsForUnit(unit);
-        return { options };
-      },
-      getHidden: (column) => !hasHour(column.unit) || isDateWithoutTime(column),
-      getDefault: ({ unit }) => (hasHour(unit) ? "minutes" : null),
+    widget: "radio",
+    default: "/",
+    getProps: (_column, settings: ColumnSettings) => {
+      const style = /\//.test(settings.date_style)
+        ? settings.date_style
+        : "M/D/YYYY";
+      return {
+        options: [
+          { name: style, value: "/" },
+          { name: style.replace(/\//g, "-"), value: "-" },
+          { name: style.replace(/\//g, "."), value: "." },
+        ],
+      };
     },
-    time_style: {
-      get title() {
-        return t`Time style`;
-      },
-      widget: "radio",
-      default: "h:mm A",
-      getProps: (column) => ({
-        options: getTimeStyleOptions(column.unit ?? "default"),
-      }),
-      getHidden: (column, settings: ColumnSettings) =>
-        !settings.time_enabled || isDateWithoutTime(column),
-      readDependencies: ["time_enabled"],
+    getHidden: (_column, settings: ColumnSettings) =>
+      !/\//.test(String(settings.date_style ?? "")),
+  },
+  date_abbreviate: {
+    get title() {
+      return t`Abbreviate days and months`;
     },
-  };
+    widget: "toggle",
+    default: false,
+    inline: true,
+    getHidden: ({ unit }, settings: ColumnSettings) => {
+      const format = getDateFormatFromStyle(
+        settings.date_style,
+        unit ?? "default",
+      );
+      return !format.match(/MMMM|dddd/);
+    },
+    readDependencies: ["date_style"],
+  },
+  time_enabled: {
+    get title() {
+      return t`Show the time`;
+    },
+    widget: "radio",
+    isValid: ({ unit }, settings: ColumnSettings) => {
+      const options = getTimeEnabledOptionsForUnit(unit);
+      return !!_.findWhere(options, { value: settings.time_enabled });
+    },
+    getProps: ({ unit }) => {
+      const options = getTimeEnabledOptionsForUnit(unit);
+      return { options };
+    },
+    getHidden: (column) => !hasHour(column.unit) || isDateWithoutTime(column),
+    getDefault: ({ unit }) => (hasHour(unit) ? "minutes" : null),
+  },
+  time_style: {
+    get title() {
+      return t`Time style`;
+    },
+    widget: "radio",
+    default: "h:mm A",
+    getProps: (column) => ({
+      options: getTimeStyleOptions(column.unit ?? "default"),
+    }),
+    getHidden: (column, settings: ColumnSettings) =>
+      !settings.time_enabled || isDateWithoutTime(column),
+    readDependencies: ["time_enabled"],
+  },
+};
 
-export const NUMBER_COLUMN_SETTINGS: VisualizationSettingsDefinitions<DatasetColumn> =
-  {
-    number_style: {
-      get title() {
-        return t`Style`;
-      },
-      widget: "select",
-      props: {
-        options: [
-          {
-            get name() {
-              return t`Normal`;
-            },
-            value: "decimal",
+export const NUMBER_COLUMN_SETTINGS: VisualizationSettingsDefinitions = {
+  number_style: {
+    get title() {
+      return t`Style`;
+    },
+    widget: "select",
+    props: {
+      options: [
+        {
+          get name() {
+            return t`Normal`;
           },
-          {
-            get name() {
-              return t`Percent`;
-            },
-            value: "percent",
-          },
-          {
-            get name() {
-              return t`Scientific`;
-            },
-            value: "scientific",
-          },
-          {
-            get name() {
-              return t`Currency`;
-            },
-            value: "currency",
-          },
-        ],
-      },
-      getDefault: getDefaultNumberStyle,
-      // hide this for currency
-      getHidden: (column, settings: ColumnSettings) =>
-        isCurrency(column) && settings["number_style"] === "currency",
-      readDependencies: ["currency"],
-    },
-    currency: {
-      get title() {
-        return t`Unit of currency`;
-      },
-      widget: "select",
-      props: {
-        // FIXME: rest of these options
-        options: currency.map(([_code, c]) => ({
-          name: c.name,
-          value: c.code,
-        })),
-        searchProp: "name",
-        searchCaseSensitive: false,
-      },
-      getDefault: getDefaultCurrency,
-      getHidden: (_column, settings: ColumnSettings) =>
-        settings["number_style"] !== "currency",
-    },
-    currency_style: {
-      get title() {
-        return t`Currency label style`;
-      },
-      widget: "radio",
-      getProps: (_column, settings: ColumnSettings) => ({
-        options: getCurrencyStyleOptions(
-          settings["currency"] || "USD",
-          settings["currency_style"],
-        ),
-      }),
-      getDefault: getDefaultCurrencyStyle,
-      getHidden: (_column, settings: ColumnSettings) =>
-        settings["number_style"] !== "currency",
-      readDependencies: ["number_style"],
-    },
-    currency_in_header: {
-      get title() {
-        return t`Where to display the unit of currency`;
-      },
-      widget: "radio",
-      getProps: (_series, _vizSettings, onChange) => ({
-        onChange: (value: unknown) => onChange(value === true),
-        options: [
-          { name: t`In the column heading`, value: true },
-          { name: t`In every table cell`, value: false },
-        ],
-      }),
-      getDefault: getDefaultCurrencyInHeader,
-      getHidden: (_column, settings: ColumnSettings, extra) => {
-        const { forAdminSettings, series = [] } = extra ?? {};
-        if (forAdminSettings === true) {
-          return false;
-        }
-        return (
-          settings["number_style"] !== "currency" ||
-          series[0].card.display !== "table"
-        );
-      },
-      readDependencies: ["number_style"],
-    },
-    number_separators: {
-      // uses 1-2 character string to represent decimal and thousands separators
-      get title() {
-        return t`Separator style`;
-      },
-      widget: "select",
-      props: {
-        options: [
-          { name: "100,000.00", value: ".," },
-          { name: "100 000,00", value: ", " },
-          { name: "100.000,00", value: ",." },
-          { name: "100000.00", value: "." },
-          { name: "100'000.00", value: ".'" },
-        ],
-      },
-      getDefault: getDefaultNumberSeparators,
-    },
-    decimals: {
-      get title() {
-        return t`Number of decimal places`;
-      },
-      widget: "number",
-      props: {
-        placeholder: "1",
-        options: {
-          isNonNegative: true,
-          isInteger: true,
+          value: "decimal",
         },
-      },
-    },
-    scale: {
-      get title() {
-        return t`Multiply by a number`;
-      },
-      widget: "number",
-      props: {
-        placeholder: "1",
-      },
-    },
-    prefix: {
-      get title() {
-        return t`Add a prefix`;
-      },
-      widget: "input",
-      props: {
-        placeholder: "$",
-      },
-    },
-    suffix: {
-      get title() {
-        return t`Add a suffix`;
-      },
-      widget: "input",
-      props: {
-        get placeholder() {
-          return t`dollars`;
+        {
+          get name() {
+            return t`Percent`;
+          },
+          value: "percent",
         },
-      },
-    },
-    // Optimization: build a single NumberFormat object that is used by formatting.js
-    _numberFormatter: {
-      getValue: (_column, settings: ColumnSettings) =>
-        numberFormatterForOptions(settings),
-      readDependencies: [
-        "number_style",
-        "currency_style",
-        "currency",
-        "decimals",
+        {
+          get name() {
+            return t`Scientific`;
+          },
+          value: "scientific",
+        },
+        {
+          get name() {
+            return t`Currency`;
+          },
+          value: "currency",
+        },
       ],
     },
-    _header_unit: {
-      getValue: (_column, settings: ColumnSettings) => {
-        if (
-          settings["number_style"] === "currency" &&
-          settings["currency_in_header"]
-        ) {
-          if (settings["currency_style"] === "symbol") {
-            return getCurrencySymbol(settings["currency"]);
-          }
-          if (settings["currency_style"] === "narrowSymbol") {
-            return getCurrencyNarrowSymbol(settings["currency"]);
-          }
-
-          return getCurrency(settings["currency"], settings["currency_style"]);
-        }
-        return null;
-      },
-      readDependencies: [
-        "number_style",
-        "currency",
-        "currency_style",
-        "currency_header_only",
+    getDefault: getDefaultNumberStyle,
+    // hide this for currency
+    getHidden: (column, settings: ColumnSettings) =>
+      isCurrency(column) && settings["number_style"] === "currency",
+    readDependencies: ["currency"],
+  },
+  currency: {
+    get title() {
+      return t`Unit of currency`;
+    },
+    widget: "select",
+    props: {
+      // FIXME: rest of these options
+      options: currency.map(([_code, c]) => ({
+        name: c.name,
+        value: c.code,
+      })),
+      searchProp: "name",
+      searchCaseSensitive: false,
+    },
+    getDefault: getDefaultCurrency,
+    getHidden: (_column, settings: ColumnSettings) =>
+      settings["number_style"] !== "currency",
+  },
+  currency_style: {
+    get title() {
+      return t`Currency label style`;
+    },
+    widget: "radio",
+    getProps: (_column, settings: ColumnSettings) => ({
+      options: getCurrencyStyleOptions(
+        settings["currency"] || "USD",
+        settings["currency_style"],
+      ),
+    }),
+    getDefault: getDefaultCurrencyStyle,
+    getHidden: (_column, settings: ColumnSettings) =>
+      settings["number_style"] !== "currency",
+    readDependencies: ["number_style"],
+  },
+  currency_in_header: {
+    get title() {
+      return t`Where to display the unit of currency`;
+    },
+    widget: "radio",
+    getProps: (_series, _vizSettings, onChange) => ({
+      onChange: (value: unknown) => onChange(value === true),
+      options: [
+        { name: t`In the column heading`, value: true },
+        { name: t`In every table cell`, value: false },
+      ],
+    }),
+    getDefault: getDefaultCurrencyInHeader,
+    getHidden: (_column, settings: ColumnSettings, extra) => {
+      const { forAdminSettings, series = [] } = extra ?? {};
+      if (forAdminSettings === true) {
+        return false;
+      }
+      return (
+        settings["number_style"] !== "currency" ||
+        series[0].card.display !== "table"
+      );
+    },
+    readDependencies: ["number_style"],
+  },
+  number_separators: {
+    // uses 1-2 character string to represent decimal and thousands separators
+    get title() {
+      return t`Separator style`;
+    },
+    widget: "select",
+    props: {
+      options: [
+        { name: "100,000.00", value: ".," },
+        { name: "100 000,00", value: ", " },
+        { name: "100.000,00", value: ",." },
+        { name: "100000.00", value: "." },
+        { name: "100'000.00", value: ".'" },
       ],
     },
-  };
-
-const COMMON_COLUMN_SETTINGS: VisualizationSettingsDefinitions<DatasetColumn> =
-  {
-    // markdown_template: {
-    //   title: t`Markdown template`,
-    //   widget: "input",
-    //   props: {
-    //     placeholder: "{{value}}",
-    //   },
-    // },
-    column: {
-      getValue: (column) => column,
+    getDefault: getDefaultNumberSeparators,
+  },
+  decimals: {
+    get title() {
+      return t`Number of decimal places`;
     },
-    _column_title_full: {
-      getValue: (column, settings: ColumnSettings) => {
-        let columnTitle =
-          settings["column_title"] || displayNameForColumn(column);
-        const headerUnit = settings["_header_unit"];
-        if (headerUnit) {
-          columnTitle += ` (${headerUnit})`;
-        }
-        return columnTitle;
+    widget: "number",
+    props: {
+      placeholder: "1",
+      options: {
+        isNonNegative: true,
+        isInteger: true,
       },
-      readDependencies: ["column_title", "_header_unit"],
     },
-  };
+  },
+  scale: {
+    get title() {
+      return t`Multiply by a number`;
+    },
+    widget: "number",
+    props: {
+      placeholder: "1",
+    },
+  },
+  prefix: {
+    get title() {
+      return t`Add a prefix`;
+    },
+    widget: "input",
+    props: {
+      placeholder: "$",
+    },
+  },
+  suffix: {
+    get title() {
+      return t`Add a suffix`;
+    },
+    widget: "input",
+    props: {
+      get placeholder() {
+        return t`dollars`;
+      },
+    },
+  },
+  // Optimization: build a single NumberFormat object that is used by formatting.js
+  _numberFormatter: {
+    getValue: (_column, settings: ColumnSettings) =>
+      numberFormatterForOptions(settings),
+    readDependencies: [
+      "number_style",
+      "currency_style",
+      "currency",
+      "decimals",
+    ],
+  },
+  _header_unit: {
+    getValue: (_column, settings: ColumnSettings) => {
+      if (
+        settings["number_style"] === "currency" &&
+        settings["currency_in_header"]
+      ) {
+        if (settings["currency_style"] === "symbol") {
+          return getCurrencySymbol(settings["currency"]);
+        }
+        if (settings["currency_style"] === "narrowSymbol") {
+          return getCurrencyNarrowSymbol(settings["currency"]);
+        }
+
+        return getCurrency(settings["currency"], settings["currency_style"]);
+      }
+      return null;
+    },
+    readDependencies: [
+      "number_style",
+      "currency",
+      "currency_style",
+      "currency_header_only",
+    ],
+  },
+};
+
+const COMMON_COLUMN_SETTINGS: VisualizationSettingsDefinitions = {
+  // markdown_template: {
+  //   title: t`Markdown template`,
+  //   widget: "input",
+  //   props: {
+  //     placeholder: "{{value}}",
+  //   },
+  // },
+  column: {
+    getValue: (column) => column,
+  },
+  _column_title_full: {
+    getValue: (column, settings: ColumnSettings) => {
+      let columnTitle =
+        settings["column_title"] || displayNameForColumn(column);
+      const headerUnit = settings["_header_unit"];
+      if (headerUnit) {
+        columnTitle += ` (${headerUnit})`;
+      }
+      return columnTitle;
+    },
+    readDependencies: ["column_title", "_header_unit"],
+  },
+};
 
 export function getSettingDefinitionsForColumn(
   series: Series,
@@ -545,7 +542,7 @@ export function tableColumnSettings({
   isShowingDetailsOnlyColumns = false,
 }: {
   isShowingDetailsOnlyColumns?: boolean;
-} = {}): VisualizationSettingsDefinitions<Series> {
+} = {}): VisualizationSettingsDefinitions {
   return {
     "table.columns": {
       get section() {

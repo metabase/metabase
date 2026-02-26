@@ -22,7 +22,7 @@ describe("STACKABLE_SETTINGS", () => {
   describe("stackable.stack_type", () => {
     describe("getDefault", () => {
       const getDefault = checkNotNull(
-        STACKABLE_SETTINGS["stackable.stack_type"].getDefault,
+        STACKABLE_SETTINGS["stackable.stack_type"]?.getDefault,
       );
 
       it("should return stacked if area chart has more than 1 metric", () => {
@@ -77,7 +77,7 @@ describe("STACKABLE_SETTINGS", () => {
 
     describe("isValid", () => {
       const isValid = checkNotNull(
-        STACKABLE_SETTINGS["stackable.stack_type"].isValid,
+        STACKABLE_SETTINGS["stackable.stack_type"]?.isValid,
       );
 
       it("should be valid even on cards with display=line when there are stackable series (metabase#45182)", () => {
@@ -190,7 +190,7 @@ describe("GRAPH_AXIS_SETTINGS", () => {
       "should be visible on all display types except waterfall",
       ({ display, expectedHidden }) => {
         const getHidden = checkNotNull(
-          GRAPH_AXIS_SETTINGS["graph.y_axis.unpin_from_zero"].getHidden,
+          GRAPH_AXIS_SETTINGS["graph.y_axis.unpin_from_zero"]?.getHidden,
         );
         const isHidden = getHidden([createMockSingleSeries({ display })], {
           "graph.metrics": ["foo"],
@@ -204,7 +204,7 @@ describe("GRAPH_AXIS_SETTINGS", () => {
 
     it("should be hidden when auto_range is disabled", () => {
       const getHidden = checkNotNull(
-        GRAPH_AXIS_SETTINGS["graph.y_axis.unpin_from_zero"].getHidden,
+        GRAPH_AXIS_SETTINGS["graph.y_axis.unpin_from_zero"]?.getHidden,
       );
       const isHidden = getHidden(
         [createMockSingleSeries({ display: "line" })],
@@ -220,7 +220,7 @@ describe("GRAPH_AXIS_SETTINGS", () => {
 
     it("should be hidden when line visualization has overriding series display settings", () => {
       const getHidden = checkNotNull(
-        GRAPH_AXIS_SETTINGS["graph.y_axis.unpin_from_zero"].getHidden,
+        GRAPH_AXIS_SETTINGS["graph.y_axis.unpin_from_zero"]?.getHidden,
       );
       const isHidden = getHidden(
         [createMockSingleSeries({ display: "line" })],
@@ -255,7 +255,7 @@ describe("GRAPH_AXIS_SETTINGS", () => {
       "should be enabled by default on scatter charts",
       ({ display, expectedDefault }) => {
         const getDefault = checkNotNull(
-          GRAPH_AXIS_SETTINGS["graph.y_axis.unpin_from_zero"].getDefault,
+          GRAPH_AXIS_SETTINGS["graph.y_axis.unpin_from_zero"]?.getDefault,
         );
         const isEnabled = getDefault([createMockSingleSeries({ display })], {
           "graph.metrics": ["foo"],
@@ -272,7 +272,7 @@ describe("GRAPH_AXIS_SETTINGS", () => {
 describe("GRAPH_TREND_SETTINGS", () => {
   describe("graph.show_trendline", () => {
     const getHidden = checkNotNull(
-      GRAPH_TREND_SETTINGS["graph.show_trendline"].getHidden,
+      GRAPH_TREND_SETTINGS["graph.show_trendline"]?.getHidden,
     );
 
     it("should be hidden on cards with multiple dimensions", () => {
@@ -304,7 +304,7 @@ describe("GRAPH_TREND_SETTINGS", () => {
 describe("GRAPH_DISPLAY_VALUES_SETTINGS", () => {
   describe("graph.label_value_formatting", () => {
     const getDefault = checkNotNull(
-      GRAPH_DISPLAY_VALUES_SETTINGS["graph.label_value_formatting"].getDefault,
+      GRAPH_DISPLAY_VALUES_SETTINGS["graph.label_value_formatting"]?.getDefault,
     );
 
     it("should default to an adapted value if there are currency styled columns", () => {
@@ -354,7 +354,7 @@ describe("GRAPH_DISPLAY_VALUES_SETTINGS", () => {
 
   describe("graph.show_values", () => {
     const getHidden = checkNotNull(
-      GRAPH_DISPLAY_VALUES_SETTINGS["graph.show_values"].getHidden,
+      GRAPH_DISPLAY_VALUES_SETTINGS["graph.show_values"]?.getHidden,
     );
 
     it("should be hidden on normalized area charts", () => {
@@ -391,7 +391,7 @@ describe("GRAPH_DISPLAY_VALUES_SETTINGS", () => {
 
   describe("graph.label_value_frequency", () => {
     const getHidden = checkNotNull(
-      GRAPH_DISPLAY_VALUES_SETTINGS["graph.label_value_frequency"].getHidden,
+      GRAPH_DISPLAY_VALUES_SETTINGS["graph.label_value_frequency"]?.getHidden,
     );
 
     it("should be hidden when data values are hidden", () => {
@@ -478,7 +478,7 @@ describe("GRAPH_DISPLAY_VALUES_SETTINGS", () => {
 
   describe("graph.show_stack_values", () => {
     const getHidden = checkNotNull(
-      GRAPH_DISPLAY_VALUES_SETTINGS["graph.show_stack_values"].getHidden,
+      GRAPH_DISPLAY_VALUES_SETTINGS["graph.show_stack_values"]?.getHidden,
     );
 
     it("should be hidden on non-stacked charts", () => {
@@ -567,13 +567,13 @@ describe("GRAPH_DISPLAY_VALUES_SETTINGS", () => {
 
 describe("graph.tooltip_columns", () => {
   const getHidden = checkNotNull(
-    TOOLTIP_SETTINGS["graph.tooltip_columns"].getHidden,
+    TOOLTIP_SETTINGS["graph.tooltip_columns"]?.getHidden,
   );
   const getValue = checkNotNull(
-    TOOLTIP_SETTINGS["graph.tooltip_columns"].getValue,
+    TOOLTIP_SETTINGS["graph.tooltip_columns"]?.getValue,
   );
   const getProps = checkNotNull(
-    TOOLTIP_SETTINGS["graph.tooltip_columns"].getProps,
+    TOOLTIP_SETTINGS["graph.tooltip_columns"]?.getProps,
   );
 
   describe("getHidden", () => {

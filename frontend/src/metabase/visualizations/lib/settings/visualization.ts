@@ -22,7 +22,7 @@ import {
   getSettingsWidgets,
 } from "../settings";
 
-const COMMON_SETTINGS: VisualizationSettingsDefinitions<Series> = {
+const COMMON_SETTINGS: VisualizationSettingsDefinitions = {
   "card.title": {
     get title() {
       return t`Title`;
@@ -62,7 +62,7 @@ const COMMON_SETTINGS: VisualizationSettingsDefinitions<Series> = {
 
 function getSettingDefinitionsForSeries(
   series: Series | null | undefined,
-): VisualizationSettingsDefinitions<Series> & {
+): VisualizationSettingsDefinitions & {
   [id: string]: { id?: string };
 } {
   if (!series) {

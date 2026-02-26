@@ -983,7 +983,7 @@ export const GRAPH_AXIS_SETTINGS: VisualizationSettingsDefinitions<Series> = {
   "graph.series_labels": {},
 };
 
-export const BOXPLOT_SETTINGS: VisualizationSettingsDefinitions<Series> = {
+export const BOXPLOT_SETTINGS: VisualizationSettingsDefinitions = {
   "boxplot.whisker_type": {
     get section() {
       return t`Display`;
@@ -1131,7 +1131,7 @@ export const BOXPLOT_SETTINGS: VisualizationSettingsDefinitions<Series> = {
   },
 };
 
-export const BOXPLOT_DATA_SETTINGS: VisualizationSettingsDefinitions<Series> = {
+export const BOXPLOT_DATA_SETTINGS: VisualizationSettingsDefinitions = {
   ...GRAPH_DATA_SETTINGS,
   "graph.dimensions": {
     ...GRAPH_DATA_SETTINGS["graph.dimensions"],
