@@ -1,37 +1,27 @@
 (ns metabase-enterprise.metabot-v3.api.slackbot
   "`/api/ee/metabot-v3/slack` routes"
   (:require
-   [clj-http.client :as http]
-   [clojure.java.io :as io]
    [clojure.string :as str]
    [malli.core :as mc]
-   [metabase-enterprise.metabot-v3.api.slackbot.query :as slackbot.query]
-   [metabase-enterprise.metabot-v3.client :as metabot-v3.client]
-   [metabase-enterprise.metabot-v3.config :as metabot-v3.config]
-   [metabase-enterprise.metabot-v3.context :as metabot-v3.context]
-   [metabase-enterprise.metabot-v3.envelope :as metabot-v3.envelope]
+   [metabase-enterprise.metabot-v3.api.slackbot.client :as slackbot.client]
+   [metabase-enterprise.metabot-v3.api.slackbot.config :as slackbot.config]
+   [metabase-enterprise.metabot-v3.api.slackbot.events :as slackbot.events]
+   [metabase-enterprise.metabot-v3.api.slackbot.streaming :as slackbot.streaming]
+   [metabase-enterprise.metabot-v3.api.slackbot.uploads :as slackbot.uploads]
    [metabase-enterprise.metabot-v3.settings :as metabot.settings]
-   [metabase-enterprise.metabot-v3.util :as metabot-v3.util]
    [metabase-enterprise.sso.settings :as sso-settings]
-   [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.channel.api.slack :as channel.api.slack]
-   [metabase.channel.render.core :as channel.render]
    [metabase.channel.settings :as channel.settings]
    [metabase.permissions.core :as perms]
    [metabase.premium-features.core :as premium-features :refer [defenterprise defenterprise-schema]]
-   [metabase.query-processor :as qp]
-   [metabase.query-processor.middleware.permissions :as qp.perms]
    [metabase.request.core :as request]
    [metabase.settings.core :as setting]
    [metabase.system.core :as system]
-   [metabase.upload.core :as upload]
-   [metabase.util.encryption :as encryption]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
    [ring.util.codec :as codec]
    [toucan2.core :as t2]))
@@ -49,425 +39,6 @@
                       :metabot-slack-signing-secret nil})
   nil)
 
-;; ------------------ SLACK CLIENT --------------------
-
-(def ^:private SlackClient
-  "Malli schema for a Slack client."
-  [:map {:closed true}
-   [:token ms/NonBlankString]])
-
-(defn- slack-get
-  "GET from slack"
-  [client endpoint params]
-  (let [response (http/get (str "https://slack.com/api" endpoint)
-                           {:headers {"Authorization" (str "Bearer " (:token client))}
-                            :query-params params})]
-    {:body (json/decode (:body response) true)
-     :headers (:headers response)}))
-
-(defn- slack-post-json
-  "POST to slack."
-  [client endpoint payload]
-  (let [response (http/post (str "https://slack.com/api" endpoint)
-                            {:headers {"Authorization" (str "Bearer " (:token client))}
-                             :content-type "application/json; charset=utf-8"
-                             :body (json/encode payload)})]
-    {:body (json/decode (:body response) true)
-     :headers (:headers response)}))
-
-(defn- slack-post-form
-  "POST form to slack"
-  [client endpoint payload]
-  (-> (http/post (str "https://slack.com/api" endpoint)
-                 {:headers {"Authorization" (str "Bearer " (:token client))
-                            "Content-Type" "application/x-www-form-urlencoded; charset=utf-8"}
-                  :form-params payload})
-      :body
-      (json/decode true)))
-
-(def ^:private slack-token-error-codes
-  "Error codes from Slack that indicate an invalid or revoked token."
-  #{"invalid_auth" "account_inactive" "token_revoked" "token_expired" "not_authed"})
-
-(defn- auth-test
-  "Call auth.test and return the response including headers.
-   Throws an exception with appropriate status code if the call fails:
-   - 400 for invalid/revoked tokens
-   - 502 for Slack API errors (e.g., Slack is down)"
-  [client]
-  (try
-    (let [{:keys [body headers]} (slack-post-json client "/auth.test" {})]
-      (if (:ok body)
-        {:body body :headers headers}
-        (let [error-code (:error body)
-              invalid-token? (slack-token-error-codes error-code)]
-          (throw (ex-info (if invalid-token?
-                            (tru "Invalid Slack bot token: {0}" error-code)
-                            (tru "Slack API error: {0}" error-code))
-                          {:status-code (if invalid-token? 400 502)
-                           :error-code error-code})))))
-    (catch clojure.lang.ExceptionInfo e
-      (throw e))
-    (catch Exception e
-      (throw (ex-info (tru "Unable to connect to Slack API: {0}" (.getMessage e))
-                      {:status-code 502}
-                      e)))))
-
-(defn- get-bot-user-id
-  "Get the bot's Slack user ID"
-  [client]
-  (:user_id (:body (auth-test client))))
-
-(defn- fetch-thread
-  "Fetch a Slack thread"
-  ([client message]
-   (fetch-thread client message 50))
-  ([client message limit]
-   (:body (slack-get client "/conversations.replies"
-                     {:channel (:channel message)
-                      :ts (or (:thread_ts message) (:ts message))
-                      :limit limit}))))
-
-(defn- get-upload-url
-  "Get a URL we can upload to"
-  [client args]
-  (slack-post-form client "/files.getUploadURLExternal" args))
-
-(defn- post-message
-  "Send a Slack message"
-  [client message]
-  (:body (slack-post-json client "/chat.postMessage" message)))
-
-(defn- post-ephemeral-message
-  "Send a Slack ephemeral message (visible only to the specified user)"
-  [client message]
-  (:body (slack-post-json client "/chat.postEphemeral" message)))
-
-(defn- post-image
-  "Upload a PNG image and send in a message"
-  [client image-bytes filename channel thread-ts]
-  (let [{:keys [ok upload_url file_id] :as res} (get-upload-url client {:filename filename
-                                                                        :length (alength ^bytes image-bytes)})]
-    (when ok
-      (http/post upload_url
-                 {:headers {"Content-Type" "image/png"}
-                  :body image-bytes})
-      (:body (slack-post-json client "/files.completeUploadExternal"
-                              {:files [{:id file_id
-                                        :title filename}]
-                               :channel_id channel
-                               :thread_ts thread-ts}))
-      res)))
-
-(defn- delete-message
-  "Remove a Slack message"
-  [client message]
-  (:body (slack-post-json client "/chat.delete" (select-keys message [:channel :ts]))))
-
-;; -------------------- SLACK STREAMING API --------------------
-;; These functions implement Slack's chat streaming API for progressive AI responses.
-;; See: https://docs.slack.dev/changelog/2025/10/7/chat-streaming/
-
-(defn- start-stream
-  "Start a Slack message stream. Returns the stream timestamp on success (acts as an identifier)."
-  [client {:keys [channel thread_ts team_id user_id]}]
-  (let [body (:body (slack-post-json client "/chat.startStream"
-                                     {:channel           channel
-                                      :thread_ts         thread_ts
-                                      :recipient_team_id team_id
-                                      :recipient_user_id user_id}))]
-    (log/debugf "[slackbot] start-stream response: %s" (pr-str body))
-    (if (:ok body)
-      {:stream_ts (:ts body)
-       :channel   (:channel body)
-       :thread_ts thread_ts}
-      (log/warnf "[slackbot] start-stream failed: %s" (:error body)))))
-
-(defn- append-stream
-  "Append chunks to an active stream. Each chunk is a map with :type and type-specific keys,
-   e.g. {:type \"markdown_text\" :text \"...\"} or {:type \"task_update\" :id \"...\" :title \"...\" :status \"...\"}."
-  [client channel stream-ts chunks]
-  (let [payload  {:channel channel
-                  :ts      stream-ts
-                  :chunks  chunks}
-        body (:body (slack-post-json client "/chat.appendStream" payload))]
-    (when-not (:ok body)
-      (log/warnf "[slackbot] append-stream failed: %s" (:error body)))
-    body))
-
-(defn- append-markdown-text
-  "Helper to append markdown text to a stream."
-  [client channel stream-ts text]
-  (append-stream client channel stream-ts [{:type "markdown_text" :text text}]))
-
-(defn- stop-stream
-  "Stop a stream and finalize it into a regular message."
-  ([client channel stream-ts]
-   (stop-stream client channel stream-ts nil))
-  ([client channel stream-ts blocks]
-   (let [body (:body (slack-post-json client "/chat.stopStream"
-                                      (cond-> {:channel channel
-                                               :ts      stream-ts}
-                                        blocks (assoc :blocks blocks))))]
-     (when-not (:ok body)
-       (log/warnf "[slackbot] stop-stream failed: %s" (:error body)))
-     body)))
-
-;; -------------------- VISUALIZATION GENERATION ---------------------------
-
-(def ^:private supported-png-display-types
-  "Display types that can be rendered as PNG images for Slack.
-   These correspond to the render methods in channel.render.body and
-   frontend static-viz components. Map types (pin_map, state, country)
-   are explicitly unsupported per channel.render.card/detect-pulse-chart-type."
-  #{:scalar :smartscalar :gauge :progress
-    :bar :line :area :combo :row :pie
-    :scatter :boxplot :waterfall :funnel :sankey})
-
-(defn- pulse-card-query-results
-  {:arglists '([card])}
-  [{query :dataset_query, card-id :id}]
-  ;; Use the same approach as pulse API - this works for accessible cards
-  (binding [qp.perms/*card-id* card-id]
-    (qp/process-query
-     (qp/userland-query
-      (assoc query
-             :middleware {:process-viz-settings? true
-                          :js-int-to-string?     false})
-      {:executed-by api/*current-user-id*
-       :context     :pulse
-       :card-id     card-id}))))
-
-(defn- generate-card-png
-  "Generate PNG for a card. Accepts either:
-   - card-id (integer) - fetches saved card from database
-   - adhoc-card (map) - renders ad-hoc card with :display, :visualization_settings, :results, :name"
-  [card-or-id & {:keys [width padding-x padding-y]
-                 :or {width 1280 padding-x 32 padding-y 0}}]
-  (let [options {:channel.render/include-title? true
-                 :channel.render/padding-x padding-x
-                 :channel.render/padding-y padding-y}]
-    (if (integer? card-or-id)
-      ;; Saved card path
-      (let [card (t2/select-one :model/Card :id card-or-id)]
-        (when-not card
-          (throw (ex-info "Card not found" {:card-id card-or-id})))
-        ;; TODO: should we use the user's timezone for this?
-        (channel.render/render-pulse-card-to-png (channel.render/defaulted-timezone card)
-                                                 card
-                                                 (pulse-card-query-results card)
-                                                 width
-                                                 options))
-      ;; Ad-hoc card path
-      (let [{:keys [display visualization_settings results name]} card-or-id]
-        (channel.render/render-adhoc-card-to-png
-         {:display display
-          :visualization_settings visualization_settings
-          :name name}
-         results
-         width
-         options)))))
-
-(defn- generate-card-output
-  "Generate output for a saved card based on its display type.
-   Returns a map with :type (:table or :image) and :content.
-
-   - `table` and display types not supported by static viz render as native Slack table blocks
-   - static viz chart types render as PNG"
-  [card-id]
-  (let [card (t2/select-one :model/Card :id card-id)]
-    (when-not card
-      (throw (ex-info "Card not found" {:card-id card-id :agent-error? true})))
-    (if (-> card :display keyword supported-png-display-types)
-      {:type    :image
-       :content (generate-card-png card-id)}
-      (let [results (pulse-card-query-results card)]
-        {:type    :table
-         :content (slackbot.query/format-results-as-table-blocks results)}))))
-
-;; -------------------- CSV UPLOADS ---------------------------
-
-(def ^:private max-file-size-bytes
-  "Maximum file size for CSV uploads (1GB, matches Slack's limit)"
-  (* 1024 1024 1024))
-
-(def ^:private allowed-csv-filetypes
-  "File types that are allowed for CSV uploads"
-  #{"csv" "tsv"})
-
-(defn- csv-file?
-  "Check if a Slack file is a CSV/TSV based on filetype."
-  [{:keys [filetype]}]
-  (contains? allowed-csv-filetypes filetype))
-
-(defn- validate-file-size
-  "Returns nil if valid, error string if too large."
-  [{:keys [name size]}]
-  (when (> size max-file-size-bytes)
-    (format "File '%s' exceeds 1GB size limit" name)))
-
-(defn- upload-settings
-  "Get upload settings map. Returns nil if uploads are not enabled."
-  []
-  (when-let [db (upload/current-database)]
-    {:db_id        (:id db)
-     :schema_name  (:uploads_schema_name db)
-     :table_prefix (:uploads_table_prefix db)}))
-
-(defn- download-slack-file
-  "Download a file from Slack using the bot token for authentication.
-   Returns byte array of file contents."
-  [url]
-  (let [token (channel.settings/unobfuscated-slack-app-token)]
-    (-> (http/get url {:headers {"Authorization" (str "Bearer " token)}
-                       :as :byte-array})
-        :body)))
-
-(defn- process-csv-file
-  "Process a single CSV file upload. Returns a result map with either
-   :model-id/:model-name (success) or :error (failure)."
-  [{:keys [db_id schema_name table_prefix]} {:keys [name url_private] :as file}]
-  (if-let [size-error (validate-file-size file)]
-    (do
-      (log/warnf "[slackbot] File exceeds size limit: file=%s error=%s" name size-error)
-      {:error size-error :filename name})
-    (let [temp-file (java.io.File/createTempFile "slack-upload-" (str "-" name))]
-      (try
-        (let [content (download-slack-file url_private)]
-          (io/copy content temp-file)
-          (let [result (upload/create-csv-upload!
-                        {:filename      name
-                         :file          temp-file
-                         :db-id         db_id
-                         :schema-name   schema_name
-                         :table-prefix  table_prefix
-                         :collection-id nil})]
-            (log/infof "[slackbot] File uploaded: file=%s model_id=%d" name (:id result))
-            {:filename name
-             :model-id (:id result)
-             :model-name (:name result)}))
-        (catch Exception e
-          (log/warnf "[slackbot] File upload failed: file=%s error=%s" name (ex-message e))
-          {:error (ex-message e) :filename name})
-        (finally
-          (io/delete-file temp-file true))))))
-
-(defn- process-file-uploads
-  "Process all files from a Slack event. Returns a map with:
-   :results - seq of individual file results
-   :skipped - seq of non-CSV filenames that were skipped"
-  [settings files]
-  (let [{csv-files true other-files false} (group-by csv-file? files)
-        skipped (mapv :name other-files)]
-    (when (seq skipped)
-      (log/debugf "[slackbot] Skipping non-CSV files: %s" (pr-str skipped)))
-    {:results (mapv (partial process-csv-file settings) csv-files)
-     :skipped skipped}))
-
-(defn- build-upload-system-messages
-  "Build system messages to inject into AI request about uploads."
-  [{:keys [results skipped]}]
-  (let [successes (filter :model-id results)
-        failures (filter :error results)]
-    (cond-> []
-      (seq successes)
-      (conj {:role :assistant
-             :content (format "The following message included 1 or more attached CSV files which are now available as models in Metabase: %s. You can help them query this data."
-                              (str/join ", " (map #(format "%s (model ID: %d)"
-                                                           (:filename %)
-                                                           (:model-id %))
-                                                  successes)))})
-
-      (seq failures)
-      (conj {:role :assistant
-             :content (format "The following message included 1 or more attached CSV files. Some file uploads failed: %s. Explain these errors to the user."
-                              (str/join ", " (map #(format "%s: %s"
-                                                           (:filename %)
-                                                           (:error %))
-                                                  failures)))})
-
-      (seq skipped)
-      (conj {:role :assistant
-             :content (format "The following message included 1 or more non-CSV files which are not supported: %s. Let them know only CSV files can be uploaded."
-                              (str/join ", " skipped))}))))
-
-(defn- handle-file-uploads
-  "Handle file uploads if present. Returns nil if no files, otherwise
-   returns upload result map and messages to inject into AI request."
-  [files]
-  (when (seq files)
-    (if-let [{:keys [db_id schema_name] :as settings} (upload-settings)]
-      (let [db (t2/select-one :model/Database :id db_id)]
-        (if-not (upload/can-create-upload? db schema_name)
-          {:error "You don't have permission to upload files. Contact your Metabase administrator."}
-          (let [result (process-file-uploads settings files)]
-            {:upload-result result
-             :system-messages (build-upload-system-messages result)})))
-      {:error "CSV uploads are not enabled. An administrator needs to configure a database for uploads in Admin > Settings > Uploads."})))
-
-;; -------------------- AI SERVICE ---------------------------
-
-(defn- strip-bot-mention
-  "Remove bot mention prefix from text (e.g., '<@U123> hello' -> 'hello')"
-  [text bot-user-id]
-  (if bot-user-id
-    (str/replace text (re-pattern (str "<@" bot-user-id ">\\s?")) "")
-    text))
-
-;; NOTE: Table block extraction for AI context is disabled due to occasional hallucinations.
-;; Keeping the code commented out for potential future use.
-#_(defn- format-table-block
-    "Format a Slack table block as record-style text for AI context.
-     Each row becomes a labeled record with field: value pairs.
-     Table blocks have :rows where each row is a vector of {:type \"raw_text\" :text \"value\"}."
-    [{:keys [rows]}]
-    (when (seq rows)
-      (let [extract-row (fn [row] (mapv #(get % :text "-") row))
-            headers     (extract-row (first rows))
-            data-rows   (map extract-row (rest rows))
-            format-record (fn [idx row]
-                            (let [fields (map (fn [h v] (str h ": " v)) headers row)]
-                              (str "## Row " (inc idx) "\n\n```\n"
-                                   (str/join "\n" fields)
-                                   "\n```")))]
-        (str "# Query Results\n\n"
-             (str/join "\n\n" (map-indexed format-record data-rows))))))
-
-#_(defn- extract-table-blocks
-    "Extract and format all table blocks from a Slack message's blocks array."
-    [blocks]
-    (when (seq blocks)
-      (->> blocks
-           (filter #(= (:type %) "table"))
-           (map format-table-block)
-           (remove nil?)
-           seq)))
-
-(defn- thread->history
-  "Convert a Slack thread to an ai-service history object.
-   Strips bot mentions from user messages when bot-user-id is provided."
-  [thread bot-user-id]
-  (->> (:messages thread)
-       (filter :text)
-       (mapv (fn [msg]
-               (let [is-bot? (some? (:bot_id msg))
-                     content (if is-bot?
-                               (:text msg)
-                               (strip-bot-mention (:text msg) bot-user-id))]
-                 {:role    (if is-bot? :assistant :user)
-                  :content content})))))
-
-(defn- compute-capabilities
-  "Compute capability strings for the current user based on their permissions."
-  []
-  (let [{:keys [can-create-queries can-create-native-queries]}
-        (perms/query-creation-capabilities api/*current-user-id*)]
-    (cond-> []
-      can-create-queries        (conj "permission:save_questions")
-      can-create-native-queries (conj "permission:write_sql_queries"))))
-
-;; -------------------- API ---------------------------
-
 (defenterprise-schema get-slack-manifest :- channel.api.slack/SlackManifest
   "Enterprise implementation - returns full MetaBot manifest with event subscriptions, slash commands, etc."
   :feature :metabot-v3
@@ -475,51 +46,7 @@
   (let [base-url (system/site-url)]
     (when-not base-url
       (throw (ex-info (tru "You must configure a site-url for Slack integration to work.") {:status-code 503})))
-    {:display_information {:name "Metabot"
-                           :description "Your AI-powered data assistant"
-                           :background_color "#509EE3"}
-     :features {:app_home {:home_tab_enabled false
-                           :messages_tab_enabled true
-                           :messages_tab_read_only_enabled false}
-                :bot_user {:display_name "Metabot"
-                           :always_online false}
-                :assistant_view {:assistant_description "Your AI-powered data assistant"}
-                :slash_commands [{:command "/metabot"
-                                  :url (str base-url "/api/ee/metabot-v3/slack/commands")
-                                  :description "Issue a Metabot command"
-                                  :should_escape false}]}
-     :oauth_config {:redirect_urls [(str base-url "/auth/sso")]
-                    :scopes {:bot ["app_mentions:read"
-                                   "assistant:write"
-                                   "channels:history"
-                                   "chat:write"
-                                   "chat:write.customize"
-                                   "chat:write.public"
-                                   "channels:join"
-                                   "channels:read"
-                                   "commands"
-                                   "groups:read"
-                                   "groups:history"
-                                   "im:history"
-                                   "im:read"
-                                   "files:read"
-                                   "files:write"
-                                   "mpim:read"
-                                   "users:read"]}}
-     :settings {:event_subscriptions {:request_url (str base-url "/api/ee/metabot-v3/slack/events")
-                                      :bot_events ["app_home_opened"
-                                                   "app_mention"
-                                                   "message.channels"
-                                                   "message.im"
-                                                   "assistant_thread_started"
-                                                   "assistant_thread_context_changed"]}
-                :interactivity {:is_enabled true
-                                :request_url (str base-url "/api/ee/metabot-v3/slack/interactive")}
-                :org_deploy_enabled true
-                :socket_mode_enabled false
-                :token_rotation_enabled false}}))
-
-;; ------------------------- VALIDATION ----------------------------------
+    (slackbot.config/build-slack-manifest base-url)))
 
 (defn- assert-valid-slack-req
   "Asserts that incoming Slack request has a valid signature."
@@ -529,161 +56,7 @@
   (when-not (:slack/validated? request)
     (throw (ex-info (str (tru "Slack request signature is not valid.")) {:status-code 401}))))
 
-(defn- setup-complete?
-  "Returns true if all required Slack settings are configured to process events."
-  []
-  (boolean
-   (and (some? (system/site-url))
-        (premium-features/enable-sso-slack?)
-        (sso-settings/slack-connect-client-id)
-        (sso-settings/slack-connect-client-secret)
-        (metabot.settings/metabot-slack-signing-secret)
-        (channel.settings/unobfuscated-slack-app-token)
-        (encryption/default-encryption-enabled?))))
-
-(defn- assert-setup-complete
-  "Asserts that all required Slack settings have been configured."
-  []
-  (when-not (setup-complete?)
-    (throw (ex-info (str (tru "Slack integration is not fully configured.")) {:status-code 503}))))
-
-#_{:clj-kondo/ignore [:clojure-lsp/unused-public-var]}
-(defn validate-bot-token!
-  "Validate a Slack bot token using the auth.test endpoint.
-   Throws an exception with appropriate status code if validation fails:
-   - 400 for invalid/revoked tokens
-   - 502 for Slack API errors (e.g., Slack is down)
-   Returns the response map on success."
-  [token]
-  (auth-test {:token token}))
-
-;; ------------------------- EVENT HANDLING ------------------------------
-
-(def ^:private SlackEventsResponse
-  "Malli schema for Slack events API response"
-  [:map
-   ;; Response status is expected to be 2xx to indicate the event was received
-   ;; https://docs.slack.dev/apis/events-api/#error-handling
-   [:status  [:= 200]]
-   [:headers [:map ["Content-Type" [:= "text/plain"]]]]
-   [:body    :string]])
-
-(def ^:private SlackUrlVerificationEvent
-  "Malli schema for Slack url_verification event"
-  [:map
-   [:type      [:= "url_verification"]]
-   [:challenge :string]])
-
-(def ^:private SlackFile
-  "Malli schema for a file attached to a Slack message"
-  [:map
-   [:id :string]
-   [:name :string]
-   [:mimetype {:optional true} [:maybe :string]]
-   [:filetype {:optional true} [:maybe :string]]
-   [:url_private :string]
-   [:size :int]])
-
-(def ^:private SlackMessageEvent
-  "Base schema for Slack message events"
-  [:map
-   [:type [:= "message"]]
-   [:channel :string]
-   [:user :string]
-   [:ts :string]
-   [:event_ts :string]
-   [:bot_id {:optional true} [:maybe :string]]])
-
-(def ^:private SlackMessageImEvent
-  "Schema for message.im events (direct messages)"
-  [:merge SlackMessageEvent
-   [:map
-    [:channel_type [:= "im"]]
-    [:text :string]
-    [:thread_ts {:optional true} [:maybe :string]]]])
-
-(def ^:private SlackMessageChannelsEvent
-  "Schema for message.channels events (public channel messages)"
-  [:merge SlackMessageEvent
-   [:map
-    [:channel_type [:= "channel"]]
-    [:text :string]
-    [:thread_ts {:optional true} [:maybe :string]]]])
-
-(def ^:private SlackMessageFileShareEvent
-  "Schema for file_share message events"
-  [:merge SlackMessageEvent
-   [:map
-    [:subtype [:= "file_share"]]
-    [:channel_type :string]
-    [:files [:sequential SlackFile]]
-    [:text {:optional true} [:maybe :string]]
-    [:thread_ts {:optional true} [:maybe :string]]]])
-
-(def ^:private SlackAppMentionEvent
-  "Schema for app_mention events (when bot is @mentioned)"
-  [:map
-   [:type [:= "app_mention"]]
-   [:channel :string]
-   [:user :string]
-   [:text :string]
-   [:ts :string]
-   [:event_ts :string]
-   [:thread_ts {:optional true} [:maybe :string]]])
-
-(def ^:private SlackKnownMessageEvent
-  "Schema for event_callback events that we handle."
-  [:or
-   ;; Events based on :subtype come first as :subtype is unambiguous.
-   SlackMessageFileShareEvent
-   ;; Events based on :channel_type. These are generic message events that might overlap with the above. For example,
-   ;; a SlackMessageFileShareEvent might have either :channel_type. Maybe these should be "mixins", but for now we
-   ;; only need to distinguish file_share vs im vs channel messages.
-   SlackMessageImEvent
-   SlackMessageChannelsEvent])
-
-(def ^:private SlackEventCallbackEvent
-  "Malli schema for Slack event_callback event"
-  [:map
-   [:type [:= "event_callback"]]
-   [:event [:or
-            SlackAppMentionEvent
-            SlackKnownMessageEvent
-            ;; Fallback for any other valid event type
-            [:map
-             [:type :string]
-             [:event_ts :string]]]]])
-
-(mu/defn- handle-url-verification :- SlackEventsResponse
-  "Respond to a url_verification request (docs: https://docs.slack.dev/reference/events/url_verification)"
-  [event :- SlackUrlVerificationEvent]
-  {:status  200
-   :headers {"Content-Type" "text/plain"}
-   :body    (:challenge event)})
-
-(defn- known-user-message?
-  "Check if event is a user message (not bot/system message).
-   Returns true if the event has no bot_id and matches a known message schema."
-  [event]
-  (and (nil? (:bot_id event))
-       (mr/validate SlackKnownMessageEvent event)))
-
-(defn- app-mention?
-  "Check if event is an app_mention event (when bot is @mentioned)."
-  [event]
-  (mr/validate SlackAppMentionEvent event))
-
-(defn- edited-message?
-  "Check if event is an edited message (message_changed subtype or has :edited key)."
-  [event]
-  (or (= (:subtype event) "message_changed")
-      (some? (:edited event))))
-
-(def ^:private ack-msg
-  "Acknowledgement payload"
-  {:status  200
-   :headers {"Content-Type" "text/plain"}
-   :body    "ok"})
+;; ------------------------- AUTHENTICATION ------------------------------
 
 (defn- slack-id->user-id
   "Look up a Metabase user ID from Slack user ID."
@@ -701,306 +74,14 @@
   (let [sso-url "/auth/sso?preferred_method=slack-connect&redirect=/slack-connect-success"]
     (str (system/site-url) "/auth/login?redirect=" (codec/url-encode sso-url))))
 
-(defn- event->reply-context
-  "Extract the necessary context for a reply from the given `event`"
-  [event]
-  {:channel (:channel event)
-   :thread_ts (or (:thread_ts event)
-                  (:ts event))})
-
-(defn- send-viz-output
-  "Send visualization output to Slack as either table blocks or image."
-  [client channel thread-ts {:keys [type content]} filename]
-  (case type
-    :table (let [response (post-message client {:channel   channel
-                                                :thread_ts thread-ts
-                                                :blocks    content
-                                                :text      "Query results"})]
-             (when-not (:ok response)
-               (log/errorf "Slack table blocks error: %s" (pr-str response)))
-             response)
-    :image (let [filename (str filename ".png")]
-             (post-image client content filename channel thread-ts))))
-
-;; -------------------- STREAMING AI RESPONSES ---------------------------
-;; This section implements progressive streaming of AI responses to Slack using Slack's chat streaming API
-;; (startStream/appendStream/stopStream).
-
-(def ^:private tool-friendly-names
-  "Map of tool names to user-friendly gerund descriptions for slackbot profile tools."
-  {"search"                   "Searching"
-   "construct_notebook_query" "Building query"
-   "list_available_fields"    "Finding available fields"
-   "get_field_values"         "Getting field values"
-   "static_viz"               "Running query"})
-
-(defn- tool-name->friendly
-  "Convert a tool name to a user-friendly status message (gerund form)."
-  [tool-name]
-  (get tool-friendly-names tool-name "Thinking"))
-
-(def ^:private min-text-batch-size
-  "Minimum characters to accumulate before considering a flush."
-  50)
-
-(defn- make-streaming-ai-request
-  "Make a streaming AI request with callbacks for each message type.
-   Returns data-parts (visualizations) from the response.
-
-   Callbacks:
-   - on-text: Called with text content (ai-service already buffers markdown links)
-   - on-tool-start: Called with {:id :name} when a tool starts
-   - on-tool-end: Called with {:id :result} when a tool completes"
-  [conversation-id prompt thread bot-user-id channel-id extra-history
-   {:keys [on-text on-tool-start on-tool-end]}]
-  (let [message        (metabot-v3.envelope/user-message prompt)
-        metabot-id     (metabot-v3.config/resolve-dynamic-metabot-id nil)
-        profile-id     (metabot-v3.config/resolve-dynamic-profile-id "slackbot" metabot-id)
-        session-id     (metabot-v3.client/get-ai-service-token api/*current-user-id* metabot-id)
-        capabilities   (compute-capabilities)
-        thread-history (thread->history thread bot-user-id)
-        history        (into (vec thread-history) extra-history)
-        handle-line (fn [line]
-                      (when-let [[type content] (metabot-v3.util/parse-aisdk-line line)]
-                        (case type
-                          :TEXT
-                          (when (and on-text (seq content))
-                            (on-text content))
-
-                          :TOOL_CALL
-                          (when on-tool-start
-                            (on-tool-start {:id        (:toolCallId content)
-                                            :tool-name (:toolName content)}))
-
-                          :TOOL_RESULT
-                          (when on-tool-end
-                            (on-tool-end {:id     (:toolCallId content)
-                                          :result (:result content)}))
-
-                          :DATA nil ;; collected from full lines below
-
-                          (log/debugf "Ignoring AI SDK line of type %s" type))))
-
-        lines          (metabot-v3.client/streaming-request-with-callback
-                        {:context         (metabot-v3.context/create-context
-                                           {:current_time_with_timezone (str (java.time.OffsetDateTime/now))
-                                            :capabilities               capabilities
-                                            :slack_channel_id           channel-id})
-                         :metabot-id      metabot-id
-                         :profile-id      profile-id
-                         :session-id      session-id
-                         :conversation-id conversation-id
-                         :message         message
-                         :history         history
-                         :state           {}
-                         :on-line         handle-line})]
-    (->> (metabot-v3.util/aisdk->messages :assistant lines)
-         (filter #(= (:_type %) :DATA)))))
-
-(defn- send-visualizations
-  "Send visualization data-parts as separate Slack messages after the stream ends."
-  [client channel thread-ts data-parts]
-  (let [vizs (filter #(#{"static_viz" "adhoc_viz"} (:type %)) data-parts)]
-    (doseq [{:keys [type value]} vizs]
-      (try
-        (case type
-          "static_viz"
-          (let [card-id  (or (:entity_id value)
-                             (throw (ex-info "static_viz missing entity_id" {:value value})))
-                output   (generate-card-output card-id)
-                filename (str "chart-" card-id)]
-            (send-viz-output client channel thread-ts output filename))
-
-          "adhoc_viz"
-          (let [query    (or (:query value)
-                             (throw (ex-info "adhoc_viz missing query" {:value value})))
-                display  (or (some-> (:display value) keyword) :table)
-                output   (slackbot.query/generate-adhoc-output query :display display)
-                filename (str "adhoc-" (System/currentTimeMillis))]
-            (send-viz-output client channel thread-ts output filename)))
-        (catch Exception e
-          (log/errorf e "Failed to generate visualization for %s" type))))))
-
-(defn- make-streaming-callbacks
-  "Create streaming callback functions and associated control functions.
-   Slack API writes are dispatched to a background agent so the AI stream reader is never
-   blocked by Slack I/O. The agent serializes writes to preserve ordering.
-
-   Text is coalesced via a shared `pending-text` atom: the callback thread appends text there,
-   and each agent action drains everything accumulated since the last write. This means multiple
-   flushes that pile up while a Slack API call is in flight get combined into a single append,
-   preventing the agent queue from falling further behind over time.
-
-   A 'Thinking...' placeholder message can be posted before the stream starts via
-   `:start-with-thinking!`. It is automatically deleted when the first text or tool update
-   is sent to the stream.
-
-   Returns a map with:
-   - `:on-text`, `:on-tool-start`, `:on-tool-end` — callbacks for [[make-streaming-ai-request]]
-   - `:start-with-thinking!` — posts a 'Thinking...' placeholder in the thread
-   - `:request-flush!` — schedules a drain of pending text to Slack
-   - `:stream-state` — volatile holding `{:stream_ts :channel}` once started, nil before
-   - `:slack-writer` — agent; callers should `(await slack-writer)` before stopping the stream"
-  [client {:keys [channel thread-ts team-id user-id]}]
-  (let [stream-state      (volatile! nil)
-        stream-attempted? (volatile! false)
-        tool-id->name     (volatile! {})
-        ;; Text awaiting write to Slack. Callback thread appends here; agent thread drains.
-        ;; An atom because it's shared across threads (callback thread writes, agent thread reads).
-        pending-text      (atom "")
-        ;; Holds the ts of the "Thinking..." placeholder message, or nil if not posted / already dismissed.
-        thinking-ts       (atom nil)
-        slack-writer      (agent nil
-                                 :error-mode    :continue
-                                 :error-handler (fn [_ e] (log/warn e "[slackbot] Async Slack write failed")))
-
-        ensure-stream! (fn []
-                         (when-not @stream-attempted?
-                           (vreset! stream-attempted? true)
-                           (when-let [stream (start-stream client {:channel   channel
-                                                                   :thread_ts thread-ts
-                                                                   :team_id   team-id
-                                                                   :user_id   user-id})]
-                             (vreset! stream-state stream))))
-
-        ;; Delete the "Thinking..." placeholder message. Idempotent via reset-vals!.
-        ;; Called from agent actions only.
-        dismiss-thinking! (fn []
-                            (let [[ts] (reset-vals! thinking-ts nil)]
-                              (when ts
-                                (delete-message client {:channel channel :ts ts}))))
-
-        ;; Drain all accumulated text from pending-text and send to Slack in one call.
-        ;; Called from agent actions only.
-        drain-pending-text! (fn []
-                              (when-let [{:keys [stream_ts channel]} @stream-state]
-                                (let [[text] (reset-vals! pending-text "")]
-                                  (when (seq text)
-                                    (dismiss-thinking!)
-                                    (append-markdown-text client channel stream_ts text)))))
-
-        ;; Schedule an agent drain. Cheap to call frequently — if the agent is already busy,
-        ;; text just accumulates in pending-text and gets coalesced into the next drain.
-        request-flush! (fn []
-                         (ensure-stream!)
-                         (when @stream-state
-                           (send-off slack-writer (fn [_] (drain-pending-text!) nil))))
-
-        start-with-thinking! (fn []
-                               (let [response (:body (slack-post-json client "/chat.postMessage"
-                                                                      {:channel   channel
-                                                                       :thread_ts thread-ts
-                                                                       :text      "_Thinking..._"}))]
-                                 (when (:ok response)
-                                   (reset! thinking-ts (:ts response)))))
-
-        on-text (fn [text]
-                  (when (seq text)
-                    (swap! pending-text str text)
-                    (when (>= (count @pending-text) min-text-batch-size)
-                      (request-flush!))))
-
-        on-tool-start (fn [{:keys [id tool-name]}]
-                        (request-flush!)
-                        (vswap! tool-id->name assoc id tool-name)
-                        (when-let [{:keys [stream_ts channel]} @stream-state]
-                          (send-off slack-writer
-                                    (fn [_]
-                                      (drain-pending-text!)
-                                      (dismiss-thinking!)
-                                      (append-stream client channel stream_ts
-                                                     [{:type   "task_update"
-                                                       :id     id
-                                                       :title  (tool-name->friendly tool-name)
-                                                       :status "in_progress"}])
-                                      nil))))
-
-        on-tool-end (fn [{:keys [id]}]
-                      (when-let [{:keys [stream_ts channel]} @stream-state]
-                        (let [tool-name (get @tool-id->name id)]
-                          (send-off slack-writer
-                                    (fn [_]
-                                      (drain-pending-text!)
-                                      (append-stream client channel stream_ts
-                                                     [{:type   "task_update"
-                                                       :id     id
-                                                       :title  (tool-name->friendly tool-name)
-                                                       :status "complete"}])
-                                      (append-markdown-text client channel stream_ts "\n")
-                                      nil))))
-                      (vswap! tool-id->name dissoc id))]
-    {:on-text              on-text
-     :on-tool-start        on-tool-start
-     :on-tool-end          on-tool-end
-     :request-flush!       request-flush!
-     :start-with-thinking! start-with-thinking!
-     :stream-state         stream-state
-     :slack-writer         slack-writer}))
-
-(defn- send-streaming-metabot-response
-  "Send a metabot response using Slack's streaming API for progressive updates.
-   Shows tool execution status and streams text as it arrives."
-  ([client event]
-   (send-streaming-metabot-response client event nil))
-  ([client event extra-history]
-   (let [prompt        (:text event)
-         channel-id    (:channel event)
-         message-ctx   (event->reply-context event)
-         channel       (:channel message-ctx)
-         thread-ts     (:thread_ts message-ctx)
-         ;; Run both Slack API calls in parallel
-         thread-future (future (-> (fetch-thread client event)
-                                   (update :messages #(remove (fn [m] (= (:ts m) (:ts event))) %))))
-         auth-future   (future (:body (auth-test client)))
-         auth-info     @auth-future
-         thread        @thread-future
-         bot-user-id   (:user_id auth-info)
-
-         {:keys [on-text on-tool-start on-tool-end request-flush! start-with-thinking! stream-state slack-writer]}
-         (make-streaming-callbacks client {:channel   channel
-                                           :thread-ts thread-ts
-                                           :team-id   (:team_id auth-info)
-                                           :user-id   (:user event)})]
-     (start-with-thinking!)
-     (try
-       (let [data-parts (make-streaming-ai-request
-                         (str (random-uuid))
-                         prompt
-                         thread
-                         bot-user-id
-                         channel-id
-                         extra-history
-                         {:on-text       on-text
-                          :on-tool-start on-tool-start
-                          :on-tool-end   on-tool-end})]
-         (request-flush!)
-         (await slack-writer)
-         (if-let [{:keys [stream_ts channel]} @stream-state]
-           (do
-             (stop-stream client channel stream_ts)
-             (send-visualizations client channel thread-ts data-parts))
-           (post-message client (merge message-ctx {:text "I wasn't able to generate a response. Please try again."}))))
-       (catch Exception e
-         (log/error e "[slackbot] Error in streaming response")
-         (await slack-writer)
-         (if-let [{:keys [stream_ts channel]} @stream-state]
-           (try
-             (append-markdown-text client channel stream_ts
-                                   "\nSomething went wrong. Please try again.")
-             (stop-stream client channel stream_ts)
-             (catch Exception stop-e
-               (log/debug stop-e "[slackbot] Failed to stop stream during error cleanup")))
-           (post-message client (merge message-ctx
-                                       {:text "Something went wrong. Please try again."}))))))))
-
 (defn- send-auth-link
   "Respond to an incoming slack message with a request to authorize.
    For top-level @mentions (not in a thread), sends ephemeral message directly to channel
    so users don't miss it (threaded ephemeral messages don't show thread indicators)."
   [client event]
-  (post-ephemeral-message
+  (slackbot.client/post-ephemeral-message
    client
-   (merge (event->reply-context event)
+   (merge (slackbot.events/event->reply-context event)
           {:user (:user event)
            ;; only thread the reply if the original message was already in a thread
            :thread_ts (:thread_ts event)
@@ -1023,13 +104,28 @@
     user-id
     (do (send-auth-link client event) nil)))
 
+;; ------------------------- EVENT HANDLING ------------------------------
+
+(mu/defn- handle-url-verification :- slackbot.events/SlackEventsResponse
+  "Respond to a url_verification request (docs: https://docs.slack.dev/reference/events/url_verification)"
+  [event :- slackbot.events/SlackUrlVerificationEvent]
+  {:status  200
+   :headers {"Content-Type" "text/plain"}
+   :body    (:challenge event)})
+
+(def ^:private ack-msg
+  "Acknowledgement payload"
+  {:status  200
+   :headers {"Content-Type" "text/plain"}
+   :body    "ok"})
+
 (mu/defn- process-message-im
   "Process a direct message (message.im)"
-  [client  :- SlackClient
-   event   :- SlackMessageImEvent
+  [client  :- slackbot.client/SlackClient
+   event   :- slackbot.events/SlackMessageImEvent
    user-id :- :int]
   (request/with-current-user user-id
-    (send-streaming-metabot-response client event)))
+    (slackbot.streaming/send-response client event)))
 
 (defn- all-files-skipped?
   "Returns true if all files were skipped (none were CSV/TSV)."
@@ -1040,15 +136,15 @@
 
 (mu/defn- process-message-file-share
   "Process a file_share message - handles CSV uploads"
-  [client  :- SlackClient
-   event   :- SlackMessageFileShareEvent
+  [client  :- slackbot.client/SlackClient
+   event   :- slackbot.events/SlackMessageFileShareEvent
    user-id :- :int]
   (request/with-current-user user-id
     (let [files (:files event)
           text (:text event)
           has-text? (not (str/blank? text))
           file-handling (when (seq files)
-                          (handle-file-uploads files))
+                          (slackbot.uploads/handle-file-uploads files))
           extra-history (cond
                           ;; Pre-flight error (uploads disabled, no permission)
                           (:error file-handling)
@@ -1066,16 +162,16 @@
       ;; without calling the AI to avoid sending an empty prompt
       (if should-skip-ai?
         (let [skipped-files (get-in file-handling [:upload-result :skipped])]
-          (post-message client
-                        (merge (event->reply-context event)
-                               {:text (format "I can only process CSV and TSV files. The following files were skipped: %s"
-                                              (str/join ", " skipped-files))})))
-        (send-streaming-metabot-response client event extra-history)))))
+          (slackbot.client/post-message client
+                                        (merge (slackbot.events/event->reply-context event)
+                                               {:text (format "I can only process CSV and TSV files. The following files were skipped: %s"
+                                                              (str/join ", " skipped-files))})))
+        (slackbot.streaming/send-response client event extra-history)))))
 
 (mu/defn- process-user-message :- :nil
   "Respond to an incoming user slack message, dispatching based on channel_type or subtype"
-  [client :- SlackClient
-   event  :- SlackKnownMessageEvent]
+  [client :- slackbot.client/SlackClient
+   event  :- slackbot.events/SlackKnownMessageEvent]
   ;; Early return for plain channel messages (without @mention) - we only respond in DMs or to file shares
   (when-not (and (= (:channel_type event) "channel")
                  (not= (:subtype event) "file_share"))
@@ -1091,26 +187,16 @@
 
 (mu/defn- process-app-mention :- :nil
   "Handle an app_mention event (when bot is @mentioned in a channel)."
-  [client :- SlackClient
-   event  :- SlackAppMentionEvent]
+  [client :- slackbot.client/SlackClient
+   event  :- slackbot.events/SlackAppMentionEvent]
   (when-let [user-id (require-authenticated-slack-user! client event)]
     (request/with-current-user user-id
-      (send-streaming-metabot-response client event)))
+      (slackbot.streaming/send-response client event)))
   nil)
 
-(defn- app-mention-with-files?
-  "Check if event is an app_mention that has file attachments.
-   When a user @mentions the bot with a file in a channel, Slack sends two events:
-   1. message.channels with subtype: file_share (handled by process-message-file-share)
-   2. app_mention (this duplicate needs to be skipped)
-   We skip app_mention events with files to avoid duplicate processing."
-  [event]
-  (and (app-mention? event)
-       (seq (:files event))))
-
-(mu/defn- handle-event-callback :- SlackEventsResponse
+(mu/defn- handle-event-callback :- slackbot.events/SlackEventsResponse
   "Respond to an event_callback request"
-  [payload :- SlackEventCallbackEvent]
+  [payload :- slackbot.events/SlackEventCallbackEvent]
   (when (and (premium-features/enable-metabot-v3?)
              (sso-settings/slack-connect-enabled))
     (let [client {:token (channel.settings/unobfuscated-slack-app-token)}
@@ -1118,15 +204,15 @@
       (log/debugf "[slackbot] Event callback: event_type=%s user=%s channel=%s"
                   (:type event) (:user event) (:channel event))
       (cond
-        (edited-message? event)
+        (slackbot.events/edited-message? event)
         (log/debug "[slackbot] Ignoring edited message")
 
         ;; Skip app_mention events with files - these will be handled by the file_share event
-        (app-mention-with-files? event)
+        (slackbot.events/app-mention-with-files? event)
         (log/debugf "[slackbot] Skipping app_mention with files (will be handled by file_share): ts=%s"
                     (:ts event))
 
-        (app-mention? event)
+        (slackbot.events/app-mention? event)
         (do
           (log/debug "[slackbot] Processing app_mention event")
           (future
@@ -1135,7 +221,7 @@
               (catch Exception e
                 (log/errorf e "[slackbot] Error processing app_mention: %s" (ex-message e))))))
 
-        (known-user-message? event)
+        (slackbot.events/known-user-message? event)
         (do
           (log/debug "[slackbot] Processing user message event")
           (future
@@ -1151,13 +237,13 @@
 ;; ----------------------- ROUTES --------------------------
 ;; NOTE: make sure to do premium-features/enable-metabot-v3? checks if you add new endpoints
 
-(api.macros/defendpoint :post "/events" :- SlackEventsResponse
+(api.macros/defendpoint :post "/events" :- slackbot.events/SlackEventsResponse
   "Respond to activities in Slack"
   [_route-params
    _query-params
    body :- [:multi {:dispatch :type}
-            ["url_verification" SlackUrlVerificationEvent]
-            ["event_callback"   SlackEventCallbackEvent]
+            ["url_verification" slackbot.events/SlackUrlVerificationEvent]
+            ["event_callback"   slackbot.events/SlackEventCallbackEvent]
             [::mc/default       [:map [:type :string]]]]
    request]
   (assert-valid-slack-req request)
@@ -1167,7 +253,7 @@
     ack-msg ;; prevent retries if metabot becomes disabled after app is configured
     (case (:type body)
       "url_verification" (handle-url-verification body)
-      "event_callback" (do (assert-setup-complete)
+      "event_callback" (do (slackbot.config/assert-setup-complete)
                            (handle-event-callback body))
       ack-msg)))
 
@@ -1231,7 +317,7 @@
   ;; 4. visit this url in yoru browser, following the setup flow outlined there
   (str (system/site-url) "/admin/metabot/slackbot")
   ;; 6. verify you've setup your instance correctly
-  (setup-complete?)
+  (slackbot.config/setup-complete?)
 
   ;; Updating an existing slack app
   ;; 1. create a tunnel via `ngrok http 3000`
@@ -1252,22 +338,13 @@
   (def thread-ts "XXXXXXXX.XXXXXXX") ; thread id
 
   (def client {:token (channel.settings/unobfuscated-slack-app-token)})
-  (def message (post-message client {:channel channel :text "_Thinking..._" :thread_ts thread-ts}))
-  (delete-message client message)
+  (def message (slackbot.client/post-message client {:channel channel :text "_Thinking..._" :thread_ts thread-ts}))
+  (slackbot.client/delete-message client message)
   (select-keys message [:channel :ts])
 
-  (post-ephemeral-message client {:channel channel
-                                  :user user-id
-                                  :text "sssh"
-                                  :thread_ts thread-ts})
+  (slackbot.client/post-ephemeral-message client {:channel channel
+                                                  :user user-id
+                                                  :text "sssh"
+                                                  :thread_ts thread-ts})
 
-  (def thread (fetch-thread client message))
-  (def history (thread->history thread (get-bot-user-id client)))
-
-  (def admin-user (t2/select-one :model/User :is_superuser true))
-  (def response-stream
-    (request/with-current-user (:id admin-user)
-      (make-ai-request (str (random-uuid)) "hi metabot!" thread (get-bot-user-id client) channel)))
-  (log/debug "Response stream:" response-stream)
-  (def ai-message (post-message client {:channel channel :text response-stream :thread_ts (:ts thread)}))
-  (delete-message client ai-message))
+  (def thread (slackbot.client/fetch-thread client message)))

@@ -6,7 +6,9 @@
    [metabase.formatter.core :as formatter]
    [metabase.lib.core :as lib]
    [metabase.query-processor :as qp]
-   [metabase.query-processor.schema :as qp.schema]))
+   [metabase.query-processor.middleware.permissions :as qp.perms]
+   [metabase.query-processor.schema :as qp.schema]
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
@@ -142,3 +144,76 @@
        :content (generate-adhoc-png results display)}
       {:type    :table
        :content (format-results-as-table-blocks results)})))
+
+;;; ------------------------------------------ Saved Card Visualization ----------------------------------------------------
+
+(def ^:private supported-png-display-types
+  "Display types that can be rendered as PNG images for Slack.
+   These correspond to the render methods in channel.render.body and
+   frontend static-viz components. Map types (pin_map, state, country)
+   are explicitly unsupported per channel.render.card/detect-pulse-chart-type."
+  #{:scalar :smartscalar :gauge :progress
+    :bar :line :area :combo :row :pie
+    :scatter :boxplot :waterfall :funnel :sankey})
+
+(defn pulse-card-query-results
+  "Execute a query for a saved card, returning results suitable for rendering."
+  {:arglists '([card])}
+  [{query :dataset_query, card-id :id}]
+  ;; Use the same approach as pulse API - this works for accessible cards
+  (binding [qp.perms/*card-id* card-id]
+    (qp/process-query
+     (qp/userland-query
+      (assoc query
+             :middleware {:process-viz-settings? true
+                          :js-int-to-string?     false})
+      {:executed-by api/*current-user-id*
+       :context     :pulse
+       :card-id     card-id}))))
+
+(defn generate-card-png
+  "Generate PNG for a card. Accepts either:
+   - card-id (integer) - fetches saved card from database
+   - adhoc-card (map) - renders ad-hoc card with :display, :visualization_settings, :results, :name"
+  [card-or-id & {:keys [width padding-x padding-y]
+                 :or {width 1280 padding-x 32 padding-y 0}}]
+  (let [options {:channel.render/include-title? true
+                 :channel.render/padding-x padding-x
+                 :channel.render/padding-y padding-y}]
+    (if (integer? card-or-id)
+      ;; Saved card path
+      (let [card (t2/select-one :model/Card :id card-or-id)]
+        (when-not card
+          (throw (ex-info "Card not found" {:card-id card-or-id})))
+        ;; TODO: should we use the user's timezone for this?
+        (channel.render/render-pulse-card-to-png (channel.render/defaulted-timezone card)
+                                                 card
+                                                 (pulse-card-query-results card)
+                                                 width
+                                                 options))
+      ;; Ad-hoc card path
+      (let [{:keys [display visualization_settings results name]} card-or-id]
+        (channel.render/render-adhoc-card-to-png
+         {:display display
+          :visualization_settings visualization_settings
+          :name name}
+         results
+         width
+         options)))))
+
+(defn generate-card-output
+  "Generate output for a saved card based on its display type.
+   Returns a map with :type (:table or :image) and :content.
+
+   - `table` and display types not supported by static viz render as native Slack table blocks
+   - static viz chart types render as PNG"
+  [card-id]
+  (let [card (t2/select-one :model/Card :id card-id)]
+    (when-not card
+      (throw (ex-info "Card not found" {:card-id card-id :agent-error? true})))
+    (if (-> card :display keyword supported-png-display-types)
+      {:type    :image
+       :content (generate-card-png card-id)}
+      (let [results (pulse-card-query-results card)]
+        {:type    :table
+         :content (format-results-as-table-blocks results)}))))
