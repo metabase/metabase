@@ -113,7 +113,45 @@
       (is (= "py-updated" (:source (transform-library/get-library-by-path "python" "common"))))
       (is (= "js-source" (:source (transform-library/get-library-by-path "javascript" "common")))))))
 
-(deftest builtin-entity-ids-test
-  (testing "builtin-entity-ids map contains expected values"
-    (is (= "cWWH9qJPvHNB3rP2vLZrK" (get transform-library/builtin-entity-ids "python")))
-    (is (= "aHWo_0yPLwKqpQPlFNzCg" (get transform-library/builtin-entity-ids "javascript")))))
+(deftest builtin-entity-id-test
+  (testing "builtin-entity-id returns expected values for legacy languages"
+    (is (= "cWWH9qJPvHNB3rP2vLZrK" (transform-library/builtin-entity-id "python")))
+    (is (= "aHWo_0yPLwKqpQPlFNzCg" (transform-library/builtin-entity-id "javascript"))))
+
+  (testing "builtin-entity-id returns deterministic hash for new languages"
+    (let [clj-id (transform-library/builtin-entity-id "clojure")]
+      (is (= 21 (count clj-id)))
+      (is (= clj-id (transform-library/builtin-entity-id "clojure"))
+          "Same language should produce the same ID")))
+
+  (testing "all-builtin-entity-ids returns set of all registered language IDs"
+    (let [ids (transform-library/all-builtin-entity-ids)]
+      (is (set? ids))
+      (is (contains? ids "cWWH9qJPvHNB3rP2vLZrK") "Should include python")
+      (is (contains? ids "aHWo_0yPLwKqpQPlFNzCg") "Should include javascript"))))
+
+(deftest ensure-builtin-library-test
+  (testing "creates a library row when none exists"
+    (clean-libraries!)
+    (transform-library/ensure-builtin-library! "python")
+    (let [lib (t2/select-one :model/TransformLibrary :language "python")]
+      (is (some? lib))
+      (is (= "common.py" (:path lib)))
+      (is (= "" (:source lib)))
+      (is (= "cWWH9qJPvHNB3rP2vLZrK" (:entity_id lib)))))
+
+  (testing "is idempotent — second call is a no-op"
+    (transform-library/ensure-builtin-library! "python")
+    (is (= 1 (t2/count :model/TransformLibrary :language "python"))))
+
+  (testing "does not overwrite existing source"
+    (transform-library/update-library-source! "python" "common" "user code")
+    (transform-library/ensure-builtin-library! "python")
+    (is (= "user code" (:source (t2/select-one :model/TransformLibrary :language "python")))))
+
+  (testing "works for javascript with correct extension and entity_id"
+    (clean-libraries!)
+    (transform-library/ensure-builtin-library! "javascript")
+    (let [lib (t2/select-one :model/TransformLibrary :language "javascript")]
+      (is (= "common.js" (:path lib)))
+      (is (= "aHWo_0yPLwKqpQPlFNzCg" (:entity_id lib))))))

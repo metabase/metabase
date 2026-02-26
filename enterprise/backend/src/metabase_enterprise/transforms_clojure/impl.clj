@@ -9,4 +9,5 @@
 (defmethod transforms.i/lang-config :clojure [_]
   {:runtime "clojure"
    :label "Clojure"
-   :timing-key :clojure-execution})
+   :timing-key :clojure-execution
+   :extension ".clj"})

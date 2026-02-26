@@ -9,4 +9,5 @@
 (defmethod transforms.i/lang-config :javascript [_]
   {:runtime "javascript"
    :label "JavaScript"
-   :timing-key :javascript-execution})
+   :timing-key :javascript-execution
+   :extension ".js"})

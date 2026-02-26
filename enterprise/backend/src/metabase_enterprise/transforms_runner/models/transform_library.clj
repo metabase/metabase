@@ -6,6 +6,7 @@
    [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
    [metabase.permissions.core :as perms]
+   [metabase.transforms.interface :as transforms.i]
    [metabase.util.i18n :refer [tru]]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
@@ -17,14 +18,14 @@
 (doseq [trait [:metabase/model :hook/timestamped? :hook/entity-id]]
   (derive :model/TransformLibrary trait))
 
-(def ^:private language-extensions
-  {"python" ".py"
-   "javascript" ".js"
-   "clojure" ".clj"})
+(defn- language-extension
+  "Return the file extension (e.g. \".py\") for a language string, looked up from lang-config."
+  [language]
+  (:extension (transforms.i/lang-config (keyword language))))
 
 (defn- normalize-path
   [language path]
-  (let [ext (get language-extensions language)]
+  (let [ext (language-extension language)]
     (if (and ext (not (.endsWith ^String path ext)))
       (str path ext)
       path)))
@@ -52,14 +53,35 @@
   ([_model _pk]
    (perms/has-any-transforms-permission? api/*current-user-id*)))
 
-(def builtin-entity-ids
-  "Map of language name to the stable entity-id for its built-in common library."
+(def ^:private legacy-entity-ids
+  "Stable entity IDs for built-in libraries created by Liquibase migrations.
+  New languages get deterministic IDs via [[builtin-entity-id]]."
   {"python" "cWWH9qJPvHNB3rP2vLZrK"
    "javascript" "aHWo_0yPLwKqpQPlFNzCg"})
 
+(defn builtin-entity-id
+  "Return the stable entity ID for a language's built-in common library.
+  Legacy languages (python, javascript) use migration-baked IDs; new languages
+  get a deterministic 21-char NanoID-style hash derived from the language name."
+  [language]
+  (or (get legacy-entity-ids language)
+      (let [bytes (.digest (java.security.MessageDigest/getInstance "SHA-256")
+                           (.getBytes (str "transform-library:" language) "UTF-8"))
+            encoded (-> (java.util.Base64/getUrlEncoder)
+                        (.withoutPadding)
+                        (.encodeToString bytes))]
+        (subs encoded 0 21))))
+
+(defn all-builtin-entity-ids
+  "Return the set of entity IDs for all registered runner languages' built-in libraries."
+  []
+  (into #{}
+        (map (comp builtin-entity-id name))
+        (transforms.i/runner-languages)))
+
 (defn- validate-path!
   [language path]
-  (let [ext (get language-extensions language)
+  (let [ext (language-extension language)
         normalized (normalize-path language path)
         allowed-path (str "common" ext)]
     (when-not (= normalized allowed-path)
@@ -85,6 +107,19 @@
                                        {:language language :path normalized}
                                        (constantly {:language language :path normalized :source source}))]
       (t2/select-one :model/TransformLibrary id))))
+
+(defn ensure-builtin-library!
+  "Ensure the built-in common library row exists for `language`.
+  Inserts idempotently — no-op if the row already exists.
+  Call from init modules so that new runner languages get a library row
+  without requiring a Liquibase migration."
+  [language]
+  (let [ext (language-extension language)
+        path (str "common" ext)
+        eid (builtin-entity-id language)]
+    (when-not (t2/exists? :model/TransformLibrary :language language :path path)
+      (t2/insert! :model/TransformLibrary
+                  {:path path :source "" :language language :entity_id eid}))))
 
 (defmethod serdes/make-spec "TransformLibrary"
   [_model-name _opts]

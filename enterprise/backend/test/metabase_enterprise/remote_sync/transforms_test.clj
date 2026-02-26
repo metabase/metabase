@@ -625,15 +625,15 @@ serdes/meta:
                                            {:path "common.py"
                                             :source "# builtin"
                                             :language "python"
-                                            :entity_id (get transform-library/builtin-entity-ids "python")})
-            (is (t2/exists? :model/TransformLibrary :entity_id (get transform-library/builtin-entity-ids "python"))
+                                            :entity_id (transform-library/builtin-entity-id "python")})
+            (is (t2/exists? :model/TransformLibrary :entity_id (transform-library/builtin-entity-id "python"))
                 "Built-in TransformLibrary should exist before import")
             (let [test-files {"main" {}}
                   mock-source (test-helpers/create-mock-source :initial-files test-files)
                   result (impl/import! (source.p/snapshot mock-source) task-id)]
               (is (= :success (:status result))
                   (str "Import should succeed. Result: " result))
-              (is (t2/exists? :model/TransformLibrary :entity_id (get transform-library/builtin-entity-ids "python"))
+              (is (t2/exists? :model/TransformLibrary :entity_id (transform-library/builtin-entity-id "python"))
                   "Built-in TransformLibrary should NOT be deleted after import"))))))))
 
 (deftest import-replaces-transform-library-with-remote-version-test
