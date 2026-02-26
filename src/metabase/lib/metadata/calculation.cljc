@@ -701,7 +701,7 @@
                             (comp (keep (fn [{source-field-id :id
                                               :keys [fk-target-field-id]
                                               :as   source}]
-                                          ;; the target can field can be inactive and therefore not returned
+                                          ;; the target field might not exist
                                           (when-let [target (id->target-fields fk-target-field-id)]
                                             (assoc target
                                                    ::fk-field-id   source-field-id
