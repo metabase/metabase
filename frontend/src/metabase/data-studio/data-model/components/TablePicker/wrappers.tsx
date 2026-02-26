@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
-import { replace } from "react-router-redux";
 
 import { useDispatch } from "metabase/lib/redux";
+import { replace } from "metabase/lib/router";
 import * as Urls from "metabase/lib/urls";
 
 import type { RouteParams } from "../../pages/DataModel/types";

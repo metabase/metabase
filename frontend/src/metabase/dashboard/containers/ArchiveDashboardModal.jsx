@@ -2,7 +2,6 @@
 import PropTypes from "prop-types";
 import { Component } from "react";
 import { withRouter } from "react-router";
-import { push } from "react-router-redux";
 import { t } from "ttag";
 import _ from "underscore";
 
@@ -11,6 +10,7 @@ import { setArchivedDashboard } from "metabase/dashboard/actions";
 import { Collections } from "metabase/entities/collections";
 import { Dashboards } from "metabase/entities/dashboards";
 import { connect } from "metabase/lib/redux";
+import { push } from "metabase/lib/router";
 import * as Urls from "metabase/lib/urls";
 
 const mapDispatchToProps = (dispatch) => ({

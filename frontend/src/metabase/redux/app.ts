@@ -3,7 +3,6 @@ import {
   createAction,
   createSlice,
 } from "@reduxjs/toolkit";
-import { push } from "react-router-redux";
 
 import {
   isSmallScreen,
@@ -11,6 +10,7 @@ import {
   shouldOpenInBlankWindow,
 } from "metabase/lib/dom";
 import { combineReducers, handleActions } from "metabase/lib/redux";
+import { push } from "metabase/lib/router";
 import type {
   DetailViewState,
   Dispatch,

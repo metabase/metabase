@@ -31,7 +31,6 @@ import { createHistory } from "history";
 import { DragDropContextProvider } from "react-dnd";
 import { createRoot } from "react-dom/client";
 import { useRouterHistory } from "react-router";
-import { syncHistoryWithStore } from "react-router-redux";
 
 import { initializePlugins } from "ee-plugins";
 import { ModifiedBackend } from "metabase/common/components/dnd/ModifiedBackend";
@@ -40,6 +39,7 @@ import api from "metabase/lib/api";
 import { initializeEmbedding } from "metabase/lib/embed";
 import { captureConsoleErrors } from "metabase/lib/errors";
 import { MetabaseReduxProvider } from "metabase/lib/redux/custom-context";
+import { syncHistoryWithStore } from "metabase/lib/router";
 import MetabaseSettings from "metabase/lib/settings";
 import { PLUGIN_APP_INIT_FUNCTIONS, PLUGIN_METABOT } from "metabase/plugins";
 import { refreshSiteSettings } from "metabase/redux/settings";

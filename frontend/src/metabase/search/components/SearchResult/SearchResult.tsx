@@ -1,9 +1,9 @@
 import type { LocationDescriptorObject } from "history";
 import type { MouseEvent } from "react";
 import { useCallback } from "react";
-import { push } from "react-router-redux";
 
 import { useDispatch } from "metabase/lib/redux";
+import { push } from "metabase/lib/router";
 import { isSyncCompleted } from "metabase/lib/syncing";
 import { modelToUrl } from "metabase/lib/urls";
 import { PLUGIN_MODERATION } from "metabase/plugins";

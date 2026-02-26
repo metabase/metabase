@@ -1,7 +1,10 @@
 import { combineReducers, configureStore } from "@reduxjs/toolkit";
-import { routerMiddleware, routerReducer as routing } from "react-router-redux";
 
 import { Api } from "metabase/api";
+import {
+  routerMiddleware,
+  routerReducer as routing,
+} from "metabase/lib/router";
 import { PLUGIN_REDUX_MIDDLEWARES } from "metabase/plugins";
 import { locationChanged } from "metabase/redux/app";
 
