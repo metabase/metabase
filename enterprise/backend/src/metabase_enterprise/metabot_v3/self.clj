@@ -121,8 +121,8 @@
   (map (fn [part]
          (when (= (:type part) :error)
            (prometheus/inc! :metabase-metabot/llm-errors
-                            {:model      (:model tracking-opts)
-                             :source     (:tag tracking-opts)
+                            {:model      (:model tracking-opts "unknown")
+                             :source     (:tag tracking-opts "none")
                              :error-type "llm-sse-error"}))
          part)))
 
