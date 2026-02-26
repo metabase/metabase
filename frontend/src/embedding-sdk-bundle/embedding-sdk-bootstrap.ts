@@ -9,19 +9,8 @@ import { waitForAuthConfigAndStart } from "./bootstrap-auth";
 //   2. All split chunks + the entry chunk (loaded in parallel after runtime)
 // The chunk manifest is injected at build time by the rspack plugin.
 
-const startTime = new Date();
-const log = (message: string, ...args: any[]) =>
-  // eslint-disable-next-line no-console
-  console.log(
-    `SDK Bootstrap: ${message} after ${new Date().getTime() - startTime.getTime()} ms`,
-    ...args,
-  );
-
-log("Starting...");
-
 // Start auth as soon as we have the auth config from the provider props store
-waitForAuthConfigAndStart({ startTime });
-log("Early auth watcher started");
+waitForAuthConfigAndStart();
 
 // Chunk manifest is injected at build time by the inject-bundle-manifest plugin.
 // The runtime chunk is inlined into this bootstrap file by the build plugin,
@@ -48,39 +37,9 @@ function loadScript(filename: string): Promise<string> {
 
 // The runtime chunk is inlined at the end of this file by the build plugin,
 // so __webpack_require__ is already available. Load all split chunks in parallel.
-log(`Loading ${manifest.chunks.length} chunks in parallel`, manifest);
-
-Promise.all(manifest.chunks.map((filename) => loadScript(filename)))
-  .then(() => {
-    // The "metabase-sdk-bundle-loaded" event is dispatched by
-    // index.ts itself after setting window.METABASE_EMBEDDING_SDK_BUNDLE.
-    // We don't dispatch it here because the rspack runtime defers entry module
-    // execution until all chunks are registered — so script `load` events fire
-    // before the entry module code actually runs.
-    log("All chunk scripts loaded");
-  })
-  .catch((error) => {
+void Promise.all(manifest.chunks.map((filename) => loadScript(filename))).catch(
+  (error) => {
     console.error("SDK Bootstrap: Failed to load bundle chunks:", error);
     document.dispatchEvent(new CustomEvent("metabase-sdk-bundle-error"));
-  });
-
-// Log bootstrap timing
-const bootstrapExecStart = performance.getEntriesByName(
-  "metabase-react-sdk.bootstrap-first-line",
-  "mark",
-)[0];
-const bootstrapResource = performance.getEntriesByName(
-  scriptUrl,
-  "resource",
-)[0] as PerformanceResourceTiming | undefined;
-
-if (bootstrapResource && bootstrapExecStart) {
-  const downloadMs =
-    bootstrapResource.responseEnd - bootstrapResource.requestStart;
-  const parseMs = bootstrapExecStart.startTime - bootstrapResource.responseEnd;
-  log(
-    `Bootstrap timing: download=${downloadMs.toFixed(0)}ms, parse+exec=${parseMs.toFixed(0)}ms`,
-  );
-} else {
-  log("Bootstrap loaded (timing data unavailable)");
-}
+  },
+);

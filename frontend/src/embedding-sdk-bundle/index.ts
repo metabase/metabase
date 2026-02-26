@@ -13,8 +13,6 @@ EMBEDDING_SDK_CONFIG.isEmbeddingSdk = true;
 window.addEventListener(
   "error",
   (event) => {
-    // eslint-disable-next-line no-console
-    console.log("SDK: error event", event);
     const target = event.target;
     if (
       target instanceof HTMLScriptElement &&
