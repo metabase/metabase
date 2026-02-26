@@ -155,3 +155,41 @@
                                                     [(lib/= (meta/field-metadata :orders :product-id)
                                                             (meta/field-metadata :products :id))])))]
     (is (true? (lib-be/should-upgrade-field-refs-in-query? query)))))
+
+(deftest ^:parallel upgrade-field-ref-in-parameter-target-table-test
+  (testing "should return the identical target for a table query"
+    (let [query  (lib/query meta/metadata-provider (meta/table-metadata :orders))
+          target [:dimension [:field (meta/id :orders :total) nil]]]
+      (is (= target
+             (lib-be/upgrade-field-ref-in-parameter-target query target))))))
+
+(deftest ^:parallel upgrade-field-ref-in-parameter-target-card-test
+  (testing "should upgrade the field id to name for a card query"
+    (let [base-query (lib/query meta/metadata-provider (meta/table-metadata :orders))
+          mp         (lib.tu/metadata-provider-with-card-from-query 1 base-query)
+          query      (lib/query mp (lib.metadata/card mp 1))
+          target     [:dimension [:field (meta/id :orders :total) nil]]]
+      (is (= [:dimension [:field "TOTAL" {:base-type :type/Float}]]
+             (lib-be/upgrade-field-ref-in-parameter-target query target))))))
+
+(deftest ^:parallel upgrade-field-ref-in-parameter-target-table-multi-stage-test
+  (testing "should upgrade the field id to name on a second stage of a table query"
+    (let [query  (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
+                     (lib/aggregate (lib/sum (meta/field-metadata :orders :total)))
+                     (lib/breakout (meta/field-metadata :orders :product-id))
+                     (lib/append-stage))
+          target [:dimension [:field (meta/id :orders :product-id) nil] {:stage-number 1}]]
+      (is (= [:dimension [:field "PRODUCT_ID" {:base-type :type/Integer}] {:stage-number 1}]
+             (lib-be/upgrade-field-ref-in-parameter-target query target))))))
+
+(deftest ^:parallel upgrade-field-ref-in-parameter-target-card-multi-stage-test
+  (testing "should upgrade the field id to name on a second stage of a card query"
+    (let [base-query (lib/query meta/metadata-provider (meta/table-metadata :orders))
+          mp         (lib.tu/metadata-provider-with-card-from-query 1 base-query)
+          query      (-> (lib/query mp (lib.metadata/card mp 1))
+                         (lib/aggregate (lib/sum (meta/field-metadata :orders :total)))
+                         (lib/breakout (meta/field-metadata :orders :product-id))
+                         (lib/append-stage))
+          target     [:dimension [:field (meta/id :orders :product-id) nil] {:stage-number 1}]]
+      (is (= [:dimension [:field "PRODUCT_ID" {:base-type :type/Integer}] {:stage-number 1}]
+             (lib-be/upgrade-field-ref-in-parameter-target query target))))))
