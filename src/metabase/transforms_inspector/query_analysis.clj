@@ -61,7 +61,7 @@
     (mapv (fn [join]
             {:strategy     (or (:strategy join) :left-join)
              :alias        (:alias join)
-             :source-table (lib/primary-source-table-id join)
+             :source-table (-> join :stages first :source-table)
              :conditions   (:conditions join)})
           joins)))
 
