@@ -63,6 +63,11 @@ export function getKeyFromDimensionValue(dimensionValue: RowValue) {
   if (dimensionValue == null) {
     return NULL_DISPLAY_VALUE;
   }
+  // Handle objects (like MongoDB nested documents) by converting to JSON
+  // to ensure each unique object gets a unique key, rather than all becoming "[object Object]"
+  if (typeof dimensionValue === "object") {
+    return JSON.stringify(dimensionValue);
+  }
   return String(dimensionValue);
 }
 
@@ -79,7 +84,7 @@ export function getAggregatedRows(
 ) {
   const dimensionToMetricValues = new Map<string, number>();
   rows.forEach((row) => {
-    const dimensionValue = String(row[dimensionIndex]);
+    const dimensionValue = getKeyFromDimensionValue(row[dimensionIndex]);
     const metricValue = getNumberOr(row[metricIndex], 0);
 
     const existingMetricValue =
@@ -95,7 +100,7 @@ export function getAggregatedRows(
   const seenDimensionValues = new Set<string>();
 
   rows.forEach((row) => {
-    const dimensionValue = String(row[dimensionIndex]);
+    const dimensionValue = getKeyFromDimensionValue(row[dimensionIndex]);
     if (seenDimensionValues.has(dimensionValue)) {
       return;
     }
@@ -162,7 +167,9 @@ export function getColors(
     metricIndex,
   );
 
-  const dimensionValues = sortedRows.map((r) => String(r[dimensionIndex]));
+  const dimensionValues = sortedRows.map((r) =>
+    getKeyFromDimensionValue(r[dimensionIndex]),
+  );
 
   // Sometimes viz settings are malformed and "pie.colors" does not
   // contain a key for the current dimension value, so we need to compute
@@ -290,7 +297,7 @@ export function getPieRows(
       // Historically we have used the dimension value in the `pie.colors`
       // setting instead of the key computed above. For compatibility with
       // existing questions we will continue to use the dimension value.
-      const color = getHexColor(colors[String(dimensionValue)]);
+      const color = getHexColor(colors[key]);
 
       const savedRow = keyToSavedPieRow.get(key);
       if (savedRow != null) {
@@ -346,9 +353,9 @@ export function getPieRows(
     newPieRows.push(
       ...sortedAddedRows.map((addedDataRow) => {
         const dimensionValue = addedDataRow[dimensionDesc.index];
-
-        const color = Color(colors[String(dimensionValue)]).hex();
         const key = getKeyFromDimensionValue(dimensionValue);
+
+        const color = Color(colors[key]).hex();
         const name = formatDimensionValue(dimensionValue);
 
         return {
