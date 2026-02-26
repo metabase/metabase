@@ -27,7 +27,7 @@ export type CopyableEntityType = keyof EntityCopyTypeRegistry;
 
 export interface EntityCopyModalProps<T extends CopyableEntityType> {
   entityType: T;
-  entityObject: any;
+  entityObject: EntityCopyTypeRegistry[T]["entity"];
   copy: (
     data: EntityCopyTypeRegistry[T]["formProperties"],
   ) => Promise<EntityCopyTypeRegistry[T]["entity"]>;
@@ -40,6 +40,13 @@ export interface EntityCopyModalProps<T extends CopyableEntityType> {
   ) => void;
 }
 
+/**
+ * Generic fallback props used by the implementation signature.
+ *
+ * Call sites should prefer the typed overloads using `EntityCopyModalProps<T>`.
+ * The implementation stays broadly typed to avoid overly complex unions while
+ * still being safe in practice (forms validate their own values).
+ */
 export interface GenericEntityCopyModalProps {
   entityType: string;
   entityObject: any;
