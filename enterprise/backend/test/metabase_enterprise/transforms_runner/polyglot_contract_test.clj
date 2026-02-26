@@ -1,4 +1,4 @@
-(ns metabase.transforms.polyglot-contract-test
+(ns metabase-enterprise.transforms-runner.polyglot-contract-test
   "Contract equivalence tests: all runner-based languages must implement the
   transforms.interface multimethods identically given the same transform shape.
   Also covers transforms.util pure functions for all language types."
