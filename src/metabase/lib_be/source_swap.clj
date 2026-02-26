@@ -104,26 +104,24 @@
                             (lib.field/is-field-clause? clause)
                             f))))
 
-(mu/defn- should-upgrade-field-ref? :- :boolean
+(mu/defn- field-id-ref? :- :boolean
   [field-ref :- :mbql.clause/field]
-  (and (some? (lib.ref/field-ref-id field-ref))
-       (not (contains? (lib.options/options field-ref) :source-field))))
+  (some? (lib.ref/field-ref-id field-ref)))
 
 (mu/defn- upgrade-field-ref :- :mbql.clause/field
   [query         :- ::lib.schema/query
    stage-number  :- :int
    field-ref     :- :mbql.clause/field
    columns       :- [:sequential ::lib.schema.metadata/column]]
-  (or (when (should-upgrade-field-ref? field-ref)
+  (or (when (field-id-ref? field-ref)
         (when-let [column (lib.equality/find-matching-column query stage-number field-ref columns)]
-          ;; for inheried card columns, drop the :id to force a name-based field ref
-          ;; preserve the expression name if this field ref is an identity expression
+          ;; TODO (Alex P 2/26/26) -- drop the :lib/card-id hack when Braden fixes join refs
           (let [column (cond-> column (:lib/card-id column) (dissoc :id))
                 expression-name (lib.util/expression-name field-ref)
                 new-field-ref (cond-> (lib.ref/ref column)
                                 expression-name (lib.expression/with-expression-name expression-name))]
             ;; only replace the ref if it becomes a name-based field ref
-            (when-not (lib.ref/field-ref-id new-field-ref)
+            (when-not (field-id-ref? new-field-ref)
               new-field-ref))))
       field-ref))
 
@@ -192,7 +190,7 @@
              (not (table-only-stage? stage)))
          (some? (lib.util.match/match-lite
                   stage
-                  (field-ref :guard (every-pred lib.field/is-field-clause? should-upgrade-field-ref?))
+                  (field-ref :guard (every-pred lib.field/is-field-clause? field-id-ref?))
                   field-ref)))))
 
 (mu/defn should-upgrade-field-refs-in-query? :- :boolean
@@ -230,7 +228,7 @@
           (let [stage (lib.util/query-stage query stage-number)]
             (and (or (pos? stage-number)
                      (not (table-only-stage? stage)))
-                 (should-upgrade-field-ref? field-ref)))))
+                 (field-id-ref? field-ref)))))
       false))
 
 (mu/defn- build-swap-field-id-mapping-for-table :- [:maybe ::swap-source.field-id-mapping]
