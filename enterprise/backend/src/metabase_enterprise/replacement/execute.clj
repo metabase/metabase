@@ -4,6 +4,7 @@
    the work-fn to report progress and check for cancellation."
   (:require
    [metabase-enterprise.replacement.models.replacement-run :as replacement-run]
+   [metabase-enterprise.replacement.protocols :as replacement.protocols]
    [metabase.util.jvm :as u.jvm]
    [metabase.util.log :as log]
    [metabase.util.malli.registry :as mr]
@@ -15,18 +16,6 @@
 (def ^:private ^:const progress-batch-size
   "Write progress to DB every N items (and always on the final item)."
   50)
-
-(p.types/defprotocol+ IRunnerProgress
-  (set-total! [this total]
-    "Set the total number of items to process (across all phases). Called once.")
-  (advance! [this] [this n]
-    "Mark n items complete (default 1). Writes progress to DB periodically.")
-  (canceled? [this]
-    "Returns true if cancellation has been requested."))
-
-(mr/def ::runner-progress
-  [:fn {:description "An implementation of IRunnerProgress"}
-   #(satisfies? IRunnerProgress %)])
 
 (defn execute-async!
   "Start an async source replacement run. Inserts a run record, launches `work-fn` in a
@@ -42,9 +31,9 @@
         run-id     (:id run)
         progress   (let [total*     (atom 0)
                          completed* (atom 0)]
-                     (reify IRunnerProgress
+                     (reify replacement.protocols/IRunnerProgress
                        (set-total! [_ total] (reset! total* total))
-                       (advance! [this] (advance! this 1))
+                       (advance! [this] (replacement.protocols/advance! this 1))
                        (advance! [this n]
                          (let [c    (swap! completed* + n)
                                t    @total*
@@ -55,7 +44,7 @@
                            (when crossed-boundary?
                              (let [progress (if (pos? t) (double (/ c t)) 0.0)]
                                (replacement-run/update-progress! run-id progress)
-                               (when (canceled? this)
+                               (when (replacement.protocols/canceled? this)
                                  (throw (ex-info "Run canceled" {:run-id run-id})))))))
                        (canceled? [_]
                          (not (:is_active (t2/select-one [:model/ReplacementRun :is_active] :id run-id))))))]
@@ -64,7 +53,7 @@
        (work-fn progress)
        (replacement-run/succeed-run! run-id)
        (catch Throwable t
-         (if (canceled? progress)
+         (if (replacement.protocols/canceled? progress)
            (log/infof "Replacement run %d was canceled" run-id)
            (do
              (log/errorf t "Replacement run %d failed" run-id)

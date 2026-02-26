@@ -2,6 +2,7 @@
   (:require
    [clojure.test :refer :all]
    [metabase-enterprise.replacement.execute :as replacement.execute]
+   [metabase-enterprise.replacement.protocols :as replacement.protocols]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.queries.models.card :as card]
@@ -226,10 +227,10 @@
       (mt/with-model-cleanup [:model/ReplacementRun]
         (let [;; A work-fn that simulates processing 3 items with the progress protocol.
               work-fn      (fn [progress]
-                             (replacement.execute/set-total! progress 3)
-                             (is (false? (replacement.execute/canceled? progress)))
+                             (replacement.protocols/set-total! progress 3)
+                             (is (false? (replacement.protocols/canceled? progress)))
                              (dotimes [_ 3]
-                               (replacement.execute/advance! progress)
+                               (replacement.protocols/advance! progress)
                                ;; Read the run from DB so we can see progress written
                                ;; (advance! writes on every 50th or final item, so we'll
                                ;; see the write on item 3 = the final item)

@@ -3,6 +3,7 @@
    [clojure.test :refer :all]
    [metabase-enterprise.replacement.execute :as execute]
    [metabase-enterprise.replacement.models.replacement-run :as replacement-run]
+   [metabase-enterprise.replacement.protocols :as replacement.protocols]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
 
@@ -21,10 +22,10 @@
                         :target-type :card :target-id 2
                         :user-id     (mt/user->id :crowberto)}
                        (fn [progress]
-                         (execute/set-total! progress 120)
+                         (replacement.protocols/set-total! progress 120)
                          ;; advance one-at-a-time for 120 items
                          (dotimes [_ 120]
-                           (execute/advance! progress))))
+                           (replacement.protocols/advance! progress))))
                   deadline (+ (System/currentTimeMillis) 10000)]
               ;; wait for virtual thread
               (loop []
@@ -51,12 +52,12 @@
                         :target-type :card :target-id 2
                         :user-id     (mt/user->id :crowberto)}
                        (fn [progress]
-                         (execute/set-total! progress 100)
+                         (replacement.protocols/set-total! progress 100)
                          ;; advance by 30 four times: 30, 60, 90, then by 10 to finish
-                         (execute/advance! progress 30)
-                         (execute/advance! progress 30)
-                         (execute/advance! progress 30)
-                         (execute/advance! progress 10)))
+                         (replacement.protocols/advance! progress 30)
+                         (replacement.protocols/advance! progress 30)
+                         (replacement.protocols/advance! progress 30)
+                         (replacement.protocols/advance! progress 10)))
                   deadline (+ (System/currentTimeMillis) 10000)]
               (loop []
                 (let [r (t2/select-one :model/ReplacementRun :id (:id run))]
@@ -83,15 +84,15 @@
                         :target-type :card :target-id 2
                         :user-id     (mt/user->id :crowberto)}
                        (fn [progress]
-                         (execute/set-total! progress 100)
+                         (replacement.protocols/set-total! progress 100)
                          ;; advance 50 items, triggering a boundary write
                          (dotimes [_ 50]
-                           (execute/advance! progress))
+                           (replacement.protocols/advance! progress))
                          ;; Cancel the run in the DB
                          (replacement-run/cancel-run! (deref run-id* 5000 nil))
                          ;; next 50 should hit the boundary check and throw
                          (dotimes [_ 50]
-                           (execute/advance! progress))))]
+                           (replacement.protocols/advance! progress))))]
               (deliver run-id* (:id run))
               ;; Poll until run is no longer active (cancel-run! flips is_active)
               (let [deadline (+ (System/currentTimeMillis) 10000)]
