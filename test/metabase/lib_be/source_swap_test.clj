@@ -243,3 +243,35 @@
     (testing "should return the identical target for a variable template tag"
       (is (= target
              (lib-be/upgrade-field-ref-in-parameter-target query target))))))
+
+(deftest ^:parallel swap-source-in-query-source-table-test
+  (let [query (lib/query meta/metadata-provider (meta/table-metadata :products))]
+    (testing "should swap the source table"
+      (is (=? {:stages [{:source-table (meta/id :orders)}]}
+              (lib-be/swap-source-in-query query
+                                           {:type :table, :id (meta/id :products)}
+                                           {:type :table, :id (meta/id :orders)}))))))
+
+(deftest ^:parallel swap-source-in-query-source-table-with-clauses-test
+  (let [query (as-> (lib/query meta/metadata-provider (meta/table-metadata :orders)) q
+                (lib/with-fields q [(meta/field-metadata :orders :id)
+                                    (meta/field-metadata :orders :created-at)])
+                (lib/expression q "id-plus-one" (lib/+ (meta/field-metadata :orders :id) 1))
+                (lib/filter q (lib/> (meta/field-metadata :orders :id) 5))
+                (lib/aggregate q (lib/count))
+                (lib/breakout q (meta/field-metadata :orders :created-at))
+                (lib/order-by q (meta/field-metadata :orders :created-at)))]
+    (testing "should swap source table and field refs to matching columns"
+      (is (=? {:stages [{:source-table (meta/id :products)
+                         :fields       [[:field {} (meta/id :products :id)]
+                                        [:field {} (meta/id :products :created-at)]
+                                        [:expression {} "id-plus-one"]]
+                         :expressions  [[:+ {:lib/expression-name "id-plus-one"}
+                                         [:field {} (meta/id :products :id)] 1]]
+                         :filters      [[:> {} [:field {} (meta/id :products :id)] 5]]
+                         :aggregation  [[:count {}]]
+                         :breakout     [[:field {} (meta/id :products :created-at)]]
+                         :order-by     [[:asc {} [:field {} (meta/id :products :created-at)]]]}]}
+              (lib-be/swap-source-in-query query
+                                           {:type :table, :id (meta/id :orders)}
+                                           {:type :table, :id (meta/id :products)}))))))

@@ -40,7 +40,6 @@
  [metabase.lib-be.query
   bulk-load-query-metadata]
  [metabase.lib-be.source-swap
-  build-swap-field-id-mapping
   check-column-mappings
   should-upgrade-field-ref-in-parameter-target?
   should-upgrade-field-refs-in-query?
