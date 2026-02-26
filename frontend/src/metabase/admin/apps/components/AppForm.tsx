@@ -1,7 +1,7 @@
 import { useDisclosure } from "@mantine/hooks";
 import { useFormik } from "formik";
 import type { ChangeEvent } from "react";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { t } from "ttag";
 
 import {
@@ -19,7 +19,9 @@ import { useRouter } from "metabase/router";
 import {
   Alert,
   Anchor,
+  Box,
   Button,
+  Collapse,
   Divider,
   Flex,
   Group,
@@ -29,12 +31,52 @@ import {
   Stack,
   Text,
   TextInput,
-  Textarea,
   Title,
 } from "metabase/ui";
 
 const MB = 1024 * 1024;
 const IMAGE_SIZE_LIMIT = 2 * MB;
+
+/** Theme color configuration keys */
+const THEME_COLOR_KEYS = [
+  "brand",
+  "text-primary",
+  "text-secondary",
+  "background",
+  "background-hover",
+  "border",
+  "positive",
+  "negative",
+] as const;
+
+function getColorLabel(key: string): string {
+  switch (key) {
+    case "brand":
+      return t`Brand`;
+    case "text-primary":
+      return t`Text Primary`;
+    case "text-secondary":
+      return t`Text Secondary`;
+    case "background":
+      return t`Background`;
+    case "background-hover":
+      return t`Background Hover`;
+    case "border":
+      return t`Border`;
+    case "positive":
+      return t`Positive`;
+    case "negative":
+      return t`Negative`;
+    default:
+      return key;
+  }
+}
+
+interface ThemeConfig {
+  preset?: "light" | "dark";
+  fontFamily?: string;
+  colors?: Record<string, string>;
+}
 
 interface AppFormValues {
   name: string;
@@ -257,13 +299,9 @@ function AppFormContent({
               onClose={closePicker}
             />
           )}
-          <Textarea
-            label={t`Theme`}
-            autosize
-            minRows={4}
-            maxRows={12}
-            styles={{ input: { fontFamily: "monospace" } }}
-            {...formik.getFieldProps("theme")}
+          <ThemeEditor
+            value={formik.values.theme}
+            onChange={(theme) => formik.setFieldValue("theme", theme)}
           />
           <LogoUploadField
             value={formik.values.logo}
@@ -417,4 +455,141 @@ async function isImageIntact(dataUri: string): Promise<boolean> {
     img.onerror = () => resolve(false);
     img.src = dataUri;
   });
+}
+
+function ThemeEditor({
+  value,
+  onChange,
+}: {
+  value: string;
+  onChange: (theme: string) => void;
+}) {
+  const [colorsOpened, { toggle: toggleColors }] = useDisclosure(false);
+
+  // Parse current theme value
+  const themeConfig = useMemo<ThemeConfig>(() => {
+    if (!value) {
+      return {};
+    }
+    try {
+      return JSON.parse(value) as ThemeConfig;
+    } catch {
+      return {};
+    }
+  }, [value]);
+
+  const updateTheme = useCallback(
+    (updates: Partial<ThemeConfig>) => {
+      const newConfig = { ...themeConfig, ...updates };
+
+      // Clean up empty values
+      if (!newConfig.preset) {
+        delete newConfig.preset;
+      }
+      if (!newConfig.fontFamily) {
+        delete newConfig.fontFamily;
+      }
+      if (newConfig.colors && Object.keys(newConfig.colors).length === 0) {
+        delete newConfig.colors;
+      }
+
+      if (Object.keys(newConfig).length === 0) {
+        onChange("");
+      } else {
+        onChange(JSON.stringify(newConfig, null, 2));
+      }
+    },
+    [themeConfig, onChange],
+  );
+
+  const updateColor = useCallback(
+    (key: string, colorValue: string) => {
+      const newColors = { ...themeConfig.colors };
+      if (colorValue) {
+        newColors[key] = colorValue;
+      } else {
+        delete newColors[key];
+      }
+      updateTheme({ colors: newColors });
+    },
+    [themeConfig.colors, updateTheme],
+  );
+
+  const hasCustomColors =
+    themeConfig.colors && Object.keys(themeConfig.colors).length > 0;
+
+  return (
+    <Stack gap="sm">
+      <Input.Label>{t`Theme`}</Input.Label>
+
+      <Select
+        label={t`Preset`}
+        placeholder={t`Select preset`}
+        clearable
+        data={[
+          { value: "light", label: t`Light` },
+          { value: "dark", label: t`Dark` },
+        ]}
+        value={themeConfig.preset ?? null}
+        onChange={(preset) =>
+          updateTheme({ preset: (preset as "light" | "dark") || undefined })
+        }
+      />
+
+      <TextInput
+        label={t`Font Family`}
+        placeholder="Lato, sans-serif"
+        value={themeConfig.fontFamily ?? ""}
+        onChange={(e) =>
+          updateTheme({ fontFamily: e.target.value || undefined })
+        }
+      />
+
+      <Box>
+        <Anchor size="sm" onClick={toggleColors}>
+          {colorsOpened ? t`Hide color settings` : t`Customize colors`}
+          {hasCustomColors && ` (${Object.keys(themeConfig.colors!).length})`}
+        </Anchor>
+      </Box>
+
+      <Collapse in={colorsOpened}>
+        <Paper withBorder p="md">
+          <Stack gap="sm">
+            {THEME_COLOR_KEYS.map((key) => (
+              <Group key={key} gap="xs" align="flex-end">
+                <TextInput
+                  label={getColorLabel(key)}
+                  placeholder="#509EE3"
+                  style={{ flex: 1 }}
+                  value={themeConfig.colors?.[key] ?? ""}
+                  onChange={(e) => updateColor(key, e.target.value)}
+                />
+                <input
+                  type="color"
+                  value={themeConfig.colors?.[key] || "#509EE3"}
+                  onChange={(e) => updateColor(key, e.target.value)}
+                  style={{
+                    width: 36,
+                    height: 36,
+                    padding: 0,
+                    border: "1px solid var(--mb-color-border)",
+                    borderRadius: 4,
+                    cursor: "pointer",
+                  }}
+                />
+              </Group>
+            ))}
+          </Stack>
+        </Paper>
+      </Collapse>
+
+      {value && (
+        <Paper withBorder p="xs" bg="bg-light">
+          <Text size="xs" c="text-medium" style={{ fontFamily: "monospace" }}>
+            {value}
+          </Text>
+        </Paper>
+      )}
+    </Stack>
+  );
 }
