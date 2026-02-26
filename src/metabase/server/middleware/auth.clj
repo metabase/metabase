@@ -2,6 +2,7 @@
   "Middleware related to enforcing authentication/API keys (when applicable). Unlike most other middleware most of this
   is not used as part of the normal `app`; it is instead added selectively to appropriate routes."
   (:require
+   [buddy.core.bytes :as bytes]
    [buddy.core.codecs :as codecs]
    [buddy.core.mac :as mac]
    [metabase.premium-features.core :refer [defenterprise]]))
@@ -63,10 +64,13 @@
   [request-body timestamp slack-signature]
   (when-let [signing-secret (metabot-slack-signing-secret-setting)]
     (and (slack-timestamp-valid? timestamp)
+         (some? slack-signature)
          (let [message (str "v0:" timestamp ":" request-body)
                computed-signature (hmac-sha256 signing-secret message)
                expected-signature (str "v0=" computed-signature)]
-           (= expected-signature slack-signature)))))
+           ;; Use constant-time comparison to prevent timing attacks
+           (bytes/equals? (.getBytes expected-signature "UTF-8")
+                          (.getBytes slack-signature "UTF-8"))))))
 
 (defn verify-slack-request
   "Middleware that detects if an incoming request is from Slack and sets the `:slack/validated?` keyword on a request

@@ -89,13 +89,13 @@
       (with-redefs [mw.auth/current-unix-timestamp (constantly test-timestamp)]
         (testing "Replay attack prevention - rejects timestamps outside 5 minute window"
           (doseq [[expected offset-or-val description]
-                  [[true  0       "current time"]
-                   [true  -300    "exactly 5 min ago"]
-                   [true  300     "exactly 5 min ahead"]
-                   [false -301    "5+ min ago"]
-                   [false 301     "5+ min ahead"]
-                   [false "abc"   "malformed"]
-                   [false nil     "missing"]]]
+                  [[true  0     "current time"]
+                   [true  -300  "exactly 5 min ago"]
+                   [true  300   "exactly 5 min ahead"]
+                   [false -301  "5+ min ago"]
+                   [false 301   "5+ min ahead"]
+                   [false "abc" "malformed"]
+                   [false nil   "missing"]]]
             (testing description
               (is (= expected (validate-request-with-timestamp
                                (if (number? offset-or-val)
