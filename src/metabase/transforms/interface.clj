@@ -101,7 +101,8 @@
   Each runner language must implement this to provide:
     :runtime   - string passed to the runner service (e.g. \"python\", \"javascript\")
     :label     - human-readable name for log messages (e.g. \"Python\", \"JavaScript\")
-    :timing-key - keyword for instrumentation (e.g. :python-execution)"
+    :timing-key - keyword for instrumentation (e.g. :python-execution)
+    :extension  - file extension including dot (e.g. \".py\", \".js\")"
   {:added "0.57.0" :arglists '([lang-kw])}
   identity
   :hierarchy #'hierarchy)

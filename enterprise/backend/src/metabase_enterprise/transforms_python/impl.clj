@@ -9,4 +9,5 @@
 (defmethod transforms.i/lang-config :python [_]
   {:runtime "python"
    :label "Python"
-   :timing-key :python-execution})
+   :timing-key :python-execution
+   :extension ".py"})

@@ -289,7 +289,7 @@ width: fixed
 (def ^:private builtin-python-library
   "The built-in TransformLibrary (python) created by migration. Recreated by fixture after cleanup."
   {:path "common.py" :source "" :language "python"
-   :entity_id (get transform-library/builtin-entity-ids "python")})
+   :entity_id (transform-library/builtin-entity-id "python")})
 
 (defn- ensure-builtin-python-library!
   "Ensures the built-in common.py TransformLibrary exists, creating it if missing."

@@ -313,7 +313,7 @@
     :archived-key   nil  ; no archived field
     :tracking       {:select-fields  [:path]
                      :field-mappings {:model_name :path}}
-    :conditions {:entity_id [:not-in (vals transform-library/builtin-entity-ids)]} ; exclude built-in libraries from sync
+    :conditions {:entity_id [:not-in (transform-library/all-builtin-entity-ids)]} ; exclude built-in libraries from sync
     :removal        {:statuses               #{"removed" "delete"}  ; no scope-key = global deletion
                      :all-on-setting-disable :remote-sync-transforms}
     :export-scope   :all  ; query for all instances
@@ -516,7 +516,7 @@
                 ;; Exclude built-in entities from count (they are system-created, not user data)
                 local-count (case model-key
                               :model/TransformTag   (t2/count model-key :built_in_type nil)
-                              :model/TransformLibrary (t2/count model-key :entity_id [:not-in (vals transform-library/builtin-entity-ids)])
+                              :model/TransformLibrary (t2/count model-key :entity_id [:not-in (transform-library/all-builtin-entity-ids)])
                               (t2/count model-key))
                 synced-count (t2/count :model/RemoteSyncObject :model_type model-type)]
             (and (pos? local-count)
