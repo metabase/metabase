@@ -1765,7 +1765,10 @@ describe("scenarios > data studio > workspaces", () => {
         }).then((id2) => {
           createPythonTransform({
             body: TEST_PYTHON_TRANSFORM,
-            sourceTables: { foo: id1, bar: id2 },
+            sourceTables: [
+              { alias: "foo", table: id1 },
+              { alias: "bar", table: id2 },
+            ],
             visitTransform: true,
           });
         });
@@ -1908,7 +1911,10 @@ describe("scenarios > data studio > workspaces", () => {
           }).then((id2) => {
             createPythonTransform({
               body: TEST_PYTHON_TRANSFORM_MULTI_TABLE,
-              sourceTables: { animals_a: id1, animals_b: id2 },
+              sourceTables: [
+                { alias: "animals_a", table: id1 },
+                { alias: "animals_b", table: id2 },
+              ],
               visitTransform: true,
             });
           });
@@ -2517,7 +2523,7 @@ function createTransforms({ visit }: { visit?: boolean } = { visit: false }) {
   H.getTableId({ name: "Animals", databaseId: WRITABLE_DB_ID }).then((id) => {
     createPythonTransform({
       body: TEST_PYTHON_TRANSFORM,
-      sourceTables: { foo: id },
+      sourceTables: [{ alias: "foo", table: id }],
     });
   });
 
