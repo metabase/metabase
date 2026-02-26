@@ -21,7 +21,10 @@
     (set-total! [_ _total])
     (advance! [_])
     (advance! [_ _n])
-    (canceled? [_] false)))
+    (canceled? [_] false)
+    (start-run! [_])
+    (succeed-run! [_])
+    (fail-run! [_ _throwable])))
 
 (defn- build-field-id-mapping
   "Build a field-id-mapping for the swap from old-source to new-source.

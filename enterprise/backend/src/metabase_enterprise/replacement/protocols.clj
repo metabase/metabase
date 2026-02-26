@@ -11,4 +11,4 @@
     "Returns true if cancellation has been requested.")
   (start-run! [this])
   (succeed-run! [this])
-  (fail-run! [this message]))
+  (fail-run! [this throwable]))
