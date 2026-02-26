@@ -66,7 +66,7 @@
                                           (update :dashboard #(some-> % (select-keys [:id :name])))
                                           (update :document #(some-> % (select-keys [:id :name])))))))
                       broken-cards)
-     :bad_transforms (into [] broken-transforms)}))
+     :bad_transforms (into [] (filter mi/can-read?) broken-transforms)}))
 
 ;; TODO (Cam 10/28/25) -- fix this endpoint route to use kebab-case for consistency with the rest of our REST API
 ;;
