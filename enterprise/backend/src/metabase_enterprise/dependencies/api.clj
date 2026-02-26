@@ -67,7 +67,7 @@
                                           (update :dashboard #(some-> % (select-keys [:id :name])))
                                           (update :document #(some-> % (select-keys [:id :name])))))))
                       broken-cards)
-     :bad_transforms (into [] broken-transforms)}))
+     :bad_transforms (into [] (filter mi/can-read?) broken-transforms)}))
 
 (api.macros/defendpoint :post "/check-card" :- ::broken-cards-response
   "Check a proposed edit to a card, and return the card IDs for those cards this edit will break."
