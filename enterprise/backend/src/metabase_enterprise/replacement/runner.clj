@@ -1,6 +1,7 @@
 (ns metabase-enterprise.replacement.runner
   (:require
    [metabase-enterprise.replacement.field-refs :as field-refs]
+   [metabase.lib.metadata.protocols :as lib.metadata.protocols]
    [metabase-enterprise.replacement.protocols :as replacement.protocols]
    [metabase-enterprise.replacement.source :as source]
    [metabase-enterprise.replacement.source-swap :as source-swap]
@@ -25,9 +26,11 @@
 (defn- bulk-load-metadata-for-entities!
   "Bulk load metadata for a batch of entities into the metadata provider cache.
 
-  Fetches all card dataset queries in one query, converts them to lib queries,
-  extracts all referenced entity IDs, and bulk loads all metadata."
+  Fetches all card dataset queries in one query, converts them to lib queries, extracts all referenced entity IDs, and
+  bulk loads all metadata. Entities are tuples from the dependency graph."
   [metadata-provider entities]
+  (when-not (lib.metadata.protocols/cached-metadata-provider-with-cache? metadata-provider)
+    (throw (ex-info "Must provided a cached metadata provider" {})))
   (letfn [(id->instances [m]
             (let [ids (into []
                             (comp (filter #(= m (first %)))
@@ -48,7 +51,6 @@
           transforms (id->instances :transform)
           segments   (id->instances :segment)
           measures   (id->instances :measure)
-
           queries    (into []
                            (concat
                             ;; Card dataset queries
@@ -76,7 +78,6 @@
           ;; Bulk load all metadata at once
           (lib-be/bulk-load-query-metadata metadata-provider referenced-ids)))
       (merge cards tables transforms segments measures))))
-
 
 (defn- run-swap* [{:keys [direct transitive direct-card-ids second-lvl-dash-ids]}
                   old-source new-source progress]
