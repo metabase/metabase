@@ -185,7 +185,7 @@
                         (keep :col)))
           used-fields)))
 
-;;;; Implmenetations make the functionality providable to outside world. For details see the comment
+;;;; Implemenetations make the functionality providable to outside world. For details see the comment
 ;;;; in `sql-tools.interface`.
 
 (defmethod sql-tools/resolve-field-shim :default

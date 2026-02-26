@@ -132,9 +132,6 @@
                         :query "SELECT products.BAD FROM products JOIN {{#1}} AS c1 ON products.ID = c1.ID"}
                        {:id    28
                         :query "SELECT xix.x, products.BAD FROM products JOIN {{#1}} AS c1 ON products.ID = c1.ID"}
-                       ;; Card 29 references card 4 which has no result-metadata (native query)
-                       {:id    29
-                        :query "SELECT BAD FROM {{#4}}"}
                        ;; Card 32: middle of transitive chain, passes through card 1's columns
                        ;; but with CATEGORY removed (simulates upstream card 1 was changed)
                        {:id      32

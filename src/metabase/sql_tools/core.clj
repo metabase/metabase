@@ -191,7 +191,7 @@
    driver tables transform spec))
 
 (defn resolve-field
-  "Wrapper for `sql-tools.common/find-table-or-transform` that can be provided to outside world. For details see
+  "Wrapper for `sql-tools.common/resolve-field` that can be provided to outside world. For details see
   the comments in `sql-tools.interface`."
   [driver mp col-spec]
   (interface/resolve-field-shim
