@@ -1,9 +1,13 @@
 (ns metabase.release-flags.models
   (:require
+   [clojure.string :as str]
+   [environ.core :as env]
    [metabase.release-flags.schema :as schema]
    [metabase.util.malli :as mu]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
+
+(set! *warn-on-reflection* true)
 
 (methodical/defmethod t2/table-name :model/ReleaseFlag [_model] :release_flag)
 
@@ -52,13 +56,35 @@
                                       :description description
                                       :start_date  start-date}))))
 
+(defn- env-str
+  "Looks up a config key from environ (env vars, JVM properties, .lein-env).
+   Returns the string value or nil."
+  [k]
+  (let [v (get env/env k)]
+    (when-not (str/blank? v)
+      (str/trim v))))
+
+(mu/defn- release-flags-enabled? :- :boolean
+  "Returns true if the release flags system is active.
+   This is the case in dev/test mode or when the MB_ENABLE_RELEASE_FLAGS env var is truthy."
+  []
+  (boolean
+   (or (not= "prod" (or (env-str :mb-run-mode) "prod"))
+       (let [enable-str (env-str :mb-enable-release-flags)]
+         (and enable-str
+              (not= "false" enable-str)
+              (not= "0" enable-str))))))
+
 (mu/defn has-release-flag? :- :boolean
   "Is this release flag enabled?
-  If the release flag does not exist, we always return false."
+  If the release flag does not exist, always returns false.
+  If running in prod mode, always returns false."
   [flag :- schema/FlagName]
-  (let [flag (if (keyword? flag)
-               (if (namespace flag)
-                 (str (namespace flag) "/" (name flag))
-                 (name flag))
-               flag)]
-    (boolean (t2/select-one-fn :is_enabled :model/ReleaseFlag :flag flag))))
+  (boolean
+   (when (release-flags-enabled?)
+     (let [flag (if (keyword? flag)
+                  (if (namespace flag)
+                    (str (namespace flag) "/" (name flag))
+                    (name flag))
+                  flag)]
+       (t2/select-one-fn :is_enabled :model/ReleaseFlag :flag flag)))))
