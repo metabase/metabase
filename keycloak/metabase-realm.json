@@ -26,7 +26,7 @@
     {
       "username": "testuser",
       "email": "testuser@metabase.test",
-      "firstName": "Test",
+      "firstName": "Internal Test",
       "lastName": "User",
       "enabled": true,
       "emailVerified": true,

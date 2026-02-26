@@ -1,4 +1,5 @@
 import { useCallback } from "react";
+import { Link } from "react-router";
 import { t } from "ttag";
 
 import { useGetCollectionQuery, useListAppsQuery } from "metabase/api";
@@ -85,6 +86,15 @@ function AppRow({
             onClick={() => onConfigure(app.id)}
           >
             {t`Configure`}
+          </Button>
+          <Button
+            variant="subtle"
+            p={0}
+            component={Link}
+            to={`/apps/${app.name}`}
+            target="_blank"
+          >
+            {t`Open`}
           </Button>
         </Group>
       </td>
