@@ -1,8 +1,8 @@
 import { t } from "ttag";
 
-import type { IconName } from "metabase/ui";
 import { TYPE } from "metabase-lib/v1/types/constants";
 import type { Field } from "metabase-types/api";
+import type { IconName } from "metabase-types/ui";
 
 interface FieldSemanticType {
   id: NonNullable<Field["semantic_type"]>;
