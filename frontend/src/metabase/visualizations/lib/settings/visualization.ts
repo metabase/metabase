@@ -157,7 +157,7 @@ export function getSettingsWidgetsForSeries(
     settingsDefs,
     storedSettings,
     computedSettings,
-    series,
+    series ?? [],
     onChangeSettings,
     { isDashboard, ...extra },
   ).filter(

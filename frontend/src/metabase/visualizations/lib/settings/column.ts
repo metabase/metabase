@@ -18,10 +18,7 @@ import { hasHour } from "metabase/lib/formatting/datetime-utils";
 import MetabaseSettings from "metabase/lib/settings";
 import { getVisualizationRaw } from "metabase/visualizations";
 import { ChartNestedSettingColumns } from "metabase/visualizations/components/settings/ChartNestedSettingColumns";
-import {
-  ChartSettingTableColumns,
-  type ChartSettingTableColumnsProps,
-} from "metabase/visualizations/components/settings/ChartSettingTableColumns";
+import { ChartSettingTableColumns } from "metabase/visualizations/components/settings/ChartSettingTableColumns";
 import { getDeduplicatedTableColumnSettings } from "metabase/visualizations/lib/settings/utils";
 import {
   getDefaultCurrency,
@@ -548,11 +545,7 @@ export function tableColumnSettings({
   isShowingDetailsOnlyColumns = false,
 }: {
   isShowingDetailsOnlyColumns?: boolean;
-} = {}): VisualizationSettingsDefinitions<
-  Series,
-  unknown,
-  ChartSettingTableColumnsProps
-> {
+} = {}): VisualizationSettingsDefinitions<Series> {
   return {
     "table.columns": {
       get section() {
