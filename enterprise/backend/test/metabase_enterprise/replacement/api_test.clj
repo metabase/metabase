@@ -2,11 +2,13 @@
   (:require
    [clojure.test :refer :all]
    [metabase-enterprise.replacement.execute :as replacement.execute]
+   [metabase-enterprise.replacement.models.replacement-run :as replacement-run]
    [metabase-enterprise.replacement.protocols :as replacement.protocols]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.queries.models.card :as card]
    [metabase.test :as mt]
+   [metabase.util :as u]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -222,39 +224,33 @@
 ;;; ------------------------------------------------ progress tracking ------------------------------------------------
 
 (deftest execute-async-progress-tracking-test
-  (testing "execute-async! progress protocol: set-total!, advance!, and canceled? work correctly"
+  (testing "execute-async! invokes the protocol methods correctly"
     (mt/with-premium-features #{:dependencies}
-      (mt/with-model-cleanup [:model/ReplacementRun]
-        (let [;; A work-fn that simulates processing 3 items with the progress protocol.
-              work-fn      (fn [progress]
-                             (replacement.protocols/set-total! progress 3)
-                             (is (false? (replacement.protocols/canceled? progress)))
-                             (dotimes [_ 3]
-                               (replacement.protocols/advance! progress)
-                               ;; Read the run from DB so we can see progress written
-                               ;; (advance! writes on every 50th or final item, so we'll
-                               ;; see the write on item 3 = the final item)
-                               ))
-              run          (replacement.execute/execute-async!
-                            {:source-type :card :source-id 1
-                             :target-type :card :target-id 2
-                             :user-id     (mt/user->id :crowberto)}
-                            work-fn)
-              run-id       (:id run)]
-          (is (pos-int? run-id))
-          ;; Poll until done
-          (let [deadline (+ (System/currentTimeMillis) 10000)]
-            (loop []
-              (let [r (t2/select-one :model/ReplacementRun :id run-id)]
-                (when (and (:is_active r) (< (System/currentTimeMillis) deadline))
-                  (Thread/sleep 50)
-                  (recur)))))
-          (let [final-run (t2/select-one :model/ReplacementRun :id run-id)]
-            (is (= :succeeded (:status final-run))
-                "Run should succeed after work-fn completes")
-            (is (= 1.0 (:progress final-run))
-                "Progress should be 1.0 — advance! was called 3 times with total 3")
-            (is (nil? (:is_active final-run)))))))))
+      (let [state        (atom {:total 0 :so-far 0 :status :pending})
+            done?        (promise)
+            progress     (reify replacement.protocols/IRunnerProgress
+                           (set-total! [_ total] (swap! state assoc :total total))
+                           (advance! [_] (swap! state update :so-far inc))
+                           (advance! [_ n] (swap! state update :so-far + n))
+                           (canceled? [_] false)
+                           (start-run! [_]
+                             (swap! state assoc :status :running))
+                           (succeed-run! [_]
+                             (swap! state assoc :status :succeeded)
+                             (deliver done? true))
+                           (fail-run! [_ throwable]
+                             (swap! state assoc :status :failed :message (ex-message throwable))
+                             (deliver done? true)))
+            work-fn      (fn [progress]
+                           (replacement.protocols/set-total! progress 3)
+                           (is (false? (replacement.protocols/canceled? progress)))
+                           (dotimes [_ 3]
+                             (replacement.protocols/advance! progress)))]
+        ;; Poll until done
+        (replacement.execute/execute-async! work-fn progress)
+        (u/deref-with-timeout done? 2000)
+        (is (=? {:total 3 :so-far 3 :status :succeeded}
+                @state))))))
 
 ;;; ------------------------------------------------ POST /runs/:id/cancel ------------------------------------------------
 
@@ -264,15 +260,8 @@
       (mt/with-premium-features #{:dependencies}
         (mt/with-model-cleanup [:model/ReplacementRun]
           ;; Insert a run directly so we can cancel it without racing the async completion
-          (let [run (t2/insert-returning-instance! :model/ReplacementRun
-                                                   {:source_entity_type :card
-                                                    :source_entity_id   1
-                                                    :target_entity_type :card
-                                                    :target_entity_id   2
-                                                    :user_id            (mt/user->id :crowberto)
-                                                    :status             :started
-                                                    :is_active          true
-                                                    :progress           0.0})
+          (let [run (replacement-run/create-run! :card 1 :card 2 (mt/user->id :crowberto))
+                _   (replacement-run/start-run! (:id run))
                 response (mt/user-http-request :crowberto :post 200
                                                (str "ee/replacement/runs/" (:id run) "/cancel"))]
             (is (true? (:success response)))
@@ -285,15 +274,9 @@
     (mt/dataset test-data
       (mt/with-premium-features #{:dependencies}
         (mt/with-model-cleanup [:model/ReplacementRun]
-          (let [run (t2/insert-returning-instance! :model/ReplacementRun
-                                                   {:source_entity_type :card
-                                                    :source_entity_id   1
-                                                    :target_entity_type :card
-                                                    :target_entity_id   2
-                                                    :user_id            (mt/user->id :crowberto)
-                                                    :status             :succeeded
-                                                    :is_active          nil
-                                                    :progress           1.0})]
+          (let [run (replacement-run/create-run! :card 1 :card 2 (mt/user->id :crowberto))]
+            (replacement-run/start-run! (:id run))
+            (replacement-run/succeed-run! (:id run))
             (mt/user-http-request :crowberto :post 409
                                   (str "ee/replacement/runs/" (:id run) "/cancel"))))))))
 
@@ -314,15 +297,10 @@
                   new-source (card/create-card! (card-with-query "New source" :products) user)
                   _child     (card/create-card! (card-sourced-from "Child card" old-source) user)]
               ;; Insert a fake active run to simulate one already running
-              (t2/insert! :model/ReplacementRun
-                          {:source_entity_type :card
-                           :source_entity_id   (:id old-source)
-                           :target_entity_type :card
-                           :target_entity_id   (:id new-source)
-                           :user_id            (mt/user->id :crowberto)
-                           :status             :started
-                           :is_active          true
-                           :progress           0.0})
+              (let [run (replacement-run/create-run! :card (:id old-source)
+                                                     :card (:id new-source)
+                                                     (mt/user->id :crowberto))]
+                (replacement-run/start-run! (:id run)))
               (mt/user-http-request :crowberto :post 409 "ee/replacement/replace-source"
                                     {:source_entity_id   (:id old-source)
                                      :source_entity_type :card

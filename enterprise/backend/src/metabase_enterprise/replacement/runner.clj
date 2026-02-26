@@ -7,8 +7,7 @@
    [metabase-enterprise.replacement.swap.viz :as swap.viz]
    [metabase-enterprise.replacement.usages :as usages]
    [metabase.util.log :as log]
-   [metabase.util.malli :as mu]
-   [toucan2.core :as t2]))
+   [metabase.util.malli :as mu]))
 
 (def noop-progress
   "No-op progress tracker for REPL / non-async usage."
@@ -16,7 +15,10 @@
     (set-total! [_ _total])
     (advance! [_])
     (advance! [_ _n])
-    (canceled? [_] false)))
+    (canceled? [_] false)
+    (start-run! [_])
+    (succeed-run! [_])
+    (fail-run! [_ _throwable])))
 
 (defn- run-swap* [{:keys [direct transitive direct-card-ids second-lvl-dash-ids]}
                   old-source new-source progress]

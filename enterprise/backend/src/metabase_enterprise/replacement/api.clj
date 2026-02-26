@@ -35,8 +35,8 @@
 
 (mr/def ::column-mapping
   [:map
-   [:source [:maybe ::column]]
-   [:target [:maybe ::column]]
+   [:source {:optional true} [:maybe ::column]]
+   [:target {:optional true} [:maybe ::column]]
    [:errors {:optional true} [:sequential column-error-type-enum]]])
 
 (mr/def ::check-replace-source-response
@@ -57,6 +57,7 @@
        [:source_entity_type entity-type-enum]
        [:target_entity_id   ms/PositiveInt]
        [:target_entity_type entity-type-enum]]]
+  (api/check-superuser)
   (replacement.source/check-replace-source
    [source_entity_type source_entity_id]
    [target_entity_type target_entity_id]))
@@ -75,37 +76,38 @@
        [:source_entity_type entity-type-enum]
        [:target_entity_id   ms/PositiveInt]
        [:target_entity_type entity-type-enum]]]
+  (api/check-superuser)
   (let [result (replacement.source/check-replace-source
                 [source_entity_type source_entity_id]
                 [target_entity_type target_entity_id])]
     (when-not (:success result)
       (throw (ex-info "Sources are not replaceable" {:status-code 400
-                                                     :errors (:errors result)}))))
-  (let [user-id api/*current-user-id*
-        work-fn (fn [runner]
-                  (replacement.runner/run-swap
-                   [source_entity_type source_entity_id]
-                   [target_entity_type target_entity_id]
-                   runner))
-        run     (replacement.execute/execute-async!
-                 {:source-type source_entity_type
-                  :source-id   source_entity_id
-                  :target-type target_entity_type
-                  :target-id   target_entity_id
-                  :user-id     user-id}
-                 work-fn)]
-    (-> (response/response {:run_id (:id run)})
+                                                     :errors      (:errors result)}))))
+  (let [user-id  api/*current-user-id*
+        work-fn  (fn [progress]
+                   (replacement.runner/run-swap
+                    [source_entity_type source_entity_id]
+                    [target_entity_type target_entity_id]
+                    progress))
+        job-row  (replacement-run/create-run!
+                  source_entity_type source_entity_id
+                  target_entity_type target_entity_id user-id)
+        progress (replacement-run/run-row->progress job-row)
+        _run     (replacement.execute/execute-async! work-fn progress)]
+    (-> (response/response {:run_id (:id job-row)})
         (assoc :status 202))))
 
 (api.macros/defendpoint :get "/runs/:id"
   "Get the status of a source replacement run."
   [{:keys [id]} :- [:map [:id ms/PositiveInt]]]
+  (api/check-superuser)
   (or (t2/select-one :model/ReplacementRun :id id)
       (throw (ex-info "Run not found" {:status-code 404}))))
 
 (api.macros/defendpoint :post "/runs/:id/cancel"
   "Cancel a running source replacement."
   [{:keys [id]} :- [:map [:id ms/PositiveInt]]]
+  (api/check-superuser)
   (let [run (t2/select-one :model/ReplacementRun :id id)]
     (when-not run
       (throw (ex-info "Run not found" {:status-code 404})))
