@@ -287,33 +287,13 @@ describe("parameters/utils/mapping-options", () => {
       });
 
       it("should return fields in nested query", () => {
-        const otherCard = structured({
-          stages: [{ source: { type: "table", id: PRODUCTS_ID } }],
-        });
-        otherCard.id = 123;
-
-        const metadataWithOtherCard = createMockMetadata({
-          databases: [createSampleDatabase()],
-          questions: [otherCard],
-        });
-
-        const provider = createMetadataProvider({
-          metadata: metadataWithOtherCard,
-        });
-
-        const card = createMockCard({
-          dataset_query: Lib.toJsQuery(
-            Lib.createTestQuery(provider, {
-              stages: [
-                {
-                  source: {
-                    type: "card",
-                    id: otherCard.id,
-                  },
-                },
-              ],
-            }),
-          ),
+        const card = structured({
+          stages: [
+            { source: { type: "table", id: PRODUCTS_ID } },
+            {
+              // second, empty, stage
+            },
+          ],
         });
 
         const options = getParameterMappingOptions(
