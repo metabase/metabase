@@ -142,25 +142,6 @@
   (update-in qp-result [:data :viz-settings] merge (-> (get-in qp-result [:json_query :viz-settings])
                                                        viz-settings/db->norm)))
 
-(defn- notification-result
-  "Construct a purpose-built result map for the notification pipeline from a QP result.
-  Only includes keys that downstream consumers actually need, preventing internal QP
-  state (like :json_query containing :lib/metadata with DB credentials) from leaking
-  into notification templates."
-  [qp-result]
-  (let [data (:data qp-result)]
-    {:status                  (:status qp-result)
-     :row_count               (:row_count qp-result)
-     :database_id             (:database_id qp-result)
-     :error                   (:error qp-result)
-     :data                    {:cols             (:cols data)
-                               :rows             (:rows data)
-                               :viz-settings     (:viz-settings data)
-                               :results_metadata (:results_metadata data)
-                               :insights         (:insights data)}
-     :notification/truncated? (:notification/truncated? qp-result)
-     :data.rows-file-size     (:data.rows-file-size qp-result)}))
-
 (def cells-to-disk-threshold
   "Maximum cells (rows * columns) to hold in memory when running notification queries. After this, query results are
   streamed straight to disk. See [[metabase.notification.payload.temp-storage]] for more details."
@@ -182,29 +163,28 @@
                                 :dashcard dashcard
                                 ;; TODO should this be dashcard?
                                 :type     :card
-                                :result   (-> (qp.dashboard/process-query-for-dashcard
-                                               :dashboard-id  dashboard_id
-                                               :card-id       card-id
-                                               :dashcard-id   (u/the-id dashcard)
-                                               :context       :dashboard-subscription
-                                               :export-format :api
-                                               :parameters    parameters
-                                               :constraints   {}
-                                               :middleware    {:process-viz-settings?             true
-                                                               :js-int-to-string?                 false
-                                                               :add-default-userland-constraints? false}
-                                               :make-run      (fn make-run [qp _export-format]
-                                                                (^:once fn* [query info]
-                                                                  (qp
-                                                                   (qp/userland-query query info)
+                                :result   (fixup-viz-settings
+                                           (qp.dashboard/process-query-for-dashcard
+                                            :dashboard-id  dashboard_id
+                                            :card-id       card-id
+                                            :dashcard-id   (u/the-id dashcard)
+                                            :context       :dashboard-subscription
+                                            :export-format :api
+                                            :parameters    parameters
+                                            :constraints   {}
+                                            :middleware    {:process-viz-settings?             true
+                                                            :js-int-to-string?                 false
+                                                            :add-default-userland-constraints? false}
+                                            :make-run      (fn make-run [qp _export-format]
+                                                             (^:once fn* [query info]
+                                                               (qp
+                                                                (qp/userland-query query info)
                                                                ;; Pass streaming rff with 2000 row threshold
-                                                                   (notification.temp-storage/notification-rff
-                                                                    cells-to-disk-threshold
-                                                                    {:dashboard_id dashboard_id
-                                                                     :card_id card-id
-                                                                     :dashcard_id (u/the-id dashcard)})))))
-                                              fixup-viz-settings
-                                              notification-result)})
+                                                                (notification.temp-storage/notification-rff
+                                                                 cells-to-disk-threshold
+                                                                 {:dashboard_id dashboard_id
+                                                                  :card_id card-id
+                                                                  :dashcard_id (u/the-id dashcard)}))))))})
               result         (result-fn card_id)
               series-results (mapv (comp result-fn :id) multi-cards)]
           (log/debugf "Dashcard has %d series" (count multi-cards))
@@ -306,24 +286,23 @@
   [creator-id :- pos-int?
    card-id :- pos-int?]
   (let [result (request/with-current-user creator-id
-                 (-> (qp.card/process-query-for-card card-id :api
-                                                     ;; TODO rename to :notification?
-                                                     :context     :pulse
-                                                     :constraints {}
-                                                     :middleware  {:skip-results-metadata?            false
-                                                                   :process-viz-settings?             true
-                                                                   :js-int-to-string?                 false
-                                                                   :add-default-userland-constraints? false}
-                                                     :make-run    (fn make-run [qp _export-format]
-                                                                    (^:once fn* [query info]
-                                                                      (qp
-                                                                       (qp/userland-query query info)
-                                                                      ;; Pass streaming rff with 2000 row threshold
-                                                                       (notification.temp-storage/notification-rff
-                                                                        cells-to-disk-threshold
-                                                                        {:card-id card-id})))))
-                     fixup-viz-settings
-                     notification-result))]
+                 (fixup-viz-settings
+                  (qp.card/process-query-for-card card-id :api
+                                                  ;; TODO rename to :notification?
+                                                  :context     :pulse
+                                                  :constraints {}
+                                                  :middleware  {:skip-results-metadata?            false
+                                                                :process-viz-settings?             true
+                                                                :js-int-to-string?                 false
+                                                                :add-default-userland-constraints? false}
+                                                  :make-run    (fn make-run [qp _export-format]
+                                                                 (^:once fn* [query info]
+                                                                   (qp
+                                                                    (qp/userland-query query info)
+                                                                   ;; Pass streaming rff with 2000 row threshold
+                                                                    (notification.temp-storage/notification-rff
+                                                                     cells-to-disk-threshold
+                                                                     {:card-id card-id})))))))]
 
     (log/debugf "Result has %d rows" (:row_count result))
     {:card   (t2/select-one :model/Card card-id)
