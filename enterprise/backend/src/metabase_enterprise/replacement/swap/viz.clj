@@ -11,7 +11,7 @@
 
 (defn- swap-parameter-mapping
   [parameter-mapping query old-source new-source]
-  (update parameter-mapping :target lib-be.source-swap/swap-source-in-parameter-target query old-source new-source))
+  (update parameter-mapping :target #(lib-be.source-swap/swap-source-in-parameter-target query % old-source new-source)))
 
 (defn- swap-column-settings-field-refs
   [column-settings query old-source new-source]
