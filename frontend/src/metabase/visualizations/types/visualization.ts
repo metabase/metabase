@@ -525,12 +525,17 @@ export type VisualizationSettingsDefinitions = {
   time_enabled?: DatasetColumnSettingDefinition<Value, Props>;
   time_style?: DatasetColumnSettingDefinition<Value, Props>;
   title?: SingleSeriesSettingDefinition<Value, Props>;
+  /**
+   * TODO: next line should be removed when VisualizationSettingsDefinitions and VisualizationSettings are complete.
+   * Once that happens, it should be possible to safely use VisualizationSettingKey for
+   * both VisualizationSettings and VisualizationSettingsDefinitions.
+   */
   [key: string]: any;
 };
 
 export type Widget = {
   id: string;
-  section?: string;
+  section: string;
   hidden?: boolean;
   props?: Record<string, unknown>;
   title?: string;
