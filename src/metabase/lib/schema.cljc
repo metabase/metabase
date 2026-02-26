@@ -44,6 +44,10 @@
          metabase.lib.schema.expression.window/keep-me
          metabase.lib.schema.filter/keep-me)
 
+(mr/def ::column-unique-key
+  [:re
+   #"^column-unique-key-v\d+\$.+$"])
+
 (defn- normalize-stage-common [m]
   (when-let [m (common/normalize-map m)]
     (reduce

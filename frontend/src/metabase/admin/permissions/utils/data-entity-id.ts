@@ -32,7 +32,7 @@ export const isTableEntityId = (
 
 export const isSchemaEntityId = (
   entityId: Partial<EntityId>,
-): entityId is SchemaEntityId =>
+): entityId is SchemaEntityId & { schemaName: string } =>
   entityId.schemaName != null &&
   entityId.schemaName !== "" &&
   !isTableEntityId(entityId);
