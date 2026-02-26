@@ -164,8 +164,7 @@ const SaasPageBg = () => (
               key={row}
               style={{
                 padding: "12px 20px",
-                borderBottom:
-                  i < 3 ? `1px solid ${dk.borderSubtle}` : "none",
+                borderBottom: i < 3 ? `1px solid ${dk.borderSubtle}` : "none",
                 display: "flex",
                 justifyContent: "space-between",
                 fontSize: 13,
@@ -276,9 +275,7 @@ export default {
 export const StandalonePanel: StoryFn = () => <StandalonePanelDemo />;
 StandalonePanel.storyName = "Standalone Panel";
 
-export const FloatingActionButton: StoryFn = () => (
-  <FloatingActionButtonDemo />
-);
+export const FloatingActionButton: StoryFn = () => <FloatingActionButtonDemo />;
 FloatingActionButton.storyName = "Floating Action Button (Intercom)";
 
 export const CommandBar: StoryFn = () => <CommandBarDemo />;
