@@ -36,11 +36,12 @@ import type { ShowWarning } from "metabase/visualizations/echarts/types";
 import type { CartesianChartColumns } from "metabase/visualizations/lib/graph/columns";
 import { getCartesianChartColumns } from "metabase/visualizations/lib/graph/columns";
 import type { ComputedVisualizationSettings } from "metabase/visualizations/types";
-import type {
-  DatasetColumn,
-  RawSeries,
-  RowValue,
-  XAxisScale,
+import {
+  type DatasetColumn,
+  type RawSeries,
+  type RowValue,
+  type XAxisScale,
+  getRowsForStableKeys,
 } from "metabase-types/api";
 
 import { computeMultiSeriesBoxPlotData } from "./dataset";
@@ -110,14 +111,18 @@ const getBoxPlotDataset = (
   const breakoutIndex = hasBreakout ? chartColumns.breakout.index : -1;
   const dimensionIndex = chartColumns.dimension.index;
 
-  return rawSeries.flatMap(({ card, data: { rows, cols } }) => {
+  return rawSeries.flatMap(({ card, data }) => {
+    const { rows, cols } = data;
+    const rowsForKeys = getRowsForStableKeys(data);
     const precomputedKeys = hasBreakout
       ? null
       : cols.map((col) => getDatasetKey(col, card.id));
 
-    return rows.map((row) => {
+    return rows.map((row, rowIndex) => {
       const datum: Datum = { [X_AXIS_DATA_KEY]: row[dimensionIndex] };
-      const breakoutValue = hasBreakout ? row[breakoutIndex] : undefined;
+      const breakoutValue = hasBreakout
+        ? rowsForKeys[rowIndex][breakoutIndex]
+        : undefined;
 
       for (let i = 0; i < cols.length; i++) {
         const key = precomputedKeys
