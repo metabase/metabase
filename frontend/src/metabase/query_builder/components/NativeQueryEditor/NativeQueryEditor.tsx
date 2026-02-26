@@ -12,6 +12,8 @@ import { useMount } from "react-use";
 import { t } from "ttag";
 
 import { useListCollectionsQuery, useListSnippetsQuery } from "metabase/api";
+import { useSelector } from "metabase/lib/redux";
+import { PLUGIN_METABOT } from "metabase/plugins";
 import { SnippetFormModal } from "metabase/query_builder/components/template_tags/SnippetFormModal";
 import type { QueryModalType } from "metabase/query_builder/constants";
 import { useNotebookScreenSize } from "metabase/query_builder/hooks/use-notebook-screen-size";
@@ -186,7 +188,11 @@ export const NativeQueryEditor = forwardRef<
 
   // do not show reference sidebar on small screens automatically
   const screenSize = useNotebookScreenSize();
-  const shouldOpenDataReference = screenSize !== "small";
+  const isMetabotSidebarOpen = useSelector((state) =>
+    PLUGIN_METABOT.getMetabotVisible(state, "omnibot"),
+  );
+  const shouldOpenDataReference =
+    screenSize !== "small" && !isMetabotSidebarOpen;
 
   useMount(() => {
     setIsNativeEditorOpen?.(
