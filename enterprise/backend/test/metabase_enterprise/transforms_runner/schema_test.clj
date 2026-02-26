@@ -1,11 +1,18 @@
-(ns metabase.transforms.schema-test
-  "Schema validation tests for runner-based transform sources."
+(ns metabase-enterprise.transforms-runner.schema-test
+  "Schema validation tests for runner-based transform sources.
+  These require runner language registration, so they live in enterprise."
   (:require
    [clojure.test :refer :all]
+   [metabase.transforms.interface :as transforms.i]
    [metabase.transforms.schema :as transforms.schema]
    [metabase.util.malli.registry :as mr]))
 
 (set! *warn-on-reflection* true)
+
+(use-fixtures :once (fn [thunk]
+                      (doseq [lang [:python :javascript :clojure]]
+                        (transforms.i/register-runner! lang))
+                      (thunk)))
 
 (def ^:private runner-languages
   [:python :javascript :clojure])
