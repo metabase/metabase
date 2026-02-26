@@ -28,7 +28,7 @@
    [:semantic_type  [:maybe :string]]])
 
 (def ^:private column-error-type-enum
-  [:enum :column-type-mismatch :missing-primary-key :extra-primary-key :missing-foreign-key])
+  [:enum :column-type-mismatch :missing-primary-key :extra-primary-key :missing-foreign-key :foreign-key-mismatch])
 
 (def ^:private error-type-enum
   [:enum :cycle-detected :database-mismatch])

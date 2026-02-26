@@ -37,7 +37,8 @@
   [:enum :column-type-mismatch
    :missing-primary-key
    :extra-primary-key
-   :missing-foreign-key])
+   :missing-foreign-key
+   :foreign-key-mismatch])
 
 (mr/def ::swap-source.column-mapping
   [:map
