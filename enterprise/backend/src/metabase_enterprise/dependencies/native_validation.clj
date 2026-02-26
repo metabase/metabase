@@ -183,8 +183,8 @@
    When card-placeholders? is true, card placeholder sources are recognized and valid
    columns are filtered out (enrich-error returns nil)."
   [driver compiled card-placeholders?]
-  (let [sql                                (lib/raw-native-query compiled)
-        mp                                 (lib/->metadata-provider compiled)
+  (let [sql (lib/raw-native-query compiled)
+        mp (lib/->metadata-provider compiled)
         {:keys [used-fields returned-fields errors]} (sql-tools/field-references driver sql)
         check-fields (fn [fields]
                        (mapcat (fn [col-spec]
