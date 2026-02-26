@@ -21,7 +21,7 @@ export function DatabaseFormSelect({
   );
 
   return (
-    <FormField>
+    <FormField mb={0}>
       <FormSelect {...rest} data={data} />
     </FormField>
   );
