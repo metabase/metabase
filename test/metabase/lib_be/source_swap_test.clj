@@ -5,37 +5,31 @@
    [metabase.lib.core :as lib]
    [metabase.lib.test-metadata :as meta]))
 
-(defn- orders-source []
-  {:type :table, :id (meta/id :orders)})
+(deftest ^:parallel upgrade-field-refs-in-query-table-single-stage-test
+  (testing "should not change field id refs on stage with the table source"
+    (let [query (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
+                    (lib/with-fields [(meta/field-metadata :orders :id)
+                                      (meta/field-metadata :orders :total)
+                                      (meta/field-metadata :orders :created-at)])
+                    (lib/join (lib/join-clause (meta/table-metadata :products)))
+                    (lib/expression "double-tax" (lib/* (meta/field-metadata :orders :tax) 2))
+                    (lib/filter (lib/> (meta/field-metadata :orders :total) 10))
+                    (lib/aggregate (lib/sum (meta/field-metadata :orders :total)))
+                    (lib/breakout (meta/field-metadata :orders :product-id))
+                    (lib/order-by (meta/field-metadata :orders :product-id)))]
+      (is (=? {:stages [{:source-table (meta/id :orders)
+                         :fields       [[:field {} (meta/id :orders :id)]
+                                        [:field {} (meta/id :orders :total)]
+                                        [:field {} (meta/id :orders :created-at)]
+                                        [:expression {} "double-tax"]]
+                         :joins        [{:stages     [{:source-table (meta/id :products)}]
+                                         :conditions [[:= {}
+                                                       [:field {} (meta/id :orders :product-id)]
+                                                       [:field {} (meta/id :products :id)]]]}]
+                         :expressions  [[:* {} [:field {} (meta/id :orders :tax)] 2]]
+                         :filters      [[:> {} [:field {} (meta/id :orders :total)] 10]]
+                         :aggregation  [[:sum {} [:field {} (meta/id :orders :total)]]]
+                         :breakout     [[:field {} (meta/id :orders :product-id)]]
+                         :order-by     [[:asc {} [:field {} (meta/id :orders :product-id)]]]}]}
+              (lib-be/upgrade-field-refs-in-query query))))))
 
-(defn- products-source []
-  {:type :table, :id (meta/id :products)})
-
-(defn- products->orders-field-id-mapping []
-  {(meta/id :products :id) (meta/id :orders :id)
-   (meta/id :products :created-at) (meta/id :orders :created-at)})
-
-(deftest ^:parallel swap-source-in-query-table-test
-  (let [query (lib/query meta/metadata-provider (meta/table-metadata :products))]
-    (is (=? {:stages [{:source-table (meta/id :orders)}]}
-            (lib-be/swap-source-in-query query
-                                         (products-source)
-                                         (orders-source)
-                                         (products->orders-field-id-mapping))))))
-
-(deftest ^:parallel swap-source-in-query-fields-test
-  (let [query (-> (lib/query meta/metadata-provider (meta/table-metadata :products))
-                  (lib/with-fields [(meta/field-metadata :products :id)
-                                    (meta/field-metadata :products :created-at)]))]
-    (is (=? {:stages [{:source-table (meta/id :orders)
-                       :fields [[:field {} (meta/id :orders :id)]
-                                [:field {} (meta/id :orders :created-at)]]}]}
-            (lib-be/swap-source-in-query query
-                                         (products-source)
-                                         (orders-source)
-                                         (products->orders-field-id-mapping))))))
-
-(deftest ^:parallel swap-source-in-parameter-target-field-id-test
-  (is (= [:dimension [:field (meta/id :orders :id) nil]]
-         (lib-be/swap-source-in-parameter-target [:dimension [:field (meta/id :products :id) nil]]
-                                                 (products->orders-field-id-mapping)))))
