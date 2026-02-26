@@ -1,6 +1,7 @@
 (ns metabase-enterprise.metabot-v3.agent.core
   "Main agent loop implementation using reducible streaming infrastructure."
   (:require
+   [clojure.java.io :as io]
    [clojure.string :as str]
    [metabase-enterprise.metabot-v3.agent.memory :as memory]
    [metabase-enterprise.metabot-v3.agent.messages :as messages]
@@ -9,7 +10,9 @@
    [metabase-enterprise.metabot-v3.agent.tools :as agent-tools]
    [metabase-enterprise.metabot-v3.self :as self]
    [metabase.analytics.prometheus :as prometheus]
+   [metabase.config.core :as config]
    [metabase.util :as u]
+   [metabase.util.json :as json]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
@@ -135,10 +138,11 @@
   [:sequential ::message])
 
 (mr/def ::state
-  "Agent state containing queries, charts, todos, and transforms."
+  "Agent state containing queries, charts, chart-configs, todos, and transforms."
   [:map
    [:queries {:optional true} [:map-of [:or :string :keyword] :map]]
    [:charts {:optional true} [:map-of [:or :string :keyword] :map]]
+   [:chart-configs {:optional true} [:map-of [:or :string :keyword] :map]]
    [:todos {:optional true} [:sequential :map]]
    [:transforms {:optional true} [:map-of [:or :string :keyword] :map]]])
 
@@ -196,7 +200,7 @@
                    :model     model
                    :system    (:content system-msg)
                    :parts     input-parts
-                   :tools     (mapv (fn [[name _]] name) tools)}))
+                   :tools     (vec tools)}))
     (eduction (streaming/post-process-xf (get-in memory [:state :queries] {})
                                          (get-in memory [:state :charts] {}))
               (self/call-llm model "agent" (:content system-msg) input-parts tools))))
@@ -285,6 +289,35 @@
           state
           (:user_is_viewing context)))
 
+(defn- extract-chart-configs-from-context-item
+  "Extract chart configs from a viewing context item.
+  Returns a sequence of [chart-config-id chart-config] pairs.
+
+  Chart config IDs are constructed as '{context-item-id}' for single configs,
+  or '{context-item-id}-{index}' for multiple configs on the same item."
+  [{:keys [id chart_configs] :as _item}]
+  (when (and id (seq chart_configs))
+    (if (= 1 (count chart_configs))
+      [[(str id) (first chart_configs)]]
+      (map-indexed
+       (fn [idx config]
+         [(str id "-" idx) config])
+       chart_configs))))
+
+(defn- seed-chart-configs
+  "Seed state with chart configs from viewing context.
+  Chart configs contain pre-materialized series data from the frontend."
+  [state context]
+  (reduce (fn [s item]
+            (if-let [configs (extract-chart-configs-from-context-item item)]
+              (reduce (fn [s' [config-id config]]
+                        (assoc-in s' [:chart-configs config-id] config))
+                      s
+                      configs)
+              s))
+          state
+          (:user_is_viewing context)))
+
 ;;; Main loop
 
 (defn- init-agent
@@ -295,7 +328,9 @@
                          (throw (ex-info "Unknown profile" {:profile-id profile-id})))
         capabilities (get context :capabilities #{})
         base-tools   (profiles/get-tools-for-profile profile-id capabilities)
-        seeded       (seed-state (or state {}) context)
+        seeded       (-> (or state {})
+                         (seed-state context)
+                         (seed-chart-configs context))
         memory       (-> (memory/initialize messages seeded context)
                          (memory/load-queries-from-state seeded)
                          (memory/load-charts-from-state seeded)
@@ -392,10 +427,27 @@
 
 ;;; Public API
 
+(def ^:private debug-log-file
+  "File path for debug log output. Only written in dev mode."
+  "metabot-debug.json")
+
+(defn- write-debug-log-file!
+  "Write debug log to file in dev mode. Overwrites any existing file."
+  [debug-log]
+  (when config/is-dev?
+    (try
+      (with-open [w (io/writer debug-log-file)]
+        (.write w (json/encode debug-log {:pretty true})))
+      (log/debug "Wrote debug log to" debug-log-file)
+      (catch Exception e
+        (log/warn e "Failed to write debug log file")))))
+
 (defn- debug-log-part
   "Create a data part containing the complete debug log.
-  Emitted at the end of the stream when debug mode is active."
+  Emitted at the end of the stream when debug mode is active.
+  Also writes to file in dev mode."
   [debug-log]
+  (write-debug-log-file! debug-log)
   {:type      :data
    :data-type "debug_log"
    :version   1

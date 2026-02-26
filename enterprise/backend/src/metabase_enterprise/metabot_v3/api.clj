@@ -242,7 +242,7 @@
             [:state :map]
             [:debug {:optional true} [:maybe :boolean]]]]
   (metabot-v3.context/log body :llm.log/fe->be)
-  (streaming-request body))
+  (streaming-request (assoc body :debug true)))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
