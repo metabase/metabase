@@ -54,11 +54,7 @@ import {
 } from "metabase/visualizations/visualizations/RowChart/utils/events";
 import { useRowChartTheme } from "metabase/visualizations/visualizations/RowChart/utils/theme";
 import { isDimension, isMetric } from "metabase-lib/v1/types/utils/isa";
-import type {
-  DatasetData,
-  Series,
-  VisualizationSettings,
-} from "metabase-types/api";
+import type { DatasetData, VisualizationSettings } from "metabase-types/api";
 
 import {
   RowChartContainer,
@@ -343,7 +339,7 @@ RowChartVisualization.noHeader = true;
 RowChartVisualization.minSize = getMinSize("row");
 RowChartVisualization.defaultSize = getDefaultSize("row");
 
-const settings: VisualizationSettingsDefinitions<Series> = {
+const settings: VisualizationSettingsDefinitions = {
   ...ROW_CHART_SETTINGS,
   ...GRAPH_DATA_SETTINGS,
 };

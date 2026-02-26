@@ -82,7 +82,7 @@ function canHaveDataLabels(
   return vizSettings["stackable.stack_type"] !== "normalized" || !areAllAreas;
 }
 
-export const GRAPH_DATA_SETTINGS: VisualizationSettingsDefinitions<Series> = {
+export const GRAPH_DATA_SETTINGS: VisualizationSettingsDefinitions = {
   ...columnSettings({
     getColumns: ([
       {
@@ -252,7 +252,7 @@ export const GRAPH_DATA_SETTINGS: VisualizationSettingsDefinitions<Series> = {
   ...seriesSetting(),
 };
 
-export const GRAPH_BUBBLE_SETTINGS: VisualizationSettingsDefinitions<Series> = {
+export const GRAPH_BUBBLE_SETTINGS: VisualizationSettingsDefinitions = {
   "scatter.bubble": {
     get section() {
       return t`Data`;
@@ -304,7 +304,7 @@ export const LINE_SETTINGS = {
   },
 };
 
-export const STACKABLE_SETTINGS: VisualizationSettingsDefinitions<Series> = {
+export const STACKABLE_SETTINGS: VisualizationSettingsDefinitions = {
   "stackable.stack_type": {
     get section() {
       return t`Display`;
@@ -357,14 +357,14 @@ export const STACKABLE_SETTINGS: VisualizationSettingsDefinitions<Series> = {
   },
 };
 
-export const LEGEND_SETTINGS: VisualizationSettingsDefinitions<Series> = {
+export const LEGEND_SETTINGS: VisualizationSettingsDefinitions = {
   "legend.is_reversed": {
     getDefault: (_series, settings) => getDefaultLegendIsReversed(settings),
     hidden: true,
   },
 };
 
-export const TOOLTIP_SETTINGS: VisualizationSettingsDefinitions<Series> = {
+export const TOOLTIP_SETTINGS: VisualizationSettingsDefinitions = {
   "graph.tooltip_type": {
     getDefault: ([{ card }]) => {
       const shouldShowComparisonTooltip = !["scatter", "waterfall"].includes(
@@ -406,7 +406,7 @@ export const TOOLTIP_SETTINGS: VisualizationSettingsDefinitions<Series> = {
   },
 };
 
-export const GRAPH_TREND_SETTINGS: VisualizationSettingsDefinitions<Series> = {
+export const GRAPH_TREND_SETTINGS: VisualizationSettingsDefinitions = {
   "graph.show_trendline": {
     get section() {
       return t`Display`;
@@ -427,218 +427,216 @@ export const GRAPH_TREND_SETTINGS: VisualizationSettingsDefinitions<Series> = {
   },
 };
 
-export const GRAPH_DISPLAY_VALUES_SETTINGS: VisualizationSettingsDefinitions<Series> =
-  {
-    "graph.show_values": {
-      get section() {
-        return t`Display`;
-      },
-      get title() {
-        return t`Show values on data points`;
-      },
-      widget: "toggle",
-      getHidden: (series, vizSettings) =>
-        !canHaveDataLabels(series, vizSettings),
-      getDefault: getDefaultShowDataLabels,
-      inline: true,
-      marginBottom: "1rem",
+export const GRAPH_DISPLAY_VALUES_SETTINGS: VisualizationSettingsDefinitions = {
+  "graph.show_values": {
+    get section() {
+      return t`Display`;
     },
-    "graph.label_value_frequency": {
-      get section() {
-        return t`Display`;
-      },
-      get title() {
-        return t`Values to show`;
-      },
-      widget: "segmentedControl",
-      getHidden: (series, vizSettings) => {
-        if (!vizSettings["graph.show_values"]) {
-          return true;
-        }
-
-        const areAllBars = getSeriesDisplays(series, vizSettings).every(
-          (display) => display === "bar",
-        );
-        if (areAllBars && vizSettings["graph.show_stack_values"] === "series") {
-          return true;
-        }
-
-        const hasLines = getSeriesDisplays(series, vizSettings).some(
-          (display) => display === "line",
-        );
-        if (vizSettings["stackable.stack_type"] === "normalized" && !hasLines) {
-          return true;
-        }
-
-        return !canHaveDataLabels(series, vizSettings);
-      },
-      props: {
-        options: [
-          {
-            get name() {
-              return t`Some`;
-            },
-            value: "fit",
-          },
-          {
-            get name() {
-              return t`All`;
-            },
-            value: "all",
-          },
-        ],
-      },
-      getDefault: getDefaultDataLabelsFrequency,
-      readDependencies: ["graph.show_values"],
+    get title() {
+      return t`Show values on data points`;
     },
-    "graph.show_stack_values": {
-      get section() {
-        return t`Display`;
-      },
-      get title() {
-        return t`Stack values to show`;
-      },
-      widget: "segmentedControl",
-      getHidden: (series, vizSettings) => {
-        const hasBars = getSeriesDisplays(series, vizSettings).some(
-          (display) => display === "bar",
-        );
-        return (
-          vizSettings["stackable.stack_type"] !== "stacked" ||
-          vizSettings["graph.show_values"] !== true ||
-          !hasBars
-        );
-      },
-      isValid: (series, vizSettings) => {
-        return isShowStackValuesValid(
-          getSeriesDisplays(series, vizSettings),
-          vizSettings,
-        );
-      },
-      props: {
-        options: [
-          {
-            get name() {
-              return t`Total`;
-            },
-            value: "total",
-          },
-          {
-            get name() {
-              return t`Segments`;
-            },
-            value: "series",
-          },
-          {
-            get name() {
-              return t`Both`;
-            },
-            value: "all",
-          },
-        ],
-      },
-      getDefault: (_series, settings) => getDefaultShowStackValues(settings),
-      readDependencies: ["graph.show_values", "stackable.stack_type"],
+    widget: "toggle",
+    getHidden: (series, vizSettings) => !canHaveDataLabels(series, vizSettings),
+    getDefault: getDefaultShowDataLabels,
+    inline: true,
+    marginBottom: "1rem",
+  },
+  "graph.label_value_frequency": {
+    get section() {
+      return t`Display`;
     },
-    "graph.label_value_formatting": {
-      get section() {
-        return t`Display`;
-      },
-      get title() {
-        return t`Auto formatting`;
-      },
-      widget: "segmentedControl",
-      getHidden: (series, vizSettings) => {
-        return !canHaveDataLabels(series, vizSettings);
-      },
-      props: {
-        options: [
-          {
-            get name() {
-              return t`Auto`;
-            },
-            value: "auto",
-          },
-          {
-            get name() {
-              return t`Compact`;
-            },
-            value: "compact",
-          },
-          {
-            get name() {
-              return t`Full`;
-            },
-            value: "full",
-          },
-        ],
-      },
-      getDefault: (_series, vizSettings) => {
-        const columnSettings = vizSettings["column_settings"];
-        if (columnSettings) {
-          const hasNonDefaultCurrencyStyle = Object.values(columnSettings)
-            .filter(Boolean)
-            .some((value) => {
-              return (
-                value["number_style"] === "currency" &&
-                value["currency_style"] != null &&
-                value["currency_style"] !== "symbol"
-              );
-            });
+    get title() {
+      return t`Values to show`;
+    },
+    widget: "segmentedControl",
+    getHidden: (series, vizSettings) => {
+      if (!vizSettings["graph.show_values"]) {
+        return true;
+      }
 
-          if (hasNonDefaultCurrencyStyle) {
-            return "full";
-          }
-        }
+      const areAllBars = getSeriesDisplays(series, vizSettings).every(
+        (display) => display === "bar",
+      );
+      if (areAllBars && vizSettings["graph.show_stack_values"] === "series") {
+        return true;
+      }
 
-        return "auto";
-      },
+      const hasLines = getSeriesDisplays(series, vizSettings).some(
+        (display) => display === "line",
+      );
+      if (vizSettings["stackable.stack_type"] === "normalized" && !hasLines) {
+        return true;
+      }
+
+      return !canHaveDataLabels(series, vizSettings);
     },
-    "graph.max_categories_enabled": {
-      hidden: true,
-      // temporarily hiding the setting (metabase#50510)
-      default: false,
-      isValid: () => false,
-      readDependencies: ["series_settings"],
-    },
-    "graph.max_categories": {
-      widget: ChartSettingMaxCategories,
-      hidden: true,
-      // temporarily hiding the setting (metabase#50510)
-      default: Number.MAX_SAFE_INTEGER,
-      isValid: () => false,
-      getProps: (_series, settings) => {
-        return {
-          isEnabled: settings["graph.max_categories_enabled"],
-          aggregationFunction: settings["graph.other_category_aggregation_fn"],
-        };
-      },
-      readDependencies: [
-        "graph.max_categories_enabled",
-        "graph.other_category_aggregation_fn",
-        "series_settings",
+    props: {
+      options: [
+        {
+          get name() {
+            return t`Some`;
+          },
+          value: "fit",
+        },
+        {
+          get name() {
+            return t`All`;
+          },
+          value: "all",
+        },
       ],
     },
-    "graph.other_category_color": {
-      default: color("text-tertiary"),
+    getDefault: getDefaultDataLabelsFrequency,
+    readDependencies: ["graph.show_values"],
+  },
+  "graph.show_stack_values": {
+    get section() {
+      return t`Display`;
     },
-    "graph.other_category_aggregation_fn": {
-      hidden: true,
-      getDefault: ([{ data }], settings) => {
-        const [metricName] = settings["graph.metrics"] ?? [];
-        const metric = data.cols.find((col) => col.name === metricName);
-        return metric?.aggregation_type ?? "sum";
-      },
-      readDependencies: ["graph.metrics"],
+    get title() {
+      return t`Stack values to show`;
     },
-  };
+    widget: "segmentedControl",
+    getHidden: (series, vizSettings) => {
+      const hasBars = getSeriesDisplays(series, vizSettings).some(
+        (display) => display === "bar",
+      );
+      return (
+        vizSettings["stackable.stack_type"] !== "stacked" ||
+        vizSettings["graph.show_values"] !== true ||
+        !hasBars
+      );
+    },
+    isValid: (series, vizSettings) => {
+      return isShowStackValuesValid(
+        getSeriesDisplays(series, vizSettings),
+        vizSettings,
+      );
+    },
+    props: {
+      options: [
+        {
+          get name() {
+            return t`Total`;
+          },
+          value: "total",
+        },
+        {
+          get name() {
+            return t`Segments`;
+          },
+          value: "series",
+        },
+        {
+          get name() {
+            return t`Both`;
+          },
+          value: "all",
+        },
+      ],
+    },
+    getDefault: (_series, settings) => getDefaultShowStackValues(settings),
+    readDependencies: ["graph.show_values", "stackable.stack_type"],
+  },
+  "graph.label_value_formatting": {
+    get section() {
+      return t`Display`;
+    },
+    get title() {
+      return t`Auto formatting`;
+    },
+    widget: "segmentedControl",
+    getHidden: (series, vizSettings) => {
+      return !canHaveDataLabels(series, vizSettings);
+    },
+    props: {
+      options: [
+        {
+          get name() {
+            return t`Auto`;
+          },
+          value: "auto",
+        },
+        {
+          get name() {
+            return t`Compact`;
+          },
+          value: "compact",
+        },
+        {
+          get name() {
+            return t`Full`;
+          },
+          value: "full",
+        },
+      ],
+    },
+    getDefault: (_series, vizSettings) => {
+      const columnSettings = vizSettings["column_settings"];
+      if (columnSettings) {
+        const hasNonDefaultCurrencyStyle = Object.values(columnSettings)
+          .filter(Boolean)
+          .some((value) => {
+            return (
+              value["number_style"] === "currency" &&
+              value["currency_style"] != null &&
+              value["currency_style"] !== "symbol"
+            );
+          });
 
-export const GRAPH_COLORS_SETTINGS: VisualizationSettingsDefinitions<Series> = {
+        if (hasNonDefaultCurrencyStyle) {
+          return "full";
+        }
+      }
+
+      return "auto";
+    },
+  },
+  "graph.max_categories_enabled": {
+    hidden: true,
+    // temporarily hiding the setting (metabase#50510)
+    default: false,
+    isValid: () => false,
+    readDependencies: ["series_settings"],
+  },
+  "graph.max_categories": {
+    widget: ChartSettingMaxCategories,
+    hidden: true,
+    // temporarily hiding the setting (metabase#50510)
+    default: Number.MAX_SAFE_INTEGER,
+    isValid: () => false,
+    getProps: (_series, settings) => {
+      return {
+        isEnabled: settings["graph.max_categories_enabled"],
+        aggregationFunction: settings["graph.other_category_aggregation_fn"],
+      };
+    },
+    readDependencies: [
+      "graph.max_categories_enabled",
+      "graph.other_category_aggregation_fn",
+      "series_settings",
+    ],
+  },
+  "graph.other_category_color": {
+    default: color("text-tertiary"),
+  },
+  "graph.other_category_aggregation_fn": {
+    hidden: true,
+    getDefault: ([{ data }], settings) => {
+      const [metricName] = settings["graph.metrics"] ?? [];
+      const metric = data.cols.find((col) => col.name === metricName);
+      return metric?.aggregation_type ?? "sum";
+    },
+    readDependencies: ["graph.metrics"],
+  },
+};
+
+export const GRAPH_COLORS_SETTINGS: VisualizationSettingsDefinitions = {
   // DEPRECATED: replaced with "color" series setting
   "graph.colors": {},
 };
 
-export const GRAPH_AXIS_SETTINGS: VisualizationSettingsDefinitions<Series> = {
+export const GRAPH_AXIS_SETTINGS: VisualizationSettingsDefinitions = {
   "graph.x_axis._is_timeseries": {
     readDependencies: ["graph.dimensions"],
     getDefault: ([{ data }], vizSettings) => {
