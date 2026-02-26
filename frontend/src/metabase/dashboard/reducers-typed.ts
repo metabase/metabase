@@ -308,23 +308,13 @@ export const dashboards = createReducer(
           [id]: newDashboard(state[id], attributes, isDirty),
         }),
       )
-      .addCase(addCardToDash, (state, { payload: dashcard }) => ({
-        ...state,
-        [dashcard.dashboard_id]: {
-          ...state[dashcard.dashboard_id],
-          dashcards: [...state[dashcard.dashboard_id].dashcards, dashcard.id],
-        },
-      }))
+      .addCase(addCardToDash, (state, { payload: dashcard }) => {
+        state[dashcard.dashboard_id].dashcards.push(dashcard.id);
+      })
       .addCase(addManyCardsToDash, (state, { payload: dashcards }) => {
         const [{ dashboard_id }] = dashcards;
         const dashcardIds = dashcards.map(({ id }) => id);
-        return {
-          ...state,
-          [dashboard_id]: {
-            ...state[dashboard_id],
-            dashcards: [...state[dashboard_id].dashcards, ...dashcardIds],
-          },
-        };
+        state[dashboard_id].dashcards.push(...dashcardIds);
       })
       .addCase(Dashboards.actionTypes.UPDATE, (state, { payload }) => {
         const draftDashboard = state[payload.dashboard?.id];

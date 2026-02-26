@@ -19,52 +19,62 @@ import {
   createMockDashboardCard,
   createMockField,
   createMockHeadingDashboardCard,
+  createMockNativeDatasetQuery,
+  createMockParameter,
+  createMockStructuredDatasetQuery,
 } from "metabase-types/api/mocks";
+import type { State } from "metabase-types/store";
 import {
+  createMockDashboardState,
   createMockSettingsState,
   createMockState,
+  createMockStoreDashboard,
 } from "metabase-types/store/mocks";
 
 import { SIDEBAR_NAME } from "./constants";
 
 const STATE = createMockState({
-  dashboard: {
+  dashboard: createMockDashboardState({
     dashboardId: 0,
     dashboards: {
-      0: {
+      0: createMockStoreDashboard({
+        id: 0,
         dashcards: [0, 1, 2],
         parameters: [],
-      },
+      }),
     },
     dashcards: {
       0: createMockDashboardCard({
         card: createMockCard({
           id: 0,
-          dataset_query: {
-            type: "native",
-            query: {
+          dataset_query: createMockNativeDatasetQuery({
+            native: {
+              query: "",
               "template-tags": {
                 foo: {
+                  id: "foo",
                   type: "text",
+                  name: "foo",
+                  "display-name": "foo",
                 },
               },
             },
-          },
+          }),
         }),
         parameter_mappings: [],
       }),
       1: createMockDashboardCard({
         card: createMockCard({
           id: 1,
-          dataset_query: { type: "query", query: {} },
+          dataset_query: createMockStructuredDatasetQuery({ query: {} }),
         }),
         parameter_mappings: [],
       }),
       2: createMockHeadingDashboardCard(),
     },
     editingDashboard: createMockDashboard({ id: 0 }),
-    sidebar: {},
-  },
+    sidebar: { props: {} },
+  }),
   entities: createMockEntitiesState({
     fields: [createMockField({ id: 1 }), createMockField({ id: 2 })],
   }),
@@ -234,7 +244,7 @@ describe("dashboard/selectors", () => {
             0: {
               ...STATE.dashboard.dashboards[0],
               dashcards: [1],
-              parameters: [{ id: parameterId }],
+              parameters: [createMockParameter({ id: parameterId })],
             },
           },
           dashcards: {
@@ -267,13 +277,14 @@ describe("dashboard/selectors", () => {
       expect(getShowAddQuestionSidebar(STATE)).toBe(false);
     });
 
-    it("should returnftrue when the sidebar is set to the add question sidebar", () => {
+    it("should return true when the sidebar is set to the add question sidebar", () => {
       const state = {
         ...STATE,
         dashboard: {
           ...STATE.dashboard,
           sidebar: {
             name: SIDEBAR_NAME.addQuestion,
+            props: {},
           },
         },
       };
@@ -294,6 +305,7 @@ describe("dashboard/selectors", () => {
           ...STATE.dashboard,
           sidebar: {
             name: SIDEBAR_NAME.sharing,
+            props: {},
           },
         },
       };
@@ -335,6 +347,7 @@ describe("dashboard/selectors", () => {
           ...STATE.dashboard,
           sidebar: {
             name: SIDEBAR_NAME.editParameter,
+            props: {},
           },
         },
       };
@@ -389,12 +402,15 @@ describe("dashboard/selectors", () => {
     const multiCardState = chain(STATE)
       .assocIn(["dashboard", "dashboards", 0, "dashcards"], [0, 1, 2])
       .assocIn(["dashboard", "dashcards", 2], {
-        card: { id: 2, dataset_query: { type: "query", query: {} } },
+        card: createMockCard({
+          id: 2,
+          dataset_query: createMockStructuredDatasetQuery({ query: {} }),
+        }),
         parameter_mappings: [],
       })
       .value();
 
-    const setup = (positions) => {
+    const setup = (positions: Array<{ row: number; col: number }>) => {
       const newStateChain = chain(multiCardState);
 
       positions.forEach((position, index) => {
@@ -407,24 +423,25 @@ describe("dashboard/selectors", () => {
     };
 
     it("should filter out removed dashcards", () => {
-      const state = chain(multiCardState)
+      const state: State = chain(multiCardState)
         .assocIn(["dashboard", "dashcards", 0, "isRemoved"], true)
         .assocIn(["dashboard", "dashcards", 2, "isRemoved"], true)
         .value();
 
-      expect(getDashboardComplete(state).dashcards).toEqual([
+      const dashboardComplete = getDashboardComplete(state);
+      expect(dashboardComplete?.dashcards).toEqual([
         multiCardState.dashboard.dashcards[1],
       ]);
     });
 
     it("should sort cards based on their positions top to bottom", () => {
-      const state = setup([
+      const state: State = setup([
         { row: 2, col: 0 },
         { row: 1, col: 1 },
         { row: 0, col: 2 },
       ]);
 
-      const cards = getDashboardComplete(state).dashcards;
+      const cards = getDashboardComplete(state)?.dashcards ?? [];
 
       expect(cards[2].card.id).toBe(0);
       expect(cards[1].card.id).toBe(1);
@@ -432,13 +449,13 @@ describe("dashboard/selectors", () => {
     });
 
     it("should sort cards based on their positions left to right when on the same row", () => {
-      const state = setup([
+      const state: State = setup([
         { row: 0, col: 2 },
         { row: 0, col: 1 },
         { row: 0, col: 0 },
       ]);
 
-      const cards = getDashboardComplete(state).dashcards;
+      const cards = getDashboardComplete(state)?.dashcards ?? [];
 
       expect(cards[2].card.id).toBe(0);
       expect(cards[1].card.id).toBe(1);
