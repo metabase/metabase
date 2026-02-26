@@ -7,6 +7,8 @@
    [buddy.core.mac :as mac]
    [metabase.premium-features.core :refer [defenterprise]]))
 
+(set! *warn-on-reflection* true)
+
 (defenterprise metabot-slack-signing-secret-setting
   "Returns the Slack signing secret for Metabot (EE only)."
   metabase-enterprise.metabot-v3.settings
@@ -69,8 +71,8 @@
                computed-signature (hmac-sha256 signing-secret message)
                expected-signature (str "v0=" computed-signature)]
            ;; Use constant-time comparison to prevent timing attacks
-           (bytes/equals? (.getBytes expected-signature "UTF-8")
-                          (.getBytes slack-signature "UTF-8"))))))
+           (bytes/equals? (.getBytes ^String expected-signature "UTF-8")
+                          (.getBytes ^String slack-signature "UTF-8"))))))
 
 (defn verify-slack-request
   "Middleware that detects if an incoming request is from Slack and sets the `:slack/validated?` keyword on a request
