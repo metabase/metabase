@@ -1,9 +1,11 @@
+import { getCurrentLocation } from "metabase/lib/router";
 import { useRegisterMetabotContextProvider } from "metabase/metabot";
 
 export const useRegisterDocumentMetabotContext = () => {
   useRegisterMetabotContextProvider(async () => {
     // Extract document ID from URL path like "/document/123"
-    const documentMatch = window.location.pathname.match(/^\/document\/(\d+)/);
+    const documentMatch =
+      getCurrentLocation().pathname.match(/^\/document\/(\d+)/);
     if (!documentMatch) {
       return {};
     }

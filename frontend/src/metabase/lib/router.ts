@@ -44,6 +44,16 @@ export const goBack = () => () => {
   getHistory().goBack();
 };
 
+/**
+ * Returns the current router location (basename-stripped).
+ * Prefer this over reading window.location directly in thunks/selectors,
+ * since window.location includes the basename prefix when Metabase is
+ * deployed at a sub-path.
+ */
+export function getCurrentLocation() {
+  return getHistory().getCurrentLocation();
+}
+
 export const routerActions = {
   push,
   replace,

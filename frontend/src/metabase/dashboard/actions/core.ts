@@ -1,6 +1,6 @@
 import { createAction } from "@reduxjs/toolkit";
 
-import { push } from "metabase/lib/router";
+import { getCurrentLocation, push } from "metabase/lib/router";
 import type {
   DashCardId,
   DashCardVisualizationSettings,
@@ -22,7 +22,7 @@ export const SET_EDITING_DASHBOARD = "metabase/dashboard/SET_EDITING_DASHBOARD";
 export const setEditingDashboard = (dashboard: Dashboard | null) => {
   return (dispatch: Dispatch) => {
     if (dashboard === null) {
-      const { pathname, search } = window.location;
+      const { pathname, search } = getCurrentLocation();
       dispatch(
         push({
           pathname,

@@ -1,18 +1,5 @@
 import type { Location } from "history";
 
-import type { RoutingState } from "metabase-types/store";
-
-export const createMockRoutingState = (
-  opts?: Partial<RoutingState>,
-): RoutingState => {
-  return {
-    ...opts,
-    locationBeforeTransitions: createMockLocation(
-      opts?.locationBeforeTransitions,
-    ),
-  };
-};
-
 export const createMockLocation = (opts?: Partial<Location>): Location => {
   return {
     pathname: "/",

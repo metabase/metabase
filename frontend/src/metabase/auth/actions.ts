@@ -1,4 +1,4 @@
-import { type UnknownAction, createAction } from "@reduxjs/toolkit";
+import { createAction } from "@reduxjs/toolkit";
 import { getIn } from "icepick";
 
 import { deleteSession, initiateSLO } from "metabase/lib/auth";
@@ -122,9 +122,7 @@ export const logout = createAsyncThunk(
         dispatch(clearCurrentUser());
         await dispatch(refreshLocale()).unwrap();
 
-        // We use old react-router-redux which references old redux, which does not require
-        // action type to be a string - unlike RTK v2+
-        dispatch(push(Urls.login()) as unknown as UnknownAction);
+        dispatch(push(Urls.login()));
         reload(); // clears redux state and browser caches
       }
     } catch (error) {

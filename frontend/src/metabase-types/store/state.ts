@@ -1,5 +1,3 @@
-import type { Location } from "history";
-
 import type { Api } from "metabase/api/api";
 import type { User } from "metabase-types/api";
 import type { DocumentsState } from "metabase-types/store/documents";
@@ -26,12 +24,6 @@ import type { VisualizerState } from "./visualizer";
 
 type MetabaseApiState = ReturnType<typeof Api.reducer>;
 
-export interface RoutingState {
-  // react-router-redux stores the last location under this key.
-  // We only care that it has a pathname/hash/search shape like history.Location.
-  locationBeforeTransitions?: Location & { query?: any };
-}
-
 export interface State {
   admin: AdminState;
   analyticsExport: AnalyticsExportState;
@@ -46,7 +38,6 @@ export interface State {
   pulse: PulseState;
   qb: QueryBuilderState;
   requests: RequestsState;
-  routing: RoutingState;
   settings: SettingsState;
   setup: SetupState;
   upload: FileUploadState;

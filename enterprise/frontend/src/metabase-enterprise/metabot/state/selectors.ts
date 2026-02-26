@@ -3,6 +3,7 @@ import { match } from "ts-pattern";
 import _ from "underscore";
 
 import { isEmbedding } from "metabase/embedding/config";
+import { getCurrentLocation } from "metabase/lib/router";
 import { Urls } from "metabase-enterprise/urls";
 import type { TransformId } from "metabase-types/api";
 
@@ -199,23 +200,25 @@ export const getProfileOverride = createSelector(
   (convo) => convo.profileOverride,
 );
 
-export const getProfile = createSelector(
-  [getProfileOverride, getDebugMode],
-  (profileOverride, debugMode) => {
-    const pathname = window.location?.pathname ?? "";
-    const isTransformsPage = pathname.startsWith(Urls.transformList());
-    return match({ debugMode, isTransformsPage })
-      .with(
-        { debugMode: false, isTransformsPage: true },
-        () => "transforms_codegen",
-      )
-      .with(
-        { debugMode: true, isTransformsPage: true },
-        () => profileOverride ?? "transforms_codegen",
-      )
-      .otherwise(() => profileOverride);
-  },
-);
+export const getProfile = (
+  state: MetabotStoreState,
+  agentId: MetabotAgentId,
+) => {
+  const profileOverride = getProfileOverride(state, agentId);
+  const debugMode = getDebugMode(state);
+  const pathname = getCurrentLocation().pathname;
+  const isTransformsPage = pathname.startsWith(Urls.transformList());
+  return match({ debugMode, isTransformsPage })
+    .with(
+      { debugMode: false, isTransformsPage: true },
+      () => "transforms_codegen",
+    )
+    .with(
+      { debugMode: true, isTransformsPage: true },
+      () => profileOverride ?? "transforms_codegen",
+    )
+    .otherwise(() => profileOverride);
+};
 
 export const getAgentRequestMetadata = createSelector(
   getHistory,
