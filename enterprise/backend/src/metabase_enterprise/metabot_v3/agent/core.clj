@@ -290,7 +290,7 @@
 
 (defn- init-agent
   "Initialize agent state."
-  [{:keys [messages state profile-id context conversation-id]}]
+  [{:keys [messages state profile-id context conversation-id tracking-opts]}]
   (let [context      (assign-context-ids context)
         profile      (or (profiles/get-profile profile-id)
                          (throw (ex-info "Unknown profile" {:profile-id profile-id})))
@@ -313,7 +313,8 @@
      :context         context
      :memory-atom     memory-atom
      :request-id      (str (random-uuid))
-     :conversation-id conversation-id}))
+     :conversation-id conversation-id
+     :tracking-opts   tracking-opts}))
 
 (defn- initial-loop-state
   "Create initial loop state from agent config and reduction context."
@@ -352,13 +353,14 @@
   [{:keys [agent rf result iteration usage-atom] :as loop-state}]
   (with-span :debug {:name      :metabot-v3.agent/loop-step
                      :iteration iteration}
-    (let [{:keys [profile tools context memory-atom request-id conversation-id]} agent
+    (let [{:keys [profile tools context memory-atom request-id conversation-id tracking-opts]} agent
           max-iter      (:max-iterations profile 10)
-          tracking-opts {:profile-name    (:name profile)
-                         :request-id      request-id
-                         :session-id      conversation-id
-                         :source          "metabot_agent"
-                         :tag             "agent"}
+          tracking-opts (merge {:profile-name (:name profile)
+                                :request-id   request-id
+                                :session-id   conversation-id
+                                :source       "metabot_agent"
+                                :tag          "agent"}
+                               tracking-opts)
           parts-atom    (atom [])
           llm-call      (call-llm @memory-atom context profile tools iteration tracking-opts)
           xf         (comp (accumulate-usage-xf usage-atom)
@@ -426,6 +428,9 @@
             [:state {:optional true} [:maybe ::state]]
             [:context {:optional true} [:maybe ::context]]
             [:conversation-id {:optional true} [:maybe ms/UUIDString]]
+            [:tracking-opts {:optional true} [:maybe [:map
+                                                      [:source {:optional true} [:maybe :string]]
+                                                      [:tag {:optional true} [:maybe :string]]]]]
             [:debug? {:optional true} [:maybe :boolean]]]]
   (let [profile-id (:profile-id opts)
         debug?     (:debug? opts)
