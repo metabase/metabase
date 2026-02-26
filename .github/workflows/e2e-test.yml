@@ -101,9 +101,15 @@ jobs:
         with:
           name: failed-tests-${{ inputs.name }}-${{ inputs.edition }}
 
-      - name: Get failed specs
+      - name: Get failed specs and tests
         if: github.run_attempt != '1'
-        run: echo "specs=$(cat failed-specs)" >> $GITHUB_ENV
+        run: |
+          if [[ -f "failed-specs" ]]; then
+            echo "specs=$(cat failed-specs)" >> $GITHUB_ENV
+          fi
+          if [[ -f "failed-tests" ]]; then
+            echo "failed_tests_grep=$(cat failed-tests)" >> $GITHUB_ENV
+          fi
 
       - name: Compile CLJS
         run: bun run build-pure:cljs
@@ -132,8 +138,13 @@ jobs:
         shell: bash
         run: |
           echo "Running tests with specs: $SPEC_PATH"
+          # On manual re-run, use grep to filter to specific failed tests
+          GREP_ARG=""
+          if [[ -n "${{ env.failed_tests_grep }}" ]]; then
+            GREP_ARG="grep=${{ env.failed_tests_grep }},"
+          fi
           node e2e/runner/run_cypress_ci.js e2e \
-            --env grepTags="-@mongo+-@python+-@OSS+-@skip" \
+            --env "${GREP_ARG}grepTags=-@mongo+-@python+-@OSS+-@skip" \
             --spec "$SPEC_PATH"
         # Trunk Quarantine controls the final state of the run in the CI!
         # Even if this step fails we let it pass, and then `trunk-io/analytics-uploader` determines
@@ -149,13 +160,108 @@ jobs:
           CYPRESS_BROWSER: ${{ steps.cypress-prep.outputs.chrome-path }}
         run: |
           echo "Running tests with specs: $SPEC_PATH"
+          # On manual re-run, use grep to filter to specific failed tests
+          GREP_ARG=""
+          if [[ -n "${{ env.failed_tests_grep }}" ]]; then
+            GREP_ARG="grep=${{ env.failed_tests_grep }},"
+          fi
           node e2e/runner/run_cypress_ci.js e2e \
-          --env grepTags="${{inputs.tags && format('{0}+-@skip', inputs.tags) || '-@skip'}}" \
+          --env "${GREP_ARG}grepTags=${{inputs.tags && format('{0}+-@skip', inputs.tags) || '-@skip'}}" \
           --spec "$SPEC_PATH"
         # Trunk Quarantine controls the final state of the run in the CI!
         # Even if this step fails we let it pass, and then `trunk-io/analytics-uploader` determines
         # whether to fail or to pass the whole job, based on the quarantine list.
         continue-on-error: true
+
+      # Automatic retry for failed tests - runs only the specific failed tests, not entire specs
+      - name: Retry failed tests (auto-split)
+        id: retry-split-e2e
+        if: steps.split-e2e.outcome == 'failure' && github.run_attempt == '1'
+        shell: bash
+        env:
+          CYPRESS_BROWSER: ${{ steps.cypress-prep.outputs.chrome-path }}
+        run: |
+          if [[ ! -f "./cypress/test-results/failed-specs" ]]; then
+            echo "No failed-specs file found, skipping retry"
+            exit 1
+          fi
+
+          FAILED_SPECS=$(cat ./cypress/test-results/failed-specs)
+          echo "Retrying failed specs: $FAILED_SPECS"
+
+          # Use grep pattern if available for test-level filtering
+          GREP_ARG=""
+          if [[ -f "./cypress/test-results/failed-tests" ]]; then
+            FAILED_TESTS=$(cat ./cypress/test-results/failed-tests)
+            echo "Filtering to specific failed tests"
+            GREP_ARG="grep=$FAILED_TESTS,"
+          fi
+
+          # Clear previous test results so JUnit shows final state
+          rm -rf ./target/junit/*.xml
+
+          node e2e/runner/run_cypress_ci.js e2e \
+            --env "${GREP_ARG}grepTags=-@mongo+-@python+-@OSS+-@skip" \
+            --spec "$FAILED_SPECS"
+        continue-on-error: true
+
+      - name: Retry failed tests (tagged)
+        id: retry-tagged-e2e
+        if: steps.tagged-e2e.outcome == 'failure' && github.run_attempt == '1'
+        shell: bash
+        env:
+          CYPRESS_BROWSER: ${{ steps.cypress-prep.outputs.chrome-path }}
+        run: |
+          if [[ ! -f "./cypress/test-results/failed-specs" ]]; then
+            echo "No failed-specs file found, skipping retry"
+            exit 1
+          fi
+
+          FAILED_SPECS=$(cat ./cypress/test-results/failed-specs)
+          echo "Retrying failed specs: $FAILED_SPECS"
+
+          # Use grep pattern if available for test-level filtering
+          GREP_ARG=""
+          if [[ -f "./cypress/test-results/failed-tests" ]]; then
+            FAILED_TESTS=$(cat ./cypress/test-results/failed-tests)
+            echo "Filtering to specific failed tests"
+            GREP_ARG="grep=$FAILED_TESTS,"
+          fi
+
+          # Clear previous test results so JUnit shows final state
+          rm -rf ./target/junit/*.xml
+
+          node e2e/runner/run_cypress_ci.js e2e \
+            --env "${GREP_ARG}grepTags=${{inputs.tags && format('{0}+-@skip', inputs.tags) || '-@skip'}}" \
+            --spec "$FAILED_SPECS"
+        continue-on-error: true
+
+      # Determine final test outcome (original or retry)
+      - name: Determine final outcome
+        id: final-outcome
+        if: always()
+        run: |
+          # For split tests
+          if [[ "${{ steps.split-e2e.outcome }}" == "failure" ]]; then
+            if [[ "${{ steps.retry-split-e2e.outcome }}" == "success" ]]; then
+              echo "split=success" >> $GITHUB_OUTPUT
+            else
+              echo "split=failure" >> $GITHUB_OUTPUT
+            fi
+          else
+            echo "split=${{ steps.split-e2e.outcome }}" >> $GITHUB_OUTPUT
+          fi
+
+          # For tagged tests
+          if [[ "${{ steps.tagged-e2e.outcome }}" == "failure" ]]; then
+            if [[ "${{ steps.retry-tagged-e2e.outcome }}" == "success" ]]; then
+              echo "tagged=success" >> $GITHUB_OUTPUT
+            else
+              echo "tagged=failure" >> $GITHUB_OUTPUT
+            fi
+          else
+            echo "tagged=${{ steps.tagged-e2e.outcome }}" >> $GITHUB_OUTPUT
+          fi
 
       - name: Upload Test Results
         uses: ./.github/actions/upload-test-results
@@ -171,12 +277,12 @@ jobs:
           # Related to Trunk uploader
           variant: e2e-tests
           trunk-api-token: ${{ secrets.TRUNK_API_TOKEN }}
-          previous-step-outcome: ${{ inputs.specs && steps.tagged-e2e.outcome || steps.split-e2e.outcome }}
+          previous-step-outcome: ${{ inputs.specs && steps.final-outcome.outputs.tagged || steps.final-outcome.outputs.split }}
 
       - name: Upload Cypress Artifacts upon failure
         uses: actions/upload-artifact@v4
         if: |
-          !cancelled() && (steps.split-e2e.outcome == 'failure' || steps.tagged-e2e.outcome == 'failure')
+          !cancelled() && (steps.final-outcome.outputs.split == 'failure' || steps.final-outcome.outputs.tagged == 'failure')
         with:
           name: cypress-recording-${{ inputs.name }}-${{ inputs.edition }}
           path: |
@@ -187,7 +293,7 @@ jobs:
       - name: Upload Failed Tests
         uses: actions/upload-artifact@v4
         if: |
-          !cancelled() && (steps.split-e2e.outcome == 'failure' || steps.tagged-e2e.outcome == 'failure')
+          !cancelled() && (steps.final-outcome.outputs.split == 'failure' || steps.final-outcome.outputs.tagged == 'failure')
         with:
           name: failed-tests-${{ inputs.name }}-${{ inputs.edition }}
           path: ./cypress/test-results
@@ -239,7 +345,7 @@ jobs:
           retention-days: 1 # gets merged immediately by parent workflow
 
       - name: Publish Summary
-        if: failure()
+        if: steps.final-outcome.outputs.split == 'failure' || steps.final-outcome.outputs.tagged == 'failure'
         uses: actions/github-script@v7
         with:
           script: | #js
