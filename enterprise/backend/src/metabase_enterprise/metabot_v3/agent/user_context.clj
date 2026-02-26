@@ -184,12 +184,23 @@
 
 ;;; Viewing Context Formatting
 
+(defn- format-chart-config-ids
+  "Format chart config IDs for a viewing context item.
+  Returns a string describing available chart config IDs, or nil if no chart configs are present."
+  [{:keys [id chart_configs]}]
+  (when (seq chart_configs)
+    (if (= 1 (count chart_configs))
+      (str id)
+      (str/join ", " (map-indexed (fn [idx _] (str id "-" idx)) chart_configs)))))
+
 ;; Format adhoc query (notebook editor) viewing context.
 (defmethod format-entity "adhoc"
   [item]
   (te/lines "The user is currently in the notebook editor viewing a query."
             (te/field "Query ID" (:id item))
             (te/field "Database ID" (get-in item [:query :database]))
+            (when-let [config-ids (format-chart-config-ids item)]
+              (te/field "Chart Config IDs (for analyze_chart tool)" config-ids))
             (te/field "Tables used" (some->> (:used_tables item)
                                              (map format-entity)
                                              te/lines))))
@@ -221,6 +232,8 @@
      (te/field "Current SQL query" (te/code sql-text "sql"))
      (te/field "Database SQL engine" (:sql_engine item))
      (te/field "Query error" (te/code (:error item)))
+     (when-let [config-ids (format-chart-config-ids item)]
+       (te/field "Chart Config IDs (for analyze_chart tool)" config-ids))
      (te/field "Tables used" (some->> (:used_tables item)
                                       (map format-entity)
                                       te/lines)))))
