@@ -145,6 +145,7 @@ export type NormalizedParameter = {
   name: string;
   slug: string;
   type: string;
+  position?: number;
   target?: ParameterTarget;
   options?: ParameterOptions;
   values_query_type?: ValuesQueryType;

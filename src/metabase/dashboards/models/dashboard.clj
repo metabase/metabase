@@ -69,7 +69,7 @@
   #{:last_viewed_at})
 
 (t2/deftransforms :model/Dashboard
-  {:parameters       parameters/transform-parameters
+  {:parameters       parameters/transform-dashboard-parameters
    :embedding_params mi/transform-json})
 
 (t2/define-before-delete :model/Dashboard

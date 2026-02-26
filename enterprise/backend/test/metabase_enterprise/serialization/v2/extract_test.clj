@@ -1296,6 +1296,7 @@
           (is (= [{:id                   "abc",
                    :type                 :category,
                    :name                 "CATEGORY",
+                   :position             0,
                    :values_source_type   :card
                    :values_source_config {:card_id card-eid-1,
                                           :value_field [:field ["My Database" nil "Schemaless Table" "A Field"] nil]}}]

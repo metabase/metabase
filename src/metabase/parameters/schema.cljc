@@ -105,16 +105,9 @@
   [:sequential [:ref ::parameter]])
 
 (mu/defn normalize-parameters :- ::parameters
-  "Normalize `parameters` when coming out of the application database or in via an API request.
-  Sorts by `:position` to ensure display order is preserved."
+  "Normalize `parameters` when coming out of the application database or in via an API request."
   [parameters]
-  (->> (lib/normalize ::parameters parameters)
-       (map-indexed (fn [idx p]
-                      (cond-> p
-                        (not (some? (:position p)))
-                        (assoc :position idx))))
-       (sort-by :position)
-       vec))
+  (lib/normalize ::parameters parameters))
 
 (mr/def ::parameter-with-optional-type
   [:merge
@@ -132,11 +125,30 @@
   [parameters]
   (lib/normalize ::parameters-with-optional-types parameters))
 
+(defn normalize-dashboard-parameters
+  "Like [[normalize-parameters]], but also backfills `:position` from array index when missing
+  and sorts by `:position`. This is specific to dashboard parameters where display order matters."
+  [parameters]
+  (->> (normalize-parameters parameters)
+       (map-indexed (fn [idx p]
+                      (cond-> p
+                        (not (some? (:position p)))
+                        (assoc :position idx))))
+       (sort-by :position)
+       vec))
+
 #?(:clj
    (def transform-parameters
      "Toucan 2 transform for columns that are sequences of Card/Dashboard parameters."
      {:in  (comp mi/json-in normalize-parameters)
       :out (comp (mi/catch-normalization-exceptions normalize-parameters) mi/json-out-with-keywordization)}))
+
+#?(:clj
+   (def transform-dashboard-parameters
+     "Toucan 2 transform for dashboard parameter columns. Like [[transform-parameters]] but also
+     backfills `:position` from array index and sorts by position to preserve display order."
+     {:in  (comp mi/json-in normalize-dashboard-parameters)
+      :out (comp (mi/catch-normalization-exceptions normalize-dashboard-parameters) mi/json-out-with-keywordization)}))
 
 (mr/def ::parameter-mapping
   "Schema for a valid Parameter Mapping"

@@ -1362,17 +1362,12 @@
 
 (defn import-parameters
   "Given the :parameter field as exported by serialization convert its field references
-  (`[db schema table field]`) back into raw IDs. Backfills `:position` from array index for
-  legacy exports that lack it."
+  (`[db schema table field]`) back into raw IDs."
   [parameters]
-  (map-indexed
-   (fn [idx param]
-     (cond-> (-> param
-                 mbql-fully-qualified-names->ids
-                 (m/update-existing-in [:values_source_config :card_id] *import-fk* 'Card))
-       (not (some? (:position param)))
-       (assoc :position idx)))
-   parameters))
+  (for [param parameters]
+    (-> param
+        mbql-fully-qualified-names->ids
+        (m/update-existing-in [:values_source_config :card_id] *import-fk* 'Card))))
 
 (defn parameters-deps
   "Given the :parameters (possibly nil) for an entity, return any embedded serdes-deps as a set.
