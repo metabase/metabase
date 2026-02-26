@@ -9,12 +9,21 @@
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]))
 
-(deftest ^:parallel upgrade-field-refs-in-query-noop-test
+(deftest ^:parallel upgrade-field-refs-in-query-source-table-noop-test
   (testing "should return the identical query when no refs are upgraded"
     (let [query (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
                     (lib/with-fields [(meta/field-metadata :orders :id)
                                       (meta/field-metadata :orders :total)
                                       (meta/field-metadata :orders :created-at)]))]
+      (is (= query
+             (lib-be/upgrade-field-refs-in-query query))))))
+
+(deftest ^:parallel upgrade-field-refs-in-query-source-card-noop-test
+  (testing "should return the identical query when card refs are already alias-based"
+    (let [base-query (lib/query meta/metadata-provider (meta/table-metadata :orders))
+          mp         (lib.tu/metadata-provider-with-card-from-query 1 base-query)
+          query      (as-> (lib/query mp (lib.metadata/card mp 1)) q
+                       (lib/with-fields q [(first (lib/fieldable-columns q))]))]
       (is (= query
              (lib-be/upgrade-field-refs-in-query query))))))
 
@@ -24,6 +33,21 @@
                     (lib/with-fields [(lib.options/ensure-uuid [:field {:base-type :type/BigInteger} "ID"])]))]
       (is (=? {:stages [{:source-table (meta/id :orders)
                          :fields       [[:field {} (meta/id :orders :id)]]}]}
+              (lib-be/upgrade-field-refs-in-query query))))))
+
+(deftest ^:parallel upgrade-field-refs-in-query-source-table-deduplicated-name-test
+  (testing "should convert a deduplicated name ref to an alias-based ref"
+    (let [query (as-> (lib/query meta/metadata-provider (meta/table-metadata :orders)) q
+                  (lib/join q (lib/join-clause (meta/table-metadata :orders)
+                                               [(lib/= (meta/field-metadata :orders :id)
+                                                       (meta/field-metadata :orders :id))]))
+                  (lib/breakout q (first (filter #(= "ID" (:name %))
+                                                 (lib/breakoutable-columns q))))
+                  (lib/breakout q (second (filter #(= "ID" (:name %))
+                                                  (lib/breakoutable-columns q))))
+                  (lib/append-stage q)
+                  (lib/filter q (lib/> (lib.options/ensure-uuid [:field {:base-type :type/BigInteger} "ID_2"]) 5)))]
+      (is (=? {:stages [{} {:filters [[:> {} [:field {} "Orders__ID"] 5]]}]}
               (lib-be/upgrade-field-refs-in-query query))))))
 
 (deftest ^:parallel upgrade-field-refs-in-query-source-table-multi-stage-test
