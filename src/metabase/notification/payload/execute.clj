@@ -146,20 +146,19 @@
   "Construct a purpose-built result map for the notification pipeline from a QP result.
   Only includes keys that downstream consumers actually need, preventing internal QP
   state (like :json_query containing :lib/metadata with DB credentials) from leaking
-  into notification templates."
+  into notification templates.
+
+  The :data sub-map is passed through as-is since it's produced by QP result reducers
+  and doesn't contain credentials. The security boundary is at the top level, where
+  :json_query contains :lib/metadata with DB connection details."
   [qp-result]
-  (let [data (:data qp-result)]
-    {:status                  (:status qp-result)
-     :row_count               (:row_count qp-result)
-     :database_id             (:database_id qp-result)
-     :error                   (:error qp-result)
-     :data                    {:cols             (:cols data)
-                               :rows             (:rows data)
-                               :viz-settings     (:viz-settings data)
-                               :results_metadata (:results_metadata data)
-                               :insights         (:insights data)}
-     :notification/truncated? (:notification/truncated? qp-result)
-     :data.rows-file-size     (:data.rows-file-size qp-result)}))
+  {:status                  (:status qp-result)
+   :row_count               (:row_count qp-result)
+   :database_id             (:database_id qp-result)
+   :error                   (:error qp-result)
+   :data                    (:data qp-result)
+   :notification/truncated? (:notification/truncated? qp-result)
+   :data.rows-file-size     (:data.rows-file-size qp-result)})
 
 (def cells-to-disk-threshold
   "Maximum cells (rows * columns) to hold in memory when running notification queries. After this, query results are
