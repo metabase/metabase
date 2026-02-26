@@ -1,7 +1,6 @@
 import { useMemo } from "react";
 import { match } from "ts-pattern";
 
-import { useProgressiveGroupsLoader } from "metabase/transforms/pages/TransformInspectPage/components/LensSections/DefaultLensSections/components/ComparisonLayout/useProgressiveGroupsLoader";
 import { SimpleGrid, Stack } from "metabase/ui";
 import type {
   InspectorCard,
@@ -12,6 +11,7 @@ import type {
 import { ScalarCard } from "../ScalarCard";
 import { VisualizationCard } from "../VisualizationCard";
 
+import { useProgressiveGroupsLoader } from "./useProgressiveGroupsLoader";
 import { groupCardsBySource, sortGroupsByScore } from "./utils";
 
 type ComparisonLayoutProps = {
