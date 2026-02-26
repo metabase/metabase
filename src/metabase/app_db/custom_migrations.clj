@@ -1854,3 +1854,18 @@
 
 (define-migration MoveExistingAtSymbolUserAttributes
   (reserve-at-symbol-user-attributes/migrate!))
+
+(define-migration BackfillParameterPositions
+  (doseq [table [:report_dashboard :report_card :action]]
+    (run! (fn [{:keys [id parameters]}]
+            (let [parsed  (json/decode parameters)
+                  updated (vec (map-indexed (fn [idx p] (assoc p "position" idx)) parsed))]
+              (when (not= parsed updated)
+                (t2/query-one {:update table
+                               :set    {:parameters (json/encode updated)}
+                               :where  [:= :id id]}))))
+          (t2/reducible-query {:select [:id :parameters]
+                               :from   [table]
+                               :where  [:and
+                                        [:not= :parameters nil]
+                                        [:not= :parameters "[]"]]}))))
