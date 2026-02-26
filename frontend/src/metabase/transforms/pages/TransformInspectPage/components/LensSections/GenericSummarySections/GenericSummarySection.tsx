@@ -134,13 +134,13 @@ export const GenericSummarySection = ({
   );
 };
 
-const getTableName = (
+function getTableName(
   tableId: ConcreteTableId | undefined,
   tables: Array<InspectorSource | InspectorTarget>,
-): string | undefined => {
+): string | undefined {
   if (!tableId) {
     return undefined;
   }
   const table = tables.find((table) => table.table_id === tableId);
   return table?.table_name;
-};
+}
