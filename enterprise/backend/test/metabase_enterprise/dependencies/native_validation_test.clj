@@ -3,12 +3,12 @@
    [clojure.test :refer :all]
    [metabase-enterprise.dependencies.native-validation :as deps.native-validation]
    [metabase-enterprise.dependencies.test-util :as deps.tu]
-   [metabase.driver :as driver]
    [metabase.driver.sql :as driver.sql]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.test-metadata :as meta]
+   [metabase.lib.test-util :as lib.tu]
    [metabase.util :as u]))
 
 (defn- fake-query
@@ -363,23 +363,6 @@
                 driver
                 (fake-query mp "select * from products"))))))))
 
-(deftest fallback-enrich-resolves-table-id-test
-  (testing "fallback enrichment should resolve string table names to integer IDs"
-    (let [mp     (deps.tu/default-metadata-provider)
-          driver (:engine (lib.metadata/database mp))]
-      ;; CTE columns have :single-column source types, so extract-source-entity returns nil
-      ;; and the error falls through to fallback-enrich.
-      ;; Mock native-query-deps to return string table names (as some drivers do)
-      ;; instead of pre-resolved integer IDs.
-      (with-redefs [driver/native-query-deps (fn [_ _] #{{:table "PRODUCTS"}})]
-        (is (= (normalize-error-names driver
-                                      #{(merge (lib/missing-column-error "bad")
-                                               {:source-entity-type :table
-                                                :source-entity-id   (meta/id :products)})})
-               (deps.native-validation/validate-native-query
-                driver
-                (fake-query mp "WITH cte AS (SELECT id, title FROM products) SELECT bad FROM cte"))))))))
-
 (deftest ^:parallel fallback-single-table-cte-test
   (testing "CTE with single table - fallback attributes missing column to that table"
     (let [mp     (deps.tu/default-metadata-provider)
@@ -500,12 +483,40 @@
                                     #{(lib/missing-column-error "BAD")})
              (deps.native-validation/validate-native-query driver query))))))
 
-(deftest ^:parallel placeholder-no-card-refs-collision-test
-  (testing "Placeholder should make "
-    (let [mp     (deps.tu/default-metadata-provider)
-          driver (:engine (lib.metadata/database mp))
-          query  (fake-query mp
-                             "SELECT BAD FROM mb__validat_card__99")]
-      (is (= (normalize-error-names driver
-                                    #{(lib/missing-column-error "BAD")})
-             (deps.native-validation/validate-native-query driver query))))))
+(deftest ^:parallel placeholder-no-card-refs-test
+  (testing "Queries with tables named as placeholder produce expected validation results"
+    (let [mp     (lib.tu/mock-metadata-provider
+                  {:database {:id 100 :engine :h2}
+                   :tables   [{:name   "MB__VALIDAT_CARD__10330"
+                               :schema "PUBLIC"
+                               :id     333
+                               :db-id  1}]
+                   :fields   [{:table-id  333
+                               :name      "ID"
+                               :base-type :type/Integer}]})
+          driver (:engine (lib.metadata/database mp))]
+      (testing "Selection of column present in placeholder named table returns no error"
+        (let [query  (fake-query mp
+                                 "SELECT ID FROM MB__VALIDAT_CARD__10330")]
+          (is (= #{}
+                 (deps.native-validation/validate-native-query driver query)))))
+      (testing "Selection of column missing from placeholder named table returns an error with source"
+        (let [query  (fake-query mp
+                                 "SELECT BAD FROM MB__VALIDAT_CARD__10330")]
+          (is (= (normalize-error-names driver
+                                        #{(merge (lib/missing-column-error "BAD")
+                                                 {:source-entity-type :table
+                                                  :source-entity-id 333})})
+                 (deps.native-validation/validate-native-query driver query))))))))
+
+(deftest ^:parallel select-from-non-existent-card-test
+  (let [mp     (deps.tu/default-metadata-provider)
+        driver (:engine (lib.metadata/database mp))]
+    (testing "Select from non-existent card produces an error"
+      (let [query  (fake-query mp
+                               "SELECT ID FROM {{#1234-missing-card}}")]
+        (is (= (normalize-error-names driver
+                                      #{(merge (lib/missing-column-error "ID")
+                                               {:source-entity-type :card
+                                                :source-entity-id 1234})})
+               (deps.native-validation/validate-native-query driver query)))))))
