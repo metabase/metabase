@@ -1,6 +1,6 @@
 import { t } from "ttag";
 
-import { PLUGIN_METABOT } from "metabase/plugins";
+import { useSetting } from "metabase/common/hooks";
 import { Card, Flex, Radio, Stack, Text } from "metabase/ui";
 
 import { UPSELL_CAMPAIGN_EXPERIENCE } from "../analytics";
@@ -16,7 +16,7 @@ export const SelectEmbedExperienceStep = () => {
     useSdkIframeEmbedSetupContext();
 
   const isGuestEmbed = !!settings.isGuest;
-  const isMetabotAvailable = PLUGIN_METABOT.isEnabled();
+  const isMetabotAvailable = !!useSetting("is-metabot-enabled");
 
   const handleEmbedExperienceChange = useHandleExperienceChange();
 

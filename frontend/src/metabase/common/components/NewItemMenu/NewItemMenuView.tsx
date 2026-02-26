@@ -3,6 +3,7 @@ import { useMemo } from "react";
 import { t } from "ttag";
 
 import { ForwardRefLink } from "metabase/common/components/Link";
+import { useSetting } from "metabase/common/hooks";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { PLUGIN_METABOT } from "metabase/plugins";
@@ -41,12 +42,15 @@ export const NewItemMenuView = ({
 
   const canWriteToCollections = useSelector(getUserCanWriteToCollections);
 
+  const isMetabotEnabled = !!useSetting("is-metabot-enabled");
+
   const menuItems = useMemo(() => {
     const items = [];
 
     const aiExplorationItem = PLUGIN_METABOT.getNewMenuItemAIExploration(
       hasDataAccess,
       collectionId,
+      isMetabotEnabled,
     );
     if (aiExplorationItem) {
       items.push(aiExplorationItem);
@@ -124,6 +128,7 @@ export const NewItemMenuView = ({
     hasDatabaseWithJsonEngine,
     dispatch,
     canWriteToCollections,
+    isMetabotEnabled,
   ]);
 
   if (menuItems.length === 0) {

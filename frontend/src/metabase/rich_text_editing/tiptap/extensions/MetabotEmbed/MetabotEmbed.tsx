@@ -11,6 +11,7 @@ import { memo, useEffect, useMemo, useRef, useState } from "react";
 import { useLatest } from "react-use";
 import { t } from "ttag";
 
+import { useSetting } from "metabase/common/hooks";
 import CS from "metabase/css/core/index.css";
 import { trackDocumentAskMetabot } from "metabase/documents/analytics";
 import {
@@ -152,7 +153,7 @@ export const MetabotComponent = memo(
     const [isLoading, setIsLoading] = useState(false);
     const [errorText, setErrorText] = useState("");
     const [queryMetabot] = PLUGIN_METABOT.useLazyMetabotGenerateContentQuery();
-    const isMetabotEnabled = PLUGIN_METABOT.isEnabled();
+    const isMetabotEnabled = useSetting("is-metabot-enabled");
 
     const handleRunMetabot = async () => {
       const serializePrompt =

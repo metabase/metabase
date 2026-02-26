@@ -1,12 +1,18 @@
 import { t } from "ttag";
 
 import { ToolbarButton } from "metabase/common/components/ToolbarButton";
+import { useSetting } from "metabase/common/hooks";
 import { useMetabotAgent } from "metabase-enterprise/metabot/hooks";
 
 import { trackExplainChartClicked } from "../analytics";
 
 export const AIQuestionAnalysisButton = () => {
+  const isMetabotEnabled = useSetting("is-metabot-enabled");
   const { submitInput } = useMetabotAgent("omnibot");
+
+  if (!isMetabotEnabled) {
+    return null;
+  }
 
   const handleClick = () => {
     trackExplainChartClicked();

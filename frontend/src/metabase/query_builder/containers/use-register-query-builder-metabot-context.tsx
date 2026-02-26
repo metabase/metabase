@@ -1,8 +1,9 @@
 import dayjs from "dayjs";
 import { match } from "ts-pattern";
 
+import { useSetting } from "metabase/common/hooks";
 import { useRegisterMetabotContextProvider } from "metabase/metabot";
-import { PLUGIN_AI_ENTITY_ANALYSIS, PLUGIN_METABOT } from "metabase/plugins";
+import { PLUGIN_AI_ENTITY_ANALYSIS } from "metabase/plugins";
 import {
   getChartImagePngDataUri,
   getChartSelector,
@@ -207,14 +208,16 @@ export const registerQueryBuilderMetabotContextFn = async ({
   visualizationSettings,
   timelineEvents,
   queryResult,
+  isMetabotEnabled,
 }: {
   question: Question | undefined;
   series: RawSeries;
   visualizationSettings: ComputedVisualizationSettings | undefined;
   timelineEvents: TimelineEvent[];
   queryResult: any;
+  isMetabotEnabled: boolean;
 }) => {
-  if (!PLUGIN_METABOT.isEnabled()) {
+  if (!isMetabotEnabled) {
     return {};
   }
   if (!question) {
@@ -252,19 +255,25 @@ export const registerQueryBuilderMetabotContextFn = async ({
 };
 
 export const useRegisterQueryBuilderMetabotContext = () => {
-  useRegisterMetabotContextProvider(async (state) => {
-    const question = getQuestion(state);
-    const series = getTransformedSeries(state);
-    const visualizationSettings = getVisualizationSettings(state);
-    const timelineEvents = getVisibleTimelineEvents(state);
-    const queryResult = getFirstQueryResult(state);
+  const isMetabotEnabled = !!useSetting("is-metabot-enabled");
 
-    return registerQueryBuilderMetabotContextFn({
-      question,
-      series,
-      visualizationSettings,
-      timelineEvents,
-      queryResult,
-    });
-  }, []);
+  useRegisterMetabotContextProvider(
+    async (state) => {
+      const question = getQuestion(state);
+      const series = getTransformedSeries(state);
+      const visualizationSettings = getVisualizationSettings(state);
+      const timelineEvents = getVisibleTimelineEvents(state);
+      const queryResult = getFirstQueryResult(state);
+
+      return registerQueryBuilderMetabotContextFn({
+        question,
+        series,
+        visualizationSettings,
+        timelineEvents,
+        queryResult,
+        isMetabotEnabled,
+      });
+    },
+    [isMetabotEnabled],
+  );
 };

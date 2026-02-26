@@ -11,6 +11,7 @@ import {
 } from "react";
 import { t } from "ttag";
 
+import { useSetting } from "metabase/common/hooks";
 import {
   CreateNewQuestionFooter,
   MenuItemComponent,
@@ -101,6 +102,7 @@ export const CommandSuggestion = forwardRef<
   CommandSuggestionProps
 >(function CommandSuggestionComponent({ command, editor, query }, ref) {
   const document = useSelector(getCurrentDocument);
+  const isMetabotEnabled = !!useSetting("is-metabot-enabled");
   const [selectedIndex, setSelectedIndex] = useState(0);
 
   const [viewMode, setViewMode] = useState<SuggestionPickerViewMode>(null);
@@ -111,8 +113,8 @@ export const CommandSuggestion = forwardRef<
   const itemRefs = useRef<(HTMLButtonElement | null)[]>([]);
 
   const allCommandSections: CommandSection[] = useMemo(
-    getAllCommandSections,
-    [],
+    () => getAllCommandSections(isMetabotEnabled),
+    [isMetabotEnabled],
   );
 
   const allCommandOptions = useMemo(

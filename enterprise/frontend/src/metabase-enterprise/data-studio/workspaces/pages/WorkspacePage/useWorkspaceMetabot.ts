@@ -3,10 +3,10 @@ import { push } from "react-router-redux";
 import { t } from "ttag";
 
 import { useLazyGetTransformQuery } from "metabase/api";
+import { useSetting } from "metabase/common/hooks";
 import { useDispatch } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { useRegisterMetabotContextProvider } from "metabase/metabot";
-import { PLUGIN_METABOT } from "metabase/plugins";
 import { getIsWorkspace } from "metabase/selectors/routing";
 import { METABOT_PROFILE_OVERRIDES } from "metabase-enterprise/metabot/constants";
 import type {
@@ -98,7 +98,7 @@ export function useWorkspaceMetabot({
     patchEditedTransform,
   } = useWorkspace();
 
-  const isMetabotAvailable = PLUGIN_METABOT.isEnabled();
+  const isMetabotAvailable = !!useSetting("is-metabot-enabled");
   const { navigateToPath, setNavigateToPath } = useMetabotReactions();
   const {
     resetConversation: resetMetabotConversation,
