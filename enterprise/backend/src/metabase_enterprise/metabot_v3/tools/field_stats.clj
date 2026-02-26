@@ -4,6 +4,7 @@
    [metabase-enterprise.metabot-v3.tools.util :as metabot-v3.tools.u]
    [metabase.lib.core :as lib]
    [metabase.parameters.field-values :as params.field-values]
+   [metabase.request.core :as request]
    [metabase.sync.core :as sync]
    [toucan2.core :as t2]))
 
@@ -18,7 +19,8 @@
 
 (defn- get-or-create-fingerprint! [{:keys [id fingerprint] :as field}]
   (or fingerprint
-      (and (pos? (:updated-fingerprints (sync/refingerprint-field! field)))
+      ;; Run with admin perms to match behavior during normal sync.
+      (and (pos? (:updated-fingerprints (request/as-admin (sync/refingerprint-field! field))))
            (t2/select-one-fn :fingerprint :model/Field :id id))))
 
 (defn- field-statistics

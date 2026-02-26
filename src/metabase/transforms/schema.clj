@@ -1,6 +1,6 @@
 (ns metabase.transforms.schema
   (:require
-   [metabase.lib.metadata.column :as lib.metadata.column]
+   [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.queries.schema :as queries.schema]
    [metabase.transforms.interface :as transforms.i]
@@ -27,7 +27,7 @@
    [:checkpoint-filter {:optional true} :string]
    ;; for mbql and python
    [:checkpoint-filter-unique-key {:optional true}
-    ::lib.metadata.column/column-unique-key]])
+    ::lib.schema/column-unique-key]])
 
 (mr/def ::source-incremental-strategy
   [:multi {:dispatch :type}

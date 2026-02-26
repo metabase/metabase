@@ -52,11 +52,7 @@ describe("browse > models", () => {
       cy.stub(win, "open").as("open");
     });
     cy.visit("/browse/models");
-    const macOSX = Cypress.platform === "darwin";
-    cy.findByRole("heading", { name: "Orders Model" }).click({
-      metaKey: macOSX,
-      ctrlKey: !macOSX,
-    });
+    cy.findByRole("heading", { name: "Orders Model" }).click(H.holdMetaKey);
 
     cy.get("@open").should("have.been.calledOnce");
     cy.get("@open").should(

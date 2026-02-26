@@ -1,6 +1,9 @@
 import { createMockMetadata } from "__support__/metadata";
 import * as Lib from "metabase-lib";
-import { columnFinder, createQuery } from "metabase-lib/test-helpers";
+import {
+  columnFinder,
+  createMetadataProvider,
+} from "metabase-lib/test-helpers";
 import {
   createMockDatabase,
   createMockField,
@@ -69,16 +72,18 @@ const DATABASE = createMockDatabase({
   tables: [TABLE],
 });
 
-const QUERY = createQuery({
+const METADATA = createMockMetadata({ databases: [DATABASE] });
+const PROVIDER = createMetadataProvider({
+  metadata: METADATA,
   databaseId: DATABASE.id,
-  metadata: createMockMetadata({ databases: [DATABASE] }),
-  query: {
-    database: DATABASE.id,
-    type: "query",
-    query: {
-      "source-table": TABLE.id,
+});
+
+const QUERY = Lib.createTestQuery(PROVIDER, {
+  stages: [
+    {
+      source: { type: "table", id: TABLE.id },
     },
-  },
+  ],
 });
 
 function getColumn(name: string) {
