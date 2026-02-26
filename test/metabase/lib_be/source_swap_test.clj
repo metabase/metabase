@@ -280,7 +280,22 @@
   (let [query  (lib/query meta/metadata-provider (meta/table-metadata :orders))
         target [:dimension [:field (meta/id :orders :created-at) nil] {:stage-number 0}]]
     (testing "should swap the field id to the new table's field id"
-      (is (= [:dimension [:field (meta/id :products :created-at) {:base-type :type/DateTimeWithLocalTZ}] {:stage-number 0}]
+      (is (= [:dimension
+              [:field (meta/id :products :created-at) {:base-type :type/DateTimeWithLocalTZ}]
+              {:stage-number 0}]
              (lib-be/swap-source-in-parameter-target query target
                                                      {:type :table, :id (meta/id :orders)}
                                                      {:type :table, :id (meta/id :products)}))))))
+
+(deftest ^:parallel swap-source-in-parameter-target-implicit-join-test
+  (let [query  (lib/query meta/metadata-provider (meta/table-metadata :orders))
+        target [:dimension
+                [:field (meta/id :products :category) {:source-field (meta/id :orders :product-id)}]
+                {:stage-number 0}]]
+    (testing "should swap the source-field to the new table's FK field"
+      (is (=? [:dimension
+               [:field (meta/id :products :category) {:source-field (meta/id :reviews :product-id)}]
+               {:stage-number 0}]
+              (lib-be/swap-source-in-parameter-target query target
+                                                      {:type :table, :id (meta/id :orders)}
+                                                      {:type :table, :id (meta/id :reviews)}))))))
