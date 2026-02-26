@@ -135,10 +135,26 @@ function handleClick(
   }
 
   const rowIndex = sliceTreeNode.rowIndex;
+  const row = rowIndex != null ? dataProp.rows[rowIndex] : undefined;
+
+  // the underlying records filter doesn't support objects, so return early if any of the dimension values are objects
+  if (
+    row &&
+    [
+      chartModel.colDescs.dimensionDesc.index,
+      chartModel.colDescs.middleDimensionDesc?.index,
+      chartModel.colDescs.outerDimensionDesc?.index,
+    ]
+      .filter((index) => index != null)
+      .map((index) => row[index])
+      .some((value) => value != null && typeof value === "object")
+  ) {
+    return;
+  }
 
   const data =
-    rowIndex != null
-      ? dataProp.rows[rowIndex].map((value, index) => ({
+    row != null
+      ? row.map((value, index) => ({
           value,
           col: dataProp.cols[index],
         }))
