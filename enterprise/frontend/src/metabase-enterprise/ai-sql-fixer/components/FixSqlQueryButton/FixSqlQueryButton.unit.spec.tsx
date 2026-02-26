@@ -35,6 +35,8 @@ describe("FixSqlQueryButton", () => {
       screen.getByRole("button", { name: /Have Metabot fix it/ }),
     );
 
-    expect(mockSubmitInput).toHaveBeenCalledWith("Fix this SQL query");
+    expect(mockSubmitInput).toHaveBeenCalledWith("Fix this SQL query", {
+      profile: "sql",
+    });
   });
 });

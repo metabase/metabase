@@ -1,5 +1,5 @@
 import type { EditorView } from "@codemirror/view";
-import { EditorView as EV, keymap } from "@codemirror/view";
+import { EditorView as EV, ViewPlugin, keymap } from "@codemirror/view";
 import type { Extension } from "@uiw/react-codemirror";
 import {
   useCallback,
@@ -16,9 +16,14 @@ import { useHasTokenFeature, useSetting } from "metabase/common/hooks";
 import { useDebouncedValue } from "metabase/common/hooks/use-debounced-value";
 import { useRegisterMetabotContextProvider } from "metabase/metabot/context";
 import { PLUGIN_METABOT } from "metabase/plugins";
+import { useRegisterSqlFixerInlineContextProvider } from "metabase/query_builder/components/view/View/ViewMainContainer/SqlFixerInlinePromptContext";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
-import type { DatabaseId, DatasetQuery } from "metabase-types/api";
+import type {
+  DatabaseId,
+  DatasetQuery,
+  GenerateSqlResponse,
+} from "metabase-types/api";
 
 import { MetabotInlineSQLPrompt } from "./MetabotInlineSQLPrompt";
 import {
@@ -72,6 +77,7 @@ export function useInlineSQLPrompt(
 
   const [hasEverBeenOpened, setHasEverBeenOpened] = useState(false);
 
+  const [editorView, setEditorView] = useState<EditorView | null>(null);
   const [portalTarget, setPortalTarget] = useState<PortalTarget | null>(null);
   const [promptValue, setPromptValue] = useState("");
   const [selectedTables, setSelectedTables] = useState<SelectedTable[]>([]);
@@ -91,7 +97,7 @@ export function useInlineSQLPrompt(
   );
 
   useRegisterCodeEditorMetabotContext(
-    portalTarget?.view,
+    editorView ?? undefined,
     question.databaseId(),
     bufferId,
   );
@@ -113,6 +119,13 @@ export function useInlineSQLPrompt(
     });
   }, [sourceSqlTables]);
 
+  const onGenerated = useCallback((res: GenerateSqlResponse | undefined) => {
+    if (res) {
+      setSelectedTables(res.referenced_entities as unknown as SelectedTable[]);
+    }
+    setPromptValue("");
+  }, []);
+
   const {
     source: generatedSource,
     isLoading,
@@ -126,19 +139,12 @@ export function useInlineSQLPrompt(
   } = PLUGIN_METABOT.useMetabotSQLSuggestion({
     databaseId,
     bufferId,
-    onGenerated: (res) => {
-      if (res) {
-        setSelectedTables(
-          res.referenced_entities as unknown as SelectedTable[],
-        );
-      }
-      setPromptValue("");
-    },
+    onGenerated,
   });
 
   const getSourceSql = useCallback(() => {
-    return portalTarget?.view.state.doc.toString() ?? "";
-  }, [portalTarget?.view]);
+    return editorView?.state.doc.toString() ?? "";
+  }, [editorView]);
 
   const prevDatabaseIdRef = useRef(databaseId);
   useEffect(() => {
@@ -203,6 +209,44 @@ export function useInlineSQLPrompt(
     resetInputRef.current = resetInput;
   }, [resetInput]);
 
+  useRegisterSqlFixerInlineContextProvider(
+    (prompt: string) => {
+      if (!editorView) {
+        // TODO
+        return Promise.reject("Editor view not found");
+      }
+
+      if (generatedSqlRef.current) {
+        resetInputRef.current();
+      }
+
+      setHasEverBeenOpened(true);
+      setPromptValue(prompt);
+
+      const cursorPos = editorView.state.doc.length;
+      if (!portalTarget) {
+        editorView.dispatch({
+          selection: { anchor: cursorPos },
+          effects: toggleEffect.of({ view: editorView }),
+        });
+      } else {
+        editorView.dispatch({ selection: { anchor: cursorPos } });
+      }
+
+      const referencedEntities = selectedTables.map((table) => ({
+        model: "table" as const,
+        id: table.id,
+      }));
+
+      return generate({
+        prompt,
+        sourceSql: getSourceSql(),
+        referencedEntities,
+      });
+    },
+    [getSourceSql, editorView, generate, portalTarget, selectedTables],
+  );
+
   const proposedQuestion = useMemo(
     () =>
       generatedSource
@@ -227,6 +271,16 @@ export function useInlineSQLPrompt(
       llmSqlGenerationEnabled
         ? [
             createPromptInputExtension(setPortalTarget),
+            ViewPlugin.define((view) => {
+              setEditorView(view);
+              return {
+                destroy() {
+                  setEditorView((current) =>
+                    current === view ? null : current,
+                  );
+                },
+              };
+            }),
             keymap.of([
               {
                 key: `Mod-Shift-i`,
