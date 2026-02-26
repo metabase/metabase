@@ -1,15 +1,30 @@
 import type { Row, RowSelectionState } from "@tanstack/react-table";
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { t } from "ttag";
 
-import { useGetCardQuery, useSearchQuery } from "metabase/api";
+import {
+  useGetCardQuery,
+  useSearchQuery,
+  useUpdateCardMutation,
+} from "metabase/api";
+import { useListTransformTagsQuery } from "metabase/api/transform-tag";
+import { getTrashUndoMessage } from "metabase/archive/utils";
 import { Ellipsified } from "metabase/common/components/Ellipsified";
 import { ForwardRefLink } from "metabase/common/components/Link";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
+import type {
+  EntityPickerOptions,
+  OmniPickerItem,
+  OmniPickerValue,
+} from "metabase/common/components/Pickers";
+import { CollectionPickerModal } from "metabase/common/components/Pickers/CollectionPicker";
+import { useToast } from "metabase/common/hooks";
 import { DataStudioBreadcrumbs } from "metabase/data-studio/common/components/DataStudioBreadcrumbs";
 import { PageContainer } from "metabase/data-studio/common/components/PageContainer/PageContainer";
 import { PaneHeader } from "metabase/data-studio/common/components/PaneHeader";
 import * as Urls from "metabase/lib/urls";
+import StatusLarge from "metabase/status/components/StatusLarge/StatusLarge";
+import { TagMultiSelect } from "metabase/transforms/components/TagMultiSelect";
 import type { TreeTableColumnDef } from "metabase/ui";
 import {
   Box,
@@ -19,13 +34,21 @@ import {
   Flex,
   Group,
   Icon,
+  Modal,
   ScrollArea,
+  Select,
   Stack,
+  Switch,
   Text,
   TreeTable,
   useTreeTableInstance,
 } from "metabase/ui";
-import type { CardId, SearchResult } from "metabase-types/api";
+import type {
+  CardId,
+  DatabaseId,
+  SearchResult,
+  TransformTagId,
+} from "metabase-types/api";
 
 import S from "./ModelsPage.module.css";
 import type { ModelsTreeNode } from "./types";
@@ -39,10 +62,55 @@ const TYPE_ICONS = {
 const NAV_COLUMN = { flex: "6 1 0", min: 800, max: "100%" } as const;
 const DETAIL_COLUMN = { flex: "4 1 0", min: 400, max: "100%" } as const;
 
+interface SelectedDatabase {
+  id: DatabaseId;
+  name: string;
+}
+
 function getSelectedModelCount(rowSelection: RowSelectionState): number {
   return Object.entries(rowSelection).filter(
     ([key, selected]) => selected && key.startsWith("model:"),
   ).length;
+}
+
+function getSelectedModelIds(rowSelection: RowSelectionState): CardId[] {
+  return Object.entries(rowSelection)
+    .filter(([key, selected]) => selected && key.startsWith("model:"))
+    .map(([key]) => Number(key.replace("model:", "")) as CardId);
+}
+
+function getSelectedModelNames(
+  nodes: ModelsTreeNode[],
+  selection: RowSelectionState,
+): string[] {
+  const names: string[] = [];
+  for (const node of nodes) {
+    if (node.type === "model" && selection[node.id]) {
+      names.push(node.name);
+    }
+    if (node.children) {
+      names.push(...getSelectedModelNames(node.children, selection));
+    }
+  }
+  return names;
+}
+
+function getSelectedModelDatabases(
+  models: SearchResult<number, "dataset">[],
+  selection: RowSelectionState,
+): SelectedDatabase[] {
+  const dbMap = new Map<DatabaseId, string>();
+  for (const model of models) {
+    if (selection[`model:${model.id}`]) {
+      if (model.database_name) {
+        // Prefer actual names if any selected model has one.
+        dbMap.set(model.database_id, model.database_name);
+      } else if (!dbMap.has(model.database_id)) {
+        dbMap.set(model.database_id, t`Unknown database`);
+      }
+    }
+  }
+  return Array.from(dbMap.entries()).map(([id, name]) => ({ id, name }));
 }
 
 function useColumns(): TreeTableColumnDef<ModelsTreeNode>[] {
@@ -90,6 +158,14 @@ function useColumns(): TreeTableColumnDef<ModelsTreeNode>[] {
 export function ModelsPage() {
   const [selectedModelId, setSelectedModelId] = useState<CardId | null>(null);
   const [rowSelection, setRowSelection] = useState<RowSelectionState>({});
+  const [showConfirmModal, setShowConfirmModal] = useState(false);
+  const [conversionJob, setConversionJob] = useState<{
+    modelNames: string[];
+    duration: number;
+  } | null>(null);
+
+  const [updateCard] = useUpdateCardMutation();
+  const [sendToast] = useToast();
 
   const {
     data: searchData,
@@ -111,6 +187,11 @@ export function ModelsPage() {
   const selectedModelCount = getSelectedModelCount(rowSelection);
   const hasCheckedModels = selectedModelCount > 0;
 
+  const selectedDatabases = useMemo(
+    () => getSelectedModelDatabases(models ?? [], rowSelection),
+    [models, rowSelection],
+  );
+
   const selectedRowId = useMemo(
     () =>
       !hasCheckedModels && selectedModelId != null
@@ -131,6 +212,60 @@ export function ModelsPage() {
     }
   }, []);
 
+  const handleConfirmConvert = useCallback(() => {
+    const modelNames = getSelectedModelNames(treeData, rowSelection);
+    setShowConfirmModal(false);
+    setConversionJob({
+      modelNames,
+      duration: Math.random() * 7000 + 3000,
+    });
+  }, [treeData, rowSelection]);
+
+  const handleMoveToTrash = useCallback(async () => {
+    const ids = getSelectedModelIds(rowSelection);
+    const names = getSelectedModelNames(treeData, rowSelection);
+    const count = ids.length;
+
+    await Promise.all(
+      ids.map((id) => updateCard({ id, archived: true }).unwrap()),
+    );
+    setRowSelection({});
+
+    const message =
+      count === 1
+        ? getTrashUndoMessage(names[0], true)
+        : t`${count} models have been moved to the trash.`;
+
+    sendToast({
+      message,
+      icon: "check",
+      action: async () => {
+        await Promise.all(
+          ids.map((id) => updateCard({ id, archived: false }).unwrap()),
+        );
+        sendToast({
+          message:
+            count === 1
+              ? getTrashUndoMessage(names[0], false)
+              : t`${count} models have been restored.`,
+          icon: "check",
+        });
+      },
+    });
+  }, [rowSelection, treeData, updateCard, sendToast]);
+
+  // Not memoized intentionally: changing the function reference forces
+  // memo'd TreeTableRowContent to re-render when selection changes.
+  const getSelectionState = (row: Row<ModelsTreeNode>) => {
+    if (row.getIsSelected()) {
+      return "all" as const;
+    }
+    if (row.getIsSomeSelected()) {
+      return "some" as const;
+    }
+    return "none" as const;
+  };
+
   const instance = useTreeTableInstance({
     data: treeData,
     columns,
@@ -148,71 +283,95 @@ export function ModelsPage() {
   });
 
   return (
-    <Flex
-      bg="background-secondary"
-      data-testid="models-page"
-      h="100%"
-      style={{ overflow: "auto" }}
-    >
-      <PageContainer
-        maw={NAV_COLUMN.max}
-        miw={NAV_COLUMN.min}
-        flex={NAV_COLUMN.flex}
-        className={S.column}
-        gap={0}
+    <>
+      <Flex
+        bg="background-secondary"
+        data-testid="models-page"
+        h="100%"
+        style={{ overflow: "auto" }}
       >
-        <PaneHeader
-          breadcrumbs={
-            <DataStudioBreadcrumbs>{t`Models`}</DataStudioBreadcrumbs>
-          }
-        />
-        <Stack mih={0} flex="0 1 auto" style={{ overflow: "hidden" }}>
-          <Box
-            mih={0}
-            flex="0 1 auto"
-            display="flex"
-            className={S.treeContainer}
-          >
-            <Card withBorder p={0} flex={1} mih={0} display="flex">
-              <LoadingAndErrorWrapper error={error} loading={isLoading}>
-                <TreeTable
-                  instance={instance}
-                  showCheckboxes
-                  onRowClick={handleRowClick}
-                  ariaLabel={t`Models`}
-                  emptyState={t`No models found`}
-                />
-              </LoadingAndErrorWrapper>
-            </Card>
-          </Box>
-        </Stack>
-      </PageContainer>
+        <PageContainer
+          maw={NAV_COLUMN.max}
+          miw={NAV_COLUMN.min}
+          flex={NAV_COLUMN.flex}
+          className={S.column}
+          gap={0}
+        >
+          <PaneHeader
+            breadcrumbs={
+              <DataStudioBreadcrumbs>{t`Models`}</DataStudioBreadcrumbs>
+            }
+          />
+          <Stack mih={0} flex="0 1 auto" style={{ overflow: "hidden" }}>
+            <Box
+              mih={0}
+              flex="0 1 auto"
+              display="flex"
+              className={S.treeContainer}
+            >
+              <Card withBorder p={0} flex={1} mih={0} display="flex">
+                <LoadingAndErrorWrapper error={error} loading={isLoading}>
+                  <TreeTable
+                    instance={instance}
+                    showCheckboxes
+                    getSelectionState={getSelectionState}
+                    onRowClick={handleRowClick}
+                    ariaLabel={t`Models`}
+                    emptyState={t`No models found`}
+                  />
+                </LoadingAndErrorWrapper>
+              </Card>
+            </Box>
+          </Stack>
+        </PageContainer>
 
-      {hasCheckedModels && (
-        <ModelBulkActionsPanel
-          selectedCount={selectedModelCount}
-          onClose={() => setRowSelection({})}
+        {hasCheckedModels && (
+          <ModelBulkActionsPanel
+            selectedCount={selectedModelCount}
+            onClose={() => setRowSelection({})}
+            onConvertToTransform={() => setShowConfirmModal(true)}
+            onMoveToTrash={handleMoveToTrash}
+          />
+        )}
+
+        {!hasCheckedModels && selectedModelId != null && (
+          <ModelDetailPanel
+            modelId={selectedModelId}
+            onClose={() => setSelectedModelId(null)}
+          />
+        )}
+      </Flex>
+
+      <ConvertToTransformModal
+        opened={showConfirmModal}
+        databases={selectedDatabases}
+        onClose={() => setShowConfirmModal(false)}
+        onConfirm={handleConfirmConvert}
+      />
+
+      {conversionJob && (
+        <ConversionStatusIndicator
+          modelNames={conversionJob.modelNames}
+          duration={conversionJob.duration}
+          onDismiss={() => setConversionJob(null)}
         />
       )}
-
-      {!hasCheckedModels && selectedModelId != null && (
-        <ModelDetailPanel
-          modelId={selectedModelId}
-          onClose={() => setSelectedModelId(null)}
-        />
-      )}
-    </Flex>
+    </>
   );
 }
 
 interface ModelBulkActionsPanelProps {
   selectedCount: number;
   onClose: () => void;
+  onConvertToTransform: () => void;
+  onMoveToTrash: () => void;
 }
 
 function ModelBulkActionsPanel({
   selectedCount,
   onClose,
+  onConvertToTransform,
+  onMoveToTrash,
 }: ModelBulkActionsPanelProps) {
   return (
     <Stack
@@ -253,6 +412,7 @@ function ModelBulkActionsPanel({
               variant="default"
               fullWidth
               justify="flex-start"
+              onClick={onConvertToTransform}
             >
               {t`Convert to a transform`}
             </Button>
@@ -264,6 +424,24 @@ function ModelBulkActionsPanel({
             >
               {t`Convert to a view`}
             </Button>
+            <Button
+              leftSection={<Icon name="refresh" />}
+              variant="default"
+              fullWidth
+              justify="flex-start"
+            >
+              {t`Replace`}
+            </Button>
+            <Button
+              leftSection={<Icon name="trash" />}
+              variant="default"
+              fullWidth
+              justify="flex-start"
+              color="danger"
+              onClick={onMoveToTrash}
+            >
+              {t`Move to Trash`}
+            </Button>
           </Stack>
         </Stack>
       </ScrollArea>
@@ -274,6 +452,239 @@ function ModelBulkActionsPanel({
 interface ModelDetailPanelProps {
   modelId: CardId;
   onClose: () => void;
+}
+
+const DISMISS_DELAY = 6000;
+
+interface ConversionStatusIndicatorProps {
+  modelNames: string[];
+  duration: number;
+  onDismiss: () => void;
+}
+
+function ConversionStatusIndicator({
+  modelNames,
+  duration,
+  onDismiss,
+}: ConversionStatusIndicatorProps) {
+  const [isComplete, setIsComplete] = useState(false);
+
+  useEffect(() => {
+    const timeout = setTimeout(() => setIsComplete(true), duration);
+    return () => clearTimeout(timeout);
+  }, [duration]);
+
+  useEffect(() => {
+    if (isComplete) {
+      const timeout = setTimeout(onDismiss, DISMISS_DELAY);
+      return () => clearTimeout(timeout);
+    }
+  }, [isComplete, onDismiss]);
+
+  return (
+    <Box pos="fixed" style={{ bottom: "1.5rem", right: "1.5rem", zIndex: 2 }}>
+      <StatusLarge
+        status={{
+          title: isComplete ? t`Done!` : t`Converting models…`,
+          items: modelNames.map((name, index) => ({
+            id: index,
+            title: name,
+            icon: "model",
+            description: isComplete
+              ? t`Converted to transform`
+              : t`Converting…`,
+            isInProgress: !isComplete,
+            isCompleted: isComplete,
+            isAborted: false,
+          })),
+        }}
+        isActive={!isComplete}
+        onDismiss={onDismiss}
+      />
+    </Box>
+  );
+}
+
+const TRANSFORM_COLLECTION_PICKER_OPTIONS: EntityPickerOptions = {
+  hasSearch: false,
+  hasRecents: false,
+  hasLibrary: false,
+  hasRootCollection: true,
+  hasPersonalCollections: false,
+  hasConfirmButtons: true,
+  canCreateCollections: true,
+};
+
+interface ConvertToTransformModalProps {
+  opened: boolean;
+  databases: SelectedDatabase[];
+  onClose: () => void;
+  onConfirm: () => void;
+}
+
+function ConvertToTransformModal({
+  opened,
+  databases,
+  onClose,
+  onConfirm,
+}: ConvertToTransformModalProps) {
+  const [collectionName, setCollectionName] = useState(t`Converted models`);
+  const [showPicker, setShowPicker] = useState(false);
+  const [tagIds, setTagIds] = useState<TransformTagId[]>([]);
+  const [tagIdsInitialized, setTagIdsInitialized] = useState(false);
+  const [publishToLibrary, setPublishToLibrary] = useState(true);
+  const [outputToExistingTables, setOutputToExistingTables] = useState(true);
+  const [autoPickJobTags, setAutoPickJobTags] = useState(true);
+  const [updateDependents, setUpdateDependents] = useState(true);
+
+  const { data: tags = [] } = useListTransformTagsQuery();
+
+  useEffect(() => {
+    if (tags.length > 0 && !tagIdsInitialized) {
+      setTagIdsInitialized(true);
+      const dailyTag = tags.find((tag) => tag.name === "daily");
+      if (dailyTag) {
+        setTagIds([dailyTag.id]);
+      }
+    }
+  }, [tags, tagIdsInitialized]);
+
+  const pickerValue: OmniPickerValue = useMemo(
+    () => ({
+      id: "root",
+      model: "collection",
+      namespace: "transforms",
+    }),
+    [],
+  );
+
+  const handlePickerChange = useCallback((item: OmniPickerItem) => {
+    setCollectionName(item.name ?? t`Converted models`);
+    setShowPicker(false);
+  }, []);
+
+  return (
+    <>
+      <Modal
+        opened={opened}
+        onClose={onClose}
+        title={t`Convert these models to transforms?`}
+        size="lg"
+      >
+        <Stack gap="lg" mt="md">
+          <Text>
+            {t`We'll create a transform based on each model, with the same name.`}
+          </Text>
+
+          <Stack gap="xs">
+            <Text fw="bold" fz="md">
+              {t`Save new transforms here`}
+            </Text>
+            <Button
+              variant="default"
+              fullWidth
+              justify="flex-start"
+              leftSection={<Icon name="folder" />}
+              onClick={() => setShowPicker(true)}
+            >
+              {collectionName}
+            </Button>
+          </Stack>
+
+          <Stack gap="md">
+            <Switch
+              size="sm"
+              label={t`Output transforms to existing tables`}
+              description={t`By default, transforms will continue to output to the same table the persisted model did.`}
+              checked={outputToExistingTables}
+              onChange={(event) =>
+                setOutputToExistingTables(event.currentTarget.checked)
+              }
+            />
+            {!outputToExistingTables &&
+              databases.map((db) => (
+                <Select
+                  key={db.id}
+                  label={t`Target for tables based on ${db.name}`}
+                  placeholder={t`Pick a schema`}
+                  data={[]}
+                />
+              ))}
+          </Stack>
+
+          <Stack gap="xs">
+            <Switch
+              size="sm"
+              label={t`Auto-select job tags for new transforms`}
+              description={t`Transforms will be run via scheduled jobs based on the tags that they have.`}
+              checked={autoPickJobTags}
+              onChange={(event) =>
+                setAutoPickJobTags(event.currentTarget.checked)
+              }
+            />
+            {!autoPickJobTags && (
+              <>
+                <Text fw="bold" fz="md">
+                  {t`Job tags for new transforms`}
+                </Text>
+                <Text fz="sm" c="text-secondary">
+                  {t`Transforms will be run regularly by jobs based on the tags that transforms have.`}
+                </Text>
+                <TagMultiSelect
+                  tagIds={tagIds}
+                  onChange={(newTagIds) => setTagIds(newTagIds)}
+                />
+              </>
+            )}
+          </Stack>
+
+          <Stack gap="sm">
+            <Switch
+              size="sm"
+              label={t`Publish new tables to the Library`}
+              checked={publishToLibrary}
+              description={t`The output tables will be published in subfolders matching the names of the collections in which they're currently saved. It's easy to move these later.`}
+              onChange={(event) =>
+                setPublishToLibrary(event.currentTarget.checked)
+              }
+            />
+          </Stack>
+
+          <Stack gap="sm">
+            <Switch
+              size="sm"
+              label={t`Replace data source of all existing dependents`}
+              description={t`All dependents of the original models will be updated to use the output table instead. If you don't want to do this now, you can do it later with the Data Replacement tool.`}
+              checked={updateDependents}
+              onChange={(event) =>
+                setUpdateDependents(event.currentTarget.checked)
+              }
+            />
+          </Stack>
+
+          <Flex justify="flex-end" gap="md" mt="md">
+            <Button variant="default" onClick={onClose}>
+              {t`Cancel`}
+            </Button>
+            <Button variant="filled" color="brand" onClick={onConfirm}>
+              {t`Convert`}
+            </Button>
+          </Flex>
+        </Stack>
+      </Modal>
+
+      {showPicker && (
+        <CollectionPickerModal
+          title={t`Save transforms here`}
+          value={pickerValue}
+          namespaces={["transforms"]}
+          onChange={handlePickerChange}
+          onClose={() => setShowPicker(false)}
+          options={TRANSFORM_COLLECTION_PICKER_OPTIONS}
+        />
+      )}
+    </>
+  );
 }
 
 function ModelDetailPanel({ modelId, onClose }: ModelDetailPanelProps) {
