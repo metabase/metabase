@@ -29,25 +29,30 @@ export const useProgressiveLoader = <T>({
     setCurrentChunkIndex(0);
   }, [items]);
 
+  const tryProceedToNextChunk = useCallback(
+    (prev: number) => {
+      let nextIndex = prev;
+      while (nextIndex < chunks.length) {
+        const chunk = chunks[nextIndex];
+        const allReady = chunk.every((item) =>
+          readyIdsRef.current.has(getItemIdRef.current(item)),
+        );
+        if (!allReady) {
+          break;
+        }
+        nextIndex++;
+      }
+      return nextIndex;
+    },
+    [chunks],
+  );
+
   const markItemAsReady = useCallback(
     (id: string) => {
       readyIdsRef.current.add(id);
-      setCurrentChunkIndex((prev) => {
-        let nextIndex = prev;
-        while (nextIndex < chunks.length) {
-          const chunk = chunks[nextIndex];
-          const allReady = chunk.every((item) =>
-            readyIdsRef.current.has(getItemIdRef.current(item)),
-          );
-          if (!allReady) {
-            break;
-          }
-          nextIndex++;
-        }
-        return nextIndex === prev ? prev : nextIndex;
-      });
+      setCurrentChunkIndex(tryProceedToNextChunk);
     },
-    [chunks],
+    [tryProceedToNextChunk],
   );
 
   const visibleItems = useMemo(

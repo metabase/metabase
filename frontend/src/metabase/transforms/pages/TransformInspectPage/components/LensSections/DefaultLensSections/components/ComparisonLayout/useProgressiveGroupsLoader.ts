@@ -13,7 +13,7 @@ export const useProgressiveGroupsLoader = (groups: CardGroup[]) => {
   const [visibleGroups, markGroupAsReady] = useProgressiveLoader({
     items: groups,
     getItemId: (group) => group.groupId,
-    chunkSize: 4,
+    chunkSize: 2,
   });
 
   const groupsByCardMap = useMemo(() => getGroupsByCards(groups), [groups]);
