@@ -441,6 +441,7 @@
                                 [:uuid      ms/UUIDString]
                                 [:param-key ms/NonBlankString]]
    {:keys [value]}          :- [:map [:value :any]]]
+  (validation/check-public-sharing-enabled)
   (let [card (t2/select-one :model/Card :public_uuid uuid, :archived false)]
     (request/as-admin
       (api.card/param-remapped-value card param-key (codec/url-decode value)))))
@@ -451,6 +452,7 @@
                                 [:uuid      ms/UUIDString]
                                 [:param-key ms/NonBlankString]]
    constraint-param-key->value :- [:map-of string? any?]]
+  (validation/check-public-sharing-enabled)
   (let [dashboard (dashboard-with-uuid uuid)]
     (request/as-admin
       (binding [qp.perms/*param-values-query* true]
@@ -463,6 +465,7 @@
                                       [:param-key ms/NonBlankString]
                                       [:query     ms/NonBlankString]]
    constraint-param-key->value]
+  (validation/check-public-sharing-enabled)
   (let [dashboard (dashboard-with-uuid uuid)]
     (request/as-admin
       (binding [qp.perms/*param-values-query* true]
@@ -474,6 +477,7 @@
                                 [:uuid      ms/UUIDString]
                                 [:param-key ms/NonBlankString]]
    {:keys [value]}          :- [:map [:value :any]]]
+  (validation/check-public-sharing-enabled)
   (let [dashboard (dashboard-with-uuid uuid)]
     (request/as-admin
       (binding [qp.perms/*param-values-query* true]
