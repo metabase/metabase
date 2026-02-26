@@ -126,12 +126,13 @@
                              :error-type "llm-sse-error"}))
          part)))
 
-(defn- hashed-license-token
-  "Returns the SHA-256 hex hash of the premium embedding token."
+(defn- hashed-token-or-uuid
+  "Returns the SHA-256 hex hash of the premium embedding token or the analytics-uuid if the token is unset."
   []
-  (-> (premium-features/premium-embedding-token)
-      buddy-hash/sha256
-      codecs/bytes->hex))
+  (or (some-> (not-empty (premium-features/premium-embedding-token))
+              buddy-hash/sha256
+              codecs/bytes->hex)
+      (analytics/analytics-uuid)))
 
 (defn- report-token-usage-xf
   "Transducer that reports prometheus metrics and snowplow token_usage event
@@ -151,7 +152,7 @@
                ;; The caller can omit snowplot opts to skip snowplow tracking.
                (when request-id
                  (analytics/track-event! :snowplow/token_usage
-                                         {:hashed_metabase_license_token (hashed-license-token)
+                                         {:hashed_metabase_license_token (hashed-token-or-uuid)
                                           :user_id                       api/*current-user-id*
                                           :model_id                      model
                                           :duration_ms                   (long (u/since-ms start-ms))
