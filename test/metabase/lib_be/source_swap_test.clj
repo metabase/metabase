@@ -29,7 +29,7 @@
                                        :conditions [[:= {}
                                                      [:field {} (meta/id :orders :product-id)]
                                                      [:field {} (meta/id :products :id)]]]}]
-                       :expressions  [[:* {} [:field {} (meta/id :orders :tax)] 2]]
+                       :expressions  [[:* {:lib/expression-name "double-tax"} [:field {} (meta/id :orders :tax)] 2]]
                        :filters      [[:> {} [:field {} (meta/id :orders :total)] 10]]
                        :aggregation  [[:sum {} [:field {} (meta/id :orders :total)]]]
                        :breakout     [[:field {} (meta/id :orders :product-id)]]
@@ -61,10 +61,24 @@
                                        :conditions [[:= {}
                                                      [:field {} "PRODUCT_ID"]
                                                      [:field {} (meta/id :products :id)]]]}]
-                       :expressions  [[:* {} [:field {} "TAX"] 2]]
+                       :expressions  [[:* {:lib/expression-name "double-tax"} [:field {} "TAX"] 2]]
                        :filters      [[:> {} [:field {} "TOTAL"] 10]]
                        :aggregation  [[:sum {} [:field {} "TOTAL"]]]
                        :breakout     [[:field {} "PRODUCT_ID"]]
                        :order-by     [[:asc {} [:field {} "PRODUCT_ID"]]]}
                       {:filters [[:> {} [:field {} "PRODUCT_ID"] 5]]}]}
+            (lib-be/upgrade-field-refs-in-query query)))))
+
+(deftest ^:parallel upgrade-field-refs-in-query-join-card-test
+  (let [products-query (lib/query meta/metadata-provider (meta/table-metadata :products))
+        mp             (lib.tu/metadata-provider-with-card-from-query 1 products-query)
+        query          (-> (lib/query mp (meta/table-metadata :orders))
+                           (lib/join (lib/join-clause (lib.metadata/card mp 1)
+                                                      [(lib/= (meta/field-metadata :orders :product-id)
+                                                              (meta/field-metadata :products :id))])))]
+    (is (=? {:stages [{:source-table (meta/id :orders)
+                       :joins        [{:stages     [{:source-card 1}]
+                                       :conditions [[:= {}
+                                                     [:field {} (meta/id :orders :product-id)]
+                                                     [:field {} "ID"]]]}]}]}
             (lib-be/upgrade-field-refs-in-query query)))))
