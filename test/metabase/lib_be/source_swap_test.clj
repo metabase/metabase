@@ -80,8 +80,23 @@
                         {:filters [[:> {} [:field {} "PRODUCT_ID"] 5]]}]}
               (lib-be/upgrade-field-refs-in-query query))))))
 
+(deftest ^:parallel upgrade-field-refs-in-query-card-join-table-test
+  (testing "should preserve field id refs in the RHS of a join condition for a table"
+    (let [orders-query (lib/query meta/metadata-provider (meta/table-metadata :orders))
+          mp           (lib.tu/metadata-provider-with-card-from-query 1 orders-query)
+          query        (-> (lib/query mp (lib.metadata/card mp 1))
+                           (lib/join (lib/join-clause (meta/table-metadata :products)
+                                                      [(lib/= (meta/field-metadata :orders :product-id)
+                                                              (meta/field-metadata :products :id))])))]
+      (is (=? {:stages [{:source-card 1
+                         :joins       [{:stages     [{:source-table (meta/id :products)}]
+                                        :conditions [[:= {}
+                                                      [:field {} "PRODUCT_ID"]
+                                                      [:field {} (meta/id :products :id)]]]}]}]}
+              (lib-be/upgrade-field-refs-in-query query))))))
+
 (deftest ^:parallel upgrade-field-refs-in-query-join-card-test
-  (testing "should upgrade field id refs for a joined card"
+  (testing "should upgrade field id refs in the RHS of a join condition for a card"
     (let [products-query (lib/query meta/metadata-provider (meta/table-metadata :products))
           mp             (lib.tu/metadata-provider-with-card-from-query 1 products-query)
           query          (-> (lib/query mp (meta/table-metadata :orders))
