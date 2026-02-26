@@ -2,6 +2,7 @@ import { t } from "ttag";
 
 import { useSetting } from "metabase/common/hooks";
 import { METAKEY } from "metabase/lib/browser";
+import { isWithinIframe } from "metabase/lib/dom";
 import { ActionIcon, type ActionIconProps, Icon, Tooltip } from "metabase/ui";
 import { useMetabotAgent } from "metabase-enterprise/metabot/hooks";
 
@@ -15,7 +16,10 @@ export function MetabotAppBarButton({
   className,
   ...rest
 }: MetabotAppBarButtonProps) {
-  const isMetabotEnabled = useSetting("metabot-enabled?");
+  const settingName = isWithinIframe()
+    ? "is-embedded-metabot-enabled"
+    : "is-metabot-enabled";
+  const isMetabotEnabled = useSetting(settingName);
   const metabot = useMetabotAgent("omnibot");
 
   if (!isMetabotEnabled) {

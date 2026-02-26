@@ -105,7 +105,7 @@ const AppBarLarge = ({
           {isSearchVisible &&
             (isEmbeddingIframe ? <SearchBar /> : <SearchButton mr="md" />)}
           {isNewButtonVisible && <NewItemButton collectionId={collectionId} />}
-          {!isEmbeddingIframe && <PLUGIN_METABOT.MetabotAppBarButton />}
+          {<PLUGIN_METABOT.MetabotAppBarButton />}
           {isAppSwitcherVisible && (
             <Box c="text-primary" aria-label={t`Settings menu`}>
               <AppSwitcher />
