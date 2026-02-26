@@ -35,8 +35,8 @@
 
 (mr/def ::column-mapping
   [:map
-   [:source [:maybe ::column]]
-   [:target [:maybe ::column]]
+   [:source {:optional true} [:maybe ::column]]
+   [:target {:optional true} [:maybe ::column]]
    [:errors {:optional true} [:sequential column-error-type-enum]]])
 
 (mr/def ::check-replace-source-response
