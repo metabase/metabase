@@ -47,29 +47,19 @@ let refreshTokenPromise: ReturnType<
 > | null = null;
 
 // Side effect happening here.
-// eslint-disable-next-line no-console
-console.log("THIS SHOULD BE CALLED");
 PLUGIN_EMBEDDING_SDK_AUTH.initAuth = async (
   authConfig: MetabaseAuthConfig & { isLocalHost?: boolean },
   { dispatch }: { dispatch: SdkDispatch },
 ) => {
-  // eslint-disable-next-line no-console
-  console.log("[DEBUG] PLUGIN_EMBEDDING_SDK_AUTH.initAuth");
   const { metabaseInstanceUrl, apiKey, isLocalHost } = authConfig;
 
   // remove any stale tokens that might be there from a previous session
   samlTokenStorage.remove();
 
-  // eslint-disable-next-line no-console
-  console.log({ authConfig, authState: getAuthState() ?? null });
   // Check if we can use the auth pre-fetched by the bootstrap chunk
   const earlyAuthStatus = getAuthState()?.status;
   if (earlyAuthStatus && earlyAuthStatus !== "skipped") {
-    // eslint-disable-next-line no-console
-    console.log("WaitForAuthCompletion");
     await waitForAuthCompletion();
-    // eslint-disable-next-line no-console
-    console.log("WaitForAuthCompletion done");
     const authState = getAuthState() as SdkAuthState;
 
     // Clean up so subsequent initAuth calls don't re-enter this path.
@@ -97,8 +87,6 @@ PLUGIN_EMBEDDING_SDK_AUTH.initAuth = async (
           }
         };
 
-      // eslint-disable-next-line no-console
-      console.log("INITH AUTH Auth is completed and the data is available");
       return;
     }
     // Bootstrap auth failed or returned incomplete data.
