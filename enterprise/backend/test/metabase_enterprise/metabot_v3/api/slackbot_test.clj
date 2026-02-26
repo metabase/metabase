@@ -50,6 +50,14 @@
            :ts       "1234567890.000001"
            :event_ts "1234567890.000001"}})
 
+(def ^:private slack-csv-file
+  "A Slack CSV file upload for testing. Tests can use merge/assoc to customize."
+  {:id          "F123"
+   :name        "data.csv"
+   :filetype    "csv"
+   :url_private "https://files.slack.com/files/data.csv"
+   :size        100})
+
 (defmacro ^:private with-ensure-encryption
   "Use the existing encryption key if one is configured, otherwise set a test key.
    Avoids conflicts with encrypted settings in the DB that were written with the real key."
@@ -62,7 +70,8 @@
 (defmacro ^:private with-slackbot-setup
   "Wrap body with all required settings for slackbot to be fully configured."
   [& body]
-  `(with-redefs [slackbot.config/validate-bot-token! (constantly {:ok true})]
+  `(with-redefs [slackbot.config/validate-bot-token! (constantly {:ok true})
+                 slackbot.client/get-bot-user-id     (constantly "UBOT123")]
      (with-ensure-encryption
        (mt/with-premium-features #{:metabot-v3 :sso-slack}
          (mt/with-temporary-setting-values [site-url "https://localhost:3000"
@@ -754,11 +763,7 @@
       (let [event-body (update base-dm-event :event merge
                                {:subtype "file_share"
                                 :text    "Here's my data"
-                                :files   [{:id          "F123"
-                                           :name        "data.csv"
-                                           :filetype    "csv"
-                                           :url_private "https://files.slack.com/files/data.csv"
-                                           :size        100}]})]
+                                :files   [slack-csv-file]})]
         (with-upload-mocks!
           {:uploads-enabled? false}
           (fn [{:keys [upload-calls]}]
@@ -784,15 +789,11 @@
       (let [event-body (update base-dm-event :event merge
                                {:subtype "file_share"
                                 :text    "Here's my data"
-                                :files   [{:id          "F123"
-                                           :name        "sales_data.csv"
-                                           :filetype    "csv"
-                                           :url_private "https://files.slack.com/files/sales_data.csv"
-                                           :size        100}]})]
+                                :files   [slack-csv-file]})]
         (with-upload-mocks!
           {:uploads-enabled? true
            :can-create-upload? true
-           :upload-result {:id 456 :name "Sales Data"}}
+           :upload-result {:id 456 :name "Data"}}
           (fn [{:keys [upload-calls download-calls]}]
             (with-slackbot-mocks
               {:ai-text "Your CSV has been uploaded successfully as a model."}
@@ -806,11 +807,11 @@
                            :timeout-ms 5000})
                   (testing "file was downloaded from Slack"
                     (is (= 1 (count @download-calls)))
-                    (is (= "https://files.slack.com/files/sales_data.csv" (first @download-calls))))
+                    (is (= (:url_private slack-csv-file) (first @download-calls))))
                   (testing "upload was called with correct parameters"
                     (is (= 1 (count @upload-calls)))
                     (let [call (first @upload-calls)]
-                      (is (= "sales_data.csv" (:filename call)))))
+                      (is (= (:name slack-csv-file) (:filename call)))))
                   (testing "AI responds with success message"
                     (is (some #(= "Your CSV has been uploaded successfully as a model." %)
                               @append-text-calls))))))))))))
@@ -894,11 +895,7 @@
       (let [event-body (update base-dm-event :event merge
                                {:subtype "file_share"
                                 :text    "Here are my files"
-                                :files   [{:id          "F1"
-                                           :name        "data.csv"
-                                           :filetype    "csv"
-                                           :url_private "https://files.slack.com/files/data.csv"
-                                           :size        100}
+                                :files   [(assoc slack-csv-file :id "F1")
                                           {:id          "F2"
                                            :name        "report.pdf"
                                            :filetype    "pdf"
@@ -938,11 +935,10 @@
             event-body    (update base-dm-event :event merge
                                   {:subtype "file_share"
                                    :text    "Here's my huge file"
-                                   :files   [{:id          "F123"
-                                              :name        "huge_data.csv"
-                                              :filetype    "csv"
-                                              :url_private "https://files.slack.com/files/huge_data.csv"
-                                              :size        too-large-size}]})]
+                                   :files   [(assoc slack-csv-file
+                                                    :name        "huge_data.csv"
+                                                    :url_private "https://files.slack.com/files/huge_data.csv"
+                                                    :size        too-large-size)]})]
         (with-upload-mocks!
           {:uploads-enabled? true}
           (fn [{:keys [upload-calls download-calls]}]
@@ -967,11 +963,7 @@
       (let [event-body (update base-dm-event :event merge
                                {:subtype "file_share"
                                 :text    "Here's my data"
-                                :files   [{:id          "F123"
-                                           :name        "data.csv"
-                                           :filetype    "csv"
-                                           :url_private "https://files.slack.com/files/data.csv"
-                                           :size        100}]})]
+                                :files   [slack-csv-file]})]
         (with-upload-mocks!
           {:uploads-enabled? true
            :can-create-upload? false}
@@ -1053,13 +1045,17 @@
         (with-slackbot-mocks
           {:ai-text "Should not be called"
            :user-id ::no-user}
-          (fn [{:keys [post-calls ephemeral-calls]}]
+          (fn [{:keys [post-calls ephemeral-calls stream-calls ai-request-calls]}]
             (let [response (mt/client :post 200 "ee/metabot-v3/slack/events"
                                       (slack-request-options event-body)
                                       event-body)]
               (is (= "ok" response))
               ;; Give a moment for any async processing
               (Thread/sleep 500)
+              (testing "no streaming session should start"
+                (is (= 0 (count @stream-calls))))
+              (testing "no AI requests should be made"
+                (is (= 0 (count @ai-request-calls))))
               (testing "no regular messages posted"
                 (is (= 0 (count @post-calls))))
               (testing "no ephemeral auth messages sent"
@@ -1073,12 +1069,42 @@
                                 :channel_type "channel"})]
         (with-slackbot-mocks
           {:ai-text "Should not be called"}
-          (fn [{:keys [post-calls ephemeral-calls]}]
+          (fn [{:keys [post-calls ephemeral-calls stream-calls ai-request-calls]}]
             (let [response (mt/client :post 200 "ee/metabot-v3/slack/events"
                                       (slack-request-options event-body)
                                       event-body)]
               (is (= "ok" response))
               (Thread/sleep 500)
+              (testing "no streaming session should start"
+                (is (= 0 (count @stream-calls))))
+              (testing "no AI requests should be made"
+                (is (= 0 (count @ai-request-calls))))
+              (testing "no messages posted"
+                (is (= 0 (count @post-calls))))
+              (testing "no ephemeral messages"
+                (is (= 0 (count @ephemeral-calls)))))))))))
+
+(deftest channel-file-share-without-mention-ignored-test
+  (testing "POST /events with file_share in channel without @mention is ignored"
+    (with-slackbot-setup
+      (let [event-body (update base-dm-event :event merge
+                               {:subtype      "file_share"
+                                :text         "Here's my data"
+                                :channel_type "channel"
+                                :files        [slack-csv-file]})]
+        (with-slackbot-mocks
+          {:ai-text "Should not be called"}
+          (fn [{:keys [post-calls ephemeral-calls stream-calls ai-request-calls]}]
+            (let [response (mt/client :post 200 "ee/metabot-v3/slack/events"
+                                      (slack-request-options event-body)
+                                      event-body)]
+              (is (= "ok" response))
+              ;; Brief wait to ensure no async processing starts
+              (Thread/sleep 200)
+              (testing "no streaming session should start"
+                (is (= 0 (count @stream-calls))))
+              (testing "no AI requests should be made"
+                (is (= 0 (count @ai-request-calls))))
               (testing "no messages posted"
                 (is (= 0 (count @post-calls))))
               (testing "no ephemeral messages"

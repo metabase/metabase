@@ -14,7 +14,8 @@
    [metabase.channel.api.slack :as channel.api.slack]
    [metabase.channel.settings :as channel.settings]
    [metabase.permissions.core :as perms]
-   [metabase.premium-features.core :as premium-features :refer [defenterprise defenterprise-schema]]
+   [metabase.premium-features.core :as premium-features :refer [defenterprise
+                                                                defenterprise-schema]]
    [metabase.request.core :as request]
    [metabase.settings.core :as setting]
    [metabase.system.core :as system]
@@ -119,14 +120,6 @@
    :headers {"Content-Type" "text/plain"}
    :body    "ok"})
 
-(mu/defn- process-message-im
-  "Process a direct message (message.im)"
-  [client  :- slackbot.client/SlackClient
-   event   :- slackbot.events/SlackMessageImEvent
-   user-id :- :int]
-  (request/with-current-user user-id
-    (slackbot.streaming/send-response client event)))
-
 (defn- all-files-skipped?
   "Returns true if all files were skipped (none were CSV/TSV)."
   [{:keys [upload-result]}]
@@ -134,104 +127,94 @@
     (and (seq skipped)
          (empty? results))))
 
-(mu/defn- process-message-file-share
+(mu/defn- handle-message-file-share
   "Process a file_share message - handles CSV uploads"
-  [client  :- slackbot.client/SlackClient
-   event   :- slackbot.events/SlackMessageFileShareEvent
-   user-id :- :int]
-  (request/with-current-user user-id
-    (let [files (:files event)
-          text (:text event)
-          has-text? (not (str/blank? text))
-          file-handling (when (seq files)
-                          (slackbot.uploads/handle-file-uploads files))
-          extra-history (cond
-                          ;; Pre-flight error (uploads disabled, no permission)
-                          (:error file-handling)
-                          [{:role :assistant
-                            :content (:error file-handling)}]
-
-                          ;; Upload results to communicate to AI
-                          (:system-messages file-handling)
-                          (:system-messages file-handling))
-          all-skipped? (all-files-skipped? file-handling)
-          should-skip-ai? (and (not has-text?)
-                               (not (:error file-handling))
-                               all-skipped?)]
-      ;; If all files were skipped (non-CSV) and there's no text, respond directly
-      ;; without calling the AI to avoid sending an empty prompt
-      (if should-skip-ai?
-        (let [skipped-files (get-in file-handling [:upload-result :skipped])]
-          (slackbot.client/post-message client
-                                        (merge (slackbot.events/event->reply-context event)
-                                               {:text (format "I can only process CSV and TSV files. The following files were skipped: %s"
-                                                              (str/join ", " skipped-files))})))
-        (slackbot.streaming/send-response client event extra-history)))))
-
-(mu/defn- process-user-message :- :nil
-  "Respond to an incoming user slack message, dispatching based on channel_type or subtype"
   [client :- slackbot.client/SlackClient
-   event  :- slackbot.events/SlackKnownMessageEvent]
-  ;; Early return for plain channel messages (without @mention) - we only respond in DMs or to file shares
-  (when-not (and (= (:channel_type event) "channel")
-                 (not= (:subtype event) "file_share"))
-    (when-let [user-id (require-authenticated-slack-user! client event)]
-      (let [channel-type (:channel_type event)
-            subtype (:subtype event)]
-        (cond
-          (= subtype "file_share")   (process-message-file-share client event user-id)
-          (= channel-type "im")      (process-message-im client event user-id)
-          :else                      (log/warnf "[slackbot] Unhandled message type: channel_type=%s subtype=%s"
-                                                channel-type subtype)))))
-  nil)
+   event  :- slackbot.events/SlackMessageFileShareEvent]
+  (let [files         (:files event)
+        text          (:text event)
+        has-text?     (not (str/blank? text))
+        file-handling (when (seq files)
+                        (slackbot.uploads/handle-file-uploads files))
+        extra-history (cond
+                        ;; Pre-flight error (uploads disabled, no permission)
+                        (:error file-handling)
+                        [{:role :assistant
+                          :content (:error file-handling)}]
 
-(mu/defn- process-app-mention :- :nil
-  "Handle an app_mention event (when bot is @mentioned in a channel)."
-  [client :- slackbot.client/SlackClient
-   event  :- slackbot.events/SlackAppMentionEvent]
-  (when-let [user-id (require-authenticated-slack-user! client event)]
-    (request/with-current-user user-id
-      (slackbot.streaming/send-response client event)))
-  nil)
+                        ;; Upload results to communicate to AI
+                        (:system-messages file-handling)
+                        (:system-messages file-handling))
+        all-skipped?    (all-files-skipped? file-handling)
+        should-skip-ai? (and (not has-text?)
+                             (not (:error file-handling))
+                             all-skipped?)]
+    ;; If all files were skipped (non-CSV) and there's no text, respond directly
+    ;; without calling the AI to avoid sending an empty prompt
+    (if should-skip-ai?
+      (let [skipped-files (get-in file-handling [:upload-result :skipped])]
+        (slackbot.client/post-message client
+                                      (merge (slackbot.events/event->reply-context event)
+                                             {:text (format "I can only process CSV and TSV files. The following files were skipped: %s"
+                                                            (str/join ", " skipped-files))})))
+      (slackbot.streaming/send-response client event extra-history))))
+
+(defn- process-async
+  "Process an event asynchronously with logging and error handling.
+   Authenticates the user and calls handler with [client event]."
+  [handler client event]
+  (let [event-type (or (:subtype event) (:channel_type event) (:type event))]
+    (log/debugf "[slackbot] Processing %s event" event-type)
+    (future
+      (try
+        (when-let [user-id (require-authenticated-slack-user! client event)]
+          (request/with-current-user user-id
+            (handler client event)))
+        (catch Exception e
+          (log/errorf e "[slackbot] Error processing %s: %s" event-type (ex-message e)))))))
+
+(defn ignore-event
+  "Handle any event we don't care to process"
+  [event]
+  (log/debugf "[slackbot] Ignoring event type=%s channel_type=%s subtype=%s ts=%s"
+              (:type event) (:channel_type event) (:subtype event) (:ts event)))
+
+(defn assert-setup-complete
+  "Asserts that all required Slack settings have been configured."
+  []
+  (when-not (slackbot.config/setup-complete?)
+    (throw (ex-info (str (tru "Slack integration is not fully configured.")) {:status-code 503}))))
 
 (mu/defn- handle-event-callback :- slackbot.events/SlackEventsResponse
   "Respond to an event_callback request"
   [payload :- slackbot.events/SlackEventCallbackEvent]
-  (when (and (premium-features/enable-metabot-v3?)
-             (sso-settings/slack-connect-enabled))
+  (assert-setup-complete)
+  (when (sso-settings/slack-connect-enabled)
     (let [client {:token (channel.settings/unobfuscated-slack-app-token)}
           event (:event payload)]
       (log/debugf "[slackbot] Event callback: event_type=%s user=%s channel=%s"
                   (:type event) (:user event) (:channel event))
       (cond
-        (slackbot.events/edited-message? event)
-        (log/debug "[slackbot] Ignoring edited message")
+        ((some-fn
+          slackbot.events/bot-message? ;; ignore the bot's own messages
+          slackbot.events/edited-message? ;; ignore message edits
+          slackbot.events/app-mention-with-files?) ;; processed via the separate file_share event
+         event)
+        (ignore-event event)
 
-        ;; Skip app_mention events with files - these will be handled by the file_share event
-        (slackbot.events/app-mention-with-files? event)
-        (log/debugf "[slackbot] Skipping app_mention with files (will be handled by file_share): ts=%s"
-                    (:ts event))
+        (and
+         (slackbot.events/file-share? event)
+         (slackbot.events/dm-or-channel-mention? event (slackbot.client/get-bot-user-id client)))
+        (process-async handle-message-file-share client event)
 
         (slackbot.events/app-mention? event)
-        (do
-          (log/debug "[slackbot] Processing app_mention event")
-          (future
-            (try
-              (process-app-mention client event)
-              (catch Exception e
-                (log/errorf e "[slackbot] Error processing app_mention: %s" (ex-message e))))))
+        (process-async slackbot.streaming/send-response client event)
 
-        (slackbot.events/known-user-message? event)
-        (do
-          (log/debug "[slackbot] Processing user message event")
-          (future
-            (try
-              (process-user-message client event)
-              (catch Exception e
-                (log/errorf e "[slackbot] Error processing message: %s" (ex-message e))))))
+        (slackbot.events/dm? event)
+        (process-async slackbot.streaming/send-response client event)
 
         :else
-        (log/debugf "[slackbot] Ignoring unhandled event type: %s" (:type event)))))
+        (ignore-event event))))
   ack-msg)
 
 ;; ----------------------- ROUTES --------------------------
@@ -249,13 +232,12 @@
   (assert-valid-slack-req request)
   (log/debugf "[slackbot] Received Slack event type=%s" (:type body))
   ;; all handlers must respond within 3 seconds or slack will retry
-  (if-not (premium-features/enable-metabot-v3?)
-    ack-msg ;; prevent retries if metabot becomes disabled after app is configured
+  (if (premium-features/enable-metabot-v3?)
     (case (:type body)
       "url_verification" (handle-url-verification body)
-      "event_callback" (do (slackbot.config/assert-setup-complete)
-                           (handle-event-callback body))
-      ack-msg)))
+      "event_callback"   (handle-event-callback body)
+      ack-msg)
+    ack-msg))
 
 (def SlackBotSettingsRequest
   "Malli schema for the request body of PUT /api/ee/metabot-v3/slack/settings.
