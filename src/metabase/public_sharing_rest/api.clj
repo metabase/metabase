@@ -7,7 +7,6 @@
    [metabase.analytics.core :as analytics]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
-   [metabase.api.routes.common :as routes.common]
    [metabase.dashboards-rest.api :as api.dashboard]
    [metabase.dashboards.schema :as dashboards.schema]
    [metabase.events.core :as events]
@@ -835,4 +834,4 @@
 (def ^{:arglists '([request respond raise])} routes
   "`/api/public` routes. Enforces public-sharing-enabled check via middleware, in addition to
   per-endpoint checks."
-  (api.macros/ns-handler *ns* routes.common/+public-sharing-enabled))
+  (api.macros/ns-handler *ns* public-sharing.validation/+public-sharing-enabled))
