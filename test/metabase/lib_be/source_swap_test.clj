@@ -17,7 +17,9 @@
                   (lib/filter (lib/> (meta/field-metadata :orders :total) 10))
                   (lib/aggregate (lib/sum (meta/field-metadata :orders :total)))
                   (lib/breakout (meta/field-metadata :orders :product-id))
-                  (lib/order-by (meta/field-metadata :orders :product-id)))]
+                  (lib/order-by (meta/field-metadata :orders :product-id))
+                  (lib/append-stage)
+                  (lib/filter (lib/> (meta/field-metadata :orders :product-id) 5)))]
     (is (=? {:stages [{:source-table (meta/id :orders)
                        :fields       [[:field {} (meta/id :orders :id)]
                                       [:field {} (meta/id :orders :total)]
@@ -31,7 +33,8 @@
                        :filters      [[:> {} [:field {} (meta/id :orders :total)] 10]]
                        :aggregation  [[:sum {} [:field {} (meta/id :orders :total)]]]
                        :breakout     [[:field {} (meta/id :orders :product-id)]]
-                       :order-by     [[:asc {} [:field {} (meta/id :orders :product-id)]]]}]}
+                       :order-by     [[:asc {} [:field {} (meta/id :orders :product-id)]]]}
+                      {:filters [[:> {} [:field {} "PRODUCT_ID"] 5]]}]}
             (lib-be/upgrade-field-refs-in-query query)))))
 
 (deftest ^:parallel upgrade-field-refs-in-query-source-card-test
@@ -46,7 +49,9 @@
                        (lib/filter (lib/> (meta/field-metadata :orders :total) 10))
                        (lib/aggregate (lib/sum (meta/field-metadata :orders :total)))
                        (lib/breakout (meta/field-metadata :orders :product-id))
-                       (lib/order-by (meta/field-metadata :orders :product-id)))]
+                       (lib/order-by (meta/field-metadata :orders :product-id))
+                       (lib/append-stage)
+                       (lib/filter (lib/> (meta/field-metadata :orders :product-id) 5)))]
     (is (=? {:stages [{:source-card  1
                        :fields       [[:field {} "ID"]
                                       [:field {} "TOTAL"]
@@ -60,5 +65,6 @@
                        :filters      [[:> {} [:field {} "TOTAL"] 10]]
                        :aggregation  [[:sum {} [:field {} "TOTAL"]]]
                        :breakout     [[:field {} "PRODUCT_ID"]]
-                       :order-by     [[:asc {} [:field {} "PRODUCT_ID"]]]}]}
+                       :order-by     [[:asc {} [:field {} "PRODUCT_ID"]]]}
+                      {:filters [[:> {} [:field {} "PRODUCT_ID"] 5]]}]}
             (lib-be/upgrade-field-refs-in-query query)))))
