@@ -5,7 +5,7 @@ import {
   WRITABLE_DB_ID,
 } from "e2e/support/cypress_data";
 import { NORMAL_USER_ID } from "e2e/support/cypress_sample_instance_data";
-import { DataPermissionValue } from "metabase/admin/permissions/types";
+import { DataPermissionValue } from "metabase-types/api";
 
 const { ALL_USERS_GROUP, COLLECTION_GROUP, DATA_GROUP } = USER_GROUPS;
 

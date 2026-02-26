@@ -12,6 +12,10 @@ import {
 } from "metabase/plugins";
 import type Database from "metabase-lib/v1/metadata/Database";
 import type { Group, GroupsPermissions } from "metabase-types/api";
+import {
+  DataPermission,
+  DataPermissionValue,
+} from "metabase-types/api";
 
 import { DATA_PERMISSION_OPTIONS } from "../../constants/data-permissions";
 import { Messages } from "../../constants/messages";
@@ -21,11 +25,7 @@ import type {
   SchemaEntityId,
   SpecialGroupType,
 } from "../../types";
-import {
-  DataPermission,
-  DataPermissionType,
-  DataPermissionValue,
-} from "../../types";
+import { DataPermissionType } from "../../types";
 import {
   getBlockWarning,
   getPermissionWarning,

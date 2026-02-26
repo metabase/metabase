@@ -11,12 +11,10 @@ import { LeaveRouteConfirmModal } from "metabase/common/components/LeaveConfirmM
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { useCallbackEffect } from "metabase/common/hooks/use-callback-effect";
 import { DatabaseForm } from "metabase/databases/components/DatabaseForm";
-import type {
-  DatabaseFormConfig,
-  FormLocation,
-} from "metabase/databases/types";
+import type { DatabaseFormConfig } from "metabase/databases/types";
 import { useDispatch } from "metabase/lib/redux";
 import { Text } from "metabase/ui";
+import type { FormLocation } from "metabase-types/analytics";
 import type {
   DatabaseData,
   DatabaseEditErrorType,

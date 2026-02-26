@@ -17,9 +17,9 @@ import type {
   SqlParameterValues,
 } from "embedding-sdk-bundle/types/question";
 import { isStaticEmbeddingEntityLoadingError } from "metabase/lib/errors/is-static-embedding-entity-loading-error";
-import { type Deferred, defer } from "metabase/lib/promise";
+import { defer } from "metabase/lib/promise";
 import type Question from "metabase-lib/v1/Question";
-import type { ParameterValuesMap } from "metabase-types/api";
+import type { Deferred, ParameterValuesMap } from "metabase-types/api";
 import type { EntityToken } from "metabase-types/api/entity";
 import { isObject } from "metabase-types/guards";
 

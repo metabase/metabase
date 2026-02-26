@@ -2,7 +2,7 @@ import { useMemo, useState } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
-import type { Widget } from "../types";
+import type { Widget } from "metabase-types/api";
 
 import type { BaseChartSettingsProps } from "./types";
 

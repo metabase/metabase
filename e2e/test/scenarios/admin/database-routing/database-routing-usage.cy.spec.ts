@@ -2,7 +2,7 @@ const { H } = cy;
 import _ from "underscore";
 
 import { USER_GROUPS } from "e2e/support/cypress_data";
-import { DataPermissionValue } from "metabase/admin/permissions/types";
+import { DataPermissionValue } from "metabase-types/api";
 
 import { interceptPerformanceRoutes } from "../performance/helpers/e2e-performance-helpers";
 

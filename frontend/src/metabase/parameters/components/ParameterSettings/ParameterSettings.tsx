@@ -14,7 +14,6 @@ import {
   getDashboardParameterSections,
   getDefaultOptionForParameterSectionMap,
 } from "metabase/parameters/utils/dashboard-options";
-import type { EmbeddingParameterVisibility } from "metabase/public/lib/types";
 import {
   Box,
   type BoxProps,
@@ -34,6 +33,7 @@ import {
 } from "metabase-lib/v1/parameters/utils/parameter-values";
 import type {
   DashboardCard,
+  EmbeddingParameterVisibility,
   Parameter,
   TemporalUnit,
   ValuesQueryType,

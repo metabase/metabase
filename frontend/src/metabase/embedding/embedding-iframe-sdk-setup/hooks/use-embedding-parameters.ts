@@ -4,8 +4,7 @@ import { usePrevious } from "react-use";
 import type { SdkIframeEmbedSetupContextType } from "metabase/embedding/embedding-iframe-sdk-setup/context";
 import { useEmbeddingParametersConversion } from "metabase/embedding/embedding-iframe-sdk-setup/hooks/use-embedding-parameters-conversion";
 import { getDefaultEmbeddingParams } from "metabase/public/components/EmbedModal/StaticEmbedSetupPane/lib/get-default-embedding-params";
-import type { EmbeddingParameters } from "metabase/public/lib/types";
-import type { Card, Dashboard, Parameter } from "metabase-types/api";
+import type { Card, Dashboard, EmbeddingParameters, Parameter } from "metabase-types/api";
 
 export const useEmbeddingParameters = ({
   settings,

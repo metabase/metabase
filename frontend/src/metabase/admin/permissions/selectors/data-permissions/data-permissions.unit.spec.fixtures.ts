@@ -1,7 +1,7 @@
+import { DataPermission, DataPermissionValue } from "metabase-types/api";
 import { createMockGroup } from "metabase-types/api/mocks";
 import { createMockSettingsState } from "metabase-types/store/mocks";
 
-import { DataPermission, DataPermissionValue } from "../../types";
 
 // Database 2 contains an imaginary multi-schema database (like Redshift for instance)
 // Database 3 contains an imaginary database which doesn't have any schemas (like MySQL)

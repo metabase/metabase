@@ -11,7 +11,6 @@ import type {
   CollectionSidebarType,
 } from "metabase/admin/permissions/selectors/collection-permissions";
 import { getPermissionWarningModal } from "metabase/admin/permissions/selectors/confirmations";
-import type { DataPermissionValue } from "metabase/admin/permissions/types";
 import { findCollectionById } from "metabase/common/utils/collections";
 import {
   Collections,
@@ -25,11 +24,10 @@ import {
   isDefaultGroup,
 } from "metabase/lib/groups";
 import { PLUGIN_TENANTS } from "metabase/plugins";
-import type {
-  CollectionId,
+import type { CollectionId,
   CollectionPermissions,
-  Group as GroupType,
-} from "metabase-types/api";
+  DataPermissionValue,
+  Group as GroupType } from "metabase-types/api";
 import type { ExpandedCollection, State } from "metabase-types/store";
 
 export const tenantSpecificCollectionsQuery = {

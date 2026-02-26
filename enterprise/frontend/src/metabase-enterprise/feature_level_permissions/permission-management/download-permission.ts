@@ -7,9 +7,7 @@ import {
   getPermissionWarningModal,
 } from "metabase/admin/permissions/selectors/confirmations";
 import {
-  DataPermission,
   DataPermissionType,
-  DataPermissionValue,
   type EntityId,
   type PermissionSectionConfig,
   type PermissionSubject,
@@ -23,6 +21,10 @@ import {
 } from "metabase/admin/permissions/utils/graph";
 import { getGroupFocusPermissionsUrl } from "metabase/admin/permissions/utils/urls";
 import type { Group, GroupsPermissions } from "metabase-types/api";
+import {
+  DataPermission,
+  DataPermissionValue,
+} from "metabase-types/api";
 
 const getTooltipMessage = (isAdmin: boolean, isBlockedAccess: boolean) => {
   if (isAdmin) {

@@ -1,11 +1,11 @@
 import _ from "underscore";
 
+import { PLUGIN_ADVANCED_PERMISSIONS } from "metabase/plugins";
 import {
   DataPermission,
   DataPermissionValue,
-} from "metabase/admin/permissions/types";
-import { PLUGIN_ADVANCED_PERMISSIONS } from "metabase/plugins";
-import type { GroupsPermissions } from "metabase-types/api";
+  type GroupsPermissions,
+} from "metabase-types/api";
 
 import { hasPermissionValueInSubgraph } from "./has";
 

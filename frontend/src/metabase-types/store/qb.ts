@@ -1,13 +1,13 @@
-import type { Deferred } from "metabase/lib/promise";
 import type { QueryModalType } from "metabase/query_builder/constants";
-import type { Widget } from "metabase/visualizations/components/ChartSettings/types";
 import type {
   Card,
   CollectionItemModel,
   Dataset,
+  Deferred,
   Field,
   ParameterValuesMap,
   TimelineEventId,
+  Widget,
 } from "metabase-types/api";
 
 export type QueryBuilderMode = "view" | "notebook" | "dataset";

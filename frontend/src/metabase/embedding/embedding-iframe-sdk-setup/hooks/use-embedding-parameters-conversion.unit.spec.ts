@@ -1,8 +1,7 @@
 import { renderHook } from "@testing-library/react";
 
 import { useEmbeddingParametersConversion } from "metabase/embedding/embedding-iframe-sdk-setup/hooks/use-embedding-parameters-conversion";
-import type { EmbeddingParameters } from "metabase/public/lib/types";
-import type { Parameter } from "metabase-types/api";
+import type { EmbeddingParameters, Parameter } from "metabase-types/api";
 import { createMockParameter } from "metabase-types/api/mocks";
 
 describe("useEmbeddingParametersConversion", () => {

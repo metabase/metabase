@@ -27,7 +27,7 @@ import {
   setUserColorSchemeAfterUpdate,
 } from "metabase/lib/color-scheme";
 import MetabaseSettings from "metabase/lib/settings";
-import type { DisplayTheme } from "metabase/public/lib/types";
+import type { DisplayTheme } from "metabase-types/api";
 
 import { mutateColors } from "../../../colors/colors";
 import type { ColorName } from "../../../colors/types";

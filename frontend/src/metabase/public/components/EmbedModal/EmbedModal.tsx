@@ -5,9 +5,9 @@ import { StaticEmbedSetupPane } from "metabase/public/components/EmbedModal/Stat
 import type {
   EmbedResource,
   EmbedResourceParameter,
-  EmbeddingParameters,
   GuestEmbedResourceType,
 } from "metabase/public/lib/types";
+import type { EmbeddingParameters } from "metabase-types/api";
 
 import { EmbedModalHeader } from "./EmbedModal.styled";
 

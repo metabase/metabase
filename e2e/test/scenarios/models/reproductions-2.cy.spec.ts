@@ -10,8 +10,11 @@ import type {
   NativeQuestionDetails,
   StructuredQuestionDetails,
 } from "e2e/support/helpers";
-import { DataPermissionValue } from "metabase/admin/permissions/types";
-import type { GroupPermissions, NativePermissions } from "metabase-types/api";
+import {
+  DataPermissionValue,
+  type GroupPermissions,
+  type NativePermissions,
+} from "metabase-types/api";
 
 const {
   ORDERS,

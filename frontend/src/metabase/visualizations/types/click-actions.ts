@@ -5,7 +5,12 @@ import type { Mode } from "metabase/visualizations/click-actions/Mode";
 import type * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 import type { ClickActionProps } from "metabase-lib/v1/queries/drills/types";
-import type { Card, Series, VisualizationSettings } from "metabase-types/api";
+import type {
+  Card,
+  ClickActionSection,
+  Series,
+  VisualizationSettings,
+} from "metabase-types/api";
 import type { Dispatch, GetState } from "metabase-types/store";
 
 export type ClickActionModeGetter = (data: {
@@ -26,27 +31,6 @@ export type ClickActionButtonType =
   | "sort"
   | "token"
   | "token-filter";
-
-export type ClickActionSection =
-  | "auto"
-  | "auto-popover"
-  | "breakout"
-  | "breakout-popover"
-  | "combine"
-  | "combine-popover"
-  | "details"
-  | "extract"
-  | "extract-popover"
-  | "filter"
-  | "info"
-  | "records"
-  | "new-column"
-  | "sort"
-  | "standalone_filter"
-  | "sum"
-  | "summarize"
-  | "zoom"
-  | "custom";
 
 export type ClickActionSectionDirection = "row" | "column";
 

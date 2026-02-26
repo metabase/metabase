@@ -4,8 +4,7 @@ import type {
   Group,
   GroupsPermissions,
 } from "metabase-types/api";
-
-import { DataPermission } from "../../types";
+import { DataPermission } from "metabase-types/api";
 
 import {
   getFieldsPermission,

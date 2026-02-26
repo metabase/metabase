@@ -1,7 +1,6 @@
 import { match } from "ts-pattern";
 
 import { PLUGIN_AI_ENTITY_ANALYSIS } from "metabase/plugins";
-import type { EmbeddingParameterVisibility } from "metabase/public/lib/types";
 import { DataReference } from "metabase/query_builder/components/dataref/DataReference";
 import { SnippetSidebar } from "metabase/query_builder/components/template_tags/SnippetSidebar";
 import { TagEditorSidebar } from "metabase/query_builder/components/template_tags/TagEditorSidebar";
@@ -12,6 +11,7 @@ import type Question from "metabase-lib/v1/Question";
 import type Database from "metabase-lib/v1/metadata/Database";
 import type {
   DatabaseId,
+  EmbeddingParameterVisibility,
   NativeDatasetQuery,
   RowValue,
   TemplateTag,

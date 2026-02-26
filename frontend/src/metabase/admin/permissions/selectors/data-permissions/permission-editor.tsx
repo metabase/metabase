@@ -24,6 +24,7 @@ import type {
   GroupsPermissions,
   TableId,
 } from "metabase-types/api";
+import { DataPermission, DataPermissionValue } from "metabase-types/api";
 import type { State } from "metabase-types/store";
 
 import type {
@@ -34,7 +35,6 @@ import type {
   RawGroupRouteParams,
   SpecialGroupType,
 } from "../../types";
-import { DataPermission, DataPermissionValue } from "../../types";
 import {
   getDatabaseEntityId,
   getSchemaEntityId,

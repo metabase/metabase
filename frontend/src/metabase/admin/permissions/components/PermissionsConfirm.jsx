@@ -1,9 +1,9 @@
 /* eslint-disable react/prop-types */
 import { jt, msgid, ngettext, t } from "ttag";
 
-import { DataPermissionValue } from "metabase/admin/permissions/types";
 import CS from "metabase/css/core/index.css";
 import { Tooltip } from "metabase/ui";
+import { DataPermissionValue } from "metabase-types/api";
 
 const GroupName = ({ group }) => (
   <span className={CS.textBrand}>{group.name}</span>

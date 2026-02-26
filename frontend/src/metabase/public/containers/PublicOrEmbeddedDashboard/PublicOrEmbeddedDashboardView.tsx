@@ -9,8 +9,8 @@ import { useDashboardContext } from "metabase/dashboard/context";
 import { usePageTitle } from "metabase/hooks/use-page-title";
 import { isWithinIframe } from "metabase/lib/dom";
 import { getTabHiddenParameterSlugs } from "metabase/public/lib/tab-parameters";
-import type { DisplayTheme } from "metabase/public/lib/types";
 import { FullWidthContainer } from "metabase/styled-components/layout/FullWidthContainer";
+import type { DisplayTheme } from "metabase-types/api";
 
 import { EmbedFrame } from "../../components/EmbedFrame";
 

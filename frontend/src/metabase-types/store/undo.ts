@@ -1,8 +1,8 @@
 import type { ReactNode, RefObject } from "react";
 
-import type { IconName } from "metabase/ui";
 import type { ColorName } from "metabase/ui/colors/types";
 import type { DashCardId, DashboardTabId } from "metabase-types/api";
+import type { IconName } from "metabase-types/ui";
 
 export interface Undo {
   id: string | number;

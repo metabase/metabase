@@ -2,10 +2,12 @@ import type { CodeLanguage } from "metabase/common/components/CodeEditor";
 import type {
   Card,
   Dashboard,
+  DisplayTheme,
+  EmbeddingParameterVisibility,
+  EmbeddingParameters,
+  EmbeddingType,
   ParameterValueOrArray,
 } from "metabase-types/api";
-
-export type DisplayTheme = "light" | "night" | "transparent";
 
 export type EmbedResource = (Card | Dashboard) & {
   embedding_params?: EmbeddingParameters | null;
@@ -27,12 +29,6 @@ export type EmbedResourceDownloadOptions = {
   pdf?: boolean;
   results?: boolean;
 };
-
-export type EmbeddingType = "static-legacy" | "guest-embed";
-
-export type EmbeddingParameterVisibility = "disabled" | "enabled" | "locked";
-
-export type EmbeddingParameters = Record<string, EmbeddingParameterVisibility>;
 
 export type EmbeddingParametersValues = Record<
   string,

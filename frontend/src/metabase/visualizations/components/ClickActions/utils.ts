@@ -1,10 +1,8 @@
 import { t } from "ttag";
 import _ from "underscore";
 
-import type {
-  ClickActionSection,
-  RegularClickAction,
-} from "metabase/visualizations/types";
+import type { RegularClickAction } from "metabase/visualizations/types";
+import type { ClickActionSection } from "metabase-types/api";
 
 type Section = {
   index?: number;

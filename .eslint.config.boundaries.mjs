@@ -40,6 +40,7 @@ const alwaysPassingPlugin = {
     "no-require-imports": alwaysPassingRule,
     "exhaustive-deps": alwaysPassingRule,
     'no-unused-vars': alwaysPassingRule,
+    'no-unused-expressions': alwaysPassingRule,
     'ban-ts-comment': alwaysPassingRule,
   },
 };

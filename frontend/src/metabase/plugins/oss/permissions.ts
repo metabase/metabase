@@ -1,22 +1,22 @@
 import type { ComponentType, ReactNode } from "react";
 
-import {
-  type DataPermission,
-  DataPermissionValue,
-  type DatabaseEntityId,
-  type EntityId,
-  type PermissionSubject,
-  type SpecialGroupType,
+import type {
+  DatabaseEntityId,
+  EntityId,
+  PermissionSubject,
+  SpecialGroupType,
 } from "metabase/admin/permissions/types";
 import { getUserIsAdmin } from "metabase/selectors/user";
 import type Database from "metabase-lib/v1/metadata/Database";
-import type {
-  Database as DatabaseType,
-  Dataset,
-  Group,
-  GroupPermissions,
-  GroupsPermissions,
-  User,
+import {
+  type DataPermission,
+  DataPermissionValue,
+  type Database as DatabaseType,
+  type Dataset,
+  type Group,
+  type GroupPermissions,
+  type GroupsPermissions,
+  type User,
 } from "metabase-types/api";
 import type { State } from "metabase-types/store";
 

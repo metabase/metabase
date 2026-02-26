@@ -1,10 +1,6 @@
-import type {
-  EmbeddingParameters,
-  EmbeddingType,
-} from "metabase/public/lib/types";
-import type { IconName } from "metabase/ui";
-import type { PieRow } from "metabase/visualizations/echarts/pie/model/types";
+
 import type { EntityToken, EntityUuid } from "metabase-types/api/entity";
+import type { IconName } from "metabase-types/ui";
 
 import type { Collection, CollectionId, LastEditInfo } from "./collection";
 import type {
@@ -15,6 +11,7 @@ import type {
 } from "./dashboard";
 import type { Database, DatabaseId } from "./database";
 import type { Document, DocumentId } from "./document";
+import type { EmbeddingParameters, EmbeddingType } from "./embed";
 import type { BaseEntityId } from "./entity-id";
 import type { Field } from "./field";
 import type { ModerationReview } from "./moderation";
@@ -515,3 +512,14 @@ export type ScalarSegment = {
   color: string;
   label?: string;
 };
+
+export interface PieRow {
+  key: string;
+  name: string;
+  originalName: string;
+  color: string;
+  defaultColor: boolean;
+  enabled: boolean;
+  hidden: boolean;
+  isOther: boolean;
+}

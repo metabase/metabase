@@ -5,13 +5,12 @@ import {
   ChartSettingSeriesOrder,
   type SortableChartSettingOrderedItem,
 } from "metabase/visualizations/components/settings/ChartSettingSeriesOrder";
-import type { PieRow } from "metabase/visualizations/echarts/pie/model/types";
 import {
   createHexToAccentNumberMap,
   getPickerColorAlias,
 } from "metabase/visualizations/echarts/pie/util/colors";
 import type { ComputedVisualizationSettings } from "metabase/visualizations/types";
-import type { RawSeries } from "metabase-types/api";
+import type { PieRow, RawSeries } from "metabase-types/api";
 
 export function PieRowsPicker({
   rawSeries,

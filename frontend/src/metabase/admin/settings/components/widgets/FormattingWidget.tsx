@@ -5,14 +5,13 @@ import _ from "underscore";
 import { SettingsSection } from "metabase/admin/components/SettingsSection";
 import { useAdminSetting } from "metabase/api/utils";
 import {
-  type CurrencyStyle,
   getCurrencyOptions,
   getCurrencyStyleOptions,
   getDateStyleOptionsForUnit,
   getTimeStyleOptions,
 } from "metabase/lib/formatting";
 import { Box, Radio, Select, Stack, Switch, Text } from "metabase/ui";
-import type { FormattingSettings } from "metabase-types/api";
+import type { CurrencyStyle, FormattingSettings } from "metabase-types/api";
 
 import { SetByEnvVar } from "./AdminSettingInput";
 

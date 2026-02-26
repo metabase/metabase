@@ -1,7 +1,6 @@
 import { jt, t } from "ttag";
 
 import { PermissionHelpDescription } from "metabase/admin/permissions/components/PermissionHelpDescription";
-import { DataPermissionValue } from "metabase/admin/permissions/types";
 import { ExternalLink } from "metabase/common/components/ExternalLink";
 import { useDocsUrl } from "metabase/common/hooks";
 import { useSelector } from "metabase/lib/redux";
@@ -18,6 +17,7 @@ import {
   Title,
   rem,
 } from "metabase/ui";
+import { DataPermissionValue } from "metabase-types/api";
 
 import { hasPermissionValueInGraph } from "../../utils/graph/data-permissions";
 
