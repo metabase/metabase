@@ -1,4 +1,4 @@
-import { useDisclosure } from "@mantine/hooks";
+import { useDebouncedCallback, useDisclosure } from "@mantine/hooks";
 import { useFormik } from "formik";
 import type { ChangeEvent } from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -15,6 +15,7 @@ import { ConfirmModal } from "metabase/common/components/ConfirmModal";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { CollectionPickerModal } from "metabase/common/components/Pickers";
 import { useSetting } from "metabase/common/hooks";
+import { useToast } from "metabase/common/hooks/use-toast";
 import { useRouter } from "metabase/router";
 import {
   Alert,
@@ -108,6 +109,7 @@ export function AppForm() {
   const [createApp] = useCreateAppMutation();
   const [updateApp] = useUpdateAppMutation();
   const [deleteApp] = useDeleteAppMutation();
+  const [sendToast] = useToast();
 
   const {
     data: existingApp,
@@ -153,23 +155,52 @@ export function AppForm() {
     },
   });
 
+  const initialLoadDone = useRef(false);
+
   useEffect(() => {
     if (existingApp) {
-      formik.setValues({
-        name: existingApp.name,
-        auth_method: existingApp.auth_method,
-        collection_id: existingApp.collection_id,
-        theme: existingApp.theme ?? "",
-        logo: existingApp.logo ?? null,
+      formik.resetForm({
+        values: {
+          name: existingApp.name,
+          auth_method: existingApp.auth_method,
+          collection_id: existingApp.collection_id,
+          theme: existingApp.theme ?? "",
+          logo: existingApp.logo ?? null,
+        },
       });
+      initialLoadDone.current = true;
     }
     // We only want to run this once when the app loads
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [existingApp]);
 
-  const handleCancel = useCallback(() => {
-    router.push("/admin/apps");
-  }, [router]);
+  // Auto-save with debounce
+  const debouncedSave = useDebouncedCallback(async (values: AppFormValues) => {
+    const payload = {
+      name: values.name,
+      auth_method: values.auth_method,
+      collection_id: values.collection_id,
+      theme: values.theme || null,
+      logo: values.logo || null,
+    };
+
+    if (isEditing && id) {
+      await updateApp({ id, ...payload });
+      sendToast({ message: t`Saved` });
+    }
+  }, 1000);
+
+  useEffect(() => {
+    // Only auto-save after initial load and when form is dirty
+    if (
+      isEditing &&
+      initialLoadDone.current &&
+      formik.dirty &&
+      formik.isValid
+    ) {
+      debouncedSave(formik.values);
+    }
+  }, [formik.values, formik.dirty, formik.isValid, isEditing, debouncedSave]);
 
   const handleDelete = useCallback(async () => {
     await deleteApp(id!);
@@ -183,7 +214,6 @@ export function AppForm() {
           formik={formik}
           isEditing={isEditing}
           appName={existingApp?.name ?? ""}
-          onCancel={handleCancel}
           onDelete={handleDelete}
         />
       </LoadingAndErrorWrapper>
@@ -195,7 +225,6 @@ export function AppForm() {
       formik={formik}
       isEditing={isEditing}
       appName=""
-      onCancel={handleCancel}
       onDelete={null}
     />
   );
@@ -205,13 +234,11 @@ function AppFormContent({
   formik,
   isEditing,
   appName,
-  onCancel,
   onDelete,
 }: {
   formik: ReturnType<typeof useFormik<AppFormValues>>;
   isEditing: boolean;
   appName: string;
-  onCancel: () => void;
   onDelete: (() => Promise<void>) | null;
 }) {
   const [pickerOpened, { open: openPicker, close: closePicker }] =
@@ -308,22 +335,16 @@ function AppFormContent({
             onChange={(logo) => formik.setFieldValue("logo", logo)}
           />
           <Divider mt="md" />
-          <Group justify="space-between" align="center">
+          <Group justify="flex-end">
             {onDelete ? (
               <Button color="error" variant="subtle" onClick={openDeleteModal}>
                 {t`Delete app`}
               </Button>
             ) : (
-              <span />
+              <Button type="submit" variant="filled">
+                {t`Create`}
+              </Button>
             )}
-            <Group gap="sm">
-              <Button variant="default" onClick={onCancel}>
-                {t`Cancel`}
-              </Button>
-              <Button type="submit" variant="filled" disabled={!formik.dirty}>
-                {isEditing ? t`Save` : t`Create`}
-              </Button>
-            </Group>
           </Group>
           {onDelete && (
             <ConfirmModal
