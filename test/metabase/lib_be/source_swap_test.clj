@@ -5,6 +5,7 @@
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.lib.options :as lib.options]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]))
 
@@ -16,6 +17,14 @@
                                       (meta/field-metadata :orders :created-at)]))]
       (is (= query
              (lib-be/upgrade-field-refs-in-query query))))))
+
+(deftest ^:parallel upgrade-field-refs-in-query-source-table-name-ref-test
+  (testing "should convert a name-based field ref to an id-based ref for a table source"
+    (let [query (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
+                    (lib/with-fields [(lib.options/ensure-uuid [:field {:base-type :type/BigInteger} "ID"])]))]
+      (is (=? {:stages [{:source-table (meta/id :orders)
+                         :fields       [[:field {} (meta/id :orders :id)]]}]}
+              (lib-be/upgrade-field-refs-in-query query))))))
 
 (deftest ^:parallel upgrade-field-refs-in-query-source-table-multi-stage-test
   (testing "should preserve field id refs in the same stage as the table, but upgrade next stages"
