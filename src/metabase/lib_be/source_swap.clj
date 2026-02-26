@@ -54,7 +54,6 @@
   (or (:lib/desired-column-alias column) (:name column)))
 
 (mu/defn- column-errors :- [:sequential ::swap-source.column-error]
-  "Compute errors for a source/target column pair."
   [old-column :- ::lib.schema.metadata/column
    new-column :- ::lib.schema.metadata/column]
   (cond-> []
@@ -115,8 +114,6 @@
 
 (mu/defn- should-upgrade-field-ref? :- :boolean
   [field-ref :- :mbql.clause/field]
-  ;; name-based field ref is already upgraded
-  ;; implicitly joined field ref cannot be upgraded
   (and (some? (lib.ref/field-ref-id field-ref))
        (not (contains? (lib.options/options field-ref) :source-field))))
 
@@ -188,19 +185,23 @@
                                              (upgrade-field-refs-in-stage query stage-number))
                                            %))))
 
-(mu/defn- should-upgrade-field-refs-in-clause? :- :boolean
-  [clause :- :any]
-  (boolean (lib.util.match/match-lite clause
-             (field-ref :guard (every-pred lib.field/is-field-clause? should-upgrade-field-ref?))
-             true)))
+(mu/defn- table-only-stage? :- :boolean
+  [query        :- ::lib.schema/query
+   stage-number :- :int]
+  (let [{:keys [source-table joins]} (lib.util/query-stage query stage-number)]
+    (and (zero? stage-number)
+         (some? source-table)
+         (every? #(some? (:source-table %)) joins))))
 
 (mu/defn- should-upgrade-field-refs-in-stage? :- :boolean
   [query        :- ::lib.schema/query
    stage-number :- :int]
-  (let [{:keys [source-table joins] :as stage} (lib.util/query-stage query stage-number)
-        all-source-tables? (and (some? source-table) (every? #(some? (:source-table %)) joins))]
-    (and (or (pos? stage-number) (not all-source-tables?))
-         (should-upgrade-field-refs-in-clause? stage))))
+  (let [stage (lib.util/query-stage query stage-number)]
+    (and (not (table-only-stage? query stage-number))
+         (some? (lib.util.match/match-lite
+                  stage
+                  (field-ref :guard (every-pred lib.field/is-field-clause? should-upgrade-field-ref?))
+                  field-ref)))))
 
 (mu/defn should-upgrade-field-refs-in-query? :- :boolean
   "Check if any field refs in `query` can be upgraded to use name-based field refs."
@@ -208,29 +209,37 @@
   (boolean (some #(should-upgrade-field-refs-in-stage? query %)
                  (range (lib.query/stage-count query)))))
 
+(mu/defn- parameter-target-stage-number :- [:maybe :int]
+  [query  :- ::lib.schema/query
+   target :- ::lib.schema.parameter/target]
+  (let [stage-number (lib.parameters/parameter-target-stage-number target)
+        stage-count  (lib.query/stage-count query)]
+    (when (and (>= stage-number -1) (< stage-number stage-count) (pos-int? stage-count))
+      stage-number)))
+
 (mu/defn upgrade-field-ref-in-parameter-target :- ::lib.schema.parameter/target
   "If the parameter target is a field ref, upgrade it to use a name-based field ref when possible."
   [query  :- ::lib.schema/query
    target :- ::lib.schema.parameter/target]
   (or (when (lib.parameters/parameter-target-field-ref target)
-        (let [stage-number (lib.parameters/parameter-target-stage-number target)
-              stage-count  (lib.query/stage-count query)]
-          (when (and (>= stage-number -1) (< stage-number stage-count) (pos-int? stage-count))
-            (let [columns (lib.metadata.calculation/visible-columns query stage-number)]
-              (lib.parameters/update-parameter-target-field-ref
-               target
-               #(upgrade-field-ref query stage-number % columns))))))
+        (when-let [stage-number (parameter-target-stage-number query target)]
+          (let [columns (lib.metadata.calculation/visible-columns query stage-number)]
+            (lib.parameters/update-parameter-target-field-ref
+             target
+             #(upgrade-field-ref query stage-number % columns)))))
       target))
 
 (mu/defn should-upgrade-field-ref-in-parameter-target? :- :boolean
   "If the parameter target is a field ref, check if it can be upgraded to use a name-based field ref."
-  [target :- ::lib.schema.parameter/target]
-  (if-let [field-ref (lib.parameters/parameter-target-field-ref target)]
-    (should-upgrade-field-ref? field-ref)
-    false))
+  [query  :- ::lib.schema/query
+   target :- ::lib.schema.parameter/target]
+  (or (when-let [field-ref (lib.parameters/parameter-target-field-ref target)]
+        (when-let [stage-number (parameter-target-stage-number query target)]
+          (and (not (table-only-stage? query stage-number))
+               (should-upgrade-field-ref? field-ref))))
+      false))
 
 (mu/defn- build-swap-field-id-mapping-for-table :- [:maybe ::swap-source.field-id-mapping]
-  "Builds a mapping of field IDs of the source table to field IDs of the target table."
   [query           :- ::lib.schema/query
    source-table-id :- ::lib.schema.id/table
    target-table-id :- ::lib.schema.id/table]
@@ -243,7 +252,6 @@
                               source-fields)))))
 
 (mu/defn- build-swap-field-id-mapping-for-card :- [:maybe ::swap-source.field-id-mapping]
-  "Builds a mapping of field IDs of the source table to desired column aliases of the target card."
   [query           :- ::lib.schema/query
    source-table-id :- ::lib.schema.id/table
    target-card-id  :- ::lib.schema.id/card]
@@ -268,8 +276,6 @@
     (build-swap-field-id-mapping-for-card query (:id old-source) (:id new-source))))
 
 (mu/defn- swap-field-id-in-ref :- :mbql.clause/field
-  "If this field ref is field-id-based and there is a mapping for the field ID, 
-  update the ref to use the target field ID or desired column alias."
   [field-ref      :- :mbql.clause/field
    field-id-mapping :- ::swap-source.field-id-mapping]
   (let [field-id (lib.ref/field-ref-id field-ref)
@@ -284,7 +290,6 @@
       (lib.options/update-options assoc :source-field new-source-field-id-or-name))))
 
 (mu/defn- swap-field-ids-in-clauses :- [:sequential :any]
-  "Updates the field IDs in the clauses using the provided mapping."
   [clauses        :- [:sequential :any]
    field-id-mapping :- ::swap-source.field-id-mapping]
   (perf/mapv (fn [clause]
@@ -292,7 +297,6 @@
              clauses))
 
 (defn- swap-source-table-or-card
-  "Updates the source table or card in the stage."
   [{:keys [source-table source-card], :as stage}
    source
    target]
@@ -304,7 +308,6 @@
     stage))
 
 (mu/defn- swap-source-and-field-ids-in-join :- ::lib.schema.join/join
-  "Updates the source table or card and field IDs in the join conditions using the provided mapping."
   [join           :- ::lib.schema.join/join
    source         :- ::swap-source.source
    target         :- ::swap-source.source
@@ -318,7 +321,6 @@
       (u/update-some :conditions swap-field-ids-in-clauses field-id-mapping)))
 
 (mu/defn- swap-source-and-field-ids-in-joins :- [:sequential ::lib.schema.join/join]
-  "Updates the field IDs in all joins using the provided mapping."
   [joins          :- [:sequential ::lib.schema.join/join]
    source         :- ::swap-source.source
    target         :- ::swap-source.source
@@ -326,7 +328,6 @@
   (perf/mapv #(swap-source-and-field-ids-in-join % source target field-id-mapping) joins))
 
 (mu/defn- swap-field-ids-in-stage :- ::lib.schema/stage
-  "Updates the field IDs in the stage using the provided mapping."
   [query          :- ::lib.schema/query
    stage-number   :- :int
    source         :- ::swap-source.source
