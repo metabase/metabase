@@ -18,7 +18,6 @@ import { getDashboardComplete } from "../selectors";
 
 type OwnProps = {
   onClose: () => void;
-  overwriteOnInitialValuesChange?: boolean;
 };
 
 const mapStateToProps = (state: State, props: OwnProps) => {

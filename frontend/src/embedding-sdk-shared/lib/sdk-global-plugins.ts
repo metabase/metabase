@@ -1,9 +1,11 @@
-import { bridgeHandleLinkForEmbedJs } from "metabase/embedding/embedding-iframe-sdk/utils/bridge-handle-link";
-import { isEmbeddingEajs } from "metabase/embedding-sdk/config";
-
 import { ensureMetabaseProviderPropsStore } from "./ensure-metabase-provider-props-store";
 
-type HandleLinkFn = (url: string) => { handled: boolean };
+// On the SDK side, we ask customers for a sync function but in EAJS we actually
+// need an async function internally. Typescript doesn't really like it unless
+// we specify both versions
+type HandleLinkFn = (
+  url: string,
+) => { handled: boolean } | Promise<{ handled: boolean }>;
 
 type SdkGlobalPlugins = {
   handleLink?: HandleLinkFn;
@@ -19,32 +21,16 @@ export const getSdkGlobalPlugins = (): SdkGlobalPlugins => {
   );
 };
 
+export const MODULAR_EMBEDDING_HANDLE_LINK_PLUGIN: {
+  handleLink: HandleLinkFn;
+} = {
+  handleLink: (_url: string) => Promise.resolve({ handled: false }),
+};
+
 /**
  * Invokes the handleLink plugin if configured in the host app and returns an object with a 'handled' property, indicating if the host app handled the link.
  * For iframe SDK, this sends a postMessage to the parent window and awaits the response.
  */
-export async function handleLinkSdkPlugin(
-  url: string,
-): Promise<{ handled: boolean }> {
-  // In iframe SDK mode, send a message to the parent window
-  if (isEmbeddingEajs()) {
-    return bridgeHandleLinkForEmbedJs(url);
-  }
-
-  // React SDK mode - use the global plugins
-  const globalPlugins = getSdkGlobalPlugins();
-
-  if (!globalPlugins?.handleLink) {
-    return { handled: false };
-  }
-
-  const result = globalPlugins.handleLink(url);
-
-  if (!result || typeof result !== "object" || !("handled" in result)) {
-    throw new Error(
-      "handleLink plugin must return an object with a 'handled' property",
-    );
-  }
-
-  return result;
+export async function handleLinkSdkPlugin(url: string) {
+  return await MODULAR_EMBEDDING_HANDLE_LINK_PLUGIN.handleLink(url);
 }
