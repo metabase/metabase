@@ -6,10 +6,7 @@
   (:require
    [clojure.string :as str]
    [metabase-enterprise.transforms-python.python-runner :as python-runner]
-   [metabase.lib.core :as lib]
    [metabase.query-processor :as qp]
-   [metabase.query-processor.preprocess :as qp.preprocess]
-   [metabase.sql-tools.core :as sql-tools]
    [metabase.transforms-base.core :as transforms-base]
    [metabase.transforms-base.util :as transforms-base.u]
    [metabase.util.log :as log]
@@ -36,27 +33,12 @@
     (update source :source-tables (fn [entries] (mapv remap entries)))))
 
 (defn- remap-sql-source [table-mapping source]
-  (let [remapping (reduce
-                   (fn [remapping [[_ source-schema source-table] {target-schema :schema, target-table :table}]]
-                     (assoc-in remapping [:tables {:schema source-schema
-                                                   :table  source-table}]
-                               {:schema target-schema
-                                :table  target-table}))
-                   {:schemas {}
-                    :tables  {}}
-                   ;; Strip out the numeric keys (table ids)
-                   (filter (comp vector? key) table-mapping))
-        database-id (get-in source [:query :database])
-        driver      (some->> database-id (t2/select-one-fn :engine :model/Database))
-        ;; We must preprocess any template tags in the native source to obtain valid (i.e. parseable) SQL.
-        new-query      (-> (:query source)
-                           qp.preprocess/preprocess
-                           ;; Given the guidance *not* to add just-in-time remapping as a in internal QP concern, we
-                           ;; instead resort to this externally co-ordinated processing step.
-                           #_{:clj-kondo/ignore [:discouraged-var]}
-                           (lib/update-native-stage
-                            (partial sql-tools/replace-names driver) remapping {:allow-unused? true}))]
-    (assoc source :query new-query)))
+  (let [tables (into {}
+                     (keep (fn [[[_ src-schema src-table] {tgt-schema :schema tgt-table :table}]]
+                             [{:schema src-schema :table src-table}
+                              {:schema tgt-schema :table tgt-table}]))
+                     (filter (comp vector? key) table-mapping))]
+    (assoc-in source [:query :workspace-remapping] {:tables tables})))
 
 (defn- remap-mbql-source [_table-mapping _field-map source]
   (throw (ex-info "Remapping MBQL queries is not supported yet" {:source source})))
