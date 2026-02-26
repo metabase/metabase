@@ -35,8 +35,11 @@ import type { VisualizationDisplay } from "metabase-types/api/visualization";
 import type { Dispatch, QueryBuilderMode } from "metabase-types/store";
 
 import type { ChartSettingEnumToggleProps } from "../components/settings/ChartSettingEnumToggle";
+import type { ChartSettingGoalInputProps } from "../components/settings/ChartSettingGoalInput";
 import type { ChartSettingMaxCategoriesProps } from "../components/settings/ChartSettingMaxCategories";
+import type { ChartSettingSegmentsEditorProps } from "../components/settings/ChartSettingSegmentsEditor";
 import type { ChartSettingSeriesOrderProps } from "../components/settings/ChartSettingSeriesOrder";
+import type { ChartSettingTableColumnsProps } from "../components/settings/ChartSettingTableColumns";
 import type { LegacySeriesSettingsObjectKey } from "../echarts/cartesian/model/types";
 import type { DimensionsWidgetProps } from "../visualizations/PieChart/DimensionsWidget";
 import type { SmartScalarComparisonWidgetProps } from "../visualizations/SmartScalar/SettingsComponents/SmartScalarSettingsWidgets";
@@ -408,7 +411,10 @@ export type VisualizationSettingsDefinitions<
   decimals?: DatasetColumnSettingDefinition<TValue, TProps>;
   display?: SingleSeriesSettingDefinition<TValue, TProps>;
   "gauge.range"?: SeriesSettingDefinition<TValue, TProps>;
-  "gauge.segments"?: SeriesSettingDefinition<TValue, TProps>;
+  "gauge.segments"?: SeriesSettingDefinition<
+    TValue,
+    ChartSettingSegmentsEditorProps
+  >;
   "graph.colors"?: SeriesSettingDefinition<TValue, TProps>;
   "graph.dimensions"?: SeriesSettingDefinition<TValue, TProps>;
   "graph.metrics"?: SeriesSettingDefinition<TValue, TProps>;
@@ -482,7 +488,7 @@ export type VisualizationSettingsDefinitions<
   "pie.sort_rows_dimension"?: SeriesSettingDefinition<TValue, TProps>;
   prefix?: DatasetColumnSettingDefinition<TValue, TProps>;
   "progress.color"?: SeriesSettingDefinition<TValue, TProps>;
-  "progress.goal"?: SeriesSettingDefinition<TValue, TProps>;
+  "progress.goal"?: SeriesSettingDefinition<TValue, ChartSettingGoalInputProps>;
   "progress.value"?: SeriesSettingDefinition<TValue, TProps>;
   "sankey.edge_color"?: SeriesSettingDefinition<TValue, TProps>;
   "sankey.label_value_formatting"?: SeriesSettingDefinition<TValue, TProps>;
@@ -505,7 +511,10 @@ export type VisualizationSettingsDefinitions<
   show_series_values?: SingleSeriesSettingDefinition<TValue, TProps>;
   "stackable.stack_type"?: SeriesSettingDefinition<TValue, TProps>;
   suffix?: DatasetColumnSettingDefinition<TValue, TProps>;
-  "table.columns"?: SeriesSettingDefinition<TValue, TProps>;
+  "table.columns"?: SeriesSettingDefinition<
+    TValue,
+    ChartSettingTableColumnsProps
+  >;
   time_enabled?: DatasetColumnSettingDefinition<TValue, TProps>;
   time_style?: DatasetColumnSettingDefinition<TValue, TProps>;
   title?: SingleSeriesSettingDefinition<TValue, TProps>;
