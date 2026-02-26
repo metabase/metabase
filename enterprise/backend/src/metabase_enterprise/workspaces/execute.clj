@@ -47,22 +47,22 @@
               table-ref))]
     (update source :source-tables update-vals remap)))
 
-(defn- remap-sql-source [table-mapping source]
+(defn- attach-table-remapping [table-mapping source]
   (let [tables (into {}
                      (keep (fn [[[_ src-schema src-table] {tgt-schema :schema tgt-table :table}]]
                              [{:schema src-schema :table src-table}
                               {:schema tgt-schema :table tgt-table}]))
+                     ;; Keep only the named reference tuples that we will destructure, the table-id keys are irrelevant.
                      (filter (comp vector? key) table-mapping))]
     (assoc-in source [:query :workspace-remapping] {:tables tables})))
 
-(defn- remap-mbql-source [_table-mapping _field-map source]
+(defn- attach-table-field-remapping [_table-mapping _field-map source]
   (throw (ex-info "Remapping MBQL queries is not supported yet" {:source source})))
 
 (defn- remap-source [table-map field-map source-type source]
   (case source-type
-    :mbql (remap-mbql-source table-map field-map source)
-    ;; TODO (Chris 2025-12-12) -- make sure it's actually a SQL dialect though..
-    :native (remap-sql-source table-map source)
+    :mbql (attach-table-field-remapping table-map field-map source)
+    :native (attach-table-remapping table-map source)
     :python (remap-python-source table-map source)))
 
 ;; You might prefer a multi-method? I certainly would.
