@@ -48,8 +48,12 @@ const WIDGETS: Record<string, React.ComponentType<any>> = {
   multiselect: ChartSettingMultiSelect,
 };
 
-export function getComputedSettings<T>(
-  settingsDefs: VisualizationSettingsDefinitions<T>,
+export function getComputedSettings<
+  T,
+  TValue,
+  TProps extends Record<string, unknown>,
+>(
+  settingsDefs: VisualizationSettingsDefinitions<T, TValue, TProps>,
   object: T,
   storedSettings: VisualizationSettings,
   extra: SettingsExtra = {},
@@ -84,9 +88,9 @@ export function getComputedSettings<T>(
   return computedSettings;
 }
 
-function getComputedSetting<T>(
+function getComputedSetting<T, TValue, TProps extends Record<string, unknown>>(
   computedSettings: ComputedVisualizationSettings, // MUTATED!
-  settingDefs: VisualizationSettingsDefinitions<T>,
+  settingDefs: VisualizationSettingsDefinitions<T, TValue, TProps>,
   settingId: VisualizationSettingKey,
   object: T,
   storedSettings: VisualizationSettings,
