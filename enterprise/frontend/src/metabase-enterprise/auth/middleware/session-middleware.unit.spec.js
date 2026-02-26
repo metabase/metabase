@@ -1,8 +1,8 @@
 import FakeTimers from "@sinonjs/fake-timers";
 import Cookie from "js-cookie";
-import { replace } from "react-router-redux";
 
 import { logout, refreshSession } from "metabase/auth/actions";
+import { replace } from "metabase/lib/router";
 
 import {
   COOKIE_POOLING_TIMEOUT,

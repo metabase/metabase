@@ -1,6 +1,5 @@
 import { useCallback, useEffect } from "react";
 import type { Route } from "react-router";
-import { push } from "react-router-redux";
 import { t } from "ttag";
 import _ from "underscore";
 
@@ -8,6 +7,7 @@ import { CollectionPermissionsHelp } from "metabase/admin/permissions/components
 import { Collections } from "metabase/entities/collections";
 import { Groups } from "metabase/entities/groups";
 import { connect, useSelector } from "metabase/lib/redux";
+import { push } from "metabase/lib/router";
 import type {
   Collection,
   CollectionId,

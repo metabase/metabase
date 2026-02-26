@@ -1,5 +1,4 @@
 import { useEffect, useMemo, useState } from "react";
-import { push } from "react-router-redux";
 import { useDebounce } from "react-use";
 import { t } from "ttag";
 
@@ -12,6 +11,7 @@ import {
   SEARCH_DEBOUNCE_DURATION,
 } from "metabase/lib/constants";
 import { useDispatch } from "metabase/lib/redux";
+import { push } from "metabase/lib/router";
 import { modelToUrl } from "metabase/lib/urls";
 import {
   EmptyStateContainer,

@@ -1,8 +1,8 @@
 import { Route } from "react-router";
-import { replace } from "react-router-redux";
 import { useMount } from "react-use";
 
 import { useDispatch } from "metabase/lib/redux";
+import { replace } from "metabase/lib/router";
 import { useMetabotAgent } from "metabase-enterprise/metabot/hooks";
 
 export const getMetabotQuickLinks = () => {

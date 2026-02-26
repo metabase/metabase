@@ -3,13 +3,13 @@ import "../components/AuditTableVisualization";
 import { chain } from "icepick";
 import PropTypes from "prop-types";
 import { useState } from "react";
-import { push } from "react-router-redux";
 import _ from "underscore";
 
 import { PaginationControls } from "metabase/common/components/PaginationControls";
 import { usePagination } from "metabase/common/hooks/use-pagination";
 import CS from "metabase/css/core/index.css";
 import { connect } from "metabase/lib/redux";
+import { push } from "metabase/lib/router";
 import { getMetadata } from "metabase/selectors/metadata";
 import Question from "metabase-lib/v1/Question";
 

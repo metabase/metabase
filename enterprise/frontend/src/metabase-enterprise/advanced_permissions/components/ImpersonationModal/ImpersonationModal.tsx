@@ -1,7 +1,6 @@
 import type { Location } from "history";
 import { useCallback } from "react";
 import { withRouter } from "react-router";
-import { push } from "react-router-redux";
 import { useAsyncFn, useMount } from "react-use";
 
 import { updateDataPermission } from "metabase/admin/permissions/permissions";
@@ -14,6 +13,7 @@ import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErr
 import { useDatabaseQuery } from "metabase/common/hooks";
 import { getParentPath } from "metabase/hoc/ModalRoute";
 import { useDispatch } from "metabase/lib/redux";
+import { push } from "metabase/lib/router";
 import { updateImpersonation } from "metabase-enterprise/advanced_permissions/reducer";
 import { getImpersonation } from "metabase-enterprise/advanced_permissions/selectors";
 import type {

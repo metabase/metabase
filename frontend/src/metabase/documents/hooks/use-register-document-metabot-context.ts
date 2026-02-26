@@ -1,12 +1,9 @@
 import { useRegisterMetabotContextProvider } from "metabase/metabot";
-import { getLocation } from "metabase/selectors/routing";
 
 export const useRegisterDocumentMetabotContext = () => {
-  useRegisterMetabotContextProvider(async (state) => {
-    const location = getLocation(state);
-
+  useRegisterMetabotContextProvider(async () => {
     // Extract document ID from URL path like "/document/123"
-    const documentMatch = location.pathname.match(/^\/document\/(\d+)/);
+    const documentMatch = window.location.pathname.match(/^\/document\/(\d+)/);
     if (!documentMatch) {
       return {};
     }

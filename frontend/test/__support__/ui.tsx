@@ -23,7 +23,6 @@ import { UndoListing } from "metabase/common/components/UndoListing";
 import { baseStyle } from "metabase/css/core/base.styled";
 import { HistoryProvider } from "metabase/history";
 import { MetabaseReduxProvider } from "metabase/lib/redux";
-import { routerMiddleware, routerReducer } from "metabase/lib/router";
 import { makeMainReducers } from "metabase/reducers-main";
 import { publicReducers } from "metabase/reducers-public";
 import { RouterProvider } from "metabase/router";
@@ -161,8 +160,7 @@ export function getTestStoreAndWrapper({
   customReducers,
   theme,
 }: GetTestStoreAndWrapperOptions) {
-  let { routing, ...initialState }: Partial<State> =
-    createMockState(storeInitialState);
+  let initialState: Partial<State> = createMockState(storeInitialState);
 
   if (mode === "public") {
     const publicReducerNames = Object.keys(publicReducers);
@@ -186,17 +184,14 @@ export function getTestStoreAndWrapper({
   }
 
   if (withRouter) {
-    Object.assign(reducers, { routing: routerReducer });
-    Object.assign(initialState, { routing });
+    // No-op: runtime store no longer keeps routing in Redux,
+    // but we still provide a router via HistoryProvider/RouterProvider.
   }
   if (customReducers) {
     reducers = { ...reducers, ...customReducers };
   }
 
-  const storeMiddleware = _.compact([
-    Api.middleware,
-    history && routerMiddleware(history),
-  ]);
+  const storeMiddleware = _.compact([Api.middleware]);
 
   const store = getStore(
     reducers,

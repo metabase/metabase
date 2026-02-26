@@ -1,7 +1,6 @@
 import { createAction } from "@reduxjs/toolkit";
 
 import { push } from "metabase/lib/router";
-import { getLocation } from "metabase/selectors/routing";
 import type {
   DashCardId,
   DashCardVisualizationSettings,
@@ -9,7 +8,7 @@ import type {
   DashboardCard,
   DashboardId,
 } from "metabase-types/api";
-import type { Dispatch, GetState } from "metabase-types/store";
+import type { Dispatch } from "metabase-types/store";
 
 export const INITIALIZE = "metabase/dashboard/INITIALIZE";
 export const initialize = createAction<{ clearCache?: boolean } | undefined>(
@@ -21,11 +20,16 @@ export const reset = createAction(RESET);
 
 export const SET_EDITING_DASHBOARD = "metabase/dashboard/SET_EDITING_DASHBOARD";
 export const setEditingDashboard = (dashboard: Dashboard | null) => {
-  return (dispatch: Dispatch, getState: GetState) => {
+  return (dispatch: Dispatch) => {
     if (dashboard === null) {
-      const location = getLocation(getState());
-      const locationWithoutEditHash = { ...location, hash: "" };
-      dispatch(push(locationWithoutEditHash));
+      const { pathname, search } = window.location;
+      dispatch(
+        push({
+          pathname,
+          search,
+          hash: "",
+        }),
+      );
     }
 
     dispatch({

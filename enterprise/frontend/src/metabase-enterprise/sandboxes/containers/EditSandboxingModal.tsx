@@ -1,13 +1,13 @@
 import type { Location } from "history";
 import { useEffect } from "react";
 import { withRouter } from "react-router";
-import { push } from "react-router-redux";
 import _ from "underscore";
 
 import { useListUserAttributesQuery } from "metabase/api";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { getParentPath } from "metabase/hoc/ModalRoute";
 import { connect } from "metabase/lib/redux";
+import { push } from "metabase/lib/router";
 import {
   getGroupTableAccessPolicy,
   getPolicyRequestState,

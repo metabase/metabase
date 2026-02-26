@@ -1,5 +1,4 @@
 import { useEffect, useState } from "react";
-import { push } from "react-router-redux";
 import { t } from "ttag";
 
 import { permissionApi } from "metabase/api";
@@ -8,6 +7,7 @@ import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErr
 import { useToast } from "metabase/common/hooks";
 import { useConfirmation } from "metabase/common/hooks/use-confirmation";
 import { useDispatch } from "metabase/lib/redux";
+import { push } from "metabase/lib/router";
 import { Button, Flex, Group, Modal, Radio, Stack, Text } from "metabase/ui";
 
 import S from "./EditUserStrategyModal.module.css";

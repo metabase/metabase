@@ -3,7 +3,6 @@ import { match } from "ts-pattern";
 import _ from "underscore";
 
 import { isEmbedding } from "metabase/embedding/config";
-import { getLocation } from "metabase/selectors/routing";
 import { Urls } from "metabase-enterprise/urls";
 import type { TransformId } from "metabase-types/api";
 
@@ -201,9 +200,10 @@ export const getProfileOverride = createSelector(
 );
 
 export const getProfile = createSelector(
-  [getProfileOverride, getDebugMode, getLocation],
-  (profileOverride, debugMode, location) => {
-    const isTransformsPage = location.pathname.startsWith(Urls.transformList());
+  [getProfileOverride, getDebugMode],
+  (profileOverride, debugMode) => {
+    const pathname = window.location?.pathname ?? "";
+    const isTransformsPage = pathname.startsWith(Urls.transformList());
     return match({ debugMode, isTransformsPage })
       .with(
         { debugMode: false, isTransformsPage: true },

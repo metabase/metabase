@@ -1,7 +1,6 @@
 import { useDisclosure } from "@mantine/hooks";
 import { useEffect, useMemo } from "react";
 import { IndexRoute, Route } from "react-router";
-import { push } from "react-router-redux";
 import { P, match } from "ts-pattern";
 import { c, jt, t } from "ttag";
 import _ from "underscore";
@@ -21,6 +20,7 @@ import { CollectionPickerModal } from "metabase/common/components/Pickers/Collec
 import { useToast } from "metabase/common/hooks";
 import { getIcon } from "metabase/lib/icon";
 import { useDispatch } from "metabase/lib/redux";
+import { push } from "metabase/lib/router";
 import {
   Box,
   Button,

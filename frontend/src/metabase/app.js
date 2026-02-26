@@ -39,9 +39,10 @@ import api from "metabase/lib/api";
 import { initializeEmbedding } from "metabase/lib/embed";
 import { captureConsoleErrors } from "metabase/lib/errors";
 import { MetabaseReduxProvider } from "metabase/lib/redux/custom-context";
-import { syncHistoryWithStore } from "metabase/lib/router";
+import { setHistory } from "metabase/lib/router";
 import MetabaseSettings from "metabase/lib/settings";
 import { PLUGIN_APP_INIT_FUNCTIONS, PLUGIN_METABOT } from "metabase/plugins";
+import { locationChanged } from "metabase/redux/app";
 import { refreshSiteSettings } from "metabase/redux/settings";
 import { EmotionCacheProvider } from "metabase/styled-components/components/EmotionCacheProvider";
 import { GlobalStyles } from "metabase/styled-components/containers/GlobalStyles";
@@ -62,13 +63,29 @@ const browserHistory = useRouterHistory(createHistory)({
   basename: BASENAME,
 });
 
+setHistory(browserHistory);
+
 initializePlugins();
 
 function _init(reducers, getRoutes, callback) {
   const store = getStore(reducers, browserHistory);
   const routes = getRoutes(store);
-  const syncedHistory = syncHistoryWithStore(browserHistory, store);
   const MetabotProvider = PLUGIN_METABOT.getMetabotProvider();
+
+  // Keep app-level state in sync with URL changes.
+  store.dispatch(
+    locationChanged({
+      ...(browserHistory.location || {}),
+    }),
+  );
+
+  browserHistory.listen((location) => {
+    store.dispatch(
+      locationChanged({
+        ...(location || {}),
+      }),
+    );
+  });
 
   createTracker(store);
 
@@ -83,7 +100,7 @@ function _init(reducers, getRoutes, callback) {
           <ThemeProvider>
             <GlobalStyles />
             <MetabotProvider>
-              <HistoryProvider history={syncedHistory}>
+              <HistoryProvider history={browserHistory}>
                 <RouterProvider>{routes}</RouterProvider>
               </HistoryProvider>
             </MetabotProvider>

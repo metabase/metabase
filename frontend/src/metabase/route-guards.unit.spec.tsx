@@ -1,11 +1,11 @@
 import { type Context, createContext } from "react";
-import { routerActions } from "react-router-redux";
 import { connectedReduxRedirect } from "redux-auth-wrapper/history3/redirect";
 
 import { renderWithProviders, screen } from "__support__/ui";
 import { createMockState } from "metabase-types/store/mocks";
 
 import { MetabaseReduxContext } from "./lib/redux";
+import { redirectReplace } from "./lib/router";
 
 describe("route-guards", () => {
   describe("patched redux-auth-wrapper", () => {
@@ -73,7 +73,7 @@ function setupRouteGuard(opts: {
     wrapperDisplayName: "testing",
     redirectPath: "/test",
     allowRedirectBack: false,
-    redirectAction: routerActions.replace,
+    redirectAction: redirectReplace,
     ...opts,
   });
 

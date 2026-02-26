@@ -1,31 +1,11 @@
 import { combineReducers, configureStore } from "@reduxjs/toolkit";
 
 import { Api } from "metabase/api";
-import {
-  routerMiddleware,
-  routerReducer as routing,
-} from "metabase/lib/router";
 import { PLUGIN_REDUX_MIDDLEWARES } from "metabase/plugins";
-import { locationChanged } from "metabase/redux/app";
 
-function createRouterSyncMiddleware(history) {
-  const rrMiddleware = routerMiddleware(history);
-
-  return (store) => (next) => (action) => {
-    const result = rrMiddleware(store)(next)(action);
-
-    if (action.type === "@@router/LOCATION_CHANGE" && action.payload) {
-      store.dispatch(locationChanged(action.payload));
-    }
-
-    return result;
-  };
-}
-
-export function getStore(reducers, history, initialState) {
+export function getStore(reducers, _history, initialState) {
   const reducer = combineReducers({
     ...reducers,
-    routing,
     [Api.reducerPath]: Api.reducer,
   });
 
@@ -36,10 +16,6 @@ export function getStore(reducers, history, initialState) {
       getDefaultMiddleware({
         immutableCheck: false,
         serializableCheck: false,
-      }).concat([
-        Api.middleware,
-        ...(history ? [createRouterSyncMiddleware(history)] : []),
-        ...PLUGIN_REDUX_MIDDLEWARES,
-      ]),
+      }).concat([Api.middleware, ...PLUGIN_REDUX_MIDDLEWARES]),
   });
 }
