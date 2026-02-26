@@ -370,6 +370,15 @@ export type VisualizationSettingDefinition<
   useRawSeries?: boolean;
 };
 
+export type CompleteVisualizationSettingDefinition<
+  T = unknown,
+  TValue = unknown,
+  TProps extends Record<string, unknown> = Record<string, unknown>,
+> = VisualizationSettingDefinition<T, TValue, TProps> & {
+  id: string;
+  section: string;
+};
+
 export type DatasetColumnSettingDefinition<
   TValue = unknown,
   TProps extends Record<string, unknown> = Record<string, unknown>,
@@ -517,14 +526,6 @@ export type VisualizationSettingsDefinitions = {
   time_style?: DatasetColumnSettingDefinition<Value, Props>;
   title?: SingleSeriesSettingDefinition<Value, Props>;
   [key: string]: any;
-};
-
-export type CompleteVisualizationSettingDefinition<
-  T = unknown,
-  TValue = unknown,
-  TProps extends Record<string, unknown> = Record<string, unknown>,
-> = VisualizationSettingDefinition<T, TValue, TProps> & {
-  id: string;
 };
 
 export type Widget = {

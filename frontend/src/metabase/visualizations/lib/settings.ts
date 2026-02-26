@@ -245,7 +245,7 @@ function getSettingWidget<T, TValue, TProps extends Record<string, unknown>>(
     ...settingDef,
     id: settingId,
     value,
-    section,
+    section: section ?? "",
     hidden: getHiddenFn
       ? getHiddenFn(resolvedObject, computedSettings, extra)
       : (settingDef.hidden ?? false),
