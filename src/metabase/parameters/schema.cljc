@@ -109,7 +109,11 @@
   Sorts by `:position` to ensure display order is preserved."
   [parameters]
   (->> (lib/normalize ::parameters parameters)
-       (sort-by (fn [p] (or (:position p) ##Inf)))
+       (map-indexed (fn [idx p]
+                      (cond-> p
+                        (not (some? (:position p)))
+                        (assoc :position idx))))
+       (sort-by :position)
        vec))
 
 (mr/def ::parameter-with-optional-type
