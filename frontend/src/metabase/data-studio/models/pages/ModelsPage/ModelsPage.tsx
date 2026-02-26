@@ -19,6 +19,10 @@ import type {
 } from "metabase/common/components/Pickers";
 import { CollectionPickerModal } from "metabase/common/components/Pickers/CollectionPicker";
 import { useToast } from "metabase/common/hooks";
+import {
+  type SimulatedModel,
+  useSimulatedTransforms,
+} from "metabase/data-studio/common/SimulatedTransformsContext";
 import { DataStudioBreadcrumbs } from "metabase/data-studio/common/components/DataStudioBreadcrumbs";
 import { PageContainer } from "metabase/data-studio/common/components/PageContainer/PageContainer";
 import { PaneHeader } from "metabase/data-studio/common/components/PaneHeader";
@@ -95,6 +99,23 @@ function getSelectedModelNames(
   return names;
 }
 
+function getSelectedSimulatedModels(
+  models: SearchResult<number, "dataset">[],
+  selection: RowSelectionState,
+): SimulatedModel[] {
+  return models
+    .filter((model) => selection[`model:${model.id}`])
+    .map((model) => {
+      const ancestors = model.collection?.effective_ancestors ?? [];
+      const parentCollection = model.collection;
+      const collectionPath = [
+        ...ancestors.map((a) => a.name),
+        ...(parentCollection ? [parentCollection.name] : []),
+      ];
+      return { name: model.name, collectionPath };
+    });
+}
+
 function getSelectedModelDatabases(
   models: SearchResult<number, "dataset">[],
   selection: RowSelectionState,
@@ -166,6 +187,7 @@ export function ModelsPage() {
 
   const [updateCard] = useUpdateCardMutation();
   const [sendToast] = useToast();
+  const { addTransforms } = useSimulatedTransforms();
 
   const {
     data: searchData,
@@ -212,14 +234,25 @@ export function ModelsPage() {
     }
   }, []);
 
-  const handleConfirmConvert = useCallback(() => {
-    const modelNames = getSelectedModelNames(treeData, rowSelection);
-    setShowConfirmModal(false);
-    setConversionJob({
-      modelNames,
-      duration: Math.random() * 7000 + 3000,
-    });
-  }, [treeData, rowSelection]);
+  const handleConfirmConvert = useCallback(
+    (folderName: string) => {
+      const modelNames = getSelectedModelNames(treeData, rowSelection);
+      const simulatedModels = getSelectedSimulatedModels(
+        models ?? [],
+        rowSelection,
+      );
+      setShowConfirmModal(false);
+      setConversionJob({
+        modelNames,
+        duration: Math.random() * 7000 + 3000,
+      });
+      addTransforms({
+        transformsFolderName: folderName,
+        models: simulatedModels,
+      });
+    },
+    [treeData, models, rowSelection, addTransforms],
+  );
 
   const handleMoveToTrash = useCallback(async () => {
     const ids = getSelectedModelIds(rowSelection);
@@ -519,7 +552,7 @@ interface ConvertToTransformModalProps {
   opened: boolean;
   databases: SelectedDatabase[];
   onClose: () => void;
-  onConfirm: () => void;
+  onConfirm: (folderName: string) => void;
 }
 
 function ConvertToTransformModal({
@@ -666,7 +699,11 @@ function ConvertToTransformModal({
             <Button variant="default" onClick={onClose}>
               {t`Cancel`}
             </Button>
-            <Button variant="filled" color="brand" onClick={onConfirm}>
+            <Button
+              variant="filled"
+              color="brand"
+              onClick={() => onConfirm(collectionName)}
+            >
               {t`Convert`}
             </Button>
           </Flex>
