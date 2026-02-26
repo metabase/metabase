@@ -331,8 +331,8 @@
               "SELECT * FROM orders"
               "SELECT * FROM orders"]]]
       (testing label
-        (let [source   (#'ws.execute/remap-sql-source table-mapping
-                                                      {:type "query", :query (lib/native-query (mt/metadata-provider) input-sql)})
+        (let [query    {:type "query", :query (lib/native-query (mt/metadata-provider) input-sql)}
+              source   (#'ws.execute/remap-sql-source table-mapping query)
               compiled (qp.compile/compile (:query source))]
           (is (= expected-sql (:query compiled))))))))
 
