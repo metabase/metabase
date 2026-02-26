@@ -2645,13 +2645,3 @@
           "positions are preserved through export")
       (is (= [1 2 0] (map :position imported))
           "positions are preserved through import"))))
-
-(deftest ^:parallel import-parameters-backfills-position-for-legacy-exports-test
-  (testing "importing legacy parameters without :position backfills from array index"
-    (let [legacy-params [{:id "zebra" :name "Z param" :type :category}
-                         {:id "alpha" :name "A param" :type :category}]
-          imported (serdes/import-parameters legacy-params)]
-      (is (= ["zebra" "alpha"] (map :id imported))
-          "order is preserved")
-      (is (= [0 1] (map :position imported))
-          "positions are backfilled from array index"))))

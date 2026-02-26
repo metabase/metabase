@@ -921,6 +921,7 @@
             (let [params [{:name      "Time Unit"
                            :slug      "time_unit"
                            :id        "927e929"
+                           :position  0
                            :type      :temporal-unit
                            :sectionId "temporal-unit"
                            :temporal_units [:week :month]}]]
@@ -3159,6 +3160,7 @@
                    :slug                 "static_category"
                    :id                   "_STATIC_CATEGORY_"
                    :type                 "category"
+                   :position             0
                    :values_query_type    "search"
                    :values_source_type   "static-list"
                    :values_source_config {:values ["BBQ" "Bakery" "Bar"]}}]
