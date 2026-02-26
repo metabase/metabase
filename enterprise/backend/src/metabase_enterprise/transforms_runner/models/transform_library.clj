@@ -66,7 +66,8 @@
       (throw (ex-info (tru "Invalid library path. Only ''common'' is currently supported.")
                       {:status-code 400
                        :path normalized
-                       :language language})))))
+                       :language language
+                       :allowed-paths [allowed-path]})))))
 
 (defn get-library-by-path
   "Look up a TransformLibrary record by `language` and `path`, validating the path first."
