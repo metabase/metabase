@@ -385,139 +385,137 @@ export type SingleSeriesSettingDefinition<
   TProps extends Record<string, unknown> = Record<string, unknown>,
 > = VisualizationSettingDefinition<SingleSeries, TValue, TProps>;
 
-export type VisualizationSettingsDefinitions<
-  TValue = unknown,
-  TProps extends Record<string, unknown> = Record<string, unknown>,
-> = {
-  _column_title_full?: DatasetColumnSettingDefinition<TValue, TProps>;
-  _header_unit?: DatasetColumnSettingDefinition<TValue, TProps>;
-  _numberFormatter?: DatasetColumnSettingDefinition<TValue, TProps>;
-  axis?: SingleSeriesSettingDefinition<TValue, TProps>;
-  "boxplot.points_mode"?: SeriesSettingDefinition<TValue, TProps>;
-  "boxplot.show_values_mode"?: SeriesSettingDefinition<TValue, TProps>;
-  "card.description"?: SeriesSettingDefinition<TValue, TProps>;
-  "card.hide_empty"?: SeriesSettingDefinition<TValue, TProps>;
-  "card.title"?: SeriesSettingDefinition<TValue, TProps>;
-  click_behavior?: SeriesSettingDefinition<TValue, TProps>;
-  color?: SingleSeriesSettingDefinition<TValue, TProps>;
-  column?: DatasetColumnSettingDefinition<TValue, TProps>;
-  column_settings?: DatasetColumnSettingDefinition<TValue, TProps>;
-  currency?: DatasetColumnSettingDefinition<TValue, TProps>;
-  currency_in_header?: DatasetColumnSettingDefinition<TValue, TProps>;
-  currency_style?: DatasetColumnSettingDefinition<TValue, TProps>;
-  date_abbreviate?: DatasetColumnSettingDefinition<TValue, TProps>;
-  date_separator?: DatasetColumnSettingDefinition<TValue, TProps>;
-  date_style?: DatasetColumnSettingDefinition<TValue, TProps>;
-  decimals?: DatasetColumnSettingDefinition<TValue, TProps>;
-  display?: SingleSeriesSettingDefinition<TValue, TProps>;
-  "gauge.range"?: SeriesSettingDefinition<TValue, TProps>;
+type Value = unknown;
+
+type Props = Record<string, unknown>;
+
+export type VisualizationSettingsDefinitions = {
+  _column_title_full?: DatasetColumnSettingDefinition<Value, Props>;
+  _header_unit?: DatasetColumnSettingDefinition<Value, Props>;
+  _numberFormatter?: DatasetColumnSettingDefinition<Value, Props>;
+  axis?: SingleSeriesSettingDefinition<Value, Props>;
+  "boxplot.points_mode"?: SeriesSettingDefinition<Value, Props>;
+  "boxplot.show_values_mode"?: SeriesSettingDefinition<Value, Props>;
+  "card.description"?: SeriesSettingDefinition<Value, Props>;
+  "card.hide_empty"?: SeriesSettingDefinition<Value, Props>;
+  "card.title"?: SeriesSettingDefinition<Value, Props>;
+  click_behavior?: SeriesSettingDefinition<Value, Props>;
+  color?: SingleSeriesSettingDefinition<Value, Props>;
+  column?: DatasetColumnSettingDefinition<Value, Props>;
+  column_settings?: DatasetColumnSettingDefinition<Value, Props>;
+  currency?: DatasetColumnSettingDefinition<Value, Props>;
+  currency_in_header?: DatasetColumnSettingDefinition<Value, Props>;
+  currency_style?: DatasetColumnSettingDefinition<Value, Props>;
+  date_abbreviate?: DatasetColumnSettingDefinition<Value, Props>;
+  date_separator?: DatasetColumnSettingDefinition<Value, Props>;
+  date_style?: DatasetColumnSettingDefinition<Value, Props>;
+  decimals?: DatasetColumnSettingDefinition<Value, Props>;
+  display?: SingleSeriesSettingDefinition<Value, Props>;
+  "gauge.range"?: SeriesSettingDefinition<Value, Props>;
   "gauge.segments"?: SeriesSettingDefinition<
-    TValue,
+    Value,
     ChartSettingSegmentsEditorProps
   >;
-  "graph.colors"?: SeriesSettingDefinition<TValue, TProps>;
-  "graph.dimensions"?: SeriesSettingDefinition<TValue, TProps>;
-  "graph.metrics"?: SeriesSettingDefinition<TValue, TProps>;
+  "graph.colors"?: SeriesSettingDefinition<Value, Props>;
+  "graph.dimensions"?: SeriesSettingDefinition<Value, Props>;
+  "graph.metrics"?: SeriesSettingDefinition<Value, Props>;
   "graph.label_value_frequency"?: SeriesSettingDefinition<
-    TValue,
+    Value,
     ChartSettingEnumToggleProps<string>
   >;
-  "graph.label_value_formatting"?: SeriesSettingDefinition<TValue, TProps>;
+  "graph.label_value_formatting"?: SeriesSettingDefinition<Value, Props>;
   "graph.max_categories"?: SeriesSettingDefinition<
-    TValue,
+    Value,
     ChartSettingMaxCategoriesProps
   >;
-  "graph.max_categories_enabled"?: SeriesSettingDefinition<TValue, TProps>;
-  "graph.other_category_color"?: SeriesSettingDefinition<TValue, TProps>;
-  "graph.other_category_aggregation_fn"?: SeriesSettingDefinition<
-    TValue,
-    TProps
-  >;
-  "graph.series_labels"?: SeriesSettingDefinition<TValue, TProps>;
+  "graph.max_categories_enabled"?: SeriesSettingDefinition<Value, Props>;
+  "graph.other_category_color"?: SeriesSettingDefinition<Value, Props>;
+  "graph.other_category_aggregation_fn"?: SeriesSettingDefinition<Value, Props>;
+  "graph.series_labels"?: SeriesSettingDefinition<Value, Props>;
   "graph.series_order"?: SeriesSettingDefinition<
-    TValue,
+    Value,
     ChartSettingSeriesOrderProps
   >;
-  "graph.series_order_dimension"?: SeriesSettingDefinition<TValue, TProps>;
-  "graph.show_mean"?: SeriesSettingDefinition<TValue, TProps>;
-  "graph.show_stack_values"?: SeriesSettingDefinition<TValue, TProps>;
-  "graph.show_trendline"?: SeriesSettingDefinition<TValue, TProps>;
-  "graph.show_values"?: SeriesSettingDefinition<TValue, TProps>;
-  "graph.tooltip_columns"?: SeriesSettingDefinition<TValue, TProps>;
-  "graph.tooltip_type"?: SeriesSettingDefinition<TValue, TProps>;
-  "graph.x_axis._is_histogram"?: SeriesSettingDefinition<TValue, TProps>;
-  "graph.x_axis._is_numeric"?: SeriesSettingDefinition<TValue, TProps>;
-  "graph.x_axis._is_timeseries"?: SeriesSettingDefinition<TValue, TProps>;
-  "graph.x_axis.axis_enabled"?: SeriesSettingDefinition<TValue, TProps>;
-  "graph.x_axis.labels_enabled"?: SeriesSettingDefinition<TValue, TProps>;
-  "graph.x_axis.title_text"?: SeriesSettingDefinition<TValue, TProps>;
-  "graph.x_axis.scale"?: SeriesSettingDefinition<TValue, TProps>;
-  "graph.y_axis.auto_range"?: SeriesSettingDefinition<TValue, TProps>;
-  "graph.y_axis.auto_split"?: SeriesSettingDefinition<TValue, TProps>;
-  "graph.y_axis.labels_enabled"?: SeriesSettingDefinition<TValue, TProps>;
-  "graph.y_axis.max"?: SeriesSettingDefinition<TValue, TProps>;
-  "graph.y_axis.min"?: SeriesSettingDefinition<TValue, TProps>;
-  "graph.y_axis.axis_enabled"?: SeriesSettingDefinition<TValue, TProps>;
-  "graph.y_axis.scale"?: SeriesSettingDefinition<TValue, TProps>;
-  "graph.y_axis.split_number"?: SeriesSettingDefinition<TValue, TProps>;
-  "graph.y_axis.title_text"?: SeriesSettingDefinition<TValue, TProps>;
-  "graph.y_axis.unpin_from_zero"?: SeriesSettingDefinition<TValue, TProps>;
-  "legend.is_reversed"?: SeriesSettingDefinition<TValue, TProps>;
-  "line.interpolate"?: SingleSeriesSettingDefinition<TValue, TProps>;
-  "line.marker_enabled"?: SingleSeriesSettingDefinition<TValue, TProps>;
-  "line.missing"?: SingleSeriesSettingDefinition<TValue, TProps>;
-  "line.size"?: SingleSeriesSettingDefinition<TValue, TProps>;
-  "line.style"?: SingleSeriesSettingDefinition<TValue, TProps>;
-  markdown_template?: DatasetColumnSettingDefinition<TValue, TProps>;
-  number_separators?: DatasetColumnSettingDefinition<TValue, TProps>;
-  number_style?: DatasetColumnSettingDefinition<TValue, TProps>;
+  "graph.series_order_dimension"?: SeriesSettingDefinition<Value, Props>;
+  "graph.show_mean"?: SeriesSettingDefinition<Value, Props>;
+  "graph.show_stack_values"?: SeriesSettingDefinition<Value, Props>;
+  "graph.show_trendline"?: SeriesSettingDefinition<Value, Props>;
+  "graph.show_values"?: SeriesSettingDefinition<Value, Props>;
+  "graph.tooltip_columns"?: SeriesSettingDefinition<Value, Props>;
+  "graph.tooltip_type"?: SeriesSettingDefinition<Value, Props>;
+  "graph.x_axis._is_histogram"?: SeriesSettingDefinition<Value, Props>;
+  "graph.x_axis._is_numeric"?: SeriesSettingDefinition<Value, Props>;
+  "graph.x_axis._is_timeseries"?: SeriesSettingDefinition<Value, Props>;
+  "graph.x_axis.axis_enabled"?: SeriesSettingDefinition<Value, Props>;
+  "graph.x_axis.labels_enabled"?: SeriesSettingDefinition<Value, Props>;
+  "graph.x_axis.title_text"?: SeriesSettingDefinition<Value, Props>;
+  "graph.x_axis.scale"?: SeriesSettingDefinition<Value, Props>;
+  "graph.y_axis.auto_range"?: SeriesSettingDefinition<Value, Props>;
+  "graph.y_axis.auto_split"?: SeriesSettingDefinition<Value, Props>;
+  "graph.y_axis.labels_enabled"?: SeriesSettingDefinition<Value, Props>;
+  "graph.y_axis.max"?: SeriesSettingDefinition<Value, Props>;
+  "graph.y_axis.min"?: SeriesSettingDefinition<Value, Props>;
+  "graph.y_axis.axis_enabled"?: SeriesSettingDefinition<Value, Props>;
+  "graph.y_axis.scale"?: SeriesSettingDefinition<Value, Props>;
+  "graph.y_axis.split_number"?: SeriesSettingDefinition<Value, Props>;
+  "graph.y_axis.title_text"?: SeriesSettingDefinition<Value, Props>;
+  "graph.y_axis.unpin_from_zero"?: SeriesSettingDefinition<Value, Props>;
+  "legend.is_reversed"?: SeriesSettingDefinition<Value, Props>;
+  "line.interpolate"?: SingleSeriesSettingDefinition<Value, Props>;
+  "line.marker_enabled"?: SingleSeriesSettingDefinition<Value, Props>;
+  "line.missing"?: SingleSeriesSettingDefinition<Value, Props>;
+  "line.size"?: SingleSeriesSettingDefinition<Value, Props>;
+  "line.style"?: SingleSeriesSettingDefinition<Value, Props>;
+  markdown_template?: DatasetColumnSettingDefinition<Value, Props>;
+  number_separators?: DatasetColumnSettingDefinition<Value, Props>;
+  number_style?: DatasetColumnSettingDefinition<Value, Props>;
   "pie._dimensions_widget"?: SeriesSettingDefinition<
-    TValue,
+    Value,
     DimensionsWidgetProps
   >;
-  "pie.decimal_places"?: SeriesSettingDefinition<TValue, TProps>;
-  "pie.dimension"?: SeriesSettingDefinition<TValue, TProps>;
-  "pie.metric"?: SeriesSettingDefinition<TValue, TProps>;
-  "pie.percent_visibility"?: SeriesSettingDefinition<TValue, TProps>;
-  "pie.rows"?: SeriesSettingDefinition<TValue, TProps>;
-  "pie.slice_threshold"?: SeriesSettingDefinition<TValue, TProps>;
-  "pie.show_labels"?: SeriesSettingDefinition<TValue, TProps>;
-  "pie.show_legend"?: SeriesSettingDefinition<TValue, TProps>;
-  "pie.show_total"?: SeriesSettingDefinition<TValue, TProps>;
-  "pie.sort_rows"?: SeriesSettingDefinition<TValue, TProps>;
-  "pie.sort_rows_dimension"?: SeriesSettingDefinition<TValue, TProps>;
-  prefix?: DatasetColumnSettingDefinition<TValue, TProps>;
-  "progress.color"?: SeriesSettingDefinition<TValue, TProps>;
-  "progress.goal"?: SeriesSettingDefinition<TValue, ChartSettingGoalInputProps>;
-  "progress.value"?: SeriesSettingDefinition<TValue, TProps>;
-  "sankey.edge_color"?: SeriesSettingDefinition<TValue, TProps>;
-  "sankey.label_value_formatting"?: SeriesSettingDefinition<TValue, TProps>;
-  "sankey.node_align"?: SeriesSettingDefinition<TValue, TProps>;
-  "sankey.show_edge_color"?: SeriesSettingDefinition<TValue, TProps>;
-  "sankey.show_edge_labels"?: SeriesSettingDefinition<TValue, TProps>;
-  "sankey.source"?: SeriesSettingDefinition<TValue, TProps>;
-  "sankey.target"?: SeriesSettingDefinition<TValue, TProps>;
-  "sankey.value"?: SeriesSettingDefinition<TValue, TProps>;
-  "scalar.compact_primary_number"?: SeriesSettingDefinition<TValue, TProps>;
+  "pie.decimal_places"?: SeriesSettingDefinition<Value, Props>;
+  "pie.dimension"?: SeriesSettingDefinition<Value, Props>;
+  "pie.metric"?: SeriesSettingDefinition<Value, Props>;
+  "pie.percent_visibility"?: SeriesSettingDefinition<Value, Props>;
+  "pie.rows"?: SeriesSettingDefinition<Value, Props>;
+  "pie.slice_threshold"?: SeriesSettingDefinition<Value, Props>;
+  "pie.show_labels"?: SeriesSettingDefinition<Value, Props>;
+  "pie.show_legend"?: SeriesSettingDefinition<Value, Props>;
+  "pie.show_total"?: SeriesSettingDefinition<Value, Props>;
+  "pie.sort_rows"?: SeriesSettingDefinition<Value, Props>;
+  "pie.sort_rows_dimension"?: SeriesSettingDefinition<Value, Props>;
+  prefix?: DatasetColumnSettingDefinition<Value, Props>;
+  "progress.color"?: SeriesSettingDefinition<Value, Props>;
+  "progress.goal"?: SeriesSettingDefinition<Value, ChartSettingGoalInputProps>;
+  "progress.value"?: SeriesSettingDefinition<Value, Props>;
+  "sankey.edge_color"?: SeriesSettingDefinition<Value, Props>;
+  "sankey.label_value_formatting"?: SeriesSettingDefinition<Value, Props>;
+  "sankey.node_align"?: SeriesSettingDefinition<Value, Props>;
+  "sankey.show_edge_color"?: SeriesSettingDefinition<Value, Props>;
+  "sankey.show_edge_labels"?: SeriesSettingDefinition<Value, Props>;
+  "sankey.source"?: SeriesSettingDefinition<Value, Props>;
+  "sankey.target"?: SeriesSettingDefinition<Value, Props>;
+  "sankey.value"?: SeriesSettingDefinition<Value, Props>;
+  "scalar.compact_primary_number"?: SeriesSettingDefinition<Value, Props>;
   "scalar.comparisons"?: SeriesSettingDefinition<
-    TValue,
+    Value,
     SmartScalarComparisonWidgetProps
   >;
-  "scalar.field"?: SeriesSettingDefinition<TValue, TProps>;
-  "scalar.switch_positive_negative"?: SeriesSettingDefinition<TValue, TProps>;
-  scale?: DatasetColumnSettingDefinition<TValue, TProps>;
-  "scatter.bubble"?: SeriesSettingDefinition<TValue, TProps>;
-  show_series_trendline?: SingleSeriesSettingDefinition<TValue, TProps>;
-  show_series_values?: SingleSeriesSettingDefinition<TValue, TProps>;
-  "stackable.stack_type"?: SeriesSettingDefinition<TValue, TProps>;
-  suffix?: DatasetColumnSettingDefinition<TValue, TProps>;
+  "scalar.field"?: SeriesSettingDefinition<Value, Props>;
+  "scalar.switch_positive_negative"?: SeriesSettingDefinition<Value, Props>;
+  scale?: DatasetColumnSettingDefinition<Value, Props>;
+  "scatter.bubble"?: SeriesSettingDefinition<Value, Props>;
+  show_series_trendline?: SingleSeriesSettingDefinition<Value, Props>;
+  show_series_values?: SingleSeriesSettingDefinition<Value, Props>;
+  "stackable.stack_type"?: SeriesSettingDefinition<Value, Props>;
+  suffix?: DatasetColumnSettingDefinition<Value, Props>;
   "table.columns"?: SeriesSettingDefinition<
-    TValue,
+    Value,
     ChartSettingTableColumnsProps
   >;
-  time_enabled?: DatasetColumnSettingDefinition<TValue, TProps>;
-  time_style?: DatasetColumnSettingDefinition<TValue, TProps>;
-  title?: SingleSeriesSettingDefinition<TValue, TProps>;
+  time_enabled?: DatasetColumnSettingDefinition<Value, Props>;
+  time_style?: DatasetColumnSettingDefinition<Value, Props>;
+  title?: SingleSeriesSettingDefinition<Value, Props>;
   [key: string]: any;
 };
 
@@ -531,7 +529,7 @@ export type CompleteVisualizationSettingDefinition<
 
 export type Widget = {
   id: string;
-  section: string;
+  section?: string;
   hidden?: boolean;
   props?: Record<string, unknown>;
   title?: string;

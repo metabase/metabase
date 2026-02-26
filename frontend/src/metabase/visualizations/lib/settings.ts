@@ -49,12 +49,8 @@ const WIDGETS: Record<string, React.ComponentType<any>> = {
   multiselect: ChartSettingMultiSelect,
 };
 
-export function getComputedSettings<
-  T,
-  TValue,
-  TProps extends Record<string, unknown>,
->(
-  settingsDefs: VisualizationSettingsDefinitions<TValue, TProps>,
+export function getComputedSettings<T>(
+  settingsDefs: VisualizationSettingsDefinitions,
   object: T,
   storedSettings: VisualizationSettings,
   extra: SettingsExtra = {},
@@ -91,7 +87,7 @@ export function getComputedSettings<
 
 function getComputedSetting<T, TValue, TProps extends Record<string, unknown>>(
   computedSettings: ComputedVisualizationSettings, // MUTATED!
-  settingDefs: VisualizationSettingsDefinitions<TValue, TProps>,
+  settingDefs: VisualizationSettingsDefinitions,
   settingId: VisualizationSettingKey,
   object: T,
   storedSettings: VisualizationSettings,
@@ -172,7 +168,7 @@ export function getSettingsWidgets<
   TValue,
   TProps extends Record<string, unknown>,
 >(
-  settingDefs: VisualizationSettingsDefinitions<TValue, TProps>,
+  settingDefs: VisualizationSettingsDefinitions,
   storedSettings: VisualizationSettings,
   computedSettings: ComputedVisualizationSettings,
   object: T,
@@ -184,7 +180,7 @@ export function getSettingsWidgets<
 ): CompleteVisualizationSettingDefinition<T, TValue, TProps>[] {
   return Object.keys(settingDefs)
     .map((settingId) =>
-      getSettingWidget(
+      getSettingWidget<T, TValue, TProps>(
         settingDefs,
         settingId,
         storedSettings,
@@ -198,7 +194,7 @@ export function getSettingsWidgets<
 }
 
 function getSettingWidget<T, TValue, TProps extends Record<string, unknown>>(
-  settingDefs: VisualizationSettingsDefinitions<TValue, TProps>,
+  settingDefs: VisualizationSettingsDefinitions,
   settingId: VisualizationSettingKey,
   storedSettings: VisualizationSettings,
   computedSettings: ComputedVisualizationSettings,
