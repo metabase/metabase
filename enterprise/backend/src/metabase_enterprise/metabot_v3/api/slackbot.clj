@@ -191,9 +191,7 @@
   (assert-setup-complete)
   (when (sso-settings/slack-connect-enabled)
     (let [client {:token (channel.settings/unobfuscated-slack-app-token)}
-          event (:event payload)
-          ;; TODO: cache this value somehow
-          bot-id (slackbot.client/get-bot-user-id client)]
+          event (:event payload)]
       (log/debugf "[slackbot] Event callback: event_type=%s user=%s channel=%s"
                   (:type event) (:user event) (:channel event))
       (cond
@@ -206,7 +204,7 @@
 
         (and
          (slackbot.events/file-share? event)
-         (slackbot.events/dm-or-channel-mention? event bot-id))
+         (slackbot.events/dm-or-channel-mention? event (slackbot.client/get-bot-user-id client)))
         (process-async handle-message-file-share client event)
 
         (slackbot.events/app-mention? event)
