@@ -79,12 +79,19 @@ export class WorkspaceManager {
     this.log?.appendLine(`WorkspaceManager: removed workspace for ${toStoreKey(key)}`)
   }
 
+  async clear(): Promise<void> {
+    await this.save({})
+    this.log?.appendLine('WorkspaceManager: cleared all workspace configurations')
+  }
+
   private async load(): Promise<WorkspaceStore> {
     const raw = this.secret.value
-    if (!raw) return {}
+    if (!raw)
+      return {}
     try {
       return JSON.parse(raw) as WorkspaceStore
-    } catch {
+    }
+    catch {
       this.log?.appendLine('WorkspaceManager: failed to parse stored workspaces, resetting')
       return {}
     }

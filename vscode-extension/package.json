@@ -58,6 +58,11 @@
         "icon": "$(close)"
       },
       {
+        "command": "metastudio.clearWorkspaceConfigurations",
+        "title": "Metastudio: Clear Workspace Configurations",
+        "icon": "$(trash)"
+      },
+      {
         "command": "metastudio.checkDependencyGraph",
         "title": "Metastudio: Check Dependency Graph"
       },
@@ -227,6 +232,11 @@
           "command": "metastudio.clearCredentials",
           "when": "view == metabase.connection && viewItem == connectionToken",
           "group": "inline@2"
+        },
+        {
+          "command": "metastudio.clearWorkspaceConfigurations",
+          "when": "view == metabase.connection && viewItem == connectionUrl",
+          "group": "inline@3"
         },
         {
           "command": "metastudio.openInMetabase",

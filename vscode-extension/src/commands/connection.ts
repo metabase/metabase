@@ -1,15 +1,15 @@
-import {useCommand} from "reactive-vscode"
-import {commands, window, workspace} from "vscode"
+import type { ExtensionCtx } from '../extension-context'
+import { useCommand } from 'reactive-vscode'
 
-import type {ExtensionCtx} from "../extension-context"
-import {config} from "../config"
-import {checkMetabaseConnection} from "../metabase-client"
+import { commands, window, workspace } from 'vscode'
+import { config } from '../config'
+import { checkMetabaseConnection } from '../metabase-client'
 
 export function registerConnectionCommands(ctx: ExtensionCtx) {
   function updateHostConfigured() {
     commands.executeCommand(
-      "setContext",
-      "metastudio.hostConfigured",
+      'setContext',
+      'metastudio.hostConfigured',
       !!config.host,
     )
   }
@@ -17,91 +17,103 @@ export function registerConnectionCommands(ctx: ExtensionCtx) {
   updateHostConfigured()
 
   workspace.onDidChangeConfiguration((event) => {
-    if (event.affectsConfiguration("metastudio.host")) {
+    if (event.affectsConfiguration('metastudio.host')) {
       updateHostConfigured()
     }
   })
 
-  useCommand("metastudio.setHost", async () => {
-    const current = config.host ?? ""
+  useCommand('metastudio.setHost', async () => {
+    const current = config.host ?? ''
     const value = await window.showInputBox({
-      prompt: "Enter your Metabase instance URL",
-      placeHolder: "https://my-metabase.example.com",
+      prompt: 'Enter your Metabase instance URL',
+      placeHolder: 'https://my-metabase.example.com',
       value: current,
     })
     if (value !== undefined) {
       await workspace
-        .getConfiguration("metastudio")
-        .update("host", value, true)
+        .getConfiguration('metastudio')
+        .update('host', value, true)
       ctx.connectionProvider.refresh()
     }
   })
 
-  useCommand("metastudio.setApiKey", async () => {
+  useCommand('metastudio.setApiKey', async () => {
     const value = await window.showInputBox({
-      prompt: "Enter your Metabase API key",
+      prompt: 'Enter your Metabase API key',
       password: true,
       ignoreFocusOut: true,
     })
     if (value !== undefined) {
       await ctx.apiKey.set(value)
       ctx.connectionProvider.refresh()
-      window.showInformationMessage("API key saved securely.")
+      window.showInformationMessage('API key saved securely.')
     }
   })
 
-  useCommand("metastudio.showApiKey", () => {
+  useCommand('metastudio.showApiKey', () => {
     const key = ctx.apiKey.value
     if (!key) {
-      window.showWarningMessage("No API key is set.")
+      window.showWarningMessage('No API key is set.')
       return
     }
-    const masked = `${"*".repeat(Math.max(0, key.length - 4))}${key.slice(-4)}`
+    const masked = `${'*'.repeat(Math.max(0, key.length - 4))}${key.slice(-4)}`
     window.showInformationMessage(`API key: ${masked}`)
   })
 
-  useCommand("metastudio.clearCredentials", async () => {
-    await workspace.getConfiguration("metastudio").update("host", "", true)
-    await ctx.apiKey.set("")
+  useCommand('metastudio.clearCredentials', async () => {
+    await workspace.getConfiguration('metastudio').update('host', '', true)
+    await ctx.apiKey.set('')
     ctx.connectionProvider.refresh()
   })
 
-  useCommand("metastudio.checkConnection", async () => {
+  useCommand('metastudio.checkConnection', async () => {
     const result = await checkMetabaseConnection(
       config.host,
       ctx.apiKey.value ?? undefined,
     )
 
     switch (result.status) {
-      case "missing-host":
+      case 'missing-host':
         window.showErrorMessage(
           'Metabase host is not configured. Set it in Settings under "metastudio.host".',
         )
         break
-      case "missing-api-key": {
+      case 'missing-api-key': {
         const action = await window.showWarningMessage(
-          "No API key set.",
-          "Set API Key",
+          'No API key set.',
+          'Set API Key',
         )
-        if (action === "Set API Key") {
-          commands.executeCommand("metastudio.setApiKey")
+        if (action === 'Set API Key') {
+          commands.executeCommand('metastudio.setApiKey')
         }
         break
       }
-      case "unauthorized":
-        window.showErrorMessage("Authentication failed. Check your API key.")
+      case 'unauthorized':
+        window.showErrorMessage('Authentication failed. Check your API key.')
         break
-      case "network-error":
+      case 'network-error':
         window.showErrorMessage(`Could not reach Metabase: ${result.message}`)
         break
-      case "http-error":
+      case 'http-error':
         window.showErrorMessage(
           `Metabase returned HTTP ${result.statusCode}: ${result.statusText}`,
         )
         break
-      case "success":
+      case 'success':
         window.showInformationMessage(`Metabase connection successful`)
         break
+    }
+  })
+
+  useCommand('metastudio.clearWorkspaceConfigurations', async () => {
+    const confirm = await window.showWarningMessage(
+      'Are you sure you want to clear all stored workspace configurations? This cannot be undone.',
+      'Clear All',
+      'Cancel',
+    )
+    if (confirm === 'Clear All') {
+      await ctx.workspaceManager.clear()
+      window.showInformationMessage('Workspace configurations cleared.')
     }
   })
 }

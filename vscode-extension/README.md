@@ -17,25 +17,26 @@
 
 <!-- commands -->
 
-| Command                            | Title                                 |
-| ---------------------------------- | ------------------------------------- |
-| `metastudio.setHost`               | Metastudio: Set Host URL              |
-| `metastudio.setApiKey`             | Metastudio: Set API Key               |
-| `metastudio.checkConnection`       | Metastudio: Check Metabase Connection |
-| `metastudio.showApiKey`            | Metastudio: Show API Key              |
-| `metastudio.clearCredentials`      | Metastudio: Clear Credentials         |
-| `metastudio.checkDependencyGraph`  | Metastudio: Check Dependency Graph    |
-| `metastudio.showDependencyGraph`   | Metastudio: Show Dependency Graph     |
-| `metastudio.showTransformPreview`  | Metastudio: Show Transform Preview    |
-| `metastudio.openInMetabase`        | Open in Metabase                      |
-| `metastudio.showInDependencyGraph` | Show in Dependency Graph              |
-| `metastudio.runTransform`          | Run Transform                         |
-| `metastudio.createSqlTransform`    | Metastudio: New SQL Transform         |
-| `metastudio.openEmbeddedCode`      | Metastudio: Edit Query in Editor      |
-| `metastudio.showNotebook`          | Metastudio: Show Notebook Query       |
-| `metastudio.showCardPreview`       | Metastudio: Show Card Preview         |
-| `metastudio.viewTableData`         | View Data                             |
-| `metastudio.refreshWorkspaceData`  | Refresh Workspace Data                |
+| Command                                   | Title                                      |
+| ----------------------------------------- | ------------------------------------------ |
+| `metastudio.setHost`                      | Metastudio: Set Host URL                   |
+| `metastudio.setApiKey`                    | Metastudio: Set API Key                    |
+| `metastudio.checkConnection`              | Metastudio: Check Metabase Connection      |
+| `metastudio.showApiKey`                   | Metastudio: Show API Key                   |
+| `metastudio.clearCredentials`             | Metastudio: Clear Credentials              |
+| `metastudio.clearWorkspaceConfigurations` | Metastudio: Clear Workspace Configurations |
+| `metastudio.checkDependencyGraph`         | Metastudio: Check Dependency Graph         |
+| `metastudio.showDependencyGraph`          | Metastudio: Show Dependency Graph          |
+| `metastudio.showTransformPreview`         | Metastudio: Show Transform Preview         |
+| `metastudio.openInMetabase`               | Open in Metabase                           |
+| `metastudio.showInDependencyGraph`        | Show in Dependency Graph                   |
+| `metastudio.runTransform`                 | Run Transform                              |
+| `metastudio.createSqlTransform`           | Metastudio: New SQL Transform              |
+| `metastudio.openEmbeddedCode`             | Metastudio: Edit Query in Editor           |
+| `metastudio.showNotebook`                 | Metastudio: Show Notebook Query            |
+| `metastudio.showCardPreview`              | Metastudio: Show Card Preview              |
+| `metastudio.viewTableData`                | View Data                                  |
+| `metastudio.refreshWorkspaceData`         | Refresh Workspace Data                     |
 
 <!-- commands -->
 
