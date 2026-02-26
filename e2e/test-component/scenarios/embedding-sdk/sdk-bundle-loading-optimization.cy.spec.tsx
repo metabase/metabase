@@ -20,6 +20,7 @@ import {
   signInAsAdminAndEnableEmbeddingSdk,
 } from "e2e/support/helpers/embedding-sdk-testing";
 import { deleteConflictingCljsGlobals } from "metabase/embedding-sdk/test/delete-conflicting-cljs-globals";
+import { defer } from "metabase/lib/promise";
 
 const { H } = cy;
 
@@ -43,6 +44,8 @@ describe(
   },
   () => {
     beforeEach(() => {
+      // cy.clearCookies();
+      // cy.clearLocalStorage();
       H.clearBrowserCache();
       sdkBundleCleanup();
 
@@ -141,10 +144,17 @@ describe(
     });
 
     it("shows custom loader while bundle is loading", () => {
-      cy.log("Intercepting bundle with never-resolving request");
-      cy.intercept("GET", "**/app/embedding-sdk.js*", () => {
-        return new Promise(() => {}); // never resolves
-      });
+      const bundleRequestDeferred = defer<void>();
+
+      cy.log("Intercepting bundle with deferred response");
+      cy.intercept(
+        {
+          method: "GET",
+          url: "**/app/embedding-sdk.js*",
+          times: 1,
+        },
+        () => bundleRequestDeferred.promise,
+      ).as("bundleRequest");
 
       mountSdkContent(<InteractiveQuestion questionId={ORDERS_QUESTION_ID} />, {
         sdkProviderProps: {
@@ -158,6 +168,19 @@ describe(
         "contain.text",
         "SDK is loading...",
       );
+
+      cy.log("Resolving deferred bundle request");
+      cy.then(() => bundleRequestDeferred.resolve());
+
+      cy.log("Waiting for bundle to finish loading");
+      cy.wait("@bundleRequest");
+
+      cy.log("Checking question renders and loader disappears");
+      getSdkRoot().within(() => {
+        cy.findByText("Orders").should("exist");
+        cy.findByTestId("visualization-root").should("be.visible");
+      });
+      cy.findByTestId("loading-indicator").should("not.exist");
     });
 
     it("no duplicate script elements on remount, store cleaned up on unmount", () => {
@@ -506,6 +529,7 @@ describe(
           bootstrap: true,
           authConfig: { metabaseInstanceUrl: METABASE_INSTANCE_URL },
         },
+        waitForUser: false,
       });
 
       cy.log("Checking question renders via normal auth fallback");
