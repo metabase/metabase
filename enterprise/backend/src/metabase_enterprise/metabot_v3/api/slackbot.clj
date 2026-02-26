@@ -168,23 +168,6 @@
                                                               (str/join ", " skipped-files))})))
         (slackbot.streaming/send-response client event extra-history)))))
 
-(mu/defn- process-user-message :- :nil
-  "Respond to an incoming user slack message, dispatching based on channel_type or subtype"
-  [client :- slackbot.client/SlackClient
-   event  :- slackbot.events/SlackKnownMessageEvent]
-  ;; Early return for plain channel messages (without @mention) - we only respond in DMs or to file shares
-  (when-not (and (= (:channel_type event) "channel")
-                 (not= (:subtype event) "file_share"))
-    (when-let [user-id (require-authenticated-slack-user! client event)]
-      (let [channel-type (:channel_type event)
-            subtype (:subtype event)]
-        (cond
-          (= subtype "file_share")   (process-message-file-share client event user-id)
-          (= channel-type "im")      (process-message-im client event user-id)
-          :else                      (log/warnf "[slackbot] Unhandled message type: channel_type=%s subtype=%s"
-                                                channel-type subtype)))))
-  nil)
-
 (mu/defn- process-app-mention :- :nil
   "Handle an app_mention event (when bot is @mentioned in a channel)."
   [client :- slackbot.client/SlackClient
@@ -207,7 +190,6 @@
         (slackbot.events/edited-message? event)
         (log/debug "[slackbot] Ignoring edited message")
 
-        ;; Skip app_mention events with files - these will be handled by the file_share event
         (slackbot.events/app-mention-with-files? event)
         (log/debugf "[slackbot] Skipping app_mention with files (will be handled by file_share): ts=%s"
                     (:ts event))
@@ -221,17 +203,30 @@
               (catch Exception e
                 (log/errorf e "[slackbot] Error processing app_mention: %s" (ex-message e))))))
 
-        (slackbot.events/known-user-message? event)
+        (slackbot.events/file-share-message? event)
         (do
-          (log/debug "[slackbot] Processing user message event")
+          (log/debug "[slackbot] Processing file_share event")
           (future
             (try
-              (process-user-message client event)
+              (when-let [user-id (require-authenticated-slack-user! client event)]
+                (process-message-file-share client event user-id))
               (catch Exception e
-                (log/errorf e "[slackbot] Error processing message: %s" (ex-message e))))))
+                (log/errorf e "[slackbot] Error processing file_share: %s" (ex-message e))))))
 
+        (slackbot.events/dm-message? event)
+        (do
+          (log/debug "[slackbot] Processing DM event")
+          (future
+            (try
+              (when-let [user-id (require-authenticated-slack-user! client event)]
+                (process-message-im client event user-id))
+              (catch Exception e
+                (log/errorf e "[slackbot] Error processing DM: %s" (ex-message e))))))
+
+        ;; All other message types (channel messages without @mention) are ignored
         :else
-        (log/debugf "[slackbot] Ignoring unhandled event type: %s" (:type event)))))
+        (log/debugf "[slackbot] Ignoring event type=%s channel_type=%s subtype=%s"
+                    (:type event) (:channel_type event) (:subtype event)))))
   ack-msg)
 
 ;; ----------------------- ROUTES --------------------------

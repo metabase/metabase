@@ -1053,13 +1053,17 @@
         (with-slackbot-mocks
           {:ai-text "Should not be called"
            :user-id ::no-user}
-          (fn [{:keys [post-calls ephemeral-calls]}]
+          (fn [{:keys [post-calls ephemeral-calls stream-calls ai-request-calls]}]
             (let [response (mt/client :post 200 "ee/metabot-v3/slack/events"
                                       (slack-request-options event-body)
                                       event-body)]
               (is (= "ok" response))
               ;; Give a moment for any async processing
               (Thread/sleep 500)
+              (testing "no streaming session should start"
+                (is (= 0 (count @stream-calls))))
+              (testing "no AI requests should be made"
+                (is (= 0 (count @ai-request-calls))))
               (testing "no regular messages posted"
                 (is (= 0 (count @post-calls))))
               (testing "no ephemeral auth messages sent"
@@ -1073,12 +1077,16 @@
                                 :channel_type "channel"})]
         (with-slackbot-mocks
           {:ai-text "Should not be called"}
-          (fn [{:keys [post-calls ephemeral-calls]}]
+          (fn [{:keys [post-calls ephemeral-calls stream-calls ai-request-calls]}]
             (let [response (mt/client :post 200 "ee/metabot-v3/slack/events"
                                       (slack-request-options event-body)
                                       event-body)]
               (is (= "ok" response))
               (Thread/sleep 500)
+              (testing "no streaming session should start"
+                (is (= 0 (count @stream-calls))))
+              (testing "no AI requests should be made"
+                (is (= 0 (count @ai-request-calls))))
               (testing "no messages posted"
                 (is (= 0 (count @post-calls))))
               (testing "no ephemeral messages"
@@ -1100,6 +1108,56 @@
         (is (str/includes? (:content (first result)) "$100")))))
 
 ;; -------------------------------- PUT /slack/settings Tests --------------------------------
+
+(deftest channel-message-missing-channel-type-test
+  (testing "Message event without channel_type should NOT trigger response"
+    (with-slackbot-setup
+      ;; Event without channel_type - simulates edge case or malformed event
+      (let [event-body {:type  "event_callback"
+                        :event {:type     "message"
+                                :text     "Hello!"
+                                :user     "U123"
+                                :channel  "C123"
+                                :ts       "1234567890.000001"
+                                :event_ts "1234567890.000001"}}]  ;; NO channel_type!
+        (with-slackbot-mocks
+          {:ai-text "Should not be called"}
+          (fn [{:keys [stream-calls ai-request-calls post-calls ephemeral-calls]}]
+            (let [response (mt/client :post 200 "ee/metabot-v3/slack/events"
+                                      (slack-request-options event-body)
+                                      event-body)]
+              (is (= "ok" response))
+              (Thread/sleep 500)
+              (is (= 0 (count @stream-calls)) "no streaming session should start")
+              (is (= 0 (count @ai-request-calls)) "no AI requests should be made")
+              (is (= 0 (count @post-calls)) "no messages should be posted")
+              (is (= 0 (count @ephemeral-calls)) "no auth prompts should be sent"))))))))
+
+(deftest channel-thread-reply-without-mention-test
+  (testing "Thread reply in channel without @mention should NOT trigger response"
+    (with-slackbot-setup
+      ;; Thread reply in a channel - user replied to a thread but didn't @mention the bot
+      (let [event-body {:type  "event_callback"
+                        :event {:type         "message"
+                                :text         "Thanks for the help!"
+                                :user         "U123"
+                                :channel      "C123"
+                                :ts           "1234567890.000002"
+                                :event_ts     "1234567890.000002"
+                                :thread_ts    "1234567890.000001"
+                                :channel_type "channel"}}]
+        (with-slackbot-mocks
+          {:ai-text "Should not be called"}
+          (fn [{:keys [stream-calls ai-request-calls post-calls ephemeral-calls]}]
+            (let [response (mt/client :post 200 "ee/metabot-v3/slack/events"
+                                      (slack-request-options event-body)
+                                      event-body)]
+              (is (= "ok" response))
+              (Thread/sleep 500)
+              (is (= 0 (count @stream-calls)) "no streaming session should start")
+              (is (= 0 (count @ai-request-calls)) "no AI requests should be made")
+              (is (= 0 (count @post-calls)) "no messages should be posted")
+              (is (= 0 (count @ephemeral-calls)) "no auth prompts should be sent"))))))))
 
 (deftest put-slack-settings-test
   (mt/with-premium-features #{:metabot-v3 :sso-slack}

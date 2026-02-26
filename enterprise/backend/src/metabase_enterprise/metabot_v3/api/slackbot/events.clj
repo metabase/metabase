@@ -105,6 +105,20 @@
   (and (nil? (:bot_id event))
        (mr/validate SlackKnownMessageEvent event)))
 
+(defn dm-message?
+  "Check if event is a direct message from a user (not bot/system).
+   Returns true if the event matches SlackMessageImEvent and has no bot_id."
+  [event]
+  (and (nil? (:bot_id event))
+       (mr/validate SlackMessageImEvent event)))
+
+(defn file-share-message?
+  "Check if event is a file share message from a user (not bot/system).
+   Returns true if the event matches SlackMessageFileShareEvent and has no bot_id."
+  [event]
+  (and (nil? (:bot_id event))
+       (mr/validate SlackMessageFileShareEvent event)))
+
 (defn app-mention?
   "Check if event is an app_mention event (when bot is @mentioned)."
   [event]
