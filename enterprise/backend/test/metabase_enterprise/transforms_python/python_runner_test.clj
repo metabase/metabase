@@ -26,7 +26,7 @@
 
 (defn next-job-run-id [] (swap! last-job-run-id inc))
 
-(defn- parse-jsonl [s] (map json/decode+kw (str/split-lines s)))
+(defn- parse-jsonl [s] (when s (map json/decode+kw (str/split-lines s))))
 
 (defn template->regex
   "Convert a template string with $var$ placeholders to a regex pattern.

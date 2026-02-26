@@ -203,11 +203,12 @@
   [{:keys [server-url code request-id run-id table-name->id shared-storage timeout-secs runtime]}]
   (let [{:keys [objects]}                       shared-storage
         {:keys [output output-manifest events]} objects
+        runtime                                 (or runtime "python")
         url-for-path                            (fn [path] (:url (get objects path)))
         table-name->url                         (update-vals table-name->id #(url-for-path [:table % :data]))
         table-name->manifest-url                (update-vals table-name->id #(url-for-path [:table % :manifest]))
         payload                                 {:code                code
-                                                 :library (t2/select-fn->fn :path :source :model/TransformLibrary :language runtime)
+                                                 :library             (t2/select-fn->fn :path :source :model/TransformLibrary :language runtime)
                                                  :timeout             (or timeout-secs (runner.settings/python-runner-timeout-seconds))
                                                  :request_id          (or request-id run-id)
                                                  :output_url          (:url output)
@@ -215,7 +216,7 @@
                                                  :events_url          (:url events)
                                                  :table_mapping       table-name->url
                                                  :manifest_mapping    table-name->manifest-url
-                                                 :runtime             (or runtime "python")}
+                                                 :runtime             runtime}
         response                                (with-python-api-timing [run-id]
                                                   (python-runner-request server-url :post "/execute" {:body (json/encode payload)}))]
     ;; when a 500 is returned we observe a string in the body (despite the python returning json)
