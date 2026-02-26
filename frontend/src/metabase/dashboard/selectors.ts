@@ -427,7 +427,7 @@ export const getParameters = createSelector(
       return [];
     }
 
-    return isEditing
+    const params = isEditing
       ? getUnsavedDashboardUiParameters(
           dashboard.dashcards,
           dashboard.parameters,
@@ -440,6 +440,7 @@ export const getParameters = createSelector(
           dashboard.param_fields,
           metadata,
         );
+    return [...params].sort((a, b) => (a.position ?? 0) - (b.position ?? 0));
   },
 );
 

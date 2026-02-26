@@ -551,5 +551,5 @@ export function setDashboardHeaderParameterIndex(
   }
 
   result.splice(targetIndex, 0, movedParam);
-  return result;
+  return result.map((p, i) => ({ ...p, position: i }));
 }

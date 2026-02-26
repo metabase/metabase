@@ -57,12 +57,18 @@ export function createParameter(
     name = `${baseName} ${nameIndex}`;
   }
 
+  const maxPosition = parameters.reduce(
+    (max, p) => Math.max(max, p.position ?? -1),
+    -1,
+  );
+
   const parameter: Parameter = {
     name: "",
     slug: "",
     id: generateParameterId(),
     type: opts.type,
     sectionId: opts.sectionId,
+    position: maxPosition + 1,
   };
 
   return setParameterName(parameter, name);

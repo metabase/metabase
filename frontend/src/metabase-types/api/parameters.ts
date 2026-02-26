@@ -55,6 +55,7 @@ export interface Parameter extends ParameterValuesConfig {
   value?: ParameterValueOrArray | null;
   target?: ParameterTarget;
   temporal_units?: TemporalUnit[];
+  position?: number;
 }
 
 export interface ParameterValuesConfig {
