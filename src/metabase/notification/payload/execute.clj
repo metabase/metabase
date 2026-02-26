@@ -147,13 +147,11 @@
   The full QP result contains many internal bookkeeping keys that are irrelevant
   to rendering notifications, so we select just the ones downstream consumers use."
   [qp-result]
-  {:status                  (:status qp-result)
-   :row_count               (:row_count qp-result)
-   :database_id             (:database_id qp-result)
-   :error                   (:error qp-result)
-   :data                    (:data qp-result)
-   :notification/truncated? (:notification/truncated? qp-result)
-   :data.rows-file-size     (:data.rows-file-size qp-result)})
+  (-> (select-keys qp-result [:status :row_count :database_id :error
+                              :notification/truncated? :data.rows-file-size])
+      (assoc :data (select-keys (:data qp-result)
+                                [:cols :rows :viz-settings :results_metadata :insights
+                                 :results_timezone :format-rows? :pivot-export-options]))))
 
 (def cells-to-disk-threshold
   "Maximum cells (rows * columns) to hold in memory when running notification queries. After this, query results are
