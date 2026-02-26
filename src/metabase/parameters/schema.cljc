@@ -105,9 +105,12 @@
   [:sequential [:ref ::parameter]])
 
 (mu/defn normalize-parameters :- ::parameters
-  "Normalize `parameters` when coming out of the application database or in via an API request."
+  "Normalize `parameters` when coming out of the application database or in via an API request.
+  Sorts by `:position` to ensure display order is preserved."
   [parameters]
-  (lib/normalize ::parameters parameters))
+  (->> (lib/normalize ::parameters parameters)
+       (sort-by (fn [p] (or (:position p) ##Inf)))
+       vec))
 
 (mr/def ::parameter-with-optional-type
   [:merge
