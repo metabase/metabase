@@ -8,13 +8,16 @@ import type { DatasetColumn, Parameter } from "metabase-types/api";
 
 import { ClickMappingsTargetWithSource } from "./ClickMappingsTargetWithSource";
 import { ClickMappingsTargetWithoutSource } from "./ClickMappingsTargetWithoutSource";
-import { useLoadQuestionMetadata, useUserAttributes } from "./hooks";
+import {
+  useClickMappingsData,
+  useLoadQuestionMetadata,
+  useUserAttributes,
+} from "./hooks";
 import type {
   ClickMappingsOwnProps,
   SourceOptionsByType,
   TargetItem,
 } from "./types";
-import { useClickMappingsData } from "./useClickMappingsData";
 import { getSourceOption, getTargetName, getTargetsHeading } from "./utils";
 
 export function ClickMappings(props: ClickMappingsOwnProps) {

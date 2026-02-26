@@ -1,6 +1,4 @@
-import { getIn } from "icepick";
 import { useEffect, useMemo, useState } from "react";
-import _ from "underscore";
 
 import { getDashcardData, getParameters } from "metabase/dashboard/selectors";
 import { isQuestionDashCard } from "metabase/dashboard/utils";
@@ -14,11 +12,7 @@ import {
   getTargetsForDashboard,
   getTargetsForQuestion,
 } from "metabase-lib/v1/parameters/utils/click-behavior";
-import type {
-  ClickBehaviorParameterMapping,
-  DatasetColumn,
-  Parameter,
-} from "metabase-types/api";
+import type { DatasetColumn, Parameter } from "metabase-types/api";
 
 import type { ClickMappingsOwnProps, TargetItem } from "./types";
 import { isMappableColumn } from "./utils";
@@ -50,45 +44,40 @@ export function useClickMappingsData(
     let filteredParameters = parameters;
 
     if (props.excludeParametersSources) {
-      const parameterMapping: ClickBehaviorParameterMapping =
-        clickBehavior.type === "crossfilter" ||
-        (clickBehavior.type === "link" &&
-          (clickBehavior.linkType === "dashboard" ||
-            clickBehavior.linkType === "question"))
+      const parameterMapping =
+        "parameterMapping" in clickBehavior
           ? (clickBehavior.parameterMapping ?? {})
           : {};
 
       const parametersUsedAsSources = Object.values(parameterMapping)
-        .filter((mapping) => getIn(mapping, ["source", "type"]) === "parameter")
+        .filter((mapping) => mapping.source.type === "parameter")
         .map((mapping) => mapping.source.id);
 
-      filteredParameters = parameters.filter((parameter) => {
-        return parametersUsedAsSources.includes(parameter.id);
-      });
+      filteredParameters = parameters.filter((parameter) =>
+        parametersUsedAsSources.includes(parameter.id),
+      );
     }
 
-    const [setTargets, unsetTargets] = _.partition(
-      isDashboard &&
-        object &&
-        !(object instanceof Question) &&
-        isQuestionDashCard(dashcard)
+    const isTargetSet = ({ id }: { id: string }) =>
+      "parameterMapping" in clickBehavior &&
+      clickBehavior.parameterMapping?.[id]?.source != null;
+
+    const isQuestionTarget = object instanceof Question;
+    const isDashboardTarget =
+      isDashboard && object && isQuestionDashCard(dashcard);
+
+    const targets = isQuestionTarget
+      ? getTargetsForQuestion(object)
+      : isDashboardTarget
         ? getTargetsForDashboard(object, dashcard)
-        : object instanceof Question
-          ? getTargetsForQuestion(object)
-          : [],
-      ({ id }: { id: string }) =>
-        getIn(clickBehavior, ["parameterMapping", id, "source"]) != null,
-    );
+        : [];
+
+    const setTargets = targets.filter(isTargetSet);
+    const unsetTargets = targets.filter((t) => !isTargetSet(t));
 
     const availableColumns: DatasetColumn[] = Object.values(
       dashcardData ?? {},
-    ).flatMap((dataset) => {
-      if (!dataset || typeof dataset !== "object") {
-        return [];
-      }
-      const cols = getIn(dataset, ["data", "cols"]);
-      return Array.isArray(cols) ? cols : [];
-    });
+    ).flatMap((dataset) => dataset?.data?.cols ?? []);
 
     const sourceOptions = {
       column: availableColumns.filter(isMappableColumn),
