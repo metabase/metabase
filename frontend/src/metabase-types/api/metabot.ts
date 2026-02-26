@@ -51,6 +51,7 @@ export type MetabotChatContext = {
   workspace_id?: number;
   capabilities: string[];
   code_editor?: MetabotCodeEditorContext;
+  custom_instructions?: string;
 };
 
 export type MetabotTool = {

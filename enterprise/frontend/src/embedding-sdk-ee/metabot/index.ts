@@ -1,4 +1,5 @@
-// Contains side effects that puts `MetabotQuestion` in the plugin
+// Contains side effects that puts `MetabotQuestion` and `MetabotChat` in the plugin
+import "./MetabotChat";
 import "./MetabotQuestion";
 
 import { METABOT_SDK_EE_PLUGIN } from "embedding-sdk-bundle/components/public/MetabotQuestion/MetabotQuestion";
