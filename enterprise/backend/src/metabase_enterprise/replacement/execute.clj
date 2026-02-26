@@ -5,11 +5,7 @@
   (:require
    [metabase-enterprise.replacement.models.replacement-run :as replacement-run]
    [metabase-enterprise.replacement.protocols :as replacement.protocols]
-   [metabase.util.jvm :as u.jvm]
-   [metabase.util.log :as log]
-   [metabase.util.malli.registry :as mr]
-   [potemkin.types :as p.types]
-   [toucan2.core :as t2]))
+   [metabase.util.jvm :as u.jvm]))
 
 (set! *warn-on-reflection* true)
 
