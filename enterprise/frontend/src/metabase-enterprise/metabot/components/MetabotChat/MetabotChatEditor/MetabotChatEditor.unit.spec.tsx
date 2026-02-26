@@ -40,6 +40,10 @@ const defaultProps = {
   },
 };
 
+// "fetch-mock" can accept an array, the types are incorrect
+const asFetchMockModelParams = (models: string[]) =>
+  models as unknown as string;
+
 const setup = (
   props = {},
   {
@@ -136,11 +140,13 @@ describe("MetabotChatEditor", () => {
     );
 
     await userEvent.type(getEditor(), "@sample");
+
     await waitFor(() => {
-      const searchCall = fetchMock.callHistory.lastCall("path:/api/search");
-      expect(searchCall?.request).toBeDefined();
-      const url = new URL(searchCall!.request!.url);
-      expect(url.searchParams.get("q")).toBe("sample");
+      expect(
+        fetchMock.callHistory.called("path:/api/search", {
+          query: { q: "sample" },
+        }),
+      ).toBeTruthy();
     });
   });
 
@@ -171,16 +177,22 @@ describe("MetabotChatEditor", () => {
         fetchMock.callHistory.calls("path:/api/search").length,
       ).toBeGreaterThan(0),
     );
-    const searchCall = fetchMock.callHistory.lastCall("path:/api/search");
-    expect(searchCall?.request).toBeDefined();
-    const url = new URL(searchCall!.request!.url);
-    const models = url.searchParams.getAll("models");
 
-    expect(models).toContain("table");
-    expect(models).toContain("card");
-    expect(models).toContain("dashboard");
-    expect(models).toContain("collection");
-    expect(models).not.toContain("database");
+    await waitFor(() => {
+      expect(
+        fetchMock.callHistory.called("path:/api/search", {
+          query: {
+            q: "test",
+            models: asFetchMockModelParams([
+              "table",
+              "card",
+              "dashboard",
+              "collection",
+            ]),
+          },
+        }),
+      ).toBeTruthy();
+    });
   });
 
   it("requests search with allowed models for @mentions", async () => {
@@ -195,15 +207,21 @@ describe("MetabotChatEditor", () => {
 
     await userEvent.type(getEditor(), "@test");
 
-    const lastSearchCall = fetchMock.callHistory.lastCall("path:/api/search");
-    expect(lastSearchCall?.request).toBeDefined();
-    const requestUrl = new URL(lastSearchCall!.request!.url);
-    const models = requestUrl.searchParams.getAll("models");
-
-    expect(models).toContain("table");
-    expect(models).toContain("card");
-    expect(models).toContain("dashboard");
-    expect(models).not.toContain("database");
+    await waitFor(() => {
+      expect(
+        fetchMock.callHistory.called("path:/api/search", {
+          query: {
+            q: "test",
+            models: asFetchMockModelParams([
+              "table",
+              "card",
+              "dashboard",
+              "collection",
+            ]),
+          },
+        }),
+      ).toBeTruthy();
+    });
   });
 
   it("should handle paste events with metabase protocol links", async () => {

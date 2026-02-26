@@ -14,7 +14,7 @@ export function MiniPickerPane() {
   return (
     <Stack
       mah="30rem"
-      w={searchQuery ? (isCompact ? "29.125rem" : "40rem") : "20rem"}
+      w={isCompact ? "29.125rem" : searchQuery ? "40rem" : "20rem"}
       gap={0}
     >
       {!isRoot && !searchQuery && <MiniPickerHeader />}
