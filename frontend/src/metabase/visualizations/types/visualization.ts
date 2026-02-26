@@ -489,7 +489,7 @@ export type VisualizationSettingsDefinitions<
   time_enabled?: DatasetColumnSettingDefinition<TValue, TProps>;
   time_style?: DatasetColumnSettingDefinition<TValue, TProps>;
   title?: SingleSeriesSettingDefinition<TValue, TProps>;
-  [key: string]: unknown;
+  [key: string]: any;
 };
 
 export type CompleteVisualizationSettingDefinition<
