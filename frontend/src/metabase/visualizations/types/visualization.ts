@@ -281,7 +281,7 @@ export type SettingsExtra = {
   series?: Series;
   settings?: VisualizationSettings;
   transformedSeries?: RawSeries | TransformedSeries;
-  // [key: string]: unknown; // TODO
+  [key: string]: unknown; // TODO
 };
 
 export type VisualizationSettingDefinition<
