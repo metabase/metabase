@@ -258,7 +258,7 @@ describe(
               name: "Test Model",
               type: "model",
               query: {
-                "source-table": tableId.text(),
+                "source-table": tableId,
                 limit: 5,
               },
             }).as("model");
