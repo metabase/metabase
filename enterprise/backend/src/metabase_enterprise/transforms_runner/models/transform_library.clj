@@ -111,8 +111,10 @@
 (defn ensure-builtin-library!
   "Ensure the built-in common library row exists for `language`.
   Inserts idempotently — no-op if the row already exists.
-  Call from init modules so that new runner languages get a library row
-  without requiring a Liquibase migration."
+  New runner languages can call this instead of adding a Liquibase migration.
+
+  NOTE: Must be called after the app DB is initialized and migrations have run.
+  Do NOT call at namespace load time (e.g. from init.clj) — the table may not exist yet."
   [language]
   (let [ext (language-extension language)
         path (str "common" ext)
