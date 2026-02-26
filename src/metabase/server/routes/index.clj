@@ -82,7 +82,9 @@
 (defn- template-parameters
   [embeddable? {:keys [uri params nonce]}]
   (let [{:keys [anon-tracking-enabled google-auth-client-id], :as public-settings} (setting/user-readable-values-map #{:public})
-        all-release-flags (release-flags/all-flags)
+        all-release-flags (if (release-flags/release-flags-enabled?)
+                            (release-flags/all-flags)
+                            {})
         ;; We disable `locale` parameter on static embeds/public links (metabase#50313)
         should-load-locale-params? (not embeddable?)]
     {:bootstrapJS            (load-inline-js "index_bootstrap")

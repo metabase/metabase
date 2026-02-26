@@ -190,7 +190,7 @@
    "/product-feedback"     'metabase.product-feedback.api
    "/public"               (+public-exceptions metabase.public-sharing-rest.api/routes)
    "/pulse"                metabase.pulse.api/pulse-routes
-   "/release-flags"        'metabase.release-flags.api
+   "/release-flags"        (+auth 'metabase.release-flags.api)
    "/revision"             (+auth 'metabase.revisions.api)
    "/search"               (+auth metabase.search.api/routes)
    "/segment"              (+auth 'metabase.segments.api)

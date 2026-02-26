@@ -64,7 +64,7 @@
     (when-not (str/blank? v)
       (str/trim v))))
 
-(mu/defn- release-flags-enabled? :- :boolean
+(mu/defn release-flags-enabled? :- :boolean
   "Returns true if the release flags system is active.
    This is the case in dev/test mode or when the MB_ENABLE_RELEASE_FLAGS env var is truthy."
   []
