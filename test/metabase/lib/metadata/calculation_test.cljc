@@ -657,6 +657,53 @@
         ["PRODUCTS__via__PRODUCT_ID__RATING" :source/implicitly-joinable]
         ["PRODUCTS__via__PRODUCT_ID__CREATED_AT" :source/implicitly-joinable]]))))
 
+(deftest ^:parallel visible-columns-card-filters-sensitive-columns-test
+  (testing "visible-columns for a card-based query should filter out columns with :visibility-type :sensitive (QUE-2438)"
+    ;; Simulate: card was saved when PASSWORD was :normal (so it's in result-metadata),
+    ;; then PASSWORD was later changed to :sensitive.
+    (let [inner   (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
+                      (lib/join (meta/table-metadata :people)))
+          ;; Create the card using normal metadata (PASSWORD is :normal, so it's in result-metadata)
+          card-mp (lib.tu/metadata-provider-with-card-from-query meta/metadata-provider 1 inner)
+          ;; Now override PASSWORD to be :sensitive (simulating admin changing it after card was saved)
+          mp      (lib.tu/merged-mock-metadata-provider
+                   card-mp
+                   {:fields [{:id              (meta/id :people :password)
+                              :visibility-type :sensitive}]})
+          query   (lib/query mp (lib.metadata/card mp 1))]
+      (check-visible-columns
+       query
+       [["ID" :source/card]
+        ["SUBTOTAL" :source/card]
+        ["TOTAL" :source/card]
+        ["TAX" :source/card]
+        ["DISCOUNT" :source/card]
+        ["QUANTITY" :source/card]
+        ["CREATED_AT" :source/card]
+        ["PRODUCT_ID" :source/card]
+        ["USER_ID" :source/card]
+        ["People - User__ID" :source/card]
+        ["People - User__STATE" :source/card]
+        ["People - User__CITY" :source/card]
+        ["People - User__ADDRESS" :source/card]
+        ["People - User__NAME" :source/card]
+        ["People - User__SOURCE" :source/card]
+        ["People - User__ZIP" :source/card]
+        ["People - User__LATITUDE" :source/card]
+        ;; People - User__PASSWORD should NOT appear here because it has :visibility-type :sensitive
+        ["People - User__BIRTH_DATE" :source/card]
+        ["People - User__LONGITUDE" :source/card]
+        ["People - User__EMAIL" :source/card]
+        ["People - User__CREATED_AT" :source/card]
+        ["PRODUCTS__via__PRODUCT_ID__ID" :source/implicitly-joinable]
+        ["PRODUCTS__via__PRODUCT_ID__EAN" :source/implicitly-joinable]
+        ["PRODUCTS__via__PRODUCT_ID__TITLE" :source/implicitly-joinable]
+        ["PRODUCTS__via__PRODUCT_ID__CATEGORY" :source/implicitly-joinable]
+        ["PRODUCTS__via__PRODUCT_ID__VENDOR" :source/implicitly-joinable]
+        ["PRODUCTS__via__PRODUCT_ID__PRICE" :source/implicitly-joinable]
+        ["PRODUCTS__via__PRODUCT_ID__RATING" :source/implicitly-joinable]
+        ["PRODUCTS__via__PRODUCT_ID__CREATED_AT" :source/implicitly-joinable]]))))
+
 (deftest ^:parallel visible-columns-checkins+users+venues-card-test
   (testing "multi-card checkins+users+venues join"
     ;; The idea is that these are all joins between cards and nested queries.

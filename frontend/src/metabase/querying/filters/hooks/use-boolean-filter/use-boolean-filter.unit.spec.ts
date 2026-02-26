@@ -3,7 +3,11 @@ import { act, renderHook } from "@testing-library/react";
 import { createMockMetadata } from "__support__/metadata";
 import type { BooleanFilterValue } from "metabase/querying/common/types";
 import * as Lib from "metabase-lib";
-import { columnFinder, createQuery } from "metabase-lib/test-helpers";
+import {
+  DEFAULT_TEST_QUERY,
+  columnFinder,
+  createMetadataProvider,
+} from "metabase-lib/test-helpers";
 import { createMockField } from "metabase-types/api/mocks";
 import {
   ORDERS_ID,
@@ -47,8 +51,10 @@ const METADATA = createMockMetadata({
   ],
 });
 
+const PROVIDER = createMetadataProvider({ metadata: METADATA });
+
 describe("useBooleanOptionFilter", () => {
-  const defaultQuery = createQuery({ metadata: METADATA });
+  const defaultQuery = Lib.createTestQuery(PROVIDER, DEFAULT_TEST_QUERY);
   const stageIndex = 0;
   const availableColumns = Lib.filterableColumns(defaultQuery, stageIndex);
   const column = columnFinder(defaultQuery, availableColumns)(
