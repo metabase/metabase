@@ -28,10 +28,6 @@ export function useTestPythonTransform(
   const isDirty = originalArgs?.code !== source.body;
 
   const run = async () => {
-    if (source["source-database"] === undefined) {
-      return null;
-    }
-
     const request = executePython({
       type: source.type,
       code: source.body,

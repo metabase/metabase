@@ -18,6 +18,7 @@ export const VALIDATION_SCHEMA = Yup.object({
   name: Yup.string().required(Errors.required),
   targetName: Yup.string().required(Errors.required),
   targetSchema: Yup.string().nullable().defined(),
+  targetDatabaseId: Yup.string().nullable().defined(),
   collection_id: Yup.number().nullable().defined(),
 }).concat(INCREMENTAL_TRANSFORM_VALIDATION_SCHEMA);
 
@@ -30,6 +31,7 @@ export const getInitialValues = (
   ...defaultValues,
   name: "",
   targetSchema: schemas?.[0] || null,
+  targetDatabaseId: defaultValues.targetDatabaseId ?? null,
   targetName: defaultValues.targetName
     ? defaultValues.targetName
     : defaultValues.name
