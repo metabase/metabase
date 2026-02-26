@@ -45,22 +45,6 @@
    [:errors          {:optional true} [:sequential error-type-enum]]
    [:column_mappings {:optional true} [:sequential ::column-mapping]]])
 
-;; same db on both sides
-
-;; u pick some tables, get all the upstream stuff it cannot read from something not in the list,
-;; check they dont have any upstream data source outside the list
-
-;; database replacement
-;; - need to check 
-
-;; set of tables -> set of tables
-
-;; how close are we to merging this project?
-;; next week sounds reasonable.
-
-;; make the guard rails block stuff we don't handle
-;; (hard when implicit joins?)
-
 (api.macros/defendpoint :post "/check-replace-source" :- ::check-replace-source-response
   "Check whether a source entity can be replaced by a target entity. Returns compatibility
   errors describing column mismatches, type mismatches, primary key mismatches, and foreign
