@@ -4,8 +4,11 @@ import { mockSettings } from "__support__/settings";
 import { renderWithProviders } from "__support__/ui";
 import { checkNotNull } from "metabase/lib/types";
 import { getHelpText } from "metabase/querying/expressions";
-import type * as Lib from "metabase-lib";
-import { createQuery } from "metabase-lib/test-helpers";
+import * as Lib from "metabase-lib";
+import {
+  DEFAULT_TEST_QUERY,
+  createMetadataProvider,
+} from "metabase-lib/test-helpers";
 import type { TokenFeatures } from "metabase-types/api";
 import { createMockTokenFeatures } from "metabase-types/api/mocks";
 import {
@@ -42,10 +45,12 @@ export async function setup({
   });
 
   const metadata = createMockMetadata({ databases: [createSampleDatabase()] });
-  const database = checkNotNull(metadata.database(SAMPLE_DB_ID));
-  const query = createQuery({
-    databaseId: database.id,
+  const provider = createMetadataProvider({
+    databaseId: SAMPLE_DB_ID,
+    metadata,
   });
+  const database = checkNotNull(metadata.database(SAMPLE_DB_ID));
+  const query = Lib.createTestQuery(provider, DEFAULT_TEST_QUERY);
 
   const props: HelpTextProps = {
     enclosingFunction: {
