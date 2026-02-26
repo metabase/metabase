@@ -209,15 +209,18 @@
   and user messages (`{:role :user, :content ...}`).  Each adapter converts
   these into its own wire format.
 
-  `tracking-opts` is a map with analytics context. `:model` and `:tag` drive
-  Prometheus labels (`:tag` maps to the `:source` label). When non-empty,
-  also fires a `:snowplow/token_usage` event for each `:usage` part:
-    - `:model`        — model identifier, added automatically from the `model` arg
-    - `:tag`          — Prometheus source label + Snowplow tag (e.g. `\"agent\"`)
-    - `:source`       — Snowplow-only source string (e.g. `\"metabot_agent\"`)
+  `tracking-opts` is a map with analytics context for prometheus and snowplow events.
+
+   Prometheus + Snowplow:
     - `:profile-name` — keyword profile identifier (e.g. `:internal`)
-    - `:request-id`   — UUID string for this agent request
+    - `:model`        — model identifier, added automatically from the `model` arg.
+    - `:tag`          — the specific purpose for which the tokens were used (e.g. 'agent', 'sql-fixing')
+
+   Snowplow only:
+    - `:request-id`   — UUID string for this request
     - `:session-id`   — conversation UUID string
+    - `:source`       — the source of the request (e.g., 'metabot_agent', 'document_generate_content').
+                        Indicates which API endpoint or workflow initiated the LLM call.
 
   Returns a reducible that, when consumed, traces the full LLM round-trip
   (HTTP call + streaming response) as an OTel span. Retries transient errors
