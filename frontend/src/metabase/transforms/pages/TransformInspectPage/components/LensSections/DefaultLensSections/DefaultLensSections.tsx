@@ -1,5 +1,7 @@
+import { useEffect } from "react";
 import { match } from "ts-pattern";
 
+import { useLensContentContext } from "metabase/transforms/pages/TransformInspectPage/components/LensContent/LensContentContext";
 import { Box, Stack, Title } from "metabase/ui";
 import type {
   InspectorCard,
@@ -25,6 +27,16 @@ export const DefaultLensSections = ({
   sources,
   visitedFields,
 }: DefaultLensSectionsProps) => {
+  const { markCardStartedLoading, lens } = useLensContentContext();
+
+  /**
+   * Mark all cards as loading because the underlying components use useProgressiveLoader.
+   * Without this, useCardLoadingTracker emits an event for each batch instead of only when all cards are loaded.
+   */
+  useEffect(() => {
+    lens?.cards.forEach((card) => markCardStartedLoading(card.id));
+  }, [lens, markCardStartedLoading]);
+
   return (
     <Box>
       {sections.map((section) => {

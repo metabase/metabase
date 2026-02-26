@@ -1,4 +1,4 @@
-import { useEffect, useMemo } from "react";
+import { useCallback, useEffect, useMemo } from "react";
 import { match } from "ts-pattern";
 import _ from "underscore";
 
@@ -73,13 +73,15 @@ export const LensContent = ({
     collectedCardStats,
   } = useTriggerEvaluation(lens);
 
+  const onAllCardsLoadedCallback = useCallback(() => {
+    if (lens) {
+      onAllCardsLoaded(lens.id);
+      trackLensLoaded();
+    }
+  }, [lens, trackLensLoaded, onAllCardsLoaded]);
+
   const { markCardLoaded, markCardStartedLoading, subscribeToCardLoaded } =
-    useCardLoadingTracker(lens, () => {
-      if (lens) {
-        onAllCardsLoaded(lens.id);
-        trackLensLoaded();
-      }
-    });
+    useCardLoadingTracker(onAllCardsLoadedCallback);
 
   const cardsBySection = useMemo(
     () => _.groupBy(lens?.cards ?? [], (c) => c.section_id ?? "default"),

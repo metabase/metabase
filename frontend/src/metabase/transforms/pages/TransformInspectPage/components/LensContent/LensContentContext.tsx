@@ -18,7 +18,7 @@ import type { LensHandle } from "../../types";
 
 type LensContentContextValue = {
   transform: Transform;
-  lens: InspectorLens;
+  lens: InspectorLens | undefined;
   lensHandle: LensHandle;
   alertsByCardId: Record<InspectorCardId, InspectorAlertTrigger[]>;
   drillLensesByCardId: Record<InspectorCardId, InspectorDrillLensTrigger[]>;
