@@ -18,7 +18,7 @@ describe("issue #68378", () => {
   it("should show empty schemas when picking a target schema (metabase#68378)", () => {
     visitTransformListPage();
     cy.button("Create a transform").click();
-    H.popover().findByText("SQL query").click();
+    H.popover().findByText(/SQL/).click();
     H.popover().findByText("Writable Postgres12").click();
     H.NativeEditor.type("SELECT 42", { allowFastSet: true }).blur();
 

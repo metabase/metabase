@@ -70,17 +70,17 @@
     (let [query (-> transform :source :query)]
       (lib/native-only-query? query))))
 
-(defn python-transform?
-  "Check if this is a Python transform."
+(defn runner-transform?
+  "Check if this is any runner-based transform (registered via [[transforms.i/register-runner!]])."
   [transform]
-  (= :python (transform-type transform)))
+  (transforms.i/runner-language? (transform-type transform)))
 
 (defn transform-source-database
   "Get the source database from a transform"
   [transform]
-  (case (transform-type transform)
-    :query (-> transform :source :query :database)
-    :python (-> transform :source :source-database)))
+  (if (runner-transform? transform)
+    (-> transform :source :source-database)
+    (-> transform :source :query :database)))
 
 (defn normalize-transform
   "Normalize a transform's source query, similar to how transforms are normalized when read from the database.
@@ -93,24 +93,25 @@
     transform))
 
 (defn transform-source-type
-  "Returns the type of a transform's source: :python, :native, or :mbql.
+  "Returns the type of a transform's source: :python, :javascript, :clojure, :r, :julia, :native, or :mbql.
   Throws if the source type cannot be detected.
   Note: The transform should be normalized (via `normalize-transform`) before calling this function."
   [source]
-  (case (keyword (:type source))
-    :python :python
-    :query  (if (lib/native-only-query? (:query source))
-              :native
-              :mbql)
-    (throw (ex-info (str "Unknown transform source type: " (:type source))
-                    {:source source}))))
+  (let [t (keyword (:type source))]
+    (cond
+      (contains? (transforms.i/runner-languages) t) t
+      (= :query t) (if (lib/native-only-query? (:query source))
+                     :native
+                     :mbql)
+      :else (throw (ex-info (str "Unknown transform source type: " (:type source))
+                            {:source source})))))
 
 (defn check-feature-enabled
   "Checking whether we have proper feature flags for using a given transform."
   [transform]
   (cond
     (query-transform? transform) (transforms.gating/query-transforms-enabled?)
-    (python-transform? transform) (transforms.gating/python-transforms-enabled?)
+    (runner-transform? transform) (transforms.gating/runner-transforms-enabled?)
     :else false))
 
 (defn enabled-source-types-for-user
@@ -121,17 +122,18 @@
 
 (defn source-tables-readable?
   "Check if the source tables/database in a transform are readable by the current user.
-  Returns true if the user can query all source tables (for python transforms) or the
+  Returns true if the user can query all source tables (for runner transforms) or the
   source database (for query transforms)."
   [transform]
-  (let [source (:source transform)]
-    (case (keyword (:type source))
-      :query
+  (let [source (:source transform)
+        t (keyword (:type source))]
+    (cond
+      (= :query t)
       (if-let [db-id (get-in source [:query :database])]
         (boolean (mi/can-query? (t2/select-one :model/Database db-id)))
         false)
 
-      :python
+      (contains? (transforms.i/runner-languages) t)
       (let [source-tables (:source-tables source)]
         (if (empty? source-tables)
           true
@@ -149,6 +151,7 @@
                              (mi/can-query? table)))
                          table-ids)))))
 
+      :else
       (throw (ex-info (str "Unknown transform source type: " (:type source)) {})))))
 
 (defn add-source-readable
@@ -442,11 +445,14 @@
               (post-process-incremental-query driver source checkpoint)))))))
 
 (defn required-database-features
-  "Returns the database features necessary to execute `transform`."
+  "Returns the database features necessary to execute `transform`.
+  All runner-based transforms (Python, JavaScript, Clojure, R, Julia) share the same
+  runner infrastructure and require :transforms/python."
   [transform]
-  (if (python-transform? transform)
-    [:transforms/python]
-    [:transforms/table]))
+  (let [t (transform-type transform)]
+    (if (contains? (transforms.i/runner-languages) t)
+      [:transforms/python]
+      [:transforms/table])))
 
 (defn ->instant
   "Convert a temporal value `t` to an Instant in the system timezone."

@@ -37,7 +37,7 @@ describe("scenarios > admin > transforms", () => {
 
     visitTransformListPage();
     cy.button("Create a transform").click();
-    H.popover().findByText("SQL query").click();
+    H.popover().findByText(/SQL/).click();
     H.popover().findByText(DB_NAME).click();
 
     function testDataReference() {
@@ -270,7 +270,7 @@ describe("scenarios > admin > transforms", () => {
     cy.log("create a new transform");
     visitTransformListPage();
     cy.button("Create a transform").click();
-    H.popover().findByText("SQL query").click();
+    H.popover().findByText(/SQL/).click();
 
     cy.log("Add a query with multiple template tags");
     H.NativeEditor.clear()

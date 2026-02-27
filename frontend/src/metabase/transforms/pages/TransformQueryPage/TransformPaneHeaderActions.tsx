@@ -7,7 +7,11 @@ import { getMetadata } from "metabase/selectors/metadata";
 import { EditDefinitionButton } from "metabase/transforms/components/TransformEditor/EditDefinitionButton";
 import { getValidationResult } from "metabase/transforms/utils";
 import * as Lib from "metabase-lib";
-import type { DraftTransformSource, Transform } from "metabase-types/api";
+import {
+  type DraftTransformSource,
+  type Transform,
+  isAdvancedTransformType,
+} from "metabase-types/api";
 
 type Props = {
   handleCancel: VoidFunction;
@@ -52,7 +56,7 @@ export const TransformPaneHeaderActions = (props: Props) => {
       isNative: false,
     };
   }, [source, metadata]);
-  const isPythonTransform = source.type === "python";
+  const isPythonTransform = isAdvancedTransformType(source.type);
 
   if (
     !readOnly &&

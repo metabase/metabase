@@ -2,6 +2,7 @@ import { trackSimpleEvent } from "metabase/lib/analytics";
 import type {
   InspectorCardId,
   InspectorLensId,
+  Transform,
   TransformId,
   TransformJobId,
 } from "metabase-types/api";
@@ -33,7 +34,7 @@ export function trackTransformJobTriggerManualRun({
 export function trackTransformCreate({
   creationType,
 }: {
-  creationType: "query" | "native" | "python" | "saved-question";
+  creationType: "query" | "native" | "advanced" | "saved-question";
 }) {
   trackSimpleEvent({
     event: "transform_create",
@@ -41,14 +42,11 @@ export function trackTransformCreate({
   });
 }
 
-export function trackTransformCreated({
-  transformId,
-}: {
-  transformId: TransformId;
-}) {
+export function trackTransformCreated({ transform }: { transform: Transform }) {
   trackSimpleEvent({
     event: "transform_created",
-    target_id: transformId,
+    target_id: transform.id,
+    event_detail: transform.source_type,
   });
 }
 

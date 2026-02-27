@@ -1,14 +1,12 @@
-import { useEffect, useState } from "react";
+import React, { useEffect, useState } from "react";
 import { t } from "ttag";
 
-import { skipToken, useListTablesQuery } from "metabase/api";
+import { skipToken, useGetTableQuery } from "metabase/api";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
+import type { OmniPickerItem } from "metabase/common/components/Pickers";
+import { isTableItem } from "metabase/common/components/Pickers/DataPicker/types";
 import { Box, Button, Icon, Stack, Text } from "metabase/ui";
-import type {
-  DatabaseId,
-  PythonTransformTableAliases,
-  Table,
-} from "metabase-types/api";
+import type { PythonTransformTableAliases, TableId } from "metabase-types/api";
 import { isConcreteTableId } from "metabase-types/api";
 
 import { AliasInput } from "./AliasInput";
@@ -22,19 +20,13 @@ import {
 } from "./utils";
 
 type PythonDataPickerProps = {
-  database?: DatabaseId;
   disabled?: boolean;
   tables: PythonTransformTableAliases;
   readOnly?: boolean;
-  onChange: (
-    database: number,
-    tables: PythonTransformTableAliases,
-    tableInfo: Table[],
-  ) => void;
+  onChange: (tables: PythonTransformTableAliases) => void;
 };
 
 export function PythonDataPicker({
-  database,
   disabled,
   tables,
   readOnly,
@@ -48,34 +40,10 @@ export function PythonDataPicker({
     setTableSelections(getInitialTableSelections(tables));
   }, [tables]);
 
-  const {
-    data: tablesData,
-    isLoading: isLoadingTables,
-    error: tablesError,
-  } = useListTablesQuery(
-    database
-      ? {
-          dbId: database,
-          include_hidden: false,
-          include_editable_data_model: true,
-        }
-      : skipToken,
-  );
-
   const handleChange = (selections: TableSelection[]) => {
-    if (database) {
-      const tableAliases = selectionsToTableAliases(selections);
-      onChange(database, tableAliases, tablesData ?? []);
-    }
+    const tableAliases = selectionsToTableAliases(selections);
+    onChange(tableAliases);
   };
-
-  if (tablesError) {
-    return <LoadingAndErrorWrapper error={tablesError} />;
-  }
-
-  const availableTables = (tablesData || []).filter(
-    (tbl: Table) => tbl.db_id === database && tbl.active,
-  );
 
   const usedAliases = new Set(tableSelections.map((s) => s.alias));
 
@@ -106,10 +74,6 @@ export function PythonDataPicker({
     handleChange(newSelections);
   };
 
-  if (!database) {
-    return null;
-  }
-
   return (
     <Stack
       p="md"
@@ -120,59 +84,56 @@ export function PythonDataPicker({
       className={S.dataPicker}
       data-testid="python-data-picker"
     >
-      {database && (
-        <Box>
-          <Text fw="bold">{t`Pick tables and alias them`}</Text>
-          <Text size="sm" c="text-tertiary" mb="sm">
-            {t`Select tables to use as data sources and provide aliases that can be referenced in your Python script.`}
-          </Text>
-          <Stack gap="md">
-            {tableSelections.map((selection, index) => (
-              <SelectionInput
-                key={index}
-                selection={selection}
-                database={database}
-                tables={tables}
-                usedAliases={usedAliases}
-                availableTables={availableTables}
-                onChange={(selection) =>
-                  handleSelectionChange(index, selection)
-                }
-                onRemove={() => handleRemoveTable(index)}
-                disabled={disabled || isLoadingTables || readOnly}
-              />
-            ))}
-            <AddTableButton
-              onClick={handleAddTable}
-              disabled={availableTables.length === 0 || readOnly}
+      <Box>
+        <Text fw="bold">{t`Pick tables and alias them`}</Text>
+        <Text size="sm" c="text-tertiary" mb="sm">
+          {t`Select tables to use as data sources and provide aliases that can be referenced in your transform.`}
+        </Text>
+        <Stack gap="md">
+          {tableSelections.map((selection, index) => (
+            <SelectionInput
+              key={index}
+              selection={selection}
+              tables={tables}
+              usedAliases={usedAliases}
+              onChange={(selection) => handleSelectionChange(index, selection)}
+              onRemove={() => handleRemoveTable(index)}
+              disabled={disabled || readOnly}
             />
-          </Stack>
-        </Box>
-      )}
+          ))}
+          <AddTableButton onClick={handleAddTable} disabled={readOnly} />
+        </Stack>
+      </Box>
     </Stack>
   );
 }
 
 function SelectionInput({
-  database,
   tables,
   selection,
-  availableTables,
   usedAliases,
   onChange,
   onRemove,
   disabled,
 }: {
-  database: DatabaseId | undefined;
   tables: PythonTransformTableAliases;
   selection: TableSelection;
-  availableTables: Table[];
   usedAliases: Set<string>;
   onChange: (selection: TableSelection) => void;
   onRemove: () => void;
   disabled?: boolean;
 }) {
-  const table = availableTables.find((table) => table.id === selection.tableId);
+  const {
+    data: table,
+    error,
+    isLoading,
+  } = useGetTableQuery(
+    selection.tableId ? { id: selection.tableId } : skipToken,
+  );
+
+  if (error) {
+    return <LoadingAndErrorWrapper error={error} />;
+  }
 
   function handleAliasChange(newAlias: string) {
     const newSelection = {
@@ -183,8 +144,8 @@ function SelectionInput({
     onChange(newSelection);
   }
 
-  function handleTableChange(table: Table | undefined) {
-    if (!table || !isConcreteTableId(table.id)) {
+  function handleTableChange(newTableId: TableId, newTable: OmniPickerItem) {
+    if (!isConcreteTableId(newTableId) || !isTableItem(newTable)) {
       onChange({
         ...selection,
         tableId: undefined,
@@ -192,23 +153,18 @@ function SelectionInput({
       return;
     }
 
-    const oldTable = availableTables.find(
-      (table) => table.id === selection?.tableId,
-    );
-
     const wasOldAliasManuallySet =
       selection.alias !== "" &&
-      (!oldTable ||
-        selection.alias !==
-          slugify(oldTable.name, usedAliases, selection.alias));
+      (!table ||
+        selection.alias !== slugify(table.name, usedAliases, selection.alias));
 
     const newAlias = wasOldAliasManuallySet
       ? selection.alias
-      : slugify(table.name, usedAliases);
+      : slugify(newTable.name, usedAliases);
 
     onChange({
       ...selection,
-      tableId: table.id,
+      tableId: newTableId,
       alias: newAlias,
     });
   }
@@ -216,20 +172,19 @@ function SelectionInput({
   return (
     <Stack gap="xs" align="center" w="100%">
       <TableSelector
-        database={database}
-        table={table}
+        selection={selection}
         selectedTableIds={Object.values(tables)}
         onChange={handleTableChange}
         onRemove={onRemove}
-        availableTables={availableTables}
-        disabled={disabled}
+        disabled={disabled || isLoading}
+        table={table}
       />
       <AliasInput
         selection={selection}
-        table={table}
         onChange={handleAliasChange}
         usedAliases={usedAliases}
-        disabled={disabled}
+        disabled={disabled || isLoading}
+        table={table}
       />
     </Stack>
   );

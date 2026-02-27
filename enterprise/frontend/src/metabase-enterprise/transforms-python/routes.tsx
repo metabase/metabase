@@ -1,7 +1,7 @@
-import { Route } from "react-router";
+import { Redirect, Route } from "react-router";
 
 import { ModalRoute } from "metabase/hoc/ModalRoute";
-import { NewPythonTransformPage } from "metabase/transforms/pages/NewTransformPage";
+import { NewAdvancedTransformPage } from "metabase/transforms/pages/NewTransformPage";
 import { TransformListPage } from "metabase/transforms/pages/TransformListPage";
 
 import { PythonLibraryEditorPage } from "./pages/PythonLibraryEditorPage";
@@ -11,7 +11,9 @@ export function getPythonTransformsRoutes() {
   return (
     <>
       <Route path="library/:path" component={PythonLibraryEditorPage} />
-      <Route path="new/python" component={NewPythonTransformPage} />
+      <Redirect from="new/python" to="new/advanced/python" />
+      <Redirect from="new/advanced" to="new/advanced/python" />
+      <Route path="new/advanced/:type" component={NewAdvancedTransformPage} />
     </>
   );
 }
@@ -25,8 +27,9 @@ export function getPythonUpsellRoutes() {
         modal={PythonTransformsUpsellModal}
         noWrap
       />
+      <Redirect from="new/python" to="new/advanced/python" />
       <ModalRoute
-        path="new/python"
+        path="new/advanced/:type"
         modal={PythonTransformsUpsellModal}
         noWrap
       />

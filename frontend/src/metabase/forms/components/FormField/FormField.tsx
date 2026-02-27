@@ -35,7 +35,7 @@ export const FormField = forwardRef(function FormField(
   const hasError = Boolean(error);
 
   return (
-    <Flex {...props} ref={ref} direction="column" mb="md">
+    <Flex direction="column" mb="md" {...props} ref={ref}>
       {(hasTitle || hasDescription) && (
         <Box>
           <Flex align="center" mb={hasDescription ? "xs" : undefined}>

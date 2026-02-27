@@ -1,4 +1,5 @@
-(ns metabase-enterprise.transforms-python.settings
+;; TODO(Timothy, 02-25-2026): these settings point to a common runner, not python
+(ns metabase-enterprise.transforms-runner.settings
   (:require
    [metabase.config.core :as config]
    [metabase.settings.core :as setting]

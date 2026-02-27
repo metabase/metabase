@@ -3,9 +3,9 @@
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
-   [metabase-enterprise.transforms-python.execute :as transforms-python.execute]
-   [metabase-enterprise.transforms-python.python-runner :as python-runner]
    [metabase-enterprise.transforms-python.python-runner-test :as python-runner-test]
+   [metabase-enterprise.transforms-runner.execute :as runner.execute]
+   [metabase-enterprise.transforms-runner.runner :as runner]
    [metabase.driver :as driver]
    [metabase.driver.mysql :as mysql]
    [metabase.sync.core :as sync]
@@ -38,7 +38,7 @@
                        :target target}]
     (with-transform-cleanup! [_target target]
       (mt/with-temp [:model/Transform transform transform-def]
-        (transforms-python.execute/execute-python-transform! transform {:run-method :manual})
+        (runner.execute/execute-runner-transform! transform {:run-method :manual} {:runtime "python" :label "Python" :timing-key :python-execution})
         (let [table (transforms.tu/wait-for-table table-name 10000)
               columns (t2/select :model/Field :table_id (:id table) {:order-by [:position]})
               column-names (filterv (fn [x] (not= x "_id")) ;; for mongo
@@ -238,7 +238,7 @@
           (testing (str "Exotic types for " driver-key)
             (let [{:keys [metadata]} validation
                   type-map (u/for-map [{:keys [name base_type]} (:fields metadata)]
-                             [name (python-runner/restricted-insert-type base_type)])]
+                             [name (runner/restricted-insert-type base_type)])]
 
               (is (isa? :type/Integer (type-map "id")))
 
@@ -288,7 +288,7 @@
               (let [{:keys [metadata]} validation]
                 (testing "Base type preservation"
                   (let [type-map (u/for-map [{:keys [name base_type]} (:fields metadata)]
-                                   [name (python-runner/restricted-insert-type base_type)])]
+                                   [name (runner/restricted-insert-type base_type)])]
                     (is (isa? (type-map "id") (if (= driver/*driver* :snowflake) :type/Number :type/Integer)))
                     (is (isa? (type-map "name") :type/Text))
                     (is (isa? (type-map "price") :type/Float))
@@ -342,7 +342,7 @@
               (when validation
                 (let [{:keys [rows metadata]} validation
                       type-map (u/for-map [{:keys [name base_type]} (:fields metadata)]
-                                 [name (python-runner/restricted-insert-type base_type)])]
+                                 [name (runner/restricted-insert-type base_type)])]
 
                   (testing "Original columns preserved"
                     (is (isa? (type-map "id") (if (= driver/*driver* :snowflake) :type/Number :type/Integer)))
@@ -407,7 +407,7 @@
                   (testing "Computed columns are added correctly"
                     (let [{:keys [metadata]} validation
                           type-map (u/for-map [{:keys [name base_type]} (:fields metadata)]
-                                     [name (python-runner/restricted-insert-type base_type)])]
+                                     [name (runner/restricted-insert-type base_type)])]
                       (is (= :type/Float (type-map "computed_field")))
                       (is (= :type/Text (type-map "name_upper"))))))))))))))
 

@@ -21,5 +21,8 @@
    [metabase-enterprise.sso.init]
    [metabase-enterprise.stale.init]
    [metabase-enterprise.support-access-grants.init]
+   [metabase-enterprise.transforms-clojure.init]
+   [metabase-enterprise.transforms-javascript.init]
    [metabase-enterprise.transforms-python.init]
+   [metabase-enterprise.transforms-runner.init]
    [metabase-enterprise.workspaces.init]))

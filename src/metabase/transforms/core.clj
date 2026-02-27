@@ -10,6 +10,7 @@
    [metabase.transforms.canceling]
    [metabase.transforms.crud]
    [metabase.transforms.execute]
+   [metabase.transforms.interface :as transforms.i]
    [metabase.transforms.jobs]
    [metabase.transforms.ordering]
    [metabase.transforms.schedule]
@@ -24,14 +25,14 @@
  [metabase.transforms.util
   add-source-readable
   native-query-transform?
-  python-transform?
+  runner-transform?
   query-transform?
   transform-source-database
   transform-source-type
   transform-type
   is-temp-transform-table?]
  [metabase.transforms.crud
-  python-source-table-ref->table-id
+  runner-source-table-ref->table-id
   check-database-feature
   check-feature-enabled!
   extract-all-columns-from-query
@@ -87,10 +88,17 @@
                                                           [:= :r.status "succeeded"]
                                                           [:in :t.source_type source-types]
                                                           [:= [:cast :r.end_time :date] [:cast date :date]]]}))
-                            0))]
-    {:transform-native-runs         (count-runs ["native" "mbql"] yesterday-utc)
-     :transform-python-runs         (count-runs ["python"] yesterday-utc)
-     :transform-usage-date          (str (t/local-date yesterday-utc))
-     :transform-rolling-native-runs (count-runs ["native" "mbql"] today-utc)
-     :transform-rolling-python-runs (count-runs ["python"] today-utc)
-     :transform-rolling-usage-date  (str (t/local-date today-utc))}))
+                            0))
+        runner-stats (into {}
+                           (mapcat (fn [lang]
+                                     (let [lang-name (name lang)]
+                                       [[(keyword (str "transform-" lang-name "-runs"))
+                                         (count-runs [lang-name] yesterday-utc)]
+                                        [(keyword (str "transform-rolling-" lang-name "-runs"))
+                                         (count-runs [lang-name] today-utc)]])))
+                           (transforms.i/runner-languages))]
+    (merge {:transform-native-runs (count-runs ["native" "mbql"] yesterday-utc)
+            :transform-usage-date          (str (t/local-date yesterday-utc))
+            :transform-rolling-native-runs (count-runs ["native" "mbql"] today-utc)
+            :transform-rolling-usage-date (str (t/local-date today-utc))}
+           runner-stats)))

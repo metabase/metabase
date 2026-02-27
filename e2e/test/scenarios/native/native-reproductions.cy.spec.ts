@@ -398,7 +398,7 @@ describe("issue 52806", () => {
 
   it("should remove parameter values from the URL when leaving the query builder and discarding changes (metabase#52806)", () => {
     cy.visit("/");
-    H.newButton("SQL query").click();
+    H.newButton(/SQL/).click();
     H.NativeEditor.focus().type("select {{x}}");
     cy.location().should((location) => expect(location.search).to.eq("?x="));
     cy.findByTestId("main-logo-link").click();
@@ -441,7 +441,7 @@ describe("issue 55951", () => {
       },
     );
 
-    H.newButton("SQL query").click();
+    H.newButton(/SQL/).click();
     H.popover()
       .should("be.visible")
       .within(() => {

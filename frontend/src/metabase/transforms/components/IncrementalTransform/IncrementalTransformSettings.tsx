@@ -24,7 +24,11 @@ import {
   Tooltip,
 } from "metabase/ui";
 import type * as Lib from "metabase-lib";
-import type { TransformSource } from "metabase-types/api";
+import {
+  type AdvancedTransformType,
+  type DraftTransformSource,
+  isAdvancedTransformSource,
+} from "metabase-types/api";
 
 import {
   MBQLKeysetColumnSelect,
@@ -34,7 +38,7 @@ import { NativeQueryColumnSelect } from "./NativeQueryColumnSelect";
 import type { IncrementalSettingsFormValues } from "./form";
 
 type IncrementalTransformSettingsProps = {
-  source: TransformSource;
+  source: DraftTransformSource;
   incremental: boolean;
   onIncrementalChange: (value: boolean) => void;
   variant?: "embedded" | "standalone";
@@ -56,7 +60,7 @@ export const IncrementalTransformSettings = ({
 
   // Check if this is a Python transform with exactly one source table
   // Incremental transforms are only supported for single-table Python transforms
-  const isPythonTransform = source.type === "python";
+  const isPythonTransform = isAdvancedTransformSource(source);
   const isMultiTablePythonTransform =
     isPythonTransform && Object.keys(source["source-tables"]).length > 1;
 
@@ -65,7 +69,7 @@ export const IncrementalTransformSettings = ({
     isPythonTransform,
   })
     .with({ isMbqlQuery: true }, () => "query" as const)
-    .with({ isPythonTransform: true }, () => "python" as const)
+    .with({ isPythonTransform: true }, () => source.type)
     .otherwise(() => "native" as const);
   const { url: incrementalTransformsDocsUrl, showMetabaseLinks } = useDocsUrl(
     isPythonTransform
@@ -203,9 +207,9 @@ function TargetStrategyFields({
 }
 
 type SourceStrategyFieldsProps = {
-  source: TransformSource;
+  source: DraftTransformSource;
   query: Lib.Query | null;
-  type: "query" | "native" | "python";
+  type: "query" | "native" | AdvancedTransformType;
   readOnly?: boolean;
 };
 
@@ -252,7 +256,7 @@ function SourceStrategyFields({
               disabled={readOnly}
             />
           )}
-          {type === "python" && "source-tables" in source && (
+          {isAdvancedTransformSource(source) && (
             <PythonKeysetColumnSelect
               name="checkpointFilterUniqueKey"
               label={t`Field to check for new values`}

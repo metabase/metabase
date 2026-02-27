@@ -35,7 +35,7 @@
     :model/DashboardFavorite
     :model/DatabaseRouter
     :model/Dependency
-    :model/PythonLibrary
+    :model/TransformLibrary
     :model/PremiumFeaturesCache
     :model/Query
     :model/QueryCache

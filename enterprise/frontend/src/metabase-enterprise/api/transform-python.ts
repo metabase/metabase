@@ -11,10 +11,11 @@ export const pythonRunnerApi = EnterpriseApi.injectEndpoints({
       TestPythonTransformResponse,
       TestPythonTransformRequest
     >({
-      query: ({ code, source_tables }) => ({
-        url: "/api/ee/transforms-python/test-run",
+      query: ({ type, code, source_tables }) => ({
+        url: "/api/ee/advanced-transforms/test-run",
         method: "POST",
         body: {
+          type,
           code,
           source_tables,
         },

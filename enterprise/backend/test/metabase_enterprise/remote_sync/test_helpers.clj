@@ -4,7 +4,7 @@
    [clojure.string :as str]
    [clojure.test :as t]
    [metabase-enterprise.remote-sync.source.protocol :as source.p]
-   [metabase-enterprise.transforms-python.core :as transforms-python]
+   [metabase-enterprise.transforms-runner.models.transform-library :as transform-library]
    [metabase.util :as u]
    [toucan2.core :as t2]))
 
@@ -287,44 +287,45 @@ width: fixed
           (t2/insert! :model/RemoteSyncTask old-models))))))
 
 (def ^:private builtin-python-library
-  "The built-in PythonLibrary created by migration. Recreated by fixture after cleanup."
-  {:path "common.py" :source "" :entity_id transforms-python/builtin-entity-id})
+  "The built-in TransformLibrary (python) created by migration. Recreated by fixture after cleanup."
+  {:path "common.py" :source "" :language "python"
+   :entity_id (transform-library/builtin-entity-id "python")})
 
 (defn- ensure-builtin-python-library!
-  "Ensures the built-in common.py PythonLibrary exists, creating it if missing."
+  "Ensures the built-in common.py TransformLibrary exists, creating it if missing."
   []
-  (when-not (t2/exists? :model/PythonLibrary :path (:path builtin-python-library))
-    (t2/insert! :model/PythonLibrary builtin-python-library)))
+  (when-not (t2/exists? :model/TransformLibrary :path (:path builtin-python-library) :language "python")
+    (t2/insert! :model/TransformLibrary builtin-python-library)))
 
 (defn clean-optional-feature-models
-  "Test fixture that cleans Transform, TransformTag, PythonLibrary, and namespace collection
+  "Test fixture that cleans Transform, TransformTag, TransformLibrary, and namespace collection
   tables to prevent conflict detection during first-import tests. Preserves built-in TransformTags
-  and recreates the built-in common.py PythonLibrary after cleanup."
+  and recreates the built-in common.py TransformLibrary after cleanup."
   [f]
   (let [old-transforms (t2/select :model/Transform)
         old-tags (t2/select :model/TransformTag :built_in_type nil)
-        old-libs (t2/select :model/PythonLibrary)
+        old-libs (t2/select :model/TransformLibrary)
         old-ns-colls (t2/select :model/Collection :namespace [:in ["transforms" "snippets"]])]
     (try
       (t2/delete! :model/TransformTag :built_in_type nil)
       (t2/delete! :model/Transform)
-      (t2/delete! :model/PythonLibrary)
+      (t2/delete! :model/TransformLibrary)
       (t2/delete! :model/Collection :namespace [:in ["transforms" "snippets"]])
       (f)
       (finally
         (t2/delete! :model/TransformTag :built_in_type nil)
         (t2/delete! :model/Transform)
-        (t2/delete! :model/PythonLibrary)
+        (t2/delete! :model/TransformLibrary)
         (t2/delete! :model/Collection :namespace [:in ["transforms" "snippets"]])
         (when (seq old-transforms) (t2/insert! :model/Transform old-transforms))
         (when (seq old-tags) (t2/insert! :model/TransformTag old-tags))
-        (when (seq old-libs) (t2/insert! :model/PythonLibrary old-libs))
+        (when (seq old-libs) (t2/insert! :model/TransformLibrary old-libs))
         (when (seq old-ns-colls) (t2/insert! :model/Collection old-ns-colls))
         (ensure-builtin-python-library!)))))
 
 (def clean-remote-sync-state
   "Composed test fixture that ensures RemoteSyncObject, RemoteSyncTask, and optional feature
-  model tables (Transform, TransformTag, PythonLibrary) are clean."
+  model tables (Transform, TransformTag, TransformLibrary) are clean."
   (t/compose-fixtures clean-object (t/compose-fixtures clean-task-table clean-optional-feature-models)))
 
 (defn generate-table-yaml

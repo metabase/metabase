@@ -165,7 +165,8 @@
  :TransformJob                   []
  [:TransformJob :job_tags]       []
  :TransformTag                   []
- :PythonLibrary                  [:path
+ :TransformLibrary [:language
+                    :path
                                   :source
                                   :entity_id
                                   :created_at

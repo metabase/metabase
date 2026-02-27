@@ -7,20 +7,23 @@ import { t } from "ttag";
 import { clickableTokens } from "metabase/common/components/CodeMirror";
 import { useDispatch } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
+import type { PythonTransformSourceValidationResult } from "metabase/plugins/oss/transforms";
 import { RunButtonWithTooltip } from "metabase/query_builder/components/RunButtonWithTooltip";
 import { Button, Flex, Icon, Stack, Tooltip } from "metabase/ui";
+import type { AdvancedTransformType } from "metabase-types/api";
 
-import { SHARED_LIB_IMPORT_PATH } from "../../../constants";
+import { SHARED_LIB_IMPORT_PATHS } from "../../../constants";
 import { PythonEditor } from "../../PythonEditor";
 
 import { ResizableBoxHandle } from "./ResizableBoxHandle";
-import { createPythonImportTokenLocator } from "./utils";
+import { createImportTokenLocator } from "./utils";
 
 type PythonEditorBodyProps = {
+  type: AdvancedTransformType;
   disabled?: boolean;
   source: string;
   proposedSource?: string;
-  isRunnable: boolean;
+  sourceValidationResult: PythonTransformSourceValidationResult;
   isEditMode?: boolean;
   hideRunButton?: boolean;
   onChange: (source: string) => void;
@@ -34,16 +37,17 @@ type PythonEditorBodyProps = {
   onRejectProposed?: () => void;
 };
 
-const EDITOR_HEIGHT = 400;
+const EDITOR_HEIGHT = 330;
 const HEADER_HEIGHT = 65 + 50; // Top bar height + transform header height
 const PREVIEW_MAX_INITIAL_HEIGHT = 192;
 
 export function PythonEditorBody({
+  type,
   disabled,
   source,
   proposedSource,
   onChange,
-  isRunnable,
+  sourceValidationResult,
   isEditMode,
   hideRunButton,
   onRun,
@@ -63,7 +67,7 @@ export function PythonEditorBody({
     (e: MouseEvent) => {
       const openInNewTab = e.metaKey || e.ctrlKey || e.button === 1;
       const href = Urls.transformPythonLibrary({
-        path: SHARED_LIB_IMPORT_PATH,
+        path: SHARED_LIB_IMPORT_PATHS[type],
       });
       if (openInNewTab) {
         window.open(href, "_blank", "noopener,noreferrer");
@@ -71,27 +75,27 @@ export function PythonEditorBody({
         dispatch(push(href));
       }
     },
-    [dispatch],
+    [dispatch, type],
   );
 
   const clickableTokensExtension = useMemo(
     () =>
       clickableTokens([
         {
-          tokenLocator: createPythonImportTokenLocator("common"),
+          tokenLocator: createImportTokenLocator(type, "common"),
           onClick: (e) => navigateToCommonLibrary(e),
         },
       ]),
-    [navigateToCommonLibrary],
+    [navigateToCommonLibrary, type],
   );
 
   const editorContent = (
     <Flex h="100%" align="end" bg="background-secondary" pos="relative">
       <PythonEditor
+        type={type}
         value={source}
         proposedValue={proposedSource}
         onChange={onChange}
-        withPandasCompletions
         readOnly={!isEditMode || disabled}
         extensions={[clickableTokensExtension]}
         data-testid="python-editor"
@@ -129,12 +133,14 @@ export function PythonEditorBody({
           )}
           {!hideRunButton && (
             <RunButtonWithTooltip
-              disabled={!isRunnable}
+              disabled={!sourceValidationResult.isValid}
               isRunning={isRunning}
               isDirty={isDirty}
               onRun={onRun}
               onCancel={onCancel}
-              getTooltip={() => t`Run Python script`}
+              getTooltip={() =>
+                sourceValidationResult.errorMessage ?? t`Run transform`
+              }
             />
           )}
         </Stack>

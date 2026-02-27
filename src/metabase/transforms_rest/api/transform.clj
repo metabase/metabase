@@ -173,7 +173,7 @@
              403
              (deferred-tru "A table with that name already exists."))
   (-> (transforms.core/create-transform! body)
-      transforms.core/python-source-table-ref->table-id
+      transforms.core/runner-source-table-ref->table-id
       transforms.util/add-source-readable))
 
 (api.macros/defendpoint :get "/:id" :- TransformResponse
@@ -192,7 +192,7 @@
         dep-ids         (get global-ordering id)
         dependencies    (map id->transform dep-ids)]
     (->> (t2/hydrate dependencies :creator :owner)
-         (mapv transforms.core/python-source-table-ref->table-id)
+         (mapv transforms.core/runner-source-table-ref->table-id)
          transforms.util/add-source-readable)))
 
 (def ^:private MergeHistoryEntry
@@ -294,7 +294,7 @@
   (let [transform (api/write-check :model/Transform id)
         run       (api/check-404 (transforms.core/running-run-for-transform-id id))]
     (transforms.core/mark-cancel-started-run! (:id run))
-    (when (transforms.util/python-transform? transform)
+    (when (transforms.util/runner-transform? transform)
       (transforms.core/cancel-run! (:id run))))
   nil)
 

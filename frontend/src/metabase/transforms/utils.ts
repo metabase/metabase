@@ -6,17 +6,20 @@ import type { OmniPickerCollectionItem } from "metabase/common/components/Picker
 import { parseTimestamp } from "metabase/lib/time-dayjs";
 import * as Lib from "metabase-lib";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
-import type {
-  CollectionNamespace,
-  Database,
-  DatabaseId,
-  DraftTransformSource,
-  TemplateTag,
-  Transform,
-  TransformRun,
-  TransformRunMethod,
-  TransformRunStatus,
-  TransformSource,
+import {
+  type CollectionNamespace,
+  type Database,
+  type DatabaseId,
+  type DraftTransformSource,
+  type PythonTransformSourceDraft,
+  type TemplateTag,
+  type Transform,
+  type TransformRun,
+  type TransformRunMethod,
+  type TransformRunStatus,
+  type TransformSource,
+  isAdvancedTransformSource,
+  isAdvancedTransformType,
 } from "metabase-types/api";
 
 import { CHECKPOINT_TEMPLATE_TAG } from "./constants";
@@ -83,7 +86,7 @@ export function sourceDatabaseId(source: TransformSource): DatabaseId | null {
     return source.query.database;
   }
 
-  if (source.type === "python") {
+  if (isAdvancedTransformType(source.type)) {
     return source["source-database"];
   }
 
@@ -134,8 +137,15 @@ export function isSameSource(
   if (source1.type === "query" && source2.type === "query") {
     return Lib.areLegacyQueriesEqual(source1.query, source2.query);
   }
-  if (source1.type === "python" && source2.type === "python") {
-    return _.isEqual(source1, source2);
+  if (
+    isAdvancedTransformSource(source1) &&
+    isAdvancedTransformSource(source2)
+  ) {
+    // source-database is not set as part of the initialSource, so we omit it from the comparison
+    return _.isEqual(
+      _.omit(source1, "source-database"),
+      _.omit(source2, "source-database"),
+    );
   }
   return false;
 }
@@ -164,7 +174,10 @@ export function isSourceEmpty(
 export function isCompleteSource(
   source: DraftTransformSource,
 ): source is TransformSource {
-  return source.type !== "python" || source["source-database"] != null;
+  return (
+    !isAdvancedTransformType(source.type) ||
+    (source as PythonTransformSourceDraft)["source-database"] != null
+  );
 }
 
 export type ValidationResult = {
