@@ -15,6 +15,7 @@
   (:require
    [clojure.java.io :as io]
    [clojure.string :as str]
+   [metabase-enterprise.llm.settings :as llm]
    [metabase-enterprise.metabot-v3.self :as self]
    [metabase.util.log :as log]
    [selmer.parser :as selmer]))
@@ -104,7 +105,7 @@
   retry logic, error handling, and OTel tracing."
   [rendered-prompt]
   (self/call-llm-structured
-   "anthropic/claude-haiku-4-5"
+   (llm/ee-ai-metabot-provider)
    "example-question-generation"
    [{:role "user" :content rendered-prompt}]
    questions-json-schema
