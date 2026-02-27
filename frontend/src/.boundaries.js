@@ -3,73 +3,62 @@ const createElement = ({ type, name }) => ({
   pattern: `frontend/src/metabase/${name}/**`,
 });
 
-const basicModules = [
-  "ui",
-  "api",
-  "lib",
-];
+const libModules = ["redux", "lib"];
 
-const sharedModules = [
-  "common",
-  "querying",
-  "visualizations",
-  "redux",
-];
+const basicModules = ["ui", "api"];
 
-const featureModules = [
-  "dashboard",
-  "query_builder",
-  "admin",
-  "reference",
-];
+const sharedModules = ["common", "querying", "visualizations"];
 
-const appModules = [
-  "app",
-  "home",
-  "nav",
-];
+const featureModules = ["dashboard", "query_builder", "admin", "reference"];
+
+const appModules = ["app", "home", "nav"];
 
 const elements = [
-  { type: "types", pattern: "frontend/src/metabase-types/*/**" },
+  { type: "lib/types", pattern: "frontend/src/metabase-types/*/**" },
   { type: "basic/mlv2", pattern: "frontend/src/metabase-lib/*/**" },
-  ...basicModules.map(name => createElement({ type: "basic", name })),
-  ...sharedModules.map(name => createElement({ type: "shared", name })),
-  ...featureModules.map(name => createElement({ type: "feature", name })),
+  ...libModules.map((name) => createElement({ type: "lib", name })),
+  ...basicModules.map((name) => createElement({ type: "basic", name })),
+  ...sharedModules.map((name) => createElement({ type: "shared", name })),
+  ...featureModules.map((name) => createElement({ type: "feature", name })),
   { type: "app/misc", pattern: "frontend/src/metabase/*.js*" },
   { type: "other", pattern: "frontend/src/*/**" },
 ];
 
 const rules = [
-  ...elements.map(element => ({
+  ...elements.map((element) => ({
     // always allow self-imports
     from: [element.type],
     allow: [element.type],
   })),
   {
-    from: ["basic/*"],
-    allow: ["types"],
-    message: "Basic modules can only import from types",
+    from: ["lib/*"],
+    allow: ["lib/*"],
   },
-{
-    from: ["basic/mlv2"],
-    allow: ["basic/lib"],
+  {
+    from: ["basic/*"],
+    allow: ["lib/*"],
+    message: "Basic modules can only import from lib modules",
+  },
+  {
+    from: ["lib/lib"],
+    allow: ["basic/mlv2"],
   },
   {
     from: ["basic/ui"],
-    allow: ["basic/lib"],
+    allow: ["lib/lib"],
   },
   {
-    from: ["basic/api"],
-    allow: ["basic/lib"],
+    from: ["shared/querying"],
+    allow: ["feature/query_builder"],
   },
   {
     from: ["shared/*"],
-    allow: ["types", "basic/*", "shared/*"],
+    allow: ["lib/*", "basic/*", "shared/*"],
     message: "Shared modules cannot import from feature modules",
   },
   {
     from: ["feature/*"],
-    allow: ["types", "basic/*", "shared/*"],
+    allow: ["lib/*", "basic/*", "shared/*"],
     message: "Feature modules cannot import from other feature modules",
   },
   {
@@ -78,10 +67,10 @@ const rules = [
   },
   {
     from: ["other"],
-    allow: ["types", "basic/*", "shared/*", "feature/*", "app/*", "other"],
+    allow: ["lib/*", "basic/*", "shared/*", "feature/*", "app/*", "other"],
   },
   {
-    from: ["types", "basic/*", "shared/*", "feature/*", "app/*"],
+    from: ["lib/*", "basic/*", "shared/*", "feature/*", "app/*"],
     allow: ["other"],
   },
 ];
@@ -89,10 +78,12 @@ const rules = [
 const shouldEnforce = true; // FIXME
 // process.env.CHECK_MODULE_BOUNDARIES === "true";
 
-module.exports = shouldEnforce ? {
-  elements,
-  rules,
-} : {
-  elements: [],
-  rules: [],
-};
+module.exports = shouldEnforce
+  ? {
+      elements,
+      rules,
+    }
+  : {
+      elements: [],
+      rules: [],
+    };
