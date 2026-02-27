@@ -22,7 +22,7 @@ export function useSchemaViewerContext() {
 // Selector that returns boolean based on zoom threshold
 // Only triggers re-render when crossing the threshold
 const compactModeSelector = (state: { transform: [number, number, number] }) =>
-  state.transform[2] <= COMPACT_ZOOM_THRESHOLD;
+  state.transform[2] < COMPACT_ZOOM_THRESHOLD;
 
 export function useIsCompactMode(): boolean {
   return useStore(compactModeSelector);
