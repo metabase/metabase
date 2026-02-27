@@ -381,6 +381,8 @@
   Takes optional keyword arguments to narrow down the results to a set of `schema-names`
   and `table-names`.
 
+  `database` should be a Lib-style `:metadata/database` (i.e., should use kebab-case keys).
+
   Results match [[metabase.sync.interface/FKMetadataEntry]].
   Results are optionally filtered by `schema-names` and `table-names` provided.
   Results are ordered by `fk-table-schema` and `fk-table-name` in ascending order.

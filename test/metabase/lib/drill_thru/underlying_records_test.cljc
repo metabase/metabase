@@ -687,7 +687,7 @@
                           :lib/original-name                "CREATED_AT"
                           :lib/source-column-alias          "CREATED_AT"
                           :lib/type                         :metadata/column
-                          :metabase.lib.field/temporal-unit :month}
+                          :lib/temporal-unit :month}
         created-at-2-col {:base-type                        :type/DateTime
                           :database-type                    "TIMESTAMP"
                           :display-name                     "CREATED_AT: Year"
@@ -704,7 +704,7 @@
                           :lib/original-name                "CREATED_AT"
                           :lib/source-column-alias          "CREATED_AT"
                           :lib/type                         :metadata/column
-                          :metabase.lib.field/temporal-unit :year}
+                          :lib/temporal-unit :year}
         context          {:column     count-col
                           :column-ref [:aggregation {:lib/uuid "1e569eeb-049b-42a4-8bc6-678743cbfdcb"} "5ae2854a-11ce-48fe-ab85-3f2bc059e452"]
                           :value      325

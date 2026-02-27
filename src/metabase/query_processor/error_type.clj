@@ -45,6 +45,11 @@
   "The current user does not have required permissions to run the current query."
   :parent client)
 
+(defn permission-error?
+  "Is `error-type` a permissions error"
+  [error-type]
+  (= missing-required-permissions error-type))
+
 (deferror bad-configuration
   "Something related to configuration (e.g. of a sandbox/GTAP) is preventing us from being able to run the query."
   :parent client)
@@ -96,6 +101,11 @@
 
 (deferror dangling-lhs-ref-in-join-condition
   "The query contains a join condition which refers to a field on the LHS of the join which is no longer available."
+  :parent invalid-query
+  :show-in-embeds? true)
+
+(deferror circular-reference
+  "The query has circular referencing sub-queries."
   :parent invalid-query
   :show-in-embeds? true)
 

@@ -343,7 +343,7 @@
     (mt/test-helpers-set-global-values!
       (do-response-formats [response-format _request-options]
         (with-embedding-enabled-and-new-secret-key!
-          (let [expected-status (response-format->status-code response-format)]
+          (let [expected-status 400]
             (testing (str "If the card has an invalid query we should just get a generic \"query failed\" "
                           "exception (rather than leaking query info)")
               (with-temp-card [card {:enable_embedding true, :dataset_query {:database (mt/id)
@@ -862,7 +862,7 @@
         (is (= {:status     "failed"
                 :error      "An error occurred while running the query."
                 :error_type "invalid-query"}
-               (client/client :get 202 (dashcard-url dashcard))))))))
+               (client/client :get 400 (dashcard-url dashcard))))))))
 
 (deftest check-that-the-dashcard-endpoint-doesn-t-work-if-embedding-isn-t-enabled
   (mt/with-temporary-setting-values [enable-embedding false]
