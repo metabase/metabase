@@ -25,7 +25,7 @@ Writeable connection can use a different database user than the main connection,
 
 To add a writeable connection to a database:
 
-1. Go to **Admin > Databases**
+1. Go to **Admin > Databases**.
 2. Select the database to add a writeable connection to.
 3. Under **Writeable connection**, click **Add writeable connection**.
 4. Metabase will pre-fill some fields with information from your main connection. Input the credentials for the writeable connection.
@@ -35,11 +35,11 @@ To add a writeable connection to a database:
 
 To remove a writeable connection from a database:
 
-1. Go to **Admin > Databases**
-2. Select the database .
+1. Go to **Admin > Databases**.
+2. Select the database you want to remove the writeable connection from.
 3. Under **Writeable connection**, click **Remove writeable connection**.
 
-Once writeable connection is removed, Metabase will revert to using the main connections for [features that need write access](#features-that-use-writeable-connection), so your main connection will need to have appropriate database permissions, see [Users, roles, and privileges](./users-roles-privileges.md)
+Once writeable connection is removed, Metabase will revert to using the main connection for [features that need write access](#features-that-use-writeable-connection), so your main connection will need to have appropriate database permissions, see [Users, roles, and privileges](./users-roles-privileges.md)
 
 ## Features that use writeable connection
 
