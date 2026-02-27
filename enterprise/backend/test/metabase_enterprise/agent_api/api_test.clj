@@ -325,7 +325,7 @@
         (let [decoded (decode-query response)]
           (is (= :mbql/query (lib/normalized-query-type decoded)))
           (is (= (mt/id) (lib/database-id decoded)))
-          (is (= (mt/id :orders) (lib/source-table-id decoded))))))
+          (is (= (mt/id :orders) (lib/primary-source-table-id decoded))))))
 
     (testing "Applies default limit of 100 when no limit is specified"
       (let [table-id (mt/id :orders)
