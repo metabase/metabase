@@ -2,7 +2,7 @@ import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 
 import { setupPropertiesEndpoints } from "__support__/server-mocks";
-import { renderWithProviders, screen } from "__support__/ui";
+import { act, renderWithProviders, screen, waitFor } from "__support__/ui";
 import {
   createMockSettings,
   createMockTokenFeatures,
@@ -71,7 +71,38 @@ describe("CloudPurchaseContent", () => {
     ).toBeInTheDocument();
   });
 
-  it("purchases transforms-advanced and closes parent modal on confirm", async () => {
+  it("shows setting up modal while purchase is in progress", async () => {
+    let resolveRequest!: (value: unknown) => void;
+    const pendingResponse = new Promise((resolve) => {
+      resolveRequest = resolve;
+    });
+
+    fetchMock.post(
+      "path:/api/ee/cloud-add-ons/transforms-advanced",
+      pendingResponse,
+    );
+
+    setup({
+      isTrialFlow: false,
+      pythonPrice: 250,
+    });
+
+    await userEvent.click(
+      screen.getByRole("button", { name: "Confirm purchase" }),
+    );
+
+    // While the request is in-flight, the setting up modal should be visible
+    expect(
+      screen.getByText("Setting up Python transforms, please wait"),
+    ).toBeInTheDocument();
+
+    // Resolve the request
+    await act(async () => {
+      resolveRequest(200);
+    });
+  });
+
+  it("calls the API and closes parent modal on successful purchase", async () => {
     fetchMock.post("path:/api/ee/cloud-add-ons/transforms-advanced", 200);
 
     const { handleModalClose } = setup({
@@ -83,22 +114,44 @@ describe("CloudPurchaseContent", () => {
       screen.getByRole("button", { name: "Confirm purchase" }),
     );
 
-    await fetchMock.callHistory.flush();
+    await waitFor(() => {
+      expect(
+        fetchMock.callHistory
+          .calls()
+          .some(
+            (call) =>
+              call.url.endsWith("/api/ee/cloud-add-ons/transforms-advanced") &&
+              call.options.method === "POST",
+          ),
+      ).toBe(true);
+    });
 
+    // After success, the finally block closes the parent modal
+    await waitFor(() => {
+      expect(handleModalClose).toHaveBeenCalled();
+    });
+  });
+
+  it("closes setting up modal and parent modal on error", async () => {
+    fetchMock.post("path:/api/ee/cloud-add-ons/transforms-advanced", 500);
+
+    const { handleModalClose } = setup({
+      isTrialFlow: false,
+      pythonPrice: 250,
+    });
+
+    await userEvent.click(
+      screen.getByRole("button", { name: "Confirm purchase" }),
+    );
+
+    // After error, finally block closes the parent modal
+    await waitFor(() => {
+      expect(handleModalClose).toHaveBeenCalled();
+    });
+
+    // Setting up modal should be closed (not visible)
     expect(
-      fetchMock.callHistory
-        .calls()
-        .some(
-          (call) =>
-            call.url.endsWith("/api/ee/cloud-add-ons/transforms-advanced") &&
-            call.options.method === "POST",
-        ),
-    ).toBe(true);
-
-    expect(handleModalClose).toHaveBeenCalled();
-
-    expect(
-      screen.getByText("Setting up Python transforms, please wait"),
-    ).toBeInTheDocument();
+      screen.queryByText("Setting up Python transforms, please wait"),
+    ).not.toBeInTheDocument();
   });
 });
