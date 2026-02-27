@@ -6,7 +6,7 @@ import { match } from "ts-pattern";
  *
  * `IS_ENTERPRISE` means enterprise instance without a token and `isOSS` means open-source instance.
  */
-const { IS_ENTERPRISE } = Cypress.env();
+const IS_ENTERPRISE = Cypress.expose("IS_ENTERPRISE");
 
 const throwIfNotEnterprise = () => {
   if (!IS_ENTERPRISE) {
@@ -30,27 +30,31 @@ export const activateToken = (
 
   const fallbackToken =
     tokenReference === "starter" ? "NO_FEATURES_TOKEN" : "ALL_FEATURES_TOKEN";
-  const token = Cypress.env(tokenReference) || Cypress.env(fallbackToken);
 
-  if (!token) {
-    const errorMessage = `
+  // Use cy.env() for sensitive token values (async API)
+  return cy.env([tokenReference, fallbackToken]).then((envVars) => {
+    const token = envVars[tokenReference] || envVars[fallbackToken];
+
+    if (!token) {
+      const errorMessage = `
     Please make sure you have correctly set the following tokens in your environment variables:
       - CYPRESS_MB_ALL_FEATURES_TOKEN
       - CYPRESS_MB_STARTER_CLOUD_TOKEN
       - CYPRESS_MB_PRO_CLOUD_TOKEN
       - CYPRESS_MB_PRO_SELF_HOSTED_TOKEN
     `;
-    throw new Error(errorMessage);
-  }
+      throw new Error(errorMessage);
+    }
 
-  cy.log(`Set the "${tokenReference}" token`);
-  return cy.request({
-    method: "PUT",
-    url: "/api/setting/premium-embedding-token",
-    failOnStatusCode: false,
-    body: {
-      value: token,
-    },
+    cy.log(`Set the "${tokenReference}" token`);
+    return cy.request({
+      method: "PUT",
+      url: "/api/setting/premium-embedding-token",
+      failOnStatusCode: false,
+      body: {
+        value: token,
+      },
+    });
   });
 };
 
