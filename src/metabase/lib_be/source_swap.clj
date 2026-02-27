@@ -1,6 +1,7 @@
 (ns metabase.lib-be.source-swap
   (:require
    [medley.core :as m]
+   [metabase.lib.card :as lib.card]
    [metabase.lib.field :as lib.field]
    [metabase.lib.field.resolution :as lib.field.resolution]
    [metabase.lib.metadata :as lib.metadata]
@@ -211,9 +212,11 @@
   [query                                      :- ::lib.schema/query
    {old-source-id :id, old-source-type :type} :- ::swap-source.source
    {new-source-id :id, new-source-type :type} :- ::swap-source.source]
-  (if-not (and (= old-source-type :table) (= new-source-type :table))
+  (if-not (= new-source-type :table)
     {}
-    (let [old-fields       (lib.metadata/fields query old-source-id)
+    (let [old-fields       (case old-source-type
+                             :table (lib.metadata/fields query old-source-id)
+                             :card  (lib.card/saved-question-metadata query old-source-id))
           new-fields       (lib.metadata/fields query new-source-id)
           new-field-by-key (m/index-by column-match-key new-fields)]
       (into {}

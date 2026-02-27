@@ -308,10 +308,30 @@
 
 (deftest ^:parallel swap-source-in-parameter-target-implicit-join-test
   (let [query           (lib/query meta/metadata-provider (meta/table-metadata :orders))
-        target          [:dimension [:field (meta/id :products :category) {:source-field (meta/id :orders :product-id)}]]
+        category-col    (m/find-first #(= "CATEGORY" (:name %)) (lib/filterable-columns query))
+        target          [:dimension (lib/->legacy-MBQL (lib/ref category-col))]
         upgraded-target (lib-be/upgrade-field-ref-in-parameter-target query target)
         swapped-target  (lib-be/swap-source-in-parameter-target query target
                                                                 {:type :table, :id (meta/id :orders)}
+                                                                {:type :table, :id (meta/id :reviews)})]
+    (testing "should not change implicit join target when upgrading"
+      (is (=? [:dimension [:field (meta/id :products :category) {:source-field (meta/id :orders :product-id)}]]
+              upgraded-target)))
+    (testing "should return an identical target if upgrade is not needed"
+      (is (= upgraded-target (lib-be/upgrade-field-ref-in-parameter-target query upgraded-target))))
+    (testing "should swap :source-field to reviews.product-id"
+      (is (=? [:dimension [:field (meta/id :products :category) {:source-field (meta/id :reviews :product-id)}]]
+              swapped-target)))))
+
+(deftest ^:parallel swap-source-in-parameter-target-card-implicit-join-test
+  (let [orders-query    (lib/query meta/metadata-provider (meta/table-metadata :orders))
+        mp              (lib.tu/metadata-provider-with-card-from-query 1 orders-query)
+        query           (lib/query mp (lib.metadata/card mp 1))
+        category-col    (m/find-first #(= "CATEGORY" (:name %)) (lib/filterable-columns query))
+        target          [:dimension (lib/->legacy-MBQL (lib/ref category-col))]
+        upgraded-target (lib-be/upgrade-field-ref-in-parameter-target query target)
+        swapped-target  (lib-be/swap-source-in-parameter-target query target
+                                                                {:type :card, :id 1}
                                                                 {:type :table, :id (meta/id :reviews)})]
     (testing "should not change implicit join target when upgrading"
       (is (=? [:dimension [:field (meta/id :products :category) {:source-field (meta/id :orders :product-id)}]]
