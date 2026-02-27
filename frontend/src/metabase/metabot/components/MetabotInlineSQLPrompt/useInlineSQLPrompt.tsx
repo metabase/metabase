@@ -209,43 +209,75 @@ export function useInlineSQLPrompt(
     resetInputRef.current = resetInput;
   }, [resetInput]);
 
+  const [pendingFix, setPendingFix] = useState<{
+    prompt: string;
+    resolve: () => void;
+    reject: (e: unknown) => void;
+  } | null>(null);
+
   useRegisterSqlFixerInlineContextProvider(
     (prompt: string) => {
-      if (!editorView) {
-        // TODO
-        return Promise.reject("Editor view not found");
-      }
-
-      if (generatedSqlRef.current) {
-        resetInputRef.current();
-      }
-
-      setHasEverBeenOpened(true);
-      setPromptValue(prompt);
-
-      const cursorPos = editorView.state.doc.length;
-      if (!portalTarget) {
-        editorView.dispatch({
-          selection: { anchor: cursorPos },
-          effects: toggleEffect.of({ view: editorView }),
-        });
-      } else {
-        editorView.dispatch({ selection: { anchor: cursorPos } });
-      }
-
-      const referencedEntities = selectedTables.map((table) => ({
-        model: "table" as const,
-        id: table.id,
-      }));
-
-      return generate({
-        prompt,
-        sourceSql: getSourceSql(),
-        referencedEntities,
+      return new Promise<void>((resolve, reject) => {
+        setPendingFix({ prompt, resolve, reject });
       });
     },
-    [getSourceSql, editorView, generate, portalTarget, selectedTables],
+    [setPendingFix],
   );
+
+  // This is kinda annoying but we have to make sure the `editorView` is mounted
+  // before we start the fix. Otherwise if we click the fix with the editor closed
+  // it will not mount the `editorView` in time
+  useEffect(() => {
+    if (!pendingFix || !editorView) {
+      return;
+    }
+
+    const { prompt, resolve, reject } = pendingFix;
+    setPendingFix(null);
+
+    (async () => {
+      try {
+        if (generatedSqlRef.current) {
+          resetInputRef.current();
+        }
+
+        setHasEverBeenOpened(true);
+        setPromptValue(prompt);
+
+        const cursorPos = editorView.state.doc.length;
+        if (!portalTarget) {
+          editorView.dispatch({
+            selection: { anchor: cursorPos },
+            effects: toggleEffect.of({ view: editorView }),
+          });
+        } else {
+          editorView.dispatch({ selection: { anchor: cursorPos } });
+        }
+
+        const referencedEntities = selectedTables.map((table) => ({
+          model: "table" as const,
+          id: table.id,
+        }));
+
+        await generate({
+          prompt,
+          sourceSql: getSourceSql(),
+          referencedEntities,
+        });
+
+        resolve();
+      } catch (e) {
+        reject(e);
+      }
+    })();
+  }, [
+    pendingFix,
+    editorView,
+    portalTarget,
+    selectedTables,
+    generate,
+    getSourceSql,
+  ]);
 
   const proposedQuestion = useMemo(
     () =>
