@@ -375,10 +375,14 @@
                                            (or (contains? lib.schema.template-tag/raw-value-template-tag-types tag-type)
                                                (and (= tag-type :dimension) widget-type (not= widget-type :none))))]
     {:id       (:id tag)
-     :type     (or widget-type (cond (= tag-type :date)   :date/single
-                                     (= tag-type :string) :string/=
-                                     (= tag-type :number) :number/=
-                                     :else                :category))
+     :type     (or widget-type (case tag-type
+                                 :date    :date/single
+                                 :text    :string/=
+                                 :number  :number/=
+                                 :boolean :boolean/=
+                                ;; fallback; should be unreachable since :when filters
+                                ;; to raw-value-template-tag-types
+                                 :string/=))
      :target   (if (= tag-type :dimension)
                  [:dimension [:template-tag (:name tag)]]
                  [:variable  [:template-tag (:name tag)]])

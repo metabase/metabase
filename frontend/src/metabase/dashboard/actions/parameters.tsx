@@ -21,6 +21,7 @@ import {
   setParameterType as setParamType,
 } from "metabase/parameters/utils/dashboards";
 import { addUndo, dismissUndo } from "metabase/redux/undo";
+import { getMetadata } from "metabase/selectors/metadata";
 import { Text } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import { getParameterValuesByIdFromQueryParams } from "metabase-lib/v1/parameters/utils/parameter-parsing";
@@ -28,6 +29,8 @@ import {
   PULSE_PARAM_EMPTY,
   isParameterValueEmpty,
 } from "metabase-lib/v1/parameters/utils/parameter-values";
+import { TYPE } from "metabase-lib/v1/types/constants";
+import { isNumericBaseType, isa } from "metabase-lib/v1/types/utils/isa";
 import type {
   ActionDashboardCard,
   CardId,
@@ -42,6 +45,7 @@ import type {
   VisualizationDisplay,
   WritebackAction,
 } from "metabase-types/api";
+import { isDimensionTarget } from "metabase-types/guards";
 import type { Dispatch, GetState } from "metabase-types/store";
 
 import {
@@ -444,9 +448,63 @@ export const setParameterMapping = createThunkAction(
           },
         }),
       );
+
+      // QUE2-326: when an ID parameter is mapped to a field, replace the
+      // placeholder "id" type with a concrete type based on the field.
+      if (target !== null && isDimensionTarget(target)) {
+        const parameter = getParameters(getState()).find(
+          (p) => p.id === parameterId,
+        );
+        if (parameter?.type === "id") {
+          updateParameter(dispatch, getState, parameterId, (p) => ({
+            ...p,
+            type: resolveIdParameterType(getState, target),
+            // Preserve sectionId so getParameterType() still returns "id" for
+            // UI purposes (column compatibility, widget rendering) even though
+            // the QP-facing type is now concrete.
+            sectionId: p.sectionId ?? "id",
+          }));
+        }
+      }
     };
   },
 );
+
+/**
+ * QUE2-326: Determine the concrete parameter type for an ID parameter based on
+ * the mapped field. Handles both by-ID refs (looks up metadata) and by-name
+ * refs (reads base-type from the field ref options). Falls back to "number/="
+ * since most PKs are numeric.
+ */
+function resolveIdParameterType(
+  getState: GetState,
+  target: ParameterTarget,
+): string {
+  const fieldRef = target[1];
+  if (!Array.isArray(fieldRef) || fieldRef[0] !== "field") {
+    return "number/=";
+  }
+
+  const fieldIdOrName = fieldRef[1];
+
+  // By-ID: look up the field from the metadata store
+  if (typeof fieldIdOrName === "number") {
+    const field = getMetadata(getState()).field(fieldIdOrName);
+    if (field) {
+      return isNumericBaseType(field) ? "number/=" : "string/=";
+    }
+    return "number/=";
+  }
+
+  // By-name: read the base-type from the field ref options
+  const opts = fieldRef[2];
+  const baseType = opts?.["base-type"];
+  if (typeof baseType === "string") {
+    return isa(baseType, TYPE.Number) ? "number/=" : "string/=";
+  }
+
+  return "number/=";
+}
 
 export const UPDATE_PARAMETER_MAPPINGS_FOR_DASHCARD_TEXT =
   "metabase/dashboard/UPDATE_PARAMETER_MAPPINGS_FOR_DASHCARD_TEXT";
