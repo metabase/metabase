@@ -206,11 +206,15 @@ main() {
   log "SOURCE version is healthy"
 
   log ""
-  log "Step 2: Stopping SOURCE version..."
+  log "Step 2: Running e2e tests (@source)..."
+  "$SCRIPT_DIR/../e2e/test/cross-version/run.sh" --phase source
+
+  log ""
+  log "Step 3: Stopping SOURCE version..."
   stop_metabase
 
   log ""
-  log "Step 3: Starting TARGET version ($TARGET_VERSION)..."
+  log "Step 4: Starting TARGET version ($TARGET_VERSION)..."
   start_metabase "$target_image"
 
   if [[ "$direction" == "upgrade" ]]; then
@@ -221,6 +225,10 @@ main() {
       exit 1
     fi
     log "UPGRADE successful - TARGET version is healthy"
+
+    log ""
+    log "Step 5: Running e2e tests (@target)..."
+    "$SCRIPT_DIR/../e2e/test/cross-version/run.sh" --phase target
 
   else
     # Downgrade: should refuse to start, then we run migrate down
@@ -235,7 +243,7 @@ main() {
 
     # Run migrate down
     log ""
-    log "Step 4: Running migrate down..."
+    log "Step 5: Running migrate down..."
     if ! run_migrate_down "$target_image"; then
       error "migrate down failed"
       exit 1
@@ -243,7 +251,7 @@ main() {
 
     # Try starting again
     log ""
-    log "Step 5: Starting TARGET version after migrate down..."
+    log "Step 6: Starting TARGET version after migrate down..."
     start_metabase "$target_image"
 
     if ! wait_for_health "$HEALTH_TIMEOUT"; then
@@ -252,6 +260,10 @@ main() {
       exit 1
     fi
     log "DOWNGRADE successful - TARGET version is healthy after migrate down"
+
+    log ""
+    log "Step 7: Running e2e tests (@target)..."
+    "$SCRIPT_DIR/../e2e/test/cross-version/run.sh" --phase target
   fi
 
   log ""
