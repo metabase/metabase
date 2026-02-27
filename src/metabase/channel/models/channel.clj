@@ -139,12 +139,20 @@
 (t2/define-before-insert :model/ChannelTemplate
   [instance]
   (check-valid-channel-template instance)
-  (log-template-change! :create instance)
   instance)
 
 (t2/define-before-update :model/ChannelTemplate
   [instance]
   (check-valid-channel-template instance)
+  instance)
+
+(t2/define-after-insert :model/ChannelTemplate
+  [instance]
+  (log-template-change! :create instance)
+  instance)
+
+(t2/define-after-update :model/ChannelTemplate
+  [instance]
   (log-template-change! :update instance)
   instance)
 

@@ -435,7 +435,7 @@
    (prometheus/gauge :metabase-notification/concurrent-tasks
                      {:description "Number of concurrent notification sends."})
    (prometheus/counter :metabase-notification/template-render
-                       {:description "Number of notification template renders."
+                       {:description "Number of notification template render attempts."
                         :labels [:template-type :channel-type]})
    (prometheus/counter :metabase-notification/template-create
                        {:description "Number of notification templates created."
