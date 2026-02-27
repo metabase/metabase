@@ -14,4 +14,4 @@
   (lib.metadata/bulk-metadata metadata-providerable :metadata/metric metric)
   (lib.metadata/bulk-metadata metadata-providerable :metadata/measure measure)
   (lib.metadata/bulk-metadata metadata-providerable :metadata/segment segment)
-  (lib.metadata/bulk-metadata metadata-providerable :metadata/snippet snippet))
+  (lib.metadata/bulk-metadata metadata-providerable :metadata/native-query-snippet snippet))
