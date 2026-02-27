@@ -204,7 +204,7 @@ export function seriesSetting({
       title: t`Y-axis position`,
       widget: "segmentedControl",
       default: null,
-      getHidden: (single: SingleSeries) => single.card.display === "row",
+      getHidden: (single) => single.card.display === "row",
       props: {
         options: [
           { name: t`Auto`, value: null },
@@ -250,7 +250,7 @@ export function seriesSetting({
   };
 
   return {
-    ...nestedSettings(SERIES_SETTING_KEY, {
+    ...nestedSettings<SingleSeries>(SERIES_SETTING_KEY, {
       getHidden: ([{ card }], _settings, extra) =>
         !extra?.isDashboard || card?.display === "waterfall",
       getSection: (_series, _settings, extra) =>

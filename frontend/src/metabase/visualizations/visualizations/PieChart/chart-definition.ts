@@ -8,6 +8,7 @@ import {
 } from "metabase/visualizations/lib/errors";
 import { columnSettings } from "metabase/visualizations/lib/settings/column";
 import { nestedSettings } from "metabase/visualizations/lib/settings/nested";
+import { keyForSingleSeries } from "metabase/visualizations/lib/settings/series";
 import {
   dimensionSetting,
   metricSetting,
@@ -30,9 +31,10 @@ import {
 } from "metabase/visualizations/shared/utils/sizes";
 import type { VisualizationDefinition } from "metabase/visualizations/types";
 import { isDimension, isMetric } from "metabase-lib/v1/types/utils/isa";
+import type { SingleSeries } from "metabase-types/api";
 
 import { DimensionsWidget } from "./DimensionsWidget";
-import { SliceNameWidget } from "./SliceNameWidget";
+import { SliceNameWidget, type SliceNameWidgetProps } from "./SliceNameWidget";
 
 const pieRowsReadDeps = [
   "pie.dimension",
@@ -137,35 +139,45 @@ export const PIE_CHART_DEFINITION: VisualizationDefinition = {
       hidden: true,
       getDefault: getDefaultSortRows,
     },
-    ...nestedSettings(SERIES_SETTING_KEY, {
-      widget: SliceNameWidget,
-      getHidden: ([{ card }], _settings, extra) =>
-        !extra?.isDashboard || card?.display === "waterfall",
-      getSection: (_series, _settings, extra) =>
-        extra?.isDashboard ? t`Display` : t`Style`,
-      marginBottom: "0",
-      getProps: (_series, vizSettings, _onChange, _extra, onChangeSettings) => {
-        const pieRows = vizSettings["pie.rows"];
-        if (pieRows == null) {
-          return { pieRows: [], updateRowName: () => null };
-        }
+    ...nestedSettings<SingleSeries, unknown, SliceNameWidgetProps>(
+      SERIES_SETTING_KEY,
+      {
+        getObjectKey: keyForSingleSeries,
+        widget: SliceNameWidget,
+        getHidden: ([{ card }], _settings, extra) =>
+          !extra?.isDashboard || card?.display === "waterfall",
+        getSection: (_series, _settings, extra) =>
+          extra?.isDashboard ? t`Display` : t`Style`,
+        marginBottom: "0",
+        getProps: (
+          _series,
+          vizSettings,
+          _onChange,
+          _extra,
+          onChangeSettings,
+        ) => {
+          const pieRows = vizSettings["pie.rows"];
+          if (pieRows == null) {
+            return { pieRows: [], updateRowName: () => null };
+          }
 
-        return {
-          pieRows,
-          updateRowName: (newName: string, key: string | number) => {
-            onChangeSettings({
-              "pie.rows": pieRows.map((row) => {
-                if (row.key !== key) {
-                  return row;
-                }
-                return { ...row, name: newName };
-              }),
-            });
-          },
-        };
+          return {
+            pieRows,
+            updateRowName: (newName: string, key: string | number) => {
+              onChangeSettings({
+                "pie.rows": pieRows.map((row) => {
+                  if (row.key !== key) {
+                    return row;
+                  }
+                  return { ...row, name: newName };
+                }),
+              });
+            },
+          };
+        },
+        readDependencies: ["pie.rows"],
       },
-      readDependencies: ["pie.rows"],
-    }), // any type cast needed to avoid type error from confusion with destructured object params in `nestedSettings`
+    ),
 
     "pie._dimensions_widget": {
       get section() {

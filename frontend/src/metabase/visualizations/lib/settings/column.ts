@@ -77,7 +77,7 @@ export function columnSettings({
   hidden,
   ...def
 }: ColumnSettingsOptions = {}) {
-  return nestedSettings("column_settings", {
+  return nestedSettings<DatasetColumn>("column_settings", {
     section: t`Formatting`,
     objectName: "column",
     getObjects: getColumns,

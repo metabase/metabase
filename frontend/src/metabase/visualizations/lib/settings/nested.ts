@@ -2,6 +2,7 @@ import type { ComponentType } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
+import { checkNotNull } from "metabase/lib/types";
 import type { ChartNestedSettingSeriesProps } from "metabase/visualizations/components/settings/ChartNestedSettingSeries";
 import { chartSettingNestedSettings } from "metabase/visualizations/components/settings/ChartSettingNestedSettings";
 import type {
@@ -19,31 +20,36 @@ import type {
 
 import { getComputedSettings, getSettingsWidgets } from "../settings";
 
-export interface NestedSettingsOptions<
+export type NestedSettingsOptions<
   T,
   TValue = unknown,
   TProps extends Record<string, unknown> = Record<string, unknown>,
-> extends VisualizationSettingDefinition<T, TValue, TProps> {
+> = Omit<VisualizationSettingDefinition<T, TValue, TProps>, "getHidden"> & {
   objectName?: string;
-  getObjects: (series: Series, settings: VisualizationSettings) => T[];
+  getHidden?: (
+    object: Series,
+    settings: VisualizationSettings,
+    extra?: SettingsExtra,
+  ) => boolean;
+  getObjects?: (series: Series, settings: VisualizationSettings) => T[];
   getObjectKey: (object: T) => string;
-  getObjectSettings: (
+  getObjectSettings?: (
     allStoredSettings: VisualizationSettings,
     object: T,
   ) => VisualizationSettings | undefined;
-  getSettingDefinitionsForObject: (
+  getSettingDefinitionsForObject?: (
     series: Series,
     object: T,
   ) => VisualizationSettingsDefinitions;
   getInheritedSettingsForObject?: (object: T) => VisualizationSettings;
-  component: React.ComponentType<ChartNestedSettingSeriesProps>;
+  component?: React.ComponentType<ChartNestedSettingSeriesProps>;
   getExtraProps?: (
     series: Series,
     settings: VisualizationSettings,
     onChange: (value: TValue) => void,
     extra?: SettingsExtra,
   ) => Record<string, unknown>;
-}
+};
 
 export function nestedSettings<
   T,
@@ -53,12 +59,13 @@ export function nestedSettings<
   id: VisualizationSettingKey,
   {
     objectName = "object",
-    getObjects,
+    getObjects = () => [],
     getObjectKey,
-    getObjectSettings,
-    getSettingDefinitionsForObject,
+    getObjectSettings = () => ({}),
+    getSettingDefinitionsForObject = () => ({}),
     getInheritedSettingsForObject = () => ({}),
     component,
+    widget: widgetProp,
     ...def
   }: NestedSettingsOptions<T, TValue, TProps>,
 ): VisualizationSettingsDefinitions {
@@ -128,14 +135,18 @@ export function nestedSettings<
   }
 
   // decorate with nested settings HOC
-  const widget: ComponentType<TProps & { id: string }> =
-    chartSettingNestedSettings({
-      getObjectKey,
-      getObjectSettings,
-      getSettingsWidgetsForObject,
-    })(component);
+  const defaultWidget: ComponentType<TProps & { id: string }> | undefined =
+    component
+      ? chartSettingNestedSettings({
+          getObjectKey,
+          getObjectSettings,
+          getSettingsWidgetsForObject,
+        })(component)
+      : undefined;
+  // either "component" or "widget" prop needs to be passed
+  const widget = checkNotNull(widgetProp ?? defaultWidget);
 
-  const idDef: SeriesSettingDefinition<unknown, TProps> = {
+  const idDef: SeriesSettingDefinition<TValue, TProps & { id: string }> = {
     section: t`Display`,
     default: {},
     getProps: (series, settings, onChange, extra) => {
