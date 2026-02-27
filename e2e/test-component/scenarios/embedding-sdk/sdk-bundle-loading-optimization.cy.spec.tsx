@@ -7,6 +7,7 @@ import { ORDERS_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
 import { getSdkRoot } from "e2e/support/helpers/e2e-embedding-sdk-helpers";
 import {
   DEFAULT_SDK_AUTH_PROVIDER_CONFIG,
+  defer,
   getSdkBundleScriptElement,
   mountSdk,
   mountSdkContent,
@@ -20,7 +21,6 @@ import {
   signInAsAdminAndEnableEmbeddingSdk,
 } from "e2e/support/helpers/embedding-sdk-testing";
 import { deleteConflictingCljsGlobals } from "metabase/embedding-sdk/test/delete-conflicting-cljs-globals";
-import { defer } from "metabase/lib/promise";
 
 const { H } = cy;
 

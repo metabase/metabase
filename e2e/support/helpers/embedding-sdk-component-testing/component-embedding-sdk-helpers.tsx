@@ -77,3 +77,21 @@ export function mountSdkContent(
 export function getSdkBundleScriptElement(): HTMLScriptElement | null {
   return document.querySelector('[data-embedding-sdk-bundle="true"]');
 }
+
+export interface Deferred<T = unknown> {
+  promise: Promise<T>;
+  resolve(value?: T | PromiseLike<T>): void;
+  reject(reason?: unknown): void;
+}
+
+export function defer<T>(): Deferred<T> {
+  let resolve: Deferred<T>["resolve"] = () => {};
+  let reject: Deferred<T>["reject"] = () => {};
+
+  const promise = new Promise<T>((promiseResolve, promiseReject) => {
+    resolve = promiseResolve;
+    reject = promiseReject;
+  });
+
+  return { promise, resolve, reject };
+}
