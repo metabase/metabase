@@ -2,7 +2,7 @@ import _ from "underscore";
 
 import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
 import { mockSettings } from "__support__/settings";
-import { renderHook } from "__support__/ui";
+import { renderHookWithProviders } from "__support__/ui";
 import type { ComputedVisualizationSettings } from "metabase/visualizations/types";
 import Question from "metabase-lib/v1/Question";
 import type {
@@ -291,13 +291,9 @@ it("should return populated context when metabot is enabled", async () => {
 });
 
 it("should register without throwing", () => {
-  mockSettings(
-    createMockSettings({
-      "metabot-enabled?": true,
-    }),
-  );
+  mockSettings(createMockSettings({ "metabot-enabled?": true }));
 
   expect(() => {
-    renderHook(() => useRegisterQueryBuilderMetabotContext());
+    renderHookWithProviders(() => useRegisterQueryBuilderMetabotContext(), {});
   }).not.toThrow();
 });

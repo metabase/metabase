@@ -12,10 +12,10 @@ import {
 import { createPortal } from "react-dom";
 
 import { skipToken, useExtractTablesQuery } from "metabase/api";
-import { useHasTokenFeature, useSetting } from "metabase/common/hooks";
+import { useHasTokenFeature } from "metabase/common/hooks";
 import { useDebouncedValue } from "metabase/common/hooks/use-debounced-value";
 import { useRegisterMetabotContextProvider } from "metabase/metabot/context";
-import { useMetabotEnabledEmbeddingAware } from "metabase/metabot/hooks";
+import { useLlmSqlGenerationEnabled } from "metabase/metabot/hooks";
 import { PLUGIN_METABOT } from "metabase/plugins";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
@@ -67,10 +67,7 @@ export function useInlineSQLPrompt(
   bufferId: string,
 ): UseInlineSqlEditResult {
   const isTableBarEnabled = !useHasTokenFeature("metabot_v3");
-  const llmSqlGenerationEnabled = useSetting("llm-sql-generation-enabled");
-  const isMetabotEnabled = useMetabotEnabledEmbeddingAware();
-
-  const isEnabled = !!llmSqlGenerationEnabled && !!isMetabotEnabled;
+  const isEnabled = useLlmSqlGenerationEnabled();
 
   const databaseId = question.databaseId();
 

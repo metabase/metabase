@@ -2,7 +2,6 @@
   (:require
    [clojure.test :refer :all]
    [metabase.llm.settings :as llm.settings]
-   [metabase.premium-features.core :as premium-features]
    [metabase.test :as mt]))
 
 (set! *warn-on-reflection* true)
@@ -27,24 +26,16 @@
       (llm.settings/llm-anthropic-api-key! "")
       (is (nil? (llm.settings/llm-anthropic-api-key))))))
 
-;;; ------------------------------------------- llm-sql-generation-enabled Tests -------------------------------------------
+;;; ------------------------------------------- llm-anthropic-api-key-configured? Tests -------------------------------------------
 
-(deftest llm-sql-generation-enabled-test
-  (testing "returns true when Anthropic API key is set (self-hosted)"
-    (with-redefs [premium-features/is-hosted? (constantly false)]
-      (mt/with-temporary-setting-values [llm-anthropic-api-key "sk-ant-test"]
-        (is (true? (llm.settings/llm-sql-generation-enabled))))))
+(deftest llm-anthropic-api-key-configured?-test
+  (testing "returns false when no API key is set"
+    (mt/with-temporary-setting-values [llm-anthropic-api-key nil]
+      (is (false? (llm.settings/llm-anthropic-api-key-configured?)))))
 
-  (testing "returns false when no API key and metabot not enabled"
-    (mt/with-premium-features #{}
-      (mt/with-temporary-setting-values [llm-anthropic-api-key nil]
-        (is (false? (llm.settings/llm-sql-generation-enabled))))))
-
-  (testing "returns false when hosted without metabot enabled, even with API key"
-    (with-redefs [premium-features/is-hosted? (constantly true)]
-      (mt/with-premium-features #{}
-        (mt/with-temporary-setting-values [llm-anthropic-api-key "sk-ant-test"]
-          (is (false? (llm.settings/llm-sql-generation-enabled))))))))
+  (testing "returns true when API key is set"
+    (mt/with-temporary-setting-values [llm-anthropic-api-key "sk-ant-test"]
+      (is (true? (llm.settings/llm-anthropic-api-key-configured?))))))
 
 ;;; ------------------------------------------- Settings Defaults Tests -------------------------------------------
 

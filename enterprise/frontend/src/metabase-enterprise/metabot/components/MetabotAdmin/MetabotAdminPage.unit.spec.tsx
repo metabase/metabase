@@ -144,7 +144,9 @@ const setup = async (
 const enabledToggle = () => screen.findByTestId("metabot-enabled-toggle");
 
 const getLastSettingUpdateCall = (settingKey: string) =>
-  fetchMock.callHistory.lastCall(`path:/api/setting/${settingKey}`);
+  fetchMock.callHistory.lastCall(
+    `path:/api/setting/${encodeURIComponent(settingKey)}`,
+  );
 
 describe("MetabotAdminPage", () => {
   it("should render the page", async () => {
@@ -255,7 +257,9 @@ describe("MetabotAdminPage", () => {
     await setup(FIXED_METABOT_IDS.EMBEDDED);
 
     // Shows title but NOT description for embedded
-    expect(await screen.findByText("Enable Metabot")).toBeInTheDocument();
+    expect(
+      await screen.findByText("Enable Embedded Metabot"),
+    ).toBeInTheDocument();
     expect(
       screen.queryByText(/Metabot is Metabase's AI assistant/),
     ).not.toBeInTheDocument();
