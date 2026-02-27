@@ -192,16 +192,34 @@ You can create tenant-level [user attributes](#tenant-attributes) which all user
 
 ![Edit tenant](./images/edit-tenant.png)
 
-To add a tenant attribute:
+There are two ways to add a tenant attribute. One is to create it manually using the Metabase UI:
 
 1. Go to **Admin settings > People**
 2. Select **Tenants** on the left sidebar.
 3. Click on **three dots** next to the tenant.
 4. Input the attribute key and value.
 
-Once you add a tenant attribute, all users of that tenant will inherit the attribute, but the value can be overridden for any particular user, see [Edit user attributes](../people-and-groups/managing.md#adding-a-user-attribute).
+The second method is to create tenant attributes from JWT SSO. Modify the JWT sign function to include a tenant attribute:
 
-Currently, you can't assign custom tenant attributes with SSO. The only way to assign attributes is through the Metabase UI (but you can provision attributes for _individual users_ through SSO, see [JWT user attributes](../people-and-groups/authenticating-with-jwt.md)). However, if you're using user attribute to set permissions, then you can use the [special slug attribute](#special-tenant-slug-attribute) which Metabase creates automatically.
+```json
+{
+  "@tenant": "my-tenant",
+  "@tenant.attributes": {
+    "some-attribute": "here it is"
+  },
+  "email": "another@another.com",
+  "first_name": "Tester",
+  "last_name": "Testerson"
+}
+```
+
+To set permissions based on attributes:
+- Go to Permissions > Tenant collections > Root tenant collections
+- You can now assign curate, view or block access to any group
+
+Tenant attributes will be persisted in new tenants created from JWT and existing ones, if the tenant attribute key is new. If the tenant already exists, the new tenant attribute is created if it does not exist yet. If it already existed, its value is not updated, however.
+
+Once you add a tenant attribute, all users of that tenant will inherit the attribute, but the value can be overridden for any particular user, see [Edit user attributes](../people-and-groups/managing.md#adding-a-user-attribute).
 
 ### Special tenant slug attribute
 
