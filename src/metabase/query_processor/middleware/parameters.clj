@@ -57,7 +57,7 @@
   [query     :- ::lib.schema/query
    parameter :- ::lib.schema.parameter/parameter]
   (let [stage-number (lib.parameters/parameter-target-stage-number
-                      (lib/->pMBQL (:target parameter)))]
+                      (:target parameter))]
     (if (not (neg? stage-number))
       ;; for a non-negative stage number add the offset to it as mentioned above
       (+ stage-number (num-stages-prepended-by-preprocessing query))
