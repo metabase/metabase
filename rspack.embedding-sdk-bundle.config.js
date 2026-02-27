@@ -191,6 +191,13 @@ const config = {
 
   optimization: {
     ...OPTIMIZATION_CONFIG,
+
+    // Scope hoisting: merges ES modules into fewer closures, reducing parse overhead
+    concatenateModules: true,
+
+    // Avoid wrapping entry points in an IIFE — removes unnecessary function wrapper
+    avoidEntryIife: true,
+
     // Override splitChunks: split the chunked entry into multiple pieces,
     // but leave the legacy monolithic entry as a single file.
     splitChunks: {

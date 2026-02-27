@@ -299,7 +299,7 @@ async function waitForAuthCompletion(
     const check = () => {
       const state = getAuthState();
       if (state?.status !== "in-progress") {
-        resolve(state ?? { status: "idle" });
+        resolve(state!);
         return;
       }
       if (Date.now() - startTime > timeoutMs) {
