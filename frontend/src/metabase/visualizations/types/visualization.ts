@@ -290,7 +290,6 @@ export type SettingsExtra = {
   series?: Series;
   settings?: VisualizationSettings;
   transformedSeries?: RawSeries | TransformedSeries;
-  [key: string]: unknown; // TODO
 };
 
 export type VisualizationSettingDefinition<
@@ -540,7 +539,7 @@ export type Widget = {
   hidden?: boolean;
   props?: Record<string, unknown>;
   title?: string;
-  widget?: string | React.ComponentType<any>;
+  widget?: string | ComponentType<any>;
 };
 
 export type VisualizationGridSize = {
