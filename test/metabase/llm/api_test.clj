@@ -218,4 +218,3 @@
                                  "result"       "failure"
                                  "event_detail" "postgres"}}]
                         simple-events))))))))))
-
