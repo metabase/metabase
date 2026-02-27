@@ -429,6 +429,7 @@
   parameter-target-field-options
   parameter-target-field-ref
   parameter-target-is-dimension?
+  parameter-target-stage-number
   parameter-target-template-tag-name
   update-parameter-target-dimension-options]
  [lib.parameters.parse
