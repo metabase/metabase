@@ -600,6 +600,86 @@
           (is (==  25 (mt/metric-value system :metabase-metabot/llm-output-tokens labels)))
           (is (== 125 (:sum (mt/metric-value system :metabase-metabot/llm-tokens-per-call labels)))))))))
 
+(deftest call-llm-structured-prometheus-test
+  (mt/with-prometheus-system! [_ system]
+    (with-redefs [self/retry-delay-ms (constantly 0)]
+      (let [labels        {:model "test-model" :source "agent"}
+            success-mock  (test-util/mock-llm-response
+                           [{:type :start :id "m1"}
+                            {:type :tool-input :id "call-1" :function "json"
+                             :arguments {:answer "42"}}])
+            call-structured! #(self/call-llm-structured
+                               "openrouter/test-model"
+                               [{:role "user" :content "test"}]
+                               {:type "object" :properties {:answer {:type "string"}}}
+                               0.3 1024 {:tag "agent"})]
+        (testing "increments llm-requests and observes duration on success"
+          (with-redefs [openrouter/openrouter (constantly success-mock)]
+            (call-structured!))
+          (is (== 1 (mt/metric-value system :metabase-metabot/llm-requests labels)))
+          (is (== 0 (mt/metric-value system :metabase-metabot/llm-retries labels)))
+          (is (== 0 (mt/metric-value system :metabase-metabot/llm-errors
+                                     (assoc labels :error-type "ExceptionInfo"))))
+          (is (pos? (:sum (mt/metric-value system :metabase-metabot/llm-duration-ms labels)))))
+
+        (prometheus/clear! :metabase-metabot/llm-requests)
+        (prometheus/clear! :metabase-metabot/llm-duration-ms)
+
+        (testing "increments llm-retries on transient failures, no errors on eventual success"
+          (let [calls (atom 0)]
+            (mt/with-log-level [metabase-enterprise.metabot-v3.self :fatal]
+              (with-redefs [openrouter/openrouter
+                            (fn [_opts]
+                              (if (< (swap! calls inc) 3)
+                                (throw (ex-info "rate limited" {:status 429}))
+                                success-mock))]
+                (call-structured!))))
+          (is (== 3 (mt/metric-value system :metabase-metabot/llm-requests labels)))
+          (is (== 2 (mt/metric-value system :metabase-metabot/llm-retries labels)))
+          (is (== 0 (mt/metric-value system :metabase-metabot/llm-errors
+                                     (assoc labels :error-type "ExceptionInfo"))))
+          (is (pos? (:sum (mt/metric-value system :metabase-metabot/llm-duration-ms labels)))))
+
+        (prometheus/clear! :metabase-metabot/llm-requests)
+        (prometheus/clear! :metabase-metabot/llm-retries)
+        (prometheus/clear! :metabase-metabot/llm-duration-ms)
+
+        (testing "increments llm-errors on non-retryable failure, no retries"
+          (with-redefs [openrouter/openrouter
+                        (fn [_opts] (throw (ex-info "unauthorized" {:status 401})))]
+            (is (thrown? Exception (call-structured!))))
+          (is (== 1 (mt/metric-value system :metabase-metabot/llm-requests labels)))
+          (is (== 0 (mt/metric-value system :metabase-metabot/llm-retries labels)))
+          (is (== 1 (mt/metric-value system :metabase-metabot/llm-errors
+                                     (assoc labels :error-type "ExceptionInfo"))))
+          (is (pos? (:sum (mt/metric-value system :metabase-metabot/llm-duration-ms labels)))))
+
+        (prometheus/clear! :metabase-metabot/llm-requests)
+        (prometheus/clear! :metabase-metabot/llm-errors)
+        (prometheus/clear! :metabase-metabot/llm-duration-ms)
+
+        (testing "increments llm-errors with :error-type llm-sse-error on inline SSE errors"
+          (with-redefs [openrouter/openrouter
+                        (constantly (test-util/mock-llm-response
+                                     [{:type :error :errorText "content policy violation"}]))]
+            (is (thrown? Exception (call-structured!))))
+          (is (== 1 (mt/metric-value system :metabase-metabot/llm-requests labels)))
+          (is (== 1 (mt/metric-value system :metabase-metabot/llm-errors
+                                     (assoc labels :error-type "llm-sse-error")))))
+
+        (testing "reports token usage metrics on :usage parts"
+          (with-redefs [openrouter/openrouter
+                        (constantly (test-util/mock-llm-response
+                                     [{:type :start :id "m1"}
+                                      {:type :tool-input :id "call-1" :function "json"
+                                       :arguments {:answer "42"}}
+                                      {:type :usage :usage {:promptTokens 100 :completionTokens 25}
+                                       :model "test-model"}]))]
+            (call-structured!))
+          (is (== 100 (mt/metric-value system :metabase-metabot/llm-input-tokens labels)))
+          (is (==  25 (mt/metric-value system :metabase-metabot/llm-output-tokens labels)))
+          (is (== 125 (:sum (mt/metric-value system :metabase-metabot/llm-tokens-per-call labels)))))))))
+
 ;;; ===================== Snowplow Analytics Tests =====================
 
 (def ^:private snowplow-tracking-opts
