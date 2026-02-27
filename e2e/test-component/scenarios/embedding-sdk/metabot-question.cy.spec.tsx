@@ -314,13 +314,11 @@ describe("scenarios > embedding-sdk > metabot-question", () => {
 });
 
 describe("scenarios > embedding-sdk > metabot-question > enablement", () => {
-  it("should show an error when is-embedded-metabot-enabled is false", () => {
+  it("should show an error when embedded-metabot-enabled? is false", () => {
     signInAsAdminAndEnableEmbeddingSdk();
 
     cy.log("Disable embedded metabot");
-    cy.request("PUT", "/api/setting/is-embedded-metabot-enabled", {
-      value: false,
-    });
+    H.updateEnterpriseSettings({ "embedded-metabot-enabled?": false });
 
     cy.signOut();
     mockAuthProviderAndJwtSignIn();

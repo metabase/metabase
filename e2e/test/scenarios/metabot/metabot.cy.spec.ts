@@ -242,10 +242,8 @@ describe("Metabot in full-app embedding", () => {
     H.activateToken("bleeding-edge");
   });
 
-  it("should show the metabot button when is-embedded-metabot-enabled is true", () => {
-    cy.request("PUT", "/api/setting/is-embedded-metabot-enabled", {
-      value: true,
-    });
+  it("should show the metabot button when embedded-metabot-enabled? is true", () => {
+    H.updateEnterpriseSettings({ "embedded-metabot-enabled?": true });
 
     H.visitFullAppEmbeddingUrl({
       url: `/question/${ORDERS_BY_YEAR_QUESTION_ID}`,
@@ -256,10 +254,8 @@ describe("Metabot in full-app embedding", () => {
     cy.findByLabelText("Explain this chart").should("not.exist");
   });
 
-  it("should not show the metabot button when is-embedded-metabot-enabled is false", () => {
-    cy.request("PUT", "/api/setting/is-embedded-metabot-enabled", {
-      value: false,
-    });
+  it("should not show the metabot button when embedded-metabot-enabled? is false", () => {
+    H.updateEnterpriseSettings({ "embedded-metabot-enabled?": false });
 
     H.visitFullAppEmbeddingUrl({
       url: `/question/${ORDERS_BY_YEAR_QUESTION_ID}`,
