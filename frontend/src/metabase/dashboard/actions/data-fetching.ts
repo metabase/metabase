@@ -330,7 +330,7 @@ export const fetchCardDataAction = createAsyncThunk<
         ),
       );
     } else if (dashboardType === "public") {
-      result = await fetchDataOrError(
+      result = (await fetchDataOrError(
         maybeUsePivotEndpoint(
           PublicApi.dashboardCardQuery,
           card,
@@ -347,9 +347,9 @@ export const fetchCardDataAction = createAsyncThunk<
           },
           queryOptions,
         ),
-      );
+      )) as Dataset | { error: unknown };
     } else if (dashboardType === "embed") {
-      result = await fetchDataOrError(
+      result = (await fetchDataOrError(
         maybeUsePivotEndpoint(
           EmbedApi.dashboardCardQuery,
           card,
@@ -366,15 +366,15 @@ export const fetchCardDataAction = createAsyncThunk<
           },
           queryOptions,
         ),
-      );
+      )) as Dataset | { error: unknown };
     } else if (dashboardType === "transient" || dashboardType === "inline") {
-      result = await fetchDataOrError(
+      result = (await fetchDataOrError(
         maybeUsePivotEndpoint(
           MetabaseApi.dataset,
           card,
           metadata,
         )({ ...datasetQuery, ignore_cache: ignoreCache }, queryOptions),
-      );
+      )) as Dataset | { error: unknown };
     } else {
       const dashcardBeforeEditing = getDashCardBeforeEditing(
         getState(),
@@ -407,13 +407,13 @@ export const fetchCardDataAction = createAsyncThunk<
             dashboard_id: dashcard.dashboard_id,
             dashboard_load_id: dashboardLoadId,
           };
-      result = await fetchDataOrError(
+      result = (await fetchDataOrError(
         maybeUsePivotEndpoint(
           endpoint,
           card,
           metadata,
         )(requestBody, queryOptions),
-      );
+      )) as Dataset | { error: unknown };
     }
 
     // If the request was not previously cancelled, then clear the defer for the card

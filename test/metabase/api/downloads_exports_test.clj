@@ -1119,7 +1119,7 @@
             ;; for now, don't try to read xlsx back in, it will not be correct since we end up writing
             ;; a json blob to the output stream, it creates an invalid xlsx anyway.
             ;; This is not new behaviour, we'll just fix it when a better solution to 'errors in downloaded files' comes along
-            (let [results (mt/user-http-request :rasta :post 200 (format "card/%d/query/%s" card-id export-format)
+            (let [results (mt/user-http-request :rasta :post 500 (format "card/%d/query/%s" card-id export-format)
                                                 {:format_rows true})
                   results-string (if (= "xlsx" export-format)
                                    (read-xlsx results)
