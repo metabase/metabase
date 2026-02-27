@@ -3574,6 +3574,14 @@ databaseChangeLog:
             path: instance_analytics_views/query_log/v2/h2-query_log.sql
             relativeToChangelogFile: true
 
+  - changeSet:
+      id: v59.2026-02-27T12:00:00
+      author: cho
+      comment: Migrate Python transform source-tables format for downgrade safety
+      changes:
+        - customChange:
+            class: "metabase.app_db.custom_migrations.MigratePythonSourceTablesObjectAndArrayFormats"
+
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
 ########################################################################################################################
