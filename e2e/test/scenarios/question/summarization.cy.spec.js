@@ -216,45 +216,46 @@ describe("scenarios > question > summarize sidebar", () => {
   });
 
   it("should handle (removing) multiple metrics when one is sorted (metabase#12625)", () => {
-    H.createTestQuery({
-      database: SAMPLE_DB_ID,
-      stages: [
-        {
-          source: { type: "table", id: ORDERS_ID },
-          aggregations: [
-            { type: "operator", operator: "count" },
-            {
-              type: "operator",
-              operator: "sum",
-              args: [{ type: "column", name: "SUBTOTAL" }],
-            },
-            {
-              type: "operator",
-              operator: "sum",
-              args: [{ type: "column", name: "TOTAL" }],
-            },
-          ],
-          breakouts: [
-            {
-              type: "column",
-              name: "CREATED_AT",
-              sourceName: "ORDERS",
-              unit: "year",
-            },
-          ],
-          orderBys: [
-            {
-              direction: "desc",
-              type: "column",
-              name: "sum",
-              displayName: "Sum of Subtotal",
-            },
-          ],
-        },
-      ],
-    })
-      .then((dataset_query) => H.createCard({ name: "12625", dataset_query }))
-      .then((card) => H.visitQuestion(card.id));
+    H.createCardWithTestQuery({
+      name: "12625",
+      dataset_query: {
+        database: SAMPLE_DB_ID,
+        stages: [
+          {
+            source: { type: "table", id: ORDERS_ID },
+            aggregations: [
+              { type: "operator", operator: "count" },
+              {
+                type: "operator",
+                operator: "sum",
+                args: [{ type: "column", name: "SUBTOTAL" }],
+              },
+              {
+                type: "operator",
+                operator: "sum",
+                args: [{ type: "column", name: "TOTAL" }],
+              },
+            ],
+            breakouts: [
+              {
+                type: "column",
+                name: "CREATED_AT",
+                sourceName: "ORDERS",
+                unit: "year",
+              },
+            ],
+            orderBys: [
+              {
+                direction: "desc",
+                type: "column",
+                name: "sum",
+                displayName: "Sum of Subtotal",
+              },
+            ],
+          },
+        ],
+      },
+    }).then((card) => H.visitQuestion(card.id));
 
     H.summarize();
 
