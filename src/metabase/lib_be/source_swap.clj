@@ -1,9 +1,9 @@
 (ns metabase.lib-be.source-swap
   (:require
    [medley.core :as m]
-   [metabase.lib.equality :as lib.equality]
    [metabase.lib.expression :as lib.expression]
    [metabase.lib.field :as lib.field]
+   [metabase.lib.field.resolution :as lib.field.resolution]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
    [metabase.lib.options :as lib.options]
    [metabase.lib.order-by :as lib.order-by]
@@ -117,9 +117,8 @@
 (mu/defn- upgrade-field-ref :- :mbql.clause/field
   [query         :- ::lib.schema/query
    stage-number  :- :int
-   field-ref     :- :mbql.clause/field
-   columns       :- [:sequential ::lib.schema.metadata/column]]
-  (or (when-let [column (lib.equality/find-matching-column query stage-number field-ref columns)]
+   field-ref     :- :mbql.clause/field]
+  (or (when-let [column (lib.field.resolution/resolve-field-ref query stage-number field-ref)]
           ;; TODO (Alex P 2/26/26) -- drop the :lib/card-id hack when Braden fixes join refs
         (let [column (cond-> column (:lib/card-id column) (dissoc :id))
               expression-name (lib.util/expression-name field-ref)
@@ -132,59 +131,37 @@
 (mu/defn- upgrade-field-refs-in-clauses :- [:sequential :any]
   [query        :- ::lib.schema/query
    stage-number :- :int
-   clauses      :- [:sequential :any]
-   columns      :- [:sequential ::lib.schema.metadata/column]]
+   clauses      :- [:sequential :any]]
   (perf/mapv (fn [clause]
-               (walk-clause-field-refs clause #(upgrade-field-ref query stage-number % columns)))
+               (walk-clause-field-refs clause #(upgrade-field-ref query stage-number %)))
              clauses))
 
 (mu/defn- upgrade-field-refs-in-join :- ::lib.schema.join/join
   [query        :- ::lib.schema/query
    stage-number :- :int
-   join         :- ::lib.schema.join/join
-   columns      :- [:sequential ::lib.schema.metadata/column]]
+   join         :- ::lib.schema.join/join]
   (-> join
-      (u/update-some :fields #(if (keyword? %) % (upgrade-field-refs-in-clauses query stage-number % columns)))
-      (u/update-some :conditions #(upgrade-field-refs-in-clauses query stage-number % columns))))
+      (u/update-some :fields #(if (keyword? %) % (upgrade-field-refs-in-clauses query stage-number %)))
+      (u/update-some :conditions #(upgrade-field-refs-in-clauses query stage-number %))))
 
 (mu/defn- upgrade-field-refs-in-joins :- [:sequential ::lib.schema.join/join]
   [query        :- ::lib.schema/query
    stage-number :- :int
-   joins        :- [:sequential ::lib.schema.join/join]
-   columns      :- [:sequential ::lib.schema.metadata/column]]
-  (perf/mapv #(upgrade-field-refs-in-join query stage-number % columns) joins))
-
-(mu/defn- maybe-visible-columns :- [:sequential ::lib.schema.metadata/column]
-  [query        :- ::lib.schema/query
-   stage-number :- :int]
-  (let [stage (lib.util/query-stage query stage-number)]
-    (if ((some-fn :fields :filters :expressions :aggregation :breakout :order-by :joins) stage)
-      (lib.metadata.calculation/visible-columns query stage-number)
-      [])))
-
-(mu/defn- maybe-orderable-columns :- [:sequential ::lib.schema.metadata/column]
-  [query           :- ::lib.schema/query
-   stage-number    :- :int
-   visible-columns :- [:sequential ::lib.schema.metadata/column]]
-  (let [stage (lib.util/query-stage query stage-number)]
-    (if ((some-fn :aggregation :breakout) stage)
-      (lib.order-by/orderable-columns query stage-number)
-      visible-columns)))
+   joins        :- [:sequential ::lib.schema.join/join]]
+  (perf/mapv #(upgrade-field-refs-in-join query stage-number %) joins))
 
 (mu/defn- upgrade-field-refs-in-stage :- ::lib.schema/stage
   [query        :- ::lib.schema/query
    stage-number :- :int]
-  (let [stage (lib.util/query-stage query stage-number)
-        visible-columns (maybe-visible-columns query stage-number)
-        orderable-columns (maybe-orderable-columns query stage-number visible-columns)]
+  (let [stage (lib.util/query-stage query stage-number)]
     (-> stage
-        (u/update-some :fields      #(upgrade-field-refs-in-clauses query stage-number % visible-columns))
-        (u/update-some :joins       #(upgrade-field-refs-in-joins query stage-number % visible-columns))
-        (u/update-some :expressions #(upgrade-field-refs-in-clauses query stage-number % visible-columns))
-        (u/update-some :filters     #(upgrade-field-refs-in-clauses query stage-number % visible-columns))
-        (u/update-some :aggregation #(upgrade-field-refs-in-clauses query stage-number % visible-columns))
-        (u/update-some :breakout    #(upgrade-field-refs-in-clauses query stage-number % visible-columns))
-        (u/update-some :order-by    #(upgrade-field-refs-in-clauses query stage-number % orderable-columns)))))
+        (u/update-some :fields      #(upgrade-field-refs-in-clauses query stage-number %))
+        (u/update-some :joins       #(upgrade-field-refs-in-joins query stage-number %))
+        (u/update-some :expressions #(upgrade-field-refs-in-clauses query stage-number %))
+        (u/update-some :filters     #(upgrade-field-refs-in-clauses query stage-number %))
+        (u/update-some :aggregation #(upgrade-field-refs-in-clauses query stage-number %))
+        (u/update-some :breakout    #(upgrade-field-refs-in-clauses query stage-number %))
+        (u/update-some :order-by    #(upgrade-field-refs-in-clauses query stage-number %)))))
 
 (mu/defn upgrade-field-refs-in-query :- ::lib.schema/query
   "Upgrade all field refs in `query` to use name-based field refs when possible."
@@ -207,10 +184,9 @@
    target :- ::lib.schema.parameter/target]
   (or (when (lib.parameters/parameter-target-field-ref target)
         (when-let [stage-number (parameter-target-stage-number query target)]
-          (let [columns (lib.metadata.calculation/visible-columns query stage-number)]
-            (lib.parameters/update-parameter-target-field-ref
-             target
-             #(upgrade-field-ref query stage-number % columns)))))
+          (lib.parameters/update-parameter-target-field-ref
+           target
+           #(upgrade-field-ref query stage-number %))))
       target))
 
 ;;; ------------------------------------------------ should-upgrade? ---------------------------------------------------
@@ -282,69 +258,59 @@
    new-source :- ::swap-source.source]
   (update query :stages (fn [stages] (perf/mapv #(swap-source-table-or-card-in-stage % old-source new-source) stages))))
 
-(mr/def ::swap-field-ref.options
-  [:map
-   [:old-query ::lib.schema/query]
-   [:new-query ::lib.schema/query]
-   [:stage-number :int]
-   [:old-columns [:sequential ::lib.schema.metadata/column]]
-   [:new-columns [:sequential ::lib.schema.metadata/column]]])
-
 (mu/defn- swap-field-ref :- :mbql.clause/field
-  [field-ref :- :mbql.clause/field
-   {:keys [old-query new-query stage-number old-columns new-columns]} :- ::swap-field-ref.options]
-  (or (when-let [old-column (lib.equality/find-matching-column old-query stage-number field-ref old-columns)]
-        (when-let [new-column (lib.equality/find-matching-column new-query stage-number (dissoc old-column :id) new-columns)]
-          (let [new-field-ref (lib.ref/ref new-column)]
-            (when-not (same-field-ref? field-ref new-field-ref)
-              new-field-ref))))
-      field-ref))
-
-(mu/defn- swap-field-ref-options :- ::swap-field-ref.options
   [old-query    :- ::lib.schema/query
    new-query    :- ::lib.schema/query
-   stage-number :- :int]
-  {:old-query    old-query
-   :new-query    new-query
-   :stage-number stage-number
-   :old-columns  (lib.metadata.calculation/visible-columns old-query stage-number)
-   :new-columns  (lib.metadata.calculation/visible-columns new-query stage-number)})
+   stage-number :- :int
+   field-ref :- :mbql.clause/field]
+  (or (when-let [old-column (lib.field.resolution/resolve-field-ref old-query stage-number field-ref)]
+        (let [field-name-ref (-> old-column (dissoc :id) lib.ref/ref)]
+          (when-let [new-column (lib.field.resolution/resolve-field-ref new-query stage-number field-name-ref)]
+            (let [new-field-ref (lib.ref/ref new-column)]
+              (when-not (same-field-ref? field-ref new-field-ref)
+                new-field-ref)))))
+      field-ref))
 
 (mu/defn- swap-field-refs-in-clauses :- [:sequential :any]
-  [clauses :- [:sequential :any]
-   options :- ::swap-field-ref.options]
+  [old-query    :- ::lib.schema/query
+   new-query    :- ::lib.schema/query
+   stage-number :- :int
+   clauses :- [:sequential :any]]
   (perf/mapv (fn [clause]
-               (walk-clause-field-refs clause #(swap-field-ref % options)))
+               (walk-clause-field-refs clause #(swap-field-ref old-query new-query stage-number %)))
              clauses))
 
 (mu/defn- swap-field-refs-in-join :- ::lib.schema.join/join
-  [join    :- ::lib.schema.join/join
-   options :- ::swap-field-ref.options]
+  [old-query    :- ::lib.schema/query
+   new-query    :- ::lib.schema/query
+   stage-number :- :int
+   join         :- ::lib.schema.join/join]
   (-> join
       (u/update-some :fields (fn [fields]
                                (if (keyword? fields)
                                  fields
-                                 (swap-field-refs-in-clauses fields options))))
-      (u/update-some :conditions #(swap-field-refs-in-clauses % options))))
+                                 (swap-field-refs-in-clauses old-query new-query stage-number fields))))
+      (u/update-some :conditions #(swap-field-refs-in-clauses old-query new-query stage-number %))))
 
 (mu/defn- swap-field-refs-in-joins :- [:sequential ::lib.schema.join/join]
-  [joins   :- [:sequential ::lib.schema.join/join]
-   options :- ::swap-field-ref.options]
-  (perf/mapv #(swap-field-refs-in-join % options) joins))
+  [old-query    :- ::lib.schema/query
+   new-query    :- ::lib.schema/query
+   stage-number :- :int
+   joins        :- [:sequential ::lib.schema.join/join]]
+  (perf/mapv #(swap-field-refs-in-join old-query new-query stage-number %) joins))
 
 (mu/defn- swap-field-refs-in-stage :- ::lib.schema/stage
   [old-query    :- ::lib.schema/query
    new-query    :- ::lib.schema/query
    stage-number :- :int]
-  (let [options (swap-field-ref-options old-query new-query stage-number)]
-    (-> (lib.util/query-stage new-query stage-number)
-        (u/update-some :fields      #(swap-field-refs-in-clauses % options))
-        (u/update-some :joins       #(swap-field-refs-in-joins % options))
-        (u/update-some :expressions #(swap-field-refs-in-clauses % options))
-        (u/update-some :filters     #(swap-field-refs-in-clauses % options))
-        (u/update-some :aggregation #(swap-field-refs-in-clauses % options))
-        (u/update-some :breakout    #(swap-field-refs-in-clauses % options))
-        (u/update-some :order-by    #(swap-field-refs-in-clauses % options)))))
+  (-> (lib.util/query-stage new-query stage-number)
+      (u/update-some :fields      #(swap-field-refs-in-clauses old-query new-query stage-number %))
+      (u/update-some :joins       #(swap-field-refs-in-joins old-query new-query stage-number %))
+      (u/update-some :expressions #(swap-field-refs-in-clauses old-query new-query stage-number %))
+      (u/update-some :filters     #(swap-field-refs-in-clauses old-query new-query stage-number %))
+      (u/update-some :aggregation #(swap-field-refs-in-clauses old-query new-query stage-number %))
+      (u/update-some :breakout    #(swap-field-refs-in-clauses old-query new-query stage-number %))
+      (u/update-some :order-by    #(swap-field-refs-in-clauses old-query new-query stage-number %))))
 
 (mu/defn- swap-field-refs-in-query :- ::lib.schema/query
   [old-query :- ::lib.schema/query
@@ -373,9 +339,9 @@
    new-source :- ::swap-source.source]
   (or (when (lib.parameters/parameter-target-field-ref target)
         (when-let [stage-number (parameter-target-stage-number query target)]
-          (let [new-query        (swap-source-table-or-card-in-query query old-source new-source)]
+          (let [new-query (swap-source-table-or-card-in-query query old-source new-source)]
             (when (not= query new-query)
               (lib.parameters/update-parameter-target-field-ref
                target
-               #(swap-field-ref % (swap-field-ref-options query new-query stage-number)))))))
+               #(swap-field-ref query new-query stage-number %))))))
       target))
