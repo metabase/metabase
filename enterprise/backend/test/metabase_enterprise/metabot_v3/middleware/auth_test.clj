@@ -4,7 +4,6 @@
    [buddy.core.codecs :as codecs]
    [buddy.core.mac :as mac]
    [clojure.test :refer :all]
-   [metabase-enterprise.metabot-v3.settings :as metabot.settings]
    [metabase.server.middleware.auth :as mw.auth]
    [metabase.test :as mt]
    [ring.mock.request :as ring.mock]))
@@ -45,7 +44,7 @@
   (mt/with-premium-features #{:metabot-v3}
     (with-redefs [mw.auth/current-unix-timestamp (constantly test-timestamp)]
       (testing "Valid signature w/ signing secret configured"
-        (mt/with-temporary-setting-values [metabot.settings/metabot-slack-signing-secret test-signing-secret]
+        (mt/with-temporary-raw-setting-values [metabot-slack-signing-secret test-signing-secret]
           (let [body      "test-body"
                 timestamp (str test-timestamp)
                 signature (compute-slack-signature body timestamp test-signing-secret)
@@ -53,7 +52,7 @@
             (is (true? (:slack/validated? result))))))
 
       (testing "Invalid signature"
-        (mt/with-temporary-setting-values [metabot.settings/metabot-slack-signing-secret test-signing-secret]
+        (mt/with-temporary-raw-setting-values [metabot-slack-signing-secret test-signing-secret]
           (let [body      "test-body"
                 timestamp (str test-timestamp)
                 signature "v0=invalid-signature"
@@ -68,7 +67,7 @@
           (is (not (contains? result :slack/validated?)))))
 
       (testing "No signing secret configured"
-        (mt/with-temporary-setting-values [metabot.settings/metabot-slack-signing-secret nil]
+        (mt/with-temporary-raw-setting-values [metabot-slack-signing-secret nil]
           (let [body      "test-body"
                 timestamp (str test-timestamp)
                 signature "v0=some-signature"
@@ -85,7 +84,7 @@
 
 (deftest verify-slack-request-timestamp-validation-test
   (mt/with-premium-features #{:metabot-v3}
-    (mt/with-temporary-setting-values [metabot.settings/metabot-slack-signing-secret test-signing-secret]
+    (mt/with-temporary-raw-setting-values [metabot-slack-signing-secret test-signing-secret]
       (with-redefs [mw.auth/current-unix-timestamp (constantly test-timestamp)]
         (testing "Replay attack prevention - rejects timestamps outside 5 minute window"
           (doseq [[expected offset-or-val description]

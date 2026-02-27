@@ -9,37 +9,47 @@
 
 (set! *warn-on-reflection* true)
 
+(def ^:private streaming-connection-timeout-ms
+  "TCP connection timeout for streaming API calls."
+  5000)
+
+(def ^:private streaming-socket-timeout-ms
+  "Socket (read) timeout for streaming API calls (start/append/stop)."
+  5000)
+
 (def SlackClient
   "Malli schema for a Slack client."
   [:map {:closed true}
    [:token ms/NonBlankString]])
 
 (defn- slack-get
-  "GET from slack"
+  "GET from slack."
   [client endpoint params]
   (let [response (http/get (str "https://slack.com/api" endpoint)
-                           {:headers {"Authorization" (str "Bearer " (:token client))}
+                           {:headers      {"Authorization" (str "Bearer " (:token client))}
                             :query-params params})]
     {:body (json/decode (:body response) true)
      :headers (:headers response)}))
 
-(defn slack-post-json
+(defn- slack-post-json
   "POST to slack."
-  [client endpoint payload]
+  [client endpoint payload & {:keys [socket-timeout connection-timeout]}]
   (let [response (http/post (str "https://slack.com/api" endpoint)
-                            {:headers {"Authorization" (str "Bearer " (:token client))}
-                             :content-type "application/json; charset=utf-8"
-                             :body (json/encode payload)})]
+                            (cond-> {:headers      {"Authorization" (str "Bearer " (:token client))}
+                                     :content-type "application/json; charset=utf-8"
+                                     :body         (json/encode payload)}
+                              connection-timeout (assoc :connection-timeout connection-timeout)
+                              socket-timeout     (assoc :socket-timeout socket-timeout)))]
     {:body (json/decode (:body response) true)
      :headers (:headers response)}))
 
 (defn- slack-post-form
-  "POST form to slack"
+  "POST form to slack."
   [client endpoint payload]
   (-> (http/post (str "https://slack.com/api" endpoint)
-                 {:headers {"Authorization" (str "Bearer " (:token client))
-                            "Content-Type" "application/x-www-form-urlencoded; charset=utf-8"}
-                  :form-params payload})
+                 {:headers     {"Authorization" (str "Bearer " (:token client))}
+                  :content-type "application/x-www-form-urlencoded; charset=utf-8"
+                  :form-params  payload})
       :body
       (json/decode true)))
 
@@ -109,7 +119,7 @@
     (when ok
       (http/post upload_url
                  {:headers {"Content-Type" "image/png"}
-                  :body image-bytes})
+                  :body    image-bytes})
       (:body (slack-post-json client "/files.completeUploadExternal"
                               {:files [{:id file_id
                                         :title filename}]
@@ -127,7 +137,7 @@
    Returns byte array of file contents."
   [client url]
   (-> (http/get url {:headers {"Authorization" (str "Bearer " (:token client))}
-                     :as :byte-array})
+                     :as      :byte-array})
       :body))
 
 ;; -------------------- SLACK STREAMING API --------------------
@@ -141,7 +151,9 @@
                                      {:channel           channel
                                       :thread_ts         thread_ts
                                       :recipient_team_id team_id
-                                      :recipient_user_id user_id}))]
+                                      :recipient_user_id user_id}
+                                     :connection-timeout streaming-connection-timeout-ms
+                                     :socket-timeout     streaming-socket-timeout-ms))]
     (log/debugf "[slackbot] start-stream response: %s" (pr-str body))
     (if (:ok body)
       {:stream_ts (:ts body)
@@ -156,7 +168,9 @@
   (let [payload  {:channel channel
                   :ts      stream-ts
                   :chunks  chunks}
-        body (:body (slack-post-json client "/chat.appendStream" payload))]
+        body (:body (slack-post-json client "/chat.appendStream" payload
+                                     :connection-timeout streaming-connection-timeout-ms
+                                     :socket-timeout     streaming-socket-timeout-ms))]
     (when-not (:ok body)
       (log/warnf "[slackbot] append-stream failed: %s" (:error body)))
     body))
@@ -174,7 +188,9 @@
    (let [body (:body (slack-post-json client "/chat.stopStream"
                                       (cond-> {:channel channel
                                                :ts      stream-ts}
-                                        blocks (assoc :blocks blocks))))]
+                                        blocks (assoc :blocks blocks))
+                                      :connection-timeout streaming-connection-timeout-ms
+                                      :socket-timeout     streaming-socket-timeout-ms))]
      (when-not (:ok body)
        (log/warnf "[slackbot] stop-stream failed: %s" (:error body)))
      body)))
