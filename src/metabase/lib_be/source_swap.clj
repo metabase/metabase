@@ -235,6 +235,11 @@
 (mr/def ::swap-source.column-mapping
   [:map-of [:or ::lib.schema.id/field :string] [:or ::lib.schema.id/field :string]])
 
+(mu/defn- field-ref-key :- [:maybe [:or ::lib.schema.id/field :string]]
+  [column      :- ::lib.schema.metadata/column
+   source-type :- ::swap-source.source-type]
+  (if (= source-type :table) (:id column) (column-match-key column)))
+
 (mu/defn- build-column-mapping :- ::swap-source.column-mapping
   [query                                      :- ::lib.schema/query
    {old-source-id :id, old-source-type :type} :- ::swap-source.source
@@ -245,14 +250,12 @@
         new-columns        (if (= new-source-type :table)
                              (lib.metadata/fields query new-source-id)
                              (lib.card/saved-question-metadata query new-source-id))
-        new-column-by-name (m/index-by column-match-key new-columns)
-        old-column-key     (if (= old-source-type :table) :id column-match-key)
-        new-column-key     (if (= new-source-type :table) :id column-match-key)]
+        new-column-by-name (m/index-by column-match-key new-columns)]
     (into {}
           (keep (fn [old-column]
-                  (when-let [old-key (old-column-key old-column)]
+                  (when-let [old-key (field-ref-key old-column old-source-type)]
                     (when-let [new-column (get new-column-by-name (column-match-key old-column))]
-                      (when-let [new-key (new-column-key new-column)]
+                      (when-let [new-key (field-ref-key new-column new-source-type)]
                         [old-key new-key])))))
           old-columns)))
 
