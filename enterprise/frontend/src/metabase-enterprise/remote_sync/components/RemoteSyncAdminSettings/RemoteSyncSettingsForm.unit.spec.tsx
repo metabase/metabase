@@ -1,8 +1,9 @@
 import userEvent from "@testing-library/user-event";
-import fetchMock from "fetch-mock";
 
+import { findRequests } from "__support__/server-mocks";
 import { screen, waitFor } from "__support__/ui";
 import { PLUGIN_TRANSFORMS } from "metabase/plugins";
+import { createMockCollectionItemFromCollection } from "metabase-types/api/mocks";
 
 import {
   createMockLibraryCollection,
@@ -81,10 +82,10 @@ describe("RemoteSyncSettingsForm", () => {
       });
     });
 
-    it("should show the 'Set up Remote Sync' button", async () => {
+    it("should show the 'Set up remote sync' button", async () => {
       // Verify the submit button shows correct text for new setup
       expect(
-        screen.getByRole("button", { name: /Set up Remote Sync/i }),
+        screen.getByRole("button", { name: /Set up remote sync/i }),
       ).toBeInTheDocument();
     });
 
@@ -532,31 +533,109 @@ describe("RemoteSyncSettingsForm", () => {
         remoteSyncType: "read-only",
         remoteSyncUrl: "",
         remoteSyncEnabled: false,
+        settingsError: { status: 400, message: "Invalid branch name" },
       });
-
-      // Override the settings endpoint to return an error
-      fetchMock.removeRoute("remote-sync-settings");
-      fetchMock.put(
-        "path:/api/ee/remote-sync/settings",
-        {
-          status: 400,
-          body: {
-            message: "Invalid branch name",
-          },
-        },
-        { name: "remote-sync-settings" },
-      );
 
       const urlInput = screen.getByLabelText(/Repository URL/i);
       await userEvent.type(urlInput, "https://github.com/foo/bar.git");
 
       const submitButton = screen.getByRole("button", {
-        name: /Set up Remote Sync/i,
+        name: /Set up remote sync/i,
       });
       await userEvent.click(submitButton);
 
       await waitFor(() => {
         expect(screen.getByText(/Invalid branch name/)).toBeInTheDocument();
+      });
+    });
+  });
+
+  describe("collection change filtering", () => {
+    it("should not send collections in request body when no collection sync states changed", async () => {
+      const syncedCollection = createMockCollectionItemFromCollection({
+        id: 10,
+        name: "Synced Collection",
+        is_remote_synced: true,
+        can_write: true,
+      });
+      const unsyncedCollection = createMockCollectionItemFromCollection({
+        id: 20,
+        name: "Unsynced Collection",
+        is_remote_synced: false,
+        can_write: true,
+      });
+
+      setup({
+        remoteSyncType: "read-write",
+        remoteSyncUrl: "https://github.com/test/repo.git",
+        remoteSyncEnabled: true,
+        rootCollectionItems: [syncedCollection, unsyncedCollection],
+      });
+
+      await waitFor(() => {
+        expect(screen.getByLabelText("Read-write")).toBeChecked();
+      });
+
+      // Change the URL to make the form dirty (but don't change collections)
+      const urlInput = screen.getByLabelText(/Repository URL/i);
+      await userEvent.clear(urlInput);
+      await userEvent.type(urlInput, "https://github.com/test/other-repo.git");
+
+      const submitButton = screen.getByRole("button", {
+        name: /Save changes/i,
+      });
+      await userEvent.click(submitButton);
+
+      const puts = await findRequests("PUT");
+      const settingsRequest = puts.find((r) =>
+        r.url.includes("/api/ee/remote-sync/settings"),
+      );
+      expect(settingsRequest).toBeDefined();
+      expect(settingsRequest?.body).not.toHaveProperty("collections");
+    });
+
+    it("should only send changed collections in request body", async () => {
+      const syncedCollection = createMockCollectionItemFromCollection({
+        id: 10,
+        name: "Synced Collection",
+        is_remote_synced: true,
+        can_write: true,
+      });
+      const unsyncedCollection = createMockCollectionItemFromCollection({
+        id: 20,
+        name: "Unsynced Collection",
+        is_remote_synced: false,
+        can_write: true,
+      });
+
+      setup({
+        remoteSyncType: "read-write",
+        remoteSyncUrl: "https://github.com/test/repo.git",
+        remoteSyncEnabled: true,
+        rootCollectionItems: [syncedCollection, unsyncedCollection],
+      });
+
+      await waitFor(() => {
+        expect(screen.getByLabelText("Read-write")).toBeChecked();
+      });
+
+      // Toggle the unsynced collection to synced
+      const unsyncedToggle = screen.getByLabelText("Sync Unsynced Collection");
+      await userEvent.click(unsyncedToggle);
+
+      const submitButton = screen.getByRole("button", {
+        name: /Save changes/i,
+      });
+      await userEvent.click(submitButton);
+
+      // Should only include collection 20 (changed), not collection 10 (unchanged)
+      const puts = await findRequests("PUT");
+      const settingsRequest = puts.find((r) =>
+        r.url.includes("/api/ee/remote-sync/settings"),
+      );
+      expect(settingsRequest).toBeDefined();
+      expect(settingsRequest?.body).toHaveProperty("collections", {
+        "20": true,
       });
     });
   });

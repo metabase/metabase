@@ -3,6 +3,7 @@
    [clojure.string :as str]
    [hiccup.core :refer [html]]
    [medley.core :as m]
+   [metabase.analytics.prometheus :as prometheus]
    [metabase.channel.core :as channel]
    [metabase.channel.email :as email]
    [metabase.channel.email.logo :as email.logo]
@@ -29,6 +30,11 @@
    [ring.util.codec :as codec]))
 
 (set! *warn-on-reflection* true)
+
+(defmethod prometheus/known-labels :metabase-notification/template-render [_]
+  (for [template-type [:email/handlebars-text :email/handlebars-resource]]
+    {:template-type template-type
+     :channel-type  :channel/email}))
 
 (def ^:private EmailMessage
   [:map
@@ -96,16 +102,22 @@
 
 (defn- render-body
   [{:keys [details] :as _template} payload]
-  (case (keyword (:type details))
-    :email/handlebars-resource
-    (handlebars/render (:path details) payload)
+  (let [template-type (keyword (:type details))]
+    (prometheus/inc! :metabase-notification/template-render
+                     {:template-type template-type
+                      :channel-type  :channel/email})
+    (case template-type
+      :email/handlebars-resource
+      (handlebars/render (:path details) payload)
 
-    :email/handlebars-text
-    (handlebars/render-string (:body details) payload)
+      :email/handlebars-text
+      (do
+        (log/debugf "Rendering user-provided template body=%s" (pr-str (:body details)))
+        (handlebars/render-string (:body details) payload))
 
-    (do
-      (log/warnf "Unknown email template type: %s" (:type details))
-      nil)))
+      (do
+        (log/warnf "Unknown email template type: %s" (:type details))
+        nil))))
 
 (defn- render-message-body
   [template message-context attachments]

@@ -1,0 +1,418 @@
+import { useDisclosure } from "@mantine/hooks";
+import { useCallback, useMemo } from "react";
+import { t } from "ttag";
+import * as Yup from "yup";
+
+import {
+  SettingsPageWrapper,
+  SettingsSection,
+} from "metabase/admin/components/SettingsSection";
+import { AdminSettingInput } from "metabase/admin/settings/components/widgets/AdminSettingInput";
+import { getErrorMessage } from "metabase/api/utils/errors";
+import { ConfirmModal } from "metabase/common/components/ConfirmModal";
+import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
+import { useSetting, useToast } from "metabase/common/hooks";
+import {
+  Form,
+  FormErrorMessage,
+  FormProvider,
+  FormSection,
+  FormSubmitButton,
+  FormTextInput,
+} from "metabase/forms";
+import { useSelector } from "metabase/lib/redux";
+import { getApplicationName } from "metabase/selectors/whitelabel";
+import { Button, Flex, Stack, Text } from "metabase/ui";
+import {
+  type CustomOidcConfig,
+  type OidcCheckRequest,
+  useCheckOidcConnectionMutation,
+  useCreateCustomOidcMutation,
+  useDeleteCustomOidcMutation,
+  useGetCustomOidcProvidersQuery,
+  useUpdateCustomOidcMutation,
+} from "metabase-enterprise/api";
+
+function getOidcFormSchema() {
+  return Yup.object({
+    "login-prompt": Yup.string().required(t`Login prompt is required`),
+    key: Yup.string()
+      .required(t`Key is required`)
+      .matches(
+        /^[a-z0-9][a-z0-9-]*$/,
+        t`Must be lowercase letters, numbers, and hyphens only`,
+      ),
+    "issuer-uri": Yup.string().required(t`Issuer URI is required`),
+    "client-id": Yup.string().required(t`Client ID is required`),
+    "client-secret": Yup.string().nullable().default(null),
+    scopes: Yup.string().nullable().default("openid, email, profile"),
+    "attribute-email": Yup.string().nullable().default("email"),
+    "attribute-firstname": Yup.string().nullable().default("given_name"),
+    "attribute-lastname": Yup.string().nullable().default("family_name"),
+  });
+}
+
+interface OIDCFormValues {
+  "login-prompt": string;
+  key: string;
+  "issuer-uri": string;
+  "client-id": string;
+  "client-secret": string | null;
+  scopes: string | null;
+  "attribute-email": string | null;
+  "attribute-firstname": string | null;
+  "attribute-lastname": string | null;
+}
+
+function providerToFormValues(
+  provider: CustomOidcConfig | null,
+): OIDCFormValues {
+  if (!provider) {
+    return {
+      "login-prompt": "",
+      key: "",
+      "issuer-uri": "",
+      "client-id": "",
+      "client-secret": null,
+      scopes: "openid, email, profile",
+      "attribute-email": "email",
+      "attribute-firstname": "given_name",
+      "attribute-lastname": "family_name",
+    };
+  }
+
+  const attributeMap = provider["attribute-map"] ?? {};
+
+  return {
+    "login-prompt": provider["login-prompt"] ?? "",
+    key: provider.key ?? "",
+    "issuer-uri": provider["issuer-uri"] ?? "",
+    "client-id": provider["client-id"] ?? "",
+    "client-secret": null,
+    scopes: (provider.scopes ?? ["openid", "email", "profile"]).join(", "),
+    "attribute-email": attributeMap["email"] ?? "email",
+    "attribute-firstname": attributeMap["first_name"] ?? "given_name",
+    "attribute-lastname": attributeMap["last_name"] ?? "family_name",
+  };
+}
+
+function formValuesToProvider(
+  values: OIDCFormValues,
+): Partial<CustomOidcConfig> {
+  const scopes = values.scopes
+    ? values.scopes
+        .split(",")
+        .map((s) => s.trim())
+        .filter(Boolean)
+    : ["openid", "email", "profile"];
+
+  const attributeMap: Record<string, string> = {};
+  if (values["attribute-email"]) {
+    attributeMap["email"] = values["attribute-email"];
+  }
+  if (values["attribute-firstname"]) {
+    attributeMap["first_name"] = values["attribute-firstname"];
+  }
+  if (values["attribute-lastname"]) {
+    attributeMap["last_name"] = values["attribute-lastname"];
+  }
+
+  const provider: Partial<CustomOidcConfig> = {
+    key: values.key,
+    "login-prompt": values["login-prompt"],
+    "issuer-uri": values["issuer-uri"],
+    "client-id": values["client-id"],
+    scopes,
+    enabled: true,
+    "attribute-map": attributeMap,
+  };
+
+  if (values["client-secret"]) {
+    provider["client-secret"] = values["client-secret"];
+  }
+
+  return provider;
+}
+
+export function SettingsOIDCForm() {
+  const applicationName = useSelector(getApplicationName);
+  const siteUrl = useSetting("site-url");
+  const { data: providers, isLoading } = useGetCustomOidcProvidersQuery();
+  const [createProvider] = useCreateCustomOidcMutation();
+  const [updateProvider] = useUpdateCustomOidcMutation();
+  const [deleteProvider] = useDeleteCustomOidcMutation();
+  const [checkConnection, { isLoading: isChecking }] =
+    useCheckOidcConnectionMutation();
+  const [sendToast] = useToast();
+
+  const existingProvider =
+    providers && providers.length > 0 ? providers[0] : null;
+  const isExisting = existingProvider !== null;
+  const isEnabled = existingProvider?.enabled ?? false;
+
+  const initialValues = useMemo(
+    () => providerToFormValues(existingProvider),
+    [existingProvider],
+  );
+
+  const runCheck = useCallback(
+    async (values: OIDCFormValues) => {
+      const req: OidcCheckRequest = {
+        "issuer-uri": values["issuer-uri"],
+        "client-id": values["client-id"],
+      };
+      if (values["client-secret"]) {
+        req["client-secret"] = values["client-secret"];
+      } else if (isExisting && existingProvider) {
+        req.key = existingProvider.key;
+      }
+      return await checkConnection(req).unwrap();
+    },
+    [checkConnection, isExisting, existingProvider],
+  );
+
+  const handleCheckConnection = useCallback(
+    async (values: OIDCFormValues) => {
+      try {
+        const result = await runCheck(values);
+        if (result.credentials?.verified === false) {
+          sendToast({
+            message: t`OIDC discovery succeeded, but credentials could not be verified. The identity provider does not support the grant type used for testing.`,
+            icon: "warning",
+          });
+        } else {
+          sendToast({
+            message: t`OIDC connection is valid`,
+            icon: "check",
+          });
+        }
+      } catch (error) {
+        sendToast({
+          message: getErrorMessage(error, t`OIDC configuration check failed`),
+          icon: "warning",
+        });
+      }
+    },
+    [runCheck, sendToast],
+  );
+
+  const handleSubmit = useCallback(
+    async (values: OIDCFormValues) => {
+      // Run the connection check before saving — will throw on failure
+      await runCheck(values);
+
+      const providerData = formValuesToProvider(values);
+
+      if (isExisting && existingProvider) {
+        const { key: _key, ...updateData } = providerData;
+        await updateProvider({
+          key: existingProvider.key,
+          provider: updateData,
+        }).unwrap();
+      } else {
+        await createProvider(providerData as CustomOidcConfig).unwrap();
+      }
+    },
+    [isExisting, existingProvider, createProvider, updateProvider, runCheck],
+  );
+
+  const handleToggleEnabled = useCallback(async () => {
+    if (!existingProvider) {
+      return;
+    }
+    try {
+      await updateProvider({
+        key: existingProvider.key,
+        provider: { enabled: !isEnabled },
+      }).unwrap();
+      sendToast({
+        message: isEnabled
+          ? t`OIDC provider disabled`
+          : t`OIDC provider enabled`,
+        icon: "check",
+      });
+    } catch {
+      sendToast({
+        message: t`Failed to update OIDC provider`,
+        icon: "warning",
+      });
+    }
+  }, [existingProvider, isEnabled, updateProvider, sendToast]);
+
+  const [isDeleteModalOpen, deleteModal] = useDisclosure(false);
+
+  const handleDelete = useCallback(async () => {
+    if (!existingProvider) {
+      return;
+    }
+    try {
+      await deleteProvider(existingProvider.key).unwrap();
+      sendToast({
+        message: t`OIDC provider deleted`,
+        icon: "check",
+      });
+    } catch (error) {
+      sendToast({
+        message: t`Failed to delete OIDC provider`,
+        icon: "warning",
+      });
+    } finally {
+      deleteModal.close();
+    }
+  }, [existingProvider, deleteProvider, sendToast, deleteModal]);
+
+  if (isLoading) {
+    return <LoadingAndErrorWrapper loading />;
+  }
+
+  return (
+    <SettingsPageWrapper title={t`OpenID Connect`}>
+      <Stack gap="lg">
+        <SettingsSection>
+          <AdminSettingInput
+            name="oidc-user-provisioning-enabled?"
+            title={t`User provisioning`}
+            inputType="boolean"
+          />
+        </SettingsSection>
+
+        <FormProvider
+          initialValues={initialValues}
+          onSubmit={handleSubmit}
+          validationSchema={getOidcFormSchema()}
+          enableReinitialize
+        >
+          {({ dirty, values }) => (
+            <Form>
+              <SettingsSection>
+                <FormSection title={t`Server settings`}>
+                  <Stack gap="md">
+                    <FormTextInput
+                      name="key"
+                      label={t`Key`}
+                      description={t`Provider identifier. Your OIDC redirect URI will be "${siteUrl}/auth/sso/${values.key || "{key}"}/callback"`}
+                      placeholder={t`e.g. okta`}
+                      required
+                      disabled={isExisting}
+                    />
+                    <FormTextInput
+                      name="login-prompt"
+                      label={t`Login prompt`}
+                      description={t`Button text on the ${applicationName} sign-in screen`}
+                      placeholder={t`e.g. Sign in with Okta`}
+                      required
+                    />
+                    <FormTextInput
+                      name="issuer-uri"
+                      label={t`Issuer URI`}
+                      description={t`The OIDC issuer URI. The discovery endpoint "${(values["issuer-uri"] || "{url}").replace(/\/+$/, "")}/.well-known/openid-configuration" should be accessible.`}
+                      placeholder="https://your-idp.example.com"
+                      required
+                    />
+                    <FormTextInput
+                      name="client-id"
+                      label={t`Client ID`}
+                      description={t`The Client ID configured for ${applicationName} in your OIDC provider.`}
+                      required
+                    />
+                    <FormTextInput
+                      name="client-secret"
+                      label={t`Client Secret`}
+                      description={t`The Client secret configured in your OIDC provider.`}
+                      type="password"
+                      placeholder={
+                        isExisting ? t`Leave blank to keep current value` : ""
+                      }
+                    />
+                  </Stack>
+                </FormSection>
+
+                <FormSection title={t`Optional settings`} collapsible>
+                  <Stack gap="md">
+                    <FormTextInput
+                      name="scopes"
+                      label={t`Scopes`}
+                      description={t`Comma-separated list of OIDC scopes to request.`}
+                      nullable
+                    />
+                  </Stack>
+                </FormSection>
+
+                <FormSection title={t`Attribute mapping`} collapsible>
+                  <Text c="text-secondary" mb="md">
+                    {t`Map OIDC claims to user attributes. Use standard OIDC claim names or your provider's custom claims.`}
+                  </Text>
+                  <Stack gap="md">
+                    <FormTextInput
+                      name="attribute-email"
+                      label={t`Email attribute`}
+                      nullable
+                    />
+                    <FormTextInput
+                      name="attribute-firstname"
+                      label={t`First name attribute`}
+                      nullable
+                    />
+                    <FormTextInput
+                      name="attribute-lastname"
+                      label={t`Last name attribute`}
+                      nullable
+                    />
+                  </Stack>
+                </FormSection>
+
+                <FormErrorMessage />
+                <Flex justify="space-between">
+                  {isExisting ? (
+                    <>
+                      <Flex gap="md">
+                        <Button variant="outline" onClick={handleToggleEnabled}>
+                          {isEnabled ? t`Disable` : t`Enable`}
+                        </Button>
+                        <Button
+                          variant="filled"
+                          color="danger"
+                          onClick={deleteModal.open}
+                        >
+                          {t`Delete configuration`}
+                        </Button>
+                      </Flex>
+                      <ConfirmModal
+                        opened={isDeleteModalOpen}
+                        title={t`Delete this OIDC provider?`}
+                        message={t`Users will no longer be able to sign in with this provider. This can't be undone.`}
+                        onClose={deleteModal.close}
+                        onConfirm={handleDelete}
+                      />
+                    </>
+                  ) : (
+                    <span />
+                  )}
+                  <Flex gap="md">
+                    <Button
+                      variant="outline"
+                      loading={isChecking}
+                      disabled={!values["issuer-uri"] || !values["client-id"]}
+                      onClick={() => handleCheckConnection(values)}
+                    >
+                      {t`Check connection`}
+                    </Button>
+                    <FormSubmitButton
+                      disabled={!dirty}
+                      label={
+                        isExisting && isEnabled
+                          ? t`Save changes`
+                          : t`Save and enable`
+                      }
+                      variant="filled"
+                    />
+                  </Flex>
+                </Flex>
+              </SettingsSection>
+            </Form>
+          )}
+        </FormProvider>
+      </Stack>
+    </SettingsPageWrapper>
+  );
+}

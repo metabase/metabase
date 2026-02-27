@@ -33,8 +33,8 @@
         (f)))))
 
 (defn- remove-metadata [m]
-  (lib.util.match/replace m
-    (_ :guard (every-pred map? :source-metadata))
+  (lib.util.match/replace-lite m
+    {:source-metadata _}
     (remove-metadata (dissoc &match :source-metadata))))
 
 (mu/defn- apply-row-level-permissions [query :- ::lib.schema/query]
@@ -282,15 +282,16 @@
       (with-download-perms-for-db! (mt/id) :none
         (streaming-test/do-test!
          "A user with no download perms for a DB receives an error response"
-         {:query      {:database (mt/id)
-                       :type     :query
-                       :query    {:source-table (mt/id :venues)
-                                  :limit        10}}
-          :endpoints  [:card :dataset]
-          :assertions {:csv (fn [results]
-                              (is (partial=
-                                   {:error "You do not have permissions to download the results of this query."}
-                                   results)))}})
+         {:query           {:database (mt/id)
+                            :type     :query
+                            :query    {:source-table (mt/id :venues)
+                                       :limit        10}}
+          :expected-status 403
+          :endpoints       [:card :dataset]
+          :assertions      {:csv (fn [results]
+                                   (is (partial=
+                                        {:error "You do not have permissions to download the results of this query."}
+                                        results)))}})
 
         (streaming-test/do-test!
          "An admin can always run download queries, even if the All Users group has no download permissions "
@@ -305,15 +306,16 @@
       (with-download-perms! (mt/id) {:schemas {"PUBLIC" :none}}
         (streaming-test/do-test!
          "A user with no download perms for a schema receives an error response for download queries on that schema"
-         {:query      {:database (mt/id)
-                       :type     :query
-                       :query    {:source-table (mt/id :venues)
-                                  :limit        10}}
-          :endpoints  [:card :dataset]
-          :assertions {:csv (fn [results]
-                              (is (partial=
-                                   {:error "You do not have permissions to download the results of this query."}
-                                   results)))}}))
+         {:query           {:database (mt/id)
+                            :type     :query
+                            :query    {:source-table (mt/id :venues)
+                                       :limit        10}}
+          :expected-status 403
+          :endpoints       [:card :dataset]
+          :assertions      {:csv (fn [results]
+                                   (is (partial=
+                                        {:error "You do not have permissions to download the results of this query."}
+                                        results)))}}))
 
       (with-download-perms! (mt/id) {:schemas {"PUBLIC" {(mt/id :venues)     :none
                                                          (mt/id :checkins)   :full
@@ -321,15 +323,16 @@
                                                          (mt/id :categories) :full}}}
         (streaming-test/do-test!
          "A user with no download perms for a table receives an error response for download queries on that table"
-         {:query      {:database (mt/id)
-                       :type     :query
-                       :query    {:source-table (mt/id :venues)
-                                  :limit        10}}
-          :endpoints  [:card :dataset]
-          :assertions {:csv (fn [results]
-                              (is (partial=
-                                   {:error "You do not have permissions to download the results of this query."}
-                                   results)))}})
+         {:query           {:database (mt/id)
+                            :type     :query
+                            :query    {:source-table (mt/id :venues)
+                                       :limit        10}}
+          :expected-status 403
+          :endpoints       [:card :dataset]
+          :assertions      {:csv (fn [results]
+                                   (is (partial=
+                                        {:error "You do not have permissions to download the results of this query."}
+                                        results)))}})
 
         (streaming-test/do-test!
          "A user with no download perms for a table still has full download perms for MBQL queries on other tables"
@@ -342,12 +345,13 @@
 
         (streaming-test/do-test!
          "A user with no download perms for a table has no download perms for native queries on all tables"
-         {:query      (mt/native-query {:query "SELECT * FROM checkins LIMIT 10;"})
-          :endpoints  [:card :dataset]
-          :assertions {:csv (fn [results]
-                              (is (partial=
-                                   {:error "You do not have permissions to download the results of this query."}
-                                   results)))}})))))
+         {:query           (mt/native-query {:query "SELECT * FROM checkins LIMIT 10;"})
+          :expected-status 403
+          :endpoints       [:card :dataset]
+          :assertions      {:csv (fn [results]
+                                   (is (partial=
+                                        {:error "You do not have permissions to download the results of this query."}
+                                        results)))}})))))
 
 (deftest joins-test
   (mt/with-full-data-perms-for-all-users!
@@ -362,11 +366,12 @@
                    {:joins [{:source-table $$categories
                              :condition    [:= $category_id 1]}]
                     :limit 10})
-          :endpoints  [:card :dataset]
-          :assertions {:csv (fn [results]
-                              (is (partial=
-                                   {:error "You do not have permissions to download the results of this query."}
-                                   results)))}})
+          :expected-status 403
+          :endpoints       [:card :dataset]
+          :assertions      {:csv (fn [results]
+                                   (is (partial=
+                                        {:error "You do not have permissions to download the results of this query."}
+                                        results)))}})
 
         (streaming-test/do-test!
          "A user has limited downloads for a query with a join if they have limited permissions for one of the tables"
@@ -425,12 +430,13 @@
      (fn [query]
        (streaming-test/do-test!
         "A table joined to a card, with no download perms for the card, results in blocked download"
-        {:query      query
-         :endpoints  [:card :dataset]
-         :assertions {:csv (fn [results]
-                             (is (partial=
-                                  {:error "You do not have permissions to download the results of this query."}
-                                  results)))}})))))
+        {:query           query
+         :expected-status 403
+         :endpoints       [:card :dataset]
+         :assertions      {:csv (fn [results]
+                                  (is (partial=
+                                       {:error "You do not have permissions to download the results of this query."}
+                                       results)))}})))))
 
 (deftest sandbox-card-test
   (testing "Do we correctly check download perms for queries that involve a sandbox? (#57861)"
@@ -463,15 +469,16 @@
                                                              (mt/id :checkins)   :none}}}
             (streaming-test/do-test!
              "A table with sandbox and not download perms"
-             {:query      {:database (mt/id)
-                           :type     :query
-                           :query    {:source-table (mt/id :checkins)
-                                      :limit        10}}
-              :endpoints  [:card :dataset]
-              :assertions {:csv (fn [results]
-                                  (is (partial=
-                                       {:error "You do not have permissions to download the results of this query."}
-                                       results)))}})))))))
+             {:query           {:database (mt/id)
+                                :type     :query
+                                :query    {:source-table (mt/id :checkins)
+                                           :limit        10}}
+              :expected-status 403
+              :endpoints       [:card :dataset]
+              :assertions      {:csv (fn [results]
+                                       (is (partial=
+                                            {:error "You do not have permissions to download the results of this query."}
+                                            results)))}})))))))
 
 (defn- do-joined-cards-with-native-query-test! [f]
   (testing "Do we correctly apply the least permissive download perms when joining cards where one has a native query?"
@@ -520,21 +527,22 @@
                                                           (mt/id :users)    :limited}}}
          (streaming-test/do-test!
           "Join between MBQL card (venues:full) and native card - should block due to checkins:none"
-          {:query      {:database (mt/id)
-                        :type     :query
-                        :query    {:source-table (format "card__%d" mbql-card-id)
-                                   :joins        [{:fields       [[:field "ID" {:base-type :type/Integer}]]
-                                                   :source-table (format "card__%d" native-card-id)
-                                                   :alias        "native_card"
-                                                   :condition    [:= [:field "ID" {:base-type :type/Integer}]
-                                                                  [:field "VENUE_ID" {:base-type :type/Integer, :join-alias "native_card"}]]
-                                                   :strategy     :left-join}]
-                                   :limit        10}}
-           :endpoints  [:card :dataset]
-           :assertions {:csv (fn [results]
-                               (is (partial=
-                                    {:error "You do not have permissions to download the results of this query."}
-                                    results)))}}))))))
+          {:query           {:database (mt/id)
+                             :type     :query
+                             :query    {:source-table (format "card__%d" mbql-card-id)
+                                        :joins        [{:fields       [[:field "ID" {:base-type :type/Integer}]]
+                                                        :source-table (format "card__%d" native-card-id)
+                                                        :alias        "native_card"
+                                                        :condition    [:= [:field "ID" {:base-type :type/Integer}]
+                                                                       [:field "VENUE_ID" {:base-type :type/Integer, :join-alias "native_card"}]]
+                                                        :strategy     :left-join}]
+                                        :limit        10}}
+           :expected-status 403
+           :endpoints       [:card :dataset]
+           :assertions      {:csv (fn [results]
+                                    (is (partial=
+                                         {:error "You do not have permissions to download the results of this query."}
+                                         results)))}}))))))
 
 (deftest joined-cards-with-native-query-test-3
   (do-joined-cards-with-native-query-test!
@@ -598,15 +606,16 @@
                                                             (mt/id :users)    :full}}}
            (streaming-test/do-test!
             "Card with native source card - should block due to checkins:none in native source"
-            {:query      {:database (mt/id)
-                          :type     :query
-                          :query    {:source-table (format "card__%d" mbql-card-id)
-                                     :limit        10}}
-             :endpoints  [:card :dataset]
-             :assertions {:csv (fn [results]
-                                 (is (partial=
-                                      {:error "You do not have permissions to download the results of this query."}
-                                      results)))}})))))))
+            {:query           {:database (mt/id)
+                               :type     :query
+                               :query    {:source-table (format "card__%d" mbql-card-id)
+                                          :limit        10}}
+             :expected-status 403
+             :endpoints       [:card :dataset]
+             :assertions      {:csv (fn [results]
+                                      (is (partial=
+                                           {:error "You do not have permissions to download the results of this query."}
+                                           results)))}})))))))
 
 (deftest card-with-native-source-card-test-3
   (testing "Do we correctly apply download perms when downloading from a card that uses a source card with a native query?"

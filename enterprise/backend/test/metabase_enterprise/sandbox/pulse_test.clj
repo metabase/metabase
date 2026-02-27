@@ -115,36 +115,32 @@
               (is (= 22
                      (count (mt/rows (alert-results! query))))))))))))
 
-(deftest pulse-preview-test
-  (testing "Pulse preview endpoints should be sandboxed"
+(deftest pulse-test-endpoint-sandboxed-test
+  (testing "POST /api/pulse/test should be sandboxed"
     (met/with-gtaps! {:gtaps      {:venues {:remappings {:price [:dimension [:field (mt/id :venues :price) nil]]}}}
                       :attributes {"price" "1"}}
       (let [query (mt/mbql-query venues)]
         (mt/with-test-user :rasta
           (mt/with-temp [:model/Card card {:dataset_query query}]
-            (testing "GET /api/pulse/preview_card/:id"
-              (is (= 22
-                     (html->row-count (mt/user-http-request :rasta :get 200 (format "pulse/preview_card/%d" (u/the-id card)))))))
-            (testing "POST /api/pulse/test"
-              (mt/with-fake-inbox
-                (mt/user-http-request :rasta :post 200 "pulse/test" {:name     "venues"
-                                                                     :alert_condition "rows"
-                                                                     :cards    [{:id          (u/the-id card)
-                                                                                 :include_csv true
-                                                                                 :include_xls false}]
-                                                                     :channels [{:channel_type  :email
-                                                                                 :schedule_type "hourly"
-                                                                                 :enabled       :true
-                                                                                 :recipients    [{:id    (mt/user->id :rasta)
-                                                                                                  :email "rasta@metabase.com"}]}]})
-                (let [[{html :content} {_icon :content} {attachment :content}] (get-in @mt/inbox ["rasta@metabase.com" 0 :body])]
-                  (testing "email"
-                    (is (= 22
-                           (html->row-count html))))
-                  (testing "CSV attachment"
-                    ;; one extra row because first row is column names
-                    (is (= 23
-                           (csv->row-count attachment)))))))))))))
+            (mt/with-fake-inbox
+              (mt/user-http-request :rasta :post 200 "pulse/test" {:name     "venues"
+                                                                   :alert_condition "rows"
+                                                                   :cards    [{:id          (u/the-id card)
+                                                                               :include_csv true
+                                                                               :include_xls false}]
+                                                                   :channels [{:channel_type  :email
+                                                                               :schedule_type "hourly"
+                                                                               :enabled       :true
+                                                                               :recipients    [{:id    (mt/user->id :rasta)
+                                                                                                :email "rasta@metabase.com"}]}]})
+              (let [[{html :content} {_icon :content} {attachment :content}] (get-in @mt/inbox ["rasta@metabase.com" 0 :body])]
+                (testing "email"
+                  (is (= 22
+                         (html->row-count html))))
+                (testing "CSV attachment"
+                  ;; one extra row because first row is column names
+                  (is (= 23
+                         (csv->row-count attachment))))))))))))
 
 (deftest csv-downloads-test
   (testing "CSV/XLSX downloads attached to an email should be sandboxed"

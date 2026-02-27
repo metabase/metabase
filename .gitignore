@@ -16,6 +16,7 @@
 .nrepl-port
 .portal
 .vscode
+/.zed
 /*.h2.db
 /*.lock.db
 /*.mv.db
@@ -43,6 +44,7 @@ cypress.env.json
 /docs/**/package.json
 /docs/**/yarn.lock
 /docs/embedding/sdk/api/
+/docs/embedding/eajs/snippets/
 /frontend/test/snapshots/*
 /e2e/snapshots/*
 /e2e/tmp/*
@@ -168,5 +170,5 @@ CLAUDE.local.md
 # Python dependencies (pip-installed, not committed)
 /resources/python-sources/sqlglot/
 /resources/python-sources/sqlglot-*.dist-info/
+/resources/python-sources/.lock
 __pycache__/
-

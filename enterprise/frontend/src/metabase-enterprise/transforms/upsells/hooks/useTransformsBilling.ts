@@ -1,5 +1,6 @@
 import { useHasTokenFeature, useSetting } from "metabase/common/hooks";
-import type { TransformsBillingData } from "metabase/plugins/oss/transforms";
+import { getIsHosted } from "metabase/databases/selectors";
+import { useSelector } from "metabase/lib/redux";
 import {
   useGetBillingInfoQuery,
   useListAddOnsQuery,
@@ -7,14 +8,19 @@ import {
 
 const TRANSFORMS_PRODUCT_TYPES = ["transforms"] as const;
 
-export function useTransformsBilling(): TransformsBillingData {
+export function useTransformsBilling() {
   const tokenStatus = useSetting("token-status");
+  const isHosted = useSelector(getIsHosted);
+  const hasTransforms = useHasTokenFeature("transforms");
+  const hasPythonTransforms = useHasTokenFeature("transforms-python");
 
   const {
     data: addOns,
     error: addOnsError,
     isLoading: addOnsLoading,
-  } = useListAddOnsQuery();
+  } = useListAddOnsQuery(undefined, {
+    skip: !isHosted,
+  });
 
   const {
     data: billingInfo,
@@ -52,10 +58,7 @@ export function useTransformsBilling(): TransformsBillingData {
   const isOnTrial = tokenStatus?.trial ?? false;
   const trialEndDate = tokenStatus?.["valid-thru"];
 
-  const hasTransforms = useHasTokenFeature("transforms");
-  const hasPythonTransforms = useHasTokenFeature("transforms-python");
-
-  // Check if user already has basic transforms (to show upgrade-only)
+  // Check if user already has basic transforms
   const hasBasicTransforms = Boolean(hasTransforms && !hasPythonTransforms);
 
   return {

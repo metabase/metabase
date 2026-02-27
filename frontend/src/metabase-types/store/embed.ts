@@ -15,14 +15,16 @@ export interface InteractiveEmbeddingOptions {
   additional_info: boolean;
   action_buttons: boolean;
   data_picker: EmbeddingDataPicker;
-  /**
-   * There might be a cleaner way to say this is in a search parameter
-   * but it's not in the embed reducer, than making this optional.
-   */
-  entity_types?: FullAppEmbeddingEntityType[];
+  entity_types: FullAppEmbeddingEntityType[];
 }
+
+// These 2 properties are saved in embedding-data-picker reducer
+export type InteractiveEmbeddingOptionsState = Omit<
+  InteractiveEmbeddingOptions,
+  "data_picker" | "entity_types"
+>;
 
 type EmptyObject = Record<string, never>;
 export interface EmbedState {
-  options: InteractiveEmbeddingOptions | EmptyObject;
+  options: InteractiveEmbeddingOptionsState | EmptyObject;
 }

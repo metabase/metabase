@@ -736,20 +736,12 @@
 
   lib
   {:team "Querying"
-   :api  #{metabase.lib.binning
-           metabase.lib.core
+   :api  #{metabase.lib.core
            metabase.lib.equality
-           metabase.lib.field
            metabase.lib.init
            metabase.lib.metadata
-           metabase.lib.metadata.cached-provider
-           metabase.lib.metadata.column
-           metabase.lib.metadata.invocation-tracker
            metabase.lib.metadata.protocols
-           metabase.lib.metadata.result-metadata
-           metabase.lib.normalize
            metabase.lib.options
-           metabase.lib.query
            metabase.lib.schema
            metabase.lib.schema.actions
            metabase.lib.schema.aggregation
@@ -771,17 +763,19 @@
            metabase.lib.schema.test-spec
            metabase.lib.schema.util
            metabase.lib.schema.validate
-           metabase.lib.temporal-bucket
            metabase.lib.types.isa
            metabase.lib.util
-           metabase.lib.util.match
-           metabase.lib.walk}
+           metabase.lib.util.match}
    :uses #{config
            graph
            legacy-mbql
            types
            util}
-   :friends #{query-processor legacy-mbql}}
+   :friends #{legacy-mbql         ;; Reuses internal schemas and a few helper functions. Deeply coupled to MBQL.
+              lib-be              ;; BE-specific extension of lib; tight coupling is acceptable.
+              query-processor     ;; Necessarily manipulates MBQL; better to pull most logic into a new module.
+              enterprise/sandbox  ;; Really part of the QP, though its lives in the enterprise/ tree.
+              }}
 
   lib-be
   {:team "Querying"
@@ -1183,6 +1177,7 @@
            metabase.query-processor.middleware.add-remaps
            metabase.query-processor.middleware.annotate
            metabase.query-processor.middleware.cache-backend.db
+           metabase.query-processor.middleware.catch-exceptions
            metabase.query-processor.middleware.constraints
            metabase.query-processor.middleware.limit
            metabase.query-processor.middleware.permissions
@@ -1576,12 +1571,10 @@
 
   transforms
   {:team "Querying"
-   :api  #{metabase.transforms.api.transform
-           metabase.transforms.api.transform-job
-           metabase.transforms.api.transform-tag
-           metabase.transforms.core
+   :api  #{metabase.transforms.core
            metabase.transforms.feature-gating
            metabase.transforms.init
+           metabase.transforms.interface
            metabase.transforms.schema
            metabase.transforms.util}
    :uses #{analytics
@@ -1596,10 +1589,8 @@
            premium-features
            queries
            query-processor
-           request
            revisions
            settings
-           sql-tools
            sync
            task
            task-history
@@ -1607,6 +1598,35 @@
    :friends #{models
               enterprise/transforms-python
               enterprise/workspaces}}
+
+  transforms-inspector
+  {:team "Gadget"
+   :api  #{metabase.transforms-inspector.core
+           metabase.transforms-inspector.schema}
+   :uses #{driver
+           lib
+           lib-be
+           query-processor
+           sql-tools
+           transforms
+           util}}
+
+  transforms-rest
+  {:team "Gadget"
+   :api  #{metabase.transforms-rest.api.transform
+           metabase.transforms-rest.api.transform-job
+           metabase.transforms-rest.api.transform-tag}
+   :uses #{api
+           driver
+           events
+           models
+           query-processor
+           request
+           server
+           sql-tools
+           transforms
+           transforms-inspector
+           util}}
 
   types
   {:team "Querying"
@@ -2435,7 +2455,7 @@
   enterprise/transforms
   {:team "Querying"
    :api  #{}
-   :uses #{}}
+   :uses #{premium-features}}
 
   enterprise/transforms-python
   {:team "Querying"
