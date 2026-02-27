@@ -39,10 +39,13 @@ import { getNodesWithPositions } from "../utils";
 
 import { SchemaViewerFieldRow } from "./SchemaViewerFieldRow";
 import S from "./SchemaViewerTableNode.module.css";
+import {
+  COLLAPSE_THRESHOLD,
+  COLLAPSED_FIELD_COUNT,
+  COMPACT_ZOOM_THRESHOLD,
+} from "../constants";
 
 const ICON_COLORS = getAccentColors({ light: false, dark: false, gray: false });
-const COLLAPSE_THRESHOLD = 20;
-const COLLAPSED_FIELD_COUNT = 20;
 
 type SchemaViewerTableNodeProps = NodeProps<SchemaViewerFlowNode>;
 
@@ -83,10 +86,24 @@ export const SchemaViewerTableNode = memo(function SchemaViewerTableNode({
         setNodes(newNodes);
         const targetNode = newNodes.find((n) => n.id === id);
         if (targetNode) {
-          fitView({ nodes: [targetNode], duration: 300, padding: 0.5 });
+          fitView({
+            nodes: [targetNode],
+            duration: 300,
+            padding: 0.5,
+            minZoom: COMPACT_ZOOM_THRESHOLD,
+          });
         }
       } else {
-        fitView({ nodes: [{ id }], duration: 300, padding: 0.5 });
+        const nodes = getNodes();
+        const node = nodes.find((n) => n.id === id);
+        if (node) {
+          fitView({
+            nodes: [node],
+            duration: 300,
+            padding: 0.5,
+            minZoom: COMPACT_ZOOM_THRESHOLD,
+          });
+        }
       }
       focusedNodeId = id;
     }

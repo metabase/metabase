@@ -1,4 +1,5 @@
 import dagre from "@dagrejs/dagre";
+import { memoize } from "underscore";
 
 import { isTypeFK, isTypePK } from "metabase-lib/v1/types/utils/isa";
 import type {
@@ -10,6 +11,9 @@ import type {
 } from "metabase-types/api";
 
 import {
+  COLLAPSE_BUTTON_HEIGHT,
+  COLLAPSE_THRESHOLD,
+  COLLAPSED_FIELD_COUNT,
   COMPACT_NODE_HEIGHT,
   DAGRE_NODE_SEP,
   DAGRE_RANK_SEP,
@@ -50,7 +54,12 @@ export function getNodeId(node: { table_id: TableId }): string {
 }
 
 function getNodeHeight(node: ErdNode): number {
-  return HEADER_HEIGHT + node.fields.length * ROW_HEIGHT;
+  const fieldCount = node.fields.length;
+  const canCollapse = fieldCount > COLLAPSE_THRESHOLD;
+  // Nodes start collapsed by default, so use visible field count
+  const visibleFieldCount = canCollapse ? COLLAPSED_FIELD_COUNT : fieldCount;
+  const collapseButtonHeight = canCollapse ? COLLAPSE_BUTTON_HEIGHT : 0;
+  return HEADER_HEIGHT + visibleFieldCount * ROW_HEIGHT + collapseButtonHeight;
 }
 
 function toFlowNode(
@@ -86,10 +95,32 @@ function toFlowEdge(edge: ErdEdge): SchemaViewerFlowEdge {
   };
 }
 
-export function toFlowGraph(data: ErdResponse): {
-  nodes: SchemaViewerFlowNode[];
-  edges: SchemaViewerFlowEdge[];
-} {
+function getFlowGraphMemoKey(data: ErdResponse): string {
+  const nodeKey = data.nodes
+    .map((node) => {
+      const fieldKey = node.fields
+        .map(
+          (field) =>
+            `${field.id}:${field.semantic_type ?? ""}:${field.fk_target_field_id ?? ""}`,
+        )
+        .join("|");
+      return `${node.table_id}:${fieldKey}`;
+    })
+    .sort()
+    .join(";");
+
+  const edgeKey = data.edges
+    .map(
+      (edge) =>
+        `${edge.source_table_id}:${edge.source_field_id}->${edge.target_table_id}:${edge.target_field_id}:${edge.relationship}`,
+    )
+    .sort()
+    .join(";");
+
+  return `${nodeKey}__${edgeKey}`;
+}
+
+const memoizedToFlowGraph = memoize((data: ErdResponse) => {
   // Build a map of table_id -> set of field IDs that have edges
   const connectedByTable = new Map<TableId, Set<number>>();
   for (const edge of data.edges) {
@@ -110,6 +141,13 @@ export function toFlowGraph(data: ErdResponse): {
     ),
     edges: data.edges.map((edge) => toFlowEdge(edge)),
   };
+}, getFlowGraphMemoKey);
+
+export function toFlowGraph(data: ErdResponse): {
+  nodes: SchemaViewerFlowNode[];
+  edges: SchemaViewerFlowEdge[];
+} {
+  return memoizedToFlowGraph(data);
 }
 
 function getLayoutNodeHeight(
@@ -120,7 +158,11 @@ function getLayoutNodeHeight(
     return COMPACT_NODE_HEIGHT;
   }
   const fieldCount = node.data.fields?.length ?? 0;
-  return HEADER_HEIGHT + fieldCount * ROW_HEIGHT;
+  const canCollapse = fieldCount > COLLAPSE_THRESHOLD;
+  // Nodes start collapsed by default, so use visible field count
+  const visibleFieldCount = canCollapse ? COLLAPSED_FIELD_COUNT : fieldCount;
+  const collapseButtonHeight = canCollapse ? COLLAPSE_BUTTON_HEIGHT : 0;
+  return HEADER_HEIGHT + visibleFieldCount * ROW_HEIGHT + collapseButtonHeight;
 }
 
 export function getNodesWithPositions(
