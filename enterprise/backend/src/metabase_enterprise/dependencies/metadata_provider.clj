@@ -121,15 +121,24 @@
 (defmethod add-override :card [^OverridingMetadataProvider mp _entity-type id updates]
   (with-overrides mp
     ;; If the `updates` contain `:result-metadata`, we want to use that. Similarly, if the user provides a way to
-    ;; calculate `result-metadata`, we should use that function.  However, any `:result-metadata` from the inner-mp
-    ;; should be ignored.
-    {[:metadata/card id] (delay (let [temp (merge (when id
-                                                    (-> (inner-mp mp)
-                                                        (lib.metadata/card id)))
+    ;; calculate `result-metadata`, we should use that function.  Otherwise, recompute via the underlying (non-OMP)
+    ;; provider to avoid the circular self-reference that would occur with the OMP (since `(lib/query mp card)` would
+    ;; look up this same card, re-entering this delay). The underlying provider gives us freshly derived metadata
+    ;; from current query structure / schema, though it won't reflect the proposed edit. As a last resort, preserve
+    ;; the base provider's saved `result-metadata` (GHY-3151).
+    {[:metadata/card id] (delay (let [base (inner-mp mp)
+                                      temp (merge (when id (lib.metadata/card base id))
                                                   updates)
                                       result-metadata (or (:result-metadata updates)
                                                           (and (.returned-columns-fn mp)
-                                                               (returned-columns mp temp)))]
+                                                               (returned-columns mp temp))
+                                                          (try
+                                                            (not-empty
+                                                             (deps.analysis/returned-columns
+                                                              (:engine (lib.metadata/database base))
+                                                              (lib/query base temp)))
+                                                            (catch Exception _
+                                                              (:result-metadata temp))))]
                                   (assoc temp :result-metadata result-metadata)))
      ;; This uses the outer OMP and so the overrides are visible!
      [::card-columns id] (delay (returned-columns mp (lib.metadata/card mp id)))}))
