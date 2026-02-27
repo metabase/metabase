@@ -1,7 +1,10 @@
 (ns metabase-enterprise.metabot-v3.example-question-generator-test
   (:require
    [clojure.test :refer :all]
-   [metabase-enterprise.metabot-v3.example-question-generator :as native-generator]))
+   [metabase-enterprise.llm.settings :as llm]
+   [metabase-enterprise.metabot-v3.example-question-generator :as native-generator]
+   [metabase-enterprise.metabot-v3.self.openrouter :as openrouter]
+   [metabase.test :as mt]))
 
 (set! *warn-on-reflection* true)
 
@@ -101,6 +104,35 @@
            (native-generator/generate-example-questions
             {:tables [{:name "T1" :fields [{:name "a" :type "number"}]}]
              :metrics []}))))))
+
+(deftest generate-example-questions-routes-through-openrouter-test
+  (testing "generate-example-questions routes LLM calls through openrouter when provider is openrouter/*"
+    ;; Mocks openrouter/openrouter rather than native-generator/call-llm to exercise the path through
+    ;; self/call-llm-structured and parse-provider-model.
+    (let [captured-opts (atom [])]
+      (mt/with-temporary-setting-values [llm/ee-ai-metabot-provider "openrouter/anthropic/claude-haiku-4-5"]
+        (with-redefs [openrouter/openrouter (fn [opts]
+                                              (swap! captured-opts conj opts)
+                                              [{:type :start :messageId "msg-1"}
+                                               {:type :tool-input-start :toolCallId "call-1" :toolName "json"}
+                                               {:type :tool-input-delta :toolCallId "call-1"
+                                                :inputTextDelta "{\"questions\":[\"q1\",\"q2\"]}"}])]
+          (testing "returns questions from openrouter responses"
+            (is (=? {:table_questions  [{:questions ["q1" "q2"]}]
+                     :metric_questions [{:questions ["q1" "q2"]}]}
+                    (native-generator/generate-example-questions
+                     {:tables  [{:name "Orders"
+                                 :description "Customer orders"
+                                 :fields [{:name "total" :type "number"}]}]
+                      :metrics [{:name "Revenue"
+                                 :description "Total revenue"
+                                 :queryable-dimensions [{:name "region" :type "string"}]}]}))))
+          (testing "makes one openrouter call per table and metric"
+            (is (= 2 (count @captured-opts))))
+          (testing "passes the model name derived from ee-ai-metabot-provider for every call"
+            (is (=? [{:model "anthropic/claude-haiku-4-5"}
+                     {:model "anthropic/claude-haiku-4-5"}]
+                    @captured-opts))))))))
 
 (deftest template-cache-test
   (testing "template is cached after first load"
