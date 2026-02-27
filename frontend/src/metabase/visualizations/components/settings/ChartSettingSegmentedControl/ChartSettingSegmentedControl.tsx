@@ -3,11 +3,11 @@ import cx from "classnames";
 import CS from "metabase/css/core/index.css";
 import { Box, Button, Center, Icon, type IconName, Text } from "metabase/ui";
 
-interface ChartSettingSegmentedControlProps {
+export type ChartSettingSegmentedControlProps = {
   options: { name: string; value: string; icon?: IconName }[];
   onChange: (value: string) => void;
   value: string;
-}
+};
 
 export const ChartSettingSegmentedControl = ({
   options,

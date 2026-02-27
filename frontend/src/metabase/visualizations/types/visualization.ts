@@ -37,6 +37,7 @@ import type { Dispatch, QueryBuilderMode } from "metabase-types/store";
 import type { ChartSettingEnumToggleProps } from "../components/settings/ChartSettingEnumToggle";
 import type { ChartSettingGoalInputProps } from "../components/settings/ChartSettingGoalInput";
 import type { ChartSettingMaxCategoriesProps } from "../components/settings/ChartSettingMaxCategories";
+import type { ChartSettingSegmentedControlProps } from "../components/settings/ChartSettingSegmentedControl";
 import type { ChartSettingSegmentsEditorProps } from "../components/settings/ChartSettingSegmentsEditor";
 import type { ChartSettingSeriesOrderProps } from "../components/settings/ChartSettingSeriesOrder";
 import type { ChartSettingTableColumnsProps } from "../components/settings/ChartSettingTableColumns";
@@ -414,7 +415,11 @@ type Value = unknown;
 type Props = Record<string, unknown>;
 
 /** Object keys are kept in alphabetical order */
-export type VisualizationSettingsDefinitions = {
+export type VisualizationSettingsDefinitions<
+  LabelValueFrequencyWidgetProps extends Props =
+    | ChartSettingEnumToggleProps
+    | ChartSettingSegmentedControlProps,
+> = {
   _column_title_full?: DatasetColumnSettingDefinition<Value, Props>;
   _header_unit?: DatasetColumnSettingDefinition<Value, Props>;
   _numberFormatter?: DatasetColumnSettingDefinition<Value, Props>;
@@ -446,7 +451,7 @@ export type VisualizationSettingsDefinitions = {
   "graph.metrics"?: SeriesSettingDefinition<Value, Props>;
   "graph.label_value_frequency"?: SeriesSettingDefinition<
     Value,
-    ChartSettingEnumToggleProps<string>
+    LabelValueFrequencyWidgetProps
   >;
   "graph.label_value_formatting"?: SeriesSettingDefinition<Value, Props>;
   "graph.max_categories"?: SeriesSettingDefinition<
