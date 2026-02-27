@@ -23,7 +23,7 @@
     {:body (json/decode (:body response) true)
      :headers (:headers response)}))
 
-(defn slack-post-json
+(defn- slack-post-json
   "POST to slack."
   [client endpoint payload]
   (let [response (http/post (str "https://slack.com/api" endpoint)

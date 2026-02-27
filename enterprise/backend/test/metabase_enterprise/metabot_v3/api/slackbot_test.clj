@@ -183,9 +183,9 @@
                 Pass ::no-user to simulate an unlinked Slack user (returns nil).
 
    Calls body-fn with a map containing tracking atoms:
-   {:post-calls, :delete-calls, :image-calls, :generate-png-calls, :generate-adhoc-png-calls,
-    :generate-card-output-calls, :generate-adhoc-output-calls, :ephemeral-calls,
-    :ai-request-calls, :fake-png-bytes, :stream-calls, :append-text-calls, :stop-stream-calls}"
+   {:post-calls, :delete-calls, :image-calls, :generate-card-output-calls,
+    :generate-adhoc-output-calls, :ephemeral-calls, :ai-request-calls,
+    :fake-png-bytes, :stream-calls, :append-text-calls, :stop-stream-calls}"
   [{:keys [ai-text data-parts user-id]
     :or   {data-parts []
            user-id    ::default}}
@@ -193,8 +193,6 @@
   (let [post-calls                  (atom [])
         delete-calls                (atom [])
         image-calls                 (atom [])
-        generate-png-calls          (atom [])
-        generate-adhoc-png-calls    (atom [])
         generate-card-output-calls  (atom [])
         generate-adhoc-output-calls (atom [])
         ephemeral-calls             (atom [])
@@ -248,9 +246,6 @@
              (doseq [line mock-lines]
                (on-line line)))
            mock-lines))
-       slackbot.query/generate-card-png        (fn [card-id & _opts]
-                                                 (swap! generate-png-calls conj card-id)
-                                                 fake-png-bytes)
        slackbot.query/generate-card-output     (fn [card-id]
                                                  (swap! generate-card-output-calls conj {:card-id card-id})
                                            ;; Mock returns image by default (simulating a chart card)
@@ -270,8 +265,6 @@
       (body-fn {:post-calls                  post-calls
                 :delete-calls                delete-calls
                 :image-calls                 image-calls
-                :generate-png-calls          generate-png-calls
-                :generate-adhoc-png-calls    generate-adhoc-png-calls
                 :generate-card-output-calls  generate-card-output-calls
                 :generate-adhoc-output-calls generate-adhoc-output-calls
                 :ephemeral-calls             ephemeral-calls
@@ -700,12 +693,10 @@
 
 (deftest generate-card-output-display-type-test
   (testing "generate-card-output returns correct type based on card display"
-    (let [fake-png-bytes (byte-array [0x89 0x50 0x4E 0x47])
-          mock-results {:data {:cols [{:name "x" :base_type :type/Integer}]
+    (let [mock-results {:data {:cols [{:name "x" :base_type :type/Integer}]
                                :rows [[1] [2]]}}]
       (mt/with-dynamic-fn-redefs
-        [slackbot.query/generate-card-png (constantly fake-png-bytes)
-         slackbot.query/pulse-card-query-results (constantly mock-results)]
+        [slackbot.query/pulse-card-query-results (constantly mock-results)]
 
         (testing "supported display types return :image"
           (doseq [display [:bar :line :pie :area :row :scatter :funnel
@@ -791,7 +782,7 @@
         (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Permission denied"
                               (#'slackbot.query/generate-card-output card-id)))))))
 
-(deftest generate-card-png-failed-qp-result-test
+(deftest generate-card-output-failed-qp-result-image-test
   (testing "throws when QP returns :status :failed for image card"
     (mt/with-temp [:model/Card {card-id :id} {:display :bar}]
       (mt/with-dynamic-fn-redefs

@@ -194,30 +194,6 @@
                                              width
                                              options)))
 
-(defn generate-card-png
-  "Generate PNG for a card. Accepts either:
-   - card-id (integer) - fetches saved card from database
-   - adhoc-card (map) - renders ad-hoc card with :display, :visualization_settings, :results, :name"
-  [card-or-id & {:as opts}]
-  (if (integer? card-or-id)
-    (let [card (t2/select-one :model/Card :id card-or-id)]
-      (when-not card
-        (throw (ex-info "Card not found" {:card-id card-or-id :agent-error? true})))
-      (render-saved-card-png card opts))
-    (let [{:keys [width padding-x padding-y]
-           :or   {width 1280 padding-x 32 padding-y 0}} opts
-          options {:channel.render/include-title? true
-                   :channel.render/padding-x padding-x
-                   :channel.render/padding-y padding-y}
-          {:keys [display visualization_settings results name]} card-or-id]
-      (channel.render/render-adhoc-card-to-png
-       {:display                display
-        :visualization_settings visualization_settings
-        :name                   name}
-       results
-       width
-       options))))
-
 (defn generate-card-output
   "Generate output for a saved card based on its display type.
    Returns a map with :type (:table or :image) and :content.
@@ -227,7 +203,7 @@
   [card-id]
   (let [card (t2/select-one :model/Card :id card-id)]
     (when-not card
-      (throw (ex-info "Card not found" {:card-id card-id :agent-error? true})))
+      (throw (ex-info "Card not found" {:card-id card-id :type :card-not-found})))
     (if (-> card :display keyword supported-png-display-types)
       {:type    :image
        :content (render-saved-card-png card {})}

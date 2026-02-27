@@ -173,7 +173,7 @@
       (:permissions-error? data)
       "I don't have permission to access this data on your behalf."
 
-      (= "Card not found" (ex-message e))
+      (= :card-not-found (:type data))
       "This saved question no longer exists or has been deleted."
 
       (= "adhoc_viz" (:type data-part))
@@ -231,6 +231,32 @@
             (when-let [ts (:ts indicator)]
               (slackbot.client/delete-message client {:channel channel :ts ts}))))))))
 
+(defn- ensure-stream-started!
+  "Ensure the Slack stream has been started, attempting once if not already tried."
+  [client stream-opts stream-attempted? stream-state]
+  (when-not @stream-attempted?
+    (vreset! stream-attempted? true)
+    (when-let [stream (slackbot.client/start-stream client stream-opts)]
+      (vreset! stream-state stream))))
+
+(defn- dismiss-thinking-msg!
+  "Delete the 'Thinking...' placeholder message. Idempotent via reset-vals!.
+   Called from agent actions only."
+  [client channel thinking-ts]
+  (let [[ts] (reset-vals! thinking-ts nil)]
+    (when ts
+      (slackbot.client/delete-message client {:channel channel :ts ts}))))
+
+(defn- drain-pending-text!
+  "Drain all accumulated text from pending-text and send to Slack in one call.
+   Called from agent actions only."
+  [client stream-state pending-text thinking-ts]
+  (when-let [{:keys [stream_ts channel]} @stream-state]
+    (let [[text] (reset-vals! pending-text "")]
+      (when (seq text)
+        (dismiss-thinking-msg! client channel thinking-ts)
+        (slackbot.client/append-markdown-text client channel stream_ts text)))))
+
 (defn- make-streaming-callbacks
   "Create streaming callback functions and associated control functions.
    Slack API writes are dispatched to a background agent so the AI stream reader is never
@@ -268,44 +294,22 @@
         slack-writer      (agent nil
                                  :error-mode    :continue
                                  :error-handler (fn [_ e] (log/warn e "[slackbot] Async Slack write failed")))
-
-        ensure-stream! (fn []
-                         (when-not @stream-attempted?
-                           (vreset! stream-attempted? true)
-                           (when-let [stream (slackbot.client/start-stream client {:channel   channel
-                                                                                   :thread_ts thread-ts
-                                                                                   :team_id   team-id
-                                                                                   :user_id   user-id})]
-                             (vreset! stream-state stream))))
-
-        ;; Delete the "Thinking..." placeholder message. Idempotent via reset-vals!.
-        ;; Called from agent actions only.
-        dismiss-thinking! (fn []
-                            (let [[ts] (reset-vals! thinking-ts nil)]
-                              (when ts
-                                (slackbot.client/delete-message client {:channel channel :ts ts}))))
-
-        ;; Drain all accumulated text from pending-text and send to Slack in one call.
-        ;; Called from agent actions only.
-        drain-pending-text! (fn []
-                              (when-let [{:keys [stream_ts channel]} @stream-state]
-                                (let [[text] (reset-vals! pending-text "")]
-                                  (when (seq text)
-                                    (dismiss-thinking!)
-                                    (slackbot.client/append-markdown-text client channel stream_ts text)))))
+        stream-opts       {:channel   channel
+                           :thread_ts thread-ts
+                           :team_id   team-id
+                           :user_id   user-id}
 
         ;; Schedule an agent drain. Cheap to call frequently — if the agent is already busy,
         ;; text just accumulates in pending-text and gets coalesced into the next drain.
         request-flush! (fn []
-                         (ensure-stream!)
+                         (ensure-stream-started! client stream-opts stream-attempted? stream-state)
                          (when @stream-state
-                           (send-off slack-writer (fn [_] (drain-pending-text!) nil))))
+                           (send-off slack-writer (fn [_] (drain-pending-text! client stream-state pending-text thinking-ts) nil))))
 
         start-with-thinking! (fn []
-                               (let [response (:body (slackbot.client/slack-post-json client "/chat.postMessage"
-                                                                                      {:channel   channel
-                                                                                       :thread_ts thread-ts
-                                                                                       :text      "_Thinking..._"}))]
+                               (let [response (slackbot.client/post-message client {:channel   channel
+                                                                                    :thread_ts thread-ts
+                                                                                    :text      "_Thinking..._"})]
                                  (when (:ok response)
                                    (reset! thinking-ts (:ts response)))))
 
@@ -319,9 +323,9 @@
                             (when-let [{:keys [stream_ts channel]} @stream-state]
                               (send-off slack-writer
                                         (fn [_]
-                                          (drain-pending-text!)
+                                          (drain-pending-text! client stream-state pending-text thinking-ts)
                                           (when (= status "in_progress")
-                                            (dismiss-thinking!))
+                                            (dismiss-thinking-msg! client channel thinking-ts))
                                           (slackbot.client/append-stream client channel stream_ts
                                                                          [{:type   "task_update"
                                                                            :id     id
@@ -382,35 +386,36 @@
                                            :team-id   (:team_id auth-info)
                                            :user-id   (:user event)})]
      (start-with-thinking!)
-     (try
-       (let [data-parts (make-streaming-ai-request
-                         (str (random-uuid))
-                         prompt
-                         thread
-                         bot-user-id
-                         channel-id
-                         extra-history
-                         {:on-text       on-text
-                          :on-tool-start on-tool-start
-                          :on-tool-end   on-tool-end
-                          :on-data       on-data})]
-         (request-flush!)
-         (await slack-writer)
-         (if-let [{:keys [stream_ts channel]} @stream-state]
-           (do
-             (slackbot.client/stop-stream client channel stream_ts)
-             (send-visualizations client channel thread-ts data-parts @prefetched-viz))
-           (slackbot.client/post-message client (merge message-ctx {:text "I wasn't able to generate a response. Please try again."}))))
-       (catch Exception e
-         (run! #(.cancel ^Future % true) (vals @prefetched-viz))
-         (log/error e "[slackbot] Error in streaming response")
-         (await slack-writer)
-         (if-let [{:keys [stream_ts channel]} @stream-state]
-           (try
-             (slackbot.client/append-markdown-text client channel stream_ts
-                                                   "\nSomething went wrong. Please try again.")
-             (slackbot.client/stop-stream client channel stream_ts)
-             (catch Exception stop-e
-               (log/debug stop-e "[slackbot] Failed to stop stream during error cleanup")))
-           (slackbot.client/post-message client (merge message-ctx
-                                                       {:text "Something went wrong. Please try again."}))))))))
+     (letfn [(send-fallback [text]
+               (slackbot.client/post-message client (merge message-ctx {:text text})))]
+       (try
+         (let [data-parts (make-streaming-ai-request
+                           (str (random-uuid))
+                           prompt
+                           thread
+                           bot-user-id
+                           channel-id
+                           extra-history
+                           {:on-text       on-text
+                            :on-tool-start on-tool-start
+                            :on-tool-end   on-tool-end
+                            :on-data       on-data})]
+           (request-flush!)
+           (await slack-writer)
+           (if-let [{:keys [stream_ts channel]} @stream-state]
+             (do
+               (slackbot.client/stop-stream client channel stream_ts)
+               (send-visualizations client channel thread-ts data-parts @prefetched-viz))
+             (send-fallback "I wasn't able to generate a response. Please try again.")))
+         (catch Exception e
+           (run! #(.cancel ^Future % true) (vals @prefetched-viz))
+           (log/error e "[slackbot] Error in streaming response")
+           (await slack-writer)
+           (if-let [{:keys [stream_ts channel]} @stream-state]
+             (try
+               (slackbot.client/append-markdown-text client channel stream_ts
+                                                     "\nSomething went wrong. Please try again.")
+               (slackbot.client/stop-stream client channel stream_ts)
+               (catch Exception stop-e
+                 (log/debug stop-e "[slackbot] Failed to stop stream during error cleanup")))
+             (send-fallback "Something went wrong. Please try again."))))))))
