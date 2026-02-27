@@ -1,6 +1,7 @@
 (ns metabase-enterprise.replacement.swap.viz
   (:require
    [clojure.walk]
+   [medley.core :as m]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib-be.source-swap :as lib-be.source-swap]
    [metabase.lib.core :as lib]
@@ -57,11 +58,18 @@
 
 (defn dashboard-card-update-field-refs!
   "After a card's query has been updated, swap the field refs in parameter_mappings
-  and column_settings on all DashboardCards that display this card."
+  and column_settings on all DashboardCards that display this card (as primary or series card)."
   [card-id old-source new-source]
-  (doseq [dashcard (t2/select :model/DashboardCard :card_id card-id)]
-    (when-let [query (dashcard-query dashcard)]
-      (update-dashcard-field-refs! dashcard query old-source new-source))))
+  (let [primary       (t2/select :model/DashboardCard :card_id card-id)
+        series-dc-ids (t2/select-fn-set :dashboardcard_id
+                                        :model/DashboardCardSeries
+                                        :card_id card-id)
+        series        (when (seq series-dc-ids)
+                        (t2/select :model/DashboardCard :id [:in series-dc-ids]))
+        all-dashcards (m/distinct-by :id (concat primary series))]
+    (doseq [dashcard all-dashcards]
+      (when-let [query (dashcard-query dashcard)]
+        (update-dashcard-field-refs! dashcard query old-source new-source)))))
 
 (defn dashboard-update-field-refs!
   "Swap field refs in parameter_mappings and column_settings on all DashboardCards

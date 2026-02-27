@@ -808,3 +808,45 @@
                       target     (get-in updated-dc [:parameter_mappings 0 :target])]
                   (is (= [:dimension [:field (mt/id :products_b :id) nil]] target)
                       "Parameter mapping target should be remapped to the products_b field"))))))))))
+
+(deftest run-swap-series-card-updates-dashboard-params-test
+  (testing "table→table swap via runner: parameter_mappings targeting a series card are updated"
+    (mt/dataset source-swap
+      (mt/with-premium-features #{:dependencies}
+        (mt/with-temp [:model/User user {:email "run-swap-series@test.com"}]
+          (mt/with-model-cleanup [:model/Card :model/Dependency]
+            (let [;; primary card queries products_a (this is a direct dependent of the table)
+                  primary-card (card/create-card! (test-util/card-with-query "Primary card" :products_a) user)
+                  ;; series card also queries products_a
+                  series-card  (card/create-card! (test-util/card-with-query "Series card" :products_a) user)]
+              (mt/with-temp [:model/Dashboard {dashboard-id :id} {:name "Series Dashboard"}
+                             :model/DashboardCard {dashcard-id :id}
+                             {:dashboard_id       dashboard-id
+                              :card_id            (:id primary-card)
+                              :parameter_mappings [{:parameter_id "primary-param"
+                                                    :card_id      (:id primary-card)
+                                                    :target       [:dimension [:field (mt/id :products_a :id) nil]]}
+                                                   {:parameter_id "series-param"
+                                                    :card_id      (:id series-card)
+                                                    :target       [:dimension [:field (mt/id :products_a :id) nil]]}]}
+                             :model/DashboardCardSeries _
+                             {:dashboardcard_id dashcard-id
+                              :card_id          (:id series-card)
+                              :position         0}]
+                (runner/run-swap [:table (mt/id :products_a)] [:table (mt/id :products_b)])
+                ;; Both cards' source-tables should be updated
+                (is (= (mt/id :products_b)
+                       (get-in (t2/select-one-fn :dataset_query :model/Card :id (:id primary-card))
+                               [:stages 0 :source-table])))
+                (is (= (mt/id :products_b)
+                       (get-in (t2/select-one-fn :dataset_query :model/Card :id (:id series-card))
+                               [:stages 0 :source-table])))
+                ;; Both parameter mappings should no longer reference products_a
+                (let [updated-dc     (t2/select-one :model/DashboardCard :id dashcard-id)
+                      targets        (mapv :target (:parameter_mappings updated-dc))
+                      old-target     [:dimension [:field (mt/id :products_a :id) nil]]]
+                  (is (= 2 (count targets)))
+                  (is (not= old-target (first targets))
+                      "Primary card parameter mapping should no longer reference products_a")
+                  (is (not= old-target (second targets))
+                      "Series card parameter mapping should no longer reference products_a"))))))))))

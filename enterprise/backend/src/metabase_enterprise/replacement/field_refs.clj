@@ -82,6 +82,44 @@
     (when (not= definition definition')
       (t2/update! :model/Measure (:id measure) {:definition definition'}))))
 
+(defn dashboard-upgrade-field-refs!
+  "Upgrade field refs in parameter_mappings and column_settings for all dashcards in a dashboard.
+   Each parameter_mapping's :card_id determines which card's query to use for the upgrade."
+  [dashboard-id]
+  (let [dashcards    (t2/select :model/DashboardCard :dashboard_id dashboard-id)
+        all-card-ids (into #{} (comp (mapcat (fn [dc]
+                                               (cons (:card_id dc)
+                                                     (keep :card_id (:parameter_mappings dc)))))
+                                     (remove nil?))
+                           dashcards)
+        cards-by-id  (when (seq all-card-ids)
+                       (into {} (map (juxt :id identity))
+                             (t2/select :model/Card :id [:in all-card-ids])))]
+    (doseq [dashcard dashcards]
+      (let [parameter-mappings  (:parameter_mappings dashcard)
+            parameter-mappings' (mapv (fn [pm]
+                                        (if-let [card (get cards-by-id (:card_id pm))]
+                                          (let [query (lib-be/upgrade-field-refs-in-query (:dataset_query card))]
+                                            (upgrade-parameter-mappings query pm))
+                                          pm))
+                                      parameter-mappings)
+            primary-card    (get cards-by-id (:card_id dashcard))
+            primary-query   (some-> primary-card :dataset_query lib-be/upgrade-field-refs-in-query)
+            viz             (vs/db->norm (:visualization_settings dashcard))
+            column-settings (::vs/column-settings viz)
+            column-settings' (if primary-query
+                               (upgrade-column-settings-keys primary-query column-settings)
+                               column-settings)
+            changes (cond-> {}
+                      (not= parameter-mappings parameter-mappings')
+                      (assoc :parameter_mappings parameter-mappings')
+                      (not= column-settings column-settings')
+                      (assoc :visualization_settings (-> viz
+                                                         (assoc ::vs/column-settings column-settings')
+                                                         vs/norm->db)))]
+        (when (seq changes)
+          (t2/update! :model/DashboardCard (:id dashcard) changes))))))
+
 (defn upgrade!
   "Upgrade field refs in an entity object.
 

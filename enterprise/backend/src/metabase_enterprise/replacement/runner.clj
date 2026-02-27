@@ -79,10 +79,11 @@
           (lib-be/bulk-load-query-metadata! metadata-provider referenced-ids)))
       (merge cards tables transforms segments measures))))
 
-(defn- run-swap* [{:keys [direct transitive direct-card-ids second-lvl-dash-ids]}
+(defn- run-swap* [{:keys [direct non-dashboard-transitive dashboard-ids direct-card-ids second-lvl-dash-ids]}
                   old-source new-source progress]
   (replacement.protocols/set-total! progress
-                                    (+ (count transitive)
+                                    (+ (count non-dashboard-transitive)
+                                       (count dashboard-ids)
                                        (count direct)
                                        (count second-lvl-dash-ids)))
 
@@ -93,7 +94,7 @@
         batch-size 500]
 
     ;; Process entities in batches, with a fresh metadata cache per batch
-    (doseq [batch (partition-all batch-size transitive)]
+    (doseq [batch (partition-all batch-size non-dashboard-transitive)]
       (lib-be/with-metadata-provider-cache
         (let [metadata-provider (lib-be/application-database-metadata-provider db-id)
               loaded            (bulk-load-metadata-for-entities! metadata-provider batch)]
@@ -101,6 +102,11 @@
                   :let [object (get loaded entity)]]
             (field-refs/upgrade! object)
             (replacement.protocols/advance! progress))))))
+
+  ;; phase 1b: Upgrade dashboard parameter targets (dashboards are in transitive but not loaded as entities)
+  (doseq [dashboard-id dashboard-ids]
+    (field-refs/dashboard-upgrade-field-refs! dashboard-id)
+    (replacement.protocols/advance! progress))
 
   ;; phase 2: Swap the sources
   (let [failures (atom [])]
@@ -147,12 +153,15 @@
     progress]
    (assert (:success (source/check-replace-source old-source new-source)))
 
-   (let [transitive       (usages/transitive-usages old-source)
-         direct           (usages/direct-usages     old-source)
-         direct-card-ids  (into [] (comp (filter #(= :card (first %))) (map second)) direct)
-         second-lvl-dash-ids (usages/second-level-dashboard-ids direct-card-ids)]
-     (run-swap* {:transitive       transitive
-                 :direct           direct
-                 :direct-card-ids  direct-card-ids
-                 :second-lvl-dash-ids second-lvl-dash-ids}
+   (let [all-transitive           (usages/transitive-usages old-source)
+         dashboard-ids            (into [] (comp (filter #(= :dashboard (first %))) (map second)) all-transitive)
+         non-dashboard-transitive (into [] (remove #(= :dashboard (first %))) all-transitive)
+         direct                   (usages/direct-usages     old-source)
+         direct-card-ids          (into [] (comp (filter #(= :card (first %))) (map second)) direct)
+         second-lvl-dash-ids      (usages/second-level-dashboard-ids direct-card-ids)]
+     (run-swap* {:non-dashboard-transitive non-dashboard-transitive
+                 :dashboard-ids            dashboard-ids
+                 :direct                   direct
+                 :direct-card-ids          direct-card-ids
+                 :second-lvl-dash-ids      second-lvl-dash-ids}
                 old-source new-source progress))))
