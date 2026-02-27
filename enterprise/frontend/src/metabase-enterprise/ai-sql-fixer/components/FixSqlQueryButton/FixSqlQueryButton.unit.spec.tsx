@@ -2,6 +2,7 @@ import userEvent from "@testing-library/user-event";
 
 import { mockSettings } from "__support__/settings";
 import { renderWithProviders, screen } from "__support__/ui";
+import { createMockTokenFeatures } from "metabase-types/api/mocks";
 import { createMockState } from "metabase-types/store/mocks";
 
 import { FixSqlQueryButton } from "./FixSqlQueryButton";
@@ -19,6 +20,9 @@ function setup({
 }: { isMetabotEnabled?: boolean } = {}) {
   const settings = mockSettings({
     "metabot-enabled?": isMetabotEnabled,
+    "token-features": createMockTokenFeatures({
+      metabot_v3: true,
+    }),
   });
 
   renderWithProviders(<FixSqlQueryButton />, {
