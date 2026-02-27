@@ -1479,7 +1479,7 @@
   ([form]
    (rewrite-fields-to-force-using-column-aliases form {:is-breakout false}))
   ([form {is-breakout :is-breakout}]
-   (driver-api/replace
+   (driver-api/replace-lite
      form
      [:field id-or-name opts]
      [:field id-or-name (cond-> opts

@@ -24,14 +24,29 @@
   (:import (metabase_enterprise.remote_sync.source.protocol SourceSnapshot)))
 
 (defn- snapshot-has-transforms?
-  "Checks if the snapshot contains any Transform, TransformTag, or PythonLibrary entities.
-   Used to auto-enable remote-sync-transforms setting during import.
+  "Checks if the snapshot contains any Transform, PythonLibrary entities,
+   non-built-in TransformTags, or transforms-namespace collections.
+   Used to auto-enable/disable remote-sync-transforms setting during import.
 
-   Uses the ingestable to list all entities and checks their :model metadata."
+   Uses the ingestable to list all entities and checks their :model metadata,
+   then also checks if any Collection entities have namespace=transforms.
+   Built-in TransformTags are excluded since they are system-created and always present."
   [ingestable]
   (let [serdes-paths (serialization/ingest-list ingestable)
         models-present (spec/models-in-import serdes-paths)]
-    (some spec/transform-models models-present)))
+    (or (some spec/transform-models models-present)
+        ;; Check for non-built-in TransformTags
+        (when (contains? models-present "TransformTag")
+          (some (fn [path]
+                  (when (= "TransformTag" (:model (last path)))
+                    (let [entity (serialization/ingest-one ingestable path)]
+                      (nil? (:built_in_type entity)))))
+                serdes-paths))
+        (some (fn [path]
+                (when (= "Collection" (:model (last path)))
+                  (let [entity (serialization/ingest-one ingestable path)]
+                    (spec/transforms-namespace-collection? entity))))
+              serdes-paths))))
 
 (defn- sync-objects!
   "Populates the remote-sync-object table with imported entities. Deletes all existing RemoteSyncObject records and
@@ -170,8 +185,25 @@
   (let [ingest-list (serialization/ingest-list ingestable)
         imported-data (spec/extract-imported-entities ingest-list)
         models-present (spec/models-in-import ingest-list)
+        ;; Extract namespace info from imported Collection entities
+        import-ns-info
+        (reduce (fn [acc path]
+                  (if (= "Collection" (:model (last path)))
+                    (let [entity (serialization/ingest-one ingestable path)]
+                      (if-let [ns (some-> (:namespace entity) keyword name)]
+                        (-> acc
+                            (update :namespaces conj ns)
+                            (update-in [:entity-ids ns] (fnil conj #{}) (:entity_id entity)))
+                        acc))
+                    acc))
+                {:namespaces #{} :entity-ids {}}
+                ingest-list)
+        import-namespace-collections (:namespaces import-ns-info)
         ;; TODO (epaget 2026-02-02) -- entity-id conflict checking (detect unsynced local entities with matching entity_ids)
-        feature-conflicts (spec/check-feature-conflicts models-present)
+        feature-conflicts (spec/check-feature-conflicts models-present import-namespace-collections)
+        ns-coll-conflicts (spec/check-namespace-collection-conflicts
+                           import-namespace-collections
+                           (:entity-ids import-ns-info))
         library-conflict (when-let [local-library (t2/select-one :model/Collection :type collection/library-collection-type)]
                            (when (and first-import?
                                       (contains? (get-in imported-data [:by-entity-id "Collection"] #{})
@@ -184,6 +216,7 @@
                               :message "Import contains Library but local instance has an unsynced Library collection"}))
         all-conflicts (concat
                        feature-conflicts
+                       ns-coll-conflicts
                        (when library-conflict [library-conflict]))]
     {:conflicts (vec all-conflicts)
      :summary (into #{} (map :category) all-conflicts)}))
@@ -243,6 +276,10 @@
               (t2/with-transaction [_conn]
                 (remove-unsynced! (spec/all-syncable-collection-ids) imported-data)
                 (sync-objects! sync-timestamp imported-data))
+              (when (and (not has-transforms?)
+                         (settings/remote-sync-transforms))
+                (log/info "No transforms in remote source, disabling remote-sync-transforms setting")
+                (settings/remote-sync-transforms! false))
               (remote-sync.task/update-progress! task-id 0.95)
               (remote-sync.task/set-version!
                task-id

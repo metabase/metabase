@@ -37,6 +37,7 @@
    [metabase.lib.metadata.column]
    [metabase.lib.metadata.composed-provider :as lib.metadata.composed-provider]
    [metabase.lib.metadata.protocols]
+   [metabase.lib.metadata.result-metadata]
    [metabase.lib.metric :as lib.metric]
    [metabase.lib.native :as lib.native]
    [metabase.lib.normalize :as lib.normalize]
@@ -97,6 +98,7 @@
          metabase.lib.metadata.column/keep-me
          lib.metadata.composed-provider/keep-me
          metabase.lib.metadata.protocols/keep-me
+         metabase.lib.metadata.result-metadata/keep-me
          lib.metric/keep-me
          lib.native/keep-me
          lib.normalize/keep-me
@@ -283,6 +285,8 @@
   fieldable-columns
   fields
   find-visible-column-for-ref
+  infer-has-field-values ; Single-use
+  json-field? ; Single-use
   remove-field
   with-fields]
  [metabase.lib.field.util
@@ -374,6 +378,8 @@
   cached-metadata-provider-with-cache?
   metadata-provider?
   metadata-providerable?]
+ [metabase.lib.metadata.result-metadata
+  normalize-result-metadata-column]
  [lib.native
   add-parameters-for-template-tags
   engine
@@ -433,6 +439,7 @@
   can-run
   can-save
   check-card-overwrite
+  native?
   preview-query
   query
   query-from-legacy-inner-query

@@ -14,15 +14,16 @@
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
-   [metabase.lib.query :as lib.query]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.models.interface :as mi]
    [metabase.models.transforms.transform-run :as transform-run]
    [metabase.query-processor :as qp]
    [metabase.query-processor.compile :as qp.compile]
    [metabase.query-processor.middleware.add-remaps :as remap]
+   [metabase.query-processor.middleware.catch-exceptions :as qp.catch-exceptions]
    [metabase.query-processor.parameters.dates :as params.dates]
    [metabase.query-processor.pipeline :as qp.pipeline]
+   [metabase.query-processor.preprocess :as qp.preprocess]
    [metabase.sync.core :as sync]
    [metabase.transforms.canceling :as canceling]
    [metabase.transforms.feature-gating :as transforms.gating]
@@ -381,7 +382,7 @@
   Returns the query unchanged on first run (no checkpoint) or for native queries without the checkpoint tag."
   [query source-incremental-strategy checkpoint]
   (if-let [checkpoint-value (next-checkpoint-value checkpoint)]
-    (if (lib.query/native? query)
+    (if (lib/native? query)
       ;; native query with explicit checkpoint filter
       (if (get-in query [:stages 0 :template-tags "checkpoint"])
         (update query :parameters conj
@@ -399,7 +400,7 @@
   Generates SQL that wraps the original query as a subquery and filters by `checkpoint_filter > (checkpoint_query)`. "
   [outer-query driver {:keys [source-incremental-strategy] :as source} {checkpoint-query :query :as checkpoint}]
   (let [{:keys [checkpoint-filter]} source-incremental-strategy]
-    (if (and (lib.query/native? (:query source))
+    (if (and (lib/native? (:query source))
              (not (get-in (:query source) [:stages 0 :template-tags "checkpoint"]))
              (next-checkpoint-value checkpoint))
       (let [wrap-query (fn [query]
@@ -410,6 +411,17 @@
                            (first (sql.qp/format-honeysql driver honeysql-query))))]
         (update outer-query :query wrap-query))
       outer-query)))
+
+(mu/defn validate-transform-query :- [:maybe [:map [:error :string]]]
+  "Verifies that a query transform's query can actually be run as is.  Returns nil on success and an error map on failure."
+  [{:keys [source]}]
+  (case (keyword (:type source))
+    :query
+    (try
+      (qp.preprocess/preprocess (:query source))
+      nil
+      (catch Exception e
+        (qp.catch-exceptions/exception-response e)))))
 
 (defn compile-source
   "Compile the source query of a transform to SQL, applying incremental filtering if required."
