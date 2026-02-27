@@ -40,8 +40,8 @@ import { SchemaViewerFieldRow } from "./SchemaViewerFieldRow";
 import S from "./SchemaViewerTableNode.module.css";
 
 const ICON_COLORS = getAccentColors({ light: false, dark: false, gray: false });
-const COLLAPSE_THRESHOLD = 10;
-const COLLAPSED_FIELD_COUNT = 5;
+const COLLAPSE_THRESHOLD = 20;
+const COLLAPSED_FIELD_COUNT = 20;
 
 type SchemaViewerTableNodeProps = NodeProps<SchemaViewerFlowNode>;
 
@@ -64,7 +64,7 @@ export const SchemaViewerTableNode = memo(function SchemaViewerTableNode({
   const iconColor = ICON_COLORS[Number(data.table_id) % ICON_COLORS.length];
 
   const canCollapse = data.fields.length > COLLAPSE_THRESHOLD;
-  const [isCollapsed, setIsCollapsed] = useState(false);
+  const [isCollapsed, setIsCollapsed] = useState(true);
 
   const handleDoubleClick = useCallback(() => {
     if (focusedNodeId === id) {
@@ -266,10 +266,14 @@ function CompactTableNode({
     return data.fields.filter((field) => data.connectedFieldIds.has(field.id));
   }, [data.fields, data.connectedFieldIds]);
 
+  const fieldCount = data.fields.length;
   const tooltipContent = (
     <Stack gap={4}>
       <Box fw="bold" c="inherit">
         {data.name}
+      </Box>
+      <Box fz="xs" c="inherit" style={{ opacity: 0.7 }}>
+        {t`${fieldCount} fields`}
       </Box>
       {connectedTables.length > 0 && (
         <Stack gap={2}>
