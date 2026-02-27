@@ -66,7 +66,7 @@ These are just rules of thumb to keep the user experience predictable. Do whatev
 
 3. Select a [filter type](#filter-and-parameter-widgets).
 4. [Connect your filter or parameter widget to one or more dashboard cards](#connecting-a-filter-or-parameter-widget-to-dashboard-cards). Only dashboard-level widgets can be connected to cards on multiple tabs.
-5. [Configure your filter](#editing-a-filter).
+5. [Configure your filter](#configure-dashboard-filters-and-parameters).
 6. **Save** your changes.
 
 If the filter isn't connected to any of the cards on the current tab, Metabase won't display the filter.
@@ -221,8 +221,8 @@ To edit settings for a dashboard filter or parameter:
    - [Change a filter's selectable values](#change-a-filters-selectable-values)
    - [Set a default filter value](#set-a-default-filter-value)
    - [Make a filter required](#make-a-filter-or-parameter-required)
-   - [Move a filter](#move-a-filter)
-   - [Remove a filter](#remove-a-filter)
+   - [Move a filter](#move-a-filter-or-parameter)
+   - [Remove a filter](#remove-a-filter-or-parameter)
 
 ### Rename a dashboard widget
 
@@ -331,7 +331,18 @@ To make a dashboard filter required:
 3. In the filter settings sidebar, scroll to the toggle **Always require a value**.
 4. Specify the default value for the filter.
 
-### Remove a filter
+### Move a filter or parameter
+
+Widgets can be displayed and applied on dashboard, header, or card level, see [Dashboard, header, and card widgets](#dashboard-header-and-card-widgets). If you want to change the level of the filter - for example, move a dashboard filter into a card filter, or a header filter into a dashboard filter - you'll need to move it in the filter settings (you can't drag filters to a different level).
+
+To move a filter:
+
+1. In dashboard edit mode, click the filter or parameter you want to edit.
+2. From the sidebar, click **Move filter**.
+3. Select a card or header to move the widget to. Select "Top of the page" to make the widget into a dashboard-wide filter or parameter.
+4. Make sure that the widget is connected to the right columns.
+
+### Remove a filter or parameter
 
 1. In dashboard edit mode, click the filter you want to edit.
 2. From the sidebar, click **Remove**.

@@ -27,7 +27,7 @@ Once you [created an action](../actions/introduction.md), you can add a button t
      ![Button types](./images/buttons.png)
 
 3. Pick an action to connect to the button.
-4. For every field in the action, select whether a user should supply the value themselves, or whether the action should use the value from the dashboard filter, see [Connecting an action to a dashboard filter](#connecting-an-action-to-a-dashboard-filter).
+4. For every field in the action, select whether a user should supply the value themselves, or whether the action should use the value from the dashboard filter, see [Connecting an action to a dashboard filter](#connect-an-action-to-a-dashboard-filter).
 5. Click **Done**, and **Save** the dashboard.
 
 People viewing the dashboard will not be able to click the button and perform your chosen action:

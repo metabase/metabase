@@ -22,7 +22,6 @@ To change your Metabase font:
 3. In Admin console, go to **Settings** > **Appearance** > **Branding**
 4. Under **Font**, select from a list of included fonts:
 
-- [Custom font](#custom-fonts)
 - [Lato](https://fonts.google.com/specimen/Lato)
 - [Lora](https://fonts.google.com/specimen/Lora)
 - [Merriweather](https://fonts.google.com/specimen/Merriweather)
@@ -42,6 +41,7 @@ To change your Metabase font:
 - [Slabo 27px](https://fonts.google.com/specimen/Slabo+27px)
 - Source Sans Pro
 - [Ubuntu](https://fonts.google.com/specimen/Ubuntu)
+- [Custom font](#add-custom-fonts)
 
 Comic Sans is currently not included.
 

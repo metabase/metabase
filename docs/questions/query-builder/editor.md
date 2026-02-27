@@ -61,7 +61,7 @@ Custom columns are helpful when you need to create a new column based on a calcu
 
 You can use the following math operators in your formulas: `+`, `–`, `*` (multiplication), and `/` (division), along with a whole host of spreadsheet-like functions. You can also use parentheses to clarify the order of operations.
 
-You can add custom columns after [Pick data](#pick-data-to-start-with) step or after [Summarize](#summarize-and-group-data) step.
+You can add custom columns after the [Pick data](#pick-data) step or after [Summarize](#summarize-and-group-data) step.
 
 See [Custom expressions](../query-builder/expressions.md).
 

@@ -35,7 +35,7 @@ To set the instance-wider language:
 
    See [List of supported languages](#supported-languages). Some translations are created by the Metabase community, and might not be perfect.
 
-### Set default instance timezone
+### Set default instance report timezone
 
 _Admin > Settings > Localization > Instance settings > Report timezone_
 
