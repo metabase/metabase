@@ -3,6 +3,7 @@
    [clojure.test :refer [deftest is testing]]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.lib.query :as lib.query]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
    [metabase.lib.test-util.macros :as lib.tu.macros]
@@ -227,3 +228,44 @@
                 :joins [{:source-table $$users
                          :alias "U"
                          :condition [:= [:field $categories.name {:source-field %venues.category-id}] &U.users.name]}]})))))))
+
+(deftest ^:parallel all-referenced-entity-ids-mbql-test
+  (let [products-query (lib/query meta/metadata-provider (meta/table-metadata :products))
+        mp             (lib.tu/metadata-provider-with-card-from-query 1 products-query)
+        query          (as-> (lib/query mp (meta/table-metadata :orders)) q
+                         (lib/join q (lib.metadata/card mp 1))
+                         (lib/filter q (lib/= (first (filter #(= "CATEGORY" (:name %)) (lib/filterable-columns q))) "Widget")))]
+    (is (= {:table   #{(meta/id :orders)}
+            :card    #{1}
+            :metric  #{}
+            :measure #{}
+            :segment #{}
+            :snippet #{}}
+           (lib/all-referenced-entity-ids [query])))))
+
+(deftest ^:parallel all-referenced-entity-ids-native-test
+  (let [query  (lib.query/query-with-stages
+                meta/metadata-provider
+                [{:lib/type      :mbql.stage/native
+                  :native        "SELECT * FROM {{card}} WHERE {{category}} AND {{snippet}}"
+                  :template-tags {"card"     {:name         "card"
+                                              :display-name "Card"
+                                              :type         :card
+                                              :card-id      42}
+                                  "category" {:name         "category"
+                                              :display-name "Category"
+                                              :type         :dimension
+                                              :dimension    [:field (meta/id :products :category) nil]
+                                              :widget-type  :string/=}
+                                  "snippet"  {:name         "snippet"
+                                              :display-name "Snippet"
+                                              :type         :snippet
+                                              :snippet-name "my-snippet"
+                                              :snippet-id   99}}}])]
+    (is (= {:table   #{(meta/id :products)}
+            :card    #{42}
+            :metric  #{}
+            :measure #{}
+            :segment #{}
+            :snippet #{99}}
+           (lib/all-referenced-entity-ids [query])))))

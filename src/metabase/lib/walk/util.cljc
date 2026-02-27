@@ -243,12 +243,12 @@
 
 (mr/def ::referenced-entity-ids
   [:map
-   [:table [:set pos-int?]]
-   [:card [:set pos-int?]]
-   [:metric [:set pos-int?]]
-   [:measure [:set pos-int?]]
-   [:segment [:set pos-int?]]
-   [:snippet [:set pos-int?]]])
+   [:table [:set ::lib.schema.id/table]]
+   [:card [:set ::lib.schema.id/card]]
+   [:metric [:set ::lib.schema.id/metric]]
+   [:measure [:set ::lib.schema.id/measure]]
+   [:segment [:set ::lib.schema.id/segment]]
+   [:snippet [:set ::lib.schema.id/snippet]]])
 
 (mu/defn all-referenced-entity-ids :- ::referenced-entity-ids
   "Return a map of all referenced entity IDs in `queries`."
