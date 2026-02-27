@@ -5,6 +5,7 @@
    [clojure.core :as core]
    [clojure.java.jdbc :as jdbc]
    [metabase.app-db.core :as mdb]
+   [metabase.startup.core :as startup]
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.log :as log]
@@ -90,7 +91,13 @@
                         (with-out-str (jdbc/print-sql-exception-chain e)))))))
   ;; Now that we updated the value in the DB, go ahead and update our cached value as well, because we know about the
   ;; changes
-  (swap! (cache*) assoc settings-last-updated-key (t2/select-one-fn :value :model/Setting :key settings-last-updated-key)))
+  (swap! (cache*) assoc settings-last-updated-key (t2/select-one-fn :value :model/Setting :key settings-last-updated-key))
+
+  ;; Broadcast to other nodes so they invalidate their caches too.
+  ;; Use requiring-resolve to avoid a cyclic load dependency (settings -> ... -> mq/core -> ... -> settings).
+  ((requiring-resolve 'metabase.mq.core/publish!)
+   :topic/settings-cache-invalidated
+   [{:invalidated-at (System/currentTimeMillis)}]))
 
 (defn cache-last-updated-at
   "Fetch the value of `settings-last-updated`, indicating the timestamp of the settings cache. Possibly null."
@@ -143,6 +150,13 @@
   []
   (log/debug "Refreshing Settings cache...")
   (reset! (cache*) (t2/select-fn->fn :key :value :model/Setting)))
+
+(defmethod startup/def-startup-logic! ::CacheInvalidationSubscription [_]
+  ((requiring-resolve 'metabase.mq.core/subscribe!)
+   :topic/settings-cache-invalidated
+   (fn [_msg]
+     (log/debug "Received settings cache invalidation signal")
+     (restore-cache!))))
 
 (defonce ^:private ^ReentrantLock restore-cache-lock (ReentrantLock.))
 

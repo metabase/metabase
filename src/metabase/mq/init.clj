@@ -5,6 +5,7 @@
    [metabase.mq.queue.impl :as q.impl]
    [metabase.mq.settings :as mq.settings]
    [metabase.mq.topic.backend :as topic.backend]
+   [metabase.mq.topic.impl :as topic.impl]
    [metabase.startup.core :as startup]
    [metabase.util.log :as log]))
 
@@ -29,4 +30,5 @@
     (alter-var-root #'topic.backend/*backend* (constantly topic-be))
     (log/infof "Queue backend set to %s" queue-be)
     (log/infof "Topic backend set to %s" topic-be)
-    (q.impl/start-message-manager!)))
+    (q.impl/start!)
+    (topic.impl/start!)))

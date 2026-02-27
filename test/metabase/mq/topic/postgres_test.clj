@@ -5,10 +5,18 @@
    [metabase.mq.topic.backend :as topic.backend]
    [metabase.mq.topic.impl :as topic.impl]
    [metabase.mq.topic.postgres :as topic.postgres]
-   [metabase.mq.topic.test-util :as tpt]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
+
+(defmacro ^:private with-postgres-topics
+  [& body]
+  `(binding [topic.backend/*backend*  :topic.backend/postgres
+             topic.backend/*handlers* (atom {})]
+     (try
+       ~@body
+       (finally
+         (topic.backend/shutdown! :topic.backend/postgres)))))
 
 (defn- postgres?
   "Returns true if the app DB is Postgres."
@@ -28,7 +36,7 @@
 
 (deftest publish-and-receive-test
   (when (postgres?)
-    (tpt/with-postgres-topics
+    (with-postgres-topics
       (let [received (atom [])
             topic    :topic/postgres-test]
         (topic.impl/subscribe! topic
@@ -42,7 +50,7 @@
 
 (deftest large-message-fallback-test
   (when (postgres?)
-    (tpt/with-postgres-topics
+    (with-postgres-topics
       (let [received (atom [])
             topic    :topic/pg-large-msg-test
             ;; Create a message larger than 7500 bytes
@@ -61,7 +69,7 @@
 
 (deftest unsubscribe-test
   (when (postgres?)
-    (tpt/with-postgres-topics
+    (with-postgres-topics
       (let [received (atom [])
             topic    :topic/pg-unsub-test]
         (topic.impl/subscribe! topic

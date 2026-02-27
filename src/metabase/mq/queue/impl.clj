@@ -26,8 +26,8 @@
 
 (def ^:dynamic *accumulators*
   "Per-queue accumulation state for cross-bundle batching.
-  queue-name → {:bundle-ids [...] :messages [...] :deadline-ms long
-                :bundle-backends {bundle-id backend-key}}"
+  queue-name → {:messages [...] :deadline-ms long
+                :message-bundles {bundle-id backend-key}}"
   (atom {}))
 
 ;;; ------------------------------------------- Message handling -------------------------------------------
@@ -37,33 +37,27 @@
   For max-batch-messages=1 (listen!), calls handler with each message individually.
   For max-batch-messages>1 (batch-listen!), partitions messages and calls handler with each batch vec.
   On success, marks all bundles as successful. On failure, marks all as failed.
-  `bundle-backends` is a map of bundle-id → backend-key, so each bundle is acked/nacked on the
+  `message-bundles` is a map of bundle-id → backend-key, so each bundle is acked/nacked on the
   correct backend even when backends are swapped at runtime."
-  [bundle-backends :- [:map-of :any ::q.backend/backend]
-   queue-name :- :metabase.mq.queue/queue-name
-   bundle-ids :- [:sequential :any]
+  [queue-name :- :metabase.mq.queue/queue-name
+   message-bundles :- [:map-of :any ::q.backend/backend]
    messages :- [:sequential :any]]
-  (let [{:keys [handler max-batch-messages]} (get @*handlers* queue-name)
-        start (System/nanoTime)]
-    (try
-      (when-not handler
-        (throw (ex-info "No handler defined for queue" {:queue queue-name})))
-      (if (= 1 max-batch-messages)
-        (doseq [msg messages]
-          (handler msg))
-        (doseq [batch (partition-all max-batch-messages messages)]
-          (handler (vec batch))))
-      (log/debug "Handled queue messages" {:queue queue-name :bundle-ids bundle-ids :count (count messages)})
-      (run! (fn [bid] (q.backend/bundle-successful! (get bundle-backends bid) queue-name bid)) bundle-ids)
-      (analytics/inc! :metabase-mq/queue-bundles-handled {:queue (name queue-name) :status "success"})
-      (catch Exception e
-        (log/error e "Error handling queue message" {:queue queue-name :bundle-ids bundle-ids})
-        (run! (fn [bid] (q.backend/bundle-failed! (get bundle-backends bid) queue-name bid)) bundle-ids)
-        (analytics/inc! :metabase-mq/queue-bundles-handled {:queue (name queue-name) :status "error"}))
-      (finally
-        (analytics/observe! :metabase-mq/queue-handle-duration-ms
-                            {:queue (name queue-name)}
-                            (/ (double (- (System/nanoTime) start)) 1e6))))))
+  (let [{:keys [handler max-batch-messages]} (get @*handlers* queue-name)]
+    (mq.impl/invoke-handler!
+     {:channel-name    queue-name
+      :handler-fn      (constantly handler)
+      :invoke-fn       (fn [h]
+                         (if (= 1 max-batch-messages)
+                           (doseq [msg messages] (h msg))
+                           (doseq [batch (partition-all max-batch-messages messages)]
+                             (h (vec batch)))))
+      :on-success      #(run! (fn [[bid backend]]
+                                (q.backend/bundle-successful! backend queue-name bid))
+                              message-bundles)
+      :on-error        (fn [_e]
+                         (run! (fn [[bid backend]]
+                                 (q.backend/bundle-failed! backend queue-name bid))
+                               message-bundles))})))
 
 ;;; ------------------------------------------- Batching / accumulation -------------------------------------------
 
@@ -78,15 +72,14 @@
   (let [{:keys [max-batch-messages max-next-ms]
          :or   {max-batch-messages 1 max-next-ms 0}} (get @*handlers* queue-name)]
     (if (= 1 max-batch-messages)
-      (handle! {bundle-id backend} queue-name [bundle-id] messages)
+      (handle! queue-name {bundle-id backend} messages)
       (let [drained (atom nil)]
         (swap! *accumulators*
                (fn [accs]
                  (let [acc (-> (or (get accs queue-name)
-                                   {:bundle-ids [] :messages [] :deadline-ms 0 :bundle-backends {}})
-                               (update :bundle-ids conj bundle-id)
+                                   {:messages [] :deadline-ms 0 :message-bundles {}})
                                (update :messages into messages)
-                               (update :bundle-backends assoc bundle-id backend)
+                               (update :message-bundles assoc bundle-id backend)
                                (cond->
                                 (zero? (:deadline-ms (get accs queue-name {:deadline-ms 0})))
                                  (assoc :deadline-ms (+ (System/currentTimeMillis) max-next-ms))))]
@@ -94,12 +87,12 @@
                      (do (reset! drained acc)
                          (dissoc accs queue-name))
                      (assoc accs queue-name acc)))))
-        (when-let [{:keys [bundle-ids bundle-backends messages]} @drained]
-          (handle! bundle-backends queue-name bundle-ids messages))))))
+        (when-let [{:keys [message-bundles messages]} @drained]
+          (handle! queue-name message-bundles messages))))))
 
 (mu/defn flush-pending!
   "Flushes any accumulated batch for the given queue whose deadline has passed.
-  Backend info comes from the drained accumulator's `:bundle-backends`."
+  Backend info comes from the drained accumulator's `:message-bundles`."
   [queue-name :- :metabase.mq.queue/queue-name]
   (let [drained (atom nil)]
     (swap! *accumulators*
@@ -111,9 +104,9 @@
                      (dissoc accs queue-name))
                  accs)
                accs)))
-    (when-let [{:keys [bundle-ids bundle-backends messages]} @drained]
+    (when-let [{:keys [message-bundles messages]} @drained]
       (when (seq messages)
-        (handle! bundle-backends queue-name bundle-ids messages)))))
+        (handle! queue-name message-bundles messages)))))
 
 ;;; ------------------------------------------- Background message manager---------------------------------------
 
@@ -128,7 +121,7 @@
       (catch Exception e
         (log/error e "Error flushing pending batch" {:queue queue-name})))))
 
-(defn start-message-manager!
+(defn start!
   "Starts a background thread that drains expired accumulators every ~100ms."
   []
   (let [exec (Executors/newSingleThreadScheduledExecutor

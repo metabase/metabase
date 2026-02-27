@@ -2,21 +2,7 @@
   (:require
    [metabase.mq.queue.backend :as q.backend]
    [metabase.mq.queue.impl :as q.impl]
-   [metabase.mq.queue.memory :as q.memory]
-   [metabase.mq.queue.sync :as q.sync]))
-
-(comment q.sync/keep-me)
-
-(defmacro with-memory-queue
-  "Binds the queue system to a fresh, isolated in-memory backend.
-   Safe for ^:parallel tests."
-  [& body]
-  `(binding [q.backend/*backend*       :queue.backend/memory
-             q.impl/*handlers*      (atom {})
-             q.impl/*accumulators*  (atom {})
-             q.memory/*queues*         (atom {})
-             q.memory/*bundle-registry* (atom {})]
-     ~@body))
+   [metabase.mq.queue.sync]))
 
 (defmacro with-sync-queue
   "Binds the queue system to the synchronous backend, which invokes handlers

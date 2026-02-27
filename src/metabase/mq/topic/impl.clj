@@ -4,12 +4,29 @@
    [metabase.analytics.prometheus :as analytics]
    [metabase.mq.impl :as mq.impl]
    [metabase.mq.topic.backend :as topic.backend]
-   [metabase.util.log :as log]))
+   [metabase.util.log :as log]
+   [metabase.util.malli :as mu]))
 
 ;; log is used by the with-topic macro expansion
 (comment log/keep-me)
 
 (set! *warn-on-reflection* true)
+
+(defonce ^:private started? (atom false))
+
+(mu/defn handle!
+  "Handles a batch of messages from a topic by invoking the registered handler.
+  On error, logs and continues."
+  [topic-name :- :metabase.mq.topic/topic-name
+   messages :- [:sequential :any]]
+  (mq.impl/invoke-handler!
+   {:channel-name    topic-name
+    :handler-fn      #(get @topic.backend/*handlers* topic-name)
+    :invoke-fn       (fn [handler]
+                       (doseq [message messages]
+                         (handler message)))
+    :on-success      nil
+    :on-error        nil}))
 
 (defn publish!
   "Publishes messages to the given topic. All active subscribers will receive them.
@@ -35,7 +52,7 @@
 
 (defn subscribe!
   "Subscribes to a topic with the given handler function.
-  The handler receives a map with `:batch-id`, `:topic`, and `:message` keys for each message.
+  The handler receives the message directly.
   Only one handler per topic is supported — calling subscribe! on an already-subscribed topic throws."
   [topic-name handler]
   (when (get @topic.backend/*handlers* topic-name)
@@ -43,7 +60,16 @@
                     {:topic topic-name})))
   (let [instrumented (make-instrumented-handler topic-name handler)]
     (swap! topic.backend/*handlers* assoc topic-name instrumented)
-    (topic.backend/subscribe! topic.backend/*backend* topic-name)))
+    (when @started?
+      (topic.backend/subscribe! topic.backend/*backend* topic-name))))
+
+(defn start!
+  "Starts backend polling loops for all currently registered topic handlers.
+  Call this after the backend has been set."
+  []
+  (doseq [topic-name (keys @topic.backend/*handlers*)]
+    (topic.backend/subscribe! topic.backend/*backend* topic-name))
+  (reset! started? true))
 
 (defn unsubscribe!
   "Unsubscribes from a topic, removing its handler and stopping the backend polling loop."
@@ -54,7 +80,9 @@
 (defmacro with-topic
   "Runs the body with the ability to add messages to the given topic.
   Messages are buffered and only published if the body completes successfully.
-  If an exception occurs, no messages are published and the exception is rethrown."
+  If an exception occurs, no messages are published and the exception is rethrown.
+  Publishing is best-effort and not transactional — if the body succeeds but
+  `publish!` throws, the body's side effects will have already occurred."
   [topic-name [buffer-binding] & body]
   `(let [buffer# (atom [])
          ~buffer-binding (reify mq.impl/MessageBuffer

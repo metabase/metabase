@@ -178,4 +178,4 @@
           (future
             (let [new-bundle-id (str (random-uuid))]
               (swap! *bundle-registry* assoc new-bundle-id {:message message :failures new-failures})
-              (q.impl/handle! {new-bundle-id :queue.backend/memory} queue-name [new-bundle-id] [message]))))))))
+              (q.impl/handle! queue-name {new-bundle-id :queue.backend/memory} [message]))))))))

@@ -2,6 +2,8 @@
   (:require
    [metabase.driver :as driver]
    [metabase.driver-api.core :as driver-api]
+   [metabase.driver.events.driver-notifications :as driver-notifications]
+   [metabase.mq.core :as mq]
    [metabase.util.log :as log]
    [methodical.core :as methodical]
    ^{:clj-kondo/ignore [:discouraged-namespace]}
@@ -27,4 +29,7 @@
 (methodical/defmethod driver-api/publish-event! ::event
   "When the report-timezone Setting is updated, call [[metabase.driver/notify-database-updated]] for all Databases."
   [_topic _event]
-  (notify-all-databases-updated))
+  (notify-all-databases-updated)
+  ;; Broadcast to other nodes so they flush all their connection pools too
+  (mq/with-topic driver-notifications/connection-pool-invalidated-topic [t]
+    (mq/put t {:all-databases true})))

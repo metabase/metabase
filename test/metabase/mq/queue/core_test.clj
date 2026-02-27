@@ -2,13 +2,24 @@
   (:require
    [clojure.test :refer :all]
    [metabase.mq.core :as mq]
-   [metabase.mq.queue.test-util :as qt])
+   [metabase.mq.queue.backend :as q.backend]
+   [metabase.mq.queue.impl :as q.impl]
+   [metabase.mq.queue.memory :as q.memory])
   (:import (clojure.lang ExceptionInfo)))
 
 (set! *warn-on-reflection* true)
 
+(defmacro ^:private with-memory-queue
+  [& body]
+  `(binding [q.backend/*backend*        :queue.backend/memory
+             q.impl/*handlers*          (atom {})
+             q.impl/*accumulators*      (atom {})
+             q.memory/*queues*          (atom {})
+             q.memory/*bundle-registry* (atom {})]
+     ~@body))
+
 (deftest ^:parallel e2e-test
-  (qt/with-memory-queue
+  (with-memory-queue
     (let [heard-messages (atom [])
           queue-name (keyword "queue" (str "core-e2e-test-" (gensym)))]
       (mq/listen! queue-name (fn [{:keys [message]}]
@@ -34,14 +45,14 @@
       (mq/stop-listening! queue-name))))
 
 (deftest ^:parallel publish-to-undefined-queue-test
-  (qt/with-memory-queue
+  (with-memory-queue
     (testing "with-queue on an undefined queue throws"
       (is (thrown-with-msg? ExceptionInfo #"Queue not defined"
                             (mq/with-queue :queue/nonexistent [q]
                               (mq/put q "msg")))))))
 
 (deftest ^:parallel with-queue-success-test
-  (qt/with-memory-queue
+  (with-memory-queue
     (let [queue-name (keyword "queue" (str "wq-success-" (gensym)))]
       (mq/listen! queue-name (fn [_msg] nil))
 
@@ -57,7 +68,7 @@
       (mq/stop-listening! queue-name))))
 
 (deftest ^:parallel with-queue-exception-discards-test
-  (qt/with-memory-queue
+  (with-memory-queue
     (let [queue-name (keyword "queue" (str "wq-error-" (gensym)))]
       (mq/listen! queue-name (fn [_] nil))
 
@@ -69,14 +80,14 @@
         (is (= 0 (mq/queue-length queue-name)))))))
 
 (deftest ^:parallel with-queue-undefined-queue-test
-  (qt/with-memory-queue
+  (with-memory-queue
     (testing "with-queue on undefined queue throws before body executes"
       (is (thrown-with-msg? ExceptionInfo #"Queue not defined"
                             (mq/with-queue :queue/nonexistent [q]
                               (mq/put q "msg")))))))
 
 (deftest ^:parallel double-listen-throws-test
-  (qt/with-memory-queue
+  (with-memory-queue
     (let [queue-name (keyword "queue" (str "double-listen-" (gensym)))]
       (mq/listen! queue-name (fn [_] nil))
 
@@ -87,7 +98,7 @@
       (mq/stop-listening! queue-name))))
 
 (deftest ^:parallel fifo-ordering-test
-  (qt/with-memory-queue
+  (with-memory-queue
     (let [queue-name (keyword "queue" (str "fifo-" (gensym)))
           received   (atom [])]
       (mq/listen! queue-name (fn [{:keys [message]}]

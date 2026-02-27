@@ -4,6 +4,7 @@
   independently, tracking its read offset in memory."
   (:require
    [metabase.mq.topic.backend :as topic.backend]
+   [metabase.mq.topic.impl :as topic.impl]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
    [toucan2.core :as t2])
@@ -13,9 +14,13 @@
 
 (set! *warn-on-reflection* true)
 
-(def ^:private ^:dynamic *subscriptions*
-  "Map of topic-name -> {:offset (atom n), :future f}"
+(def ^:private offsets
+  "Map of topic-name -> long offset."
   (atom {}))
+
+(def ^:private background-process
+  "Holds the single shared polling future, or nil."
+  (atom nil))
 
 (def ^:private poll-interval-ms
   "How often to poll for new messages, in milliseconds."
@@ -43,23 +48,30 @@
              :order-by [[:id :asc]]
              :limit    batch-size}))
 
-(defn- start-polling-loop!
-  "Starts a background polling loop for a subscription. Returns the future."
-  [topic-name]
-  (future
-    (try
-      (loop []
-        (when-let [{:keys [offset]} (get @*subscriptions* topic-name)]
-          (let [rows (poll-messages! topic-name @offset)]
-            (doseq [{:keys [id messages]} rows]
-              (topic.backend/handle! :topic.backend/appdb topic-name id (json/decode messages))
-              (reset! offset id)))
-          (Thread/sleep (long poll-interval-ms))
-          (recur)))
-      (catch InterruptedException _
-        (log/infof "Polling loop interrupted for topic %s" (name topic-name)))
-      (catch Exception e
-        (log/errorf e "Unexpected error in polling loop for topic %s" (name topic-name))))))
+(defn- start-polling!
+  "Starts the single shared polling loop if not already running. Idempotent."
+  []
+  (when-not @background-process
+    (let [f (future
+              (try
+                (loop []
+                  (when @background-process
+                    (doseq [topic-name (keys @topic.backend/*handlers*)]
+                      (try
+                        (let [offset (get @offsets topic-name)]
+                          (when offset
+                            (let [rows (poll-messages! topic-name offset)]
+                              (doseq [{:keys [id messages]} rows]
+                                (topic.impl/handle! topic-name (json/decode messages))
+                                (swap! offsets assoc topic-name id)))))
+                        (catch Exception e
+                          (log/errorf e "Error polling topic %s" (name topic-name)))))
+                    (Thread/sleep (long poll-interval-ms))
+                    (recur)))
+                (catch InterruptedException _
+                  (log/info "Topic polling loop interrupted"))))]
+      (when-not (compare-and-set! background-process nil f)
+        (future-cancel f)))))
 
 ;;; ------------------------------------------- Automatic Periodic Cleanup -------------------------------------------
 
@@ -106,6 +118,11 @@
 ;;; ------------------------------------------- Backend Multimethods -------------------------------------------
 
 (defmethod topic.backend/shutdown! :topic.backend/appdb [_]
+  (when-let [^Future f @background-process]
+    (reset! background-process nil)
+    (.cancel f true)
+    (log/info "Topic polling loop stopped"))
+  (reset! offsets {})
   (when-let [^Future f @cleanup-future]
     (reset! cleanup-future nil)
     (.cancel f true)
@@ -119,13 +136,9 @@
 
 (defmethod topic.backend/subscribe! :topic.backend/appdb
   [_ topic-name]
-  (let [offset (atom (current-max-id topic-name))]
-    ;; Register subscription BEFORE starting the polling loop to avoid race condition
-    (swap! *subscriptions* assoc topic-name
-           {:offset offset
-            :future nil})
-    (let [f (start-polling-loop! topic-name)]
-      (swap! *subscriptions* update topic-name assoc :future f))
+  (let [offset (current-max-id topic-name)]
+    (swap! offsets assoc topic-name offset)
+    (start-polling!)
     ;; Idempotently start the cleanup loop on first subscription
     (when-not @cleanup-future
       (locking cleanup-future
@@ -133,12 +146,10 @@
           (let [f (start-cleanup-loop!)]
             (reset! cleanup-future f)
             (log/info "Topic cleanup loop started")))))
-    (log/infof "Subscribed to topic %s (starting offset %d)" (name topic-name) @offset)))
+    (log/infof "Subscribed to topic %s (starting offset %d)" (name topic-name) offset)))
 
 (defmethod topic.backend/unsubscribe! :topic.backend/appdb
   [_ topic-name]
-  (when-let [{:keys [^Future future]} (get @*subscriptions* topic-name)]
-    (.cancel future true)
-    (swap! *subscriptions* dissoc topic-name)
-    (log/infof "Unsubscribed from topic %s" (name topic-name))))
+  (swap! offsets dissoc topic-name)
+  (log/infof "Unsubscribed from topic %s" (name topic-name)))
 

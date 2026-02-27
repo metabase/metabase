@@ -1,10 +1,10 @@
 (ns metabase.mq.topic.postgres
   "PostgreSQL LISTEN/NOTIFY backend for the pub/sub system.
-  Uses native LISTEN/NOTIFY for near-instant message delivery with zero storage overhead.
-  Falls back to the `topic_message` table for payloads exceeding PostgreSQL's 8000-byte limit."
+  Uses native LISTEN/NOTIFY for near-instant message delivery with zero storage overhead."
   (:require
    [metabase.app-db.core :as mdb]
    [metabase.mq.topic.backend :as topic.backend]
+   [metabase.mq.topic.impl :as topic.impl]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
    [toucan2.core :as t2])
@@ -98,15 +98,8 @@
         topic        (get channel->topic channel-name)]
     (when topic
       (try
-        (let [payload (json/decode payload-str)
-              [batch-id messages] (if-let [ref-id (and (map? payload) (get payload "ref"))]
-                                    ;; Large message fallback: fetch from topic_message table
-                                    (when-let [row (t2/select-one :topic_message_batch :id ref-id)]
-                                      [(:id row) (json/decode (:messages row))])
-                                    ;; Normal inline payload
-                                    [0 payload])]
-          (when messages
-            (topic.backend/handle! topic.backend/*backend* topic batch-id messages)))
+        (let [messages (json/decode payload-str)]
+          (topic.impl/handle! topic messages))
         (catch Exception e
           (log/errorf e "Error parsing postgres payload for channel %s" channel-name))))))
 
@@ -186,24 +179,21 @@
 
 ;;; ------------------------------------------- Backend Multimethods -------------------------------------------
 
-(def ^:private max-inline-payload-bytes
-  "NOTIFY payload limit is 8000 bytes. We use 7500 to leave headroom."
-  7500)
+(def ^:private max-notify-payload-bytes
+  "PostgreSQL NOTIFY payloads are limited to 8000 bytes."
+  8000)
 
 (defmethod topic.backend/publish! :topic.backend/postgres
   [_ topic-name messages]
   (let [payload-str (json/encode messages)
         payload-bytes (count (.getBytes ^String payload-str "UTF-8"))
         channel (topic->channel-name topic-name)]
-    (if (<= payload-bytes max-inline-payload-bytes)
-      ;; Small message: send inline via NOTIFY
-      (t2/query {:select [[[:pg_notify channel payload-str]]]})
-      ;; Large message: write to table, send ref
-      (let [{:keys [id]} (first (t2/insert-returning-instances! :topic_message_batch
-                                                                {:topic_name (name topic-name)
-                                                                 :messages   payload-str}))
-            ref-payload (json/encode {"ref" id})]
-        (t2/query {:select [[[:pg_notify channel ref-payload]]]})))))
+    (when (> payload-bytes max-notify-payload-bytes)
+      (throw (ex-info (str "Topic payload exceeds PostgreSQL NOTIFY limit of " max-notify-payload-bytes " bytes")
+                      {:topic topic-name
+                       :payload-bytes payload-bytes
+                       :max-bytes max-notify-payload-bytes})))
+    (t2/query {:select [[[:pg_notify channel payload-str]]]})))
 
 (defmethod topic.backend/subscribe! :topic.backend/postgres
   [_ topic-name]

@@ -28,6 +28,7 @@
    [metabase.mq.topic.impl :as topic.impl]
    [metabase.mq.topic.memory :as topic.memory]
    [metabase.mq.topic.postgres :as topic.postgres]
+   [metabase.mq.topic.sync :as topic.sync]
    [potemkin :as p]))
 
 (set! *warn-on-reflection* true)
@@ -37,7 +38,8 @@
   q.memory/keep-me
   q.sync/keep-me
   topic.memory/keep-me
-  topic.postgres/keep-me)
+  topic.postgres/keep-me
+  topic.sync/keep-me)
 
 (p/import-vars
  [mq.impl
@@ -51,6 +53,7 @@
   stop-listening!]
 
  [topic.impl
+  publish!
   subscribe!
   unsubscribe!
   with-topic])

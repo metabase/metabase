@@ -2,11 +2,20 @@
   (:require
    [clojure.test :refer :all]
    [metabase.mq.queue.backend :as q.backend]
-   [metabase.mq.queue.memory :as q.memory]
-   [metabase.mq.queue.test-util :as qt])
+   [metabase.mq.queue.impl :as q.impl]
+   [metabase.mq.queue.memory :as q.memory])
   (:import (clojure.lang ExceptionInfo)))
 
 (set! *warn-on-reflection* true)
+
+(defmacro ^:private with-memory-queue
+  [& body]
+  `(binding [q.backend/*backend*        :queue.backend/memory
+             q.impl/*handlers*          (atom {})
+             q.impl/*accumulators*      (atom {})
+             q.memory/*queues*          (atom {})
+             q.memory/*bundle-registry* (atom {})]
+     ~@body))
 
 #_:clj-kondo/ignore ;; should have a ! but this is a test helper and don't want to block parallel usage
 (defn- create-queue-only
@@ -16,7 +25,7 @@
   (swap! q.memory/*queues* assoc queue-name (q.memory/delay-queue)))
 
 (deftest publish-test
-  (qt/with-memory-queue
+  (with-memory-queue
     (let [queue-name (keyword "queue" (str "publish-test-" (gensym)))]
       (create-queue-only queue-name)
 

@@ -2,13 +2,23 @@
   (:require
    [clojure.test :refer :all]
    [metabase.mq.core :as mq]
-   [metabase.mq.topic.test-util :as tpt])
+   [metabase.mq.topic.backend :as topic.backend]
+   [metabase.mq.topic.memory :as topic.memory])
   (:import (clojure.lang ExceptionInfo)))
 
 (set! *warn-on-reflection* true)
 
+(defmacro ^:private with-memory-topics
+  [& body]
+  `(binding [topic.backend/*backend*           :topic.backend/memory
+             topic.backend/*handlers*          (atom {})
+             topic.memory/*topics*             (atom {})
+             topic.memory/*offsets*            (atom {})
+             topic.memory/*background-process* (atom nil)]
+     ~@body))
+
 (deftest ^:parallel publish-and-subscribe-test
-  (tpt/with-memory-topics
+  (with-memory-topics
     (let [received (atom [])]
       (mq/subscribe! :topic/test
                      (fn [{:keys [message]}]
@@ -23,7 +33,7 @@
       (mq/unsubscribe! :topic/test))))
 
 (deftest ^:parallel batch-publish-test
-  (tpt/with-memory-topics
+  (with-memory-topics
     (let [received (atom [])]
       (mq/subscribe! :topic/batch
                      (fn [{:keys [message]}]
@@ -37,7 +47,7 @@
       (mq/unsubscribe! :topic/batch))))
 
 (deftest ^:parallel subscribe-only-sees-new-messages-test
-  (tpt/with-memory-topics
+  (with-memory-topics
     (mq/publish! :topic/late-join ["before-subscribe"])
     (let [received (atom [])]
       (mq/subscribe! :topic/late-join
@@ -53,7 +63,7 @@
       (mq/unsubscribe! :topic/late-join))))
 
 (deftest ^:parallel unsubscribe-stops-delivery-test
-  (tpt/with-memory-topics
+  (with-memory-topics
     (let [received (atom [])]
       (mq/subscribe! :topic/unsub
                      (fn [{:keys [message]}]
@@ -72,7 +82,7 @@
         (is (= ["before"] @received))))))
 
 (deftest ^:parallel error-handling-test
-  (tpt/with-memory-topics
+  (with-memory-topics
     (let [received (atom [])]
       (mq/subscribe! :topic/errors
                      (fn [{:keys [message]}]
@@ -91,7 +101,7 @@
       (mq/unsubscribe! :topic/errors))))
 
 (deftest ^:parallel double-subscribe-throws-test
-  (tpt/with-memory-topics
+  (with-memory-topics
     (mq/subscribe! :topic/double (fn [_] nil))
     (testing "Subscribing twice to the same topic throws"
       (is (thrown-with-msg? ExceptionInfo #"Handler already registered"
@@ -99,7 +109,7 @@
     (mq/unsubscribe! :topic/double)))
 
 (deftest ^:parallel topic-isolation-test
-  (tpt/with-memory-topics
+  (with-memory-topics
     (let [received-a (atom [])
           received-b (atom [])]
       (mq/subscribe! :topic/isolated-a

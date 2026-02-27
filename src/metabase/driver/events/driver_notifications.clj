@@ -8,8 +8,33 @@
    [medley.core :as m]
    [metabase.driver :as driver]
    [metabase.driver-api.core :as driver-api]
+   [metabase.mq.core :as mq]
+   [metabase.startup.core :as startup]
    [metabase.util.log :as log]
-   [methodical.core :as methodical]))
+   [methodical.core :as methodical]
+   [toucan2.core :as t2]))
+
+;;; ----------------------------------------- Topic subscription -------------------------------------------
+
+(def connection-pool-invalidated-topic
+  "Topic keyword for signaling connection pool invalidation across nodes."
+  :topic/connection-pool-invalidated)
+
+(defmethod startup/def-startup-logic! ::DriverNotificationSubscription [_]
+  ;; Subscribe to connection pool invalidation topic so other nodes can signal us to flush pools.
+  (mq/subscribe! connection-pool-invalidated-topic
+                 (fn [{:keys [database-id all-databases]}]
+                   (if all-databases
+                     (doseq [{driver :engine, :as database} (t2/select :model/Database)]
+                       (try
+                         (driver/notify-database-updated driver database)
+                         (catch Throwable e
+                           (log/error e "Failed to notify database updated" {:id (:id database)}))))
+                     (when-let [database (t2/select-one :model/Database :id database-id)]
+                       (try
+                         (driver/notify-database-updated (:engine database) database)
+                         (catch Throwable e
+                           (log/error e "Failed to notify database updated" {:id database-id}))))))))
 
 (derive ::event :metabase/event)
 (derive :event/database-update ::event)
@@ -29,6 +54,12 @@
       (when (or details-changed?
                 (not= (remove-irrelevant-data database)
                       (remove-irrelevant-data previous-database)))
-        (driver/notify-database-updated (:engine database) database)))
+        (driver/notify-database-updated (:engine database) database)
+        ;; Broadcast to other nodes so they flush their connection pools too
+        (try
+          (mq/with-topic connection-pool-invalidated-topic [t]
+            (mq/put t {:database-id (:id database)}))
+          (catch Exception e
+            (log/warn e "Failed to publish connection pool invalidation topic")))))
     (catch Throwable e
       (log/warnf e "Failed to process driver notifications event. %s" topic))))

@@ -1,26 +1,27 @@
 (ns metabase.mq.topic.test-util
   (:require
    [metabase.mq.topic.backend :as topic.backend]
-   [metabase.mq.topic.memory :as topic.memory]
-   [metabase.mq.topic.postgres])) ;; required for multimethod registration
+   [metabase.mq.topic.sync]))
 
-(defmacro with-memory-topics
-  "Binds the topic system to a fresh, isolated in-memory backend.
-   Safe for ^:parallel tests."
+(defmacro with-sync-topics
+  "Binds the topic system to the synchronous backend, which invokes handlers
+   inline during `publish!`. Optionally accepts an overrides map to replace
+   existing handler fns by topic name."
   [& body]
-  `(binding [topic.backend/*backend*      :topic.backend/memory
-             topic.backend/*handlers*     (atom {})
-             topic.memory/*topics*        (atom {})
-             topic.memory/*subscriptions* (atom {})]
-     ~@body))
-
-(defmacro with-postgres-topics
-  "Binds the topic system to a fresh, isolated postgres backend.
-   Ensures the listener is started and stopped within the test scope."
-  [& body]
-  `(binding [topic.backend/*backend*  :topic.backend/postgres
-             topic.backend/*handlers* (atom {})]
-     (try
-       ~@body
-       (finally
-         (topic.backend/shutdown! :topic.backend/postgres)))))
+  (let [[overrides & body] (if (map? (first body))
+                             body
+                             (cons {} body))]
+    `(let [current#   @topic.backend/*handlers*
+           overrides# ~overrides
+           unknown#   (remove (set (keys current#)) (keys overrides#))]
+       (when (seq unknown#)
+         (throw (ex-info "Cannot override handlers that are not already registered"
+                         {:unknown (vec unknown#)
+                          :registered (vec (keys current#))})))
+       (let [merged# (reduce-kv (fn [m# k# v#]
+                                  (assoc m# k# v#))
+                                current#
+                                overrides#)]
+         (binding [topic.backend/*backend*  :topic.backend/sync
+                   topic.backend/*handlers* (atom merged#)]
+           ~@body)))))

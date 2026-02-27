@@ -558,8 +558,8 @@
    (prometheus/counter :metabase-mq/topic-handler-errors
                        {:description "Errors in topic subscriber handlers."
                         :labels [:topic]})
-   (prometheus/counter :metabase-mq/topic-batches-handled
-                       {:description "Topic batches handled by status."
+   (prometheus/counter :metabase-mq/topic-bundles-handled
+                       {:description "Topic bundles handled by status."
                         :labels [:topic :status]})
    (prometheus/histogram :metabase-mq/topic-handle-duration-ms
                          {:description "Duration in milliseconds to process a topic batch."
