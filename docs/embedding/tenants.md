@@ -203,9 +203,6 @@ To create a tenant attribute manually using the Metabase UI:
 
 For details on how to set tenant attributes using JWT tenant claims, see [Setting tenant attributes using tenant claims](#setting-tenant-attributes-using-tenant-claims) below.
 
-
-Tenant attributes will be persisted in new tenants created from JWT and existing ones, if the tenant attribute key is new. If the tenant already exists, the new tenant attribute is created if it does not exist yet. If it already existed, its value is not updated, however.
-
 Once you add a tenant attribute, all users of that tenant will inherit the attribute, but the value can be overridden for any particular user, see [Edit user attributes](../people-and-groups/managing.md#adding-a-user-attribute).
 
 ### Special tenant slug attribute
@@ -284,6 +281,8 @@ To create tenant attributes from, include a claim `@tenant.attributes` to add on
   "last_name": "Testerson"
 }
 ```
+
+If the tenant already exists, the new tenant attribute is created if it does not exist yet. If the attribute already existed, its value is not updated, however.
 
 ### Troubleshooting JWT authentication with tenants
 
