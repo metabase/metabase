@@ -549,7 +549,7 @@ export const DocumentPage = ({
           />
         )}
 
-        {duplicateModalMode === "duplicate" && (
+        {duplicateModalMode === "duplicate" && documentData && (
           <EntityCopyModal
             entityType="documents"
             onClose={() => setDuplicateModalMode(null)}
@@ -569,18 +569,20 @@ export const DocumentPage = ({
                 );
               }
 
-              return await copyDocument({
+              const response = await copyDocument({
                 ...object,
                 id: documentData.id,
-              }).then((response) => {
-                if (response.data) {
-                  const _document = response.data;
-                  trackDocumentDuplicated(_document);
-                  return _document;
-                } else if (response.error) {
-                  throw response.error;
-                }
               });
+
+              if (!response.data) {
+                throw (
+                  response.error ?? new Error("Failed to duplicate document")
+                );
+              }
+
+              const _document = response.data;
+              trackDocumentDuplicated(_document);
+              return _document;
             }}
           />
         )}
