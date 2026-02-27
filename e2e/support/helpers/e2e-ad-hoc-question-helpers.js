@@ -127,7 +127,11 @@ export function startNewNativeModel(config) {
  * Visit any valid query in an ad-hoc manner.
  *
  * @param {import("./api").QuestionDetails} question
- * @param {{callback?: function, mode: (undefined|"notebook")}} config
+ * @param {object} [options]
+ * @param {function} [options.callback]
+ * @param {"notebook"|undefined} [options.mode]
+ * @param {boolean} [options.autorun]
+ * @param {boolean} [options.skipWaiting]
  */
 export function visitQuestionAdhoc(
   question,
