@@ -117,7 +117,7 @@
    {:field-name "total"
     :base-type  :type/Float}
    {:field-name "order_date"
-    :base-type  :type/Date}]  
+    :base-type  :type/Date}]
   [[1 1 2 159.98 "2024-02-01"]
    [2 2 1 149.99 "2024-02-02"]
    [3 3 3 159.97 "2024-02-03"]

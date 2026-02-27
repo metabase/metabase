@@ -493,4 +493,3 @@
     [:card :table]  (replace-card-with-table-in-native query old-source-id new-source-id)
     ;; No-op for unknown combinations
     query))
-

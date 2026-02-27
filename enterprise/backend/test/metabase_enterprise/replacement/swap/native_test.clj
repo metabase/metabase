@@ -839,5 +839,4 @@
                     "card→table should produce quoted schema-qualified table reference")
                 (is (not (str/includes? sql (str "{{#" (:id old-source)))))
                 ;; Card template tag should be removed
-                (is (not (some #(= (:card-id %) (:id old-source)) (vals template-tags))))))))))))
-
+                (is (not (some #(= (:card-id %) (:id old-source)) (vals template-tags))))))))))
