@@ -121,15 +121,21 @@
 (defmethod add-override :card [^OverridingMetadataProvider mp _entity-type id updates]
   (with-overrides mp
     ;; If the `updates` contain `:result-metadata`, we want to use that. Similarly, if the user provides a way to
-    ;; calculate `result-metadata`, we should use that function.  However, any `:result-metadata` from the inner-mp
-    ;; should be ignored.
+    ;; calculate `result-metadata`, we should use that function.  Otherwise, preserve the base provider's
+    ;; `result-metadata` as a fallback. This is stale (it reflects pre-edit columns) but non-nil, which prevents
+    ;; downstream crashes when native models are used as join sources (GHY-3151). The `::card-columns` delay
+    ;; below handles the "correct" recomputation via `returned-columns`.
+    ;;
+    ;; Note: we cannot call `returned-columns` here because it creates `(lib/query mp card)` which looks up this
+    ;; same card from the OMP, re-entering this delay — a circular self-reference.
     {[:metadata/card id] (delay (let [temp (merge (when id
                                                     (-> (inner-mp mp)
                                                         (lib.metadata/card id)))
                                                   updates)
                                       result-metadata (or (:result-metadata updates)
                                                           (and (.returned-columns-fn mp)
-                                                               (returned-columns mp temp)))]
+                                                               (returned-columns mp temp))
+                                                          (:result-metadata temp))]
                                   (assoc temp :result-metadata result-metadata)))
      ;; This uses the outer OMP and so the overrides are visible!
      [::card-columns id] (delay (returned-columns mp (lib.metadata/card mp id)))}))
