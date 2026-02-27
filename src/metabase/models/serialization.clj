@@ -1352,20 +1352,26 @@
 (defn export-parameters
   "Given the :parameter field of a `Card` or `Dashboard`, as a vector of maps, converts
   it to a portable form with the CardIds/FieldIds replaced with `[db schema table field]` references.
-  Parameters are sorted by :id for stable serialization output."
+  Parameters are sorted by `:id` for stable serialization output. A `:position` field is added
+  to preserve display order through the sort."
   [parameters]
   (->> parameters
+       (map-indexed (fn [i p] (assoc p :position i)))
        (sort-by :id)
        (mapv ids->fully-qualified-names)))
 
 (defn import-parameters
   "Given the :parameter field as exported by serialization convert its field references
-  (`[db schema table field]`) back into raw IDs."
+  (`[db schema table field]`) back into raw IDs. If every parameter has `:position`, sorts by it
+  to restore display order; otherwise preserves the existing order."
   [parameters]
-  (for [param parameters]
-    (-> param
-        mbql-fully-qualified-names->ids
-        (m/update-existing-in [:values_source_config :card_id] *import-fk* 'Card))))
+  (let [params (for [param parameters]
+                 (-> param
+                     mbql-fully-qualified-names->ids
+                     (m/update-existing-in [:values_source_config :card_id] *import-fk* 'Card)))]
+    (if (every? :position params)
+      (sort-by :position params)
+      params)))
 
 (defn parameters-deps
   "Given the :parameters (possibly nil) for an entity, return any embedded serdes-deps as a set.
