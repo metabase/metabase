@@ -3,7 +3,7 @@ const createElement = ({ type, name }) => ({
   pattern: `frontend/src/metabase/${name}/**`,
 });
 
-const libModules = ["redux", "lib"];
+const libModules = ["lib"];
 
 const basicModules = ["ui", "api"];
 
