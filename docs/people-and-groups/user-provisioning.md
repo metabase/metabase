@@ -13,17 +13,18 @@ Metabase supports user provisioning via the System for Cross-domain Identity Man
 
 > For now, Metabase officially supports SCIM for [Okta](https://help.okta.com/en-us/content/topics/apps/apps_app_integration_wizard_scim.htm?cshid=ext_Apps_App_Integration_Wizard-scim) and [Microsoft Entra ID](https://learn.microsoft.com/en-us/entra/identity/app-provisioning/configure-automatic-user-provisioning-portal). Other SCIM providers may work, but we haven't tested them. If you're having issues with another identity provider, please [reach out to us](https://www.metabase.com/help-premium).
 
-## Setting up user provisioning
+## Set up user provisioning via SCIM
 
 ![Setting up user provisioning with SCIM in Metabase](./images/user-provisioning.png)
 
-To set up user provisioning. Click on the settings **Gear** icon in the upper right and navigate to **Admin settings** > **Settings**> **Authentication**.
+To set up user provisioning:
 
-Click on the **User provisioning** tab.
+1. Click on the settings **Gear** icon in the upper right and navigate to **Admin settings** > **Settings**> **Authentication**.
 
-## User provisioning via SCIM
+2. Click on the **User provisioning** tab.
+3. Toggle on user provisioning.
 
-To set up user provisioning with SCIM, hit the toggle to enable it. Metabase will tell you the SCIM endpoint URL and SCIM token to share with your identity provider.
+Metabase will tell you the SCIM endpoint URL and SCIM token to share with your identity provider.
 
 > SAML user provisioning is always disabled when SCIM is enabled.
 

@@ -23,8 +23,8 @@ Once the queries are done running, you can view and edit the synced metadata fro
 
 By default, Metabase does a lightweight hourly sync and an intensive daily scan of field values. If you have a large database, you might want to choose when syncs and scans happen.
 
-1. Click on the **Gear icon**.
-2. Select **Admin settings**.
+1. Click on the **Grid icon**.
+2. Select **Admin**.
 3. Go to **Databases**.
 4. Select your database.
 5. In the **Connection and sync** section, click on **Edit connection details**.

@@ -12,7 +12,7 @@ Uploading CSV data is best suited for ad hoc analysis of spreadsheet data. If yo
 
 ## Managing upload settings
 
-To manage upload settings, admins can hit cmd/ctrl + K and search for "Settings - Uploads", or click on the **gear** icon in the upper right and click through **Admin settings** > **Settings** > **Uploads**.
+To manage upload settings, admins can hit cmd/ctrl + K and search for "Settings - Uploads", or click on the **grid** icon in the upper right and click through **Admin** > **Settings** > **Uploads**.
 
 ## Databases that support uploads
 

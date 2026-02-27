@@ -11,7 +11,7 @@ Once you connect your database to Metabase, you'll want to configure an email ac
 
 Both admins and people with [settings access](../permissions/application.md#settings-access) can set up email.
 
-## Email on Metabase Cloud
+## Set up email on Metabase Cloud
 
 _Admin settings > Settings > Email_
 
@@ -57,47 +57,103 @@ When setting up a custom SMTP server on Metabase Cloud, you'll configure these f
 - **SMTP USERNAME**: Your SMTP account username.
 - **SMTP PASSWORD**: Your SMTP account password.
 
-You'll also need to specify:
-
-- **From address**: The email address you want to use for the sender of emails.
-- **Reply-to address**: The email address you want replies to go to, if different from the From address.
+Once you set up your SMTP, you'll be able to [Configure email settings](#configure-email-settings).
 
 You can edit these settings at any time. You can also toggle between this custom SMTP server and the server managed by Metabase Cloud.
 
-## Configuring your email account
+## Set up email on self-hosted Metabases
 
 _Admin settings > Settings > Email_
 
 For Metabase to send messages to people, you'll need to set up an email account to send emails via **SMTP** (simple mail transfer protocol). SMTP is an email standard that, when combined with SSL/TLS, provides security protection for emails.
 
-To start, go to the Admin Panel from the dropdown menu in the top right of Metabase, then from the Settings page, click on **Email** in the left menu.
+If you are on Metabase Cloud, see [Email on Metabase Cloud](#set-up-email-on-metabase-cloud) for email setup.
 
-You should see this form:
+To set up email on self-hosted Metabase instance:
 
-![Email Credentials](images/EmailCredentials.png)
+1. Go to **Admin > Settings > Email**.
+2. Next to **Self-Hosted SMTP**, click **Configure**.
+3. Specify the email configuration:
 
-Here you'll set:
+   ![Email Credentials](images/EmailCredentials.png)
 
-- **SMTP HOST**: The address of the SMTP server that handles your emails.
-- **SMTP PORT**: The port your SMTP server uses for outgoing emails.
-- **SMTP SECURITY**:
+- **SMTP Host**: The address of the SMTP server that handles your emails.
+- **SMTP Port**: The port your SMTP server uses for outgoing emails.
+- **SMTP Security**:
   - None
   - SSL
   - TLS
   - STARTTLS
-- **SMTP USERNAME**: Your SMTP account username.
-- **SMTP PASSWORD**: Your SMTP account password.
+- **SMTP Username**: Your SMTP account username.
+- **SMTP Password**: Your SMTP account password.
 
-You'll also need to specify your:
+3. Click **Save changes**.
 
+## Configure email settings
+
+_Admin > Settings > Email_
+
+![email settings](./images/email-settings.png)
+
+### Add From and Reply-to addresses
+
+Once you set up your email, you can configure:
+
+- **From Name**: The name you want to use for the sender of emails.
 - **From address**: The email address you want to use for the sender of emails.
 - **Reply-to address**: The email address you want replies to go to, if different from the From address.
 
-## Add recipients as CC or BCC
+### Add recipients as CC or BCC
 
 By default, Metabase will hide email recipients by including them in the BCC list (Blind Carbon Copy) of the email. But if you're having issues with your email provider blocking emails with BCC recipients, and you don't mind having people see who else has been copied on the email Metabase sends them, you can tell Metabase to CC (Carbon Copy) recipients instead.
 
-### Recommended email settings
+To configure CC/BCC:
+
+1. Go to **Admin > Settings > Email**
+2. Under **Add recipients as CC or BCC**, select how you want Metabase to handle recipients.
+
+### Approved domains for notifications
+
+{% include plans-blockquote.html feature="Approved domains for notifications" %}
+
+You can configure allowed email address domain(s) for new [dashboard subscriptions](../dashboards/subscriptions.md) and [alerts](../questions/alerts.md).
+
+Adding approved domains allows you to restrict which email addresses people can send alerts and subscriptions to. This restriction only applies to sending email to people who lack an account with that Metabase. People with Metabase accounts who aren't [restricted by row or column security](../permissions/row-and-column-security.md) will be able to email any other person with an account in that same Metabase.
+
+To configure allowed domains:
+
+1. Go to **Admin > Settings > Email**
+2. Under **Allowed domains for notifications**, add allowed domains:
+
+   - To allow all domains, leave the field empty (allowing all domains is the default).
+   - To specify multiple domains, separate each domain with a comma, with no space in between (e.g., "domain1,domain2").
+
+You can also set this property using the environment variable [`MB_SUBSCRIPTION_ALLOWED_DOMAINS`](../configuring-metabase/environment-variables.md#mb_subscription_allowed_domains).
+
+> Changing this setting won't affect already existing subscriptions and alerts.
+
+### Suggest recipients on dashboard subscriptions and alerts
+
+{% include plans-blockquote.html feature="Configuring suggested recipients" %}
+
+You can control which recipients people can see when they create a new [dashboard subscription](../dashboards/subscriptions.md) or [alert](../questions/alerts.md).
+
+![Suggested recipients](./images/suggested-recipients.png)
+
+For example, you may want to restrict people to viewing potential recipients that belong to the same [groups](../people-and-groups/managing.md#groups) they are a member of.
+
+To configure suggested recipients for subscriptions and alerts:
+
+1. Go to **Admin > Settings > Email**.
+2. Under **Suggest recipients on dashboard subscriptions and alerts**, select one of the options:
+
+   - Suggest all users
+   - Only suggest users in the same groups
+   - Don't show suggestions
+
+People with [row or column restrictions](../permissions/row-and-column-security.md) won't see suggestions.
+
+## Email best practices
 
 - SSL is strongly recommended because it's more secure and gives your account extra protection from threats.
 - If your email service has a whitelist of email addresses that are allowed to send email, be sure to whitelist the email address that you put in the **From address** field to ensure you and your teammates receive all emails from Metabase.
@@ -110,11 +166,11 @@ By default, Metabase will hide email recipients by including them in the BCC lis
 
 ### Google Apps
 
-1. In the **SMTP HOST** field, enter smtp.gmail.com
-2. Fill in 465 for the **SMTP PORT** field
-3. For the **SMTP SECURITY** field, enter **SSL**
-4. In the **SMTP USERNAME** field, enter your Google Apps email address (e.g. hello@yourdomain.com)
-5. Enter your Google Apps password in the **SMTP PASSWORD** field
+1. In the **SMTP Host** field, enter `smtp.gmail.com`.
+2. Fill in 465 for the **SMTP Port** field.
+3. For the **SMTP Security**, select **SSL**.
+4. In the **SMTP UsernameE** field, enter your Google Apps email address (e.g. `hello@yourdomain.com`).
+5. Enter your Google Apps password in the **SMTP Password** field.
 6. Enter the email address you would like to be used as the sender of system notifications in the **From address** field.
 
 ### Amazon SES
@@ -134,36 +190,6 @@ Check if [email quotas](https://docs.aws.amazon.com/ses/latest/dg/quotas.html) a
 2. Your SMTP password is any active API key for your account — _not_ your Mandrill password.
 3. Although Mandrill lists **port 587**, [any port supported by Mandrill](https://mailchimp.com/developer/transactional/docs/smtp-integration/#the-basics) will work for SMTP email.
 4. Now you can go back to the Metabase Admin Panel form and enter the info there.
-
-## Approved domains for notifications
-
-{% include plans-blockquote.html feature="Approved domains for notifications" %}
-
-Allowed email address domain(s) for new [dashboard subscriptions](../dashboards/subscriptions.md) and [alerts](../questions/alerts.md).
-
-Adding approved domains allows you to restrict which email addresses people can send alerts and subscriptions to. This restriction only applies to sending email to people who lack an account with that Metabase. People with Metabase accounts who aren't [restricted by row or column security](../permissions/row-and-column-security.md) will be able to email any other person with an account in that same Metabase.
-
-To allow all domains, leave the field empty (allowing all domains is the default).
-
-To specify multiple domains, separate each domain with a comma, with no space in between (e.g., "domain1,domain2").
-
-You can also set this property using the environment variable [`MB_SUBSCRIPTION_ALLOWED_DOMAINS`](../configuring-metabase/environment-variables.md#mb_subscription_allowed_domains).
-
-> This setting doesn't affect existing subscriptions and alerts.
-
-## Suggest recipients on dashboard subscriptions and alerts
-
-{% include plans-blockquote.html feature="Configuring suggested recipients" %}
-
-Control which recipients people can see when they create a new [dashboard subscription](../dashboards/subscriptions.md) or [alert](../questions/alerts.md). For example, you may want to restrict people to viewing potential recipients that belong to the same [groups](../people-and-groups/managing.md#groups) they are a member of.
-
-Options include:
-
-- Suggest all users
-- Only suggest users in the same groups
-- Don't show suggestions
-
-People with [row or column restrictions](../permissions/row-and-column-security.md) won't see suggestions.
 
 ## Further reading
 

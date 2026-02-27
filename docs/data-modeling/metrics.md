@@ -13,17 +13,7 @@ Metrics are like pre-defined calculations: create your aggregations once, save t
 
 For example, you may want to create a metric that calculates revenue, so people can refer to revenue in their own questions. That way you standardize how revenue is calculated (so you don't end up with five different calculations for the revenue).
 
-## Using metrics
-
-You can:
-
-- Save metrics to [collections](../exploration-and-organization/collections.md).
-- Add metrics to [dashboards](../dashboards/introduction.md).
-- View metrics in the [database browser](../exploration-and-organization/exploration.md#browse-your-databases).
-- Pick metrics as aggregation columns in the Summarize block when creating questions, modify them or combine.
-- [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans include the ability to [mark metrics as verified](../exploration-and-organization/content-verification.md).
-
-### Metrics in the query builder
+## Metrics in the query builder
 
 When asking questions in the query builder, you can find metrics that your team created in the summarization section under **Common metrics**. You can pick multiple metrics and they will be calculated independently and joined automatically along the chosen dimensions.
 
@@ -34,6 +24,16 @@ You can also pick a metric as a data source when creating a new question. If the
 ![Metrics tab in the entity picker](./images/entity-picker-metrics-tab.png)
 
 You can use custom expressions to combine multiple metrics, or perform calculations on top of metrics.
+
+## Using metrics
+
+You can:
+
+- Pick metrics as aggregation columns in the Summarize block when creating questions, modify them or combine.
+- Save metrics to [collections](../exploration-and-organization/collections.md), including the [Library](../data-studio/library.md).
+- Add metrics to [dashboards](../dashboards/introduction.md).
+- View metrics in the [database browser](../exploration-and-organization/exploration.md#browse-your-databases).
+- [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans include the ability to [mark metrics as verified](../exploration-and-organization/content-verification.md).
 
 ## Creating a metric
 
@@ -86,9 +86,13 @@ By "editing" a metric, we mean [editing the metric's query definition](#editing-
 
 These collection permissions also interact with the group's [data permissions](../permissions/data.md), which define whether the group can view or query the metric's source data.
 
+## Metrics in the Library
+
+You can add Metrics to the Library to better surface them to people writing queries in Metabase. See [Library metrics](../data-studio/library.md#metrics)
+
 ## Verifying a metric
 
-See [content verification](../exploration-and-organization/content-verification.md).
+See [content verification](../exploration-and-organization/content-verification.md). Prefer using [Library metrics](../data-studio/library.md#metrics) instead of content verification.
 
 ## Further reading
 

@@ -1,16 +1,18 @@
 ---
-title: "Table metadata admin settings"
+title: "Table metadata editing"
 redirect_from:
   - /docs/latest/administration-guide/03-metadata-editing
 ---
 
-# Table metadata admin settings
+# Table metadata editing
+
+> Prefer using [Data Studio > Data structure](../data-studio/data-structure.md) for metadata editing. The page _Admin > Table Metadata_ will be removed in future versions of Metabase.
 
 _Admin settings > Table metadata_
 
-![Table metadata settings](./images/table-metadata-settings.png)
-
 Metabase lets you add and edit metadata for your tables and columns.
+
+![Table metadata settings](./images/table-metadata-settings.png)
 
 The **Table metadata settings only affect the way Metabase displays the data. None of the settings change the data in your database.**
 

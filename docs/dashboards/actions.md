@@ -4,51 +4,51 @@ title: Actions on dashboards
 
 # Actions on dashboards
 
+You can add buttons to dashboards to perform [actions](../actions/start.md) like creating or updating records, and combine them with dashboard [filter](./filters.md).
+
 ![Dashboard with filter, action button, and detail card view](./images/dashboard-filter-action.png)
 
-To put [actions](../actions/start.md) in action, you can combine them with a [model](../data-modeling/models.md) and a [filter](./filters.md) on a dashboard.
+## Create an action
 
-## Adding an action to a dashboard
+To add an action button to a dashboard, you'll first need to create an action on a model. See [Model actions](../actions/introduction.md).
 
-Visit a dashboard page and click on the **pencil** icon, then click on the **box with a mouse pointer** to add an action.
+## Add an action button to a dashboard
 
-Metabase will add an action button to the dashboard grid, and open a sidebar with the buttons settings.
+Once you [created an action](../actions/introduction.md), you can add a button to a dashboard to perform that action:
 
-### Button text
+1. Visit a dashboard page and click the **pencil** icon to start editing the dashboard.
+2. Click on the **box with a mouse pointer** to add an action.
 
-A label explaining what the button does, e.g., "Ignition".
+   Metabase will add an action button to the dashboard grid, and open a sidebar with button settings:
 
-### Button variant
+   - **Button text**: A label explaining what the button does, e.g., "Add record".
+   - **Button variant**: How a button looks. You can select from a variety of handsome buttons:
 
-You can select from a variety of handsome buttons:
+     ![Button types](./images/buttons.png)
 
-- Primary
-- Outline
-- Danger
-- Success
-- Borderless
+3. Pick an action to connect to the button.
+4. For every field in the action, select whether a user should supply the value themselves, or whether the action should use the value from the dashboard filter, see [Connecting an action to a dashboard filter](#connecting-an-action-to-a-dashboard-filter).
+5. Click **Done**, and **Save** the dashboard.
 
-![Button types](./images/buttons.png)
-
-## Connecting an action to a dashboard filter
-
-For most actions, when people click on a button, they'll be prompted to input values in the fields defined by that action.
-
-Many types of actions rely on knowing the Entity ID for the model to determine which records to update or delete. To have people select the ID for the action, you'll need to:
-
-1. Click on the pencil icon to edit the dashboard.
-2. Add an action to the dashboard (if you haven't already).
-3. [Add a filter](./filters.md) to a dashboard, wire it up to any cards that you want to, and click **Done** in the bottom of the sidebar.
-4. Hover over the action button and click on the **gear** icon, and select **Change action**.
-5. Click on the field's dropdown to select where the action should get it's value. Here you can select "Ask the user" or have it automatically populated by a dashboard filter. In this case, we'll select our "ID" filter.
-
-![Wiring up an action button to a dashboard filter](./images/id-value.png)
-
-If you also wire that filter up to a card with a model on the dashboard, you can filter for individual records in that model, view them in the model's card, and have the action buttons auto-populate the id.
+People viewing the dashboard will not be able to click the button and perform your chosen action:
 
 ![Button form](./images/button-form.png)
 
 You can add as many buttons as you want, and wire them up to one or more filters.
+
+## Connect an action to a dashboard filter
+
+When people click the action button on a dashboard, they'll be prompted to input values in the fields defined by that action. Alternatively, you can pre-fill some action fields with the values selected for a dashboard filter. This is useful when a dashboard is filtered by an ID, and the action button should update the same ID.
+
+To connect an action field to a filter on a dashboard:
+
+1. On a dashboard with an action button, click the **pencil icon** edit the dashboard.
+2. [Add a filter](./filters.md) to a dashboard, wire it up to any cards that you want to, and click **Done** in the bottom of the sidebar.
+3. [Add an action button to the dashboard](#add-an-action-button-to-a-dashboard) (if you haven't already).
+4. Hover over the action button and click on the **gear** icon, and select **Change action**.
+5. Click on the field's dropdown to select where the action should get it's value and pick a filter to connect to (filters will be referenced in the dropdown by their name):
+
+   ![Wiring up an action button to a dashboard filter](./images/id-value.png)
 
 ## Actions are unavailable for public dashboards and dashboards in guest embeds
 
@@ -59,3 +59,4 @@ If you want people outside of your Metabase to use an action, you can create a [
 ## Further reading
 
 - [Actions](../actions/start.md)
+- [Editable tables](../data-modeling/editable-tables.md)

@@ -23,11 +23,23 @@ You can add [filter widgets to dashboards](./filters.md) that filter data identi
 
 You can make as many dashboards as you want. Go nuts.
 
+## Example dashboard
+
+Every new Metabase instance comes with an example dashboard (unless your instance admin turned it off or deleted it). Example dashboard is yours to explore and play with. You can find the example dashboard (called **E-commerce insights**) in the **Examples** collection.
+
 ## How to create a dashboard
 
-In the top right of the screen, click the **+ New** > **Dashboard**. Give your new dashboard a name and a description, choose which [collections](../exploration-and-organization/collections.md) the dashboard should go in, then click **Create**, and Metabase will take you to your shiny new dashboard.
+{% include youtube.html id='W-i9E5_Wjmw' %}
+
+1. In the top right of the screen, click the **+ New** > **Dashboard**.
+2. Give your new dashboard a name and a description.
+3. Choose which [collections](../exploration-and-organization/collections.md) the dashboard should go in.
+4. Click **Create**, and Metabase will take you to your shiny new dashboard.
+5. This will create an empty dashboard. Next, you'll need to add some questions (charts) to the dashboard, see [Adding or saving questions to the dashboard](#adding-or-saving-questions-to-a-dashboard).
 
 ## Adding or saving questions to a dashboard
+
+To get some charts on a dashboard, you'll need to [create questions](../questions/introduction.md) (Metabase word for chart or query) and then add them, to the dashboard.
 
 You can add questions that are saved to collections, or save questions directly to a dashboard.
 
@@ -98,11 +110,15 @@ To see how to wire up a filter to a card, see [dashboard filters](./filters.md).
 
 ## Link cards
 
-![Dashboards with link cards](./images/dashboard-with-link-cards.png)
-
 Link cards are specialized cards that let you search and link to other items in your Metabase. You can also use them for external links. Useful for pointing people to other resources relevant to your dashboard.
 
-To add a link card to a dashboard, click the **pencil** icon to enter dashboard editing mode, then click on the **link** icon. Click on the input field in the link card to search your Metabase for an item to link to, or paste an external link.
+![Dashboards with link cards](./images/dashboard-with-link-cards.png)
+
+To add a link card to a dashboard:
+
+1. When viewing a dashboard, click the **pencil** icon to enter dashboard editing mode;
+2. Click the **link** (paper clip) icon to add a link card.
+3. On the link card, click the input field to search your Metabase for an item to link to, or paste an external link.
 
 Link cards support variables so you can use dashboard filters to update values in the link card's URL. For example, you could include a variable in a URL using double braces, like so:
 
@@ -313,16 +329,15 @@ Public links can be viewed by anyone, even if they don't have access to Metabase
 
 ## Exporting results from a dashboard
 
-See [Exporting results](../questions/exporting-results.md).
+You can export the entire dashboard as PDF, or export results of individual questions on the dashboard. See [Exporting results](../questions/exporting-results.md).
 
 ## Configuring a dashboard through its URL
 
-You can amend the URL of a dashboard to automatically enter fullscreen, enable night mode, or auto-refresh the dashboard. Customizing the dashboard's URL allows you to configure the dashboard - even when you do not have any input access to the device where the dashboard will be displayed, like scripted screens, for example.
+You can amend the URL of a dashboard to automatically enter fullscreen or auto-refresh the dashboard. Customizing the dashboard's URL allows you to configure the dashboard - even when you do not have any input access to the device where the dashboard will be displayed, like scripted screens, for example.
 
 To configure a dashboard using its URL, you can add the following optional keywords:
 
 - `fullscreen`
-- `night`
 - `refresh`
 
 Here's an example URL:
@@ -331,7 +346,7 @@ Here's an example URL:
 https://metabase.mydomain.com/dash/2#refresh=60&fullscreen&night
 ```
 
-The part that says `refresh=60` sets the dashboard to automatically refresh every 60 seconds, `fullscreen` sets it to fullscreen mode, and `night` sets it to night mode (night mode only works when using fullscreen). Use an ampersand, `&`, in between keywords, and make sure there's a hash, `#`, after the dashboard's ID number.
+The part that says `refresh=60` sets the dashboard to automatically refresh every 60 seconds, `fullscreen` sets it to fullscreen mode. Use an ampersand, `&`, in between keywords, and make sure there's a hash, `#`, after the dashboard's ID number.
 
 There is one important limitation with the `fullscreen` option: for security reasons, many browsers require user interaction to initiate fullscreen. In those browsers, using the `fullscreen` option will enable the fullscreen UI in Metabase, but it won't expand the browser content to fill the screen. To ensure the dashboard occupies the entire screen, either activate fullscreen by clicking the button in the UI, or use the `fullscreen` URL option and launch the browser in fullscreen or kiosk mode.
 

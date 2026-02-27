@@ -21,20 +21,25 @@ See [How to read logs](../troubleshooting-guide/server-logs.md).
 
 ## Configuring logging Level
 
-Metabase uses [log4j](https://logging.apache.org/log4j/2.x/)for logging configuration. Here is Metabase's [default logging configuration](https://github.com/metabase/metabase/blob/master/resources/log4j2.xml). Some troubleshooting tasks might require you to override this logging configuration (for example, to see more details about errors). See Log4j's docs for info on [log levels](https://logging.apache.org/log4j/2.x/manual/customloglevels.html).
+Metabase uses [log4j](https://logging.apache.org/log4j/2.x/) for logging configuration. Here is Metabase's [default logging configuration](https://github.com/metabase/metabase/blob/master/resources/log4j2.xml). Some troubleshooting tasks might require you to override this logging configuration (for example, to see more details about errors). See Log4j's docs for info on [log levels](https://logging.apache.org/log4j/2.x/manual/customloglevels.html).
 
 ### Temporary override logging configuration
 
-To temporarily adjust the logging configuration, go to **Admin settings** > **Tools** > **Logs** and click on **Customize log levels**.
+_Admin settings > Tools > Logs_.
 
-You can select from log level presets for common troubleshooting tasks (for example, troubleshooting sync issues), or provide your own configuration as a JSON. For example, here's an override configuration that increases logging for troubleshooting linked filters:
+To temporarily adjust the logging configuration:
 
-```json
-{
-  "metabase.parameters.chain-filter": "debug",
-  "metabase.parameters.chain-filter.dedupe-joins": "debug"
-}
-```
+1. Go to **Admin settings** > **Tools** > **Logs**.
+2. Click on **Customize log levels** above the logs.
+
+   You can select from log level presets for common troubleshooting tasks (for example, troubleshooting sync issues), or provide your own configuration as a JSON. For example, here's an override configuration that increases logging for troubleshooting linked filters:
+
+   ```json
+   {
+     "metabase.parameters.chain-filter": "debug",
+     "metabase.parameters.chain-filter.dedupe-joins": "debug"
+   }
+   ```
 
 The override from Admin settings will be temporary. You can select for how long the override should be in place (e.g., 60 minutes). When the override times out, the logging configuration will revert to the default logging configuration (or a custom configuration if you're using a [custom log file](#use-a-custom-log-configuration-file)).
 
