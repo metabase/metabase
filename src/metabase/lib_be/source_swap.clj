@@ -101,10 +101,6 @@
 
 ;;; ------------------------------------------------ upgrade-field-refs ------------------------------------------------
 
-(mu/defn- field-id-ref? :- :boolean
-  [field-ref :- :mbql.clause/field]
-  (some? (lib.ref/field-ref-id field-ref)))
-
 (mu/defn- same-field-ref? :- :boolean
   [field-ref-1 :- :mbql.clause/field
    field-ref-2 :- :mbql.clause/field]
