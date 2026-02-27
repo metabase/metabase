@@ -163,36 +163,6 @@ function isObjectWithRaw<T>(object: T): object is T & { _raw?: T } {
   return isObject(object) && "_raw" in object;
 }
 
-export function getSettingsWidgets<
-  T,
-  TValue,
-  TProps extends Record<string, unknown>,
->(
-  settingDefs: VisualizationSettingsDefinitions,
-  storedSettings: VisualizationSettings,
-  computedSettings: ComputedVisualizationSettings,
-  object: T,
-  onChangeSettings: (
-    newSettings: Partial<VisualizationSettings>,
-    question?: Question,
-  ) => void,
-  extra: SettingsExtra = {},
-): CompleteVisualizationSettingDefinition<T, TValue, TProps>[] {
-  return Object.keys(settingDefs)
-    .map((settingId) =>
-      getSettingWidget<T, TValue, TProps>(
-        settingDefs,
-        settingId,
-        storedSettings,
-        computedSettings,
-        object,
-        onChangeSettings,
-        extra,
-      ),
-    )
-    .filter((widget) => widget.widget);
-}
-
 function getSettingWidget<T, TValue, TProps extends Record<string, unknown>>(
   settingDefs: VisualizationSettingsDefinitions,
   settingId: VisualizationSettingKey,
@@ -277,6 +247,36 @@ function getSettingWidget<T, TValue, TProps extends Record<string, unknown>>(
     onChange,
     onChangeSettings, // this gives a widget access to update other settings
   };
+}
+
+export function getSettingsWidgets<
+  T,
+  TValue,
+  TProps extends Record<string, unknown>,
+>(
+  settingDefs: VisualizationSettingsDefinitions,
+  storedSettings: VisualizationSettings,
+  computedSettings: ComputedVisualizationSettings,
+  object: T,
+  onChangeSettings: (
+    newSettings: Partial<VisualizationSettings>,
+    question?: Question,
+  ) => void,
+  extra: SettingsExtra = {},
+): CompleteVisualizationSettingDefinition<T, TValue, TProps>[] {
+  return Object.keys(settingDefs)
+    .map((settingId) =>
+      getSettingWidget<T, TValue, TProps>(
+        settingDefs,
+        settingId,
+        storedSettings,
+        computedSettings,
+        object,
+        onChangeSettings,
+        extra,
+      ),
+    )
+    .filter((widget) => widget.widget);
 }
 
 export function getPersistableDefaultSettings(
