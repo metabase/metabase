@@ -2,10 +2,15 @@
   (:require
    [medley.core :as m]
    [metabase-enterprise.metabot-v3.client :as metabot-v3.client]
+   [metabase-enterprise.metabot-v3.example-question-generator :as native-generator]
+   [metabase-enterprise.metabot-v3.settings :as metabot-v3.settings]
    [metabase-enterprise.metabot-v3.tools.entity-details :as metabot-v3.tools.entity-details]
    [metabase-enterprise.metabot-v3.tools.util :as metabot-v3.tools.u]
    [metabase.lib-be.core :as lib-be]
+   [metabase.util.log :as log]
    [toucan2.core :as t2]))
+
+(set! *warn-on-reflection* true)
 
 (defn- column-input
   [answer-source-column]
@@ -31,6 +36,30 @@
 (def ^:private default-opts
   {:limit 20})
 
+(defn- generate-questions-with-fallback
+  "Generate example questions using the configured path.
+
+  When `use-native-agent` is true, calls the native Clojure generator.
+  On native failure, falls back to the Python ai-service and logs the error.
+  When `use-native-agent` is false, calls the Python ai-service directly."
+  [payload]
+  (if (metabot-v3.settings/use-native-agent)
+    (try
+      (log/info "Using native generator for example questions"
+                {:table-count  (count (:tables payload))
+                 :metric-count (count (:metrics payload))})
+      (let [result (native-generator/generate-example-questions payload)]
+        (log/info "Native example question generation succeeded"
+                  {:table-results  (count (:table_questions result))
+                   :metric-results (count (:metric_questions result))})
+        result)
+      (catch Exception e
+        (log/error e "Native example question generation failed, falling back to Python ai-service"
+                   {:error-class (.getName (class e))
+                    :error-msg   (ex-message e)})
+        (metabot-v3.client/generate-example-questions payload)))
+    (metabot-v3.client/generate-example-questions payload)))
+
 (defn generate-sample-prompts
   "Generate suggested prompts for instance of Metabot."
   [metabot-id & {:as opts}]
@@ -51,7 +80,7 @@
             metric-inputs (map metric-input metrics)
             model-inputs (map model-input models)
             {:keys [table_questions metric_questions]}
-            (metabot-v3.client/generate-example-questions {:metrics metric-inputs, :tables model-inputs})
+            (generate-questions-with-fallback {:metrics metric-inputs, :tables model-inputs})
             ->prompt (fn [{:keys [questions]} {::keys [origin]}]
                        (let [base {:metabot_id metabot-id
                                    :model      (:type origin)

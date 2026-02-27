@@ -1,0 +1,268 @@
+(ns metabase-enterprise.metabot-v3.self.claude
+  (:require
+   [clj-http.client :as http]
+   [clojure.string :as str]
+   [malli.json-schema :as mjs]
+   [malli.util :as mut]
+   [metabase-enterprise.llm.settings :as llm]
+   [metabase-enterprise.metabot-v3.self.core :as core]
+   [metabase.util :as u]
+   [metabase.util.json :as json]
+   [metabase.util.malli :as mu]
+   [metabase.util.o11y :refer [with-span]]))
+
+(set! *warn-on-reflection* true)
+
+(defn claude->aisdk-chunks-xf
+  "Translates Claude /v1/messages streaming events into AI SDK v5 protocol chunks.
+
+   https://ai-sdk.dev/docs/ai-sdk-ui/stream-protocol
+
+   Claude Streaming Format:
+   - Each event: {:type \"message_start\" :message {...}}
+                 {:type \"content_block_start\" :index 0 :content_block {:type \"text\"}}
+                 {:type \"content_block_delta\" :index 0 :delta {:type \"text_delta\" :text \"...\"}}
+                 {:type \"content_block_stop\" :index 0}
+                 {:type \"message_delta\" :delta {:stop_reason \"end_turn\"}}
+                 {:type \"message_stop\"}
+
+   AI SDK v5 Format (SSE protocol):
+   - Message parts: {:type :start, :messageId ...}
+   - Part types: start, text-start, text-delta, text-end, finish-step, finish
+   - Ends with: 'data: [DONE]\\n'"
+  []
+  (fn [rf]
+    (let [current-type (volatile! nil)
+          current-id   (volatile! nil)
+          message-id   (volatile! nil)
+          model-name   (volatile! nil)
+          payload      (volatile! {})
+          ;; Track the latest usage we've seen (from any event) and whether we
+          ;; already emitted it. Claude reports usage at message_start and
+          ;; message_delta with cumulative values — we only emit at message_delta
+          ;; normally, but if the stream is interrupted we flush the last known
+          ;; usage in the completion arity so we don't lose data entirely.
+          last-usage   (volatile! nil)
+          close!       (fn [result]
+                         (u/prog1 (rf result (merge {:type (case @current-type
+                                                             :text     :text-end
+                                                             :tool_use :tool-input-available)}
+                                                    @payload))
+                           (vreset! current-type nil)
+                           (vreset! current-id nil)
+                           (vreset! payload {})))]
+      (fn
+        ([result]
+         (cond-> result
+           ;; close up latest type if incomplete
+           @current-type (close!)
+           ;; flush last-known usage if stream ended before message_delta
+           @last-usage   (rf {:type  :usage
+                              :usage {:promptTokens     (:input_tokens @last-usage 0)
+                                      :completionTokens (:output_tokens @last-usage 0)}
+                              :id    @message-id
+                              :model @model-name})
+           true          (rf)))
+        ([result {t :type :keys [message content_block delta error] :as chunk}]
+         (let [block-type (when content_block
+                            (keyword (:type content_block)))
+               chunk-id   (or (:id content_block) @current-id (core/mkid))]
+           (cond-> result
+             ;; start of message
+             (= t "message_start")       (-> (rf {:type :start :messageId (:id message)})
+                                             (u/prog1
+                                               (vreset! message-id (:id message))
+                                               (vreset! model-name (:model message))
+                                               (vreset! last-usage (:usage message))))
+             ;; start of new content block
+             (= t "content_block_start") (-> (u/prog1
+                                               (vreset! current-type block-type)
+                                               (vreset! current-id chunk-id)
+                                               (vreset! payload
+                                                        (case block-type
+                                                          :text     {:id chunk-id}
+                                                          :tool_use {:toolCallId chunk-id
+                                                                     :toolName   (:name content_block)}
+                                                          nil)))
+                                             (rf (merge (case block-type
+                                                          :text     {:type :text-start}
+                                                          :tool_use {:type :tool-input-start})
+                                                        @payload)))
+
+             ;; content block delta
+             (= t "content_block_delta") (rf (case (:type delta)
+                                               "text_delta"       {:type  :text-delta
+                                                                   :id    (:id @payload)
+                                                                   :delta (:text delta)}
+                                               "input_json_delta" {:type           :tool-input-delta
+                                                                   :toolCallId     (:toolCallId @payload)
+                                                                   :inputTextDelta (:partial_json delta)}))
+
+             ;; end of content block
+             (= t "content_block_stop") (close!)
+             ;; Claude reports usage at both message_start and message_delta,
+             ;; but message_delta values are cumulative and include the earlier
+             ;; counts.
+             ;; https://platform.claude.com/docs/en/build-with-claude/streaming#event-types
+             (= t "message_delta")      (u/prog1
+                                          (vreset! last-usage (:usage chunk)))
+             ;; end of message
+             (= t "message_stop")       identity
+             ;; catch errors if any
+             (= t "error")              (rf {:type      :error
+                                             :errorText (:message error)}))))))))
+
+;;; AISDK parts → Claude messages
+
+(defn- ->content-blocks
+  "Coerce content into a sequence of Claude content blocks."
+  [content]
+  (if (and (string? content) (not (str/blank? content)))
+    [{:type "text" :text content}]
+    content))
+
+(defn- merge-consecutive
+  "Merge consecutive assistant messages into a single message with combined content.
+  Claude API doesn't allow consecutive messages with the same role."
+  [messages]
+  (into [] (comp (partition-by :role)
+                 (mapcat (fn [group]
+                           [{:role    (:role (first group))
+                             :content (into [] (mapcat (comp ->content-blocks :content)) group)}])))
+        messages))
+
+(defn parts->claude-messages
+  "Convert a sequence of AISDK parts into Claude API messages.
+
+  Input: flat sequence of AISDK parts and user messages:
+    {:role :user, :content \"...\"}
+    {:type :text, :text \"...\"}
+    {:type :tool-input, :id ..., :function ..., :arguments ...}
+    {:type :tool-output, :id ..., :result ...}
+
+  Output: Claude messages with tool_use/tool_result content blocks, consecutive
+  assistant messages merged."
+  [parts]
+  (->> parts
+       (mapv (fn [part]
+               (case (:type part)
+                 :text        {:role    "assistant"
+                               :content (:text part)}
+                 :tool-input  {:role    "assistant"
+                               :content [{:type  "tool_use"
+                                          :id    (:id part)
+                                          :name  (:function part)
+                                          :input (:arguments part)}]}
+                 :tool-output {:role    "user"
+                               :content [{:type        "tool_result"
+                                          :tool_use_id (:id part)
+                                          :content     (or (get-in part [:result :output])
+                                                           (when-let [err (:error part)]
+                                                             (str "Error: " (:message err)))
+                                                           (pr-str (:result part)))}]}
+                 ;; User messages pass through
+                 {:role    (name (or (:role part) "user"))
+                  :content (:content part)})))
+       merge-consecutive
+       vec))
+
+;;; ──────────────────────────────────────────────────────────────────
+;;; Tool definition format
+;;; ──────────────────────────────────────────────────────────────────
+
+(defn- tool->claude
+  "Convert a tool to Claude API format.
+  Accepts either:
+  - A var (legacy) - uses var name as tool name
+  - A [name, var] pair - uses explicit name
+  - A [name, {:doc :schema :fn}] map - for wrapped tools"
+  [tool-or-pair]
+  (let [[tool-name tool] (if (vector? tool-or-pair)
+                           tool-or-pair
+                           [nil tool-or-pair])
+        {:keys [doc schema]} (if (map? tool) tool (meta tool))
+        [_:=> [_:cat params] _out] schema
+        doc (if (str/starts-with? (or doc "") "Inputs: ")
+              ;; strip that stuff we're appending in mu/defn
+              (second (str/split doc #"\n\n  " 2))
+              doc)
+        ;; For wrapped tools, tool-name is provided; for vars, extract from metadata
+        final-name (or tool-name
+                       (when (var? tool) (name (:name (meta tool))))
+                       "unknown")]
+    {:name         final-name
+     :description  doc
+     :input_schema (mjs/transform params {:additionalProperties false})}))
+
+(mu/defn claude-raw
+  "Perform a request to Claude API.
+
+  `:input` is a sequence of AISDK parts (and user messages).  They are converted
+  to Claude wire format via [[parts->claude-messages]]."
+  [{:keys [model system input tools schema]
+    :or   {model "claude-haiku-4-5"
+           input [{:role :user :content "Hello"}]}}
+   :- [:map
+       [:model {:optional true} :string]
+       [:system {:optional true} :string]
+       [:input {:optional true} [:sequential :map]]
+       [:tools {:optional true} [:sequential [:or
+                                              [:fn var?]
+                                              [:tuple :string [:fn var?]]
+                                              [:tuple :string [:map
+                                                               [:doc {:optional true} [:maybe :string]]
+                                                               [:schema :any]
+                                                               [:fn [:fn fn?]]]]]]]
+       [:schema {:optional true} :any]]]
+  (when-not (llm/ee-anthropic-api-key)
+    (throw (ex-info "No Anthropic API key is set" {})))
+  (let [messages (parts->claude-messages input)
+        req      (cond-> {:model      model
+                          :max_tokens 4096
+                          :stream     true
+                          :messages   messages}
+                   system      (assoc :system system)
+                   (seq tools) (assoc :tools (mapv tool->claude tools))
+                   schema      (assoc :tool_choice {:type "tool"
+                                                    :name "structured_output"}
+                                      :tools [{:name         "structured_output"
+                                               :description  "Output structured data"
+                                               :input_schema (mjs/transform (mut/closed-schema schema))}]))]
+    (with-span :info {:name       :metabot-v3.claude/request
+                      :model      model
+                      :msg-count  (count input)
+                      :tool-count (count tools)}
+      (try
+        (let [res (http/post (str (llm/ee-anthropic-api-base-url) "/v1/messages")
+                             {:as      :stream
+                              :headers {"x-api-key"         (llm/ee-anthropic-api-key)
+                                        "anthropic-version" "2023-06-01"
+                                        "content-type"      "application/json"}
+                              :body    (json/encode req)})]
+          (core/sse-reducible (:body res)))
+        (catch Exception e
+          (if-let [res (some-> (ex-data e)
+                               json/decode-body)]
+            (let [status (:status res)
+                  msg    (case (int status)
+                           401 "Anthropic API key expired or invalid"
+                           403 "Anthropic API key has not enough permissions"
+                           404 "Anthropic API is telling us we cannot access this URL anymore?"
+                           413 "Anthropic API is not happy with our request being too big"
+                           429 "Anthropic API has rate limited us"
+                           500 "Anthropic API is not working but not saying why"
+                           529 "Anthropic API is overloaded and is asking us to wait"
+                           "Unhandled error accessing Anthropic API")]
+              (throw (ex-info msg (assoc res :api-error true) e)))
+            (throw e)))))))
+
+(defn claude
+  "Call Claude API, return AISDK stream"
+  [& args]
+  (eduction (claude->aisdk-chunks-xf) (apply claude-raw args)))
+
+(comment
+  ;; Now just use standard `into` - no core.async needed!
+  (def q (into [] (claude-raw {:input [{:role "user" :content "How are you feeling today?"}]})))
+
+  (into [] (comp (claude->aisdk-chunks-xf) core/aisdk-xf) q))

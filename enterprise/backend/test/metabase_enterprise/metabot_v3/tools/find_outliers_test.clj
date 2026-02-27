@@ -1,148 +1,141 @@
 (ns metabase-enterprise.metabot-v3.tools.find-outliers-test
   (:require
    [clojure.test :refer :all]
-   [medley.core :as m]
-   [metabase-enterprise.metabot-v3.client :as metabot-v3.client]
-   [metabase-enterprise.metabot-v3.tools.entity-details :as metabot-v3.tools.entity-details]
-   [metabase-enterprise.metabot-v3.tools.find-outliers :as metabot-v3.tools.find-outliers]
-   [metabase.lib.convert :as lib.convert]
-   [metabase.lib.core :as lib]
-   [metabase.lib.metadata :as lib.metadata]
-   [metabase.test :as mt]
-   [metabase.util :as u]))
+   [metabase-enterprise.metabot-v3.tools.find-outliers :as find-outliers]))
 
-(defn- by-name
-  [dimensions dimension-name]
-  (m/find-first (comp #{dimension-name} :display_name) dimensions))
+;;; ------------------------------------------------ exact-median-test ------------------------------------------------
 
-(defn- test-card
-  []
-  (let [mp (mt/metadata-provider)
-        created-at-meta (lib.metadata/field mp (mt/id :orders :created_at))
-        query (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
-                  (lib/aggregate (lib/avg (lib.metadata/field mp (mt/id :orders :subtotal))))
-                  (lib/breakout (lib/with-temporal-bucket created-at-meta :year)))
-        legacy-query (lib.convert/->legacy-MBQL query)]
-    {:dataset_query legacy-query
-     :database_id (mt/id)
-     :name "Average Order Value"
-     :description "The average subtotal of orders."}))
+(deftest exact-median-test
+  (testing "odd number of values → middle value"
+    (is (= 3.0 (#'find-outliers/exact-median [1 3 5])))
+    (is (= 5.0 (#'find-outliers/exact-median [1 2 5 8 9]))))
 
-(def ^:private test-dimensions
-  [{:dimension "2016-01-01T00:00:00Z", :value "54.43"}
-   {:dimension "2017-01-01T00:00:00Z", :value "54.66"}
-   {:dimension "2018-01-01T00:00:00Z", :value "83.72"}
-   {:dimension "2019-01-01T00:00:00Z", :value "84.07"}
-   {:dimension "2020-01-01T00:00:00Z", :value "84.68"}])
+  (testing "even number of values → average of two middle values"
+    (is (= 2.5 (#'find-outliers/exact-median [1 2 3 4])))
+    (is (= 5.5 (#'find-outliers/exact-median [1 3 8 10]))))
 
-(def ^:private normalize-value-xf
-  (map (fn [dimension] (update dimension :value #(-> % str (subs 0 5))))))
+  (testing "single value → that value"
+    (is (= 42.0 (#'find-outliers/exact-median [42]))))
 
-(defn- ai-find-outliers
-  "Simulates the AI service finding the outliers in `dimensions`."
-  [dimensions]
-  (into [] (comp (take 2) normalize-value-xf) dimensions))
+  (testing "negative values"
+    (is (= -1.0 (#'find-outliers/exact-median [-5 -1 3])))
+    (is (= 0.0 (#'find-outliers/exact-median [-10 -1 1 10]))))
 
-(def ^:private test-outliers
-  (ai-find-outliers test-dimensions))
+  (testing "all same values"
+    (is (= 7.0 (#'find-outliers/exact-median [7 7 7 7 7])))))
 
-(defn- execute-test!
-  [call-tool]
-  (testing "User has to have execution rights."
-    (is (thrown-with-msg? clojure.lang.ExceptionInfo #"You don't have permissions to do that."
-                          (call-tool))))
-  (testing "Request gets forwarded to AI service."
-    (let [input-dimensions (atom nil)]
-      (mt/with-current-user (mt/user->id :crowberto)
-        (with-redefs [metabot-v3.client/find-outliers-request
-                      (fn [dimensions] (ai-find-outliers (reset! input-dimensions dimensions)))]
-          (is (= {:structured-output test-outliers}
-                 (call-tool)))
-          (is (= test-dimensions
-                 (into [] normalize-value-xf @input-dimensions))))))))
+;;; ---------------------------------------- modified-z-score-outliers-test -------------------------------------------
 
-(deftest metric-find-outliers-test
-  (mt/with-temp [:model/Card {metric-id :id} (assoc (test-card) :type :metric)]
-    (execute-test! #(metabot-v3.tools.find-outliers/find-outliers
-                     {:data-source {:metric-id metric-id}}))))
+(deftest modified-z-score-outliers-test
+  (testing "normal data with one clear outlier → marks only the outlier"
+    (let [values  [10 11 10 12 11 10 100]
+          results (#'find-outliers/modified-z-score-outliers values)]
+      (is (= 7 (count results)))
+      ;; Only 100 should be an outlier
+      (is (last results))
+      (is (every? false? (butlast results)))))
 
-(deftest report-find-outliers-test
-  (mt/with-temp [:model/Card {report-id :id} (assoc (test-card) :type :question)]
-    (let [report-details (mt/with-current-user (mt/user->id :crowberto)
-                           (#'metabot-v3.tools.entity-details/card-details report-id))
-          ->field-id #(u/prog1 (-> report-details :fields (by-name %) :field_id)
-                        (when-not <>
-                          (throw (ex-info (str "Column " % " not found") {:column %}))))
-          result-field-id (->field-id "Average of Subtotal")]
-      (execute-test! #(metabot-v3.tools.find-outliers/find-outliers
-                       {:data-source {:report-id report-id
-                                      :result-field-id result-field-id}})))))
+  (testing "MAD=0 case (all same except one) → marks only the different one"
+    (let [values  [5 5 5 5 5 99]
+          results (#'find-outliers/modified-z-score-outliers values)]
+      (is (= [false false false false false true] results))))
 
-(deftest query-find-outliers-test
-  (let [query-id (u/generate-nano-id)
-        query-details (mt/with-current-user (mt/user->id :crowberto)
-                        (#'metabot-v3.tools.entity-details/execute-query query-id (:dataset_query (test-card))))
-        ->field-id #(u/prog1 (-> query-details :result-columns (by-name %) :field_id)
-                      (when-not <>
-                        (throw (ex-info (str "Column " % " not found") {:column %}))))
-        result-field-id (->field-id "Average of Subtotal")]
-    (testing "new style tool call with query and query-id"
-      (execute-test! #(metabot-v3.tools.find-outliers/find-outliers
-                       {:data-source {:query (:query query-details)
-                                      :query-id query-id
-                                      :result-field-id result-field-id}})))
-    (testing "new style tool call with just query"
-      (execute-test! #(metabot-v3.tools.find-outliers/find-outliers
-                       {:data-source {:query (:query query-details)
-                                      :result-field-id result-field-id}})))))
+  (testing "no outliers in uniform-ish data → all false"
+    (let [values  [10 11 10 11 10 11]
+          results (#'find-outliers/modified-z-score-outliers values)]
+      (is (every? false? results))))
 
-(deftest ^:parallel metric-find-outliers-no-temporal-dimension-test
-  (mt/with-temp [:model/Card {metric-id :id} (-> (test-card)
-                                                 (m/dissoc-in [:dataset_query :query :breakout])
-                                                 (assoc :type :metric))]
-    (mt/with-current-user (mt/user->id :crowberto)
-      (is (= {:output "No temporal dimension found. Outliers can only be detected when a temporal dimension is available."}
-             (metabot-v3.tools.find-outliers/find-outliers
-              {:data-source {:metric-id metric-id}}))))))
+  (testing "multiple outliers"
+    (let [values  [10 11 10 11 10 200 -150]
+          results (#'find-outliers/modified-z-score-outliers values)]
+      ;; Both 200 and -150 should be outliers
+      (is (nth results 5))
+      (is (nth results 6))
+      ;; The rest should not be
+      (is (every? false? (take 5 results))))))
 
-(deftest ^:parallel metric-find-outliers-no-numeric-dimension-test
-  (mt/with-temp [:model/Card {metric-id :id} (-> (test-card)
-                                                 (m/dissoc-in [:dataset_query :query :aggregation])
-                                                 (assoc :type :metric))]
-    (mt/with-current-user (mt/user->id :crowberto)
-      (is (= {:output "Could not determine result field."}
-             (metabot-v3.tools.find-outliers/find-outliers
-              {:data-source {:metric-id metric-id}}))))))
+;;; ------------------------------------------- cumulative-data?-test ------------------------------------------------
 
-(deftest ^:parallel find-outliers-wrong-query-test
-  (let [query-id (u/generate-nano-id)
-        query-details (mt/with-current-user (mt/user->id :crowberto)
-                        (#'metabot-v3.tools.entity-details/execute-query query-id (:dataset_query (test-card))))
-        ->field-id #(u/prog1 (-> query-details :result-columns (by-name %) :field_id)
-                      (when-not <>
-                        (throw (ex-info (str "Column " % " not found") {:column %}))))
-        result-field-id (->field-id "Average of Subtotal")]
-    (mt/with-current-user (mt/user->id :crowberto)
-      (are [details output] (= {:output output}
-                               (metabot-v3.tools.find-outliers/find-outliers
-                                {:data-source {:query (:query details)
-                                               :result-field-id result-field-id}}))
+(deftest cumulative-data?-test
+  (testing "monotonically increasing → true"
+    (is (true? (#'find-outliers/cumulative-data? [10 20 30 40 50]))))
 
-        (update query-details :query (fn [query]
-                                       (lib/update-query-stage query 0 #(assoc % :source-table Integer/MAX_VALUE))))
-        "Unexpected error running query"
+  (testing "random/non-monotonic → false"
+    (is (not (#'find-outliers/cumulative-data? [10 5 20 3 50 1]))))
 
-        (update query-details :query lib/remove-all-breakouts)
-        "No temporal dimension found. Outliers can only be detected when a temporal dimension is available.")
-      (let [wrong-result-field-id (str result-field-id "99999")]
-        (is (= {:output (str "Invalid result_field_id " wrong-result-field-id)}
-               (metabot-v3.tools.find-outliers/find-outliers
-                {:data-source {:query (:query query-details)
-                               :result-field-id wrong-result-field-id}})))))))
+  (testing "mostly increasing (>80% positive diffs) → true"
+    ;; 5 diffs, 5 positive = 100% → cumulative
+    (is (true? (#'find-outliers/cumulative-data? [1 2 3 4 5 6])))
+    ;; 9 diffs: 8 positive, 1 negative = 88.9% → cumulative
+    (is (true? (#'find-outliers/cumulative-data? [1 2 3 4 5 6 7 6 8 9]))))
 
-(deftest ^:parallel invalid-ids-test
-  (are [data-source output] (= {:output output}
-                               (metabot-v3.tools.find-outliers/find-outliers {:data-source data-source}))
-    {:metric-id "42"} "Invalid metric_id as data_source"
-    {:report-id "42"} "Invalid report_id as data_source"
-    {:table_id 42}    "Invalid data_source"))
+  (testing "exactly at threshold boundary"
+    ;; 5 diffs, 4 positive = 80% → exactly at threshold → cumulative
+    (is (true? (#'find-outliers/cumulative-data? [1 2 3 4 3 5])))
+    ;; 5 diffs, 3 positive = 60% → below threshold → not cumulative
+    (is (not (#'find-outliers/cumulative-data? [1 2 3 2 1 3])))))
+
+;;; --------------------------------------------- detect-outliers-test -----------------------------------------------
+
+(deftest detect-outliers-test
+  (testing "fewer than 5 values → empty"
+    (is (= [] (#'find-outliers/detect-outliers [{:dimension 1 :value 10}
+                                                {:dimension 2 :value 11}
+                                                {:dimension 3 :value 12}])))
+    (is (= [] (#'find-outliers/detect-outliers [{:dimension 1 :value 10}
+                                                {:dimension 2 :value 11}
+                                                {:dimension 3 :value 12}
+                                                {:dimension 4 :value 100}]))))
+
+  (testing "more than max-values → throws"
+    ;; We can't realistically create 500k+ pairs, so let's rebind the limit
+    (with-redefs [find-outliers/max-values 3]
+      (is (thrown-with-msg?
+           clojure.lang.ExceptionInfo
+           #"Too many values to process"
+           (#'find-outliers/detect-outliers [{:dimension 1 :value 1}
+                                             {:dimension 2 :value 2}
+                                             {:dimension 3 :value 3}
+                                             {:dimension 4 :value 4}])))))
+
+  (testing "non-cumulative data with outlier → finds it"
+    (let [result (#'find-outliers/detect-outliers
+                  [{:dimension 1 :value 10} {:dimension 2 :value 11}
+                   {:dimension 3 :value 12} {:dimension 4 :value 10}
+                   {:dimension 5 :value 100} {:dimension 6 :value 11}
+                   {:dimension 7 :value 10}])]
+      (is (= [{:dimension 5 :value 100}] result))))
+
+  (testing "cumulative data with outlier in diffs → finds it"
+    ;; Cumulative: 10 20 30 40 50 200 210
+    ;; Diffs:      10 10 10 10 150 10
+    ;; 150 is an outlier diff
+    (let [result (#'find-outliers/detect-outliers
+                  [{:dimension 1 :value 10} {:dimension 2 :value 20}
+                   {:dimension 3 :value 30} {:dimension 4 :value 40}
+                   {:dimension 5 :value 50} {:dimension 6 :value 200}
+                   {:dimension 7 :value 210}])]
+      (is (= [{:dimension 6 :value 200}] result))))
+
+  (testing "no outliers → empty"
+    (is (= [] (#'find-outliers/detect-outliers
+               [{:dimension 1 :value 10} {:dimension 2 :value 11}
+                {:dimension 3 :value 10} {:dimension 4 :value 11}
+                {:dimension 5 :value 10} {:dimension 6 :value 11}]))))
+
+  (testing "unsorted input → correctly sorts by dimension first"
+    ;; Same as the non-cumulative outlier test but scrambled order
+    (let [result (#'find-outliers/detect-outliers
+                  [{:dimension 5 :value 100} {:dimension 3 :value 12}
+                   {:dimension 7 :value 10} {:dimension 1 :value 10}
+                   {:dimension 6 :value 11} {:dimension 4 :value 10}
+                   {:dimension 2 :value 11}])]
+      (is (= [{:dimension 5 :value 100}] result))))
+
+  (testing "mixed integer/double values (numeric equality)"
+    ;; MAD=0 case with mixed types: all 5, one 5.0 among them, one outlier
+    (let [result (#'find-outliers/detect-outliers
+                  [{:dimension 1 :value 5} {:dimension 2 :value 5.0}
+                   {:dimension 3 :value 5} {:dimension 4 :value 5}
+                   {:dimension 5 :value 5} {:dimension 6 :value 99}])]
+      (is (= [{:dimension 6 :value 99}] result)))))

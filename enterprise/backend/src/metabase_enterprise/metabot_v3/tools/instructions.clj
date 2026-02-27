@@ -1,0 +1,100 @@
+(ns metabase-enterprise.metabot-v3.tools.instructions
+  "Instruction constants for LLM tool results.
+   These guide the LLM on how to interpret and use tool outputs.
+   Matches Python AI Service InstructionResultSchema patterns exactly.")
+
+(def search-result-instructions
+  "Instructions for LLM when processing search results."
+  "Search results ranked by relevance (highest first).
+
+When using results:
+- Prioritize verified dashboards, questions, and metrics over raw data exploration when they match the user's request
+- Check available fields or metadata of promising results before recommending them to ensure they contain needed data
+- **Be proactive with clear matches**: When the top result(s) have names or descriptions that clearly match the user's request, use them to achieve the users goal first, then list alternatives at the end. Don't ask for confirmation when there's an obvious best choice.
+- **Collection metadata**: Results may include collection information (name, description, authority level) that can help you determine whether the result is relevant to the user's query. Use this context to assess relevance.
+- **Present options for ambiguous results**: When search returns multiple plausible options without a clear best match, present them and ask the user to choose
+- Reference results using the metabase protocol link format: [display name](metabase://type/id)
+
+Examples: [Customer Metrics](metabase://metric/42), [Sales Dashboard](metabase://dashboard/158)")
+
+(def entity-metadata-instructions
+  "Instructions for LLM when processing entity metadata (tables, models, metrics)."
+  "The data above contains the metadata for the requested tables, models, and metrics.
+Metabot needs to:
+- Use this metadata to understand the structure of the data
+- Handle ambiguous field names by asking clarifying questions if necessary.
+- Always check the actual field values before applying filters to avoid empty results.")
+
+(def field-metadata-instructions
+  "Instructions for LLM when processing field metadata with sample values."
+  "The field values above are sample data (like df.sample(n).describe() in pandas) - a
+statistical snapshot of a subset of rows, not the complete dataset.
+
+Metabot needs to:
+- Use these samples to understand FORMAT patterns: how values are structured (codes vs names,
+  capitalization, date formats, numeric encodings)
+- Understand that samples show rough ranges but not all possible values - the full dataset may
+  contain data outside these ranges
+- ALWAYS build queries even when the user's requested value is not in samples or outside sample
+  ranges
+- For categorical fields: Apply the observed format pattern (e.g., if samples show \"US\", \"DE\",
+  \"FR\", use ISO code \"AT\" for Austria)
+- For date/time fields: Apply the user's requested date even if it falls outside the sample date
+  range
+- For numeric fields: Apply the user's requested number even if it falls outside the sample
+  numeric range
+- For text fields: Search for the user's keywords/phrases even if not seen in sample text
+- Disclose in your FINAL message to the user when you used values outside sample ranges or not in
+  samples, noting that the full dataset may contain data the samples did not show
+- Use statistics ONLY for query planning (e.g., percent_null indicates whether to handle NULLs,
+  distinct_count suggests field cardinality), NEVER to answer the user's question directly")
+
+(defn chart-created-instructions
+  "Generate instructions for chart creation result."
+  [chart-id]
+  (str "Chart created successfully.\n"
+       "Present link to user using: [Chart](metabase://chart/" chart-id ")\n"
+       "Replace 'Chart' with a meaningful description of what the chart shows."))
+
+(def answer-sources-instructions
+  "Instructions for LLM when processing available answer sources (metrics and models)."
+  "These are the available metrics and models for answering questions.
+Use this information to understand what data sources are available.
+Reference items using: [name](metabase://type/id)")
+
+(defn query-created-instructions-for
+  "Generate instructions for a newly created SQL query, embedding the query ID
+   in the link template. Matches Python CreateSQLQueryToolV2._create_result."
+  [query-id]
+  (str "Metabot needs to:\n"
+       "- Remember you cannot view the results directly yourself\n"
+       "- Always provide a direct link using `[Link text](metabase://query/" query-id ")` "
+       "so the user can open it themselves\n"
+       "- Consider whether to create a chart or graph when that better matches the user's intent\n"
+       "- Present the results in a way that matches the user's intent and follow up if they need clarification"))
+
+(defn edit-sql-query-instructions-for
+  "Generate instructions for an edited SQL query, embedding the query ID
+   in the link template. Matches Python EditSqlQueryToolV2._create_result."
+  [query-id]
+  (str "The updated query is shown in the result data above.\n\n"
+       "After you have edited the query, do a thorough analysis of the query to find any potential errors.\n\n"
+       "**If the returned SQL query is NOT correct:**\n\n"
+       "- Make further refinements using this tool again\n\n"
+       "**If the returned SQL query is correct:**\n\n"
+       "- Always provide a direct link using: "
+       "`[Updated Query](metabase://query/" query-id ")` "
+       "where Updated Query is a meaningful link text"))
+
+(defn replace-sql-query-instructions-for
+  "Generate instructions for a replaced SQL query, embedding the query ID
+   in the link template. Matches Python ReplaceSqlQueryToolV2._create_result."
+  [query-id]
+  (str "The updated query is shown in the result data above.\n\n"
+       "After you have replaced the query, do a thorough analysis of the query to find any potential errors.\n\n"
+       "**If the returned SQL query is NOT correct:**\n\n"
+       "- Make further refinements using this tool or edit_sql_query again\n\n"
+       "**If the returned SQL query is correct:**\n\n"
+       "- Always provide a direct link using: "
+       "`[Updated Query](metabase://query/" query-id ")` "
+       "where Updated Query is a meaningful link text"))

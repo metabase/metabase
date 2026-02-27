@@ -539,7 +539,47 @@
    (prometheus/histogram :metabase-sql-tools/operation-duration-ms
                          {:description "Duration in milliseconds of sql-tools operations."
                           :labels [:parser :operation]
-                          :buckets [1 5 10 25 50 100 250 500 1000 2500 5000 10000 30000]})])
+                          :buckets [1 5 10 25 50 100 250 500 1000 2500 5000 10000 30000]})
+   ;; metabot / LLM agent metrics
+   (prometheus/counter :metabase-metabot/llm-requests
+                       {:description "LLM provider API requests"
+                        :labels [:model :source]})
+   (prometheus/counter :metabase-metabot/llm-retries
+                       {:description "LLM provider retry attempts"
+                        :labels [:model :source]})
+   (prometheus/counter :metabase-metabot/llm-errors
+                       {:description "LLM provider API errors (excluding retries)"
+                        :labels [:model :source :error-type]})
+   (prometheus/histogram :metabase-metabot/llm-duration-ms
+                         {:description "LLM request duration (ms)"
+                          :labels [:model :source]
+                          ;; 100 ms -> 2 minutes
+                          :buckets [100 500 1000 2000 5000 10000 20000 30000 60000 120000]})
+   (prometheus/counter :metabase-metabot/llm-input-tokens
+                       {:description "LLM input tokens"
+                        :labels [:model :source]})
+   (prometheus/counter :metabase-metabot/llm-output-tokens
+                       {:description "LLM output tokens"
+                        :labels [:model :source]})
+   (prometheus/histogram :metabase-metabot/llm-tokens-per-call
+                         {:description "Tokens per LLM call"
+                          :labels [:model :source]
+                          :buckets [1000 2500 5000 10000 20000 50000 100000 200000]})
+   (prometheus/counter :metabase-metabot/agent-requests
+                       {:description "Agent loop invocations"
+                        :labels [:profile-id]})
+   (prometheus/counter :metabase-metabot/agent-errors
+                       {:description "Agent loop errors"
+                        :labels [:profile-id]})
+   (prometheus/histogram :metabase-metabot/agent-iterations
+                         {:description "Iterations per agent run"
+                          :labels [:profile-id]
+                          :buckets [1 2 3 5 7 10 15 20 30 40]})
+   (prometheus/histogram :metabase-metabot/agent-duration-ms
+                         {:description "Full agent loop duration (ms)"
+                          :labels [:profile-id]
+                          ;; 100ms -> 10 minutes
+                          :buckets [100 500 1000 5000 10000 30000 60000 120000 300000 600000]})])
 
 (defn- quartz-collectors
   []
