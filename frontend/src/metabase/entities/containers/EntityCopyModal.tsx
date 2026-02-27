@@ -12,7 +12,7 @@ import { CopyCardForm } from "metabase/questions/components/CopyCardForm/CopyCar
 import { Modal } from "metabase/ui";
 
 interface EntityCopyModalProps {
-  entityType: string;
+  entityType: string | undefined;
   entityObject: any;
   copy: (data: any) => Promise<any>;
   title?: string;
