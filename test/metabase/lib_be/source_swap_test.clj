@@ -301,6 +301,21 @@
                                            {:type :table, :id (meta/id :orders)}
                                            {:type :table, :id (meta/id :reviews)}))))))
 
+(deftest ^:parallel swap-source-in-query-source-table-implicit-join-test
+  (let [query (as-> (lib/query meta/metadata-provider (meta/table-metadata :orders)) q
+                (let [category-col (m/find-first (comp #{"CATEGORY"} :name)
+                                                 (lib/filterable-columns q))]
+                  (lib/filter q (lib/= category-col "Widget"))))]
+    (testing "should swap source table and update :source-field in implicit join filter"
+      (is (=? {:stages [{:source-table (meta/id :reviews)
+                         :filters      [[:= {}
+                                         [:field {:source-field (meta/id :reviews :product-id)}
+                                          (meta/id :products :category)]
+                                         "Widget"]]}]}
+              (lib-be/swap-source-in-query query
+                                           {:type :table, :id (meta/id :orders)}
+                                           {:type :table, :id (meta/id :reviews)}))))))
+
 (deftest ^:parallel swap-source-in-parameter-target-source-table-noop-test
   (let [query  (lib/query meta/metadata-provider (meta/table-metadata :orders))
         target [:dimension [:field (meta/id :orders :created-at) nil] {:stage-number 0}]]
