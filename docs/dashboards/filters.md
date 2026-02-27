@@ -356,7 +356,7 @@ To reorder dashboard-wide filters:
 1. While viewing a dashboard, click the **pencil** icon to enter edit mode.
 2. In dashboard edit mode, click the grabber handle (six dots) on the right side of a filter widget, then drag the widget to a different position.
 
-   You can't drag a dashboard level filter to a header or a card. To move a dashboard-level filter to a header or a card, see [Move filter](#move-a-filter).
+   You can't drag a dashboard level filter to a header or a card. To move a dashboard-level filter to a header or a card, see [Move filter](#move-a-filter-or-parameter).
 
 ## Linking filters
 

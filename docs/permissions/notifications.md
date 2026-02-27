@@ -5,7 +5,7 @@ summary: Learn who can create and edit alerts and dashboard subscriptions, and w
 
 # Notification permissions
 
-Notifications in Metabase include [alerts](../questions/alerts.md) and [dashboard subscriptions](../dashboards/subscriptions.md#setting-up-a-dashboard-subscription).
+Notifications in Metabase include [alerts](../questions/alerts.md) and [dashboard subscriptions](../dashboards/subscriptions.md).
 
 ## Who can edit dashboard subscriptions and alerts
 
