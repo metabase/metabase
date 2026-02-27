@@ -125,7 +125,8 @@
                :number/=
                :string/=)
      :target target
-     :value  (attr-value->param-value field-base-type attr-value)}))
+     ;; :number/= and :string/= are variadic operators that require a sequential value
+     :value  [(attr-value->param-value field-base-type attr-value)]}))
 
 (mu/defn- sandbox->parameters :- [:maybe [:sequential ::lib.schema.parameter/parameter]]
   [metadata-providerable                        :- ::lib.schema.metadata/metadata-providerable
