@@ -27,9 +27,13 @@
 (mr/def ::swap-source.source-type
   [:enum :table :card])
 
+(mr/def ::swap-source.source-id
+  [:or ::lib.schema.id/table ::lib.schema.id/card])
+
 (mr/def ::swap-source.source
-  [:map [:type ::swap-source.source-type]
-   [:id [:or ::lib.schema.id/table ::lib.schema.id/card]]])
+  [:map
+   [:type ::swap-source.source-type]
+   [:id ::swap-source.source-id]])
 
 (mr/def ::swap-source.source-error
   [:enum :database-mismatch
@@ -242,7 +246,7 @@
 
 (mu/defn- source-columns :- [:maybe [:sequential ::lib.schema.metadata/column]]
   [query       :- ::lib.schema/query
-   source-id   :- [:or ::lib.schema.id/table ::lib.schema.id/card]
+   source-id   :- ::swap-source.source-id
    source-type :- ::swap-source.source-type]
   (if (= source-type :table)
     (lib.metadata/fields query source-id)
