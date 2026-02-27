@@ -1,4 +1,5 @@
 const { H } = cy;
+import { Stack } from "@mantine/core";
 import {
   InteractiveDashboard,
   InteractiveQuestion,
@@ -12,11 +13,12 @@ import {
   ORDERS_QUESTION_ID,
 } from "e2e/support/cypress_sample_instance_data";
 import { getSdkRoot } from "e2e/support/helpers/e2e-embedding-sdk-helpers";
-import { mountSdkContent } from "e2e/support/helpers/embedding-sdk-component-testing/component-embedding-sdk-helpers";
+import {
+  defer,
+  mountSdkContent,
+} from "e2e/support/helpers/embedding-sdk-component-testing/component-embedding-sdk-helpers";
 import { signInAsAdminAndEnableEmbeddingSdk } from "e2e/support/helpers/embedding-sdk-testing";
 import { mockAuthProviderAndJwtSignIn } from "e2e/support/helpers/embedding-sdk-testing/embedding-sdk-helpers";
-import { defer } from "metabase/lib/promise";
-import { Stack } from "metabase/ui";
 import type {
   ConcreteFieldReference,
   DashboardCard,

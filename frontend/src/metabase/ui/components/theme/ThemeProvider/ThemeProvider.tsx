@@ -17,7 +17,7 @@ import {
   isStaticEmbedding,
 } from "metabase/embedding/config";
 import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
-import { PUT } from "metabase/lib/api";
+// import { PUT } from "metabase/lib/api";
 import { parseHashOptions } from "metabase/lib/browser";
 import type {
   ColorScheme,
@@ -177,10 +177,10 @@ export const ThemeProvider = (props: ThemeProviderProps) => {
   }, [setColorSchemeFromSettings]);
 
   const handleUpdateColorScheme = useCallback(async (value: ColorScheme) => {
-    await PUT("/api/setting/:key")({
-      key: "color-scheme",
-      value: value,
-    });
+    // await PUT("/api/setting/:key")({
+    //   key: "color-scheme",
+    //   value: value,
+    // });
 
     setUserColorSchemeAfterUpdate(value);
   }, []);
