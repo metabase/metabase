@@ -355,11 +355,11 @@ describe("scenarios > data studio > library > metrics", () => {
   });
 
   describe("analytics events", () => {
-    it("should track metric_create_started from browse metrics", () => {
+    it("should track metric_create_started and metric_created from browse metrics", () => {
       cy.visit("/browse/metrics");
 
       cy.log("Click the plus button to create a new metric");
-      cy.findByRole("button", { name: "Create a new metric" }).click();
+      cy.findByRole("link", { name: "Create a new metric" }).click();
 
       cy.log("Verify metric_create_started event was tracked");
       H.expectUnstructuredSnowplowEvent({
@@ -369,6 +369,22 @@ describe("scenarios > data studio > library > metrics", () => {
 
       cy.log("Verify we're on the new metric page");
       cy.url().should("match", /\/metric\/query/);
+
+      cy.findByPlaceholderText(/Search for tables/).type("Orders");
+      H.popover()
+        .findAllByRole("menuitem", { name: /Orders/ })
+        .should("have.length.gte", 1);
+      H.popover()
+        .findAllByRole("menuitem", { name: /Orders/ })
+        .first()
+        .click();
+      cy.findByRole("button", { name: "Save" }).click();
+      cy.findByRole("dialog").findByRole("button", { name: "Save" }).click();
+
+      cy.log("Verify metric_created event was tracked");
+      H.expectUnstructuredSnowplowEvent({
+        event: "metric_created",
+      });
     });
 
     it("should track metric_create_started from command palette", () => {
@@ -376,8 +392,8 @@ describe("scenarios > data studio > library > metrics", () => {
 
       cy.log("Open command palette and create metric");
       H.openCommandPalette();
-      H.commandPaletteSearch("metric");
-      cy.findByRole("button", { name: "New metric" }).click();
+      H.commandPaletteSearch("metric", false);
+      cy.findByRole("option", { name: /New metric/ }).click();
 
       cy.log("Verify metric_create_started event was tracked");
       H.expectUnstructuredSnowplowEvent({
