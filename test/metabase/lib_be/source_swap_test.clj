@@ -284,10 +284,13 @@
 (deftest ^:parallel swap-source-in-query-source-card-join-table-test
   (let [products-query (lib/query meta/metadata-provider (meta/table-metadata :products))
         mp             (lib.tu/metadata-provider-with-card-from-query 1 products-query)
-        query          (-> (lib/query mp (lib.metadata/card mp 1))
-                           (lib/join (lib/join-clause (meta/table-metadata :orders)
-                                                      [(lib/= (meta/field-metadata :products :id)
-                                                              (meta/field-metadata :orders :product-id))])))]
+        query          (as-> (lib/query mp (lib.metadata/card mp 1)) q
+                         (let [orders-table  (meta/table-metadata :orders)
+                               lhs-columns   (lib/join-condition-lhs-columns q orders-table nil nil)
+                               lhs-id        (m/find-first (comp #{"ID"} :name) lhs-columns)
+                               rhs-columns   (lib/join-condition-rhs-columns q orders-table (lib/ref lhs-id) nil)
+                               rhs-product-id (m/find-first (comp #{"PRODUCT_ID"} :name) rhs-columns)]
+                           (lib/join q (lib/join-clause orders-table [(lib/= lhs-id rhs-product-id)]))))]
     (testing "should swap the join source and rewrite the join condition"
       (is (=? {:stages [{:source-card 1
                          :joins       [{:stages     [{:source-table (meta/id :reviews)}]
@@ -323,7 +326,7 @@
         target [:dimension [:field (meta/id :orders :created-at) nil] {:stage-number 0}]]
     (testing "should swap the field id to the new table's field id"
       (is (= [:dimension
-              [:field (meta/id :products :created-at) {:base-type :type/DateTimeWithLocalTZ}]
+              [:field (meta/id :products :created-at) nil]
               {:stage-number 0}]
              (lib-be/swap-source-in-parameter-target query target
                                                      {:type :table, :id (meta/id :orders)}
