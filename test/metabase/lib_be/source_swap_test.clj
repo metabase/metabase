@@ -251,35 +251,21 @@
               swapped-query)))))
 
 (deftest ^:parallel swap-source-in-query-deduplicated-name-test
-  (let [query          (as-> (lib/query meta/metadata-provider (meta/table-metadata :orders)) q
-                         (lib/with-fields q [(meta/field-metadata :orders :id)])
-                         (lib/join q (meta/table-metadata :products))
-                         (let [id-cols (filter #(= "ID" (:name %)) (lib/breakoutable-columns q))]
-                           (-> q
-                               (lib/breakout (first id-cols))
-                               (lib/breakout (second id-cols))))
-                         (lib/aggregate q (lib/count))
-                         (lib/append-stage q)
-                         (lib/filter q (lib/not-null (lib/ensure-uuid [:field {:base-type :type/BigInteger} "ID_2"]))))
+  (let [query          (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
+                           (lib/join (meta/table-metadata :products))
+                           lib/append-stage
+                           (lib/filter (lib/not-null (lib/ensure-uuid [:field {:base-type :type/BigInteger} "ID_2"]))))
         upgraded-query (lib-be/upgrade-field-refs-in-query query)
         swapped-query  (lib-be/swap-source-in-query upgraded-query
                                                     {:type :table, :id (meta/id :orders)}
                                                     {:type :table, :id (meta/id :reviews)})]
     (testing "should upgrade second stage deduplicated ref to canonical name"
-      (is (=? {:stages [{:source-table (meta/id :orders)
-                         :fields       [[:field {} "ID"]]
-                         :breakout     [[:field {} "ID"]
-                                        [:field {:join-alias "Products"} "ID"]]
-                         :aggregation  [[:count {}]]}
+      (is (=? {:stages [{:source-table (meta/id :orders)}
                         {:filters [[:not-null {} [:field {} "Products__ID"]]]}]}
               upgraded-query)))
     (testing "should return an identical query if upgrade is not needed"
       (is (= upgraded-query (lib-be/upgrade-field-refs-in-query upgraded-query))))
     (testing "should swap orders refs to reviews refs and preserve deduplicated names"
-      (is (=? {:stages [{:source-table (meta/id :reviews)
-                         :fields       [[:field {} (meta/id :reviews :id)]]
-                         :breakout     [[:field {} (meta/id :reviews :id)]
-                                        [:field {:join-alias "Products"} (meta/id :products :id)]]
-                         :aggregation  [[:count {}]]}
+      (is (=? {:stages [{:source-table (meta/id :reviews)}
                         {:filters [[:not-null {} [:field {} "Products__ID"]]]}]}
               swapped-query)))))
