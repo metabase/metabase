@@ -138,7 +138,8 @@
   "Transducer that reports prometheus metrics and snowplow token_usage event
   for :usage parts in the aisdk stream."
   [{:keys [model profile-name request-id session-id source tag]}]
-  (let [start-ms (u/start-timer)]
+  (let [start-ms      (u/start-timer)
+        token-or-uuid (hashed-token-or-uuid)]
     (map (fn [part]
            (when (= (:type part) :usage)
              (let [usage      (:usage part)
@@ -152,7 +153,7 @@
                ;; The caller can omit snowplow opts to skip snowplow tracking.
                (when request-id
                  (analytics/track-event! :snowplow/token_usage
-                                         {:hashed_metabase_license_token (hashed-token-or-uuid)
+                                         {:hashed_metabase_license_token token-or-uuid
                                           :user_id                       api/*current-user-id*
                                           :model_id                      model
                                           :duration_ms                   (long (u/since-ms start-ms))
