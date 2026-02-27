@@ -130,11 +130,12 @@
    stage-number  :- :int
    field-ref     :- :mbql.clause/field]
   (or (when-let [column (lib.field.resolution/resolve-field-ref query stage-number field-ref)]
-        (let [column        (cond-> column
-                              (not (:fk-field-id column)) (dissoc :id))
-              new-field-ref (preserve-field-ref-options field-ref (lib.ref/ref column))]
-          (when-not (same-field-ref? field-ref new-field-ref)
-            new-field-ref)))
+        (when-not (::lib.field.resolution/fallback-metadata? column)
+          (let [column (cond-> column
+                         (not (:fk-field-id column)) (dissoc :id))
+                new-field-ref (preserve-field-ref-options field-ref (lib.ref/ref column))]
+            (when-not (same-field-ref? field-ref new-field-ref)
+              new-field-ref))))
       field-ref))
 
 (mu/defn- upgrade-field-refs-in-clauses :- [:sequential :any]
@@ -265,9 +266,10 @@
                               new-source-field-id
                               (lib.options/update-options assoc :source-field new-source-field-id))]
     (or (when-let [new-column (lib.field.resolution/resolve-field-ref query stage-number swapped-field-ref)]
-          (let [new-field-ref (preserve-field-ref-options field-ref (lib.ref/ref new-column))]
-            (when-not (same-field-ref? field-ref new-field-ref)
-              new-field-ref)))
+          (when-not (::lib.field.resolution/fallback-metadata? new-column)
+            (let [new-field-ref (preserve-field-ref-options field-ref (lib.ref/ref new-column))]
+              (when-not (same-field-ref? field-ref new-field-ref)
+                new-field-ref))))
         swapped-field-ref)))
 
 (mu/defn- swap-field-refs-in-clauses :- [:sequential :any]

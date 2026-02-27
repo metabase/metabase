@@ -269,3 +269,39 @@
       (is (=? {:stages [{:source-table (meta/id :reviews)}
                         {:filters [[:not-null {} [:field {} "Products__ID"]]]}]}
               swapped-query)))))
+
+(deftest ^:parallel swap-source-in-query-nonexistent-field-id-test
+  (let [query          (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
+                           (lib/with-fields [(lib/ensure-uuid [:field {:base-type :type/Integer} Integer/MAX_VALUE])]))
+        upgraded-query (lib-be/upgrade-field-refs-in-query query)
+        swapped-query  (lib-be/swap-source-in-query upgraded-query
+                                                    {:type :table, :id (meta/id :orders)}
+                                                    {:type :table, :id (meta/id :reviews)})]
+    (testing "should preserve non-existent field id when upgrading"
+      (is (=? {:stages [{:source-table (meta/id :orders)
+                         :fields [[:field {} Integer/MAX_VALUE]]}]}
+              upgraded-query)))
+    (testing "should return an identical query if upgrade is not needed"
+      (is (= upgraded-query (lib-be/upgrade-field-refs-in-query upgraded-query))))
+    (testing "should preserve non-existent field id when swapping"
+      (is (=? {:stages [{:source-table (meta/id :reviews)
+                         :fields [[:field {} Integer/MAX_VALUE]]}]}
+              swapped-query)))))
+
+(deftest ^:parallel swap-source-in-query-nonexistent-field-name-test
+  (let [query          (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
+                           (lib/with-fields [(lib/ensure-uuid [:field {:base-type :type/Text} "DOES_NOT_EXIST"])]))
+        upgraded-query (lib-be/upgrade-field-refs-in-query query)
+        swapped-query  (lib-be/swap-source-in-query upgraded-query
+                                                    {:type :table, :id (meta/id :orders)}
+                                                    {:type :table, :id (meta/id :reviews)})]
+    (testing "should preserve non-existent field name when upgrading"
+      (is (=? {:stages [{:source-table (meta/id :orders)
+                         :fields [[:field {} "DOES_NOT_EXIST"]]}]}
+              upgraded-query)))
+    (testing "should return an identical query if upgrade is not needed"
+      (is (= upgraded-query (lib-be/upgrade-field-refs-in-query upgraded-query))))
+    (testing "should preserve non-existent field name when swapping"
+      (is (=? {:stages [{:source-table (meta/id :reviews)
+                         :fields [[:field {} "DOES_NOT_EXIST"]]}]}
+              swapped-query)))))
