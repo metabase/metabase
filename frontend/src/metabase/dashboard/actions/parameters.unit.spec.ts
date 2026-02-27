@@ -295,6 +295,7 @@ describe("setParameterMapping", () => {
       );
       const [param] = getParameters(store.getState());
       expect(param.type).toBe("number/=");
+      expect(param.sectionId).toBe("id");
     });
 
     it("should update type to string/= when mapped to a text field by ID", async () => {

@@ -459,6 +459,10 @@ export const setParameterMapping = createThunkAction(
           updateParameter(dispatch, getState, parameterId, (p) => ({
             ...p,
             type: resolveIdParameterType(getState, target),
+            // Preserve sectionId so getParameterType() still returns "id" for
+            // UI purposes (column compatibility, widget rendering) even though
+            // the QP-facing type is now concrete.
+            sectionId: p.sectionId ?? "id",
           }));
         }
       }
