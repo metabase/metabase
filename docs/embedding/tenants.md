@@ -192,14 +192,16 @@ You can create tenant-level [user attributes](#tenant-attributes) which all user
 
 ![Edit tenant](./images/edit-tenant.png)
 
-There are two ways to add a tenant attribute. One is to create it manually using the Metabase UI:
+There are three ways to add a tenant attribute, using the Metabase UI, the API, or JWT SSO.
+
+To create a tenant attribute manually using the Metabase UI:
 
 1. Go to **Admin settings > People**
 2. Select **Tenants** on the left sidebar.
 3. Click on **three dots** next to the tenant.
 4. Input the attribute key and value.
 
-The second method is to create tenant attributes from JWT SSO. Modify the JWT sign function to include a tenant attribute:
+To create tenant attributes from JWT SSO. In the JWT, include a claim `@tenant.attributes` to add one or more tenant attributes:
 
 ```json
 {
