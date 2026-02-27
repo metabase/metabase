@@ -431,7 +431,8 @@
   parameter-target-is-dimension?
   parameter-target-stage-number
   parameter-target-template-tag-name
-  update-parameter-target-dimension-options]
+  update-parameter-target-dimension-options
+  update-parameter-target-field-ref]
  [lib.parameters.parse
   match-and-normalize-tag-name]
  [lib.parse
