@@ -20,7 +20,8 @@
     background-color: transparent;
 
     &:hover,
-    &:active {
+    &:active,
+    &[data-is-active="true"] {
       background-color: var(--mb-color-background-brand);
     }
   }
@@ -30,7 +31,8 @@
     background-color: transparent;
 
     &:hover,
-    &:active {
+    &:active,
+    &[data-is-active="true"] {
       background-color: var(--mb-color-background-warning);
     }
   }
@@ -40,7 +42,8 @@
     background-color: transparent;
 
     &:hover,
-    &:active {
+    &:active,
+    &[data-is-active="true"] {
       background-color: var(--mb-color-background-error);
     }
   }

@@ -15,6 +15,7 @@ type JoinHeaderCellProps = {
   severity: InspectorAlertTrigger["severity"] | null;
   transformId: TransformId;
   onToggleAlerts?: () => void;
+  isExpanded: boolean;
 };
 
 export const JoinHeaderCell = ({
@@ -22,6 +23,7 @@ export const JoinHeaderCell = ({
   severity,
   transformId,
   onToggleAlerts,
+  isExpanded,
 }: JoinHeaderCellProps) => {
   useLensCardLoader({ card });
   if (!severity) {
@@ -36,6 +38,7 @@ export const JoinHeaderCell = ({
         .with("info", () => "info" as const)
         .otherwise(() => "subtle" as const)}
       size="lg"
+      data-is-active={isExpanded}
       onClick={(e) => {
         e.stopPropagation();
         trackTransformInspectAlertClicked({ transformId, cardId: card.id });
