@@ -45,8 +45,11 @@ export const getAdminSettingsSections = (
   email: {
     name: t`Email`,
   },
-  notifications: {
-    name: t`Notification channels`,
+  slack: {
+    name: t`Slack`,
+  },
+  webhooks: {
+    name: t`Webhooks`,
   },
   authentication: {
     name: t`Authentication`,

@@ -40,11 +40,17 @@
 
 (def prefix-type "AI SDK prefix to type" (set/map-invert type-prefix))
 
+(defn parse-aisdk-line
+  "Parse a single AI SDK stream line into [type content].
+   Each line has a 2-char type prefix followed by a JSON payload."
+  [line]
+  [(get prefix-type (subs line 0 2)) (json/decode+kw (subs line 2))])
+
 (defn aisdk->messages
   "Convert AI SDK line format into an array of parsed messages."
   [role lines]
   (into [] (comp
-            (map (fn [line] [(get prefix-type (subs line 0 2)) (json/decode+kw (subs line 2))]))
+            (map parse-aisdk-line)
             (partition-by first)
             (mapcat (fn [block]
                       (let [type (ffirst block)]

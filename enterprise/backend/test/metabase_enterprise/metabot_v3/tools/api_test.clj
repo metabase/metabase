@@ -6,6 +6,7 @@
    [medley.core :as m]
    [metabase-enterprise.metabot-v3.client :as metabot-v3.client]
    [metabase-enterprise.metabot-v3.tools.api :as metabot-v3.tools.api]
+   [metabase-enterprise.metabot-v3.tools.create-alert :as metabot-v3.tools.create-alert]
    [metabase-enterprise.metabot-v3.tools.create-dashboard-subscription :as metabot-v3.tools.create-dashboard-subscription]
    [metabase-enterprise.metabot-v3.tools.dependencies-test :as metabot-v3.tools.dependencies-test]
    [metabase-enterprise.metabot-v3.tools.entity-details :as metabot-v3.tools.entity-details]
@@ -44,6 +45,34 @@
   ([user metabot-id]
    (-> user mt/user->id (#'metabot-v3.client/get-ai-service-token metabot-id))))
 
+(deftest create-alert-test
+  (mt/with-premium-features #{:metabot-v3}
+    (let [tool-requests (atom [])
+          conversation-id (str (random-uuid))
+          output (str (random-uuid))
+          ai-token (ai-session-token)]
+      (with-redefs [metabot-v3.tools.create-alert/create-alert
+                    (fn [arguments]
+                      (swap! tool-requests conj arguments)
+                      {:output output})]
+        (let [response (mt/user-http-request :rasta :post 200 "ee/metabot-tools/create-alert"
+                                             {:request-options {:headers {"x-metabase-session" ai-token}}}
+                                             {:arguments       {:card_id        42
+                                                                :send_condition "has_result"
+                                                                :slack_channel  "data-team"
+                                                                :schedule       {:frequency "daily"
+                                                                                 :hour      9}}
+                                              :conversation_id conversation-id})]
+          (is (=? [{:card-id        42
+                    :send-condition :has_result
+                    :slack-channel  "data-team"
+                    :schedule       {:frequency :daily
+                                     :hour      9}}]
+                  @tool-requests))
+          (is (=? {:output output
+                   :conversation_id conversation-id}
+                  response)))))))
+
 (deftest create-dashboard-subscription-test
   (mt/with-premium-features #{:metabot-v3}
     (let [tool-requests (atom [])
@@ -56,17 +85,17 @@
                       {:output output})]
         (let [response (mt/user-http-request :rasta :post 200 "ee/metabot-tools/create-dashboard-subscription"
                                              {:request-options {:headers {"x-metabase-session" ai-token}}}
-                                             {:arguments       {:dashboard_id 1
-                                                                :email        "user@example.com"
-                                                                :schedule     {:frequency "monthly"
-                                                                               :hour 15
-                                                                               :day_of_month "middle-of-month"}}
+                                             {:arguments       {:dashboard_id    1
+                                                                :slack_channel   "data-team"
+                                                                :schedule        {:frequency "monthly"
+                                                                                  :hour 15
+                                                                                  :day_of_month "middle-of-month"}}
                                               :conversation_id conversation-id})]
-          (is (=? [{:dashboard-id 1
-                    :email        "user@example.com"
-                    :schedule     {:frequency :monthly
-                                   :hour 15
-                                   :day-of-month :middle-of-month}}]
+          (is (=? [{:dashboard-id  1
+                    :slack-channel "data-team"
+                    :schedule      {:frequency :monthly
+                                    :hour 15
+                                    :day-of-month :middle-of-month}}]
                   @tool-requests))
           (is (=? {:output output
                    :conversation_id conversation-id}

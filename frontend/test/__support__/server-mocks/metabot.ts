@@ -96,3 +96,30 @@ export function setupRegenerateMetabotPromptSuggestionsEndpoint(
     options,
   );
 }
+
+const SLACK_SETTINGS_ROUTE_NAME = "metabot-slack-settings";
+
+export function setupMetabotSlackSettingsEndpoint() {
+  fetchMock.removeRoute(SLACK_SETTINGS_ROUTE_NAME);
+  fetchMock.put(
+    "path:/api/ee/metabot-v3/slack/settings",
+    { ok: true },
+    {
+      name: SLACK_SETTINGS_ROUTE_NAME,
+    },
+  );
+}
+
+export function setupMetabotSlackSettingsEndpointWithError(
+  status: number,
+  body: string,
+) {
+  fetchMock.removeRoute(SLACK_SETTINGS_ROUTE_NAME);
+  fetchMock.put(
+    "path:/api/ee/metabot-v3/slack/settings",
+    { status, body },
+    {
+      name: SLACK_SETTINGS_ROUTE_NAME,
+    },
+  );
+}

@@ -284,6 +284,7 @@
   channel
   {:team "Gadget"
    :api  #{metabase.channel.api
+           metabase.channel.api.slack
            metabase.channel.core
            metabase.channel.email
            metabase.channel.email.messages
@@ -1961,7 +1962,8 @@
 
   enterprise/api
   {:team "UX West"
-   :api  #{metabase-enterprise.api.core}
+   :api  #{metabase-enterprise.api.core
+           metabase-enterprise.api.routes.common}
    :uses #{api
            premium-features
            util}}
@@ -2229,15 +2231,18 @@
               api
               app-db
               audit-app
+              channel
               collections
               config
               documents
               driver
+              formatter
               legacy-mbql
               lib
               lib-be
               models
               native-query-snippets
+              notification
               parameters
               permissions
               premium-features
@@ -2253,10 +2258,13 @@
               system
               task
               transforms
+              upload
               users
               util
               warehouses
+              enterprise/api
               enterprise/dependencies
+              enterprise/sso
               enterprise/transforms-python}}
 
   enterprise/permission-debug

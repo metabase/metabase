@@ -1,7 +1,7 @@
 import { isMatching, match } from "ts-pattern";
 import _ from "underscore";
 
-import type { MetabotHistory } from "metabase-types/api";
+import type { JSONValue, MetabotHistory } from "metabase-types/api";
 
 import {
   type KnownDataPart,
@@ -11,7 +11,6 @@ import {
   toolCallPartSchema,
   toolResultPartSchema,
 } from "./schemas";
-import type { JSONValue } from "./types";
 
 const StreamingPartTypeRegistry = {
   TEXT: "0",

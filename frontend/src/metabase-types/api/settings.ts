@@ -335,6 +335,7 @@ export const tokenFeatures = [
   "sso_ldap",
   "sso_oidc",
   "sso_saml",
+  "sso_slack",
   "session_timeout_config",
   "whitelabel",
   "serialization",
@@ -476,6 +477,7 @@ export type EmbeddingHomepageStatus =
 interface AdminSettings {
   "active-users-count"?: number;
   "custom-geojson-enabled": boolean;
+  "encryption-enabled": boolean;
   "deprecation-notice-version"?: string;
   "disable-cors-on-localhost": boolean;
   "embedding-secret-key"?: string;
@@ -513,7 +515,6 @@ interface SettingsManagerSettings {
   "session-cookie-samesite": SessionCookieSameSite;
   "slack-app-token": string | null;
   "slack-bug-report-channel": string | null;
-  "slack-token": string | null;
   "slack-token-valid?": boolean;
 }
 
@@ -760,6 +761,10 @@ export interface EnterpriseSettings extends Settings {
   "python-runner-test-run-timeout-seconds"?: number | null;
   "llm-anthropic-api-key"?: string | null;
   "llm-anthropic-model": string;
+  "metabot-slack-signing-secret"?: string | null;
+  "slack-connect-enabled"?: boolean | null;
+  "slack-connect-client-id"?: string | null;
+  "slack-connect-client-secret"?: string | null;
   /**
    * @deprecated
    */

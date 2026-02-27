@@ -1,9 +1,9 @@
 import { nanoid } from "@reduxjs/toolkit";
 
 import api from "metabase/lib/api";
+import type { JSONValue } from "metabase-types/api";
 
 import { type AIStreamingConfig, processChatResponse } from "./process-stream";
-import type { JSONValue } from "./types";
 
 // keep track of inflight requests so that can be cancelled programmitcally from other
 // places in the app w/o passing references to the abort controller directly

@@ -2,7 +2,6 @@ import { t } from "ttag";
 import * as Yup from "yup";
 
 import { useUpdateSlackSettingsMutation } from "metabase/api";
-import { useAdminSetting } from "metabase/api/utils";
 import {
   Form,
   FormErrorMessage,
@@ -12,33 +11,21 @@ import {
 } from "metabase/forms";
 import * as Errors from "metabase/lib/errors";
 import { Flex, Stack } from "metabase/ui";
-import type { SlackSettings } from "metabase-types/api";
+
+type FormValues = { "slack-app-token": string };
 
 const SLACK_SCHEMA = Yup.object({
   "slack-app-token": Yup.string().ensure().required(Errors.required),
-  "slack-bug-report-channel": Yup.string()
-    .nullable()
-    .default(null)
-    .transform((value, originalValue) => (originalValue === "" ? null : value))
-    .lowercase(),
 });
 
-const DEFAULT_SETTINGS: SlackSettings = {
-  "slack-app-token": "",
-  "slack-bug-report-channel": "",
-};
-
 export const SlackSetupForm = ({
-  initialValues = DEFAULT_SETTINGS,
+  initialValues = { "slack-app-token": "" },
 }: {
-  initialValues?: SlackSettings;
+  initialValues?: FormValues;
 }) => {
-  const { value: isBugReportingEnabled } = useAdminSetting(
-    "bug-reporting-enabled",
-  );
   const [updateSlackSettings] = useUpdateSlackSettingsMutation();
-  const handleSubmit = (values: SlackSettings) =>
-    updateSlackSettings(SLACK_SCHEMA.cast(values) as SlackSettings).unwrap();
+  const handleSubmit = (values: FormValues) =>
+    updateSlackSettings(SLACK_SCHEMA.cast(values) as FormValues).unwrap();
 
   return (
     <FormProvider
@@ -48,24 +35,17 @@ export const SlackSetupForm = ({
       enableReinitialize
     >
       <Form>
-        <Stack>
+        <Stack gap="sm">
           <FormTextInput
             name="slack-app-token"
             label={t`Slack bot user OAuth token`}
             placeholder="xoxb-123..."
+            style={{ flex: 1 }}
           />
-          {isBugReportingEnabled && (
-            <FormTextInput
-              name="slack-bug-report-channel"
-              label={t`Public channel for bug reports`}
-              description={t`This channel will receive bug reports submitted by users.`}
-              placeholder="metabase-bugs"
-            />
-          )}
-          <Flex justify="end">
-            <FormSubmitButton label={t`Save changes`} />
+          <Flex direction="row-reverse" justify="space-between">
+            <FormSubmitButton label={t`Connect`} />
+            <FormErrorMessage />
           </Flex>
-          <FormErrorMessage />
         </Stack>
       </Form>
     </FormProvider>
