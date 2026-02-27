@@ -6,11 +6,9 @@ import { formatValue } from "metabase/lib/formatting";
 import { formatDateTimeRangeWithUnit } from "metabase/lib/formatting/date";
 import type { OptionsType } from "metabase/lib/formatting/types";
 import { isEmpty } from "metabase/lib/validate";
+import type { ColorGetter } from "metabase/ui/colors/types";
 import { computeChange } from "metabase/visualizations/lib/numeric";
-import type {
-  ColorGetter,
-  ColumnSettings,
-} from "metabase/visualizations/types";
+import type { ColumnSettings } from "metabase/visualizations/types";
 import { COMPARISON_TYPES } from "metabase/visualizations/visualizations/SmartScalar/constants";
 import {
   formatChange,
