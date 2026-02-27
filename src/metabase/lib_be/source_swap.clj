@@ -17,7 +17,6 @@
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.lib.schema.parameter :as lib.schema.parameter]
    [metabase.lib.util :as lib.util]
-   [metabase.lib.util.match :as lib.util.match]
    [metabase.lib.walk :as lib.walk]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
@@ -127,8 +126,8 @@
    stage-number  :- :int
    field-ref     :- :mbql.clause/field]
   (or (when-let [column (lib.field.resolution/resolve-field-ref query stage-number field-ref)]
-          ;; TODO (Alex P 2/26/26) -- drop the :lib/card-id hack when Braden fixes join refs
-        (let [column (cond-> column (:lib/card-id column) (dissoc :id))
+        (let [column (cond-> column
+                       (not (:fk-field-id column)) (dissoc :id))
               expression-name (lib.util/expression-name field-ref)
               new-field-ref (cond-> (lib.ref/ref column)
                               expression-name (lib.expression/with-expression-name expression-name))]
@@ -196,43 +195,6 @@
            target
            #(upgrade-field-ref query stage-number %))))
       target))
-
-;;; ------------------------------------------------ should-upgrade? ---------------------------------------------------
-
-(mu/defn- field-id-ref-stage? :- :boolean
-  [{:keys [source-table joins]} :- ::lib.schema/stage]
-  (and (some? source-table)
-       (every? (fn [{:keys [stages]}]
-                 (and (= 1 (count stages))
-                      (field-id-ref-stage? (first stages))))
-               joins)))
-
-(mu/defn- should-upgrade-field-refs-in-stage? :- :boolean
-  [query        :- ::lib.schema/query
-   stage-number :- :int]
-  (let [stage (lib.util/query-stage query stage-number)]
-    (not (and (field-id-ref-stage? stage)
-              (nil? (lib.util.match/match-lite
-                      stage
-                      (field-ref :guard lib.field/is-field-clause?)
-                      (when-not (field-id-ref? field-ref) field-ref)))))))
-
-(mu/defn should-upgrade-field-refs-in-query? :- :boolean
-  "Check if any field refs in `query` can be upgraded to use name-based field refs."
-  [query :- ::lib.schema/query]
-  (boolean (some #(should-upgrade-field-refs-in-stage? query %)
-                 (range (lib.query/stage-count query)))))
-
-(mu/defn should-upgrade-field-ref-in-parameter-target? :- :boolean
-  "If the parameter target is a field ref, check if it can be upgraded to use a name-based field ref."
-  [query  :- ::lib.schema/query
-   target :- ::lib.schema.parameter/target]
-  (or (when-let [field-ref (lib.parameters/parameter-target-field-ref target)]
-        (when-let [stage-number (parameter-target-stage-number query target)]
-          (let [stage (lib.util/query-stage query stage-number)]
-            (not (and (field-id-ref-stage? stage)
-                      (field-id-ref? field-ref))))))
-      false))
 
 ;;; ------------------------------------------------ swap-source -------------------------------------------------------
 

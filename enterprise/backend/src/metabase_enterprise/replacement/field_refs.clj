@@ -53,12 +53,11 @@
 
 (defn- card-upgrade-field-refs!
   [card]
-  (let [dataset-query (:dataset_query card)]
-    (when (lib-be/should-upgrade-field-refs-in-query? dataset-query)
-      (let [dataset-query' (lib-be/upgrade-field-refs-in-query dataset-query)]
-        (when (not= dataset-query dataset-query')
-          (t2/update! :model/Card (:id card) {:dataset_query dataset-query'}))
-        (dashboard-card-upgrade-field-refs! dataset-query' (:id card))))))
+  (let [dataset-query  (:dataset_query card)
+        dataset-query' (lib-be/upgrade-field-refs-in-query dataset-query)]
+    (when (not= dataset-query dataset-query')
+      (t2/update! :model/Card (:id card) {:dataset_query dataset-query'}))
+    (dashboard-card-upgrade-field-refs! dataset-query' (:id card))))
 
 (defn- transform-upgrade-field-refs!
   [transform]

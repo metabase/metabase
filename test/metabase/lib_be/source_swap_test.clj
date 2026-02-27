@@ -9,24 +9,23 @@
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]))
 
-(deftest ^:parallel upgrade-field-refs-in-query-source-table-noop-test
+(deftest ^:parallel upgrade-field-refs-in-query-source-table-test
   (let [query (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
                   (lib/with-fields [(meta/field-metadata :orders :id)
                                     (meta/field-metadata :orders :total)
                                     (meta/field-metadata :orders :created-at)]))]
-    (testing "should not need upgrading"
-      (is (false? (lib-be/should-upgrade-field-refs-in-query? query))))
-    (testing "should return the identical query when no refs are upgraded"
-      (is (= query
-             (lib-be/upgrade-field-refs-in-query query))))))
+    (testing "should convert id-based field refs to name-based refs"
+      (is (=? {:stages [{:source-table (meta/id :orders)
+                         :fields       [[:field {} "ID"]
+                                        [:field {} "TOTAL"]
+                                        [:field {} "CREATED_AT"]]}]}
+              (lib-be/upgrade-field-refs-in-query query))))))
 
 (deftest ^:parallel upgrade-field-refs-in-query-source-card-noop-test
   (let [base-query (lib/query meta/metadata-provider (meta/table-metadata :orders))
         mp         (lib.tu/metadata-provider-with-card-from-query 1 base-query)
         query      (as-> (lib/query mp (lib.metadata/card mp 1)) q
                      (lib/with-fields q [(first (lib/fieldable-columns q))]))]
-    (testing "should need upgrading for a card query even when refs are already alias-based"
-      (is (true? (lib-be/should-upgrade-field-refs-in-query? query))))
     (testing "should return the identical query when card refs are already alias-based"
       (is (= query
              (lib-be/upgrade-field-refs-in-query query))))))
@@ -34,11 +33,9 @@
 (deftest ^:parallel upgrade-field-refs-in-query-source-table-name-ref-test
   (let [query (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
                   (lib/with-fields [(lib.options/ensure-uuid [:field {:base-type :type/BigInteger} "ID"])]))]
-    (testing "should need upgrading"
-      (is (true? (lib-be/should-upgrade-field-refs-in-query? query))))
-    (testing "should convert a name-based field ref to an id-based ref for a table source"
+    (testing "should keep name-based field ref as-is for a table source"
       (is (=? {:stages [{:source-table (meta/id :orders)
-                         :fields       [[:field {} (meta/id :orders :id)]]}]}
+                         :fields       [[:field {} "ID"]]}]}
               (lib-be/upgrade-field-refs-in-query query))))))
 
 (deftest ^:parallel upgrade-field-refs-in-query-source-table-deduplicated-name-test
@@ -52,8 +49,6 @@
                                                 (lib/breakoutable-columns q))))
                 (lib/append-stage q)
                 (lib/filter q (lib/> (lib.options/ensure-uuid [:field {:base-type :type/BigInteger} "ID_2"]) 5)))]
-    (testing "should need upgrading"
-      (is (true? (lib-be/should-upgrade-field-refs-in-query? query))))
     (testing "should convert a deduplicated name ref to an alias-based ref"
       (is (=? {:stages [{} {:filters [[:> {} [:field {} "Orders__ID"] 5]]}]}
               (lib-be/upgrade-field-refs-in-query query))))))
@@ -73,24 +68,22 @@
                 (lib/order-by q (meta/field-metadata :orders :product-id))
                 (lib/append-stage q)
                 (lib/filter q (lib/> (meta/field-metadata :orders :product-id) 5)))]
-    (testing "should need upgrading"
-      (is (true? (lib-be/should-upgrade-field-refs-in-query? query))))
-    (testing "should preserve field id refs in the same stage as the table, but upgrade next stages"
+    (testing "should upgrade field refs to strings, preserving implicit join source-field refs"
       (is (=? {:stages [{:source-table (meta/id :orders)
-                         :fields       [[:field {} (meta/id :orders :id)]
-                                        [:field {} (meta/id :orders :total)]
-                                        [:field {} (meta/id :orders :created-at)]
+                         :fields       [[:field {} "ID"]
+                                        [:field {} "TOTAL"]
+                                        [:field {} "CREATED_AT"]
                                         [:expression {} "double-tax"]]
                          :joins        [{:stages     [{:source-table (meta/id :products)}]
                                          :conditions [[:= {}
-                                                       [:field {} (meta/id :orders :product-id)]
-                                                       [:field {} (meta/id :products :id)]]]}]
-                         :expressions  [[:* {:lib/expression-name "double-tax"} [:field {} (meta/id :orders :tax)] 2]]
-                         :filters      [[:> {} [:field {} (meta/id :orders :total)] 10]]
-                         :aggregation  [[:sum {} [:field {} (meta/id :orders :total)]]]
-                         :breakout     [[:field {} (meta/id :orders :product-id)]
+                                                       [:field {} "PRODUCT_ID"]
+                                                       [:field {} "ID"]]]}]
+                         :expressions  [[:* {:lib/expression-name "double-tax"} [:field {} "TAX"] 2]]
+                         :filters      [[:> {} [:field {} "TOTAL"] 10]]
+                         :aggregation  [[:sum {} [:field {} "TOTAL"]]]
+                         :breakout     [[:field {} "PRODUCT_ID"]
                                         [:field {:source-field (meta/id :orders :user-id)} (meta/id :people :state)]]
-                         :order-by     [[:asc {} [:field {} (meta/id :orders :product-id)]]]}
+                         :order-by     [[:asc {} [:field {} "PRODUCT_ID"]]]}
                         {:filters [[:> {} [:field {} "PRODUCT_ID"] 5]]}]}
               (lib-be/upgrade-field-refs-in-query query))))))
 
@@ -111,8 +104,6 @@
                      (lib/order-by q (meta/field-metadata :orders :product-id))
                      (lib/append-stage q)
                      (lib/filter q (lib/> (meta/field-metadata :orders :product-id) 5)))]
-    (testing "should need upgrading"
-      (is (true? (lib-be/should-upgrade-field-refs-in-query? query))))
     (testing "should upgrade field id refs for a card"
       (is (=? {:stages [{:source-card  1
                          :fields       [[:field {} "ID"]
@@ -122,7 +113,7 @@
                          :joins        [{:stages     [{:source-table (meta/id :products)}]
                                          :conditions [[:= {}
                                                        [:field {} "PRODUCT_ID"]
-                                                       [:field {} (meta/id :products :id)]]]}]
+                                                       [:field {} "ID"]]]}]
                          :expressions  [[:* {:lib/expression-name "double-tax"} [:field {} "TAX"] 2]]
                          :filters      [[:> {} [:field {} "TOTAL"] 10]]
                          :aggregation  [[:sum {} [:field {} "TOTAL"]]]
@@ -138,8 +129,6 @@
         query      (-> (lib/query mp (lib.metadata/card mp 1))
                        (lib/breakout (lib/with-temporal-bucket (meta/field-metadata :orders :created-at) :month))
                        (lib/breakout (lib/with-temporal-bucket (meta/field-metadata :orders :created-at) :year)))]
-    (testing "should need upgrading"
-      (is (true? (lib-be/should-upgrade-field-refs-in-query? query))))
     (testing "should convert id-based breakouts to name-based refs preserving temporal buckets"
       (is (=? {:stages [{:source-card 1
                          :breakout    [[:field {:temporal-unit :month} "CREATED_AT"]
@@ -153,14 +142,12 @@
                          (lib/join (lib/join-clause (meta/table-metadata :products)
                                                     [(lib/= (meta/field-metadata :orders :product-id)
                                                             (meta/field-metadata :products :id))])))]
-    (testing "should need upgrading"
-      (is (true? (lib-be/should-upgrade-field-refs-in-query? query))))
-    (testing "should preserve field id refs in the RHS of a join condition for a table"
+    (testing "should upgrade field refs in join conditions to strings"
       (is (=? {:stages [{:source-card 1
                          :joins       [{:stages     [{:source-table (meta/id :products)}]
                                         :conditions [[:= {}
                                                       [:field {} "PRODUCT_ID"]
-                                                      [:field {} (meta/id :products :id)]]]}]}]}
+                                                      [:field {} "ID"]]]}]}]}
               (lib-be/upgrade-field-refs-in-query query))))))
 
 (deftest ^:parallel upgrade-field-refs-in-query-table-join-card-test
@@ -170,23 +157,19 @@
                            (lib/join (lib/join-clause (lib.metadata/card mp 1)
                                                       [(lib/= (meta/field-metadata :orders :product-id)
                                                               (meta/field-metadata :products :id))])))]
-    (testing "should need upgrading"
-      (is (true? (lib-be/should-upgrade-field-refs-in-query? query))))
-    (testing "should upgrade field id refs in the RHS of a join condition for a card"
+    (testing "should upgrade field id refs in join conditions to strings"
       (is (=? {:stages [{:source-table (meta/id :orders)
                          :joins        [{:stages     [{:source-card 1}]
                                          :conditions [[:= {}
-                                                       [:field {} (meta/id :orders :product-id)]
+                                                       [:field {} "PRODUCT_ID"]
                                                        [:field {} "ID"]]]}]}]}
               (lib-be/upgrade-field-refs-in-query query))))))
 
 (deftest ^:parallel upgrade-field-ref-in-parameter-target-table-test
   (let [query  (lib/query meta/metadata-provider (meta/table-metadata :orders))
         target [:dimension [:field (meta/id :orders :total) nil] {:stage-number 0}]]
-    (testing "should not need upgrading"
-      (is (false? (lib-be/should-upgrade-field-ref-in-parameter-target? query target))))
-    (testing "should return the identical target for a table query"
-      (is (= target
+    (testing "should upgrade the field id to name for a table query"
+      (is (= [:dimension [:field "TOTAL" {:base-type :type/Float}] {:stage-number 0}]
              (lib-be/upgrade-field-ref-in-parameter-target query target))))))
 
 (deftest ^:parallel upgrade-field-ref-in-parameter-target-card-test
@@ -194,8 +177,6 @@
         mp         (lib.tu/metadata-provider-with-card-from-query 1 base-query)
         query      (lib/query mp (lib.metadata/card mp 1))
         target     [:dimension [:field (meta/id :orders :total) {:stage-number 0}]]]
-    (testing "should need upgrading"
-      (is (true? (lib-be/should-upgrade-field-ref-in-parameter-target? query target))))
     (testing "should upgrade the field id to name for a card query"
       (is (= [:dimension [:field "TOTAL" {:base-type :type/Float}]]
              (lib-be/upgrade-field-ref-in-parameter-target query target))))))
@@ -206,8 +187,6 @@
                    (lib/breakout (meta/field-metadata :orders :product-id))
                    (lib/append-stage))
         target [:dimension [:field (meta/id :orders :product-id) nil] {:stage-number 1}]]
-    (testing "should need upgrading"
-      (is (true? (lib-be/should-upgrade-field-ref-in-parameter-target? query target))))
     (testing "should upgrade the field id to name on a second stage of a table query"
       (is (= [:dimension [:field "PRODUCT_ID" {:base-type :type/Integer}] {:stage-number 1}]
              (lib-be/upgrade-field-ref-in-parameter-target query target))))))
@@ -220,8 +199,6 @@
                        (lib/breakout (meta/field-metadata :orders :product-id))
                        (lib/append-stage))
         target     [:dimension [:field (meta/id :orders :product-id) nil] {:stage-number 1}]]
-    (testing "should need upgrading"
-      (is (true? (lib-be/should-upgrade-field-ref-in-parameter-target? query target))))
     (testing "should upgrade the field id to name on a second stage of a card query"
       (is (= [:dimension [:field "PRODUCT_ID" {:base-type :type/Integer}] {:stage-number 1}]
              (lib-be/upgrade-field-ref-in-parameter-target query target))))))
@@ -234,8 +211,6 @@
                        (lib/breakout (meta/field-metadata :orders :product-id))
                        (lib/append-stage))
         target     [:dimension [:field (meta/id :orders :product-id) nil] {:stage-number 2}]]
-    (testing "should not need upgrading"
-      (is (false? (lib-be/should-upgrade-field-ref-in-parameter-target? query target))))
     (testing "should return the identical target for an invalid stage number"
       (is (= target
              (lib-be/upgrade-field-ref-in-parameter-target query target))))))
@@ -243,8 +218,6 @@
 (deftest ^:parallel upgrade-field-ref-in-parameter-target-template-tag-test
   (let [query  (lib/query meta/metadata-provider (meta/table-metadata :orders))
         target [:dimension [:template-tag "total"]]]
-    (testing "should not need upgrading"
-      (is (false? (lib-be/should-upgrade-field-ref-in-parameter-target? query target))))
     (testing "should return the identical target for a template tag dimension"
       (is (= target
              (lib-be/upgrade-field-ref-in-parameter-target query target))))))
@@ -252,8 +225,6 @@
 (deftest ^:parallel upgrade-field-ref-in-parameter-target-variable-test
   (let [query  (lib/query meta/metadata-provider (meta/table-metadata :orders))
         target [:variable [:template-tag "total"]]]
-    (testing "should not need upgrading"
-      (is (false? (lib-be/should-upgrade-field-ref-in-parameter-target? query target))))
     (testing "should return the identical target for a variable template tag"
       (is (= target
              (lib-be/upgrade-field-ref-in-parameter-target query target))))))
