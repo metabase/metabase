@@ -1,15 +1,23 @@
-import PropTypes from "prop-types";
+import type { ComponentProps } from "react";
 
 import { mockSettings } from "__support__/settings";
 import { renderWithProviders, screen } from "__support__/ui";
 import { delay } from "__support__/utils";
-import { NumberColumn, StringColumn } from "__support__/visualizations";
 import { color } from "metabase/lib/colors";
 import { registerVisualization } from "metabase/visualizations";
-import Visualization from "metabase/visualizations/components/Visualization";
+import VisualizationComponent from "metabase/visualizations/components/Visualization";
 import registerVisualizations from "metabase/visualizations/register";
+import type { VisualizationProps } from "metabase/visualizations/types";
+import type {
+  RawSeries,
+  Settings,
+  VisualizationDisplay,
+} from "metabase-types/api";
 import {
   createMockCard,
+  createMockCategoryColumn,
+  createMockDatasetData,
+  createMockNumericColumn,
   createMockSettings,
   createMockTokenFeatures,
   createMockVisualizationSettings,
@@ -18,41 +26,60 @@ import { createMockState } from "metabase-types/store/mocks";
 
 registerVisualizations();
 
-const MockedVisualization = (props) => {
-  props.onRenderError("This is an error message");
+const MOCK_DISPLAY = "mocked-visualization" as VisualizationDisplay;
 
-  return <div>Hello, I am mocked</div>;
-};
-MockedVisualization.getUiName = () => "Mocked Visualization";
+const MockedVisualization = Object.assign(
+  ({ onRenderError }: Pick<VisualizationProps, "onRenderError">) => {
+    onRenderError("This is an error message");
 
-MockedVisualization.propTypes = {
-  onRenderError: PropTypes.func.isRequired,
-};
-
-Object.assign(MockedVisualization, {
-  identifier: "mocked-visualization",
-  noHeader: true,
-});
+    return <div>Hello, I am mocked</div>;
+  },
+  {
+    getUiName: () => "Mocked Visualization",
+    identifier: MOCK_DISPLAY,
+    iconName: "unknown" as const,
+    noHeader: true,
+    minSize: { width: 1, height: 1 },
+    defaultSize: { width: 4, height: 4 },
+    settings: {},
+    isSensible: () => false,
+    checkRenderable: () => undefined,
+  },
+);
 
 registerVisualization(MockedVisualization);
 
 describe("Visualization", () => {
-  const renderViz = async (series, props = {}, settings) => {
+  const renderViz = async (
+    series: RawSeries | undefined,
+    props: Omit<
+      Partial<ComponentProps<typeof VisualizationComponent>>,
+      "rawSeries"
+    > = {},
+    settings?: Settings,
+  ) => {
     const storeInitialState = createMockState({
       settings: mockSettings(settings),
     });
 
-    await renderWithProviders(<Visualization rawSeries={series} {...props} />, {
-      storeInitialState,
-    });
+    renderWithProviders(
+      <VisualizationComponent rawSeries={series} {...props} />,
+      {
+        storeInitialState,
+      },
+    );
     // The chart isn't rendered until the next tick. This is due to ExplicitSize
     // not setting the dimensions until after mounting.
     await delay(0);
   };
 
-  const chartPathsWithColor = (color) => {
+  const chartPathsWithColor = (
+    fillColor: string,
+  ): NodeListOf<SVGPathElement> => {
     const container = screen.getByTestId("chart-container");
-    return container.querySelectorAll(`path[fill="${color}"]`);
+    return container.querySelectorAll<SVGPathElement>(
+      `path[fill="${fillColor}"]`,
+    );
   };
 
   describe("with an error", () => {
@@ -61,20 +88,22 @@ describe("Visualization", () => {
         [
           {
             data: {
-              rows: [
-                ["Doohickey", "Annetta Wyman and Sons", 1],
-                ["Doohickey", "Balistreri-Ankunding", 1],
-                ["Doohickey", "Bernhard-Grady", 1],
-              ],
-              cols: [
-                StringColumn({ name: "CATEGORY" }),
-                StringColumn({ name: "VENDOR" }),
-                NumberColumn({ name: "count" }),
-              ],
+              ...createMockDatasetData({
+                cols: [
+                  createMockCategoryColumn({ name: "CATEGORY" }),
+                  createMockCategoryColumn({ name: "VENDOR" }),
+                  createMockNumericColumn({ name: "count" }),
+                ],
+                rows: [
+                  ["Doohickey", "Annetta Wyman and Sons", 1],
+                  ["Doohickey", "Balistreri-Ankunding", 1],
+                  ["Doohickey", "Bernhard-Grady", 1],
+                ],
+              }),
             },
             card: createMockCard({
               name: "Products, Count, Grouped by Category and Vendor",
-              display: "mocked-visualization",
+              display: MOCK_DISPLAY,
               visualization_settings: createMockVisualizationSettings({
                 "graph.dimensions": ["CATEGORY", "VENDOR"],
                 "graph.metrics": ["count"],
@@ -100,16 +129,16 @@ describe("Visualization", () => {
       [
         {
           card: createMockCard({ name: "Card", display: "bar" }),
-          data: {
+          data: createMockDatasetData({
             cols: [
-              StringColumn({ name: "Dimension" }),
-              NumberColumn({ name: "Count" }),
+              createMockCategoryColumn({ name: "Dimension" }),
+              createMockNumericColumn({ name: "Count" }),
             ],
             rows: [
               ["foo", 1],
               ["bar", 2],
             ],
-          },
+          }),
         },
       ],
       {},
@@ -130,7 +159,10 @@ describe("Visualization", () => {
       await renderViz([
         {
           card: createMockCard({ display: "scalar" }),
-          data: { rows: [[1]], cols: [NumberColumn({ name: "Count" })] },
+          data: createMockDatasetData({
+            cols: [createMockNumericColumn({ name: "Count" })],
+            rows: [[1]],
+          }),
         },
       ]);
 
@@ -144,16 +176,16 @@ describe("Visualization", () => {
         await renderViz([
           {
             card: createMockCard({ name: "Card", display: "bar" }),
-            data: {
+            data: createMockDatasetData({
               cols: [
-                StringColumn({ name: "Dimension" }),
-                NumberColumn({ name: "Count" }),
+                createMockCategoryColumn({ name: "Dimension" }),
+                createMockNumericColumn({ name: "Count" }),
               ],
               rows: [
                 ["foo", 1],
                 ["bar", 2],
               ],
-            },
+            }),
           },
         ]);
 
@@ -166,17 +198,17 @@ describe("Visualization", () => {
         await renderViz([
           {
             card: createMockCard({ name: "Card", display: "bar" }),
-            data: {
+            data: createMockDatasetData({
               cols: [
-                StringColumn({ name: "Dimension" }),
-                NumberColumn({ name: "Count" }),
-                NumberColumn({ name: "Sum" }),
+                createMockCategoryColumn({ name: "Dimension" }),
+                createMockNumericColumn({ name: "Count" }),
+                createMockNumericColumn({ name: "Sum" }),
               ],
               rows: [
                 ["foo", 1, 3],
                 ["bar", 2, 4],
               ],
-            },
+            }),
           },
         ]);
 
@@ -190,11 +222,11 @@ describe("Visualization", () => {
         await renderViz([
           {
             card: createMockCard({ name: "Card", display: "bar" }),
-            data: {
+            data: createMockDatasetData({
               cols: [
-                StringColumn({ name: "Dimension1" }),
-                StringColumn({ name: "Dimension2" }),
-                NumberColumn({ name: "Count" }),
+                createMockCategoryColumn({ name: "Dimension1" }),
+                createMockCategoryColumn({ name: "Dimension2" }),
+                createMockNumericColumn({ name: "Count" }),
               ],
               rows: [
                 ["foo", "a", 1],
@@ -202,7 +234,7 @@ describe("Visualization", () => {
                 ["foo", "b", 1],
                 ["bar", "b", 2],
               ],
-            },
+            }),
           },
         ]);
 
@@ -216,29 +248,29 @@ describe("Visualization", () => {
         await renderViz([
           {
             card: createMockCard({ id: 1, name: "Card1", display: "bar" }),
-            data: {
+            data: createMockDatasetData({
               cols: [
-                StringColumn({ id: 1, name: "Dimension" }),
-                NumberColumn({ id: 2, name: "Count" }),
+                createMockCategoryColumn({ id: 1, name: "Dimension" }),
+                createMockNumericColumn({ id: 2, name: "Count" }),
               ],
               rows: [
                 ["foo", 1],
                 ["bar", 2],
               ],
-            },
+            }),
           },
           {
             card: createMockCard({ id: 2, name: "Card2", display: "bar" }),
-            data: {
+            data: createMockDatasetData({
               cols: [
-                StringColumn({ id: 1, name: "Dimension" }),
-                NumberColumn({ id: 2, name: "Count" }),
+                createMockCategoryColumn({ id: 1, name: "Dimension" }),
+                createMockNumericColumn({ id: 2, name: "Count" }),
               ],
               rows: [
                 ["foo", 3],
                 ["bar", 4],
               ],
-            },
+            }),
           },
         ]);
 
@@ -250,7 +282,7 @@ describe("Visualization", () => {
 
   it("should not show loader and error at the same time (metabase#63410)", async () => {
     await renderViz(undefined, {
-      error: new Error("This is my error message"),
+      error: "This is my error message",
       isRunning: true,
     });
 

@@ -1,38 +1,51 @@
 import userEvent from "@testing-library/user-event";
-import { useState } from "react";
+import { type ComponentProps, useState } from "react";
 
 import { renderWithProviders, screen } from "__support__/ui";
+import type { Widget } from "metabase/visualizations/components/ChartSettings/types";
 import { ChartSettingsWidgetPopover } from "metabase/visualizations/components/ChartSettingsWidgetPopover";
 
-const DEFAULT_PROPS = {
+type PopoverProps = ComponentProps<typeof ChartSettingsWidgetPopover>;
+
+const DEFAULT_PROPS: Pick<PopoverProps, "handleEndShowWidget"> = {
   handleEndShowWidget: jest.fn(),
 };
 
-const FORMATTING_WIDGET = {
+const FORMATTING_WIDGET: Widget = {
   id: "column_settings",
   section: "Formatting",
   widget: function testWidget() {
     return <p>Foo</p>;
   },
-  onChange: () => {},
+  props: {},
 };
 
-const STYLE_WIDGET = {
+const STYLE_WIDGET: Widget = {
   id: "series_settings",
   section: "Style",
   widget: function testWidget() {
     return <p>Bar</p>;
   },
-  onChange: () => {},
+  props: {},
 };
 
-const setup = (props) => {
+type SetupProps = Omit<PopoverProps, "anchor" | "handleEndShowWidget">;
+
+const setup = (props: SetupProps) => {
   const Container = () => {
-    const [anchor, setAnchor] = useState();
+    const [anchor, setAnchor] = useState<HTMLElement>(document.body);
 
     return (
       <>
-        <p ref={setAnchor}>Anchor</p>
+        <p
+          ref={(element) => {
+            if (element) {
+              setAnchor(element);
+            }
+          }}
+        >
+          Anchor
+        </p>
         <ChartSettingsWidgetPopover
           anchor={anchor}
           {...DEFAULT_PROPS}
