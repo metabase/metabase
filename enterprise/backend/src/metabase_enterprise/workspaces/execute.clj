@@ -48,7 +48,8 @@
     (update source :source-tables update-vals remap)))
 
 (defn- attach-table-remapping [table-mapping source]
-  (let [tables (into {}
+  ;; Build an association list, so it survives trip through JSON
+  (let [tables (into []
                      (keep (fn [[[_ src-schema src-table] {tgt-schema :schema tgt-table :table}]]
                              [{:schema src-schema :table src-table}
                               {:schema tgt-schema :table tgt-table}]))
