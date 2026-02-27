@@ -17,6 +17,7 @@
 
 (set! *warn-on-reflection* true)
 
+;; TODO (Chris 2026-02-27) -- we can remove this step after https://github.com/metabase/metabase/pull/68897 is merged.
 (defn- parse-remapping
   "Recover map representation of remapping, if it has been recovered from JSON."
   [remapping]

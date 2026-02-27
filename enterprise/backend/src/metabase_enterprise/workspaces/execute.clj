@@ -48,7 +48,10 @@
     (update source :source-tables update-vals remap)))
 
 (defn- attach-table-remapping [table-mapping source]
-  ;; Build an association list, so it survives trip through JSON
+  ;; Build an association list, so it survives the trip through JSON when we save the temporary transform.
+  ;; After https://github.com/metabase/metabase/pull/68897 this will no longer be necessary, as we'll be able to
+  ;; execute the in-memory transform map directly.
+  ;; TODO (Chris 2026-02-27) -- just use a map once the above PR is merged.
   (let [tables (into []
                      (keep (fn [[[_ src-schema src-table] {tgt-schema :schema tgt-table :table}]]
                              [{:schema src-schema :table src-table}
