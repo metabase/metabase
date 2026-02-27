@@ -436,7 +436,7 @@
         :is-breakout            (boolean (:lib/breakout? x-metadata))})
      (when-some [selected (:selected? x-metadata)]
        {:selected selected})
-     (when-let [temporal-unit ((some-fn :metabase.lib.field/temporal-unit :temporal-unit) x-metadata)]
+     (when-let [temporal-unit ((some-fn :lib/temporal-unit :temporal-unit) x-metadata)]
        {:is-temporal-extraction
         (and (contains? lib.schema.temporal-bucketing/datetime-extraction-units temporal-unit)
              (not (contains? lib.schema.temporal-bucketing/datetime-truncation-units temporal-unit)))})
@@ -668,7 +668,7 @@
           :lib/source-column-alias ((some-fn :lib/source-column-alias :name) remapped)}
          ;; if a remap is of a joined column then we should do the remap in the join itself; columns with
          ;; `:lib/source` `:source/joins` need to have a join alias.
-         (select-keys column [:metabase.lib.join/join-alias]))))))
+         (select-keys column [:lib/join-alias]))))))
 
 (mu/defn primary-keys :- [:sequential ::lib.schema.metadata/column]
   "Returns a list of primary keys for the source table of this query."
@@ -706,7 +706,7 @@
                                             (assoc target
                                                    ::fk-field-id   source-field-id
                                                    ::fk-field-name (lib.field.util/inherited-column-name source)
-                                                   ::fk-join-alias (:metabase.lib.join/join-alias source)))))
+                                                   ::fk-join-alias (:lib/join-alias source)))))
                                   (remove #(contains? existing-table-ids (:table-id %))))
                             fk-fields)
         id->table (m/index-by :id (lib.metadata/bulk-metadata
@@ -736,3 +736,26 @@
     (into [] (remove (comp #{:source/joins :source/implicitly-joinable}
                            :lib/source))
           (returned-columns no-fields stage-number))))
+
+(mu/defn primary-source-table :- [:maybe ::lib.schema.metadata/table]
+  "If this query has an MBQL first stage with a `:source-table` ID, return the `:metadata/table` for it.
+
+  Returns nil if the query is native or has a `:source-card`."
+  [query]
+  (some->> query lib.util/source-table-id (lib.metadata/table query)))
+
+(mu/defn primary-source-card :- [:maybe ::lib.schema.metadata/card]
+  "If this query has an MBQL first stage with a `:source-card` ID, return the `:metadata/card` for it.
+
+  Returns nil if the query is native or has a `:source-table`."
+  [query]
+  (some->> query lib.util/source-card-id (lib.metadata/card query)))
+
+(mu/defn primary-source :- [:maybe [:or ::lib.schema.metadata/card ::lib.schema.metadata/table]]
+  "If this query has an MBQL first stage with a `:source-table` or `:source-card`, return the corresponding
+  `:metadata/table` or `:metadata/card`.
+
+  Returns nil if the query is native."
+  [query]
+  (or (primary-source-table query)
+      (primary-source-card  query)))

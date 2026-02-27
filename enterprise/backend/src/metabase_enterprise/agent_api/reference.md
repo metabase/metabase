@@ -115,7 +115,7 @@ Query parameters (all boolean, all optional):
 | Parameter           | Default | Description                             |
 |---------------------|---------|-----------------------------------------|
 | with-fields         | true    | Include field metadata                  |
-| with-field-values   | true    | Include sample values on each field     |
+| with-field-values   | false   | Include sample values on each field     |
 | with-related-tables | true    | Include FK-related tables               |
 | with-metrics        | true    | Include metrics defined on this table   |
 | with-measures       | false   | Include measures                        |
@@ -180,7 +180,7 @@ Query parameters (all boolean, all optional):
 | Parameter                       | Default | Description                           |
 |---------------------------------|---------|---------------------------------------|
 | with-default-temporal-breakout  | true    | Include default time dimension        |
-| with-field-values               | true    | Include sample values on dimensions   |
+| with-field-values               | false   | Include sample values on dimensions   |
 | with-queryable-dimensions       | true    | Include dimensions for group_by       |
 | with-segments                   | false   | Include applicable segments           |
 
@@ -209,7 +209,7 @@ Response:
 ### GET /v1/metric/{id}/field/{field-id}/values
 
 Get statistics and sample values for a field. Accepts optional `limit` query
-parameter.
+parameter (default: 30).
 
 Response:
 
@@ -546,7 +546,8 @@ On failure:
 {"status": "failed", "error": "Query error message"}
 ```
 
-Row limits are enforced automatically:
+Row limits:
+- Default: 100 rows (applied when no `limit` is specified in construct-query for tables)
 - Simple queries (no aggregation): 2000 rows max
 - Aggregated queries: 10000 rows max
 

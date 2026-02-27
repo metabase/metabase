@@ -10,6 +10,7 @@
    [metabase.lib.metadata.invocation-tracker :as lib.metadata.invocation-tracker]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
+   [metabase.settings.core :as setting]
    [metabase.test :as mt]
    [metabase.util :as u]
    [metabase.util.malli.registry :as mr]
@@ -65,7 +66,7 @@
               :id                       (mt/id :products :id)
               :lib/desired-column-alias "ID"
               :display-name             "ID"}
-             {:metabase.lib.join/join-alias "Orders"
+             {:lib/join-alias "Orders"
               :base-type                    :type/Integer
               :semantic-type                :type/FK
               :table-id                     (mt/id :orders)
@@ -77,7 +78,7 @@
               :lib/desired-column-alias     "Orders__PRODUCT_ID"
               :display-name                 "Orders → Product ID"
               :lib/original-join-alias      "Orders"}
-             {:metabase.lib.join/join-alias "Orders"
+             {:lib/join-alias "Orders"
               :lib/type                     :metadata/column
               :base-type                    :type/Integer
               :name                         "sum"
@@ -285,7 +286,7 @@
                       :lib/original-name                                 "ID"
                       :lib/source                                        :source/table-defaults
                       :lib/source-column-alias                           "ID"
-                      :metabase.lib.query/transformation-added-base-type true
+                      :lib/transformation-added-base-type true
                       :name                                              "ID"
                       :position                                          0
                       :semantic_type                                     :type/PK
@@ -296,3 +297,12 @@
       (is (mr/validate ::lib.schema.metadata/column metadata))
       (is (not (:field-ref metadata))
           "Legacy keys like :field_ref/:field-ref should have been removed"))))
+
+(deftest ^:parallel database-local-settings-test
+  (testing "JVM metadata provider should return database-local Settings"
+    (let [global-value (setting/get :unaggregated-query-row-limit)
+          local-value  (inc (or global-value 0))]
+      (mt/with-temp [:model/Database {db-id :id} {:settings {:unaggregated-query-row-limit local-value}}]
+        (let [mp (lib.metadata.jvm/application-database-metadata-provider db-id)]
+          (is (= local-value
+                 (lib.metadata/setting mp :unaggregated-query-row-limit))))))))

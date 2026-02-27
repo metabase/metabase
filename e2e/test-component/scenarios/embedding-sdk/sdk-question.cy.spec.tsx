@@ -611,7 +611,7 @@ describe("scenarios > embedding-sdk > interactive-question", () => {
 
       cy.findByTestId("sdk-question-save-button").should("not.exist");
 
-      cy.findByRole("menu").within(() => {
+      cy.findByRole("listbox").within(() => {
         cy.findByText("Trend").click();
       });
 

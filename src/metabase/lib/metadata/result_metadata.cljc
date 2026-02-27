@@ -115,7 +115,7 @@
                                       (count initial-cols)
                                       (count lib-cols))
                      (letfn [(select-relevant-keys [m]
-                               (select-keys m [:id :metabase.lib.join/join-alias :lib/desired-column-alias :lib/deduplicated-name :lib/original-name :name]))]
+                               (select-keys m [:id :lib/join-alias :lib/desired-column-alias :lib/deduplicated-name :lib/original-name :name]))]
                        {:initial-cols (map select-relevant-keys initial-cols)
                         :lib-cols     (map select-relevant-keys lib-cols)}))]
       (if #?(:clj config/is-prod? :cljs false)
@@ -203,7 +203,7 @@
                                 (= (:lib/source col) :source/joins)
                                 (assoc :lib/source :source/implicitly-joinable)))
         remove-aliases      (fn [col]
-                              (dissoc col :metabase.lib.join/join-alias :lib/original-join-alias))
+                              (dissoc col :lib/join-alias :lib/original-join-alias))
         implicitly-joined?  (fn [col]
                               (when-let [join-alias (any-join-alias col)]
                                 (contains? implicit-aliases join-alias)))
@@ -246,7 +246,7 @@
       [:field (id :guard pos-int?) opts]
       [:field id (not-empty (cond-> (dissoc opts :effective-type :inherited-temporal-unit)
                               (:source-field opts) (dissoc :join-alias)
-                              (:metabase.lib.query/transformation-added-base-type col) (dissoc :base-type)))]
+                              (:lib/transformation-added-base-type col) (dissoc :base-type)))]
 
       [:field (field-name :guard string?) opts]
       [:field field-name (not-empty (dissoc opts :inherited-temporal-unit))]
@@ -295,7 +295,7 @@
                                                              col
                                                              (when-not remove-join-alias?
                                                                (when-let [previous-join-alias (:lib/original-join-alias col)]
-                                                                 {:metabase.lib.join/join-alias previous-join-alias, :lib/source :source/joins})))
+                                                                 {:lib/join-alias previous-join-alias, :lib/source :source/joins})))
                                                             lib.ref/ref)]
               (cond
                 ;; if original ref in the query used an ID then `::field-ref` should as well for historic
@@ -389,6 +389,16 @@
         (lib.field.util/add-source-and-desired-aliases-xform query)
         cols))
 
+(defn- add-nested-display-names
+  "Compute nested display-names for columns with `:parent-id`. Raw field metadata from the metadata provider has leaf
+  display-names (e.g. \"Child\"), but QP results should have the full nested path (e.g. \"Grandparent: Parent: Child\")."
+  [query cols]
+  (mapv (fn [col]
+          (if (:parent-id col)
+            (assoc col :display-name (lib.metadata.calculation/display-name query -1 col))
+            col))
+        cols))
+
 (mu/defn- add-extra-metadata :- [:sequential ::kebab-cased-map]
   "Add extra metadata to the [[lib/returned-columns]] that only comes back with QP results metadata."
   [query        :- ::lib.schema/query
@@ -415,6 +425,7 @@
            deduplicate-names
            (add-legacy-field-refs query)
            (merge-model-metadata query)
+           (add-nested-display-names query)
            (add-source-and-desired-aliases query)))))
 
 (defn- add-unit [col]
@@ -422,13 +433,13 @@
    ;; TODO -- we also need to 'flow' the unit from previous stage(s) "so the frontend can use the correct
    ;; formatting to display values of the column" according
    ;; to [[metabase.query-processor.nested-queries-test/breakout-year-test]]
-   (when-let [temporal-unit ((some-fn :metabase.lib.field/temporal-unit :inherited-temporal-unit) col)]
+   (when-let [temporal-unit ((some-fn :lib/temporal-unit :inherited-temporal-unit) col)]
      {:unit temporal-unit})
    col))
 
 (defn- add-binning-info [col]
   (merge
-   (when-let [binning-info ((some-fn :metabase.lib.field/binning :lib/original-binning) col)]
+   (when-let [binning-info ((some-fn :lib/binning :lib/original-binning) col)]
      {:binning-info (merge
                      (when-let [strategy (:strategy binning-info)]
                        {:binning-strategy strategy})

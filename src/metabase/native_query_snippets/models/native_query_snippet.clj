@@ -5,7 +5,6 @@
    [metabase.collections.models.collection :as collection]
    [metabase.events.core :as events]
    [metabase.lib.core :as lib]
-   [metabase.lib.normalize :as lib.normalize]
    [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
    [metabase.native-query-snippets.models.native-query-snippet.permissions :as snippet.perms]
@@ -29,7 +28,7 @@
 (t2/deftransforms :model/NativeQuerySnippet
   {:template_tags {:in mi/json-in
                    :out (comp (mi/catch-normalization-exceptions
-                               #(lib.normalize/normalize :metabase.lib.schema.template-tag/template-tag-map %))
+                               #(lib/normalize :metabase.lib.schema.template-tag/template-tag-map %))
                               mi/json-out-without-keywordization)}})
 
 (defmethod collection/allowed-namespaces :model/NativeQuerySnippet

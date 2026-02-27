@@ -48,36 +48,84 @@
   (cond-> (assoc (Throwable->map e) :_status (ex-status-code e))
     (server.settings/hide-stacktraces) (dissoc :via :trace)))
 
+(def ^:dynamic *response*
+  "The `HttpServletResponse` for the current streaming response.
+   Bound automatically inside `streaming-response` bodies in the Jetty async path.
+   Use the helper functions [[committed?]], [[set-status!]], [[set-header!]], and
+   [[set-content-type!]] to interact with it."
+  nil)
+
+(defn- assert-response-bound! []
+  (when-not *response*
+    (throw (ex-info "Cannot call response control functions outside of a streaming-response context"
+                    {}))))
+
+(defn committed?
+  "Returns true if the HTTP response has already been committed (headers sent to client).
+   Raises if called outside a `streaming-response` context."
+  []
+  (assert-response-bound!)
+  (.isCommitted ^HttpServletResponse *response*))
+
+(defn set-status!
+  "Set the HTTP status code on the response. No-op if the response is already committed.
+   Raises if called outside a `streaming-response` context."
+  [code]
+  (assert-response-bound!)
+  (when-not (committed?)
+    (.setStatus ^HttpServletResponse *response* (int code))))
+
+(defn set-header!
+  "Set a header on the HTTP response. No-op if the response is already committed.
+   Raises if called outside a `streaming-response` context."
+  [name value]
+  (assert-response-bound!)
+  (when-not (committed?)
+    (.setHeader ^HttpServletResponse *response* (str name) (str value))))
+
+(defn set-content-type!
+  "Set the Content-Type on the HTTP response. No-op if the response is already committed.
+   Raises if called outside a `streaming-response` context."
+  [ct]
+  (assert-response-bound!)
+  (when-not (committed?)
+    (.setContentType ^HttpServletResponse *response* (str ct))))
+
 (defn write-error!
   "Write an error to the output stream, formatting it nicely. Closes output stream afterwards."
-  [^OutputStream os obj export-format]
-  (cond
-    (some #(instance? % obj)
-          [InterruptedException EofException])
-    (log/trace "Error is an InterruptedException or EofException, not writing to output stream")
+  ([os obj export-format]
+   (write-error! os obj export-format nil))
+  ([^OutputStream os obj export-format status-code]
+   (when (and *response* (not (committed?)))
+     (set-status! (or status-code 500))
+     (set-content-type! "application/json"))
+   (cond
+     (some #(instance? % obj)
+           [InterruptedException EofException])
+     (log/trace "Error is an InterruptedException or EofException, not writing to output stream")
 
-    (instance? Throwable obj)
-    (recur os (format-exception obj) export-format)
+     (instance? Throwable obj)
+     (recur os (format-exception obj) export-format status-code)
 
-    :else
-    (with-open [os os]
-      (log/trace (u/pprint-to-str (list 'write-error! obj)))
-      (try
-        (let [obj (-> (if (not= :api export-format)
-                        (walk/prewalk
-                         (fn [x]
-                           (if (map? x)
-                             (apply dissoc x [:json_query :preprocessed])
-                             x))
+     :else
+     (with-open [os os]
+       (log/trace (u/pprint-to-str (list 'write-error! obj)))
+       (try
+         (let [obj (-> (if (not= :api export-format)
+                         (walk/prewalk
+                          (fn [x]
+                            (if (map? x)
+                              (apply dissoc x [:json_query :preprocessed])
+                              x))
+                          obj)
                          obj)
-                        obj)
-                      (dissoc :export-format)
-                      (cond-> (server.settings/hide-stacktraces) (dissoc :stacktrace :trace :via)))]
-          (with-open [writer (BufferedWriter. (OutputStreamWriter. os StandardCharsets/UTF_8))]
-            (json/encode-to obj writer {})))
-        (catch EofException _)
-        (catch Throwable e
-          (log/error e "Error writing error to output stream" obj))))))
+                       (dissoc :export-format)
+                       (cond-> (server.settings/hide-stacktraces) (dissoc :stacktrace :trace :via)))]
+           (with-open [writer (BufferedWriter. (OutputStreamWriter. os StandardCharsets/UTF_8))]
+             (json/encode-to obj writer {})))
+         (catch EofException _)
+         (catch Throwable e
+           (log/error e "Error writing error to output stream" obj)))))))
 
 (defn- do-f* [f ^OutputStream os _finished-chan canceled-chan]
   (try
@@ -107,25 +155,26 @@
 (defn- do-f-async
   "Runs `f` asynchronously on the streaming response `thread-pool`, returning immediately. When `f` finishes,
   completes (i.e., closes) Jetty `async-context`."
-  [^AsyncContext async-context f ^OutputStream os finished-chan canceled-chan]
+  [^AsyncContext async-context response f ^OutputStream os finished-chan canceled-chan]
   {:pre [(some? os)]}
   (let [task (^:once fn* []
-               (try
-                 (do-f* f os finished-chan canceled-chan)
-                 (catch Throwable e
-                   (log/error e "Caught unexpected Exception in streaming response body")
-                   (a/>!! finished-chan :unexpected-error)
-                   (write-error! os e nil))
-                 (finally
-                   ;; Clear the interrupted flag to prevent the thread from
-                   ;; carrying stale interrupted state to the next task.
-                   (Thread/interrupted)
-                   (a/>!! finished-chan (if (a/poll! canceled-chan)
-                                          :canceled
-                                          :completed))
-                   (a/close! finished-chan)
-                   (a/close! canceled-chan)
-                   (.complete async-context))))
+               (binding [*response* response]
+                 (try
+                   (do-f* f os finished-chan canceled-chan)
+                   (catch Throwable e
+                     (log/error e "Caught unexpected Exception in streaming response body")
+                     (a/>!! finished-chan :unexpected-error)
+                     (write-error! os e nil))
+                   (finally
+                     ;; Clear the interrupted flag to prevent the thread from
+                     ;; carrying stale interrupted state to the next task.
+                     (Thread/interrupted)
+                     (a/>!! finished-chan (if (a/poll! canceled-chan)
+                                            :canceled
+                                            :completed))
+                     (a/close! finished-chan)
+                     (a/close! canceled-chan)
+                     (.complete async-context)))))
         fut  (.submit (thread-pool/thread-pool) ^Runnable task)]
     (start-interrupt-escalation! fut finished-chan canceled-chan)
     nil))
@@ -261,7 +310,7 @@
         (let [output-stream-delay (output-stream-delay gzip? response)
               delay-os            (delay-output-stream output-stream-delay)]
           (start-async-cancel-loop! request finished-chan canceled-chan)
-          (do-f-async async-context f delay-os finished-chan canceled-chan)))
+          (do-f-async async-context response f delay-os finished-chan canceled-chan)))
       (catch Throwable e
         (log/error e "Unexpected exception in do-f-async")
         (try
@@ -331,6 +380,9 @@
   `f` should block until it is completely finished writing to the stream, which will be closed thereafter.
   NOTE: `canceled-chan` **IS NOT WORKING**; see `metabase.server.streaming-response-test/canceling-response-2`
   `canceled-chan` can be monitored to see if the request is canceled before results are fully written to the stream.
+
+  Inside the body, [[*response*]] is bound to the `HttpServletResponse`. You can use the helper functions
+  [[set-status!]], [[set-header!]], [[set-content-type!]], and [[committed?]] to interact with the response.
 
   Current options:
 
