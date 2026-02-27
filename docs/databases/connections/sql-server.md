@@ -97,6 +97,12 @@ A fingerprinting query examines the first 10,000 rows from each column and uses 
 
 To connect to Azure SQL, you'll need to set the port to 1433.
 
+## Writeable connection
+
+{% include plans-blockquote.html feature="Writeable connection" is_plural=true%}
+
+Set up an additional connection used for write operations. See [Writeable connections](../writeable-connection.md).
+
 ## Database routing
 
 With database routing, an admin can build a question once using one database, and the question will run its query against a different database with the same schema depending on who is viewing the question.
