@@ -307,33 +307,45 @@ export type VisualizationSettingDefinition<
   widget?: string | ComponentType<TProps & { id: string }>;
   isValid?: (
     object: T,
-    settings: ComputedVisualizationSettings,
+    settings: T extends DatasetColumn
+      ? ColumnSettings
+      : ComputedVisualizationSettings,
     extra?: SettingsExtra,
   ) => boolean;
   hidden?: boolean;
   getHidden?: (
     object: T,
-    settings: ComputedVisualizationSettings,
+    settings: T extends DatasetColumn
+      ? ColumnSettings
+      : ComputedVisualizationSettings,
     extra?: SettingsExtra,
   ) => boolean;
   getDefault?: (
     object: T,
-    settings: ComputedVisualizationSettings,
+    settings: T extends DatasetColumn
+      ? ColumnSettings
+      : ComputedVisualizationSettings,
     extra?: SettingsExtra,
   ) => TValue;
   getValue?: (
     object: T,
-    settings: ComputedVisualizationSettings,
+    settings: T extends DatasetColumn
+      ? ColumnSettings
+      : ComputedVisualizationSettings,
     extra?: SettingsExtra,
   ) => TValue;
   getDisabled?: (
     object: T,
-    settings: ComputedVisualizationSettings,
+    settings: T extends DatasetColumn
+      ? ColumnSettings
+      : ComputedVisualizationSettings,
     extra?: SettingsExtra,
   ) => boolean;
   getSection?: (
     object: T,
-    settings: ComputedVisualizationSettings,
+    settings: T extends DatasetColumn
+      ? ColumnSettings
+      : ComputedVisualizationSettings,
     extra?: SettingsExtra,
   ) => string;
   autoOpenWhenUnset?: boolean;
@@ -345,7 +357,9 @@ export type VisualizationSettingDefinition<
   set?: boolean;
   getMarginBottom?: (
     object: T,
-    settings: ComputedVisualizationSettings,
+    settings: T extends DatasetColumn
+      ? ColumnSettings
+      : ComputedVisualizationSettings,
     extra?: SettingsExtra,
   ) => string;
   persistDefault?: boolean;
@@ -353,7 +367,9 @@ export type VisualizationSettingDefinition<
   props?: Partial<TProps>;
   getProps?: (
     object: T,
-    vizSettings: ComputedVisualizationSettings,
+    vizSettings: T extends DatasetColumn
+      ? ColumnSettings
+      : ComputedVisualizationSettings,
     onChange: (value: TValue) => void,
     extra: SettingsExtra | undefined,
     onChangeSettings: (value: Partial<VisualizationSettings>) => void,

@@ -4,7 +4,7 @@ import {
   columnsAreValid,
   getDefaultDimensionAndMetric,
 } from "metabase/visualizations/lib/utils";
-import type { VisualizationSettingDefinition } from "metabase/visualizations/types";
+import type { SeriesSettingDefinition } from "metabase/visualizations/types";
 import { isDimension, isMetric } from "metabase-lib/v1/types/utils/isa";
 import type {
   DatasetColumn,
@@ -20,10 +20,7 @@ export function getOptionFromColumn(col: DatasetColumn) {
   };
 }
 
-export function metricSetting(
-  id: string,
-  def: Partial<VisualizationSettingDefinition<Series>> = {},
-) {
+export function metricSetting(id: string, def: SeriesSettingDefinition = {}) {
   return fieldSetting(id, {
     fieldFilter: isMetric,
     getDefault: (series) => getDefaultDimensionAndMetric(series).metric,
@@ -33,7 +30,7 @@ export function metricSetting(
 
 export function dimensionSetting(
   id: string,
-  def: Partial<VisualizationSettingDefinition<Series>> = {},
+  def: SeriesSettingDefinition = {},
 ) {
   return fieldSetting(id, {
     fieldFilter: isDimension,
@@ -62,13 +59,13 @@ export function fieldSetting(
     showColumnSetting,
     autoOpenWhenUnset,
     ...def
-  }: Partial<VisualizationSettingDefinition<Series>> & {
+  }: SeriesSettingDefinition & {
     fieldFilter?: FieldFilterFn;
     showColumnSetting?: boolean;
     autoOpenWhenUnset?: boolean;
   } = {},
 ): {
-  [id]: VisualizationSettingDefinition<Series>;
+  [id]: SeriesSettingDefinition;
 } {
   return {
     [id]: {

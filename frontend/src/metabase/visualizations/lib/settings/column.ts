@@ -154,11 +154,11 @@ export const DATE_COLUMN_SETTINGS: VisualizationSettingsDefinitions = {
       const [{ value = "" } = {}] = getDateStyleOptionsForUnit(unit);
       return value;
     },
-    isValid: ({ unit }, settings: ColumnSettings) => {
+    isValid: ({ unit }, settings) => {
       const options = getDateStyleOptionsForUnit(unit ?? "default");
       return !!_.findWhere(options, { value: settings.date_style });
     },
-    getProps: ({ unit }, settings: ColumnSettings) => ({
+    getProps: ({ unit }, settings) => ({
       options: getDateStyleOptionsForUnit(
         unit ?? "default",
         settings.date_abbreviate != null
@@ -178,9 +178,9 @@ export const DATE_COLUMN_SETTINGS: VisualizationSettingsDefinitions = {
     },
     widget: "radio",
     default: "/",
-    getProps: (_column, settings: ColumnSettings) => {
-      const style = /\//.test(settings.date_style)
-        ? settings.date_style
+    getProps: (_column, settings) => {
+      const style = /\//.test(settings.date_style ?? "")
+        ? (settings.date_style ?? "")
         : "M/D/YYYY";
       return {
         options: [
@@ -190,7 +190,7 @@ export const DATE_COLUMN_SETTINGS: VisualizationSettingsDefinitions = {
         ],
       };
     },
-    getHidden: (_column, settings: ColumnSettings) =>
+    getHidden: (_column, settings) =>
       !/\//.test(String(settings.date_style ?? "")),
   },
   date_abbreviate: {
@@ -200,12 +200,12 @@ export const DATE_COLUMN_SETTINGS: VisualizationSettingsDefinitions = {
     widget: "toggle",
     default: false,
     inline: true,
-    getHidden: ({ unit }, settings: ColumnSettings) => {
+    getHidden: ({ unit }, settings) => {
       const format = getDateFormatFromStyle(
         settings.date_style,
         unit ?? "default",
       );
-      return !format.match(/MMMM|dddd/);
+      return !format || !format.match(/MMMM|dddd/);
     },
     readDependencies: ["date_style"],
   },
@@ -214,7 +214,7 @@ export const DATE_COLUMN_SETTINGS: VisualizationSettingsDefinitions = {
       return t`Show the time`;
     },
     widget: "radio",
-    isValid: ({ unit }, settings: ColumnSettings) => {
+    isValid: ({ unit }, settings) => {
       const options = getTimeEnabledOptionsForUnit(unit);
       return !!_.findWhere(options, { value: settings.time_enabled });
     },
@@ -234,7 +234,7 @@ export const DATE_COLUMN_SETTINGS: VisualizationSettingsDefinitions = {
     getProps: (column) => ({
       options: getTimeStyleOptions(column.unit ?? "default"),
     }),
-    getHidden: (column, settings: ColumnSettings) =>
+    getHidden: (column, settings) =>
       !settings.time_enabled || isDateWithoutTime(column),
     readDependencies: ["time_enabled"],
   },
@@ -276,8 +276,8 @@ export const NUMBER_COLUMN_SETTINGS: VisualizationSettingsDefinitions = {
     },
     getDefault: getDefaultNumberStyle,
     // hide this for currency
-    getHidden: (column, settings: ColumnSettings) =>
-      isCurrency(column) && settings["number_style"] === "currency",
+    getHidden: (column, settings) =>
+      isCurrency(column) && settings.number_style === "currency",
     readDependencies: ["currency"],
   },
   currency: {
@@ -295,23 +295,21 @@ export const NUMBER_COLUMN_SETTINGS: VisualizationSettingsDefinitions = {
       searchCaseSensitive: false,
     },
     getDefault: getDefaultCurrency,
-    getHidden: (_column, settings: ColumnSettings) =>
-      settings["number_style"] !== "currency",
+    getHidden: (_column, settings) => settings.number_style !== "currency",
   },
   currency_style: {
     get title() {
       return t`Currency label style`;
     },
     widget: "radio",
-    getProps: (_column, settings: ColumnSettings) => ({
+    getProps: (_column, settings) => ({
       options: getCurrencyStyleOptions(
-        settings["currency"] || "USD",
-        settings["currency_style"],
+        settings.currency || "USD",
+        settings.currency_style,
       ),
     }),
     getDefault: getDefaultCurrencyStyle,
-    getHidden: (_column, settings: ColumnSettings) =>
-      settings["number_style"] !== "currency",
+    getHidden: (_column, settings) => settings.number_style !== "currency",
     readDependencies: ["number_style"],
   },
   currency_in_header: {
@@ -327,13 +325,13 @@ export const NUMBER_COLUMN_SETTINGS: VisualizationSettingsDefinitions = {
       ],
     }),
     getDefault: getDefaultCurrencyInHeader,
-    getHidden: (_column, settings: ColumnSettings, extra) => {
+    getHidden: (_column, settings, extra) => {
       const { forAdminSettings, series = [] } = extra ?? {};
       if (forAdminSettings === true) {
         return false;
       }
       return (
-        settings["number_style"] !== "currency" ||
+        settings.number_style !== "currency" ||
         series[0].card.display !== "table"
       );
     },
@@ -400,8 +398,7 @@ export const NUMBER_COLUMN_SETTINGS: VisualizationSettingsDefinitions = {
   },
   // Optimization: build a single NumberFormat object that is used by formatting.js
   _numberFormatter: {
-    getValue: (_column, settings: ColumnSettings) =>
-      numberFormatterForOptions(settings),
+    getValue: (_column, settings) => numberFormatterForOptions(settings),
     readDependencies: [
       "number_style",
       "currency_style",
@@ -410,19 +407,16 @@ export const NUMBER_COLUMN_SETTINGS: VisualizationSettingsDefinitions = {
     ],
   },
   _header_unit: {
-    getValue: (_column, settings: ColumnSettings) => {
-      if (
-        settings["number_style"] === "currency" &&
-        settings["currency_in_header"]
-      ) {
-        if (settings["currency_style"] === "symbol") {
-          return getCurrencySymbol(settings["currency"]);
+    getValue: (_column, settings) => {
+      if (settings.number_style === "currency" && settings.currency_in_header) {
+        if (settings.currency_style === "symbol") {
+          return getCurrencySymbol(settings.currency);
         }
-        if (settings["currency_style"] === "narrowSymbol") {
-          return getCurrencyNarrowSymbol(settings["currency"]);
+        if (settings.currency_style === "narrowSymbol") {
+          return getCurrencyNarrowSymbol(settings.currency);
         }
 
-        return getCurrency(settings["currency"], settings["currency_style"]);
+        return getCurrency(settings.currency, settings.currency_style);
       }
       return null;
     },
@@ -447,7 +441,7 @@ const COMMON_COLUMN_SETTINGS: VisualizationSettingsDefinitions = {
     getValue: (column) => column,
   },
   _column_title_full: {
-    getValue: (column, settings: ColumnSettings) => {
+    getValue: (column, settings) => {
       let columnTitle =
         settings["column_title"] || displayNameForColumn(column);
       const headerUnit = settings["_header_unit"];

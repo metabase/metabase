@@ -11,6 +11,7 @@ import type {
 } from "metabase/visualizations/types";
 import { normalize } from "metabase-lib/v1/queries/utils/normalize";
 import type {
+  ColumnSettings,
   DimensionReference,
   Series,
   VisualizationSettings,
@@ -50,7 +51,7 @@ const COMMON_SETTINGS: VisualizationSettingsDefinitions = {
     inline: true,
     dashboard: true,
     getHidden: ([{ card }]) => isVirtualDashCard(card),
-    onUpdate: (value: unknown, extra: SettingsExtra) => {
+    onUpdate: (value, extra) => {
       if (!value || extra.dashboardId == null) {
         return;
       }
@@ -62,9 +63,7 @@ const COMMON_SETTINGS: VisualizationSettingsDefinitions = {
 
 function getSettingDefinitionsForSeries(
   series: Series | null | undefined,
-): VisualizationSettingsDefinitions & {
-  [id: string]: { id?: string };
-} {
+): VisualizationSettingsDefinitions {
   if (!series) {
     return {};
   }
@@ -80,14 +79,12 @@ function getSettingDefinitionsForSeries(
 }
 
 function normalizeColumnSettings(
-  columnSettings: Record<string, unknown>,
-): Record<string, unknown> {
-  const newColumnSettings: Record<string, unknown> = {};
+  columnSettings: Record<string, ColumnSettings>,
+): Record<string, ColumnSettings> {
+  const newColumnSettings: Record<string, ColumnSettings> = {};
   for (const oldColumnKey of Object.keys(columnSettings)) {
-    const [refOrName, fieldRef] = JSON.parse(oldColumnKey) as [
-      string,
-      DimensionReference,
-    ];
+    const [refOrName, fieldRef]: [string, DimensionReference] =
+      JSON.parse(oldColumnKey);
     // if the key is a reference, normalize the mbql syntax
     const newColumnKey =
       refOrName === "ref"
@@ -100,22 +97,15 @@ function normalizeColumnSettings(
 
 export function getStoredSettingsForSeries(
   series: Series | null | undefined,
-): Record<string, unknown> {
-  let storedSettings: Record<string, unknown> =
-    (
-      series?.[0]?.card as
-        | { visualization_settings?: Record<string, unknown> }
-        | undefined
-    )?.visualization_settings ?? {};
+): VisualizationSettings {
+  let storedSettings = series?.[0]?.card?.visualization_settings ?? {};
   if (storedSettings.column_settings) {
     // normalize any settings stored under old style keys: [ref, [fk->, 1, 2]]
     storedSettings = assocIn(
       storedSettings,
       ["column_settings"],
-      normalizeColumnSettings(
-        storedSettings.column_settings as Record<string, unknown>,
-      ),
-    ) as Record<string, unknown>;
+      normalizeColumnSettings(storedSettings.column_settings),
+    );
   }
   return storedSettings;
 }
@@ -135,7 +125,7 @@ export function getComputedSettingsForSeries(
 
 export function getPersistableDefaultSettingsForSeries(
   series: Series | null | undefined,
-): Record<string, unknown> {
+): ComputedVisualizationSettings {
   // A complete set of settings (not only defaults) is loaded because
   // some persistable default settings need other settings as dependency for calculating the default value
   const settingsDefs = getSettingDefinitionsForSeries(series);

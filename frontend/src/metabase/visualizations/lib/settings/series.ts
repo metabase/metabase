@@ -62,7 +62,7 @@ export interface SeriesSettingOptions {
 export function seriesSetting({
   readDependencies = [],
   def = {},
-}: SeriesSettingOptions = {}): Record<string, unknown> {
+}: SeriesSettingOptions = {}): VisualizationSettingsDefinitions {
   const COMMON_SETTINGS: VisualizationSettingsDefinitions = {
     // title, and color don't need widgets because they're handled directly in ChartNestedSettingSeries
     title: {
@@ -194,7 +194,7 @@ export function seriesSetting({
       },
       getHidden: (_single, settings) =>
         !LINE_DISPLAY_TYPES.has(settings["display"]),
-      getDefault: (_single: SingleSeries, _settings, extra) => {
+      getDefault: (_single, _settings, extra) => {
         // use legacy global line.missing setting if present
         return getSeriesDefaultLineMissing(extra?.settings ?? {});
       },
@@ -294,7 +294,7 @@ export function seriesSetting({
  * Then it retrieves the colors using the `getSeriesColors` function.
  * @param series - The series to compute colors for.
  * @param settings - The visualization settings.
- * @returns {Object} - An object mapping series keys to their colors.
+ * @returns An object mapping series keys to their colors.
  */
 export function getColors(
   series: Series,

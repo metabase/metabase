@@ -720,12 +720,12 @@ const getMonthFormat = (options: OptionsType) =>
   options.compact || options.date_abbreviate ? "MMM" : "MMMM";
 
 export function getDateFormatFromStyle(
-  style: string,
+  style: string | undefined,
   unit: DatetimeUnit | undefined,
   separator?: string,
   includeWeekday?: boolean,
 ) {
-  const replaceSeparators = (format: string) =>
+  const replaceSeparators = (format: string | undefined) =>
     separator && format ? format.replace(/\//g, separator) : format;
 
   if (!unit) {
@@ -734,7 +734,7 @@ export function getDateFormatFromStyle(
 
   let format = null;
 
-  if (DATE_STYLE_TO_FORMAT[style]) {
+  if (style && DATE_STYLE_TO_FORMAT[style]) {
     if (DATE_STYLE_TO_FORMAT[style][unit]) {
       format = replaceSeparators(DATE_STYLE_TO_FORMAT[style][unit]);
     }
@@ -1246,7 +1246,7 @@ function replaceDateFormatNames(format: string, options: OptionsType) {
 
 export function formatDateTimeWithFormats(
   value: number | string | Date | Dayjs,
-  dateFormat: string,
+  dateFormat: string | undefined,
   timeFormat: string | null,
   options: OptionsType,
 ) {
@@ -1408,7 +1408,7 @@ function dateStyleOption(
   separator?: string,
 ) {
   let format = getDateFormatFromStyle(style, unit, separator);
-  if (abbreviate) {
+  if (abbreviate && format) {
     format = format.replace(/MMMM/, "MMM").replace(/dddd/, "ddd");
   }
   return {
