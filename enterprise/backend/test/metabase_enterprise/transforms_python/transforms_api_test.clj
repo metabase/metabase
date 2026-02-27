@@ -158,8 +158,7 @@
                 (transforms.tu/test-run transform-id)
                 (transforms.tu/wait-for-table table-name 10000)
                 (is (true? (driver/table-exists? driver/*driver* (mt/db) target)))
-                (is (= [["Alice" 25] ["Bob" 30]]
-                       (transforms.tu/table-rows table-name)))))))))))
+                (is (= [["Alice" 25] ["Bob" 30]] (sort-by first (transforms.tu/table-rows table-name))))))))))))
 
 (defn- subsequence?
   "Returns true if sequence ys is a subsequence of xs:
