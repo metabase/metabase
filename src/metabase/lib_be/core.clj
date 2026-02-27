@@ -38,7 +38,7 @@
   enable-nested-queries
   start-of-week]
  [metabase.lib-be.query
-  bulk-load-query-metadata]
+  bulk-load-query-metadata!]
  [metabase.lib-be.source-swap
   check-column-mappings
   should-upgrade-field-ref-in-parameter-target?

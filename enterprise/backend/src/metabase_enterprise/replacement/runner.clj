@@ -1,7 +1,6 @@
 (ns metabase-enterprise.replacement.runner
   (:require
    [metabase-enterprise.replacement.field-refs :as field-refs]
-   [metabase.lib.metadata.protocols :as lib.metadata.protocols]
    [metabase-enterprise.replacement.protocols :as replacement.protocols]
    [metabase-enterprise.replacement.source :as source]
    [metabase-enterprise.replacement.source-swap :as source-swap]
@@ -9,6 +8,7 @@
    [metabase-enterprise.replacement.usages :as usages]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
+   [metabase.lib.metadata.protocols :as lib.metadata.protocols]
    [metabase.util.log :as log]
    [toucan2.core :as t2]))
 
@@ -76,7 +76,7 @@
         ;; Extract all referenced entity IDs across all queries
         (let [referenced-ids (lib/all-referenced-entity-ids queries)]
           ;; Bulk load all metadata at once
-          (lib-be/bulk-load-query-metadata metadata-provider referenced-ids)))
+          (lib-be/bulk-load-query-metadata! metadata-provider referenced-ids)))
       (merge cards tables transforms segments measures))))
 
 (defn- run-swap* [{:keys [direct transitive direct-card-ids second-lvl-dash-ids]}

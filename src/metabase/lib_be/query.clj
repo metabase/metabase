@@ -5,7 +5,7 @@
    [metabase.lib.walk.util :as lib.walk.util]
    [metabase.util.malli :as mu]))
 
-(mu/defn bulk-load-query-metadata
+(mu/defn bulk-load-query-metadata!
   "Bulk-load all metadata referenced by `referenced-entity-ids` into `metadata-providerable`'s cache."
   [metadata-providerable :- ::lib.schema.metadata/metadata-providerable
    {:keys [table card metric measure segment snippet]} :- ::lib.walk.util/referenced-entity-ids]
@@ -14,4 +14,5 @@
   (lib.metadata/bulk-metadata metadata-providerable :metadata/metric metric)
   (lib.metadata/bulk-metadata metadata-providerable :metadata/measure measure)
   (lib.metadata/bulk-metadata metadata-providerable :metadata/segment segment)
-  (lib.metadata/bulk-metadata metadata-providerable :metadata/native-query-snippet snippet))
+  (lib.metadata/bulk-metadata metadata-providerable :metadata/native-query-snippet snippet)
+  nil)
