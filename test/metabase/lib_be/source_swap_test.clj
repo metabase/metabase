@@ -132,6 +132,20 @@
                         {:filters [[:> {} [:field {} "PRODUCT_ID"] 5]]}]}
               (lib-be/upgrade-field-refs-in-query query))))))
 
+(deftest ^:parallel upgrade-field-refs-in-query-source-card-duplicate-breakout-buckets-test
+  (let [base-query (lib/query meta/metadata-provider (meta/table-metadata :orders))
+        mp         (lib.tu/metadata-provider-with-card-from-query 1 base-query)
+        query      (-> (lib/query mp (lib.metadata/card mp 1))
+                       (lib/breakout (lib/with-temporal-bucket (meta/field-metadata :orders :created-at) :month))
+                       (lib/breakout (lib/with-temporal-bucket (meta/field-metadata :orders :created-at) :year)))]
+    (testing "should need upgrading"
+      (is (true? (lib-be/should-upgrade-field-refs-in-query? query))))
+    (testing "should convert id-based breakouts to name-based refs preserving temporal buckets"
+      (is (=? {:stages [{:source-card 1
+                         :breakout    [[:field {:temporal-unit :month} "CREATED_AT"]
+                                       [:field {:temporal-unit :year} "CREATED_AT"]]}]}
+              (lib-be/upgrade-field-refs-in-query query))))))
+
 (deftest ^:parallel upgrade-field-refs-in-query-card-join-table-test
   (let [orders-query (lib/query meta/metadata-provider (meta/table-metadata :orders))
         mp           (lib.tu/metadata-provider-with-card-from-query 1 orders-query)
@@ -277,6 +291,18 @@
                          :aggregation  [[:count {}]]
                          :breakout     [[:field {} (meta/id :reviews :created-at)]]
                          :order-by     [[:asc {} [:field {} (meta/id :reviews :created-at)]]]}]}
+              (lib-be/swap-source-in-query query
+                                           {:type :table, :id (meta/id :orders)}
+                                           {:type :table, :id (meta/id :reviews)}))))))
+
+(deftest ^:parallel swap-source-in-query-source-table-duplicate-breakout-buckets-test
+  (let [query (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
+                  (lib/breakout (lib/with-temporal-bucket (meta/field-metadata :orders :created-at) :month))
+                  (lib/breakout (lib/with-temporal-bucket (meta/field-metadata :orders :created-at) :year)))]
+    (testing "should swap source table and preserve temporal buckets on duplicate breakouts"
+      (is (=? {:stages [{:source-table (meta/id :reviews)
+                         :breakout     [[:field {:temporal-unit :month} (meta/id :reviews :created-at)]
+                                        [:field {:temporal-unit :year} (meta/id :reviews :created-at)]]}]}
               (lib-be/swap-source-in-query query
                                            {:type :table, :id (meta/id :orders)}
                                            {:type :table, :id (meta/id :reviews)}))))))
