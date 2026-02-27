@@ -301,34 +301,29 @@
                     (when (>= (count @pending-text) min-text-batch-size)
                       (request-flush!))))
 
+        send-task-update! (fn [id tool-name status]
+                            (when-let [{:keys [stream_ts channel]} @stream-state]
+                              (send-off slack-writer
+                                        (fn [_]
+                                          (drain-pending-text!)
+                                          (when (= status "in_progress")
+                                            (dismiss-thinking!))
+                                          (slackbot.client/append-stream client channel stream_ts
+                                                                         [{:type   "task_update"
+                                                                           :id     id
+                                                                           :title  (tool-name->friendly tool-name)
+                                                                           :status status}])
+                                          (when (= status "complete")
+                                            (slackbot.client/append-markdown-text client channel stream_ts "\n"))
+                                          nil))))
+
         on-tool-start (fn [{:keys [id tool-name]}]
                         (request-flush!)
                         (vswap! tool-id->name assoc id tool-name)
-                        (when-let [{:keys [stream_ts channel]} @stream-state]
-                          (send-off slack-writer
-                                    (fn [_]
-                                      (drain-pending-text!)
-                                      (dismiss-thinking!)
-                                      (slackbot.client/append-stream client channel stream_ts
-                                                                     [{:type   "task_update"
-                                                                       :id     id
-                                                                       :title  (tool-name->friendly tool-name)
-                                                                       :status "in_progress"}])
-                                      nil))))
+                        (send-task-update! id tool-name "in_progress"))
 
         on-tool-end (fn [{:keys [id]}]
-                      (when-let [{:keys [stream_ts channel]} @stream-state]
-                        (let [tool-name (get @tool-id->name id)]
-                          (send-off slack-writer
-                                    (fn [_]
-                                      (drain-pending-text!)
-                                      (slackbot.client/append-stream client channel stream_ts
-                                                                     [{:type   "task_update"
-                                                                       :id     id
-                                                                       :title  (tool-name->friendly tool-name)
-                                                                       :status "complete"}])
-                                      (slackbot.client/append-markdown-text client channel stream_ts "\n")
-                                      nil))))
+                      (send-task-update! id (get @tool-id->name id) "complete")
                       (vswap! tool-id->name dissoc id))
 
         prefetched-viz (atom {})

@@ -739,8 +739,8 @@
            :data-parts [{:type "static_viz" :value {:entity_id 999999}}]}
           (fn [{:keys [post-calls stop-stream-calls]}]
             (mt/with-dynamic-fn-redefs
-              [slackbot/generate-card-output (fn [_card-id]
-                                               (throw (ex-info "Card not found" {})))]
+              [slackbot.query/generate-card-output (fn [_card-id]
+                                                     (throw (ex-info "Card not found" {})))]
               (mt/client :post 200 "ee/metabot-v3/slack/events"
                          (slack-request-options event-body) event-body)
               (let [error-msg "Something went wrong while generating this visualization."]
@@ -766,10 +766,10 @@
                         {:type "static_viz" :value {:entity_id 123}}]}
           (fn [{:keys [post-calls image-calls stop-stream-calls]}]
             (mt/with-dynamic-fn-redefs
-              [slackbot/generate-card-output (fn [card-id]
-                                               (if (= card-id 999999)
-                                                 (throw (ex-info "Card not found" {}))
-                                                 {:type :image :content fake-png}))]
+              [slackbot.query/generate-card-output (fn [card-id]
+                                                     (if (= card-id 999999)
+                                                       (throw (ex-info "Card not found" {}))
+                                                       {:type :image :content fake-png}))]
               (mt/client :post 200 "ee/metabot-v3/slack/events"
                          (slack-request-options event-body) event-body)
               (u/poll {:thunk      #(and (>= (count @stop-stream-calls) 1)
@@ -786,10 +786,19 @@
   (testing "throws when QP returns :status :failed for table card"
     (mt/with-temp [:model/Card {card-id :id} {:display :table}]
       (mt/with-dynamic-fn-redefs
-        [slackbot/pulse-card-query-results (constantly {:status :failed
-                                                        :error  "Permission denied"})]
+        [slackbot.query/pulse-card-query-results (constantly {:status :failed
+                                                              :error  "Permission denied"})]
         (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Permission denied"
-                              (#'slackbot/generate-card-output card-id)))))))
+                              (#'slackbot.query/generate-card-output card-id)))))))
+
+(deftest generate-card-png-failed-qp-result-test
+  (testing "throws when QP returns :status :failed for image card"
+    (mt/with-temp [:model/Card {card-id :id} {:display :bar}]
+      (mt/with-dynamic-fn-redefs
+        [slackbot.query/pulse-card-query-results (constantly {:status :failed
+                                                              :error  "Permission denied"})]
+        (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Permission denied"
+                              (#'slackbot.query/generate-card-output card-id)))))))
 
 (deftest ^:parallel generate-adhoc-output-failed-qp-result-test
   (testing "throws when QP returns :status :failed"
