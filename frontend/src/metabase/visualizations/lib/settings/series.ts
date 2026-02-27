@@ -250,33 +250,36 @@ export function seriesSetting({
   };
 
   return {
-    ...nestedSettings<"series_settings", SingleSeries>(SERIES_SETTING_KEY, {
-      getHidden: ([{ card }], _settings, extra) =>
-        !extra?.isDashboard || card?.display === "waterfall",
-      getSection: (_series, _settings, extra) =>
-        extra?.isDashboard ? t`Display` : t`Style`,
-      objectName: "series",
-      getObjects: (series) => series,
-      getObjectKey: keyForSingleSeries,
-      getObjectSettings: (storedSettings, object) =>
-        storedSettings[keyForSingleSeries(object)],
-      getSettingDefinitionsForObject: () => COMMON_SETTINGS,
-      component: ChartNestedSettingSeries,
-      readDependencies: [SERIES_COLORS_SETTING_KEY, ...readDependencies],
-      noPadding: true,
-      getExtraProps: (series) => ({
-        seriesCardNames: series.reduce<Record<string, string>>(
-          (memo, singleSeries) => {
-            memo[keyForSingleSeries(singleSeries)] = getNameForCard(
-              singleSeries.card,
-            );
-            return memo;
-          },
-          {},
-        ),
-      }),
-      ...def,
-    }),
+    ...nestedSettings<typeof SERIES_SETTING_KEY, SingleSeries>(
+      SERIES_SETTING_KEY,
+      {
+        getHidden: ([{ card }], _settings, extra) =>
+          !extra?.isDashboard || card?.display === "waterfall",
+        getSection: (_series, _settings, extra) =>
+          extra?.isDashboard ? t`Display` : t`Style`,
+        objectName: "series",
+        getObjects: (series) => series,
+        getObjectKey: keyForSingleSeries,
+        getObjectSettings: (storedSettings, object) =>
+          storedSettings[keyForSingleSeries(object)],
+        getSettingDefinitionsForObject: () => COMMON_SETTINGS,
+        component: ChartNestedSettingSeries,
+        readDependencies: [SERIES_COLORS_SETTING_KEY, ...readDependencies],
+        noPadding: true,
+        getExtraProps: (series) => ({
+          seriesCardNames: series.reduce<Record<string, string>>(
+            (memo, singleSeries) => {
+              memo[keyForSingleSeries(singleSeries)] = getNameForCard(
+                singleSeries.card,
+              );
+              return memo;
+            },
+            {},
+          ),
+        }),
+        ...def,
+      },
+    ),
     // colors must be computed as a whole rather than individually
     [SERIES_COLORS_SETTING_KEY]: {
       getValue: getColors,

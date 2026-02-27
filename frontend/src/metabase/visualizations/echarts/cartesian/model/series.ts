@@ -454,12 +454,15 @@ export function getComboChartDataDensity(
   );
   const seriesWithSymbols = seriesModels.filter((seriesModel) => {
     const seriesSettings = seriesSettingsByDataKey[seriesModel.dataKey];
-    return ["area", "line"].includes(seriesSettings?.display ?? "");
+    const display = seriesSettings.display;
+    return display && ["area", "line"].includes(display);
   });
   const seriesWithLabels = seriesModels.filter((seriesModel) => {
     const seriesSettings = seriesSettingsByDataKey[seriesModel.dataKey];
+    const display = seriesSettings.display;
     if (
-      ["area", "bar"].includes(seriesSettings?.display ?? "") &&
+      display &&
+      ["area", "bar"].includes(display) &&
       settings["stackable.stack_type"] != null
     ) {
       return false;

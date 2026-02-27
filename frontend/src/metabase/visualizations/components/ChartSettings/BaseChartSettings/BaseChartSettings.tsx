@@ -12,6 +12,7 @@ import {
 } from "metabase/visualizations/lib/settings";
 import { getSettingDefinitionsForColumn } from "metabase/visualizations/lib/settings/column";
 import { keyForSingleSeries } from "metabase/visualizations/lib/settings/series";
+import { SERIES_SETTING_KEY } from "metabase/visualizations/shared/settings/series";
 import type { Widget } from "metabase/visualizations/types";
 import { getColumnKey } from "metabase-lib/v1/queries/utils/column-key";
 import type { DatasetColumn } from "metabase-types/api";
@@ -81,7 +82,7 @@ export const BaseChartSettings = ({
   const styleWidget = useMemo<Widget | null>(() => {
     const seriesSettingsWidget =
       currentWidget &&
-      widgets.find((widget) => widget.id === "series_settings");
+      widgets.find((widget) => widget.id === SERIES_SETTING_KEY);
 
     const display = transformedSeries?.[0]?.card?.display;
     // In the pie the chart, clicking on the "measure" settings menu will only
