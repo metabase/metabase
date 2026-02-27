@@ -61,8 +61,10 @@ const defaultConfig = {
       : undefined,
   },
 
-  // Prevent usage of deprecated Cypress.env() API
-  allowCypressEnv: false,
+  // Note: We can't set `allowCypressEnv: false` yet because @cypress/grep
+  // plugin still uses Cypress.env() internally
+  // FIXME: enable once we upgrade (DEV-1620)
+  // allowCypressEnv: false,
 
   // This is the functionality of the old cypress-plugins.js file
   setupNodeEvents(cypressOn, config) {
