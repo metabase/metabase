@@ -1,3 +1,4 @@
+import type { ComponentType } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
@@ -127,11 +128,12 @@ export function nestedSettings<
   }
 
   // decorate with nested settings HOC
-  const widget = chartSettingNestedSettings({
-    getObjectKey,
-    getObjectSettings,
-    getSettingsWidgetsForObject,
-  })(component);
+  const widget: ComponentType<TProps & { id: string }> =
+    chartSettingNestedSettings({
+      getObjectKey,
+      getObjectSettings,
+      getSettingsWidgetsForObject,
+    })(component);
 
   const idDef: SeriesSettingDefinition<unknown, TProps> = {
     section: t`Display`,
