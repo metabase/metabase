@@ -15,12 +15,17 @@
    [metabase.permissions.core :as perms]
    [metabase.util.log :as log])
   (:import
-   (java.util.concurrent Callable ExecutionException ExecutorService Executors Future)))
+   (java.util.concurrent Callable ExecutionException ExecutorService Executors Future ThreadFactory)))
 
 (set! *warn-on-reflection* true)
 
 (defonce ^:private ^ExecutorService viz-prefetch-executor
-  (Executors/newFixedThreadPool 8))
+  (let [counter (atom 0)
+        factory (reify ThreadFactory
+                  (newThread [_ r]
+                    (doto (Thread. r (str "viz-prefetch-" (swap! counter inc)))
+                      (.setDaemon true))))]
+    (Executors/newFixedThreadPool 8 factory)))
 
 (defn- strip-bot-mention
   "Remove bot mention prefix from text (e.g., '<@U123> hello' -> 'hello')"
@@ -141,6 +146,10 @@
     (->> (metabot-v3.util/aisdk->messages :assistant lines)
          (filter #(= (:_type %) :DATA)))))
 
+(def ^:private viz-data-types
+  "DATA part types that represent visualizations."
+  #{"static_viz" "adhoc_viz"})
+
 (defn- generate-viz-output
   "Generate visualization output for a data-part. Called both by the prefetch executor (during streaming)
    and synchronously by [[resolve-viz-output]] when no prefetched result exists."
@@ -184,13 +193,23 @@
         (throw (or (.getCause e) e))))
     (generate-viz-output data-part)))
 
+(defn- post-viz-error
+  "Post a user-friendly visualization error message to Slack, logging on failure."
+  [client channel thread-ts e data-part]
+  (try
+    (slackbot.client/post-message client {:channel   channel
+                                          :thread_ts thread-ts
+                                          :text      (viz-error-message e data-part)})
+    (catch Exception post-e
+      (log/error post-e "Failed to post visualization error message to Slack"))))
+
 (defn- send-visualizations
   "Send visualization data-parts as separate Slack messages after the stream ends.
    Uses prefetched results when available (submitted during streaming) to reduce latency.
    Posts a temporary indicator message while visualizations are being generated."
   [client channel thread-ts data-parts prefetched-viz]
   (let [vizs (keep-indexed (fn [idx part]
-                             (when (#{"static_viz" "adhoc_viz"} (:type part))
+                             (when (viz-data-types (:type part))
                                [idx part]))
                            data-parts)]
     (when (seq vizs)
@@ -207,12 +226,7 @@
                 (send-viz-output client channel thread-ts output filename))
               (catch Exception e
                 (log/errorf e "Failed to generate visualization for %s" (:type data-part))
-                (try
-                  (slackbot.client/post-message client {:channel   channel
-                                                        :thread_ts thread-ts
-                                                        :text      (viz-error-message e data-part)})
-                  (catch Exception post-e
-                    (log/error post-e "Failed to post visualization error message to Slack"))))))
+                (post-viz-error client channel thread-ts e data-part))))
           (finally
             (when-let [ts (:ts indicator)]
               (slackbot.client/delete-message client {:channel channel :ts ts}))))))))
@@ -328,7 +342,7 @@
 
         prefetched-viz (atom {})
         on-data (fn [idx content]
-                  (when (#{"adhoc_viz" "static_viz"} (:type content))
+                  (when (viz-data-types (:type content))
                     (let [task (bound-fn* #(generate-viz-output content))]
                       (swap! prefetched-viz assoc idx
                              (.submit viz-prefetch-executor ^Callable task)))))]

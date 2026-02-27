@@ -740,7 +740,7 @@
           (fn [{:keys [post-calls stop-stream-calls]}]
             (mt/with-dynamic-fn-redefs
               [slackbot.query/generate-card-output (fn [_card-id]
-                                                     (throw (ex-info "Card not found" {})))]
+                                                     (throw (ex-info "Unexpected render error" {})))]
               (mt/client :post 200 "ee/metabot-v3/slack/events"
                          (slack-request-options event-body) event-body)
               (let [error-msg "Something went wrong while generating this visualization."]
@@ -768,7 +768,7 @@
             (mt/with-dynamic-fn-redefs
               [slackbot.query/generate-card-output (fn [card-id]
                                                      (if (= card-id 999999)
-                                                       (throw (ex-info "Card not found" {}))
+                                                       (throw (ex-info "Unexpected render error" {}))
                                                        {:type :image :content fake-png}))]
               (mt/client :post 200 "ee/metabot-v3/slack/events"
                          (slack-request-options event-body) event-body)

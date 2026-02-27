@@ -12,6 +12,12 @@
 
 (set! *warn-on-reflection* true)
 
+(defn- throw-on-failed-query!
+  [results]
+  (when (= :failed (:status results))
+    (throw (ex-info (or (:error results) "Query execution failed")
+                    (select-keys results [:error :status])))))
+
 (defn execute-adhoc-query
   "Execute an ad-hoc MBQL query in the context of Slackbot and return results."
   [query]
@@ -139,9 +145,7 @@
             :or   {display :table}}]
   (let [display (keyword display)
         results (execute-adhoc-query query)]
-    (when (= :failed (:status results))
-      (throw (ex-info (or (:error results) "Query execution failed")
-                      (select-keys results [:error :status]))))
+    (throw-on-failed-query! results)
     (if (contains? chart-display-types display)
       {:type    :image
        :content (generate-adhoc-png results display)}
@@ -174,39 +178,45 @@
        :context     :pulse
        :card-id     card-id}))))
 
+(defn- render-saved-card-png
+  "Render a saved card (already fetched from DB) to PNG bytes."
+  [card {:keys [width padding-x padding-y]
+         :or   {width 1280 padding-x 32 padding-y 0}}]
+  (let [options {:channel.render/include-title? true
+                 :channel.render/padding-x padding-x
+                 :channel.render/padding-y padding-y}
+        results (pulse-card-query-results card)]
+    (throw-on-failed-query! results)
+    ;; TODO: should we use the user's timezone for this?
+    (channel.render/render-pulse-card-to-png (channel.render/defaulted-timezone card)
+                                             card
+                                             results
+                                             width
+                                             options)))
+
 (defn generate-card-png
   "Generate PNG for a card. Accepts either:
    - card-id (integer) - fetches saved card from database
    - adhoc-card (map) - renders ad-hoc card with :display, :visualization_settings, :results, :name"
-  [card-or-id & {:keys [width padding-x padding-y]
-                 :or {width 1280 padding-x 32 padding-y 0}}]
-  (let [options {:channel.render/include-title? true
-                 :channel.render/padding-x padding-x
-                 :channel.render/padding-y padding-y}]
-    (if (integer? card-or-id)
-      ;; Saved card path
-      (let [card (t2/select-one :model/Card :id card-or-id)]
-        (when-not card
-          (throw (ex-info "Card not found" {:card-id card-or-id})))
-        ;; TODO: should we use the user's timezone for this?
-        (let [results (pulse-card-query-results card)]
-          (when (= :failed (:status results))
-            (throw (ex-info (or (:error results) "Query execution failed")
-                            (select-keys results [:error :status]))))
-          (channel.render/render-pulse-card-to-png (channel.render/defaulted-timezone card)
-                                                   card
-                                                   results
-                                                   width
-                                                   options)))
-      ;; Ad-hoc card path
-      (let [{:keys [display visualization_settings results name]} card-or-id]
-        (channel.render/render-adhoc-card-to-png
-         {:display display
-          :visualization_settings visualization_settings
-          :name name}
-         results
-         width
-         options)))))
+  [card-or-id & {:as opts}]
+  (if (integer? card-or-id)
+    (let [card (t2/select-one :model/Card :id card-or-id)]
+      (when-not card
+        (throw (ex-info "Card not found" {:card-id card-or-id :agent-error? true})))
+      (render-saved-card-png card opts))
+    (let [{:keys [width padding-x padding-y]
+           :or   {width 1280 padding-x 32 padding-y 0}} opts
+          options {:channel.render/include-title? true
+                   :channel.render/padding-x padding-x
+                   :channel.render/padding-y padding-y}
+          {:keys [display visualization_settings results name]} card-or-id]
+      (channel.render/render-adhoc-card-to-png
+       {:display                display
+        :visualization_settings visualization_settings
+        :name                   name}
+       results
+       width
+       options))))
 
 (defn generate-card-output
   "Generate output for a saved card based on its display type.
@@ -220,10 +230,8 @@
       (throw (ex-info "Card not found" {:card-id card-id :agent-error? true})))
     (if (-> card :display keyword supported-png-display-types)
       {:type    :image
-       :content (generate-card-png card-id)}
+       :content (render-saved-card-png card {})}
       (let [results (pulse-card-query-results card)]
-        (when (= :failed (:status results))
-          (throw (ex-info (or (:error results) "Query execution failed")
-                          (select-keys results [:error :status]))))
+        (throw-on-failed-query! results)
         {:type    :table
          :content (format-results-as-table-blocks results)}))))
