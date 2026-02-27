@@ -10,7 +10,7 @@ type ModelsSectionLayoutProps = {
 };
 
 export function ModelsSectionLayout({ children }: ModelsSectionLayoutProps) {
-  usePageTitle(t`Models`);
+  usePageTitle(t`Migrate models`);
 
   return <SectionLayout>{children}</SectionLayout>;
 }

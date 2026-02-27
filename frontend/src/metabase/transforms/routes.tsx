@@ -1,5 +1,7 @@
 import { IndexRoute, Route } from "react-router";
 
+import { ModelsSectionLayout } from "metabase/data-studio/app/pages/ModelsSectionLayout";
+import { ModelsPage } from "metabase/data-studio/models/pages/ModelsPage";
 import {
   PLUGIN_DEPENDENCIES,
   PLUGIN_TRANSFORMS_PYTHON,
@@ -30,6 +32,9 @@ export function getDataStudioTransformRoutes() {
       </Route>
       <Route>
         <IndexRoute component={TransformListPage} />
+        <Route path="migrate-models" component={ModelsSectionLayout}>
+          <IndexRoute component={ModelsPage} />
+        </Route>
         <Route path="jobs" component={JobListPage} />
         <Route path="jobs/new" component={NewJobPage} />
         <Route path="jobs/:jobId" component={JobPage} />

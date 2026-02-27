@@ -20,6 +20,7 @@ import {
 } from "metabase/api";
 import { DateTime } from "metabase/common/components/DateTime";
 import { Ellipsified } from "metabase/common/components/Ellipsified";
+import { ForwardRefLink } from "metabase/common/components/Link";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { useHasTokenFeature } from "metabase/common/hooks";
 import CS from "metabase/css/core/index.css";
@@ -37,11 +38,13 @@ import { ListEmptyState } from "metabase/transforms/components/ListEmptyState";
 import { useTransformPermissions } from "metabase/transforms/hooks/use-transform-permissions";
 import { getShouldShowPythonTransformsUpsell } from "metabase/transforms/selectors";
 import {
+  Button,
   Card,
   EntityNameCell,
   Flex,
   Group,
   Icon,
+  Menu,
   Stack,
   TextInput,
   TreeTable,
@@ -387,6 +390,23 @@ export const TransformListPage = ({
           {!isRemoteSyncReadOnly && transformsDatabases.length > 0 && (
             <CreateTransformMenu />
           )}
+          <Menu position="bottom-end">
+            <Menu.Target>
+              <Button
+                leftSection={<Icon name="gear" size={16} />}
+                variant="default"
+              >{t`Tools`}</Button>
+            </Menu.Target>
+            <Menu.Dropdown>
+              <Menu.Item
+                leftSection={<Icon name="model" />}
+                component={ForwardRefLink}
+                to={Urls.dataStudioModels()}
+              >
+                {t`Migrate models`}
+              </Menu.Item>
+            </Menu.Dropdown>
+          </Menu>
         </Flex>
 
         <Card withBorder p={0}>

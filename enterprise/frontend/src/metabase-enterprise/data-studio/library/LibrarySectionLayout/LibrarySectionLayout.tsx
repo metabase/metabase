@@ -197,9 +197,12 @@ function LibrarySectionContent() {
     const tree = [...tablesTree, ...metricsTree, ...snippetTree];
 
     if (simulatedTransforms.length > 0 && tree.length > 0) {
-      const dataSection = tree.find(
-        (node) => node.model === "collection" && node.children,
-      );
+      const dataSectionId = tableCollection
+        ? `collection:${tableCollection.id}`
+        : null;
+      const dataSection = dataSectionId
+        ? tree.find((node) => node.id === dataSectionId)
+        : null;
       if (dataSection?.children) {
         // Remove empty-state placeholder if present
         const realChildren = dataSection.children.filter(
@@ -259,7 +262,13 @@ function LibrarySectionContent() {
     }
 
     return tree;
-  }, [tablesTree, metricsTree, snippetTree, simulatedTransforms]);
+  }, [
+    tablesTree,
+    metricsTree,
+    snippetTree,
+    simulatedTransforms,
+    tableCollection,
+  ]);
 
   const isLoading = loadingTables || loadingMetrics || loadingSnippets;
   useErrorHandling(tablesError || metricsError || snippetsError);

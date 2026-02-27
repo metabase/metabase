@@ -10,7 +10,7 @@ import {
 import { useListTransformTagsQuery } from "metabase/api/transform-tag";
 import { getTrashUndoMessage } from "metabase/archive/utils";
 import { Ellipsified } from "metabase/common/components/Ellipsified";
-import { ForwardRefLink } from "metabase/common/components/Link";
+import { ForwardRefLink, Link } from "metabase/common/components/Link";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import type {
   EntityPickerOptions,
@@ -31,6 +31,7 @@ import StatusLarge from "metabase/status/components/StatusLarge/StatusLarge";
 import { TagMultiSelect } from "metabase/transforms/components/TagMultiSelect";
 import type { TreeTableColumnDef } from "metabase/ui";
 import {
+  Alert,
   Box,
   Button,
   Card,
@@ -180,6 +181,7 @@ export function ModelsPage() {
   const [selectedModelId, setSelectedModelId] = useState<CardId | null>(null);
   const [rowSelection, setRowSelection] = useState<RowSelectionState>({});
   const [showConfirmModal, setShowConfirmModal] = useState(false);
+  const [showNote, setShowNote] = useState(true);
   const [conversionJob, setConversionJob] = useState<{
     modelNames: string[];
     duration: number;
@@ -332,9 +334,31 @@ export function ModelsPage() {
         >
           <PaneHeader
             breadcrumbs={
-              <DataStudioBreadcrumbs>{t`Models`}</DataStudioBreadcrumbs>
+              <DataStudioBreadcrumbs>
+                <Link to={Urls.transformList()}>{t`Transforms`}</Link>
+                {t`Migrate models`}
+              </DataStudioBreadcrumbs>
             }
           />
+          {showNote && (
+            <Alert
+              title={
+                <Text
+                  fz="md"
+                  fw={700}
+                >{t`Migrate your models to transforms`}</Text>
+              }
+              withCloseButton
+              onClose={() => setShowNote(false)}
+              px="lg"
+              my="md"
+              bg="background-brand"
+            >
+              <Text fz="md">
+                {t`Over time we'll be phasing out models in favor of transforms. If you have persisted models, you can replace those with a transform that outputs to the same table on disk. You can replace other models with transforms that output a view. You can also easily swap out references to old models in your queries with references to tables or views.`}
+              </Text>
+            </Alert>
+          )}
           <Stack mih={0} flex="0 1 auto" style={{ overflow: "hidden" }}>
             <Box
               mih={0}
