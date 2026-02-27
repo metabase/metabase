@@ -290,10 +290,10 @@
   [field-ref       :- :mbql.clause/field
    column-mapping  :- ::swap-source.column-mapping
    new-source-type :- ::swap-source.source-type]
-  (let [old-field-id-or-name (or (lib.ref/field-ref-id field-ref) (lib.ref/field-ref-name field-ref))
-        new-field            (when old-field-id-or-name (get column-mapping old-field-id-or-name))
-        old-source-field-id  (-> field-ref lib.options/options :source-field)
-        new-source-field     (when old-source-field-id (get column-mapping old-source-field-id))]
+  (let [old-field-id        (lib.ref/field-ref-id field-ref)
+        new-field           (when old-field-id (get column-mapping old-field-id))
+        old-source-field-id (-> field-ref lib.options/options :source-field)
+        new-source-field    (when old-source-field-id (get column-mapping old-source-field-id))]
     (cond-> field-ref
       (and (:id new-field) (= new-source-type :table))
       (lib.ref/with-field-ref-id-or-name (:id new-field))
