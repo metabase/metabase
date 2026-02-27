@@ -33,6 +33,7 @@
   "Register new profile configuration.
 
   Each profile includes:
+  - :name - Keyword identifier for the profile (e.g. :internal)
   - :prompt-template - Selmer template name from resources/metabot/prompts/system/
   - :max-iterations - Maximum agent loop iterations
   - :temperature - LLM temperature setting
@@ -40,22 +41,23 @@
 
   Note: `:model` is resolved at runtime from the `ee-ai-metabot-provider` setting
   (see [[get-profile]]), not stored in the profile."
-  [name profile :- [:map
-                    [:prompt-template :string]
-                    [:max-iterations :int]
-                    [:temperature :float]
-                    [:tools [:vector :any]]]]
+  [profile :- [:map
+               [:name :keyword]
+               [:prompt-template :string]
+               [:max-iterations :int]
+               [:temperature :float]
+               [:tools [:vector :any]]]]
   (when-not (apply distinct? (map #(:tool-name (meta %)) (:tools profile)))
     (let [dups (->> (frequencies (map #(:tool-name (meta %)) (:tools profile)))
                     (filter (fn [[_ cnt]] (< 1 cnt))))]
       (throw (ex-info "Duplicate tool names in profile" {:tool-names (map first dups)}))))
   (doseq [tool (:tools profile)]
     (validate-tool-definition! tool))
-  (swap! *profiles assoc name profile))
+  (swap! *profiles assoc (:name profile) profile))
 
 (register-profile!
- :embedding_next
- {:prompt-template "embedding-next.selmer"
+ {:name            :embedding_next
+  :prompt-template "embedding-next.selmer"
   :max-iterations  10
   :temperature     0.3
   :tools           [#'agent-tools/construct-notebook-query-tool
@@ -63,8 +65,8 @@
                     #'agent-tools/list-available-data-sources-tool]})
 
 (register-profile!
- :internal
- {:prompt-template "internal.selmer"
+ {:name            :internal
+  :prompt-template "internal.selmer"
   :max-iterations  10
   :temperature     0.3
   :tools           [#'agent-tools/search-tool
@@ -81,8 +83,8 @@
                     #'agent-tools/find-outliers-tool]})
 
 (register-profile!
- :transforms_codegen
- {:prompt-template "transform-codegen.selmer"
+ {:name            :transforms_codegen
+  :prompt-template "transform-codegen.selmer"
   :max-iterations  30
   :temperature     0.3
   :tools           [#'agent-tools/transform-search-tool
@@ -98,8 +100,8 @@
                     #'agent-tools/todo-read-tool]})
 
 (register-profile!
- :sql
- {:prompt-template     "sql-querying-only.selmer"
+ {:name                :sql
+  :prompt-template     "sql-querying-only.selmer"
   :max-iterations      10
   :temperature         0.3
   :required-tool-call? true
@@ -111,8 +113,8 @@
                         #'agent-tools/ask-for-sql-clarification-tool]})
 
 (register-profile!
- :nlq
- {:prompt-template "natural-language-querying-only.selmer"
+ {:name            :nlq
+  :prompt-template "natural-language-querying-only.selmer"
   :max-iterations  10
   :temperature     0.3
   :tools           [#'agent-tools/nlq-search-tool
@@ -123,8 +125,8 @@
                     #'agent-tools/edit-chart-tool]})
 
 (register-profile!
- :document-generate-content
- {:prompt-template "document-generate-content.selmer"
+ {:name            :document-generate-content
+  :prompt-template "document-generate-content.selmer"
   :max-iterations  10
   :temperature     0.3
   :required-tool-call? true

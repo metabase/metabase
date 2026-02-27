@@ -10,12 +10,17 @@
   TODO:
   - figure out what's lacking compared to ai-service"
   (:require
+   [buddy.core.codecs :as codecs]
+   [buddy.core.hash :as buddy-hash]
    [clojure.string :as str]
    [metabase-enterprise.metabot-v3.self.claude :as claude]
    [metabase-enterprise.metabot-v3.self.core :as core]
    [metabase-enterprise.metabot-v3.self.openai :as openai]
    [metabase-enterprise.metabot-v3.self.openrouter :as openrouter]
+   [metabase.analytics.core :as analytics]
    [metabase.analytics.prometheus :as prometheus]
+   [metabase.api.common :as api]
+   [metabase.premium-features.core :as premium-features]
    [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.o11y :refer [with-span]]))
@@ -112,36 +117,63 @@
 
 (defn- report-aisdk-errors-xf
   "Transducer that increments the llm-errors counter for :error parts in the aisdk stream."
-  [model source]
+  [tracking-opts]
   (map (fn [part]
          (when (= (:type part) :error)
            (prometheus/inc! :metabase-metabot/llm-errors
-                            {:model model
-                             :source source
+                            {:model      (:model tracking-opts "unknown")
+                             :source     (:tag tracking-opts "none")
                              :error-type "llm-sse-error"}))
          part)))
 
+(defn- hashed-token-or-uuid
+  "Returns the SHA-256 hex hash of the premium embedding token or the analytics-uuid if the token is unset."
+  []
+  (or (some-> (not-empty (premium-features/premium-embedding-token))
+              buddy-hash/sha256
+              codecs/bytes->hex)
+      (analytics/analytics-uuid)))
+
 (defn- report-token-usage-xf
-  "Transducer that reports prometheus metrics for :usage parts in the aisdk stream."
-  [model source]
-  (map (fn [part]
-         (when (= (:type part) :usage)
-           (let [usage      (:usage part)
-                 part-model (or (:model part) model)
-                 labels     {:model part-model :source source}
-                 prompt     (:promptTokens usage 0)
-                 completion (:completionTokens usage 0)]
-             (prometheus/inc! :metabase-metabot/llm-input-tokens labels prompt)
-             (prometheus/inc! :metabase-metabot/llm-output-tokens labels completion)
-             (prometheus/observe! :metabase-metabot/llm-tokens-per-call labels (+ prompt completion))))
-         part)))
+  "Transducer that reports prometheus metrics and snowplow token_usage event
+  for :usage parts in the aisdk stream."
+  [{:keys [model profile-name request-id session-id source tag]}]
+  (let [start-ms      (u/start-timer)
+        token-or-uuid (hashed-token-or-uuid)]
+    (map (fn [part]
+           (when (= (:type part) :usage)
+             (let [usage      (:usage part)
+                   model      (or (:model part) model "unknown")
+                   labels     {:model model :source (or tag "none")}
+                   prompt     (:promptTokens usage 0)
+                   completion (:completionTokens usage 0)]
+               (prometheus/inc! :metabase-metabot/llm-input-tokens labels prompt)
+               (prometheus/inc! :metabase-metabot/llm-output-tokens labels completion)
+               (prometheus/observe! :metabase-metabot/llm-tokens-per-call labels (+ prompt completion))
+               ;; The caller can omit snowplow opts to skip snowplow tracking.
+               (when request-id
+                 (analytics/track-event! :snowplow/token_usage
+                                         {:hashed_metabase_license_token token-or-uuid
+                                          :user_id                       api/*current-user-id*
+                                          :model_id                      model
+                                          :duration_ms                   (long (u/since-ms start-ms))
+                                          :total_tokens                  (+ prompt completion)
+                                          :prompt_tokens                 prompt
+                                          :completion_tokens             completion
+                                          :estimated_costs_usd           0.0
+                                          :profile                       profile-name
+                                          :request_id                    request-id
+                                          :session_id                    session-id
+                                          :source                        source
+                                          :tag                           tag}))))
+           part))))
 
 (defn- with-retries
   "Execute `(thunk)` with retry logic for transient LLM errors.
   Retries up to `max-llm-retries` attempts with exponential backoff.
-  Records prometheus metrics with `model` and `source` as labels."
-  [model source thunk]
-  (let [labels {:model model :source source}]
+  Records prometheus metrics with `:model` and `:tag` from `tracking-opts` as labels."
+  [tracking-opts thunk]
+  (let [labels {:model (:model tracking-opts) :source (:tag tracking-opts)}]
     (loop [attempt 1]
       (prometheus/inc! :metabase-metabot/llm-requests labels)
       (let [timer  (u/start-timer)
@@ -179,21 +211,35 @@
   and user messages (`{:role :user, :content ...}`).  Each adapter converts
   these into its own wire format.
 
+  `tracking-opts` is a map with analytics context for prometheus and snowplow events.
+
+   Prometheus + Snowplow:
+    - `:profile-name` — keyword profile identifier (e.g. `:internal`)
+    - `:model`        — model identifier, added automatically from the `model` arg.
+    - `:tag`          — the specific purpose for which the tokens were used (e.g. 'agent', 'sql-fixing')
+
+   Snowplow only:
+    - `:request-id`   — UUID string for this request
+    - `:session-id`   — conversation UUID string
+    - `:source`       — the source of the request (e.g., 'metabot_agent', 'document_generate_content').
+                        Indicates which API endpoint or workflow initiated the LLM call.
+
   Returns a reducible that, when consumed, traces the full LLM round-trip
   (HTTP call + streaming response) as an OTel span. Retries transient errors
   (429 rate limit, 529 overloaded, connection errors) up to 3 attempts with
   exponential backoff, matching the Python ai-service retry behavior."
-  [provider-and-model source system-msg parts tools]
+  [provider-and-model system-msg parts tools tracking-opts]
   (let [{:keys [provider stream-fn model]} (parse-provider-model provider-and-model)]
     (log/info "Calling LLM" {:provider provider :model model :parts (count parts) :tools (count tools)})
-    (let [opts (cond-> {:model model :input parts :tools (vec tools)}
-                 system-msg (assoc :system system-msg))
-          make-source (fn []
-                        (eduction (comp (core/tool-executor-xf tools)
-                                        (core/lite-aisdk-xf)
-                                        (report-aisdk-errors-xf model source)
-                                        (report-token-usage-xf model source))
-                                  (stream-fn opts)))]
+    (let [tracking-opts  (assoc tracking-opts :model model)
+          streaming-opts (cond-> {:model model :input parts :tools (vec tools)}
+                           system-msg (assoc :system system-msg))
+          make-source    (fn []
+                           (eduction (comp (core/tool-executor-xf tools)
+                                           (core/lite-aisdk-xf)
+                                           (report-aisdk-errors-xf tracking-opts)
+                                           (report-token-usage-xf tracking-opts))
+                                     (stream-fn streaming-opts)))]
       (reify clojure.lang.IReduceInit
         (reduce [_ rf init]
           (with-span :info {:name       :metabot-v3.agent/call-llm
@@ -201,7 +247,8 @@
                             :model      model
                             :part-count (count parts)
                             :tool-count (count tools)}
-            (with-retries model source
+            (with-retries
+              tracking-opts
               #(reduce rf init (make-source)))))))))
 
 (defn call-llm-structured
@@ -212,39 +259,41 @@
   Includes the same retry logic as [[call-llm]] for transient errors.
 
   Args:
-    model       - Model identifier (e.g. \"openrouter/anthropic/claude-haiku-4-5\")
-    source      - Label for prometheus metrics (e.g. \"agent\", \"example-question-generation\")
-    messages    - Sequence of Chat Completions message maps
-                  (e.g. [{:role \"user\" :content \"...\"}])
-    json-schema - JSON Schema map for the expected response shape
-    temperature - Sampling temperature
-    max-tokens  - Maximum tokens in the response
+    model         - Model identifier (e.g. \"openrouter/anthropic/claude-haiku-4-5\")
+    messages      - Sequence of Chat Completions message maps
+                    (e.g. [{:role \"user\" :content \"...\"}])
+    json-schema   - JSON Schema map for the expected response shape
+    temperature   - Sampling temperature
+    max-tokens    - Maximum tokens in the response
+    tracking-opts - See [[call-llm]] for fields; `:model` is added automatically
 
   Returns the parsed JSON map from the forced tool call."
-  [provider-and-model source messages json-schema temperature max-tokens]
+  [provider-and-model messages json-schema temperature max-tokens tracking-opts]
   (let [{:keys [provider stream-fn model]} (parse-provider-model provider-and-model)
         _ (log/info "Calling LLM (structured)" {:provider provider :model model :msg-count (count messages)})
-        raw-tools   [{:type     "function"
-                      :function {:name        "json"
-                                 :description "Respond with a JSON object"
-                                 :parameters  json-schema}}]
-        tool-choice {:type "function" :function {:name "json"}}
-        opts        {:model       model
-                     :input       messages
-                     :raw-tools   raw-tools
-                     :tool_choice tool-choice
-                     :temperature temperature
-                     :max-tokens  max-tokens}]
+        raw-tools      [{:type     "function"
+                         :function {:name        "json"
+                                    :description "Respond with a JSON object"
+                                    :parameters  json-schema}}]
+        tool-choice    {:type "function" :function {:name "json"}}
+        tracking-opts  (assoc tracking-opts :model model)
+        streaming-opts {:model       model
+                        :input       messages
+                        :raw-tools   raw-tools
+                        :tool_choice tool-choice
+                        :temperature temperature
+                        :max-tokens  max-tokens}]
     (with-span :info {:name      :metabot-v3.agent/call-llm-structured
                       :model     model
                       :msg-count (count messages)}
-      (with-retries model source
+      (with-retries
+        tracking-opts
         (fn []
           (let [parts (into []
                             (comp (core/aisdk-xf)
-                                  (report-aisdk-errors-xf model source)
-                                  (report-token-usage-xf model source))
-                            (stream-fn opts))
+                                  (report-aisdk-errors-xf tracking-opts)
+                                  (report-token-usage-xf tracking-opts))
+                            (stream-fn streaming-opts))
                 result (some (fn [{:keys [type arguments]}]
                                (when (= type :tool-input)
                                  arguments))
