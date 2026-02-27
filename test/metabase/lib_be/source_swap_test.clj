@@ -101,6 +101,51 @@
                                        [:field {} "CREATED_AT"]]}]}
               swapped-query)))))
 
+(deftest ^:parallel swap-source-in-query-all-clauses-test
+  (let [query          (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
+                           (lib/with-fields [(meta/field-metadata :orders :id)
+                                             (meta/field-metadata :orders :created-at)])
+                           (lib/join (meta/table-metadata :products))
+                           (lib/expression "double-id" (lib/+ (meta/field-metadata :orders :id)
+                                                              (meta/field-metadata :orders :id)))
+                           (lib/aggregate (lib/sum (meta/field-metadata :orders :id)))
+                           (lib/breakout (meta/field-metadata :orders :created-at))
+                           (lib/order-by (meta/field-metadata :orders :created-at)))
+        upgraded-query (lib-be/upgrade-field-refs-in-query query)
+        swapped-query  (lib-be/swap-source-in-query upgraded-query
+                                                    {:type :table, :id (meta/id :orders)}
+                                                    {:type :table, :id (meta/id :reviews)})]
+    (testing "should convert all field refs to name-based when upgrading"
+      (is (=? {:stages [{:source-table (meta/id :orders)
+                         :fields       [[:field {} "ID"]
+                                        [:field {} "CREATED_AT"]
+                                        [:expression {} "double-id"]]
+                         :joins        [{:conditions [[:= {}
+                                                       [:field {} "PRODUCT_ID"]
+                                                       [:field {:join-alias "Products"} "ID"]]]}]
+                         :expressions  [[:+ {:lib/expression-name "double-id"}
+                                         [:field {} "ID"]
+                                         [:field {} "ID"]]]
+                         :aggregation  [[:sum {} [:field {} "ID"]]]
+                         :breakout     [[:field {} "CREATED_AT"]]
+                         :order-by     [[:asc {} [:field {} "CREATED_AT"]]]}]}
+              upgraded-query)))
+    (testing "should swap orders refs to reviews refs and preserve products refs"
+      (is (=? {:stages [{:source-table (meta/id :reviews)
+                         :fields       [[:field {} (meta/id :reviews :id)]
+                                        [:field {} (meta/id :reviews :created-at)]
+                                        [:expression {} "double-id"]]
+                         :joins        [{:conditions [[:= {}
+                                                       [:field {} (meta/id :reviews :product-id)]
+                                                       [:field {:join-alias "Products"} (meta/id :products :id)]]]}]
+                         :expressions  [[:+ {:lib/expression-name "double-id"}
+                                         [:field {} (meta/id :reviews :id)]
+                                         [:field {} (meta/id :reviews :id)]]]
+                         :aggregation  [[:sum {} [:field {} (meta/id :reviews :id)]]]
+                         :breakout     [[:field {} (meta/id :reviews :created-at)]]
+                         :order-by     [[:asc {} [:field {} (meta/id :reviews :created-at)]]]}]}
+              swapped-query)))))
+
 (deftest ^:parallel swap-source-in-query-implicit-join-test
   (let [query          (as-> (lib/query meta/metadata-provider (meta/table-metadata :orders)) q
                          (lib/filter q (lib/= (m/find-first #(= (:name %) "CATEGORY") (lib/filterable-columns q)) "Widget")))
