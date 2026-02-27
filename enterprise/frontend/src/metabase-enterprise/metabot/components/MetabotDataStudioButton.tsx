@@ -1,9 +1,9 @@
 import { t } from "ttag";
 
-import { useSetting } from "metabase/common/hooks";
 import { METAKEY } from "metabase/lib/browser";
 import { useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
+import { useMetabotEnabledEmbeddingAware } from "metabase/metabot/hooks";
 import { getLocation } from "metabase/selectors/routing";
 import { ActionIcon, Icon, Tooltip } from "metabase/ui";
 
@@ -11,7 +11,7 @@ import { trackMetabotChatOpened } from "../analytics";
 import { useMetabotAgent } from "../hooks";
 
 export const MetabotDataStudioButton = () => {
-  const isMetabotEnabled = useSetting("metabot-enabled?");
+  const isMetabotEnabled = useMetabotEnabledEmbeddingAware();
   const metabot = useMetabotAgent("omnibot");
   const location = useSelector(getLocation);
 

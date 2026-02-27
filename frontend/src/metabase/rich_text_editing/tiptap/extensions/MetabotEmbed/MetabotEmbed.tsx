@@ -11,7 +11,6 @@ import { memo, useEffect, useMemo, useRef, useState } from "react";
 import { useLatest } from "react-use";
 import { t } from "ttag";
 
-import { useSetting } from "metabase/common/hooks";
 import CS from "metabase/css/core/index.css";
 import { trackDocumentAskMetabot } from "metabase/documents/analytics";
 import {
@@ -21,6 +20,7 @@ import {
 } from "metabase/documents/documents.slice";
 import { getCurrentDocument } from "metabase/documents/selectors";
 import { useDispatch, useSelector } from "metabase/lib/redux";
+import { useMetabotEnabledEmbeddingAware } from "metabase/metabot/hooks";
 import { PLUGIN_METABOT } from "metabase/plugins";
 import { Box, Button, Flex, Icon, Text, Tooltip } from "metabase/ui";
 import type { Card, MetabotGenerateContentRequest } from "metabase-types/api";
@@ -153,7 +153,7 @@ export const MetabotComponent = memo(
     const [isLoading, setIsLoading] = useState(false);
     const [errorText, setErrorText] = useState("");
     const [queryMetabot] = PLUGIN_METABOT.useLazyMetabotGenerateContentQuery();
-    const isMetabotEnabled = useSetting("metabot-enabled?");
+    const isMetabotEnabled = useMetabotEnabledEmbeddingAware();
 
     const handleRunMetabot = async () => {
       const serializePrompt =

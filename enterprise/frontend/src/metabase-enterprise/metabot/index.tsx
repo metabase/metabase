@@ -1,7 +1,7 @@
 import { Route } from "react-router";
 
-import { useSetting } from "metabase/common/hooks";
 import type { MetabotContext as MetabotContextType } from "metabase/metabot";
+import { useMetabotEnabledEmbeddingAware } from "metabase/metabot/hooks";
 import { PLUGIN_METABOT, PLUGIN_REDUCERS } from "metabase/plugins";
 import { QueryBuilder } from "metabase/query_builder/containers/QueryBuilder";
 import { useLazyMetabotGenerateContentQuery } from "metabase-enterprise/api";
@@ -32,7 +32,7 @@ import {
  * otherwise falls back to the regular QueryBuilder.
  */
 function MetabotQueryBuilderOrFallback(props: any) {
-  const isMetabotEnabled = useSetting("metabot-enabled?");
+  const isMetabotEnabled = useMetabotEnabledEmbeddingAware();
   return isMetabotEnabled ? (
     <MetabotQueryBuilder {...props} />
   ) : (

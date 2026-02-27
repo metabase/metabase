@@ -1,8 +1,8 @@
 import dayjs from "dayjs";
 import { match } from "ts-pattern";
 
-import { useSetting } from "metabase/common/hooks";
 import { useRegisterMetabotContextProvider } from "metabase/metabot";
+import { useMetabotEnabledEmbeddingAware } from "metabase/metabot/hooks";
 import { PLUGIN_AI_ENTITY_ANALYSIS } from "metabase/plugins";
 import {
   getChartImagePngDataUri,
@@ -255,7 +255,7 @@ export const registerQueryBuilderMetabotContextFn = async ({
 };
 
 export const useRegisterQueryBuilderMetabotContext = () => {
-  const isMetabotEnabled = !!useSetting("metabot-enabled?");
+  const isMetabotEnabled = useMetabotEnabledEmbeddingAware();
 
   useRegisterMetabotContextProvider(
     async (state) => {
