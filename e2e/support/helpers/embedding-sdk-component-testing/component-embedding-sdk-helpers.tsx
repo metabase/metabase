@@ -7,7 +7,7 @@ import React from "react";
 
 import { METABASE_INSTANCE_URL } from "e2e/support/helpers";
 import type { DeepPartial } from "metabase/embedding-sdk/types/utils";
-import { ThemeProvider } from "metabase/ui";
+// import { ThemeProvider } from "metabase/ui";
 
 export const DEFAULT_SDK_AUTH_PROVIDER_CONFIG = {
   metabaseInstanceUrl: METABASE_INSTANCE_URL,
@@ -46,17 +46,17 @@ export function mountSdkContent(
   }
 
   const reactNode = (
-    <ThemeProvider>
-      <MetabaseProvider
-        {...sdkProviderProps}
-        authConfig={{
-          ...DEFAULT_SDK_AUTH_PROVIDER_CONFIG,
-          ...sdkProviderProps?.authConfig,
-        }}
-      >
-        {children}
-      </MetabaseProvider>
-    </ThemeProvider>
+    // <ThemeProvider>
+    <MetabaseProvider
+      {...sdkProviderProps}
+      authConfig={{
+        ...DEFAULT_SDK_AUTH_PROVIDER_CONFIG,
+        ...sdkProviderProps?.authConfig,
+      }}
+    >
+      {children}
+    </MetabaseProvider>
+    // </ThemeProvider>
   );
 
   if (strictMode) {
