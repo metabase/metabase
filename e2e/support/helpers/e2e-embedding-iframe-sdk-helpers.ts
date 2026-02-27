@@ -15,7 +15,7 @@ import {
   mockAuthProviderAndJwtSignIn,
 } from "./embedding-sdk-testing";
 
-const { IS_ENTERPRISE } = Cypress.env();
+const IS_ENTERPRISE = Cypress.expose("IS_ENTERPRISE");
 
 const EMBED_JS_PATH = "http://localhost:4000/app/embed.js";
 
@@ -373,7 +373,7 @@ export const visitCustomHtmlPage = (
  * to point it to the rspack dev server.
  */
 export const mockEmbedJsToDevServer = () => {
-  if (Cypress.env("CI")) {
+  if (Cypress.expose("CI")) {
     // we don't need this logic in CI, let's skip the check to avoid slowing down the tests
     return;
   }

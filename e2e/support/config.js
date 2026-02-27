@@ -46,6 +46,25 @@ const assetsResolverPlugin = {
 };
 
 const defaultConfig = {
+  // Expose non-sensitive environment variables synchronously via Cypress.expose()
+  // These are safe to expose in the browser and are used for configuration
+  expose: {
+    CI: isCI,
+    IS_ENTERPRISE: isEnterprise,
+    MB_EDITION: process.env["MB_EDITION"],
+    ENABLE_NETWORK_THROTTLING: !!process.env["ENABLE_NETWORK_THROTTLING"],
+    SNOWPLOW_MICRO_URL: snowplowMicroUrl,
+    CLIENT_PORT: process.env["CLIENT_PORT"],
+    feHealthcheck: process.env["FE_HEALTHCHECK_URL"]
+      ? { enabled: true, url: process.env["FE_HEALTHCHECK_URL"] }
+      : undefined,
+  },
+
+  // Note: We can't set `allowCypressEnv: false` yet because @cypress/grep
+  // plugin still uses Cypress.env() internally
+  // FIXME: enable once we upgrade (DEV-1620)
+  // allowCypressEnv: false,
+
   // This is the functionality of the old cypress-plugins.js file
   setupNodeEvents(cypressOn, config) {
     // `on` is used to hook into various events Cypress emits
@@ -129,9 +148,6 @@ const defaultConfig = {
     config.env.grepFilterSpecs = true;
     config.env.grepOmitFiltered = true;
 
-    config.env.IS_ENTERPRISE = isEnterprise;
-    config.env.SNOWPLOW_MICRO_URL = snowplowMicroUrl;
-
     require("@cypress/grep/src/plugin")(config);
 
     if (isCI) {
@@ -155,9 +171,6 @@ const defaultConfig = {
   },
   baseUrl: `http://${BACKEND_HOST}:${BACKEND_PORT}`,
   defaultBrowser: process.env.CYPRESS_BROWSER ?? "chrome",
-  env: {
-    CI: isCI,
-  },
   supportFile: "e2e/support/cypress.js",
   chromeWebSecurity: false,
   modifyObstructiveCode: false,

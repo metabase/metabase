@@ -4,7 +4,7 @@ import { createQuestion, getSignedJwtForResource } from "e2e/support/helpers";
 const { H } = cy;
 const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
 
-const { IS_ENTERPRISE } = Cypress.env();
+const IS_ENTERPRISE = Cypress.expose("IS_ENTERPRISE");
 const IS_OSS = !IS_ENTERPRISE;
 const MB_EDITION = IS_ENTERPRISE ? "ee" : "oss";
 
