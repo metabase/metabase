@@ -9,6 +9,7 @@
    [metabase-enterprise.metabot-v3.self.openrouter :as openrouter]
    [metabase-enterprise.metabot-v3.test-util :as test-util]
    [metabase.analytics.prometheus :as prometheus]
+   [metabase.analytics.snowplow-test :as snowplow-test]
    [metabase.test :as mt]
    [metabase.util.json :as json]
    [ring.adapter.jetty :as jetty]))
@@ -598,3 +599,65 @@
           (is (== 100 (mt/metric-value system :metabase-metabot/llm-input-tokens labels)))
           (is (==  25 (mt/metric-value system :metabase-metabot/llm-output-tokens labels)))
           (is (== 125 (:sum (mt/metric-value system :metabase-metabot/llm-tokens-per-call labels)))))))))
+
+;;; ===================== Snowplow Analytics Tests =====================
+
+(def ^:private snowplow-tracking-opts
+  {:request-id "00000000-0000-0000-0000-000000000001"
+   :session-id "00000000-0000-0000-0000-000000000002"
+   :source     "test-source"
+   :tag        "test-tag"})
+
+(deftest call-llm-snowplow-test
+  (testing "fires :snowplow/token_usage event for call-llm"
+    (let [rasta-id (mt/user->id :rasta)]
+      (with-redefs [openrouter/openrouter
+                    (constantly (test-util/mock-llm-response
+                                 [{:type :start :id "msg-1"}
+                                  {:type :text :text "Hello"}
+                                  {:type :usage :usage {:promptTokens 100 :completionTokens 20}
+                                   :model "test-model" :id "msg-1"}]))]
+        (mt/with-current-user rasta-id
+          (snowplow-test/with-fake-snowplow-collector
+            (run! identity (self/call-llm "openrouter/test-model" nil [] {} snowplow-tracking-opts))
+            (is (=? [{:user-id (str rasta-id)
+                      :data    {"model_id"            "test-model"
+                                "total_tokens"         120
+                                "prompt_tokens"        100
+                                "completion_tokens"    20
+                                "estimated_costs_usd"  0.0
+                                "duration_ms"          nat-int?
+                                "source"               "test-source"
+                                "tag"                  "test-tag"
+                                "session_id"           "00000000-0000-0000-0000-000000000002"}}]
+                    (snowplow-test/pop-event-data-and-user-id!)))))))))
+
+(deftest call-llm-structured-snowplow-test
+  (testing "fires :snowplow/token_usage event for call-llm-structured"
+    (let [rasta-id (mt/user->id :rasta)]
+      (with-redefs [openrouter/openrouter
+                    (constantly (test-util/mock-llm-response
+                                 [{:type :start :id "msg-1"}
+                                  {:type :tool-input :id "call-1" :function "json"
+                                   :arguments {:answer "42"}}
+                                  {:type :usage :usage {:promptTokens 50 :completionTokens 10}
+                                   :model "test-model" :id "msg-1"}]))]
+        (mt/with-current-user rasta-id
+          (snowplow-test/with-fake-snowplow-collector
+            (self/call-llm-structured "openrouter/test-model"
+                                      [{:role "user" :content "test"}]
+                                      {:type "object" :properties {:answer {:type "string"}}}
+                                      0.3
+                                      1024
+                                      snowplow-tracking-opts)
+            (is (=? [{:user-id (str rasta-id)
+                      :data    {"model_id"            "test-model"
+                                "total_tokens"         60
+                                "prompt_tokens"        50
+                                "completion_tokens"    10
+                                "estimated_costs_usd"  0.0
+                                "duration_ms"          nat-int?
+                                "source"               "test-source"
+                                "tag"                  "test-tag"
+                                "session_id"           "00000000-0000-0000-0000-000000000002"}}]
+                    (snowplow-test/pop-event-data-and-user-id!)))))))))
