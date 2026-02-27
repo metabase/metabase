@@ -20,14 +20,14 @@ export const ChartSettingsWidgetPopover = ({
   handleEndShowWidget,
   widgets,
 }: ChartSettingsWidgetPopoverProps) => {
-  const sections = useRef<string[]>([]);
+  const sections = useRef<(string | undefined)[]>([]);
   const contentRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     sections.current = _.chain(widgets).pluck("section").unique().value();
   }, [widgets]);
 
-  const [currentSection, setCurrentSection] = useState("");
+  const [currentSection, setCurrentSection] = useState<string | undefined>("");
 
   useEffect(() => {
     setCurrentSection(sections.current[0]);
@@ -64,7 +64,11 @@ export const ChartSettingsWidgetPopover = ({
               >
                 <Tabs.List grow>
                   {sections.current.map((sectionName) => (
-                    <Tabs.Tab key={sectionName} value={sectionName} p="md">
+                    <Tabs.Tab
+                      key={sectionName}
+                      value={String(sectionName)}
+                      p="md"
+                    >
                       {sectionName}
                     </Tabs.Tab>
                   ))}

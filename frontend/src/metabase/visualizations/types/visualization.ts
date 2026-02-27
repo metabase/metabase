@@ -392,7 +392,6 @@ export type CompleteVisualizationSettingDefinition<
   TProps extends Record<string, unknown> = Record<string, unknown>,
 > = VisualizationSettingDefinition<T, TValue, TProps> & {
   id: string;
-  section: string;
 };
 
 export type DatasetColumnSettingDefinition<
@@ -556,7 +555,7 @@ export type VisualizationSettingsDefinitions<
 
 export type Widget = {
   id: string;
-  section: string;
+  section?: string;
   hidden?: boolean;
   props?: Record<string, unknown>;
   title?: string;

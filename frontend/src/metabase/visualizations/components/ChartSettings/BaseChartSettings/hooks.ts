@@ -22,7 +22,7 @@ export const useChartSettingsSections = ({
     const sectionObj: Record<string, Widget[]> = {};
     for (const widget of widgets) {
       if (widget.widget && !widget.hidden) {
-        const section = widget.section ?? "";
+        const section = String(widget.section);
         sectionObj[section] = sectionObj[section] || [];
         sectionObj[section].push(widget);
       }
