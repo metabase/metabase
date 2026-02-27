@@ -5,6 +5,7 @@ import {
   canonicalCollectionId,
   canonicalCollectionIdOrEntityId,
 } from "metabase/collections/utils";
+import { trackMetricCreated } from "metabase/data-studio/analytics";
 import { isNullOrUndefined } from "metabase/lib/types";
 import type Question from "metabase-lib/v1/Question";
 import type { CardType } from "metabase-types/api";
@@ -59,7 +60,22 @@ export const createQuestion = async (options: CreateQuestionOptions) => {
     .setCollectionId(collectionId)
     .setDashboardId(dashboardId);
 
-  return onCreate(newQuestion, { dashboardTabId });
+  const isMetric = question.type() === "metric";
+
+  try {
+    const result = await onCreate(newQuestion, { dashboardTabId });
+
+    if (isMetric) {
+      trackMetricCreated("success", "main_app", result.id());
+    }
+
+    return result;
+  } catch (error) {
+    if (isMetric) {
+      trackMetricCreated("failure", "main_app", null);
+    }
+    throw error;
+  }
 };
 
 export async function submitQuestion(options: SubmitQuestionOptions) {

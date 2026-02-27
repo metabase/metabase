@@ -139,3 +139,25 @@ export const trackDependencyEntitySelected = ({
     target_id: entityId,
   });
 };
+
+export const trackMetricCreateStarted = (
+  triggeredFrom: "browse_metrics" | "data_studio_library" | "command_palette",
+) => {
+  trackSimpleEvent({
+    event: "metric_create_started",
+    triggered_from: triggeredFrom,
+  });
+};
+
+export const trackMetricCreated = (
+  result: "success" | "failure",
+  triggeredFrom: "data_studio" | "main_app",
+  targetId: number | null,
+) => {
+  trackSimpleEvent({
+    event: "metric_created",
+    triggered_from: triggeredFrom,
+    result,
+    target_id: targetId,
+  });
+};

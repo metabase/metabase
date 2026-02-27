@@ -653,6 +653,18 @@ export type DataStudioTableFieldValuesDiscardedEvent = ValidateEvent<{
   result: "success" | "failure";
 }>;
 
+export type MetricCreateStartedEvent = ValidateEvent<{
+  event: "metric_create_started";
+  triggered_from: "browse_metrics" | "data_studio_library" | "command_palette";
+}>;
+
+export type MetricCreatedEvent = ValidateEvent<{
+  event: "metric_created";
+  triggered_from: "data_studio" | "main_app";
+  result: "success" | "failure";
+  target_id: number | null;
+}>;
+
 export type DataStudioEvent =
   | DataStudioLibraryCreatedEvent
   | DataStudioTablePublishedEvent
@@ -667,7 +679,9 @@ export type DataStudioEvent =
   | DataStudioBulkAttributeUpdatedEvent
   | DataStudioTableSchemaSyncedEvent
   | DataStudioTableFieldsRescannedEvent
-  | DataStudioTableFieldValuesDiscardedEvent;
+  | DataStudioTableFieldValuesDiscardedEvent
+  | MetricCreateStartedEvent
+  | MetricCreatedEvent;
 
 export type UnsavedChangesWarningDisplayedEvent = ValidateEvent<{
   event: "unsaved_changes_warning_displayed";
