@@ -139,3 +139,10 @@ export const trackDependencyEntitySelected = ({
     target_id: entityId,
   });
 };
+
+export const trackDataStudioOpened = () => {
+  trackSimpleEvent({
+    event: "data_studio_opened",
+    triggered_from: "nav_menu",
+  });
+};
