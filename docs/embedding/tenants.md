@@ -268,21 +268,21 @@ When user provisioning with JWT is enabled:
 
 ### Setting tenant attributes using tenant claims
 
-To create tenant attributes from, include a claim `@tenant.attributes` to add one or more tenant attributes:
+To create tenant attributes from JWT SSO, include a claim `@tenant.attributes`:
 
 ```json
 {
-  "@tenant": "my-tenant",
+  "@tenant": "meowdern_solutions",
   "@tenant.attributes": {
-    "some-attribute": "here it is"
+    "industry": "cat food"
   },
-  "email": "another@another.com",
-  "first_name": "Tester",
-  "last_name": "Testerson"
+  "email": "mittens@example.com",
+  "first_name": "Mister",
+  "last_name": "Mittens"
 }
 ```
 
-If the tenant already exists, the new tenant attribute is created if it does not exist yet. If the attribute already existed, its value is not updated, however.
+If a tenant attribute with this name doesn't exist, Metabase will create the attribute and assign the value from the JWT claim. However, if the tenant attribute already exists, Metabase will **not** update the value.
 
 ### Troubleshooting JWT authentication with tenants
 
@@ -349,8 +349,7 @@ Permissions are granted to groups. Which permissions are available to each group
 ### Internal user collection permissions
 
 - Metabase Admins will have **Curate** access to all shared collections and all tenant collections.
-- Other internal groups can be granted **View** or **Curate** access to **shared collections**, see [Configuring shared collection permissions](#configuring-shared-collections-permissions).
-- By default, non-admin internal users have **No** access to tenant-specific collections. This can be configured to allow them **Curate** or **View** access instead.
+- Other internal groups and non-admin users have **No** access by default, but can be granted **View** or **Curate** access to **shared collections**. See [Configuring shared collection permissions](#configuring-shared-collections-permissions) for details.
 
 For configuring permissions to _internal_ collections for internal users, see [general docs on collection permissions](../permissions/collections.md).
 
