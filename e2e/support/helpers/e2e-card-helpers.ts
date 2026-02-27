@@ -29,14 +29,16 @@ export function createCardWithTestNativeQuery(
   );
 }
 
-export function visitCard(card: Pick<Card, "id" | "type">) {
+export function visitCard<C extends Pick<Card, "id" | "type">>(
+  card: C,
+): Cypress.Chainable<C> {
   switch (card.type) {
     case "question":
-      return visitQuestion(card.id);
+      return visitQuestion(card.id).then(() => card);
     case "model":
-      return visitModel(card.id);
+      return visitModel(card.id).then(() => card);
     case "metric":
-      return visitMetric(card.id);
+      return visitMetric(card.id).then(() => card);
   }
 }
 
