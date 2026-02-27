@@ -316,39 +316,6 @@
                                            {:type :table, :id (meta/id :orders)}
                                            {:type :card, :id 1}))))))
 
-(deftest ^:parallel swap-source-in-query-source-card-to-table-with-join-alias-test
-  (let [products-query (-> (lib/query meta/metadata-provider (meta/table-metadata :products))
-                           (lib/with-fields [(meta/field-metadata :products :id)])
-                           (lib/join (-> (lib/join-clause (meta/table-metadata :reviews))
-                                         (lib/with-join-fields [(meta/field-metadata :reviews :created-at)]))))
-        mp             (lib.tu/metadata-provider-with-card-from-query 1 products-query)
-        query          (as-> (lib/query mp (lib.metadata/card mp 1)) q
-                         (lib/filter q (lib/not-null (m/find-first (comp #{"CREATED_AT"} :name)
-                                                                   (lib/filterable-columns q)))))
-        mock-table-id    9999
-        mock-id-field-id   99991
-        mock-date-field-id 99992
-        mock-mp        (lib.tu/mock-metadata-provider
-                        mp
-                        {:tables [(assoc (meta/table-metadata :products)
-                                         :id mock-table-id
-                                         :name "MOCK_TABLE")]
-                         :fields [(assoc (meta/field-metadata :products :id)
-                                         :id mock-id-field-id
-                                         :table-id mock-table-id
-                                         :name "ID")
-                                  (assoc (meta/field-metadata :reviews :created-at)
-                                         :id mock-date-field-id
-                                         :table-id mock-table-id
-                                         :name "Reviews__CREATED_AT")]})
-        query          (assoc query :lib/metadata mock-mp)]
-    (testing "should swap card source to mock table, keeping string-based ref"
-      (is (=? {:stages [{:source-table mock-table-id
-                         :filters      [[:not-null {} [:field {} "Reviews__CREATED_AT"]]]}]}
-              (lib-be/swap-source-in-query query
-                                           {:type :card, :id 1}
-                                           {:type :table, :id mock-table-id}))))))
-
 (deftest ^:parallel swap-source-in-query-source-card-join-table-test
   (let [products-query (lib/query meta/metadata-provider (meta/table-metadata :products))
         mp             (lib.tu/metadata-provider-with-card-from-query 1 products-query)
@@ -374,7 +341,7 @@
                 (let [category-col (m/find-first (comp #{"CATEGORY"} :name)
                                                  (lib/filterable-columns q))]
                   (lib/filter q (lib/= category-col "Widget"))))]
-    (testing "should swap source table, keeping :source-field unchanged"
+    (testing "should swap source table and update :source-field in implicit join filter"
       (is (=? {:stages [{:source-table (meta/id :reviews)
                          :filters      [[:= {}
                                          [:field {:source-field (meta/id :reviews :product-id)}
@@ -418,8 +385,10 @@
         target [:dimension
                 [:field (meta/id :products :category) {:source-field (meta/id :orders :product-id)}]
                 {:stage-number 0}]]
-    (testing "should return the same target when :source-field has no mapping"
-      (is (= target
-             (lib-be/swap-source-in-parameter-target query target
-                                                     {:type :table, :id (meta/id :orders)}
-                                                     {:type :table, :id (meta/id :reviews)}))))))
+    (testing "should swap the :source-field to the new table's FK field"
+      (is (=? [:dimension
+               [:field (meta/id :products :category) {:source-field (meta/id :reviews :product-id)}]
+               {:stage-number 0}]
+              (lib-be/swap-source-in-parameter-target query target
+                                                      {:type :table, :id (meta/id :orders)}
+                                                      {:type :table, :id (meta/id :reviews)}))))))

@@ -206,12 +206,12 @@
    {new-source-id :id, new-source-type :type} :- ::swap-source.source]
   (if-not (and (= old-source-type :table) (= new-source-type :table))
     {}
-    (let [old-fields      (lib.metadata/fields query old-source-id)
-          new-fields      (lib.metadata/fields query new-source-id)
-          new-field-by-id (m/index-by :id new-fields)]
+    (let [old-fields       (lib.metadata/fields query old-source-id)
+          new-fields       (lib.metadata/fields query new-source-id)
+          new-field-by-key (m/index-by column-match-key new-fields)]
       (into {}
             (keep (fn [old-field]
-                    (when-let [new-field (get new-field-by-id (:id old-field))]
+                    (when-let [new-field (get new-field-by-key (column-match-key old-field))]
                       [(:id old-field) (:id new-field)])))
             old-fields))))
 
