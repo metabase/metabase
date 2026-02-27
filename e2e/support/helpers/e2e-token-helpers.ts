@@ -28,25 +28,17 @@ export const activateToken = (
     .with("pro-self-hosted", () => "MB_PRO_SELF_HOSTED_TOKEN")
     .exhaustive();
 
-  const fallbackToken =
-    tokenReference === "starter" ? "NO_FEATURES_TOKEN" : "ALL_FEATURES_TOKEN";
-
   // Use cy.env() for sensitive token values (async API)
-  return cy.env([tokenReference, fallbackToken]).then((envVars) => {
-    const token = envVars[tokenReference] || envVars[fallbackToken];
+  return cy.env([tokenReference]).then((envVars) => {
+    const token = envVars[tokenReference];
 
     if (!token) {
-      const errorMessage = `
-    Please make sure you have correctly set the following tokens in your environment variables:
-      - CYPRESS_MB_ALL_FEATURES_TOKEN
-      - CYPRESS_MB_STARTER_CLOUD_TOKEN
-      - CYPRESS_MB_PRO_CLOUD_TOKEN
-      - CYPRESS_MB_PRO_SELF_HOSTED_TOKEN
-    `;
-      throw new Error(errorMessage);
+      throw new Error(
+        `Missing CYPRESS_${tokenReference} environment variable for "${tokenName}" token`,
+      );
     }
 
-    cy.log(`Set the "${tokenReference}" token`);
+    cy.log(`Set the "${tokenName}" token`);
     return cy.request({
       method: "PUT",
       url: "/api/setting/premium-embedding-token",
