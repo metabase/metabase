@@ -547,6 +547,8 @@
            metabase.driver.common
            metabase.driver.common.parameters
            metabase.driver.common.parameters.parse
+           metabase.driver.connection
+          metabase.driver.connection.workspaces
            metabase.driver.ddl.interface
            metabase.driver.h2
            metabase.driver.impl
@@ -555,6 +557,7 @@
            metabase.driver.postgres
            metabase.driver.settings
            metabase.driver.sql
+           metabase.driver.sql-jdbc
            metabase.driver.sql-jdbc.connection
            metabase.driver.sql-jdbc.execute
            metabase.driver.sql-jdbc.execute.diagnostic
@@ -568,7 +571,8 @@
            metabase.driver.sql.util
            metabase.driver.sync
            metabase.driver.util}
-   :uses #{app-db
+   :uses #{analytics
+           app-db
            appearance
            auth-provider
            classloader
@@ -581,6 +585,7 @@
            premium-features
            query-processor
            settings
+           sql-tools
            system
            util
            warehouse-schema
@@ -731,32 +736,18 @@
 
   lib
   {:team "Querying"
-   :api  #{metabase.lib.binning
-           metabase.lib.convert  ; Only so [[metabase.queries.models.card]] can set dynamic vars.
-           metabase.lib.core
+   :api  #{metabase.lib.core
            metabase.lib.equality
-           metabase.lib.field
-           metabase.lib.filter.desugar.jvm ; only so [[metabase.legacy-mbql.jvm-util]] can use defined regexes
-           metabase.lib.hierarchy
            metabase.lib.init
            metabase.lib.metadata
-           metabase.lib.metadata.cached-provider
-           metabase.lib.metadata.column
-           metabase.lib.metadata.invocation-tracker
            metabase.lib.metadata.protocols
-           metabase.lib.metadata.result-metadata
-           metabase.lib.normalize
            metabase.lib.options
-           metabase.lib.query
            metabase.lib.schema
            metabase.lib.schema.actions
            metabase.lib.schema.aggregation
-           metabase.lib.schema.binning
            metabase.lib.schema.common
-           metabase.lib.schema.constraints
            metabase.lib.schema.expression
            metabase.lib.schema.expression.temporal
-           metabase.lib.schema.expression.window
            metabase.lib.schema.id
            metabase.lib.schema.info
            metabase.lib.schema.join
@@ -765,26 +756,26 @@
            metabase.lib.schema.measure
            metabase.lib.schema.metadata
            metabase.lib.schema.metadata.fingerprint
-           metabase.lib.schema.middleware-options
            metabase.lib.schema.parameter
            metabase.lib.schema.ref
-           metabase.lib.schema.settings
            metabase.lib.schema.template-tag
            metabase.lib.schema.temporal-bucketing
            metabase.lib.schema.test-spec
            metabase.lib.schema.util
            metabase.lib.schema.validate
-           metabase.lib.temporal-bucket
            metabase.lib.types.isa
            metabase.lib.util
-           metabase.lib.util.match
-           metabase.lib.walk}
+           metabase.lib.util.match}
    :uses #{config
            graph
            legacy-mbql
            types
            util}
-   :friends #{query-processor}}
+   :friends #{legacy-mbql         ;; Reuses internal schemas and a few helper functions. Deeply coupled to MBQL.
+              lib-be              ;; BE-specific extension of lib; tight coupling is acceptable.
+              query-processor     ;; Necessarily manipulates MBQL; better to pull most logic into a new module.
+              enterprise/sandbox  ;; Really part of the QP, though its lives in the enterprise/ tree.
+              }}
 
   lib-be
   {:team "Querying"
@@ -808,6 +799,7 @@
            premium-features
            request
            settings
+           sql-tools
            sync
            util
            warehouse-schema}}
@@ -951,6 +943,7 @@
            metabase.parameters.custom-values
            metabase.parameters.dashboard
            metabase.parameters.field
+           metabase.parameters.field-values
            metabase.parameters.init
            metabase.parameters.params
            metabase.parameters.schema
@@ -1025,6 +1018,7 @@
            events
            internal-stats
            settings
+           startup
            task
            util}}
 
@@ -1180,8 +1174,10 @@
            metabase.query-processor.init
            metabase.query-processor.interface
            metabase.query-processor.metadata
+           metabase.query-processor.middleware.add-remaps
            metabase.query-processor.middleware.annotate
            metabase.query-processor.middleware.cache-backend.db
+           metabase.query-processor.middleware.catch-exceptions
            metabase.query-processor.middleware.constraints
            metabase.query-processor.middleware.limit
            metabase.query-processor.middleware.permissions
@@ -1427,6 +1423,23 @@
            system
            util}}
 
+  sql-parsing
+  {:team "DevEx"
+   :api #{metabase.sql-parsing.core}
+   :uses #{analytics
+           util}}
+
+  sql-tools
+  {:team "DevEx"
+   :api #{metabase.sql-tools.core
+          metabase.sql-tools.init}
+   :uses #{analytics
+           driver
+           lib
+           settings
+           sql-parsing
+           util}}
+
   sso
   {:team "UX West"
    :api  #{metabase.sso.api
@@ -1558,12 +1571,10 @@
 
   transforms
   {:team "Querying"
-   :api  #{metabase.transforms.api.transform
-           metabase.transforms.api.transform-job
-           metabase.transforms.api.transform-tag
-           metabase.transforms.core
+   :api  #{metabase.transforms.core
            metabase.transforms.feature-gating
            metabase.transforms.init
+           metabase.transforms.interface
            metabase.transforms.schema
            metabase.transforms.util}
    :uses #{analytics
@@ -1578,7 +1589,6 @@
            premium-features
            queries
            query-processor
-           request
            revisions
            settings
            sync
@@ -1588,6 +1598,35 @@
    :friends #{models
               enterprise/transforms-python
               enterprise/workspaces}}
+
+  transforms-inspector
+  {:team "Gadget"
+   :api  #{metabase.transforms-inspector.core
+           metabase.transforms-inspector.schema}
+   :uses #{driver
+           lib
+           lib-be
+           query-processor
+           sql-tools
+           transforms
+           util}}
+
+  transforms-rest
+  {:team "Gadget"
+   :api  #{metabase.transforms-rest.api.transform
+           metabase.transforms-rest.api.transform-job
+           metabase.transforms-rest.api.transform-tag}
+   :uses #{api
+           driver
+           events
+           models
+           query-processor
+           request
+           server
+           sql-tools
+           transforms
+           transforms-inspector
+           util}}
 
   types
   {:team "Querying"
@@ -2199,6 +2238,7 @@
               lib-be
               models
               native-query-snippets
+              parameters
               permissions
               premium-features
               pulse
@@ -2207,6 +2247,7 @@
               search
               server
               settings
+              sql-tools
               store-api
               sync
               system
@@ -2214,7 +2255,6 @@
               transforms
               users
               util
-              warehouse-schema
               warehouses
               enterprise/dependencies
               enterprise/transforms-python}}
@@ -2415,7 +2455,7 @@
   enterprise/transforms
   {:team "Querying"
    :api  #{}
-   :uses #{}}
+   :uses #{premium-features}}
 
   enterprise/transforms-python
   {:team "Querying"
@@ -2453,6 +2493,7 @@
            metabase-enterprise.workspaces.init}
    :uses #{api
            api-keys
+           app-db
            config
            database-routing
            driver
@@ -2465,6 +2506,7 @@
            query-processor
            request
            settings
+           sql-tools
            system
            transforms
            util

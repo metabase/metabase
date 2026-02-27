@@ -3,6 +3,7 @@ import { t } from "ttag";
 
 import { RequiredParamToggle } from "metabase/parameters/components/RequiredParamToggle";
 import { Flex, Text } from "metabase/ui";
+import { isDateParameter } from "metabase-lib/v1/parameters/utils/parameter-type";
 import type { Parameter, TemplateTag } from "metabase-types/api";
 
 import {
@@ -30,6 +31,10 @@ export function DefaultRequiredValueControl({
     [parameter],
   );
 
+  const placeholder = isDateParameter(parameter)
+    ? t`Select a default value…`
+    : t`Enter a default value…`;
+
   return (
     <div>
       <ContainerLabel id={`default-value-label-${tag.id}`}>
@@ -47,6 +52,7 @@ export function DefaultRequiredValueControl({
               isEditing
               commitImmediately
               mimicMantine
+              placeholder={placeholder}
             />
           </div>
         )}

@@ -29,7 +29,8 @@ jobs:
       - name: Install bun
         uses: oven-sh/setup-bun@v2
         with:
-          bun-version: latest
+          bun-version: "1.3.7"
+          token: ${{ secrets.GITHUB_TOKEN }}
       - name: Prepare build scripts
         run: bun install --cwd release --frozen-lockfile && bun run --cwd release build
       - name: Trigger auto-patch

@@ -46,7 +46,7 @@
   well."
   [query]
   (when-let [source-card-id (and ((complement #{:internal "internal"}) (:type query))
-                                 (some-> query not-empty lib-be/normalize-query lib/source-card-id))]
+                                 (some-> query not-empty lib-be/normalize-query lib/primary-source-card-id))]
     (log/infof "Source query for this query is Card %s" (pr-str source-card-id))
     (api/read-check :model/Card source-card-id)
     source-card-id))

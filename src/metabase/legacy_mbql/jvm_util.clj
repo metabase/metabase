@@ -10,13 +10,13 @@
   "Unwrap host and domain."
   {:deprecated "0.57.0"}
   [expression]
-  (lib.util.match/replace
+  (lib.util.match/replace-lite
     expression
     [:host column]
-    (recur [:regex-match-first column (str lib.filter.desugar.jvm/host-regex)])
+    (&recur [:regex-match-first column (str lib.filter.desugar.jvm/host-regex)])
     [:domain column]
-    (recur [:regex-match-first column (str lib.filter.desugar.jvm/domain-regex)])
+    (&recur [:regex-match-first column (str lib.filter.desugar.jvm/domain-regex)])
     [:subdomain column]
-    (recur [:regex-match-first column (str lib.filter.desugar.jvm/subdomain-regex)])
+    (&recur [:regex-match-first column (str lib.filter.desugar.jvm/subdomain-regex)])
     [:path column]
-    (recur [:regex-match-first column (str lib.filter.desugar.jvm/path-regex)])))
+    (&recur [:regex-match-first column (str lib.filter.desugar.jvm/path-regex)])))

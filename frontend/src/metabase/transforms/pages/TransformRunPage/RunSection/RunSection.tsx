@@ -14,10 +14,13 @@ import { useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import { PLUGIN_REMOTE_SYNC } from "metabase/plugins";
-import { Anchor, Box, Divider, Group, Stack } from "metabase/ui";
+import { Anchor, Box, Card, Divider, Group, Stack } from "metabase/ui";
 import type { Transform, TransformTagId } from "metabase-types/api";
 
-import { trackTransformTriggerManualRun } from "../../../analytics";
+import {
+  trackTransformRunTagsUpdated,
+  trackTransformTriggerManualRun,
+} from "../../../analytics";
 import { RunButton } from "../../../components/RunButton";
 import { RunStatus } from "../../../components/RunStatus";
 import { TagMultiSelect } from "../../../components/TagMultiSelect";
@@ -28,18 +31,16 @@ import { LogOutput } from "./LogOutput";
 type RunSectionProps = {
   transform: Transform;
   readOnly?: boolean;
+  noTitle?: boolean;
 };
 
-export function RunSection({ transform, readOnly }: RunSectionProps) {
+export function RunSection({ transform, readOnly, noTitle }: RunSectionProps) {
   const isRemoteSyncReadOnly = useSelector(
     PLUGIN_REMOTE_SYNC.getIsRemoteSyncReadOnly,
   );
 
-  return (
-    <TitleSection
-      label={t`Run this transform`}
-      description={t`This transform will be run whenever the jobs it belongs are scheduled.`}
-    >
+  const content = (
+    <>
       <Stack>
         <Group p="lg" justify="space-between">
           <RunStatusSection transform={transform} />
@@ -58,6 +59,23 @@ export function RunSection({ transform, readOnly }: RunSectionProps) {
           readOnly={readOnly || isRemoteSyncReadOnly}
         />
       </Group>
+    </>
+  );
+
+  if (noTitle) {
+    return (
+      <Card p={0} shadow="none" withBorder>
+        {content}
+      </Card>
+    );
+  }
+
+  return (
+    <TitleSection
+      label={t`Run this transform`}
+      description={t`This transform will be run whenever the jobs it belongs to are scheduled.`}
+    >
+      {content}
     </TitleSection>
   );
 }
@@ -182,6 +200,9 @@ function TagSection({ transform, readOnly }: TagSectionProps) {
     tagIds: TransformTagId[],
     undoable: boolean = false,
   ) => {
+    const prevTagCount = transform.tag_ids?.length ?? 0;
+    const isAdding = prevTagCount < tagIds.length;
+
     const { error } = await updateTransform({
       id: transform.id,
       tag_ids: tagIds,
@@ -200,6 +221,12 @@ function TagSection({ transform, readOnly }: TagSectionProps) {
 
       sendSuccessToast(t`Transform tags updated`, undoable ? undo : undefined);
     }
+
+    trackTransformRunTagsUpdated({
+      added: isAdding,
+      result: error ? "failure" : "success",
+      transformId: transform.id,
+    });
   };
 
   return (

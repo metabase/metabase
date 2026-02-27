@@ -20,6 +20,7 @@
 
 (t2/deftransforms :model/QueryExecution
   {:json_query mi/transform-json
+   :lens_params mi/transform-json
    :status     mi/transform-keyword
    :context    mi/transform-keyword})
 

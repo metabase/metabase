@@ -36,7 +36,6 @@ import {
   Icon,
   Stack,
   Tabs,
-  Text,
 } from "metabase/ui";
 import { MergeWorkspaceModal } from "metabase-enterprise/data-studio/workspaces/components/MergeWorkspaceModal/MergeWorkspaceModal";
 import { RunWorkspaceMenu } from "metabase-enterprise/data-studio/workspaces/components/RunWorkspaceMenu/RunWorkspaceMenu";
@@ -79,16 +78,16 @@ function WorkspacePageContent({
     activationConstraint: { distance: 10 },
   });
   const dispatch = useDispatch();
+  const workspaceId = parseInt(params.workspaceId, 10);
 
   const {
     openedTabs,
-    activeTransform,
-    activeEditedTransform,
+    activeTransformRef,
     activeTable,
     activeTab,
     setActiveTab,
     setActiveTable,
-    setActiveTransform,
+    setActiveTransformRef,
     removeOpenedTab,
     setOpenedTabs,
     addOpenedTransform,
@@ -100,8 +99,6 @@ function WorkspacePageContent({
   const [isMergeModalOpen, setIsMergeModalOpen] = useState(false);
 
   const { tab, setTab, ref: tabsListRef } = useWorkspaceUiTabs();
-
-  const workspaceId = parseInt(params.workspaceId, 10);
 
   // Data fetching
   const {
@@ -163,8 +160,9 @@ function WorkspacePageContent({
 
       const isActive =
         (tab.type === "transform" &&
-          activeTransform &&
-          getTransformId(activeTransform) === getTransformId(tab.transform)) ||
+          activeTransformRef &&
+          getTransformId(activeTransformRef) ===
+            getTransformId(tab.transformRef)) ||
         (tab.type === "table" && activeTable?.tableId === tab.table.tableId);
       const remaining = openedTabs.filter((item) => item.id !== tab.id);
 
@@ -186,7 +184,7 @@ function WorkspacePageContent({
       }
     },
     [
-      activeTransform,
+      activeTransformRef,
       activeTable,
       removeOpenedTab,
       setActiveTab,
@@ -427,35 +425,29 @@ function WorkspacePageContent({
                 </Tabs.Panel>
               )}
 
-              {activeTransform && (
+              {activeTransformRef && (
                 <Tabs.Panel
-                  value={getTransformTabId(activeTransform)}
+                  value={getTransformTabId(activeTransformRef)}
                   h="100%"
                   style={{ overflow: "auto" }}
                 >
-                  {!activeEditedTransform ? (
-                    <Text c="text-secondary">
-                      {t`Select a transform on the right.`}
-                    </Text>
-                  ) : (
-                    <TransformTab
-                      databaseId={checkNotNull(workspace.database_id)}
-                      transform={activeTransform}
-                      workspaceId={workspaceId}
-                      workspaceTransforms={workspaceTransforms}
-                      isDisabled={isArchived || isPending}
-                      onSaveTransform={(transform) => {
-                        // After adding first transform to a workspace,
-                        // show 'Setup' tab with initialization status log.
-                        if (isWorkspaceUninitialized(workspace)) {
-                          setActiveTransform(transform);
-                          return setTab("setup");
-                        }
-                        setActiveTransform(transform);
+                  <TransformTab
+                    databaseId={checkNotNull(workspace.database_id)}
+                    disabled={isArchived || isPending}
+                    workspaceId={workspaceId}
+                    workspaceTransforms={workspaceTransforms}
+                    onSaveTransform={(transform) => {
+                      // After adding first transform to a workspace,
+                      // show 'Setup' tab with initialization status log.
+                      if (isWorkspaceUninitialized(workspace)) {
+                        setActiveTransformRef(transform);
+                        setTab("setup");
+                      } else {
+                        setActiveTransformRef(transform);
                         setTab(getTransformTabId(transform));
-                      }}
-                    />
-                  )}
+                      }
+                    }}
+                  />
                 </Tabs.Panel>
               )}
             </Box>
@@ -496,17 +488,17 @@ function WorkspacePageContent({
                 <CodeTab
                   readOnly={isArchived || isPending}
                   activeTransformId={
-                    activeTransform
-                      ? getTransformId(activeTransform)
+                    activeTransformRef
+                      ? getTransformId(activeTransformRef)
                       : undefined
                   }
                   databaseId={databaseId}
                   workspaceId={workspace.id}
                   workspaceTransforms={allTransforms}
                   isLoadingWorkspaceTransforms={isLoadingWorkspaceTransforms}
-                  onTransformClick={(transform) => {
-                    addOpenedTransform(transform);
-                    setTab(getTransformTabId(transform));
+                  onTransformClick={(transformRef) => {
+                    addOpenedTransform(transformRef);
+                    setTab(getTransformTabId(transformRef));
                     if (activeTable) {
                       setActiveTable(null);
                     }

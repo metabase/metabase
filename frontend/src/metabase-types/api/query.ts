@@ -3,7 +3,7 @@ import type { UiParameter } from "metabase-lib/v1/parameters/types";
 
 import type { CardId } from "./card";
 import type { DatabaseId } from "./database";
-import type { TemplateTags, TemporalUnit } from "./dataset";
+import type { TemplateTag, TemplateTags, TemporalUnit } from "./dataset";
 import type { FieldId } from "./field";
 import type { SegmentId } from "./segment";
 import type { TableId } from "./table";
@@ -458,6 +458,10 @@ export type TestColumnSpec = {
   name: string;
   sourceName?: string;
   displayName?: string;
+
+  // When the columns cannot be disambiguated with name, sourceName and displayName
+  // use this index to pick one.
+  index?: number;
 };
 
 export type TestExpressionSpec =
@@ -482,7 +486,7 @@ export type TestLiteralSpec = {
 export type TestOperatorSpec = {
   type: "operator";
   operator: string;
-  args: TestExpressionSpec[];
+  args?: TestExpressionSpec[];
 };
 
 export type TestTemporalBucketSpec = {
@@ -490,11 +494,11 @@ export type TestTemporalBucketSpec = {
 };
 
 export type TestBinCountSpec = {
-  bins?: number;
+  bins?: number | "auto";
 };
 
 export type TestBinWidthSpec = {
-  binWidth?: number;
+  binWidth?: number | "auto";
 };
 
 type TestBinningSpec =
@@ -544,5 +548,21 @@ export type TestQuerySpec = {
 };
 
 export type TestQuerySpecWithDatabase = TestQuerySpec & {
+  database: DatabaseId;
+};
+
+export type TestTemplateTag = Pick<TemplateTag, "type"> &
+  Partial<Omit<TemplateTag, "dimension" | "type">> & {
+    dimension?: TableId;
+  };
+
+export type TestTemplateTags = Record<string, TestTemplateTag>;
+
+export type TestNativeQuerySpec = {
+  query: string;
+  templateTags?: TestTemplateTags;
+};
+
+export type TestNativeQuerySpecWithDatabase = TestNativeQuerySpec & {
   database: DatabaseId;
 };
