@@ -126,6 +126,7 @@
    field-ref     :- :mbql.clause/field]
   (or (when-let [column (lib.field.resolution/resolve-field-ref query stage-number field-ref)]
         (let [column (cond-> column
+                       ;; all non-implicitly joinable columns should have string-based field refs
                        (not (:fk-field-id column)) (dissoc :id))
               expression-name (lib.util/expression-name field-ref)
               new-field-ref (cond-> (lib.ref/ref column)
