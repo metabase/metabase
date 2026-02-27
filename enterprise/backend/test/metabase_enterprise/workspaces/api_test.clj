@@ -1283,7 +1283,9 @@
         (let [target-schema (t2/select-one-fn :schema :model/Table (mt/id :orders))]
           (mt/with-temp [:model/Transform x1 {:name   "Transform"
                                               :source {:type  "query"
-                                                       :query (mt/native-query (ws.tu/mbql->native (mt/mbql-query orders {:aggregation [[:count]]})))}
+                                                       :query (-> (mt/mbql-query orders {:aggregation [[:count]]})
+                                                                  ws.tu/mbql->native
+                                                                  mt/native-query)}
                                               :target {:type     "table"
                                                        :database (mt/id)
                                                        :schema   target-schema
