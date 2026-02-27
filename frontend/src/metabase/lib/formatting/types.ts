@@ -1,3 +1,7 @@
+import type { ClickBehavior } from "metabase-types/api";
+
+import type { CurrencyStyle } from "./currency";
+
 export type TimeEnabled = "minutes" | "milliseconds" | "seconds";
 
 export interface TimeOnlyOptions {
@@ -8,11 +12,14 @@ export interface TimeOnlyOptions {
 }
 
 export interface OptionsType extends TimeOnlyOptions {
-  click_behavior?: any;
+  click_behavior?: ClickBehavior;
   clicked?: any;
+  collapseNewlines?: boolean;
   column?: any;
   column_title?: string;
   compact?: boolean;
+  currency?: string;
+  currency_style?: CurrencyStyle;
   date_abbreviate?: boolean;
   date_format?: string;
   date_separator?: string;
@@ -35,11 +42,10 @@ export interface OptionsType extends TimeOnlyOptions {
   removeYear?: boolean;
   rich?: boolean;
   scale?: number;
-  stringifyNull?: boolean;
   show_mini_bar?: boolean;
+  stringifyNull?: boolean;
   suffix?: string;
   type?: string;
   view_as?: string | null;
   weekday_enabled?: boolean;
-  collapseNewlines?: boolean;
 }
