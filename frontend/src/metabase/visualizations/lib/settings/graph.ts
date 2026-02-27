@@ -982,154 +982,155 @@ export const GRAPH_AXIS_SETTINGS: VisualizationSettingsDefinitions = {
   "graph.series_labels": {},
 };
 
-export const BOXPLOT_SETTINGS: VisualizationSettingsDefinitions<ChartSettingEnumToggleProps> =
-  {
-    "boxplot.whisker_type": {
-      get section() {
-        return t`Display`;
+export const BOXPLOT_SETTINGS: VisualizationSettingsDefinitions<
+  ChartSettingEnumToggleProps<"fit" | "all">
+> = {
+  "boxplot.whisker_type": {
+    get section() {
+      return t`Display`;
+    },
+    get title() {
+      return t`Whiskers extend to`;
+    },
+    widget: "radio",
+    default: "tukey",
+    props: {
+      get options() {
+        return [
+          { name: t`1.5 × interquartile range`, value: "tukey" },
+          { name: t`Min/Max`, value: "min-max" },
+        ];
       },
-      get title() {
-        return t`Whiskers extend to`;
-      },
-      widget: "radio",
-      default: "tukey",
-      props: {
-        get options() {
-          return [
-            { name: t`1.5 × interquartile range`, value: "tukey" },
-            { name: t`Min/Max`, value: "min-max" },
-          ];
+    },
+  },
+  "boxplot.points_mode": {
+    get section() {
+      return t`Display`;
+    },
+    get title() {
+      return t`Show points`;
+    },
+    widget: "radio",
+    default: "outliers",
+    getValue: (_series, settings) => {
+      const isMinMax = settings["boxplot.whisker_type"] === "min-max";
+      const savedValue = settings["boxplot.points_mode"];
+      if (savedValue == null) {
+        return isMinMax ? "none" : "outliers";
+      }
+      if (isMinMax && savedValue === "outliers") {
+        return "none";
+      }
+      return savedValue;
+    },
+    getProps: (_series, settings) => {
+      const isMinMax = settings["boxplot.whisker_type"] === "min-max";
+      const options = [
+        { name: t`None`, value: "none" },
+        { name: t`Outliers only`, value: "outliers" },
+        { name: t`All points`, value: "all" },
+      ].filter((opt) => !isMinMax || opt.value !== "outliers");
+      return { options };
+    },
+    readDependencies: ["boxplot.whisker_type"],
+  },
+  "boxplot.show_mean": {
+    get section() {
+      return t`Display`;
+    },
+    get title() {
+      return t`Show mean`;
+    },
+    widget: "toggle",
+    default: true,
+    inline: true,
+  },
+  "graph.show_values": {
+    get section() {
+      return t`Display`;
+    },
+    get title() {
+      return t`Show values on data points`;
+    },
+    widget: "toggle",
+    default: false,
+    inline: true,
+    marginBottom: "1rem",
+  },
+  "boxplot.show_values_mode": {
+    get section() {
+      return t`Display`;
+    },
+    get title() {
+      return t`Values to display`;
+    },
+    widget: "segmentedControl",
+    default: "median",
+    getHidden: (_series, vizSettings) => !vizSettings["graph.show_values"],
+    props: {
+      options: [
+        {
+          get name() {
+            return t`Median only`;
+          },
+          value: "median",
         },
-      },
-    },
-    "boxplot.points_mode": {
-      get section() {
-        return t`Display`;
-      },
-      get title() {
-        return t`Show points`;
-      },
-      widget: "radio",
-      default: "outliers",
-      getValue: (_series, settings) => {
-        const isMinMax = settings["boxplot.whisker_type"] === "min-max";
-        const savedValue = settings["boxplot.points_mode"];
-        if (savedValue == null) {
-          return isMinMax ? "none" : "outliers";
-        }
-        if (isMinMax && savedValue === "outliers") {
-          return "none";
-        }
-        return savedValue;
-      },
-      getProps: (_series, settings) => {
-        const isMinMax = settings["boxplot.whisker_type"] === "min-max";
-        const options = [
-          { name: t`None`, value: "none" },
-          { name: t`Outliers only`, value: "outliers" },
-          { name: t`All points`, value: "all" },
-        ].filter((opt) => !isMinMax || opt.value !== "outliers");
-        return { options };
-      },
-      readDependencies: ["boxplot.whisker_type"],
-    },
-    "boxplot.show_mean": {
-      get section() {
-        return t`Display`;
-      },
-      get title() {
-        return t`Show mean`;
-      },
-      widget: "toggle",
-      default: true,
-      inline: true,
-    },
-    "graph.show_values": {
-      get section() {
-        return t`Display`;
-      },
-      get title() {
-        return t`Show values on data points`;
-      },
-      widget: "toggle",
-      default: false,
-      inline: true,
-      marginBottom: "1rem",
-    },
-    "boxplot.show_values_mode": {
-      get section() {
-        return t`Display`;
-      },
-      get title() {
-        return t`Values to display`;
-      },
-      widget: "segmentedControl",
-      default: "median",
-      getHidden: (_series, vizSettings) => !vizSettings["graph.show_values"],
-      props: {
-        options: [
-          {
-            get name() {
-              return t`Median only`;
-            },
-            value: "median",
+        {
+          get name() {
+            return t`All`;
           },
-          {
-            get name() {
-              return t`All`;
-            },
-            value: "all",
-          },
-        ],
-      },
-      readDependencies: ["graph.show_values"],
+          value: "all",
+        },
+      ],
     },
-    "graph.label_value_frequency": {
-      get section() {
-        return t`Display`;
-      },
-      get title() {
-        return t`Hide overlapping labels`;
-      },
-      widget: ChartSettingEnumToggle,
-      default: "fit",
-      inline: true,
-      getHidden: (_series, vizSettings) => !vizSettings["graph.show_values"],
-      props: {
-        checkedValue: "fit",
-        uncheckedValue: "all",
-      },
-      readDependencies: ["graph.show_values"],
+    readDependencies: ["graph.show_values"],
+  },
+  "graph.label_value_frequency": {
+    get section() {
+      return t`Display`;
     },
-    "graph.label_value_formatting": {
-      get section() {
-        return t`Display`;
-      },
-      get title() {
-        return t`Auto formatting`;
-      },
-      widget: "segmentedControl",
-      default: "compact",
-      getHidden: (_series, vizSettings) => !vizSettings["graph.show_values"],
-      props: {
-        options: [
-          {
-            get name() {
-              return t`Compact`;
-            },
-            value: "compact",
-          },
-          {
-            get name() {
-              return t`Full`;
-            },
-            value: "full",
-          },
-        ],
-      },
-      readDependencies: ["graph.show_values"],
+    get title() {
+      return t`Hide overlapping labels`;
     },
-  };
+    widget: ChartSettingEnumToggle,
+    default: "fit",
+    inline: true,
+    getHidden: (_series, vizSettings) => !vizSettings["graph.show_values"],
+    props: {
+      checkedValue: "fit",
+      uncheckedValue: "all",
+    },
+    readDependencies: ["graph.show_values"],
+  },
+  "graph.label_value_formatting": {
+    get section() {
+      return t`Display`;
+    },
+    get title() {
+      return t`Auto formatting`;
+    },
+    widget: "segmentedControl",
+    default: "compact",
+    getHidden: (_series, vizSettings) => !vizSettings["graph.show_values"],
+    props: {
+      options: [
+        {
+          get name() {
+            return t`Compact`;
+          },
+          value: "compact",
+        },
+        {
+          get name() {
+            return t`Full`;
+          },
+          value: "full",
+        },
+      ],
+    },
+    readDependencies: ["graph.show_values"],
+  },
+};
 
 export const BOXPLOT_DATA_SETTINGS: VisualizationSettingsDefinitions = {
   ...GRAPH_DATA_SETTINGS,
