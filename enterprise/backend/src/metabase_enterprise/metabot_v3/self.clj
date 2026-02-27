@@ -149,7 +149,7 @@
                (prometheus/inc! :metabase-metabot/llm-input-tokens labels prompt)
                (prometheus/inc! :metabase-metabot/llm-output-tokens labels completion)
                (prometheus/observe! :metabase-metabot/llm-tokens-per-call labels (+ prompt completion))
-               ;; The caller can omit snowplot opts to skip snowplow tracking.
+               ;; The caller can omit snowplow opts to skip snowplow tracking.
                (when request-id
                  (analytics/track-event! :snowplow/token_usage
                                          {:hashed_metabase_license_token (hashed-token-or-uuid)
