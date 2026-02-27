@@ -107,6 +107,10 @@
            {"SELECT * FROM {{#35885-monthly-revenue--customer---replacement-}}"
             ["SELECT * FROM " (param "#35885-monthly-revenue--customer---replacement-")]}
 
+           "/* */ inside {{...}} card ref tags should not trigger comment mode"
+           {"SELECT * FROM {{#1-revenue/*monthly*/}}"
+            ["SELECT * FROM " (param "#1-revenue/*monthly*/")]}
+
            "JSON queries that contain non-param fragments like '}}'"
            {"{x: {y: \"{{param}}\"}}"         ["{x: {y: \"" (param "param") "\"}}"]
             "{$match: {{{date}}, field: 1}}}" ["{$match: {" (param "date") ", field: 1}}}"]}
