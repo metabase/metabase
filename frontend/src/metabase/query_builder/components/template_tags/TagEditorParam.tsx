@@ -2,7 +2,7 @@ import { Component } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
-import { connect } from "metabase/lib/redux";
+import { type DispatchFn, connect } from "metabase/lib/redux";
 import { TemporalUnitSettings } from "metabase/parameters/components/ParameterSettings/TemporalUnitSettings";
 import { ValuesSourceSettings } from "metabase/parameters/components/ValuesSourceSettings";
 import { isSingleOrMultiSelectable } from "metabase/parameters/utils/parameter-type";
@@ -28,6 +28,7 @@ import type {
   Parameter,
   ParameterValuesConfig,
   RowValue,
+  TableId,
   TemplateTag,
   TemplateTagId,
   TemplateTagType,
@@ -44,6 +45,8 @@ import {
   FieldMappingSelect,
   FilterWidgetLabelInput,
   FilterWidgetTypeSelect,
+  TableMappingSelect,
+  VariableTypeSelect,
 } from "./TagEditorParamParts";
 import { FieldAliasInput } from "./TagEditorParamParts/FieldAliasInput";
 import { ParameterMultiSelectInput } from "./TagEditorParamParts/ParameterMultiSelectInput";
@@ -51,7 +54,6 @@ import {
   ContainerLabel,
   InputContainer,
 } from "./TagEditorParamParts/TagEditorParam";
-import { VariableTypeSelect } from "./TagEditorParamParts/VariableTypeSelect";
 
 interface StateProps {
   metadata: Metadata;
@@ -77,6 +79,10 @@ interface OwnProps {
   database?: Database | null;
   databases: Database[];
   setTemplateTag: (tag: TemplateTag) => void;
+  setTemplateTagConfig?: (
+    tag: TemplateTag,
+    config: ParameterValuesConfig,
+  ) => void;
   setParameterValue: (tagId: TemplateTagId, value: RowValue) => void;
 }
 
@@ -87,7 +93,23 @@ function mapStateToProps(state: State) {
   };
 }
 
-const mapDispatchToProps = { fetchField, setTemplateTagConfig };
+const mapDispatchToProps = (
+  dispatch: DispatchFn,
+  props: OwnProps,
+): DispatchProps => {
+  return {
+    fetchField(fieldId, force) {
+      dispatch(fetchField(fieldId, force));
+    },
+    setTemplateTagConfig(tag, config) {
+      if (props.setTemplateTagConfig) {
+        props.setTemplateTagConfig(tag, config);
+        return;
+      }
+      dispatch(setTemplateTagConfig(tag, config));
+    },
+  };
+};
 
 const EMPTY_VALUES_CONFIG: ParameterValuesConfig = {
   isMultiSelect: false,
@@ -162,6 +184,7 @@ class TagEditorParamInner extends Component<
         dimension: undefined,
         alias: undefined,
         "widget-type": type === "dimension" ? "none" : undefined,
+        "table-id": undefined,
       });
 
       setParameterValue(tag.id, null);
@@ -268,6 +291,13 @@ class TagEditorParamInner extends Component<
     }
   };
 
+  setTableId = (tableId: TableId | undefined) => {
+    const { tag, setTemplateTag } = this.props;
+    if (tag["table-id"] !== tableId) {
+      setTemplateTag({ ...tag, "table-id": tableId });
+    }
+  };
+
   setAlias = (alias: string | undefined) => {
     const { tag, setTemplateTag } = this.props;
     if (tag.alias !== alias) {
@@ -305,6 +335,7 @@ class TagEditorParamInner extends Component<
 
     const isDimension = tag.type === "dimension";
     const isTemporalUnit = tag.type === "temporal-unit";
+    const isTable = tag.type === "table";
     const field = Array.isArray(tag.dimension)
       ? metadata.field(tag.dimension[1])
       : null;
@@ -332,6 +363,15 @@ class TagEditorParamInner extends Component<
           />
         )}
 
+        {isTable && (
+          <TableMappingSelect
+            tag={tag}
+            database={database}
+            databases={databases}
+            onChange={this.setTableId}
+          />
+        )}
+
         {(isDimension || isTemporalUnit) && field != null && (
           <FieldAliasInput tag={tag} onChange={this.setAlias} />
         )}
@@ -345,7 +385,7 @@ class TagEditorParamInner extends Component<
           />
         )}
 
-        {(!isDimension || widgetOptions.length > 0) && (
+        {((!isDimension && !isTable) || widgetOptions.length > 0) && (
           <FilterWidgetLabelInput
             tag={tag}
             onChange={(value) =>

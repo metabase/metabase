@@ -8,7 +8,7 @@ redirect_from:
 
 > Prefer using [Data Studio > Data structure](../data-studio/data-structure.md) for metadata editing. The page _Admin > Table Metadata_ will be removed in future versions of Metabase.
 
-_Admin settings > Table metadata_
+_Admin > Table metadata_
 
 Metabase lets you add and edit metadata for your tables and columns.
 
@@ -20,7 +20,7 @@ Admins can grant access to these metadata settings to other groups. See [table m
 
 ## Table settings
 
-_Admin settings > Table metadata > Database > Table_
+_Admin > Table metadata > Database > Table_
 
 You can search for tables, or use the tree navigation to find each of your connected databases and their tables.
 
@@ -67,7 +67,7 @@ To hide **all of the tables in a database** (say, if you've migrated to a new da
 
 ## Field settings
 
-_Admin settings > Table Metadata > Database > Table > Field_
+_Admin > Table Metadata > Database > Table > Field_
 
 Fields are also known as Columns (see the [difference between fields and columns](https://www.metabase.com/learn/grow-your-data-skills/data-fundamentals/database-basics#columns-vs-fields)).
 
@@ -93,13 +93,13 @@ Click the preview button to see sample data from that field.
 
 ## Scan values for a specific field
 
-_Admin settings > Table Metadata > Database > Table > Field_
+_Admin > Table Metadata > Database > Table > Field_
 
 To scan or discard field values for a specific field, click on the **Field values** button. Metabase uses these values to populate dropdown menus in filter widgets. (Values aren't dropped from your database.)
 
 ## Field data
 
-_Admin settings > Table Metadata > Database > Table > Field_
+_Admin > Table Metadata > Database > Table > Field_
 
 ### Field name
 
@@ -149,7 +149,7 @@ If Metabase doesn't support the casting option you need, you can [create a SQL q
 
 ## Field metadata
 
-_Admin settings > Table Metadata > Database > Table > Field_
+_Admin > Table Metadata > Database > Table > Field_
 
 ### Semantic type
 
@@ -161,7 +161,7 @@ See [semantic types](../data-modeling/semantic-types.md).
 
 ## Field behavior
 
-_Admin settings > Table Metadata > Database > Table > Field_
+_Admin > Table Metadata > Database > Table > Field_
 
 ### Field visibility
 
@@ -210,7 +210,7 @@ Select "Custom mapping" from the dropdown menu. For each value in the column, en
 
 ## Field formatting
 
-_Admin settings > Table Metadata > Database > Table > Field_
+_Admin > Table Metadata > Database > Table > Field_
 
 See [Field formatting](./formatting.md#field-formatting).
 

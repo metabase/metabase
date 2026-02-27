@@ -17,13 +17,15 @@ import { DataSectionLayout } from "./app/pages/DataSectionLayout";
 import { DataStudioLayout } from "./app/pages/DataStudioLayout";
 import { DependenciesSectionLayout } from "./app/pages/DependenciesSectionLayout";
 import { GitSyncSectionLayout } from "./app/pages/GitSyncSectionLayout";
-import { DependencyDiagnosticsSectionLayout } from "./app/pages/TasksSectionLayout/TasksSectionLayout";
 import { TransformsSectionLayout } from "./app/pages/TransformsSectionLayout";
 import { WorkspacesSectionLayout } from "./app/pages/WorkspacesSectionLayout";
 import { getDataStudioMetadataRoutes } from "./data-model/routes";
 import { getDataStudioGlossaryRoutes } from "./glossary/routes";
-import { DependenciesUpsellPage, LibraryUpsellPage } from "./upsells";
-import { DependencyDiagnosticsUpsellPage } from "./upsells/DependencyDiagnosticsUpsellPage";
+import {
+  DependenciesUpsellPage,
+  DependencyDiagnosticsUpsellPage,
+  LibraryUpsellPage,
+} from "./upsells/pages";
 
 export function getDataStudioRoutes(
   store: Store<State>,
@@ -68,7 +70,7 @@ export function getDataStudioRoutes(
         {PLUGIN_DEPENDENCIES.isEnabled ? (
           <Route
             path="dependency-diagnostics"
-            component={DependencyDiagnosticsSectionLayout}
+            component={DependenciesSectionLayout}
           >
             {PLUGIN_DEPENDENCIES.getDataStudioDependencyDiagnosticsRoutes()}
           </Route>

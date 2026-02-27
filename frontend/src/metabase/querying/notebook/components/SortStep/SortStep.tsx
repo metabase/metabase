@@ -2,7 +2,9 @@ import { useMemo } from "react";
 import { t } from "ttag";
 
 import { QueryColumnPicker } from "metabase/common/components/QueryColumnPicker";
+import { useLocale } from "metabase/common/hooks";
 import { useTranslateContent } from "metabase/i18n/hooks";
+import { PLUGIN_CONTENT_TRANSLATION } from "metabase/plugins";
 import { Icon } from "metabase/ui";
 import * as Lib from "metabase-lib";
 
@@ -138,6 +140,7 @@ const SortPopover = ({
       checkIsColumnSelected={(item) => checkColumnSelected(item, orderByIndex)}
       onSelect={(column: Lib.ColumnMetadata) => {
         const isUpdate = orderBy != null;
+
         if (isUpdate) {
           onUpdateOrderByColumn(orderBy, column);
         } else {
@@ -171,6 +174,7 @@ function SortDisplayName({
   disabled,
 }: SortDisplayNameProps) {
   const tc = useTranslateContent();
+  const { locale } = useLocale();
   const icon = displayInfo.direction === "asc" ? "arrow_up" : "arrow_down";
   return (
     <button
@@ -183,7 +187,13 @@ function SortDisplayName({
       disabled={disabled}
     >
       <Icon name={icon} />
-      <span>{tc(displayInfo.longDisplayName)}</span>
+      <span>
+        {PLUGIN_CONTENT_TRANSLATION.translateColumnDisplayName({
+          displayName: displayInfo.longDisplayName,
+          tc,
+          locale,
+        })}
+      </span>
     </button>
   );
 }

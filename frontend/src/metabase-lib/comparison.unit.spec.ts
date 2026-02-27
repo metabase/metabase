@@ -1,27 +1,29 @@
 import * as Lib from "metabase-lib";
 import { ORDERS_ID } from "metabase-types/api/mocks/presets";
 
-import {
-  SAMPLE_DATABASE,
-  SAMPLE_PROVIDER,
-  createTestQuery,
-} from "./test-helpers";
+import { SAMPLE_PROVIDER } from "./test-helpers";
 
 describe("findColumnIndexesFromLegacyRefs", () => {
   const stageIndex = -1;
 
   it("should match columns that differ only by temporal buckets", () => {
-    const query = createTestQuery(SAMPLE_PROVIDER, {
-      databaseId: SAMPLE_DATABASE.id,
+    const query = Lib.createTestQuery(SAMPLE_PROVIDER, {
       stages: [
         {
-          source: { type: "table", id: ORDERS_ID },
+          source: {
+            type: "table",
+            id: ORDERS_ID,
+          },
           breakouts: [
             {
+              type: "column",
+              sourceName: "ORDERS",
               name: "CREATED_AT",
               unit: "year",
             },
             {
+              type: "column",
+              sourceName: "ORDERS",
               name: "CREATED_AT",
               unit: "month",
             },
@@ -40,19 +42,25 @@ describe("findColumnIndexesFromLegacyRefs", () => {
   });
 
   it("should match columns that differ only by binning", () => {
-    const query = createTestQuery(SAMPLE_PROVIDER, {
-      databaseId: SAMPLE_DATABASE.id,
+    const query = Lib.createTestQuery(SAMPLE_PROVIDER, {
       stages: [
         {
-          source: { type: "table", id: ORDERS_ID },
+          source: {
+            type: "table",
+            id: ORDERS_ID,
+          },
           breakouts: [
             {
+              type: "column",
+              sourceName: "ORDERS",
               name: "TOTAL",
-              binningCount: 10,
+              bins: 10,
             },
             {
+              type: "column",
+              sourceName: "ORDERS",
               name: "TOTAL",
-              binningCount: 50,
+              bins: 50,
             },
           ],
         },

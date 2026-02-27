@@ -121,16 +121,12 @@ describe("EditableDashboard", () => {
 
     // We should be in the query builder
     expect(
-      await screen.findByRole("button", { name: "Back to Test dashboard" }),
+      await screen.findByLabelText(/Back to Test dashboard/),
     ).toBeInTheDocument();
-    await userEvent.click(
-      screen.getByRole("button", { name: "Back to Test dashboard" }),
-    );
+    await userEvent.click(screen.getByLabelText(/Back to Test dashboard/));
 
     // We should be back in the dashboard
-    expect(
-      screen.getByText("You're editing this dashboard."),
-    ).toBeInTheDocument();
+    expect(screen.getByText("Test dashboard")).toBeInTheDocument();
   });
 
   it("should allow to pass `dataPickerProps.entityTypes` to the query builder", async () => {
@@ -180,6 +176,16 @@ describe("EditableDashboard", () => {
     await setupEnterprise();
 
     expect(screen.getByTestId("dashboard-name-heading")).toBeEnabled();
+  });
+
+  // eslint-disable-next-line jest/expect-expect -- Just want to ensure the type passes
+  it('should accept "drillThroughQuestionProps.dataPicker"', async () => {
+    <EditableDashboard
+      dashboardId={1}
+      drillThroughQuestionProps={{
+        dataPicker: "staged",
+      }}
+    />;
   });
 });
 

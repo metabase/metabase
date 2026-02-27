@@ -76,7 +76,7 @@
                   (mt/user-http-request :rasta :get 200 (format "table/card__%d/query_metadata" (u/the-id card))))))))))
 
 (deftest card-query-metadata-published-table-collection-perms-test
-  (testing "GET /api/card/:id/query_metadata should include published tables accessible via collection permissions"
+  (testing "GET /api/card/:id/query_metadata should include published tables that are queryable"
     (mt/with-premium-features #{:library}
       (mt/with-temp [:model/Collection table-coll {}
                      :model/Database db {}
@@ -90,7 +90,7 @@
                      :model/PermissionsGroup {group-id :id} {}
                      :model/PermissionsGroupMembership _ {:user_id (mt/user->id :rasta) :group_id group-id}]
         (mt/with-no-data-perms-for-all-users!
-          (data-perms/set-database-permission! group-id db :perms/view-data :blocked)
+          (data-perms/set-database-permission! group-id db :perms/view-data :unrestricted)
           (data-perms/set-database-permission! group-id db :perms/create-queries :no)
           (perms/grant-collection-read-permissions! group-id (u/the-id table-coll))
           (perms/grant-collection-read-permissions! group-id (u/the-id card-coll))
@@ -118,7 +118,7 @@
                      :model/PermissionsGroup {group-id :id} {}
                      :model/PermissionsGroupMembership _ {:user_id (mt/user->id :rasta) :group_id group-id}]
         (mt/with-no-data-perms-for-all-users!
-          (data-perms/set-database-permission! group-id db :perms/view-data :blocked)
+          (data-perms/set-database-permission! group-id db :perms/view-data :unrestricted)
           (data-perms/set-database-permission! group-id db :perms/create-queries :no)
           (perms/grant-collection-read-permissions! group-id (u/the-id table-coll))
           (perms/grant-collection-read-permissions! group-id (u/the-id card-coll))

@@ -47,7 +47,7 @@ For each table, you can view:
 - Questions about this table (if you have permission to view them)
 - Option to create an X-ray of the table
 
-Admins can edit the metadata in this reference by clicking the **Edit** button in the upper right. Admins can also edit metabadata in the [admin settings](../data-modeling/metadata-editing.md).
+Admins can edit the metadata in this reference by clicking the **Edit** button in the upper right. Admins can also edit metabadata in the [Admin](../data-modeling/metadata-editing.md).
 
 ## Glossary
 

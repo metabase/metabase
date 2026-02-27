@@ -1,5 +1,4 @@
 import type { ContentTranslationFunction } from "metabase/i18n/types";
-import { PLUGIN_CONTENT_TRANSLATION } from "metabase/plugins";
 import {
   getAdHocQuestionDescription,
   shouldRenderAdhocDescription,
@@ -26,10 +25,6 @@ export const getQuestionTitle = (
   const { isNative } = Lib.queryDisplayInfo(query);
   const adhocDescription = getAdHocQuestionDescription({
     question,
-    translateDisplayName: tc
-      ? (name: string) =>
-          PLUGIN_CONTENT_TRANSLATION.translateColumnDisplayName(name, tc)
-      : undefined,
   });
 
   if (

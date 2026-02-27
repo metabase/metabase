@@ -114,7 +114,7 @@ function DataStudioNav({ isNavbarOpened, onNavbarToggle }: DataStudioNavProps) {
         justify="space-between"
         data-testid="data-studio-nav"
       >
-        <Stack gap="0.75rem" flex={1} mih={0}>
+        <Stack gap="0.75rem" flex={1} mih={0} className={S.upperGroup}>
           <DataStudioNavbarToggle
             isNavbarOpened={isNavbarOpened}
             onNavbarToggle={onNavbarToggle}
@@ -194,7 +194,7 @@ function DataStudioNav({ isNavbarOpened, onNavbarToggle }: DataStudioNavProps) {
             />
           ) : (
             <DataStudioTab
-              label={t`Set up git sync`}
+              label={t`Set up remote sync`}
               icon="gear"
               to={Urls.dataStudioGitSync()}
               isSelected={currentTab === "git-sync"}
@@ -220,12 +220,6 @@ function DataStudioNav({ isNavbarOpened, onNavbarToggle }: DataStudioNavProps) {
               showLabel={isNavbarOpened}
             />
           )}
-          <DataStudioTab
-            label={t`Exit`}
-            icon="exit"
-            to={"/"}
-            showLabel={isNavbarOpened}
-          />
         </Stack>
         <PLUGIN_REMOTE_SYNC.GitSettingsModal
           isOpen={isGitSettingsOpen}
@@ -257,7 +251,7 @@ function DataStudioTab({
   rightSection,
   isGated,
 }: DataStudioTabProps) {
-  const upsellGem = isGated ? <UpsellGem size={14} /> : null;
+  const upsellGem = isGated ? <UpsellGem.New size={14} /> : null;
   const effectiveRightSection = rightSection ?? upsellGem;
 
   return (

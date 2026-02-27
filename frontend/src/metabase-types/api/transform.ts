@@ -2,16 +2,21 @@ import type { Collection, CollectionId } from "./collection";
 import type { DatabaseId } from "./database";
 import type { RowValue } from "./dataset";
 import type { PaginationRequest, PaginationResponse } from "./pagination";
-import type { DatasetQuery } from "./query";
+import type { DatasetQuery, JoinStrategy } from "./query";
 import type { ScheduleDisplayType } from "./settings";
 import type { SortDirection } from "./sorting";
 import type { ConcreteTableId, SchemaName, Table } from "./table";
 import type { UserId, UserInfo } from "./user";
+import type { CardDisplayType } from "./visualization";
 
 export type TransformId = number;
 export type TransformTagId = number;
 export type TransformJobId = number;
 export type TransformRunId = number;
+
+export type InspectorLensId = string;
+export type InspectorCardId = string;
+export type InspectorSectionId = string;
 
 export type TransformOwner = Pick<
   UserInfo,
@@ -233,27 +238,27 @@ export type RunTransformResponse = {
 };
 
 export type ListTransformsRequest = {
-  last_run_start_time?: string;
-  last_run_statuses?: TransformRunStatus[];
-  tag_ids?: TransformTagId[];
+  "last-run-start-time"?: string;
+  "last-run-statuses"?: TransformRunStatus[];
+  "tag-ids"?: TransformTagId[];
 };
 
 export type ListTransformJobsRequest = {
-  last_run_start_time?: string;
-  last_run_statuses?: TransformRunStatus[];
-  next_run_start_time?: string;
-  tag_ids?: TransformTagId[];
+  "last-run-start-time"?: string;
+  "last-run-statuses"?: TransformRunStatus[];
+  "next-run-start-time"?: string;
+  "tag-ids"?: TransformTagId[];
 };
 
 export type ListTransformRunsRequest = {
   statuses?: TransformRunStatus[];
-  transform_ids?: TransformId[];
-  transform_tag_ids?: TransformTagId[];
-  start_time?: string;
-  end_time?: string;
-  run_methods?: TransformRunMethod[];
-  sort_column?: TransformRunSortColumn;
-  sort_direction?: SortDirection;
+  "transform-ids"?: TransformId[];
+  "transform-tag-ids"?: TransformTagId[];
+  "start-time"?: string;
+  "end-time"?: string;
+  "run-methods"?: TransformRunMethod[];
+  "sort-column"?: TransformRunSortColumn;
+  "sort-direction"?: SortDirection;
 } & PaginationRequest;
 
 export type ListTransformRunsResponse = {
@@ -303,7 +308,205 @@ export type QueryComplexity = {
   reason: string;
 };
 
+export type InspectorFieldStats = {
+  distinct_count?: number;
+  nil_percent?: number;
+  // Numeric stats
+  min?: number;
+  max?: number;
+  avg?: number;
+  q1?: number;
+  q3?: number;
+  // Temporal stats
+  earliest?: string;
+  latest?: string;
+};
+
+export type InspectorField = {
+  id?: number;
+  name: string;
+  display_name?: string;
+  base_type?: string;
+  semantic_type?: string;
+  stats?: InspectorFieldStats;
+};
+
+export type InspectorSummaryTable = {
+  table_name: string;
+  row_count?: number;
+  column_count: number;
+};
+
+export type InspectorSummary = {
+  inputs: InspectorSummaryTable[];
+  output: InspectorSummaryTable;
+};
+
+export type InspectorSource = {
+  table_id?: ConcreteTableId;
+  table_name: string;
+  schema?: SchemaName;
+  db_id?: DatabaseId;
+  row_count?: number;
+  column_count: number;
+  fields: InspectorField[];
+};
+
+export type InspectorTarget = {
+  table_id: ConcreteTableId;
+  table_name: string;
+  schema?: SchemaName;
+  row_count?: number;
+  column_count: number;
+  fields: InspectorField[];
+};
+
+export type InspectorComparisonCard = {
+  id: InspectorCardId;
+  source: "input" | "output";
+  table_name: string;
+  field_name: string;
+  title: string;
+  display: CardDisplayType;
+  dataset_query: DatasetQuery;
+};
+
+export type InspectorColumnComparison = {
+  id: string;
+  output_column: string;
+  cards: InspectorComparisonCard[];
+};
+
+export type InspectorStatus = "not-run" | "ready";
+
+export type InspectorVisitedFields = {
+  all?: number[];
+};
+
+export type InspectorLensComplexityLevel = "fast" | "slow" | "very-slow";
+
+export type InspectorLensComplexity = {
+  level: InspectorLensComplexityLevel;
+  score?: number;
+};
+
+export type InspectorLensMetadata = {
+  id: InspectorLensId;
+  display_name: string;
+  description?: string;
+  complexity?: InspectorLensComplexity;
+};
+
+export type InspectorDiscoveryResponse = {
+  name: string;
+  description?: string;
+  status: InspectorStatus;
+  sources: InspectorSource[];
+  target?: InspectorTarget;
+  visited_fields?: InspectorVisitedFields;
+  available_lenses: InspectorLensMetadata[];
+};
+
+export type InspectorLayoutType = "flat" | "comparison";
+
+export type InspectorSection = {
+  id: InspectorSectionId;
+  title: string;
+  description?: string;
+  layout?: InspectorLayoutType;
+};
+
+export type InspectorCardDisplayType = CardDisplayType | "hidden";
+
+type InspectorCardMetadata = {
+  card_type: "join_step" | "table_count" | "base_count";
+  dedup_key: Array<string | number>;
+  table_id?: ConcreteTableId;
+  join_step?: number;
+  join_alias?: string;
+  join_strategy?: JoinStrategy;
+  group_id?: string;
+  group_role?: "input" | "output";
+  group_order?: number;
+  field_id?: number;
+};
+
+export type InspectorCard = {
+  id: InspectorCardId;
+  section_id?: InspectorSectionId;
+  title: string;
+  display: InspectorCardDisplayType;
+  dataset_query: DatasetQuery;
+  interestingness?: number;
+  summary?: boolean;
+  visualization_settings?: Record<string, unknown>;
+  metadata: InspectorCardMetadata;
+};
+
+export type InspectorSummaryHighlight = {
+  label: string;
+  value?: string | number;
+  card_id?: InspectorCardId;
+};
+
+export type InspectorLensSummary = {
+  text?: string;
+  highlights?: InspectorSummaryHighlight[];
+};
+
+// open schema with name key always present
+export type InspectorTriggerCondition = {
+  name: string;
+  card_id: InspectorCardId;
+  [key: string]: unknown;
+};
+
+export type InspectorAlertTrigger = {
+  id: string;
+  condition: InspectorTriggerCondition;
+  severity: "info" | "warning" | "error";
+  message: string;
+};
+
+export type LensParams = Record<string, string | number>;
+
+export type InspectorDrillLensTrigger = {
+  lens_id: InspectorLensId;
+  condition: InspectorTriggerCondition;
+  params?: LensParams;
+  reason?: string;
+};
+
+export type InspectorLens = {
+  id: InspectorLensId;
+  display_name: string;
+  summary?: InspectorLensSummary;
+  sections: InspectorSection[];
+  cards: InspectorCard[];
+  drill_lenses?: InspectorLensMetadata[];
+  alert_triggers?: InspectorAlertTrigger[];
+  drill_lens_triggers?: InspectorDrillLensTrigger[];
+};
+
+export type GetInspectorLensRequest = {
+  transformId: TransformId;
+  lensId: InspectorLensId;
+  lensParams?: LensParams;
+};
+
 export type MetabotSuggestedTransform = SuggestedTransform & {
   active: boolean;
   suggestionId: string; // internal unique identifier for marking active/inactive
+};
+
+export type RunInspectorQueryRequest = {
+  transformId: TransformId;
+  lensId: InspectorLensId;
+  query: DatasetQuery;
+  lensParams?: unknown;
+};
+
+export type LensHandle = {
+  id: InspectorLensId;
+  params?: LensParams;
 };

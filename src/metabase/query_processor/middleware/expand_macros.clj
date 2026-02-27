@@ -43,8 +43,8 @@
     (lib.walk/walk-stages
      query
      (fn [_query _path stage]
-       (lib.util.match/match stage
-         [macro-type _opts (id :guard pos-int?)]
+       (lib.util.match/match-many stage
+         [#{macro-type} _opts (id :guard pos-int?)]
          (conj! ids id))
        nil))
     (not-empty (persistent! ids))))
@@ -95,7 +95,7 @@
   [_macro-type        :- [:= :segment]
    stage              :- ::lib.schema/stage
    id->legacy-segment :- ::id->legacy-macro]
-  (-> (lib.util.match/replace stage
+  (-> (lib.util.match/replace-lite stage
         [:segment _opts (id :guard pos-int?)]
         (let [legacy-segment (get id->legacy-segment id)
               filter-clauses (legacy-macro-filters legacy-segment)]

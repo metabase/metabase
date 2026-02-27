@@ -24,8 +24,8 @@ _Admin > Databases > Editable tables_
 
 To set up table editing, admins can:
 
-1. Click the **Gric** icon in the top right.
-2. Select **Admin settings**.
+1. Click the **grid** icon in the top right.
+2. Select **Admin**.
 3. Click **Databases**.
 4. Select your database.
 5. Toggle on **Editable table data**.

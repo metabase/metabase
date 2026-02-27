@@ -16,7 +16,7 @@ Connect Metabase to your data sources.
 
 To add a database connection:
 
-1. Click on the **grid** icon in the top right
+1. Click on the **grid** icon in the top right;
 2. Select **Admin**;
 3. In Admin settings, navigate t**Databases** > **Add a database**.
 4. Fill out the fields for that database, and click **Save changes** at the bottom.

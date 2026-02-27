@@ -1,6 +1,6 @@
 const { H } = cy;
 
-import { WRITABLE_DB_ID } from "e2e/support/cypress_data";
+import { SAMPLE_DB_ID, WRITABLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import type {
   NativeQuestionDetails,
@@ -76,23 +76,20 @@ describe("issue 16584", () => {
 });
 
 describe("issue 38083", () => {
-  const QUESTION = {
-    name: "SQL query with a date parameter",
-    native: {
-      query: "select * from people where state = {{ state }} limit 1",
-      "template-tags": {
-        state: {
-          id: "6b8b10ef-0104-1047-1e1b-2492d5954555",
-          type: "text" as const,
-          name: "state",
-          "display-name": "State",
-          "widget-type": "string/=",
-          default: "CA",
-          required: true,
-        },
+  const QUERY = {
+    database: SAMPLE_DB_ID,
+    query: "select * from people where state = {{ state }} limit 1",
+    templateTags: {
+      state: {
+        type: "text",
+        name: "state",
+        "display-name": "State",
+        "widget-type": "string/=",
+        default: "CA",
+        required: true,
       },
     },
-  };
+  } as const;
 
   beforeEach(() => {
     H.restore();
@@ -100,14 +97,17 @@ describe("issue 38083", () => {
   });
 
   it("should not show the revert to default icon when the default value is selected (metabase#38083)", () => {
-    H.createNativeQuestion(QUESTION, {
-      visitQuestion: true,
-    });
+    H.createTestNativeQuery(QUERY)
+      .then((dataset_query) =>
+        H.createCard({
+          name: "SQL query with a date parameter",
+          dataset_query,
+        }),
+      )
+      .then((card) => H.visitQuestion(card.id));
 
     H.filterWidget()
-      .filter(
-        `:contains("${QUESTION.native["template-tags"].state["display-name"]}")`,
-      )
+      .filter(`:contains("${QUERY.templateTags.state["display-name"]}")`)
       .icon("revert")
       .should("not.exist");
   });
@@ -478,11 +478,7 @@ describe("issue 54799", () => {
   });
 
   function select(el: Cypress.Chainable, pos: Cypress.PositionType = "center") {
-    const macOSX = Cypress.platform === "darwin";
-    el.dblclick(pos, {
-      metaKey: macOSX,
-      ctrlKey: !macOSX,
-    });
+    el.dblclick(pos, H.holdMetaKey);
   }
 
   it("it should be possible to select multiple ranges and run those (metabase#54799)", () => {
@@ -576,9 +572,7 @@ describe("issue 56905", () => {
     H.NativeEditor.type("select {{ foo }}");
     cy.findByPlaceholderText("Foo").type("foobar", { delay: 0 });
 
-    const isMac = Cypress.platform === "darwin";
-    const metaKey = isMac ? "Meta" : "Control";
-    cy.realPress([metaKey, "Enter"]);
+    cy.realPress([H.metaKey, "Enter"]);
 
     cy.findByTestId("query-visualization-root")
       .findByText("foobar")
@@ -760,9 +754,7 @@ describe("issue 60719", () => {
 
 describe("issue 59356", () => {
   function typeRunShortcut() {
-    const isMac = Cypress.platform === "darwin";
-    const metaKey = isMac ? "Meta" : "Control";
-    cy.realPress([metaKey, "Enter"]);
+    cy.realPress([H.metaKey, "Enter"]);
   }
 
   function getLoader() {

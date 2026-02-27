@@ -7,6 +7,8 @@
     ;; run a query with debugging enabled
     (binding [metabase.query-processor.debug/*debug* true]
       (metabase.query-processor/process-query query))"
+  {:clj-kondo/config '{:linters
+                       {:discouraged-var {metabase.lib.util.match/replace {:level :off}}}}}
   (:require
    [clojure.java.io :as io]
    [clojure.string :as str]
@@ -123,25 +125,25 @@
                        (symbol (format "#_\"%s.%s\"" field-name table-name)))))
                  (field-id->name-form [field-id]
                    (list 'do (add-name-to-field-id field-id) field-id))]
-           (lib.util.match/replace form
+           (lib.util.match/replace-lite form
              [:field (id :guard pos-int?) opts]
              [:field id (add-name-to-field-id id) (cond-> opts
                                                     (pos-int? (:source-field opts))
                                                     (update :source-field field-id->name-form))]
 
-             (m :guard (every-pred map? (comp pos-int? :source-table)))
+             (m :guard (and (map? m) (pos-int? (:source-table m))))
              (add-names* (update m :source-table add-table-id-name))
 
-             (m :guard (every-pred map? (comp pos-int? :metabase.query-processor.util.add-alias-info/source-table)))
+             (m :guard (and (map? m) (pos-int? (:metabase.query-processor.util.add-alias-info/source-table m))))
              (add-names* (update m :metabase.query-processor.util.add-alias-info/source-table add-table-id-name))
 
-             (m :guard (every-pred map? (comp pos-int? :fk-field-id)))
+             (m :guard (and (map? m) (pos-int? (:fk-field-id m))))
              (-> m
                  (update :fk-field-id field-id->name-form)
                  add-names*)
 
              ;; don't recursively replace the `do` lists above, other we'll get vectors.
-             (_ :guard (every-pred list? #(= (first %) 'do)))
+             (l :guard (and (seq? l) (= (first l) 'do)))
              &match)))
        x)
       ->sorted-mbql-query-map))
@@ -260,28 +262,27 @@
         coll))
 
 (defn- can-symbolize? [x]
-  (lib.util.match/match-one x
+  (lib.util.match/match-lite x
     (_ :guard string?)
     (not (re-find #"\s+" x))
 
     [:field (id :guard pos-int?) nil]
     (every? can-symbolize? (field-and-table-name id))
 
-    [:field (field-name :guard string?) (opts :guard #(= (set (keys %)) #{:base-type}))]
+    [:field (field-name :guard string?) {:base-type _}]
     (can-symbolize? field-name)
 
-    [:field _ (opts :guard :join-alias)]
-    (and (can-symbolize? (:join-alias opts))
-         (can-symbolize? (mbql.u/update-field-options &match dissoc :join-alias)))
+    [:field _ {:join-alias join-alias}]
+    (and (can-symbolize? join-alias)
+         (can-symbolize? (mbql.u/update-field-options x dissoc :join-alias)))
 
-    [:field _ (opts :guard :temporal-unit)]
-    (and (can-symbolize? (name (:temporal-unit opts)))
-         (can-symbolize? (mbql.u/update-field-options &match dissoc :temporal-unit)))
+    [:field _ {:temporal-unit temporal-unit}]
+    (and (can-symbolize? (name temporal-unit))
+         (can-symbolize? (mbql.u/update-field-options x dissoc :temporal-unit)))
 
-    [:field _ (opts :guard :source-field)]
-    (let [source-field-id (:source-field opts)]
-      (and (can-symbolize? [:field source-field-id nil])
-           (can-symbolize? (mbql.u/update-field-options &match dissoc :source-field))))
+    [:field _ {:source-field source-field-id}]
+    (and (can-symbolize? [:field source-field-id nil])
+         (can-symbolize? (mbql.u/update-field-options x dissoc :source-field)))
 
     _
     false))
@@ -344,10 +345,10 @@
                       e)))))
 
 (defn- no-$ [x]
-  (lib.util.match/replace x [::$ & args] (into [::no-$] args)))
+  (lib.util.match/replace-lite x [::$ & args] (into [::no-$] args)))
 
 (defn- symbolize [form]
-  (lib.util.match/replace form
+  (lib.util.match/replace-lite form
     [::-> x y]
     (symbol (format "%s->%s" (symbolize x) (str/replace (symbolize y) #"^\$" "")))
 

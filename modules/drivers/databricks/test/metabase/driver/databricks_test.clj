@@ -177,10 +177,20 @@
     :databricks
     (mt/dataset
       dataset-with-ntz
-      (testing "timestamp column was ignored during sync"
-        (let [columns (t2/select :model/Field :table_id (t2/select-one-fn :id :model/Table :db_id (mt/id)))]
-          (is (= 1 (count columns)))
-          (is (= "id" (:name (first columns)))))))))
+      (testing "timestamp_ntz column is synced with correct types"
+        (let [columns (t2/select :model/Field :table_id (t2/select-one-fn :id :model/Table :db_id (mt/id)))
+              col-type-info (into {}
+                                  (map (fn [col]
+                                         [(:name col)
+                                          (select-keys col [:base_type :effective_type :database_type])]))
+                                  columns)]
+          (is (= {"id" {:base_type :type/Integer
+                        :effective_type :type/Integer
+                        :database_type "int"}
+                  "timestamp" {:base_type :type/DateTime
+                               :effective_type :type/DateTime
+                               :database_type "timestamp_ntz"}}
+                 col-type-info)))))))
 
 (deftest ^:parallel db-default-timezone-test
   (mt/test-driver

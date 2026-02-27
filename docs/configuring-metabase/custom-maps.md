@@ -11,7 +11,12 @@ _Admin > Settings > Maps_
 
 By default, Metabase uses OpenStreetMaps tiles for pin and grid map visualizations, and comes with two built-in region maps - world countries and US states. You can change the tiles used for pin and grid maps, and upload additional region maps.
 
-![Map settings](./images/map-settings.png)
+To find the map settings:
+
+1. At the top right of the screen, click **grid** icon > **Admin** > **Settings**.
+2. Select `Maps` from the navigation on the left.
+
+![Map Settings](images/MapSettings.png)
 
 ## Map tile server
 
@@ -46,7 +51,7 @@ Your GeoJSON file should:
 
 To add a custom map:
 
-1. Go to **Admin > Settings > Maps**.
+1. Click the **grid icon**, then go to **Admin** > **Settings** > **Maps** > **Custom Maps**.
 2. Click **Add a Map**.
 3. Enter a name for your map.
 4. Provide the URL to your GeoJSON file.

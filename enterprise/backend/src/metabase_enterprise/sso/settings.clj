@@ -7,6 +7,7 @@
    [metabase-enterprise.scim.core :as scim]
    [metabase.appearance.core :as appearance]
    [metabase.settings.core :as setting :refer [define-multi-setting-impl defsetting]]
+   [metabase.system.core :as system]
    [metabase.util.i18n :refer [deferred-tru tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
@@ -252,6 +253,14 @@ using, this usually looks like `https://your-org-name.example.com` or `https://e
   :feature    :sso-jwt
   :audit      :getter)
 
+(defsetting jwt-attribute-tenant-attributes
+  (deferred-tru "Key to retrieve the JWT user''s tenant attributes")
+  :export?    false
+  :encryption :when-encryption-key-set
+  :default    "@tenant.attributes"
+  :feature    :sso-jwt
+  :audit      :getter)
+
 (defsetting jwt-attribute-groups
   (deferred-tru "Key to retrieve the JWT user''s groups")
   :default    "groups"
@@ -421,8 +430,79 @@ using, this usually looks like `https://your-org-name.example.com` or `https://e
                (setting/get-value-of-type :boolean :slack-connect-enabled)
                false)))
 
+;;; ------------------------------------------------ OIDC (Custom) ------------------------------------------------
+
+(defsetting oidc-providers
+  (deferred-tru "JSON containing OIDC provider configurations.")
+  :encryption  :when-encryption-key-set
+  :type        :json
+  :default     []
+  :feature     :sso-oidc
+  :visibility  :settings-manager
+  :export?     false
+  :audit       :no-value
+  :sensitive?  true)
+
+(defn get-oidc-provider
+  "Look up an OIDC provider by key from the `oidc-providers` setting."
+  [provider-key]
+  (some (fn [provider]
+          (when (= (:key provider) provider-key)
+            provider))
+        (oidc-providers)))
+
+(defsetting oidc-configured?
+  (deferred-tru "Are any OIDC providers configured with required fields?")
+  :type    :boolean
+  :default false
+  :feature :sso-oidc
+  :setter  :none
+  :getter  (fn [] (boolean
+                   (some (fn [p]
+                           (and (:issuer-uri p)
+                                (:client-id p)
+                                (:client-secret p)))
+                         (oidc-providers))))
+  :export?     false)
+
+(defsetting oidc-enabled?
+  (deferred-tru "Is any OIDC provider enabled?")
+  :type    :boolean
+  :default false
+  :feature :sso-oidc
+  :setter  :none
+  :getter  (fn [] (boolean (seq (filter :enabled (oidc-providers)))))
+  :export?     false)
+
+(defsetting oidc-login-providers
+  (deferred-tru "Public-facing list of enabled OIDC providers for the login page.")
+  :type       :json
+  :default    []
+  :feature    :sso-oidc
+  :visibility :public
+  :setter     :none
+  :getter     (fn []
+                (let [base-url (str (system/site-url) "/auth/sso/")]
+                  (into []
+                        (comp (filter :enabled)
+                              (map (fn [p]
+                                     {:type           "oidc"
+                                      :key            (:key p)
+                                      :login-prompt   (:login-prompt p)
+                                      :sso-url        (str base-url (:key p))})))
+                        (oidc-providers))))
+  :export?    false)
+
+(defsetting oidc-user-provisioning-enabled?
+  (deferred-tru "When a user logs in via OIDC, create a Metabase account for them automatically if they don''t have one.")
+  :type    :boolean
+  :default true
+  :feature :sso-oidc
+  :export?    false
+  :audit   :getter)
+
 (defsetting other-sso-enabled?
-  "Are we using an SSO integration other than LDAP or Google Auth? These integrations use the `/auth/sso` endpoint for
+  "Are we using an SSO integration other than LDAP or Google Auth or ODIC? These integrations use the `/auth/sso` endpoint for
   authorization rather than the normal login form or Google Auth button."
   :visibility :public
   :setter     :none

@@ -17,7 +17,7 @@ On Pro and Enterprise plans, you can customize the font Metabase uses (the defau
 
 To change your Metabase font:
 
-1. Click the **grid** icon in the upper right of the screen
+1. Click the **grid** icon in the upper right of the screen.
 2. Select **Admin**.
 3. In Admin console, go to **Settings** > **Appearance** > **Branding**
 4. Under **Font**, select from a list of included fonts:
@@ -51,8 +51,8 @@ You can also upload your own custom font.
 
 To set a custom font:
 
-1. Click the **grid** icon in the upper right of the screen
-2. Select **Admin**
+1. Click the **grid** icon in the upper right of the screen.
+2. Select **Admin**.
 3. In the Admin console, go to **Settings** > **Appearance** > **Branding**.
 4. Under **Fonts**, click the dropdown and select **Custom...**
 5. Enter URLs to your font files.
@@ -106,7 +106,7 @@ For latin text, we'd copy the relevant src URLs for each style, in this case:
 - For 400: [https://fonts.gstatic.com/s/robotomono/v21/L0xTDF4xlVMF-BfR8bXMIhJHg45mwgGEFl0_3vrtSM1J-gEPT5Ese6hmHSh0me8iUI0.woff2](https://fonts.gstatic.com/s/robotomono/v21/L0xTDF4xlVMF-BfR8bXMIhJHg45mwgGEFl0_3vrtSM1J-gEPT5Ese6hmHSh0me8iUI0.woff2)
 - For 700: [https://fonts.gstatic.com/s/robotomono/v21/L0xTDF4xlVMF-BfR8bXMIhJHg45mwgGEFl0_3vrtSM1J-gEPT5Ese6hmHSh0me8iUI0.woff2](https://fonts.gstatic.com/s/robotomono/v21/L0xTDF4xlVMF-BfR8bXMIhJHg45mwgGEFl0_3vrtSM1J-gEPT5Ese6hmHSh0me8iUI0.woff2)
 
-And paste those URLS in the relevant input fields in **Admin settings** > **Settings** > **Appearance** > **Font** section where it says "Tell us where to find the file for each font weight. You don’t need to include all of them, but it’ll look better if you do."
+And paste those URLS in the relevant input fields in **Admin** > **Settings** > **Appearance** > **Font** section where it says "Tell us where to find the file for each font weight. You don’t need to include all of them, but it’ll look better if you do."
 
 ### Hosting fonts on GitHub
 

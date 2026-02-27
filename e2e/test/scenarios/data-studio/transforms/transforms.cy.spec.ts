@@ -6,7 +6,10 @@ import {
   WRITABLE_DB_ID,
 } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
-import { NORMAL_USER_ID } from "e2e/support/cypress_sample_instance_data";
+import {
+  ALL_USERS_GROUP_ID,
+  NORMAL_USER_ID,
+} from "e2e/support/cypress_sample_instance_data";
 import { createLibraryWithItems } from "e2e/support/test-library-data";
 import { DataPermissionValue } from "metabase/admin/permissions/types";
 import type {
@@ -47,7 +50,7 @@ describe("scenarios > admin > transforms", () => {
     cy.intercept("POST", "/api/transform-tag").as("createTag");
     cy.intercept("PUT", "/api/transform-tag/*").as("updateTag");
     cy.intercept("DELETE", "/api/transform-tag/*").as("deleteTag");
-    cy.intercept("POST", "/api/ee/dependencies/check_transform").as(
+    cy.intercept("POST", "/api/ee/dependencies/check-transform").as(
       "checkTransformDependencies",
     );
   });
@@ -164,69 +167,6 @@ describe("scenarios > admin > transforms", () => {
       getTableLink().click();
       H.queryBuilderHeader().findByText(DB_NAME).should("be.visible");
       H.assertQueryBuilderRowCount(3);
-    });
-
-    it("should be able to use the data reference and snippets when writing a SQL transform", () => {
-      H.createSnippet({
-        name: "snippet1",
-        content: "'foo'",
-      });
-
-      visitTransformListPage();
-      cy.button("Create a transform").click();
-      H.popover().findByText("SQL query").click();
-      H.popover().findByText(DB_NAME).click();
-
-      function testDataReference() {
-        cy.log("open the data reference");
-        cy.findByTestId("native-query-editor-action-buttons")
-          .findByLabelText("Learn about your data")
-          .click();
-
-        editorSidebar()
-          .should("be.visible")
-          .within(() => {
-            cy.log("The current database should be opened by default");
-            cy.findByText("Data Reference").should("not.exist");
-            cy.findByText("Writable Postgres12").should("be.visible");
-          });
-
-        cy.findByTestId("native-query-editor-action-buttons")
-          .findByLabelText("Learn about your data")
-          .click();
-
-        editorSidebar().should("not.exist");
-      }
-
-      function testSnippets() {
-        cy.findByTestId("native-query-editor-action-buttons")
-          .findByLabelText("SQL Snippets")
-          .click();
-
-        editorSidebar()
-          .should("be.visible")
-          .within(() => {
-            cy.findByText("snippet1").should("be.visible");
-            cy.icon("snippet").click();
-          });
-
-        H.NativeEditor.value().should("eq", "{{snippet: snippet1}}");
-
-        cy.findByTestId("native-query-editor-action-buttons")
-          .findByLabelText("SQL Snippets")
-          .click();
-
-        editorSidebar().should("not.exist");
-
-        cy.findByTestId("native-query-editor-action-buttons")
-          .findByLabelText("Preview the query")
-          .click();
-
-        H.modal().findByText("'foo'").should("be.visible");
-      }
-
-      testDataReference();
-      testSnippets();
     });
 
     it(
@@ -438,6 +378,17 @@ LIMIT
       getTableLink().click();
       H.queryBuilderHeader().findByText(DB_NAME).should("be.visible");
       H.assertQueryBuilderRowCount(3);
+    });
+
+    it("should not include absolute-max-results LIMIT in SQL preview for MBQL transforms", () => {
+      createMbqlTransform({ visitTransform: true });
+      H.DataStudio.Transforms.clickEditDefinition();
+      cy.url().should("include", "/edit");
+
+      getQueryEditor().findByLabelText("View SQL").click();
+      H.sidebar()
+        .should("be.visible")
+        .and("not.contain", /\bLIMIT\b/i);
     });
 
     it("should not allow to overwrite an existing table when creating a transform", () => {
@@ -793,15 +744,32 @@ LIMIT
 
       H.popover().findByText("hourly").click();
       cy.wait("@updateTransform");
+      H.expectUnstructuredSnowplowEvent({
+        event: "transform_tags_updated",
+        triggered_from: "transform_run_page",
+        event_detail: "tag_added",
+        target_id: 1,
+        result: "success",
+      });
+
       assertOptionSelected("hourly");
       assertOptionNotSelected("daily");
 
       H.popover().findByText("daily").click();
+
       cy.wait("@updateTransform");
       assertOptionSelected("hourly");
       assertOptionSelected("daily");
-
       getTagsInput().type("{backspace}");
+      cy.wait("@updateTransform");
+      H.expectUnstructuredSnowplowEvent({
+        event: "transform_tags_updated",
+        triggered_from: "transform_run_page",
+        event_detail: "tag_removed",
+        target_id: 1,
+        result: "success",
+      });
+
       assertOptionSelected("hourly");
       assertOptionNotSelected("daily");
     });
@@ -1587,8 +1555,7 @@ LIMIT
 
       cy.get<TransformId>("@transformId").then((transformId) => {
         cy.log("run the transform to create the output table");
-        cy.request("POST", `/api/transform/${transformId}/run`);
-        H.waitForSucceededTransformRuns();
+        H.runTransformAndWaitForSuccess(transformId);
         H.resyncDatabase({
           dbId: WRITABLE_DB_ID,
           tableName: transformTableName,
@@ -2293,9 +2260,7 @@ LIMIT
         });
         cy.button("Create a transform").click();
         H.popover().findByText("Python script").click();
-        cy.get(".cm-clickable-token")
-          .should("be.visible")
-          .click({ metaKey: true });
+        cy.get(".cm-clickable-token").should("be.visible").click(H.holdMetaKey);
 
         cy.get("@windowOpen").should(
           "have.been.calledWithMatch",
@@ -2730,11 +2695,16 @@ LIMIT
       getTransformsList().within(() => {
         cy.findByText("Archive Me").should("not.exist");
         cy.findByText("Transform In Collection").should("not.exist");
-        cy.findByText("Python library").should("be.visible");
       });
     });
 
     it("should show Python library item and navigate to it", () => {
+      // Python library row only appears when we have at least one transform
+      H.createSqlTransform({
+        sourceQuery: "SELECT 1",
+        targetTable: "table_a",
+        targetSchema: "Schema A",
+      });
       visitTransformListPage();
 
       cy.log("Python library should be visible in the list");
@@ -3015,6 +2985,14 @@ describe("scenarios > admin > transforms > jobs", () => {
   });
 
   describe("schedule", () => {
+    beforeEach(() => {
+      H.resetSnowplow();
+    });
+
+    afterEach(() => {
+      H.expectNoBadSnowplowEvents();
+    });
+
     it("should be able to run a job on a schedule", () => {
       H.createTransformTag({ name: "New tag" }).then(({ body: tag }) => {
         createMbqlTransform({
@@ -3032,6 +3010,26 @@ describe("scenarios > admin > transforms > jobs", () => {
         cy.findAllByText("MBQL transform").should("have.length.gte", 1);
         cy.findAllByText("Success").should("have.length.gte", 1);
         cy.findAllByText("Schedule").should("have.length.gte", 1);
+      });
+
+      cy.log("open detail sidebar");
+      cy.findAllByText("MBQL transform").first().click();
+      cy.findByRole("img", { name: "close icon" }).should("be.visible");
+      cy.findByRole("link", { name: "View this transform" })
+        .should("be.visible")
+        .should("have.attr", "href", "/data-studio/transforms/1");
+      cy.findByRole("link", { name: "View in dependency graph" })
+        .should("be.visible")
+        .should(
+          "have.attr",
+          "href",
+          "/data-studio/dependencies?id=1&type=transform",
+        )
+        .click();
+      H.expectUnstructuredSnowplowEvent({
+        event: "dependency_entity_selected",
+        triggered_from: "transform-run-list",
+        event_detail: "transform-run",
       });
     });
 
@@ -4052,10 +4050,6 @@ function assertOptionNotSelected(name: string) {
   getTagsInputContainer().findByText(name).should("not.exist");
 }
 
-function editorSidebar() {
-  return cy.findByTestId("editor-sidebar");
-}
-
 function getPythonDataPicker() {
   return cy.findByTestId("python-data-picker");
 }
@@ -4107,6 +4101,17 @@ describe("scenarios > data studio > transforms > permissions", () => {
     });
     H.setUserAsAnalyst(NORMAL_USER_ID);
 
+    cy.log(
+      "Ensure that transform permissions are visible when instance is hosted and transform feature is present",
+    );
+
+    cy.findByRole("radio", { name: "Data" }).click({ force: true });
+    cy.findByRole("menuitem", { name: "All Users" }).click();
+
+    cy.findByRole("columnheader", { name: /Transforms/ })
+      .scrollIntoView()
+      .should("be.visible");
+
     cy.log("sign in as normal user and create a transform");
     cy.signInAsNormalUser();
     visitTransformListPage();
@@ -4151,9 +4156,19 @@ describe("scenarios > data studio > transforms > permissions > oss", () => {
   });
 
   it(
-    "should have transforms available by default in OSS without upsell gem icon",
+    "should be able to enable transforms in OSS without upsell gem icon",
     { tags: "@OSS" },
     () => {
+      cy.log("ensure that transform permissions are not shown");
+      cy.visit(`/admin/permissions/data/group/${ALL_USERS_GROUP_ID}`);
+
+      //Check that a known header is present
+      cy.findByRole("columnheader", { name: "Database name" }).should(
+        "be.visible",
+      );
+      //Ensure transform permissions are not displayed
+      cy.findByRole("columnheader", { name: /Transforms/ }).should("not.exist");
+
       cy.log("Visit data studio page");
       cy.visit("/data-studio");
       H.DataStudio.nav().should("be.visible");
@@ -4171,6 +4186,11 @@ describe("scenarios > data studio > transforms > permissions > oss", () => {
 
       cy.log("Verify transforms page is accessible");
       H.DataStudio.nav().findByText("Transforms").click();
+
+      H.DataStudio.Transforms.enableTransformPage()
+        .findByRole("button", { name: "Enable transforms" })
+        .click();
+
       H.DataStudio.Transforms.list().should("be.visible");
 
       cy.log("Verify can create transforms in OSS");
@@ -4180,6 +4200,18 @@ describe("scenarios > data studio > transforms > permissions > oss", () => {
       H.popover()
         .findByText(/Python/i)
         .should("not.exist");
+
+      cy.log("transform permissions should still not");
+      H.goToAdmin();
+      H.appBar().findByRole("link", { name: "Permissions" }).click();
+      cy.findByRole("menuitem", { name: "All Users" }).click();
+
+      //Check that a known header is present
+      cy.findByRole("columnheader", { name: "Database name" }).should(
+        "be.visible",
+      );
+      //Ensure transform permissions are not displayed
+      cy.findByRole("columnheader", { name: /Transforms/ }).should("not.exist");
     },
   );
 });
@@ -4190,9 +4222,18 @@ describe("scenarios > data studio > transforms > permissions > pro-self-hosted",
     cy.signInAsAdmin();
   });
 
-  // TODO [OSS]: fix this test. It works in isolation and local setup, but fails consistently on CI
-  it.skip("should have transforms available in self-hosted pro without upsell gem icon", () => {
+  it("should have transforms available in self-hosted pro without upsell gem icon", () => {
     H.activateToken("pro-self-hosted").then(() => {
+      cy.log("ensure that transform permissions are not shown");
+      cy.visit(`/admin/permissions/data/group/${ALL_USERS_GROUP_ID}`);
+
+      //Check that a known header is present
+      cy.findByRole("columnheader", { name: "Database name" }).should(
+        "be.visible",
+      );
+      //Ensure transform permissions are not displayed
+      cy.findByRole("columnheader", { name: /Transforms/ }).should("not.exist");
+
       cy.log("Visit data studio page");
       cy.visit("/data-studio");
       H.DataStudio.nav().should("be.visible");
@@ -4210,45 +4251,27 @@ describe("scenarios > data studio > transforms > permissions > pro-self-hosted",
 
       cy.log("Verify transforms page is accessible");
       H.DataStudio.nav().findByText("Transforms").click();
+      H.DataStudio.Transforms.enableTransformPage()
+        .findByRole("button", { name: "Enable transforms" })
+        .click();
       H.DataStudio.Transforms.list().should("be.visible");
 
       cy.log("Verify can create transforms in pro-self-hosted");
       cy.button("Create a transform").should("be.visible");
-    });
-  });
-});
 
-describe("scenarios > data studio > transforms > permissions > starter", () => {
-  beforeEach(() => {
-    H.restore();
-    cy.signInAsAdmin();
-  });
+      cy.log("transform permissions should now be visible");
+      H.goToAdmin();
+      H.appBar().findByRole("link", { name: "Permissions" }).click();
+      cy.findByRole("menuitem", { name: "All Users" }).click();
 
-  it("should have transforms upsell", () => {
-    H.activateToken("starter").then(() => {
-      cy.log("Visit data studio page");
-      cy.visit("/data-studio");
-      H.DataStudio.nav().should("be.visible");
-
-      cy.log("Verify Transforms menu item is visible");
-      H.DataStudio.nav().findByText("Transforms").should("be.visible");
-
-      cy.log(
-        "Verify there is an upsell gem icon is displayed in Transforms menu item",
-      );
-      H.DataStudio.nav()
-        .findByText("Transforms")
-        .closest("a")
-        .within(() => {
-          cy.findByTestId("upsell-gem").should("be.visible");
-        });
-
-      cy.log("Verify transforms page is accessible");
-      H.DataStudio.nav().findByText("Transforms").click();
-
-      cy.findByText("Tidy up your data right from Metabase").should(
+      //Check that a known header is present
+      cy.findByRole("columnheader", { name: "Database name" }).should(
         "be.visible",
       );
+      //Ensure transform permissions are displayed
+      cy.findByRole("columnheader", { name: /Transforms/ })
+        .scrollIntoView()
+        .should("be.visible");
     });
   });
 });

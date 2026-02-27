@@ -1,7 +1,7 @@
 import { IndexRedirect, IndexRoute, Redirect, Route } from "react-router";
 
 import App from "metabase/App.tsx";
-import getAccountRoutes from "metabase/account/routes";
+import { getAccountRoutes } from "metabase/account/routes";
 import CollectionPermissionsModal from "metabase/admin/permissions/components/CollectionPermissionsModal/CollectionPermissionsModal";
 import { getRoutes as getAdminRoutes } from "metabase/admin/routes";
 import { ForgotPassword } from "metabase/auth/components/ForgotPassword";
@@ -185,7 +185,10 @@ export const getRoutes = (store) => {
             <IndexRoute component={UserCollectionList} />
           </Route>
 
-          <Route path="collection/tenant-specific" component={IsAdmin}>
+          <Route
+            path="collection/tenant-specific"
+            component={PLUGIN_TENANTS.CanAccessTenantSpecificRoute}
+          >
             <IndexRoute component={PLUGIN_TENANTS.TenantCollectionList} />
           </Route>
 

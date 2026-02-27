@@ -1,9 +1,10 @@
-import { type ReactNode, useMemo } from "react";
+import { type ReactNode, useEffect, useMemo } from "react";
 import { P, match } from "ts-pattern";
 
 import { PublicComponentStylesWrapper } from "embedding-sdk-bundle/components/private/PublicComponentStylesWrapper";
 import { SdkError } from "embedding-sdk-bundle/components/private/PublicComponentWrapper";
 import { SdkBreadcrumbsProvider } from "embedding-sdk-bundle/components/private/SdkBreadcrumbs";
+import { SdkInternalNavigationProvider } from "embedding-sdk-bundle/components/private/SdkInternalNavigation/SdkInternalNavigationProvider";
 import { ComponentProvider } from "embedding-sdk-bundle/components/public/ComponentProvider";
 import { MetabotQuestion } from "embedding-sdk-bundle/components/public/MetabotQuestion";
 import { SdkQuestion } from "embedding-sdk-bundle/components/public/SdkQuestion";
@@ -29,6 +30,7 @@ import { Stack } from "metabase/ui";
 import { useParamRerenderKey } from "../hooks/use-param-rerender-key";
 import { useSdkIframeEmbedEventBus } from "../hooks/use-sdk-iframe-embed-event-bus";
 import type { SdkIframeEmbedSettings } from "../types/embed";
+import { stripInternalIframeQueryParameters } from "../utils/strip-internal-iframe-query-parameters";
 
 import { MetabaseBrowser } from "./MetabaseBrowser";
 import SdkIframeEmbedRouteS from "./SdkIframeEmbedRoute.module.css";
@@ -56,6 +58,10 @@ export const SdkIframeEmbedRoute = () => {
     () => applyThemePreset(embedSettings?.theme),
     [embedSettings?.theme],
   );
+
+  useEffect(() => {
+    stripInternalIframeQueryParameters();
+  }, []);
 
   // The embed settings won't be available until the parent sends it via postMessage.
   // The SDK will show its own loading indicator, so we don't need to show it twice.
@@ -139,10 +145,12 @@ const SdkIframeEmbedView = ({
           componentName: "metabase-browser",
         },
         (settings) => (
-          // re-mount breadcrumbs when initial collection changes
-          <SdkBreadcrumbsProvider key={settings.initialCollection}>
-            <MetabaseBrowser settings={settings} />
-          </SdkBreadcrumbsProvider>
+          <SdkInternalNavigationProvider keepChildrenMounted>
+            {/*  re-mount breadcrumbs when initial collection changes */}
+            <SdkBreadcrumbsProvider key={settings.initialCollection}>
+              <MetabaseBrowser settings={settings} />
+            </SdkBreadcrumbsProvider>
+          </SdkInternalNavigationProvider>
         ),
       )
       .with(
@@ -199,6 +207,7 @@ const SdkIframeEmbedView = ({
             withSubscriptions={settings.withSubscriptions}
             initialParameters={settings.initialParameters}
             hiddenParameters={settings.hiddenParameters}
+            enableEntityNavigation={settings.enableEntityNavigation}
             drillThroughQuestionHeight="100%"
             drillThroughQuestionProps={{ isSaveEnabled: false }}
           />

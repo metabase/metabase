@@ -132,7 +132,7 @@
             (testing "attempting to set personal_owner_id should fail"
               (is (thrown-with-msg?
                    Exception
-                   #"Personal Collections must be in the default namespace"
+                   #"You are not allowed to change the owner of a Tenant Collection."
                    (t2/update! :model/Collection tenant-collection-id
                                {:personal_owner_id user-id}))))))))))
 

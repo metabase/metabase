@@ -92,7 +92,7 @@ export function nestedSettings(
           series,
           objects,
           settings[id],
-          { series, settings },
+          { series, settings, ...extra },
         );
         return {
           series,
@@ -108,7 +108,7 @@ export function nestedSettings(
       ...def,
     },
     [objectName]: {
-      getDefault(series, settings) {
+      getDefault(series, settings, extra) {
         const cache = new Map();
         return (object) => {
           const key = getObjectKey(object);
@@ -124,7 +124,7 @@ export function nestedSettings(
                   ...inheritedSettings,
                   ...storedSettings,
                 },
-                { series, settings },
+                { series, settings, ...extra },
               ),
             });
           }

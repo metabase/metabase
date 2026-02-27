@@ -23,7 +23,7 @@ And here are the values as seen in the table:
 
 This unfolding allows you to filter for values found in the original JSON object.
 
-Metabase will prefix the unfolded column names with the name of the original column that contained the JSON. You can change the column names in **Admin settings** > [Table metadata](metadata-editing.md), or by creating a [model](./models.md) and editing the column metadata.
+Metabase will prefix the unfolded column names with the name of the original column that contained the JSON. You can change the column names in **Admin** > [Table metadata](metadata-editing.md), or by creating a [model](./models.md) and editing the column metadata.
 
 ## Databases that support JSON unfolding
 
@@ -44,14 +44,15 @@ If you notice a hit to performance from this JSON unfolding, we recommend turnin
 
 To turn off JSON unfolding for a database:
 
-1. Click the **Grid** in the upper right and select **Admin**.
-2. Visit the **Databases** tab.
-3. Select the relevant database.
-4. Click **Show advanced options**.
-5. Toggle **Allow unfolding of JSON columns**.
-6. Scroll down and click the **Save changes** button.
-7. Click **Sync database schema**.
-8. Click **Re-scan field values**.
+1. Click the **grid** icon in the upper right.
+2. Select **Admin**
+3. Visit the **Databases** tab.
+4. Select the relevant database.
+5. Click **Show advanced options**.
+6. Toggle **Allow unfolding of JSON columns**.
+7. Scroll down and click the **Save changes** button.
+8. Click **Sync database schema**.
+9. Click **Re-scan field values**.
 
 ## Toggling JSON unfolding for a specific column
 
@@ -59,13 +60,14 @@ _Admin > Table metadata > Unfold JSON_
 
 If performance degrades, or you'd rather keep the JSON contained in the original column, you can turn off unfolding for individual fields in their settings.
 
-1. Click the **Grid**in the upper right and select **Admin**.
-2. Visit the **Table metadata** tab.
-3. Select the database that contains the field you want to update.
-4. Select the table that contains the field.
-5. Select the field containing the original JSON.
-6. In the **Behavior** section, locate the **Unfold JSON** option and select **Yes** or **No**. If the column was unfolded, Metabase will have hidden this JSON column from view, so if you want the JSON column to be visible again, you'll need to change the column's visibility to **Everywhere**.
-7. Scroll to the top and click the **Filter values** button and select **Re-scan this field**.
+1. Click the **grid** icon in the upper right.
+2. Select **Admin**.
+3. Visit the **Table metadata** tab.
+4. Select the database that contains the field you want to update.
+5. Select the table that contains the field.
+6. Select the field containing the original JSON
+7. In the **Behavior** section, locate the **Unfold JSON** option and select **Yes** or **No**. If the column was unfolded, Metabase will have hidden this JSON column from view, so if you want the JSON column to be visible again, you'll need to change the column's visibility to **Everywhere**.
+8. Scroll to the top and click the **Filter values** button and select **Re-scan this field**.
 
 ![Unfolded JSON setting](./images/unfold-json-setting.png)
 

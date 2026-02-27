@@ -4,11 +4,13 @@ import type {
   EmbedAuthManager,
   EmbedAuthManagerContext,
 } from "metabase/embedding/embedding-iframe-sdk/types/auth-manager";
+import type { ComponentToAttributes } from "metabase/embedding/embedding-iframe-sdk/types/modular-embedding";
 
 import { debouncedReportAnalytics } from "./analytics";
 import {
   ALLOWED_EMBED_SETTING_KEYS_MAP,
   DISABLE_UPDATE_FOR_KEYS,
+  EMBED_JS_IFRAME_IDENTIFIER_QUERY_PARAMETER_NAME,
   METABASE_CONFIG_IS_PROXY_FIELD_NAME,
 } from "./constants";
 import type {
@@ -139,13 +141,13 @@ function assertValidMetabaseConfigField(
   }
 }
 
-export abstract class MetabaseEmbedElement
+export abstract class MetabaseEmbedElement<T extends string[] = string[]>
   extends HTMLElement
   implements EmbedAuthManagerContext
 {
   private _iframe: HTMLIFrameElement | null = null;
   protected abstract _componentName: string;
-  protected abstract _attributeNames: readonly string[];
+  protected abstract _attributeNames: T;
 
   static readonly VERSION = "1.1.0";
 
@@ -345,7 +347,7 @@ export abstract class MetabaseEmbedElement
     // Random query param is needed to allow parallel EmbedJS iframes loading.
     // Without it multiple EmbedJS iframes on a page loaded sequentially.
     // We don't cache the iframe content, so random query parameter does not break caching.
-    this._iframe.src = `${this.globalSettings.instanceUrl}/${EMBEDDING_ROUTE}?v=${_iframeCounter++}`;
+    this._iframe.src = `${this.globalSettings.instanceUrl}/${EMBEDDING_ROUTE}?${EMBED_JS_IFRAME_IDENTIFIER_QUERY_PARAMETER_NAME}=${_iframeCounter++}`;
     this._iframe.style.width = "100%";
     this._iframe.style.height = "100%";
     this._iframe.style.border = "none";
@@ -433,6 +435,30 @@ export abstract class MetabaseEmbedElement
     if (event.data.type === "metabase.embed.requestSessionToken") {
       await this._authenticate();
     }
+
+    // Note: if we wrap other functions like this, let's come up with a generic utility function
+    if (event.data.type === "metabase.embed.handleLink") {
+      const { url, requestId } = event.data.data;
+      const handleLink = this.globalSettings.pluginsConfig?.handleLink;
+
+      let handled = false;
+      if (typeof handleLink === "function") {
+        try {
+          const result = handleLink(url);
+          handled = result?.handled ?? false;
+        } catch (e) {
+          console.error("[metabase.embed] handleLink error:", e);
+        }
+      }
+
+      this._iframe?.contentWindow?.postMessage(
+        {
+          type: "metabase.embed.handleLinkResponse",
+          data: { requestId, handled },
+        },
+        "*",
+      );
+    }
   };
 
   sendMessage<Message extends SdkIframeEmbedMessage>(
@@ -443,7 +469,8 @@ export abstract class MetabaseEmbedElement
       const normalizedData = Object.entries(data).reduce(
         (acc, [key, value]) => {
           // Functions are not serializable, so we ignore them.
-          if (typeof value === "function") {
+          // `pluginsConfig` contains functions so we also skip it.
+          if (typeof value === "function" || key === "pluginsConfig") {
             return acc;
           }
 
@@ -474,16 +501,16 @@ export abstract class MetabaseEmbedElement
   }
 }
 
-function createCustomElement<Arr extends readonly string[]>(
-  componentName: string,
-  attributeNames: Arr,
-) {
-  const CustomEmbedElement = class extends MetabaseEmbedElement {
+function createCustomElement<
+  T extends keyof ComponentToAttributes,
+  U extends (keyof ComponentToAttributes[T] & string)[],
+>(componentName: T, attributeNames: U) {
+  const CustomEmbedElement = class extends MetabaseEmbedElement<U> {
     protected _componentName: string = componentName;
-    protected _attributeNames: readonly string[] = attributeNames;
+    protected _attributeNames: U = attributeNames;
 
     static get observedAttributes() {
-      return attributeNames as readonly string[];
+      return attributeNames;
     }
   };
 
@@ -504,6 +531,7 @@ const MetabaseDashboardElement = createCustomElement("metabase-dashboard", [
   "drills",
   "initial-parameters",
   "hidden-parameters",
+  "enable-entity-navigation",
 ]);
 
 const MetabaseQuestionElement = createCustomElement("metabase-question", [
@@ -529,6 +557,7 @@ const MetabaseManageContentElement = createCustomElement("metabase-browser", [
   "with-new-question",
   "with-new-dashboard",
   "read-only",
+  "enable-entity-navigation",
 ]);
 
 const MetabaseMetabotElement = createCustomElement("metabase-metabot", [

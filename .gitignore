@@ -16,6 +16,7 @@
 .nrepl-port
 .portal
 .vscode
+/.zed
 /*.h2.db
 /*.lock.db
 /*.mv.db
@@ -39,10 +40,11 @@
 /cypress
 cypress.env.json
 /deploy/artifacts/*
-/docs/**/node_modules
+**/node_modules/
 /docs/**/package.json
 /docs/**/yarn.lock
 /docs/embedding/sdk/api/
+/docs/embedding/eajs/snippets/
 /frontend/test/snapshots/*
 /e2e/snapshots/*
 /e2e/tmp/*
@@ -55,7 +57,6 @@ cypress.env.json
 /logs
 /modules/drivers/*/resources/namespaces.edn
 /modules/drivers/*/target
-/node_modules/
 /plugins
 /process.yml
 /reset-password-artifacts
@@ -86,7 +87,6 @@ cypress.env.json
 /temp
 **/cli-snippets-tmp/**
 \#*\#
-bin/node_modules/
 bin/release/aws-eb/metabase-aws-eb.zip
 coverage-summary.json
 junit.xml
@@ -166,4 +166,9 @@ CLAUDE.local.md
 
 /logs
 /.clojure-mcp
+
+# Python dependencies (pip-installed, not committed)
+/resources/python-sources/sqlglot/
+/resources/python-sources/sqlglot-*.dist-info/
+__pycache__/
 

@@ -5,9 +5,10 @@ import { X_AXIS_DATA_KEY } from "metabase/visualizations/echarts/cartesian/const
 import { CHART_STYLE } from "metabase/visualizations/echarts/cartesian/constants/style";
 import type {
   AxisFormatter,
-  BaseCartesianChartModel,
   ChartDataset,
   NumericAxisScaleTransforms,
+  SeriesFormatters,
+  SeriesModel,
   StackModel,
   XAxisModel,
   YAxisModel,
@@ -30,6 +31,24 @@ import type {
   ChartMeasurements,
   TicksDimensions,
 } from "./types";
+
+export interface ChartMeasurementsInput {
+  xAxisModel: XAxisModel;
+  leftAxisModel: YAxisModel | null;
+  rightAxisModel: YAxisModel | null;
+  yAxisScaleTransforms: NumericAxisScaleTransforms;
+  transformedDataset?: ChartDataset;
+  dataset?: ChartDataset;
+  seriesModels?: SeriesModel[];
+  stackModels?: StackModel[];
+  seriesLabelsFormatters?: SeriesFormatters;
+}
+
+// Cartesian charts use `transformedDataset` (scaled/transformed values) while simpler
+// charts like boxplot only have `dataset`. This helper provides unified access.
+const getDataset = (input: ChartMeasurementsInput): ChartDataset => {
+  return input.transformedDataset ?? input.dataset ?? [];
+};
 
 const getEvenlySpacedIndices = (
   length: number,
@@ -186,7 +205,7 @@ const getXAxisTicksWidth = (
 ) => {
   const { fontSize } = theme.cartesian.label;
 
-  if (!axisEnabledSetting) {
+  if (!axisEnabledSetting || dataset.length === 0) {
     return { firstXTickWidth: 0, lastXTickWidth: 0 };
   }
   if (axisEnabledSetting === "rotate-90") {
@@ -275,13 +294,14 @@ const X_LABEL_ROTATE_45_THRESHOLD_FACTOR = 2.1;
 const X_LABEL_ROTATE_90_THRESHOLD_FACTOR = 1.2;
 
 const getAutoAxisEnabledSetting = (
-  chartModel: BaseCartesianChartModel,
+  input: ChartMeasurementsInput,
   settings: ComputedVisualizationSettings,
   boundaryWidth: number,
   maxXTickWidth: number,
   outerHeight: number,
   renderingContext: RenderingContext,
 ): ComputedVisualizationSettings["graph.x_axis.axis_enabled"] => {
+  const { xAxisModel } = input;
   const { fontSize } = renderingContext.theme.cartesian.label;
 
   const shouldAutoSelectSetting =
@@ -293,11 +313,11 @@ const getAutoAxisEnabledSetting = (
     return settings["graph.x_axis.axis_enabled"];
   }
 
-  const dimensionWidth = getDimensionWidth(chartModel, boundaryWidth);
+  const dimensionWidth = getDimensionWidth(input, boundaryWidth);
   const shouldRotate = areHorizontalXAxisTicksOverlapping(
-    chartModel.transformedDataset,
+    getDataset(input),
     dimensionWidth,
-    chartModel.xAxisModel.formatter,
+    xAxisModel.formatter,
     renderingContext,
   );
 
@@ -325,43 +345,41 @@ const X_TICKS_TO_MEASURE_COUNT = 50;
 // Formatting and measuring every x-axis value can be expensive on datasets with thousands of values,
 // therefore we want to reduce the number of measured ticks based on the x-axis column type and a single dimension width.
 const getXTicksToMeasure = (
-  chartModel: BaseCartesianChartModel,
+  input: ChartMeasurementsInput,
   dimensionWidth: number,
   renderingContext: RenderingContext,
 ) => {
+  const { xAxisModel } = input;
   const { fontSize } = renderingContext.theme.cartesian.label;
+  const dataset = getDataset(input);
 
-  // On continuous axes, we measure a limited number of evenly spaced ticks, including the start and end points.
-  if (
-    isNumericAxis(chartModel.xAxisModel) ||
-    isTimeSeriesAxis(chartModel.xAxisModel)
-  ) {
-    return getEvenlySpacedIndices(
-      chartModel.dataset.length,
-      X_TICKS_TO_MEASURE_COUNT,
-    ).map((datumIndex) => chartModel.dataset[datumIndex][X_AXIS_DATA_KEY]);
+  if (isNumericAxis(xAxisModel) || isTimeSeriesAxis(xAxisModel)) {
+    return getEvenlySpacedIndices(dataset.length, X_TICKS_TO_MEASURE_COUNT).map(
+      (datumIndex) => dataset[datumIndex][X_AXIS_DATA_KEY],
+    );
   }
 
   // On category scales, when the dimension width is smaller than the tick font size,
   // meaning that even with 90-degree rotation the ticks will not fit,
   // we select the top N ticks based on character length for formatting and measurement.
-  if (isCategoryAxis(chartModel.xAxisModel) && dimensionWidth <= fontSize) {
-    return chartModel.dataset
+  if (isCategoryAxis(xAxisModel) && dimensionWidth <= fontSize) {
+    return dataset
       .map((datum) => datum[X_AXIS_DATA_KEY])
       .sort((a, b) => String(b).length - String(a).length)
       .slice(0, X_TICKS_TO_MEASURE_COUNT);
   }
 
-  return chartModel.dataset.map((datum) => datum[X_AXIS_DATA_KEY]);
+  return dataset.map((datum) => datum[X_AXIS_DATA_KEY]);
 };
 
 const getMaxXTickWidth = (
-  chartModel: BaseCartesianChartModel,
+  input: ChartMeasurementsInput,
   dimensionWidth: number,
   renderingContext: RenderingContext,
 ) => {
+  const { xAxisModel } = input;
   const valueToMeasure = getXTicksToMeasure(
-    chartModel,
+    input,
     dimensionWidth,
     renderingContext,
   );
@@ -375,22 +393,21 @@ const getMaxXTickWidth = (
 
   return Math.max(
     ...valueToMeasure.map((value) =>
-      renderingContext.measureText(
-        chartModel.xAxisModel.formatter(value),
-        fontStyle,
-      ),
+      renderingContext.measureText(xAxisModel.formatter(value), fontStyle),
     ),
   );
 };
 
 const getTicksDimensions = (
-  chartModel: BaseCartesianChartModel,
+  input: ChartMeasurementsInput,
   chartWidth: number,
   outerHeight: number,
   settings: ComputedVisualizationSettings,
   hasTimelineEvents: boolean,
   renderingContext: RenderingContext,
 ) => {
+  const { xAxisModel, leftAxisModel, rightAxisModel, yAxisScaleTransforms } =
+    input;
   const ticksDimensions: TicksDimensions = {
     yTicksWidthLeft: 0,
     yTicksWidthRight: 0,
@@ -399,21 +416,21 @@ const getTicksDimensions = (
     lastXTickWidth: 0,
   };
 
-  if (chartModel.leftAxisModel) {
+  if (leftAxisModel) {
     ticksDimensions.yTicksWidthLeft =
       getYAxisTicksWidth(
-        chartModel.leftAxisModel,
-        chartModel.yAxisScaleTransforms,
+        leftAxisModel,
+        yAxisScaleTransforms,
         settings,
         renderingContext,
       ) + CHART_STYLE.axisTicksMarginY;
   }
 
-  if (chartModel.rightAxisModel) {
+  if (rightAxisModel) {
     ticksDimensions.yTicksWidthRight =
       getYAxisTicksWidth(
-        chartModel.rightAxisModel,
-        chartModel.yAxisScaleTransforms,
+        rightAxisModel,
+        yAxisScaleTransforms,
         settings,
         renderingContext,
       ) + CHART_STYLE.axisTicksMarginY;
@@ -425,21 +442,21 @@ const getTicksDimensions = (
     ticksDimensions.yTicksWidthLeft -
     ticksDimensions.yTicksWidthRight;
 
-  const isTimeSeries = isTimeSeriesAxis(chartModel.xAxisModel);
+  const isTimeSeries = isTimeSeriesAxis(xAxisModel);
   let axisEnabledSetting = settings["graph.x_axis.axis_enabled"];
   const hasBottomAxis = !!axisEnabledSetting;
 
   if (hasBottomAxis) {
-    const dimensionWidth = getDimensionWidth(chartModel, currentBoundaryWidth);
+    const dimensionWidth = getDimensionWidth(input, currentBoundaryWidth);
 
     const maxXTickWidth = getMaxXTickWidth(
-      chartModel,
+      input,
       dimensionWidth,
       renderingContext,
     );
 
     axisEnabledSetting = getAutoAxisEnabledSetting(
-      chartModel,
+      input,
       settings,
       currentBoundaryWidth,
       maxXTickWidth,
@@ -448,9 +465,9 @@ const getTicksDimensions = (
     );
 
     const { firstXTickWidth, lastXTickWidth } = getXAxisTicksWidth(
-      chartModel.transformedDataset,
+      getDataset(input),
       axisEnabledSetting,
-      chartModel.xAxisModel,
+      xAxisModel,
       renderingContext,
     );
     ticksDimensions.firstXTickWidth = firstXTickWidth;
@@ -476,13 +493,14 @@ const getTicksDimensions = (
 const TICK_OVERFLOW_BUFFER = 4;
 
 export const getChartPadding = (
-  chartModel: BaseCartesianChartModel,
+  input: ChartMeasurementsInput,
   settings: ComputedVisualizationSettings,
   ticksDimensions: TicksDimensions,
   axisEnabledSetting: ComputedVisualizationSettings["graph.x_axis.axis_enabled"],
   chartWidth: number,
   { theme }: RenderingContext,
 ): Padding => {
+  const { xAxisModel, leftAxisModel, rightAxisModel, seriesModels } = input;
   const { fontSize } = theme.cartesian.label;
 
   const axisNameFontSize = fontSize;
@@ -519,12 +537,12 @@ export const getChartPadding = (
   const yAxisNameTotalWidth = axisNameFontSize + CHART_STYLE.axisNameMargin;
 
   padding.left += ticksDimensions.yTicksWidthLeft;
-  if (chartModel.leftAxisModel?.label) {
+  if (leftAxisModel?.label) {
     padding.left += yAxisNameTotalWidth;
   }
 
   padding.right += ticksDimensions.yTicksWidthRight;
-  if (chartModel.rightAxisModel?.label) {
+  if (rightAxisModel?.label) {
     padding.right += yAxisNameTotalWidth;
   }
 
@@ -534,13 +552,14 @@ export const getChartPadding = (
 
   // We handle non-categorical scatter plots differently, because echarts places
   // the tick labels on the very edge of the x-axis for scatter plots only.
-  const isScatterPlot = chartModel.seriesModels.some((seriesModel) => {
-    const seriesSettings = settings.series(
-      seriesModel.legacySeriesSettingsObjectKey,
-    );
-    return seriesSettings.display === "scatter";
-  });
-  if (isScatterPlot && chartModel.xAxisModel.axisType !== "category") {
+  const isScatterPlot =
+    seriesModels?.some((seriesModel) => {
+      const seriesSettings = settings.series(
+        seriesModel.legacySeriesSettingsObjectKey,
+      );
+      return seriesSettings.display === "scatter";
+    }) ?? false;
+  if (isScatterPlot && xAxisModel.axisType !== "category") {
     firstTickOverflow = Math.min(
       Math.max(
         ticksDimensions.firstXTickWidth / 2 -
@@ -561,7 +580,7 @@ export const getChartPadding = (
     );
   } else {
     const currentBoundaryWidth = chartWidth - padding.left - padding.right;
-    const dimensionWidth = getDimensionWidth(chartModel, currentBoundaryWidth);
+    const dimensionWidth = getDimensionWidth(input, currentBoundaryWidth);
 
     firstTickOverflow = Math.min(
       Math.max(
@@ -609,10 +628,9 @@ export const getChartBounds = (
 };
 
 const getDimensionWidth = (
-  chartModel: BaseCartesianChartModel,
+  { xAxisModel }: ChartMeasurementsInput,
   boundaryWidth: number,
 ) => {
-  const { xAxisModel } = chartModel;
   const xValuesCount =
     isTimeSeriesAxis(xAxisModel) || isNumericAxis(xAxisModel)
       ? xAxisModel.intervalsCount + 1
@@ -661,19 +679,21 @@ const areHorizontalXAxisTicksOverlapping = (
 };
 
 const countFittingLabels = (
-  chartModel: BaseCartesianChartModel,
+  input: ChartMeasurementsInput,
   barStack: StackModel,
   barWidth: number,
   renderingContext: RenderingContext,
 ) => {
+  const { seriesLabelsFormatters } = input;
+  const dataset = getDataset(input);
   return barStack.seriesKeys.reduce(
     (fitCounts, seriesKey) => {
-      const formatter = chartModel.seriesLabelsFormatters?.[seriesKey];
+      const formatter = seriesLabelsFormatters?.[seriesKey];
       if (!formatter) {
         return fitCounts;
       }
 
-      const seriesFitCounts = chartModel.dataset.reduce(
+      const seriesFitCounts = dataset.reduce(
         (fitCounts, datum) => {
           const value = datum[seriesKey];
 
@@ -714,11 +734,12 @@ const BAR_WIDTH_PRECISION = 0.85;
 const HORIZONTAL_LABELS_COUNT_THRESHOLD = 0.8;
 
 const getStackedBarTicksRotation = (
-  chartModel: BaseCartesianChartModel,
+  input: ChartMeasurementsInput,
   boundaryWidth: number,
   renderingContext: RenderingContext,
 ) => {
-  const barStack = chartModel.stackModels.find(
+  const { stackModels } = input;
+  const barStack = stackModels?.find(
     (stackModel) => stackModel.display === "bar",
   );
 
@@ -727,7 +748,7 @@ const getStackedBarTicksRotation = (
   }
 
   const barWidth =
-    getDimensionWidth(chartModel, boundaryWidth) *
+    getDimensionWidth(input, boundaryWidth) *
     CHART_STYLE.series.barWidth *
     BAR_WIDTH_PRECISION;
 
@@ -736,7 +757,7 @@ const getStackedBarTicksRotation = (
   }
 
   const labelsFit = countFittingLabels(
-    chartModel,
+    input,
     barStack,
     barWidth,
     renderingContext,
@@ -755,7 +776,7 @@ const getStackedBarTicksRotation = (
 };
 
 export const getChartMeasurements = (
-  chartModel: BaseCartesianChartModel,
+  input: ChartMeasurementsInput,
   settings: ComputedVisualizationSettings,
   hasTimelineEvents: boolean,
   width: number,
@@ -763,7 +784,7 @@ export const getChartMeasurements = (
   renderingContext: RenderingContext,
 ): ChartMeasurements => {
   const { ticksDimensions, axisEnabledSetting } = getTicksDimensions(
-    chartModel,
+    input,
     width,
     height,
     settings,
@@ -771,7 +792,7 @@ export const getChartMeasurements = (
     renderingContext,
   );
   const padding = getChartPadding(
-    chartModel,
+    input,
     settings,
     ticksDimensions,
     axisEnabledSetting,
@@ -788,7 +809,7 @@ export const getChartMeasurements = (
     ticksDimensions.yTicksWidthRight;
 
   const stackedBarTicksRotation = getStackedBarTicksRotation(
-    chartModel,
+    input,
     boundaryWidth,
     renderingContext,
   );

@@ -8,7 +8,6 @@ import { QuestionPickerModal } from "metabase/common/components/Pickers";
 import { useHasTokenFeature } from "metabase/common/hooks";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
-import { PLUGIN_TRANSFORMS_PYTHON } from "metabase/plugins";
 import { getShouldShowPythonTransformsUpsell } from "metabase/transforms/selectors";
 import { Button, Center, Icon, Loader, Menu, Tooltip } from "metabase/ui";
 
@@ -25,13 +24,8 @@ export const CreateTransformMenu = () => {
     isCollectionModalOpened,
     { open: openCollectionModal, close: closeCollectionModal },
   ] = useDisclosure();
-  const [
-    isPythonUpsellOpened,
-    { open: openPythonUpsell, close: closePythonUpsell },
-  ] = useDisclosure();
 
   const hasPythonTransformsFeature = useHasTokenFeature("transforms-python");
-
   const shouldShowPythonTransformsUpsell = useSelector(
     getShouldShowPythonTransformsUpsell,
   );
@@ -39,13 +33,14 @@ export const CreateTransformMenu = () => {
   const { data: databases, isLoading } = useListDatabasesQuery({
     include_analytics: true,
   });
+  const shouldShowPythonScriptOption =
+    hasPythonTransformsFeature || shouldShowPythonTransformsUpsell;
 
   const handlePythonClick = () => {
+    dispatch(push(Urls.newPythonTransform())); // Route will show upsell modal if feature is not enabled
+
     if (hasPythonTransformsFeature) {
       trackTransformCreate({ creationType: "python" });
-      dispatch(push(Urls.newPythonTransform()));
-    } else {
-      openPythonUpsell();
     }
   };
 
@@ -87,8 +82,7 @@ export const CreateTransformMenu = () => {
                 {t`SQL query`}
               </Menu.Item>
 
-              {(shouldShowPythonTransformsUpsell ||
-                hasPythonTransformsFeature) && (
+              {shouldShowPythonScriptOption && (
                 <Menu.Item
                   leftSection={<Icon name="code_block" />}
                   rightSection={
@@ -99,7 +93,6 @@ export const CreateTransformMenu = () => {
                   {t`Python script`}
                 </Menu.Item>
               )}
-
               <Menu.Item
                 leftSection={<Icon name="insight" />}
                 onClick={() => {
@@ -137,11 +130,6 @@ export const CreateTransformMenu = () => {
       {isCollectionModalOpened && (
         <CreateTransformCollectionModal onClose={closeCollectionModal} />
       )}
-
-      <PLUGIN_TRANSFORMS_PYTHON.PythonTransformsUpsellModal
-        isOpen={isPythonUpsellOpened}
-        onClose={closePythonUpsell}
-      />
     </>
   );
 };

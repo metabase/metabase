@@ -46,3 +46,18 @@
   [table]
   (when (:is_published table)
     (mi/current-user-has-full-permissions? (perms/perms-objects-set-for-parent-collection table :read))))
+
+(defenterprise published-table-visible-clause
+  "Returns a HoneySQL clause matching published tables that are readable via collection permissions."
+  :feature :library
+  [table-id-column {:keys [user-id is-superuser?]}]
+  [:in table-id-column
+   {:select [:id]
+    :from   [:metabase_table]
+    :where  [:and
+             [:= :is_published true]
+             (collection/visible-collection-filter-clause
+              :collection_id
+              {}
+              {:current-user-id user-id
+               :is-superuser?   is-superuser?})]}])

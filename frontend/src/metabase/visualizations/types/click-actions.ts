@@ -130,10 +130,16 @@ export type DefaultClickAction = ClickActionBase & {
   default: true;
 } & AlwaysDefaultClickActionSubAction;
 
+type OnClickActionBase = {
+  onClick: (parameters: CustomClickActionContext) => void;
+};
+
 export type AlwaysDefaultClickActionSubAction =
   | QuestionChangeClickActionBase
   | ReduxClickActionBase
-  | UrlClickActionBase;
+  | UrlClickActionBase
+  | CustomClickActionBase
+  | OnClickActionBase;
 
 export type AlwaysDefaultClickAction = {
   name: string;

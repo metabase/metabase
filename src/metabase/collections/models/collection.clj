@@ -75,6 +75,10 @@
   "The value of the `:type` field for collections that only allow metrics."
   "library-metrics")
 
+(def ^:constant tenant-specific-root-collection-type
+  "The value of the `:type` field for root collections that belong to a single tenant"
+  "tenant-specific-root-collection")
+
 (def transforms-ns
   "Namespace for transforms"
   :transforms)
@@ -175,6 +179,16 @@
   []
   (t2/select-one :model/Collection :type library-collection-type))
 
+(def library-entity-id
+  "The entity_id for the Library collection."
+  "librarylibrarylibrary")
+
+(def ^:private library-data-entity-id
+  "librarylibrarydatadat")
+
+(def ^:private library-metrics-entity-id
+  "librarylibrarymetrics")
+
 (defn create-library-collection!
   "Create the Library collection. Returns Created collection. Throws if it already exists."
   []
@@ -182,14 +196,17 @@
     (throw (ex-info "Library already exists" {})))
   (let [library       (t2/insert-returning-instance! :model/Collection {:name     "Library"
                                                                         :type     library-collection-type
-                                                                        :location "/"})
+                                                                        :location "/"
+                                                                        :entity_id library-entity-id})
         base-location (str "/" (:id library) "/")
         data          (t2/insert-returning-instance! :model/Collection {:name     "Data"
                                                                         :type     library-data-collection-type
-                                                                        :location base-location})
+                                                                        :location base-location
+                                                                        :entity_id library-data-entity-id})
         metrics       (t2/insert-returning-instance! :model/Collection {:name     "Metrics"
                                                                         :type     library-metrics-collection-type
-                                                                        :location base-location})]
+                                                                        :location base-location
+                                                                        :entity_id library-metrics-entity-id})]
     (doseq [col [library data metrics]]
       (t2/delete! :model/Permissions :collection_id (:id col))
       (perms/grant-collection-read-permissions! (perms/all-users-group) col)
@@ -1492,6 +1509,17 @@
      (cons (perms/collection-readwrite-path collection)
            (map perms/collection-readwrite-path descendant-ids)))))
 
+(def ^:dynamic *allow-modifying-tenant-root-collections?*
+  "We archive tenant root collections only when the tenant is archived."
+  false)
+
+(defmacro with-allow-modifying-tenant-root-collections
+  "Usually we don't allow archiving tenant specific root collections, just like personal collections. But
+  if a tenant is deactivated, we should allow archiving them."
+  [& body]
+  `(binding [*allow-modifying-tenant-root-collections?* true]
+     (do ~@body)))
+
 (mu/defn archive-collection!
   "Mark a collection as archived, along with all its children."
   [collection :- CollectionWithLocationAndIDOrRoot]
@@ -1500,7 +1528,8 @@
     @api/*current-user-permissions-set*
     (perms-for-archiving collection)))
   (api/check-400
-   (not= (:type collection) "tenant-specific-root-collection"))
+   (or *allow-modifying-tenant-root-collections?*
+       (not= (:type collection) tenant-specific-root-collection-type)))
   (t2/with-transaction [_conn]
     (let [archive-operation-id    (str (random-uuid))
           affected-collection-ids (cons (u/the-id collection)
@@ -1617,7 +1646,7 @@
       (throw (ex-info "Cannot `move-collection!` into the Trash. Call `archive-collection!` instead."
                       {:collection collection
                        :new-location new-location})))
-    (when (= (:type collection) "tenant-specific-root-collection")
+    (when (= (:type collection) tenant-specific-root-collection-type)
       (throw (ex-info "Can't move a tenant collection" {:status-code 400})))
     ;; first move this Collection
     (log/infof "Moving Collection %s and its descendants from %s to %s"
@@ -1704,7 +1733,6 @@
   For newly created Collections at the root-level, copy the existing permissions for the Root Collection."
   [{:keys [location id], collection-namespace :namespace, :as collection}]
   (when-not (or (is-personal-collection-or-descendant-of-one? collection)
-                (is-dedicated-tenant-collection-or-descendant? collection)
                 (is-trash-or-descendant? collection))
     (let [parent-collection-id (location-path->parent-id location)]
       (copy-collection-permissions! (or parent-collection-id (assoc root-collection :namespace collection-namespace))
@@ -1847,7 +1875,8 @@
     ;; VARIOUS CHECKS BEFORE DOING ANYTHING:
     ;; (1) if this is a personal Collection, check that the 'propsed' changes are allowed
     (when (or (:personal_owner_id collection-before-updates)
-              (= (:type collection-before-updates) "tenant-specific-collection"))
+              (and (not *allow-modifying-tenant-root-collections?*)
+                   (= (:type collection-before-updates) tenant-specific-root-collection-type)))
       (check-changes-allowed-for-protected-collection collection-before-updates collection-updates))
     ;; (2) make sure the location is valid if we're changing it
     (assert-valid-location collection-updates)

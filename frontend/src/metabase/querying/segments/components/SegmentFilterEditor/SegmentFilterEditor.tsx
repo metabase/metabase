@@ -3,6 +3,7 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import ErrorBoundary from "metabase/ErrorBoundary";
+import { useLocale } from "metabase/common/hooks";
 import { useTranslateContent } from "metabase/i18n/hooks";
 import { FilterPicker } from "metabase/querying/filters/components/FilterPicker";
 import { getTranslatedFilterDisplayName } from "metabase/querying/filters/utils/display";
@@ -23,14 +24,15 @@ export function SegmentFilterEditor({
   readOnly = false,
 }: SegmentFilterEditorProps) {
   const tc = useTranslateContent();
+  const { locale } = useLocale();
   const filters = useMemo(() => Lib.filters(query, STAGE_INDEX), [query]);
 
   const renderFilterName = useMemo(
     () =>
       _.memoize((filter: Lib.FilterClause) =>
-        getTranslatedFilterDisplayName(query, STAGE_INDEX, filter, tc),
+        getTranslatedFilterDisplayName(query, STAGE_INDEX, filter, tc, locale),
       ),
-    [query, tc],
+    [query, tc, locale],
   );
 
   const handleSelectFilter = useCallback(

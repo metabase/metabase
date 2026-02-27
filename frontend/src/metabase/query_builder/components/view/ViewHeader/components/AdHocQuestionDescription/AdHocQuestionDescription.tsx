@@ -11,8 +11,6 @@ type AdHocQuestionDescriptionProps = {
 
 type GetAdhocQuestionDescriptionProps = {
   question: Question;
-  /** Optional function to translate longDisplayName values */
-  translateDisplayName?: (displayName: string) => string;
 };
 
 export const shouldRenderAdhocDescription = ({
@@ -28,7 +26,6 @@ export const shouldRenderAdhocDescription = ({
 
 export const getAdHocQuestionDescription = ({
   question,
-  translateDisplayName = (name: string) => name,
 }: GetAdhocQuestionDescriptionProps) => {
   const query = question.query();
   const stageIndex = getInfoStageIndex(query);
@@ -44,10 +41,9 @@ export const getAdHocQuestionDescription = ({
             aggregations.length,
           )
         : aggregations
-            .map((aggregation) =>
-              translateDisplayName(
+            .map(
+              (aggregation) =>
                 Lib.displayInfo(query, stageIndex, aggregation).longDisplayName,
-              ),
             )
             .join(t` and `);
   const breakoutDescription =
@@ -60,10 +56,9 @@ export const getAdHocQuestionDescription = ({
             breakouts.length,
           )
         : breakouts
-            .map((breakout) =>
-              translateDisplayName(
+            .map(
+              (breakout) =>
                 Lib.displayInfo(query, stageIndex, breakout).longDisplayName,
-              ),
             )
             .join(t` and `);
 

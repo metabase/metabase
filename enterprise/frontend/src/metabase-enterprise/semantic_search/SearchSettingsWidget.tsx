@@ -8,6 +8,7 @@ import { UpsellSemanticSearchPill } from "metabase/admin/upsells/UpsellSemanticS
 import { getErrorMessage, useAdminSetting } from "metabase/api/utils";
 import { getPlan, isProPlan } from "metabase/common/utils/plan";
 import { useSelector } from "metabase/lib/redux";
+import type { SearchSettingsWidgetProps } from "metabase/plugins";
 import { getSetting } from "metabase/selectors/settings";
 import { Box, Progress, Stack, Text, Tooltip } from "metabase/ui";
 import { useGetSemanticSearchStatusQuery } from "metabase-enterprise/api/search";
@@ -26,9 +27,7 @@ function useLatch(bool: boolean) {
 
 export function SearchSettingsWidget({
   statusPollingInterval = 5000,
-}: {
-  statusPollingInterval?: number;
-}) {
+}: SearchSettingsWidgetProps) {
   const plan = useSelector((state) =>
     getPlan(getSetting(state, "token-features")),
   );
