@@ -20,6 +20,7 @@ import {
 } from "metabase/documents/documents.slice";
 import { getCurrentDocument } from "metabase/documents/selectors";
 import { useDispatch, useSelector } from "metabase/lib/redux";
+import { useMetabotEnabledEmbeddingAware } from "metabase/metabot/hooks";
 import { PLUGIN_METABOT } from "metabase/plugins";
 import { Box, Button, Flex, Icon, Text, Tooltip } from "metabase/ui";
 import type { Card, MetabotGenerateContentRequest } from "metabase-types/api";
@@ -152,7 +153,7 @@ export const MetabotComponent = memo(
     const [isLoading, setIsLoading] = useState(false);
     const [errorText, setErrorText] = useState("");
     const [queryMetabot] = PLUGIN_METABOT.useLazyMetabotGenerateContentQuery();
-    const isMetabotEnabled = PLUGIN_METABOT.isEnabled();
+    const isMetabotEnabled = useMetabotEnabledEmbeddingAware();
 
     const handleRunMetabot = async () => {
       const serializePrompt =

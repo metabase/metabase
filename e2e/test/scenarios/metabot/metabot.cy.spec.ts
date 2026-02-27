@@ -223,7 +223,51 @@ d:{"finishReason":"stop","usage":{"promptTokens":4916,"completionTokens":8}}`,
         H.assertChatVisibility("visible");
         H.lastChatMessage().should("have.text", "You, but don't tell anyone.");
       });
+
+      it("should not submit a prompt via /metabot/new when metabot is disabled", () => {
+        H.updateSetting("metabot-enabled?", false);
+        cy.visit("/metabot/new?q=Who%20is%20your%20favorite%3F");
+        cy.url().should("eq", Cypress.config().baseUrl + "/");
+        H.assertChatVisibility("not.visible");
+        cy.get("@agentReq.all").should("have.length", 0);
+      });
     });
+  });
+});
+
+describe("Metabot in full-app embedding", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsAdmin();
+    H.activateToken("bleeding-edge");
+  });
+
+  it("should show the metabot button when embedded-metabot-enabled? is true", () => {
+    H.updateEnterpriseSettings({ "embedded-metabot-enabled?": true });
+
+    H.visitFullAppEmbeddingUrl({
+      url: `/question/${ORDERS_BY_YEAR_QUESTION_ID}`,
+      qs: {},
+    });
+
+    H.appBar().icon("metabot").should("be.visible");
+    cy.findByLabelText("Explain this chart").should("not.exist");
+  });
+
+  it("should not show the metabot button when embedded-metabot-enabled? is false", () => {
+    H.updateEnterpriseSettings({ "embedded-metabot-enabled?": false });
+
+    H.visitFullAppEmbeddingUrl({
+      url: `/question/${ORDERS_BY_YEAR_QUESTION_ID}`,
+      qs: {},
+    });
+
+    cy.log("Wait for the question to render");
+    H.main().findByText("Filter").should("be.visible");
+
+    cy.log("Assert metabot buttons are not rendered");
+    H.appBar().icon("metabot").should("not.exist");
+    cy.findByLabelText("Explain this chart").should("not.exist");
   });
 });
 

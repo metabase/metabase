@@ -7,7 +7,11 @@ export const updateSetting = <
   setting: TKey,
   value: TValue,
 ): Cypress.Chainable<Cypress.Response<never>> => {
-  return cy.request<never>("PUT", `/api/setting/${setting}`, { value });
+  return cy.request<never>(
+    "PUT",
+    `/api/setting/${encodeURIComponent(setting)}`,
+    { value },
+  );
 };
 
 export const updateEnterpriseSetting = <

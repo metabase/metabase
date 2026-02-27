@@ -6,7 +6,7 @@ import { useLazyGetTransformQuery } from "metabase/api";
 import { useDispatch } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { useRegisterMetabotContextProvider } from "metabase/metabot";
-import { PLUGIN_METABOT } from "metabase/plugins";
+import { useMetabotEnabledEmbeddingAware } from "metabase/metabot/hooks";
 import { getIsWorkspace } from "metabase/selectors/routing";
 import { METABOT_PROFILE_OVERRIDES } from "metabase-enterprise/metabot/constants";
 import type {
@@ -98,7 +98,7 @@ export function useWorkspaceMetabot({
     patchEditedTransform,
   } = useWorkspace();
 
-  const isMetabotAvailable = PLUGIN_METABOT.isEnabled();
+  const isMetabotAvailable = useMetabotEnabledEmbeddingAware();
   const { navigateToPath, setNavigateToPath } = useMetabotReactions();
   const {
     resetConversation: resetMetabotConversation,
