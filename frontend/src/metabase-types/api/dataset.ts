@@ -23,6 +23,12 @@ import type { TableId } from "./table";
 export type RowValue = string | number | null | boolean | object;
 export type RowValues = RowValue[];
 
+export function getRowsForStableKeys(
+  data: Pick<DatasetData, "rows" | "untranslatedRows">,
+): RowValues[] {
+  return data.untranslatedRows ?? data.rows;
+}
+
 export type BinningMetadata = {
   binning_strategy?: "default" | "bin-width" | "num-bins";
   bin_width?: number;
@@ -102,6 +108,7 @@ export interface DatasetData {
     "show-row-totals"?: boolean;
     "show-column-totals"?: boolean;
   };
+  untranslatedRows?: RowValues[];
 }
 
 export type JsonQuery = DatasetQuery & {

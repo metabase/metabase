@@ -11,6 +11,7 @@
    [metabase.analytics.core :as analytics]
    [metabase.analytics.snowplow-test :as snowplow-test]
    [metabase.driver :as driver]
+   [metabase.driver.connection :as driver.conn]
    [metabase.driver.ddl.interface :as ddl.i]
    [metabase.driver.mysql :as mysql]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
@@ -2629,3 +2630,44 @@
               (is (true? (upload/can-create-upload? db "upload_schema"))))
             (testing "cannot upload to the blocked schema"
               (is (false? (upload/can-create-upload? db "other_schema"))))))))))
+
+(deftest upload-create-creates-write-pool-test
+  (mt/test-drivers (mt/normal-driver-select {:+parent :sql-jdbc, :+features [:uploads]})
+    (with-uploads-enabled!
+      (let [db-id           (mt/id)
+            write-cache-key [db-id :write-data]]
+        (with-redefs [driver.conn/effective-connection-type
+                      (fn [_database]
+                        (if (= driver.conn/*connection-type* :write-data)
+                          :write-data
+                          :default))]
+          (try
+            (sql-jdbc.conn/invalidate-pool-for-db! (mt/db))
+            (testing "write pool does not exist before upload create"
+              (is (not (contains? @@#'sql-jdbc.conn/pool-cache-key->connection-pool write-cache-key))))
+            (with-upload-table! [_table (create-from-csv-and-sync-with-defaults!)]
+              (testing "write pool is created during upload create"
+                (is (contains? @@#'sql-jdbc.conn/pool-cache-key->connection-pool write-cache-key))))
+            (finally
+              (sql-jdbc.conn/invalidate-pool-for-db! (mt/db)))))))))
+
+(deftest upload-delete-creates-write-pool-test
+  (mt/test-drivers (mt/normal-driver-select {:+parent :sql-jdbc, :+features [:uploads]})
+    (with-uploads-enabled!
+      (let [db-id           (mt/id)
+            write-cache-key [db-id :write-data]]
+        (with-redefs [driver.conn/effective-connection-type
+                      (fn [_database]
+                        (if (= driver.conn/*connection-type* :write-data)
+                          :write-data
+                          :default))]
+          (try
+            (let [table (create-upload-table!)]
+              (sql-jdbc.conn/invalidate-pool-for-db! (mt/db))
+              (testing "write pool does not exist before upload delete"
+                (is (not (contains? @@#'sql-jdbc.conn/pool-cache-key->connection-pool write-cache-key))))
+              (upload/delete-upload! table)
+              (testing "write pool is created during upload delete"
+                (is (contains? @@#'sql-jdbc.conn/pool-cache-key->connection-pool write-cache-key))))
+            (finally
+              (sql-jdbc.conn/invalidate-pool-for-db! (mt/db)))))))))
