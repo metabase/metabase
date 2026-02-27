@@ -147,9 +147,6 @@ const defaultConfig = {
     config.env.grepFilterSpecs = true;
     config.env.grepOmitFiltered = true;
 
-    // Note: IS_ENTERPRISE and SNOWPLOW_MICRO_URL are now exposed via Cypress.expose()
-    // and accessible synchronously without the deprecated Cypress.env() API
-
     require("@cypress/grep/src/plugin")(config);
 
     if (isCI) {
@@ -173,10 +170,7 @@ const defaultConfig = {
   },
   baseUrl: `http://${BACKEND_HOST}:${BACKEND_PORT}`,
   defaultBrowser: process.env.CYPRESS_BROWSER ?? "chrome",
-  env: {
-    // Note: CI is now exposed via Cypress.expose()
-    // Other environment variables needed by plugins go here
-  },
+  env: {},
   supportFile: "e2e/support/cypress.js",
   chromeWebSecurity: false,
   modifyObstructiveCode: false,
