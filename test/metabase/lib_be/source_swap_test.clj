@@ -319,6 +319,19 @@
                                            {:type :table, :id (meta/id :orders)}
                                            {:type :card, :id 1}))))))
 
+(deftest ^:parallel swap-source-in-query-source-card-to-table-test
+  (let [orders-query (lib/query meta/metadata-provider (meta/table-metadata :orders))
+        mp           (lib.tu/metadata-provider-with-card-from-query 1 orders-query)
+        query        (as-> (lib/query mp (lib.metadata/card mp 1)) q
+                       (lib/with-fields q [(m/find-first (comp #{"ID"} :name)
+                                                         (lib/fieldable-columns q))]))]
+    (testing "should swap card source to table and convert name-based ref to id-based"
+      (is (=? {:stages [{:source-table (meta/id :products)
+                         :fields       [[:field {} (meta/id :products :id)]]}]}
+              (lib-be/swap-source-in-query query
+                                           {:type :card, :id 1}
+                                           {:type :table, :id (meta/id :products)}))))))
+
 (deftest ^:parallel swap-source-in-query-source-table-to-card-with-expression-test
   (let [products-query (-> (lib/query meta/metadata-provider (meta/table-metadata :products))
                            (lib/expression "TOTAL" (meta/field-metadata :products :price)))
