@@ -11,6 +11,7 @@ import type {
   RowValue,
   SingleSeries,
 } from "metabase-types/api";
+import { getRowsForStableKeys } from "metabase-types/api";
 
 // TODO: this series transformation is used only for the visualization settings computation which is excessive.
 // Replace this with defining settings models per visualization type which will contain all necessary info
@@ -50,6 +51,7 @@ function transformSingleSeries(
   }
 
   const { cols, rows } = data;
+  const rowsForBreakoutKeys = getRowsForStableKeys(data);
   const settings = getComputedSettingsForSeries([s]);
 
   const dimensions = (settings["graph.dimensions"] || []).filter(
@@ -82,7 +84,7 @@ function transformSingleSeries(
 
     for (let rowIndex = 0; rowIndex < rows.length; rowIndex++) {
       const row = rows[rowIndex];
-      const seriesValue = row[seriesColumnIndex];
+      const seriesValue = rowsForBreakoutKeys[rowIndex][seriesColumnIndex];
 
       let seriesRows = breakoutRowsByValue.get(seriesValue);
       if (!seriesRows) {

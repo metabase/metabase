@@ -29,7 +29,7 @@
   (if (and (contains? scope :collection-id) (contains? scope :table-id) (contains? scope :database-id))
     scope
     (let [card         (t2/select-one [:model/Card :dataset_query :collection_id :database_id :display] card-id)
-          table-id     (lib/source-table-id (:dataset_query card))]
+          table-id     (lib/primary-source-table-id (:dataset_query card))]
       (merge {:table-id      table-id
               :collection-id (:collection_id card missing-id)
               :database-id   (:database_id card missing-id)}
