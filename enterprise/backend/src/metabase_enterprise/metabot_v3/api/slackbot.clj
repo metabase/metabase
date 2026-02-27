@@ -79,15 +79,17 @@
 
 (defn- send-auth-link
   "Respond to an incoming slack message with a request to authorize.
-   For top-level @mentions (not in a thread), sends ephemeral message directly to channel
-   so users don't miss it (threaded ephemeral messages don't show thread indicators)."
+   For DMs, always threads the reply. For channel @mentions, only threads
+   if the original message was in a thread."
   [client event]
   (slackbot.client/post-ephemeral-message
    client
    (merge (slackbot.events/event->reply-context event)
           {:user (:user event)
-           ;; only thread the reply if the original message was already in a thread
-           :thread_ts (:thread_ts event)
+           ;; DMs: always thread. Channels: only thread if already in a thread.
+           :thread_ts (if (slackbot.events/dm? event)
+                        (or (:thread_ts event) (:ts event))
+                        (:thread_ts event))
            :text "Connect your Slack account to Metabase. Once linked, I can use your permissions to query data on your behalf."
            :blocks [{:type "section"
                      :text {:type "mrkdwn"
