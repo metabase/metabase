@@ -19,8 +19,15 @@ function EntityCopyModal<T extends CopyableEntityType>(
 ): React.JSX.Element;
 function EntityCopyModal(props: GenericEntityCopyModalProps): React.JSX.Element;
 function EntityCopyModal(props: GenericEntityCopyModalProps) {
-  const { entityType, entityObject, copy, title, onClose, onSaved, ...rest } =
-    props;
+  const {
+    entityType,
+    entityObject,
+    copy,
+    title,
+    onClose,
+    onSaved,
+    onValuesChange,
+  } = props;
 
   const resolvedObject =
     typeof entityObject?.getPlainObject === "function"
@@ -56,7 +63,7 @@ function EntityCopyModal(props: GenericEntityCopyModalProps) {
           onClose={onClose}
           onSaved={onSaved}
           initialValues={initialValues}
-          onValuesChange={rest.onValuesChange}
+          onValuesChange={onValuesChange}
           originalDashboardId={resolvedObjectWithDefaultCollection.id}
         />
       )}
