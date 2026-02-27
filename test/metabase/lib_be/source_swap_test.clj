@@ -247,21 +247,21 @@
                 (lib/aggregate q (lib/count))
                 (lib/breakout q (meta/field-metadata :orders :created-at))
                 (lib/order-by q (meta/field-metadata :orders :created-at)))]
-    (testing "should swap source table and field refs to matching columns"
+    (testing "should swap source table, keeping field refs unchanged"
       (is (=? {:stages [{:source-table (meta/id :reviews)
-                         :fields       [[:field {} (meta/id :reviews :id)]
-                                        [:field {} (meta/id :reviews :created-at)]
+                         :fields       [[:field {} (meta/id :orders :id)]
+                                        [:field {} (meta/id :orders :created-at)]
                                         [:expression {} "id-plus-one"]]
                          :joins        [{:stages     [{:source-table (meta/id :products)}]
                                          :conditions [[:= {}
-                                                       [:field {} (meta/id :reviews :product-id)]
+                                                       [:field {} (meta/id :orders :product-id)]
                                                        [:field {} (meta/id :products :id)]]]}]
                          :expressions  [[:+ {:lib/expression-name "id-plus-one"}
-                                         [:field {} (meta/id :reviews :id)] 1]]
-                         :filters      [[:> {} [:field {} (meta/id :reviews :id)] 5]]
+                                         [:field {} (meta/id :orders :id)] 1]]
+                         :filters      [[:> {} [:field {} (meta/id :orders :id)] 5]]
                          :aggregation  [[:count {}]]
-                         :breakout     [[:field {} (meta/id :reviews :created-at)]]
-                         :order-by     [[:asc {} [:field {} (meta/id :reviews :created-at)]]]}]}
+                         :breakout     [[:field {} (meta/id :orders :created-at)]]
+                         :order-by     [[:asc {} [:field {} (meta/id :orders :created-at)]]]}]}
               (lib-be/swap-source-in-query query
                                            {:type :table, :id (meta/id :orders)}
                                            {:type :table, :id (meta/id :reviews)}))))))
@@ -270,10 +270,10 @@
   (let [query (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
                   (lib/breakout (lib/with-temporal-bucket (meta/field-metadata :orders :created-at) :month))
                   (lib/breakout (lib/with-temporal-bucket (meta/field-metadata :orders :created-at) :year)))]
-    (testing "should swap source table and preserve temporal buckets on duplicate breakouts"
+    (testing "should swap source table, keeping field refs unchanged"
       (is (=? {:stages [{:source-table (meta/id :reviews)
-                         :breakout     [[:field {:temporal-unit :month} (meta/id :reviews :created-at)]
-                                        [:field {:temporal-unit :year} (meta/id :reviews :created-at)]]}]}
+                         :breakout     [[:field {:temporal-unit :month} (meta/id :orders :created-at)]
+                                        [:field {:temporal-unit :year} (meta/id :orders :created-at)]]}]}
               (lib-be/swap-source-in-query query
                                            {:type :table, :id (meta/id :orders)}
                                            {:type :table, :id (meta/id :reviews)}))))))
@@ -283,9 +283,9 @@
         mp             (lib.tu/metadata-provider-with-card-from-query 1 products-query)
         query          (-> (lib/query mp (meta/table-metadata :orders))
                            (lib/breakout (meta/field-metadata :orders :created-at)))]
-    (testing "should swap source table to card and convert breakout field ref to name-based"
+    (testing "should swap source table to card, keeping field refs unchanged"
       (is (=? {:stages [{:source-card 1
-                         :breakout    [[:field {} "CREATED_AT"]]}]}
+                         :breakout    [[:field {} (meta/id :orders :created-at)]]}]}
               (lib-be/swap-source-in-query query
                                            {:type :table, :id (meta/id :orders)}
                                            {:type :card, :id 1}))))))
@@ -309,9 +309,9 @@
         mp             (lib.tu/metadata-provider-with-card-from-query 1 products-query)
         query          (-> (lib/query mp (meta/table-metadata :orders))
                            (lib/filter (lib/> (meta/field-metadata :orders :total) 100)))]
-    (testing "should swap source table to card and map TOTAL field to the expression column name"
+    (testing "should swap source table to card, keeping field refs unchanged"
       (is (=? {:stages [{:source-card 1
-                         :filters     [[:> {} [:field {} "TOTAL"] 100]]}]}
+                         :filters     [[:> {} [:field {} (meta/id :orders :total)] 100]]}]}
               (lib-be/swap-source-in-query query
                                            {:type :table, :id (meta/id :orders)}
                                            {:type :card, :id 1}))))))
@@ -359,12 +359,12 @@
                                rhs-columns   (lib/join-condition-rhs-columns q orders-table (lib/ref lhs-id) nil)
                                rhs-product-id (m/find-first (comp #{"PRODUCT_ID"} :name) rhs-columns)]
                            (lib/join q (lib/join-clause orders-table [(lib/= lhs-id rhs-product-id)]))))]
-    (testing "should swap the join source and rewrite the join condition"
+    (testing "should swap the join source, keeping field refs unchanged"
       (is (=? {:stages [{:source-card 1
                          :joins       [{:stages     [{:source-table (meta/id :reviews)}]
                                         :conditions [[:= {}
                                                       [:field {} "ID"]
-                                                      [:field {} (meta/id :reviews :product-id)]]]}]}]}
+                                                      [:field {} (meta/id :orders :product-id)]]]}]}]}
               (lib-be/swap-source-in-query query
                                            {:type :table, :id (meta/id :orders)}
                                            {:type :table, :id (meta/id :reviews)}))))))
@@ -374,7 +374,7 @@
                 (let [category-col (m/find-first (comp #{"CATEGORY"} :name)
                                                  (lib/filterable-columns q))]
                   (lib/filter q (lib/= category-col "Widget"))))]
-    (testing "should swap source table and update :source-field in implicit join filter"
+    (testing "should swap source table, keeping :source-field unchanged"
       (is (=? {:stages [{:source-table (meta/id :reviews)
                          :filters      [[:= {}
                                          [:field {:source-field (meta/id :reviews :product-id)}
@@ -407,10 +407,8 @@
 (deftest ^:parallel swap-source-in-parameter-target-source-table-test
   (let [query  (lib/query meta/metadata-provider (meta/table-metadata :orders))
         target [:dimension [:field (meta/id :orders :created-at) nil] {:stage-number 0}]]
-    (testing "should swap the field id to the new table's field id"
-      (is (= [:dimension
-              [:field (meta/id :products :created-at) nil]
-              {:stage-number 0}]
+    (testing "should return the same target when field ref has no :source-field"
+      (is (= target
              (lib-be/swap-source-in-parameter-target query target
                                                      {:type :table, :id (meta/id :orders)}
                                                      {:type :table, :id (meta/id :products)}))))))
@@ -420,10 +418,8 @@
         target [:dimension
                 [:field (meta/id :products :category) {:source-field (meta/id :orders :product-id)}]
                 {:stage-number 0}]]
-    (testing "should swap the source-field to the new table's FK field"
-      (is (=? [:dimension
-               [:field (meta/id :products :category) {:source-field (meta/id :reviews :product-id)}]
-               {:stage-number 0}]
-              (lib-be/swap-source-in-parameter-target query target
-                                                      {:type :table, :id (meta/id :orders)}
-                                                      {:type :table, :id (meta/id :reviews)}))))))
+    (testing "should return the same target when :source-field has no mapping"
+      (is (= target
+             (lib-be/swap-source-in-parameter-target query target
+                                                     {:type :table, :id (meta/id :orders)}
+                                                     {:type :table, :id (meta/id :reviews)}))))))
