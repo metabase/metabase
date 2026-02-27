@@ -398,6 +398,7 @@ type Value = unknown;
 
 type Props = Record<string, unknown>;
 
+/** Object keys are kept in alphabetical order */
 export type VisualizationSettingsDefinitions = {
   _column_title_full?: DatasetColumnSettingDefinition<Value, Props>;
   _header_unit?: DatasetColumnSettingDefinition<Value, Props>;
