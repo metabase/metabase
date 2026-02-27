@@ -30,15 +30,16 @@ import type {
   ComputedVisualizationSettings,
   RenderingContext,
 } from "metabase/visualizations/types";
-import type {
-  CardId,
-  DatasetColumn,
-  DatasetData,
-  RawSeries,
-  RowValue,
-  SeriesSettings,
-  SingleSeries,
-  VisualizationSettingKey,
+import {
+  type CardId,
+  type DatasetColumn,
+  type DatasetData,
+  type RawSeries,
+  type RowValue,
+  type SeriesSettings,
+  type SingleSeries,
+  type VisualizationSettingKey,
+  getRowsForStableKeys,
 } from "metabase-types/api";
 
 import {
@@ -93,7 +94,27 @@ const createLegacySeriesObjectKey = (
 export const getBreakoutDistinctValues = (
   data: DatasetData,
   breakoutIndex: number,
-) => Array.from(new Set<RowValue>(data.rows.map((row) => row[breakoutIndex])));
+) => {
+  const rows = getRowsForStableKeys(data);
+  return Array.from(new Set<RowValue>(rows.map((row) => row[breakoutIndex])));
+};
+
+const getBreakoutDisplayValues = (
+  data: DatasetData,
+  breakoutIndex: number,
+): Map<RowValue, RowValue> => {
+  if (!data.untranslatedRows) {
+    return new Map();
+  }
+  const displayValues = new Map<RowValue, RowValue>();
+  data.untranslatedRows.forEach((untranslatedRow, index) => {
+    const key = untranslatedRow[breakoutIndex];
+    if (!displayValues.has(key)) {
+      displayValues.set(key, data.rows[index][breakoutIndex]);
+    }
+  });
+  return displayValues;
+};
 
 const getDefaultSeriesName = (
   columnDisplayNameOrFormattedBreakoutValue: string,
@@ -217,6 +238,10 @@ export const getCardSeriesModels = (
   // Charts with breakout have one series per a unique breakout value. They can have only one metric in such cases.
   const { metric, breakout } = columns;
   const breakoutValues = getBreakoutDistinctValues(data, breakout.index);
+  const breakoutDisplayValueMap = getBreakoutDisplayValues(
+    data,
+    breakout.index,
+  );
 
   return breakoutValues.map((breakoutValue) => {
     // Unfortunately, breakout series include formatted breakout values in the key
@@ -229,6 +254,12 @@ export const getCardSeriesModels = (
             }),
           )
         : NULL_DISPLAY_VALUE;
+
+    const displayValue = breakoutDisplayValueMap.get(breakoutValue);
+    const formattedDisplayValue =
+      displayValue != null
+        ? String(formatValue(displayValue, { column: breakout.column }))
+        : formattedBreakoutValue;
 
     const vizSettingsKey = getSeriesVizSettingsKey(
       metric.column,
@@ -246,7 +277,7 @@ export const getCardSeriesModels = (
     const name =
       customName ??
       getDefaultSeriesName(
-        formattedBreakoutValue,
+        formattedDisplayValue,
         hasMultipleCards,
         1, // only one metric when a chart has a breakout
         true,

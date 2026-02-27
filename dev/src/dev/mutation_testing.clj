@@ -7,11 +7,15 @@
    Configuration:
    - LINEAR_API_KEY env var must be set
    - Call (set-config! {:team-id \"...\" :project-id \"...\"}) before creating issues"
+  (:refer-clojure :exclude [run!])
   (:require
    [cheshire.core :as json]
    [clj-http.client :as http]
+   [clojure.java.io :as io]
    [clojure.java.shell :as shell]
-   [clojure.string :as str]))
+   [clojure.set :as set]
+   [clojure.string :as str]
+   [dev.coverage :as coverage]))
 
 (set! *warn-on-reflection* true)
 
@@ -20,13 +24,20 @@
 (defonce ^:private config (atom {}))
 
 (defn set-config!
-  "Set configuration for Linear API calls.
+  "Set configuration for mutation testing.
 
    Required keys:
    - :team-id   — Linear team ID
-   - :project-id — Linear project ID (can be set after creating a project)"
+   - :project-id — Linear project ID (can be set after creating a project)
+
+   Optional keys:
+   - :base-branch — git branch to create feature branches from (default: \"master\")
+   - :project-id  — Linear project ID to add issues to (skips project creation in run!)"
   [m]
   (swap! config merge m))
+
+(defn- base-branch []
+  (get @config :base-branch "master"))
 
 (defn- api-key []
   (or (System/getenv "LINEAR_API_KEY")
@@ -215,14 +226,14 @@
   "Generate a branch name for mutation testing a function.
    Example: mutation-testing-lib-order-by-orderable-columns"
   [target-ns fn-name]
-  (let [short-ns (last (clojure.string/split (str target-ns) #"\."))]
+  (let [short-ns (last (str/split (str target-ns) #"\."))]
     (str "mutation-testing-lib-" short-ns "-" fn-name)))
 
 (defn create-branch!
-  "Create and checkout a new branch from master for mutation testing a function."
+  "Create and checkout a new branch from the base branch for mutation testing a function."
   [target-ns fn-name]
   (let [branch (branch-name target-ns fn-name)]
-    (sh "git" "checkout" "master")
+    (sh "git" "checkout" (base-branch))
     (sh "git" "pull")
     (sh "git" "checkout" "-b" branch)
     branch))
@@ -255,10 +266,11 @@
   (let [title (pr-title target-ns fn-name)
         body (pr-description opts)
         result (sh "gh" "pr" "create" "--draft"
+                   "--base" (base-branch)
                    "--title" title
                    "--body" body
                    "--label" "no-backport")]
-    (clojure.string/trim (:out result))))
+    (str/trim (:out result))))
 
 (defn add-pr-comment!
   "Add a general comment to a PR. `pr-url-or-number` can be a PR URL or number."
@@ -308,11 +320,16 @@
                       "-f" "start_side=RIGHT"]))]
     (apply sh args)))
 
-(defn return-to-master!
-  "Checkout master branch."
+(defn return-to-base!
+  "Checkout the configured base branch."
   []
-  (sh "git" "checkout" "master")
+  (sh "git" "checkout" (base-branch))
   nil)
+
+(defn return-to-master!
+  "Checkout the configured base branch. Deprecated: use return-to-base! instead."
+  []
+  (return-to-base!))
 
 ;;; --- Report helpers ---
 
@@ -408,6 +425,358 @@
   [target-ns fn-name]
   (create-issue! {:title (linear-issue-title target-ns fn-name)
                   :description (linear-issue-description target-ns fn-name)}))
+
+;;; --- Orchestration ---
+
+(defn parse-namespace
+  "Parse a namespace symbol into all derived paths and names.
+   Auto-detects .cljc vs .clj by checking which file exists."
+  [target-ns-sym]
+  (let [target-ns (str target-ns-sym)
+        test-ns (str target-ns "-test")
+        short-name (last (str/split target-ns #"\."))
+        ns-path (-> target-ns
+                    (str/replace "." "/")
+                    (str/replace "-" "_"))
+        test-path-base (-> test-ns
+                           (str/replace "." "/")
+                           (str/replace "-" "_"))
+        source-ext (cond
+                     (.exists (io/file (str "src/" ns-path ".cljc"))) ".cljc"
+                     (.exists (io/file (str "src/" ns-path ".clj"))) ".clj"
+                     :else ".cljc")
+        test-ext (cond
+                   (.exists (io/file (str "test/" test-path-base ".cljc"))) ".cljc"
+                   (.exists (io/file (str "test/" test-path-base ".clj"))) ".clj"
+                   :else ".cljc")]
+    {:target-ns (symbol target-ns)
+     :test-ns (symbol test-ns)
+     :short-name short-name
+     :source-path (str "src/" ns-path source-ext)
+     :test-path (str "test/" test-path-base test-ext)
+     :report-path (str "mutation-testing-report." target-ns ".before.md")}))
+
+(defn group-functions
+  "Group functions from coverage results for batch processing.
+   Takes the output of coverage/test-namespace.
+
+   Logic:
+   - Public functions with surviving mutations each become a group
+   - Private functions get assigned to the public function with the most test overlap
+   - Functions with zero surviving mutations are skipped
+   - Uncovered or unassignable private functions get their own group"
+  [coverage-results]
+  (let [with-survivors (into {} (filter (fn [[_ v]] (seq (:survived v))) coverage-results))
+        public? (fn [fn-sym]
+                  (let [v (find-var fn-sym)]
+                    (and v (not (:private (meta v))))))
+        public-fns (into {} (filter (fn [[k _]] (public? k)) with-survivors))
+        private-fns (into {} (remove (fn [[k _]] (public? k)) with-survivors))
+        assignments (into {}
+                          (for [[priv-fn priv-data] private-fns
+                                :let [priv-tests (set (:tests priv-data))
+                                      best (when (seq priv-tests)
+                                             (->> public-fns
+                                                  (map (fn [[pub-fn pub-data]]
+                                                         [pub-fn (count (set/intersection
+                                                                         priv-tests
+                                                                         (set (:tests pub-data))))]))
+                                                  (filter (fn [[_ n]] (pos? n)))
+                                                  (sort-by second >)
+                                                  first))]
+                                :when best]
+                            [priv-fn (first best)]))
+        unassigned-private (into {} (remove (fn [[k _]] (contains? assignments k)) private-fns))
+        public-groups (for [[pub-fn pub-data] public-fns
+                            :let [attached (keep (fn [[priv-fn assigned-to]]
+                                                   (when (= assigned-to pub-fn) priv-fn))
+                                                 assignments)
+                                  all-fn-names (vec (cons pub-fn attached))
+                                  all-mutations (vec (concat (:survived pub-data)
+                                                             (mapcat #(:survived (get coverage-results %))
+                                                                     attached)))
+                                  all-tests (apply set/union
+                                                   (keep #(:tests (get coverage-results %))
+                                                         all-fn-names))]]
+                        {:primary-fn pub-fn
+                         :fn-names all-fn-names
+                         :mutations all-mutations
+                         :tests (or all-tests #{})})
+        private-groups (for [[priv-fn priv-data] unassigned-private]
+                         {:primary-fn priv-fn
+                          :fn-names [priv-fn]
+                          :mutations (vec (:survived priv-data))
+                          :tests (or (:tests priv-data) #{})})]
+    (vec (concat public-groups private-groups))))
+
+(defn build-test-prompt
+  "Build a prompt for Claude to write tests that kill surviving mutations."
+  [{:keys [target-ns test-ns source-path test-path fn-names mutations]}]
+  (let [fn-sources (str/join "\n\n"
+                             (for [fn-name fn-names
+                                   :let [fn-info (coverage/find-function-source fn-name)
+                                         source (when fn-info (coverage/read-function-from-file fn-info))]
+                                   :when source]
+                               (str ";;; " fn-name "\n" source)))
+        mutation-list (str/join "\n\n"
+                                (map-indexed
+                                 (fn [i {:keys [description mutation]}]
+                                   (str "### Mutation " (inc i) ": " description "\n```clojure\n" mutation "\n```"))
+                                 mutations))
+        test-content (slurp test-path)]
+    (str "You are writing mutation tests for functions in `" target-ns "`.\n"
+         "\n"
+         "## Source Code of Functions Under Test\n"
+         "\n"
+         "```clojure\n"
+         fn-sources
+         "\n```\n"
+         "\n"
+         "## Existing Test File (" test-path ")\n"
+         "\n"
+         "```clojure\n"
+         test-content
+         "\n```\n"
+         "\n"
+         "## Surviving Mutations to Kill\n"
+         "\n"
+         "Each mutation below represents a change to the source code that no existing test catches.\n"
+         "Write the simplest tests that would fail if these mutations were applied.\n"
+         "\n"
+         mutation-list
+         "\n"
+         "\n"
+         "## Instructions\n"
+         "\n"
+         "- Write the simplest tests that kill these surviving mutations\n"
+         "- Follow the patterns in the existing test file (same helpers, same assertion style)\n"
+         "- Never call private functions directly — test through public API\n"
+         "- Insert tests near related existing tests, not at the end of the file\n"
+         "- Use the Edit tool to modify the test file at: " test-path "\n"
+         "- After writing tests, verify they compile by running: clj-nrepl-eval -p $(clj-nrepl-eval --discover-ports | head -1) \"(require '" test-ns " :reload)\"\n"
+         "- Each test should verify one meaningful behavior — don't over-engineer\n")))
+
+(defn invoke-claude!
+  "Shell out to claude CLI to write tests. Returns the output string."
+  [prompt]
+  (let [result (shell/sh "claude" "-p"
+                         "--allowedTools" "Edit,Read,Bash(clj-nrepl-eval*)"
+                         :in prompt)]
+    (when-not (zero? (:exit result))
+      (throw (ex-info "Claude invocation failed" {:exit (:exit result)
+                                                  :err (:err result)})))
+    (:out result)))
+
+(defn- all-test-names
+  "Get all test var names from a test namespace."
+  [test-ns-sym]
+  (require test-ns-sym :reload)
+  (let [ns-obj (find-ns test-ns-sym)]
+    (->> (ns-interns ns-obj)
+         vals
+         (filter #(:test (meta %)))
+         (map #(symbol (str test-ns-sym) (name (.sym ^clojure.lang.Var %))))
+         set)))
+
+(defn- count-tests
+  "Count test vars in a namespace."
+  [test-ns-sym]
+  (count (filter #(:test (meta %)) (vals (ns-interns (find-ns test-ns-sym))))))
+
+(defn verify-and-retry!
+  "Verify mutations are killed. Retry with Claude if needed.
+   Returns {:status :success|:partial, :killed [...], :survived [...]}."
+  [{:keys [fn-names test-ns test-path max-retries]
+    :or {max-retries 2}}]
+  (loop [retries-left max-retries]
+    (let [test-names (all-test-names test-ns)
+          fn-results (into {}
+                           (for [fn-name fn-names
+                                 :let [result (coverage/test-mutations fn-name test-names)]
+                                 :when result]
+                             [fn-name result]))
+          all-killed (vec (mapcat :killed (vals fn-results)))
+          all-survived (vec (mapcat :survived (vals fn-results)))]
+      (if (empty? all-survived)
+        {:status :success :killed all-killed :survived []}
+        (if (pos? retries-left)
+          (do
+            (println "  " (count all-survived) "mutations still survive, retrying..."
+                     "(" retries-left "retries left)")
+            (let [retry-prompt (str "Some mutations still survive after your previous tests. "
+                                    "Please write additional tests to kill them.\n\n"
+                                    "## Still-Surviving Mutations\n\n"
+                                    (str/join "\n\n"
+                                              (for [{:keys [description mutation]} all-survived]
+                                                (str "### " description "\n```clojure\n" mutation "\n```")))
+                                    "\n\n## Instructions\n"
+                                    "- The test file is at: " test-path "\n"
+                                    "- Use the Edit tool to add more tests\n"
+                                    "- Focus specifically on the mutations listed above\n"
+                                    "- Do NOT duplicate existing tests\n")]
+              (invoke-claude! retry-prompt))
+            (recur (dec retries-left)))
+          {:status :partial :killed all-killed :survived all-survived})))))
+
+(defn process-group!
+  "Process one group of functions: branch → tests → verify → commit → PR.
+   Returns {:pr-url ... :issue ... :killed ... :not-killed ...}."
+  [session group]
+  (let [{:keys [target-ns test-ns test-path]} session
+        {:keys [primary-fn fn-names mutations]} group
+        primary-fn-name (name primary-fn)]
+    ;; 1. Create branch
+    (println "  Creating branch...")
+    (create-branch! (str target-ns) primary-fn-name)
+
+    ;; 2. Count tests before
+    (require test-ns :reload)
+    (let [tests-before (count-tests test-ns)]
+
+      ;; 3. Build prompt and invoke Claude
+      (println "  Invoking Claude to write tests...")
+      (let [prompt (build-test-prompt {:target-ns target-ns
+                                       :test-ns test-ns
+                                       :source-path (:source-path session)
+                                       :test-path test-path
+                                       :fn-names fn-names
+                                       :mutations mutations})]
+        (invoke-claude! prompt))
+
+      ;; 4. Verify and retry
+      (println "  Verifying mutations killed...")
+      (let [verify-result (verify-and-retry! {:fn-names fn-names
+                                              :test-ns test-ns
+                                              :test-path test-path
+                                              :max-retries 2})
+            killed (:killed verify-result)
+            survived (:survived verify-result)
+            tests-after (count-tests test-ns)
+            tests-added (- tests-after tests-before)]
+
+        ;; 5. Commit and push
+        (println "  Committing and pushing...")
+        (commit-and-push! (str target-ns) primary-fn-name [test-path])
+
+        ;; 6. Create Linear issue
+        (println "  Creating Linear issue...")
+        (let [issue (create-issue-for-function! (str target-ns) primary-fn-name)
+
+              ;; 7. Create draft PR
+              _ (println "  Creating draft PR...")
+              pr-url (create-draft-pr!
+                      {:target-ns (str target-ns)
+                       :fn-name primary-fn-name
+                       :fn-names (mapv name fn-names)
+                       :linear-identifier (:identifier issue)
+                       :mutations-before (count mutations)
+                       :tests-added tests-added
+                       :killed (mapv :description killed)
+                       :not-killed (mapv (fn [m] {:description (:description m)
+                                                  :rationale "Could not be killed automatically"})
+                                         survived)
+                       :suggested-changes []})]
+
+          ;; 8. Return to base branch
+          (return-to-base!)
+
+          (println "  Done! PR:" pr-url)
+          {:pr-url pr-url
+           :issue issue
+           :killed killed
+           :not-killed survived
+           :tests-added tests-added})))))
+
+(defn print-summary!
+  "Print a summary of the mutation testing run."
+  [{:keys [project groups results]}]
+  (println "\n========================================")
+  (println "  Mutation Testing Summary")
+  (println "========================================")
+  (println "Project:" (:name project))
+  (println "Groups:" (count groups))
+  (let [successful (filter :pr-url results)
+        failed (filter :error results)
+        total-killed (count (mapcat :killed successful))
+        total-unkilled (count (mapcat :not-killed successful))
+        total-tests (reduce + 0 (keep :tests-added successful))]
+    (println "PRs created:" (count successful))
+    (when (seq failed)
+      (println "Errors:" (count failed)))
+    (println "Tests added:" total-tests)
+    (println "Mutations killed:" total-killed)
+    (println "Mutations not killed:" total-unkilled)
+    (println)
+    (when (seq successful)
+      (println "PRs:")
+      (doseq [r successful]
+        (println "  " (:pr-url r))))
+    (when (seq failed)
+      (println "\nFailed:")
+      (doseq [r failed]
+        (println "  " (:primary-fn r) "-" (:error r))))
+    (println "========================================")))
+
+(defn run!
+  "Main entry point. Runs the full mutation testing workflow for a namespace.
+
+   Prerequisites:
+   - nREPL running
+   - LINEAR_API_KEY env var set
+   - gh CLI authenticated
+   - team-id configured via (set-config! {:team-id \"...\"})
+
+   Options (optional second arg):
+   - :base-branch — git branch to create feature branches from (default: from config, or \"master\")
+   - :project-id  — existing Linear project ID to use (skips creating a new project)"
+  ([target-ns-sym] (run! target-ns-sym {}))
+  ([target-ns-sym opts]
+   (when-let [bb (:base-branch opts)]
+     (set-config! {:base-branch bb}))
+   (when-let [pid (:project-id opts)]
+     (set-config! {:project-id pid}))
+   (let [parsed (parse-namespace target-ns-sym)
+         {:keys [target-ns test-ns report-path]} parsed]
+     ;; 1. Generate report
+     (println "Generating mutation testing report for" (str target-ns) "...")
+     (coverage/generate-report target-ns [test-ns] report-path)
+     (println "Report written to" report-path)
+
+     ;; 2. Create or reuse Linear project
+     (let [project (if (:project-id @config)
+                     (do (println "Using existing Linear project:" (:project-id @config))
+                         {:project-id (:project-id @config)
+                          :name (str "Existing project " (:project-id @config))})
+                     (do (println "Creating Linear project...")
+                         (let [p (create-project-for-namespace! (str target-ns) report-path)]
+                           (println "Created project:" (:name p))
+                           p)))]
+
+       ;; 3. Run coverage and group functions
+       (println "Running coverage analysis and grouping...")
+       (let [coverage-results (coverage/test-namespace target-ns [test-ns])
+             groups (group-functions coverage-results)]
+         (println "Found" (count groups) "function groups to process")
+
+         ;; 4. Process each group
+         (let [results (vec
+                        (for [group groups]
+                          (do
+                            (println "\n--- Processing:" (:primary-fn group)
+                                     "(" (count (:mutations group)) "surviving mutations) ---")
+                            (try
+                              (process-group! parsed group)
+                              (catch Exception e
+                                (println "ERROR:" (.getMessage e))
+                                (try (return-to-base!) (catch Exception _))
+                                {:error (.getMessage e)
+                                 :primary-fn (:primary-fn group)})))))]
+
+           ;; 5. Print summary
+           (print-summary! {:project project
+                            :groups groups
+                            :results results})
+           results))))))
 
 (comment
   ;; Setup:
