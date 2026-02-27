@@ -2,6 +2,7 @@
   (:require
    [clojure.java.jdbc :as jdbc]
    [clojure.set :as set]
+   [clojure.string :as str]
    [clojure.test :refer [deftest is testing]]
    [clojurewerkz.quartzite.conversion :as qc]
    [metabase-enterprise.test :as met]
@@ -216,7 +217,7 @@
 
 (defmethod router-dataset-name :default [_driver] "db-router-data")
 
-(doseq [driver [:redshift :databricks :presto-jdbc]]
+(doseq [driver [:redshift :databricks :presto-jdbc :bigquery-cloud-sdk]]
   (defmethod router-dataset-name driver [_driver] "db-routing-data"))
 
 (defmulti routed-dataset-name
@@ -227,7 +228,7 @@
 
 (defmethod routed-dataset-name :default [_driver] "db-routed-data")
 
-(doseq [driver [:redshift :databricks :presto-jdbc]]
+(doseq [driver [:redshift :databricks :presto-jdbc :bigquery-cloud-sdk]]
   (defmethod routed-dataset-name driver [_driver] "db-routing-data"))
 
 (defmulti router-dataset-details
@@ -242,8 +243,8 @@
   {:dbname "db_router_data"
    :enable-multiple-db false})
 
-(defmethod router-dataset-details :bigquery-cloud-sdk [_driver]
-  {:dataset-filters-patterns "metabase_routing_dataset"})
+(defmethod router-dataset-details :bigquery-cloud-sdk [driver]
+  {:dataset-filters-patterns (str "*" (str/replace (router-dataset-name driver) "-" "_"))})
 
 (defmethod router-dataset-details :databricks [driver]
   {:multi-level-schema false
@@ -262,8 +263,8 @@
    :enable-multiple-db false})
 
 (defmethod routed-dataset-details :bigquery-cloud-sdk [driver]
-  {:service-account-json (tx/db-test-env-var-or-throw driver :service-account-json-routing)
-   :dataset-filters-patterns "metabase_routing_dataset"})
+  {:service-account-json     (tx/db-test-env-var-or-throw driver :service-account-json-routing)
+   :dataset-filters-patterns (str "*" (str/replace (routed-dataset-name driver) "-" "_"))})
 
 (defmethod routed-dataset-details :redshift [driver]
   {:db (tx/db-test-env-var-or-throw driver :db-routing)})
@@ -273,22 +274,36 @@
    :multi-level-schema false
    :schema-filters-patterns (routed-dataset-name driver)})
 
+;; the test requires both datasets share a hash (for the name qualifier)
+;; this is because the qp when routing a db does not map to the routed table (it reuses metadata of original)
+;; the end result is the compiled query would retain the routed sha_* qualifier rather than the hash of the original.
+;; using :hash-key now forces the hash key used to sha to be shared between the two datasets.
+
+(defn- router-dataset [driver]
+  (let [dataset (mt/dataset-definition (router-dataset-name driver)
+                                       [["t"
+                                         [{:field-name "f", :base-type :type/Text}]
+                                         [["original-foo"]
+                                          ["original-bar"]]]])]
+    (assoc dataset :hash-key dataset)))
+
+(defn- routed-dataset [driver]
+  (let [router (router-dataset driver)
+        dataset (mt/dataset-definition (routed-dataset-name driver)
+                                       [["t"
+                                         [{:field-name "f", :base-type :type/Text}]
+                                         [["routed-foo"]
+                                          ["routed-bar"]]]])]
+    (assoc dataset :hash-key (:hash-key router))))
+
 (deftest db-routing-e2e-test
   (mt/test-drivers (mt/normal-driver-select {:+features [:database-routing]})
     (mt/with-premium-features #{:database-routing}
       (binding [tx/*use-routing-details* true]
-        (mt/dataset (mt/dataset-definition (routed-dataset-name driver/*driver*)
-                                           [["t"
-                                             [{:field-name "f", :base-type :type/Text}]
-                                             [["routed-foo"]
-                                              ["routed-bar"]]]])
+        (mt/dataset (routed-dataset driver/*driver*)
           (let [routed (mt/db)]
             (binding [tx/*use-routing-details* false]
-              (mt/dataset (mt/dataset-definition (router-dataset-name driver/*driver*)
-                                                 [["t"
-                                                   [{:field-name "f", :base-type :type/Text}]
-                                                   [["original-foo"]
-                                                    ["original-bar"]]]])
+              (mt/dataset (router-dataset driver/*driver*)
                 (let [router (mt/db)]
                   (t2/update! :model/Database (u/the-id routed)
                               {:details (merge (:details routed)

@@ -41,6 +41,12 @@ For example, if you're running Metabase from a directory called `/app/`, you sho
 
 The process for adding plugins when running via Docker is similar, but you'll need to mount the `plugins` directory. Refer to instructions [here](../../installation-and-operation/running-metabase-on-docker.md#adding-external-dependencies-or-plugins) for more details.
 
+## Writeable connection
+
+{% include plans-blockquote.html feature="Writeable connection" is_plural=true%}
+
+Set up an additional connection used for write operations. See [Writeable connections](../writeable-connection.md).
+
 ## Model features
 
 There aren't (yet) any model features for Vertica.
