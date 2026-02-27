@@ -25,9 +25,13 @@ import {
 } from "metabase-types/api/mocks";
 import { createMockState } from "metabase-types/store/mocks";
 
-jest.mock("metabase/lib/router", () => ({
-  push: jest.fn(() => () => {}),
-}));
+jest.mock("metabase/lib/router", () => {
+  const actual = jest.requireActual("metabase/lib/router");
+  return {
+    ...actual,
+    push: jest.fn(() => () => {}),
+  };
+});
 
 import { EmbeddingHub } from "./EmbeddingHub";
 

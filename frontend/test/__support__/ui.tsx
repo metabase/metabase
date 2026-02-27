@@ -23,6 +23,7 @@ import { UndoListing } from "metabase/common/components/UndoListing";
 import { baseStyle } from "metabase/css/core/base.styled";
 import { HistoryProvider } from "metabase/history";
 import { MetabaseReduxProvider } from "metabase/lib/redux";
+import { setHistory } from "metabase/lib/router";
 import { makeMainReducers } from "metabase/reducers-main";
 import { publicReducers } from "metabase/reducers-public";
 import { RouterProvider } from "metabase/router";
@@ -173,6 +174,7 @@ export function getTestStoreAndWrapper({
   const browserHistory = useRouterHistory(createMemoryHistory)({
     entries: [initialRoute],
   });
+  setHistory(browserHistory);
   const history = withRouter ? browserHistory : undefined;
 
   let reducers;
