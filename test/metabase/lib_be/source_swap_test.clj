@@ -188,6 +188,58 @@
                                     "Widget"]]}]}
               swapped-query)))))
 
+(deftest ^:parallel swap-source-in-query-implicit-join-table->card-test
+  (let [reviews-query  (lib/query meta/metadata-provider (meta/table-metadata :reviews))
+        mp             (lib.tu/metadata-provider-with-card-from-query 1 reviews-query)
+        query          (as-> (lib/query mp (meta/table-metadata :orders)) q
+                         (lib/filter q (lib/= (m/find-first #(= (:name %) "CATEGORY") (lib/filterable-columns q)) "Widget")))
+        upgraded-query (lib-be/upgrade-field-refs-in-query query)
+        swapped-query  (lib-be/swap-source-in-query upgraded-query
+                                                    {:type :table, :id (meta/id :orders)}
+                                                    {:type :card, :id 1})]
+    (testing "should preserve IDs for implicit join columns when upgrading"
+      (is (=? {:stages [{:source-table (meta/id :orders)
+                         :filters [[:= {}
+                                    [:field {:source-field (meta/id :orders :product-id)}
+                                     (meta/id :products :category)]
+                                    "Widget"]]}]}
+              upgraded-query)))
+    (testing "should return an identical query if upgrade is not needed"
+      (is (= upgraded-query (lib-be/upgrade-field-refs-in-query upgraded-query))))
+    (testing "should swap source-table to source-card and change source-field"
+      (is (=? {:stages [{:source-card 1
+                         :filters [[:= {}
+                                    [:field {:source-field (meta/id :reviews :product-id)}
+                                     (meta/id :products :category)]
+                                    "Widget"]]}]}
+              swapped-query)))))
+
+(deftest ^:parallel swap-source-in-query-implicit-join-card->table-test
+  (let [orders-query   (lib/query meta/metadata-provider (meta/table-metadata :orders))
+        mp             (lib.tu/metadata-provider-with-card-from-query 1 orders-query)
+        query          (as-> (lib/query mp (lib.metadata/card mp 1)) q
+                         (lib/filter q (lib/= (m/find-first #(= (:name %) "CATEGORY") (lib/filterable-columns q)) "Widget")))
+        upgraded-query (lib-be/upgrade-field-refs-in-query query)
+        swapped-query  (lib-be/swap-source-in-query upgraded-query
+                                                    {:type :card, :id 1}
+                                                    {:type :table, :id (meta/id :reviews)})]
+    (testing "should preserve IDs for implicit join columns when upgrading"
+      (is (=? {:stages [{:source-card 1
+                         :filters [[:= {}
+                                    [:field {:source-field (meta/id :orders :product-id)}
+                                     (meta/id :products :category)]
+                                    "Widget"]]}]}
+              upgraded-query)))
+    (testing "should return an identical query if upgrade is not needed"
+      (is (= upgraded-query (lib-be/upgrade-field-refs-in-query upgraded-query))))
+    (testing "should swap source-card to source-table and change source-field"
+      (is (=? {:stages [{:source-table (meta/id :reviews)
+                         :filters [[:= {}
+                                    [:field {:source-field (meta/id :reviews :product-id)}
+                                     (meta/id :products :category)]
+                                    "Widget"]]}]}
+              swapped-query)))))
+
 (defn- filter-all-columns
   "Add a not-null filter for every filterable column in the query."
   [query]
