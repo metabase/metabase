@@ -807,7 +807,7 @@
                       sql            (get-in updated-query [:stages 0 :native])
                       template-tags  (get-in updated-query [:stages 0 :template-tags])]
                   ;; SQL should have card reference without schema prefix or quotes
-                  (is (str/includes? sql (str "{{#" (:id new-source) "}}")))
+                  (is (str/includes? sql (str "{{#" (:id new-source) "-new-source-card}}")))
                   (is (not (re-find #"\"[{][{]#" sql))
                       "Card reference must not be quoted in SQL")
                   (is (not (str/includes? sql "PUBLIC.{{"))

@@ -87,7 +87,7 @@ export function canReplaceSource(
 export function getSuccessMessage(dependentsCount: number) {
   return ngettext(
     msgid`Updated ${dependentsCount} item`,
-    msgid`Updated ${dependentsCount} items`,
+    `Updated ${dependentsCount} items`,
     dependentsCount,
   );
 }
