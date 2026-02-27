@@ -18,6 +18,7 @@
    [metabase.lib.util :as lib.util]
    [metabase.lib.walk :as lib.walk]
    [metabase.util :as u]
+   [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [metabase.util.performance :as perf]))
@@ -196,12 +197,14 @@
   "If the parameter target is a field ref, upgrade it to use a name-based field ref when possible."
   [query  :- ::lib.schema/query
    target :- ::lib.schema.parameter/target]
-  (or (when (lib.parameters/parameter-target-field-ref target)
-        (when-let [stage-number (parameter-target-stage-number query target)]
-          (lib.parameters/update-parameter-target-field-ref
-           target
-           #(upgrade-field-ref query stage-number %))))
-      target))
+  (let [result (or (when (lib.parameters/parameter-target-field-ref target)
+                     (when-let [stage-number (parameter-target-stage-number query target)]
+                       (lib.parameters/update-parameter-target-field-ref
+                        target
+                        #(upgrade-field-ref query stage-number %))))
+                   target)]
+    (log/warnf "upgrade-field-ref-in-parameter-target\nbefore: %s\nafter:  %s" (pr-str target) (pr-str result))
+    result))
 
 ;;; ------------------------------------------------ swap-source -------------------------------------------------------
 
@@ -212,21 +215,21 @@
   [query                                      :- ::lib.schema/query
    {old-source-id :id, old-source-type :type} :- ::swap-source.source
    {new-source-id :id, new-source-type :type} :- ::swap-source.source]
-  (if-not (= new-source-type :table)
-    {}
-    (let [old-fields       (case old-source-type
-                             :table (lib.metadata/fields query old-source-id)
-                             :card  (lib.card/saved-question-metadata query old-source-id))
-          new-fields       (lib.metadata/fields query new-source-id)
-          new-field-by-key (m/index-by column-match-key new-fields)]
-      (into {}
-            (keep (fn [old-field]
-                    (when-let [new-field (get new-field-by-key (column-match-key old-field))]
-                      (let [old-field-id (:id old-field)
-                            new-field-id (:id new-field)]
-                        (when (and (some? old-field-id) (some? new-field-id))
-                          [old-field-id new-field-id])))))
-            old-fields))))
+  (let [source-fields (fn [source-type source-id]
+                        (case source-type
+                          :table (lib.metadata/fields query source-id)
+                          :card  (lib.card/saved-question-metadata query source-id)))
+        old-fields       (source-fields old-source-type old-source-id)
+        new-fields       (source-fields new-source-type new-source-id)
+        new-field-by-key (m/index-by column-match-key new-fields)]
+    (into {}
+          (keep (fn [old-field]
+                  (when-let [new-field (get new-field-by-key (column-match-key old-field))]
+                    (let [old-field-id (:id old-field)
+                          new-field-id (:id new-field)]
+                      (when (and (some? old-field-id) (some? new-field-id))
+                        [old-field-id new-field-id])))))
+          old-fields)))
 
 (mu/defn- swap-source-table-or-card :- ::lib.schema/stage
   [{:keys [source-table source-card], :as stage} :- ::lib.schema/stage
