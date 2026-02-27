@@ -157,6 +157,15 @@
                                                         :with-metrics? false})
                     llm-rep/model->xml))
 
+(defn- format-chart-config-ids
+  "Format chart config IDs for a viewing context item.
+  Returns a string describing available chart config IDs, or nil if no chart configs are present."
+  [{:keys [id chart_configs]}]
+  (when (seq chart_configs)
+    (if (= 1 (count chart_configs))
+      (str id)
+      (str/join ", " (map-indexed (fn [idx _] (str id "-" idx)) chart_configs)))))
+
 (defmethod format-entity "question"
   [entity]
   (if (native-query-item? entity)
@@ -183,15 +192,6 @@
                     llm-rep/dashboard->xml))
 
 ;;; Viewing Context Formatting
-
-(defn- format-chart-config-ids
-  "Format chart config IDs for a viewing context item.
-  Returns a string describing available chart config IDs, or nil if no chart configs are present."
-  [{:keys [id chart_configs]}]
-  (when (seq chart_configs)
-    (if (= 1 (count chart_configs))
-      (str id)
-      (str/join ", " (map-indexed (fn [idx _] (str id "-" idx)) chart_configs)))))
 
 ;; Format adhoc query (notebook editor) viewing context.
 (defmethod format-entity "adhoc"

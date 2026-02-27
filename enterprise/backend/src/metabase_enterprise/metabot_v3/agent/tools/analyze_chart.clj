@@ -9,9 +9,30 @@
    [metabase-enterprise.metabot-v3.stats.core :as stats.core]
    [metabase-enterprise.metabot-v3.stats.repr :as stats.repr]
    [metabase.util.log :as log]
-   [metabase.util.malli :as mu]))
+   [metabase.util.malli :as mu]
+   [tech.v3.resource :as resource]))
 
 (set! *warn-on-reflection* true)
+
+(def ^:private interpretation-guidance
+  "Tell users what the data MEANS. They can see the chart.
+
+**[Insight]**: [1-2 sentences with **bold numbers**]. [What to do about it.]
+
+RULES:
+- Lead with the single most important finding
+- One supporting bullet only if critical
+- 2-3 sentences for routine patterns; expand only for genuine surprises
+- If nothing notable, say so briefly and stop
+- Connect timeline events to data changes only if the effect is visible
+- If you see a **Note** about small values, high variance, or limited data, be cautious.
+  The chart visual is the source of truth.
+
+GOOD: \"Revenue dropped **42%** after the pricing change — investigate Q4 deals.\"
+GOOD: \"Data fluctuates with no clear trend. Small values make percentages unreliable.\"
+BAD: \"The mean is 45.2 with std dev 12.8. The trend shows -15% overall change...\"
+
+Do not use headers (##). Do not list statistics. Do not analyze series separately.")
 
 (defn- resolve-chart-config-from-memory
   "Resolve a chart-config-id from agent memory into chart configuration.
@@ -33,15 +54,17 @@
        [:deep {:optional true :default true} [:maybe :boolean]]]]
   (try
     (if-let [chart-config (resolve-chart-config-from-memory chart_config_id)]
-      (let [{:keys [timeline_events title display_type]} chart-config
-            opts  {:deep? (if (nil? deep) true (boolean deep))}
-            stats (stats.core/compute-chart-stats chart-config opts)
-            context {:title           title
-                     :display-type    display_type
-                     :stats           stats
-                     :timeline-events timeline_events}
-            representation (stats.repr/generate-representation context)]
-        {:output representation})
+      ;; Wrap TMD operations in resource context to ensure off-heap memory is released
+      (resource/stack-resource-context
+       (let [{:keys [timeline_events title display_type]} chart-config
+             opts  {:deep? (if (nil? deep) true (boolean deep))}
+             stats (stats.core/compute-chart-stats chart-config opts)
+             context {:title           title
+                      :display-type    display_type
+                      :stats           stats
+                      :timeline-events timeline_events}
+             representation (stats.repr/generate-representation context)]
+         {:output (str representation "\n\n---\n\n" interpretation-guidance)}))
       {:output (str "Chart config not found: " chart_config_id
                     ". Available chart configs can be found in the viewing context.")})
     (catch Exception e
