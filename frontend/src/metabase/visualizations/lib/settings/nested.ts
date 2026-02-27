@@ -171,7 +171,7 @@ export function nestedSettings<
     },
     widget,
     ...def,
-  };
+  } as SeriesSettingDefinition<Value, TProps & { id: string }>;
 
   const objectDef: SeriesSettingDefinition = {
     getDefault(series, settings, extra) {
