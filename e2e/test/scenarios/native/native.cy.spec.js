@@ -595,9 +595,7 @@ describe("scenarios > question > native", () => {
     });
     H.NativeEditor.focus();
 
-    const isMac = Cypress.platform === "darwin";
-    const metaKey = isMac ? "Meta" : "Control";
-    cy.realPress([metaKey, "Enter"]);
+    cy.realPress([H.metaKey, "Enter"]);
 
     cy.wait("@dataset");
 
@@ -615,9 +613,7 @@ describe("scenarios > question > native", () => {
     });
     H.NativeEditor.focus();
 
-    const isMac = Cypress.platform === "darwin";
-    const metaKey = isMac ? "Meta" : "Control";
-    cy.realPress(["Shift", metaKey, "f"]);
+    cy.realPress(["Shift", H.metaKey, "f"]);
 
     H.NativeEditor.value().should(
       "contain",

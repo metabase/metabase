@@ -1,21 +1,19 @@
 import { createMockMetadata } from "__support__/metadata";
 import * as Lib from "metabase-lib";
-import { SAMPLE_DATABASE, createQuery } from "metabase-lib/test-helpers";
-import type { DatasetQuery, Join } from "metabase-types/api";
+import {
+  DEFAULT_TEST_QUERY,
+  SAMPLE_PROVIDER,
+  createMetadataProvider,
+} from "metabase-lib/test-helpers";
 import {
   createMockDatabase,
   createMockField,
   createMockTable,
 } from "metabase-types/api/mocks";
-import {
-  ORDERS,
-  ORDERS_ID,
-  REVIEWS,
-  REVIEWS_ID,
-} from "metabase-types/api/mocks/presets";
+import { ORDERS_ID, REVIEWS_ID } from "metabase-types/api/mocks/presets";
 
 import { columnsForExpressionMode } from "../mode";
-import { queryWithAggregation, sharedMetadata } from "../test/shared";
+import { queryWithAggregation, sharedProvider } from "../test/shared";
 
 import { complete } from "./__support__";
 import { suggestFields } from "./fields";
@@ -52,17 +50,16 @@ describe("suggestFields", () => {
       tables: [TABLE],
     });
 
-    const query = createQuery({
+    const metadata = createMockMetadata({ databases: [DATABASE] });
+    const provider = createMetadataProvider({
       databaseId: DATABASE.id,
-      metadata: createMockMetadata({ databases: [DATABASE] }),
-      query: {
-        database: DATABASE.id,
-        type: "query",
-        query: {
-          "source-table": TABLE.id,
-        },
-      },
+      metadata,
     });
+
+    const query = Lib.createTestQuery(provider, {
+      stages: [{ source: { type: "table", id: TABLE.id } }],
+    });
+
     const stageIndex = 0;
     const expressionIndex = 0;
     const source = suggestFields({
@@ -182,7 +179,7 @@ describe("suggestFields", () => {
   });
 
   it("should suggest foreign fields", () => {
-    const query = createQuery();
+    const query = Lib.createTestQuery(SAMPLE_PROVIDER, DEFAULT_TEST_QUERY);
     const stageIndex = -1;
     const source = suggestFields({
       query,
@@ -317,28 +314,33 @@ describe("suggestFields", () => {
   });
 
   it("should suggest joined fields", async () => {
-    const JOIN_CLAUSE: Join = {
-      alias: "Foo",
-      ident: "pbHOWTxjodLToOUnFJe_k",
-      "source-table": REVIEWS_ID,
-      condition: [
-        "=",
-        ["field", REVIEWS.PRODUCT_ID, null],
-        ["field", ORDERS.PRODUCT_ID, null],
+    const query = Lib.createTestQuery(sharedProvider, {
+      stages: [
+        {
+          source: { type: "table", id: ORDERS_ID },
+          joins: [
+            {
+              source: { type: "table", id: REVIEWS_ID },
+              strategy: "left-join",
+              conditions: [
+                {
+                  operator: "=",
+                  left: {
+                    type: "column",
+                    sourceName: "ORDERS",
+                    name: "PRODUCT_ID",
+                  },
+                  right: {
+                    type: "column",
+                    sourceName: "REVIEWS",
+                    name: "PRODUCT_ID",
+                  },
+                },
+              ],
+            },
+          ],
+        },
       ],
-    };
-    const queryWithJoins: DatasetQuery = {
-      database: SAMPLE_DATABASE.id,
-      type: "query",
-      query: {
-        "source-table": ORDERS_ID,
-        joins: [JOIN_CLAUSE],
-      },
-    };
-
-    const query = createQuery({
-      metadata: sharedMetadata,
-      query: queryWithJoins,
     });
     const stageIndex = -1;
     const source = suggestFields({
@@ -351,48 +353,58 @@ describe("suggestFields", () => {
       }),
     });
 
-    complete(source, "Foo|");
-
-    const result = await complete(source, "Foo|");
+    const result = await complete(source, "Body|");
 
     expect(result).toEqual({
       from: 0,
-      to: 3,
+      to: 4,
       options: expect.any(Array),
     });
 
     expect(result?.options[0]).toEqual({
-      displayLabel: "Foo → Body",
-      label: "[Foo → Body]",
+      displayLabel: "Reviews - Product → Body",
+      label: "[Reviews - Product → Body]",
       type: "field",
       icon: "string",
       column: expect.any(Object),
-      matches: [[0, 2]],
+      matches: [
+        [12, 13],
+        [20, 23],
+      ],
     });
     expect(result?.options[1]).toEqual({
-      displayLabel: "Foo → ID",
-      label: "[Foo → ID]",
+      displayLabel: "Product ID",
+      label: "[Product ID]",
       type: "field",
-      icon: "label",
+      icon: "connections",
       column: expect.any(Object),
-      matches: [[0, 2]],
+      matches: [
+        [2, 3],
+        [9, 9],
+      ],
     });
   });
 
   it("should suggest nested query fields", () => {
-    const datasetQuery: DatasetQuery = {
-      database: SAMPLE_DATABASE.id,
-      type: "query",
-      query: {
-        "source-table": ORDERS_ID,
-        aggregation: [["count"]],
-        breakout: [["field", ORDERS.TOTAL, null]],
-      },
-    };
-
-    const queryWithAggregation = createQuery({
-      metadata: sharedMetadata,
-      query: datasetQuery,
+    const queryWithAggregation = Lib.createTestQuery(SAMPLE_PROVIDER, {
+      stages: [
+        {
+          source: { type: "table", id: ORDERS_ID },
+          aggregations: [
+            {
+              type: "operator",
+              operator: "count",
+            },
+          ],
+          breakouts: [
+            {
+              type: "column",
+              sourceName: "ORDERS",
+              name: "TOTAL",
+            },
+          ],
+        },
+      ],
     });
 
     const query = Lib.appendStage(queryWithAggregation);

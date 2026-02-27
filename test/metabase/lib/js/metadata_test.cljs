@@ -89,3 +89,14 @@
   (testing "other lib/source values are handled correctly"
     (let [column (lib.js.metadata/parse-column #js {"name" "id", "lib/source" "source/table-defaults"})]
       (is (= :source/table-defaults (:lib/source column))))))
+
+(deftest ^:parallel database-local-settings-test
+  (testing "JS metadata provider should return database-local Settings over global ones"
+    (let [metadata #js {:databases #js {"1" #js {:id 1
+                                                 :engine "h2"
+                                                 :name "test-db"
+                                                 :settings #js {:unaggregated-query-row-limit 1234}}}
+                        :settings  #js {:unaggregated-query-row-limit 2000}}
+          mp (lib.js.metadata/metadata-provider 1 metadata)]
+      (is (= 1234
+             (lib.metadata/setting mp :unaggregated-query-row-limit))))))
