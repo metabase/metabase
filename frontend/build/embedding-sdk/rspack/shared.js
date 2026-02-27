@@ -9,12 +9,5 @@ module.exports.OPTIMIZATION_CONFIG = {
   minimize: !IS_DEV_MODE,
   minimizer: mainConfig.optimization.minimizer,
 
-  // splitChunks is false — the chunked entries use `dependOn` for module dedup instead
   splitChunks: false,
-
-  // Scope hoisting: merges ES modules into fewer closures, reducing parse overhead
-  concatenateModules: true,
-
-  // Avoid wrapping entry points in an IIFE — removes unnecessary function wrapper
-  avoidEntryIife: true,
 };
