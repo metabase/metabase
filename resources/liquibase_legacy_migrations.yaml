@@ -5,6 +5,7 @@
 # In order to keep instances running metabase < 45 able to upgrade to the latest, we need to keep this file here.
 
 databaseChangeLog:
+  - logicalFilePath: migrations/000_legacy_migrations.yaml
   - property:
       name: timestamp_type
       value: timestamp with time zone

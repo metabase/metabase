@@ -29,11 +29,11 @@
    (liquibase.changelog.filter AlreadyRanChangeSetFilter ChangeSetFilter ChangeSetFilterResult DbmsChangeSetFilter IgnoreChangeSetFilter)
    (liquibase.changelog.visitor AbstractChangeExecListener ChangeExecListener UpdateVisitor)
    (liquibase.command.core AbstractRollbackCommandStep)
-   (liquibase.database Database DatabaseFactory)
+   (liquibase.database Database DatabaseFactory ObjectQuotingStrategy)
    (liquibase.database.jvm JdbcConnection)
    (liquibase.exception LockException)
    (liquibase.lockservice LockService LockServiceFactory)
-   (liquibase.resource ClassLoaderResourceAccessor)))
+   (liquibase.resource ClassLoaderResourceAccessor ResourceAccessor)))
 
 (set! *warn-on-reflection* true)
 
@@ -62,6 +62,34 @@
   ;; we can't use `java.io.OutputStream/nullOutputStream` here because it's not available on Java 8
   (.setOutputStream (java.io.PrintStream. (org.apache.commons.io.output.NullOutputStream.))))
 
+(def ^:private special-case-migrations #{"v56.2025-06-05T16:48:48" "v56.2025-05-19T16:48:48"})
+
+(defn- handle-special-case-migrations
+  "This handles v56 migrations that were checked into the v55 branch to resolve an issue with
+  inadventently backported migrations in 55. We check if this or the bad backports are the most recent
+  available migration and explicitly return 55 as the available major version if so."
+  [s]
+  (when (contains? special-case-migrations s)
+    55))
+
+(defn- extract-major-version-from-path
+  "Extracts the major version number from a migration file path.
+   Handles both monolithic (migrations/NNN_*.yaml) and directory-based (migrations/NNN/*.yaml) paths."
+  [path]
+  (when-let [[_ version-str] (re-find #"migrations/(\d{3})[_/]" path)]
+    (parse-long version-str)))
+
+(defn- extract-major-version
+  "Extracts major version from a changeset, trying the ID first (for monolithic files
+  where IDs are like 'v55.2025-...'), then falling back to the file path (for directory-based
+  files where IDs are simple integers). Also handles special-case migrations."
+  [changeset-id file-path]
+  (let [id-str (str changeset-id)]
+    (or (handle-special-case-migrations id-str)
+        (if-let [[_ version-str] (re-find #"^v(\d+)\." id-str)]
+          (parse-long version-str)
+          (extract-major-version-from-path file-path)))))
+
 (def ^{:private true
        :doc     "Liquibase setting used for upgrading instances running version < 45."}
   ^String changelog-legacy-file "liquibase_legacy.yaml")
@@ -87,28 +115,26 @@
   [^Connection conn ^Database database]
   (if (fresh-install? conn database)
     changelog-file
-    (let [latest-migration (->> (jdbc/query {:connection conn}
-                                            [(format "select id from %s order by dateexecuted desc limit 1"
-                                                     (.getDatabaseChangeLogTableName database))])
-                                first
-                                :id)]
+    (let [{:keys [id filename]} (->> (jdbc/query {:connection conn}
+                                                 [(format "select id, filename from %s order by dateexecuted desc limit 1"
+                                                          (.getDatabaseChangeLogTableName database))])
+                                     first)
+          version (when id (extract-major-version id filename))]
       (cond
-        (nil? latest-migration)
+        (nil? id)
         changelog-file
 
         ;; post-44 installation downgraded to 45
-        (= latest-migration "v00.00-000")
+        (= id "v00.00-000")
         changelog-file
 
-        ;; pre 42
-        (not (str/starts-with? latest-migration "v"))
-        changelog-legacy-file
-
-        (< (->> latest-migration (re-find #"v(\d+)\..*") second parse-long) 45)
-        changelog-legacy-file
+        ;; directory-based migrations (IDs are simple integers, version comes from file path)
+        ;; or monolithic v45+ migrations — use the current changelog
+        (and version (>= version 45))
+        changelog-file
 
         :else
-        changelog-file))))
+        changelog-legacy-file))))
 
 (defn- liquibase-connection ^JdbcConnection [^Connection jdbc-connection]
   (JdbcConnection. jdbc-connection))
@@ -122,10 +148,11 @@
     (.findCorrectDatabaseImplementation (DatabaseFactory/getInstance) liquibase-conn)))
 
 (defn- liquibase ^Liquibase [^Connection conn ^Database database]
-  (Liquibase.
-   ^String (decide-liquibase-file conn database)
-   (ClassLoaderResourceAccessor. (classloader/the-classloader))
-   database))
+  (u/prog1 (Liquibase.
+            ^String (decide-liquibase-file conn database)
+            (ClassLoaderResourceAccessor. (classloader/the-classloader))
+            database)
+    (.setObjectQuotingStrategy (.getDatabaseChangeLog <>) ObjectQuotingStrategy/QUOTE_ALL_OBJECTS)))
 
 (mu/defn do-with-liquibase
   "Impl for [[with-liquibase-macro]]."
@@ -474,20 +501,10 @@
         (with-scope-locked liquibase
           (jdbc/execute!
            conn-spec
-           [(format "UPDATE %s SET FILENAME = CASE WHEN ID = ? THEN ? WHEN ID < ? THEN ? WHEN ID < ? THEN ? ELSE FILENAME END" liquibase-table-name)
+           [(format "UPDATE %s SET FILENAME = CASE WHEN ID = ? THEN ? WHEN ID < ? THEN ? WHEN ID < ? THEN ? ELSE FILENAME END WHERE ID LIKE 'v%%'" liquibase-table-name)
             "v00.00-000" update001-migrations-file
             "v45.00-001" legacy-migrations-file
             "v56.0000-00-00T00:00:00" update001-migrations-file]))))))
-
-(def ^:private special-case-migrations #{"v56.2025-06-05T16:48:48" "v56.2025-05-19T16:48:48"})
-
-(defn- handle-special-case-migrations
-  "This handles v56 migrations that were checked into the v55 branch to resolve an issue with
-  inadventently backported migrations in 55. We check if this or the bad backports are the most recent
-  available migration and explicitly return 55 as the available major version if so."
-  [s]
-  (when (contains? special-case-migrations s)
-    55))
 
 (defn- extract-numbers
   "Returns contiguous integers parsed from string s"
@@ -499,22 +516,17 @@
 (defn latest-available-major-version
   "Get the latest version that Liquibase would apply if we ran migrations right now."
   [^Liquibase liquibase]
-  (->> liquibase
-       (.getDatabaseChangeLog)
-       (.getChangeSets)
-       last
-       (#(.getId ^ChangeSet %))
-       extract-numbers
-       first))
+  (when-let [^ChangeSet cs (last (.getChangeSets (.getDatabaseChangeLog liquibase)))]
+    (extract-major-version (.getId cs) (.getFilePath cs))))
 
 (defn latest-applied-major-version
   "Gets the latest version applied to the database."
   [conn ^Database database]
   (when-not (fresh-install? conn database)
-    (let [changeset-query (format "SELECT id FROM %s WHERE id LIKE 'v%%' ORDER BY id DESC LIMIT 1"
-                                  (.getDatabaseChangeLogTableName database))
-          changeset-id (last (map :id (jdbc/query {:connection conn} [changeset-query])))]
-      (some-> changeset-id extract-numbers first))))
+    (let [query (format "SELECT ID, FILENAME FROM %s ORDER BY DATEEXECUTED DESC, ORDEREXECUTED DESC LIMIT 1"
+                        (.getDatabaseChangeLogTableName database))
+          {:keys [id filename]} (first (jdbc/query {:connection conn} [query]))]
+      (some-> id (extract-major-version filename)))))
 
 (defn rollback-major-version!
   "Roll back migrations later than given Metabase major version. If force is true, it will ignore any checks and always
@@ -531,12 +543,15 @@
              (format "target version must be a number between 44 and the previous major version (%d), inclusive"
                      (config/current-major-version)))))
    (with-scope-locked liquibase
-     ;; count and rollback only the applied change set ids which come after the target version (only the "v..." IDs need
-     ;; to be considered)
-     (let [changeset-query (format "SELECT id FROM %s WHERE id LIKE 'v%%'" (changelog-table-name liquibase))
-           changeset-ids   (map :id (jdbc/query {:connection conn} [changeset-query]))
-           ;; IDs in changesets do not include the leading 0/1 digit, so the major version is the first number
-           ids-to-drop     (set (filter #(< target-version (first (extract-numbers %))) changeset-ids))
+     ;; count and rollback only the applied change set ids which come after the target version
+     ;; handles both monolithic (v55.xxx IDs) and directory-based (simple integer IDs with versioned file paths)
+     (let [changeset-query (format "SELECT ID, FILENAME FROM %s" (changelog-table-name liquibase))
+           all-changesets  (jdbc/query {:connection conn} [changeset-query])
+           ids-to-drop     (set (keep (fn [{:keys [id filename]}]
+                                        (when-let [version (extract-major-version id filename)]
+                                          (when (< target-version version)
+                                            id)))
+                                      all-changesets))
            latest-available (latest-available-major-version liquibase)
            latest-applied   (latest-applied-major-version conn (.getDatabase liquibase))
            lb-db (.getDatabase liquibase)

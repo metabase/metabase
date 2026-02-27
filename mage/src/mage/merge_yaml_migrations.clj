@@ -183,6 +183,10 @@
      :cnt (count sorted-merged)}))
 
 ;;
+;; Custom merge driver for monolithic *_update_migrations.yaml files.
+;; Directory-based migrations (e.g. 060/*.yaml) have one file per migration
+;; and should use git's default merge strategy.
+;;
 ;; Usage (called by git):
 ;;   merge-yaml-migrations %O %A %B %L %P
 ;;   %O = ancestor's version (base)
@@ -209,6 +213,11 @@
                          p
                          (str u/project-root-directory "/" p)))
         [base ours theirs marker-size filepath] arguments
+        _ (when (and filepath (not (str/ends-with? filepath "_update_migrations.yaml")))
+            (binding [*out* *err*]
+              (println "merge-yaml-migrations is only for monolithic *_update_migrations.yaml files, not:" filepath)
+              (println "Falling back to git's default merge."))
+            (u/exit 1))
         base (resolve-path base)
         ours (resolve-path ours)
         theirs (resolve-path theirs)

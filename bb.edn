@@ -162,6 +162,13 @@
              (p/shell "bin/pre-lint-migrations-file.sh")
              (lint-migrations-file/-main))}
 
+  new-migration
+  {:doc "Create a new directory-based migration file (v60+)"
+   :requires [[mage.new-migration :as new-migration]]
+   :examples [["./bin/mage new-migration 60" "Create a timestamped migration file in resources/migrations/060/"]]
+   :arg-schema [:tuple [:int {:name "version" :description "Major version number (e.g., 60)"}]]
+   :task (task! (new-migration/new-migration parsed))}
+
   jar-download
   {:doc "Download (and optionally run) jar for a metabase version or branch"
    :examples [["./bin/mage jar-download 50" "Download the latest enterprise version of release 50 to ~/path/to/my/metabase/jars"]
@@ -302,7 +309,7 @@
                     "If you see 'gh: command not found' or auth errors, run: gh auth login"))
    :requires [[mage.ci-report :as ci-report]]
    :task (task! (ci-report/generate-report! parsed))}
-  
+
   ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
   ;; Private Tasks:
   ;; These tasks are more for internal tooling, e.g. for use from git hooks etc.

@@ -36,11 +36,11 @@
     (throw (validation-error "Missing `databaseChangeLog` key."))))
 
 (defn- change-set-ids
-  "Returns all the change set ids given a change-log."
+  "Returns all the change set ids given a change-log. IDs are always returned as strings."
   [change-log]
   (for [{{id :id} :changeSet} change-log
         :when id]
-    id))
+    (str id)))
 
 (defn- require-distinct-change-set-ids [change-log]
   (let [ids (change-set-ids change-log)
@@ -52,26 +52,67 @@
     (when (seq duplicates)
       (throw (validation-error "Change set IDs are not distinct." {:duplicates duplicates})))))
 
-(defn- require-change-set-ids-in-order [change-log]
-  (let [ids (change-set-ids change-log)
-        out-of-order-ids (->> ids
-                              (partition 2 1)
-                              (filter (fn [[id1 id2]]
-                                        (pos? (compare id1 id2)))))]
+(defn- directory-based-migration-file?
+  "Returns true if the file is a directory-based migration file (e.g., `060/20260106_125531.yaml`)."
+  [file]
+  (boolean (re-matches #".*\d{3}/\d{8}_\d{6}\.yaml$" (str file))))
 
-    (when (seq out-of-order-ids)
-      (throw (validation-error "Change set IDs are not in order"
-                               {:out-of-order-ids out-of-order-ids})))))
+(defn- file-version
+  "Extracts the migration version number from a file.
+  For monolithic files like `059_update_migrations.yaml`, parses from the filename.
+  For directory-based files like `060/20260106_125531.yaml`, parses from the parent directory name."
+  [^java.io.File file]
+  (if (directory-based-migration-file? file)
+    (parse-long (re-find #"\d+" (.getName (.getParentFile file))))
+    (parse-long (re-find #"\d+" (.getName file)))))
+
+(defn- changeset-version+id
+  "Returns [version local-id] for a changeset.
+  For monolithic IDs like 'v49.00-032', parses from the ID itself.
+  For directory-based files, uses the directory for version and filename (without .yaml) for local-id."
+  [file changeset-id]
+  (let [id-str (str changeset-id)]
+    (if (directory-based-migration-file? file)
+      [(file-version file)
+       (str/replace (.getName ^java.io.File file) #"\.yaml$" "")]
+      (when-let [[_ version local-id] (re-matches #"^v(\d+)\.(.+)$" id-str)]
+        [(parse-long version) local-id]))))
+
+(defn- changeset-at-or-after?
+  "Returns true if the changeset (identified by file context and changeset ID) is at or after
+  the given [threshold-version threshold-id]."
+  [file changeset-id threshold-version threshold-id]
+  (when-let [[v local-id] (changeset-version+id file changeset-id)]
+    (or (> v threshold-version)
+        (and (= v threshold-version)
+             (not (neg? (compare local-id threshold-id)))))))
+
+(defn- require-change-set-ids-in-order [change-log file]
+  (when-not (directory-based-migration-file? file)
+    (let [ids              (change-set-ids change-log)
+          out-of-order-ids (->> ids
+                                (partition 2 1)
+                                (filter (fn [[id1 id2]]
+                                          (pos? (compare id1 id2)))))]
+      (when (seq out-of-order-ids)
+        (throw (validation-error "Change set IDs are not in order"
+                                 {:out-of-order-ids out-of-order-ids}))))))
 
 (defn- require-change-set-ids-in-correct-file [change-log file]
-  (let [file-version (parse-long (re-find #"\d+" (.getName file)))
+  (let [fv  (file-version file)
         ids (change-set-ids change-log)
-        wrong-file-ids (->> ids
-                            (filter (fn [id]
-                                      (let [id-version (parse-long (re-find #"\d+" id))]
-                                        (if (= file-version 1)
-                                          (> id-version 55)
-                                          (not= file-version id-version))))))]
+        dir-based? (directory-based-migration-file? file)
+        wrong-file-ids
+        (if dir-based?
+          ;; For directory-based files, IDs don't encode version,
+          ;; so there's nothing to cross-check against the file version.
+          []
+          (->> ids
+               (filter (fn [id]
+                         (let [id-version (parse-long (re-find #"\d+" id))]
+                           (if (= fv 1)
+                             (> id-version 55)
+                             (not= fv id-version)))))))]
     (when (seq wrong-file-ids)
       (throw (validation-error "Change set IDs are in the wrong file"
                                {:wrong-file-ids wrong-file-ids})))))
@@ -101,18 +142,19 @@
   (some #(check-change-use-types? target-types %) (get-in change-set [:changeSet :changes])))
 
 (defn- require-no-types-in-change-log!
-  "Returns true if none of the changes in the change-log contain usage of any type specified in `target-types`.
-
-  `id-filter-fn` is a function that takes an ID and return true if the changeset should be checked."
+  "Throws if any changeset at or after [version id] uses a type in target-types.
+  When version and id are not provided, checks all changesets."
   ([target-types change-log]
-   (require-no-types-in-change-log! target-types change-log (constantly true)))
-  ([target-types change-log id-filter-fn]
+   (require-no-types-in-change-log! target-types change-log nil nil nil))
+  ([target-types change-log file version id]
    {:pre [(set? target-types)]}
    (when-let [using-types? (->> change-log
                                 (filter (fn [change-set]
-                                          (let [id (get-in change-set [:changeSet :id])]
-                                            (and (string? id)
-                                                 (id-filter-fn id)))))
+                                          (let [cs-id (get-in change-set [:changeSet :id])]
+                                            (and cs-id
+                                                 (if version
+                                                   (changeset-at-or-after? file cs-id version id)
+                                                   true)))))
                                 (filter #(check-change-set-use-types? target-types %))
                                 (map #(get-in % [:changeSet :id]))
                                 seq)]
@@ -124,25 +166,38 @@
              {:invalid-ids using-types?
               :target-types target-types})))))
 
-(defn require-no-bare-blob-or-text-types
+(defn- require-no-bare-blob-or-text-types
   "Ensures that no \"text\" or \"blob\" type columns are added in any changesets."
   [change-log]
   (require-no-types-in-change-log! #{"blob" "text"} change-log))
 
-(defn require-no-bare-boolean-types
-  "Ensures that no \"boolean\" type columns are added in changesets with id later than v49.00-032. From that point on,
-  \"${boolean.type}\" should be used instead, so that we can consistently use `BIT(1)` for Boolean columns on MySQL."
-  [change-log]
-  (require-no-types-in-change-log! #{"boolean"} change-log #(pos? (compare % "v49.00-032"))))
+(defn- require-no-bare-boolean-types
+  "Ensures that no \"boolean\" type columns are added in changesets at or after v49.00-032."
+  [change-log file]
+  (require-no-types-in-change-log! #{"boolean"} change-log file 49 "00-032"))
 
-(defn require-no-datetime-type
-  "Ensures that no \"datetime\" or \"timestamp without time zone\".
-  From that point on, \"${timestamp_type}\" should be used instead, so that all of our time related columns are tz-aware."
-  [change-log]
+(defn- require-no-datetime-type
+  "Ensures that no \"datetime\" or \"timestamp without time zone\" types are used at or after v49.00-000."
+  [change-log file]
   (require-no-types-in-change-log!
    #{"datetime" "timestamp" "timestamp without time zone"}
-   change-log
-   #(pos? (compare % "v49.00-000"))))
+   change-log file 49 "00-000"))
+
+(defn- require-change-set-ids-match-file-format
+  "Enforces that changeset IDs use the correct format for the file type:
+  - Directory-based files (v60+): any string ID is allowed
+  - 001_update_migrations.yaml: any string ID is allowed (legacy file)
+  - Other monolithic files: IDs must match the timestamp format"
+  [change-log file]
+  (when-not (or (directory-based-migration-file? file)
+                (= (file-version file) 1))
+    (let [ids     (change-set-ids change-log)
+          bad-ids (remove #(re-matches change-set.strict/id-timestamp-format-re %) ids)]
+      (when (seq bad-ids)
+        (throw (validation-error
+                (format "Monolithic migration file contains non-timestamp ID formats: %s"
+                        (str/join ", " bad-ids))
+                {:invalid-ids (vec bad-ids)}))))))
 
 (defn require-primary-key-exists-has-table-name
   "Ensures that all primaryKeyExists preconditions specify a tableName."
@@ -171,10 +226,11 @@
 
   (require-distinct-change-set-ids change-log)
   (require-change-set-ids-in-correct-file change-log file)
-  (require-change-set-ids-in-order change-log)
+  (require-change-set-ids-in-order change-log file)
+  (require-change-set-ids-match-file-format change-log file)
   (require-no-bare-blob-or-text-types change-log)
-  (require-no-bare-boolean-types change-log)
-  (require-no-datetime-type change-log)
+  (require-no-bare-boolean-types change-log file)
+  (require-no-datetime-type change-log file)
   (require-primary-key-exists-has-table-name change-log)
   (let [{:keys [changeSet]
          :as all} (group-by only-key change-log)]
@@ -195,7 +251,14 @@
   (let [dir-str #?(:bb "resources/migrations" :clj "../../resources/migrations")
         dir (io/file dir-str)]
     (->> (file-seq dir)
-         (filter #(and (.isFile %) (str/ends-with? (.getName %) "_update_migrations.yaml"))))))
+         (filter (fn [^java.io.File f]
+                   (and (.isFile f)
+                        (or
+                         ;; Monolithic files: 059_update_migrations.yaml
+                         (str/ends-with? (.getName f) "_update_migrations.yaml")
+                         ;; Directory-based files: 060/20260106_125531.yaml
+                         (directory-based-migration-file? f)))))
+         (sort-by str))))
 
 (defn- migrations [file]
   (assert (.exists file) (format "%s does not exist" file))
@@ -207,13 +270,22 @@
     (fix-vals (yaml/parse-string
                #_:clj-kondo/ignore (slurp file)))))
 
+(defn- display-name
+  "Returns a human-readable name for a migration file.
+  For monolithic files, returns just the filename.
+  For directory-based files, returns `parent/filename`."
+  [^java.io.File file]
+  (if (directory-based-migration-file? file)
+    (str (.getName (.getParentFile file)) "/" (.getName file))
+    (.getName file)))
+
 (defn- validate-all []
   (doseq [file (migration-files)]
-    (println "Validating" (.getName file) "...")
+    (println "Validating" (display-name file) "...")
     (try
       (validate-migrations (migrations file) file)
       (catch ExceptionInfo e
-        (throw (ex-info (.getMessage e) (assoc (ex-data e) :file (.getName file)) e))))))
+        (throw (ex-info (.getMessage e) (assoc (ex-data e) :file (display-name file)) e))))))
 
 (defn -main
   "Entry point for Clojure CLI task `lint-migrations-file`. Run it with

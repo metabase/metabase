@@ -18,16 +18,9 @@
   This format should no longer be used for new migrations, use `id-timestamp-format-re` instead."
   #"^v\d{2,}\.\d{2}-\d{3}$")
 
-(s/def ::id (s/and string?
-                   (s/or
-                    ;; new ids should conform this format
-                    :id-with-timestamp ;; e.g: v49.2023-12-14T08:54:54
-                    (s/and #(re-matches id-timestamp-format-re %))
-                    :id-with-old-version-format ;; e.g: v49.00-008
-                    (s/and #(re-matches id-number-format-re %)
-                           ;; the cut off id for this old format is v49.00-060
-                           ;; see #36787 for context
-                           #(neg? (compare % "v49.00-061"))))))
+;; Basic type check only — format enforcement is file-aware and happens in
+;; `lint-migrations-file/require-change-set-ids-match-file-format`.
+(s/def ::id (s/or :string-id string? :int-id int?))
 
 (s/def ::author string?)
 
@@ -108,17 +101,20 @@
     :customChange})
 
 (defn- major-version
-  "Returns major version from id string, e.g. 44 from \"v44.00-034\""
+  "Returns major version from id string, e.g. 44 from \"v44.00-034\".
+  Returns nil for IDs that don't match the versioned formats."
   [id-str]
   (when (string? id-str)
-    (some-> (re-find #"\d+" id-str) Integer/parseInt)))
+    (when (or (re-matches id-timestamp-format-re id-str)
+              (re-matches id-number-format-re id-str))
+      (some-> (re-find #"\d+" id-str) Integer/parseInt))))
 
 (defn- rollback-present-when-required?
   "Ensures rollback key is present when change type doesn't support auto rollback"
   [{:keys [id changes] :as change-set}]
   (or
-   (int? id)
-   (< (major-version id) 45)
+   (let [v (major-version (str id))]
+     (and v (< v 45)))
    (some change-types-supporting-rollback (mapcat keys changes))
    (contains? change-set :rollback)))
 
