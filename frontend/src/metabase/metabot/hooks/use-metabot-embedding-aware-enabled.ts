@@ -1,13 +1,14 @@
-import { useSetting } from "metabase/common/hooks";
+import { useHasTokenFeature, useSetting } from "metabase/common/hooks";
 import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
 import { isWithinIframe } from "metabase/lib/dom";
-import type { EnterpriseSettingKey } from "metabase-types/api";
 
-/** Returns the value for `metabot-enabled?` or `embedded-metabot-enabled?` depending on the context. */
+/** Returns the value for `metabot-enabled?` or `embedded-metabot-enabled?` depending on the context
+ * only if the metabot token feature is enabled. */
 export const useMetabotEnabledEmbeddingAware = (): boolean => {
+  const hasMetabotV3 = useHasTokenFeature("metabot_v3");
   const isEmbeddingIframe = isWithinIframe() || isEmbeddingSdk();
-  const settingName: EnterpriseSettingKey = isEmbeddingIframe
-    ? "embedded-metabot-enabled?"
-    : "metabot-enabled?";
-  return useSetting(settingName);
+  const isEnabled = useSetting(
+    isEmbeddingIframe ? "embedded-metabot-enabled?" : "metabot-enabled?",
+  );
+  return hasMetabotV3 && isEnabled;
 };
