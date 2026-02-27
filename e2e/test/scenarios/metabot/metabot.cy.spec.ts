@@ -247,9 +247,13 @@ describe("Metabot in full-app embedding", () => {
       value: true,
     });
 
-    H.visitFullAppEmbeddingUrl({ url: "/", qs: {} });
+    H.visitFullAppEmbeddingUrl({
+      url: `/question/${ORDERS_BY_YEAR_QUESTION_ID}`,
+      qs: {},
+    });
 
     H.appBar().icon("metabot").should("be.visible");
+    cy.findByLabelText("Explain this chart").should("not.exist");
   });
 
   it("should not show the metabot button when is-embedded-metabot-enabled is false", () => {
@@ -257,9 +261,17 @@ describe("Metabot in full-app embedding", () => {
       value: false,
     });
 
-    H.visitFullAppEmbeddingUrl({ url: "/", qs: {} });
+    H.visitFullAppEmbeddingUrl({
+      url: `/question/${ORDERS_BY_YEAR_QUESTION_ID}`,
+      qs: {},
+    });
 
+    cy.log("Wait for the question to render");
+    H.main().findByText("Filter").should("be.visible");
+
+    cy.log("Assert metabot buttons are not rendered");
     H.appBar().icon("metabot").should("not.exist");
+    cy.findByLabelText("Explain this chart").should("not.exist");
   });
 });
 
