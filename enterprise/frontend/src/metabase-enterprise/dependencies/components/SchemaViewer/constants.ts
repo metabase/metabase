@@ -5,6 +5,7 @@ export const NODE_PADDING = 16;
 
 export const MIN_ZOOM = 0.1;
 export const MAX_ZOOM = 2;
+export const COMPACT_ZOOM_THRESHOLD = 0.5;
 
 export const DAGRE_NODE_SEP = 60;
 export const DAGRE_RANK_SEP = 120;
