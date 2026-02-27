@@ -14,9 +14,7 @@
   5000)
 
 (def ^:private streaming-socket-timeout-ms
-  "Socket (read) timeout for streaming API calls (start/append/stop).
-   Streaming calls are in the hot path of text delivery — if they block, the agent queue
-   backs up and the request-handling thread hangs on `await`."
+  "Socket (read) timeout for streaming API calls (start/append/stop)."
   5000)
 
 (def SlackClient
