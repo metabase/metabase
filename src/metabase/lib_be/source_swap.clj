@@ -244,17 +244,17 @@
   [query                                      :- ::lib.schema/query
    {old-source-id :id, old-source-type :type} :- ::swap-source.source
    {new-source-id :id, new-source-type :type} :- ::swap-source.source]
-  (let [old-columns        (if (= old-source-type :table)
-                             (lib.metadata/fields query old-source-id)
-                             (lib.card/saved-question-metadata query old-source-id))
-        new-columns        (if (= new-source-type :table)
-                             (lib.metadata/fields query new-source-id)
-                             (lib.card/saved-question-metadata query new-source-id))
-        new-column-by-name (m/index-by column-match-key new-columns)]
+  (let [old-columns       (if (= old-source-type :table)
+                            (lib.metadata/fields query old-source-id)
+                            (lib.card/saved-question-metadata query old-source-id))
+        new-columns       (if (= new-source-type :table)
+                            (lib.metadata/fields query new-source-id)
+                            (lib.card/saved-question-metadata query new-source-id))
+        new-column-by-key (m/index-by column-match-key new-columns)]
     (into {}
           (keep (fn [old-column]
                   (when-let [old-key (field-ref-key old-column old-source-type)]
-                    (when-let [new-column (get new-column-by-name (column-match-key old-column))]
+                    (when-let [new-column (get new-column-by-key (column-match-key old-column))]
                       (when-let [new-key (field-ref-key new-column new-source-type)]
                         [old-key new-key])))))
           old-columns)))
