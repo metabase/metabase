@@ -846,10 +846,7 @@ describe("54205", () => {
             },
           ],
         },
-      }).then((card) => {
-        cy.wrap(card.id).as("questionId");
-        H.visitQuestion(card.id);
-      });
+      }).then(H.visitCard);
     });
 
     cy.findByTestId("query-visualization-root").contains("Name").click();

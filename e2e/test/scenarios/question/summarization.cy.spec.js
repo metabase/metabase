@@ -255,7 +255,7 @@ describe("scenarios > question > summarize sidebar", () => {
           },
         ],
       },
-    }).then((card) => H.visitQuestion(card.id));
+    }).then(H.visitCard);
 
     H.summarize();
 
