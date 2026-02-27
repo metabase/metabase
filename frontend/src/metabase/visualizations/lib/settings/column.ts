@@ -166,11 +166,11 @@ export const DATE_COLUMN_SETTINGS: VisualizationSettingsDefinitions = {
     getProps: ({ unit }, settings: ColumnSettings) => ({
       options: getDateStyleOptionsForUnit(
         unit ?? "default",
-        settings["date_abbreviate"] != null
-          ? Boolean(settings["date_abbreviate"])
+        settings.date_abbreviate != null
+          ? Boolean(settings.date_abbreviate)
           : undefined,
-        settings["date_separator"] != null
-          ? String(settings["date_separator"])
+        settings.date_separator != null
+          ? String(settings.date_separator)
           : undefined,
       ),
     }),
@@ -356,7 +356,7 @@ export const NUMBER_COLUMN_SETTINGS: VisualizationSettingsDefinitions = {
         { name: "100 000,00", value: ", " },
         { name: "100.000,00", value: ",." },
         { name: "100000.00", value: "." },
-        { name: "100'000.00", value: ".'" },
+        { name: "100’000.00", value: ".’" },
       ],
     },
     getDefault: getDefaultNumberSeparators,

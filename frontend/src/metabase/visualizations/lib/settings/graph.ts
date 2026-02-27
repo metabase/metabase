@@ -344,12 +344,12 @@ export const STACKABLE_SETTINGS: VisualizationSettingsDefinitions = {
       return getDefaultStackingValue(settings, card);
     },
     getHidden: (series, settings) => {
-      const displays = series
-        .map((single) => settings.series?.(single).display)
-        .filter((display) => display != null);
-      const stackableDisplays = displays.filter((display) =>
-        STACKABLE_SERIES_DISPLAY_TYPES.has(display),
+      const displays = series.map(
+        (single) => settings.series?.(single).display,
       );
+      const stackableDisplays = displays.filter((display) => {
+        return display != null && STACKABLE_SERIES_DISPLAY_TYPES.has(display);
+      });
 
       return stackableDisplays.length <= 1;
     },
