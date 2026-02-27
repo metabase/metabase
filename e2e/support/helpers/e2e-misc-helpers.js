@@ -115,6 +115,8 @@ export function visitQuestion(questionIdOrAlias, { onBeforeLoad } = {}) {
       .get(questionIdOrAlias)
       .then((id) => visitQuestionById(id, { onBeforeLoad }));
   }
+
+  throw new Error("Invalid questionIdOrAlias");
 }
 
 function visitQuestionById(id, { onBeforeLoad } = {}) {
@@ -153,7 +155,7 @@ export function visitModel(id, { hasDataAccess = true } = {}) {
 
   cy.visit(`/model/${id}`);
 
-  cy.wait("@" + alias);
+  return cy.wait("@" + alias);
 }
 
 /**
@@ -168,7 +170,7 @@ export function visitMetric(id) {
 
   cy.visit(`/metric/${id}`);
 
-  cy.wait("@" + alias);
+  return cy.wait("@" + alias);
 }
 
 /**
