@@ -173,7 +173,7 @@ describe("settings framework", () => {
         getClickBehaviorSettings({
           column_settings: {
             col1: {
-              click_behavior: { type: "action", actionType: "insert" },
+              click_behavior: { type: "action" },
               not_click_behavior: { type: "another stub" },
             },
           },

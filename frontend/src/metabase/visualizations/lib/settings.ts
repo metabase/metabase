@@ -318,16 +318,13 @@ export function updateSettings(
 export function getClickBehaviorSettings(
   settings: VisualizationSettings | null | undefined,
 ): VisualizationSettings {
-  if (!settings) {
-    return {};
-  }
   const newSettings: VisualizationSettings = {};
 
-  if (settings.click_behavior) {
+  if (settings?.click_behavior) {
     newSettings.click_behavior = settings.click_behavior;
   }
 
-  const columnSettings = getColumnClickBehavior(settings.column_settings);
+  const columnSettings = getColumnClickBehavior(settings?.column_settings);
 
   if (columnSettings) {
     newSettings.column_settings = columnSettings;
