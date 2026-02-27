@@ -34,7 +34,7 @@ describe("scenarios > data studio > library", () => {
     );
     H.expectUnstructuredSnowplowEvent({
       event: "data_studio_opened",
-      triggered_from: "settings_menu",
+      triggered_from: "nav_menu",
     });
     H.DataStudio.nav().findByLabelText("Library").click();
 

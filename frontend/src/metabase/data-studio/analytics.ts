@@ -143,6 +143,6 @@ export const trackDependencyEntitySelected = ({
 export const trackDataStudioOpened = () => {
   trackSimpleEvent({
     event: "data_studio_opened",
-    triggered_from: "settings_menu",
+    triggered_from: "nav_menu",
   });
 };
