@@ -376,12 +376,13 @@
                                         (slack-request-options event-body)
                                         event-body)]
                 (is (= "ok" response))
-                (u/poll {:thunk #(>= (count @post-calls) 1)
+                (u/poll {:thunk #(some (fn [m] (= "I wasn't able to generate a response. Please try again." (:text m)))
+                                       @post-calls)
                          :done? true?
                          :timeout-ms 5000})
                 (testing "fallback message is sent"
-                  (is (= "I wasn't able to generate a response. Please try again."
-                         (:text (first @post-calls)))))
+                  (is (some #(= "I wasn't able to generate a response. Please try again." (:text %))
+                            @post-calls)))
                 (testing "stop-stream is never called"
                   (is (= 0 (count @stop-stream-calls))))))))))))
 
