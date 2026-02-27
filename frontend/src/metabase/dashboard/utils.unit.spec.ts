@@ -75,7 +75,8 @@ describe("Dashboard utils", () => {
       const failedFetch = Promise.reject(error);
 
       const result = await fetchDataOrError(failedFetch);
-      expect(result.error).toEqual(error);
+      expect(result).toBeTruthy();
+      expect((result as { error: unknown }).error).toEqual(error);
     });
 
     it("should return true if a database has model actions enabled", () => {

@@ -481,7 +481,7 @@ describe("scenarios > data studio > table collection permissions", () => {
 
       cy.signIn("nodata");
       H.visitQuestionAdhoc(productsQuestionDetails);
-      assertPermissionError();
+      assertQueryPermissionError();
     });
 
     it("should not be able to create questions when all published tables are unpublished", () => {
@@ -509,7 +509,7 @@ describe("scenarios > data studio > table collection permissions", () => {
 
       cy.signIn("nodata");
       H.visitQuestionAdhoc(productsQuestionDetails);
-      assertPermissionError();
+      assertQueryPermissionError();
     });
 
     it("should not be able to create questions even if there are published tables", () => {
@@ -542,12 +542,6 @@ function popoverByIndex(index: number) {
 
 function librarySidebarSection() {
   return H.navigationSidebar().findByRole("section", { name: "Library" });
-}
-
-function assertPermissionError() {
-  H.main()
-    .findByText("Sorry, you don’t have permission to see that.")
-    .should("be.visible");
 }
 
 function assertQueryPermissionError() {
