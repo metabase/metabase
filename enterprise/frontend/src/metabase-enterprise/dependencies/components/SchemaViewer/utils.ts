@@ -1,3 +1,5 @@
+import dagre from "@dagrejs/dagre";
+
 import { isTypeFK, isTypePK } from "metabase-lib/v1/types/utils/isa";
 import type {
   ErdEdge,
@@ -7,7 +9,14 @@ import type {
   TableId,
 } from "metabase-types/api";
 
-import { HEADER_HEIGHT, NODE_WIDTH, ROW_HEIGHT } from "./constants";
+import {
+  COMPACT_NODE_HEIGHT,
+  DAGRE_NODE_SEP,
+  DAGRE_RANK_SEP,
+  HEADER_HEIGHT,
+  NODE_WIDTH,
+  ROW_HEIGHT,
+} from "./constants";
 import type { SchemaViewerFlowEdge, SchemaViewerFlowNode } from "./types";
 
 function sortFields(fields: ErdField[]): ErdField[] {
@@ -101,4 +110,54 @@ export function toFlowGraph(data: ErdResponse): {
     ),
     edges: data.edges.map((edge) => toFlowEdge(edge)),
   };
+}
+
+function getLayoutNodeHeight(
+  node: SchemaViewerFlowNode,
+  isCompactMode: boolean,
+): number {
+  if (isCompactMode) {
+    return COMPACT_NODE_HEIGHT;
+  }
+  const fieldCount = node.data.fields?.length ?? 0;
+  return HEADER_HEIGHT + fieldCount * ROW_HEIGHT;
+}
+
+export function getNodesWithPositions(
+  nodes: SchemaViewerFlowNode[],
+  edges: { source: string; target: string }[],
+  isCompactMode: boolean,
+): SchemaViewerFlowNode[] {
+  const dagreGraph = new dagre.graphlib.Graph();
+  dagreGraph.setGraph({
+    rankdir: "LR",
+    nodesep: DAGRE_NODE_SEP,
+    ranksep: DAGRE_RANK_SEP,
+  });
+  dagreGraph.setDefaultEdgeLabel(() => ({}));
+
+  nodes.forEach((node) => {
+    const height = getLayoutNodeHeight(node, isCompactMode);
+    dagreGraph.setNode(node.id, {
+      width: NODE_WIDTH,
+      height,
+    });
+  });
+
+  edges.forEach((edge) => {
+    dagreGraph.setEdge(edge.source, edge.target);
+  });
+
+  dagre.layout(dagreGraph);
+
+  return nodes.map((node) => {
+    const { x, y, width, height } = dagreGraph.node(node.id);
+    return {
+      ...node,
+      position: {
+        x: x - width / 2,
+        y: y - height / 2,
+      },
+    };
+  });
 }

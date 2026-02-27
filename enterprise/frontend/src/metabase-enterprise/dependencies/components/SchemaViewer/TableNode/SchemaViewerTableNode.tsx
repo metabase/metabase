@@ -35,6 +35,7 @@ import type { ErdField } from "metabase-types/api";
 import { TOOLTIP_OPEN_DELAY_MS } from "../../../constants";
 import { useIsCompactMode } from "../SchemaViewerContext";
 import type { SchemaViewerFlowNode, SchemaViewerNodeData } from "../types";
+import { getNodesWithPositions } from "../utils";
 
 import { SchemaViewerFieldRow } from "./SchemaViewerFieldRow";
 import S from "./SchemaViewerTableNode.module.css";
@@ -52,7 +53,8 @@ export const SchemaViewerTableNode = memo(function SchemaViewerTableNode({
   id,
   data,
 }: SchemaViewerTableNodeProps) {
-  const { fitView } = useReactFlow();
+  const { fitView, getNodes, getEdges, setNodes } =
+    useReactFlow<SchemaViewerFlowNode>();
   const updateNodeInternals = useUpdateNodeInternals();
   const isCompactMode = useIsCompactMode();
   const headerColor = data.is_focal ? "brand" : "text-primary";
@@ -73,10 +75,22 @@ export const SchemaViewerTableNode = memo(function SchemaViewerTableNode({
       focusedNodeId = null;
     } else {
       // Focus on this node
-      fitView({ nodes: [{ id }], duration: 300, padding: 0.5 });
+      if (isCompactMode) {
+        // Recalculate layout for regular mode first, then fit view
+        const nodes = getNodes();
+        const edges = getEdges();
+        const newNodes = getNodesWithPositions(nodes, edges, false);
+        setNodes(newNodes);
+        const targetNode = newNodes.find((n) => n.id === id);
+        if (targetNode) {
+          fitView({ nodes: [targetNode], duration: 300, padding: 0.5 });
+        }
+      } else {
+        fitView({ nodes: [{ id }], duration: 300, padding: 0.5 });
+      }
       focusedNodeId = id;
     }
-  }, [fitView, id]);
+  }, [fitView, id, isCompactMode, getNodes, getEdges, setNodes]);
 
   // Find PK field IDs that are targets of self-referencing FKs
   const selfRefTargetIds = useMemo(() => {
@@ -134,7 +148,7 @@ export const SchemaViewerTableNode = memo(function SchemaViewerTableNode({
             flex: 1,
           }}
         >
-          {data.name} {data.table_id}
+          {data.name}
         </Box>
         <Tooltip
           label={t`View table details`}

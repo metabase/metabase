@@ -1,69 +1,54 @@
-import dagre from "@dagrejs/dagre";
 import { useNodesInitialized, useReactFlow } from "@xyflow/react";
-import { useLayoutEffect } from "react";
+import { useLayoutEffect, useRef } from "react";
 
-import {
-  DAGRE_NODE_SEP,
-  DAGRE_RANK_SEP,
-  HEADER_HEIGHT,
-  NODE_WIDTH,
-  ROW_HEIGHT,
-} from "../constants";
+import { useIsCompactMode } from "../SchemaViewerContext";
 import type { SchemaViewerFlowNode } from "../types";
+import { getNodesWithPositions } from "../utils";
 
-function getNodesWithPositions(
-  nodes: SchemaViewerFlowNode[],
-  edges: { source: string; target: string }[],
-): SchemaViewerFlowNode[] {
-  const dagreGraph = new dagre.graphlib.Graph();
-  dagreGraph.setGraph({
-    rankdir: "LR",
-    nodesep: DAGRE_NODE_SEP,
-    ranksep: DAGRE_RANK_SEP,
-  });
-  dagreGraph.setDefaultEdgeLabel(() => ({}));
-
-  nodes.forEach((node) => {
-    const fieldCount = node.data.fields?.length ?? 0;
-    const height = HEADER_HEIGHT + fieldCount * ROW_HEIGHT;
-    dagreGraph.setNode(node.id, {
-      width: NODE_WIDTH,
-      height,
-    });
-  });
-
-  edges.forEach((edge) => {
-    dagreGraph.setEdge(edge.source, edge.target);
-  });
-
-  dagre.layout(dagreGraph);
-
-  return nodes.map((node) => {
-    const { x, y, width, height } = dagreGraph.node(node.id);
-    return {
-      ...node,
-      position: {
-        x: x - width / 2,
-        y: y - height / 2,
-      },
-    };
-  });
+// Get a stable key representing the current set of nodes
+function getNodeSetKey(nodes: SchemaViewerFlowNode[]): string {
+  return nodes
+    .map((n) => n.id)
+    .sort()
+    .join(",");
 }
 
 export function SchemaViewerNodeLayout() {
   const { getNodes, getEdges, setNodes, fitView } =
     useReactFlow<SchemaViewerFlowNode>();
   const isInitialized = useNodesInitialized();
+  const isCompactMode = useIsCompactMode();
+  const prevNodeSetKeyRef = useRef<string | null>(null);
+  const prevCompactModeRef = useRef(isCompactMode);
 
+  // Layout when nodes are initialized or when the set of nodes changes
   useLayoutEffect(() => {
     if (isInitialized) {
       const nodes = getNodes();
-      const edges = getEdges();
-      const newNodes = getNodesWithPositions(nodes, edges);
-      setNodes(newNodes);
-      fitView({ nodes: newNodes });
+      const currentNodeSetKey = getNodeSetKey(nodes);
+
+      // Run layout if this is a new set of nodes
+      if (prevNodeSetKeyRef.current !== currentNodeSetKey) {
+        prevNodeSetKeyRef.current = currentNodeSetKey;
+        prevCompactModeRef.current = isCompactMode;
+        const edges = getEdges();
+        const newNodes = getNodesWithPositions(nodes, edges, isCompactMode);
+        setNodes(newNodes);
+        fitView({ nodes: newNodes });
+      }
     }
-  }, [isInitialized, getNodes, getEdges, setNodes, fitView]);
+  }, [isInitialized, getNodes, getEdges, setNodes, fitView, isCompactMode]);
+
+  // Relayout when switching between compact and regular mode (no fitView to avoid feedback loop)
+  useLayoutEffect(() => {
+    if (isInitialized && prevCompactModeRef.current !== isCompactMode) {
+      prevCompactModeRef.current = isCompactMode;
+      const nodes = getNodes();
+      const edges = getEdges();
+      const newNodes = getNodesWithPositions(nodes, edges, isCompactMode);
+      setNodes(newNodes);
+    }
+  }, [isCompactMode, isInitialized, getNodes, getEdges, setNodes]);
 
   return null;
 }

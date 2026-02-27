@@ -1,5 +1,6 @@
 export const ROW_HEIGHT = 40;
 export const HEADER_HEIGHT = 64;
+export const COMPACT_NODE_HEIGHT = 128;
 export const NODE_WIDTH = 320;
 export const NODE_PADDING = 16;
 
