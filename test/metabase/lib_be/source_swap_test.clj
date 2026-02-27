@@ -4,11 +4,11 @@
    [medley.core :as m]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
-   [metabase.lib.options :as lib.options]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]))
 
-(deftest ^:parallel swap-source-in-query-source-table-test
+(deftest ^:parallel swap-source-in-query-table->table-test
   (let [query (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
                   (lib/with-fields [(meta/field-metadata :orders :id)
                                     (meta/field-metadata :orders :created-at)]))
@@ -27,6 +27,78 @@
       (is (=? {:stages [{:source-table (meta/id :products)
                          :fields       [[:field {} (meta/id :products :id)]
                                         [:field {} (meta/id :products :created-at)]]}]}
+              swapped-query)))))
+
+(deftest ^:parallel swap-source-in-query-card->card-test
+  (let [orders-query  (lib/query meta/metadata-provider (meta/table-metadata :orders))
+        reviews-query (lib/query meta/metadata-provider (meta/table-metadata :reviews))
+        mp            (-> meta/metadata-provider
+                          (lib.tu/metadata-provider-with-card-from-query 1 orders-query)
+                          (lib.tu/metadata-provider-with-card-from-query 2 reviews-query))
+        query          (-> (lib/query mp (lib.metadata/card mp 1))
+                           (lib/with-fields [(meta/field-metadata :orders :id)
+                                             (meta/field-metadata :orders :created-at)]))
+        upgraded-query (lib-be/upgrade-field-refs-in-query query)
+        swapped-query  (lib-be/swap-source-in-query upgraded-query
+                                                    {:type :card, :id 1}
+                                                    {:type :card, :id 2})]
+    (testing "should convert id-based field refs to name-based field refs when upgrading"
+      (is (=? {:stages [{:source-card 1
+                         :fields      [[:field {} "ID"]
+                                       [:field {} "CREATED_AT"]]}]}
+              upgraded-query)))
+    (testing "should return an identical query if upgrade is not needed"
+      (is (= upgraded-query (lib-be/upgrade-field-refs-in-query upgraded-query))))
+    (testing "should change source-card and preserve name-based refs when swapping"
+      (is (=? {:stages [{:source-card 2
+                         :fields      [[:field {} "ID"]
+                                       [:field {} "CREATED_AT"]]}]}
+              swapped-query)))))
+
+(deftest ^:parallel swap-source-in-query-card->table-test
+  (let [orders-query   (lib/query meta/metadata-provider (meta/table-metadata :orders))
+        mp             (lib.tu/metadata-provider-with-card-from-query 1 orders-query)
+        query          (-> (lib/query mp (lib.metadata/card mp 1))
+                           (lib/with-fields [(meta/field-metadata :orders :id)
+                                             (meta/field-metadata :orders :created-at)]))
+        upgraded-query (lib-be/upgrade-field-refs-in-query query)
+        swapped-query  (lib-be/swap-source-in-query upgraded-query
+                                                    {:type :card, :id 1}
+                                                    {:type :table, :id (meta/id :reviews)})]
+    (testing "should convert id-based field refs to name-based field refs when upgrading"
+      (is (=? {:stages [{:source-card 1
+                         :fields      [[:field {} "ID"]
+                                       [:field {} "CREATED_AT"]]}]}
+              upgraded-query)))
+    (testing "should return an identical query if upgrade is not needed"
+      (is (= upgraded-query (lib-be/upgrade-field-refs-in-query upgraded-query))))
+    (testing "should swap source-card with source-table and convert name-based refs to id-based refs"
+      (is (=? {:stages [{:source-table (meta/id :reviews)
+                         :fields       [[:field {} (meta/id :reviews :id)]
+                                        [:field {} (meta/id :reviews :created-at)]]}]}
+              swapped-query)))))
+
+(deftest ^:parallel swap-source-in-query-table->card-test
+  (let [reviews-query  (lib/query meta/metadata-provider (meta/table-metadata :reviews))
+        mp             (lib.tu/metadata-provider-with-card-from-query 1 reviews-query)
+        query          (-> (lib/query mp (meta/table-metadata :orders))
+                           (lib/with-fields [(meta/field-metadata :orders :id)
+                                             (meta/field-metadata :orders :created-at)]))
+        upgraded-query (lib-be/upgrade-field-refs-in-query query)
+        swapped-query  (lib-be/swap-source-in-query upgraded-query
+                                                    {:type :table, :id (meta/id :orders)}
+                                                    {:type :card, :id 1})]
+    (testing "should convert id-based field refs to name-based field refs when upgrading"
+      (is (=? {:stages [{:source-table (meta/id :orders)
+                         :fields       [[:field {} "ID"]
+                                        [:field {} "CREATED_AT"]]}]}
+              upgraded-query)))
+    (testing "should return an identical query if upgrade is not needed"
+      (is (= upgraded-query (lib-be/upgrade-field-refs-in-query upgraded-query))))
+    (testing "should swap source-table with source-card and preserve name-based refs"
+      (is (=? {:stages [{:source-card 1
+                         :fields      [[:field {} "ID"]
+                                       [:field {} "CREATED_AT"]]}]}
               swapped-query)))))
 
 (deftest ^:parallel swap-source-in-query-implicit-join-test
