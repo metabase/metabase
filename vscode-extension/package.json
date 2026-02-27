@@ -1,0 +1,478 @@
+{
+  "publisher": "metabase",
+  "name": "metastudio",
+  "displayName": "Metastudio",
+  "version": "0.1.0",
+  "private": true,
+  "packageManager": "bun@1.3.7",
+  "description": "Metabase Studio extension for VS Code",
+  "author": "Metabase",
+  "license": "MIT",
+  "homepage": "https://github.com/metabase/metabase",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/metabase/metabase"
+  },
+  "bugs": {
+    "url": "https://github.com/metabase/metabase/issues"
+  },
+  "categories": [
+    "Other"
+  ],
+  "main": "./dist/index.cjs",
+  "icon": "res/icon.png",
+  "files": [
+    "LICENSE.md",
+    "dist/*",
+    "res/*"
+  ],
+  "engines": {
+    "vscode": "^1.101.0"
+  },
+  "activationEvents": ["onStartupFinished"],
+  "contributes": {
+    "commands": [
+      {
+        "command": "metastudio.setHost",
+        "title": "Metastudio: Set Host URL",
+        "icon": "$(edit)"
+      },
+      {
+        "command": "metastudio.setApiKey",
+        "title": "Metastudio: Set API Key",
+        "icon": "$(edit)"
+      },
+      {
+        "command": "metastudio.checkConnection",
+        "title": "Metastudio: Check Metabase Connection",
+        "icon": "$(plug)"
+      },
+      {
+        "command": "metastudio.showApiKey",
+        "title": "Metastudio: Show API Key",
+        "icon": "$(key)"
+      },
+      {
+        "command": "metastudio.clearCredentials",
+        "title": "Metastudio: Clear Credentials",
+        "icon": "$(close)"
+      },
+      {
+        "command": "metastudio.clearWorkspaceConfigurations",
+        "title": "Metastudio: Clear Workspace Configurations",
+        "icon": "$(trash)"
+      },
+      {
+        "command": "metastudio.checkDependencyGraph",
+        "title": "Metastudio: Check Dependency Graph"
+      },
+      {
+        "command": "metastudio.showDependencyGraph",
+        "title": "Metastudio: Show Dependency Graph"
+      },
+      {
+        "command": "metastudio.showTransformPreview",
+        "title": "Metastudio: Show Transform Preview"
+      },
+      {
+        "command": "metastudio.openInMetabase",
+        "title": "Open in Metabase"
+      },
+      {
+        "command": "metastudio.showInDependencyGraph",
+        "title": "Show in Dependency Graph"
+      },
+      {
+        "command": "metastudio.runTransform",
+        "title": "Run Transform",
+        "icon": "$(play)"
+      },
+      {
+        "command": "metastudio.createSqlTransform",
+        "title": "Metastudio: New SQL Transform",
+        "icon": "$(add)"
+      },
+      {
+        "command": "metastudio.openEmbeddedCode",
+        "title": "Metastudio: Edit Query in Editor",
+        "icon": "$(edit)"
+      },
+      {
+        "command": "metastudio.showNotebook",
+        "title": "Metastudio: Show Notebook Query"
+      },
+      {
+        "command": "metastudio.showCardPreview",
+        "title": "Metastudio: Show Card Preview"
+      },
+      {
+        "command": "metastudio.viewTableData",
+        "title": "View Data",
+        "icon": "$(table)"
+      },
+      {
+        "command": "metastudio.refreshWorkspaceData",
+        "title": "Refresh Workspace Data",
+        "icon": "$(refresh)"
+      }
+    ],
+    "walkthroughs": [
+      {
+        "id": "metastudio-setup",
+        "title": "Get Started with Metastudio",
+        "description": "Connect your Metabase instance to VS Code",
+        "steps": [
+          {
+            "id": "configure-host",
+            "title": "Configure Metabase Host",
+            "description": "Set the URL of your Metabase instance.\n\n[Open Settings](command:workbench.action.openSettings?%5B%22metastudio.host%22%5D)",
+            "media": {
+              "markdown": "media/configure-host.md"
+            },
+            "completionEvents": [
+              "onSettingChanged:metastudio.host"
+            ]
+          },
+          {
+            "id": "set-api-key",
+            "title": "Set API Key",
+            "description": "Securely store your Metabase API key.\n\n[Set API Key](command:metastudio.setApiKey)",
+            "media": {
+              "markdown": "media/set-api-key.md"
+            },
+            "completionEvents": [
+              "onCommand:metastudio.setApiKey"
+            ]
+          },
+          {
+            "id": "check-connection",
+            "title": "Check Connection",
+            "description": "Verify that Metastudio can connect to your Metabase instance.\n\n[Check Connection](command:metastudio.checkConnection)",
+            "media": {
+              "markdown": "media/check-connection.md"
+            },
+            "completionEvents": [
+              "onCommand:metastudio.checkConnection"
+            ]
+          }
+        ]
+      }
+    ],
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "metabase",
+          "title": "Metabase",
+          "icon": "res/sidebar-icon.svg"
+        }
+      ]
+    },
+    "views": {
+      "metabase": [
+        {
+          "id": "metabase.connection",
+          "name": "Connection",
+          "visibility": "collapsed"
+        },
+        {
+          "id": "metabase.content",
+          "name": "Content"
+        },
+        {
+          "id": "metabase.dataCatalog",
+          "name": "Data Catalog"
+        },
+        {
+          "id": "metabase.workspaceData",
+          "name": "Workspace Data",
+          "visibility": "collapsed"
+        }
+      ]
+    },
+    "menus": {
+      "view/title": [
+        {
+          "command": "metastudio.checkConnection",
+          "when": "view == metabase.connection",
+          "group": "navigation"
+        },
+        {
+          "command": "metastudio.refreshWorkspaceData",
+          "when": "view == metabase.workspaceData",
+          "group": "navigation"
+        }
+      ],
+      "view/item/context": [
+        {
+          "command": "metastudio.runTransform",
+          "when": "viewItem == transform",
+          "group": "inline"
+        },
+        {
+          "command": "metastudio.createSqlTransform",
+          "when": "viewItem == collectionLibrary",
+          "group": "inline"
+        },
+        {
+          "command": "metastudio.setHost",
+          "when": "view == metabase.connection && viewItem == connectionUrl",
+          "group": "inline@1"
+        },
+        {
+          "command": "metastudio.setApiKey",
+          "when": "view == metabase.connection && viewItem == connectionToken",
+          "group": "inline@1"
+        },
+        {
+          "command": "metastudio.clearCredentials",
+          "when": "view == metabase.connection && viewItem == connectionUrl",
+          "group": "inline@2"
+        },
+        {
+          "command": "metastudio.clearCredentials",
+          "when": "view == metabase.connection && viewItem == connectionToken",
+          "group": "inline@2"
+        },
+        {
+          "command": "metastudio.clearWorkspaceConfigurations",
+          "when": "view == metabase.connection && viewItem == connectionUrl",
+          "group": "inline@3"
+        },
+        {
+          "command": "metastudio.openInMetabase",
+          "when": "view == metabase.content && viewItem =~ /^(card|model|metric|dashboard|collection|collectionLibrary|transform)$/ && metastudio.hostConfigured",
+          "group": "navigation@1"
+        },
+        {
+          "command": "metastudio.openInMetabase",
+          "when": "view == metabase.dataCatalog && viewItem =~ /^(database|schema|table|field)$/ && metastudio.hostConfigured",
+          "group": "navigation@1"
+        },
+        {
+          "command": "metastudio.showNotebook",
+          "when": "view == metabase.content && viewItem =~ /^(card|model|metric|transform|transformStructured)$/",
+          "group": "navigation@2"
+        },
+        {
+          "command": "metastudio.showInDependencyGraph",
+          "when": "view == metabase.content && viewItem =~ /^(card|model|metric|dashboard|collection|collectionLibrary|transform|native_query_snippet|document|action|measure|segment)$/",
+          "group": "navigation@3"
+        },
+        {
+          "command": "metastudio.showInDependencyGraph",
+          "when": "view == metabase.dataCatalog && viewItem == table",
+          "group": "navigation@1"
+        },
+        {
+          "command": "metastudio.viewTableData",
+          "when": "view == metabase.workspaceData && viewItem == outputTable",
+          "group": "inline"
+        },
+        {
+          "command": "metastudio.viewTableData",
+          "when": "view == metabase.workspaceData && viewItem == outputTable",
+          "group": "navigation@1"
+        }
+      ]
+    },
+    "viewsWelcome": [
+      {
+        "view": "metabase.content",
+        "contents": "Open a folder with Metabase content exported via Remote Sync.",
+        "when": "!metabase.configExists"
+      },
+      {
+        "view": "metabase.dataCatalog",
+        "contents": "Open a folder with Metabase content exported via Remote Sync.",
+        "when": "!metabase.configExists"
+      }
+    ],
+    "chatSkills": [
+      {
+        "path": "./skills/metastudio/SKILL.md"
+      }
+    ],
+    "languageModelTools": [
+      {
+        "name": "metastudio_setHost",
+        "displayName": "Set Metabase Host",
+        "toolReferenceName": "metastudioSetHost",
+        "modelDescription": "Sets the Metabase instance URL in workspace configuration. Call this before checking the connection or running transforms.",
+        "canBeReferencedInPrompt": true,
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "host": {
+              "type": "string",
+              "description": "The full URL of the Metabase instance, e.g. https://my-metabase.example.com"
+            }
+          },
+          "required": ["host"]
+        }
+      },
+      {
+        "name": "metastudio_setApiKey",
+        "displayName": "Set or Check Metabase API Key",
+        "toolReferenceName": "metastudioSetApiKey",
+        "modelDescription": "Optionally sets the Metabase API key in secure storage, then reports the current key status (whether it is set and its last 4 characters). Omit 'apiKey' to check status without changing anything.",
+        "canBeReferencedInPrompt": true,
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "apiKey": {
+              "type": "string",
+              "description": "The Metabase API key to store. Omit this property to only check the current status."
+            }
+          },
+          "required": []
+        }
+      },
+      {
+        "name": "metastudio_checkConnection",
+        "displayName": "Check Metabase Connection",
+        "toolReferenceName": "metastudioCheckConnection",
+        "modelDescription": "Tests connectivity to the configured Metabase instance using the stored API key. Returns the connection result including the authenticated user's name on success.",
+        "canBeReferencedInPrompt": true,
+        "inputSchema": {
+          "type": "object",
+          "properties": {},
+          "required": []
+        }
+      },
+      {
+        "name": "metastudio_runTransform",
+        "displayName": "Run Metabase Transform",
+        "toolReferenceName": "metastudioRunTransform",
+        "modelDescription": "Looks up a transform by name (case-insensitive) or by entityId in the loaded content graph and executes it. Provide 'entityId' when multiple transforms share the same name.",
+        "canBeReferencedInPrompt": true,
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "name": {
+              "type": "string",
+              "description": "The display name of the transform to run (case-insensitive). At least one of 'name' or 'entityId' must be provided."
+            },
+            "entityId": {
+              "type": "string",
+              "description": "The unique entity ID of the transform to run. Takes precedence over 'name' when both are supplied."
+            }
+          },
+          "required": []
+        }
+      },
+      {
+        "name": "metastudio_getApiKey",
+        "displayName": "Get Metabase API Key Status",
+        "toolReferenceName": "metastudioGetApiKey",
+        "modelDescription": "Returns the current API key with all but the last 4 characters masked (e.g. ********abcd). Returns 'not set' if no key has been stored.",
+        "canBeReferencedInPrompt": true,
+        "inputSchema": {
+          "type": "object",
+          "properties": {},
+          "required": []
+        }
+      },
+      {
+        "name": "metastudio_getHost",
+        "displayName": "Get Metabase Host",
+        "toolReferenceName": "metastudioGetHost",
+        "modelDescription": "Returns the currently configured Metabase instance URL, or indicates that no host has been set.",
+        "canBeReferencedInPrompt": true,
+        "inputSchema": {
+          "type": "object",
+          "properties": {},
+          "required": []
+        }
+      }
+    ],
+    "configuration": {
+      "type": "object",
+      "title": "Metastudio",
+      "properties": {
+        "metastudio.host": {
+          "type": "string",
+          "format": "uri",
+          "default": "",
+          "description": "Metabase instance URL"
+        }
+      }
+    }
+  },
+  "scripts": {
+    "build": "nr build:notebook-component && nr build:ext && nr build:webview",
+    "build:metabase-lib": "bun run scripts/bundle-metabase-lib.ts",
+    "build:notebook-component": "test -d ../target/cljs_release || (cd .. && yarn build-release:cljs) ; cd .. && rspack --config rspack.notebook-component.config.js",
+    "build:ext": "tsdown src/index.ts --external vscode",
+    "build:webview": "cd webview && vite build",
+    "dev": "nr build:ext --watch --sourcemap",
+    "dev:webview": "cd webview && vite",
+    "prepare": "nr update",
+    "update": "vscode-ext-gen --output src/generated/meta.ts",
+    "lint": "eslint .",
+    "test": "vitest",
+    "typecheck": "tsc --noEmit",
+    "vscode:prepublish": "nr build",
+    "release": "bumpp",
+    "ext:package": "vsce package --no-dependencies",
+    "ext:publish": "vsxpub --no-dependencies"
+  },
+  "devDependencies": {
+    "@antfu/eslint-config": "^6.7.3",
+    "@antfu/ni": "^28.0.0",
+    "@codemirror/autocomplete": "^6.20.0",
+    "@codemirror/commands": "^6.10.2",
+    "@codemirror/language": "^6.12.2",
+    "@codemirror/search": "^6.6.0",
+    "@codemirror/state": "^6.5.4",
+    "@codemirror/view": "^6.39.15",
+    "@dagrejs/dagre": "^1.1.8",
+    "@dnd-kit/core": "^6.3.1",
+    "@dnd-kit/modifiers": "^9.0.0",
+    "@dnd-kit/sortable": "^10.0.0",
+    "@dnd-kit/utilities": "^3.2.2",
+    "@emotion/babel-plugin": "^11.13.5",
+    "@emotion/react": "^11.14.0",
+    "@emotion/styled": "^11.14.1",
+    "@lezer/common": "^1.5.1",
+    "@lezer/highlight": "^1.2.3",
+    "@lezer/lr": "^1.4.8",
+    "@mantine/core": "8.3.5",
+    "@mantine/dates": "8.3.5",
+    "@mantine/hooks": "8.3.5",
+    "@reduxjs/toolkit": "^2.11.2",
+    "@types/node": "^25.0.3",
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0",
+    "@types/vscode": "^1.101.0",
+    "@uiw/react-codemirror": "^4.25.5",
+    "@vitejs/plugin-react": "^4.4.0",
+    "@vscode/vsce": "^3.7.1",
+    "@xyflow/react": "^12.10.1",
+    "bumpp": "^10.3.2",
+    "classnames": "^2.5.1",
+    "dayjs": "^1.11.19",
+    "esbuild": "^0.25.0",
+    "eslint": "^9.39.2",
+    "icepick": "^2.4.0",
+    "ovsx": "^0.10.7",
+    "querystring-es3": "^0.2.1",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "react-markdown": "^10.1.0",
+    "react-redux": "^9.2.0",
+    "react-use": "^17.6.0",
+    "reactive-vscode": "^1.0.0-beta.2",
+    "remark-gfm": "^4.0.1",
+    "slugg": "^1.2.1",
+    "taze": "^19.9.2",
+    "tsdown": "^0.19.0-beta.3",
+    "ttag": "^1.8.12",
+    "typescript": "^5.9.3",
+    "underscore": "^1.13.8",
+    "vite": "^7.3.0",
+    "vitest": "^4.0.16",
+    "vscode-ext-gen": "^1.5.1",
+    "vsxpub": "^0.1.2",
+    "yaml": "^2.8.2"
+  }
+}

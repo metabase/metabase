@@ -40,7 +40,7 @@ export function JoinTablePicker({
 
   return (
     <Box aria-label={t`Right table`}>
-      {isOpened || !table || isEmbed ? (
+      {!isReadOnly && (isOpened || !table || isEmbed) ? (
         <NotebookDataPicker
           title={t`Pick data to join`}
           query={query}

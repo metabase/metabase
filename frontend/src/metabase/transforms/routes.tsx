@@ -4,6 +4,7 @@ import {
   PLUGIN_DEPENDENCIES,
   PLUGIN_TRANSFORMS_PYTHON,
 } from "metabase/plugins";
+import { createEntityIdRedirect } from "metabase/routes-stable-id-aware";
 
 import { JobListPage } from "./pages/JobListPage";
 import { JobPage } from "./pages/JobPage";
@@ -36,6 +37,18 @@ export function getDataStudioTransformRoutes() {
         <Route path="new/query" component={NewQueryTransformPage} />
         <Route path="new/native" component={NewNativeTransformPage} />
         <Route path="new/card/:cardId" component={NewCardTransformPage} />
+        <Route
+          path="entity/:entity_id"
+          component={createEntityIdRedirect({
+            parametersToTranslate: [
+              {
+                name: "entity_id",
+                resourceType: "transform",
+                type: "param",
+              },
+            ],
+          })}
+        />
         <Route path=":transformId" component={TransformQueryPage} />
         <Route path=":transformId/edit" component={TransformQueryPage} />
         <Route path=":transformId/run" component={TransformRunPage} />

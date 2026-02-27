@@ -1,0 +1,15 @@
+.cache
+.DS_Store
+.idea
+*.log
+*.tgz
+*.vsix
+coverage
+dist
+lib-cov
+logs
+node_modules
+temp
+src/generated
+vendor/
+.env

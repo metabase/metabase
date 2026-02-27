@@ -72,6 +72,15 @@
 
 (alter-var-root #'app-defaults merge ee-app-defaults)
 
+;; In sidecar mode, force in-memory H2 and default to port 3033
+(def ^:private sidecar-app-defaults
+  {:mb-db-type      "h2"
+   :mb-db-in-memory "true"
+   :mb-jetty-port   "3033"})
+
+(when (some? (not-empty (get env/env :mb-sidecar-dir)))
+  (alter-var-root #'app-defaults merge sidecar-app-defaults))
+
 (defn config-str
   "Retrieve value for a single configuration key.  Accepts either a keyword or a string.
 
@@ -103,6 +112,16 @@
 (def ^Boolean is-dev?  "Are we running in `dev` mode (i.e. in a REPL or via `clojure -M:run`)?" (= :dev  run-mode))
 (def ^Boolean is-prod? "Are we running in `prod` mode (i.e. from a JAR)?"                       (= :prod run-mode))
 (def ^Boolean is-test? "Are we running in `test` mode (i.e. via `clojure -X:test`)?"            (= :test run-mode))
+
+(def sidecar-dir
+  "Path to the serdes export directory for sidecar mode, or nil if not in sidecar mode."
+  (not-empty (config-str :mb-sidecar-dir)))
+
+(def ^Boolean is-sidecar?
+  "Are we running in sidecar mode? When true, Metabase runs with a minimal
+  API surface, H2-only app DB, no authentication overhead, and reduced initialization.
+  Set via the MB_SIDECAR_DIR environment variable (value is the path to a serdes export directory)."
+  (some? sidecar-dir))
 ;; In E2E mode, we can customize the token check URL (e.g., use staging license tokens) while still ensuring that core app logic is unaffected.
 ;; This allows us to run Cypress E2E tests with the production-like behavior.
 (def ^Boolean is-e2e?  "Are we running Cypress E2E tests against the production-ready code?"    (= :e2e run-mode))

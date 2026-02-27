@@ -20,7 +20,8 @@
 
 (p/import-vars
  [metabase.server.handler
-  make-handler]
+  make-handler
+  make-sidecar-handler]
  [metabase.server.instance
   instance
   start-web-server!
@@ -29,7 +30,8 @@
  [metabase.server.protocols
   Respond]
  [metabase.server.routes
-  make-routes]
+  make-routes
+  make-sidecar-routes]
  [metabase.server.middleware.json
   wrap-json-body
   wrap-streamed-json-response]

@@ -5,6 +5,7 @@
    [metabase.api.macros :as api.macros]
    [metabase.config.core :as config]
    [metabase.server.middleware.auth :as mw.auth]
+   [metabase.sidecar.middleware :as mw.sidecar]
    [metabase.server.middleware.browser-cookie :as mw.browser-cookie]
    [metabase.server.middleware.exceptions :as mw.exceptions]
    [metabase.server.middleware.json :as mw.json]
@@ -128,3 +129,50 @@
   (if config/is-dev?
     (dev-handler server-routes)
     (apply-middleware server-routes)))
+
+;;; ------------------------------------------------- Sidecar Handler -------------------------------------------------
+
+(def ^:private sidecar-middleware
+  "Reduced middleware stack for local sidecar mode. Removes browser cookies, security headers,
+  session management, static API keys, SSL redirect, and other middleware not needed locally.
+  Inserts `wrap-sidecar-user` to inject a synthetic superuser into every request."
+  [#'mw.exceptions/catch-uncaught-exceptions
+   #'mw.exceptions/catch-api-exceptions
+   #'mw.log/log-api-call
+   #'mw.json/wrap-json-body
+   #'mw.offset-paging/handle-paging
+   #'mw.json/wrap-streamed-json-response
+   #'mw.mp-cache/wrap-metadata-provider-cache
+   #'wrap-keyword-params
+   #'wrap-params
+   #'mw.session/bind-current-user
+   #'mw.sidecar/wrap-sidecar-user
+   #'mw.settings-cache/wrap-settings-cache-check
+   #'mw.misc/add-version
+   #'mw.misc/add-content-type
+   #'wrap-gzip
+   #'mw.request-id/wrap-request-id
+   #'mw.misc/bind-request])
+
+(mu/defn- apply-sidecar-middleware :- ::api.macros/handler
+  [handler :- ::api.macros/handler]
+  (reduce
+   (fn [handler middleware-fn]
+     (middleware-fn handler))
+   handler
+   sidecar-middleware))
+
+(mu/defn make-sidecar-handler :- ::api.macros/handler
+  "Create the entry point to the Ring HTTP server for sidecar mode."
+  [server-routes :- ::api.macros/handler]
+  (if config/is-dev?
+    ;; In dev, support reloading like the normal dev-handler but with sidecar middleware
+    (let [handler (atom (apply-sidecar-middleware server-routes))]
+      (doseq [varr  (cons #'sidecar-middleware sidecar-middleware)
+              :when (instance? clojure.lang.IRef varr)]
+        (add-watch varr ::sidecar-reload (fn [_key _ref _old-state _new-state]
+                                           (log/infof "%s changed, rebuilding sidecar handler" varr)
+                                           (reset! handler (apply-sidecar-middleware server-routes)))))
+      (fn sidecar-dev-handler [request respond raise]
+        (@handler request respond raise)))
+    (apply-sidecar-middleware server-routes)))

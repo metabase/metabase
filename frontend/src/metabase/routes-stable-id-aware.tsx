@@ -13,7 +13,12 @@ import {
   type TranslateEntityIdResponse,
   useTranslateEntityIdQuery,
 } from "./api/entity-id";
-type ResourceType = "dashboard" | "collection" | "card" | "dashboard-tab";
+type ResourceType =
+  | "dashboard"
+  | "collection"
+  | "card"
+  | "dashboard-tab"
+  | "transform";
 type ParamType = "param" | "search";
 
 type ParamConfig = {

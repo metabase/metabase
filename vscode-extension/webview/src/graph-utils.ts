@@ -1,0 +1,216 @@
+import type { GraphNodeModel, GraphViewNode, GraphViewEdge, DependentsCount } from "../../src/shared-types";
+import type { IsolatedPath } from "./GraphContext";
+import type { IconName } from "./icons";
+
+export interface NodeTypeInfo {
+  label: string;
+  color: string;
+}
+
+export interface DependentGroup {
+  type: GraphNodeModel;
+  count: number;
+}
+
+export function getNodeTypeInfo(node: GraphViewNode): NodeTypeInfo {
+  if (
+    node.model === "question" &&
+    node.queryType === "native"
+  ) {
+    return { label: "SQL question", color: "var(--graph-color-text-secondary)" };
+  }
+
+  return getGroupTypeInfo(node.model);
+}
+
+export function getGroupTypeInfo(model: GraphNodeModel): NodeTypeInfo {
+  switch (model) {
+    case "question":
+      return { label: "Question", color: "var(--graph-color-text-secondary)" };
+    case "model":
+      return { label: "Model", color: "var(--graph-color-brand)" };
+    case "metric":
+      return { label: "Metric", color: "var(--graph-color-summarize)" };
+    case "table":
+      return { label: "Table", color: "var(--graph-color-brand)" };
+    case "transform":
+      return { label: "Transform", color: "var(--graph-color-warning)" };
+    case "snippet":
+      return { label: "Snippet", color: "var(--graph-color-text-secondary)" };
+    case "dashboard":
+      return { label: "Dashboard", color: "var(--graph-color-filter)" };
+    case "document":
+      return { label: "Document", color: "var(--graph-color-text-secondary)" };
+    case "segment":
+      return { label: "Segment", color: "var(--graph-color-accent2)" };
+    case "measure":
+      return { label: "Measure", color: "var(--graph-color-summarize)" };
+    case "collection":
+      return { label: "Collection", color: "var(--graph-color-text-secondary)" };
+    case "action":
+      return { label: "Action", color: "var(--graph-color-text-secondary)" };
+    case "database":
+      return { label: "Database", color: "var(--graph-color-brand)" };
+    case "field":
+      return { label: "Field", color: "var(--graph-color-text-secondary)" };
+  }
+}
+
+export function getNodeIconName(node: GraphViewNode): IconName {
+  return getIconNameForModel(node.model, node.cardType, node.queryType);
+}
+
+export function getIconNameForModel(
+  model: GraphNodeModel,
+  cardType?: string,
+  queryType?: string,
+): IconName {
+  switch (model) {
+    case "question":
+      if (queryType === "native") return "sql";
+      return "table2";
+    case "model":
+      return "model";
+    case "metric":
+      return "metric";
+    case "table":
+      return "table";
+    case "transform":
+      return "transform";
+    case "snippet":
+      return "snippet";
+    case "dashboard":
+      return "dashboard";
+    case "document":
+      return "document";
+    case "segment":
+      return "segment";
+    case "measure":
+      return "sum";
+    case "collection":
+      return "collection";
+    case "action":
+      return "action";
+    case "database":
+      return "database";
+    case "field":
+      return "hash";
+  }
+}
+
+export function getDependentGroups(node: GraphViewNode): DependentGroup[] {
+  const counts = node.dependentsCount;
+  if (!counts) return [];
+
+  const groups: DependentGroup[] = [];
+  const entries: Array<[keyof DependentsCount, GraphNodeModel]> = [
+    ["question", "question"],
+    ["model", "model"],
+    ["metric", "metric"],
+    ["table", "table"],
+    ["transform", "transform"],
+    ["snippet", "snippet"],
+    ["dashboard", "dashboard"],
+    ["document", "document"],
+    ["segment", "segment"],
+    ["measure", "measure"],
+  ];
+
+  for (const [key, model] of entries) {
+    const count = counts[key];
+    if (count && count > 0) {
+      groups.push({ type: model, count });
+    }
+  }
+
+  return groups;
+}
+
+export function getDependencyGroupTitle(
+  node: GraphViewNode,
+  groups: DependentGroup[],
+): string {
+  if (groups.length === 0) return "Nothing uses this";
+  if (node.model === "transform") return "Generates";
+  return "Used by";
+}
+
+export function getDependentGroupLabel(group: DependentGroup): string {
+  const { type, count } = group;
+  const plural = count !== 1;
+
+  switch (type) {
+    case "question":
+      return `${count} question${plural ? "s" : ""}`;
+    case "model":
+      return `${count} model${plural ? "s" : ""}`;
+    case "metric":
+      return `${count} metric${plural ? "s" : ""}`;
+    case "table":
+      return `${count} table${plural ? "s" : ""}`;
+    case "transform":
+      return `${count} transform${plural ? "s" : ""}`;
+    case "snippet":
+      return `${count} snippet${plural ? "s" : ""}`;
+    case "dashboard":
+      return `${count} dashboard${plural ? "s" : ""}`;
+    case "document":
+      return `${count} document${plural ? "s" : ""}`;
+    case "segment":
+      return `${count} segment${plural ? "s" : ""}`;
+    case "measure":
+      return `${count} measure${plural ? "s" : ""}`;
+    default:
+      return `${count} entit${plural ? "ies" : "y"}`;
+  }
+}
+
+export function getFieldIconName(semanticType: string | null): IconName {
+  if (!semanticType) return "hash";
+  if (semanticType.includes("PK") || semanticType === "type/PK") return "key";
+  if (semanticType.includes("FK") || semanticType === "type/FK") return "connections";
+  return "hash";
+}
+
+/**
+ * Compute the isolated path to a target node.
+ * This finds all ancestors (nodes that the target depends on) using BFS.
+ * The path includes the target node itself plus all upstream dependencies.
+ */
+export function computeIsolatedPath(
+  targetKey: string,
+  edges: GraphViewEdge[]
+): IsolatedPath {
+  const nodeKeys = new Set<string>([targetKey]);
+  const edgeIds = new Set<string>();
+
+  // Build a map of node -> outgoing edges (edges where this node is the source)
+  // In this graph, edges go from dependent -> dependency (source depends on target)
+  // So to find ancestors, we look at edges where our node is the source
+  const outgoingMap = new Map<string, GraphViewEdge[]>();
+  for (const edge of edges) {
+    const existing = outgoingMap.get(edge.sourceKey) ?? [];
+    existing.push(edge);
+    outgoingMap.set(edge.sourceKey, existing);
+  }
+
+  // BFS to find all ancestors (upstream dependencies)
+  const queue = [targetKey];
+  while (queue.length > 0) {
+    const currentKey = queue.shift()!;
+    const outgoingEdges = outgoingMap.get(currentKey) ?? [];
+
+    for (const edge of outgoingEdges) {
+      const ancestorKey = edge.targetKey;
+      const edgeId = `${edge.sourceKey}->${edge.targetKey}`;
+      edgeIds.add(edgeId);
+
+      if (!nodeKeys.has(ancestorKey)) {
+        nodeKeys.add(ancestorKey);
+        queue.push(ancestorKey);
+      }
+    }
+  }
+
+  return { targetKey, nodeKeys, edgeIds };
+}

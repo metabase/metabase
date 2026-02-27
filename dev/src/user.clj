@@ -99,5 +99,7 @@
        ;; this handler has cider middlewares installed:
        :handler (apply nrepl-server/default-handler
                        (conj cider-nrepl/cider-middleware 'refactor-nrepl.middleware/wrap-refactor)))))
-  ((requiring-resolve 'dev/start!))
+  (if @(requiring-resolve 'metabase.config.core/is-sidecar?)
+    ((requiring-resolve 'dev/start-sidecar!))
+    ((requiring-resolve 'dev/start!)))
   (deref (promise)))

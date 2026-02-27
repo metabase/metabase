@@ -118,5 +118,26 @@
    ;; Anything else (e.g. /user/edit_current) should serve up index.html; React app will handle the rest
    (GET "*" [] index/index)))
 
+(mu/defn make-sidecar-routes :- ::api.macros/handler
+  "Create a minimal top-level Ring route handler for sidecar mode.
+  Only includes /api/ routes and the health endpoint -- no index pages,
+  static files, public/embed routes, or auth wrapper."
+  [api-routes :- ::api.macros/handler]
+  #_{:clj-kondo/ignore [:discouraged-var]}
+  (compojure/routes
+   (GET "/" []
+     {:status  200
+      :headers {"Content-Type" "text/html; charset=utf-8"}
+      :body    (str "<!DOCTYPE html><html><head><title>Metabase Sidecar</title></head>"
+                    "<body><h1>Metabase is running in sidecar mode</h1>"
+                    "<p>API routes are available under <code>/api/</code>.</p>"
+                    "</body></html>")})
+   (GET "/api/health" [] health-handler)
+   (GET "/readyz" [] health-handler)
+   (GET "/livez" [] livez-handler)
+   (OPTIONS "/api/*" [] {:status 200 :body ""})
+   (context "/api" [] (api-handler api-routes))
+   (route/not-found {:status 404 :body "Not found."})))
+
 ;;; TODO -- if anything changes here we should rebuild these routes? We need a version
 ;;; of [[metabase.server.handler/dev-handler]] for these routes

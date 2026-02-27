@@ -1,0 +1,618 @@
+:root {
+  font-family: var(--vscode-font-family);
+  font-size: var(--vscode-font-size);
+  font-weight: var(--vscode-font-weight);
+  color: var(--vscode-foreground);
+  background-color: transparent;
+
+  /* Metabase brand colors */
+  --graph-color-brand: hsla(208, 72%, 60%, 1);
+  --graph-color-summarize: hsla(89, 48%, 40%, 1);
+  --graph-color-filter: hsla(240, 65%, 69%, 1);
+  --graph-color-warning: hsla(46, 81%, 52%, 1);
+  --graph-color-error: hsla(358, 71%, 62%, 1);
+  --graph-color-accent2: #A989C5;
+  --graph-color-text-secondary: var(--vscode-descriptionForeground);
+
+  --graph-text-primary: var(--vscode-foreground);
+  --graph-text-secondary: var(--vscode-descriptionForeground);
+  --graph-background: var(--vscode-editor-background);
+  --graph-border: var(--vscode-panel-border, rgba(128, 128, 128, 0.35));
+  --graph-card-bg: var(--vscode-editorWidget-background);
+  --graph-pill-bg: var(--vscode-badge-background, rgba(128, 128, 128, 0.2));
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+input[type="text"],
+input[type="search"] {
+  outline: none;
+  border: none;
+  appearance: none;
+  -webkit-appearance: none;
+  background: transparent;
+  outline-color: transparent;
+  outline-style: none;
+}
+
+body {
+  min-height: 100vh;
+}
+
+#root {
+  width: 100vw;
+  height: 100vh;
+}
+
+.centered-message {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  padding: 16px;
+}
+
+.centered-message p {
+  text-align: center;
+  color: var(--graph-text-secondary);
+}
+
+/* React Flow overrides */
+.dependency-graph {
+  width: 100%;
+  height: 100%;
+}
+
+.graph-controls {
+  border: 1px solid var(--graph-border);
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+/* Graph Node */
+.graph-node-card {
+  min-width: 15rem;
+  max-width: 30rem;
+  background: var(--graph-card-bg);
+  border: 1px solid var(--graph-border);
+  border-radius: 8px;
+  padding: 16px;
+  cursor: pointer;
+  visibility: hidden;
+  transition: border-color 0.15s ease;
+}
+
+.graph-node-card.initialized {
+  visibility: visible;
+}
+
+.graph-node-card:hover,
+.graph-node-card.selected {
+  border-color: var(--graph-color-brand);
+}
+
+.graph-node-card.isolated {
+  border-color: var(--graph-color-summarize);
+}
+
+.graph-node-card.isolated:hover,
+.graph-node-card.isolated.selected {
+  border-color: var(--graph-color-brand);
+}
+
+.graph-node-card.dimmed {
+  opacity: 0.25;
+  cursor: default;
+  pointer-events: none;
+}
+
+.graph-node-handle {
+  visibility: hidden;
+}
+
+.graph-node-handle.initialized {
+  visibility: visible;
+}
+
+.graph-node-content {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.graph-node-type {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.85em;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.graph-node-type-label {
+  line-height: 1rem;
+}
+
+.graph-node-name {
+  font-weight: 600;
+  line-height: 1rem;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+}
+
+.graph-node-deps {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  align-items: flex-start;
+  margin-top: 12px;
+}
+
+.graph-node-deps-title {
+  color: var(--graph-text-secondary);
+  font-size: 0.85em;
+  line-height: 1rem;
+}
+
+.graph-node-pill {
+  background: var(--graph-pill-bg);
+  color: var(--graph-text-primary);
+  border: none;
+  border-radius: 999px;
+  padding: 4px 12px;
+  font-size: 0.85em;
+  font-weight: 400;
+  cursor: pointer;
+  font-family: inherit;
+  transition:
+    background-color 0.15s ease,
+    color 0.15s ease;
+}
+
+.graph-node-pill:hover,
+.graph-node-pill.selected {
+  color: #fff;
+  background-color: var(--graph-color-brand);
+}
+
+/* Panels layout */
+.graph-left-panel {
+  right: 0;
+  pointer-events: none;
+}
+
+.graph-right-panel {
+  display: flex;
+  flex-direction: column;
+  bottom: 0;
+  pointer-events: none;
+}
+
+.graph-panel-content {
+  pointer-events: all;
+  display: flex;
+  gap: 8px;
+}
+
+/* Panel card */
+.graph-panel {
+  width: 32rem;
+  max-height: calc(100vh - 2rem);
+  background: var(--graph-card-bg);
+  border: 1px solid var(--graph-border);
+  border-radius: 8px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  pointer-events: all;
+  padding: 0;
+}
+
+.graph-panel-header {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  padding: 16px;
+  border-bottom: 1px solid var(--graph-border);
+  flex-wrap: nowrap;
+}
+
+.graph-panel-icon-badge {
+  width: 2.75rem;
+  height: 2.75rem;
+  border-radius: 50%;
+  background: var(--graph-pill-bg);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.graph-panel-header-content {
+  flex: 1;
+  min-width: 0;
+}
+
+.graph-panel-title {
+  font-size: 1rem;
+  font-weight: 600;
+  line-height: 1.5rem;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+  margin: 0;
+}
+
+.graph-panel-subtitle {
+  font-size: 0.85em;
+  margin-top: 2px;
+}
+
+.graph-panel-actions {
+  display: flex;
+  gap: 4px;
+  flex-shrink: 0;
+  margin: -4px;
+}
+
+.graph-panel-action-button {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 1rem;
+  color: var(--graph-text-secondary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.graph-panel-action-button:hover {
+  background: var(--graph-pill-bg);
+}
+
+.graph-panel-action-button.active {
+  color: var(--graph-color-brand);
+  background: var(--graph-pill-bg);
+}
+
+.graph-panel-body {
+  overflow-y: auto;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.graph-panel-section {
+  line-height: 1.5;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+}
+
+.graph-panel-section-label {
+  color: var(--graph-text-secondary);
+  font-size: 0.85em;
+  margin-right: 6px;
+}
+
+.graph-panel-section-title {
+  font-size: 0.85em;
+  font-weight: 600;
+  margin-bottom: 8px;
+}
+
+.graph-panel-fields-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.graph-panel-field-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.85em;
+}
+
+.graph-panel-field-icon {
+  color: var(--graph-text-secondary);
+  width: 1.25em;
+  text-align: center;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.graph-panel-field-name {
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+}
+
+/* Dependency Panel search */
+.graph-panel-search {
+  padding: 8px 16px;
+  border-bottom: 1px solid var(--graph-border);
+}
+
+.graph-panel-search-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--vscode-input-background, transparent);
+  border: 1px solid var(--vscode-input-border, var(--graph-border));
+  border-radius: 4px;
+  padding: 6px 10px;
+}
+
+.graph-panel-search-wrapper:focus-within {
+  border-color: var(--graph-color-brand);
+}
+
+.graph-panel-search-input {
+  flex: 1;
+  background: none;
+  border: none;
+  color: var(--vscode-input-foreground, inherit);
+  font-family: inherit;
+  font-size: inherit;
+  outline: none;
+  appearance: none;
+  -webkit-appearance: none;
+}
+
+.graph-panel-empty {
+  color: var(--graph-text-secondary);
+  text-align: center;
+  padding: 16px;
+}
+
+.graph-panel-list {
+  display: flex;
+  flex-direction: column;
+}
+
+.graph-panel-list-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 0;
+  border: none;
+  background: none;
+  cursor: pointer;
+  font-family: inherit;
+  font-size: inherit;
+  color: inherit;
+  text-align: left;
+}
+
+.graph-panel-list-item:not(:last-child) {
+  border-bottom: 1px solid var(--graph-border);
+}
+
+.graph-panel-list-item:hover {
+  color: var(--graph-color-brand);
+}
+
+.graph-panel-list-name {
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+}
+
+/* Search Input */
+.graph-search-button {
+  background: var(--graph-card-bg);
+  border: 1px solid var(--graph-border);
+  border-radius: 4px;
+  padding: 6px 12px;
+  cursor: pointer;
+  color: var(--graph-text-primary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.graph-search-button:hover {
+  border-color: var(--graph-color-brand);
+}
+
+.graph-search-dropdown {
+  position: relative;
+  width: 20rem;
+}
+
+.graph-search-input-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--vscode-input-background, var(--graph-card-bg));
+  border: 1px solid var(--vscode-input-border, var(--graph-border));
+  border-radius: 4px;
+  padding: 6px 10px;
+}
+
+.graph-search-input-wrapper:focus-within {
+  border-color: var(--graph-color-brand);
+}
+
+.graph-search-input {
+  flex: 1;
+  background: none;
+  border: none;
+  color: var(--vscode-input-foreground, inherit);
+  font-family: inherit;
+  font-size: inherit;
+  outline: none;
+  appearance: none;
+  -webkit-appearance: none;
+}
+
+.graph-search-results {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  margin-top: 4px;
+  background: var(--graph-card-bg);
+  border: 1px solid var(--graph-border);
+  border-radius: 4px;
+  max-height: 300px;
+  overflow-y: auto;
+  z-index: 10;
+}
+
+.graph-search-result-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  border: none;
+  background: none;
+  cursor: pointer;
+  font-family: inherit;
+  font-size: inherit;
+  color: inherit;
+  text-align: left;
+  width: 100%;
+}
+
+.graph-search-result-item:hover {
+  background: var(--graph-pill-bg);
+}
+
+.graph-search-result-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.graph-search-more,
+.graph-search-empty {
+  padding: 8px 12px;
+  color: var(--graph-text-secondary);
+  font-size: 0.85em;
+}
+
+/* Dark theme adjustments for React Flow */
+[data-vscode-theme-kind="vscode-dark"] .dependency-graph,
+[data-vscode-theme-kind="vscode-high-contrast"] .dependency-graph {
+  --xy-background-color-default: transparent;
+  --xy-controls-button-background-color-default: transparent;
+}
+
+[data-vscode-theme-kind="vscode-dark"] .graph-controls,
+[data-vscode-theme-kind="vscode-high-contrast"] .graph-controls {
+  border: 1px solid var(--graph-border);
+  background-color: var(--graph-card-bg);
+}
+
+/* Filter Dropdown */
+.graph-filter-container {
+  position: relative;
+}
+
+.graph-filter-button {
+  background: var(--graph-card-bg);
+  border: 1px solid var(--graph-border);
+  border-radius: 4px;
+  padding: 6px 12px;
+  cursor: pointer;
+  color: var(--graph-text-primary);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.graph-filter-button:hover {
+  border-color: var(--graph-color-brand);
+}
+
+.graph-filter-button.active {
+  border-color: var(--graph-color-brand);
+  color: var(--graph-color-brand);
+}
+
+.graph-filter-badge {
+  background: var(--graph-color-brand);
+  color: white;
+  font-size: 10px;
+  font-weight: 600;
+  padding: 1px 5px;
+  border-radius: 8px;
+  min-width: 16px;
+  text-align: center;
+}
+
+.graph-filter-dropdown {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  margin-top: 4px;
+  background: var(--graph-card-bg);
+  border: 1px solid var(--graph-border);
+  border-radius: 6px;
+  min-width: 12rem;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  z-index: 100;
+}
+
+.graph-filter-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--graph-border);
+}
+
+.graph-filter-title {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--graph-text-secondary);
+}
+
+.graph-filter-clear {
+  background: none;
+  border: none;
+  font-size: 11px;
+  color: var(--graph-color-brand);
+  cursor: pointer;
+  padding: 2px 4px;
+}
+
+.graph-filter-clear:hover {
+  text-decoration: underline;
+}
+
+.graph-filter-list {
+  padding: 6px 0;
+  max-height: 300px;
+  overflow-y: auto;
+}
+
+.graph-filter-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px;
+  cursor: pointer;
+  font-size: 13px;
+  transition: background 0.1s ease;
+}
+
+.graph-filter-item:hover {
+  background: var(--graph-pill-bg);
+}
+
+.graph-filter-item.hidden {
+  opacity: 0.5;
+}
+
+.graph-filter-item input[type="checkbox"] {
+  margin: 0;
+  cursor: pointer;
+}
