@@ -247,8 +247,11 @@ const config = {
             compilation.hooks.processAssets.tap(
               {
                 name: "inject-bundle-manifest",
-                stage:
-                  rspack.Compilation.PROCESS_ASSETS_STAGE_OPTIMIZE_TRANSFER,
+                // Must run BEFORE minification (OPTIMIZE_SIZE = 8000).
+                // The placeholder "__SDK_CHUNK_MANIFEST__" is a string literal
+                // that the minifier constant-folds ("str".chunks → void 0)
+                // if we don't replace it first.
+                stage: rspack.Compilation.PROCESS_ASSETS_STAGE_OPTIMIZE,
               },
               (assets) => {
                 const bootstrapKey = `chunks/${SDK_BUNDLE_BOOTSTRAP_FILENAME}`;
