@@ -305,3 +305,19 @@
       (is (=? {:stages [{:source-table (meta/id :reviews)
                          :fields [[:field {} "DOES_NOT_EXIST"]]}]}
               swapped-query)))))
+
+(deftest ^:parallel swap-source-in-parameter-target-implicit-join-test
+  (let [query           (lib/query meta/metadata-provider (meta/table-metadata :orders))
+        target          [:dimension [:field (meta/id :products :category) {:source-field (meta/id :orders :product-id)}]]
+        upgraded-target (lib-be/upgrade-field-ref-in-parameter-target query target)
+        swapped-target  (lib-be/swap-source-in-parameter-target query target
+                                                                {:type :table, :id (meta/id :orders)}
+                                                                {:type :table, :id (meta/id :reviews)})]
+    (testing "should not change implicit join target when upgrading"
+      (is (=? [:dimension [:field (meta/id :products :category) {:source-field (meta/id :orders :product-id)}]]
+              upgraded-target)))
+    (testing "should return an identical target if upgrade is not needed"
+      (is (= upgraded-target (lib-be/upgrade-field-ref-in-parameter-target query upgraded-target))))
+    (testing "should swap :source-field to reviews.product-id"
+      (is (=? [:dimension [:field (meta/id :products :category) {:source-field (meta/id :reviews :product-id)}]]
+              swapped-target)))))
