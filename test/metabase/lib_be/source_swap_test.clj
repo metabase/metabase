@@ -187,3 +187,65 @@
                                      (meta/id :products :category)]
                                     "Widget"]]}]}
               swapped-query)))))
+
+(defn- filter-all-columns
+  "Add a not-null filter for every filterable column in the query."
+  [query]
+  (reduce (fn [q col] (lib/filter q (lib/not-null col)))
+          query
+          (lib/filterable-columns query)))
+
+(deftest ^:parallel swap-source-in-query-multi-stage-test
+  (let [query          (as-> (lib/query meta/metadata-provider (meta/table-metadata :orders)) q
+                         (lib/aggregate q (lib/sum (meta/field-metadata :orders :id)))
+                         (lib/breakout q (meta/field-metadata :orders :created-at))
+                         (lib/append-stage q)
+                         (filter-all-columns q))
+        upgraded-query (lib-be/upgrade-field-refs-in-query query)
+        swapped-query  (lib-be/swap-source-in-query upgraded-query
+                                                    {:type :table, :id (meta/id :orders)}
+                                                    {:type :table, :id (meta/id :products)})]
+    (testing "should upgrade first stage to name-based and second stage should stay name-based"
+      (is (=? {:stages [{:source-table (meta/id :orders)
+                         :aggregation  [[:sum {} [:field {} "ID"]]]
+                         :breakout     [[:field {} "CREATED_AT"]]}
+                        {:filters [[:not-null {} [:field {} "CREATED_AT"]]
+                                   [:not-null {} [:field {} "sum"]]]}]}
+              upgraded-query)))
+    (testing "should swap first stage to id-based refs and preserve name-based refs in second stage"
+      (is (=? {:stages [{:source-table (meta/id :products)
+                         :aggregation  [[:sum {} [:field {} (meta/id :products :id)]]]
+                         :breakout     [[:field {} (meta/id :products :created-at)]]}
+                        {:filters [[:not-null {} [:field {} "CREATED_AT"]]
+                                   [:not-null {} [:field {} "sum"]]]}]}
+              swapped-query)))))
+
+(deftest ^:parallel swap-source-in-query-multi-stage-temporal-breakouts-test
+  (let [query          (as-> (lib/query meta/metadata-provider (meta/table-metadata :orders)) q
+                         (lib/aggregate q (lib/sum (meta/field-metadata :orders :id)))
+                         (lib/breakout q (lib/with-temporal-bucket (meta/field-metadata :orders :created-at) :year))
+                         (lib/breakout q (lib/with-temporal-bucket (meta/field-metadata :orders :created-at) :month))
+                         (lib/append-stage q)
+                         (filter-all-columns q))
+        upgraded-query (lib-be/upgrade-field-refs-in-query query)
+        swapped-query  (lib-be/swap-source-in-query upgraded-query
+                                                    {:type :table, :id (meta/id :orders)}
+                                                    {:type :table, :id (meta/id :products)})]
+    (testing "should upgrade first stage to name-based and second stage should stay name-based"
+      (is (=? {:stages [{:source-table (meta/id :orders)
+                         :aggregation  [[:sum {} [:field {} "ID"]]]
+                         :breakout     [[:field {:temporal-unit :year} "CREATED_AT"]
+                                        [:field {:temporal-unit :month} "CREATED_AT"]]}
+                        {:filters [[:not-null {} [:field {} "CREATED_AT"]]
+                                   [:not-null {} [:field {} "CREATED_AT_2"]]
+                                   [:not-null {} [:field {} "sum"]]]}]}
+              upgraded-query)))
+    (testing "should swap first stage to id-based refs and preserve name-based refs in second stage"
+      (is (=? {:stages [{:source-table (meta/id :products)
+                         :aggregation  [[:sum {} [:field {} (meta/id :products :id)]]]
+                         :breakout     [[:field {:temporal-unit :year} (meta/id :products :created-at)]
+                                        [:field {:temporal-unit :month} (meta/id :products :created-at)]]}
+                        {:filters [[:not-null {} [:field {} "CREATED_AT"]]
+                                   [:not-null {} [:field {} "CREATED_AT_2"]]
+                                   [:not-null {} [:field {} "sum"]]]}]}
+              swapped-query)))))
