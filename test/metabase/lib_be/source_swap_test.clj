@@ -307,6 +307,51 @@
                                            {:type :table, :id (meta/id :orders)}
                                            {:type :table, :id (meta/id :reviews)}))))))
 
+(deftest ^:parallel swap-source-in-query-source-table-to-card-test
+  (let [products-query (lib/query meta/metadata-provider (meta/table-metadata :products))
+        mp             (lib.tu/metadata-provider-with-card-from-query 1 products-query)
+        query          (-> (lib/query mp (meta/table-metadata :orders))
+                           (lib/breakout (meta/field-metadata :orders :created-at)))]
+    (testing "should swap source table to card and convert breakout field ref to name-based"
+      (is (=? {:stages [{:source-card 1
+                         :breakout    [[:field {} "CREATED_AT"]]}]}
+              (lib-be/swap-source-in-query query
+                                           {:type :table, :id (meta/id :orders)}
+                                           {:type :card, :id 1}))))))
+
+(deftest ^:parallel swap-source-in-query-source-card-to-table-with-join-alias-test
+  (let [products-query (-> (lib/query meta/metadata-provider (meta/table-metadata :products))
+                           (lib/with-fields [(meta/field-metadata :products :id)])
+                           (lib/join (-> (lib/join-clause (meta/table-metadata :reviews))
+                                         (lib/with-join-fields [(meta/field-metadata :reviews :created-at)]))))
+        mp             (lib.tu/metadata-provider-with-card-from-query 1 products-query)
+        query          (as-> (lib/query mp (lib.metadata/card mp 1)) q
+                         (lib/filter q (lib/not-null (m/find-first (comp #{"CREATED_AT"} :name)
+                                                                   (lib/filterable-columns q)))))
+        mock-table-id    9999
+        mock-id-field-id   99991
+        mock-date-field-id 99992
+        mock-mp        (lib.tu/mock-metadata-provider
+                        mp
+                        {:tables [(assoc (meta/table-metadata :products)
+                                         :id mock-table-id
+                                         :name "MOCK_TABLE")]
+                         :fields [(assoc (meta/field-metadata :products :id)
+                                         :id mock-id-field-id
+                                         :table-id mock-table-id
+                                         :name "ID")
+                                  (assoc (meta/field-metadata :reviews :created-at)
+                                         :id mock-date-field-id
+                                         :table-id mock-table-id
+                                         :name "Reviews__CREATED_AT")]})
+        query          (assoc query :lib/metadata mock-mp)]
+    (testing "should swap card source to mock table with joined-alias column names"
+      (is (=? {:stages [{:source-table mock-table-id
+                         :filters      [[:not-null {} [:field {} mock-date-field-id]]]}]}
+              (lib-be/swap-source-in-query query
+                                           {:type :card, :id 1}
+                                           {:type :table, :id mock-table-id}))))))
+
 (deftest ^:parallel swap-source-in-query-source-card-join-table-test
   (let [products-query (lib/query meta/metadata-provider (meta/table-metadata :products))
         mp             (lib.tu/metadata-provider-with-card-from-query 1 products-query)
