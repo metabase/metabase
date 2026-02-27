@@ -11,6 +11,7 @@
     (testing "retrieves embedding_next profile with default provider"
       (let [profile (profiles/get-profile :embedding_next)]
         (is (some? profile))
+        (is (= :embedding_next (:name profile)))
         (is (= "openrouter/anthropic/claude-haiku-4-5" (:model profile)))
         (is (= 10 (:max-iterations profile)))
         (is (= 0.3 (:temperature profile)))
@@ -21,6 +22,7 @@
     (testing "retrieves internal profile with default provider"
       (let [profile (profiles/get-profile :internal)]
         (is (some? profile))
+        (is (= :internal (:name profile)))
         (is (= "openrouter/anthropic/claude-haiku-4-5" (:model profile)))
         (is (= 10 (:max-iterations profile)))
         (is (= 0.3 (:temperature profile)))
@@ -34,6 +36,7 @@
     (testing "retrieves transforms_codegen profile"
       (let [profile (profiles/get-profile :transforms_codegen)]
         (is (some? profile))
+        (is (= :transforms_codegen (:name profile)))
         (is (= "openrouter/anthropic/claude-haiku-4-5" (:model profile)))
         (is (= 30 (:max-iterations profile)))
         (is (= 0.3 (:temperature profile)))
@@ -45,6 +48,7 @@
     (testing "retrieves sql profile"
       (let [profile (profiles/get-profile :sql)]
         (is (some? profile))
+        (is (= :sql (:name profile)))
         (is (= "openrouter/anthropic/claude-haiku-4-5" (:model profile)))
         (is (= 10 (:max-iterations profile)))
         (is (= 0.3 (:temperature profile)))
@@ -54,6 +58,7 @@
     (testing "retrieves nlq profile"
       (let [profile (profiles/get-profile :nlq)]
         (is (some? profile))
+        (is (= :nlq (:name profile)))
         (is (= "openrouter/anthropic/claude-haiku-4-5" (:model profile)))
         (is (= 10 (:max-iterations profile)))
         (is (= 0.3 (:temperature profile)))
@@ -66,6 +71,7 @@
     (testing "all profiles have required keys"
       (doseq [profile-id [:embedding_next :internal :transforms_codegen :sql :nlq]]
         (let [profile (profiles/get-profile profile-id)]
+          (is (= profile-id (:name profile)))
           (is (contains? profile :model))
           (is (contains? profile :max-iterations))
           (is (contains? profile :temperature))
