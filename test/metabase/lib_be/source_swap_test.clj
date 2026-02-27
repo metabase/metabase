@@ -322,6 +322,32 @@
                         {:filters [[:not-null {} [:field {} "Products__ID"]]]}]}
               swapped-query)))))
 
+(deftest ^:parallel swap-source-in-query-nonexistent-source-field-test
+  (let [field-ref      (lib/ensure-uuid [:field {:base-type    :type/Text
+                                                 :source-field Integer/MAX_VALUE}
+                                         (meta/id :products :category)])
+        query          (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
+                           (lib/filter (lib/ensure-uuid [:= {} field-ref "Widget"])))
+        upgraded-query (lib-be/upgrade-field-refs-in-query query)
+        swapped-query  (lib-be/swap-source-in-query upgraded-query
+                                                    {:type :table, :id (meta/id :orders)}
+                                                    {:type :table, :id (meta/id :reviews)})]
+    (testing "should preserve non-existent source-field when upgrading"
+      (is (=? {:stages [{:filters [[:= {}
+                                    [:field {:source-field Integer/MAX_VALUE}
+                                     (meta/id :products :category)]
+                                    "Widget"]]}]}
+              upgraded-query)))
+    (testing "should return an identical query if upgrade is not needed"
+      (is (= upgraded-query (lib-be/upgrade-field-refs-in-query upgraded-query))))
+    (testing "should preserve non-existent source-field when swapping"
+      (is (=? {:stages [{:source-table (meta/id :reviews)
+                         :filters [[:= {}
+                                    [:field {:source-field Integer/MAX_VALUE}
+                                     (meta/id :products :category)]
+                                    "Widget"]]}]}
+              swapped-query)))))
+
 (deftest ^:parallel swap-source-in-query-nonexistent-field-id-test
   (let [query          (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
                            (lib/with-fields [(lib/ensure-uuid [:field {:base-type :type/Integer} Integer/MAX_VALUE])]))
