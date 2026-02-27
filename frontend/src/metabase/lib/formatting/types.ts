@@ -1,5 +1,3 @@
-import type { ClickBehavior } from "metabase-types/api";
-
 import type { CurrencyStyle } from "./currency";
 
 export type TimeEnabled = "minutes" | "milliseconds" | "seconds";
@@ -12,7 +10,7 @@ export interface TimeOnlyOptions {
 }
 
 export interface OptionsType extends TimeOnlyOptions {
-  click_behavior?: ClickBehavior;
+  click_behavior?: any;
   clicked?: any;
   collapseNewlines?: boolean;
   column?: any;
