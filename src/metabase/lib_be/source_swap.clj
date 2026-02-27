@@ -2,7 +2,6 @@
   (:require
    [medley.core :as m]
    [metabase.lib.card :as lib.card]
-   [metabase.lib.field :as lib.field]
    [metabase.lib.field.resolution :as lib.field.resolution]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
@@ -114,7 +113,7 @@
   (lib.walk/walk-clause clause
                         (fn [clause]
                           (cond-> clause
-                            (lib.field/is-field-clause? clause)
+                            (lib.util/field-clause? clause)
                             f))))
 
 (mu/defn- preserve-field-ref-options :- :mbql.clause/field

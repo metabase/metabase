@@ -284,7 +284,6 @@
   filter-args-display-name]
  [lib.field
   add-field
-  is-field-clause?
   fieldable-columns
   fields
   find-visible-column-for-ref
