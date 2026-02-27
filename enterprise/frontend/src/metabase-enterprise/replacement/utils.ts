@@ -17,12 +17,27 @@ export function getGenericErrorMessage(): string {
   return t`This data source isn't compatible.`;
 }
 
-export function getEntityErrorMessage(error: ReplaceSourceErrorType): string {
+export function getSourceErrorMessage(
+  error: ReplaceSourceErrorType,
+): string | undefined {
+  switch (error) {
+    case "incompatible-implicit-joins":
+      return t`The original table can't be referenced by a foreign key by another table.`;
+    default:
+      return undefined;
+  }
+}
+
+export function getTargetErrorMessage(
+  error: ReplaceSourceErrorType,
+): string | undefined {
   switch (error) {
     case "database-mismatch":
       return t`The replacement data source is in a different database than the original data source.`;
     case "cycle-detected":
       return t`The replacement data source can't be based on the original data source.`;
+    default:
+      return undefined;
   }
 }
 

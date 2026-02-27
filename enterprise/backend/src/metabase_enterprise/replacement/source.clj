@@ -58,7 +58,7 @@
           mappings       (format-column-mappings (lib-be/check-column-mappings source-query target-query))
           has-missing?   (some (fn [m] (and (:source m) (nil? (:target m)))) mappings)
           has-col-errors? (seq (mapcat :errors mappings))
-          implicit-joins? (and (= old-type :table) (= new-type :card) (has-incoming-fks? old-id))
+          implicit-joins? (and (= old-type :table) (has-incoming-fks? old-id))
           success?       (not (or db-mismatch? cycle? has-missing? has-col-errors? implicit-joins?))
           reported-errors (cond-> []
                             db-mismatch?    (conj :database-mismatch)

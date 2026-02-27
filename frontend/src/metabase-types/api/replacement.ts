@@ -26,6 +26,7 @@ export type ReplaceSourceColumnInfo = Pick<
 export const REPLACE_SOURCE_ERROR_TYPES = [
   "database-mismatch",
   "cycle-detected",
+  "incompatible-implicit-joins",
 ] as const;
 export type ReplaceSourceErrorType =
   (typeof REPLACE_SOURCE_ERROR_TYPES)[number];

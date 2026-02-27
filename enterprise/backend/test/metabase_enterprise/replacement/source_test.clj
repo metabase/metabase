@@ -166,12 +166,24 @@
           (let [result (replacement.source/check-replace-source [:table (:id table)] [:card (:id card)])]
             (is (true? (:success result)))
             (is (not (some #{:incompatible-implicit-joins} (:errors result)))))))))
-  (testing "table→table does not trigger implicit joins check"
+  (testing "card→table does not trigger implicit joins check"
     (mt/dataset test-data
-      ;; PEOPLE has incoming FKs, but table→table swap should not trigger the check
-      ;; Use two different tables to avoid the same-ref early return
+      (let [mp    (mt/metadata-provider)
+            ;; PEOPLE has incoming FKs, but card→table should not trigger the check
+            table (lib.metadata/table mp (mt/id :people))
+            query (lib/query mp table)]
+        (mt/with-temp [:model/Card card {:dataset_query query
+                                         :database_id   (mt/id)
+                                         :type          :question}]
+          (let [result (replacement.source/check-replace-source [:card (:id card)] [:table (:id table)])]
+            (is (true? (:success result)))
+            (is (not (some #{:incompatible-implicit-joins} (:errors result)))))))))
+  (testing "table→table with incoming FKs reports :incompatible-implicit-joins"
+    (mt/dataset test-data
+      ;; PEOPLE has incoming FKs (ORDERS.USER_ID → PEOPLE.ID)
       (let [result (replacement.source/check-replace-source [:table (mt/id :people)] [:table (mt/id :products)])]
-        (is (not (some #{:incompatible-implicit-joins} (:errors result))))))))
+        (is (false? (:success result)))
+        (is (some #{:incompatible-implicit-joins} (:errors result)))))))
 
 (deftest native-card-on-fk-table-reports-fk-mismatch-test
   ;; Native query result_metadata does not include :type/FK semantic types or

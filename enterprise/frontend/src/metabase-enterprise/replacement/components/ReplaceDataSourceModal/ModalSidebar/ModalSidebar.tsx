@@ -1,4 +1,4 @@
-import { msgid, ngettext, t } from "ttag";
+import { t } from "ttag";
 
 import { Button, Group, Stack, Text, Title } from "metabase/ui";
 import type {
@@ -6,13 +6,13 @@ import type {
   ReplaceSourceEntry,
 } from "metabase-types/api";
 
-import { getEntityErrorMessage, getGenericErrorMessage } from "../../../utils";
 import type { EntityItem } from "../types";
 import { getEntityDatabaseId } from "../utils";
 
 import { EntitySection } from "./EntitySection";
 import { EntitySelect } from "./EntitySelect";
 import S from "./ModalSidebar.module.css";
+import { getSourceError, getSubmitLabel, getTargetError } from "./utils";
 
 type ModalSidebarProps = {
   sourceItem: EntityItem | undefined;
@@ -39,9 +39,8 @@ export function ModalSidebar({
 }: ModalSidebarProps) {
   const sourceDatabaseId =
     sourceItem != null ? getEntityDatabaseId(sourceItem) : undefined;
-  const sourceError =
-    dependentsCount != null ? getSourceError(dependentsCount) : undefined;
-  const targetError = checkInfo != null ? getTargetError(checkInfo) : undefined;
+  const sourceError = getSourceError(checkInfo, dependentsCount);
+  const targetError = getTargetError(checkInfo);
 
   return (
     <Stack
@@ -84,36 +83,5 @@ export function ModalSidebar({
         </Button>
       </Group>
     </Stack>
-  );
-}
-
-function getSourceError(dependentsCount: number) {
-  if (dependentsCount === 0) {
-    return t`Nothing uses this data source, so there's nothing to replace.`;
-  }
-}
-
-function getTargetError(checkInfo: CheckReplaceSourceInfo) {
-  if (checkInfo.success) {
-    return undefined;
-  }
-
-  const errors = checkInfo.errors ?? [];
-  return errors.length === 1
-    ? getEntityErrorMessage(errors[0])
-    : getGenericErrorMessage();
-}
-
-function getSubmitLabel(
-  dependentsCount: number | undefined,
-  canReplace: boolean,
-) {
-  if (dependentsCount == null || !canReplace) {
-    return t`Replace data source`;
-  }
-  return ngettext(
-    msgid`Replace data source in ${dependentsCount} items`,
-    `Replace data source in ${dependentsCount} items`,
-    dependentsCount,
   );
 }
