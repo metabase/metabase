@@ -139,3 +139,23 @@ export const trackDependencyEntitySelected = ({
     target_id: entityId,
   });
 };
+
+export const trackMeasureCreateStarted = (tableId: number) => {
+  trackSimpleEvent({
+    event: "measure_create_started",
+    triggered_from: "data_studio_measures_list",
+    target_id: tableId,
+  });
+};
+
+export const trackMeasureCreated = (
+  result: "success" | "failure",
+  measureId?: number,
+) => {
+  trackSimpleEvent({
+    event: "measure_created",
+    triggered_from: "data_studio_measures",
+    result,
+    target_id: measureId ?? null,
+  });
+};

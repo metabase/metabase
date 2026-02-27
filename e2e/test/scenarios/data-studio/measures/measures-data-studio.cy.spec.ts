@@ -9,6 +9,7 @@ const { ORDERS, ORDERS_ID, PRODUCTS_ID } = SAMPLE_DATABASE;
 describe("scenarios > data studio > data model > measures", () => {
   beforeEach(() => {
     H.restore();
+    H.resetSnowplow();
     cy.signInAsAdmin();
     H.activateToken("bleeding-edge");
 
@@ -31,6 +32,13 @@ describe("scenarios > data studio > data model > measures", () => {
 
       cy.log("verify new measure link and navigation");
       MeasureList.getNewMeasureLink().scrollIntoView().click();
+
+      cy.log("verify measure_create_started event");
+      H.expectUnstructuredSnowplowEvent({
+        event: "measure_create_started",
+        triggered_from: "data_studio_measures_list",
+        target_id: ORDERS_ID,
+      });
 
       cy.url().should("include", `${getMeasuresBaseUrl(ORDERS_ID)}/new`);
     });
@@ -95,6 +103,13 @@ describe("scenarios > data studio > data model > measures", () => {
       cy.log("navigate to new measure page");
       MeasureList.getNewMeasureLink().scrollIntoView().click();
 
+      cy.log("verify measure_create_started event");
+      H.expectUnstructuredSnowplowEvent({
+        event: "measure_create_started",
+        triggered_from: "data_studio_measures_list",
+        target_id: ORDERS_ID,
+      });
+
       cy.log("fill in measure name");
       MeasureEditor.getNameInput().type("Total Revenue");
 
@@ -110,7 +125,17 @@ describe("scenarios > data studio > data model > measures", () => {
 
       cy.log("save measure");
       MeasureEditor.getSaveButton().click();
-      cy.wait("@createMeasure");
+      cy.wait("@createMeasure").then((interception) => {
+        const measureId = interception.response?.body?.id;
+
+        cy.log("verify measure_created success event");
+        H.expectUnstructuredSnowplowEvent({
+          event: "measure_created",
+          triggered_from: "data_studio_measures",
+          result: "success",
+          target_id: measureId,
+        });
+      });
 
       cy.log("verify redirect to edit page and toast");
       H.undoToast().should("contain.text", "Measure created");

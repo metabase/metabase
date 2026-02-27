@@ -2,6 +2,7 @@ import { t } from "ttag";
 
 import { EmptyState } from "metabase/common/components/EmptyState";
 import { ForwardRefLink } from "metabase/common/components/Link";
+import { trackMeasureCreateStarted } from "metabase/data-studio/analytics";
 import { getUserCanWriteMeasures } from "metabase/data-studio/selectors";
 import { useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
@@ -44,6 +45,7 @@ export function MeasureList({ table }: MeasureListProps) {
             py="xs"
             size="xs"
             leftSection={<Icon name="add" />}
+            onClick={() => trackMeasureCreateStarted(Number(table.id))}
           >{t`New measure`}</Button>
         </Group>
       )}
