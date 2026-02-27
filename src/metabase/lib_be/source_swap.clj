@@ -197,10 +197,10 @@
 
 ;;; ------------------------------------------------ swap-source -------------------------------------------------------
 
-(mr/def ::swap-source.column-mapping
+(mr/def ::swap-source.field-id-mapping
   [:map-of ::lib.schema.id/field ::lib.schema.id/field])
 
-(mu/defn- build-column-mapping :- ::swap-source.column-mapping
+(mu/defn- build-field-id-mapping :- ::swap-source.field-id-mapping
   [query                                      :- ::lib.schema/query
    {old-source-id :id, old-source-type :type} :- ::swap-source.source
    {new-source-id :id, new-source-type :type} :- ::swap-source.source]
@@ -246,56 +246,56 @@
   (update query :stages (fn [stages] (perf/mapv #(swap-source-table-or-card-in-stage % old-source new-source) stages))))
 
 (mu/defn- swap-field-ref :- :mbql.clause/field
-  [field-ref      :- :mbql.clause/field
-   column-mapping :- ::swap-source.column-mapping]
+  [field-ref        :- :mbql.clause/field
+   field-id-mapping :- ::swap-source.field-id-mapping]
   (let [old-source-field-id (-> field-ref lib.options/options :source-field)
-        new-source-field-id (when old-source-field-id (get column-mapping old-source-field-id))]
+        new-source-field-id (when old-source-field-id (get field-id-mapping old-source-field-id))]
     (cond-> field-ref
       new-source-field-id
       (lib.options/update-options assoc :source-field new-source-field-id))))
 
 (mu/defn- swap-field-refs-in-clauses :- [:sequential :any]
-  [clauses        :- [:sequential :any]
-   column-mapping :- ::swap-source.column-mapping]
+  [clauses          :- [:sequential :any]
+   field-id-mapping :- ::swap-source.field-id-mapping]
   (perf/mapv (fn [clause]
-               (walk-clause-field-refs clause #(swap-field-ref % column-mapping)))
+               (walk-clause-field-refs clause #(swap-field-ref % field-id-mapping)))
              clauses))
 
 (mu/defn- swap-field-refs-in-join :- ::lib.schema.join/join
-  [join           :- ::lib.schema.join/join
-   column-mapping :- ::swap-source.column-mapping]
+  [join             :- ::lib.schema.join/join
+   field-id-mapping :- ::swap-source.field-id-mapping]
   (-> join
       (u/update-some :fields (fn [fields]
                                (if (keyword? fields)
                                  fields
-                                 (swap-field-refs-in-clauses fields column-mapping))))
-      (u/update-some :conditions #(swap-field-refs-in-clauses % column-mapping))))
+                                 (swap-field-refs-in-clauses fields field-id-mapping))))
+      (u/update-some :conditions #(swap-field-refs-in-clauses % field-id-mapping))))
 
 (mu/defn- swap-field-refs-in-joins :- [:sequential ::lib.schema.join/join]
-  [joins          :- [:sequential ::lib.schema.join/join]
-   column-mapping :- ::swap-source.column-mapping]
-  (perf/mapv #(swap-field-refs-in-join % column-mapping) joins))
+  [joins            :- [:sequential ::lib.schema.join/join]
+   field-id-mapping :- ::swap-source.field-id-mapping]
+  (perf/mapv #(swap-field-refs-in-join % field-id-mapping) joins))
 
 (mu/defn- swap-field-refs-in-stage :- ::lib.schema/stage
-  [query          :- ::lib.schema/query
-   stage-number   :- :int
-   column-mapping :- ::swap-source.column-mapping]
+  [query            :- ::lib.schema/query
+   stage-number     :- :int
+   field-id-mapping :- ::swap-source.field-id-mapping]
   (-> (lib.util/query-stage query stage-number)
-      (u/update-some :fields      #(swap-field-refs-in-clauses % column-mapping))
-      (u/update-some :joins       #(swap-field-refs-in-joins % column-mapping))
-      (u/update-some :expressions #(swap-field-refs-in-clauses % column-mapping))
-      (u/update-some :filters     #(swap-field-refs-in-clauses % column-mapping))
-      (u/update-some :aggregation #(swap-field-refs-in-clauses % column-mapping))
-      (u/update-some :breakout    #(swap-field-refs-in-clauses % column-mapping))
-      (u/update-some :order-by    #(swap-field-refs-in-clauses % column-mapping))))
+      (u/update-some :fields      #(swap-field-refs-in-clauses % field-id-mapping))
+      (u/update-some :joins       #(swap-field-refs-in-joins % field-id-mapping))
+      (u/update-some :expressions #(swap-field-refs-in-clauses % field-id-mapping))
+      (u/update-some :filters     #(swap-field-refs-in-clauses % field-id-mapping))
+      (u/update-some :aggregation #(swap-field-refs-in-clauses % field-id-mapping))
+      (u/update-some :breakout    #(swap-field-refs-in-clauses % field-id-mapping))
+      (u/update-some :order-by    #(swap-field-refs-in-clauses % field-id-mapping))))
 
 (mu/defn- swap-field-refs-in-query :- ::lib.schema/query
-  [query          :- ::lib.schema/query
-   column-mapping :- ::swap-source.column-mapping]
+  [query            :- ::lib.schema/query
+   field-id-mapping :- ::swap-source.field-id-mapping]
   (u/update-some query :stages
                  (fn [stages]
                    (vec (map-indexed (fn [stage-number _]
-                                       (swap-field-refs-in-stage query stage-number column-mapping))
+                                       (swap-field-refs-in-stage query stage-number field-id-mapping))
                                      stages)))))
 
 (mu/defn swap-source-in-query :- ::lib.schema/query
@@ -304,7 +304,7 @@
    old-source :- ::swap-source.source
    new-source :- ::swap-source.source]
   (swap-field-refs-in-query (swap-source-table-or-card-in-query query old-source new-source)
-                            (build-column-mapping query old-source new-source)))
+                            (build-field-id-mapping query old-source new-source)))
 
 (mu/defn swap-source-in-parameter-target :- ::lib.schema.parameter/target
   "If the parameter target is a field ref, swap it to reference the new source."
@@ -316,5 +316,5 @@
         (when-let [stage-number (parameter-target-stage-number query target)]
           (lib.parameters/update-parameter-target-field-ref
            target
-           #(swap-field-ref % (build-column-mapping query old-source new-source)))))
+           #(swap-field-ref % (build-field-id-mapping query old-source new-source)))))
       target))
