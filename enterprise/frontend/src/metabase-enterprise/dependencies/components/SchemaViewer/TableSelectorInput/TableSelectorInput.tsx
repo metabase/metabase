@@ -1,6 +1,5 @@
-import { useClickOutside } from "@mantine/hooks";
 import { useReactFlow } from "@xyflow/react";
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { t } from "ttag";
 
 import {
@@ -79,11 +78,7 @@ export function TableSelectorInput({
     }
   }, [opened, handleClose, handleOpen]);
 
-  const clickOutsideRef = useClickOutside(() => {
-    if (opened && !showSelectAllWarning) {
-      handleClose();
-    }
-  });
+  const containerRef = useRef<HTMLDivElement>(null);
 
   const selectedTableIdSet = useMemo(
     () => new Set(selectedTableIds),
@@ -159,6 +154,27 @@ export function TableSelectorInput({
 
   const [showSelectAllWarning, setShowSelectAllWarning] = useState(false);
 
+  // Use capturing mousedown listener to close dropdown before ReactFlow intercepts the event
+  useEffect(() => {
+    if (!opened || showSelectAllWarning) {
+      return;
+    }
+
+    const handleMouseDown = (event: MouseEvent) => {
+      if (
+        containerRef.current &&
+        !containerRef.current.contains(event.target as Node)
+      ) {
+        handleClose();
+      }
+    };
+
+    document.addEventListener("mousedown", handleMouseDown, true);
+    return () => {
+      document.removeEventListener("mousedown", handleMouseDown, true);
+    };
+  }, [opened, showSelectAllWarning, handleClose]);
+
   const handleSelectAllClick = useCallback(
     (checked: boolean) => {
       if (checked) {
@@ -189,7 +205,7 @@ export function TableSelectorInput({
   const someSelected = selectedCount > 0 && selectedCount < allTables.length;
 
   return (
-    <Box ref={clickOutsideRef}>
+    <Box ref={containerRef}>
       <Popover
         opened={opened}
         onClose={handleClose}
