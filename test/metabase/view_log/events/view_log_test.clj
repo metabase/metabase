@@ -218,7 +218,8 @@
 (deftest get-card-view-log-test
   (mt/with-premium-features #{:audit-app}
     (testing "Card reads (views) via the API are recorded in the view_log"
-      (mt/with-temp [:model/Card card {:name "My Cool Card" :type :question}]
+      (mt/with-temp [:model/Card card {:name "My Cool Card" :type :question
+                                       :dataset_query (mt/mbql-query venues {:limit 1})}]
         (testing "POST /api/card/:id/query"
           (mt/user-http-request :crowberto :post 202 (format "card/%s/query" (u/id card)))
           (is (partial= {:user_id (mt/user->id :crowberto), :model "card", :model_id (u/id card), :context :question}
@@ -237,7 +238,7 @@
   (mt/with-premium-features #{:audit-app}
     (testing "Running a query for a card in a dashboard is recorded in the view_log."
       (mt/with-temp [:model/Dashboard     dash     {}
-                     :model/Card          card     {}
+                     :model/Card          card     {:dataset_query (mt/mbql-query venues {:limit 1})}
                      :model/DashboardCard dashcard {:dashboard_id (:id dash)
                                                     :card_id      (:id card)}]
         (testing "POST /api/dashboard/:dashboard-id/card/:card-id/query"
@@ -280,7 +281,8 @@
   (mt/with-premium-features #{:audit-app}
     (testing "Viewing an embedding logs the correct view log event."
       (embed-test/with-embedding-enabled-and-new-secret-key!
-        (mt/with-temp [:model/Card card {:enable_embedding true}]
+        (mt/with-temp [:model/Card card {:enable_embedding true
+                                         :dataset_query (mt/mbql-query venues {:limit 1})}]
           (testing "GET /api/embed/card/:token/query"
             (client/client :get 202 (str (embed-test/card-url card) "/query"))
             (is (partial= {:model "card", :model_id (:id card), :has_access true}
@@ -291,7 +293,7 @@
     (testing "Running a query for a card in a public dashboard logs the correct view log event."
       (embed-test/with-embedding-enabled-and-new-secret-key!
         (mt/with-temp [:model/Dashboard dash {:enable_embedding true}
-                       :model/Card          card     {}
+                       :model/Card          card     {:dataset_query (mt/mbql-query venues {:limit 1})}
                        :model/DashboardCard dashcard {:dashboard_id (:id dash)
                                                       :card_id      (:id card)}]
           (testing "GET /dashboard/:token/dashcard/:dashcard-id/card/:card-id"
