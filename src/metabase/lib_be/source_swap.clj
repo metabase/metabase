@@ -240,16 +240,20 @@
    source-type :- ::swap-source.source-type]
   (if (= source-type :table) (:id column) (column-match-key column)))
 
+(mu/defn- source-columns :- [:maybe [:sequential ::lib.schema.metadata/column]]
+  [query       :- ::lib.schema/query
+   source-id   :- [:or ::lib.schema.id/table ::lib.schema.id/card]
+   source-type :- ::swap-source.source-type]
+  (if (= source-type :table)
+    (lib.metadata/fields query source-id)
+    (lib.card/saved-question-metadata query source-id)))
+
 (mu/defn- build-column-mapping :- ::swap-source.column-mapping
   [query                                      :- ::lib.schema/query
    {old-source-id :id, old-source-type :type} :- ::swap-source.source
    {new-source-id :id, new-source-type :type} :- ::swap-source.source]
-  (let [old-columns       (if (= old-source-type :table)
-                            (lib.metadata/fields query old-source-id)
-                            (lib.card/saved-question-metadata query old-source-id))
-        new-columns       (if (= new-source-type :table)
-                            (lib.metadata/fields query new-source-id)
-                            (lib.card/saved-question-metadata query new-source-id))
+  (let [old-columns       (source-columns query old-source-id old-source-type)
+        new-columns       (source-columns query new-source-id new-source-type)
         new-column-by-key (m/index-by column-match-key new-columns)]
     (into {}
           (keep (fn [old-column]
