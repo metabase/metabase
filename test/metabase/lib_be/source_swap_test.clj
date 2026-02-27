@@ -146,6 +146,24 @@
                          :order-by     [[:asc {} [:field {} (meta/id :reviews :created-at)]]]}]}
               swapped-query)))))
 
+(deftest ^:parallel swap-source-in-query-identity-expression-test
+  (let [query          (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
+                           (lib/expression "created-at-expr" (meta/field-metadata :orders :created-at)))
+        upgraded-query (lib-be/upgrade-field-refs-in-query query)
+        swapped-query  (lib-be/swap-source-in-query upgraded-query
+                                                    {:type :table, :id (meta/id :orders)}
+                                                    {:type :table, :id (meta/id :reviews)})]
+    (testing "should convert to name-based ref and preserve :lib/expression-name when upgrading"
+      (is (=? {:stages [{:expressions [[:field {:lib/expression-name "created-at-expr"} "CREATED_AT"]]}]}
+              upgraded-query)))
+    (testing "should return an identical query if upgrade is not needed"
+      (is (= upgraded-query (lib-be/upgrade-field-refs-in-query upgraded-query))))
+    (testing "should convert to id-based ref and preserve :lib/expression-name when swapping"
+      (is (=? {:stages [{:source-table (meta/id :reviews)
+                         :expressions  [[:field {:lib/expression-name "created-at-expr"}
+                                         (meta/id :reviews :created-at)]]}]}
+              swapped-query)))))
+
 (deftest ^:parallel swap-source-in-query-implicit-join-test
   (let [query          (as-> (lib/query meta/metadata-provider (meta/table-metadata :orders)) q
                          (lib/filter q (lib/= (m/find-first #(= (:name %) "CATEGORY") (lib/filterable-columns q)) "Widget")))

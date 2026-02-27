@@ -1,7 +1,6 @@
 (ns metabase.lib-be.source-swap
   (:require
    [medley.core :as m]
-   [metabase.lib.expression :as lib.expression]
    [metabase.lib.field :as lib.field]
    [metabase.lib.field.resolution :as lib.field.resolution]
    [metabase.lib.metadata :as lib.metadata]
@@ -116,17 +115,24 @@
                             (lib.field/is-field-clause? clause)
                             f))))
 
+(mu/defn- preserve-field-ref-options :- :mbql.clause/field
+  "Copy options from `old-field-ref` that should be preserved to `new-field-ref`."
+  [old-field-ref :- :mbql.clause/field
+   new-field-ref :- :mbql.clause/field]
+  (let [expression-name (lib.util/expression-name old-field-ref)]
+    (cond-> new-field-ref
+      expression-name
+      (lib.options/update-options assoc :lib/expression-name expression-name))))
+
 (mu/defn- upgrade-field-ref :- :mbql.clause/field
   "Upgrade a field ref for a non-implicitly joinable column to use a string-based field ref."
   [query         :- ::lib.schema/query
    stage-number  :- :int
    field-ref     :- :mbql.clause/field]
   (or (when-let [column (lib.field.resolution/resolve-field-ref query stage-number field-ref)]
-        (let [column (cond-> column
-                       (not (:fk-field-id column)) (dissoc :id))
-              expression-name (lib.util/expression-name field-ref)
-              new-field-ref (cond-> (lib.ref/ref column)
-                              expression-name (lib.expression/with-expression-name expression-name))]
+        (let [column        (cond-> column
+                              (not (:fk-field-id column)) (dissoc :id))
+              new-field-ref (preserve-field-ref-options field-ref (lib.ref/ref column))]
           (when-not (same-field-ref? field-ref new-field-ref)
             new-field-ref)))
       field-ref))
@@ -259,7 +265,7 @@
                               new-source-field-id
                               (lib.options/update-options assoc :source-field new-source-field-id))]
     (or (when-let [new-column (lib.field.resolution/resolve-field-ref query stage-number swapped-field-ref)]
-          (let [new-field-ref (lib.ref/ref new-column)]
+          (let [new-field-ref (preserve-field-ref-options field-ref (lib.ref/ref new-column))]
             (when-not (same-field-ref? field-ref new-field-ref)
               new-field-ref)))
         swapped-field-ref)))
