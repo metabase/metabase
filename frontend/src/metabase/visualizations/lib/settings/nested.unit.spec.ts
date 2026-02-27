@@ -3,18 +3,21 @@ import { nestedSettings } from "metabase/visualizations/lib/settings/nested";
 
 describe("nestedSettings", () => {
   it("should add a nested setting function to settings", () => {
-    const defs = nestedSettings<number | null>("nested_settings", {
-      objectName: "nested",
-      getObjects: () => [1, 2, 3],
-      getObjectKey: (object) => String(object),
-      getObjectSettings: (objects, key) => objects[String(key)],
-      getSettingDefinitionsForObject: () => ({
-        foo: {
-          getDefault: (object: string) => `foo${object}`,
-        },
-      }),
-      component: () => null,
-    });
+    const defs = nestedSettings<"nested_settings", number | null>(
+      "nested_settings",
+      {
+        objectName: "nested",
+        getObjects: () => [1, 2, 3],
+        getObjectKey: (object) => String(object),
+        getObjectSettings: (objects, key) => objects[String(key)],
+        getSettingDefinitionsForObject: () => ({
+          foo: {
+            getDefault: (object: string) => `foo${object}`,
+          },
+        }),
+        component: () => null,
+      },
+    );
     const stored = { nested_settings: { 1: { foo: "bar" } } };
     const settings = getComputedSettings(defs, null, stored);
 

@@ -12,11 +12,7 @@ import type {
   VisualizationSettingDefinition,
   VisualizationSettingsDefinitions,
 } from "metabase/visualizations/types";
-import type {
-  Series,
-  VisualizationSettingKey,
-  VisualizationSettings,
-} from "metabase-types/api";
+import type { Series, VisualizationSettings } from "metabase-types/api";
 
 import { getComputedSettings, getSettingsWidgets } from "../settings";
 
@@ -52,11 +48,15 @@ export type NestedSettingsOptions<
 };
 
 export function nestedSettings<
+  Key extends Exclude<
+    keyof VisualizationSettingsDefinitions,
+    number // TS infers number because of `[key: string]: any` in VisualizationSettingsDefinitions
+  >,
   T,
   TValue = unknown,
   TProps extends Record<string, unknown> = Record<string, unknown>,
 >(
-  id: VisualizationSettingKey,
+  id: Key,
   {
     objectName = "object",
     getObjects = () => [],
@@ -146,7 +146,9 @@ export function nestedSettings<
   // either "component" or "widget" prop needs to be passed
   const widget = checkNotNull(widgetProp ?? defaultWidget);
 
-  const idDef: SeriesSettingDefinition<TValue, TProps & { id: string }> = {
+  type Value = VisualizationSettingsDefinitions[Key];
+
+  const idDef: SeriesSettingDefinition<Value, TProps & { id: string }> = {
     section: t`Display`,
     default: {},
     getProps: (series, settings, onChange, extra) => {
