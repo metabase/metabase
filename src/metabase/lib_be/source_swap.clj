@@ -169,9 +169,12 @@
 (mu/defn upgrade-field-refs-in-query :- ::lib.schema/query
   "Upgrade all field refs in `query` to use name-based field refs when possible."
   [query     :- ::lib.schema/query]
-  (update query :stages #(vec (map-indexed (fn [stage-number _]
-                                             (upgrade-field-refs-in-stage query stage-number))
-                                           %))))
+  (update query :stages
+          (fn [stages]
+            (into []
+                  (map-indexed (fn [stage-number _]
+                                 (upgrade-field-refs-in-stage query stage-number)))
+                  stages))))
 
 (mu/defn- parameter-target-stage-number :- [:maybe :int]
   [query  :- ::lib.schema/query
@@ -209,7 +212,10 @@
       (into {}
             (keep (fn [old-field]
                     (when-let [new-field (get new-field-by-key (column-match-key old-field))]
-                      [(:id old-field) (:id new-field)])))
+                      (let [old-field-id (:id old-field)
+                            new-field-id (:id new-field)]
+                        (when (and (some? old-field-id) (some? new-field-id))
+                          [old-field-id new-field-id])))))
             old-fields))))
 
 (mu/defn- swap-source-table-or-card :- ::lib.schema/stage
@@ -243,57 +249,71 @@
   (update query :stages (fn [stages] (perf/mapv #(swap-source-table-or-card-in-stage % old-source new-source) stages))))
 
 (mu/defn- swap-field-ref :- :mbql.clause/field
-  [field-ref        :- :mbql.clause/field
-   field-id-mapping :- ::swap-source.field-id-mapping]
+  [query            :- ::lib.schema/query
+   stage-number     :- :int
+   field-id-mapping :- ::swap-source.field-id-mapping
+   field-ref        :- :mbql.clause/field]
   (let [old-source-field-id (-> field-ref lib.options/options :source-field)
-        new-source-field-id (when old-source-field-id (get field-id-mapping old-source-field-id))]
-    (cond-> field-ref
-      new-source-field-id
-      (lib.options/update-options assoc :source-field new-source-field-id))))
+        new-source-field-id (when old-source-field-id (get field-id-mapping old-source-field-id))
+        swapped-field-ref   (cond-> field-ref
+                              new-source-field-id
+                              (lib.options/update-options assoc :source-field new-source-field-id))]
+    (or (when-let [new-column (lib.field.resolution/resolve-field-ref query stage-number swapped-field-ref)]
+          (let [new-field-ref (lib.ref/ref new-column)]
+            (when-not (same-field-ref? field-ref new-field-ref)
+              new-field-ref)))
+        swapped-field-ref)))
 
 (mu/defn- swap-field-refs-in-clauses :- [:sequential :any]
-  [clauses          :- [:sequential :any]
-   field-id-mapping :- ::swap-source.field-id-mapping]
+  [query            :- ::lib.schema/query
+   stage-number     :- :int
+   field-id-mapping :- ::swap-source.field-id-mapping
+   clauses          :- [:sequential :any]]
   (perf/mapv (fn [clause]
-               (walk-clause-field-refs clause #(swap-field-ref % field-id-mapping)))
+               (walk-clause-field-refs clause #(swap-field-ref query stage-number field-id-mapping %)))
              clauses))
 
 (mu/defn- swap-field-refs-in-join :- ::lib.schema.join/join
-  [join             :- ::lib.schema.join/join
-   field-id-mapping :- ::swap-source.field-id-mapping]
+  [query            :- ::lib.schema/query
+   stage-number     :- :int
+   field-id-mapping :- ::swap-source.field-id-mapping
+   join             :- ::lib.schema.join/join]
   (-> join
       (u/update-some :fields (fn [fields]
                                (if (keyword? fields)
                                  fields
-                                 (swap-field-refs-in-clauses fields field-id-mapping))))
-      (u/update-some :conditions #(swap-field-refs-in-clauses % field-id-mapping))))
+                                 (swap-field-refs-in-clauses query stage-number field-id-mapping fields))))
+      (u/update-some :conditions #(swap-field-refs-in-clauses query stage-number field-id-mapping %))))
 
 (mu/defn- swap-field-refs-in-joins :- [:sequential ::lib.schema.join/join]
-  [joins            :- [:sequential ::lib.schema.join/join]
-   field-id-mapping :- ::swap-source.field-id-mapping]
-  (perf/mapv #(swap-field-refs-in-join % field-id-mapping) joins))
+  [query            :- ::lib.schema/query
+   stage-number     :- :int
+   field-id-mapping :- ::swap-source.field-id-mapping
+   joins            :- [:sequential ::lib.schema.join/join]]
+  (perf/mapv #(swap-field-refs-in-join query stage-number field-id-mapping %) joins))
 
 (mu/defn- swap-field-refs-in-stage :- ::lib.schema/stage
   [query            :- ::lib.schema/query
    stage-number     :- :int
    field-id-mapping :- ::swap-source.field-id-mapping]
   (-> (lib.util/query-stage query stage-number)
-      (u/update-some :fields      #(swap-field-refs-in-clauses % field-id-mapping))
-      (u/update-some :joins       #(swap-field-refs-in-joins % field-id-mapping))
-      (u/update-some :expressions #(swap-field-refs-in-clauses % field-id-mapping))
-      (u/update-some :filters     #(swap-field-refs-in-clauses % field-id-mapping))
-      (u/update-some :aggregation #(swap-field-refs-in-clauses % field-id-mapping))
-      (u/update-some :breakout    #(swap-field-refs-in-clauses % field-id-mapping))
-      (u/update-some :order-by    #(swap-field-refs-in-clauses % field-id-mapping))))
+      (u/update-some :fields      #(swap-field-refs-in-clauses query stage-number field-id-mapping %))
+      (u/update-some :joins       #(swap-field-refs-in-joins query stage-number field-id-mapping %))
+      (u/update-some :expressions #(swap-field-refs-in-clauses query stage-number field-id-mapping %))
+      (u/update-some :filters     #(swap-field-refs-in-clauses query stage-number field-id-mapping %))
+      (u/update-some :aggregation #(swap-field-refs-in-clauses query stage-number field-id-mapping %))
+      (u/update-some :breakout    #(swap-field-refs-in-clauses query stage-number field-id-mapping %))
+      (u/update-some :order-by    #(swap-field-refs-in-clauses query stage-number field-id-mapping %))))
 
 (mu/defn- swap-field-refs-in-query :- ::lib.schema/query
   [query            :- ::lib.schema/query
    field-id-mapping :- ::swap-source.field-id-mapping]
   (u/update-some query :stages
                  (fn [stages]
-                   (vec (map-indexed (fn [stage-number _]
-                                       (swap-field-refs-in-stage query stage-number field-id-mapping))
-                                     stages)))))
+                   (into []
+                         (map-indexed (fn [stage-number _]
+                                        (swap-field-refs-in-stage query stage-number field-id-mapping)))
+                         stages))))
 
 (mu/defn swap-source-in-query :- ::lib.schema/query
   "Updates the query to use the new source table or card."
@@ -313,5 +333,5 @@
         (when-let [stage-number (parameter-target-stage-number query target)]
           (lib.parameters/update-parameter-target-field-ref
            target
-           #(swap-field-ref % (build-field-id-mapping query old-source new-source)))))
+           #(swap-field-ref query stage-number (build-field-id-mapping query old-source new-source) %))))
       target))
