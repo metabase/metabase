@@ -1,12 +1,13 @@
-import { Handle, Position } from "@xyflow/react";
+import { Handle, Position, useNodes, useReactFlow } from "@xyflow/react";
 
 import { Box, Group } from "metabase/ui";
-import type { ConcreteTableId, ErdField } from "metabase-types/api";
+import type { ConcreteTableId, ErdField, TableId } from "metabase-types/api";
 
 import { useSchemaViewerContext } from "../SchemaViewerContext";
+import { ROW_HEIGHT } from "../constants";
+import { getNodeId } from "../utils";
 
 import S from "./SchemaViewerFieldRow.module.css";
-import { ROW_HEIGHT } from "../constants";
 
 interface SchemaViewerFieldRowProps {
   field: ErdField;
@@ -20,6 +21,8 @@ export function SchemaViewerFieldRow({
   hasSelfRefTarget,
 }: SchemaViewerFieldRowProps) {
   const { visibleTableIds, onExpandToTable } = useSchemaViewerContext();
+  const { fitView } = useReactFlow();
+  const nodes = useNodes();
 
   const isPK =
     field.semantic_type === "type/PK" || field.semantic_type === "PK";
@@ -32,11 +35,27 @@ export function SchemaViewerFieldRow({
     field.fk_target_table_id != null &&
     !visibleTableIds.has(field.fk_target_table_id);
 
+  // FK field that has a target table already on the canvas
+  const canZoomTo =
+    isFK &&
+    field.fk_target_table_id != null &&
+    visibleTableIds.has(field.fk_target_table_id);
+
   const handleClick = () => {
     if (canExpand && field.fk_target_table_id != null) {
       onExpandToTable(field.fk_target_table_id as ConcreteTableId);
+    } else if (canZoomTo && field.fk_target_table_id != null) {
+      const node = nodes.find(
+        (n) =>
+          n.id === getNodeId({ table_id: field.fk_target_table_id as TableId }),
+      );
+      if (node) {
+        fitView({ nodes: [node], duration: 300, padding: 0.5 });
+      }
     }
   };
+
+  const isClickable = canExpand || canZoomTo;
 
   return (
     <Group
@@ -46,14 +65,14 @@ export function SchemaViewerFieldRow({
       h={ROW_HEIGHT}
       px="lg"
       data-expandable={canExpand || undefined}
-      onClick={canExpand ? handleClick : undefined}
-      style={{ cursor: canExpand ? "pointer" : undefined }}
+      onClick={isClickable ? handleClick : undefined}
+      style={{ cursor: isClickable ? "pointer" : undefined }}
     >
       <Box
         className={S.name}
         fz="sm"
         fw={isPK ? "bold" : "normal"}
-        c={canExpand ? "brand" : undefined}
+        c={isClickable ? "brand" : undefined}
         style={{ flex: 1, overflow: "hidden", textOverflow: "ellipsis" }}
       >
         {field.name}

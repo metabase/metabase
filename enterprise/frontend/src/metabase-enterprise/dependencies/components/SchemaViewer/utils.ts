@@ -36,7 +36,7 @@ function sortFields(fields: ErdField[]): ErdField[] {
   });
 }
 
-function getNodeId(node: ErdNode): string {
+export function getNodeId(node: { table_id: TableId }): string {
   return `table-${node.table_id}`;
 }
 

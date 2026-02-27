@@ -134,7 +134,7 @@ export const SchemaViewerTableNode = memo(function SchemaViewerTableNode({
             flex: 1,
           }}
         >
-          {data.name}
+          {data.name} {data.table_id}
         </Box>
         <Tooltip
           label={t`View table details`}
