@@ -1,8 +1,8 @@
 ---
 title: Dashboard subscriptions
 redirect_from:
-- /docs/latest/users-guide/dashboard-subscriptions
-- /docs/latest/enterprise-guide/dashboards-subscriptions
+  - /docs/latest/users-guide/dashboard-subscriptions
+  - /docs/latest/enterprise-guide/dashboards-subscriptions
 ---
 
 # Dashboard subscriptions
@@ -15,52 +15,72 @@ If your Metabase has email or Slack set up, all you need to do is create a dashb
 
 To enable dashboard subscriptions, your administrators will need to have set up email or Slack for your Metabase. See [Setting up email](../configuring-metabase/email.md) or [Setting up Slack](../configuring-metabase/slack.md).
 
-## Setting up a dashboard subscription
+## Set up a dashboard subscription
 
-To set up a subscription to a dashboard, click on the **Sharing** icon and select **Subscriptions**. Metabase will slide out a sidebar on the right, with an option to set up a subscription via email or Slack:
+To set up a subscription to a dashboard,
 
-![Set up a dashboard subscription with email or slack](./images/email-or-slack.png)
+1. Click on the **three dots** icon Select **Subscriptions**.
 
-Let's say we want to email a dashboard. We'll click on the **Email it** option in the sidebar, and Metabase will give us some options:
+   ![Select subscriptions from menu](./images/select-subscriptions.png)
 
-![Dashboard subscription email options](./images/email-options.png)
+2. Metabase will slide out a sidebar on the right, with an option to set up a subscription via email or Slack.
 
-## Email subscription options
+3. Configure [subscription recipients](#subscription-recipients) and [frequency](#frequency-and-timing). Optionally, you can configure filter and attachment settings.
 
-For emails, we can:
+   ![Dashboard subscription email options](./images/email-options.png)
 
-### Add subscribers
+### Subscription recipients
 
-Add email addresses to register subscribers. On Metabase [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise), admins can limit email recipients to [approved domains for notifications](../configuring-metabase/email.md#approved-domains-for-notifications) and [configure which recipients Metabase suggests](../configuring-metabase/email.md#suggest-recipients-on-dashboard-subscriptions-and-alerts).
+#### Email
 
-### Determine frequency and timing
+You can sent email subscriptions both to people who have Metabase accounts (by typing their names) and to people outside Metabase (by typing their email).
 
-Tell Metabase how often it should send the dashboard:
+On Metabase [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise), admins can limit email recipients to [approved domains for notifications](../configuring-metabase/email.md#approved-domains-for-notifications) and [configure which recipients Metabase suggests](../configuring-metabase/email.md#suggest-recipients-on-dashboard-subscriptions-and-alerts).
+
+#### Slack
+
+For Slack subscriptions, you can set up a subscription for a channel (like #general), or for a single person via their Slack username.
+
+You can also send subscriptions to private channels, but that requires additional configuration, see [Sending alerts and subscriptions to private Slack channels](../configuring-metabase/slack.md#sending-alerts-and-subscriptions-to-private-slack-channels).
+
+> Note that Slack username can be different from Slack display name.
+
+If you rename the subscribed channel in Slack, you'll need to update the subscription to point to the new Slack channel name.
+
+### Frequency and timing
+
+You can tell Metabase how often it should send the dashboard:
 
 - Hourly
 - Daily
 - Weekly
 - Monthly
 
-And what time of day to send the dashboard.
+You'll need to specify what time of day to send the dashboard, and, for weekly and monthly subscription, the day when to send the subscription.
 
-### Send email now
+### Test subscription
 
-A button that sends an email to all subscribers each time you touch it.
+You can click **Send email/Slack now** in subscription settings to send a test email or Slack message (without waiting for regular schedule). This will send a subscriptions immediately to all subscribers or Slack channels.
 
-### Don't send if there aren't results
-
-If there are no results, you can tell Metabase to skip sending the email.
+We recommend first creating a subscription with a test email/channel, then using **Send email/Slack now** to test it, and once you are satisfied with the subscription, replacing the test email/channel with real recipients and saving the subscription.
 
 ### Set filter values for when this gets sent
 
 {% include plans-blockquote.html feature="Dashboard subscription filter customization" %}
 
-Here you can set filters to apply when Metabase sends the subscription.
+You can set filters to apply when Metabase sends the subscription to send "views" of the dashboard to different people. See [Customize filter values for each dashboard subscription](#customize-filter-values-for-each-dashboard-subscription).
 
-## Attach results
+### Don't send if there aren't results
 
-When configuring a subscription, you can tell Metabase if it should attach results to the email as a file, in addition to displaying the table in the email body.
+If the questions on the dashboard return no results, you can tell Metabase to skip sending the email.
+
+This is helpful for dashboards that are displaying time-limited results (for example, "Survey responses over the last week"), or dashboards that display rare events (e.g. "Latest outage analysis").
+
+## Email attachments
+
+When configuring an email subscription, you can tell Metabase if it should attach results to the email as a file, in addition to displaying the table in the email body.
+
+Currently, you can only send attachments with question results. You can't sent the whole dashboard as a PDF attachment.
 
 If you've added filters to your dashboard and set default values for those filters, Metabase will apply those default values to your subscriptions, filtering the results of all questions that are connected to those filters when the subscriptions are sent. To learn more, check out [dashboard filters](./filters.md).
 
@@ -85,22 +105,6 @@ The attached files will include up to 1 048 575 rows by default (Excel's row lim
 
 You can toggle on "Send only attachments (no charts)" if you want to receive just the .csv or .xlsx files without the charts. Remember to select the results you want to attach in "Questions to attach" above the toggle.
 
-## Slack subscription options
-
-For Slack subscriptions, you can set up a subscription for a channel (like #general), or for a single person via their Slack username.
-
-> Note that Slack username can be different from Slack display name.
-
-![slack subscription options](./images/slack-subscription-options.png)
-
-> If you rename the subscribed channel in Slack, you'll need to update the subscription to point to the new Slack channel name.
-
-You can specify how often Metabase sends a Slack message (hourly, daily, weekly, or monthly), and whether to send a message if the dashboard fails to return results.
-
-### Sending subscriptions to private channels
-
-See [Sending alerts and subscriptions to private Slack channels](../configuring-metabase/slack.md#sending-alerts-and-subscriptions-to-private-slack-channels).
-
 ## Adding multiple subscriptions
 
 You can add multiple subscriptions to a single dashboard. To add a subscription, click on the **+** icon in the dashboard subscription panel.
@@ -119,7 +123,7 @@ You can view a list of all alerts and dashboard subscriptions that people have s
 
 {% include plans-blockquote.html feature="Dashboard subscription filter customization" %}
 
-You can customize which filter values to apply to each dashboard subscription. That way you can send different groups of people an email (or Slack message) the contents of the dashboard with different filters applied. You only need to maintain one dashboard, which you can use to send results relevant to each subscriber.
+You can customize which filter values to apply to each dashboard subscription. That way you can send different groups of people an email (or Slack message) the contents of the dashboard with different filters applied. You only need to maintain one dashboard, which you can use to send results relevant to each subscriber. For example, send a dashboard filtered for "Marketing" department and "This week" date weekly to a marketing lead, and send the dashboard filtered for all departments and "This quarter" to the CEO.
 
 ### Setting filter values
 

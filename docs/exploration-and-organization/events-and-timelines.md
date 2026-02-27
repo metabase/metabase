@@ -47,6 +47,8 @@ You'll see an icon along the x-axis that plots the event. A vertical line will e
 
 ![An event on a chart](./images/example-event.png)
 
+You can't add an event to the [Library](../data-studio/library.md).
+
 ## Adding events when viewing a question
 
 If your question is a time series, you can click on the **Calendar** in the bottom right of the question, and Metabase will open the timeline sidebar. Metabase will list any timelines and their events that fall in the range of your time series. You can:

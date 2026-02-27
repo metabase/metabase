@@ -11,25 +11,27 @@ Only admins and people with settings access can send alerts to webhooks.
 
 For now, webhooks are only available for [alerts](../questions/alerts.md); you can't select a webhook as the recipient of a [dashboard subscription](../dashboards/subscriptions.md).
 
-## Creating a webhook
+## Create a webhook
 
-Before you can send an alert to a webhook, an admin will need to create a webhook to target.
+_Admin > Settings > Notification channels_
 
-Admins and people with [settings access](../permissions/application.md#settings-access) can create a webhook by clicking the **grid icon** > **Admin** > **Notification channels**. In **Webhooks for alerts**, click **+ Add another**. Metabase will show you a short form to fill out:
+Before people can send alerts to a webhook, an admin or someone with [settings access](../permissions/application.md#settings-access) will need to create a webhook to target.
 
-- **Webhook URL**. Where you want Metabase to send the results of an alert. Must be a valid URL.
-- **Give it a name**. Name the webhook so that people can pick the right hook when setting up an alert on a question.
-- **Description**. Tell people what the hook is for.
-- **Authentication method**. See below.
+To create a webhook:
 
-## Webhook authentication method
+1. Click the **grid** icon in top right corner and select **Admin**.
+2. In the Admin console, go **Settings > Notification channels**
+3. In **Webhooks for alerts**, click **Add a webhoor**.
+4. Metabase will show you a short form to fill out:
 
-You can specify an auth method for the webhook.
-
-- **None**: Anything goes.
-- **Basic**: Set a username and password.
-- **Bearer**: Include a [secret token](https://datatracker.ietf.org/doc/html/rfc6750).
-- **API key**: You can add the API key to the Header or as a Query param. Both approaches require a key and value (the API key itself).
+   - **Webhook URL**. Where you want Metabase to send the results of an alert. Must be a valid URL.
+   - **Give it a name**. Name the webhook so that people can pick the right hook when setting up an alert on a question.
+   - **Description**. Tell people what the hook is for.
+   - **Authentication method**:
+     - **None**: Anything goes.
+     - **Basic**: Set a username and password.
+     - **Bearer**: Include a [secret token](https://datatracker.ietf.org/doc/html/rfc6750).
+     - **API key**: You can add the API key to the Header or as a Query param. Both approaches require a key and value (the API key itself).
 
 ## Webhook payload
 
