@@ -167,7 +167,7 @@
 
 (defn- viz-error-message
   "Classify a visualization exception into a user-friendly message."
-  [^Exception e data-part]
+  [^Exception e]
   (let [data (ex-data e)]
     (cond
       (:permissions-error? data)
@@ -176,11 +176,8 @@
       (= :card-not-found (:type data))
       "This saved question no longer exists or has been deleted."
 
-      (= "adhoc_viz" (:type data-part))
-      "Query execution failed, please try again."
-
       :else
-      "Something went wrong while generating this visualization.")))
+      "Query execution failed, please try again.")))
 
 (defn- resolve-viz-output
   "Get the result of a prefetched visualization Future, or generate synchronously if none exists.
@@ -195,11 +192,11 @@
 
 (defn- post-viz-error
   "Post a user-friendly visualization error message to Slack, logging on failure."
-  [client channel thread-ts e data-part]
+  [client channel thread-ts e]
   (try
     (slackbot.client/post-message client {:channel   channel
                                           :thread_ts thread-ts
-                                          :text      (viz-error-message e data-part)})
+                                          :text      (viz-error-message e)})
     (catch Exception post-e
       (log/error post-e "Failed to post visualization error message to Slack"))))
 
@@ -226,7 +223,7 @@
                 (send-viz-output client channel thread-ts output filename))
               (catch Exception e
                 (log/errorf e "Failed to generate visualization for %s" (:type data-part))
-                (post-viz-error client channel thread-ts e data-part))))
+                (post-viz-error client channel thread-ts e))))
           (finally
             (when-let [ts (:ts indicator)]
               (slackbot.client/delete-message client {:channel channel :ts ts}))))))))
