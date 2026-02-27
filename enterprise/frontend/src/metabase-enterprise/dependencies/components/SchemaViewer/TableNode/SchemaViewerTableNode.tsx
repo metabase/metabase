@@ -1,12 +1,21 @@
 import {
   Handle,
-  Position,
   type NodeProps,
+  Position,
+  useEdges,
+  useNodes,
   useReactFlow,
   useUpdateNodeInternals,
 } from "@xyflow/react";
 import cx from "classnames";
-import { Fragment, memo, useCallback, useEffect, useMemo, useState } from "react";
+import {
+  Fragment,
+  memo,
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
 import { t } from "ttag";
 
 import { getAccentColors } from "metabase/lib/colors/groups";
@@ -15,6 +24,7 @@ import {
   Box,
   FixedSizeIcon,
   Group,
+  Icon,
   Stack,
   Tooltip,
   UnstyledButton,
@@ -90,6 +100,7 @@ export const SchemaViewerTableNode = memo(function SchemaViewerTableNode({
   if (isCompactMode) {
     return (
       <CompactTableNode
+        nodeId={id}
         data={data}
         iconColor={iconColor}
         selfRefTargetIds={selfRefTargetIds}
@@ -173,6 +184,7 @@ export const SchemaViewerTableNode = memo(function SchemaViewerTableNode({
 
 // Compact node component - shown when zoom <= 0.5
 interface CompactTableNodeProps {
+  nodeId: string;
   data: SchemaViewerNodeData;
   iconColor: string;
   selfRefTargetIds: Set<number>;
@@ -180,44 +192,148 @@ interface CompactTableNodeProps {
 }
 
 function CompactTableNode({
+  nodeId,
   data,
   iconColor,
   selfRefTargetIds,
   onDoubleClick,
 }: CompactTableNodeProps) {
   const headerColor = data.is_focal ? "brand" : "text-primary";
+  const edges = useEdges();
+  const nodes = useNodes();
+
+  // Build map of node ID to table name
+  const nodeIdToName = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const node of nodes) {
+      map.set(node.id, node.data?.name as string);
+    }
+    return map;
+  }, [nodes]);
+
+  // Find connected tables with direction and cardinality
+  // inbound = other table has FK pointing to this table (other is "many" side)
+  // outbound = this table has FK pointing to other table (this is "many" side)
+  const connectedTables = useMemo(() => {
+    const outbound = new Map<string, "one" | "many">();
+    const inbound = new Map<string, "one" | "many">();
+    for (const edge of edges) {
+      const relationship = edge.data?.relationship ?? "many-to-one";
+      if (edge.source === nodeId && edge.target !== nodeId) {
+        // Outbound: this table is source (FK holder), so this side is "many" for many-to-one
+        // The other side (target) is always "one"
+        outbound.set(edge.target, "one");
+      }
+      if (edge.target === nodeId && edge.source !== nodeId) {
+        // Inbound: other table is source (FK holder)
+        // For many-to-one, source side is "many"; for one-to-one, source is "one"
+        const cardinality = relationship === "one-to-one" ? "one" : "many";
+        inbound.set(edge.source, cardinality);
+      }
+    }
+    const result: Array<{
+      name: string;
+      direction: "inbound" | "outbound";
+      cardinality: "one" | "many";
+    }> = [];
+    for (const [id, cardinality] of outbound) {
+      result.push({
+        name: nodeIdToName.get(id) ?? id,
+        direction: "outbound",
+        cardinality,
+      });
+    }
+    for (const [id, cardinality] of inbound) {
+      if (!outbound.has(id)) {
+        result.push({
+          name: nodeIdToName.get(id) ?? id,
+          direction: "inbound",
+          cardinality,
+        });
+      }
+    }
+    return result.sort((a, b) => {
+      // Sort by direction first (outbound before inbound), then by name
+      if (a.direction !== b.direction) {
+        return a.direction === "outbound" ? -1 : 1;
+      }
+      return a.name.localeCompare(b.name);
+    });
+  }, [edges, nodeId, nodeIdToName]);
 
   // Collect all connected fields that need handles for edge routing
   const connectedFields = useMemo(() => {
     return data.fields.filter((field) => data.connectedFieldIds.has(field.id));
   }, [data.fields, data.connectedFieldIds]);
 
-  return (
-    <Stack
-      className={cx(S.card, S.compact, { [S.focal]: data.is_focal })}
-      gap={0}
-      onDoubleClick={onDoubleClick}
-    >
-      <Group className={S.compactHeader} gap={12} px={16} wrap="nowrap">
-        <FixedSizeIcon name="table2" size={24} style={{ color: iconColor }} />
-        <Box
-          fz={34}
-          c={headerColor}
-          style={{
-            overflow: "hidden",
-            textOverflow: "ellipsis",
-            whiteSpace: "nowrap",
-          }}
-        >
-          {data.name}
-        </Box>
-      </Group>
-      {/* Handles at bottom for edge connections - same IDs as full mode */}
-      <CompactHandles
-        connectedFields={connectedFields}
-        selfRefTargetIds={selfRefTargetIds}
-      />
+  const tooltipContent = (
+    <Stack gap={4}>
+      <Box fw="bold" c="inherit">
+        {data.name}
+      </Box>
+      {connectedTables.length > 0 && (
+        <Stack gap={2}>
+          {connectedTables.map(({ name, direction, cardinality }) => {
+            const isMany = cardinality === "many";
+            const iconName = isMany
+              ? "arrow_split"
+              : direction === "outbound"
+                ? "triangle_right"
+                : "triangle_left";
+            const rotation = isMany ? (direction === "outbound" ? 0 : -180) : 0;
+            return (
+              <Group key={name} gap={6} wrap="nowrap">
+                <Icon
+                  name={iconName}
+                  size={10}
+                  style={{
+                    opacity: 0.8,
+                    transform: rotation ? `rotate(${rotation}deg)` : undefined,
+                  }}
+                />
+                <Box fz="sm" c="inherit" style={{ opacity: 0.8 }}>
+                  {name}
+                </Box>
+              </Group>
+            );
+          })}
+        </Stack>
+      )}
     </Stack>
+  );
+
+  return (
+    <Tooltip
+      label={tooltipContent}
+      openDelay={TOOLTIP_OPEN_DELAY_MS}
+      position="top"
+    >
+      <Stack
+        className={cx(S.card, S.compact, { [S.focal]: data.is_focal })}
+        gap={0}
+        onDoubleClick={onDoubleClick}
+      >
+        <Group className={S.compactHeader} gap={12} px={16} wrap="nowrap">
+          <FixedSizeIcon name="table2" size={24} style={{ color: iconColor }} />
+          <Box
+            fz={34}
+            c={headerColor}
+            style={{
+              overflow: "hidden",
+              textOverflow: "ellipsis",
+              whiteSpace: "nowrap",
+            }}
+          >
+            {data.name}
+          </Box>
+        </Group>
+        {/* Handles at bottom for edge connections - same IDs as full mode */}
+        <CompactHandles
+          connectedFields={connectedFields}
+          selfRefTargetIds={selfRefTargetIds}
+        />
+      </Stack>
+    </Tooltip>
   );
 }
 
