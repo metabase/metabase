@@ -11,6 +11,8 @@ Jobs are scheduled runs of transforms based on the transform's tags.
 
 ## Transform tags
 
+![Transform tags](../images/tags.png)
+
 Add tags to transforms so that you can use jobs to run the transforms on a schedule. For example, you could add a "Nightly" tag to a transform, and have a job that runs all the transforms with the "Nightly" tag at midnight every day.
 
 To add a tag to a transform:
@@ -26,6 +28,8 @@ Once you've tagged a transform, you can create a job that uses that tag to run t
 ## Jobs
 
 _Data Studio > Jobs_
+
+![Transform jobs](../images/jobs.png)
 
 Jobs run one or more transforms on schedule based on transform tags.
 
@@ -49,6 +53,8 @@ This means that you can explicitly tag transform A to run daily, and transform B
 You can see which transforms a job will run (and in which order) on the job's page in **Data Studio > Jobs**.
 
 ## Runs
+
+![Transform runs](../images/runs.png)
 
 You can see all past and current transform runs (both manual and scheduled) by going to **Data Studio** and clicking on **Runs** at the bottom of the left sidebar. The transform run times will be given in Greenwich Mean Time (GMT).
 

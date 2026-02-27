@@ -12,7 +12,7 @@ To run Python transforms from a self-hosted Metabase, you'll need to configure a
 ## Prerequisites
 
 - Docker installed and running.
-- **Metabase Pro or Enterprise license** (Python Runner requires a Pro/Enterprise plan).
+- **Self-hosted Metabase Pro or Enterprise license** (Python Runner requires a Pro/Enterprise plan).
 - For production: an S3-compatible storage bucket (AWS S3, MinIO, etc.).
 
 ## Quickstart
