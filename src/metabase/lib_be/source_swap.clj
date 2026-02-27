@@ -248,8 +248,9 @@
         new-column-id-by-name (m/index-by column-match-key new-columns)]
     (into {}
           (keep (fn [old-column]
-                  (when-let [new-column (get new-column-id-by-name (column-match-key old-column))]
-                    [(:id old-column) new-column])))
+                  (when (:id old-column)
+                    (when-let [new-column (get new-column-id-by-name (column-match-key old-column))]
+                      [(:id old-column) new-column]))))
           old-columns)))
 
 (mu/defn- swap-source-table-or-card :- ::lib.schema/stage
