@@ -200,6 +200,11 @@ export function getNodesWithPositions(
         x: x - width / 2,
         y: y - height / 2,
       },
+      // Update style.height so React Flow updates the node wrapper dimensions
+      style: {
+        ...node.style,
+        height,
+      },
     };
   });
 }

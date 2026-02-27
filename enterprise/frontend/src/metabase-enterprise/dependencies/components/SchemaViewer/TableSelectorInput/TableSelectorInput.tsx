@@ -314,7 +314,7 @@ export function TableSelectorInput({
       >
         <Stack gap="lg">
           <Text>
-            {t`Selecting all tables may result in slow performance and delayed rendering, especially for large databases.`}
+            {t`Selecting all tables may result in slow performance and delayed rendering or an error, especially for large databases.`}
           </Text>
           <Group justify="flex-end" gap="sm">
             <Button variant="subtle" onClick={handleCancelSelectAll}>
