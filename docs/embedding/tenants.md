@@ -203,9 +203,6 @@ To create a tenant attribute manually using the Metabase UI:
 
 For details on how to set tenant attributes using JWT tenant claims, see [Setting tenant attributes using tenant claims](#setting-tenant-attributes-using-tenant-claims) below.
 
-To set permissions based on attributes:
-- Go to Permissions > Tenant collections > Root tenant collections
-- You can now assign curate, view or block access to any group
 
 Tenant attributes will be persisted in new tenants created from JWT and existing ones, if the tenant attribute key is new. If the tenant already exists, the new tenant attribute is created if it does not exist yet. If it already existed, its value is not updated, however.
 
