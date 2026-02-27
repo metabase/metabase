@@ -1,6 +1,6 @@
 import { t } from "ttag";
 
-import { useSetting } from "metabase/common/hooks";
+import { useMetabotEnabledEmbeddingAware } from "metabase/metabot/hooks";
 import { Button } from "metabase/ui";
 import { useMetabotAgent } from "metabase-enterprise/metabot/hooks";
 
@@ -15,7 +15,7 @@ export function FixSqlQueryButton({
   rawSql,
   errorMessage,
 }: FixSqlQueryButtonProps) {
-  const isMetabotEnabled = useSetting("metabot-enabled?");
+  const isMetabotEnabled = useMetabotEnabledEmbeddingAware();
   const { submitInput } = useMetabotAgent("omnibot");
 
   if (!isMetabotEnabled) {

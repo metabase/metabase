@@ -1,9 +1,8 @@
 import { t } from "ttag";
 
-import { useSetting } from "metabase/common/hooks";
 import { Nav as DetailViewNav } from "metabase/detail-view/components";
 import { DETAIL_VIEW_PADDING_LEFT } from "metabase/detail-view/constants";
-import { isWithinIframe } from "metabase/lib/dom";
+import { useMetabotEnabledEmbeddingAware } from "metabase/metabot/hooks";
 import { PLUGIN_METABOT, PLUGIN_REMOTE_SYNC } from "metabase/plugins";
 import { Box, Flex } from "metabase/ui";
 import type { CollectionId } from "metabase-types/api";
@@ -59,10 +58,7 @@ const AppBarLarge = ({
   const { isVisible: isGitSyncVisible } =
     PLUGIN_REMOTE_SYNC.useGitSyncVisible();
 
-  const metabotSettingName = isWithinIframe()
-    ? "is-embedded-metabot-enabled"
-    : "is-metabot-enabled";
-  const isMetabotEnabled = useSetting(metabotSettingName);
+  const isMetabotEnabled = useMetabotEnabledEmbeddingAware();
 
   return (
     <AppBarRoot

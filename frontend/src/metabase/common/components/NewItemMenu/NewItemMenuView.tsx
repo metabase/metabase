@@ -3,9 +3,9 @@ import { useMemo } from "react";
 import { t } from "ttag";
 
 import { ForwardRefLink } from "metabase/common/components/Link";
-import { useSetting } from "metabase/common/hooks";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
+import { useMetabotEnabledEmbeddingAware } from "metabase/metabot/hooks";
 import { PLUGIN_METABOT } from "metabase/plugins";
 import { setOpenModal } from "metabase/redux/ui";
 import { getSetting } from "metabase/selectors/settings";
@@ -42,7 +42,7 @@ export const NewItemMenuView = ({
 
   const canWriteToCollections = useSelector(getUserCanWriteToCollections);
 
-  const isMetabotEnabled = !!useSetting("metabot-enabled?");
+  const isMetabotEnabled = useMetabotEnabledEmbeddingAware();
 
   const menuItems = useMemo(() => {
     const items = [];

@@ -2,8 +2,8 @@ import { Route } from "react-router";
 import { replace } from "react-router-redux";
 import { useMount } from "react-use";
 
-import { useSetting } from "metabase/common/hooks";
 import { useDispatch } from "metabase/lib/redux";
+import { useMetabotEnabledEmbeddingAware } from "metabase/metabot/hooks";
 import { useMetabotAgent } from "metabase-enterprise/metabot/hooks";
 
 export const getMetabotQuickLinks = () => {
@@ -12,7 +12,7 @@ export const getMetabotQuickLinks = () => {
       key="metabot"
       path="metabot/new"
       component={(props) => {
-        const isMetabotEnabled = useSetting("metabot-enabled?");
+        const isMetabotEnabled = useMetabotEnabledEmbeddingAware();
         const { submitInput } = useMetabotAgent("omnibot");
         const prompt = String(props.location.query?.q ?? "");
         const dispatch = useDispatch();

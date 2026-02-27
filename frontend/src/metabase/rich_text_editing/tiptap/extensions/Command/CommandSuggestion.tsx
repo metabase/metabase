@@ -11,7 +11,6 @@ import {
 } from "react";
 import { t } from "ttag";
 
-import { useSetting } from "metabase/common/hooks";
 import {
   CreateNewQuestionFooter,
   MenuItemComponent,
@@ -23,6 +22,7 @@ import {
 } from "metabase/documents/components/Editor/shared/SuggestionPaper";
 import { getCurrentDocument } from "metabase/documents/selectors";
 import { useSelector } from "metabase/lib/redux";
+import { useMetabotEnabledEmbeddingAware } from "metabase/metabot/hooks";
 import { getBrowseAllItemIndex } from "metabase/rich_text_editing/tiptap/extensions/shared/suggestionUtils";
 import type { SuggestionPickerViewMode } from "metabase/rich_text_editing/tiptap/extensions/shared/types";
 import {
@@ -102,7 +102,7 @@ export const CommandSuggestion = forwardRef<
   CommandSuggestionProps
 >(function CommandSuggestionComponent({ command, editor, query }, ref) {
   const document = useSelector(getCurrentDocument);
-  const isMetabotEnabled = !!useSetting("metabot-enabled?");
+  const isMetabotEnabled = useMetabotEnabledEmbeddingAware();
   const [selectedIndex, setSelectedIndex] = useState(0);
 
   const [viewMode, setViewMode] = useState<SuggestionPickerViewMode>(null);
