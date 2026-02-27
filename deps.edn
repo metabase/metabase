@@ -198,6 +198,7 @@
   software.amazon.awssdk/sts                {:mvn/version "2.36.2"}             ; Required for S3 client to use service account
   software.amazon.jdbc/aws-advanced-jdbc-wrapper {:mvn/version "2.6.5"}        ; AWS JDBC wrapper for IAM authentication
   stencil/stencil                           {:mvn/version "0.5.0"}              ; Mustache templates for Clojure
+  techascent/tech.ml.dataset                {:mvn/version "8.003"}              ; Tabular data processing for chart statistics
   user-agent/user-agent                     {:mvn/version "0.1.1"}              ; User-Agent string parser, for Login History page & elsewhere
   weavejester/dependency                    {:mvn/version "1.0.0"}              ; Dependency graphs and topological sorting
   xerces/xercesImpl                         {:mvn/version "2.12.2"}}            ; SAX2 parser, transient dependency of batik
