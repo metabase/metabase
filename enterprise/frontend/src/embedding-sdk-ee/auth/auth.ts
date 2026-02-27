@@ -61,8 +61,7 @@ PLUGIN_EMBEDDING_SDK_AUTH.initAuth = async (
   if (earlyAuthStatus && earlyAuthStatus !== "skipped") {
     await waitForAuthCompletion();
     const authState = getAuthState() as SdkAuthState;
-
-    // Clean up so subsequent initAuth calls don't re-enter this path.
+    // Clear the auth state after we read it, so that if `initAuth` is called again it doesn't retry to use the old state
     clearAuthState();
 
     if (
@@ -283,7 +282,7 @@ function clearAuthState(): void {
 }
 
 /**
- * Wait for the package's auth to complete.
+ * Wait for the bootstrap auth to be complete.
  * Polls the window state until it's no longer "in-progress".
  */
 async function waitForAuthCompletion(

@@ -29,11 +29,11 @@ const waitForScriptLoading = (script: HTMLScriptElement) => {
   return new Promise<void>((resolve, reject) => {
     let settled = false;
 
-    const settle = (action: () => void) => {
+    const settle = (onSettle: () => void) => {
       if (!settled) {
         settled = true;
         cleanup();
-        action();
+        onSettle();
       }
     };
 
@@ -98,6 +98,9 @@ const loadSdkBundle = (
 
   script.async = true;
   script.dataset[SDK_BUNDLE_SCRIPT_DATA_ATTRIBUTE_PASCAL_CASED] = "true";
+
+  // if we don't pass the packageVersion, the backend will serve the monolithic bundle
+  // that doesn't use chunks or the parallel auth
   script.src = useBootstrap
     ? `${baseUrl}?packageVersion=${encodeURIComponent(SDK_PACKAGE_VERSION)}`
     : baseUrl;
