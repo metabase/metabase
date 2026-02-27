@@ -13,6 +13,41 @@
     }
   }
 
+  /* To be able to seamlessly support color property across variants we need
+      to implement variantColorResolver. Same thing is pointed out in Button component. */
+  &[data-variant="info"] {
+    color: var(--mb-color-brand);
+    background-color: transparent;
+
+    &:hover,
+    &:active,
+    &[data-is-active="true"] {
+      background-color: var(--mb-color-background-brand);
+    }
+  }
+
+  &[data-variant="warning"] {
+    color: var(--mb-color-warning);
+    background-color: transparent;
+
+    &:hover,
+    &:active,
+    &[data-is-active="true"] {
+      background-color: var(--mb-color-background-warning);
+    }
+  }
+
+  &[data-variant="error"] {
+    color: var(--mb-color-error);
+    background-color: transparent;
+
+    &:hover,
+    &:active,
+    &[data-is-active="true"] {
+      background-color: var(--mb-color-background-error);
+    }
+  }
+
   &[data-variant="viewHeader"] {
     color: var(--mb-color-text-primary);
     background-color: transparent;
