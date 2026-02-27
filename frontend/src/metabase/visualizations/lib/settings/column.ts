@@ -589,7 +589,7 @@ export function tableColumnSettings({
         return {
           columns: cols,
           isShowingDetailsOnlyColumns,
-          getColumnName: (column: DatasetColumn) =>
+          getColumnName: (column) =>
             getTitleForColumn(column, series, settings),
         };
       },

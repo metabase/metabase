@@ -1,6 +1,6 @@
 import type { Insight } from "../insight";
 
-export function createMockInsight(insight: Partial<Insight>): Insight {
+export function createMockInsight(insight?: Partial<Insight>): Insight {
   return {
     col: "",
     unit: "month",

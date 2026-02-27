@@ -1,3 +1,4 @@
+import { Fragment } from "react";
 import { t } from "ttag";
 
 import ChartSettingsWidget from "metabase/visualizations/components/ChartSettingsWidget";
@@ -63,7 +64,7 @@ export const ColumnFormattingAction: LegacyDrill = ({ question, clicked }) => {
     };
 
     if (!columnSettingsWidget || id == null) {
-      return <span />;
+      return <Fragment />;
     }
 
     return (
