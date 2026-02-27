@@ -460,7 +460,7 @@ export function getSettingDefinitionsForColumn(
 ) {
   const visualization = getVisualizationRaw(series);
   const extraColumnSettings =
-    visualization && typeof visualization.columnSettings === "function"
+    typeof visualization?.columnSettings === "function"
       ? visualization.columnSettings(column)
       : visualization?.columnSettings || {};
 
