@@ -225,7 +225,7 @@ d:{"finishReason":"stop","usage":{"promptTokens":4916,"completionTokens":8}}`,
       });
 
       it("should not submit a prompt via /metabot/new when metabot is disabled", () => {
-        H.updateSetting("is-metabot-enabled", false);
+        H.updateSetting("metabot-enabled?", false);
         cy.visit("/metabot/new?q=Who%20is%20your%20favorite%3F");
         cy.url().should("eq", Cypress.config().baseUrl + "/");
         H.assertChatVisibility("not.visible");

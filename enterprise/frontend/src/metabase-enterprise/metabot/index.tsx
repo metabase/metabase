@@ -32,7 +32,7 @@ import {
  * otherwise falls back to the regular QueryBuilder.
  */
 function MetabotQueryBuilderOrFallback(props: any) {
-  const isMetabotEnabled = useSetting("is-metabot-enabled");
+  const isMetabotEnabled = useSetting("metabot-enabled?");
   return isMetabotEnabled ? (
     <MetabotQueryBuilder {...props} />
   ) : (

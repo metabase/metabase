@@ -18,7 +18,7 @@ function setup({
   isMetabotEnabled = true,
 }: { isMetabotEnabled?: boolean } = {}) {
   const settings = mockSettings({
-    "is-metabot-enabled": isMetabotEnabled,
+    "metabot-enabled?": isMetabotEnabled,
   });
 
   renderWithProviders(<FixSqlQueryButton />, {

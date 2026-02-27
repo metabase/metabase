@@ -109,7 +109,7 @@ export const MetabotAuthenticated = ({ hide, config }: MetabotProps) => {
 
 export const Metabot = (props: MetabotProps) => {
   const currentUser = useSelector(getUser);
-  const isMetabotEnabled = useSetting("is-metabot-enabled");
+  const isMetabotEnabled = useSetting("metabot-enabled?");
 
   // NOTE: do not render Metabot if the user is not authenticated.
   // doing so will cause a redirect for unauthenticated requests

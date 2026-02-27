@@ -50,7 +50,7 @@
   :export?    false
   :doc        false)
 
-(defsetting is-metabot-enabled
+(defsetting metabot-enabled?
   (deferred-tru "Whether Metabot is enabled for regular usage.")
   :type       :boolean
   :visibility :public
@@ -59,7 +59,7 @@
   :export?    true
   :doc        false)
 
-(defsetting is-embedded-metabot-enabled
+(defsetting embedded-metabot-enabled?
   (deferred-tru "Whether Metabot is enabled for embedding.")
   :type       :boolean
   :visibility :public

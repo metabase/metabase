@@ -15,7 +15,7 @@ export function FixSqlQueryButton({
   rawSql,
   errorMessage,
 }: FixSqlQueryButtonProps) {
-  const isMetabotEnabled = useSetting("is-metabot-enabled");
+  const isMetabotEnabled = useSetting("metabot-enabled?");
   const { submitInput } = useMetabotAgent("omnibot");
 
   if (!isMetabotEnabled) {

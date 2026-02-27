@@ -7,7 +7,7 @@ import { useMetabotAgent } from "metabase-enterprise/metabot/hooks";
 import { trackExplainChartClicked } from "../analytics";
 
 export const AIQuestionAnalysisButton = () => {
-  const isMetabotEnabled = useSetting("is-metabot-enabled");
+  const isMetabotEnabled = useSetting("metabot-enabled?");
   const { submitInput } = useMetabotAgent("omnibot");
 
   if (!isMetabotEnabled) {

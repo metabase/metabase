@@ -11,7 +11,7 @@ import { trackMetabotChatOpened } from "../analytics";
 import { useMetabotAgent } from "../hooks";
 
 export const MetabotDataStudioButton = () => {
-  const isMetabotEnabled = useSetting("is-metabot-enabled");
+  const isMetabotEnabled = useSetting("metabot-enabled?");
   const metabot = useMetabotAgent("omnibot");
   const location = useSelector(getLocation);
 

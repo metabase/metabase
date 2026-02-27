@@ -586,8 +586,8 @@ interface PublicSettings {
   "report-timezone-short": string;
   "session-cookies": boolean | null;
   "setup-token": string | null;
-  "is-metabot-enabled": boolean;
-  "is-embedded-metabot-enabled": boolean;
+  "metabot-enabled?": boolean;
+  "embedded-metabot-enabled?": boolean;
   "show-metabase-links": boolean;
   "show-metabot": boolean;
   "show-google-sheets-integration": boolean;

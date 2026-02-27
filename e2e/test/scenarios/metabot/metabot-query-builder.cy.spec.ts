@@ -45,8 +45,8 @@ describe("Metabot Query Builder", () => {
       cy.intercept("POST", "/api/ee/metabot-v3/agent-streaming").as("agentReq");
     });
 
-    it("should redirect to notebook when is-metabot-enabled is false", () => {
-      H.updateSetting("is-metabot-enabled", false);
+    it("should redirect to notebook when metabot-enabled? is false", () => {
+      H.updateSetting("metabot-enabled?", false);
 
       cy.log(
         "visiting '/question/ask' should redirect to notebook when metabot is disabled",
@@ -57,7 +57,7 @@ describe("Metabot Query Builder", () => {
     });
 
     it("should not show AI exploration in new button when metabot is disabled", () => {
-      H.updateSetting("is-metabot-enabled", false);
+      H.updateSetting("metabot-enabled?", false);
       cy.visit("/");
 
       cy.log("'AI exploration' option should not appear in new button");

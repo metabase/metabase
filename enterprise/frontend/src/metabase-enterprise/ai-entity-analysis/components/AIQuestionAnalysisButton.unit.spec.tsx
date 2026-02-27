@@ -27,7 +27,7 @@ function setup({
   setupEnterprisePlugins();
 
   const settings = mockSettings({
-    "is-metabot-enabled": isMetabotEnabled,
+    "metabot-enabled?": isMetabotEnabled,
     "token-features": createMockTokenFeatures({
       metabot_v3: true,
     }),

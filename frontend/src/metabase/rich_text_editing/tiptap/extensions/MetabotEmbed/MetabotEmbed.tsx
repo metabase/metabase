@@ -153,7 +153,7 @@ export const MetabotComponent = memo(
     const [isLoading, setIsLoading] = useState(false);
     const [errorText, setErrorText] = useState("");
     const [queryMetabot] = PLUGIN_METABOT.useLazyMetabotGenerateContentQuery();
-    const isMetabotEnabled = useSetting("is-metabot-enabled");
+    const isMetabotEnabled = useSetting("metabot-enabled?");
 
     const handleRunMetabot = async () => {
       const serializePrompt =

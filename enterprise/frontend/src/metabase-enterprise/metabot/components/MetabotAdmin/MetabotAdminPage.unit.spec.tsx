@@ -162,8 +162,8 @@ describe("MetabotAdminPage", () => {
     expect(await screen.findByText("Metabot is enabled")).toBeInTheDocument();
 
     await userEvent.click(await enabledToggle());
-    await waitForRequest(() => getLastSettingUpdateCall("is-metabot-enabled"));
-    const call = getLastSettingUpdateCall("is-metabot-enabled");
+    await waitForRequest(() => getLastSettingUpdateCall("metabot-enabled?"));
+    const call = getLastSettingUpdateCall("metabot-enabled?");
     expect(call?.options?.body).toBe(JSON.stringify({ value: false }));
   });
 
@@ -263,9 +263,9 @@ describe("MetabotAdminPage", () => {
     // Toggle calls correct setting
     await userEvent.click(await enabledToggle());
     await waitForRequest(() =>
-      getLastSettingUpdateCall("is-embedded-metabot-enabled"),
+      getLastSettingUpdateCall("embedded-metabot-enabled?"),
     );
-    const call = getLastSettingUpdateCall("is-embedded-metabot-enabled");
+    const call = getLastSettingUpdateCall("embedded-metabot-enabled?");
     expect(call?.options?.body).toBe(JSON.stringify({ value: false }));
   });
 

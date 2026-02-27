@@ -67,7 +67,7 @@ export function useInlineSQLPrompt(
 ): UseInlineSqlEditResult {
   const isTableBarEnabled = !useHasTokenFeature("metabot_v3");
   const llmSqlGenerationEnabled = useSetting("llm-sql-generation-enabled");
-  const isMetabotEnabled = useSetting("is-metabot-enabled");
+  const isMetabotEnabled = useSetting("metabot-enabled?");
 
   const isEnabled = !!llmSqlGenerationEnabled && !!isMetabotEnabled;
 

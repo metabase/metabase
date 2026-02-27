@@ -550,8 +550,8 @@ describe("scenarios > embedding > sdk iframe embedding > custom elements api", (
       });
     });
 
-    it("should not render metabot when is-embedded-metabot-enabled is false", () => {
-      H.updateSetting("is-embedded-metabot-enabled", false);
+    it("should not render metabot when embedded-metabot-enabled? is false", () => {
+      H.updateSetting("embedded-metabot-enabled?", false);
 
       H.visitCustomHtmlPage(`
       ${H.getNewEmbedScriptTag()}

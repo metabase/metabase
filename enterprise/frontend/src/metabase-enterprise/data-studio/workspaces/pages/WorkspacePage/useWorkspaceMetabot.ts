@@ -98,7 +98,7 @@ export function useWorkspaceMetabot({
     patchEditedTransform,
   } = useWorkspace();
 
-  const isMetabotAvailable = !!useSetting("is-metabot-enabled");
+  const isMetabotAvailable = !!useSetting("metabot-enabled?");
   const { navigateToPath, setNavigateToPath } = useMetabotReactions();
   const {
     resetConversation: resetMetabotConversation,

@@ -15,7 +15,7 @@ export function MetabotAppBarButton({
   className,
   ...rest
 }: MetabotAppBarButtonProps) {
-  const isMetabotEnabled = useSetting("is-metabot-enabled");
+  const isMetabotEnabled = useSetting("metabot-enabled?");
   const metabot = useMetabotAgent("omnibot");
 
   if (!isMetabotEnabled) {

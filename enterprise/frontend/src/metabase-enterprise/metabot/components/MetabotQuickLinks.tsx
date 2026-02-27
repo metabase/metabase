@@ -12,7 +12,7 @@ export const getMetabotQuickLinks = () => {
       key="metabot"
       path="metabot/new"
       component={(props) => {
-        const isMetabotEnabled = useSetting("is-metabot-enabled");
+        const isMetabotEnabled = useSetting("metabot-enabled?");
         const { submitInput } = useMetabotAgent("omnibot");
         const prompt = String(props.location.query?.q ?? "");
         const dispatch = useDispatch();

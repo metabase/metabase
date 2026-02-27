@@ -293,7 +293,7 @@ it("should return populated context when metabot is enabled", async () => {
 it("should register without throwing", () => {
   mockSettings(
     createMockSettings({
-      "is-metabot-enabled": true,
+      "metabot-enabled?": true,
     }),
   );
 

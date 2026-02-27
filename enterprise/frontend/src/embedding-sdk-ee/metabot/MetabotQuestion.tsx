@@ -40,7 +40,7 @@ const MetabotQuestionInner = ({
   isSaveEnabled = false,
   targetCollection,
 }: MetabotQuestionProps) => {
-  const isEmbeddedMetabotEnabled = useSetting("is-embedded-metabot-enabled");
+  const isEmbeddedMetabotEnabled = useSetting("embedded-metabot-enabled?");
   const { isLocaleLoading } = useLocale();
   const { navigateToPath } = useMetabotReactions();
   const { ref: containerRef, width: containerWidth } = useElementSize();

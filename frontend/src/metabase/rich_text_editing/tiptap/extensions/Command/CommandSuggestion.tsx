@@ -102,7 +102,7 @@ export const CommandSuggestion = forwardRef<
   CommandSuggestionProps
 >(function CommandSuggestionComponent({ command, editor, query }, ref) {
   const document = useSelector(getCurrentDocument);
-  const isMetabotEnabled = !!useSetting("is-metabot-enabled");
+  const isMetabotEnabled = !!useSetting("metabot-enabled?");
   const [selectedIndex, setSelectedIndex] = useState(0);
 
   const [viewMode, setViewMode] = useState<SuggestionPickerViewMode>(null);

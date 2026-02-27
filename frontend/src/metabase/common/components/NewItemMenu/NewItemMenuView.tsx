@@ -42,7 +42,7 @@ export const NewItemMenuView = ({
 
   const canWriteToCollections = useSelector(getUserCanWriteToCollections);
 
-  const isMetabotEnabled = !!useSetting("is-metabot-enabled");
+  const isMetabotEnabled = !!useSetting("metabot-enabled?");
 
   const menuItems = useMemo(() => {
     const items = [];

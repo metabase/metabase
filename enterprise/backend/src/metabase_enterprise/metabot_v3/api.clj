@@ -55,9 +55,9 @@
   "Checks that the Metabot instance identified by `metabot-id` is enabled. Throws a 403 if it's not."
   [metabot-id]
   (if (= metabot-id metabot-v3.config/embedded-metabot-id)
-    (api/check (metabot-v3.settings/is-embedded-metabot-enabled)
+    (api/check (metabot-v3.settings/embedded-metabot-enabled?)
                [403 "Embedded Metabot is not enabled."])
-    (api/check (metabot-v3.settings/is-metabot-enabled)
+    (api/check (metabot-v3.settings/metabot-enabled?)
                [403 "Metabot is not enabled."])))
 
 (defn streaming-request

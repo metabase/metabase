@@ -255,7 +255,7 @@ export const registerQueryBuilderMetabotContextFn = async ({
 };
 
 export const useRegisterQueryBuilderMetabotContext = () => {
-  const isMetabotEnabled = !!useSetting("is-metabot-enabled");
+  const isMetabotEnabled = !!useSetting("metabot-enabled?");
 
   useRegisterMetabotContextProvider(
     async (state) => {

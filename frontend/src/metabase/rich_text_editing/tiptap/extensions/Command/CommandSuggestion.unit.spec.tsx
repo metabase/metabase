@@ -440,7 +440,7 @@ describe("CommandSuggestion", () => {
     describe("when metabot is disabled", () => {
       it("should show all available commands except Metabot", async () => {
         const settings = mockSettings({
-          "is-metabot-enabled": false,
+          "metabot-enabled?": false,
           "token-features": createMockTokenFeatures({
             metabot_v3: false,
           }),
@@ -456,7 +456,7 @@ describe("CommandSuggestion", () => {
     describe("when metabot is enabled", () => {
       it("should show all available commands including Metabot", async () => {
         const settings = mockSettings({
-          "is-metabot-enabled": true,
+          "metabot-enabled?": true,
           "token-features": createMockTokenFeatures({
             metabot_v3: true,
           }),

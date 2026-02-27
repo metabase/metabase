@@ -73,7 +73,7 @@ export const CodeMirrorEditor = forwardRef<
 ) {
   const editorRef = useRef<CodeMirrorRef>(null);
   const llmSqlGenerationEnabled = useSetting("llm-sql-generation-enabled");
-  const isMetabotEnabled = useSetting("is-metabot-enabled");
+  const isMetabotEnabled = useSetting("metabot-enabled?");
   const isLlmEnabled = !!llmSqlGenerationEnabled && !!isMetabotEnabled;
   const placeholder =
     placeholderProp ?? getPlaceholderText(Lib.engine(query), isLlmEnabled);

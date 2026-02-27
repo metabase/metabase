@@ -84,8 +84,8 @@ export function MetabotAdminPage() {
     metabot.entity_id === FIXED_METABOT_ENTITY_IDS.EMBEDDED;
 
   const enabledSettingKey: EnterpriseSettingKey = isEmbedMetabot
-    ? "is-embedded-metabot-enabled"
-    : "is-metabot-enabled";
+    ? "embedded-metabot-enabled?"
+    : "metabot-enabled?";
 
   return (
     <AdminSettingsLayout sidebar={<MetabotNavPane />}>
