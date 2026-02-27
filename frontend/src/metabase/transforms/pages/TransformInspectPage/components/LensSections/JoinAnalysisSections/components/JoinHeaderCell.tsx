@@ -27,14 +27,14 @@ export const JoinHeaderCell = ({
   if (!severity) {
     return null;
   }
+
   return (
     <ActionIcon
-      variant="transparent"
-      color={match(severity)
+      variant={match(severity)
         .with("error", () => "error" as const)
         .with("warning", () => "warning" as const)
-        .with("info", () => "brand" as const)
-        .exhaustive()}
+        .with("info", () => "info" as const)
+        .otherwise(() => "subtle" as const)}
       size="lg"
       onClick={(e) => {
         e.stopPropagation();
