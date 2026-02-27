@@ -98,7 +98,7 @@
         (let [metadata-provider (lib-be/application-database-metadata-provider db-id)
               loaded            (bulk-load-metadata-for-entities! metadata-provider batch)]
           (doseq [entity batch
-                  :let [object (get-in loaded entity)]]
+                  :let [object (get loaded entity)]]
             (field-refs/upgrade! object)
             (replacement.protocols/advance! progress))))))
 
