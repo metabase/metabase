@@ -111,6 +111,8 @@ export function visitQuestion(questionIdOrAlias) {
   if (typeof questionIdOrAlias === "string") {
     return cy.get(questionIdOrAlias).then((id) => visitQuestionById(id));
   }
+
+  throw new Error("Invalid questionIdOrAlias");
 }
 
 function visitQuestionById(id) {
@@ -146,7 +148,7 @@ export function visitModel(id, { hasDataAccess = true } = {}) {
 
   cy.visit(`/model/${id}`);
 
-  cy.wait("@" + alias);
+  return cy.wait("@" + alias);
 }
 
 /**
@@ -165,7 +167,7 @@ export function visitMetric(id, { hasDataAccess = true } = {}) {
 
   cy.visit(`/metric/${id}`);
 
-  cy.wait("@" + alias);
+  return cy.wait("@" + alias);
 }
 
 /**
