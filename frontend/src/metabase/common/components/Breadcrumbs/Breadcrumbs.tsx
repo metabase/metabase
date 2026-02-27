@@ -54,34 +54,37 @@ export function Breadcrumbs({
         crumbs
           .map(
             (breadcrumb): CrumbTuple =>
-              Array.isArray(breadcrumb) ? breadcrumb : [breadcrumb],
+              isCrumbTuple(breadcrumb) ? breadcrumb : [breadcrumb],
           )
-          .map((breadcrumb, index) => (
-            <Ellipsified
-              key={index}
-              tooltip={breadcrumb[0]}
-              tooltipProps={{ w: "auto" }}
-              className={cx(
-                breadcrumbClass,
-                breadcrumb.length > 1 ? S.breadcrumbPath : S.breadcrumbPage,
-                { [S.fontLarge]: size === "large" },
-              )}
-            >
-              {breadcrumb.length > 1 && typeof breadcrumb[1] === "string" ? (
-                <Link to={breadcrumb[1]}>{breadcrumb[0]}</Link>
-              ) : (
-                <span
-                  onClick={
-                    breadcrumb[1] as
-                      | MouseEventHandler<HTMLSpanElement>
-                      | undefined
-                  }
+          .map((breadcrumb, index) =>
+            (() => {
+              const linkTarget = isLinkedCrumb(breadcrumb)
+                ? breadcrumb[1]
+                : undefined;
+              const onClick = isActionCrumb(breadcrumb)
+                ? breadcrumb[1]
+                : undefined;
+
+              return (
+                <Ellipsified
+                  key={index}
+                  tooltip={breadcrumb[0]}
+                  tooltipProps={{ w: "auto" }}
+                  className={cx(
+                    breadcrumbClass,
+                    breadcrumb.length > 1 ? S.breadcrumbPath : S.breadcrumbPage,
+                    { [S.fontLarge]: size === "large" },
+                  )}
                 >
-                  {breadcrumb[0]}
-                </span>
-              )}
-            </Ellipsified>
-          ))
+                  {linkTarget ? (
+                    <Link to={linkTarget}>{breadcrumb[0]}</Link>
+                  ) : (
+                    <span onClick={onClick}>{breadcrumb[0]}</span>
+                  )}
+                </Ellipsified>
+              );
+            })(),
+          )
           .map((breadcrumb, index, breadcrumbs) =>
             index < breadcrumbs.length - 1
               ? [
@@ -99,4 +102,36 @@ export function Breadcrumbs({
       )}
     </section>
   );
+}
+
+function isCrumbWithSecondValue(
+  crumb: CrumbTuple,
+): crumb is [ReactNode, string | MouseEventHandler<HTMLSpanElement>] {
+  return crumb.length > 1;
+}
+
+function isCrumbTuple(crumb: Crumb): crumb is CrumbTuple {
+  if (!Array.isArray(crumb)) {
+    return false;
+  }
+
+  if (crumb.length === 1) {
+    return true;
+  }
+
+  if (crumb.length !== 2) {
+    return false;
+  }
+
+  return typeof crumb[1] === "string" || typeof crumb[1] === "function";
+}
+
+function isLinkedCrumb(crumb: CrumbTuple): crumb is [ReactNode, string] {
+  return isCrumbWithSecondValue(crumb) && typeof crumb[1] === "string";
+}
+
+function isActionCrumb(
+  crumb: CrumbTuple,
+): crumb is [ReactNode, MouseEventHandler<HTMLSpanElement>] {
+  return isCrumbWithSecondValue(crumb) && typeof crumb[1] === "function";
 }
