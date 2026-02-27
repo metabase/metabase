@@ -106,7 +106,7 @@ export function MetabotAdminPage() {
             )}
             <MetabotEnabledToggle
               settingKey={enabledSettingKey}
-              showDescription={!isEmbedMetabot}
+              isEmbedMetabot={isEmbedMetabot}
             />
           </Box>
 
@@ -167,10 +167,10 @@ function MetabotNavPane() {
 
 function MetabotEnabledToggle({
   settingKey,
-  showDescription = true,
+  isEmbedMetabot = false,
 }: {
   settingKey: EnterpriseSettingKey;
-  showDescription?: boolean;
+  isEmbedMetabot?: boolean;
 }) {
   const { value, updateSetting, isLoading } = useAdminSetting(settingKey);
 
@@ -182,11 +182,11 @@ function MetabotEnabledToggle({
     <Box mt="lg">
       <SettingHeader
         id="enable-metabot"
-        title={t`Enable Metabot`}
+        title={isEmbedMetabot ? t`Enable Embedded Metabot` : t`Enable Metabot`}
         description={
-          showDescription
-            ? t`Metabot is Metabase's AI assistant. When enabled, Metabot will be available to help users create queries, analyze data, and answer questions about your data.` // eslint-disable-line metabase/no-literal-metabase-strings -- admin UI
-            : undefined
+          isEmbedMetabot
+            ? undefined
+            : t`Metabot is Metabase's AI assistant. When enabled, Metabot will be available to help users create queries, analyze data, and answer questions about your data.` // eslint-disable-line metabase/no-literal-metabase-strings -- admin UI
         }
       />
       <Flex align="center" gap="md" mt="md">
@@ -199,7 +199,13 @@ function MetabotEnabledToggle({
           size="sm"
         />
         <Text c={value ? "text-primary" : "text-secondary"} fw="500">
-          {value ? t`Metabot is enabled` : t`Metabot is disabled`}
+          {isEmbedMetabot
+            ? value
+              ? t`Embedded Metabot is enabled`
+              : t`Embedded Metabot is disabled`
+            : value
+              ? t`Metabot is enabled`
+              : t`Metabot is disabled`}
         </Text>
       </Flex>
     </Box>
