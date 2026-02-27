@@ -319,6 +319,19 @@
                                            {:type :table, :id (meta/id :orders)}
                                            {:type :card, :id 1}))))))
 
+(deftest ^:parallel swap-source-in-query-source-table-to-card-with-expression-test
+  (let [products-query (-> (lib/query meta/metadata-provider (meta/table-metadata :products))
+                           (lib/expression "TOTAL" (meta/field-metadata :products :price)))
+        mp             (lib.tu/metadata-provider-with-card-from-query 1 products-query)
+        query          (-> (lib/query mp (meta/table-metadata :orders))
+                           (lib/filter (lib/> (meta/field-metadata :orders :total) 100)))]
+    (testing "should swap source table to card and map TOTAL field to the expression column name"
+      (is (=? {:stages [{:source-card 1
+                         :filters     [[:> {} [:field {} "TOTAL"] 100]]}]}
+              (lib-be/swap-source-in-query query
+                                           {:type :table, :id (meta/id :orders)}
+                                           {:type :card, :id 1}))))))
+
 (deftest ^:parallel swap-source-in-query-source-card-to-table-with-join-alias-test
   (let [products-query (-> (lib/query meta/metadata-provider (meta/table-metadata :products))
                            (lib/with-fields [(meta/field-metadata :products :id)])
