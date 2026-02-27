@@ -45,8 +45,9 @@ jobs:
     name: e2e-tests-${{ inputs.name }}-${{ inputs.edition }}
     env:
       MB_EDITION: ${{ inputs.edition }}
-      # Any env starting with `CYPRESS_` will be available to all Cypress tests via `cy.env()`
-      # Example: you can get `CYPRESS_FOO` with `cy.env(["FOO"]).then(({ FOO }) => ...)`
+      # Sensitive env vars (tokens, secrets) starting with `CYPRESS_` are accessed via async `cy.env()`
+      # Example: `cy.env(["FOO"]).then(({ FOO }) => ...)`
+      # For non-sensitive config, use `Cypress.expose()` in cypress config instead (synchronous)
       CYPRESS_MB_ALL_FEATURES_TOKEN: ${{ secrets.STAGING_MB_ALL_FEATURES_TOKEN }}
       CYPRESS_MB_STARTER_CLOUD_TOKEN: ${{ secrets.STAGING_MB_STARTER_CLOUD_TOKEN }}
       CYPRESS_MB_PRO_CLOUD_TOKEN: ${{ secrets.STAGING_MB_PRO_CLOUD_TOKEN }}
