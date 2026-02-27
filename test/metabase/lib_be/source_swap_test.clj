@@ -325,9 +325,9 @@
         query        (as-> (lib/query mp (lib.metadata/card mp 1)) q
                        (lib/with-fields q [(m/find-first (comp #{"ID"} :name)
                                                          (lib/fieldable-columns q))]))]
-    (testing "should swap card source to table and convert name-based ref to id-based"
+    (testing "should swap card source to table, keeping string-based ref"
       (is (=? {:stages [{:source-table (meta/id :products)
-                         :fields       [[:field {} (meta/id :products :id)]]}]}
+                         :fields       [[:field {} "ID"]]}]}
               (lib-be/swap-source-in-query query
                                            {:type :card, :id 1}
                                            {:type :table, :id (meta/id :products)}))))))
@@ -371,9 +371,9 @@
                                          :table-id mock-table-id
                                          :name "Reviews__CREATED_AT")]})
         query          (assoc query :lib/metadata mock-mp)]
-    (testing "should swap card source to mock table with joined-alias column names"
+    (testing "should swap card source to mock table, keeping string-based ref"
       (is (=? {:stages [{:source-table mock-table-id
-                         :filters      [[:not-null {} [:field {} mock-date-field-id]]]}]}
+                         :filters      [[:not-null {} [:field {} "Reviews__CREATED_AT"]]]}]}
               (lib-be/swap-source-in-query query
                                            {:type :card, :id 1}
                                            {:type :table, :id mock-table-id}))))))

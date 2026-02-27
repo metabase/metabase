@@ -237,22 +237,17 @@
 ;;; ------------------------------------------------ swap-source -------------------------------------------------------
 
 (mr/def ::swap-source.column-mapping
-  [:map-of [:or ::lib.schema.id/field :string] ::lib.schema.metadata/column])
-
-(mu/defn- source-columns :- [:maybe [:sequential ::lib.schema.metadata/column]]
-  [query       :- ::lib.schema/query
-   source-id   :- ::swap-source.source-id
-   source-type :- ::swap-source.source-type]
-  (if (= source-type :table)
-    (lib.metadata/fields query source-id)
-    (lib.card/saved-question-metadata query source-id)))
+  [:map-of ::lib.schema.id/field ::lib.schema.metadata/column])
 
 (mu/defn- build-column-mapping :- ::swap-source.column-mapping
   [query                                      :- ::lib.schema/query
    {old-source-id :id, old-source-type :type} :- ::swap-source.source
    {new-source-id :id, new-source-type :type} :- ::swap-source.source]
-  (let [old-columns       (source-columns query old-source-id old-source-type)
-        new-columns       (source-columns query new-source-id new-source-type)
+  (let [old-columns       (when (= old-source-type :table)
+                            (lib.metadata/fields query old-source-id))
+        new-columns       (if (= new-source-type :table)
+                            (lib.metadata/fields query new-source-id)
+                            (lib.card/saved-question-metadata query new-source-id))
         new-column-by-key (m/index-by column-match-key new-columns)]
     (into {}
           (keep (fn [old-column]
@@ -304,54 +299,59 @@
       (lib.ref/with-field-ref-id-or-name (:id new-field))
 
       (and new-field (= new-source-type :card))
-      (-> (lib.options.update-options assoc :base-type (:base-type new-field))
-          (lib.ref/with-field-ref-name (column-match-key new-field)))
+      (-> (lib.options/update-options assoc :base-type (:base-type new-field))
+          (lib.ref/with-field-ref-id-or-name (column-match-key new-field)))
 
       (and (:id new-source-field) (= new-source-type :table))
       (lib.options/update-options assoc :source-field (:id new-source-field)))))
 
 (mu/defn- swap-field-refs-in-clauses :- [:sequential :any]
-  [clauses        :- [:sequential :any]
-   column-mapping :- ::swap-source.column-mapping]
+  [clauses         :- [:sequential :any]
+   column-mapping  :- ::swap-source.column-mapping
+   new-source-type :- ::swap-source.source-type]
   (perf/mapv (fn [clause]
-               (walk-clause-field-refs clause #(swap-field-ref % column-mapping)))
+               (walk-clause-field-refs clause #(swap-field-ref % column-mapping new-source-type)))
              clauses))
 
 (mu/defn- swap-field-refs-in-join :- ::lib.schema.join/join
-  [join           :- ::lib.schema.join/join
-   column-mapping :- ::swap-source.column-mapping]
+  [join            :- ::lib.schema.join/join
+   column-mapping  :- ::swap-source.column-mapping
+   new-source-type :- ::swap-source.source-type]
   (-> join
       (u/update-some :fields (fn [fields]
                                (if (keyword? fields)
                                  fields
-                                 (swap-field-refs-in-clauses fields column-mapping))))
-      (u/update-some :conditions #(swap-field-refs-in-clauses % column-mapping))))
+                                 (swap-field-refs-in-clauses fields column-mapping new-source-type))))
+      (u/update-some :conditions #(swap-field-refs-in-clauses % column-mapping new-source-type))))
 
 (mu/defn- swap-field-refs-in-joins :- [:sequential ::lib.schema.join/join]
-  [joins          :- [:sequential ::lib.schema.join/join]
-   column-mapping :- ::swap-source.column-mapping]
-  (perf/mapv #(swap-field-refs-in-join % column-mapping) joins))
+  [joins           :- [:sequential ::lib.schema.join/join]
+   column-mapping  :- ::swap-source.column-mapping
+   new-source-type :- ::swap-source.source-type]
+  (perf/mapv #(swap-field-refs-in-join % column-mapping new-source-type) joins))
 
 (mu/defn- swap-field-refs-in-stage :- ::lib.schema/stage
-  [query          :- ::lib.schema/query
-   stage-number   :- :int
-   column-mapping :- ::swap-source.column-mapping]
+  [query           :- ::lib.schema/query
+   stage-number    :- :int
+   column-mapping  :- ::swap-source.column-mapping
+   new-source-type :- ::swap-source.source-type]
   (-> (lib.util/query-stage query stage-number)
-      (u/update-some :fields      #(swap-field-refs-in-clauses % column-mapping))
-      (u/update-some :joins       #(swap-field-refs-in-joins % column-mapping))
-      (u/update-some :expressions #(swap-field-refs-in-clauses % column-mapping))
-      (u/update-some :filters     #(swap-field-refs-in-clauses % column-mapping))
-      (u/update-some :aggregation #(swap-field-refs-in-clauses % column-mapping))
-      (u/update-some :breakout    #(swap-field-refs-in-clauses % column-mapping))
-      (u/update-some :order-by    #(swap-field-refs-in-clauses % column-mapping))))
+      (u/update-some :fields      #(swap-field-refs-in-clauses % column-mapping new-source-type))
+      (u/update-some :joins       #(swap-field-refs-in-joins % column-mapping new-source-type))
+      (u/update-some :expressions #(swap-field-refs-in-clauses % column-mapping new-source-type))
+      (u/update-some :filters     #(swap-field-refs-in-clauses % column-mapping new-source-type))
+      (u/update-some :aggregation #(swap-field-refs-in-clauses % column-mapping new-source-type))
+      (u/update-some :breakout    #(swap-field-refs-in-clauses % column-mapping new-source-type))
+      (u/update-some :order-by    #(swap-field-refs-in-clauses % column-mapping new-source-type))))
 
 (mu/defn- swap-field-refs-in-query :- ::lib.schema/query
-  [query          :- ::lib.schema/query
-   column-mapping :- ::swap-source.column-mapping]
+  [query           :- ::lib.schema/query
+   column-mapping  :- ::swap-source.column-mapping
+   new-source-type :- ::swap-source.source-type]
   (u/update-some query :stages
                  (fn [stages]
                    (vec (map-indexed (fn [stage-number _]
-                                       (swap-field-refs-in-stage query stage-number column-mapping))
+                                       (swap-field-refs-in-stage query stage-number column-mapping new-source-type))
                                      stages)))))
 
 (mu/defn swap-source-in-query :- ::lib.schema/query
@@ -360,7 +360,8 @@
    old-source :- ::swap-source.source
    new-source :- ::swap-source.source]
   (swap-field-refs-in-query (swap-source-table-or-card-in-query query old-source new-source)
-                            (build-column-mapping query old-source new-source)))
+                            (build-column-mapping query old-source new-source)
+                            (:type new-source)))
 
 (mu/defn swap-source-in-parameter-target :- ::lib.schema.parameter/target
   "If the parameter target is a field ref, swap it to reference the new source."
@@ -372,5 +373,5 @@
         (when-let [stage-number (parameter-target-stage-number query target)]
           (lib.parameters/update-parameter-target-field-ref
            target
-           #(swap-field-ref % (build-column-mapping query old-source new-source)))))
+           #(swap-field-ref % (build-column-mapping query old-source new-source) (:type new-source)))))
       target))
