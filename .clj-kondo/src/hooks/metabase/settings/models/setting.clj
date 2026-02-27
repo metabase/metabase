@@ -54,9 +54,7 @@
      help-link
      help-link-custom-destination
      instance-creation
-     is-embedded-metabot-enabled
      is-hosted?
-     is-metabot-enabled
      jdbc-data-warehouse-max-connection-pool-size
      jdbc-data-warehouse-unreturned-connection-timeout-seconds
      jwt-attribute-email
