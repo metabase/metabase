@@ -126,7 +126,11 @@
 
 (defn- hash-dataset*
   [^DatabaseDefinition db-def]
-  (codecs/bytes->hex (buddy-hash/sha1 (str (into (sorted-map) (get-dataset-definition db-def))))))
+  (let [db-def' (get-dataset-definition db-def)
+        ;; for routing tests (where hashes need to match despite content being different)
+        ;; it is important to be able to override the hash key
+        hash-key (:hash-key db-def' db-def')]
+    (codecs/bytes->hex (buddy-hash/sha1 (str (into (sorted-map) hash-key))))))
 
 (def hash-dataset
   "Provides a consistent hash for the DatabaseDefinition"
