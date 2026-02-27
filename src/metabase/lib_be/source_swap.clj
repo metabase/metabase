@@ -6,7 +6,6 @@
    [metabase.lib.field.resolution :as lib.field.resolution]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
    [metabase.lib.options :as lib.options]
-   [metabase.lib.order-by :as lib.order-by]
    [metabase.lib.parameters :as lib.parameters]
    [metabase.lib.query :as lib.query]
    [metabase.lib.ref :as lib.ref]
@@ -258,59 +257,61 @@
    new-source :- ::swap-source.source]
   (update query :stages (fn [stages] (perf/mapv #(swap-source-table-or-card-in-stage % old-source new-source) stages))))
 
+(mr/def ::swap-field-ref.options
+  [:map
+   [:old-query ::lib.schema/query]
+   [:new-query ::lib.schema/query]
+   [:stage-number :int]])
+
 (mu/defn- swap-field-ref :- :mbql.clause/field
-  [old-query    :- ::lib.schema/query
-   new-query    :- ::lib.schema/query
-   stage-number :- :int
-   field-ref :- :mbql.clause/field]
+  [field-ref :- :mbql.clause/field
+   {:keys [old-query new-query stage-number]} :- ::swap-field-ref.options]
   (or (when-let [old-column (lib.field.resolution/resolve-field-ref old-query stage-number field-ref)]
         (let [field-name-ref (-> old-column (dissoc :id) lib.ref/ref)]
-          (when-let [new-column (lib.field.resolution/resolve-field-ref new-query stage-number field-name-ref)]
+          (when-let [new-column (lib.field.resolution/resolve-field-ref new-query stage-number field-ref)]
             (let [new-field-ref (lib.ref/ref new-column)]
               (when-not (same-field-ref? field-ref new-field-ref)
                 new-field-ref)))))
       field-ref))
 
 (mu/defn- swap-field-refs-in-clauses :- [:sequential :any]
-  [old-query    :- ::lib.schema/query
-   new-query    :- ::lib.schema/query
-   stage-number :- :int
-   clauses :- [:sequential :any]]
+  [clauses :- [:sequential :any]
+   options :- ::swap-field-ref.options]
   (perf/mapv (fn [clause]
-               (walk-clause-field-refs clause #(swap-field-ref old-query new-query stage-number %)))
+               (walk-clause-field-refs clause #(swap-field-ref % options)))
              clauses))
 
 (mu/defn- swap-field-refs-in-join :- ::lib.schema.join/join
-  [old-query    :- ::lib.schema/query
-   new-query    :- ::lib.schema/query
-   stage-number :- :int
-   join         :- ::lib.schema.join/join]
+  [join     :- ::lib.schema.join/join
+   options  :- ::swap-field-ref.options]
   (-> join
       (u/update-some :fields (fn [fields]
                                (if (keyword? fields)
                                  fields
-                                 (swap-field-refs-in-clauses old-query new-query stage-number fields))))
-      (u/update-some :conditions #(swap-field-refs-in-clauses old-query new-query stage-number %))))
+                                 (swap-field-refs-in-clauses fields options))))
+      (u/update-some :conditions #(swap-field-refs-in-clauses % options))))
 
 (mu/defn- swap-field-refs-in-joins :- [:sequential ::lib.schema.join/join]
-  [old-query    :- ::lib.schema/query
-   new-query    :- ::lib.schema/query
-   stage-number :- :int
-   joins        :- [:sequential ::lib.schema.join/join]]
-  (perf/mapv #(swap-field-refs-in-join old-query new-query stage-number %) joins))
+  [joins    :- [:sequential ::lib.schema.join/join]
+   options  :- ::swap-field-ref.options]
+  (perf/mapv #(swap-field-refs-in-join % options) joins))
 
 (mu/defn- swap-field-refs-in-stage :- ::lib.schema/stage
   [old-query    :- ::lib.schema/query
    new-query    :- ::lib.schema/query
    stage-number :- :int]
-  (-> (lib.util/query-stage new-query stage-number)
-      (u/update-some :fields      #(swap-field-refs-in-clauses old-query new-query stage-number %))
-      (u/update-some :joins       #(swap-field-refs-in-joins old-query new-query stage-number %))
-      (u/update-some :expressions #(swap-field-refs-in-clauses old-query new-query stage-number %))
-      (u/update-some :filters     #(swap-field-refs-in-clauses old-query new-query stage-number %))
-      (u/update-some :aggregation #(swap-field-refs-in-clauses old-query new-query stage-number %))
-      (u/update-some :breakout    #(swap-field-refs-in-clauses old-query new-query stage-number %))
-      (u/update-some :order-by    #(swap-field-refs-in-clauses old-query new-query stage-number %))))
+  (let [options {:old-query old-query
+                 :new-query new-query
+                 :stage-number stage-number}
+        stage   (lib.util/query-stage new-query stage-number)]
+    (-> stage
+        (u/update-some :fields      #(swap-field-refs-in-clauses % options))
+        (u/update-some :joins       #(swap-field-refs-in-joins % options))
+        (u/update-some :expressions #(swap-field-refs-in-clauses % options))
+        (u/update-some :filters     #(swap-field-refs-in-clauses % options))
+        (u/update-some :aggregation #(swap-field-refs-in-clauses % options))
+        (u/update-some :breakout    #(swap-field-refs-in-clauses % options))
+        (u/update-some :order-by    #(swap-field-refs-in-clauses % options)))))
 
 (mu/defn- swap-field-refs-in-query :- ::lib.schema/query
   [old-query :- ::lib.schema/query
@@ -341,7 +342,10 @@
         (when-let [stage-number (parameter-target-stage-number query target)]
           (let [new-query (swap-source-table-or-card-in-query query old-source new-source)]
             (when (not= query new-query)
-              (lib.parameters/update-parameter-target-field-ref
-               target
-               #(swap-field-ref query new-query stage-number %))))))
+              (let [options {:old-query query
+                             :new-query new-query
+                             :stage-number stage-number}]
+                (lib.parameters/update-parameter-target-field-ref
+                 target
+                 #(swap-field-ref % options)))))))
       target))
