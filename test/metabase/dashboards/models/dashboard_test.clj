@@ -259,7 +259,6 @@
                    :slug   "category_name"
                    :id     "_CATEGORY_NAME_"
                    :type   :category
-                   :position 0
                    :target expected
                    :values_query_type :list
                    :values_source_type :card

@@ -2552,14 +2552,14 @@
             (is (empty? (serdes/dependencies ser)))))))))
 
 (deftest ^:parallel export-parameters-sorts-by-id-test
-  (let [params [{:id "zebra" :name "Z param" :type :category :position 0}
-                {:id "alpha" :name "A param" :type :category :position 1}
-                {:id "middle" :name "M param" :type :category :position 2}]
+  (let [params [{:id "zebra" :name "Z param" :type :category}
+                {:id "alpha" :name "A param" :type :category}
+                {:id "middle" :name "M param" :type :category}]
         result (serdes/export-parameters params)]
     (testing "export sorts parameters by :id for stable diffs"
       (is (= ["alpha" "middle" "zebra"]
              (map :id result))))
-    (testing "positions are preserved through export"
+    (testing "export stamps :position from original array index"
       (is (= [1 2 0]
              (map :position result))))))
 
@@ -2570,20 +2570,18 @@
   (is (= [] (serdes/export-parameters nil))))
 
 (deftest ^:parallel export-parameters-single-element-test
-  (let [params [{:id "only" :name "Only param" :position 0}]
+  (let [params [{:id "only" :name "Only param"}]
         result (serdes/export-parameters params)]
     (is (= ["only"] (map :id result)))
     (is (= [0] (map :position result)))))
 
-(deftest ^:parallel export-parameters-nil-id-sorts-correctly-test
-  (let [params [{:id "beta" :name "B" :position 0}
-                {:id nil :name "Nil" :position 1}
-                {:id "alpha" :name "A" :position 2}]
+(deftest ^:parallel export-parameters-nil-id-sorts-first-test
+  (let [params [{:id "beta" :name "B"}
+                {:id nil :name "Nil"}
+                {:id "alpha" :name "A"}]
         result (serdes/export-parameters params)]
-    (testing "nil ids sort first, others alphabetically"
-      (is (= [nil "alpha" "beta"] (map :id result))))
-    (testing "positions reflect original array indices"
-      (is (= [1 2 0] (map :position result))))))
+    (is (= [nil "alpha" "beta"] (map :id result)))
+    (is (= [1 2 0] (map :position result)))))
 
 (deftest ^:parallel export-parameter-mappings-sorts-by-parameter-id-test
   (let [mappings [{:parameter_id "z-param" :target [:dimension [:field 1 nil]]}
@@ -2611,9 +2609,9 @@
                                                   :collection_id coll-id}
                        :model/Dashboard {dash-id :id} {:name "Test Dashboard"
                                                        :collection_id coll-id
-                                                       :parameters [{:id "zebra" :name "Z" :type :category :position 0}
-                                                                    {:id "alpha" :name "A" :type :category :position 1}
-                                                                    {:id "beta" :name "B" :type :category :position 2}]}
+                                                       :parameters [{:id "zebra" :name "Z" :type :category}
+                                                                    {:id "alpha" :name "A" :type :category}
+                                                                    {:id "beta" :name "B" :type :category}]}
                        :model/DashboardCard _ {:dashboard_id dash-id
                                                :card_id card-id
                                                :parameter_mappings [{:parameter_id "zebra"
@@ -2623,25 +2621,32 @@
                                                                      :card_id card-id
                                                                      :target [:dimension [:field 2 nil]]}]}]
       (let [ser (ts/extract-one "Dashboard" dash-id)]
-        (testing "Dashboard parameters are sorted by :id for stable serialization"
+        (testing "parameters are sorted by :id"
           (is (= ["alpha" "beta" "zebra"]
                  (map :id (:parameters ser)))))
-        (testing "Positions reflect original display order"
+        (testing "positions preserve original display order"
           (is (= [1 2 0]
                  (map :position (:parameters ser)))))
         (is (= ["alpha" "zebra"]
                (map :parameter_id (-> ser :dashcards first :parameter_mappings))))))))
 
-(deftest ^:parallel export-import-parameters-round-trip-test
-  (testing "export sorts by id but preserves :position through the round trip"
-    (let [params   [{:id "zebra" :name "Z param" :type :category :position 0}
-                    {:id "alpha" :name "A param" :type :category :position 1}
-                    {:id "middle" :name "M param" :type :category :position 2}]
+(deftest ^:parallel import-parameters-round-trip-test
+  (testing "export stamps position, import restores original display order"
+    (let [params   [{:id "zebra" :name "Z param" :type :category}
+                    {:id "alpha" :name "A param" :type :category}
+                    {:id "middle" :name "M param" :type :category}]
           exported (serdes/export-parameters params)
           imported (serdes/import-parameters exported)]
       (is (= ["alpha" "middle" "zebra"] (map :id exported))
           "export sorts by id")
       (is (= [1 2 0] (map :position exported))
-          "positions are preserved through export")
-      (is (= [1 2 0] (map :position imported))
-          "positions are preserved through import"))))
+          "export stamps position from original array index")
+      (is (= ["zebra" "alpha" "middle"] (map :id imported))
+          "import restores original display order via position"))))
+
+(deftest ^:parallel import-parameters-without-position-preserves-order-test
+  (testing "importing legacy params without :position preserves existing order"
+    (let [params   [{:id "zebra" :name "Z param" :type :category}
+                    {:id "alpha" :name "A param" :type :category}]
+          imported (serdes/import-parameters params)]
+      (is (= ["zebra" "alpha"] (map :id imported))))))

@@ -11,6 +11,5 @@
   normalize-parameter-mapping
   normalize-parameter-mappings
   normalize-parameters
-  transform-dashboard-parameters
   transform-parameter-mappings
   transform-parameters])

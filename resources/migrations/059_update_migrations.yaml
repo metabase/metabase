@@ -3574,14 +3574,6 @@ databaseChangeLog:
             path: instance_analytics_views/query_log/v2/h2-query_log.sql
             relativeToChangelogFile: true
 
-  - changeSet:
-      id: v59.2026-02-26T12:00:00
-      author: bronsa
-      comment: Backfill position field on dashboard/card/action parameters for stable serialization ordering
-      changes:
-        - customChange:
-            class: "metabase.app_db.custom_migrations.BackfillParameterPositions"
-
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
 ########################################################################################################################

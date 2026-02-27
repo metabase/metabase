@@ -55,7 +55,6 @@ export interface Parameter extends ParameterValuesConfig {
   value?: ParameterValueOrArray | null;
   target?: ParameterTarget;
   temporal_units?: TemporalUnit[];
-  position?: number;
 }
 
 export interface ParameterValuesConfig {
@@ -145,7 +144,6 @@ export type NormalizedParameter = {
   name: string;
   slug: string;
   type: string;
-  position?: number;
   target?: ParameterTarget;
   options?: ParameterOptions;
   values_query_type?: ValuesQueryType;

@@ -33,7 +33,6 @@ describe("metabase/parameters/utils/dashboards", () => {
       ).toEqual({
         id: expect.any(String),
         name: "foo bar",
-        position: 0,
         sectionId: "abc",
         slug: "foo_bar",
         type: "category",
@@ -59,7 +58,6 @@ describe("metabase/parameters/utils/dashboards", () => {
       expect(parameter2).toEqual({
         id: expect.any(String),
         name: "foo bar 1",
-        position: 1,
         sectionId: "abc",
         slug: "foo_bar_1",
         type: "category",
@@ -77,7 +75,6 @@ describe("metabase/parameters/utils/dashboards", () => {
       expect(parameter3).toEqual({
         id: expect.any(String),
         name: "foo bar 2",
-        position: 2,
         sectionId: "abc",
         slug: "foo_bar_2",
         type: "category",

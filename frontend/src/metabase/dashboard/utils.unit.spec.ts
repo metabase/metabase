@@ -715,7 +715,6 @@ describe("Dashboard utils", () => {
           ),
         );
         expect(newParameters.map((p) => p.id)).toEqual(["2", "3", "1"]);
-        expect(newParameters.map((p) => p.position)).toEqual([0, 1, 2]);
       });
 
       it("should move the first parameter to the middle of the list", () => {
