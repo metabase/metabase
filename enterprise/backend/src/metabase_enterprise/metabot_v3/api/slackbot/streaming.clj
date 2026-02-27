@@ -19,13 +19,18 @@
 
 (set! *warn-on-reflection* true)
 
+(def ^:private viz-prefetch-pool-size
+  "Maximum number of visualization rendering threads. Limits concurrent query execution
+   during streaming so we don't overwhelm the QP or database connections."
+  8)
+
 (defonce ^:private ^ExecutorService viz-prefetch-executor
   (let [counter (atom 0)
         factory (reify ThreadFactory
                   (newThread [_ r]
                     (doto (Thread. r (str "viz-prefetch-" (swap! counter inc)))
                       (.setDaemon true))))]
-    (Executors/newFixedThreadPool 8 factory)))
+    (Executors/newFixedThreadPool viz-prefetch-pool-size factory)))
 
 (defn- strip-bot-mention
   "Remove bot mention prefix from text (e.g., '<@U123> hello' -> 'hello')"

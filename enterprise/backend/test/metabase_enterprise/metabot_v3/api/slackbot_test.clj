@@ -735,7 +735,7 @@
                                                      (throw (ex-info "Unexpected render error" {})))]
               (mt/client :post 200 "ee/metabot-v3/slack/events"
                          (slack-request-options event-body) event-body)
-              (let [error-msg "Something went wrong while generating this visualization."]
+              (let [error-msg "Query execution failed, please try again."]
                 (u/poll {:thunk      #(and (>= (count @stop-stream-calls) 1)
                                            (some (fn [m] (= error-msg (:text m))) @post-calls))
                          :done?      true?
@@ -769,7 +769,7 @@
                        :done?      true?
                        :timeout-ms 5000})
               (testing "error message posted for failing viz"
-                (is (some #(= "Something went wrong while generating this visualization." (:text %))
+                (is (some #(= "Query execution failed, please try again." (:text %))
                           @post-calls)))
               (testing "second card still rendered"
                 (is (= 1 (count @image-calls)))))))))))
