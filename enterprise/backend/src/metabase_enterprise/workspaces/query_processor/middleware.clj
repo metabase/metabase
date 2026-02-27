@@ -2,11 +2,7 @@
   "QP preprocessing middleware that rewrites table references in native SQL queries for workspace transforms.
 
   When a query carries a `:workspace-remapping` key (attached by workspace execute code), this middleware
-  rewrites table names in the native SQL using [[sql-tools/replace-names]].
-
-  The `:workspace-remapping` value is a map with a `:tables` key — a map from source `{:schema :table}` specs
-  to target `{:schema :table}` specs. This key is transient — it is attached in-memory by workspace execute
-  code and never persisted."
+  rewrites table names in the native SQL using [[sql-tools/replace-names]]."
   (:require
    [clojure.walk :as walk]
    [metabase.driver :as driver]
