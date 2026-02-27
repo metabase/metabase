@@ -121,7 +121,9 @@
     (when (not attr-value)
       (throw (ex-info (tru "Query requires user attribute `{0}`" (name attr-name))
                       {:type qp.error-type/missing-required-parameter})))
-    {:type   :category
+    {:type   (if (and field-base-type (isa? field-base-type :type/Number))
+               :number/=
+               :string/=)
      :target target
      :value  (attr-value->param-value field-base-type attr-value)}))
 
