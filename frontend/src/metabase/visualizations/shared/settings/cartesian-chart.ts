@@ -229,7 +229,7 @@ export const getSeriesOrderVisibilitySettings = (
   }));
 };
 
-export const getDefaultYAxisTitle = (metricNames: string[]) => {
+export const getDefaultYAxisTitle = (metricNames: (string | undefined)[]) => {
   const metricsCount = new Set(metricNames).size;
   return metricsCount === 1 ? metricNames[0] : null;
 };

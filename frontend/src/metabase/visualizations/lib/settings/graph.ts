@@ -954,12 +954,10 @@ export const GRAPH_AXIS_SETTINGS: VisualizationSettingsDefinitions = {
       // If there are multiple series, we check if the metric names match.
       // If they do, we use that as the default y axis label.
       const [metric] = vizSettings["graph.metrics"] ?? [];
-      const metricNames = series
-        .map(({ data: { cols } }) => {
-          const metricCol = cols.find((c) => c.name === metric);
-          return metricCol && metricCol.display_name;
-        })
-        .filter((name) => name != null);
+      const metricNames = series.map(({ data: { cols } }) => {
+        const metricCol = cols.find((c) => c.name === metric);
+        return metricCol && metricCol.display_name;
+      });
 
       return getDefaultYAxisTitle(metricNames);
     },
