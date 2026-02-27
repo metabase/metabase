@@ -721,7 +721,7 @@ const getMonthFormat = (options: OptionsType) =>
 
 export function getDateFormatFromStyle(
   style: string,
-  unit: DatetimeUnit,
+  unit: DatetimeUnit | undefined,
   separator?: string,
   includeWeekday?: boolean,
 ) {
@@ -1370,7 +1370,7 @@ export function formatDateTimeWithUnit(
 const EXAMPLE_DATE = dayjs("2018-01-31 17:24");
 
 export function getDateStyleOptionsForUnit(
-  unit: DatetimeUnit,
+  unit: DatetimeUnit | undefined,
   abbreviate = false,
   separator?: string,
 ) {
@@ -1403,7 +1403,7 @@ export function getDateStyleOptionsForUnit(
 
 function dateStyleOption(
   style: string,
-  unit: DatetimeUnit,
+  unit: DatetimeUnit | undefined,
   abbreviate = false,
   separator?: string,
 ) {

@@ -69,7 +69,6 @@ export interface ColumnSettingsOptions {
   hidden?: boolean;
   section?: string;
   readDependencies?: string[];
-  // [key: string]: unknown; TODO
 }
 
 export function columnSettings({
@@ -152,10 +151,6 @@ export const DATE_COLUMN_SETTINGS: VisualizationSettingsDefinitions = {
     getDefault: ({ unit }) => {
       // Grab the first option's value. If there were no options (for
       // hour-of-day probably), use an empty format string instead.
-      if (!unit) {
-        return "";
-      }
-
       const [{ value = "" } = {}] = getDateStyleOptionsForUnit(unit);
       return value;
     },
