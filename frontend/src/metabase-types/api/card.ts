@@ -246,7 +246,7 @@ export interface ColumnSettings {
   click_behavior?: ClickBehavior;
 
   // some options are untyped
-  [key: string]: any; // TODO
+  [key: string]: any;
 }
 
 export type VisualizationSettings = {
@@ -364,7 +364,7 @@ export type VisualizationSettings = {
   "list.entity_icon"?: IconName | null;
   "list.entity_icon_color"?: string;
 
-  [key: string]: any; // TODO extract separate issue for it
+  [key: string]: any;
 } & EmbedVisualizationSettings;
 
 export type EmbedVisualizationSettings = {

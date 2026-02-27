@@ -177,7 +177,7 @@ function sanitizeSeriesData(series: Series): Series {
     }
 
     return {
-      // @ts-expect-error according to TS this branch is impossible - perhaps we should make "data" optional?
+      // @ts-expect-error according to TS this branch is impossible
       ...s,
       data: { cols: [], rows: [] },
     };
