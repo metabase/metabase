@@ -201,19 +201,7 @@ To create a tenant attribute manually using the Metabase UI:
 3. Click on **three dots** next to the tenant.
 4. Input the attribute key and value.
 
-To create tenant attributes from JWT SSO. In the JWT, include a claim `@tenant.attributes` to add one or more tenant attributes:
-
-```json
-{
-  "@tenant": "my-tenant",
-  "@tenant.attributes": {
-    "some-attribute": "here it is"
-  },
-  "email": "another@another.com",
-  "first_name": "Tester",
-  "last_name": "Testerson"
-}
-```
+For details on how to set tenant attributes using JWT tenant claims, see [Setting tenant attributes using tenant claims](#setting-tenant-attributes-using-tenant-claims) below.
 
 To set permissions based on attributes:
 - Go to Permissions > Tenant collections > Root tenant collections
@@ -283,6 +271,22 @@ When user provisioning with JWT is enabled:
 1. Metabase reads the tenant identifier from the JWT claim. By default, this is the `@tenant` key (you can configure this).
 2. If the tenant doesn't exist, Metabase automatically creates it. Metabase will use the value of the `@tenant` key (or your chosen assignment attribute) as the tenant slug.
 3. New users are automatically assigned to the tenant from their JWT.
+
+### Setting tenant attributes using tenant claims
+
+To create tenant attributes from, include a claim `@tenant.attributes` to add one or more tenant attributes:
+
+```json
+{
+  "@tenant": "my-tenant",
+  "@tenant.attributes": {
+    "some-attribute": "here it is"
+  },
+  "email": "another@another.com",
+  "first_name": "Tester",
+  "last_name": "Testerson"
+}
+```
 
 ### Troubleshooting JWT authentication with tenants
 
