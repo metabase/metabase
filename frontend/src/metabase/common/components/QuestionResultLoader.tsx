@@ -96,10 +96,12 @@ export function QuestionResultLoader({
     [collectionPreview],
   );
 
+  // A function to pass to the child to allow the component to call `loadResult` again
   const reload = useCallback(() => {
     loadResult(questionRef.current, onLoad, keepPreviousWhileLoading);
   }, [loadResult, onLoad, keepPreviousWhileLoading]);
 
+  // A function to pass to the child to allow the component to interrupt the query
   const cancel = useCallback(() => {
     if (loading) {
       setLoading(false);
