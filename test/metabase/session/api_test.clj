@@ -685,7 +685,8 @@
       (t2/update! :model/User (u/the-id user) {:password nil, :password_salt nil})
       (let [device-info {:device_id          "Cam's Computer"
                          :device_description "The computer where Cam wrote this test"
-                         :embedded            false
+                         :embedded           false
+                         :token_exchange     false
                          :ip_address         "192.168.1.1"}]
         (is (thrown-with-msg?
              clojure.lang.ExceptionInfo
