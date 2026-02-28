@@ -9,8 +9,12 @@ type CheckListApiStep =
   | "configure-row-column-security"
   | "create-test-embed"
   | "embed-production"
-  | "secure-embeds"
-  | "setup-tenants";
+  | "sso-configured"
+  | "enable-tenants"
+  | "create-tenants"
+  | "setup-data-segregation-strategy"
+  | "data-permissions-and-enable-tenants"
+  | "sso-auth-manual-tested";
 export type EmbeddingHubChecklist = Record<CheckListApiStep, boolean>;
 
 export const embeddingHubApi = Api.injectEndpoints({

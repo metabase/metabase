@@ -1,11 +1,22 @@
-import { Children, isValidElement, useEffect, useMemo, useState } from "react";
+import {
+  Children,
+  forwardRef,
+  isValidElement,
+  useCallback,
+  useImperativeHandle,
+  useMemo,
+  useState,
+} from "react";
 
 import { StepperContext } from "./OnboardingStepperContext";
 import { OnboardingStepperStep } from "./OnboardingStepperStep";
+import { useAutoAdvanceStep } from "./hooks/use-auto-advance-step";
 import { useScrollStepIntoView } from "./hooks/use-scroll-step-into-view";
-import type { OnboardingStepperProps } from "./types";
+import type { OnboardingStepperHandle, OnboardingStepperProps } from "./types";
+import { getNextStepToActivate } from "./utils/get-next-step-to-activate";
 
 export type {
+  OnboardingStepperHandle,
   OnboardingStepperProps,
   OnboardingStepperStepProps,
 } from "./types";
@@ -18,12 +29,13 @@ export type {
  * Automatically advances to the next incomplete
  * step when a step is completed.
  */
-const OnboardingStepperRoot = ({
-  children,
-  completedSteps,
-  lockedSteps,
-  onChange,
-}: OnboardingStepperProps) => {
+const OnboardingStepperRoot = forwardRef<
+  OnboardingStepperHandle,
+  OnboardingStepperProps
+>(function OnboardingStepper(
+  { children, completedSteps, lockedSteps, onChange },
+  ref,
+) {
   // Extract step IDs and compute labels from children
   const { stepIds, stepNumbers } = useMemo(() => {
     const ids: string[] = [];
@@ -51,25 +63,62 @@ const OnboardingStepperRoot = ({
     return stepIds.find((id) => !completedSteps[id]) ?? null;
   }, [stepIds, completedSteps]);
 
-  const [activeStep, setActiveStepState] = useState<string | null>(
+  const [activeStep, setActiveStepValue] = useState<string | null>(
     defaultActiveStep,
   );
 
   const { stepRefs, scrollStepIntoView } = useScrollStepIntoView(stepIds);
 
-  const setActiveStep = (stepId: string | null) => {
-    setActiveStepState(stepId);
-    scrollStepIntoView(stepId);
-    onChange?.(stepId);
-  };
+  const currentStepIndex = activeStep ? stepIds.indexOf(activeStep) : -1;
 
-  // Move on to next incomplete step when completedSteps changes
-  useEffect(() => {
-    const nextIncomplete = stepIds.find((id) => !completedSteps[id]) ?? null;
+  const setActiveStep = useCallback(
+    (stepId: string | null) => {
+      setActiveStepValue(stepId);
+      scrollStepIntoView(stepId);
+      onChange?.(stepId);
+    },
+    [onChange, scrollStepIntoView],
+  );
 
-    setActiveStepState(nextIncomplete);
-    scrollStepIntoView(nextIncomplete);
-  }, [completedSteps, stepIds, scrollStepIntoView]);
+  useAutoAdvanceStep({
+    stepIds,
+    completedSteps,
+    lockedSteps,
+    activeStep,
+    setActiveStep,
+  });
+
+  const goToNextIncompleteStep = useCallback(() => {
+    if (activeStep === null) {
+      return;
+    }
+
+    const nextStepId = getNextStepToActivate({
+      stepIds,
+      completedSteps,
+      lockedSteps,
+      fromIndex: stepIds.indexOf(activeStep) + 1,
+    });
+
+    // When all steps are complete, falls back to the last step.
+    // Skip navigation if we're already there.
+    if (nextStepId && nextStepId !== activeStep) {
+      setActiveStep(nextStepId);
+    }
+  }, [activeStep, stepIds, completedSteps, lockedSteps, setActiveStep]);
+
+  const goToNextStep = useCallback(() => {
+    const nextStep = stepIds[currentStepIndex + 1];
+
+    if (nextStep) {
+      setActiveStep(nextStep);
+    }
+  }, [stepIds, currentStepIndex, setActiveStep]);
+
+  useImperativeHandle(ref, () => ({ goToNextIncompleteStep, goToNextStep }), [
+    goToNextIncompleteStep,
+    goToNextStep,
+  ]);
 
   return (
     <StepperContext.Provider
@@ -85,7 +134,7 @@ const OnboardingStepperRoot = ({
       {children}
     </StepperContext.Provider>
   );
-};
+});
 
 export const OnboardingStepper = Object.assign(OnboardingStepperRoot, {
   Step: OnboardingStepperStep,

@@ -499,6 +499,7 @@ interface AdminSettings {
   "setup-license-active-at-setup": boolean;
   "embedding-hub-test-embed-snippet-created": boolean;
   "embedding-hub-production-embed-snippet-created": boolean;
+  "embedding-hub-sso-auth-manual-tested": boolean;
   "store-url": string;
   gsheets: Partial<GdrivePayload>;
   "license-token-missing-banner-dismissal-timestamp"?: Array<string>;
@@ -746,6 +747,7 @@ export interface EnterpriseSettings extends Settings {
   "database-replication-connections"?: DatabaseReplicationConnections | null;
   "embedding-hub-test-embed-snippet-created": boolean;
   "embedding-hub-production-embed-snippet-created": boolean;
+  "embedding-hub-sso-auth-manual-tested": boolean;
   "python-runner-url"?: string | null;
   "python-runner-api-token"?: string | null;
   "python-storage-s-3-endpoint"?: string | null;

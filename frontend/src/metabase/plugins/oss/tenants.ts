@@ -16,6 +16,12 @@ import type {
 
 import { PluginPlaceholder } from "../components/PluginPlaceholder";
 
+export type CreatedTenantData = {
+  name: string;
+  slug: string;
+  tenantIdentifier: string;
+};
+
 export type TenantCollectionPathItem = {
   id: CollectionId;
   namespace?: CollectionNamespace;
@@ -30,6 +36,12 @@ const getDefaultPluginTenants = () => ({
   isEnabled: false,
   userStrategyRoute: null as React.ReactElement | null,
   tenantsRoutes: null as React.ReactElement | null,
+  CreateTenantsOnboardingStep: PluginPlaceholder as React.ComponentType<{
+    onTenantsCreated?: (tenants: CreatedTenantData[]) => void;
+  }>,
+  TenantsSummaryOnboardingStep: PluginPlaceholder as React.ComponentType<{
+    tenants: CreatedTenantData[];
+  }>,
   EditUserStrategySettingsButton: PluginPlaceholder,
   FormTenantWidget: (_props: any) => null as React.ReactElement | null,
   TenantDisplayName: (_props: any) => null as React.ReactElement | null,
@@ -92,6 +104,12 @@ export const PLUGIN_TENANTS: {
     sharedTenantCollections: Collection[] | undefined;
   };
   tenantsRoutes: React.ReactElement | null;
+  CreateTenantsOnboardingStep: React.ComponentType<{
+    onTenantsCreated?: (tenants: CreatedTenantData[]) => void;
+  }>;
+  TenantsSummaryOnboardingStep: React.ComponentType<{
+    tenants: CreatedTenantData[];
+  }>;
   EditUserStrategySettingsButton: (props: {
     page: "people" | "tenants";
   }) => React.ReactElement | null;

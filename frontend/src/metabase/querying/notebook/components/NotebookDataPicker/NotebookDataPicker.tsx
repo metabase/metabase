@@ -238,6 +238,8 @@ function ModernDataPicker({
         }}
         shouldHide={shouldHide}
         shouldShowLibrary={shouldShowLibrary}
+        mt="xl"
+        ml="-1rem"
       />
       {isOpened && isBrowsing && (
         <DataPickerModal

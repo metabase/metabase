@@ -5,10 +5,10 @@ export type EmbeddingHubStepId =
   | "add-data"
   | "create-dashboard"
   | "configure-row-column-security"
-  | "secure-embeds"
+  | "sso-configured"
   | "embed-production"
   | "create-models"
-  | "setup-tenants";
+  | "data-permissions-and-enable-tenants";
 
 export interface EmbeddingHubStep {
   id: EmbeddingHubStepId;

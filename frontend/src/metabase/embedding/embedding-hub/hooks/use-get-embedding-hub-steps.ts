@@ -8,7 +8,7 @@ import {
 } from "metabase/plugins";
 import { setOpenModalWithProps } from "metabase/redux/ui";
 
-import type { EmbeddingHubAction, EmbeddingHubStep } from "../types";
+import type { EmbeddingHubStep } from "../types";
 
 export const useGetEmbeddingHubSteps = (): EmbeddingHubStep[] => {
   const dispatch = useDispatch();
@@ -81,46 +81,31 @@ export const useGetEmbeddingHubSteps = (): EmbeddingHubStep[] => {
       ],
     };
 
-    const DATA_PERMISSION_CARD: EmbeddingHubAction = {
-      title: t`Configure data permissions`,
-      docsPath: "permissions/embedding",
-      anchor: "one-database-for-all-customers-commingled-setups",
-      description: t`Manage permissions to limit what data your users can access.`,
-      variant: "outline",
-      stepId: "configure-row-column-security",
-      optional: true,
-    };
-
-    const SETUP_TENANTS: EmbeddingHubStep = {
-      id: "setup-tenants",
+    const DATA_PERMISSIONS_AND_ENABLE_TENANTS: EmbeddingHubStep = {
+      id: "data-permissions-and-enable-tenants",
       title: t`Pick a strategy for users and permissions`,
       actions: [
         {
-          title: t`Pick a user strategy`,
-          description: t`Decide between a multi-tenant or single-tenant user strategy.`,
+          title: t`Configure data permissions and enable tenants`,
+          description: t`Set granular permissions for multi-tenancy to control data access. Share dashboards, questions, and models with external users and allow them to create content, while restricting access to internal or other tenants' data.`,
+          to: "/admin/embedding/setup-guide/permissions",
           variant: "outline",
-          modal: { type: "user-strategy" },
+          stepId: "data-permissions-and-enable-tenants",
         },
-        DATA_PERMISSION_CARD,
       ],
     };
 
-    const SECURE_EMBEDS: EmbeddingHubStep = {
-      id: "secure-embeds",
+    const SSO_CONFIGURED: EmbeddingHubStep = {
+      id: "sso-configured",
       title: t`Set up authentication`,
       actions: [
         {
           title: t`Configure SSO`,
-          description: t`Configure JWT or SAML authentication to ensure only authorized users can access your embeds.`,
-          docsPath: "embedding/embedded-analytics-js",
-          anchor: "set-up-sso",
+          description: t`Configure JWT authentication to ensure only authorized users can access your embeds.`,
+          to: "/admin/embedding/setup-guide/sso",
           variant: "outline",
-          stepId: "secure-embeds",
+          stepId: "sso-configured",
         },
-
-        // If tenants are not available, show data permission card on the authentication step.
-        // Otherwise, it is already shown on the tenants setup step.
-        ...(isTenantsFeatureAvailable ? [] : [DATA_PERMISSION_CARD]),
       ],
     };
 
@@ -148,8 +133,10 @@ export const useGetEmbeddingHubSteps = (): EmbeddingHubStep[] => {
       ADD_DATA,
       CREATE_DASHBOARD,
       TEST_EMBED,
-      ...(isTenantsFeatureAvailable ? [SETUP_TENANTS] : []),
-      SECURE_EMBEDS,
+      ...(isTenantsFeatureAvailable
+        ? [DATA_PERMISSIONS_AND_ENABLE_TENANTS]
+        : []),
+      SSO_CONFIGURED,
       EMBED_PRODUCTION,
     ];
   }, [openEmbedModal]);

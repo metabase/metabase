@@ -398,6 +398,7 @@ export const createMockSettings = (
   "setup-license-active-at-setup": false,
   "embedding-hub-test-embed-snippet-created": false,
   "embedding-hub-production-embed-snippet-created": false,
+  "embedding-hub-sso-auth-manual-tested": false,
   "notebook-native-preview-sidebar-width": null,
   "query-analysis-enabled": false,
   "check-for-updates": true,
