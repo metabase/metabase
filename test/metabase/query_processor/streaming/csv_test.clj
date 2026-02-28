@@ -146,3 +146,50 @@
           results (qp/process-query (assoc (mt/native-query {:query query}) :middleware {:format-rows? false}))]
       (is (= [["2020-06-03" "2020-06-03T23:41:23"]]
              (csv-export (mt/rows results)))))))
+
+(deftest csv-field-separator-default-test
+  (testing "Default comma separator works correctly"
+    (let [rows   [["ID" "Name" "Value"]
+                  ["1" "Test" "100"]
+                  ["2" "Data" "200"]]
+          result (csv-export rows)
+          header (first result)]
+      (is (= ["ID" "Name" "Value"] header)))))
+
+(deftest csv-field-separator-semicolon-test
+  (testing "Semicolon separator via HTTP API"
+    (mt/with-temporary-setting-values [csv-field-separator ";"]
+      (let [result (mt/user-http-request :crowberto :post 200 "dataset/csv"
+                                         {:query       (mt/mbql-query venues {:order-by [[:asc $id]], :limit 2})
+                                          :format_rows true})
+            lines  (str/split-lines result)
+            header (first lines)]
+        (is (str/includes? header ";")
+            "Header should use semicolon separator")
+        (is (not (re-find #"(?<![\"\\]),(?![\"\\])" header))
+            "Header should not contain unquoted commas as separators")))))
+
+(deftest csv-field-separator-tab-test
+  (testing "Tab separator via HTTP API"
+    (mt/with-temporary-setting-values [csv-field-separator "\\t"]
+      (let [result (mt/user-http-request :crowberto :post 200 "dataset/csv"
+                                         {:query       (mt/mbql-query venues {:order-by [[:asc $id]], :limit 2})
+                                          :format_rows true})
+            lines  (str/split-lines result)
+            header (first lines)]
+        (is (str/includes? header "\t")
+            "Header should use tab separator")))))
+
+(deftest csv-separator-quoting-test
+  (testing "Values containing the separator should be properly quoted"
+    (mt/with-temporary-setting-values [csv-field-separator ";"]
+      (let [result (mt/user-http-request
+                    :crowberto :post 200 "dataset/csv"
+                    {:query {:database (mt/id)
+                             :type     :native
+                             :native   {:query "SELECT 'Test' as name, 'Value;with;semicolons' as description"}}
+                     :format_rows false})
+            lines  (str/split-lines result)]
+        (is (= 2 (count lines)) "Should have header and one data row")
+        (is (str/includes? (second lines) "\"")
+            "Value containing separator should be quoted")))))
