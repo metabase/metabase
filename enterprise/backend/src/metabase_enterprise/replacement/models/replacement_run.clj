@@ -102,33 +102,49 @@
   50)
 
 (defn run-row->progress
-  [row]
-  (let [run-id     (:id row)
-        total*     (atom 0)
-        completed* (atom 0)]
-    (reify replacement.protocols/IRunnerProgress
-      (set-total! [_ total] (reset! total* total))
-      (advance! [this] (replacement.protocols/advance! this 1))
-      (advance! [this n]
-        (let [c    (swap! completed* + n)
-              t    @total*
-              prev (- c n)
-              crossed-boundary? (or (= c t)
-                                    (not= (quot prev progress-batch-size)
-                                          (quot c progress-batch-size)))]
-          (when crossed-boundary?
-            (let [progress (if (pos? t) (double (/ c t)) 0.0)]
-              (update-progress! run-id progress)
-              (when (replacement.protocols/canceled? this)
-                (log/infof "Replacement run %d was canceled" run-id)
-                (throw (ex-info "Run canceled" {:run-id run-id})))))))
-      (canceled? [_]
-        (not (:is_active (t2/select-one [:model/ReplacementRun :is_active] :id run-id))))
-      (start-run! [_]
-        (start-run! run-id))
-      (succeed-run! [_]
-        (log/infof "Replacement run %d succeeded." run-id)
-        (succeed-run! run-id))
-      (fail-run! [_ throwable]
-        (log/errorf throwable "Replacement run %d failed" run-id)
-        (fail-run! run-id (ex-message throwable))))))
+  "Return an implementation of [[replacement.protocols/IRunnerProgress]] backed by the :model/ReplacementRun
+  row. Advancing is periodically flushed to the db ever 50 writes. Can provide an optional promise that will delivered
+  with the following values:
+
+  - :run/success delivered when `succeed-run` is called
+  - :run/fail delivered when `fail-run!` is called
+  - :run/cancelled delivered when advance checks for cancellation. Note this might not be delivered on a cancelled run
+  since we do not poll the database constantly. Just at the boundary or batch edges."
+  ([row]
+   (run-row->progress row nil))
+  ([row on-complete]
+   (let [run-id     (:id row)
+         total*     (atom 0)
+         completed* (atom 0)]
+     (reify replacement.protocols/IRunnerProgress
+       (set-total! [_ total] (reset! total* total))
+       (advance! [this] (replacement.protocols/advance! this 1))
+       (advance! [this n]
+         (let [c    (swap! completed* + n)
+               t    @total*
+               prev (- c n)
+               crossed-boundary? (or (= c t)
+                                     (not= (quot prev progress-batch-size)
+                                           (quot c progress-batch-size)))]
+           (when crossed-boundary?
+             (let [progress (if (pos? t) (double (/ c t)) 0.0)]
+               (update-progress! run-id progress)
+               (when (replacement.protocols/canceled? this)
+                 (log/infof "Replacement run %d was canceled" run-id)
+                 (when on-complete
+                   (deliver on-complete :run/cancelled))
+                 (throw (ex-info "Run canceled" {:run-id run-id})))))))
+       (canceled? [_]
+         (not (:is_active (t2/select-one [:model/ReplacementRun :is_active] :id run-id))))
+       (start-run! [_]
+         (start-run! run-id))
+       (succeed-run! [_]
+         (log/infof "Replacement run %d succeeded." run-id)
+         (succeed-run! run-id)
+         (when on-complete
+           (deliver on-complete :run/success)))
+       (fail-run! [_ throwable]
+         (log/errorf throwable "Replacement run %d failed" run-id)
+         (fail-run! run-id (ex-message throwable))
+         (when on-complete
+           (deliver on-complete :run/fail)))))))

@@ -5,6 +5,7 @@
    [metabase-enterprise.replacement.models.replacement-run :as replacement-run]
    [metabase-enterprise.replacement.protocols :as replacement.protocols]
    [metabase.test :as mt]
+   [metabase.util :as u]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -13,57 +14,49 @@
   (testing "advance! writes progress at batch boundaries and on final item"
     (mt/with-premium-features #{:dependencies}
       (mt/with-model-cleanup [:model/ReplacementRun]
-        (let [writes (atom [])]
+        (let [writes (atom [])
+              done?  (promise)]
           (with-redefs [replacement-run/update-progress!
                         (fn [_run-id progress]
                           (swap! writes conj progress))]
-            (let [run (execute/execute-async!
-                       {:source-type :card :source-id 1
-                        :target-type :card :target-id 2
-                        :user-id     (mt/user->id :crowberto)}
-                       (fn [progress]
-                         (replacement.protocols/set-total! progress 120)
-                         ;; advance one-at-a-time for 120 items
-                         (dotimes [_ 120]
-                           (replacement.protocols/advance! progress))))
-                  deadline (+ (System/currentTimeMillis) 10000)]
+            (let [record (replacement-run/create-run! :card 1 :card 2 (mt/user->id :rasta))
+                  progress (replacement-run/run-row->progress record done?)]
+              (execute/execute-async!
+               (fn [progress]
+                 (replacement.protocols/set-total! progress 120)
+                 ;; advance one-at-a-time for 120 items
+                 (dotimes [_ 120]
+                   (replacement.protocols/advance! progress)))
+               progress)
               ;; wait for virtual thread
-              (loop []
-                (let [r (t2/select-one :model/ReplacementRun :id (:id run))]
-                  (when (and (:is_active r) (< (System/currentTimeMillis) deadline))
-                    (Thread/sleep 50)
-                    (recur))))
+              (is (= :run/success (u/deref-with-timeout done? 500)))
               ;; Writes at items 50, 100, 120 (final) → progress 50/120, 100/120, 120/120
-              (is (= [(double (/ 50 120))
-                      (double (/ 100 120))
-                      1.0]
-                     @writes)))))))))
+              (is (= [(double (/ 50 120)) (double (/ 100 120)) 1.0]
+                     @writes))
+              (is (=? {:is_active nil :progress 1.0 :status :succeeded}
+                      (t2/select-one :model/ReplacementRun :id (:id record)))))))))))
 
 (deftest advance!-count-arity-test
   (testing "advance! with count arity crosses boundaries correctly"
     (mt/with-premium-features #{:dependencies}
       (mt/with-model-cleanup [:model/ReplacementRun]
-        (let [writes (atom [])]
+        (let [writes (atom [])
+              done?  (promise)]
           (with-redefs [replacement-run/update-progress!
                         (fn [_run-id progress]
                           (swap! writes conj progress))]
-            (let [run (execute/execute-async!
-                       {:source-type :card :source-id 1
-                        :target-type :card :target-id 2
-                        :user-id     (mt/user->id :crowberto)}
-                       (fn [progress]
-                         (replacement.protocols/set-total! progress 100)
-                         ;; advance by 30 four times: 30, 60, 90, then by 10 to finish
-                         (replacement.protocols/advance! progress 30)
-                         (replacement.protocols/advance! progress 30)
-                         (replacement.protocols/advance! progress 30)
-                         (replacement.protocols/advance! progress 10)))
-                  deadline (+ (System/currentTimeMillis) 10000)]
-              (loop []
-                (let [r (t2/select-one :model/ReplacementRun :id (:id run))]
-                  (when (and (:is_active r) (< (System/currentTimeMillis) deadline))
-                    (Thread/sleep 50)
-                    (recur))))
+            (let [record (replacement-run/create-run! :card 1 :card 2 (mt/user->id :rasta))
+                  progress (replacement-run/run-row->progress record done?)]
+              (execute/execute-async!
+               (fn [progress]
+                 (replacement.protocols/set-total! progress 100)
+                 ;; advance by 30 four times: 30, 60, 90, then by 10 to finish
+                 (replacement.protocols/advance! progress 30)
+                 (replacement.protocols/advance! progress 30)
+                 (replacement.protocols/advance! progress 30)
+                 (replacement.protocols/advance! progress 10))
+               progress)
+              (is (= :run/success (u/deref-with-timeout done? 500)))
               ;; advance(30): 0→30, crosses 0/50→0/50 boundary? quot(0,50)=0, quot(30,50)=0 → no
               ;; advance(30): 30→60, crosses? quot(30,50)=0, quot(60,50)=1 → yes, writes 0.6
               ;; advance(30): 60→90, crosses? quot(60,50)=1, quot(90,50)=1 → no
@@ -75,38 +68,33 @@
     (mt/with-premium-features #{:dependencies}
       (mt/with-model-cleanup [:model/ReplacementRun]
         (let [writes  (atom [])
-              run-id* (promise)]
+              done?   (promise)
+              pause   (promise)
+              ready   (promise)]
           (with-redefs [replacement-run/update-progress!
                         (fn [_run-id progress]
                           (swap! writes conj progress))]
-            (let [run (execute/execute-async!
-                       {:source-type :card :source-id 1
-                        :target-type :card :target-id 2
-                        :user-id     (mt/user->id :crowberto)}
-                       (fn [progress]
-                         (replacement.protocols/set-total! progress 100)
-                         ;; advance 50 items, triggering a boundary write
-                         (dotimes [_ 50]
-                           (replacement.protocols/advance! progress))
-                         ;; Cancel the run in the DB
-                         (replacement-run/cancel-run! (deref run-id* 5000 nil))
-                         ;; next 50 should hit the boundary check and throw
-                         (dotimes [_ 50]
-                           (replacement.protocols/advance! progress))))]
-              (deliver run-id* (:id run))
+            (let [record (replacement-run/create-run! :card 1 :card 2 (mt/user->id :rasta))
+                  progress (replacement-run/run-row->progress record done?)]
+              (execute/execute-async!
+               (fn [progress]
+                 (replacement.protocols/set-total! progress 130)
+                 ;; enough to trigger one boundary
+                 (dotimes [_ 60] (replacement.protocols/advance! progress))
+                 (deliver ready :ready) ;; let outside thread cancel
+                 @pause                 ;; wait for cancel to happen
+                 ;; next to do the rest, including a boundary
+                 (dotimes [_ 70] (replacement.protocols/advance! progress)))
+               progress)
+              @ready
+              (replacement-run/cancel-run! (:id record))
+              (deliver pause :continue)
               ;; Poll until run is no longer active (cancel-run! flips is_active)
-              (let [deadline (+ (System/currentTimeMillis) 10000)]
-                (loop []
-                  (let [r (t2/select-one :model/ReplacementRun :id (:id run))]
-                    (when (and (:is_active r) (< (System/currentTimeMillis) deadline))
-                      (Thread/sleep 50)
-                      (recur)))))
-              ;; Grace period for virtual thread to finish catch block
-              (Thread/sleep 200)
+              (is (= :run/cancelled (u/deref-with-timeout done? 500)))
               ;; First boundary write at 50/100 succeeds, canceled? is false.
               ;; cancel-run! sets is_active=nil. Next boundary at 100 writes progress,
               ;; then checks canceled? → true → throws. Both writes happen.
-              (is (= [0.5 1.0] @writes)
+              (is (= [(double (/ 50 130)) (double (/ 100 130))] @writes)
                   "Both boundary writes happen; cancellation fires after the second write")
-              (is (= :canceled (:status (t2/select-one :model/ReplacementRun :id (:id run))))
+              (is (= :canceled (:status (t2/select-one :model/ReplacementRun :id (:id record))))
                   "Run status should be :canceled"))))))))

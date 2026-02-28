@@ -77,7 +77,7 @@
         (let [referenced-ids (lib/all-referenced-entity-ids queries)]
           ;; Bulk load all metadata at once
           (lib-be/bulk-load-query-metadata! metadata-provider referenced-ids)))
-      (merge cards tables transforms segments measures))))
+      (merge {} cards tables transforms segments measures))))
 
 (defn- run-swap* [{:keys [direct non-dashboard-transitive dashboard-ids direct-card-ids second-lvl-dash-ids]}
                   old-source new-source progress]

@@ -3,12 +3,11 @@
   (:require
    [clojure.test :refer [deftest is testing]]
    [metabase-enterprise.replacement.runner :as runner]
-   [metabase.lib.metadata.protocols :as lib.metadata.protocols]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
-   [metabase.test :as mt]
-   [toucan2.core :as t2]))
+   [metabase.lib.metadata.protocols :as lib.metadata.protocols]
+   [metabase.test :as mt]))
 
 (deftest bulk-load-metadata-for-entities-test
   (testing "bulk-load-metadata-for-entities! fetches all entity types in bulk"
@@ -104,11 +103,13 @@
                    :model/Segment {segment-id :id} {:table_id   (mt/id :venues)
                                                     :name       "Test Segment"
                                                     :definition (mt/mbql-query venues
-                                                                  {:filter [:> $price 3]})}
+                                                                               {:filter [:> $price 3]})}
                    :model/Measure {measure-id :id} {:table_id   (mt/id :venues)
                                                     :name       "Test Measure"
-                                                    :definition (mt/mbql-query venues
-                                                                  {:aggregation [[:count]]})}]
+                                                    :definition (let [mp (mt/metadata-provider)
+                                                                      table-metadata (lib.metadata/table mp (mt/id :venues))]
+                                                                  (-> (lib/query mp table-metadata)
+                                                                      (lib/aggregate (lib/count))))}]
       (let [entities          [[:card card-id]
                                [:segment segment-id]
                                [:measure measure-id]]
@@ -132,7 +133,7 @@
   (testing "bulk-load-metadata-for-entities! handles empty batch gracefully"
     (let [entities          []
           metadata-provider (lib-be/application-database-metadata-provider (mt/id))
-          loaded            ((requiring-resolve 'metabase-enterprise.replacement.runner/bulk-load-metadata-for-entities!)
+          loaded            (#'runner/bulk-load-metadata-for-entities!
                              metadata-provider
                              entities)]
 

@@ -92,8 +92,8 @@
         job-row  (replacement-run/create-run!
                   source_entity_type source_entity_id
                   target_entity_type target_entity_id user-id)
-        progress (replacement-run/run-row->progress job-row)
-        _run     (replacement.execute/execute-async! work-fn progress)]
+        progress (replacement-run/run-row->progress job-row)]
+    (replacement.execute/execute-async! work-fn progress)
     (-> (response/response {:run_id (:id job-row)})
         (assoc :status 202))))
 
