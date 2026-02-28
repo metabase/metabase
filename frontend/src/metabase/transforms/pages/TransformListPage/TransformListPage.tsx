@@ -20,9 +20,11 @@ import {
 } from "metabase/api";
 import { DateTime } from "metabase/common/components/DateTime";
 import { Ellipsified } from "metabase/common/components/Ellipsified";
+import { ForwardRefLink } from "metabase/common/components/Link";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { useHasTokenFeature } from "metabase/common/hooks";
 import CS from "metabase/css/core/index.css";
+import { useSimulatedTransforms } from "metabase/data-studio/common/SimulatedTransformsContext";
 import { DataStudioBreadcrumbs } from "metabase/data-studio/common/components/DataStudioBreadcrumbs";
 import { PageContainer } from "metabase/data-studio/common/components/PageContainer";
 import { PaneHeader } from "metabase/data-studio/common/components/PaneHeader";
@@ -36,11 +38,13 @@ import { ListEmptyState } from "metabase/transforms/components/ListEmptyState";
 import { useTransformPermissions } from "metabase/transforms/hooks/use-transform-permissions";
 import { getShouldShowPythonTransformsUpsell } from "metabase/transforms/selectors";
 import {
+  Button,
   Card,
   EntityNameCell,
   Flex,
   Group,
   Icon,
+  Menu,
   Stack,
   TextInput,
   TreeTable,
@@ -141,8 +145,28 @@ export const TransformListPage = ({
     getShouldShowPythonTransformsUpsell,
   );
 
+  const { transforms: simulatedTransforms } = useSimulatedTransforms();
+
   const treeData = useMemo(() => {
     const data = buildTreeData(collections, transforms);
+
+    for (const st of simulatedTransforms) {
+      const folderNode: TreeNode = {
+        id: `simulated-folder:${st.transformsFolderName}`,
+        name: st.transformsFolderName,
+        nodeType: "folder",
+        icon: "folder",
+        children: st.models.map((model, idx) => ({
+          id: `simulated-transform:${st.transformsFolderName}:${idx}`,
+          name: model.name,
+          nodeType: "transform" as const,
+          icon: "transform",
+          updated_at: new Date().toISOString(),
+        })),
+      };
+      data.push(folderNode);
+    }
+
     // Only show Python library item if there's at least one item in the table
     // It will trigger the upsell modal if the feature isn't enabled.
     const shouldShowPythonLibraryRow =
@@ -166,6 +190,7 @@ export const TransformListPage = ({
     collections,
     hasPythonTransformsFeature,
     shouldShowPythonTransformsUpsell,
+    simulatedTransforms,
     transforms,
     transformsDatabases.length,
   ]);
@@ -365,6 +390,23 @@ export const TransformListPage = ({
           {!isRemoteSyncReadOnly && transformsDatabases.length > 0 && (
             <CreateTransformMenu />
           )}
+          <Menu position="bottom-end">
+            <Menu.Target>
+              <Button
+                leftSection={<Icon name="gear" size={16} />}
+                variant="default"
+              >{t`Tools`}</Button>
+            </Menu.Target>
+            <Menu.Dropdown>
+              <Menu.Item
+                leftSection={<Icon name="model" />}
+                component={ForwardRefLink}
+                to={Urls.dataStudioModels()}
+              >
+                {t`Migrate models`}
+              </Menu.Item>
+            </Menu.Dropdown>
+          </Menu>
         </Flex>
 
         <Card withBorder p={0}>

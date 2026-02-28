@@ -285,6 +285,10 @@ export function dataStudioMetricCaching(cardId: CardId) {
   return `${dataStudioMetric(cardId)}/caching`;
 }
 
+export function dataStudioModels() {
+  return `${ROOT_URL}/transforms/migrate-models`;
+}
+
 export function dataStudioGlossary() {
   return `${dataStudio()}/glossary`;
 }

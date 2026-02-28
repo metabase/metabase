@@ -8,6 +8,7 @@ import { DateTime } from "metabase/common/components/DateTime";
 import { ForwardRefLink } from "metabase/common/components/Link";
 import { useHasTokenFeature } from "metabase/common/hooks";
 import { SectionLayout } from "metabase/data-studio/app/components/SectionLayout";
+import { useSimulatedTransforms } from "metabase/data-studio/common/SimulatedTransformsContext";
 import { DataStudioBreadcrumbs } from "metabase/data-studio/common/components/DataStudioBreadcrumbs";
 import { PaneHeader } from "metabase/data-studio/common/components/PaneHeader";
 import { useBuildSnippetTree } from "metabase/data-studio/common/hooks/use-build-snippet-tree";
@@ -190,10 +191,84 @@ function LibrarySectionContent() {
     error: snippetsError,
   } = useBuildSnippetTree();
 
-  const combinedTree = useMemo(
-    () => [...tablesTree, ...metricsTree, ...snippetTree],
-    [tablesTree, metricsTree, snippetTree],
-  );
+  const { transforms: simulatedTransforms } = useSimulatedTransforms();
+
+  const combinedTree = useMemo(() => {
+    const tree = [...tablesTree, ...metricsTree, ...snippetTree];
+
+    if (simulatedTransforms.length > 0 && tree.length > 0) {
+      const dataSectionId = tableCollection
+        ? `collection:${tableCollection.id}`
+        : null;
+      const dataSection = dataSectionId
+        ? tree.find((node) => node.id === dataSectionId)
+        : null;
+      if (dataSection?.children) {
+        // Remove empty-state placeholder if present
+        const realChildren = dataSection.children.filter(
+          (child) => child.model !== "empty-state",
+        );
+
+        // Build nested folder structure from collection paths
+        const folderMap = new Map<string, TreeItem>();
+
+        for (const st of simulatedTransforms) {
+          for (const model of st.models) {
+            let currentChildren = realChildren;
+            const pathSoFar: string[] = [];
+
+            for (const folderName of model.collectionPath) {
+              pathSoFar.push(folderName);
+              const key = pathSoFar.join("/");
+              let folder = folderMap.get(key);
+
+              if (!folder) {
+                folder = {
+                  id: `simulated-folder:${key}`,
+                  name: folderName,
+                  icon: "folder",
+                  model: "collection",
+                  data: {
+                    id: -1,
+                    name: folderName,
+                    model: "collection",
+                  } as TreeItem["data"],
+                  children: [],
+                };
+                folderMap.set(key, folder);
+                currentChildren.push(folder);
+              }
+
+              currentChildren = folder.children!;
+            }
+
+            currentChildren.push({
+              id: `simulated-table:${model.collectionPath.join("/")}:${model.name}`,
+              name: model.name,
+              icon: "table",
+              model: "table" as const,
+              updatedAt: new Date().toISOString(),
+              data: {
+                id: -1,
+                name: model.name,
+                model: "table",
+              } as TreeItem["data"],
+            });
+          }
+        }
+
+        dataSection.children = realChildren;
+      }
+    }
+
+    return tree;
+  }, [
+    tablesTree,
+    metricsTree,
+    snippetTree,
+    simulatedTransforms,
+    tableCollection,
+  ]);
 
   const isLoading = loadingTables || loadingMetrics || loadingSnippets;
   useErrorHandling(tablesError || metricsError || snippetsError);

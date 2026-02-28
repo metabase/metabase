@@ -7,6 +7,7 @@ import { UpsellGem } from "metabase/admin/upsells/components/UpsellGem";
 import { ForwardRefLink } from "metabase/common/components/Link";
 import { useHasTokenFeature } from "metabase/common/hooks";
 import { useUserKeyValue } from "metabase/common/hooks/use-user-key-value";
+import { SimulatedTransformsProvider } from "metabase/data-studio/common/SimulatedTransformsContext";
 import { isMac } from "metabase/lib/browser";
 import { useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
@@ -69,15 +70,17 @@ export function DataStudioLayout({ children }: DataStudioLayoutProps) {
       <Loader />
     </Center>
   ) : (
-    <Flex h="100%">
-      <DataStudioNav
-        isNavbarOpened={isNavbarOpened}
-        onNavbarToggle={setIsNavbarOpened}
-      />
-      <Box h="100%" flex={1} miw={0}>
-        {children}
-      </Box>
-    </Flex>
+    <SimulatedTransformsProvider>
+      <Flex h="100%">
+        <DataStudioNav
+          isNavbarOpened={isNavbarOpened}
+          onNavbarToggle={setIsNavbarOpened}
+        />
+        <Box h="100%" flex={1} miw={0}>
+          {children}
+        </Box>
+      </Flex>
+    </SimulatedTransformsProvider>
   );
 }
 
