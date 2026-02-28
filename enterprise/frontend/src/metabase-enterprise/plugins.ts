@@ -35,6 +35,7 @@ import { initializePlugin as initializeMetabot } from "./metabot";
 import { initializePlugin as initializeModelPersistence } from "./model_persistence";
 import { initializePlugin as initializeModeration } from "./moderation";
 import { initializePlugin as initializeRemoteSync } from "./remote_sync";
+import { initializePlugin as initializeReplacement } from "./replacement";
 import { initializePlugin as initializeResourceDownloads } from "./resource_downloads";
 import { initializePlugin as initializeSandboxes } from "./sandboxes";
 import { initializePlugin as initializeSemanticSearch } from "./semantic_search";
@@ -65,6 +66,7 @@ export function initializePlugins() {
   initializeContentVerification();
   initializeDatabaseRouting();
   initializeRemoteSync();
+  initializeReplacement();
   initializeWhitelabel();
   initializeEmbedding();
   initializeEmbeddingSdk();

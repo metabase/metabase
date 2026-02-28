@@ -19,6 +19,7 @@ import {
   type ExternalTransform,
   type MeasureDependencyNode,
   type PythonLibrary,
+  type ReplaceSourceRun,
   type SandboxDependencyNode,
   type SegmentDependencyNode,
   type SnippetDependencyNode,
@@ -48,6 +49,7 @@ export const ENTERPRISE_TAG_TYPES = [
   "remote-sync-branches",
   "remote-sync-current-task",
   "remote-sync-has-remote-changes",
+  "replace-source-run",
   "python-transform-library",
   "workspace",
   "support-access-grant",
@@ -277,4 +279,10 @@ export function provideWorkspaceAllowedDatabaseTags(
     listTag("database"),
     ...databases.map((db) => idTag("database", db.id)),
   ];
+}
+
+export function provideReplaceSourceRunTags(
+  run: ReplaceSourceRun,
+): TagDescription<EnterpriseTagType>[] {
+  return [idTag("replace-source-run", run.id)];
 }

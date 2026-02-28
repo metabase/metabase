@@ -38,6 +38,11 @@
   (when (string? id-or-name)
     id-or-name))
 
+(mu/defn with-field-ref-name :- :mbql.clause/field
+  [[tag opts id-or-name, :as _field-ref] :- :mbql.clause/field
+   field-name :- :string]
+  [tag opts field-name])
+
 (mu/defn expression-ref-name :- [:maybe :string]
   "Return the expression name from an `:expression` ref."
   [[_tag _opts expression-name, :as _expression-ref] :- :mbql.clause/expression]

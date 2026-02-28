@@ -742,6 +742,8 @@
            metabase.lib.metadata
            metabase.lib.metadata.protocols
            metabase.lib.options
+           metabase.lib.parameters.parse
+           metabase.lib.parameters.parse.types
            metabase.lib.schema
            metabase.lib.schema.actions
            metabase.lib.schema.aggregation
@@ -2113,7 +2115,8 @@
   {:team "Querying"
    :api  #{metabase-enterprise.dependencies.api
            metabase-enterprise.dependencies.core
-           metabase-enterprise.dependencies.init}
+           metabase-enterprise.dependencies.init
+           metabase-enterprise.dependencies.models.dependency}
    :uses #{analyze
            api
            app-db
@@ -2293,6 +2296,19 @@
            util
            enterprise/serialization
            enterprise/transforms-python}}
+
+  enterprise/replacement
+  {:team "Querying"
+   :api  #{metabase-enterprise.replacement.api}
+   :uses #{api
+           driver
+           events
+           lib
+           lib-be
+           models
+           sql-tools
+           util
+           enterprise/dependencies}}
 
   enterprise/sandbox
   {:team "UX West"

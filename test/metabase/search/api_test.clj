@@ -228,8 +228,8 @@
                      :model/Dashboard   dashboard      (coll-data-map "dashboard %s dashboard" coll)
                      :model/Card        metric         (assoc (coll-data-map "metric %s metric" coll)
                                                               :type :metric)
-                     :model/Segment     segment        (data-map "segment %s segment")
-                     :model/Measure     measure        (data-map "measure %s measure")]
+                     :model/Segment     segment        (assoc (data-map "segment %s segment") :table_id (mt/id :checkins))
+                     :model/Measure     measure        (assoc (data-map "measure %s measure") :table_id (mt/id :checkins))]
         (f {:action     action
             :collection coll
             :card       card
@@ -841,7 +841,7 @@
                      :model/Dashboard   _ (archived {:name "dashboard test dashboard 2"})
                      :model/Collection  _ (archived-collection {:name "collection test collection 2"})
                      :model/Card        _ (archived {:name "metric test metric 2" :type :metric})
-                     :model/Segment     _ (archived {:name "segment test segment 2"})]
+                     :model/Segment     _ (archived {:name "segment test segment 2" :table_id (mt/id :checkins)})]
         (is (= (default-search-results)
                (search-request-data :crowberto :q "test")))))))
 
@@ -862,8 +862,8 @@
                      :model/Dashboard   _ (archived {:name "dashboard test dashboard"})
                      :model/Collection  _ (archived-collection {:name "collection test collection"})
                      :model/Card        _ (archived {:name "metric test metric" :type :metric})
-                     :model/Segment     _ (archived {:name "segment test segment"})
-                     :model/Measure     _ (archived {:name "measure test measure"})]
+                     :model/Segment     _ (archived {:name "segment test segment" :table_id (mt/id :checkins)})
+                     :model/Measure     _ (archived {:name "measure test measure" :table_id (mt/id :checkins)})]
         (is (= (default-archived-results)
                (search-request-data :crowberto :q "test", :archived "true")))))))
 
@@ -880,8 +880,8 @@
                      :model/Dashboard   _ (archived {:name "dashboard test dashboard"})
                      :model/Collection  _ (archived-collection {:name "collection test collection"})
                      :model/Card        _ (archived {:name "metric test metric" :type :metric})
-                     :model/Segment     _ (archived {:name "segment test segment"})
-                     :model/Measure     _ (archived {:name "measure test measure"})]
+                     :model/Segment     _ (archived {:name "segment test segment" :table_id (mt/id :checkins)})
+                     :model/Measure     _ (archived {:name "measure test measure" :table_id (mt/id :checkins)})]
         (is (mt/ordered-subset? (default-archived-results)
                                 (search-request-data :crowberto :archived "true")))))))
 

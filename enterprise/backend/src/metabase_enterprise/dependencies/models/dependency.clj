@@ -75,6 +75,10 @@
      :destination-filter-fn destination-filter-fn
      :source-filter-fn      source-filter-fn})))
 
+(defn direct-dependents
+  [key-seq]
+  (key-dependents key-seq))
+
 (defn- key-dependencies
   "Get the dependency entity keys for the entity keys in `key-seq`.
 
@@ -263,3 +267,21 @@
         (t2/delete! :model/Dependency :id [:in to-remove]))
       (when (seq to-add)
         (t2/insert! :model/Dependency to-add)))))
+
+(defn swap-dependency!
+  "Efficiently swap a dependency from old-source to new-source during replacement operations.
+  This is more efficient than full dependency analysis since we know exactly what changed.
+
+  Parameters:
+  - entity-type: The type of the entity whose dependency is changing (e.g., :card)
+  - entity-id: The ID of the entity
+  - old-source: The source being replaced, as [source-type source-id] (e.g., [:card 783])
+  - new-source: The new source, as [source-type source-id] (e.g., [:table 164])"
+  [entity-type entity-id [old-source-type old-source-id] [new-source-type new-source-id]]
+  (t2/update! :model/Dependency
+              {:from_entity_type entity-type
+               :from_entity_id entity-id
+               :to_entity_type old-source-type
+               :to_entity_id old-source-id}
+              {:to_entity_type new-source-type
+               :to_entity_id new-source-id}))

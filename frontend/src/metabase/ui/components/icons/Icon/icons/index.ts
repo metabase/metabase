@@ -192,6 +192,8 @@ import filter_component from "./filter.svg?component";
 import filter_source from "./filter.svg?source";
 import filter_plus_component from "./filter_plus.svg?component";
 import filter_plus_source from "./filter_plus.svg?source";
+import find_replace_component from "./find_replace.svg?component";
+import find_replace_source from "./find_replace.svg?source";
 import folder_component from "./folder.svg?component";
 import folder_source from "./folder.svg?source";
 import folder_database_component from "./folder_database.svg?component";
@@ -914,6 +916,10 @@ export const Icons: Record<IconName, { component: React.VFC; source: string }> =
     filter_plus: {
       component: filter_plus_component,
       source: filter_plus_source,
+    },
+    find_replace: {
+      component: find_replace_component,
+      source: find_replace_source,
     },
     bug: {
       component: bug_component,
@@ -1771,6 +1777,7 @@ export type IconName =
   | "fields"
   | "filter"
   | "filter_plus"
+  | "find_replace"
   | "bug"
   | "format_code"
   | "formula"

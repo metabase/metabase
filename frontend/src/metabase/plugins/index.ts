@@ -110,6 +110,10 @@ export {
   PLUGIN_GROUP_MANAGERS,
 } from "./oss/permissions";
 export { PLUGIN_REMOTE_SYNC } from "./oss/remote-sync";
+export {
+  PLUGIN_REPLACEMENT,
+  type ReplaceDataSourceModalProps,
+} from "./oss/replacement";
 export { PLUGIN_RESOURCE_DOWNLOADS } from "./oss/resource-downloads";
 export {
   PLUGIN_SEMANTIC_SEARCH,
@@ -177,6 +181,7 @@ import { reinitialize as reinitializeModelPersistence } from "./oss/model-persis
 import { reinitialize as reinitializeModeration } from "./oss/moderation";
 import { reinitialize as reinitializePermissions } from "./oss/permissions";
 import { reinitialize as reinitializeRemoteSync } from "./oss/remote-sync";
+import { reinitialize as reinitializeReplacement } from "./oss/replacement";
 import { reinitialize as reinitializeResourceDownloads } from "./oss/resource-downloads";
 import { reinitialize as reinitializeSemanticSearch } from "./oss/semantic-search";
 import { reinitialize as reinitializeSettings } from "./oss/settings";
@@ -187,7 +192,6 @@ import { reinitialize as reinitializeTenants } from "./oss/tenants";
 import { reinitialize as reinitializeTransforms } from "./oss/transforms";
 import { reinitialize as reinitializeUploadManagement } from "./oss/upload-management";
 import { reinitialize as reinitializeWhitelabel } from "./oss/whitelabel";
-
 /**
  * Mostly for test purposes, reinitialize all plugins.
  * You don't reinitialize plugins individually because some plugins depend on others,
@@ -217,6 +221,7 @@ export function reinitialize() {
   reinitializeModeration();
   reinitializePermissions();
   reinitializeRemoteSync();
+  reinitializeReplacement();
   reinitializeResourceDownloads();
   reinitializeSemanticSearch();
   reinitializeSettings();

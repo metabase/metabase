@@ -134,6 +134,19 @@
                 visible-columns-with-desired-aliases
                 (map :lib/desired-column-alias))))))
 
+(deftest ^:parallel visible-columns-fk-to-deleted-field-test
+  (testing "visible-columns doesn't crash when an FK target field no longer exists"
+    (let [mp    (lib.tu/merged-mock-metadata-provider
+                 meta/metadata-provider
+                 {:fields [{:id                 (meta/id :orders :user-id)
+                            :fk-target-field-id 999999999}]})
+          query (lib/query mp (meta/table-metadata :orders))
+          cols  (lib.metadata.calculation/visible-columns query)]
+      (is (seq (filter #(= (:table-id %) (meta/id :products)) cols))
+          "Products implicitly-joinable columns should still be present")
+      (is (empty? (filter #(= (:table-id %) (meta/id :people)) cols))
+          "People implicitly-joinable columns should be absent since the FK target field doesn't exist"))))
+
 (deftest ^:parallel visible-columns-test-4
   (testing "multiple aggregations"
     (let [query (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))

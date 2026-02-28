@@ -1,0 +1,54 @@
+Reflection warning, clojurewerkz/quartzite/triggers.clj:85:6 - call to method forJob on org.quartz.TriggerBuilder can't be resolved (argument types: unknown).
+Reflection warning, clojurewerkz/quartzite/scheduler.clj:254:3 - call to method checkExists on org.quartz.Scheduler can't be resolved (argument types: unknown).
+Running tests with options {:mode :cli/local, :namespace-pattern #"^(?:(?:metabase.*)|(?:hooks\..*))", :exclude-directories [".clj-kondo/src" "classes" "dev" "enterprise/backend/src" "local" "resources" "resources-ee" "src" "target" "test_config" "test_resources"], :test-warn-time 3000, :exclude-tags [:metabot-v3/e2e], :only metabase.lib-be.source-swap-test/swap-source-in-query-card-}
+Running tests in metabase.lib-be.source-swap-test/swap-source-in-query-card-
+{:clojure.main/message
+ "Execution error (ExceptionInfo) at mb.hawk.core/find-tests-for-var-symbol (core.clj:88).\nUnable to resolve test named metabase.lib-be.source-swap-test/swap-source-in-query-card-\n",
+ :clojure.main/triage
+ {:clojure.error/class clojure.lang.ExceptionInfo,
+  :clojure.error/line 88,
+  :clojure.error/cause "Unable to resolve test named metabase.lib-be.source-swap-test/swap-source-in-query-card-",
+  :clojure.error/symbol mb.hawk.core/find-tests-for-var-symbol,
+  :clojure.error/source "core.clj",
+  :clojure.error/phase :execution},
+ :clojure.main/trace
+ {:via
+  [{:type clojure.lang.ExceptionInfo,
+    :message "Unable to resolve test named metabase.lib-be.source-swap-test/swap-source-in-query-card-",
+    :data {:test-symbol metabase.lib-be.source-swap-test/swap-source-in-query-card-},
+    :at [mb.hawk.core$find_tests_for_var_symbol invokeStatic "core.clj" 88]}],
+  :trace
+  [[mb.hawk.core$find_tests_for_var_symbol invokeStatic "core.clj" 88]
+   [mb.hawk.core$find_tests_for_var_symbol invoke "core.clj" 84]
+   [mb.hawk.core$eval35042$fn__35043 invoke "core.clj" 126]
+   [clojure.lang.MultiFn invoke "MultiFn.java" 234]
+   [mb.hawk.core$find_tests_with_options invokeStatic "core.clj" 142]
+   [mb.hawk.core$find_tests_with_options invoke "core.clj" 135]
+   [mb.hawk.core$find_and_run_tests_with_options invokeStatic "core.clj" 248]
+   [mb.hawk.core$find_and_run_tests_with_options invoke "core.clj" 242]
+   [mb.hawk.core$find_and_run_tests_cli invokeStatic "core.clj" 286]
+   [mb.hawk.core$find_and_run_tests_cli invoke "core.clj" 278]
+   [metabase.test_runner$find_and_run_tests_cli invokeStatic "test_runner.clj" 142]
+   [metabase.test_runner$find_and_run_tests_cli invoke "test_runner.clj" 138]
+   [clojure.lang.Var invoke "Var.java" 386]
+   [clojure.run.exec$exec invokeStatic "exec.clj" 88]
+   [clojure.run.exec$exec invoke "exec.clj" 78]
+   [clojure.run.exec$_main$fn__33248 invoke "exec.clj" 227]
+   [clojure.run.exec$_main invokeStatic "exec.clj" 223]
+   [clojure.run.exec$_main doInvoke "exec.clj" 191]
+   [clojure.lang.RestFn applyTo "RestFn.java" 140]
+   [clojure.lang.Var applyTo "Var.java" 707]
+   [clojure.core$apply invokeStatic "core.clj" 667]
+   [clojure.main$main_opt invokeStatic "main.clj" 515]
+   [clojure.main$main_opt invoke "main.clj" 511]
+   [clojure.main$main invokeStatic "main.clj" 665]
+   [clojure.main$main doInvoke "main.clj" 617]
+   [clojure.lang.RestFn applyTo "RestFn.java" 140]
+   [clojure.lang.Var applyTo "Var.java" 707]
+   [clojure.main main "main.java" 40]],
+  :cause "Unable to resolve test named metabase.lib-be.source-swap-test/swap-source-in-query-card-",
+  :data {:test-symbol metabase.lib-be.source-swap-test/swap-source-in-query-card-}}}
+
+Execution error (ExceptionInfo) at mb.hawk.core/find-tests-for-var-symbol (core.clj:88).
+Unable to resolve test named metabase.lib-be.source-swap-test/swap-source-in-query-card-
+

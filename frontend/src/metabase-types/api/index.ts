@@ -38,6 +38,7 @@ export * from "./performance";
 export * from "./permissions";
 export * from "./persist";
 export * from "./query";
+export * from "./replacement";
 export * from "./document";
 export * from "./remote-sync";
 export * from "./revision";

@@ -71,6 +71,9 @@
 (tx/defdataset-edn json
   "Dataset with some JSON columns in it. Used to test JSON columns.")
 
+(tx/defdataset-edn source-swap
+  "Dataset with identical tables with similar names suitable for swapping in queries")
+
 (defn- date-only
   "Convert date or datetime temporal value to `t` to an appropriate date type, discarding time information."
   [t]

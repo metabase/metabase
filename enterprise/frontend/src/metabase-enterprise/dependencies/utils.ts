@@ -14,6 +14,7 @@ import type {
   DependencyNode,
   DependencyType,
   Field,
+  ReplaceSourceEntry,
   Transform,
   VisualizationDisplay,
 } from "metabase-types/api";
@@ -486,6 +487,22 @@ export function getNodeFieldsLabelWithCount(fieldCount: number) {
     `${fieldCount} fields`,
     fieldCount,
   );
+}
+
+export function getNodeReplaceSourceEntry(
+  node: DependencyNode,
+): ReplaceSourceEntry | null {
+  switch (node.type) {
+    case "table":
+      return { id: node.id, type: node.type };
+    case "card":
+      if (node.data.type === "question" || node.data.type === "model") {
+        return { id: node.id, type: node.type };
+      }
+      return null;
+    default:
+      return null;
+  }
 }
 
 export function getCardType(groupType: DependencyGroupType): CardType | null {

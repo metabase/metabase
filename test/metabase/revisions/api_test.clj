@@ -777,7 +777,7 @@
 (deftest ^:parallel segment-revert-permissions-test
   (testing "POST /api/revision/revert <Segment>"
     (testing "test security.  requires superuser perms"
-      (mt/with-temp [:model/Segment {:keys [id]}]
+      (mt/with-temp [:model/Segment {:keys [id]} {:table_id (mt/id :checkins)}]
         (is (= "You don't have permissions to do that."
                (mt/user-http-request :rasta :post 403 "revision/revert" {:id id, :entity "segment", :revision_id 56})))))))
 

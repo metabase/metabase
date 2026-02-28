@@ -429,8 +429,10 @@
   parameter-target-field-options
   parameter-target-field-ref
   parameter-target-is-dimension?
+  parameter-target-stage-number
   parameter-target-template-tag-name
-  update-parameter-target-dimension-options]
+  update-parameter-target-dimension-options
+  update-parameter-target-field-ref]
  [lib.parameters.parse
   match-and-normalize-tag-name]
  [lib.parse
@@ -451,6 +453,7 @@
   with-different-table
   with-wrapped-native-query
   wrap-native-query-with-mbql]
+
  [lib.query.test-spec
   test-native-query
   test-query]
@@ -524,6 +527,7 @@
   validation-exception-error]
  [metabase.lib.walk.util
   all-field-ids
+  all-referenced-entity-ids
   all-implicitly-joined-field-ids
   all-implicitly-joined-table-ids
   all-measure-ids

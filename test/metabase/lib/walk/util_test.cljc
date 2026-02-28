@@ -3,6 +3,7 @@
    [clojure.test :refer [deftest is testing]]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.lib.query :as lib.query]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
    [metabase.lib.test-util.macros :as lib.tu.macros]
@@ -87,6 +88,18 @@
         query-with-source-card (lib/query mp (lib.metadata/card mp 1))]
     (is (= #{1}
            (lib/all-source-card-ids query-with-source-card)))))
+
+(deftest ^:parallel all-template-tag-table-ids-test
+  (let [query (lib.query/query-with-stages
+               meta/metadata-provider
+               [{:lib/type      :mbql.stage/native
+                 :native        "SELECT * FROM {{orders}}"
+                 :template-tags {"orders" {:name         "orders"
+                                           :display-name "Orders"
+                                           :type         :table
+                                           :table-id     (meta/id :orders)}}}])]
+    (is (= #{(meta/id :orders)}
+           (lib.walk.util/all-template-tag-table-ids query)))))
 
 (deftest ^:parallel all-implicitly-joined-field-ids-test
   (testing "Returns field IDs from implicitly joined tables (fields with :source-field but no :join-alias)"
@@ -227,3 +240,75 @@
                 :joins [{:source-table $$users
                          :alias "U"
                          :condition [:= [:field $categories.name {:source-field %venues.category-id}] &U.users.name]}]})))))))
+
+(deftest ^:parallel all-referenced-entity-ids-mbql-test
+  (let [card-id        1
+        metric-id      100
+        segment-id     200
+        measure-id     300
+        products-query (lib/query meta/metadata-provider (meta/table-metadata :products))
+        metric-query   (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
+                           (lib/aggregate (lib/sum (meta/field-metadata :orders :total))))
+        measure-query  (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
+                           (lib/aggregate (lib/sum (meta/field-metadata :orders :total))))
+        segment-query  (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
+                           (lib/filter (lib/> (meta/field-metadata :orders :total) 100)))
+        mp             (-> meta/metadata-provider
+                           (lib.tu/metadata-provider-with-card-from-query card-id products-query)
+                           (lib.tu/metadata-provider-with-card-from-query metric-id metric-query {:type :metric})
+                           (lib.tu/mock-metadata-provider
+                            {:segments [{:id         segment-id
+                                         :name       "Big orders"
+                                         :table-id   (meta/id :orders)
+                                         :definition segment-query}]
+                             :measures [{:id         measure-id
+                                         :name       "Sum of totals"
+                                         :table-id   (meta/id :orders)
+                                         :definition measure-query}]}))
+        query          (-> (lib/query mp (meta/table-metadata :orders))
+                           (lib/join (lib.metadata/card mp card-id))
+                           (lib/aggregate (lib.metadata/metric mp metric-id))
+                           (lib/aggregate (lib.metadata/measure mp measure-id))
+                           (lib/filter (lib.metadata/segment mp segment-id)))]
+    (is (= {:table   #{(meta/id :orders)}
+            :card    #{card-id metric-id}
+            :metric  #{metric-id}
+            :measure #{measure-id}
+            :segment #{segment-id}
+            :snippet #{}}
+           (lib/all-referenced-entity-ids [query])))))
+
+(deftest ^:parallel all-referenced-entity-ids-native-test
+  (let [card-id    1
+        snippet-id 2
+        table-id   (meta/id :orders)
+        card-tag   (str "#" card-id "-my-card")
+        query      (lib.query/query-with-stages
+                    meta/metadata-provider
+                    [{:lib/type      :mbql.stage/native
+                      :native        (str "SELECT * FROM {{" card-tag "}} INNER JOIN {{table}} ON 1 = 1 WHERE {{category}} AND {{snippet}}")
+                      :template-tags {card-tag {:name         card-tag
+                                                :display-name "My Card"
+                                                :type         :card
+                                                :card-id      card-id}
+                                      "table"    {:name         "table"
+                                                  :display-name "Orders"
+                                                  :type         :table
+                                                  :table-id     table-id}
+                                      "category" {:name         "category"
+                                                  :display-name "Category"
+                                                  :type         :dimension
+                                                  :dimension    [:field (meta/id :products :category) nil]
+                                                  :widget-type  :string/=}
+                                      "snippet"  {:name         "snippet"
+                                                  :display-name "Snippet"
+                                                  :type         :snippet
+                                                  :snippet-name "my-snippet"
+                                                  :snippet-id   snippet-id}}}])]
+    (is (= {:table   #{(meta/id :products) table-id}
+            :card    #{card-id}
+            :metric  #{}
+            :measure #{}
+            :segment #{}
+            :snippet #{snippet-id}}
+           (lib/all-referenced-entity-ids [query])))))
