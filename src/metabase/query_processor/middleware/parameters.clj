@@ -49,7 +49,7 @@
 
 (mu/defn- parameter->stage-number :- :int
   "The stage number that this parameter should be applied to. This is derived from the `:stage-number` specified in the
-  parameter `:target`, defaulting to `-1` (last stage). Note that this `:stage-number` is relative to the stages in the query BEFORE
+  parameter `:target`, defaulting to `0`. Note that this `:stage-number` is relative to the stages in the query BEFORE
   stages were appended by preprocessing, so if a parameter specifies `:stage-number` 1 and the the first stage (stage 0)
   has a `:source-card` that gets expanded to three replacement stages (i.e., 2 additional stages prepended to `:stages`
   before the original first stage) then the actual stage number we need to apply the parameter is `3` (1 offset by
