@@ -272,7 +272,6 @@ export const NUMBER_COLUMN_SETTINGS = {
         value: currency.code,
       })),
       searchProp: "name",
-      searchCaseSensitive: false,
     },
     getDefault: getDefaultCurrency,
     getHidden: (column, settings) => settings["number_style"] !== "currency",
