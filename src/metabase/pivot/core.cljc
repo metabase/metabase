@@ -571,8 +571,9 @@
   position in the pivot table."
   [values-by-key subtotal-values value-formatters col-indexes row-indexes col-paths row-paths color-getter]
   (fn [col-index row-index]
-    (let [col-values (nth col-paths col-index [])
-          row-values (nth row-paths row-index [])
+    ;; Defensively handle nil col-paths/row-paths to prevent "Cannot read properties of null" errors
+    (let [col-values (nth (or col-paths [[]]) col-index [])
+          row-values (nth (or row-paths [[]]) row-index [])
           index-values (concat col-values row-values)
           result (if (is-subtotal? row-values col-values row-indexes col-indexes)
                    (handle-subtotal-cell subtotal-values row-values col-values row-indexes col-indexes value-formatters)
@@ -671,8 +672,8 @@
 
          formatted-col-tree (into [] (add-value-column-nodes formatted-col-tree-with-totals columns val-indexes col-settings format-rows?))
          subtotal-values (get-subtotal-values pivot-data val-indexes primary-rows-key)]
-     {:columnIndex col-paths
-      :rowIndex row-paths
+     {:columnIndex (or col-paths [[]])
+      :rowIndex (or row-paths [[]])
       :leftHeaderItems (tree-to-array formatted-row-tree-with-totals)
       :topHeaderItems (tree-to-array formatted-col-tree)
       :getRowSection (create-row-section-getter values-by-key subtotal-values value-formatters col-indexes row-indexes col-paths row-paths color-getter)})))
