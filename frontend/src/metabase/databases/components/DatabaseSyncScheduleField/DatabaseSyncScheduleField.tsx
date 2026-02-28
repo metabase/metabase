@@ -5,6 +5,8 @@ import { t } from "ttag";
 
 import { SchedulePicker } from "metabase/common/components/SchedulePicker/SchedulePicker";
 import { FormField } from "metabase/forms";
+import { useSelector } from "metabase/lib/redux";
+import { getSetting } from "metabase/selectors/settings";
 import type { ScheduleSettings, ScheduleType } from "metabase-types/api";
 
 const DEFAULT_SCHEDULE: ScheduleSettings = {
@@ -28,6 +30,9 @@ const DatabaseSyncScheduleField = ({
   description,
 }: DatabaseSyncScheduleFieldProps): JSX.Element => {
   const [{ value }, , { setValue }] = useField(name);
+  const timezone = useSelector((state) =>
+    getSetting(state, "report-timezone-short"),
+  );
 
   const handleScheduleChange = useCallback(
     (value: ScheduleSettings) => {
@@ -43,6 +48,7 @@ const DatabaseSyncScheduleField = ({
         scheduleOptions={SCHEDULE_OPTIONS}
         textBeforeInterval={t`Sync`}
         minutesOnHourPicker
+        timezone={timezone}
         onScheduleChange={handleScheduleChange}
       />
     </FormField>

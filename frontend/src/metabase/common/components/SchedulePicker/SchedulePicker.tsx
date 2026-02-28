@@ -15,7 +15,7 @@ import {
 import { capitalize } from "metabase/lib/formatting/strings";
 import { useSelector } from "metabase/lib/redux";
 import { getApplicationName } from "metabase/selectors/whitelabel";
-import { Box, type BoxProps, SegmentedControl } from "metabase/ui";
+import { Box, type BoxProps, SegmentedControl, Tooltip } from "metabase/ui";
 import type {
   ScheduleDayType,
   ScheduleFrameType,
@@ -254,6 +254,7 @@ export class SchedulePicker extends Component<SchedulePickerProps> {
             }))}
             fullWidth
           />
+          {timezone && <TimezoneLabel timezone={timezone} />}
         </PickerSpacedRow>
         {textBeforeSendTime && (
           <ScheduleDescriptionContainer>
@@ -310,4 +311,16 @@ export class SchedulePicker extends Component<SchedulePickerProps> {
 function MetabaseTimeZone() {
   const applicationName = useSelector(getApplicationName);
   return <>{t`your ${applicationName} timezone`}</>;
+}
+
+function TimezoneLabel({ timezone }: { timezone: string }) {
+  const applicationName = useSelector(getApplicationName);
+  const tooltipText = t`Your ${applicationName} timezone`;
+  return (
+    <Tooltip label={tooltipText}>
+      <Box role="note" aria-label={tooltipText} tabIndex={0}>
+        {timezone}
+      </Box>
+    </Tooltip>
+  );
 }
