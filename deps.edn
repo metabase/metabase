@@ -28,6 +28,7 @@
   clojurewerkz/quartzite                    {:mvn/version "2.2.0"               ; scheduling library
                                              :exclusions  [com.mchange.c3p0/c3p0
                                                            com.zaxxer/HikariCP-java7]}
+  com.maxmind.geoip2/geoip2                 {:mvn/version "4.2.1"}              ; GeoIP2 database reader for IP geolocation
   colorize/colorize                         {:mvn/version "0.1.1"               ; string output with ANSI color codes (for logging)
                                              :exclusions  [org.clojure/clojure]}
   com.clearspring.analytics/stream          {:mvn/version "2.9.8"               ; Various sketching algorithms
@@ -157,6 +158,11 @@
   org.clojure/tools.namespace               {:mvn/version "1.5.0"}
   org.clojure/tools.reader                  {:mvn/version "1.5.2"}
   org.clojure/tools.trace                   {:mvn/version "0.8.0"}              ; function tracing
+  org.apache.hadoop/hadoop-client-runtime    {:mvn/version "3.3.5"}              ; Hadoop runtime (shaded deps for Configuration etc.)
+  org.apache.iceberg/iceberg-aws            {:mvn/version "1.7.1"}              ; Iceberg integration with AWS (S3FileIO)
+  org.apache.iceberg/iceberg-core           {:mvn/version "1.7.1"}              ; Apache Iceberg table format
+  org.apache.iceberg/iceberg-data           {:mvn/version "1.7.1"}              ; Iceberg GenericRecord and data readers/writers
+  org.apache.iceberg/iceberg-parquet        {:mvn/version "1.7.1"}              ; Iceberg Parquet file read/write
   org.eclipse.jetty/jetty-server            {:mvn/version "12.1.3"}
   org.eclipse.jetty/jetty-unixdomain-server {:mvn/version "12.1.3"}
   org.eclipse.jetty.ee9/jetty-ee9-servlet   {:mvn/version "12.1.3"}
@@ -320,7 +326,7 @@
   :test
   {:extra-paths ["test_config"]
    :exec-fn     metabase.test-runner/find-and-run-tests-cli
-   :exec-args   {:exclude-tags [:metabot-v3/e2e]}
+   :exec-args   {:exclude-tags [:metabot-v3/e2e :product-analytics/iceberg]}
    :jvm-opts    ["-Dmb.run.mode=test"
                  "-Dmacaw.run.mode=test"
                  "-Dmb.db.in.memory=true"

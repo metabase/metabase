@@ -363,6 +363,7 @@ export const tokenFeatures = [
   "support-users",
   "tenants",
   "workspaces",
+  "product_analytics",
 ] as const;
 
 export type TokenFeature = (typeof tokenFeatures)[number];
@@ -746,6 +747,9 @@ export interface EnterpriseSettings extends Settings {
   "database-replication-connections"?: DatabaseReplicationConnections | null;
   "embedding-hub-test-embed-snippet-created": boolean;
   "embedding-hub-production-embed-snippet-created": boolean;
+  "enable-product-analytics?": boolean;
+  "product-analytics-events-table-id"?: number | null;
+  "product-analytics-sessions-table-id"?: number | null;
   "python-runner-url"?: string | null;
   "python-runner-api-token"?: string | null;
   "python-storage-s-3-endpoint"?: string | null;

@@ -757,8 +757,9 @@
    [:details         {:optional true} :map]
    [:engine          {:optional true} :keyword]
    [:features        {:optional true} [:set :keyword]]
-   [:is-audit        {:optional true} :boolean]
-   [:is-attached-dwh {:optional true} :boolean]
+   [:is-audit              {:optional true} :boolean]
+   [:is-attached-dwh       {:optional true} :boolean]
+   [:is-product-analytics  {:optional true} :boolean]
    [:settings        {:optional true} [:maybe :map]]])
 
 (mr/def ::metadata-provider

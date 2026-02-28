@@ -1,0 +1,128 @@
+title: "Web Analytics for [[this]]"
+transient_title: "Web analytics summary for [[this]]"
+description: "Pageview and event analysis including traffic sources, top pages, and referrers."
+applies_to: EventTable
+dimensions:
+  - Timestamp:
+      field_type: CreationTimestamp
+      score: 100
+  - Timestamp:
+      field_type: DateTime
+      score: 90
+  - URLPath:
+      field_type: GenericTable.URL
+      score: 90
+  - GenericCategoryMedium:
+      field_type: GenericTable.Category
+      score: 75
+  - Country: GenericTable.Country
+  - SiteName:
+      field_type: GenericTable.Name
+metrics:
+  - Count: ["count"]
+filters:
+  - Last30Days:
+      filter: ["time-interval", [dimension, Timestamp], -30, day]
+groups:
+  - Overview:
+      title: Overview
+      score: 90
+  - Content:
+      title: Top content
+      score: 85
+  - Acquisition:
+      title: Traffic sources
+      score: 80
+  - Periodicity:
+      title: When events happen
+      score: 60
+dashboard_filters:
+  - SiteName
+  - Timestamp
+  - GenericCategoryMedium
+  - Country
+cards:
+# Overview
+  - Rowcount:
+      title: Total events
+      visualization: scalar
+      metrics: Count
+      score: 100
+      group: Overview
+      width: 6
+      height: 3
+  - RowcountLast30Days:
+      title: Events in the last 30 days
+      visualization: scalar
+      metrics: Count
+      score: 95
+      filters: Last30Days
+      group: Overview
+      width: 6
+      height: 3
+  - EventGrowth:
+      title: Event growth
+      visualization: smartscalar
+      dimensions: Timestamp
+      metrics: Count
+      width: 6
+      height: 3
+      group: Overview
+  - EventsOverTime:
+      title: Events over time
+      metrics: Count
+      dimensions: Timestamp
+      visualization: line
+      group: Overview
+      width: 18
+      score: 90
+# Content
+  - TopPages:
+      title: Top pages
+      dimensions: URLPath
+      metrics: Count
+      visualization: smart-row
+      score: 90
+      height: 8
+      group: Content
+      order_by:
+        - Count: descending
+      limit: 10
+# Acquisition
+  - EventsByCategory:
+      title: Events per [[GenericCategoryMedium]]
+      dimensions: GenericCategoryMedium
+      metrics: Count
+      visualization: smart-row
+      score: 85
+      height: 8
+      group: Acquisition
+  - EventsByCountry:
+      title: Events by country
+      metrics: Count
+      dimensions: Country
+      score: 75
+      visualization:
+        map:
+          map.type: region
+          map.region: world_countries
+      group: Acquisition
+# Periodicity
+  - DayOfWeek:
+      title: Events per day of the week
+      visualization: bar
+      dimensions:
+        - Timestamp:
+            aggregation: day-of-week
+      metrics: Count
+      score: 60
+      group: Periodicity
+  - HourOfDay:
+      title: Events per hour of the day
+      visualization: bar
+      dimensions:
+        - Timestamp:
+            aggregation: hour-of-day
+      metrics: Count
+      score: 55
+      group: Periodicity

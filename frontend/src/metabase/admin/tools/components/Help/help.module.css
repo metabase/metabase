@@ -1,15 +1,3 @@
-.InfoBlockButton {
-  position: absolute;
-  top: 0;
-  right: 0;
-  margin: 1rem;
-  cursor: pointer;
-
-  &:hover {
-    color: var(--mb-color-brand);
-  }
-}
-
 .HelpExternalLink {
   flex: 1;
   padding: 1rem;

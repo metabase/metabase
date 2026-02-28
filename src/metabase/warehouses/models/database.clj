@@ -17,6 +17,7 @@
    [metabase.models.serialization :as serdes]
    [metabase.permissions.core :as perms]
    [metabase.premium-features.core :as premium-features :refer [defenterprise]]
+   [metabase.product-analytics.core :as pa]
    ;; Trying to use metabase.search would cause a circular reference ;_;
    [metabase.search.spec :as search.spec]
    [metabase.secrets.core :as secret]
@@ -88,6 +89,11 @@
   [database-id]
   (and (not (premium-features/enable-audit-app?)) (= database-id audit/audit-db-id)))
 
+(defn- should-read-pa-db?
+  "Product Analytics Database should only be fetched if product analytics is enabled."
+  [database-id]
+  (and (not (premium-features/enable-product-analytics?)) (= database-id pa/product-analytics-db-id)))
+
 (def ^{:arglists '([db-id])
        :private  true} db-id->router-db-id
   (mdb/memoize-for-application-db
@@ -105,6 +111,7 @@
   ([_model database-id]
    (cond
      (should-read-audit-db? database-id) false
+     (should-read-pa-db? database-id)    true
      (db-id->router-db-id database-id) (mi/can-read? :model/Database (db-id->router-db-id database-id))
      :else (or
             ;; Has query builder access
@@ -137,6 +144,7 @@
   ([_model database-id]
    (cond
      (should-read-audit-db? database-id) false
+     (should-read-pa-db? database-id)    true
      (db-id->router-db-id database-id) (mi/can-query? :model/Database (db-id->router-db-id database-id))
      :else (or
             ;; Has query builder access
@@ -158,6 +166,7 @@
   [db-id]
   (or (some-> db-id db-id->router-db-id can-write?)
       (and (not= db-id audit/audit-db-id)
+           (not= db-id pa/product-analytics-db-id)
            (current-user-can-write-db? db-id))))
 
 (defmethod mi/can-write? :model/Database
@@ -274,7 +283,7 @@
    - checks connectivity for the write connection (if configured)
    - cleans-up ambiguous legacy db-details"
   [{:keys [engine] :as database}]
-  (when-not (or (:is_audit database) (:is_sample database))
+  (when-not (or (:is_audit database) (:is_sample database) (:is_product_analytics database))
     (log/info (u/format-color :cyan "Health check: queueing %s {:id %d}" (:name database) (:id database)))
     (quick-task/submit-task!
      (fn []
@@ -326,7 +335,7 @@
             all-external-users-group (perms/all-external-users-group)
             non-magic-groups (perms/non-magic-groups)
             non-admin-groups         (conj non-magic-groups all-users-group all-external-users-group)]
-        (if (:is_audit database)
+        (if (or (:is_audit database) (:is_product_analytics database))
           (doseq [group non-admin-groups]
             (if-not (:is_tenant_group group)
               (do
@@ -523,7 +532,7 @@
 (defmethod mi/exclude-internal-content-hsql :model/Database
   [_model & {:keys [table-alias]}]
   (let [maybe-alias #(h2x/identifier :field table-alias %)]
-    [:not [:or (maybe-alias :is_sample) (maybe-alias :is_audit)]]))
+    [:not [:or (maybe-alias :is_sample) (maybe-alias :is_audit) (maybe-alias :is_product_analytics)]]))
 
 ;;; ---------------------------------------------- Hydration / Util Fns ----------------------------------------------
 
@@ -642,7 +651,7 @@
 (defmethod serdes/make-spec "Database"
   [_model-name {:keys [include-database-secrets]}]
   {:copy      [:auto_run_queries :cache_field_values_schedule :caveats :dbms_version
-               :description :engine :is_audit :is_attached_dwh :is_full_sync :is_on_demand :is_sample
+               :description :engine :is_audit :is_attached_dwh :is_full_sync :is_on_demand :is_product_analytics :is_sample
                :metadata_sync_schedule :name :points_of_interest :provider_name :refingerprint :settings :timezone :uploads_enabled
                :uploads_schema_name :uploads_table_prefix]
    :skip      [;; deprecated field

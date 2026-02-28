@@ -109,6 +109,7 @@ export {
   PLUGIN_APPLICATION_PERMISSIONS,
   PLUGIN_GROUP_MANAGERS,
 } from "./oss/permissions";
+export { PLUGIN_PRODUCT_ANALYTICS } from "./oss/product-analytics";
 export { PLUGIN_REMOTE_SYNC } from "./oss/remote-sync";
 export { PLUGIN_RESOURCE_DOWNLOADS } from "./oss/resource-downloads";
 export {
@@ -176,6 +177,7 @@ import { reinitialize as reinitializeLibrary } from "./oss/library";
 import { reinitialize as reinitializeModelPersistence } from "./oss/model-persistence";
 import { reinitialize as reinitializeModeration } from "./oss/moderation";
 import { reinitialize as reinitializePermissions } from "./oss/permissions";
+import { reinitialize as reinitializeProductAnalytics } from "./oss/product-analytics";
 import { reinitialize as reinitializeRemoteSync } from "./oss/remote-sync";
 import { reinitialize as reinitializeResourceDownloads } from "./oss/resource-downloads";
 import { reinitialize as reinitializeSemanticSearch } from "./oss/semantic-search";
@@ -216,6 +218,7 @@ export function reinitialize() {
   reinitializeModelPersistence();
   reinitializeModeration();
   reinitializePermissions();
+  reinitializeProductAnalytics();
   reinitializeRemoteSync();
   reinitializeResourceDownloads();
   reinitializeSemanticSearch();
