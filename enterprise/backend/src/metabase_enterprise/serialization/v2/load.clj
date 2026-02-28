@@ -2,6 +2,7 @@
   "Loading is the interesting part of deserialization: integrating the maps \"ingested\" from files into the appdb.
   See the detailed breakdown of the (de)serialization processes in [[metabase.models.serialization]]."
   (:require
+   [clojure.core.async :as a]
    [clojure.string :as str]
    [medley.core :as m]
    [metabase-enterprise.serialization.v2.backfill-ids :as serdes.backfill]
@@ -204,8 +205,9 @@
    :errors    []})
 
 (defn load-metabase!
-  "Loads in a database export from an ingestion source, which is any Ingestable instance."
-  [ingestion & {:keys [backfill? continue-on-error reindex?]
+  "Loads in a database export from an ingestion source, which is any Ingestable instance.
+  Accepts an optional `:canceled-chan` (core.async channel) that signals when the HTTP request has been canceled."
+  [ingestion & {:keys [backfill? continue-on-error reindex? canceled-chan]
                 :or   {backfill?         true
                        continue-on-error false
                        reindex?          true}}]
@@ -220,6 +222,8 @@
               ctx (new-context ingestion)]
           (log/infof "Starting deserialization, total %s documents" (count contents))
           (reduce (fn [ctx item]
+                    (when (and canceled-chan (a/poll! canceled-chan))
+                      (throw (ex-info "Serialization import canceled by client" {:canceled true})))
                     (try
                       (load-one! ctx item)
                       (catch Exception e
@@ -236,3 +240,4 @@
       ;;       ideally, we would delay the indexing somehow, or only reindex what we've loaded.
       ;;       while we're figuring that out, here's a crude stopgap.
         (search/reindex!)))))
+
