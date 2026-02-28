@@ -1,11 +1,10 @@
 import cx from "classnames";
-import { useCallback, useMemo } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { t } from "ttag";
 
-import { ExpandingContent } from "metabase/common/components/ExpandingContent";
 import { useToggle } from "metabase/common/hooks/use-toggle";
 import CS from "metabase/css/core/index.css";
-import { Box, Flex } from "metabase/ui";
+import { Box, Collapse, Flex } from "metabase/ui";
 import type * as Lib from "metabase-lib";
 
 import type {
@@ -46,6 +45,14 @@ export function NotebookStep({
 }: NotebookStepProps) {
   const [isPreviewOpen, { turnOn: openPreview, turnOff: closePreview }] =
     useToggle(false);
+
+  // trigger animation when adding new step
+  const [isExpanded, setIsExpanded] = useState(!isLastOpened);
+  useEffect(() => {
+    if (!isExpanded) {
+      setIsExpanded(true);
+    }
+  }, [isExpanded]);
 
   const actionButtons = useMemo(() => {
     const actions = [];
@@ -99,7 +106,7 @@ export function NotebookStep({
   const canRevert = step.revert != null && !readOnly;
 
   return (
-    <ExpandingContent isInitiallyOpen={!isLastOpened} isOpen>
+    <Collapse in={isExpanded} transitionDuration={300} keepMounted>
       <Box
         className={cx(CS.hoverParent, CS.hoverVisibility, S.StepRoot)}
         data-testid={step.testID}
@@ -155,6 +162,6 @@ export function NotebookStep({
           </Box>
         )}
       </Box>
-    </ExpandingContent>
+    </Collapse>
   );
 }
