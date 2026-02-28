@@ -32,7 +32,7 @@
      t)))
 
 (defn- param-value->str
-  [{coercion :coercion-strategy, :as field} x]
+  [{coercion :coercion-strategy, base-type :base-type, :as field} x]
   (cond
     ;; #30136: Provide a way of using dashboard filter as a variable.
     (and (sequential? x) (= (count x) 1))
@@ -58,6 +58,12 @@
     ;; convert temporal types to ISODate("2019-12-09T...") (etc.)
     (instance? Temporal x)
     (format "ISODate(\"%s\")" (u.date/format x))
+
+    ;; #38288: Convert ObjectId values to extended JSON format
+    (and base-type
+         (isa? base-type :type/MongoBSONID)
+         (not (or (nil? x) (= x ""))))
+    (json/encode {"$oid" (str x)})
 
     ;; for everything else, splice it in as its string representation
     :else
