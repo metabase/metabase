@@ -24,8 +24,7 @@
   (mr/validator GroupMappings))
 
 (defsetting saml-user-provisioning-enabled?
-  (deferred-tru "When we enable SAML user provisioning, we automatically create a Metabase account on SAML signin for users who
-don''t have one.")
+  (deferred-tru "Determines what happens when a user logs in via SAML and doesn''t have a Metabase account.")
   :type    :boolean
   :default true
   :feature :sso-saml
@@ -37,15 +36,14 @@ don''t have one.")
   :audit   :getter)
 
 (defsetting jwt-user-provisioning-enabled?
-  (deferred-tru "When a user logs in via JWT, create a Metabase account for them automatically if they don''t have one.")
+  (deferred-tru "Determines what happens when a user logs in via JWT and doesn''t have a Metabase account.")
   :type    :boolean
   :default true
   :feature :sso-jwt
   :audit   :getter)
 
 (defsetting ldap-user-provisioning-enabled?
-  (deferred-tru "When we enable LDAP user provisioning, we automatically create a Metabase account on LDAP signin for users who
-don''t have one.")
+  (deferred-tru "Determines what happens when a user logs in via LDAP and doesn''t have a Metabase account.")
   :type    :boolean
   :default true
   :audit   :getter)
