@@ -187,7 +187,8 @@
                  (field/hydrate-target-with-write-perms))
       (when (not= effective-type (:effective_type field))
         (analytics/track-event! :snowplow/simple_event {:event "field_effective_type_change" :target_id id})
-        (quick-task/submit-task! (fn [] (sync/refingerprint-field! <>)))))))
+        ;; Run with admin perms to match behavior during normal sync.
+        (quick-task/submit-task! (fn [] (request/as-admin (sync/refingerprint-field! <>))))))))
 
 ;;; ------------------------------------------------- Field Metadata -------------------------------------------------
 
