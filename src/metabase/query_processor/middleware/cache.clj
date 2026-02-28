@@ -76,8 +76,6 @@
 (defn- cache-results!
   "Save the final results of a query."
   [query-hash]
-  (log/infof "Caching results for next time for query with hash %s. %s"
-             (pr-str (i/short-hex-hash query-hash)) (u/emoji "💾"))
   (try
     (let [bytez (serialized-bytes)]
       (if-not (instance? (Class/forName "[B") bytez)
@@ -85,13 +83,23 @@
         (do
           (log/trace "Got serialized bytes; saving to cache backend")
           (i/save-results! *backend* query-hash bytez)
-          (log/debug "Successfully cached results for query.")
           (purge! *backend*))))
     :done
     (catch Throwable e
       (if (= (:type (ex-data e)) ::impl/max-bytes)
         (log/debugf e "Not caching results: results are larger than %s KB" (cache/query-caching-max-kb))
         (log/errorf e "Error saving query results to cache: %s" (ex-message e))))))
+
+(defn- ^:private describe-cache-context
+  [metadata query-hash]
+  (let [card-id      (get-in metadata [:preprocessed_query :info :card-id])
+        dashboard-id (get-in metadata [:preprocessed_query :info :dashboard-id])
+        hash-str     (i/short-hex-hash query-hash)]
+    (cond
+      (and card-id dashboard-id) (str "Card " card-id " (dashboard " dashboard-id "; hash " hash-str ")")
+      card-id                    (str "Card " card-id " (hash " hash-str ")")
+      dashboard-id               (str "Dashboard " dashboard-id " (hash " hash-str ")")
+      :else                      (str "Hash " hash-str))))
 
 (defn- save-results-xform [start-time-ns metadata query-hash strategy rf]
   (let [has-rows? (volatile! false)]
@@ -107,13 +115,32 @@
                                {}))
        (let [duration-ms     (/ (- (System/nanoTime) start-time-ns) 1e6)
              min-duration-ms (:min-duration-ms strategy 0)
-             eligible?       (and @has-rows?
-                                  (> duration-ms min-duration-ms))]
-         (log/infof "Query %s took %s to run; minimum for cache eligibility is %s; %s"
-                    (i/short-hex-hash query-hash)
-                    (u/format-milliseconds duration-ms)
-                    (u/format-milliseconds min-duration-ms)
-                    (if eligible? "eligible" "not eligible"))
+             has-rows-val    @has-rows?
+             meets-duration? (> duration-ms min-duration-ms)
+             eligible?       (and has-rows-val meets-duration?)]
+         (when (log/enabled? :debug)
+           (let [context         (describe-cache-context metadata query-hash)
+                 duration-str     (u/format-milliseconds duration-ms)
+                 min-duration-str (u/format-milliseconds min-duration-ms)]
+             (cond
+               (not has-rows-val)
+               (log/debugf "%s took %s to run but returned no rows; not eligible for caching"
+                           context
+                           duration-str)
+
+               (not meets-duration?)
+               (log/debugf "%s took %s to run; minimum for cache eligibility is %s; not eligible"
+                           context
+                           duration-str
+                           min-duration-str)
+
+               :else
+               (log/debugf "%s took %s to run; minimum for cache eligibility is %s; eligible"
+                           context
+                           duration-str
+                           min-duration-str))
+             (when eligible?
+               (log/debugf "Caching results for %s" context))))
          (when eligible?
            (cache-results! query-hash))
          (rf (cond-> result
@@ -123,7 +150,6 @@
        (add-object-to-cache! row)
        (vreset! has-rows? true)
        (rf acc row)))))
-
 ;;; ----------------------------------------------------- Fetch ------------------------------------------------------
 
 (mu/defn- cached-results-rff :- ::qp.schema/rff

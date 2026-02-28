@@ -38,6 +38,9 @@
               :loggers #(every? (every-pred :name (comp #{"debug"} :level)) %)}
              {:id "serialization"
               :display_name "Serialization troubleshooting"
+              :loggers #(every? (every-pred :name (comp #{"debug"} :level)) %)}
+             {:id "cache"
+              :display_name "Cache troubleshooting"
               :loggers #(every? (every-pred :name (comp #{"debug"} :level)) %)}]
             (mt/user-http-request :crowberto :get 200 "logger/presets")))))
 

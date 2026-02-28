@@ -78,7 +78,15 @@
                         (map #(assoc % :level :debug))
                         (sort-by :name)
                         (vec))
-               (as-> $ (when (empty? $) (log/error "Serialization preset is empty"))))}])
+               (as-> $ (when (empty? $) (log/error "Serialization preset is empty"))))}
+   {:id :cache
+    :display_name (tru "Cache troubleshooting")
+    :loggers (doto (->> (loggers-under "metabase.query-processor.middleware.cache")
+                        (filter map?)
+                        (map #(assoc % :level :debug))
+                        (sort-by :name)
+                        (vec))
+               (as-> $ (when (empty? $) (log/error "Cache preset is empty"))))}])
 
 (api.macros/defendpoint :get "/presets" :- [:sequential
                                             [:map

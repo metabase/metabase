@@ -91,12 +91,45 @@
     (name (ns-name a-namespace))
     (name a-namespace)))
 
+(def ^:private keyword->Level
+  "Mapping from the log level keywords to the log level objects. The order is from least verbose to most verbose."
+  (ordered-map/ordered-map
+   :off   Level/OFF
+   :fatal Level/FATAL
+   :error Level/ERROR
+   :warn  Level/WARN
+   :info  Level/INFO
+   :debug Level/DEBUG
+   :trace Level/TRACE))
+
+(def levels
+  "The valid log levels, from least verbose to most verbose."
+  (keys keyword->Level))
+
+(defn- ->Level
+  "Conversion from a keyword log level to the Log4J constance mapped to that log level. Not intended for use outside of
+  the [[with-log-messages-for-level]] macro."
+  ^Level [k]
+  (or (when (instance? Level k)
+        k)
+      (get keyword->Level (keyword k))
+      (throw (ex-info "Invalid log level" {:level k}))))
+
+(defn- log-level->keyword
+  [^Level level]
+  (some (fn [[k a-level]]
+          (when (= a-level level)
+            k))
+        keyword->Level))
+
 (defn level-enabled?
-  "Is logging at `level` enabled for `a-namespace`?"
+  "Is logging at `level` enabled for `a-namespace`? `level` may be a keyword (e.g. `:debug`)
+  or an org.apache.logging.log4j.Level."
   (^Boolean [level]
    (level-enabled? *ns* level))
   (^Boolean [a-namespace level]
-   (let [^Logger logger (log.impl/get-logger log/*logger-factory* a-namespace)]
+   (let [^Logger logger (log.impl/get-logger log/*logger-factory* a-namespace)
+         ^Level level  (->Level level)]
      (.isEnabled logger level))))
 
 (defn effective-ns-logger
@@ -170,37 +203,6 @@
           ;; this method is only present in AbstractConfiguration
           (.removeAppender config (.getName appender))
           (.updateLoggers (context)))))))
-
-(def ^:private keyword->Level
-  "Mapping from the log level keywords to the log level objects. The order is from least verbose to most verbose."
-  (ordered-map/ordered-map
-   :off   Level/OFF
-   :fatal Level/FATAL
-   :error Level/ERROR
-   :warn  Level/WARN
-   :info  Level/INFO
-   :debug Level/DEBUG
-   :trace Level/TRACE))
-
-(def levels
-  "The valid log levels, from least verbose to most verbose."
-  (keys keyword->Level))
-
-(defn- ->Level
-  "Conversion from a keyword log level to the Log4J constance mapped to that log level. Not intended for use outside of
-  the [[with-log-messages-for-level]] macro."
-  ^Level [k]
-  (or (when (instance? Level k)
-        k)
-      (get keyword->Level (keyword k))
-      (throw (ex-info "Invalid log level" {:level k}))))
-
-(defn- log-level->keyword
-  [^Level level]
-  (some (fn [[k a-level]]
-          (when (= a-level level)
-            k))
-        keyword->Level))
 
 (defn ns-log-level
   "Get the log level currently applied to the namespace named by symbol `a-namespace`. `a-namespace` may be a symbol
