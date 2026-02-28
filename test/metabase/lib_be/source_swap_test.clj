@@ -204,6 +204,38 @@
                          :filters [[:not-null {} [:field {:join-alias "Orders"} "PRODUCT_ID"]]]}]}
               swapped-query)))))
 
+(deftest ^:parallel swap-source-in-query-join-filter-card->table-test
+  (let [reviews-query  (lib/query meta/metadata-provider (meta/table-metadata :reviews))
+        mp             (lib.tu/metadata-provider-with-card-from-query 1 reviews-query)
+        query          (as-> (lib/query mp (meta/table-metadata :products)) q
+                         (lib/join q (lib.metadata/card mp 1))
+                         (lib/filter q (lib/not-null (m/find-first #(= (:name %) "PRODUCT_ID") (lib/filterable-columns q)))))
+        join-alias     (-> query :stages first :joins first :alias)
+        upgraded-query (lib-be/upgrade-field-refs-in-query query)
+        swapped-query  (lib-be/swap-source-in-query upgraded-query
+                                                    {:type :card, :id 1}
+                                                    {:type :table, :id (meta/id :reviews)})]
+    (testing "should preserve id-based base refs and name-based card refs when upgrading"
+      (is (=? {:stages [{:source-table (meta/id :products)
+                         :joins   [{:stages [{:source-card 1}]
+                                    :alias  join-alias
+                                    :conditions [[:= {}
+                                                  [:field {} (meta/id :products :id)]
+                                                  [:field {:join-alias join-alias} "PRODUCT_ID"]]]}]
+                         :filters [[:not-null {} [:field {:join-alias join-alias} "PRODUCT_ID"]]]}]}
+              upgraded-query)))
+    (testing "should return an identical query if upgrade is not needed"
+      (is (= upgraded-query (lib-be/upgrade-field-refs-in-query upgraded-query))))
+    (testing "should swap card join to table with id-based refs and preserve products refs"
+      (is (=? {:stages [{:source-table (meta/id :products)
+                         :joins   [{:stages [{:source-table (meta/id :reviews)}]
+                                    :alias  join-alias
+                                    :conditions [[:= {}
+                                                  [:field {} (meta/id :products :id)]
+                                                  [:field {:join-alias join-alias} (meta/id :reviews :product-id)]]]}]
+                         :filters [[:not-null {} [:field {:join-alias join-alias} (meta/id :reviews :product-id)]]]}]}
+              swapped-query)))))
+
 (deftest ^:parallel swap-source-in-query-identity-expression-test
   (let [query          (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
                            (lib/expression "created-at-expr" (meta/field-metadata :orders :created-at)))
