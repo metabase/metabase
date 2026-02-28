@@ -466,7 +466,7 @@
                        (qp/process-query)
                        (mt/rows))))))))))
 
-;; TODO (lbrdnk 2026-01-23): Excplicit exceptions from [[metabase.driver.util/parsed-query]] are shutdown
+;; TODO (lbrdnk 2026-01-23): Explicit exceptions from [[metabase.driver.util/parsed-query]] are shutdown
 ;;                           at the moment to avoid potential log flooding. We should revisit this during further
 ;;                           parsing work.
 #_(deftest ^:parallel parse-final-identifier-test
