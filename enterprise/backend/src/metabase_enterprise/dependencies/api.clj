@@ -1187,6 +1187,404 @@
                 (fetch-and-hydrate-nodes nodes-by-type))
           (sort-dependents sort-column sort-direction)))))
 
+;;; -------------------------------------------------- ERD Endpoint --------------------------------------------------
+
+(mr/def ::erd-field
+  [:map
+   [:id :int]
+   [:name :string]
+   [:display_name :string]
+   [:database_type :string]
+   [:semantic_type {:optional true} [:maybe :string]]
+   [:fk_target_field_id {:optional true} [:maybe :int]]
+   [:fk_target_table_id {:optional true} [:maybe :int]]])
+
+(mr/def ::erd-node
+  [:map
+   [:table_id :int]
+   [:name :string]
+   [:display_name :string]
+   [:schema {:optional true} [:maybe :string]]
+   [:db_id :int]
+   [:is_focal :boolean]
+   [:fields [:sequential ::erd-field]]])
+
+(mr/def ::erd-edge
+  [:map
+   [:source_table_id :int]
+   [:source_field_id :int]
+   [:target_table_id :int]
+   [:target_field_id :int]
+   [:relationship [:enum "one-to-one" "many-to-one"]]])
+
+(mr/def ::erd-response
+  [:map
+   [:nodes [:sequential ::erd-node]]
+   [:edges [:sequential ::erd-edge]]])
+
+(defn- build-erd-field
+  "Convert a field to the ERD field shape."
+  [field field->table]
+  {:id                 (:id field)
+   :name               (:name field)
+   :display_name       (:display_name field)
+   :database_type      (:database_type field)
+   :semantic_type      (some-> (:semantic_type field) u/qualified-name)
+   :fk_target_field_id (:fk_target_field_id field)
+   :fk_target_table_id (some-> (:fk_target_field_id field) field->table)})
+
+(defn- build-erd-node
+  "Build an ERD node for a table with its fields."
+  [table fields is-focal field->table]
+  {:table_id     (:id table)
+   :name         (:name table)
+   :display_name (:display_name table)
+   :schema       (:schema table)
+   :db_id        (:db_id table)
+   :is_focal     is-focal
+   :fields       (mapv #(build-erd-field % field->table) fields)})
+
+(defn- resolve-erd-table-id
+  "Resolve the focal table ID for ERD. If `model-id` is provided, look up the Card's
+  underlying `table_id`. Otherwise use `table-id` directly."
+  [table-id model-id]
+  (if model-id
+    (let [card (api/read-check :model/Card model-id)]
+      (or (:table_id card)
+          (throw (ex-info (tru "Model does not have an underlying table")
+                          {:status-code 400
+                           :model-id    model-id}))))
+    table-id))
+
+(defn- build-erd-connections-map
+  "Build a bidirectional map of table-id -> #{connected-table-ids} from fields.
+   Also returns field->table lookup map."
+  [fields]
+  (let [field->table (into {} (map (fn [f] [(:id f) (:table_id f)]) fields))
+        connections (reduce (fn [conns field]
+                              (if-let [target-field-id (:fk_target_field_id field)]
+                                (let [source-table (:table_id field)
+                                      target-table (field->table target-field-id)]
+                                  (if (and target-table
+                                           (not= source-table target-table))
+                                    (-> conns
+                                        (update source-table (fnil conj #{}) target-table)
+                                        (update target-table (fnil conj #{}) source-table))
+                                    conns))
+                                conns))
+                            {}
+                            fields)]
+    {:connections connections
+     :field->table field->table}))
+
+(defn- expand-tables-by-hops
+  "Expand a set of focal table IDs by following FK connections for n hops.
+   Returns the union of all table IDs reachable within n hops FROM THE FOCAL TABLES ONLY.
+   Hops are counted from focal tables, not from intermediate tables."
+  [focal-table-ids connections n]
+  (loop [all-ids focal-table-ids
+         frontier focal-table-ids
+         remaining-hops n]
+    (if (or (zero? remaining-hops) (empty? frontier))
+      all-ids
+      (let [;; Find tables connected to the current frontier
+            connected-ids (->> frontier
+                               (mapcat #(get connections % #{}))
+                               set)
+            ;; Only keep newly discovered tables
+            new-frontier (set/difference connected-ids all-ids)
+            new-all-ids (set/union all-ids new-frontier)]
+        (recur new-all-ids new-frontier (dec remaining-hops))))))
+
+(defn- resolve-cross-schema-fks
+  "Given fields already fetched for the current schema, find FK target fields that point
+   to tables in other schemas. Returns additional fields, tables-by-id entries, and an
+   extended field->table map that includes the cross-schema targets."
+  [fields known-field-ids]
+  (let [;; Collect fk_target_field_ids that we don't already have
+        missing-target-field-ids (->> fields
+                                      (keep :fk_target_field_id)
+                                      (remove known-field-ids)
+                                      set)]
+    (if (empty? missing-target-field-ids)
+      {:extra-fields   []
+       :extra-tables   {}
+       :extra-field->table {}}
+      (let [;; Fetch the missing target fields
+            extra-fields (t2/select :model/Field
+                                    :id [:in missing-target-field-ids]
+                                    :active true
+                                    :visibility_type [:not= "retired"])
+            ;; Fetch their parent tables
+            extra-table-ids (set (map :table_id extra-fields))
+            extra-tables (when (seq extra-table-ids)
+                           (t2/select :model/Table
+                                      :id [:in extra-table-ids]
+                                      :active true))
+            readable-extra-tables (filter mi/can-read? extra-tables)
+            readable-extra-table-ids (set (map :id readable-extra-tables))
+            ;; Also fetch all fields for those extra tables so edges + nodes are complete
+            extra-table-fields (when (seq readable-extra-table-ids)
+                                 (t2/select :model/Field
+                                            :table_id [:in readable-extra-table-ids]
+                                            :active true
+                                            :visibility_type [:not= "retired"]))
+            all-extra-fields (distinct (concat extra-fields extra-table-fields))]
+        {:extra-fields      all-extra-fields
+         :extra-tables      (into {} (map (fn [t] [(:id t) t]) readable-extra-tables))
+         :extra-field->table (into {} (map (fn [f] [(:id f) (:table_id f)]) all-extra-fields))}))))
+
+(defn- determine-relationship
+  "Determine the cardinality relationship between source and target fields.
+   For FK edges emitted by this endpoint (source FK -> target referenced field):
+   - one-to-one (1:1): Source FK field is also a PK (effectively unique per row)
+   - many-to-one (*:1): Default FK relationship"
+  [source-field target-field]
+  (let [source-is-pk (:database_is_pk source-field)
+        target-is-pk (:database_is_pk target-field)]
+    (cond
+      (and source-is-pk target-is-pk) "one-to-one"
+      :else "many-to-one")))
+
+(defn- build-erd-edges
+  "Build ERD edges from fields, filtered to only include edges between visible tables."
+  [fields field->table visible-table-ids]
+  (let [field-by-id (into {} (map (fn [f] [(:id f) f]) fields))]
+    (->> fields
+         (filter :fk_target_field_id)
+         (keep (fn [field]
+                 (let [target-field-id (:fk_target_field_id field)
+                       target-table (field->table target-field-id)
+                       target-field (field-by-id target-field-id)]
+                   (when (and target-table
+                              target-field
+                              (contains? visible-table-ids (:table_id field))
+                              (contains? visible-table-ids target-table))
+                     {:source_table_id (:table_id field)
+                      :source_field_id (:id field)
+                      :target_table_id target-table
+                      :target_field_id target-field-id
+                      :relationship    (determine-relationship field target-field)}))))
+         distinct
+         vec)))
+
+(defn- build-erd-for-tables
+  "Build ERD for specific tables by their IDs within a database/schema."
+  [table-ids database-id schema hops]
+  (api/read-check :model/Database database-id)
+  (when (empty? table-ids)
+    (throw (ex-info (tru "At least one table-id must be provided")
+                    {:status-code 400})))
+  (let [;; Get all tables in the database/schema for FK traversal
+        all-db-tables (t2/select :model/Table
+                                 {:where (cond-> [:and
+                                                  [:= :db_id database-id]
+                                                  [:= :active true]]
+                                           schema (conj [:= :schema schema]))})
+        all-readable-tables (filter mi/can-read? all-db-tables)
+        all-table-ids (set (map :id all-readable-tables))
+        tables-by-id (into {} (map (fn [t] [(:id t) t]) all-readable-tables))
+
+        ;; Filter requested tables to only those that exist and are readable
+        focal-table-ids (set/intersection table-ids all-table-ids)
+        _ (when (empty? focal-table-ids)
+            (throw (ex-info (tru "No readable tables found")
+                            {:status-code 404
+                             :table-ids table-ids})))
+
+        ;; Get all fields for these tables
+        all-fields (when (seq all-table-ids)
+                     (t2/select :model/Field
+                                :table_id [:in all-table-ids]
+                                :active true
+                                :visibility_type [:not= "retired"]))
+
+        ;; Resolve cross-schema FK targets
+        known-field-ids (set (map :id all-fields))
+        {:keys [extra-fields extra-tables extra-field->table]}
+        (resolve-cross-schema-fks all-fields known-field-ids)
+
+        ;; Merge cross-schema data
+        all-fields    (concat all-fields extra-fields)
+        tables-by-id  (merge tables-by-id extra-tables)
+
+        ;; Build connections map (now includes cross-schema links)
+        {:keys [connections field->table]} (build-erd-connections-map all-fields)
+        field->table (merge field->table extra-field->table)
+
+        ;; Expand by N hops from focal tables
+        all-visible-table-ids (expand-tables-by-hops focal-table-ids connections hops)
+
+        ;; Get fields for all visible tables
+        visible-fields (filter #(contains? all-visible-table-ids (:table_id %)) all-fields)
+        fields-by-table (group-by :table_id visible-fields)
+
+        ;; Build nodes - focal tables are focal, others are not
+        all-nodes (->> all-visible-table-ids
+                       (keep #(when-let [t (tables-by-id %)]
+                                (build-erd-node t
+                                                (get fields-by-table (:id t) [])
+                                                (contains? focal-table-ids (:id t))
+                                                field->table)))
+                       vec)
+
+        ;; Build edges
+        edges (build-erd-edges visible-fields field->table all-visible-table-ids)]
+    {:nodes all-nodes
+     :edges edges}))
+
+(defn- build-erd-for-database
+  "Build ERD for top 3 tables with most FK relationships in a database/schema."
+  [database-id schema hops]
+  (api/read-check :model/Database database-id)
+  (let [;; Get all tables in the database, optionally filtered by schema
+        tables (t2/select :model/Table
+                          {:where (cond-> [:and
+                                           [:= :db_id database-id]
+                                           [:= :active true]]
+                                    schema (conj [:= :schema schema]))})
+        readable-tables (filter mi/can-read? tables)
+        table-ids (set (map :id readable-tables))
+        tables-by-id (into {} (map (fn [t] [(:id t) t]) readable-tables))
+
+        ;; Get all fields for these tables
+        all-fields (when (seq table-ids)
+                     (t2/select :model/Field
+                                :table_id [:in table-ids]
+                                :active true
+                                :visibility_type [:not= "retired"]))
+
+        ;; Resolve cross-schema FK targets
+        known-field-ids (set (map :id all-fields))
+        {:keys [extra-fields extra-tables extra-field->table]}
+        (resolve-cross-schema-fks all-fields known-field-ids)
+
+        ;; Merge cross-schema data
+        all-fields    (concat all-fields extra-fields)
+        tables-by-id  (merge tables-by-id extra-tables)
+
+        ;; Build connections map (now includes cross-schema links)
+        {:keys [connections field->table]} (build-erd-connections-map all-fields)
+        field->table (merge field->table extra-field->table)
+
+        ;; Count unique connections per table
+        fk-counts (into {} (map (fn [[k v]] [k (count v)]) connections))
+
+        ;; Get top 3 tables by FK count (only from originally requested schema)
+        top-tables (->> readable-tables
+                        (sort-by #(get fk-counts (:id %) 0) >)
+                        (take 3))
+
+        _ (when (empty? top-tables)
+            (throw (ex-info (tru "No tables found in the specified database/schema")
+                            {:status-code 404
+                             :database-id database-id
+                             :schema schema})))
+
+        top-table-ids (set (map :id top-tables))
+
+        ;; Expand by N hops from top tables
+        all-visible-table-ids (expand-tables-by-hops top-table-ids connections hops)
+
+        ;; Get fields for all visible tables
+        visible-fields (filter #(contains? all-visible-table-ids (:table_id %)) all-fields)
+        fields-by-table (group-by :table_id visible-fields)
+
+        ;; Build nodes - top tables are focal, others are not
+        all-nodes (->> all-visible-table-ids
+                       (keep #(when-let [t (tables-by-id %)]
+                                (build-erd-node t
+                                                (get fields-by-table (:id t) [])
+                                                (contains? top-table-ids (:id t))
+                                                field->table)))
+                       vec)
+
+        ;; Build edges
+        edges (build-erd-edges visible-fields field->table all-visible-table-ids)]
+    {:nodes all-nodes
+     :edges edges}))
+
+(defn- build-erd-for-focal-table
+  "Build ERD for a focal table and its related tables within N hops."
+  [focal-table hops]
+  (let [database-id (:db_id focal-table)
+        focal-table-id (:id focal-table)
+
+        ;; Get all tables in the same database for N-hop traversal
+        tables (t2/select :model/Table
+                          :db_id database-id
+                          :active true)
+        readable-tables (filter mi/can-read? tables)
+        table-ids (set (map :id readable-tables))
+        tables-by-id (into {} (map (fn [t] [(:id t) t]) readable-tables))
+
+        ;; Get all fields for these tables
+        all-fields (when (seq table-ids)
+                     (t2/select :model/Field
+                                :table_id [:in table-ids]
+                                :active true
+                                :visibility_type [:not= "retired"]))
+
+        ;; Build connections map
+        {:keys [connections field->table]} (build-erd-connections-map all-fields)
+
+        ;; Expand by N hops from focal table
+        all-visible-table-ids (expand-tables-by-hops #{focal-table-id} connections hops)
+
+        ;; Get fields for all visible tables
+        visible-fields (filter #(contains? all-visible-table-ids (:table_id %)) all-fields)
+        fields-by-table (group-by :table_id visible-fields)
+
+        ;; Build nodes - focal table is focal, others are not
+        all-nodes (->> all-visible-table-ids
+                       (keep #(when-let [t (tables-by-id %)]
+                                (build-erd-node t
+                                                (get fields-by-table (:id t) [])
+                                                (= (:id t) focal-table-id)
+                                                field->table)))
+                       vec)
+
+        ;; Build edges
+        edges (build-erd-edges visible-fields field->table all-visible-table-ids)]
+    {:nodes all-nodes
+     :edges edges}))
+
+(api.macros/defendpoint :get "/erd" :- ::erd-response
+  "Return an Entity Relationship Diagram (ERD) for a focal table and related tables within N hops.
+  Returns nodes (tables with columns) and edges (FK relationships).
+  Accepts either `model-id` (a Card with type model), or `database-id` (optionally with `schema` and/or `table-ids`).
+  When `model-id` is provided, the ERD is built for the model's underlying source table.
+  When `database-id` is provided without `table-ids`, returns ERD for the top 3 tables with most FK relationships.
+  When `database-id` is provided with `table-ids`, returns ERD for those specific tables.
+  The `hops` parameter controls how many relationship hops to traverse (default: 2).
+  When `hops` is 0, only the focal/selected tables are returned with no related tables."
+  [_route-params
+   {:keys [model-id database-id table-ids schema hops]
+    :or {hops 2}} :- [:map
+                      [:model-id {:optional true} [:maybe ms/PositiveInt]]
+                      [:database-id {:optional true} [:maybe ms/PositiveInt]]
+                      [:table-ids {:optional true} [:maybe (ms/QueryVectorOf ms/PositiveInt)]]
+                      [:schema {:optional true} [:maybe :string]]
+                      [:hops {:optional true} [:maybe ms/IntGreaterThanOrEqualToZero]]]]
+  (when-not (or model-id database-id)
+    (throw (ex-info (tru "Either model-id or database-id must be provided")
+                    {:status-code 400})))
+  (when (and table-ids (not database-id))
+    (throw (ex-info (tru "database-id is required when table-ids is provided")
+                    {:status-code 400})))
+  (let [hops (or hops 2)]
+    (cond
+      model-id
+      (let [resolved-table-id (resolve-erd-table-id nil model-id)
+            focal-table (api/read-check :model/Table resolved-table-id)]
+        (build-erd-for-focal-table focal-table hops))
+
+      (seq table-ids)
+      (build-erd-for-tables (set table-ids) database-id schema hops)
+
+      :else
+      (build-erd-for-database database-id schema hops))))
+
 (def ^{:arglists '([request respond raise])} routes
   "`/api/ee/dependencies` routes."
   (handlers/routes

@@ -1,10 +1,13 @@
 import { useDisclosure } from "@mantine/hooks";
+import type { MouseEvent } from "react";
 import { useState } from "react";
 import { push } from "react-router-redux";
+import { t } from "ttag";
 
+import type { EntityPickerProps } from "metabase/common/components/Pickers";
 import { trackDependencyEntitySelected } from "metabase/data-studio/analytics";
 import { useDispatch } from "metabase/lib/redux";
-import { Card } from "metabase/ui";
+import { Button, Card, FixedSizeIcon } from "metabase/ui";
 import type {
   DependencyEntry,
   DependencyNode,
@@ -12,23 +15,35 @@ import type {
 } from "metabase-types/api";
 
 import { EntryButton } from "./EntryButton";
-import { EntryPickerModal } from "./EntryPickerModal";
+import { EntryPickerModal, type PickerEntry } from "./EntryPickerModal";
 import { EntrySearchInput } from "./EntrySearchInput";
 import { SEARCH_MODELS } from "./constants";
 
+export type SelectedEntry = {
+  label: string;
+  icon: string;
+};
+
 type GraphEntryInputProps = {
   node: DependencyNode | null;
+  selectedEntry?: SelectedEntry | null;
   isGraphFetching: boolean;
-  getGraphUrl: (entry: DependencyEntry | undefined) => string;
+  getGraphUrl: (entry: PickerEntry | undefined) => string;
+  allowedSearchModels?: SearchModel[];
+  pickerModels?: EntityPickerProps["models"];
 };
 
 export function GraphEntryInput({
   node,
+  selectedEntry,
   isGraphFetching,
   getGraphUrl,
+  allowedSearchModels = SEARCH_MODELS,
+  pickerModels,
 }: GraphEntryInputProps) {
+  const showModelPicker = allowedSearchModels === SEARCH_MODELS;
   const [searchModels, setSearchModels] =
-    useState<SearchModel[]>(SEARCH_MODELS);
+    useState<SearchModel[]>(allowedSearchModels);
   const dispatch = useDispatch();
   const [isPickerOpened, { open: openPicker, close: closePicker }] =
     useDisclosure();
@@ -45,10 +60,17 @@ export function GraphEntryInput({
     }
   };
 
-  const handlePickerChange = (newEntry: DependencyEntry) => {
+  const handlePickerChange = (newEntry: PickerEntry) => {
     closePicker();
-    handleEntryChange(newEntry);
+    dispatch(push(getGraphUrl(newEntry)));
   };
+
+  const handleClear = (event: MouseEvent) => {
+    event.stopPropagation();
+    dispatch(push(getGraphUrl(undefined)));
+  };
+
+  const hasSelection = node != null || selectedEntry != null;
 
   return (
     <>
@@ -59,10 +81,27 @@ export function GraphEntryInput({
             onEntryChange={handleEntryChange}
             onPickerOpen={openPicker}
           />
+        ) : selectedEntry != null ? (
+          <Button
+            leftSection={<FixedSizeIcon name={selectedEntry.icon} />}
+            rightSection={
+              <FixedSizeIcon
+                name="close"
+                display="block"
+                aria-label={t`Clear`}
+                onClick={handleClear}
+              />
+            }
+            data-testid="graph-entry-button"
+            onClick={openPicker}
+          >
+            {selectedEntry.label}
+          </Button>
         ) : (
           <EntrySearchInput
             searchModels={searchModels}
             isGraphFetching={isGraphFetching}
+            showModelPicker={showModelPicker}
             onEntryChange={handleEntryChange}
             onSearchModelsChange={setSearchModels}
             onPickerOpen={openPicker}
@@ -71,7 +110,8 @@ export function GraphEntryInput({
       </Card>
       {isPickerOpened && (
         <EntryPickerModal
-          value={node}
+          value={hasSelection ? node : null}
+          models={pickerModels}
           onChange={handlePickerChange}
           onClose={closePicker}
         />

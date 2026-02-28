@@ -80,6 +80,11 @@ export function getDataStudioRoutes(
             component={DependencyDiagnosticsUpsellPage}
           />
         )}
+        {PLUGIN_DEPENDENCIES.isEnabled && (
+          <Route path="schema-viewer">
+            {PLUGIN_DEPENDENCIES.getDataStudioSchemaViewerRoutes()}
+          </Route>
+        )}
         <Route path="git-sync" component={GitSyncSectionLayout} />
       </Route>
     </Route>

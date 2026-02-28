@@ -1,0 +1,86 @@
+.card {
+  position: relative;
+  min-width: 20rem;
+  max-width: 20rem;
+  border: 1px solid rgba(7, 23, 34, 0.14);
+  border-radius: 0.5rem;
+  background: var(--mb-color-white);
+  box-shadow: 0 0.25rem 1.25rem 0 rgba(0, 0, 0, 0.05);
+  overflow: hidden;
+}
+
+.card.focal {
+  border-color: var(--mb-color-brand);
+}
+
+.header {
+  border-bottom: 1px solid rgba(7, 23, 34, 0.14);
+}
+
+.focal .header {
+  border-bottom-color: var(--mb-color-brand);
+}
+
+.fields {
+  overflow: visible;
+}
+
+.detailsLink {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0.6;
+  transition: opacity 0.15s ease;
+}
+
+.detailsLink:hover {
+  opacity: 1;
+}
+
+.collapseButton {
+  padding: 0.5rem 1rem;
+  border-top: 1px solid rgba(7, 23, 34, 0.14);
+  transition: background-color 0.15s ease;
+}
+
+.collapseButton:hover {
+  background-color: var(--mb-color-background-hover);
+}
+
+.focal .collapseButton {
+  border-top-color: var(--mb-color-brand);
+}
+
+/* Compact mode styles - shown when zoomed out */
+.card.compact {
+  height: 128px; /* 2x normal header height */
+}
+
+/* Compact mode header - taller with centered content */
+.compactHeader {
+  height: 128px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Container for compact mode handles - at the bottom */
+.compactHandles {
+  position: absolute;
+  bottom: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  pointer-events: none;
+}
+
+/* Invisible handles for edge routing in compact mode */
+.compactHandle {
+  width: 1px !important;
+  height: 1px !important;
+  min-width: 1px !important;
+  min-height: 1px !important;
+  background: transparent !important;
+  border: none !important;
+  opacity: 0;
+}

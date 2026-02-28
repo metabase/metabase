@@ -1,7 +1,13 @@
+.wrapper {
+  --input-bd: var(--mb-color-border);
+}
 .input {
   color: var(--mb-color-text-primary);
   background: var(--mb-color-background-primary);
   border-color: var(--mb-color-border);
+}
+.control {
+  color: var(--mb-color-text-primary);
 }
 
 .error {

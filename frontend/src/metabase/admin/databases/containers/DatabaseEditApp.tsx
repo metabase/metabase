@@ -19,6 +19,7 @@ import {
   PLUGIN_ADVANCED_PERMISSIONS,
   PLUGIN_DATABASE_REPLICATION,
   PLUGIN_DB_ROUTING,
+  PLUGIN_DEPENDENCIES,
   PLUGIN_TABLE_EDITING,
   PLUGIN_WORKSPACES,
 } from "metabase/plugins";
@@ -105,6 +106,10 @@ function DatabaseEditAppInner({
                   <DatabaseConnectionInfoSection database={database} />
 
                   <PLUGIN_ADVANCED_PERMISSIONS.WritableConnectionInfoSection
+                    database={database}
+                  />
+
+                  <PLUGIN_DEPENDENCIES.DatabaseSchemaViewerSection
                     database={database}
                   />
 

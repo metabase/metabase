@@ -19,6 +19,7 @@ export * from "./database";
 export * from "./dataset";
 export * from "./dependencies";
 export * from "./email";
+export * from "./erd";
 export * from "./entity-id";
 export * from "./field";
 export * from "./geojson";
