@@ -54,9 +54,9 @@
    [metabase.testing-api.core]
    [metabase.tiles.api]
    [metabase.timeline.api]
-   [metabase.transforms.api.transform]
-   [metabase.transforms.api.transform-job]
-   [metabase.transforms.api.transform-tag]
+   [metabase.transforms-rest.api.transform]
+   [metabase.transforms-rest.api.transform-job]
+   [metabase.transforms-rest.api.transform-tag]
    [metabase.upload.api]
    [metabase.user-key-value.api]
    [metabase.users-rest.api]
@@ -99,9 +99,9 @@
          metabase.task-history.api/keep-me
          metabase.testing-api.api/keep-me
          metabase.tiles.api/keep-me
-         metabase.transforms.api.transform/keep-me
-         metabase.transforms.api.transform-job/keep-me
-         metabase.transforms.api.transform-tag/keep-me
+         metabase.transforms-rest.api.transform/keep-me
+         metabase.transforms-rest.api.transform-job/keep-me
+         metabase.transforms-rest.api.transform-tag/keep-me
          metabase.upload.api/keep-me
          metabase.user-key-value.api/keep-me
          metabase.users-rest.api/keep-me
@@ -185,7 +185,7 @@
    "/premium-features"     (+auth metabase.premium-features.api/routes)
    "/preview_embed"        (+auth metabase.embedding-rest.api/preview-embedding-routes)
    "/product-feedback"     'metabase.product-feedback.api
-   "/public"               (+public-exceptions 'metabase.public-sharing-rest.api)
+   "/public"               (+public-exceptions metabase.public-sharing-rest.api/routes)
    "/pulse"                metabase.pulse.api/pulse-routes
    "/revision"             (+auth 'metabase.revisions.api)
    "/search"               (+auth metabase.search.api/routes)
@@ -200,9 +200,9 @@
    "/tiles"                (+auth 'metabase.tiles.api)
    "/timeline"             (+auth metabase.timeline.api/timeline-routes)
    "/timeline-event"       (+auth metabase.timeline.api/timeline-event-routes)
-   "/transform"            (+auth metabase.transforms.api.transform/routes)
-   "/transform-job"        (+auth metabase.transforms.api.transform/transform-job-routes)
-   "/transform-tag"        (+auth metabase.transforms.api.transform/transform-tag-routes)
+   "/transform"            (+auth metabase.transforms-rest.api.transform/routes)
+   "/transform-job"        (+auth metabase.transforms-rest.api.transform/transform-job-routes)
+   "/transform-tag"        (+auth metabase.transforms-rest.api.transform/transform-tag-routes)
    "/upload"               (+auth 'metabase.upload.api)
    "/user"                 (+auth 'metabase.users-rest.api)
    "/user-key-value"       (+auth 'metabase.user-key-value.api)

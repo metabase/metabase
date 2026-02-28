@@ -620,7 +620,7 @@
                                   query-after
                                   query-before
                                   stage-number
-                                  (fn [column] [:field {:join-alias (::lib.join/join-alias column)} (:id column)]))]
+                                  (fn [column] [:field {:join-alias (:lib/join-alias column)} (:id column)]))]
     ;; Because joins can use :all or :none, we cannot just use `remove-local-references` we have to manually look at
     ;; the next stage as well
     (if-let [next-stage-number (lib.util/next-stage-number query-without-local-refs stage-number)]

@@ -101,6 +101,12 @@ JSON schema inference doesn't work with MariaDB, due to implementation differenc
 
 If your password contains characters that aren't UTF-8, then you might need to add an additional variable to the connection string `passwordCharacterEncoding=<your_encoding_here>`. This ensures that MariaDB understands the special characters in the password during authentication.
 
+## Writeable connection
+
+{% include plans-blockquote.html feature="Writeable connection" is_plural=true%}
+
+Set up an additional connection used for write operations. See [Writeable connections](../writeable-connection.md).
+
 ## Database routing
 
 With database routing, an admin can build a question once using one database, and the question will run its query against a different database with the same schema depending on who is viewing the question.

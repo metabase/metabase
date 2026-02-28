@@ -1,20 +1,27 @@
 ---
 title: Database users, roles, and privileges
+summary: Set up database users and roles for Metabase: read-only access for queries, optional write permissions for transforms, uploads, actions, and model persistence.
 ---
 
 # Database users, roles, and privileges
 
-We recommend creating a `metabase` database user with the following database roles:
+## Recommended setup
 
-- [`analytics` for read access](#minimum-database-privileges) to any schemas or tables used for analysis.
-- Optional [`metabase_actions` for write access](#privileges-to-enable-actions-and-editable-table-data) to tables used for Metabase actions.
-- Optional [`metabase_model_persistence` for write access](#privileges-to-enable-model-persistence) to the schema used for Metabase model persistence.
+We recommend creating a dedicated `metabase` database user with the **read-only** access to your database with [minimum database privileges for read access](#minimum-database-privileges) to any schemas or tables used for analysis.
+
+Some Metabase functionality requires write access to the database. Depending on other Metabase features you're planning to use, you might want to create additional roles:
+
 - Optional [`metabase_transforms` for write access](#privileges-to-enable-transforms) to the schema used for Metabase transforms.
+- Optional [`metabase_uploads` for write access](#privileges-to-enable-uploads) to schema used for CSV uploads.
+- Optional [`metabase_actions` for write access](#privileges-to-enable-actions-and-editable-table-data) to tables used for editable tables or Metabase actions .
+- Optional [`metabase_model_persistence` for write access](#privileges-to-enable-model-persistence) to the schema used for Metabase model persistence.
 
 Bundling your privileges into roles based on use cases makes it easier to manage privileges in the future (especially in [multi-tenant situations](#multi-tenant-permissions)). For example, you could:
 
 - Use the same `analytics` role for other BI tools in your [data stack](https://www.metabase.com/learn/grow-your-data-skills/data-fundamentals/data-landscape) that need read-only access to the analytics tables in your database.
 - Revoke the write access for `metabase_model_persistence` without affecting the write access for `metabase_actions`.
+
+On Metabase Pro/Enterprise plans, we recommend using separate [Writeable connections](./writeable-connection.md) for operations that require write access.
 
 ## Minimum database privileges
 
@@ -85,17 +92,17 @@ CREATE USER metabase WITH PASSWORD "your_password";
 GRANT ALL PRIVILEGES ON "database" TO metabase;
 ```
 
-This is a good option if you're connecting to a local database for development or testing.
+This is a good option if you're connecting to a local database for development or testing. Avoid using this setup in production.
 
 ## Privileges to enable actions and editable table data
 
 Both [actions](../actions/introduction.md) and the [editable table data](../data-modeling/editable-tables.md) let Metabase write back to specific tables in your database.
 
-In addition to the [minimum database privileges](#minimum-database-privileges), you'll need to grant write access to any tables you want to be able to write to.
+if you're using actions or editable tables, then in addition to the [minimum database privileges](#minimum-database-privileges), you'll need to grant write access to any tables you want to be able to write to.
 
 - Create a new role called `metabase_writer`.
 - Give the role `INSERT`, `UPDATE`, and `DELETE` privileges to the relevant tables.
-- Give the `metabase_writer` role to the `metabase` user.
+- Give the `metabase_writer` role to the user used for your database connection. We recommend using a [writeable connection](./writeable-connection.md) and only granting this role to the user used for the writeable connection.
 
 ```sql
 -- Create a role to bundle database privileges for Metabase writing to your database.
@@ -117,7 +124,7 @@ In addition to the [minimum database privileges](#minimum-database-privileges):
 - Create a new role called `metabase_model_persistence`.
 - Give the role `CREATE` access to the database.
 - Give the role `INSERT`, `UPDATE`, and `DELETE` privileges to the schema used for model persistence.
-- Give the `metabase_model_persistence` role to the `metabase` user.
+- Give the `metabase_model_persistence` role to the user used for your database connection. We recommend using a [writeable connection](./writeable-connection.md) and only granting this role to the user used for the writeable connection.
 
 ```sql
 -- Create a role to bundle database privileges for Metabase model persistence.
@@ -137,20 +144,20 @@ GRANT metabase_model_persistence TO metabase;
 
 ## Privileges to enable transforms
 
-[Transforms](../data-studio/transforms/transforms-overview.md) let Metabase write query results back to your database. We suggest that you create a dedicated schema for your transforms. Metabase's database user will need to be able to create and drop transform tables.
+[Transforms](../data-studio/transforms/transforms-overview.md) let Metabase write query results back to your database. We suggest that you create a dedicated schema for your transforms. Metabase's database user will need to be able to create and drop transform tables. We recommend using a [writeable connection](./writeable-connection.md) and only granting write access to the user used for the writeable connection.
 
 In addition to the [minimum database privileges](#minimum-database-privileges):
 
 - Create a new role called `metabase_transforms`.
 - Create a dedicated schema for transforms.
 - Give the `metabase_transforms` role `CREATE TABLE` / `ALTER` / `DROP` privileges for the specified schema.
-- Give the `metabase_transforms` role to the `metabase` user.
+- Give the `metabase_transforms` role to the user used for your database connection. We recommend using a [writeable connection](./writeable-connection.md) and only granting this role to the user used for the writeable connection.
 
 In certain cases, Metabase will give you an option to create new schemas for transforms, in which case you'll also need `CREATE SCHEMA` privileges for your metabase users (or `CREATE DATABASE` for ClickHouse).
 
 ## Privileges to enable uploads
 
-You can [upload CSVs](../databases/uploads.md) to supported databases. Metabase's database user should have write access (`INSERT`, `UPDATE`, `DELETE`) to the schema where you want to store the uploads.
+You can [upload CSVs](../databases/uploads.md) to supported databases. Metabase's database user should have write access (`INSERT`, `UPDATE`, `DELETE`) to the schema where you want to store the uploads. We recommend using a [writeable connection](./writeable-connection.md) and only granting write access to the user used for the writeable connection.
 
 You'll first need to create a schema to store uploads (or use an existing schema) and tell Metabase that you want to [use that schema to store uploads](./uploads.md#select-the-database-and-schema-that-you-want-to-store-the-data-in).
 
@@ -158,7 +165,7 @@ In addition to the [minimum database privileges](#minimum-database-privileges):
 
 - Create a new role called `metabase_uploads`.
 - Give the role `INSERT`, `UPDATE`, and `DELETE` privileges to the schema where you want to store uploads.
-- Give the `metabase_uploads` role to the `metabase` user.
+- Give the `metabase_uploads` role to the user used for your database connection.
 
 ```sql
 -- Create a role to bundle database privileges for uploads.
@@ -221,6 +228,7 @@ We recommend bundling privileges into roles based on use cases per customer. Tha
 
 ## Further reading
 
+- [Writeable connections](./writeable-connection.md)
 - [Permissions strategies](https://www.metabase.com/learn/metabase-basics/administration/permissions/strategy)
 - [Permissions introduction](../permissions/introduction.md)
 - [People overview](../people-and-groups/start.md)

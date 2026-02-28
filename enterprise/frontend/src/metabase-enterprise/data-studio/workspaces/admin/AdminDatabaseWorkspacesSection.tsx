@@ -7,10 +7,13 @@ import {
   Label,
 } from "metabase/admin/databases/components/DatabaseFeatureComponents";
 import { DatabaseInfoSection } from "metabase/admin/databases/components/DatabaseInfoSection";
-import { hasFeature } from "metabase/admin/databases/utils";
+import {
+  hasDbRoutingEnabled,
+  hasFeature,
+} from "metabase/admin/databases/utils";
 import { useCheckWorkspacePermissionsMutation } from "metabase/api";
 import { getErrorMessage } from "metabase/api/utils";
-import { Group, List, Loader, Stack, Switch } from "metabase/ui";
+import { Alert, Group, Icon, List, Loader, Stack, Switch } from "metabase/ui";
 import type {
   Database,
   DatabaseData,
@@ -35,6 +38,7 @@ export function AdminDatabaseWorkspacesSection({
   const workspacesSetting = settingsAvailable?.[DATABASE_WORKSPACES_SETTING];
   const isSettingDisabled = !workspacesSetting;
   const areWorkspacesSupported = hasFeature(database, "workspace");
+  const databaseHasRouting = hasDbRoutingEnabled(database);
 
   const [error, setError] = useState<string | null>(null);
   const [isCheckingPermissions, setIsCheckingPermissions] = useState(false);
@@ -134,7 +138,9 @@ export function AdminDatabaseWorkspacesSection({
 
             <Switch
               checked={isEnabled}
-              disabled={isCheckingPermissions}
+              disabled={
+                isCheckingPermissions || (!isEnabled && databaseHasRouting)
+              }
               id="workspaces-toggle"
               onChange={handleToggle}
             />
@@ -173,6 +179,17 @@ export function AdminDatabaseWorkspacesSection({
 
           {permissionsError && <Error>{permissionsError}</Error>}
         </Stack>
+
+        {databaseHasRouting && (
+          <Alert
+            variant="light"
+            color="info"
+            icon={<Icon name="info" />}
+            mb="md"
+          >
+            {t`Workspaces can't be enabled when database routing is enabled.`}
+          </Alert>
+        )}
       </Stack>
     </DatabaseInfoSection>
   );

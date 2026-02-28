@@ -77,6 +77,10 @@ export function transformDependencies(transformId: TransformId) {
   return `${TRANSFORMS_ROOT_URL}/${transformId}/dependencies`;
 }
 
+export function transformInspect(transformId: TransformId) {
+  return `${TRANSFORMS_ROOT_URL}/${transformId}/inspect`;
+}
+
 export function transformJobList() {
   return JOBS_ROOT_URL;
 }

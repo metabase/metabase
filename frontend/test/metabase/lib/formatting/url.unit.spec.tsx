@@ -1,7 +1,10 @@
+import { setupSdkPlugins } from "__support__/enterprise";
+import { mockSettings } from "__support__/settings";
 import { render, screen } from "__support__/ui";
 import { ensureMetabaseProviderPropsStore } from "embedding-sdk-shared/lib/ensure-metabase-provider-props-store";
 import { mockIsEmbeddingSdk } from "metabase/embedding-sdk/mocks/config-mock";
 import { formatUrl } from "metabase/lib/formatting/url";
+import { createMockTokenFeatures } from "metabase-types/api/mocks";
 
 describe("formatUrl", () => {
   afterEach(() => {
@@ -10,6 +13,10 @@ describe("formatUrl", () => {
   });
 
   it("calls handleLinkSdkPlugin and prevents default in SDK", async () => {
+    mockSettings({
+      "token-features": createMockTokenFeatures({ embedding_sdk: true }),
+    });
+    setupSdkPlugins();
     await mockIsEmbeddingSdk(true);
 
     const url = "https://example.com/dashboard/1";
