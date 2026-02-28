@@ -1467,7 +1467,7 @@ function(bin) {
         (str/split (field-alias field-clause) #"\.")
 
         [:field (field-name :guard string?) _]
-        [field-name]
+        (str/split (field-alias field-clause) #"\.")
 
         [:expression expr-name _]
         [expr-name])
