@@ -34,8 +34,7 @@ export function PythonKeysetColumnSelect({
   // Get the first (and should be only) table ID
   // Incremental transforms are only supported for single-table Python transforms
   const tableId = useMemo(() => {
-    const tableIds = Object.values(sourceTables);
-    return tableIds.length === 1 ? tableIds[0] : null;
+    return sourceTables.length === 1 ? sourceTables[0].table : null;
   }, [sourceTables]);
 
   // Fetch metadata for the table

@@ -15,17 +15,7 @@ export const TransformSourceTablesDiff = ({
   newSourceTables,
   oldSourceTables,
 }: Props) => {
-  const oldSourceTablesIds = Object.values(oldSourceTables);
-  const newSourceTablesIds = Object.values(newSourceTables);
-
-  const oldSourceNames = Object.fromEntries(
-    Object.entries(oldSourceTables).map(([k, v]) => [v, k]),
-  );
-  const newSourceNames = Object.fromEntries(
-    Object.entries(newSourceTables).map(([k, v]) => [v, k]),
-  );
-
-  const removedTablesIds = oldSourceTablesIds.slice(newSourceTablesIds.length);
+  const removedEntries = oldSourceTables.slice(newSourceTables.length);
 
   return (
     <Box
@@ -37,41 +27,39 @@ export const TransformSourceTablesDiff = ({
         columnGap: 32,
       }}
     >
-      {newSourceTablesIds.map((id, index) => {
-        const oldTableId = oldSourceTablesIds[index];
-        const oldSourceName = oldSourceNames[oldTableId];
-        const newSourceName = newSourceNames[id];
-        const sourceNameChanged = oldSourceName !== newSourceName;
+      {newSourceTables.map((entry, index) => {
+        const oldEntry = oldSourceTables[index];
+        const oldAlias = oldEntry?.alias;
+        const newAlias = entry.alias;
+        const sourceNameChanged = oldAlias !== newAlias;
 
         return (
-          <Fragment key={id}>
+          <Fragment key={entry.alias}>
             <Group gap="xs">
-              {sourceNameChanged && oldSourceName && (
+              {sourceNameChanged && oldAlias && (
                 <Text c="danger" component="s" td="line-through">
-                  {oldSourceName}
+                  {oldAlias}
                 </Text>
               )}
 
               <Text c={sourceNameChanged ? "success" : undefined}>
-                {newSourceName}
+                {newAlias}
               </Text>
             </Group>
 
-            <TableItem oldTableId={oldTableId} tableId={id} />
+            <TableItem oldTableId={oldEntry?.table} tableId={entry.table} />
           </Fragment>
         );
       })}
 
-      {removedTablesIds.map((id) => {
-        const oldSourceName = oldSourceNames[id];
-
+      {removedEntries.map((entry) => {
         return (
-          <Fragment key={id}>
+          <Fragment key={entry.alias}>
             <Text c="danger" component="s" td="line-through">
-              {oldSourceName}
+              {entry.alias}
             </Text>
 
-            <TableItem oldTableId={id} tableId={undefined} />
+            <TableItem oldTableId={entry.table} tableId={undefined} />
           </Fragment>
         );
       })}

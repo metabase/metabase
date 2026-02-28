@@ -31,7 +31,7 @@
                           transform-payload {:name   "My beautiful python runner"
                                              :source {:type            "python"
                                                       :body            "print('hello world')"
-                                                      :source-tables   {}
+                                                      :source-tables   []
                                                       :source-database (mt/id)}
                                              :target {:type     "table"
                                                       :schema   schema
@@ -48,7 +48,7 @@
                                                {:name   "My beautiful python runner"
                                                 :source {:type            "python"
                                                          :body            "print('hello world')"
-                                                         :source-tables   {}
+                                                         :source-tables   []
                                                          :source-database (mt/id)}
                                                 :target {:type     "table"
                                                          :schema   (get-test-schema)
@@ -63,7 +63,7 @@
                                                {:name   "My beautiful python runner"
                                                 :source {:type            "python"
                                                          :body            "print('hello world')"
-                                                         :source-tables   {}
+                                                         :source-tables   []
                                                          :source-database (mt/id)}
                                                 :target {:type     "table"
                                                          :schema   (get-test-schema)
@@ -79,7 +79,7 @@
                                                      {:name   "My beautiful python runner"
                                                       :source {:type            "python"
                                                                :body            "print('hello chris')"
-                                                               :source-tables   {}
+                                                               :source-tables   []
                                                                :source-database (mt/id)}
                                                       :target {:type     "table"
                                                                :schema   (get-test-schema)
@@ -95,7 +95,7 @@
                                          :as transform} {:name   "Original Python Transform"
                                                          :source {:type            "python"
                                                                   :body            "print('original')"
-                                                                  :source-tables   {}
+                                                                  :source-tables   []
                                                                   :source-database (mt/id)}
                                                          :target {:type     "table"
                                                                   :schema   "scheam"
@@ -119,7 +119,7 @@
                     transform-payload {:name   "Test Run Python Transform"
                                        :source {:type            "python"
                                                 :body            "def transform():\n    pass"
-                                                :source-tables   {}
+                                                :source-tables   []
                                                 :source-database (mt/id)}
                                        :target {:type     "table"
                                                 :schema   schema
@@ -148,7 +148,7 @@
               (let [original           {:name   "Gadget Products"
                                         :source {:type  "python"
                                                  :source-database (mt/id)
-                                                 :source-tables {"transforms_customers" (mt/id :transforms_customers)}
+                                                 :source-tables [{:alias "transforms_customers" :table (mt/id :transforms_customers)}]
                                                  :body  (str "import pandas as pd\n"
                                                              "\n"
                                                              "def transform():\n"
@@ -222,7 +222,7 @@
                                           :source {:type            "python"
                                                    :body            (program->source program)
                                                    :source-database (mt/id)
-                                                   :source-tables   {:test (t2/select-one-pk :model/Table :db_id (mt/id))}}
+                                                   :source-tables   [{:alias "test" :table (t2/select-one-pk :model/Table :db_id (mt/id))}]}
                                           :target (assoc target :database (mt/id))})))
 
             (block-on-run [{:keys [expect-status]} target transform-id]
@@ -328,7 +328,7 @@
                      :model/Transform transform {:name "Python Transform Cross DB"
                                                  :source {:type "python"
                                                           :source-database (mt/id)
-                                                          :source-tables {:test (t2/select-one-pk :model/Table :db_id (mt/id))}
+                                                          :source-tables [{:alias "test" :table (t2/select-one-pk :model/Table :db_id (mt/id))}]
                                                           :body "def transform():\n    pass"}
                                                  :target {:type "table"
                                                           :schema "PUBLIC"
@@ -352,7 +352,7 @@
                                    :source {:type            "python"
                                             :body            (str/join "\n" program)
                                             :source-database (mt/id)
-                                            :source-tables   {"transforms_customers" (mt/id :transforms_customers)}}
+                                            :source-tables   [{:alias "transforms_customers" :table (mt/id :transforms_customers)}]}
                                    :target (assoc target :database (mt/id))}))
 
           ;; using clojure-ey coordination with promises (I know j.u.c could be better here)
@@ -525,7 +525,7 @@
               (let [initial-transform {:name   "Schema Change Integration Test"
                                        :source {:type            "python"
                                                 :source-database (mt/id)
-                                                :source-tables   {:test (t2/select-one-pk :model/Table :db_id (mt/id))}
+                                                :source-tables   [{:alias "test" :table (t2/select-one-pk :model/Table :db_id (mt/id))}]
                                                 :body            (str "import pandas as pd\n"
                                                                       "\n"
                                                                       "def transform():\n"
@@ -544,7 +544,7 @@
                 (let [updated-transform (assoc initial-transform
                                                :source {:type            "python"
                                                         :source-database (mt/id)
-                                                        :source-tables   {:test (t2/select-one-pk :model/Table :db_id (mt/id))}
+                                                        :source-tables   [{:alias "test" :table (t2/select-one-pk :model/Table :db_id (mt/id))}]
                                                         :body            (str "import pandas as pd\n"
                                                                               "\n"
                                                                               "def transform():\n"
@@ -572,9 +572,9 @@
                                             :schema (get-test-schema)
                                             :name   "table_ref_test"}]
             (let [;; Use a name-based ref instead of table ID
-                  source-tables {"input" {:database_id (mt/id)
-                                          :schema      (get-test-schema)
-                                          :table       "transforms_products"}}
+                  source-tables [{:alias "input" :table {:database_id (mt/id)
+                                                         :schema      (get-test-schema)
+                                                         :table       "transforms_products"}}]
                   transform-payload {:name   "Transform with table ref"
                                      :source {:type            "python"
                                               :body            "def transform(input):\n    return input"

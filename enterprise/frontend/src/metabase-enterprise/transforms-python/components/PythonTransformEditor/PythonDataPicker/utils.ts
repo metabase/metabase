@@ -6,9 +6,9 @@ import type { TableSelection } from "./types";
 export function getInitialTableSelections(
   tables: PythonTransformTableAliases | undefined,
 ) {
-  if (tables && Object.keys(tables).length > 0) {
-    return Object.entries(tables).map(([alias, tableId]) => ({
-      tableId,
+  if (tables && tables.length > 0) {
+    return tables.map(({ alias, table }) => ({
+      tableId: table,
       alias,
     }));
   }
@@ -24,15 +24,9 @@ export function getInitialTableSelections(
 export function selectionsToTableAliases(
   selections: TableSelection[],
 ): PythonTransformTableAliases {
-  const tableAliases: PythonTransformTableAliases = {};
-
-  for (const selection of selections) {
-    const { alias, tableId } = selection;
-    if (tableId !== undefined && alias !== "") {
-      tableAliases[alias] = tableId;
-    }
-  }
-  return tableAliases;
+  return selections
+    .filter((s) => s.tableId !== undefined && s.alias !== "")
+    .map((s) => ({ alias: s.alias, table: s.tableId! }));
 }
 
 export function slugify(

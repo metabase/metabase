@@ -218,7 +218,7 @@ function SelectionInput({
       <TableSelector
         database={database}
         table={table}
-        selectedTableIds={Object.values(tables)}
+        selectedTableIds={tables.map((t) => t.table)}
         onChange={handleTableChange}
         onRemove={onRemove}
         availableTables={availableTables}

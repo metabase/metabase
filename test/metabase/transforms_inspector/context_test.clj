@@ -178,7 +178,7 @@
 (deftest extract-sources-python-test
   (testing "Python: extracts source tables from source-tables map"
     (let [transform {:source {:type           :python
-                              :source-tables  {"orders" (mt/id :orders)}
+                              :source-tables  [{:alias "orders" :table (mt/id :orders)}]
                               :source-database (mt/id)}
                      :name   "test"}
           sources   (context/extract-sources transform)]
@@ -189,8 +189,8 @@
 (deftest extract-sources-python-multiple-tables-test
   (testing "Python: extracts multiple source tables"
     (let [transform {:source {:type           :python
-                              :source-tables  {"orders"   (mt/id :orders)
-                                               "products" (mt/id :products)}
+                              :source-tables  [{:alias "orders" :table (mt/id :orders)}
+                                               {:alias "products" :table (mt/id :products)}]
                               :source-database (mt/id)}
                      :name   "test"}
           sources   (context/extract-sources transform)

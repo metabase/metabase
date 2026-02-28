@@ -1623,7 +1623,7 @@ LIMIT
           def transform(foo):
             return pd.DataFrame([{"foo": 42 }])
         `,
-            sourceTables: { foo: id },
+            sourceTables: [{ alias: "foo", table: id }],
             visitTransform: true,
           });
         },
@@ -1661,7 +1661,7 @@ LIMIT
               def transform(foo):
                 return pd.DataFrame([{"foo": 42 }])
             `,
-              sourceTables: { foo: id },
+              sourceTables: [{ alias: "foo", table: id }],
               visitTransform: true,
             });
           },
@@ -1701,7 +1701,7 @@ LIMIT
               def transform(foo):
                 return pd.DataFrame([{"foo": 42 }])
             `,
-              sourceTables: { foo: id },
+              sourceTables: [{ alias: "foo", table: id }],
               visitTransform: true,
             });
           },
@@ -1737,7 +1737,7 @@ LIMIT
               def transform(foo):
                 return pd.DataFrame([{"foo": 42 }])
             `,
-              sourceTables: { foo: id },
+              sourceTables: [{ alias: "foo", table: id }],
               visitTransform: true,
             });
           },
@@ -3689,7 +3689,7 @@ describe(
             print("Hello, world!")
             return pd.DataFrame([{"foo": common.useful_calculation(40, 2) }])
         `,
-            sourceTables: { foo: id },
+            sourceTables: [{ alias: "foo", table: id }],
             visitTransform: true,
           });
         },
@@ -3731,7 +3731,7 @@ describe(
               def transform(foo):
                 return pd.DataFrame([{"foo": 42}])
             `,
-            sourceTables: { foo: id },
+            sourceTables: [{ alias: "foo", table: id }],
             visitTransform: true,
           });
         },

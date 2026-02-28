@@ -41,7 +41,7 @@ const mockPythonSource: PythonTransformSourceDraft = {
   type: "python",
   body: "# Python script\nprint('Hello, world!')",
   "source-database": DATABASE_ID,
-  "source-tables": {},
+  "source-tables": [],
 };
 
 const mockPythonTransform = createMockTransform({
@@ -52,7 +52,7 @@ const mockPythonTransform = createMockTransform({
     type: "python",
     body: "def transform(): pass",
     "source-database": DATABASE_ID,
-    "source-tables": {},
+    "source-tables": [],
   },
 });
 

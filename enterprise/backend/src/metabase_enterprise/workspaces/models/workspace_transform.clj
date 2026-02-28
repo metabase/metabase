@@ -7,6 +7,7 @@
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.models.interface :as mi]
+   [metabase.transforms.util :as transforms.util]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
@@ -27,16 +28,36 @@
 ;; TODO (Chris 2025-12-11) -- we need to share a bunch of stuff with transforms, i think we'll need to reorganize modules
 ;;      suggestion: add a transforms-interfaces module which both transforms and workspaces depend on.
 
+;; Duplicated from metabase.models.transforms.transform — see TODO above.
+(defn- source-tables-map->vec
+  "Convert old map format {alias -> table} to new array format [{:alias alias :table table} ...]."
+  [source-tables]
+  (if (map? source-tables)
+    (mapv (fn [[alias table]] {:alias alias :table table}) source-tables)
+    source-tables))
+
+(defn- keywordize-source-table-refs
+  "Keywordize keys in source-tables entries (refs are maps, ints pass through)."
+  [source-tables]
+  (mapv (fn [entry]
+          (let [entry (update-keys entry keyword)]
+            (update entry :table #(if (map? %) (update-keys % keyword) %))))
+        source-tables))
+
 (defn- transform-source-out-DUPLICATED [m]
   (-> m
       mi/json-out-without-keywordization
       (update-keys keyword)
+      (m/update-existing :source-tables source-tables-map->vec)
+      (m/update-existing :source-tables keywordize-source-table-refs)
       (m/update-existing :query lib-be/normalize-query)
       (m/update-existing :type keyword)
       (m/update-existing :source-incremental-strategy #(update-keys % keyword))))
 
 (defn- transform-source-in-DUPLICATED [m]
   (-> m
+      (m/update-existing :source-tables source-tables-map->vec)
+      (m/update-existing :source-tables transforms.util/normalize-source-tables)
       (m/update-existing :query (comp lib/prepare-for-serialization lib-be/normalize-query))
       mi/json-in))
 
