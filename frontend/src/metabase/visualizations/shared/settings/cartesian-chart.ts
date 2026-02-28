@@ -18,6 +18,8 @@ import {
   preserveExistingColumnsOrder,
 } from "metabase/visualizations/lib/utils";
 import type { ComputedVisualizationSettings } from "metabase/visualizations/types";
+import * as Lib from "metabase-lib";
+import Question from "metabase-lib/v1/Question";
 import { getColumnKey } from "metabase-lib/v1/queries/utils/column-key";
 import {
   isAny,
@@ -286,9 +288,30 @@ export const getDefaultIsTimeSeries = (
   return dimensionIsTimeseries(data, dimensionIndex);
 };
 
+/**
+ * Checks if the query has an explicit order-by clause.
+ * This is used to determine whether to respect the user's intended sort order
+ * or to use the default timeseries/numeric sorting for chart visualizations.
+ */
+export const queryHasExplicitSort = (series: RawSeries): boolean => {
+  const card = series[0]?.card;
+  if (!card?.dataset_query) {
+    return false;
+  }
+
+  try {
+    const question = new Question(card);
+    const query = question.query();
+    return Lib.orderBys(query, -1).length > 0;
+  } catch {
+    return false;
+  }
+};
+
 export const getDefaultXAxisScale = (
   vizSettings: ComputedVisualizationSettings,
   display?: string,
+  series?: RawSeries,
 ) => {
   if (display === "boxplot") {
     return "ordinal";
@@ -296,6 +319,13 @@ export const getDefaultXAxisScale = (
   if (vizSettings["graph.x_axis._is_histogram"]) {
     return "histogram";
   }
+
+  // If the query has an explicit sort order, use ordinal scale to respect
+  // the user's intended ordering (metabase#68496)
+  if (series && queryHasExplicitSort(series)) {
+    return "ordinal";
+  }
+
   if (vizSettings["graph.x_axis._is_timeseries"]) {
     return "timeseries";
   }
@@ -362,6 +392,13 @@ export const isXAxisScaleValid = (
 
   if (xAxisScale && !options.includes(xAxisScale)) {
     return false;
+  }
+
+  if (queryHasExplicitSort(series)) {
+    const scalesThatOverrideOrder = ["timeseries", "linear", "pow", "log"];
+    if (xAxisScale && scalesThatOverrideOrder.includes(xAxisScale)) {
+      return false;
+    }
   }
 
   return (

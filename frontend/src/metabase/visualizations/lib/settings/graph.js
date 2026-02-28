@@ -673,7 +673,7 @@ export const GRAPH_AXIS_SETTINGS = {
     ],
     isValid: isXAxisScaleValid,
     getDefault: (series, vizSettings) =>
-      getDefaultXAxisScale(vizSettings, series[0]?.card?.display),
+      getDefaultXAxisScale(vizSettings, series[0]?.card?.display, series),
     getProps: (series, vizSettings) => ({
       options: getAvailableXAxisScales(series, vizSettings),
     }),

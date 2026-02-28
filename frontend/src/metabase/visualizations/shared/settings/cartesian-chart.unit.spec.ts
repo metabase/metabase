@@ -2,12 +2,19 @@ import {
   getDefaultColumns,
   getDefaultDimensions,
   getDefaultMetrics,
+  getDefaultXAxisScale,
+  isXAxisScaleValid,
+  queryHasExplicitSort,
 } from "metabase/visualizations/shared/settings/cartesian-chart";
+import * as Lib from "metabase-lib";
+import { createQuery, createQueryWithClauses } from "metabase-lib/test-helpers";
 import type { DatasetData, VisualizationDisplay } from "metabase-types/api";
 import {
   createMockCard,
   createMockColumn,
   createMockDatasetData,
+  createMockDatetimeColumn,
+  createMockNumericColumn,
   createMockSingleSeries,
 } from "metabase-types/api/mocks";
 
@@ -234,5 +241,298 @@ describe("getDefaultColumns", () => {
       dimensions: ["QUANTITY"],
       metrics: ["count"],
     });
+  });
+});
+
+describe("queryHasExplicitSort", () => {
+  it("should return true when query has order-by clause", () => {
+    const queryWithSort = createQueryWithClauses({
+      orderBys: [{ tableName: "ORDERS", columnName: "ID" }],
+    });
+    const series = [
+      createMockSingleSeries(
+        {
+          display: "bar",
+          dataset_query: Lib.toJsQuery(queryWithSort),
+        },
+        {
+          data: {
+            rows: [[0, 1]],
+            cols: [
+              createMockDatetimeColumn({ name: "col1" }),
+              createMockNumericColumn({ name: "col2" }),
+            ],
+          },
+        },
+      ),
+    ];
+    expect(queryHasExplicitSort(series)).toBe(true);
+  });
+
+  it("should return false when query has no order-by clause", () => {
+    const queryWithoutSort = createQuery();
+    const series = [
+      createMockSingleSeries(
+        {
+          display: "bar",
+          dataset_query: Lib.toJsQuery(queryWithoutSort),
+        },
+        {
+          data: {
+            rows: [[0, 1]],
+            cols: [
+              createMockDatetimeColumn({ name: "col1" }),
+              createMockNumericColumn({ name: "col2" }),
+            ],
+          },
+        },
+      ),
+    ];
+    expect(queryHasExplicitSort(series)).toBe(false);
+  });
+
+  it("should return false for native queries", () => {
+    const series = [
+      createMockSingleSeries(
+        {
+          display: "bar",
+          dataset_query: {
+            type: "native",
+            database: 1,
+            native: {
+              query: "SELECT * FROM orders ORDER BY count DESC",
+            },
+          },
+        },
+        {
+          data: {
+            rows: [[0, 1]],
+            cols: [
+              createMockDatetimeColumn({ name: "col1" }),
+              createMockNumericColumn({ name: "col2" }),
+            ],
+          },
+        },
+      ),
+    ];
+    expect(queryHasExplicitSort(series)).toBe(false);
+  });
+
+  it("should return false when card has no dataset_query", () => {
+    const series = [
+      createMockSingleSeries(
+        { display: "bar" },
+        {
+          data: {
+            rows: [[0, 1]],
+            cols: [
+              createMockDatetimeColumn({ name: "col1" }),
+              createMockNumericColumn({ name: "col2" }),
+            ],
+          },
+        },
+      ),
+    ];
+    expect(queryHasExplicitSort(series)).toBe(false);
+  });
+});
+
+describe("getDefaultXAxisScale", () => {
+  const timeseriesSettings = {
+    "graph.x_axis._is_histogram": false,
+    "graph.x_axis._is_timeseries": true,
+    "graph.x_axis._is_numeric": false,
+  };
+
+  const numericSettings = {
+    "graph.x_axis._is_histogram": false,
+    "graph.x_axis._is_timeseries": false,
+    "graph.x_axis._is_numeric": true,
+  };
+
+  const histogramSettings = {
+    "graph.x_axis._is_histogram": true,
+    "graph.x_axis._is_timeseries": true,
+    "graph.x_axis._is_numeric": true,
+  };
+
+  it("should default to ordinal when query has explicit sort order (metabase#68496)", () => {
+    const queryWithSort = createQueryWithClauses({
+      orderBys: [{ tableName: "ORDERS", columnName: "ID" }],
+    });
+    const seriesWithSort = [
+      createMockSingleSeries(
+        {
+          display: "bar",
+          dataset_query: Lib.toJsQuery(queryWithSort),
+        },
+        {
+          data: {
+            rows: [[0, 1]],
+            cols: [
+              createMockDatetimeColumn({ name: "col1" }),
+              createMockNumericColumn({ name: "col2" }),
+            ],
+          },
+        },
+      ),
+    ];
+    expect(
+      getDefaultXAxisScale(timeseriesSettings, undefined, seriesWithSort),
+    ).toBe("ordinal");
+  });
+
+  it("should default to timeseries when query has no explicit sort order", () => {
+    const queryWithoutSort = createQuery();
+    const seriesWithoutSort = [
+      createMockSingleSeries(
+        {
+          display: "bar",
+          dataset_query: Lib.toJsQuery(queryWithoutSort),
+        },
+        {
+          data: {
+            rows: [[0, 1]],
+            cols: [
+              createMockDatetimeColumn({ name: "col1" }),
+              createMockNumericColumn({ name: "col2" }),
+            ],
+          },
+        },
+      ),
+    ];
+    expect(
+      getDefaultXAxisScale(timeseriesSettings, undefined, seriesWithoutSort),
+    ).toBe("timeseries");
+  });
+
+  it("should default to timeseries when series is undefined", () => {
+    expect(getDefaultXAxisScale(timeseriesSettings, undefined, undefined)).toBe(
+      "timeseries",
+    );
+  });
+
+  it("should default to histogram when histogram setting is true", () => {
+    const queryWithSort = createQueryWithClauses({
+      orderBys: [{ tableName: "ORDERS", columnName: "ID" }],
+    });
+    const seriesWithSort = [
+      createMockSingleSeries(
+        {
+          display: "bar",
+          dataset_query: Lib.toJsQuery(queryWithSort),
+        },
+        {},
+      ),
+    ];
+    expect(
+      getDefaultXAxisScale(histogramSettings, undefined, seriesWithSort),
+    ).toBe("histogram");
+  });
+
+  it("should default to linear for numeric columns without explicit sort", () => {
+    const queryWithoutSort = createQuery();
+    const seriesWithoutSort = [
+      createMockSingleSeries(
+        {
+          display: "bar",
+          dataset_query: Lib.toJsQuery(queryWithoutSort),
+        },
+        {},
+      ),
+    ];
+    expect(
+      getDefaultXAxisScale(numericSettings, undefined, seriesWithoutSort),
+    ).toBe("linear");
+  });
+});
+
+describe("isXAxisScaleValid", () => {
+  it("should return false for timeseries scale when query has explicit sort order (metabase#68496)", () => {
+    const queryWithSort = createQueryWithClauses({
+      orderBys: [{ tableName: "ORDERS", columnName: "ID" }],
+    });
+    const seriesWithSort = [
+      createMockSingleSeries(
+        {
+          display: "bar",
+          dataset_query: Lib.toJsQuery(queryWithSort),
+        },
+        {
+          data: {
+            rows: [[0, 1]],
+            cols: [
+              createMockDatetimeColumn({ name: "col1" }),
+              createMockNumericColumn({ name: "col2" }),
+            ],
+          },
+        },
+      ),
+    ];
+    const settings = {
+      "graph.x_axis.scale": "timeseries" as const,
+      "graph.x_axis._is_timeseries": true,
+      "graph.x_axis._is_numeric": false,
+      "graph.dimensions": ["col1"],
+    };
+    expect(isXAxisScaleValid(seriesWithSort, settings)).toBe(false);
+  });
+
+  it("should return true for ordinal scale when query has explicit sort order", () => {
+    const queryWithSort = createQueryWithClauses({
+      orderBys: [{ tableName: "ORDERS", columnName: "ID" }],
+    });
+    const seriesWithSort = [
+      createMockSingleSeries(
+        {
+          display: "bar",
+          dataset_query: Lib.toJsQuery(queryWithSort),
+        },
+        {
+          data: {
+            rows: [[0, 1]],
+            cols: [
+              createMockDatetimeColumn({ name: "col1" }),
+              createMockNumericColumn({ name: "col2" }),
+            ],
+          },
+        },
+      ),
+    ];
+    const settings = {
+      "graph.x_axis.scale": "ordinal" as const,
+      "graph.x_axis._is_timeseries": true,
+      "graph.x_axis._is_numeric": false,
+      "graph.dimensions": ["col1"],
+    };
+    expect(isXAxisScaleValid(seriesWithSort, settings)).toBe(true);
+  });
+
+  it("should return true for timeseries scale when query has no explicit sort order", () => {
+    const queryWithoutSort = createQuery();
+    const seriesWithoutSort = [
+      createMockSingleSeries(
+        {
+          display: "bar",
+          dataset_query: Lib.toJsQuery(queryWithoutSort),
+        },
+        {
+          data: {
+            rows: [[0, 1]],
+            cols: [
+              createMockDatetimeColumn({ name: "col1" }),
+              createMockNumericColumn({ name: "col2" }),
+            ],
+          },
+        },
+      ),
+    ];
+    const settings = {
+      "graph.x_axis.scale": "timeseries" as const,
+      "graph.x_axis._is_timeseries": true,
+      "graph.x_axis._is_numeric": false,
+      "graph.dimensions": ["col1"],
+    };
+    expect(isXAxisScaleValid(seriesWithoutSort, settings)).toBe(true);
   });
 });
