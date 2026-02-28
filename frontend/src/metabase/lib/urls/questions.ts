@@ -5,7 +5,11 @@ import MetabaseSettings from "metabase/lib/settings";
 import type { QuestionCreatorOpts } from "metabase-lib/v1/Question";
 import Question from "metabase-lib/v1/Question";
 import * as ML_Urls from "metabase-lib/v1/urls";
-import type { CardId, Card as SavedCard } from "metabase-types/api";
+import type {
+  CardId,
+  Card as SavedCard,
+  UnsavedCard,
+} from "metabase-types/api";
 import type { EntityToken } from "metabase-types/api/entity";
 
 import { appendSlug, getEncodedUrlSearchParams } from "./utils";
@@ -17,7 +21,7 @@ type Card = Partial<SavedCard> & {
 
 export type QuestionUrlBuilderParams = {
   mode?: "view" | "notebook" | "query";
-  hash?: Card | string;
+  hash?: SavedCard | UnsavedCard | string;
   query?: Record<string, unknown> | string;
   objectId?: number | string;
 };
@@ -42,21 +46,11 @@ export function question(
     objectId,
   }: QuestionUrlBuilderParams = {},
 ) {
-  if (hash && typeof hash === "object") {
-    hash = serializeCardForUrl(hash);
-  }
+  hash = encodeIfNeeded(hash, serializeCardForUrl);
+  hash = prefixIfNeeded(hash, "#");
 
-  if (query && typeof query === "object") {
-    query = String(getEncodedUrlSearchParams(query));
-  }
-
-  if (hash && hash.charAt(0) !== "#") {
-    hash = "#" + hash;
-  }
-
-  if (query && query.charAt(0) !== "?") {
-    query = "?" + query;
-  }
+  query = encodeIfNeeded(query, getEncodedUrlSearchParams);
+  query = prefixIfNeeded(query, "?");
 
   const isModel = card?.type === "model" || card?.model === "dataset";
   const fallbackPath = isModel ? "model" : "question";
@@ -101,7 +95,24 @@ export function question(
   return `${path}${query}${hash}`;
 }
 
-export function serializedQuestion(card: Card, opts = {}) {
+function encodeIfNeeded<T extends object>(
+  value: T | string,
+  fn: (value: T) => string,
+) {
+  if (typeof value === "string") {
+    return value;
+  }
+  return fn(value);
+}
+
+function prefixIfNeeded(value: string, prefix: string) {
+  if (value === "" || value.startsWith(prefix)) {
+    return value;
+  }
+  return `${prefix}${value}`;
+}
+
+export function serializedQuestion(card: SavedCard | UnsavedCard, opts = {}) {
   return question(null, { ...opts, hash: card });
 }
 

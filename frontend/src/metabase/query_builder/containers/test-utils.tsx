@@ -238,7 +238,11 @@ export const setup = async ({
   card,
   dataset = createMockDataset(),
   initialRoute = `/question${
-    isSavedCard(card) ? `/${card.id}` : `#${serializeCardForUrl(card)}`
+    card == null
+      ? ""
+      : isSavedCard(card)
+        ? `/${card.id}`
+        : `#${serializeCardForUrl(card)}`
   }`,
 }: SetupOpts) => {
   setupDatabasesEndpoints([TEST_DB]);

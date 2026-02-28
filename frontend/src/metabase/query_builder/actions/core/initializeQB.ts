@@ -307,7 +307,7 @@ async function handleQBInit(
 
   const deserializedCard = serializedCard
     ? deserializeCard(serializedCard)
-    : null;
+    : undefined;
 
   let { card, originalCard } = await resolveCards({
     cardId,
