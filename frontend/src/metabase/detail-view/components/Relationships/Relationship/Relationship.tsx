@@ -8,7 +8,7 @@ import { t } from "ttag";
 import { skipToken, useGetAdhocQueryQuery } from "metabase/api";
 import { useSelector } from "metabase/lib/redux";
 import { getMetadata } from "metabase/selectors/metadata";
-import { Loader, Stack, Text, rem } from "metabase/ui";
+import { Flex, Icon, Loader, Stack, Text, rem } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import type { ForeignKey } from "metabase-types/api";
 
@@ -56,45 +56,59 @@ export const Relationship = ({ fk, rowId, onClick }: Props) => {
 
     return dataset.data.rows[0]?.[0] ?? 0; // rows array can be empty (metabase#62156)
   }, [dataset]);
-  const clickable = typeof count === "number" && count > 0;
+  const clickable =
+    typeof count === "number" && count > 0 && fkQuestionUrl != null;
   const originTableName = fk.origin?.table?.display_name ?? "";
   const relationName =
     typeof count === "number"
       ? inflect(originTableName, count)
       : originTableName;
 
-  return (
-    <Stack
-      className={cx({
-        [S.clickable]: clickable,
-      })}
-      gap={rem(12)}
-      {...(clickable
-        ? { component: Link, to: fkQuestionUrl, onClick }
-        : undefined)}
-    >
-      {isFetching && <Loader data-testid="loading-indicator" size="md" />}
+  const textColor =
+    count === 0 ? "text-tertiary" : clickable ? "brand" : "text-secondary";
 
-      {!isFetching && (
-        <Text
-          c={count === 0 ? "text-tertiary" : "text-secondary"}
-          className={S.text}
-          fw="bold"
-          fz={rem(24)}
-          lh={1}
-        >
-          {error ? t`Unknown` : String(count)}
+  const content = (
+    <>
+      <Stack gap={rem(12)}>
+        {isFetching && <Loader data-testid="loading-indicator" size="md" />}
+
+        {!isFetching && (
+          <Text c={textColor} className={S.text} fw="bold" fz={rem(24)} lh={1}>
+            {error ? t`Unknown` : String(count)}
+          </Text>
+        )}
+
+        <Text c={textColor} className={S.text} fw="bold" lh={1}>
+          {relationName}
         </Text>
-      )}
+      </Stack>
 
-      <Text
-        c={count === 0 ? "text-tertiary" : "text-secondary"}
-        className={S.text}
-        fw="bold"
-        lh={1}
+      {clickable && (
+        <Icon className={S.icon} name="chevronright" c="brand" aria-hidden />
+      )}
+    </>
+  );
+
+  const className = cx(S.root, { [S.clickable]: clickable });
+
+  if (clickable) {
+    return (
+      <Flex
+        component={Link}
+        to={fkQuestionUrl}
+        onClick={onClick}
+        className={className}
+        align="center"
+        justify="space-between"
       >
-        {relationName}
-      </Text>
-    </Stack>
+        {content}
+      </Flex>
+    );
+  }
+
+  return (
+    <Flex className={className} align="center" justify="space-between">
+      {content}
+    </Flex>
   );
 };
