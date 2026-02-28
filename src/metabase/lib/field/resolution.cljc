@@ -541,10 +541,11 @@
     :base-type           :type/*
     ::fallback-metadata? true}
    (if (pos-int? id-or-name)
-     {:id                      id-or-name
-      :name                    "Unknown Field"
-      :lib/source-column-alias "Unknown Field"
-      :display-name            "Unknown Field"}
+     {:id                                id-or-name
+      :name                              "Unknown Field"
+      :lib/source-column-alias           "Unknown Field"
+      :display-name                      "Unknown Field"
+      ::fallback-metadata-unknown-field? true}
      {:name                    id-or-name
       :lib/source-column-alias id-or-name})))
 
