@@ -227,7 +227,8 @@
   (if (instance? #?(:clj  CachedProxyMetadataProvider
                     :cljs metabase.lib.metadata.cached-provider/CachedProxyMetadataProvider)
                  metadata-provider)
-    (.-metadata-provider metadata-provider)
+    #?(:clj (.-metadata-provider ^CachedProxyMetadataProvider metadata-provider)
+       :cljs (.-metadata-provider metadata-provider))
     metadata-provider))
 
 (mu/defn make-mock-cards
