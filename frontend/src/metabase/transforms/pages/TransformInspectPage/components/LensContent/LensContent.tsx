@@ -1,4 +1,4 @@
-import { useEffect, useMemo } from "react";
+import { useCallback, useEffect, useMemo } from "react";
 import { match } from "ts-pattern";
 import _ from "underscore";
 
@@ -73,15 +73,15 @@ export const LensContent = ({
     collectedCardStats,
   } = useTriggerEvaluation(lens);
 
-  const { markCardLoaded, markCardStartedLoading } = useCardLoadingTracker(
-    lens,
-    () => {
-      if (lens) {
-        onAllCardsLoaded(lens.id);
-        trackLensLoaded();
-      }
-    },
-  );
+  const onAllCardsLoadedCallback = useCallback(() => {
+    if (lens) {
+      onAllCardsLoaded(lens.id);
+      trackLensLoaded();
+    }
+  }, [lens, trackLensLoaded, onAllCardsLoaded]);
+
+  const { markCardLoaded, markCardStartedLoading, subscribeToCardLoaded } =
+    useCardLoadingTracker(onAllCardsLoadedCallback);
 
   const cardsBySection = useMemo(
     () => _.groupBy(lens?.cards ?? [], (c) => c.section_id ?? "default"),
@@ -105,9 +105,10 @@ export const LensContent = ({
       drillLensesByCardId={drillLensesByCardId}
       collectedCardStats={collectedCardStats}
       navigateToLens={navigateToLens}
-      onStatsReady={pushNewStats}
-      onCardStartedLoading={markCardStartedLoading}
-      onCardLoaded={markCardLoaded}
+      pushNewStats={pushNewStats}
+      markCardStartedLoading={markCardStartedLoading}
+      markCardLoaded={markCardLoaded}
+      subscribeToCardLoaded={subscribeToCardLoaded}
     >
       <Stack gap="xl">
         {match(lens.id)

@@ -11,6 +11,7 @@ import type {
 import { ScalarCard } from "../ScalarCard";
 import { VisualizationCard } from "../VisualizationCard";
 
+import { useProgressiveGroupsLoader } from "./useProgressiveGroupsLoader";
 import { groupCardsBySource, sortGroupsByScore } from "./utils";
 
 type ComparisonLayoutProps = {
@@ -34,6 +35,8 @@ export const ComparisonLayout = ({
     [groups, sources, visitedFields],
   );
 
+  const visibleGroups = useProgressiveGroupsLoader(sortedGroups);
+
   const renderCard = (card: InspectorCard) =>
     match(card.display)
       .with("scalar", () => <ScalarCard card={card} key={card.id} />)
@@ -41,7 +44,7 @@ export const ComparisonLayout = ({
 
   return (
     <Stack gap="lg">
-      {sortedGroups.map((group) => (
+      {visibleGroups.map((group) => (
         <SimpleGrid key={group.groupId} cols={2} spacing="md">
           <Stack gap="sm">{group.inputCards.map(renderCard)}</Stack>
           <Stack gap="sm">{group.outputCards.map(renderCard)}</Stack>
