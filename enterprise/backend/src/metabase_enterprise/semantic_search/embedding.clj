@@ -6,6 +6,7 @@
    [metabase-enterprise.semantic-search.models.token-tracking :as semantic.models.token-tracking]
    [metabase-enterprise.semantic-search.settings :as semantic-settings]
    [metabase.analytics.core :as analytics]
+   [metabase.tracing.core :as tracing]
    [metabase.util :as u]
    [metabase.util.json :as json]
    [metabase.util.log :as log])
@@ -279,26 +280,30 @@
   [embedding-model texts process-fn & {:as opts}]
   (when (seq texts)
     (let [{:keys [model-name provider vector-dimensions]} embedding-model]
-      (u/profile (str "Generating embeddings " {:model model-name
-                                                :dimensions vector-dimensions
-                                                :texts (calc-token-metrics texts)})
-        (if (= "openai" provider)
-          (let [max-tokens-per-batch (semantic-settings/openai-max-tokens-per-batch)
-                batches (create-batches max-tokens-per-batch count-tokens texts)
+      (tracing/with-span :search "search.semantic.embeddings-batch"
+        {:search.semantic/provider   provider
+         :search.semantic/model-name model-name
+         :search.semantic/text-count (count texts)}
+        (u/profile (str "Generating embeddings " {:model model-name
+                                                  :dimensions vector-dimensions
+                                                  :texts (calc-token-metrics texts)})
+          (if (= "openai" provider)
+            (let [max-tokens-per-batch (semantic-settings/openai-max-tokens-per-batch)
+                  batches (create-batches max-tokens-per-batch count-tokens texts)
 
-                process-batch
-                (fn [batch-idx batch-texts]
-                  (let [embeddings (u/profile (format "Embedding batch %d/%d %s"
-                                                      (inc batch-idx) (count batches) (str (calc-token-metrics batch-texts)))
-                                     (openai-get-embeddings-batch embedding-model batch-texts opts))
-                        text-embedding-map (zipmap batch-texts embeddings)]
-                    (process-fn text-embedding-map)))]
+                  process-batch
+                  (fn [batch-idx batch-texts]
+                    (let [embeddings (u/profile (format "Embedding batch %d/%d %s"
+                                                        (inc batch-idx) (count batches) (str (calc-token-metrics batch-texts)))
+                                       (openai-get-embeddings-batch embedding-model batch-texts opts))
+                          text-embedding-map (zipmap batch-texts embeddings)]
+                      (process-fn text-embedding-map)))]
 
-            (transduce (map-indexed process-batch) (partial merge-with +) batches))
+              (transduce (map-indexed process-batch) (partial merge-with +) batches))
 
-          (let [embeddings (get-embeddings-batch embedding-model texts opts)
-                text-embedding-map (zipmap texts embeddings)]
-            (process-fn text-embedding-map)))))))
+            (let [embeddings (get-embeddings-batch embedding-model texts opts)
+                  text-embedding-map (zipmap texts embeddings)]
+              (process-fn text-embedding-map))))))))
 
 (comment
   ;; Configuration:

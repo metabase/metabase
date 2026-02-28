@@ -11,6 +11,7 @@
    [metabase.models.transforms.transform-run :as transform-run]
    [metabase.revisions.core :as revisions]
    [metabase.task.core :as task]
+   [metabase.tracing.core :as tracing]
    [metabase.transforms.execute :as transforms.execute]
    [metabase.transforms.instrumentation :as transforms.instrumentation]
    [metabase.transforms.ordering :as transforms.ordering]
@@ -51,37 +52,38 @@
           ordering)))
 
 (defn- get-plan [transform-ids]
-  (let [all-transforms   (t2/select :model/Transform)
-        global-ordering  (transforms.ordering/transform-ordering all-transforms)
-        relevant-ids     (get-deps global-ordering transform-ids)
-        transforms-by-id (into {}
-                               (keep (fn [{:keys [id] :as transform}]
-                                       (when (relevant-ids id)
-                                         [id transform])))
-                               all-transforms)
-        ordering         (sorted-ordering (select-keys global-ordering relevant-ids) transforms-by-id)]
-    (when-let [cycle (transforms.ordering/find-cycle ordering)]
-      (let [id->name (into {} (map (juxt :id :name)) all-transforms)]
-        (throw (ex-info (str "Cyclic transform definitions detected: "
-                             (str/join " → " (map id->name cycle)))
-                        {:cycle cycle}))))
-    (loop [complete (ordered-set/ordered-set)]
-      (if-let [current-transform (next-transform ordering transforms-by-id complete)]
-        (recur (conj complete (:id current-transform)))
-        {:order (map transforms-by-id complete)
-         :deps global-ordering}))))
-
-(defn- block-until-not-already-running [transform-id]
-  (when-let [active-run (transform-run/running-run-for-transform-id transform-id)]
-    (log/warn "Transform" (pr-str transform-id) "already running, waiting for run" (:id active-run))
-    (while (transform-run/running-run-for-transform-id transform-id)
-      (Thread/sleep 2000))))
+  (tracing/with-span :tasks "task.transform.plan" {:transform/count (count transform-ids)}
+    (let [all-transforms   (t2/select :model/Transform)
+          global-ordering  (transforms.ordering/transform-ordering all-transforms)
+          relevant-ids     (get-deps global-ordering transform-ids)
+          transforms-by-id (into {}
+                                 (keep (fn [{:keys [id] :as transform}]
+                                         (when (relevant-ids id)
+                                           [id transform])))
+                                 all-transforms)
+          ordering         (sorted-ordering (select-keys global-ordering relevant-ids) transforms-by-id)]
+      (when-let [cycle (transforms.ordering/find-cycle ordering)]
+        (let [id->name (into {} (map (juxt :id :name)) all-transforms)]
+          (throw (ex-info (str "Cyclic transform definitions detected: "
+                               (str/join " → " (map id->name cycle)))
+                          {:cycle cycle}))))
+      (loop [complete (ordered-set/ordered-set)]
+        (if-let [current-transform (next-transform ordering transforms-by-id complete)]
+          (recur (conj complete (:id current-transform)))
+          {:order (map transforms-by-id complete)
+           :deps global-ordering})))))
 
 (defn- run-transform! [run-id run-method user-id {transform-id :id :as transform}]
   (if-not (transforms.util/check-feature-enabled transform)
     (log/warnf "Skip running transform %d due to lacking premium features" transform-id)
-    (do
-      (block-until-not-already-running transform-id)
+    (tracing/with-span :tasks "task.transform.execute" {:transform/id   transform-id
+                                                        :transform/name (:name transform)}
+      (when (transform-run/running-run-for-transform-id transform-id)
+        (log/warn "Transform" (pr-str transform-id) "already running, waiting")
+        (loop []
+          (Thread/sleep 2000)
+          (when (transform-run/running-run-for-transform-id transform-id)
+            (recur))))
       (let [try-exec
             (fn []
               (try
@@ -94,7 +96,12 @@
                     (throw e)))))]
         (loop []
           (when (= :already-running (try-exec))
-            (block-until-not-already-running transform-id)
+            (when (transform-run/running-run-for-transform-id transform-id)
+              (log/warn "Transform" (pr-str transform-id) "already running, waiting")
+              (loop []
+                (Thread/sleep 2000)
+                (when (transform-run/running-run-for-transform-id transform-id)
+                  (recur))))
             (recur))))
       (transforms.job-run/add-run-activity! run-id))))
 
@@ -232,29 +239,32 @@
     (let [transforms (job-transform-ids job-id)]
       (log/info "Executing transform job" (pr-str job-id) "with transforms" (pr-str transforms))
       (let [{run-id :id} (transforms.job-run/start-run! job-id run-method)]
-        (transforms.instrumentation/with-job-timing [job-id run-method]
-          (try ;; catch any catastrophic problems
-            (let [result (run-transforms! run-id transforms opts)]
-              (case (::status result)
-                :succeeded (transforms.job-run/succeed-started-run! run-id)
-                :failed (try
-                          (transforms.job-run/fail-started-run! run-id {:message (compile-transform-failure-messages (::failures result))})
-                          (when (= :cron run-method)
-                            (notify-transform-failures job-id (::failures result)))
-                          (catch Exception e
-                            (log/error e "Error when failing a transform run.")))))
-            (catch Throwable t
-              ;; We don't expect a catastrophic failure, but neither did the Titanic.
-              ;; We should clean up in this case and notify the admin users.
-              (try
-                (transforms.job-run/fail-started-run! run-id {:message (.getMessage t)})
-                (when (= :cron run-method)
-                  (if (::transform-failure (ex-data t))
-                    (notify-transform-failures job-id (::failures (ex-data t)))
-                    (notify-job-failure job-id (.getMessage t))))
-                (catch Exception e
-                  (log/error e "Error when failing a transform job run.")))
-              (throw t))))
+        (tracing/with-span :tasks "task.transform.run-job" {:transform.job/id         job-id
+                                                            :transform.job/run-method (name run-method)
+                                                            :transform.job/count      (count transforms)}
+          (transforms.instrumentation/with-job-timing [job-id run-method]
+            (try ;; catch any catastrophic problems
+              (let [result (run-transforms! run-id transforms opts)]
+                (case (::status result)
+                  :succeeded (transforms.job-run/succeed-started-run! run-id)
+                  :failed (try
+                            (transforms.job-run/fail-started-run! run-id {:message (compile-transform-failure-messages (::failures result))})
+                            (when (= :cron run-method)
+                              (notify-transform-failures job-id (::failures result)))
+                            (catch Exception e
+                              (log/error e "Error when failing a transform run.")))))
+              (catch Throwable t
+                ;; We don't expect a catastrophic failure, but neither did the Titanic.
+                ;; We should clean up in this case and notify the admin users.
+                (try
+                  (transforms.job-run/fail-started-run! run-id {:message (.getMessage t)})
+                  (when (= :cron run-method)
+                    (if (::transform-failure (ex-data t))
+                      (notify-transform-failures job-id (::failures (ex-data t)))
+                      (notify-job-failure job-id (.getMessage t))))
+                  (catch Exception e
+                    (log/error e "Error when failing a transform job run.")))
+                (throw t)))))
         run-id))))
 
 (def ^:private job-key "metabase.transforms.jobs.timeout-job")

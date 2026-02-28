@@ -29,6 +29,7 @@
    [metabase.request.schema :as request.schema]
    [metabase.session.core :as session]
    [metabase.settings.core :as setting]
+   [metabase.tracing.core :as tracing]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.i18n :as i18n]
    [metabase.util.log :as log]
@@ -246,7 +247,9 @@
   token OR a valid API key was passed."
   [handler]
   (fn [request respond raise]
-    (handler (merge-current-user-info request) respond raise)))
+    (let [request' (tracing/with-span :db-app "db-app.session-lookup" {}
+                     (merge-current-user-info request))]
+      (handler request' respond raise))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                               bind-current-user                                                |

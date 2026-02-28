@@ -17,6 +17,7 @@
    [metabase.sync.sync-metadata.sync-timezone :as sync-tz]
    [metabase.sync.sync-metadata.tables :as sync-tables]
    [metabase.sync.util :as sync-util]
+   [metabase.tracing.core :as tracing]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
    [metabase.warehouse-schema.models.table :as table]))
@@ -63,7 +64,8 @@
   "Sync the metadata for a Metabase `database`. This makes sure child Table & Field objects are synchronized."
   [database :- i/DatabaseInstance]
   (sync-util/sync-operation :sync-metadata database (format "Sync metadata for %s" (sync-util/name-for-logging database))
-    (let [db-metadata (fetch-metadata/db-metadata database)]
+    (let [db-metadata (tracing/with-span :sync "sync.metadata.fetch-metadata" {:db/id (:id database)}
+                        (fetch-metadata/db-metadata database))]
       (u/prog1 (sync-util/run-sync-operation "sync" database (make-sync-steps db-metadata))
         (if (some sync-util/abandon-sync? (map second (:steps <>)))
           (sync-util/set-initial-database-sync-aborted! database)

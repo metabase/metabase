@@ -39,6 +39,7 @@ import { createTracker } from "metabase/lib/analytics";
 import api from "metabase/lib/api";
 import { initializeEmbedding } from "metabase/lib/embed";
 import { captureConsoleErrors } from "metabase/lib/errors";
+import { initTracing, rotateTraceId } from "metabase/lib/otel";
 import { MetabaseReduxProvider } from "metabase/lib/redux/custom-context";
 import MetabaseSettings from "metabase/lib/settings";
 import { PLUGIN_APP_INIT_FUNCTIONS, PLUGIN_METABOT } from "metabase/plugins";
@@ -71,6 +72,15 @@ function _init(reducers, getRoutes, callback) {
   const MetabotProvider = PLUGIN_METABOT.getMetabotProvider();
 
   createTracker(store);
+
+  // Initialize distributed tracing if enabled via MB_TRACING_ENABLED.
+  // Uses bootstrap data so it's available before the first API call.
+  if (window.MetabaseBootstrap?.["tracing-enabled"]) {
+    initTracing();
+    // Rotate trace ID on route changes so all API calls within
+    // a single page view share one trace.
+    syncedHistory.listen(() => rotateTraceId());
+  }
 
   initializeEmbedding(store);
 

@@ -15,6 +15,7 @@
    [metabase.models.interface :as mi]
    [metabase.search.config :as search.config]
    [metabase.search.core :as search]
+   [metabase.tracing.core :as tracing]
    [metabase.util :as u]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
@@ -359,20 +360,21 @@
   model + model_id already exists, it will be replaced. Parallelizes batch insertion
   using a shared thread pool with a configurable thread count (default: 2)."
   ([connectable index documents-reducible & {:keys [serial?] :or {serial? false}}]
-   (not-empty
-    (let [pool @index-update-executor
-          results (transduce
-                   (comp (partition-all *batch-size*)
-                         (map (if serial?
-                                #(upsert-index-batch! connectable index % {:type :index})
-                                #(upsert-index-pooled! pool connectable index % {:type :index}))))
-                   conj
-                   documents-reducible)]
-      (reduce (fn [update-counts result]
-                (let [value (if (future? result) @result result)]
-                  (merge-with + update-counts (when value value))))
-              {}
-              results)))))
+   (tracing/with-span :search "search.semantic.index-upsert" {}
+     (not-empty
+      (let [pool @index-update-executor
+            results (transduce
+                     (comp (partition-all *batch-size*)
+                           (map (if serial?
+                                  #(upsert-index-batch! connectable index % {:type :index})
+                                  #(upsert-index-pooled! pool connectable index % {:type :index}))))
+                     conj
+                     documents-reducible)]
+        (reduce (fn [update-counts result]
+                  (let [value (if (future? result) @result result)]
+                    (merge-with + update-counts (when value value))))
+                {}
+                results))))))
 
 (defn- drop-index-table-sql
   [{:keys [table-name]}]
@@ -842,7 +844,10 @@
       {:results [] :raw-count 0}
       (let [timer (u/start-timer)
 
-            embedding (embedding/get-embedding embedding-model search-string {:type :query})
+            embedding (tracing/with-span :search "search.semantic.embedding"
+                        {:search.semantic/provider   (:provider embedding-model)
+                         :search.semantic/model-name (:model-name embedding-model)}
+                        (embedding/get-embedding embedding-model search-string {:type :query}))
             embedding-time-ms (u/since-ms timer)
 
             db-timer (u/start-timer)
@@ -852,15 +857,19 @@
             xform (comp (map decode-metadata)
                         (map (partial legacy-input-with-score weights (keys scorers))))
             reducible (reducible-search-query db query)
-            raw-results (into [] xform reducible)
+            raw-results (tracing/with-span :search "search.semantic.db-query"
+                          {:search/query-length (count search-string)}
+                          (into [] xform reducible))
             db-query-time-ms (u/since-ms db-timer)
 
             filter-timer (u/start-timer)
-            filtered-results (->> raw-results
-                                  filter-read-permitted
-                                  (apply-collection-filter search-context)
-                                  (apply-collection-id-filter search-context)
-                                  (mapv search/collapse-id))
+            filtered-results (tracing/with-span :search "search.semantic.permission-filter"
+                               {:search.semantic/raw-count (count raw-results)}
+                               (->> raw-results
+                                    filter-read-permitted
+                                    (apply-collection-filter search-context)
+                                    (apply-collection-id-filter search-context)
+                                    (mapv search/collapse-id)))
             filter-time-ms (u/since-ms filter-timer)
 
             appdb-scorers (scoring/appdb-scorers search-context)

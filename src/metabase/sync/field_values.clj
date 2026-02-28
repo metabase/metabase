@@ -5,6 +5,7 @@
    [metabase.app-db.core :as mdb]
    [metabase.sync.interface :as i]
    [metabase.sync.util :as sync-util]
+   [metabase.tracing.core :as tracing]
    [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
@@ -67,8 +68,9 @@
 
 (mu/defn- update-field-values-for-database!
   [database :- i/DatabaseInstance]
-  (let [tables (sync-util/reducible-sync-tables database)]
-    (transduce (map update-field-values-for-table!) (partial merge-with +) tables)))
+  (tracing/with-span :sync "field-values.update" {:db/id (:id database)}
+    (let [tables (sync-util/reducible-sync-tables database)]
+      (transduce (map update-field-values-for-table!) (partial merge-with +) tables))))
 
 (defn- update-field-values-summary [{:keys [created updated deleted errors]}]
   (format "Updated %d field value sets, created %d, deleted %d with %d errors"
@@ -102,15 +104,16 @@
 
 (mu/defn- delete-expired-advanced-field-values-for-database!
   [database :- i/DatabaseInstance]
-  (let [tables (sync-util/reducible-sync-tables database)]
-    {:deleted (transduce (comp (map delete-expired-advanced-field-values-for-table!)
-                               (map (fn [result]
-                                      (if (instance? Throwable result)
-                                        (throw result)
-                                        result))))
-                         +
-                         0
-                         tables)}))
+  (tracing/with-span :sync "field-values.delete-expired-advanced" {:db/id (:id database)}
+    (let [tables (sync-util/reducible-sync-tables database)]
+      {:deleted (transduce (comp (map delete-expired-advanced-field-values-for-table!)
+                                 (map (fn [result]
+                                        (if (instance? Throwable result)
+                                          (throw result)
+                                          result))))
+                           +
+                           0
+                           tables)})))
 
 (def ^:private sync-field-values-steps
   [(sync-util/create-sync-step "delete-expired-advanced-field-values"

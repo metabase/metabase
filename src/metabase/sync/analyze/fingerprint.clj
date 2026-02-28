@@ -11,6 +11,7 @@
    [metabase.lib.schema.metadata.fingerprint :as lib.schema.metadata.fingerprint]
    [metabase.sync.interface :as i]
    [metabase.sync.util :as sync-util]
+   [metabase.tracing.core :as tracing]
    [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
@@ -81,7 +82,8 @@
                          (map vector fields fingerprints)))))
         driver (driver.u/database->driver (table/database table))
         opts {:truncation-size *truncation-size*}]
-    (driver/table-rows-sample driver table fields rff opts)))
+    (tracing/with-span :sync "sync.fingerprint.sample" {:sync/table (:name table) :sync/field-count (count fields)}
+      (driver/table-rows-sample driver table fields rff opts))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                    WHICH FIELDS NEED UPDATED FINGERPRINTS?                                     |
@@ -193,16 +195,17 @@
 (mu/defn fingerprint-table!
   "Generate and save fingerprints for all the Fields in `table` that have not been previously analyzed."
   [table :- i/TableInstance]
-  (if-let [fields (fields-to-fingerprint table)]
-    (do
-      (log/infof "Fingerprinting %s fields in table %s" (count fields) (sync-util/name-for-logging table))
-      (let [stats
-            (sync-util/with-returning-throwable (format "Error fingerprinting %s" (sync-util/name-for-logging table))
-              (fingerprint-fields! table fields))]
-        (if (:throwable stats)
-          (merge (empty-stats-map 0) stats)
-          stats)))
-    (empty-stats-map 0)))
+  (tracing/with-span :sync "sync.fingerprint.table" {:db/id (:db_id table) :sync/table (:name table)}
+    (if-let [fields (fields-to-fingerprint table)]
+      (do
+        (log/infof "Fingerprinting %s fields in table %s" (count fields) (sync-util/name-for-logging table))
+        (let [stats
+              (sync-util/with-returning-throwable (format "Error fingerprinting %s" (sync-util/name-for-logging table))
+                (fingerprint-fields! table fields))]
+          (if (:throwable stats)
+            (merge (empty-stats-map 0) stats)
+            stats)))
+      (empty-stats-map 0))))
 
 (def ^:private LogProgressFn
   [:=> [:cat :string [:schema i/TableInstance]] :any])

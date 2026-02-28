@@ -84,6 +84,7 @@
    [metabase.api.open-api :as open-api]
    [metabase.events.core :as events]
    [metabase.models.interface :as mi]
+   [metabase.tracing.core :as tracing]
    [metabase.util :as u]
    [metabase.util.i18n :as i18n :refer [deferred-tru tru]]
    [metabase.util.log :as log]
@@ -345,10 +346,10 @@
    obj)
 
   ([entity id]
-   (read-check (t2/select-one entity :id id)))
+   (read-check (tracing/with-span :db-app "db-app.read-check" {} (t2/select-one entity :id id))))
 
   ([entity id & other-conditions]
-   (read-check (apply t2/select-one entity :id id other-conditions))))
+   (read-check (tracing/with-span :db-app "db-app.read-check" {} (apply t2/select-one entity :id id other-conditions)))))
 
 (defn write-check
   "Check whether we can write an existing `obj`, or `entity` with `id`. If the object doesn't exist, throw a 404; if we
@@ -364,9 +365,9 @@
        (throw e)))
    obj)
   ([entity id]
-   (write-check (t2/select-one entity :id id)))
+   (write-check (tracing/with-span :db-app "db-app.write-check" {} (t2/select-one entity :id id))))
   ([entity id & other-conditions]
-   (write-check (apply t2/select-one entity :id id other-conditions))))
+   (write-check (tracing/with-span :db-app "db-app.write-check" {} (apply t2/select-one entity :id id other-conditions)))))
 
 (defn query-check
   "Check whether we can query an existing `obj`, or `entity` with `id`. If the object doesn't exist, throw a 404; if we

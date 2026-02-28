@@ -32,6 +32,7 @@
    [metabase.startup.core :as startup]
    [metabase.system.core :as system]
    [metabase.task.core :as task]
+   [metabase.tracing.core :as tracing]
    [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.queue :as queue]
@@ -106,6 +107,7 @@
   (queue/stop-listeners!)
   (task/stop-scheduler!)
   (server/stop-web-server!)
+  (tracing/shutdown!)
   (analytics/shutdown!)
   (notification/shutdown!)
   ;; This timeout was chosen based on a 30s default termination grace period in Kubernetes.
@@ -167,6 +169,8 @@
   (init-status/set-progress! 0.2)
   ;; Ensure the classloader is installed as soon as possible.
   (classloader/the-classloader)
+  ;; Initialize OpenTelemetry tracing early (before plugins, no DB dependency)
+  (tracing/init!)
   ;; load any plugins as needed
   (plugins/load-plugins!)
   (init-status/set-progress! 0.3)
