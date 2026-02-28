@@ -11,6 +11,7 @@
    [metabase.sync.core :as sync]
    [metabase.sync.sync-metadata :as sync-metadata]
    [metabase.sync.sync-metadata.fields :as sync-fields]
+   [metabase.sync.sync-metadata.fields.our-metadata :as fields.our-metadata]
    [metabase.sync.sync-metadata.fks :as sync-fks]
    [metabase.sync.util :as sync-util]
    [metabase.sync.util-test :as sync.util-test]
@@ -593,3 +594,18 @@
             {a "A", b "B"} (u/index-by :name (t2/select :model/Field :table_id (:id table)))]
         (is (true? (:database_is_nullable a)))
         (is (false? (:database_is_nullable b)))))))
+
+(deftest our-metadata-fetched-once-per-table-test
+  (testing "our-metadata is only fetched once per table during sync-and-update! (#38941)"
+    (mt/with-temp-copy-of-db
+      (let [call-count  (atom 0)
+            original-fn fields.our-metadata/our-metadata
+            table       (t2/select-one :model/Table :db_id (mt/id) :name "VENUES")]
+        (with-redefs [fields.our-metadata/our-metadata (fn [tbl]
+                                                         (swap! call-count inc)
+                                                         (original-fn tbl))]
+          (sync-fields/sync-fields-for-table! (mt/db) table))
+        (is (= 1 @call-count)
+            "our-metadata should be fetched exactly once, not twice")
+        (is (pos? (t2/count :model/Field :table_id (u/the-id table) :active true))
+            "fields should still be present after sync")))))
