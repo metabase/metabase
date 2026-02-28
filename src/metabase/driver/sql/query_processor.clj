@@ -338,7 +338,6 @@
 (defmethod date [:sql :month-of-year]    [_driver _ expr] (h2x/month expr))
 (defmethod date [:sql :quarter-of-year]  [_driver _ expr] (h2x/quarter expr))
 (defmethod date [:sql :year-of-era]      [_driver _ expr] (h2x/year expr))
-(defmethod date [:sql :week-of-year-iso] [_driver _ expr] (h2x/week expr))
 
 (defmulti datetime-diff
   "Returns a HoneySQL form for calculating the datetime-diff for a given unit.
