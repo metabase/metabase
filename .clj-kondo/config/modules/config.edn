@@ -548,7 +548,7 @@
            metabase.driver.common.parameters
            metabase.driver.common.parameters.parse
            metabase.driver.connection
-          metabase.driver.connection.workspaces
+           metabase.driver.connection.workspaces
            metabase.driver.ddl.interface
            metabase.driver.h2
            metabase.driver.impl
@@ -724,6 +724,13 @@
    :api  #{metabase.internal-stats.core}
    :uses #{app-db
            models}}
+
+  joke-of-the-day
+  {:team "UX West"
+   :api  #{metabase.joke-of-the-day.api}
+   :uses #{api
+           release-flags
+           util}}
 
   legacy-mbql
   {:team "Querying"
@@ -1232,6 +1239,15 @@
            users
            util}}
 
+  release-flags
+  {:team "UX West"
+   :api  #{metabase.release-flags.api
+           metabase.release-flags.core
+           metabase.release-flags.init}
+   :uses #{api
+           task
+           util}}
+
   remote-sync
   {:team "UX West"
    :api  #{metabase.remote-sync.core
@@ -1249,7 +1265,7 @@
            api
            config
            embedding
-           permissions ; FIXME
+           permissions                  ; FIXME
            session
            settings
            users
@@ -1352,6 +1368,7 @@
            lib-be
            premium-features
            query-processor
+           release-flags
            request
            session
            settings
@@ -1365,7 +1382,7 @@
    :api  #{metabase.session.api
            metabase.session.core
            metabase.session.init
-           metabase.session.settings}      ; TODO -- shouldn't be exposed as an API namespace
+           metabase.session.settings}   ; TODO -- shouldn't be exposed as an API namespace
    :uses #{api
            app-db
            auth-identity

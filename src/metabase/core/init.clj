@@ -48,6 +48,7 @@
    [metabase.pulse.init]
    [metabase.queries.init]
    [metabase.query-processor.init]
+   [metabase.release-flags.init]
    [metabase.remote-sync.init]
    [metabase.request.init]
    [metabase.revisions.init]

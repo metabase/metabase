@@ -86,6 +86,7 @@
     :model/QueryField                        metabase.queries.models.query-field
     :model/QueryTable                        metabase.queries.models.query-table
     :model/RecentViews                       metabase.activity-feed.models.recent-views
+    :model/ReleaseFlag                       metabase.release-flags.models
     :model/RemoteSyncObject                  metabase-enterprise.remote-sync.models.remote-sync-object
     :model/RemoteSyncTask                    metabase-enterprise.remote-sync.models.remote-sync-task
     :model/Revision                          metabase.revisions.models.revision
