@@ -1,14 +1,22 @@
 import { createMockMetadata } from "__support__/metadata";
+import { isNotNull } from "metabase/lib/types";
 import * as Lib from "metabase-lib";
-import { SAMPLE_METADATA, SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
+import {
+  SAMPLE_METADATA,
+  SAMPLE_PROVIDER,
+  createMetadataProvider,
+} from "metabase-lib/test-helpers";
 import Question from "metabase-lib/v1/Question";
+import type { ParameterTarget } from "metabase-types/api";
 import {
   createMockCard,
   createMockDashboardCard,
+  createMockField,
   createMockNativeDatasetQuery,
   createMockParameter,
   createMockStructuredDatasetQuery,
   createMockTable,
+  createMockVirtualCard,
 } from "metabase-types/api/mocks";
 import {
   ORDERS,
@@ -18,14 +26,16 @@ import {
   PRODUCTS_ID,
   REVIEWS,
   REVIEWS_ID,
-  SAMPLE_DB_ID,
-  createAdHocCard,
-  createAdHocNativeCard,
   createOrdersTable,
   createSampleDatabase,
 } from "metabase-types/api/mocks/presets";
+import type {
+  TestNativeQuerySpec,
+  TestQuerySpec,
+} from "metabase-types/api/query";
 
 import {
+  type ParameterMappingOption,
   getMappingOptionByTarget,
   getParameterMappingOptions,
 } from "./mapping-options";
@@ -33,67 +43,55 @@ import {
 const metadata = createMockMetadata({
   databases: [createSampleDatabase()],
 });
+const provider = createMetadataProvider({ metadata });
 
-const ordersTable = metadata.table(ORDERS_ID);
+const ordersTable = metadata.table(ORDERS_ID)!;
 
-function structured(query) {
-  return createAdHocCard({
-    dataset_query: {
-      type: "query",
-      database: SAMPLE_DB_ID,
-      query,
-    },
+function structured(spec: TestQuerySpec) {
+  return createMockCard({
+    dataset_query: Lib.toJsQuery(Lib.createTestQuery(provider, spec)),
   });
 }
 
-function native(native) {
-  return createAdHocNativeCard({
-    dataset_query: {
-      type: "native",
-      database: SAMPLE_DB_ID,
-      native,
-    },
+function native(spec: TestNativeQuerySpec) {
+  return createMockCard({
+    dataset_query: Lib.toJsQuery(Lib.createTestNativeQuery(provider, spec)),
   });
 }
 
 describe("parameters/utils/mapping-options", () => {
   describe("getParameterMappingOptions", () => {
     describe("structured model", () => {
-      let dataset;
-      let virtualCardTable;
+      const question = ordersTable.question();
+      const dataset = question.setCard({
+        ...question.card(),
+        id: 123,
+        type: "model",
+      });
 
-      beforeEach(() => {
-        const question = ordersTable.question();
-        dataset = question.setCard({
-          ...question.card(),
-          id: 123,
-          type: "model",
-        });
+      // create a virtual table for the card
+      // that contains fields with custom, model-specific metadata
+      const virtualCardTable = ordersTable?.clone();
+      virtualCardTable.id = `card__123`;
+      virtualCardTable.fields = [
+        metadata.field(ORDERS.CREATED_AT)?.clone({
+          table_id: `card__123`,
+          uniqueId: `card__123:${ORDERS.CREATED_AT}`,
+          display_name: "~*~Created At~*~",
+        }),
+      ].filter(isNotNull);
 
-        // create a virtual table for the card
-        // that contains fields with custom, model-specific metadata
-        virtualCardTable = ordersTable.clone();
-        virtualCardTable.id = `card__123`;
-        virtualCardTable.fields = [
-          metadata.field(ORDERS.CREATED_AT).clone({
-            table_id: `card__123`,
-            uniqueId: `card__123:${ORDERS.CREATED_AT}`,
-            display_name: "~*~Created At~*~",
-          }),
-        ];
-
-        // add instances to the `metadata` instance
-        metadata.questions[dataset.id()] = dataset;
-        metadata.tables[virtualCardTable.id] = virtualCardTable;
-        virtualCardTable.fields.forEach((f) => {
-          metadata.fields[f.uniqueId] = f;
-        });
+      // add instances to the `metadata` instance
+      metadata.questions[dataset.id()] = dataset;
+      metadata.tables[virtualCardTable.id] = virtualCardTable;
+      virtualCardTable.fields.forEach((f) => {
+        metadata.fields[f.getUniqueId()] = f;
       });
 
       it("should return fields from the model question's virtual card table, as though it is already nested", () => {
         const options = getParameterMappingOptions(
           new Question(dataset.card(), metadata),
-          { type: "date/single" },
+          createMockParameter({ type: "date/single" }),
           dataset.card(),
         );
 
@@ -148,11 +146,11 @@ describe("parameters/utils/mapping-options", () => {
     describe("structured query", () => {
       it("should return field-id and fk-> dimensions", () => {
         const card = structured({
-          "source-table": REVIEWS_ID,
+          stages: [{ source: { type: "table", id: REVIEWS_ID } }],
         });
         const options = getParameterMappingOptions(
           new Question(card, metadata),
-          { type: "date/single" },
+          createMockParameter({ type: "date/single" }),
           card,
         );
         expect(options).toEqual([
@@ -190,27 +188,36 @@ describe("parameters/utils/mapping-options", () => {
 
       it("should also return fields from explicitly joined tables", () => {
         const card = structured({
-          "source-table": ORDERS_ID,
-          joins: [
+          stages: [
             {
-              alias: "Product",
-              fields: "all",
-              "source-table": PRODUCTS_ID,
-              condition: [
-                "=",
-                [
-                  "field",
-                  ORDERS.PRODUCT_ID,
-                  { "base-type": "type/BigInteger" },
-                ],
-                ["field", PRODUCTS.ID, { "base-type": "type/BigInteger" }],
+              source: { type: "table", id: ORDERS_ID },
+              joins: [
+                {
+                  source: { type: "table", id: PRODUCTS_ID },
+                  strategy: "left-join",
+                  conditions: [
+                    {
+                      operator: "=",
+                      left: {
+                        type: "column",
+                        sourceName: "ORDERS",
+                        name: "PRODUCT_ID",
+                      },
+                      right: {
+                        type: "column",
+                        sourceName: "PRODUCTS",
+                        name: "ID",
+                      },
+                    },
+                  ],
+                },
               ],
             },
           ],
         });
         const options = getParameterMappingOptions(
           new Question(card, metadata),
-          { type: "date/single" },
+          createMockParameter({ type: "date/single" }),
           card,
         );
         expect(options).toEqual([
@@ -234,7 +241,7 @@ describe("parameters/utils/mapping-options", () => {
               [
                 "field",
                 PRODUCTS.CREATED_AT,
-                { "base-type": "type/DateTime", "join-alias": "Product" },
+                { "base-type": "type/DateTime", "join-alias": "Products" },
               ],
               { "stage-number": 0 },
             ],
@@ -281,13 +288,17 @@ describe("parameters/utils/mapping-options", () => {
 
       it("should return fields in nested query", () => {
         const card = structured({
-          "source-query": {
-            "source-table": PRODUCTS_ID,
-          },
+          stages: [
+            { source: { type: "table", id: PRODUCTS_ID } },
+            {
+              // second, empty, stage
+            },
+          ],
         });
+
         const options = getParameterMappingOptions(
           new Question(card, metadata),
-          { type: "date/single" },
+          createMockParameter({ type: "date/single" }),
           card,
         );
         expect(options).toEqual([
@@ -321,7 +332,7 @@ describe("parameters/utils/mapping-options", () => {
       it("should return variables for non-dimension template-tags", () => {
         const card = native({
           query: "select * from ORDERS where CREATED_AT = {{created}}",
-          "template-tags": {
+          templateTags: {
             created: {
               type: "date",
               name: "created",
@@ -330,12 +341,12 @@ describe("parameters/utils/mapping-options", () => {
         });
         const options = getParameterMappingOptions(
           new Question(card, metadata),
-          { type: "date/single" },
+          createMockParameter({ type: "date/single" }),
           card,
         );
         expect(options).toEqual([
           {
-            name: "created",
+            name: "Created",
             icon: "calendar",
             target: ["variable", ["template-tag", "created"]],
             isForeign: false,
@@ -347,22 +358,22 @@ describe("parameters/utils/mapping-options", () => {
     it("should return dimensions for dimension template-tags", () => {
       const card = native({
         query: "select * from ORDERS where CREATED_AT = {{created}}",
-        "template-tags": {
+        templateTags: {
           created: {
             type: "dimension",
             name: "created",
-            dimension: ["field", ORDERS.CREATED_AT, null],
+            dimension: ORDERS.CREATED_AT,
           },
         },
       });
       const options = getParameterMappingOptions(
         new Question(card, metadata),
-        { type: "date/single" },
+        createMockParameter({ type: "date/single" }),
         card,
       );
       expect(options).toEqual([
         {
-          name: "Created At",
+          name: "Created",
           icon: "calendar",
           target: [
             "dimension",
@@ -376,25 +387,25 @@ describe("parameters/utils/mapping-options", () => {
   });
 
   describe("iframe dashcard", () => {
-    const createIframeDashcard = (iframeContent) =>
+    const createIframeDashcard = (iframeContent: string) =>
       createMockDashboardCard({
         visualization_settings: {
-          virtual_card: {
+          virtual_card: createMockVirtualCard({
             display: "iframe",
-          },
+          }),
           iframe: iframeContent,
         },
       });
 
-    const getIframeOptions = (iframeContent) =>
+    const getIframeOptions = (iframeContent: string) =>
       getParameterMappingOptions(
         undefined,
         null,
-        { display: "iframe" },
+        createMockVirtualCard({ display: "iframe" }),
         createIframeDashcard(iframeContent),
       );
 
-    const expectedTagOptions = (tags) =>
+    const expectedTagOptions = (tags: string[]) =>
       tags.map((tag) => ({
         name: tag,
         icon: "string",
@@ -435,33 +446,35 @@ describe("parameters/utils/mapping-options", () => {
   });
 
   describe("link dashcard", () => {
-    const createLinkDashcard = (linkUrl) =>
+    const createLinkDashcard = (linkUrl?: string) =>
       createMockDashboardCard({
         visualization_settings: {
-          virtual_card: {
+          virtual_card: createMockVirtualCard({
             display: "link",
-          },
+          }),
           link: {
             url: linkUrl,
           },
         },
       });
 
-    const getLinkOptions = (linkUrl) =>
+    const getLinkOptions = (linkUrl?: string) =>
       getParameterMappingOptions(
         undefined,
         null,
-        { display: "link" },
+        createMockVirtualCard({ display: "link" }),
         createLinkDashcard(linkUrl),
       );
 
-    const expectedTagOptions = (tags) =>
-      tags.map((tag) => ({
-        name: tag,
-        icon: "string",
-        isForeign: false,
-        target: ["text-tag", tag],
-      }));
+    const expectedTagOptions = (tags: string[]) =>
+      tags.map(
+        (tag): ParameterMappingOption => ({
+          name: tag,
+          icon: "string",
+          isForeign: false,
+          target: ["text-tag", tag],
+        }),
+      );
 
     it("should return tag options from link URL", () => {
       const options = getLinkOptions("https://example.com/{{foo}}/{{bar}}");
@@ -481,7 +494,9 @@ describe("parameters/utils/mapping-options", () => {
 
   describe("parameterDashcard filtering", () => {
     it("should return empty array when parameterDashcard is from a different tab", () => {
-      const card = structured({ "source-table": ORDERS_ID });
+      const card = structured({
+        stages: [{ source: { type: "table", id: ORDERS_ID } }],
+      });
       const question = new Question(card, metadata);
       const dashcard = createMockDashboardCard({ dashboard_tab_id: 1 });
       const parameterDashcard = createMockDashboardCard({
@@ -490,7 +505,7 @@ describe("parameters/utils/mapping-options", () => {
 
       const options = getParameterMappingOptions(
         question,
-        { type: "date/single" },
+        createMockParameter({ type: "date/single" }),
         card,
         dashcard,
         parameterDashcard,
@@ -500,7 +515,9 @@ describe("parameters/utils/mapping-options", () => {
     });
 
     it("should return normal options when parameterDashcard is on same tab", () => {
-      const card = structured({ "source-table": ORDERS_ID });
+      const card = structured({
+        stages: [{ source: { type: "table", id: ORDERS_ID } }],
+      });
       const question = new Question(card, metadata);
       const dashcard = createMockDashboardCard({ dashboard_tab_id: 1 });
       const parameterDashcard = createMockDashboardCard({
@@ -509,7 +526,7 @@ describe("parameters/utils/mapping-options", () => {
 
       const options = getParameterMappingOptions(
         question,
-        { type: "date/single" },
+        createMockParameter({ type: "date/single" }),
         card,
         dashcard,
         parameterDashcard,
@@ -519,7 +536,9 @@ describe("parameters/utils/mapping-options", () => {
     });
 
     it("should return empty array when inline parameter on question card tries to map to different card", () => {
-      const card = structured({ "source-table": ORDERS_ID });
+      const card = structured({
+        stages: [{ source: { type: "table", id: ORDERS_ID } }],
+      });
       const question = new Question(card, metadata);
       const dashcard = createMockDashboardCard({
         id: 1,
@@ -534,7 +553,7 @@ describe("parameters/utils/mapping-options", () => {
 
       const options = getParameterMappingOptions(
         question,
-        { type: "date/single" },
+        createMockParameter({ type: "date/single" }),
         card,
         dashcard,
         parameterDashcard,
@@ -544,7 +563,9 @@ describe("parameters/utils/mapping-options", () => {
     });
 
     it("should return normal options when inline parameter on question card maps to its own card", () => {
-      const card = structured({ "source-table": ORDERS_ID });
+      const card = structured({
+        stages: [{ source: { type: "table", id: ORDERS_ID } }],
+      });
       const question = new Question(card, metadata);
       const dashcard = createMockDashboardCard({
         id: 1,
@@ -559,7 +580,7 @@ describe("parameters/utils/mapping-options", () => {
 
       const options = getParameterMappingOptions(
         question,
-        { type: "date/single" },
+        createMockParameter({ type: "date/single" }),
         card,
         dashcard,
         parameterDashcard,
@@ -569,10 +590,16 @@ describe("parameters/utils/mapping-options", () => {
     });
 
     it("should return options when inline parameter on question card has existing connection to different card", () => {
-      const card = { ...structured({ "source-table": ORDERS_ID }), id: 123 };
+      const card = structured({
+        stages: [{ source: { type: "table", id: ORDERS_ID } }],
+      });
+      card.id = 123;
       const question = new Question(card, metadata);
       const parameterId = "param123";
-      const parameter = { id: parameterId, type: "date/single" };
+      const parameter = createMockParameter({
+        id: parameterId,
+        type: "date/single",
+      });
       const dashcard = createMockDashboardCard({
         id: 1,
         dashboard_tab_id: 1,
@@ -609,8 +636,8 @@ describe("parameters/utils/mapping-options", () => {
     const database = createSampleDatabase();
     const ordersTable = createOrdersTable({
       fields: [
-        ...createOrdersTable().fields,
-        {
+        ...(createOrdersTable().fields ?? []),
+        createMockField({
           id: sensitiveFieldId,
           table_id: ORDERS_ID,
           name: "SECRET_FIELD",
@@ -618,23 +645,25 @@ describe("parameters/utils/mapping-options", () => {
           base_type: "type/Text",
           semantic_type: null,
           visibility_type: "sensitive",
-        },
+        }),
       ],
     });
-    database.tables = database.tables.map((t) =>
+    database.tables = database.tables?.map((t) =>
       t.id === ORDERS_ID ? ordersTable : t,
     );
 
     const metadata = createMockMetadata({ databases: [database] }, undefined, {
       includeSensitiveFields: true,
     });
-    const card = structured({ "source-table": ORDERS_ID });
+    const card = structured({
+      stages: [{ source: { type: "table", id: ORDERS_ID } }],
+    });
     const question = new Question(card, metadata);
 
     it("should exclude sensitive fields by default", () => {
       const options = getParameterMappingOptions(
         question,
-        { type: "string/=" },
+        createMockParameter({ type: "string/=" }),
         card,
       );
 
@@ -647,7 +676,7 @@ describe("parameters/utils/mapping-options", () => {
     it("should include sensitive fields when includeSensitiveFields is true", () => {
       const options = getParameterMappingOptions(
         question,
-        { type: "string/=" },
+        createMockParameter({ type: "string/=" }),
         card,
         null,
         null,
@@ -658,7 +687,7 @@ describe("parameters/utils/mapping-options", () => {
         (opt) => opt.name === "Secret Field",
       );
       expect(sensitiveOption).toBeDefined();
-      expect(sensitiveOption.name).toBe("Secret Field");
+      expect(sensitiveOption?.name).toBe("Secret Field");
     });
   });
 });
@@ -666,13 +695,13 @@ describe("parameters/utils/mapping-options", () => {
 describe("getMappingOptionByTarget", () => {
   describe("virtual dashcard", () => {
     it("should find mapping option", () => {
-      const mappingOption = {
+      const mappingOption: ParameterMappingOption = {
         name: "param",
         icon: "string",
         isForeign: false,
         target: ["text-tag", "param"],
       };
-      const target = ["text-tag", "param"];
+      const target: ParameterTarget = ["text-tag", "param"];
 
       expect(getMappingOptionByTarget([mappingOption], target)).toBe(
         mappingOption,
@@ -680,13 +709,13 @@ describe("getMappingOptionByTarget", () => {
     });
 
     it("should return undefined if option is not found", () => {
-      const mappingOption = {
+      const mappingOption: ParameterMappingOption = {
         name: "param",
         icon: "string",
         isForeign: false,
         target: ["text-tag", "param"],
       };
-      const target = ["text-tag", "param2"];
+      const target: ParameterTarget = ["text-tag", "param2"];
 
       expect(getMappingOptionByTarget([mappingOption], target)).toBe(undefined);
     });
@@ -694,13 +723,13 @@ describe("getMappingOptionByTarget", () => {
 
   describe("native dashcard", () => {
     it("should find mapping option", () => {
-      const mappingOption = {
+      const mappingOption: ParameterMappingOption = {
         name: "Source",
         icon: "string",
         isForeign: false,
         target: ["variable", ["template-tag", "source"]],
       };
-      const target = ["variable", ["template-tag", "source"]];
+      const target: ParameterTarget = ["variable", ["template-tag", "source"]];
 
       expect(getMappingOptionByTarget([mappingOption], target)).toBe(
         mappingOption,
@@ -708,40 +737,36 @@ describe("getMappingOptionByTarget", () => {
     });
 
     it("should return undefined if option is not found", () => {
-      const mappingOption = {
+      const mappingOption: ParameterMappingOption = {
         name: "Source",
         icon: "string",
         isForeign: false,
         target: ["variable", ["template-tag", "source"]],
       };
-      const target = ["variable", ["template-tag", "source1"]];
+      const target: ParameterTarget = ["variable", ["template-tag", "source1"]];
 
       expect(getMappingOptionByTarget([mappingOption], target)).toBe(undefined);
     });
   });
 
   describe("structured dashcard", () => {
-    let question;
-
-    beforeEach(() => {
-      const card = createMockCard({
-        dataset_query: createMockStructuredDatasetQuery({
-          query: {
-            "source-table": 2,
-          },
-        }),
-      });
-      const database = createSampleDatabase();
-      const metadata = createMockMetadata({
-        questions: [card],
-        databases: [database],
-      });
-
-      question = new Question(card, metadata);
+    const card = createMockCard({
+      dataset_query: createMockStructuredDatasetQuery({
+        query: {
+          "source-table": 2,
+        },
+      }),
+    });
+    const database = createSampleDatabase();
+    const metadata = createMockMetadata({
+      questions: [card],
+      databases: [database],
     });
 
+    const question = new Question(card, metadata);
+
     it("should find mapping option", () => {
-      const mappingOption = {
+      const mappingOption: ParameterMappingOption = {
         sectionName: "User",
         name: "Name",
         icon: "string",
@@ -758,7 +783,7 @@ describe("getMappingOptionByTarget", () => {
         isForeign: true,
       };
 
-      const target = [
+      const target: ParameterTarget = [
         "dimension",
         [
           "field",
@@ -795,7 +820,7 @@ describe("getMappingOptionByTarget", () => {
         query,
       );
 
-      const mappingOptions = [
+      const mappingOptions: ParameterMappingOption[] = [
         {
           sectionName: "Order",
           name: "Created At",
@@ -818,7 +843,7 @@ describe("getMappingOptionByTarget", () => {
         },
       ];
 
-      const target = [
+      const target: ParameterTarget = [
         "dimension",
         ["field", "CREATED_AT", { "base-type": "type/Text" }],
         { "stage-number": 1 },
@@ -830,7 +855,7 @@ describe("getMappingOptionByTarget", () => {
     });
 
     it("should ignore targets with invalid stage index", () => {
-      const mappingOptions = [
+      const mappingOptions: ParameterMappingOption[] = [
         {
           sectionName: "Order",
           name: "Created At",
@@ -843,7 +868,7 @@ describe("getMappingOptionByTarget", () => {
         },
       ];
 
-      const target = [
+      const target: ParameterTarget = [
         "dimension",
         ["field", "CREATED_AT", { "base-type": "type/Text" }],
         { "stage-number": 1 },
@@ -870,7 +895,7 @@ describe("getMappingOptionByTarget", () => {
 
       const question = new Question(card, metadata);
 
-      const mappingOption = {
+      const mappingOption: ParameterMappingOption = {
         sectionName: "User",
         name: "Name",
         icon: "string",
@@ -887,7 +912,7 @@ describe("getMappingOptionByTarget", () => {
         isForeign: true,
       };
 
-      const target = [
+      const target: ParameterTarget = [
         "dimension",
         [
           "field",
