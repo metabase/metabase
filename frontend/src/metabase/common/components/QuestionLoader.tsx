@@ -1,9 +1,25 @@
-/* eslint-disable react/prop-types */
+import type { ReactNode } from "react";
 
 import { AdHocQuestionLoader } from "metabase/common/components/AdHocQuestionLoader";
 import { SavedQuestionLoader } from "metabase/common/components/SavedQuestionLoader";
 import renderPropToHOC from "metabase/hoc/RenderPropToHOC";
 import { serializeCardForUrl } from "metabase/lib/card";
+import type Question from "metabase-lib/v1/Question";
+import type { CardId, UnsavedCard } from "metabase-types/api";
+
+export type QuestionLoaderChildState = {
+  question: Question | null;
+  loading: boolean;
+  error: unknown;
+};
+
+type QuestionLoaderProps = {
+  questionObject?: UnsavedCard | null;
+  questionId?: CardId | null;
+  questionHash?: string | null;
+  includeSensitiveFields?: boolean;
+  children: (state: QuestionLoaderChildState) => ReactNode;
+};
 
 /*
  * QuestionLoader
@@ -40,7 +56,7 @@ export const QuestionLoader = ({
   questionHash,
   includeSensitiveFields = false,
   children,
-}) =>
+}: QuestionLoaderProps) =>
   questionObject != null ? (
     <AdHocQuestionLoader
       questionHash={serializeCardForUrl(questionObject)}

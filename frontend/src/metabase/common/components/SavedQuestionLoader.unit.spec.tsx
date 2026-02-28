@@ -6,11 +6,13 @@ import {
   setupUnauthorizedSchemaEndpoints,
 } from "__support__/server-mocks";
 import { renderWithProviders, screen } from "__support__/ui";
+import type { QuestionLoaderChildState } from "metabase/common/components/QuestionLoader";
 import Question from "metabase-lib/v1/Question";
+import type { Card, CardId } from "metabase-types/api";
 import {
   createMockCard,
   createMockCardQueryMetadata,
-  createMockColumn,
+  createMockField,
 } from "metabase-types/api/mocks";
 import { createSampleDatabase } from "metabase-types/api/mocks/presets";
 
@@ -18,7 +20,11 @@ import { SavedQuestionLoader } from "./SavedQuestionLoader";
 
 const databaseMock = createSampleDatabase();
 
-const childrenRenderFn = ({ loading, question, error }) => {
+function childrenRenderFn({
+  loading,
+  question,
+  error,
+}: QuestionLoaderChildState) {
   if (error) {
     return <div>error</div>;
   }
@@ -27,16 +33,22 @@ const childrenRenderFn = ({ loading, question, error }) => {
     return <div>loading</div>;
   }
 
-  return <div>{question.displayName()}</div>;
+  return <div>{question?.displayName()}</div>;
+}
+
+type SetupQuestionOptions = {
+  id: CardId;
+  name: string;
+  hasAccess: boolean;
 };
 
-const setupQuestion = ({ id, name, hasAccess }) => {
+function setupQuestion({ id, name, hasAccess }: SetupQuestionOptions): Card {
   const card = createMockCard({
     id,
     name,
-    result_metadata: [createMockColumn()],
+    result_metadata: [createMockField()],
   });
-  const q = new Question(card, null);
+  const q = new Question(card);
 
   if (hasAccess) {
     setupCardEndpoints(q.card());
@@ -51,9 +63,14 @@ const setupQuestion = ({ id, name, hasAccess }) => {
   }
 
   return card;
+}
+
+type SetupOptions = {
+  questionId: CardId;
+  hasAccess: boolean;
 };
 
-const setup = ({ questionId, hasAccess }) => {
+function setup({ questionId, hasAccess }: SetupOptions) {
   if (hasAccess) {
     setupDatabaseEndpoints(databaseMock);
   } else {
@@ -73,7 +90,7 @@ const setup = ({ questionId, hasAccess }) => {
   );
 
   return { rerender, card };
-};
+}
 
 describe("SavedQuestionLoader", () => {
   beforeEach(() => {
