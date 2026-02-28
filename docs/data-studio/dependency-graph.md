@@ -5,6 +5,8 @@ summary: Visualize how your content connects and what depends on what in Metabas
 
 # Dependency graph
 
+{% include plans-blockquote.html feature="Dependency graph" %}
+
 ![Dependency graph](./images/dependency-graph.png)
 
 The dependency graph provides a visual representation of how your Metabase content is connected. You can use it to follow how data flows through your Metabase to better understand the impact of any changes you make.
