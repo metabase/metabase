@@ -2,7 +2,7 @@
 import styled from "@emotion/styled";
 
 import { TabList as BaseTabList } from "metabase/common/components/TabList";
-import { alpha } from "metabase/lib/colors";
+import { alpha } from "metabase/ui/colors";
 
 export const TabList = styled(BaseTabList)`
   width: 100%;

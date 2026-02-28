@@ -6,7 +6,7 @@ import {
   type CellAlign,
   type CellFormatter,
 } from "metabase/data-grid";
-import { color } from "metabase/lib/colors";
+import { color } from "metabase/ui/colors";
 import type { ColumnSettings } from "metabase-types/api";
 
 import S from "./MiniBarCell.module.css";

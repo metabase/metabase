@@ -16,7 +16,6 @@ import {
   ReorderableTagsInput,
   SortablePill,
 } from "metabase/common/components/ReorderableTagsInput/ReorderableTagsInput";
-import type { ColorName } from "metabase/lib/colors/types";
 import { getColumnExample } from "metabase/query_builder/components/expressions/CombineColumns/util";
 import {
   ActionIcon,
@@ -33,6 +32,7 @@ import {
   Switch,
   Text,
 } from "metabase/ui";
+import type { ColorName } from "metabase/ui/colors/types";
 import type { ComputedVisualizationSettings } from "metabase/visualizations/types";
 import type * as Lib from "metabase-lib";
 import type { DatasetColumn, DatasetData, RowValues } from "metabase-types/api";

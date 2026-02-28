@@ -2,8 +2,8 @@ import { t } from "ttag";
 
 import { ExternalLink } from "metabase/common/components/ExternalLink";
 import type { Plan } from "metabase/common/utils/plan";
-import { color } from "metabase/lib/colors";
 import { Box, Button, Flex, Icon, Text } from "metabase/ui";
+import { color } from "metabase/ui/colors";
 import type { CloudMigration } from "metabase-types/api/cloud-migration";
 
 import { LargeIconContainer, MigrationCard } from "./CloudPanel.styled";

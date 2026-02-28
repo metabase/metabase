@@ -1,9 +1,8 @@
 import _ from "underscore";
 
 import type { MetabaseEmbeddingThemeV2 } from "metabase/embedding-sdk/theme";
+import type { ResolvedColorScheme } from "metabase/lib/color-scheme";
 import type { ColorSettings } from "metabase-types/api";
-
-import type { ResolvedColorScheme } from "../color-scheme";
 
 import { deriveAllAccentColors, mapChartColorsToAccents } from "./accents";
 import { PROTECTED_COLORS } from "./constants/protected-colors";

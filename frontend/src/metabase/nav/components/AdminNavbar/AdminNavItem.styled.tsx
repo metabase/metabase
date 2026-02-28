@@ -3,8 +3,8 @@ import styled from "@emotion/styled";
 
 import { Link } from "metabase/common/components/Link";
 import { doNotForwardProps } from "metabase/common/utils/doNotForwardProps";
-import { darken } from "metabase/lib/colors";
 import { breakpointMaxLarge } from "metabase/styled-components/theme";
+import { darken } from "metabase/ui/colors";
 
 interface AdminNavLinkProps {
   to: string;

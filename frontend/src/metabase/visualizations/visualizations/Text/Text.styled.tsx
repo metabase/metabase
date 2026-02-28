@@ -4,11 +4,11 @@ import { css } from "@emotion/react";
 import styled from "@emotion/styled";
 
 import DashboardS from "metabase/css/dashboard.module.css";
-import { alpha } from "metabase/lib/colors";
 import {
   breakpointMaxExtraLarge,
   breakpointMinExtraLarge,
 } from "metabase/styled-components/theme";
+import { alpha } from "metabase/ui/colors";
 
 const DEFAULT_CONTAINER_PADDING_SIZE = "0.75rem";
 const SMALL_CONTAINER_PADDING_SIZE = "0.3rem";

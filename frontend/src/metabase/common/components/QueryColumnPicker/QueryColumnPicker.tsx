@@ -13,7 +13,6 @@ import {
 import { useLocale } from "metabase/common/hooks";
 import { getColumnGroupIcon } from "metabase/common/utils/column-groups";
 import { useTranslateContent } from "metabase/i18n/hooks";
-import type { ColorName } from "metabase/lib/colors/types";
 import { isNotNull } from "metabase/lib/types";
 import { PLUGIN_CONTENT_TRANSLATION } from "metabase/plugins";
 import {
@@ -23,6 +22,7 @@ import {
 } from "metabase/querying/expressions";
 import type { IconName } from "metabase/ui";
 import { DelayGroup, Icon } from "metabase/ui";
+import type { ColorName } from "metabase/ui/colors/types";
 import { color } from "metabase/ui/utils/colors";
 import * as Lib from "metabase-lib";
 

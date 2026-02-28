@@ -1,7 +1,6 @@
 import type { DOMAttributes, MouseEvent } from "react";
 import { t } from "ttag";
 
-import type { ColorName } from "metabase/lib/colors/types";
 import type { SuggestionModel } from "metabase/rich_text_editing/tiptap/extensions/shared/types";
 import {
   Avatar,
@@ -12,6 +11,7 @@ import {
   Text,
   UnstyledButton,
 } from "metabase/ui";
+import type { ColorName } from "metabase/ui/colors/types";
 
 import S from "./MenuItems.module.css";
 

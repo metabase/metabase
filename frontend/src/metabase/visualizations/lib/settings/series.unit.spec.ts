@@ -40,7 +40,7 @@ describe("Series unit settings", () => {
         {
           // columnValuesMapping is needed by the color assignment logic
           // because certain series have a specific color based on their name (count, for instance)
-          // see frontend/src/metabase/lib/colors/groups.ts, getPreferredColor()
+          // see frontend/src/metabase/ui/colors/groups.ts, getPreferredColor()
           columnValuesMapping: {
             COLUMN_1: [
               {

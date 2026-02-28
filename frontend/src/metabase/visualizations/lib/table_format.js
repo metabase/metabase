@@ -3,8 +3,8 @@
 
 import Color from "color";
 
-import { alpha } from "metabase/lib/colors";
-import { getColorScale, getSafeColor } from "metabase/lib/colors/scales";
+import { alpha } from "metabase/ui/colors";
+import { getColorScale, getSafeColor } from "metabase/ui/colors/scales";
 
 const CELL_ALPHA = 0.65;
 const ROW_ALPHA = 0.2;

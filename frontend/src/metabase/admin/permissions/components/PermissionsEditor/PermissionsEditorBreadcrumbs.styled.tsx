@@ -1,7 +1,7 @@
 // eslint-disable-next-line no-restricted-imports
 import styled from "@emotion/styled";
 
-import { lighten } from "metabase/lib/colors";
+import { lighten } from "metabase/ui/colors";
 
 export const BreadcrumbsSeparator = styled.div`
   display: inline-block;

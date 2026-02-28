@@ -1,6 +1,6 @@
 import { Alert, type MantineThemeOverride } from "@mantine/core";
 
-import { color, isColorName } from "metabase/ui/utils/colors";
+import { color, isColorName } from "../../../utils/colors";
 
 import AlertStyles from "./Alert.module.css";
 

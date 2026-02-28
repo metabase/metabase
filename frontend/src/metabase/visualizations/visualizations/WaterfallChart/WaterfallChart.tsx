@@ -1,7 +1,7 @@
 import Color from "color";
 import { t } from "ttag";
 
-import { color, staticVizOverrides } from "metabase/lib/colors";
+import { color, staticVizOverrides } from "metabase/ui/colors";
 import {
   GRAPH_AXIS_SETTINGS,
   GRAPH_DATA_SETTINGS,

@@ -1,7 +1,7 @@
 import {
   getAccentColors,
   getStatusColorRanges,
-} from "metabase/lib/colors/groups";
+} from "metabase/ui/colors/groups";
 import type {
   ColumnRangeFormattingSetting,
   ColumnSingleFormattingSetting,

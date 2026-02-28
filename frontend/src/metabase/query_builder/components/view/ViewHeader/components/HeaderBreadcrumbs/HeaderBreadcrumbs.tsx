@@ -7,8 +7,8 @@ import {
 } from "react";
 
 import { Badge } from "metabase/common/components/Badge";
-import type { ColorName } from "metabase/lib/colors/types";
 import { Box, Flex } from "metabase/ui";
+import type { ColorName } from "metabase/ui/colors/types";
 
 import type { DataSourcePart } from "../QuestionDataSource/utils";
 

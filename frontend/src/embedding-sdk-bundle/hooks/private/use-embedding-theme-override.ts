@@ -11,10 +11,10 @@ import {
   isEmbeddingThemeV2,
 } from "metabase/embedding-sdk/theme";
 import { setGlobalEmbeddingColors } from "metabase/embedding-sdk/theme/embedding-color-palette";
-import { deriveFullMetabaseTheme } from "metabase/lib/colors";
 import { useSelector } from "metabase/lib/redux";
 import { getFont } from "metabase/styled-components/selectors";
 import type { MantineThemeOverride } from "metabase/ui";
+import { deriveFullMetabaseTheme } from "metabase/ui/colors";
 import { getColorShades } from "metabase/ui/utils/colors";
 
 /**
