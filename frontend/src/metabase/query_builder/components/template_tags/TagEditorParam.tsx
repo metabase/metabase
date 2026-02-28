@@ -84,6 +84,7 @@ interface OwnProps {
     config: ParameterValuesConfig,
   ) => void;
   setParameterValue: (tagId: TemplateTagId, value: RowValue) => void;
+  disableParameterSettings?: boolean;
 }
 
 function mapStateToProps(state: State) {
@@ -253,7 +254,7 @@ class TagEditorParamInner extends Component<
     });
   };
 
-  setParameterAttribute(attr: keyof TemplateTag, val: any) {
+  setTemplateTagAttribute(attr: keyof TemplateTag, val: any) {
     // only register an update if the value actually changes
     if (this.props.tag[attr] !== val) {
       this.props.setTemplateTag({
@@ -331,6 +332,7 @@ class TagEditorParamInner extends Component<
       parameter,
       embeddedParameterVisibility,
       setTemplateTagConfig,
+      disableParameterSettings = false,
     } = this.props;
 
     const isDimension = tag.type === "dimension";
@@ -385,16 +387,17 @@ class TagEditorParamInner extends Component<
           />
         )}
 
-        {((!isDimension && !isTable) || widgetOptions.length > 0) && (
-          <FilterWidgetLabelInput
-            tag={tag}
-            onChange={(value) =>
-              this.setParameterAttribute("display-name", value)
-            }
-          />
-        )}
+        {!disableParameterSettings &&
+          ((!isDimension && !isTable) || widgetOptions.length > 0) && (
+            <FilterWidgetLabelInput
+              tag={tag}
+              onChange={(value) =>
+                this.setTemplateTagAttribute("display-name", value)
+              }
+            />
+          )}
 
-        {parameter && isTemporalUnit && (
+        {!disableParameterSettings && parameter && isTemporalUnit && (
           <>
             <ContainerLabel>{t`Time grouping options`}</ContainerLabel>
             <Box mb="xl">
@@ -410,7 +413,7 @@ class TagEditorParamInner extends Component<
                       !newTemporalUnits.includes(tag.default as TemporalUnit)
                     ) {
                       // reset value as it's not on the new list of available options
-                      this.setParameterAttribute("default", null);
+                      this.setTemplateTagAttribute("default", null);
                       this.props.setParameterValue(tag.id, null);
                     }
                   }
@@ -420,26 +423,30 @@ class TagEditorParamInner extends Component<
           </>
         )}
 
-        {parameter && canUseCustomSource(parameter) && (
-          <InputContainer>
-            <ContainerLabel>{t`How should users filter on this variable?`}</ContainerLabel>
-            <ValuesSourceSettings
-              parameter={parameter}
-              onChangeQueryType={this.setQueryType}
-              onChangeSourceSettings={this.setSourceSettings}
-            />
-          </InputContainer>
-        )}
+        {!disableParameterSettings &&
+          parameter &&
+          canUseCustomSource(parameter) && (
+            <InputContainer>
+              <ContainerLabel>{t`How should users filter on this variable?`}</ContainerLabel>
+              <ValuesSourceSettings
+                parameter={parameter}
+                onChangeQueryType={this.setQueryType}
+                onChangeSourceSettings={this.setSourceSettings}
+              />
+            </InputContainer>
+          )}
 
-        {parameter && isSingleOrMultiSelectable(parameter) && (
-          <ParameterMultiSelectInput
-            tag={tag}
-            parameter={parameter}
-            onChangeMultiSelect={(isMultiSelect) =>
-              setTemplateTagConfig(tag, { isMultiSelect })
-            }
-          />
-        )}
+        {!disableParameterSettings &&
+          parameter &&
+          isSingleOrMultiSelectable(parameter) && (
+            <ParameterMultiSelectInput
+              tag={tag}
+              parameter={parameter}
+              onChangeMultiSelect={(isMultiSelect) =>
+                setTemplateTagConfig(tag, { isMultiSelect })
+              }
+            />
+          )}
 
         {parameter && (
           <DefaultRequiredValueControl
@@ -447,7 +454,7 @@ class TagEditorParamInner extends Component<
             parameter={parameter}
             isEmbeddedDisabled={embeddedParameterVisibility === "disabled"}
             onChangeDefaultValue={(value) => {
-              this.setParameterAttribute("default", value);
+              this.setTemplateTagAttribute("default", value);
               this.props.setParameterValue(tag.id, value);
             }}
             onChangeRequired={this.setRequired}

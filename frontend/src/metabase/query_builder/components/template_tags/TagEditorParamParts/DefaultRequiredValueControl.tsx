@@ -43,19 +43,17 @@ export function DefaultRequiredValueControl({
       </ContainerLabel>
 
       <Flex gap="xs" direction="column">
-        {parameter && (
-          <div aria-labelledby={`default-value-label-${tag.id}`}>
-            <DefaultParameterValueWidget
-              parameter={parameterWithoutDefault}
-              value={tag.default}
-              setValue={onChangeDefaultValue}
-              isEditing
-              commitImmediately
-              mimicMantine
-              placeholder={placeholder}
-            />
-          </div>
-        )}
+        <div aria-labelledby={`default-value-label-${tag.id}`}>
+          <DefaultParameterValueWidget
+            parameter={parameterWithoutDefault}
+            value={tag.default}
+            setValue={onChangeDefaultValue}
+            isEditing
+            commitImmediately
+            mimicMantine
+            placeholder={placeholder}
+          />
+        </div>
 
         <RequiredParamToggle
           uniqueId={tag.id}
