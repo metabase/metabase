@@ -6,6 +6,7 @@ import { ExplicitSize } from "metabase/common/components/ExplicitSize";
 import CS from "metabase/css/core/index.css";
 import { measureTextWidth } from "metabase/lib/measure-text";
 import { extractRemappedColumns } from "metabase/visualizations";
+import { ChartSettingsError } from "metabase/visualizations/lib/errors";
 import {
   getCartesianChartColumns,
   hasValidColumnsSelected,
@@ -75,6 +76,8 @@ import {
 } from "./utils/settings";
 import { ROW_CHART_SETTINGS } from "./utils/settings-definitions";
 import { getChartWarnings } from "./utils/warnings";
+
+const MAX_ROW_CHART_ROWS = 2000;
 
 interface RowChartRendererProps extends RowChartProps<GroupedDatum> {
   className?: string;
@@ -426,6 +429,30 @@ RowChartVisualization.checkRenderable = (
   validateBreakoutSeriesCount(series, settings);
   validateChartDataSettings(settings);
   validateStacking(settings);
+
+  const [{ data }] = series;
+  if (!data || data.rows.length === 0) {
+    return;
+  }
+
+  if (!hasValidColumnsSelected(settings, data)) {
+    return;
+  }
+
+  const chartColumns = getCartesianChartColumns(data.cols, settings);
+  const { dimension } = chartColumns;
+
+  // Count unique dimension values to prevent browser from hanging
+  // when there are too many rows to render
+  const uniqueDimensionValues = new Set(
+    data.rows.map((row: any) => row[dimension.index]),
+  );
+
+  if (uniqueDimensionValues.size > MAX_ROW_CHART_ROWS) {
+    throw new ChartSettingsError(
+      t`Row chart can't display more than ${MAX_ROW_CHART_ROWS} rows. This chart has ${uniqueDimensionValues.size} rows. Try filtering your data or grouping by a different field.`,
+    );
+  }
 };
 
 RowChartVisualization.hasEmptyState = true;
