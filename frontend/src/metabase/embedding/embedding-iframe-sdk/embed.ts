@@ -1,4 +1,5 @@
 import { MetabaseError, SSO_NOT_ALLOWED } from "embedding-sdk-bundle/errors";
+import { applyThemePreset } from "embedding-sdk-shared/lib/apply-theme-preset";
 import { PLUGIN_EMBED_JS_EE } from "metabase/embedding/embedding-iframe-sdk/plugin";
 import type {
   EmbedAuthManager,
@@ -30,6 +31,9 @@ const EMBEDDING_ROUTE = "embed/sdk/v1";
 
 /** list of active embeds, used to know which embeds to update when the global config changes */
 const _activeEmbeds: Set<MetabaseEmbedElement> = new Set();
+
+/** list of config change callbacks (used by app-wrapper) */
+const _configChangeCallbacks: Set<() => void> = new Set();
 
 /** counter used as a parameter in the iframe src to force parallel loading */
 let _iframeCounter = 0;
@@ -89,6 +93,11 @@ export const updateAllEmbeds = (
 
   _activeEmbeds.forEach((embedElement) => {
     embedElement._updateSettings(config);
+  });
+
+  // Notify config change callbacks (used by app-wrapper)
+  _configChangeCallbacks.forEach((callback) => {
+    callback();
   });
 };
 
@@ -566,6 +575,134 @@ const MetabaseMetabotElement = createCustomElement("metabase-metabot", [
   "target-collection",
 ]);
 
+/** User info received from the SDK */
+type UserInfo = {
+  id: number;
+  email: string;
+  commonName: string;
+};
+
+/** List of user info change callbacks (used by app-wrapper) */
+const _userInfoCallbacks: Set<(userInfo: UserInfo | null) => void> = new Set();
+let _currentUserInfo: UserInfo | null = null;
+
+// Listen for user info messages from iframe
+if (typeof window !== "undefined") {
+  window.addEventListener("message", (event) => {
+    if (event.data?.type === "metabase.embed.userInfo") {
+      _currentUserInfo = event.data.data;
+      _userInfoCallbacks.forEach((callback) => {
+        callback(_currentUserInfo);
+      });
+    }
+  });
+}
+
+/**
+ * AppWrapper component that applies theme CSS variables to nested content.
+ * This allows regular HTML elements (like headers) to use theme colors.
+ */
+class AppWrapperElement extends HTMLElement {
+  private _styleElement: HTMLStyleElement | null = null;
+  private _boundApplyTheme: () => void;
+  private _boundUpdateUser: (userInfo: UserInfo | null) => void;
+
+  constructor() {
+    super();
+    this._boundApplyTheme = this._applyTheme.bind(this);
+    this._boundUpdateUser = this._updateUser.bind(this);
+  }
+
+  connectedCallback() {
+    this.style.display = "block";
+    this.style.height = "100%";
+    this.style.width = "100%";
+
+    // Register for config change notifications
+    _configChangeCallbacks.add(this._boundApplyTheme);
+    this._applyTheme();
+
+    // Register for user info notifications
+    _userInfoCallbacks.add(this._boundUpdateUser);
+    // Apply current user info if already available
+    if (_currentUserInfo) {
+      this._updateUser(_currentUserInfo);
+    }
+  }
+
+  disconnectedCallback() {
+    _configChangeCallbacks.delete(this._boundApplyTheme);
+    _userInfoCallbacks.delete(this._boundUpdateUser);
+    if (this._styleElement) {
+      this._styleElement.remove();
+      this._styleElement = null;
+    }
+  }
+
+  private _updateUser(userInfo: UserInfo | null) {
+    const userElement = this.querySelector(".app-user");
+    if (userElement && userInfo) {
+      userElement.textContent = userInfo.commonName;
+    }
+  }
+
+  private _applyTheme() {
+    const config = (window as any).metabaseConfig || {};
+    const theme = config.theme;
+
+    if (!theme) {
+      return;
+    }
+
+    // Apply theme preset to resolve colors (preset colors + user colors)
+    const resolvedTheme = applyThemePreset(theme);
+    const colors: Record<string, string> =
+      (resolvedTheme?.colors as Record<string, string>) || {};
+
+    const cssVars: string[] = [];
+
+    // Extract colors from theme and create CSS variables
+    for (const [key, value] of Object.entries(colors)) {
+      if (typeof value === "string") {
+        cssVars.push(`--mb-color-${key}: ${value};`);
+      }
+    }
+
+    // Apply font family if specified
+    if (theme.fontFamily) {
+      cssVars.push(`--mb-font-family: ${theme.fontFamily};`);
+      this.style.fontFamily = theme.fontFamily;
+    }
+
+    // Create or update style element with CSS variables
+    if (cssVars.length > 0) {
+      if (!this._styleElement) {
+        this._styleElement = document.createElement("style");
+        this.prepend(this._styleElement);
+      }
+      this._styleElement.textContent = `
+        app-wrapper {
+          ${cssVars.join("\n          ")}
+        }
+      `;
+    }
+
+    // Apply background color directly to the element
+    if (colors.background) {
+      this.style.backgroundColor = colors.background;
+    }
+
+    // Apply text color directly to the element
+    if (colors["text-primary"]) {
+      this.style.color = colors["text-primary"];
+    }
+  }
+}
+
+if (typeof window !== "undefined" && !customElements.get("app-wrapper")) {
+  customElements.define("app-wrapper", AppWrapperElement);
+}
+
 // Expose the old API that's still used in the tests, we'll probably remove this api unless customers prefer it
 if (typeof window !== "undefined") {
   (window as any)["metabase.embed"] = {
@@ -578,4 +715,5 @@ export {
   MetabaseQuestionElement,
   MetabaseManageContentElement,
   MetabaseMetabotElement,
+  AppWrapperElement,
 };

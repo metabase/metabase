@@ -11,6 +11,7 @@
    [metabase.query-processor.schema :as qp.schema]
    [metabase.server.auth-wrapper :as auth-wrapper]
    [metabase.server.middleware.embedding-sdk-bundle :as mw.embedding-sdk-bundle]
+   [metabase.server.routes.apps :as apps]
    [metabase.server.routes.index :as index]
    [metabase.system.core :as system]
    [metabase.util :as u]
@@ -115,6 +116,8 @@
    (context "/public" [] public-routes)
    ;; ^/emebed/ -> Embed frontend and download routes
    (context "/embed" [] embed-routes)
+   ;; ^/apps/:name -> Custom app pages with embedded dashboards
+   (GET "/apps/:name" [] apps/app-handler)
    ;; Anything else (e.g. /user/edit_current) should serve up index.html; React app will handle the rest
    (GET "*" [] index/index)))
 
