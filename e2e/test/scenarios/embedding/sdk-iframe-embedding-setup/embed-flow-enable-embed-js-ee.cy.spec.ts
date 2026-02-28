@@ -18,6 +18,8 @@ const DATA_BY_EMBEDDING_TYPE = {
       "To continue, enable guest embeds and agree to the usage conditions.",
     embeddingSettingName: "enable-embedding-static",
     showTermsSettingName: "show-static-embed-terms",
+    tooltipText:
+      /You should, however, read the license text linked above as that is the actual license that you will be agreeing to by enabling this feature/,
   },
   modular: {
     path: "/admin/embedding",
@@ -28,6 +30,7 @@ const DATA_BY_EMBEDDING_TYPE = {
       "To continue, enable modular embedding and agree to the usage conditions.",
     embeddingSettingName: "enable-embedding-simple",
     showTermsSettingName: "show-simple-embed-terms",
+    tooltipText: /Sharing Metabase accounts is a security risk/,
   },
 } as const;
 
@@ -49,6 +52,7 @@ describe("scenarios > embedding > sdk iframe embed setup > enable embed js (EE)"
         showTermsSettingName,
         cardTestId,
         cardText,
+        tooltipText,
       } = value;
 
       beforeEach(() => {
@@ -71,20 +75,14 @@ describe("scenarios > embedding > sdk iframe embed setup > enable embed js (EE)"
 
         cy.findByLabelText(authMethodLabel).click();
 
-        embedModalEnableEmbeddingCard().within(() => {
-          cy.findByText(cardText).should("exist");
-        });
+        embedModalEnableEmbeddingCard().should("contain.text", cardText);
 
         cy.log("shows tooltip with fair usage info");
         embedModalEnableEmbeddingCard()
           .findByLabelText("info icon")
           .trigger("mouseover");
 
-        H.hovercard()
-          .contains(
-            /You should, however, read the license text linked above as that is the actual license that you will be agreeing to by enabling this feature/,
-          )
-          .should("be.visible");
+        H.hovercard().contains(tooltipText).should("be.visible");
 
         embedModalEnableEmbeddingCard()
           .findByLabelText("info icon")
@@ -139,22 +137,18 @@ describe("scenarios > embedding > sdk iframe embed setup > enable embed js (EE)"
 
         cy.findByLabelText(authMethodLabel).click();
 
-        embedModalEnableEmbeddingCard().within(() => {
-          cy.findByText("Agree to the usage conditions to continue.").should(
-            "exist",
-          );
+        embedModalEnableEmbeddingCard()
+          .should("contain.text", "Agree to the")
+          .should("contain.text", "to continue.");
 
+        embedModalEnableEmbeddingCard().within(() => {
           cy.findByText(cardText).should("not.exist");
         });
 
         cy.log("shows tooltip with fair usage info");
         getEmbedSidebar().findByLabelText("info icon").trigger("mouseover");
 
-        H.hovercard()
-          .contains(
-            /You should, however, read the license text linked above as that is the actual license that you will be agreeing to by enabling this feature/,
-          )
-          .should("be.visible");
+        H.hovercard().contains(tooltipText).should("be.visible");
       });
 
       it("hides the enable card when embedding is already enabled", () => {
