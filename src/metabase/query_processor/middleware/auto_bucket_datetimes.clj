@@ -117,10 +117,10 @@
 
     ;; *  do not autobucket clauses that are updating the time interval
     (lib.util.match/match-lite x
-      [(_tag :guard #{:+ :-})
+      [#{:+ :-}
        _
        [#{:expression :field} _ _]
-       [:interval _ _n (unit :guard #{:minute :hour :second})]]
+       [:interval _ _n #{:minute :hour :second}]]
       true)
     :do-not-bucket-reason/bucket-between-relative-starting-from
 

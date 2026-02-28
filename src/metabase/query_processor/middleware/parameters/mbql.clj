@@ -116,7 +116,7 @@
    new-unit      :- ::lib.schema.temporal-bucketing/unit]
   (lib.util.match/replace-lite stage
     [#{:field :expression}
-     (opts :guard (= (:temporal-unit opts) temporal-unit))
+     {:temporal-unit (tu :guard (= tu temporal-unit))}
      (id-or-name :guard (= id-or-name target-column))]
     (lib/with-temporal-bucket &match new-unit)))
 
