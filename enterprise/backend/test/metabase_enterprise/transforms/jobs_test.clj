@@ -303,7 +303,7 @@
                                  ;; depends on faulty transform
                                  :model/Transform t2 {:name "transform2"
                                                       :source {:type :query
-                                                               :query (lib/native-query mp (str/replace sql "transforms_products" (:name target1)))}
+                                                               :query (lib/native-query mp (str/replace sql (:name table) (:name target1)))}
                                                       :creator_id (mt/user->id :crowberto)
                                                       :target target2}
                                  :model/TransformTransformTag _tag2 {:transform_id (:id t2)
