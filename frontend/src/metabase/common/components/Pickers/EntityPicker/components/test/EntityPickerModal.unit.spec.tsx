@@ -432,6 +432,14 @@ describe("EntityPickerModal", () => {
       await expectActiveItem('Search results for "My"');
     });
 
+    it("should prefill the search input when searchQuery is provided", async () => {
+      await setup({ searchQuery: "My prefilled query" });
+
+      expect(await screen.findByPlaceholderText("Search…")).toHaveValue(
+        "My prefilled query",
+      );
+    });
+
     it("should return to previous location when clearing the search input", async () => {
       await setup();
       await userEvent.click(await screen.findByText("Our analytics"));

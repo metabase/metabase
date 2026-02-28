@@ -238,6 +238,10 @@ function ModernDataPicker({
         }}
         shouldHide={shouldHide}
         shouldShowLibrary={shouldShowLibrary}
+        menuDropdownProps={{
+          mt: "xl",
+          ml: "-1rem",
+        }}
       />
       {isOpened && isBrowsing && (
         <DataPickerModal

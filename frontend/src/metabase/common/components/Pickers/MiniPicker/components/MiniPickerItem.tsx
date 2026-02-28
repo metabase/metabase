@@ -2,6 +2,7 @@ import { Ellipsified } from "metabase/common/components/Ellipsified";
 import { getIcon } from "metabase/lib/icon";
 import { Box, Icon, Menu, type MenuItemProps } from "metabase/ui";
 
+import { useMiniPickerContext } from "../context";
 import type {
   MiniPickerCollectionItem,
   MiniPickerItem as MiniPickerItemType,
@@ -21,6 +22,7 @@ export const MiniPickerItem = ({
   onClick?: () => void;
   isFolder?: boolean;
 } & MenuItemProps) => {
+  const { isCompact } = useMiniPickerContext();
   return (
     <Box px="sm" py="2px">
       <Menu.Item
@@ -31,7 +33,19 @@ export const MiniPickerItem = ({
         onClick={onClick}
         {...menuItemProps}
       >
-        <Ellipsified maw={isFolder ? "13rem" : "16rem"}>{name}</Ellipsified>
+        <Ellipsified
+          maw={
+            isFolder
+              ? isCompact
+                ? "9rem"
+                : "13rem"
+              : isCompact
+                ? "12rem"
+                : "16rem"
+          }
+        >
+          {name}
+        </Ellipsified>
       </Menu.Item>
     </Box>
   );

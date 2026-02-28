@@ -7,12 +7,16 @@ import { MiniPickerHeader } from "./MiniPickerHeader";
 import { MiniPickerItemList } from "./MiniPickerItemList";
 
 export function MiniPickerPane() {
-  const { path, searchQuery } = useMiniPickerContext();
+  const { path, searchQuery, isCompact } = useMiniPickerContext();
 
   const isRoot = path.length === 0;
 
   return (
-    <Stack mah="30rem" w={searchQuery ? "40rem" : "20rem"} gap={0}>
+    <Stack
+      mah="30rem"
+      w={isCompact ? "29.125rem" : searchQuery ? "40rem" : "20rem"}
+      gap={0}
+    >
       {!isRoot && !searchQuery && <MiniPickerHeader />}
       <MiniPickerItemList />
       {(isRoot || searchQuery) && <MiniPickerFooter />}
