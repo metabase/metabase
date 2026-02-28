@@ -1,10 +1,7 @@
 import { useCallback, useMemo, useState } from "react";
 import { t } from "ttag";
 
-import {
-  useGetAdminSettingsDetailsQuery,
-  useGetSettingsQuery,
-} from "metabase/api";
+import { useGetSettingsQuery } from "metabase/api";
 import { useSetting } from "metabase/common/hooks";
 import { useSelector } from "metabase/lib/redux";
 import { useMetadataToasts } from "metabase/metadata/hooks";
@@ -15,13 +12,9 @@ import {
 } from "metabase-enterprise/api";
 import { useGetLibraryCollection } from "metabase-enterprise/data-studio/library/utils";
 import {
-  BRANCH_KEY,
   COLLECTIONS_KEY,
   REMOTE_SYNC_KEY,
-  TOKEN_KEY,
   TRANSFORMS_KEY,
-  TYPE_KEY,
-  URL_KEY,
 } from "metabase-enterprise/remote_sync/constants";
 import { getIsRemoteSyncReadOnly } from "metabase-enterprise/remote_sync/selectors";
 import type {
@@ -60,7 +53,6 @@ export const SyncConflictModal = (props: UnsyncedWarningModalProps) => {
   const isRemoteSyncEnabled = !!useSetting(REMOTE_SYNC_KEY);
   const isRemoteSyncReadOnly = useSelector(getIsRemoteSyncReadOnly);
   const { data: settingValues } = useGetSettingsQuery();
-  const { data: settingDetails } = useGetAdminSettingsDetailsQuery();
   const { data: libraryCollection } = useGetLibraryCollection({
     skip: !isRemoteSyncEnabled,
   });
@@ -80,14 +72,9 @@ export const SyncConflictModal = (props: UnsyncedWarningModalProps) => {
   const markLibraryAndTransformsAsSynced = useCallback(async () => {
     try {
       const remoteSyncSettings: RemoteSyncConfigurationSettings = {
-        [URL_KEY]: settingDetails?.[URL_KEY]?.value || null,
-        [TOKEN_KEY]: settingDetails?.[TOKEN_KEY]?.value || null,
-        [BRANCH_KEY]: settingValues?.[BRANCH_KEY] || null,
-        [TYPE_KEY]: settingValues?.[TYPE_KEY] || null,
         [COLLECTIONS_KEY]: (settingValues as RemoteSyncConfigurationSettings)[
           COLLECTIONS_KEY
         ],
-        [REMOTE_SYNC_KEY]: true,
         [TRANSFORMS_KEY]: true,
       };
 
@@ -106,7 +93,6 @@ export const SyncConflictModal = (props: UnsyncedWarningModalProps) => {
   }, [
     libraryCollection?.id,
     sendErrorToast,
-    settingDetails,
     settingValues,
     updateRemoteSyncSettings,
   ]);
