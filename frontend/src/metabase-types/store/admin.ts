@@ -28,6 +28,9 @@ export type AdminPath = {
 
 export interface AdminState {
   app: AdminAppState;
+  people: {
+    temporaryPasswords: Record<number, string>;
+  };
   permissions: {
     dataPermissions: GroupsPermissions;
     originalDataPermissions: GroupsPermissions;
