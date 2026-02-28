@@ -70,6 +70,16 @@
        (or (boolean? (second clause))
            (boolean-typed-clause? clause))))
 
+(def ^:private comparison-operators
+  "Set of MBQL operators that return boolean values (comparisons)."
+  #{:> :>= :< :<= := :!= :between :starts-with :ends-with :contains :does-not-contain :is-null :not-null :is-empty :not-empty :inside})
+
+(defn- comparison-clause?
+  "Is `clause` a comparison operator that returns a boolean value?"
+  [clause]
+  (and (sequential? clause)
+       (contains? comparison-operators (first clause))))
+
 (defn boolean-expression-clause?
   "Is `clause` an :expression clause with :type/Boolean or a literal boolean :value?
 
@@ -78,6 +88,17 @@
   [clause]
   (and (driver-api/is-clause? :expression clause)
        (boolean-value-clause? (driver-api/expression-with-name sql.qp/*inner-query* (second clause)))))
+
+(defn comparison-expression-clause?
+  "Is `clause` an :expression clause containing a comparison operator (like :>, :<, :=, etc.)?
+
+  This is used to determine if an expression needs to be wrapped in a CASE statement for databases
+  like SQL Server that cannot return boolean comparison results directly in SELECT clauses.
+
+  This function expects to be called in a context where sql.qp/*inner-query* is bound."
+  [clause]
+  (and (driver-api/is-clause? :expression clause)
+       (comparison-clause? (driver-api/expression-with-name sql.qp/*inner-query* (second clause)))))
 
 (defn boolean->comparison
   "Convert boolean field refs or expression literals to equivalent boolean comparison expressions.
