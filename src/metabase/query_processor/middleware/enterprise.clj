@@ -57,6 +57,12 @@
   [query]
   query)
 
+(defenterprise apply-workspace-remapping
+  "Pre-processing middleware to rewrite 'global' table references with 'isolated' tables in the workspace schema."
+  metabase-enterprise.workspaces.query-processor.middleware
+  [query]
+  query)
+
 ;;;; Execution middleware
 
 ;;; (f qp) => qp
