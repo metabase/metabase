@@ -10,3 +10,20 @@
 .InlineParametersMenuTrigger * {
   pointer-events: all;
 }
+
+.FloatingMenuContainer {
+  position: absolute;
+  top: 0.5rem;
+  right: 0.5rem;
+  z-index: 3;
+  background: var(--mb-color-background-secondary);
+  border-radius: 4px;
+  padding: 0.25rem;
+  transition:
+    opacity 200ms,
+    background-color 200ms;
+
+  &:hover {
+    background: var(--mb-color-background-hover);
+  }
+}

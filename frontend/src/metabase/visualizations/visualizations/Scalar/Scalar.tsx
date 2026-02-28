@@ -34,6 +34,7 @@ import { ScalarValueContainer } from "./ScalarValueContainer";
 import { scalarToBarTransform } from "./scalars-bar-transform";
 
 const PADDING = 32;
+const COMPACT_HEIGHT_THRESHOLD = 100;
 
 // convert legacy `scalar.*` visualization settings to format options
 function legacyScalarSettingsToFormatOptions(
@@ -235,6 +236,8 @@ export class Scalar extends Component<
       }
     };
 
+    const isCompact = height < COMPACT_HEIGHT_THRESHOLD;
+
     return (
       <ScalarWrapper>
         <ScalarValueContainer
@@ -262,6 +265,7 @@ export class Scalar extends Component<
                 totalNumGridCols={totalNumGridCols}
                 value={displayValue as string}
                 width={Math.max(width - PADDING, 0)}
+                isCompact={isCompact}
               />
             </Box>
           </Tooltip>

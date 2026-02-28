@@ -513,9 +513,30 @@ export function DashCardVisualization({
     });
 
   const actionButtons = useMemo(() => {
+    if (inlineParameters.length === 0) {
+      return null;
+    }
+
+    return (
+      <Group>
+        <CollapsibleDashboardParameterList
+          className={S.InlineParametersList}
+          triggerClassName={S.InlineParametersMenuTrigger}
+          parameters={inlineParameters}
+          isCollapsed={shouldCollapseList}
+          isSortable={false}
+          widgetsPopoverPosition="bottom-end"
+          ref={parameterListRef}
+        />
+      </Group>
+    );
+  }, [inlineParameters, shouldCollapseList, parameterListRef]);
+
+  const floatingMenu = useMemo(() => {
     const result = series[0] as unknown as Dataset;
 
     if (
+      isEditing ||
       !question ||
       !DashCardMenu.shouldRender({
         question,
@@ -528,35 +549,28 @@ export function DashCardVisualization({
     }
 
     return (
-      <Group>
-        {inlineParameters.length > 0 && (
-          <CollapsibleDashboardParameterList
-            className={S.InlineParametersList}
-            triggerClassName={S.InlineParametersMenuTrigger}
-            parameters={inlineParameters}
-            isCollapsed={shouldCollapseList}
-            isSortable={false}
-            widgetsPopoverPosition="bottom-end"
-            ref={parameterListRef}
-          />
+      <Box
+        className={cx(
+          S.FloatingMenuContainer,
+          CS.hoverChild,
+          CS.hoverChildSmooth,
         )}
-        {!isEditing && (
-          <DashCardMenu
-            question={question}
-            result={result}
-            dashcard={dashcard}
-            canEdit={!isVisualizerDashboardCard(dashcard)}
-            onEditVisualization={
-              isVisualizerDashboardCard(dashcard)
-                ? onEditVisualization
-                : undefined
-            }
-            openUnderlyingQuestionItems={
-              onChangeCardAndRun && (cardTitle ? undefined : titleMenuItems)
-            }
-          />
-        )}
-      </Group>
+      >
+        <DashCardMenu
+          question={question}
+          result={result}
+          dashcard={dashcard}
+          canEdit={!isVisualizerDashboardCard(dashcard)}
+          onEditVisualization={
+            isVisualizerDashboardCard(dashcard)
+              ? onEditVisualization
+              : undefined
+          }
+          openUnderlyingQuestionItems={
+            onChangeCardAndRun && (cardTitle ? undefined : titleMenuItems)
+          }
+        />
+      </Box>
     );
   }, [
     cardTitle,
@@ -564,14 +578,11 @@ export function DashCardVisualization({
     dashcard,
     dashcardMenu,
     isEditing,
-    inlineParameters,
     onChangeCardAndRun,
     onEditVisualization,
     question,
     series,
     titleMenuItems,
-    shouldCollapseList,
-    parameterListRef,
   ]);
 
   const { getExtraDataForClick } = useClickBehaviorData({
@@ -584,11 +595,12 @@ export function DashCardVisualization({
 
   return (
     <div
-      className={cx(CS.flexFull, CS.fullHeight, {
+      className={cx(CS.flexFull, CS.fullHeight, CS.relative, {
         [CS.pointerEventsNone]: isEditingDashboardLayout,
       })}
       ref={containerRef}
     >
+      {floatingMenu}
       <EmbeddingEntityContextProvider uuid={uuid ?? null} token={token ?? null}>
         <Visualization
           className={cx(CS.flexFull, {
