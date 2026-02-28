@@ -32,11 +32,6 @@
   (when (pos-int? id-or-name)
     id-or-name))
 
-(mu/defn with-field-ref-id :- :mbql.clause/field
-  [[tag opts id-or-name, :as _field-ref] :- :mbql.clause/field
-   field-id :- ::lib.schema.id/field]
-  [tag opts field-id])
-
 (mu/defn field-ref-name :- [:maybe :string]
   "If a `:field` ref uses a Field name, return that name."
   [[_tag _opts id-or-name, :as _field-ref] :- :mbql.clause/field]

@@ -116,8 +116,8 @@
                             (lib.util/field-clause? clause)
                             f))))
 
-(mu/defn- preserve-field-ref-options :- :mbql.clause/field
-  "Copy options from `old-field-ref` that should be preserved to `new-field-ref`."
+(mu/defn- preserve-expression-name :- :mbql.clause/field
+  "Copy the expression name from `old-field-ref` to `new-field-ref`."
   [old-field-ref :- :mbql.clause/field
    new-field-ref :- :mbql.clause/field]
   (let [expression-name (lib.util/expression-name old-field-ref)]
@@ -132,7 +132,7 @@
    field-ref     :- :mbql.clause/field]
   (or (when-let [column (lib.field.resolution/resolve-field-ref query stage-number field-ref)]
         (when-not (::lib.field.resolution/fallback-metadata? column)
-          (let [new-field-ref (preserve-field-ref-options field-ref (lib.ref/ref column))]
+          (let [new-field-ref (preserve-expression-name field-ref (lib.ref/ref column))]
             (when-not (same-field-ref? field-ref new-field-ref)
               new-field-ref))))
       field-ref))
@@ -236,55 +236,55 @@
   (update query :stages (fn [stages] (perf/mapv #(swap-source-table-or-card-in-stage % old-source new-source) stages))))
 
 (mr/def ::swap-source.field-id-mapping
-  [:map [:id->id-or-name [:map-of ::lib.schema.id/field [:or ::lib.schema.id/field :string]]]
+  [:map [:id->name [:map-of ::lib.schema.id/field :string]]
    [:source-field->source-field [:map-of ::lib.schema.id/field ::lib.schema.id/field]]])
 
 (mu/defn- build-field-id-mapping :- ::swap-source.field-id-mapping
   [query                                      :- ::lib.schema/query
    {old-source-id :id, old-source-type :type} :- ::swap-source.source
    {new-source-id :id, new-source-type :type} :- ::swap-source.source]
-  (letfn [(source-columns [source-type source-id]
+  (letfn [(source->columns [source-type source-id]
             (case source-type
               :table (lib.metadata/fields query source-id)
               :card  (lib.card/saved-question-metadata query source-id)))
-          (column-mapping [old-columns new-column-by-key old-key-fn new-key-fn]
+          (id->name [columns]
+            (into {}
+                  (keep (fn [column]
+                          (when (and (:id column) (:name column))
+                            [(:id column) (:name column)])))
+                  columns))
+          (source-field->source-field [old-columns new-column-by-key]
             (into {}
                   (keep (fn [old-column]
-                          (let [new-column (get new-column-by-key (column-match-key old-column))
-                                old-key (some-> old-column old-key-fn)
-                                new-key (some-> new-column new-key-fn)]
-                            (when (and old-key new-key)
-                              [old-key new-key]))))
+                          (when-let [new-column (get new-column-by-key (column-match-key old-column))]
+                            (when (and (:id old-column) (:id new-column))
+                              [(:id old-column) (:id new-column)]))))
                   old-columns))]
-    (let [old-columns (source-columns old-source-type old-source-id)
-          new-columns (source-columns new-source-type new-source-id)
+    (let [old-columns (source->columns old-source-type old-source-id)
+          new-columns (source->columns new-source-type new-source-id)
           new-column-by-key (m/index-by column-match-key new-columns)]
-      {:id->id-or-name (if (= :table old-source-type)
-                         (column-mapping old-columns new-column-by-key :id column-match-key)
-                         {})
-       :source-field->source-field (column-mapping old-columns new-column-by-key :id :id)})))
+      {:id->name (if (= :table old-source-type)
+                   (id->name old-columns)
+                   {})
+       :source-field->source-field (source-field->source-field old-columns new-column-by-key)})))
 
 (mu/defn- swap-field-ref :- :mbql.clause/field
   [query            :- ::lib.schema/query
    stage-number     :- :int
-   {:keys [id->id-or-name source-field->source-field]} :- ::swap-source.field-id-mapping
+   {:keys [id->name source-field->source-field]} :- ::swap-source.field-id-mapping
    field-ref        :- :mbql.clause/field]
   (let [old-id            (lib.ref/field-ref-id field-ref)
-        new-id-or-name    (get id->id-or-name old-id)
+        new-name          (get id->name old-id)
         old-source-field  (-> field-ref lib.options/options :source-field)
         new-source-field  (get source-field->source-field old-source-field)
         swapped-field-ref (cond-> field-ref
-                            (pos-int? new-id-or-name)
-                            (lib.ref/with-field-ref-id new-id-or-name)
-
-                            (string? new-id-or-name)
-                            (lib.ref/with-field-ref-name new-id-or-name)
-
+                            new-name
+                            (lib.ref/with-field-ref-name new-name)
                             new-source-field
                             (lib.options/update-options assoc :source-field new-source-field))]
     (or (when-let [new-column (lib.field.resolution/resolve-field-ref query stage-number swapped-field-ref)]
           (when-not (::lib.field.resolution/fallback-metadata? new-column)
-            (let [new-field-ref (preserve-field-ref-options field-ref (lib.ref/ref new-column))]
+            (let [new-field-ref (preserve-expression-name field-ref (lib.ref/ref new-column))]
               (when-not (same-field-ref? field-ref new-field-ref)
                 new-field-ref))))
         field-ref)))
