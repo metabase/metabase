@@ -47,7 +47,12 @@ export function QuestionSummarizeWidget({
       leftSection={<Icon name="sum" />}
       onClick={handleClick}
       data-active={isShowingSummarySidebar}
-      className={cx(className, ViewTitleHeaderS.SummarizeButton)}
+      className={cx(ViewTitleHeaderS.SummarizeButton, className)}
+      classNames={{
+        root: ViewTitleHeaderS.ActionButtonRoot,
+        label: ViewTitleHeaderS.ActionButtonLabel,
+        section: ViewTitleHeaderS.ActionButtonSection,
+      }}
     >
       {t`Summarize`}
     </Button>
