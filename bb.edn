@@ -139,6 +139,27 @@
           (let [[db version] (:arguments parsed)]
             (start-db/start-db (:db-info (current-task)) db version)))}
 
+  dev-repl
+  {:doc "Launch Metabase dev environment (frontend + backend) with interactive configuration"
+   :examples [["./bin/mage dev-repl" "Interactive TUI to configure and launch"]
+              ["./bin/mage dev-repl -e ee -t all-features -d postgres"
+               "Launch with specific config (skip prompts)"]
+              ["./bin/mage dev-repl --no-frontend" "Backend only (skip frontend dev server)"]
+              ["./bin/mage dev-repl --fresh" "Recreate database container from scratch"]]
+   :requires [[mage.dev-repl :as dev-repl]]
+   :options [["-e" "--edition EDITION" "ee or oss"]
+             ["-t" "--token TOKEN" "Token type: all-features, starter-cloud, pro-cloud, pro-self-hosted, none"]
+             ["-d" "--db DB" "Database: postgres, mysql, mariadb, h2"]
+             ["-c" "--config FILE" "Config file path (default: dev/config.yml)"]
+             ["-v" "--db-version VERSION" "Database version: latest or oldest (default: latest)"]
+             ["-p" "--port PORT" "Backend port (default: 3000)" :parse-fn Integer/parseInt]
+             ["-f" "--fresh" "Recreate database container (destroy existing data)"]
+             ["-F" "--no-frontend" "Skip starting the frontend dev server"]]
+   :db-info {:postgres {:ports {:oldest 5432 :latest 5433} :eol-url "https://endoflife.date/api/postgres.json"}
+             :mysql {:ports {:oldest 3308 :latest 3309} :eol-url "https://endoflife.date/api/mysql.json"}
+             :mariadb {:ports {:oldest 3306 :latest 3307} :eol-url "https://endoflife.date/api/mariadb.json"}}
+   :task (task! (dev-repl/dev-repl parsed (select-keys (current-task) [:db-info])))}
+
   nrepl
   {:doc "Starts the babashka nrepl: helpful for mage development"
    :requires [[babashka.nrepl.server :as nrepl.server]

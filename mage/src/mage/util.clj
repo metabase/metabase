@@ -216,6 +216,8 @@
        :mage/error (str "You don't have " (c/yellow cmd) " installed. Please install it to use this task.")
        :babashka/exit 1}))))
 
+(declare exit)
+
 (defn fzf-select!
   "Uses fzf to offer interactive selections.
 
@@ -237,13 +239,21 @@
              (println "Running: " (c/green "brew install fzf"))
              (sh "brew install fzf"))
            (throw e))))
-  (->> (shell
-        {:out :string :in (str/join "\n" coll)}
-        (str "fzf"
-             (when (seq fzf-opts) " ")
-             fzf-opts))
-       :out
-       str/trim))
+  (try
+    (->> (shell
+          {:out :string :in (str/join "\n" coll)}
+          (str "fzf"
+               (when (seq fzf-opts) " ")
+               fzf-opts))
+         :out
+         str/trim)
+    (catch clojure.lang.ExceptionInfo e
+      (let [data (ex-data e)
+            exit-code (or (:babashka/exit data)
+                          (get-in data [:proc :exit]))]
+        (if (= 130 exit-code)
+          (exit (c/yellow "Cancelled.") 130)
+          (throw e))))))
 
 ;; Timing functions, parallel to time function in metabase.util
 (defn start-timer
