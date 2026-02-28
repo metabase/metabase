@@ -554,10 +554,10 @@ export const getChartPadding = (
   // the tick labels on the very edge of the x-axis for scatter plots only.
   const isScatterPlot =
     seriesModels?.some((seriesModel) => {
-      const seriesSettings = settings.series(
+      const seriesSettings = settings.series?.(
         seriesModel.legacySeriesSettingsObjectKey,
       );
-      return seriesSettings.display === "scatter";
+      return seriesSettings?.display === "scatter";
     }) ?? false;
   if (isScatterPlot && xAxisModel.axisType !== "category") {
     firstTickOverflow = Math.min(

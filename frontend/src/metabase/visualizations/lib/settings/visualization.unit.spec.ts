@@ -10,6 +10,16 @@ import {
   getStoredSettingsForSeries,
 } from "metabase/visualizations/lib/settings/visualization";
 import registerVisualizations from "metabase/visualizations/register";
+import type {
+  Series,
+  VisualizationDisplay,
+  VisualizationSettings,
+} from "metabase-types/api";
+import {
+  createMockCard,
+  createMockDatasetData,
+  createMockSingleSeries,
+} from "metabase-types/api/mocks";
 
 registerVisualizations();
 
@@ -36,7 +46,7 @@ describe("visualization_settings", () => {
 
     describe("graph.x_axis._is_histogram", () => {
       // NOTE: currently datetimes with unit are never considered histograms
-      const HISTOGRAM_UNITS = [];
+      const HISTOGRAM_UNITS: string[] = [];
       const NON_HISTOGRAM_UNITS = [
         // definitely not histogram
         "day-of-week",
@@ -74,28 +84,31 @@ describe("visualization_settings", () => {
     });
 
     describe("graph.y_axis.title_text", () => {
-      const data = {
+      const data = createMockDatasetData({
         cols: [
           DateTimeColumn({ unit: "month", name: "col1" }),
           NumberColumn({ name: "col2" }),
         ],
         rows: [[0, 0]],
-      };
+      });
 
       it("should use the series title if set", () => {
-        const card = {
+        const card = createMockCard({
           visualization_settings: {
             "graph.y_axis.title_text": "some title",
           },
           display: "bar",
           name: "foo",
-        };
+        });
         const settings = getComputedSettingsForSeries([{ card, data }]);
         expect(settings["graph.y_axis.title_text"]).toBe("some title");
       });
 
       it("should use the metric name if all series match", () => {
-        const card = { visualization_settings: {}, display: "bar" };
+        const card = createMockCard({
+          visualization_settings: {},
+          display: "bar",
+        });
         const settings = getComputedSettingsForSeries([
           { card, data },
           { card, data },
@@ -104,21 +117,24 @@ describe("visualization_settings", () => {
       });
 
       it("should be null if column names don't match", () => {
-        const card = { visualization_settings: {}, display: "bar" };
-        const data1 = {
+        const card = createMockCard({
+          visualization_settings: {},
+          display: "bar",
+        });
+        const data1 = createMockDatasetData({
           cols: [
             DateTimeColumn({ unit: "month", name: "col1" }),
             NumberColumn({ name: "col2a" }),
           ],
           rows: [[0, 0]],
-        };
-        const data2 = {
+        });
+        const data2 = createMockDatasetData({
           cols: [
             DateTimeColumn({ unit: "month", name: "col1" }),
             NumberColumn({ name: "col2b" }),
           ],
           rows: [[0, 0]],
-        };
+        });
         const settings = getComputedSettingsForSeries([
           { card, data: data1 },
           { card, data: data2 },
@@ -129,19 +145,22 @@ describe("visualization_settings", () => {
 
     describe("graph.show_values", () => {
       it("should not show values on a bar chart by default", () => {
-        const card = { visualization_settings: {}, display: "bar" };
-        const data = { rows: new Array(10).fill([1]) };
+        const card = createMockCard({
+          visualization_settings: {},
+          display: "bar",
+        });
+        const data = createMockDatasetData({ rows: new Array(10).fill([1]) });
         const settings = getComputedSettingsForSeries([{ card, data }]);
         expect(settings["graph.show_values"]).toBe(false);
       });
 
       it("should not show values on a previously saved bar chart", () => {
-        const card = {
+        const card = createMockCard({
           visualization_settings: {},
           display: "bar",
           original_card_id: 1,
-        };
-        const data = { rows: new Array(10).fill([1]) };
+        });
+        const data = createMockDatasetData({ rows: new Array(10).fill([1]) });
         const settings = getComputedSettingsForSeries([{ card, data }]);
         expect(settings["graph.show_values"]).toBe(false);
       });
@@ -150,32 +169,32 @@ describe("visualization_settings", () => {
 
   describe("getStoredSettingsForSeries", () => {
     it("should return an empty object if visualization_settings isn't defined", () => {
-      const settings = getStoredSettingsForSeries([{ card: {} }]);
+      const card = createMockCard({});
+      const data = createMockDatasetData({ rows: [] });
+      const settings = getStoredSettingsForSeries([{ card, data }]);
       expect(settings).toEqual({});
     });
 
     it("should pull out any saved visualization settings", () => {
-      const settings = getStoredSettingsForSeries([
-        { card: { visualization_settings: { foo: "bar" } } },
-      ]);
+      const card = createMockCard({ visualization_settings: { foo: "bar" } });
+      const data = createMockDatasetData({ rows: [] });
+      const settings = getStoredSettingsForSeries([{ card, data }]);
       expect(settings).toEqual({ foo: "bar" });
     });
 
     it("should work correctly with frozen objects", () => {
-      const settings = getStoredSettingsForSeries(
-        icepick.freeze([
-          {
-            card: {
-              visualization_settings: {
-                column_settings: {
-                  '["name","A"]': {
-                    number_style: "currency",
-                  },
-                },
-              },
+      const card = createMockCard({
+        visualization_settings: {
+          column_settings: {
+            '["name","A"]': {
+              number_style: "currency",
             },
           },
-        ]),
+        },
+      });
+      const data = createMockDatasetData({ rows: [] });
+      const settings = getStoredSettingsForSeries(
+        icepick.freeze([{ card, data }]),
       );
       expect(settings).toEqual({
         column_settings: {
@@ -266,20 +285,22 @@ describe("visualization_settings", () => {
   describe("pie.metric and pie.dimension", () => {
     it("should pick defaults when there are multiple metric columns", () => {
       const series = [
-        {
-          card: { display: "pie", visualization_settings: {} },
-          data: {
-            cols: [
-              StringColumn({ name: "category" }),
-              NumberColumn({ name: "sum" }),
-              NumberColumn({ name: "count" }),
-            ],
-            rows: [
-              ["a", 10, 1],
-              ["b", 20, 2],
-            ],
+        createMockSingleSeries(
+          { display: "pie", visualization_settings: {} },
+          {
+            data: {
+              cols: [
+                StringColumn({ name: "category" }),
+                NumberColumn({ name: "sum" }),
+                NumberColumn({ name: "count" }),
+              ],
+              rows: [
+                ["a", 10, 1],
+                ["b", 20, 2],
+              ],
+            },
           },
-        },
+        ),
       ];
       const settings = getComputedSettingsForSeries(series);
       expect(settings["pie.dimension"]).toEqual(["category"]);
@@ -290,23 +311,25 @@ describe("visualization_settings", () => {
   describe("map.metric and map.dimension", () => {
     it("should pick defaults when there are multiple metric columns", () => {
       const series = [
-        {
-          card: {
+        createMockSingleSeries(
+          {
             display: "map",
             visualization_settings: { "map.type": "region" },
           },
-          data: {
-            cols: [
-              StringColumn({
-                name: "state",
-                semantic_type: "type/State",
-              }),
-              NumberColumn({ name: "count" }),
-              NumberColumn({ name: "sum" }),
-            ],
-            rows: [["CA", 100, 100]],
+          {
+            data: {
+              cols: [
+                StringColumn({
+                  name: "state",
+                  semantic_type: "type/State",
+                }),
+                NumberColumn({ name: "count" }),
+                NumberColumn({ name: "sum" }),
+              ],
+              rows: [["CA", 100, 100]],
+            },
           },
-        },
+        ),
       ];
       const settings = getComputedSettingsForSeries(series);
       expect(settings["map.metric"]).toBe("count");
@@ -318,39 +341,51 @@ const cardWithTimeseriesBreakout = ({
   unit,
   display = "bar",
   visualization_settings = {},
-}) => [
-  {
-    card: {
+}: {
+  unit?: string;
+  display?: VisualizationDisplay;
+  visualization_settings?: VisualizationSettings;
+}): Series => [
+  createMockSingleSeries(
+    {
       display: display,
       visualization_settings,
     },
-    data: {
-      cols: [
-        DateTimeColumn({ unit, name: "col1" }),
-        NumberColumn({ name: "col2" }),
-      ],
-      rows: [[0, 0]],
+    {
+      data: {
+        cols: [
+          DateTimeColumn({ unit, name: "col1" }),
+          NumberColumn({ name: "col2" }),
+        ],
+        rows: [[0, 0]],
+      },
     },
-  },
+  ),
 ];
 
 const cardWithTimeseriesBreakoutAndTwoMetrics = ({
   unit,
   display = "bar",
   visualization_settings = {},
-}) => [
-  {
-    card: {
+}: {
+  unit?: string;
+  display?: VisualizationDisplay;
+  visualization_settings?: VisualizationSettings;
+}): Series => [
+  createMockSingleSeries(
+    {
       display: display,
       visualization_settings,
     },
-    data: {
-      cols: [
-        DateTimeColumn({ unit, name: "col1" }),
-        NumberColumn({ name: "col2" }),
-        NumberColumn({ name: "col3" }),
-      ],
-      rows: [[0, 0, 0]],
+    {
+      data: {
+        cols: [
+          DateTimeColumn({ unit, name: "col1" }),
+          NumberColumn({ name: "col2" }),
+          NumberColumn({ name: "col3" }),
+        ],
+        rows: [[0, 0, 0]],
+      },
     },
-  },
+  ),
 ];

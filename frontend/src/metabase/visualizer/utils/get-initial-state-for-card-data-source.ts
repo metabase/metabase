@@ -160,7 +160,7 @@ export function getInitialStateForCardDataSource(
         // Using state.display to get viz settings
         // relevant to a new visualization vs. original card
         // (e.g. if a card is a smartscalar, it won't have any relevant viz settings)
-        card: { ...card, display: state.display },
+        card: { ...card, display: state.display ?? card.display },
       },
     ]);
 

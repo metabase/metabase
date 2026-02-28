@@ -8,10 +8,7 @@ import {
   getDefaultSize,
   getMinSize,
 } from "metabase/visualizations/shared/utils/sizes";
-import type {
-  VisualizationDefinition,
-  VisualizationSettingsDefinitions,
-} from "metabase/visualizations/types";
+import type { VisualizationDefinition } from "metabase/visualizations/types";
 import { isNumeric } from "metabase-lib/v1/types/utils/isa";
 
 import { findProgressColumn } from "./utils";
@@ -110,5 +107,5 @@ export const PROGRESS_CHART_DEFINITION: VisualizationDefinition = {
       widget: "color",
       default: color("accent1"),
     },
-  } as VisualizationSettingsDefinitions,
+  },
 };

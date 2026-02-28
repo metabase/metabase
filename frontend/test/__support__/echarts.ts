@@ -2,7 +2,7 @@ import type {
   BreakoutSeriesModel,
   SeriesModel,
 } from "metabase/visualizations/echarts/cartesian/model/types";
-import { createMockColumn } from "metabase-types/api/mocks";
+import { createMockCard, createMockColumn } from "metabase-types/api/mocks";
 
 export const createMockSeriesModel = (
   opts?: Partial<SeriesModel>,
@@ -13,7 +13,9 @@ export const createMockSeriesModel = (
     name: `name for ${dataKey}`,
     tooltipName: `tooltip name for ${dataKey}`,
     color: "red",
-    legacySeriesSettingsObjectKey: { card: { _seriesKey: dataKey } },
+    legacySeriesSettingsObjectKey: {
+      card: { ...createMockCard(), _seriesKey: dataKey },
+    },
     vizSettingsKey: dataKey,
     column: createMockColumn({ name: dataKey }),
     columnIndex: 1,

@@ -1,8 +1,9 @@
 import { t } from "ttag";
 import _ from "underscore";
 
-import { currency } from "cljs/metabase.util.currency";
 import {
+  type TimeEnabled,
+  currency,
   displayNameForColumn,
   getCurrency,
   getCurrencyNarrowSymbol,
@@ -26,6 +27,10 @@ import {
   getDefaultNumberSeparators,
   getDefaultNumberStyle,
 } from "metabase/visualizations/shared/settings/column";
+import type {
+  ComputedVisualizationSettings,
+  VisualizationSettingsDefinitions,
+} from "metabase/visualizations/types";
 import {
   getColumnKey,
   getObjectColumnSettings,
@@ -41,32 +46,37 @@ import {
   isDateWithoutTime,
   isNumber,
 } from "metabase-lib/v1/types/utils/isa";
+import type {
+  ColumnSettings,
+  DatasetColumn,
+  DatetimeUnit,
+  Series,
+  VisualizationSettings,
+} from "metabase-types/api";
 
 import { nestedSettings } from "./nested";
 
-/**
- * @typedef {import("metabase-types/api").Series} Series
- * @typedef {import("metabase-types/api").DatasetColumn} DatasetColumn
- * @typedef {(series: Series, vizSettings) => DatasetColumn[]} GetColumnsFn
- */
+type GetColumnsFn = (
+  series: Series,
+  vizSettings: VisualizationSettings,
+) => DatasetColumn[];
 
-/** @type {GetColumnsFn} */
-const DEFAULT_GET_COLUMNS = (series, vizSettings) =>
-  [].concat(...series.map((s) => (s.data && s.data.cols) || []));
+const DEFAULT_GET_COLUMNS: GetColumnsFn = (series, _vizSettings) =>
+  series.flatMap((s) => s.data?.cols ?? []);
 
-/**
- * @param {Object}        [settings]
- * @param {GetColumnsFn}  [settings.getColumns]
- * @param {boolean}       [settings.hidden]
- * @param {string}        [settings.section]
- * @param {string[]}      [settings.readDependencies]
- */
+export interface ColumnSettingsOptions {
+  getColumns?: GetColumnsFn;
+  hidden?: boolean;
+  section?: string;
+  readDependencies?: string[];
+}
+
 export function columnSettings({
   getColumns = DEFAULT_GET_COLUMNS,
   hidden,
   ...def
-} = {}) {
-  return nestedSettings("column_settings", {
+}: ColumnSettingsOptions = {}) {
+  return nestedSettings<"column_settings", DatasetColumn>("column_settings", {
     section: t`Formatting`,
     objectName: "column",
     getObjects: getColumns,
@@ -81,8 +91,8 @@ export function columnSettings({
   });
 }
 
-export function getGlobalSettingsForColumn() {
-  const columnSettings = {};
+export function getGlobalSettingsForColumn(): ColumnSettings {
+  const columnSettings: ColumnSettings = {};
   const customFormatting = MetabaseSettings.get("custom-formatting") || {};
 
   // NOTE: the order of these doesn't matter as long as there's no overlap between settings
@@ -93,19 +103,21 @@ export function getGlobalSettingsForColumn() {
   return columnSettings;
 }
 
-function getLocalSettingsForColumn(column) {
+function getLocalSettingsForColumn(column: DatasetColumn): ColumnSettings {
   return column.settings || {};
 }
 
-function getInheritedSettingsForColumn(column) {
+function getInheritedSettingsForColumn(column: DatasetColumn): ColumnSettings {
   return {
     ...getGlobalSettingsForColumn(),
     ...getLocalSettingsForColumn(column),
   };
 }
 
-function getTimeEnabledOptionsForUnit(unit) {
-  const options = [
+function getTimeEnabledOptionsForUnit(
+  unit: DatetimeUnit | "second" | "millisecond" | undefined,
+): { name: string; value: TimeEnabled | null }[] {
+  const options: { name: string; value: TimeEnabled | null }[] = [
     { name: t`Off`, value: null },
     { name: t`HH:MM`, value: "minutes" },
   ];
@@ -130,7 +142,7 @@ function getTimeEnabledOptionsForUnit(unit) {
   return options;
 }
 
-export const DATE_COLUMN_SETTINGS = {
+export const DATE_COLUMN_SETTINGS: VisualizationSettingsDefinitions = {
   date_style: {
     get title() {
       return t`Date style`;
@@ -143,17 +155,22 @@ export const DATE_COLUMN_SETTINGS = {
       return value;
     },
     isValid: ({ unit }, settings) => {
-      const options = getDateStyleOptionsForUnit(unit);
-      return !!_.findWhere(options, { value: settings["date_style"] });
+      const options = getDateStyleOptionsForUnit(unit ?? "default");
+      return !!_.findWhere(options, { value: settings.date_style });
     },
     getProps: ({ unit }, settings) => ({
       options: getDateStyleOptionsForUnit(
-        unit,
-        settings["date_abbreviate"],
-        settings["date_separator"],
+        unit ?? "default",
+        settings.date_abbreviate != null
+          ? Boolean(settings.date_abbreviate)
+          : undefined,
+        settings.date_separator != null
+          ? String(settings.date_separator)
+          : undefined,
       ),
     }),
-    getHidden: ({ unit }) => getDateStyleOptionsForUnit(unit).length < 2,
+    getHidden: ({ unit }) =>
+      getDateStyleOptionsForUnit(unit ?? "default").length < 2,
   },
   date_separator: {
     get title() {
@@ -161,9 +178,9 @@ export const DATE_COLUMN_SETTINGS = {
     },
     widget: "radio",
     default: "/",
-    getProps: (column, settings) => {
-      const style = /\//.test(settings["date_style"])
-        ? settings["date_style"]
+    getProps: (_column, settings) => {
+      const style = /\//.test(settings.date_style ?? "")
+        ? (settings.date_style ?? "")
         : "M/D/YYYY";
       return {
         options: [
@@ -173,7 +190,8 @@ export const DATE_COLUMN_SETTINGS = {
         ],
       };
     },
-    getHidden: ({ unit }, settings) => !/\//.test(settings["date_style"] || ""),
+    getHidden: (_column, settings) =>
+      !/\//.test(String(settings.date_style ?? "")),
   },
   date_abbreviate: {
     get title() {
@@ -183,8 +201,11 @@ export const DATE_COLUMN_SETTINGS = {
     default: false,
     inline: true,
     getHidden: ({ unit }, settings) => {
-      const format = getDateFormatFromStyle(settings["date_style"], unit);
-      return !format.match(/MMMM|dddd/);
+      const format = getDateFormatFromStyle(
+        settings.date_style,
+        unit ?? "default",
+      );
+      return !format || !format.match(/MMMM|dddd/);
     },
     readDependencies: ["date_style"],
   },
@@ -195,14 +216,13 @@ export const DATE_COLUMN_SETTINGS = {
     widget: "radio",
     isValid: ({ unit }, settings) => {
       const options = getTimeEnabledOptionsForUnit(unit);
-      return !!_.findWhere(options, { value: settings["time_enabled"] });
+      return !!_.findWhere(options, { value: settings.time_enabled });
     },
-    getProps: ({ unit }, settings) => {
+    getProps: ({ unit }) => {
       const options = getTimeEnabledOptionsForUnit(unit);
       return { options };
     },
-    getHidden: (column, settings) =>
-      !hasHour(column.unit) || isDateWithoutTime(column),
+    getHidden: (column) => !hasHour(column.unit) || isDateWithoutTime(column),
     getDefault: ({ unit }) => (hasHour(unit) ? "minutes" : null),
   },
   time_style: {
@@ -212,15 +232,15 @@ export const DATE_COLUMN_SETTINGS = {
     widget: "radio",
     default: "h:mm A",
     getProps: (column) => ({
-      options: getTimeStyleOptions(column.unit),
+      options: getTimeStyleOptions(column.unit ?? "default"),
     }),
     getHidden: (column, settings) =>
-      !settings["time_enabled"] || isDateWithoutTime(column),
+      !settings.time_enabled || isDateWithoutTime(column),
     readDependencies: ["time_enabled"],
   },
 };
 
-export const NUMBER_COLUMN_SETTINGS = {
+export const NUMBER_COLUMN_SETTINGS: VisualizationSettingsDefinitions = {
   number_style: {
     get title() {
       return t`Style`;
@@ -257,7 +277,7 @@ export const NUMBER_COLUMN_SETTINGS = {
     getDefault: getDefaultNumberStyle,
     // hide this for currency
     getHidden: (column, settings) =>
-      isCurrency(column) && settings["number_style"] === "currency",
+      isCurrency(column) && settings.number_style === "currency",
     readDependencies: ["currency"],
   },
   currency: {
@@ -267,31 +287,29 @@ export const NUMBER_COLUMN_SETTINGS = {
     widget: "select",
     props: {
       // FIXME: rest of these options
-      options: currency.map(([_, currency]) => ({
-        name: currency.name,
-        value: currency.code,
+      options: currency.map(([_code, c]) => ({
+        name: c.name,
+        value: c.code,
       })),
       searchProp: "name",
       searchCaseSensitive: false,
     },
     getDefault: getDefaultCurrency,
-    getHidden: (column, settings) => settings["number_style"] !== "currency",
+    getHidden: (_column, settings) => settings.number_style !== "currency",
   },
   currency_style: {
     get title() {
       return t`Currency label style`;
     },
     widget: "radio",
-    getProps: (column, settings) => {
-      return {
-        options: getCurrencyStyleOptions(
-          settings["currency"] || "USD",
-          settings["currency_style"],
-        ),
-      };
-    },
+    getProps: (_column, settings) => ({
+      options: getCurrencyStyleOptions(
+        settings.currency || "USD",
+        settings.currency_style,
+      ),
+    }),
     getDefault: getDefaultCurrencyStyle,
-    getHidden: (column, settings) => settings["number_style"] !== "currency",
+    getHidden: (_column, settings) => settings.number_style !== "currency",
     readDependencies: ["number_style"],
   },
   currency_in_header: {
@@ -299,25 +317,23 @@ export const NUMBER_COLUMN_SETTINGS = {
       return t`Where to display the unit of currency`;
     },
     widget: "radio",
-    getProps: (_series, _vizSettings, onChange) => {
-      return {
-        onChange: (value) => onChange(value === true),
-        options: [
-          { name: t`In the column heading`, value: true },
-          { name: t`In every table cell`, value: false },
-        ],
-      };
-    },
+    getProps: (_series, _vizSettings, onChange) => ({
+      onChange: (value: unknown) => onChange(value === true),
+      options: [
+        { name: t`In the column heading`, value: true },
+        { name: t`In every table cell`, value: false },
+      ],
+    }),
     getDefault: getDefaultCurrencyInHeader,
-    getHidden: (_column, settings, { series, forAdminSettings }) => {
+    getHidden: (_column, settings, extra) => {
+      const { forAdminSettings, series = [] } = extra ?? {};
       if (forAdminSettings === true) {
         return false;
-      } else {
-        return (
-          settings["number_style"] !== "currency" ||
-          series[0].card.display !== "table"
-        );
       }
+      return (
+        settings.number_style !== "currency" ||
+        series[0].card.display !== "table"
+      );
     },
     readDependencies: ["number_style"],
   },
@@ -382,8 +398,7 @@ export const NUMBER_COLUMN_SETTINGS = {
   },
   // Optimization: build a single NumberFormat object that is used by formatting.js
   _numberFormatter: {
-    getValue: (column, settings) => numberFormatterForOptions(settings),
-    // NOTE: make sure to include every setting that affects the number formatter here
+    getValue: (_column, settings) => numberFormatterForOptions(settings),
     readDependencies: [
       "number_style",
       "currency_style",
@@ -392,18 +407,16 @@ export const NUMBER_COLUMN_SETTINGS = {
     ],
   },
   _header_unit: {
-    getValue: (column, settings) => {
-      if (
-        settings["number_style"] === "currency" &&
-        settings["currency_in_header"]
-      ) {
-        if (settings["currency_style"] === "symbol") {
-          return getCurrencySymbol(settings["currency"]);
+    getValue: (_column, settings) => {
+      if (settings.number_style === "currency" && settings.currency_in_header) {
+        if (settings.currency_style === "symbol") {
+          return getCurrencySymbol(settings.currency);
         }
-        if (settings["currency_style"] === "narrowSymbol") {
-          return getCurrencyNarrowSymbol(settings["currency"]);
+        if (settings.currency_style === "narrowSymbol") {
+          return getCurrencyNarrowSymbol(settings.currency);
         }
-        return getCurrency(settings["currency"], settings["currency_style"]);
+
+        return getCurrency(settings.currency, settings.currency_style);
       }
       return null;
     },
@@ -416,7 +429,7 @@ export const NUMBER_COLUMN_SETTINGS = {
   },
 };
 
-const COMMON_COLUMN_SETTINGS = {
+const COMMON_COLUMN_SETTINGS: VisualizationSettingsDefinitions = {
   // markdown_template: {
   //   title: t`Markdown template`,
   //   widget: "input",
@@ -441,12 +454,15 @@ const COMMON_COLUMN_SETTINGS = {
   },
 };
 
-export function getSettingDefinitionsForColumn(series, column) {
+export function getSettingDefinitionsForColumn(
+  series: Series,
+  column: DatasetColumn,
+) {
   const visualization = getVisualizationRaw(series);
   const extraColumnSettings =
-    typeof visualization.columnSettings === "function"
+    typeof visualization?.columnSettings === "function"
       ? visualization.columnSettings(column)
-      : visualization.columnSettings || {};
+      : visualization?.columnSettings || {};
 
   if (isDate(column) || (column.unit && column.unit !== "default")) {
     return {
@@ -454,21 +470,24 @@ export function getSettingDefinitionsForColumn(series, column) {
       ...DATE_COLUMN_SETTINGS,
       ...COMMON_COLUMN_SETTINGS,
     };
-  } else if (isNumber(column) && !isCoordinate(column)) {
+  }
+  if (isNumber(column) && !isCoordinate(column)) {
     return {
       ...extraColumnSettings,
       ...NUMBER_COLUMN_SETTINGS,
       ...COMMON_COLUMN_SETTINGS,
     };
-  } else {
-    return {
-      ...extraColumnSettings,
-      ...COMMON_COLUMN_SETTINGS,
-    };
   }
+  return {
+    ...extraColumnSettings,
+    ...COMMON_COLUMN_SETTINGS,
+  };
 }
 
-export function isPivoted(series, settings) {
+export function isPivoted(
+  series: Series,
+  settings: ComputedVisualizationSettings,
+): boolean {
   const [{ data }] = series;
 
   if (!settings["table.pivot"]) {
@@ -485,27 +504,34 @@ export function isPivoted(series, settings) {
   );
   const normalIndex = _.findIndex(
     data.cols,
-    (col, index) => index !== pivotIndex && index !== cellIndex,
+    (_col, index) => index !== pivotIndex && index !== cellIndex,
   );
 
   return pivotIndex >= 0 && cellIndex >= 0 && normalIndex >= 0;
 }
 
-export const getTitleForColumn = (column, series, settings) => {
+export const getTitleForColumn = (
+  column: DatasetColumn,
+  series: Series,
+  settings: ComputedVisualizationSettings,
+): string => {
   const pivoted = isPivoted(series, settings);
+
   if (pivoted) {
     return displayNameForColumn(column) || t`Unset`;
-  } else {
-    return (
-      settings.column(column)["_column_title_full"] ||
-      displayNameForColumn(column)
-    );
   }
+
+  return (
+    settings?.column?.(column)._column_title_full ||
+    displayNameForColumn(column)
+  );
 };
 
 export function tableColumnSettings({
   isShowingDetailsOnlyColumns = false,
-} = {}) {
+}: {
+  isShowingDetailsOnlyColumns?: boolean;
+} = {}): VisualizationSettingsDefinitions {
   return {
     "table.columns": {
       get section() {
@@ -513,7 +539,7 @@ export function tableColumnSettings({
       },
       // title: t`Columns`,
       widget: ChartSettingTableColumns,
-      getHidden: (series, vizSettings) => vizSettings["table.pivot"],
+      getHidden: (_series, vizSettings) => vizSettings["table.pivot"],
       getValue: ([{ data }], vizSettings) => {
         const { cols } = data;
         const settings = vizSettings["table.columns"] ?? [];
