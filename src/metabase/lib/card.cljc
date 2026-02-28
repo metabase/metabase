@@ -3,7 +3,6 @@
   (:require
    [clojure.string :as str]
    [medley.core :as m]
-   [metabase.lib.binning :as lib.binning]
    [metabase.lib.computed :as lib.computed]
    [metabase.lib.display-name :as lib.display-name]
    [metabase.lib.field.util :as lib.field.util]
@@ -16,7 +15,6 @@
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
-   [metabase.lib.temporal-bucket :as lib.temporal-bucket]
    [metabase.lib.util :as lib.util]
    [metabase.lib.util.unique-name-generator :as lib.util.unique-name-generator]
    [metabase.util :as u]
@@ -223,34 +221,37 @@
 (mu/defn merge-model-metadata :- [:sequential ::lib.schema.metadata/column]
   "Merge metadata from source model metadata into result cols.
 
-  Overrides `:id` for native models only."
-  [result-cols   :- [:maybe [:sequential ::lib.schema.metadata/column]]
-   model-cols    :- [:maybe [:sequential ::lib.schema.metadata/column]]
-   native-model? :- :boolean]
-  (cond
-    (empty? model-cols)
-    (not-empty result-cols)
+  Options:
+  - `:native-model?`    — when true, also overrides `:id` from model metadata.
+  - `:own-model-query?` — when true, aggregation columns are also merged (the model's own aggregation results should
+    preserve user-customized names). When false (default), aggregation columns are skipped because the computed name
+    (e.g. 'Sum of Price') is better than the model's custom name when the model is used as a source for an outer query."
+  ([result-cols model-cols]
+   (merge-model-metadata result-cols model-cols {}))
+  ([result-cols :- [:maybe [:sequential ::lib.schema.metadata/column]]
+    model-cols  :- [:maybe [:sequential ::lib.schema.metadata/column]]
+    {:keys [native-model? own-model-query?]
+     :or   {native-model? false, own-model-query? false}}]
+   (cond
+     (empty? model-cols)
+     (not-empty result-cols)
 
-    (empty? result-cols)
-    (not-empty model-cols)
+     (empty? result-cols)
+     (not-empty model-cols)
 
-    :else ;; both not empty
-    (let [name->model-col (m/index-by :name model-cols)]
-      (mapv (fn [result-col]
-              (merge
-               result-col
-               ;; if the result col is aggregating something in the source column then don't flow display name and what
-               ;; not because the calculated one e.g. 'Sum of ____' is going to be better than '____'
-               (when-not (= (:lib/source result-col) :source/aggregations)
-                 (when-let [model-col (get name->model-col (:name result-col))]
-                   (let [model-col     (u/select-non-nil-keys model-col (model-preserved-keys native-model?))
-                         temporal-unit (lib.temporal-bucket/raw-temporal-bucket result-col)
-                         binning       (lib.binning/binning result-col)
-                         semantic-type ((some-fn model-col result-col) :semantic-type)]
-                     (cond-> model-col
-                       temporal-unit (update :display-name lib.temporal-bucket/ensure-ends-with-temporal-unit temporal-unit)
-                       binning       (update :display-name lib.binning/ensure-ends-with-binning binning semantic-type)))))))
-            result-cols))))
+     :else ;; both not empty
+     (let [name->model-col (m/index-by :name model-cols)]
+       (mapv (fn [result-col]
+               (merge
+                result-col
+                ;; if the result col is aggregating something in the source column then don't flow display name and what
+                ;; not because the calculated one e.g. 'Sum of ____' is going to be better than '____'
+                (when (or own-model-query?
+                          (not= (:lib/source result-col) :source/aggregations))
+                  (when-let [model-col (get name->model-col (:name result-col))]
+                    (-> (u/select-non-nil-keys model-col (model-preserved-keys native-model?))
+                        (assoc :lib/from-model? true))))))
+             result-cols)))))
 
 (mu/defn card-returned-columns :- [:maybe ::maybe-columns]
   "Get a normalized version of the saved metadata associated with Card metadata."
@@ -278,7 +279,7 @@
                ;; See [[metabase.lib.card-test/propagate-crazy-long-identifiers-from-card-metadata-test]]
                (lib.field.util/add-source-and-desired-aliases-xform metadata-providerable (lib.util.unique-name-generator/non-truncating-unique-name-generator))
                (cond-> result-cols
-                 (seq model-cols) (merge-model-metadata model-cols native-model?))))))))
+                 (seq model-cols) (merge-model-metadata model-cols {:native-model? native-model?}))))))))
 
 (mu/defn saved-question-metadata :- ::maybe-columns
   "Metadata associated with a Saved Question with `card-id`."
