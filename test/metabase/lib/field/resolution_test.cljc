@@ -763,9 +763,7 @@
       (is (=? {:lib/type        :metadata/column
                :lib/source-uuid "00000000-0000-0000-0000-000000000000"
                :name            "Unknown Field"
-               :display-name    "Unknown Field"
-               ::lib.field.resolution/fallback-metadata? true
-               ::lib.field.resolution/fallback-metadata-unknown-field? true}
+               :display-name    "Unknown Field"}
               (lib.field.resolution/resolve-field-ref query -1 field-ref))))))
 
 (deftest ^:parallel fallback-metadata-for-unreturned-field-id-ref-test
@@ -786,9 +784,7 @@
                :lib/source-column-alias                  "ID"
                :lib/source-uuid                          "00000000-0000-0000-0000-000000000000"
                :lib/type                                 :metadata/column
-               ::lib.field.resolution/fallback-metadata? true
-               ::lib.field.resolution/fallback-metadata-unknown-field?
-               (symbol "nil #_\"key is not present.\"")}
+               ::lib.field.resolution/fallback-metadata? true}
               (into (sorted-map) (lib.field.resolution/resolve-field-ref query -1 field-ref)))))))
 
 (deftest ^:parallel do-not-propagate-lib-expression-names-from-cards-test

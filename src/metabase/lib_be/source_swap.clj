@@ -107,13 +107,6 @@
   (= (lib.options/update-options field-ref-1 dissoc :lib/uuid :base-type :effective-type)
      (lib.options/update-options field-ref-2 dissoc :lib/uuid :base-type :effective-type)))
 
-(mu/defn- unresolved-column? :- :boolean
-  "True when the column is a generic fallback for an ID-based ref where the field does not exist.
-  
-  Other types of fallback columns should be treated as resolved."
-  [column :- ::lib.schema.metadata/column]
-  (true? (::lib.field.resolution/fallback-metadata-unknown-field? column)))
-
 (mu/defn- walk-clause-field-refs :- :any
   [clause :- :any
    f      :- fn?]
@@ -138,7 +131,7 @@
    stage-number  :- :int
    field-ref     :- :mbql.clause/field]
   (or (when-let [column (lib.field.resolution/resolve-field-ref query stage-number field-ref)]
-        (when-not (unresolved-column? column)
+        (when-not (::lib.field.resolution/fallback-metadata? column)
           (let [column (cond-> column
                          (not (:fk-field-id column)) (dissoc :id))
                 new-field-ref (preserve-field-ref-options field-ref (lib.ref/ref column))]
@@ -278,7 +271,7 @@
                               new-source-field-id
                               (lib.options/update-options assoc :source-field new-source-field-id))]
     (or (when-let [new-column (lib.field.resolution/resolve-field-ref query stage-number swapped-field-ref)]
-          (when-not (unresolved-column? new-column)
+          (when-not (::lib.field.resolution/fallback-metadata? new-column)
             (let [new-field-ref (preserve-field-ref-options field-ref (lib.ref/ref new-column))]
               (when-not (same-field-ref? field-ref new-field-ref)
                 new-field-ref))))
