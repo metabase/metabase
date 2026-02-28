@@ -114,6 +114,7 @@ dev/serialization_deltas/
 .shadow-cljs
 .clerk
 mise.local.toml
+docker-compose.local.yml
 
 # lsp: ignore all but the config file
 .lsp/*
@@ -172,3 +173,5 @@ CLAUDE.local.md
 /resources/python-sources/sqlglot-*.dist-info/
 /resources/python-sources/.lock
 __pycache__/
+
+resources/frontend_client/app/embedding-sdk/

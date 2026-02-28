@@ -6,6 +6,25 @@ import { EMBEDDING_SDK_CONFIG } from "metabase/embedding-sdk/config";
 // This applies to SDK derivatives such as new iframe embedding.
 EMBEDDING_SDK_CONFIG.isEmbeddingSdk = true;
 
+// Detect chunk loading errors from rspack's internal chunk loading (e.g. dynamic
+// imports). Initial chunk errors in the bootstrap flow are already handled by the
+// bootstrap's own .catch(). This listener uses the capture phase so it sees
+// <script> network errors before they're swallowed.
+window.addEventListener(
+  "error",
+  (event) => {
+    const target = event.target;
+    if (
+      target instanceof HTMLScriptElement &&
+      target.src?.includes("/embedding-sdk/")
+    ) {
+      console.error("SDK: Failed to load chunk script:", target.src);
+      document.dispatchEvent(new CustomEvent("metabase-sdk-bundle-error"));
+    }
+  },
+  true,
+);
+
 // Import the embedding SDK vendors side-effects
 import "metabase/embedding-sdk/vendors-side-effects";
 
@@ -77,3 +96,10 @@ const sdkBundleExports: MetabaseEmbeddingSdkBundleExports = {
 
 // Define a global export METABASE_EMBEDDING_SDK_BUNDLE for SDK package
 window.METABASE_EMBEDDING_SDK_BUNDLE = sdkBundleExports;
+
+// Signal that the bundle is ready. In the bootstrap flow (chunked loading),
+// rspack defers entry execution until all chunks are registered, so this event
+// fires only after everything is ready. In the monolithic flow this is a
+// harmless extra signal — the NPM package's dual-listen resolves on whichever
+// signal arrives first.
+document.dispatchEvent(new CustomEvent("metabase-sdk-bundle-loaded"));

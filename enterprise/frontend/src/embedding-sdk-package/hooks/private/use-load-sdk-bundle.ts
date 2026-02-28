@@ -12,16 +12,73 @@ import {
 
 const ERROR_MESSAGE = "Failed to load Embedding SDK bundle";
 
+const SDK_PACKAGE_VERSION = process.env.VERSION || "unknown";
+
+/**
+ * Dual-listen: resolves when the SDK bundle is ready, regardless of whether
+ * the server responded with the bootstrap (new backend) or the monolithic
+ * bundle (old backend / bootstrap=false).
+ *
+ * - On script `load`: if `window.METABASE_EMBEDDING_SDK_BUNDLE` is already
+ *   set, the monolithic bundle ran synchronously → resolve.
+ * - On `"metabase-sdk-bundle-loaded"` CustomEvent: the bootstrap loaded all
+ *   chunks and `index.ts` executed → resolve.
+ * - First signal wins; all listeners are cleaned up after settling.
+ */
 const waitForScriptLoading = (script: HTMLScriptElement) => {
   return new Promise<void>((resolve, reject) => {
-    script.addEventListener("load", () => resolve());
-    script.addEventListener("error", () => reject(new Error(ERROR_MESSAGE)));
+    let settled = false;
+
+    const settle = (onSettle: () => void) => {
+      if (!settled) {
+        settled = true;
+        cleanup();
+        onSettle();
+      }
+    };
+
+    const onBundleEvent = () => {
+      settle(() => resolve());
+    };
+
+    const onScriptLoad = () => {
+      if (window.METABASE_EMBEDDING_SDK_BUNDLE) {
+        // Old backend served the monolithic bundle (or new backend served
+        // monolithic because bootstrap=false / no packageVersion param).
+        // The global is set synchronously during script execution → resolve.
+        settle(() => resolve());
+      } else {
+        // The bootstrap loaded. It will load chunks in parallel, and
+        // index.ts will dispatch the custom event when done.
+      }
+    };
+
+    const onScriptError = () => {
+      settle(() => reject(new Error(ERROR_MESSAGE)));
+    };
+
+    const onBundleError = () => {
+      settle(() => reject(new Error(ERROR_MESSAGE)));
+    };
+
+    const cleanup = () => {
+      document.removeEventListener("metabase-sdk-bundle-loaded", onBundleEvent);
+      document.removeEventListener("metabase-sdk-bundle-error", onBundleError);
+      script.removeEventListener("load", onScriptLoad);
+      script.removeEventListener("error", onScriptError);
+    };
+
+    document.addEventListener("metabase-sdk-bundle-loaded", onBundleEvent);
+    document.addEventListener("metabase-sdk-bundle-error", onBundleError);
+    script.addEventListener("load", onScriptLoad);
+    script.addEventListener("error", onScriptError);
   });
 };
 
 const loadSdkBundle = (
   metabaseInstanceUrl: string,
   existingLoadingPromise: Promise<void> | null | undefined,
+  useBootstrap: boolean,
 ): Promise<void> => {
   if (existingLoadingPromise) {
     return existingLoadingPromise;
@@ -33,20 +90,36 @@ const loadSdkBundle = (
     return waitForScriptLoading(existingScript);
   }
 
+  const baseUrl = `${
+    process.env.EMBEDDING_SDK_BUNDLE_HOST || metabaseInstanceUrl
+  }/${SDK_BUNDLE_FULL_PATH}`;
+
   const script = document.createElement("script");
 
   script.async = true;
   script.dataset[SDK_BUNDLE_SCRIPT_DATA_ATTRIBUTE_PASCAL_CASED] = "true";
-  script.src = `${
-    process.env.EMBEDDING_SDK_BUNDLE_HOST || metabaseInstanceUrl
-  }/${SDK_BUNDLE_FULL_PATH}`;
+
+  // if we don't pass the packageVersion, the backend will serve the monolithic bundle
+  // that doesn't use chunks or the parallel auth
+  script.src = useBootstrap
+    ? `${baseUrl}?packageVersion=${encodeURIComponent(SDK_PACKAGE_VERSION)}`
+    : baseUrl;
 
   document.body.appendChild(script);
 
   return waitForScriptLoading(script);
 };
 
-export function useLoadSdkBundle(metabaseInstanceUrl: string) {
+interface UseLoadSdkBundleOptions {
+  bootstrap: boolean;
+}
+
+export function useLoadSdkBundle(
+  metabaseInstanceUrl: string,
+  options: UseLoadSdkBundleOptions,
+) {
+  const { bootstrap } = options;
+
   useEffect(() => {
     const metabaseProviderPropsStore = ensureMetabaseProviderPropsStore();
     const { loadingPromise: existingLoadingPromise, loadingState } =
@@ -70,6 +143,7 @@ export function useLoadSdkBundle(metabaseInstanceUrl: string) {
     const loadingPromise = loadSdkBundle(
       metabaseInstanceUrl,
       existingLoadingPromise,
+      bootstrap,
     );
 
     metabaseProviderPropsStore.updateInternalProps({
@@ -93,5 +167,5 @@ export function useLoadSdkBundle(metabaseInstanceUrl: string) {
           loadingError: SdkLoadingError.Error,
         });
       });
-  }, [metabaseInstanceUrl]);
+  }, [metabaseInstanceUrl, bootstrap]);
 }

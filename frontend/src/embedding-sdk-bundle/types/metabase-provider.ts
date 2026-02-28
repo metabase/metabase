@@ -66,4 +66,12 @@ export interface MetabaseProviderProps {
    * Whether to allow logging to the DevTools console. Defaults to true.
    **/
   allowConsoleLog?: boolean;
+
+  /**
+   * Whether to load the small bootstrap bundle that starts authentication
+   * in parallel with the main SDK bundle download. Defaults to true.
+   *
+   * Set to false to load the full SDK bundle directly (legacy behavior).
+   **/
+  bootstrap?: boolean;
 }
