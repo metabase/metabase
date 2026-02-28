@@ -226,32 +226,31 @@
                   [k v])))
         opts-metadata-fns))
 
-(def ^:private model-propagated-keys
-  #{:lib/card-id
-    :lib/original-display-name
-    :lib/original-expression-name
-    :lib/original-fk-field-id
-    :lib/original-fk-field-name
-    :lib/original-fk-join-alias
-    :lib/original-join-alias
-    :lib/original-name
-    :lib/type
-    :active
-    :base-type
-    :converted-timezone
-    :description
-    :display-name
-    :fingerprint
-    :id
-    :semantic-type
-    :table-id
-    :visibility-type})
-
 (def ^:private regular-card-propagated-keys
   #{:lib/card-id
+    :lib/from-model?
     :active
     :fingerprint
     :visibility-type})
+
+(def ^:private model-propagated-keys
+  (set/union
+   regular-card-propagated-keys
+   #{:lib/original-display-name
+     :lib/original-expression-name
+     :lib/original-fk-field-id
+     :lib/original-fk-field-name
+     :lib/original-fk-join-alias
+     :lib/original-join-alias
+     :lib/original-name
+     :lib/type
+     :base-type
+     :converted-timezone
+     :description
+     :display-name
+     :id
+     :semantic-type
+     :table-id}))
 
 (declare resolve-in-previous-stage-returned-columns-and-update-keys)
 
@@ -273,8 +272,11 @@
             ;; unique/unambiguous if multiple versions of the column (e.g. with different bucketing units) are
             ;; returned
             (when-some [col (resolve-in-previous-stage-returned-columns-and-update-keys query card-cols (:lib/source-column-alias col))]
-              (let [col (assoc col :lib/source :source/card, :lib/card-id card-id)
-                    propagated-keys (if (= (:type card) :model)
+              (let [col             (assoc col :lib/source :source/card, :lib/card-id card-id)
+                    model?          (= (:type card) :model)
+                    col             (cond-> col
+                                      model? (assoc :lib/from-model? true))
+                    propagated-keys (if model?
                                       model-propagated-keys
                                       regular-card-propagated-keys)]
                 (select-keys col propagated-keys))))))

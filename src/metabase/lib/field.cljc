@@ -116,13 +116,17 @@
     simple-display-name   :lib/simple-display-name
     original-display-name :lib/original-display-name
     ref-display-name      :lib/ref-display-name
+    from-model?           :lib/from-model?
     source                :lib/source
     source-uuid           :lib/source-uuid
     :as                   col}
    style]
   (let [humanized-name     (u.humanization/name->human-readable-name :simple field-name)
         field-display-name (or ref-display-name
-                               original-display-name
+                               ;; TODO EXPLAIN HACK
+                               (when (or (not from-model?)
+                                         (= source :source/joins))
+                                 original-display-name)
                                field-display-name)
         fk-field-id        (or fk-field-id original-fk-field-id)]
     (or simple-display-name
@@ -167,6 +171,8 @@
     fk-field-id          :fk-field-id
     original-fk-field-id :lib/original-fk-field-id
     table-id             :table-id
+    from-model?          :lib/from-model?
+    source               :lib/source
     :as                  _col}
    style
    display-name]
@@ -174,9 +180,17 @@
                               original-join-alias)
         fk-field-id       (or fk-field-id original-fk-field-id)
         join-display-name (when (and (= style :long)
-                                     ;; don't prepend a join display name if `:display-name` already contains one! Legacy
-                                     ;; result metadata might include it for joined Fields, don't want to add it twice.
-                                     ;; Otherwise we'll end up with display names like
+                                     ;; don't append join aliases to columns that were introduced (directly in the
+                                     ;; main previous stage/source card lineage) by models, since their
+                                     ;; `:display-name` should already include the join alias and if it doesn't it's
+                                     ;; because the user edited the display name to something else. Still ok to
+                                     ;; prepend join aliases when we JOIN a model, since that should be added on top
+                                     ;; of whatever is already there.
+                                     (or (not from-model?)
+                                         (= source :source/joins))
+                                     ;; don't prepend a join display name if `:display-name` already contains one!
+                                     ;; Legacy result metadata might include it for joined Fields, don't want to add
+                                     ;; it twice. Otherwise we'll end up with display names like
                                      ;;
                                      ;;    Products → Products → Category
                                      (not (str/includes? display-name " → ")))
