@@ -69,7 +69,7 @@
 (def ^java.net.URL common-passwords-url
   "A set of ~12k common passwords to reject, that otherwise meet Metabase's default complexity requirements.
   Sourced from Dropbox's zxcvbn repo: https://github.com/dropbox/zxcvbn/blob/master/data/passwords.txt"
-  (io/resource "common_passwords.txt"))
+  (io/resource "metabase/common_passwords.txt"))
 
 (defn- is-uncommon?
   "Check if a given password is not present in the common passwords set. Case-insensitive search since
