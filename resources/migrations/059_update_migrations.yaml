@@ -400,6 +400,81 @@ databaseChangeLog:
                   name: result
 
   - changeSet:
+      id: v59.2026-01-10T21:49:48
+      author: nvoxland
+      comment: Create the table backing the message queue
+      changes:
+        - createTable:
+            tableName: queue_message_batch
+            remarks: Lightweight message queue for cross-cluster communication
+            columns:
+              - column:
+                  name: id
+                  type: BIGINT
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: queue_name
+                  type: varchar(254)
+                  remarks: The name of queue this message is in
+                  constraints:
+                    nullable: false
+              - column:
+                  remarks: The timestamp of when the messages were created
+                  name: created_at
+                  type: ${timestamp_type}
+                  defaultValueComputed: current_timestamp
+                  constraints:
+                    nullable: false
+              - column:
+                  remarks: The status of the messages
+                  name: status
+                  type: varchar(10)
+                  defaultValue: 'pending'
+                  constraints:
+                    nullable: false
+              - column:
+                  remarks: Heartbeat to ensure status is not stuck
+                  name: status_heartbeat
+                  type: ${timestamp_type}
+                  defaultValueComputed: current_timestamp
+                  constraints:
+                    nullable: false
+              - column:
+                  remarks: Number of failures processing these messages
+                  name: failures
+                  type: int
+                  defaultValueNumeric: 0
+                  constraints:
+                    nullable: false
+              - column:
+                  remarks: Current owner of the messages
+                  name: owner
+                  type: varchar(36)
+              - column:
+                  remarks: JSON-encoded array of messages
+                  name: messages
+                  type: ${text.type}
+                  constraints:
+                    nullable: false
+
+  - changeSet:
+      id: v59.2026-01-10T21:49:49
+      author: nvoxland
+      comment: Index queue_message_batch name and status
+      changes:
+        - createIndex:
+            tableName: queue_message_batch
+            indexName: idx_queue_message_batch_queue_status
+            columns:
+              - column:
+                  name: queue_name
+              - column:
+                  name: status
+
+  - changeSet:
       id: v59.2026-01-16T00:00:00
       author: rileythomp
       comment: Create analysis_finding_error table for storing individual errors with source info
@@ -3491,6 +3566,55 @@ databaseChangeLog:
         - dropColumn:
             tableName: metabase_database
             columnName: write_data_details
+  - changeSet:
+      id: v59.2026-02-17T22:00:00
+      author: nvoxland
+      comment: Create topic_message_batch table for pub/sub messaging
+      changes:
+        - createTable:
+            tableName: topic_message_batch
+            remarks: Append-only message log for pub/sub fan-out messaging
+            columns:
+              - column:
+                  name: id
+                  type: BIGINT
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: topic_name
+                  type: varchar(254)
+                  remarks: The name of the topic this message was published to
+                  constraints:
+                    nullable: false
+              - column:
+                  remarks: The timestamp of when the message was created
+                  name: created_at
+                  type: ${timestamp_type}
+                  defaultValueComputed: current_timestamp
+                  constraints:
+                    nullable: false
+              - column:
+                  remarks: JSON-encoded array of messages
+                  name: messages
+                  type: ${text.type}
+                  constraints:
+                    nullable: false
+
+  - changeSet:
+      id: v59.2026-02-17T22:00:01
+      author: nvoxland
+      comment: Index topic_message_batch by topic_name and id for efficient polling
+      changes:
+        - createIndex:
+            tableName: topic_message_batch
+            indexName: idx_topic_message_batch_topic_id
+            columns:
+              - column:
+                  name: topic_name
+              - column:
+                  name: id
 
   - changeSet:
       id: v59.2026-02-17T12:00:00

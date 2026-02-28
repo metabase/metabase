@@ -1232,6 +1232,17 @@
            users
            util}}
 
+  mq
+  {:team "UX West"
+   :api  #{metabase.mq.core
+           metabase.mq.init}
+   :uses #{analytics
+           app-db
+           models
+           settings
+           startup
+           util}}
+
   remote-sync
   {:team "UX West"
    :api  #{metabase.remote-sync.core
