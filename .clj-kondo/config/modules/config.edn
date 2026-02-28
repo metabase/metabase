@@ -2134,6 +2134,7 @@
            request
            revisions
            settings
+           sql-tools
            task
            transforms
            util}}
