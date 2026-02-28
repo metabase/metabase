@@ -1,5 +1,4 @@
 import { useDisclosure } from "@mantine/hooks";
-import { push } from "react-router-redux";
 import { t } from "ttag";
 
 import { UpsellGem } from "metabase/admin/upsells/components/UpsellGem";
@@ -7,6 +6,7 @@ import { useListDatabasesQuery } from "metabase/api";
 import { QuestionPickerModal } from "metabase/common/components/Pickers";
 import { useHasTokenFeature } from "metabase/common/hooks";
 import { useDispatch, useSelector } from "metabase/lib/redux";
+import { push } from "metabase/lib/router";
 import * as Urls from "metabase/lib/urls";
 import { getShouldShowPythonTransformsUpsell } from "metabase/transforms/selectors";
 import { Button, Center, Icon, Loader, Menu, Tooltip } from "metabase/ui";

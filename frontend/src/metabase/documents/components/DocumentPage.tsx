@@ -12,7 +12,6 @@ import {
   useState,
 } from "react";
 import type { Route } from "react-router";
-import { push, replace } from "react-router-redux";
 import { usePrevious, useUnmount } from "react-use";
 import useBeforeUnload from "react-use/lib/useBeforeUnload";
 import { t } from "ttag";
@@ -41,6 +40,7 @@ import { useCallbackEffect } from "metabase/common/hooks/use-callback-effect";
 import EntityCopyModal from "metabase/entities/containers/EntityCopyModal";
 import { usePageTitle } from "metabase/hooks/use-page-title";
 import { useDispatch, useSelector } from "metabase/lib/redux";
+import { push, replace } from "metabase/lib/router";
 import { extractEntityId } from "metabase/lib/urls";
 import * as Urls from "metabase/lib/urls";
 import { setErrorPage } from "metabase/redux/app";

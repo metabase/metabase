@@ -1,11 +1,11 @@
 import type { FormEvent, MouseEventHandler } from "react";
 import { useEffect, useRef, useState } from "react";
-import { push } from "react-router-redux";
 import { useAsync } from "react-use";
 import { jt, t } from "ttag";
 
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { useDispatch } from "metabase/lib/redux";
+import { push } from "metabase/lib/router";
 import * as Urls from "metabase/lib/urls";
 import { MetabaseApi } from "metabase/services";
 import {

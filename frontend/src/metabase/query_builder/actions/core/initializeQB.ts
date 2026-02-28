@@ -1,11 +1,11 @@
 import querystring from "querystring";
 
 import type { LocationDescriptorObject } from "history";
-import { replace } from "react-router-redux";
 
 import { Questions } from "metabase/entities/questions";
 import { Snippets } from "metabase/entities/snippets";
 import { deserializeCardFromUrl } from "metabase/lib/card";
+import { replace } from "metabase/lib/router";
 import { isNotNull } from "metabase/lib/types";
 import * as Urls from "metabase/lib/urls";
 import {

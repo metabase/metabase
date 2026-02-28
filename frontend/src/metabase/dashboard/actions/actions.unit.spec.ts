@@ -1,3 +1,4 @@
+import * as router from "metabase/lib/router";
 import { DashboardApi } from "metabase/services";
 import {
   createMockDashboard,
@@ -7,8 +8,6 @@ import {
 import type { Dispatch, GetState } from "metabase-types/store";
 import {
   createMockDashboardState,
-  createMockLocation,
-  createMockRoutingState,
   createMockState,
   createMockStoreDashboard,
 } from "metabase-types/store/mocks";
@@ -212,35 +211,33 @@ describe("dashboard actions", () => {
   });
 
   describe("setEditingDashboard", () => {
-    const getState: GetState = () =>
-      createMockState({
-        routing: createMockRoutingState({
-          locationBeforeTransitions: createMockLocation({
-            pathname: "/dashboard/1",
-            hash: "#hashparam",
-          }),
-        }),
-      });
+    let pushSpy: jest.SpyInstance;
+
+    beforeEach(() => {
+      jest.spyOn(router, "getCurrentLocation").mockReturnValue({
+        pathname: "/dashboard/1",
+        search: "",
+        hash: "#hashparam",
+        state: undefined,
+        action: "POP",
+        key: "",
+        query: {},
+      } as any);
+
+      pushSpy = jest.spyOn(router, "push");
+    });
+
+    afterEach(() => {
+      jest.restoreAllMocks();
+    });
 
     it("should remove any hash parameters from url when not editing", () => {
-      setEditingDashboard(null)(dispatch, getState);
+      setEditingDashboard(null)(dispatch);
 
-      expect(dispatch).toHaveBeenCalledWith({
-        payload: {
-          args: [
-            {
-              action: "POP",
-              hash: "",
-              key: "",
-              pathname: "/dashboard/1",
-              query: {},
-              search: "",
-              state: undefined,
-            },
-          ],
-          method: "push",
-        },
-        type: "@@router/CALL_HISTORY_METHOD",
+      expect(pushSpy).toHaveBeenCalledWith({
+        pathname: "/dashboard/1",
+        search: "",
+        hash: "",
       });
     });
   });

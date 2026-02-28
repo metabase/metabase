@@ -1,5 +1,4 @@
 import { useCallback } from "react";
-import { push } from "react-router-redux";
 import { t } from "ttag";
 
 import {
@@ -10,6 +9,7 @@ import {
 import { ActionButton } from "metabase/common/components/ActionButton";
 import { Tables } from "metabase/entities/tables";
 import { useDispatch } from "metabase/lib/redux";
+import { push } from "metabase/lib/router";
 import { isSyncCompleted } from "metabase/lib/syncing";
 import { Button, Flex, Tooltip } from "metabase/ui";
 import type { Database } from "metabase-types/api";

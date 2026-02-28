@@ -10,7 +10,6 @@ import {
 } from "@tiptap/react";
 import cx from "classnames";
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { push } from "react-router-redux";
 import { t } from "ttag";
 
 import { useListCommentsQuery } from "metabase/api";
@@ -40,6 +39,7 @@ import {
 } from "metabase/documents/selectors";
 import { getListCommentsQuery } from "metabase/documents/utils/api";
 import { useDispatch, useSelector } from "metabase/lib/redux";
+import { push } from "metabase/lib/router";
 import { usePublicDocumentContext } from "metabase/public/contexts/PublicDocumentContext";
 import { usePublicDocumentCardData } from "metabase/public/hooks/use-public-document-card-data";
 import { useDownloadData } from "metabase/query_builder/components/QuestionDownloadWidget/use-download-data";

@@ -2,7 +2,6 @@ import { useDisclosure, useElementSize } from "@mantine/hooks";
 import cx from "classnames";
 import type { Location } from "history";
 import { useCallback, useLayoutEffect, useMemo, useState } from "react";
-import { replace } from "react-router-redux";
 import { t } from "ttag";
 
 import {
@@ -14,6 +13,7 @@ import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErr
 import { DataStudioBreadcrumbs } from "metabase/data-studio/common/components/DataStudioBreadcrumbs";
 import { PaneHeader } from "metabase/data-studio/common/components/PaneHeader";
 import { useDispatch } from "metabase/lib/redux";
+import { replace } from "metabase/lib/router";
 import * as Urls from "metabase/lib/urls";
 import { POLLING_INTERVAL } from "metabase/transforms/constants";
 import { Center, Flex, Stack } from "metabase/ui";

@@ -1,5 +1,4 @@
 import type { ConnectedProps } from "react-redux";
-import { push } from "react-router-redux";
 
 import { deletePermanently } from "metabase/archive/actions";
 import {
@@ -55,6 +54,7 @@ import {
   undoDeleteTab,
 } from "metabase/dashboard/actions/tabs";
 import { connect } from "metabase/lib/redux";
+import { push } from "metabase/lib/router";
 import { getIsEmbeddingIframe } from "metabase/selectors/embed";
 import {
   canManageSubscriptions,

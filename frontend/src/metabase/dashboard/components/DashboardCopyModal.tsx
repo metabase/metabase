@@ -1,7 +1,6 @@
 import { dissoc } from "icepick";
 import { useState } from "react";
 import { type WithRouterProps, withRouter } from "react-router";
-import { replace } from "react-router-redux";
 import { t } from "ttag";
 import _ from "underscore";
 
@@ -10,6 +9,7 @@ import { Collections } from "metabase/entities/collections";
 import EntityCopyModal from "metabase/entities/containers/EntityCopyModal";
 import { Dashboards } from "metabase/entities/dashboards";
 import { connect } from "metabase/lib/redux";
+import { replace } from "metabase/lib/router";
 import * as Urls from "metabase/lib/urls";
 import type { Dashboard } from "metabase-types/api";
 import type { State } from "metabase-types/store";

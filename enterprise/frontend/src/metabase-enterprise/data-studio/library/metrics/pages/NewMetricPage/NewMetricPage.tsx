@@ -2,7 +2,6 @@ import { useDisclosure } from "@mantine/hooks";
 import type { Location } from "history";
 import { useMemo, useState } from "react";
 import { Link, type Route } from "react-router";
-import { push } from "react-router-redux";
 import { t } from "ttag";
 
 import { useGetDefaultCollectionId } from "metabase/collections/hooks";
@@ -16,6 +15,7 @@ import {
 } from "metabase/data-studio/common/components/PaneHeader";
 import { getResultMetadata } from "metabase/data-studio/common/utils";
 import { useDispatch, useSelector } from "metabase/lib/redux";
+import { push } from "metabase/lib/router";
 import * as Urls from "metabase/lib/urls";
 import { getInitialUiState } from "metabase/querying/editor/components/QueryEditor";
 import { getMetadata } from "metabase/selectors/metadata";

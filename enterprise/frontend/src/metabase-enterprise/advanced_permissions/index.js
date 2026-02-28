@@ -1,4 +1,3 @@
-import { push } from "react-router-redux";
 import { t } from "ttag";
 
 import { DataPermissionValue } from "metabase/admin/permissions/types";
@@ -7,6 +6,7 @@ import {
   getGroupFocusPermissionsUrl,
 } from "metabase/admin/permissions/utils/urls";
 import { ModalRoute } from "metabase/hoc/ModalRoute";
+import { push } from "metabase/lib/router";
 import {
   PLUGIN_ADMIN_PERMISSIONS_DATABASE_ACTIONS,
   PLUGIN_ADMIN_PERMISSIONS_DATABASE_GROUP_ROUTES,

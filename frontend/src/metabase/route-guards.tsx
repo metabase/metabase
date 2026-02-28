@@ -1,4 +1,3 @@
-import { routerActions } from "react-router-redux";
 import { connectedReduxRedirect } from "redux-auth-wrapper/history3/redirect";
 
 import { getAdminPaths } from "metabase/admin/app/selectors";
@@ -10,6 +9,7 @@ import { getSetting } from "metabase/selectors/settings";
 import type { State } from "metabase-types/store";
 
 import { getCanAccessOnboardingPage } from "./home/selectors";
+import { redirectReplace } from "./lib/router";
 import { getIsEmbeddingIframe } from "./selectors/embed";
 import { canAccessTransforms } from "./transforms/selectors";
 
@@ -30,7 +30,7 @@ const MetabaseIsSetup = connectedReduxRedirect<Props, State>({
   redirectPath: "/setup",
   allowRedirectBack: false,
   authenticatedSelector: (state) => getSetting(state, "has-user-setup"),
-  redirectAction: routerActions.replace,
+  redirectAction: redirectReplace,
   context: MetabaseReduxContext,
 });
 
@@ -39,7 +39,7 @@ const AvailableInEmbedding = connectedReduxRedirect<Props, State>({
   redirectPath: "/unauthorized",
   allowRedirectBack: false,
   authenticatedSelector: (state) => !getIsEmbeddingIframe(state),
-  redirectAction: routerActions.replace,
+  redirectAction: redirectReplace,
   context: MetabaseReduxContext,
 });
 
@@ -47,7 +47,7 @@ const UserIsAuthenticated = connectedReduxRedirect<Props, State>({
   wrapperDisplayName: "UserIsAuthenticated",
   redirectPath: "/auth/login",
   authenticatedSelector: (state) => !!state.currentUser,
-  redirectAction: routerActions.replace,
+  redirectAction: redirectReplace,
   context: MetabaseReduxContext,
 });
 
@@ -57,7 +57,7 @@ const UserIsAdmin = connectedReduxRedirect<Props, State>({
   allowRedirectBack: false,
   authenticatedSelector: (state) =>
     Boolean(state.currentUser && state.currentUser.is_superuser),
-  redirectAction: routerActions.replace,
+  redirectAction: redirectReplace,
   context: MetabaseReduxContext,
 });
 
@@ -68,7 +68,7 @@ const UserIsNotAuthenticated = connectedReduxRedirect<Props, State>({
   authenticatingSelector: (state) =>
     state.auth.loginPending || !state.auth.redirect,
   authenticatedSelector: (state) => !state.currentUser,
-  redirectAction: routerActions.replace,
+  redirectAction: redirectReplace,
   context: MetabaseReduxContext,
 });
 
@@ -77,7 +77,7 @@ const UserCanAccessSettings = connectedReduxRedirect<Props, State>({
   redirectPath: "/unauthorized",
   allowRedirectBack: false,
   authenticatedSelector: (state) => (getAdminPaths(state)?.length ?? 0) > 0,
-  redirectAction: routerActions.replace,
+  redirectAction: redirectReplace,
   context: MetabaseReduxContext,
 });
 
@@ -86,7 +86,7 @@ const UserCanAccessOnboarding = connectedReduxRedirect<Props, State>({
   redirectPath: "/",
   allowRedirectBack: false,
   authenticatedSelector: (state) => getCanAccessOnboardingPage(state),
-  redirectAction: routerActions.replace,
+  redirectAction: redirectReplace,
   context: MetabaseReduxContext,
 });
 
@@ -96,7 +96,7 @@ const UserCanAccessDataModel = connectedReduxRedirect<Props, State>({
   allowRedirectBack: false,
   authenticatedSelector: (state) =>
     PLUGIN_FEATURE_LEVEL_PERMISSIONS.canAccessDataModel(state),
-  redirectAction: routerActions.replace,
+  redirectAction: redirectReplace,
   context: MetabaseReduxContext,
 });
 
@@ -105,7 +105,7 @@ const UserCanAccessDataStudio = connectedReduxRedirect<Props, State>({
   redirectPath: "/unauthorized",
   allowRedirectBack: false,
   authenticatedSelector: (state) => canAccessDataStudio(state),
-  redirectAction: routerActions.replace,
+  redirectAction: redirectReplace,
   context: MetabaseReduxContext,
 });
 
@@ -114,7 +114,7 @@ const UserCanAccessTransforms = connectedReduxRedirect<Props, State>({
   redirectPath: "/unauthorized",
   allowRedirectBack: false,
   authenticatedSelector: (state) => canAccessTransforms(state),
-  redirectAction: routerActions.replace,
+  redirectAction: redirectReplace,
   context: MetabaseReduxContext,
 });
 

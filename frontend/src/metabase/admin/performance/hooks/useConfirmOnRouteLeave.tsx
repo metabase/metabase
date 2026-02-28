@@ -1,7 +1,7 @@
 import { useEffect, useRef } from "react";
-import { push } from "react-router-redux";
 
 import { useDispatch } from "metabase/lib/redux";
+import { push } from "metabase/lib/router";
 import { useRouter } from "metabase/router";
 
 type Props = {

@@ -36,8 +36,7 @@ export function renderWithSDKProviders(
     ...options
   }: RenderWithSDKProvidersOptions = {},
 ) {
-  let { routing, ...initialState }: Partial<State> =
-    createMockState(storeInitialState);
+  let { ...initialState }: Partial<State> = createMockState(storeInitialState);
 
   const sdkReducerNames = Object.keys(sdkReducers);
   initialState = _.pick(

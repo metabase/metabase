@@ -1,13 +1,13 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { push } from "react-router-redux";
 import { t } from "ttag";
 
 import { useLazyGetTransformQuery } from "metabase/api";
 import { useDispatch } from "metabase/lib/redux";
+import { push } from "metabase/lib/router";
 import * as Urls from "metabase/lib/urls";
 import { useRegisterMetabotContextProvider } from "metabase/metabot";
 import { PLUGIN_METABOT } from "metabase/plugins";
-import { getIsWorkspace } from "metabase/selectors/routing";
+import { isWorkspacePath } from "metabase/selectors/routing";
 import { METABOT_PROFILE_OVERRIDES } from "metabase-enterprise/metabot/constants";
 import type {
   ApplySuggestionPayload,
@@ -87,7 +87,7 @@ export function useWorkspaceMetabot({
   handleNavigateToTransform,
 }: UseWorkspaceMetabotParams): UseWorkspaceMetabotReturn {
   const dispatch = useDispatch();
-  const isWorkspace = useEnterpriseSelector(getIsWorkspace);
+  const isWorkspace = isWorkspacePath(window.location.pathname);
   const {
     openedTabs,
     setActiveTab,

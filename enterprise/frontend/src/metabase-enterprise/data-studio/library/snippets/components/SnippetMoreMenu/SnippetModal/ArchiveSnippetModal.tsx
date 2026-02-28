@@ -1,11 +1,11 @@
 import { Link } from "react-router";
-import { push } from "react-router-redux";
 import { t } from "ttag";
 
 import { useUpdateSnippetMutation } from "metabase/api";
 import { getErrorMessage } from "metabase/api/utils";
 import { useToast } from "metabase/common/hooks";
 import { useDispatch } from "metabase/lib/redux";
+import { push } from "metabase/lib/router";
 import * as Urls from "metabase/lib/urls";
 import { Button, Group, Modal, Stack, Text } from "metabase/ui";
 import type { NativeQuerySnippet } from "metabase-types/api";

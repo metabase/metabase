@@ -1,8 +1,8 @@
-import { push } from "react-router-redux";
 import _ from "underscore";
 
 import { setParameterValuesFromQueryParams } from "metabase/dashboard/actions/parameters";
 import { open } from "metabase/lib/dom";
+import { push } from "metabase/lib/router";
 
 export function performAction(
   action,

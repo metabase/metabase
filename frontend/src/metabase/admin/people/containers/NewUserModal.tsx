@@ -1,8 +1,8 @@
-import { push } from "react-router-redux";
 import { t } from "ttag";
 
 import { useCreateUserMutation } from "metabase/api";
 import { useDispatch } from "metabase/lib/redux";
+import { push } from "metabase/lib/router";
 import { generatePassword } from "metabase/lib/security";
 import MetabaseSettings from "metabase/lib/settings";
 import * as Urls from "metabase/lib/urls";

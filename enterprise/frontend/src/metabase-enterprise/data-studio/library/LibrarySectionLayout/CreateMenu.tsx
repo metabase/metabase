@@ -1,9 +1,9 @@
 import { useState } from "react";
-import { push } from "react-router-redux";
 import { t } from "ttag";
 
 import { ForwardRefLink } from "metabase/common/components/Link";
 import { useDispatch, useSelector } from "metabase/lib/redux";
+import { push } from "metabase/lib/router";
 import * as Urls from "metabase/lib/urls";
 import { PLUGIN_SNIPPET_FOLDERS } from "metabase/plugins";
 import {

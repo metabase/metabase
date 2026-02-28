@@ -1,5 +1,4 @@
 import { useMemo } from "react";
-import { push } from "react-router-redux";
 import { t } from "ttag";
 
 import { SearchFilter } from "metabase/admin/people/components/SearchFilter";
@@ -12,6 +11,7 @@ import { ForwardRefLink } from "metabase/common/components/Link";
 import { UserAvatar } from "metabase/common/components/UserAvatar";
 import CS from "metabase/css/core/index.css";
 import { useDispatch } from "metabase/lib/redux";
+import { push } from "metabase/lib/router";
 import { regexpEscape } from "metabase/lib/string";
 import {
   Box,

@@ -23,7 +23,7 @@ import {
   setParameterType,
 } from "./parameters";
 
-function setup({ routing, ...initialState }: State) {
+function setup({ ...initialState }: State) {
   return getStore(mainReducers, initialState);
 }
 

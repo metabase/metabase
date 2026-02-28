@@ -1,6 +1,5 @@
 import { useCallback, useState } from "react";
 import type { Route } from "react-router";
-import { push } from "react-router-redux";
 import _ from "underscore";
 
 import { LeaveRouteConfirmModal } from "metabase/common/components/LeaveConfirmModal";
@@ -8,6 +7,7 @@ import { useCallbackEffect } from "metabase/common/hooks/use-callback-effect";
 import { Segments } from "metabase/entities/segments";
 import { Tables } from "metabase/entities/tables";
 import { connect } from "metabase/lib/redux";
+import { push } from "metabase/lib/router";
 import type { Segment } from "metabase-types/api";
 import type { State } from "metabase-types/store";
 
