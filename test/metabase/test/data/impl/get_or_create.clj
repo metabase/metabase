@@ -9,7 +9,6 @@
    [metabase.models.humanization :as humanization]
    [metabase.permissions.models.data-permissions :as data-perms]
    [metabase.permissions.models.permissions-group :as perms-group]
-   [metabase.sync.analyze :as sync.analyze]
    [metabase.sync.core :as sync]
    [metabase.sync.util :as sync-util]
    [metabase.test.data.interface :as tx]
@@ -250,6 +249,99 @@
         (t2/update! :model/Field (:id source-field)
                     {:fk_target_field_id (:id target-pk-field)})))))
 
+;; ---------------------- Fake Fingerprinting ----------------------
+;; For drivers using fake sync, we also compute fingerprints from in-memory test data rows
+;; instead of querying the database. This uses the real fingerprinting transducers (HyperLogLog,
+;; histograms, etc.) but feeds them data from the dbdef instead of executing database queries.
+
+(defn- field-def->fingerprint-field
+  "Convert a FieldDefinition to a Field-like map for fingerprinting.
+   The fingerprinter multimethod dispatches on :base_type, :effective_type, and :semantic_type."
+  [{:keys [field-name base-type semantic-type effective-type fk pk?]}]
+  {:name           field-name
+   :base_type      (if (map? base-type) (or effective-type :type/*) base-type)
+   :semantic_type  (cond pk? :type/PK (some? fk) :type/FK :else semantic-type)
+   :effective_type (or effective-type (if (map? base-type) :type/* base-type))})
+
+(defn- compute-fingerprints-from-rows
+  "Run fingerprinting transducers on in-memory rows from test definitions.
+   Returns a vector of fingerprints, one per field (in the same order as field-definitions)."
+  [field-definitions rows]
+  (let [fields       (mapv field-def->fingerprint-field field-definitions)
+        fingerprinter (requiring-resolve 'metabase.analyze.fingerprint.fingerprinters/fingerprint-fields)]
+    (transduce identity (fingerprinter fields) rows)))
+
+(defn- fake-fingerprint-table!
+  "Compute and save fingerprints for a single table using in-memory test data.
+   Skips tables with no rows. PKs return nil fingerprints (by design) and are skipped.
+
+   Important: The dbdef rows don't include the auto-generated 'id' PK column, but fingerprint-fields
+   uses col-wise which expects positional alignment. We DON'T need to add a fake PK column because:
+   1. The dbdef field-definitions don't include 'id', so we fingerprint only the user-defined fields
+   2. The row values are already aligned with field-definitions (both exclude the auto-PK)
+   3. The PK fingerprinter returns nil anyway, so skipping it is correct"
+  [db-id database-name {:keys [table-name field-definitions rows]}]
+  (when (seq rows)
+    (let [qualified-name  (tx/db-qualified-table-name database-name table-name)
+          ;; Use case-insensitive lookup to handle databases that normalize names differently
+          qualified-table (t2/select-one :model/Table :db_id db-id :%lower.name (u/lower-case-en qualified-name))
+          fingerprints    (compute-fingerprints-from-rows field-definitions rows)
+          version         @(requiring-resolve 'metabase.sync.interface/*latest-fingerprint-version*)]
+      (log/infof "Fake fingerprinting table %s: found=%s, fingerprint-count=%d"
+                 qualified-name (boolean qualified-table) (count fingerprints))
+      (when qualified-table
+        (doseq [[field-def fp] (map vector field-definitions fingerprints)
+                :when fp] ; PKs return nil fingerprints - skip them
+          (when-let [db-field (t2/select-one :model/Field
+                                             :table_id (:id qualified-table)
+                                             :%lower.name (u/lower-case-en (:field-name field-def)))]
+            (log/infof "Saving fingerprint for %s.%s: %s"
+                       table-name (:field-name field-def)
+                       (pr-str fp))
+            (t2/update! :model/Field (:id db-field)
+                        {:fingerprint         fp
+                         :fingerprint_version version
+                         :last_analyzed       (t/offset-date-time)})
+            ;; Verify the fingerprint was saved correctly (debug assertion)
+            (let [saved-field (t2/select-one :model/Field :id (:id db-field))]
+              (when-not (= fp (:fingerprint saved-field))
+                (log/errorf "FINGERPRINT MISMATCH! Expected: %s, Got: %s"
+                            (pr-str fp) (pr-str (:fingerprint saved-field)))))))))))
+
+(defn- fake-fingerprint-database!
+  "Compute and save fingerprints for all tables in a database definition using in-memory test data."
+  [db-id {:keys [database-name table-definitions]}]
+  (doseq [table-def table-definitions]
+    (fake-fingerprint-table! db-id database-name table-def)))
+
+(defn- database-needs-fake-fingerprints?
+  "Check if the database needs fingerprints to be computed.
+   Returns true if this is a test-data database using fake sync that has fields without fingerprints."
+  [driver {:keys [database-name]} db]
+  (and (= database-name "test-data")
+       (driver/database-supports? driver :test/use-fake-sync nil)
+       ;; Check if any numeric fields are missing fingerprints
+       (let [fields-without-fingerprints (t2/count :model/Field
+                                                   {:select [:field.*]
+                                                    :from   [[:metabase_field :field]]
+                                                    :join   [[:metabase_table :table] [:= :field.table_id :table.id]]
+                                                    :where  [:and
+                                                             [:= :table.db_id (:id db)]
+                                                             [:= :field.active true]
+                                                             [:in :field.base_type ["type/Float" "type/Integer" "type/Decimal" "type/BigInteger"]]
+                                                             [:= :field.fingerprint nil]]})]
+         (pos? fields-without-fingerprints))))
+
+(defn- ensure-fake-fingerprints!
+  "Ensure fingerprints exist for a database that uses fake sync.
+   This handles the case where the database was created before fake fingerprinting was implemented,
+   or when the database exists from a previous test session."
+  [driver dbdef db]
+  (when (database-needs-fake-fingerprints? driver dbdef db)
+    (log/infof "Database %s needs fake fingerprints - computing from in-memory test data"
+               (:database-name dbdef))
+    (fake-fingerprint-database! (:id db) (tx/get-dataset-definition dbdef))))
+
 ;; ---------------------- Main Entry Point ----------------------
 
 (defn- fake-sync-database!
@@ -261,10 +353,10 @@
   (let [rows            (dbdef->fake-sync-rows driver (:id db) database-definition)
         table-name->tbl (insert-fake-sync-rows! rows)]
     (resolve-fk-relationships! table-name->tbl database-definition)
-    ;; Only run fingerprinting for :full scan, matching the real sync behavior
+    ;; Use fake fingerprinting for :full scan - compute from in-memory rows instead of querying DB
     (when (= scan :full)
-      (log/info "Running real fingerprinting for :full scan after fake sync")
-      (sync.analyze/analyze-db! db))))
+      (log/info "Using FAKE FINGERPRINTING from in-memory test data")
+      (fake-fingerprint-database! (:id db) database-definition))))
 
 ;;; ----------------------------------------------- End Fake Sync -----------------------------------------------
 
@@ -497,5 +589,8 @@
     (or
      (when-let [existing-database (get-existing-database-with-read-lock driver dbdef)]
        (reload-data-if-needed! driver dbdef existing-database)
+       ;; Ensure fingerprints exist for drivers using fake sync - handles databases
+       ;; created before fake fingerprinting was implemented
+       (ensure-fake-fingerprints! driver dbdef existing-database)
        existing-database)
      (create-and-sync-database-with-write-lock! driver dbdef))))
