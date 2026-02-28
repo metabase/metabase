@@ -7,7 +7,7 @@ redirect_from:
 
 # Account settings
 
-To access your account settings, click the **grid** icon in the top right corner, then click your **profile name and email.**
+To access your account settings, click the **profile or grid icon** in the top right corner, then click your **profile name and email.**
 
 ## Account profile
 
