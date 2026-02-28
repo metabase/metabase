@@ -16,14 +16,14 @@
         swapped-query (lib-be/swap-source-in-query upgraded-query
                                                    {:type :table, :id (meta/id :orders)}
                                                    {:type :table, :id (meta/id :products)})]
-    (testing "should convert id-based field refs to name-based field refs when upgrading"
+    (testing "should preserve id-based field refs when upgrading"
       (is (=? {:stages [{:source-table (meta/id :orders)
-                         :fields       [[:field {} "ID"]
-                                        [:field {} "CREATED_AT"]]}]}
+                         :fields       [[:field {} (meta/id :orders :id)]
+                                        [:field {} (meta/id :orders :created-at)]]}]}
               upgraded-query)))
     (testing "should return an identical query if upgrade is not needed"
       (is (= upgraded-query (lib-be/upgrade-field-refs-in-query upgraded-query))))
-    (testing "should convert name-based field refs to id-based field refs when swapping"
+    (testing "should preserve id-based field refs when swapping"
       (is (=? {:stages [{:source-table (meta/id :products)
                          :fields       [[:field {} (meta/id :products :id)]
                                         [:field {} (meta/id :products :created-at)]]}]}
@@ -88,14 +88,14 @@
         swapped-query  (lib-be/swap-source-in-query upgraded-query
                                                     {:type :table, :id (meta/id :orders)}
                                                     {:type :card, :id 1})]
-    (testing "should convert id-based field refs to name-based field refs when upgrading"
+    (testing "should preserve id-based field refs when upgrading"
       (is (=? {:stages [{:source-table (meta/id :orders)
-                         :fields       [[:field {} "ID"]
-                                        [:field {} "CREATED_AT"]]}]}
+                         :fields       [[:field {} (meta/id :orders :id)]
+                                        [:field {} (meta/id :orders :created-at)]]}]}
               upgraded-query)))
     (testing "should return an identical query if upgrade is not needed"
       (is (= upgraded-query (lib-be/upgrade-field-refs-in-query upgraded-query))))
-    (testing "should swap source-table with source-card and preserve name-based refs"
+    (testing "should swap source-table with source-card and convert to name-based refs"
       (is (=? {:stages [{:source-card 1
                          :fields      [[:field {} "ID"]
                                        [:field {} "CREATED_AT"]]}]}
@@ -115,20 +115,20 @@
         swapped-query  (lib-be/swap-source-in-query upgraded-query
                                                     {:type :table, :id (meta/id :orders)}
                                                     {:type :table, :id (meta/id :reviews)})]
-    (testing "should convert all field refs to name-based when upgrading"
+    (testing "should preserve id-based field refs when upgrading"
       (is (=? {:stages [{:source-table (meta/id :orders)
-                         :fields       [[:field {} "ID"]
-                                        [:field {} "CREATED_AT"]
+                         :fields       [[:field {} (meta/id :orders :id)]
+                                        [:field {} (meta/id :orders :created-at)]
                                         [:expression {} "double-id"]]
                          :joins        [{:conditions [[:= {}
-                                                       [:field {} "PRODUCT_ID"]
-                                                       [:field {:join-alias "Products"} "ID"]]]}]
+                                                       [:field {} (meta/id :orders :product-id)]
+                                                       [:field {:join-alias "Products"} (meta/id :products :id)]]]}]
                          :expressions  [[:+ {:lib/expression-name "double-id"}
-                                         [:field {} "ID"]
-                                         [:field {} "ID"]]]
-                         :aggregation  [[:sum {} [:field {} "ID"]]]
-                         :breakout     [[:field {} "CREATED_AT"]]
-                         :order-by     [[:asc {} [:field {} "CREATED_AT"]]]}]}
+                                         [:field {} (meta/id :orders :id)]
+                                         [:field {} (meta/id :orders :id)]]]
+                         :aggregation  [[:sum {} [:field {} (meta/id :orders :id)]]]
+                         :breakout     [[:field {} (meta/id :orders :created-at)]]
+                         :order-by     [[:asc {} [:field {} (meta/id :orders :created-at)]]]}]}
               upgraded-query)))
     (testing "should swap orders refs to reviews refs and preserve products refs"
       (is (=? {:stages [{:source-table (meta/id :reviews)
@@ -153,8 +153,9 @@
         swapped-query  (lib-be/swap-source-in-query upgraded-query
                                                     {:type :table, :id (meta/id :orders)}
                                                     {:type :table, :id (meta/id :reviews)})]
-    (testing "should convert to name-based ref and preserve :lib/expression-name when upgrading"
-      (is (=? {:stages [{:expressions [[:field {:lib/expression-name "created-at-expr"} "CREATED_AT"]]}]}
+    (testing "should preserve id-based ref and :lib/expression-name when upgrading"
+      (is (=? {:stages [{:expressions [[:field {:lib/expression-name "created-at-expr"}
+                                        (meta/id :orders :created-at)]]}]}
               upgraded-query)))
     (testing "should return an identical query if upgrade is not needed"
       (is (= upgraded-query (lib-be/upgrade-field-refs-in-query upgraded-query))))
@@ -257,14 +258,14 @@
         swapped-query  (lib-be/swap-source-in-query upgraded-query
                                                     {:type :table, :id (meta/id :orders)}
                                                     {:type :table, :id (meta/id :products)})]
-    (testing "should upgrade first stage to name-based and second stage should stay name-based"
+    (testing "should preserve id-based refs in first stage and name-based refs in second stage"
       (is (=? {:stages [{:source-table (meta/id :orders)
-                         :aggregation  [[:sum {} [:field {} "ID"]]]
-                         :breakout     [[:field {} "CREATED_AT"]]}
+                         :aggregation  [[:sum {} [:field {} (meta/id :orders :id)]]]
+                         :breakout     [[:field {} (meta/id :orders :created-at)]]}
                         {:filters [[:not-null {} [:field {} "CREATED_AT"]]
                                    [:not-null {} [:field {} "sum"]]]}]}
               upgraded-query)))
-    (testing "should swap first stage to id-based refs and preserve name-based refs in second stage"
+    (testing "should swap first stage to new table id-based refs and preserve name-based refs in second stage"
       (is (=? {:stages [{:source-table (meta/id :products)
                          :aggregation  [[:sum {} [:field {} (meta/id :products :id)]]]
                          :breakout     [[:field {} (meta/id :products :created-at)]]}
@@ -283,16 +284,16 @@
         swapped-query  (lib-be/swap-source-in-query upgraded-query
                                                     {:type :table, :id (meta/id :orders)}
                                                     {:type :table, :id (meta/id :products)})]
-    (testing "should upgrade first stage to name-based and second stage should stay name-based"
+    (testing "should preserve id-based refs in first stage and name-based refs in second stage"
       (is (=? {:stages [{:source-table (meta/id :orders)
-                         :aggregation  [[:sum {} [:field {} "ID"]]]
-                         :breakout     [[:field {:temporal-unit :year} "CREATED_AT"]
-                                        [:field {:temporal-unit :month} "CREATED_AT"]]}
+                         :aggregation  [[:sum {} [:field {} (meta/id :orders :id)]]]
+                         :breakout     [[:field {:temporal-unit :year} (meta/id :orders :created-at)]
+                                        [:field {:temporal-unit :month} (meta/id :orders :created-at)]]}
                         {:filters [[:not-null {} [:field {} "CREATED_AT"]]
                                    [:not-null {} [:field {} "CREATED_AT_2"]]
                                    [:not-null {} [:field {} "sum"]]]}]}
               upgraded-query)))
-    (testing "should swap first stage to id-based refs and preserve name-based refs in second stage"
+    (testing "should swap first stage to new table id-based refs and preserve name-based refs in second stage"
       (is (=? {:stages [{:source-table (meta/id :products)
                          :aggregation  [[:sum {} [:field {} (meta/id :products :id)]]]
                          :breakout     [[:field {:temporal-unit :year} (meta/id :products :created-at)]

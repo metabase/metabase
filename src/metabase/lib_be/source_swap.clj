@@ -251,8 +251,8 @@
             (into {}
                   (keep (fn [old-column]
                           (let [new-column (get new-column-by-key (column-match-key old-column))
-                                old-key (some-> new-column new-key-fn)
-                                new-key (some-> old-column old-key-fn)]
+                                old-key (some-> old-column old-key-fn)
+                                new-key (some-> new-column new-key-fn)]
                             (when (and old-key new-key)
                               [old-key new-key]))))
                   old-columns))]
@@ -272,16 +272,16 @@
   (let [old-id            (lib.ref/field-ref-id field-ref)
         new-id-or-name    (get id->id-or-name old-id)
         old-source-field  (-> field-ref lib.options/options :source-field)
-        new-source-field  (get source-field->source-field old-source-field-id)
+        new-source-field  (get source-field->source-field old-source-field)
         swapped-field-ref (cond-> field-ref
                             (pos-int? new-id-or-name)
-                            (lib.ref/with-field-ref-id new-id)
+                            (lib.ref/with-field-ref-id new-id-or-name)
 
                             (string? new-id-or-name)
                             (lib.ref/with-field-ref-name new-id-or-name)
 
-                            new-source-field-id
-                            (lib.options/update-options assoc :source-field new-source-field-id))]
+                            new-source-field
+                            (lib.options/update-options assoc :source-field new-source-field))]
     (or (when-let [new-column (lib.field.resolution/resolve-field-ref query stage-number swapped-field-ref)]
           (when-not (::lib.field.resolution/fallback-metadata? new-column)
             (let [new-field-ref (preserve-field-ref-options field-ref (lib.ref/ref new-column))]
