@@ -112,10 +112,10 @@
 
 (mu/defn parameter-target-stage-number :- :int
   "Return the stage-number from a parameter target's dimension options,
-   or -1 (last stage) if not specified."
+   or 0 (first stage) if not specified."
   [target :- ::lib.schema.parameter/target]
   (or (some-> target parameter-target-dimension-options :stage-number)
-      -1))
+      0))
 
 (mu/defn update-parameter-target-field-ref :- ::lib.schema.parameter/target
   "If parameter `:target` wraps a legacy `:field` ref, convert it to pMBQL, apply `(apply f field-ref args)`, convert

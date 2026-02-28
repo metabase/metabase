@@ -14,8 +14,8 @@
         col       (first (lib/filterable-columns query))
         field-ref (lib/->legacy-MBQL (lib.ref/ref col))
         target    [:dimension field-ref]]
-    (testing "defaults to -1 when no stage-number specified"
-      (is (= -1
+    (testing "defaults to 0 when no stage-number specified"
+      (is (= 0
              (lib/parameter-target-stage-number target))))
     (testing "returns stage-number from dimension options"
       (is (= 0
