@@ -126,15 +126,19 @@
       (lib.options/update-options assoc :lib/expression-name expression-name))))
 
 (mu/defn- upgrade-field-ref :- :mbql.clause/field
-  "Upgrade a field ref for a non-implicitly joinable column to use a string-based field ref."
+  "Generate a new field ref for a column."
   [query         :- ::lib.schema/query
    stage-number  :- :int
    field-ref     :- :mbql.clause/field]
   (or (when-let [column (lib.field.resolution/resolve-field-ref query stage-number field-ref)]
-        (when-not (::lib.field.resolution/fallback-metadata? column)
-          (let [new-field-ref (preserve-expression-name field-ref (lib.ref/ref column))]
-            (when-not (same-field-ref? field-ref new-field-ref)
-              new-field-ref))))
+        (let [column (if (and (::lib.field.resolution/fallback-metadata? column) (not (:fk-field-id column)))
+                       (or (lib.field.resolution/resolve-field-ref query stage-number (lib.ref/ref (dissoc column :id)))
+                           column))
+                       column)]
+          (when-not (::lib.field.resolution/fallback-metadata? column)
+            (let [new-field-ref (preserve-expression-name field-ref (lib.ref/ref column))]
+              (when-not (same-field-ref? field-ref new-field-ref)
+                new-field-ref)))))
       field-ref))
 
 (mu/defn- upgrade-field-refs-in-clauses :- [:sequential :any]

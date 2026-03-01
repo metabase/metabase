@@ -471,15 +471,15 @@
         swapped-query  (lib-be/swap-source-in-query upgraded-query
                                                     {:type :table, :id (meta/id :products)}
                                                     {:type :table, :id (meta/id :orders)})]
-    (testing "should preserve the wrong table field id when upgrading"
+    (testing "should handle the wrong table field id when upgrading"
       (is (=? {:stages [{:source-table (meta/id :products)
-                         :filters [[:not-null {} [:field {} (meta/id :people :created-at)]]]}]}
+                         :filters [[:not-null {} [:field {} (meta/id :products :created-at)]]]}]}
               upgraded-query)))
     (testing "should return an identical query if upgrade is not needed"
       (is (= upgraded-query (lib-be/upgrade-field-refs-in-query upgraded-query))))
-    (testing "should preserve the wrong table field id when swapping"
+    (testing "should swap the healed field id to the new table field id"
       (is (=? {:stages [{:source-table (meta/id :orders)
-                         :filters [[:not-null {} [:field {} (meta/id :people :created-at)]]]}]}
+                         :filters [[:not-null {} [:field {} (meta/id :orders :created-at)]]]}]}
               swapped-query)))))
 
 (deftest ^:parallel swap-source-in-query-nonexistent-field-id-test
