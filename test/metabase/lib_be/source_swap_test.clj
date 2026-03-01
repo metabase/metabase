@@ -204,6 +204,29 @@
                          :filters [[:not-null {} [:field {:join-alias "Orders"} "PRODUCT_ID"]]]}]}
               swapped-query)))))
 
+(deftest ^:parallel swap-source-in-query-join-missing-alias-test
+  (let [query          (-> (lib/query meta/metadata-provider (meta/table-metadata :products))
+                           (lib/join (meta/table-metadata :orders))
+                           (lib/filter (lib/not-null (lib/ensure-uuid [:field {:base-type :type/Integer}
+                                                                       (meta/id :orders :product-id)]))))
+        upgraded-query (lib-be/upgrade-field-refs-in-query query)
+        swapped-query  (lib-be/swap-source-in-query upgraded-query
+                                                    {:type :table, :id (meta/id :orders)}
+                                                    {:type :table, :id (meta/id :reviews)})]
+    (testing "upgrade should heal the missing join-alias"
+      (is (=? {:stages [{:source-table (meta/id :products)
+                         :filters [[:not-null {} [:field {:join-alias "Orders"}
+                                                  (meta/id :orders :product-id)]]]}]}
+              upgraded-query)))
+    (testing "should return an identical query if upgrade is not needed"
+      (is (= upgraded-query (lib-be/upgrade-field-refs-in-query upgraded-query))))
+    (testing "should swap joined column ref after healing"
+      (is (=? {:stages [{:source-table (meta/id :products)
+                         :joins   [{:stages [{:source-table (meta/id :reviews)}]}]
+                         :filters [[:not-null {} [:field {:join-alias "Orders"}
+                                                  (meta/id :reviews :product-id)]]]}]}
+              swapped-query)))))
+
 (deftest ^:parallel swap-source-in-query-join-filter-card->table-test
   (let [reviews-query  (lib/query meta/metadata-provider (meta/table-metadata :reviews))
         mp             (lib.tu/metadata-provider-with-card-from-query 1 reviews-query)
