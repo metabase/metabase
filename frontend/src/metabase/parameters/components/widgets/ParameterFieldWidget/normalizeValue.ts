@@ -11,5 +11,5 @@ export function normalizeValue<T>(
     return [value];
   }
 
-  return value || value === 0 ? [value] : [];
+  return [];
 }
