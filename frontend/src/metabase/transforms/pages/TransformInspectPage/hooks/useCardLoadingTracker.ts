@@ -1,43 +1,39 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useRef } from "react";
 
 import { useSubscriber } from "metabase/common/hooks";
 import type { InspectorCardId } from "metabase-types/api";
 
-type CardState = "loading" | "loaded";
-
 export const useCardLoadingTracker = (onAllCardsLoaded: () => void) => {
-  const [cardsStates, setCardsStates] = useState<
-    Record<InspectorCardId, CardState>
-  >({});
+  const startedRef = useRef(new Set<InspectorCardId>());
+  const loadedRef = useRef(new Set<InspectorCardId>());
+  const onAllCardsLoadedRef = useRef(onAllCardsLoaded);
+  onAllCardsLoadedRef.current = onAllCardsLoaded;
 
-  const { emit, subscribe } = useSubscriber<InspectorCardId>();
+  const { emit, subscribe } = useSubscriber<InspectorCardId>({
+    withBuffer: true,
+  });
 
-  useEffect(() => {
-    const states = Object.values(cardsStates);
-    const isSomethingLoading = states.includes("loading");
-    if (states.length > 0 && !isSomethingLoading) {
-      onAllCardsLoaded();
-    }
-  }, [cardsStates, onAllCardsLoaded]);
+  const markCardStartedLoading = useCallback((cardId: InspectorCardId) => {
+    startedRef.current.add(cardId);
+  }, []);
 
-  const markCard = useCallback(
-    (state: CardState) => (cardId: InspectorCardId) => {
-      setCardsStates((prev) =>
-        prev[cardId] === state ? prev : { ...prev, [cardId]: state },
-      );
-      if (state === "loaded") {
-        emit(cardId);
+  const markCardLoaded = useCallback(
+    (cardId: InspectorCardId) => {
+      loadedRef.current.add(cardId);
+      emit(cardId);
+      if (
+        startedRef.current.size > 0 &&
+        startedRef.current.size === loadedRef.current.size
+      ) {
+        onAllCardsLoadedRef.current();
       }
     },
     [emit],
   );
 
-  return useMemo(
-    () => ({
-      markCardLoaded: markCard("loaded"),
-      markCardStartedLoading: markCard("loading"),
-      subscribeToCardLoaded: subscribe,
-    }),
-    [markCard, subscribe],
-  );
+  return {
+    markCardLoaded,
+    markCardStartedLoading,
+    subscribeToCardLoaded: subscribe,
+  };
 };
