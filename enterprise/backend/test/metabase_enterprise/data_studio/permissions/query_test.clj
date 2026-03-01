@@ -132,7 +132,8 @@
               (perms/set-table-permission! all-users (mt/id :venues) :perms/create-queries :no)
               ;; Without collection permission, query should fail at database check (403)
               (testing "Query should fail because user has no collection permission on published table"
-                (is (= "You don't have permissions to do that."
-                       (mt/with-current-user user-id
-                         (mt/user-http-request user-id :post 403 "dataset"
-                                               (mt/mbql-query venues {:limit 1})))))))))))))
+                (is (=? {:status "failed"
+                         :error  "You do not have permissions to run this query."}
+                        (mt/with-current-user user-id
+                          (mt/user-http-request user-id :post 403 "dataset"
+                                                (mt/mbql-query venues {:limit 1})))))))))))))

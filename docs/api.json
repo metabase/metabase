@@ -9408,10 +9408,6 @@
         "description" : "schema for a valid MBQL 4 :value clause",
         "allOf" : [ ]
       },
-      "metabase.lib.metadata.column.column-unique-key" : {
-        "type" : "string",
-        "pattern" : "^column-unique-key-v\\d+\\$.+$"
-      },
       "metabase.lib.metadata.protocols.metadata-provider" : {
         "description" : "Schema for something that satisfies the [[metabase.lib.metadata.protocols/MetadataProvider]] protocol."
       },
@@ -9634,6 +9630,10 @@
         }, {
           "$ref" : "#/components/schemas/metabase.lib.schema.util.distinct-mbql-clauses"
         } ]
+      },
+      "metabase.lib.schema.column-unique-key" : {
+        "type" : "string",
+        "pattern" : "^column-unique-key-v\\d+\\$.+$"
       },
       "metabase.lib.schema.common.base-type" : {
         "type" : "string"
@@ -14531,7 +14531,7 @@
             "type" : "string"
           },
           "checkpoint-filter-unique-key" : {
-            "$ref" : "#/components/schemas/metabase.lib.metadata.column.column-unique-key"
+            "$ref" : "#/components/schemas/metabase.lib.schema.column-unique-key"
           },
           "type" : {
             "const" : "checkpoint"
@@ -39523,135 +39523,6 @@
         "summary" : "GET /api/pulse/form_input",
         "description" : "Provides relevant configuration information and user choices for creating/updating Pulses.",
         "parameters" : [ ],
-        "responses" : {
-          "2XX" : {
-            "description" : "Successful response"
-          },
-          "4XX" : {
-            "description" : "Client error response"
-          },
-          "5XX" : {
-            "description" : "Server error response"
-          }
-        },
-        "tags" : [ "/api/pulse" ]
-      }
-    },
-    "/api/pulse/preview_card/{id}" : {
-      "get" : {
-        "operationId" : "get-api-pulse-preview_card-id",
-        "summary" : "GET /api/pulse/preview_card/{id}",
-        "description" : "Get HTML rendering of a Card with `id`.",
-        "parameters" : [ {
-          "in" : "path",
-          "name" : "id",
-          "required" : true,
-          "schema" : {
-            "type" : "integer",
-            "minimum" : 1
-          },
-          "description" : "value must be an integer greater than zero."
-        } ],
-        "responses" : {
-          "2XX" : {
-            "description" : "Successful response"
-          },
-          "4XX" : {
-            "description" : "Client error response"
-          },
-          "5XX" : {
-            "description" : "Server error response"
-          }
-        },
-        "tags" : [ "/api/pulse" ]
-      }
-    },
-    "/api/pulse/preview_card_info/{id}" : {
-      "get" : {
-        "operationId" : "get-api-pulse-preview_card_info-id",
-        "summary" : "GET /api/pulse/preview_card_info/{id}",
-        "description" : "Get JSON object containing HTML rendering of a Card with `id` and other information.",
-        "parameters" : [ {
-          "in" : "path",
-          "name" : "id",
-          "required" : true,
-          "schema" : {
-            "type" : "integer",
-            "minimum" : 1
-          },
-          "description" : "value must be an integer greater than zero."
-        } ],
-        "responses" : {
-          "2XX" : {
-            "description" : "Successful response"
-          },
-          "4XX" : {
-            "description" : "Client error response"
-          },
-          "5XX" : {
-            "description" : "Server error response"
-          }
-        },
-        "tags" : [ "/api/pulse" ]
-      }
-    },
-    "/api/pulse/preview_card_png/{id}" : {
-      "get" : {
-        "operationId" : "get-api-pulse-preview_card_png-id",
-        "summary" : "GET /api/pulse/preview_card_png/{id}",
-        "description" : "Get PNG rendering of a Card with `id`. Optionally specify `width` as a query parameter.",
-        "parameters" : [ {
-          "in" : "path",
-          "name" : "id",
-          "required" : true,
-          "schema" : {
-            "type" : "integer",
-            "minimum" : 1
-          },
-          "description" : "value must be an integer greater than zero."
-        }, {
-          "in" : "query",
-          "name" : "width",
-          "required" : false,
-          "schema" : {
-            "oneOf" : [ {
-              "description" : "value must be an integer greater than zero.",
-              "type" : "integer",
-              "minimum" : 1
-            }, {
-              "type" : "null"
-            } ]
-          }
-        } ],
-        "responses" : {
-          "2XX" : {
-            "description" : "Successful response"
-          },
-          "4XX" : {
-            "description" : "Client error response"
-          },
-          "5XX" : {
-            "description" : "Server error response"
-          }
-        },
-        "tags" : [ "/api/pulse" ]
-      }
-    },
-    "/api/pulse/preview_dashboard/{id}" : {
-      "get" : {
-        "operationId" : "get-api-pulse-preview_dashboard-id",
-        "summary" : "GET /api/pulse/preview_dashboard/{id}",
-        "description" : "Get HTML rendering of a Dashboard with `id`.\n\n  This endpoint relies on a custom middleware defined in `metabase.channel.render.core/style-tag-nonce-middleware` to\n  allow the style tag to render properly, given our Content Security Policy setup. This middleware is attached to these\n  routes at the bottom of this namespace using `metabase.api.common/define-routes`.",
-        "parameters" : [ {
-          "in" : "path",
-          "name" : "id",
-          "required" : true,
-          "schema" : {
-            "type" : "integer",
-            "minimum" : 1
-          },
-          "description" : "value must be an integer greater than zero."
-        } ],
         "responses" : {
           "2XX" : {
             "description" : "Successful response"

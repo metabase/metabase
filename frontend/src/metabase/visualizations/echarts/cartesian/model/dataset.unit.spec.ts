@@ -252,6 +252,48 @@ describe("dataset transform functions", () => {
       const result = getJoinedCardsDataset([], []);
       expect(result).toEqual([]);
     });
+
+    it("should use untranslatedRows for breakout dataset keys when present", () => {
+      const translatedSeries: SingleSeries = {
+        ...rawSeries2,
+        data: {
+          ...rawSeries2.data,
+          rows: [
+            [1, "Translated Type1", 100],
+            [2, "Translated Type1", 200],
+            [3, "Translated Type2", 300],
+            [3, "Translated Type3", 400],
+          ],
+          untranslatedRows: rawSeries2.data.rows,
+        },
+      };
+
+      const result = getJoinedCardsDataset([translatedSeries], [columns2]);
+
+      expect(result).toStrictEqual([
+        {
+          [X_AXIS_DATA_KEY]: 1,
+          "2:also_month:type1": 1,
+          "2:count:type1": 100,
+          "2:type:type1": "Translated Type1",
+        },
+        {
+          [X_AXIS_DATA_KEY]: 2,
+          "2:also_month:type1": 2,
+          "2:count:type1": 200,
+          "2:type:type1": "Translated Type1",
+        },
+        {
+          [X_AXIS_DATA_KEY]: 3,
+          "2:also_month:type2": 3,
+          "2:also_month:type3": 3,
+          "2:count:type2": 300,
+          "2:count:type3": 400,
+          "2:type:type2": "Translated Type2",
+          "2:type:type3": "Translated Type3",
+        },
+      ]);
+    });
   });
 
   describe("replaceValues", () => {
