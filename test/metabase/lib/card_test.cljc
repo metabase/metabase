@@ -738,13 +738,20 @@
         model-col (assoc result-col
                          :display-name "Custom Foo"
                          :semantic-type :type/Quantity)]
-    (testing "temporal unit is not re-appended to model display name"
+    (testing "temporal unit appended to display name for outer queries"
+      (let [temporal-result (assoc result-col
+                                   :base-type :type/Date
+                                   :effective-type :type/Date
+                                   :lib/temporal-unit :month)]
+        (is (=? [{:display-name "Custom Foo: Month"}]
+                (lib.card/merge-model-metadata [temporal-result] [model-col])))))
+    (testing "temporal unit NOT appended for model's own query"
       (let [temporal-result (assoc result-col
                                    :base-type :type/Date
                                    :effective-type :type/Date
                                    :lib/temporal-unit :month)]
         (is (=? [{:display-name "Custom Foo"}]
-                (lib.card/merge-model-metadata [temporal-result] [model-col])))))
+                (lib.card/merge-model-metadata [temporal-result] [model-col] {:own-model-query? true})))))
     (testing "aggregation source columns are not overridden by model metadata (outer query)"
       (let [agg-result (assoc result-col
                               :display-name "Sum of Foo"
@@ -770,10 +777,13 @@
         model-col (assoc result-col
                          :display-name "Custom Foo"
                          :semantic-type :type/Quantity)]
-    (testing "binning is not re-appended to model display name"
+    (testing "binning appended to display name for outer queries"
+      (is (=? [{:display-name "Custom Foo: 10 bins"}]
+              (lib.card/merge-model-metadata [result-col] [model-col]))))
+    (testing "binning NOT appended for model's own query"
       (is (=? [{:display-name "Custom Foo"}]
-              (lib.card/merge-model-metadata [result-col] [model-col])))))
-  (testing "bin-width with coordinate semantic type — suffix not re-appended"
+              (lib.card/merge-model-metadata [result-col] [model-col] {:own-model-query? true})))))
+  (testing "bin-width with coordinate semantic type"
     (let [result-col {:lib/type :metadata/column
                       :name "LAT"
                       :base-type :type/Float
@@ -785,8 +795,12 @@
                       :lib/binning {:strategy :bin-width :bin-width 1.0}}
           model-col (assoc result-col
                            :display-name "Custom Lat")]
-      (is (=? [{:display-name "Custom Lat"}]
-              (lib.card/merge-model-metadata [result-col] [model-col]))))))
+      (testing "appended for outer queries"
+        (is (=? [{:display-name "Custom Lat: 1°"}]
+                (lib.card/merge-model-metadata [result-col] [model-col]))))
+      (testing "NOT appended for model's own query"
+        (is (=? [{:display-name "Custom Lat"}]
+                (lib.card/merge-model-metadata [result-col] [model-col] {:own-model-query? true})))))))
 
 (deftest ^:parallel merge-model-metadata-preserved-keys-test
   (let [result-col {:lib/type :metadata/column

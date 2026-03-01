@@ -3,6 +3,7 @@
   (:require
    [clojure.string :as str]
    [medley.core :as m]
+   [metabase.lib.binning :as lib.binning]
    [metabase.lib.computed :as lib.computed]
    [metabase.lib.display-name :as lib.display-name]
    [metabase.lib.field.util :as lib.field.util]
@@ -15,6 +16,7 @@
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
+   [metabase.lib.temporal-bucket :as lib.temporal-bucket]
    [metabase.lib.util :as lib.util]
    [metabase.lib.util.unique-name-generator :as lib.util.unique-name-generator]
    [metabase.util :as u]
@@ -249,8 +251,18 @@
                 (when (or own-model-query?
                           (not= (:lib/source result-col) :source/aggregations))
                   (when-let [model-col (get name->model-col (:name result-col))]
-                    (-> (u/select-non-nil-keys model-col (model-preserved-keys native-model?))
-                        (assoc :lib/from-model? true))))))
+                    (let [model-col (u/select-non-nil-keys model-col (model-preserved-keys native-model?))]
+                      ;; For the model's own query, preserve the user-customized display name as-is.
+                      ;; For outer queries using the model as source, append temporal/binning suffixes
+                      ;; because the outer query may apply its own bucketing on top of the model columns.
+                      (if own-model-query?
+                        model-col
+                        (let [temporal-unit (lib.temporal-bucket/raw-temporal-bucket result-col)
+                              binning       (lib.binning/binning result-col)
+                              semantic-type ((some-fn model-col result-col) :semantic-type)]
+                          (cond-> model-col
+                            temporal-unit (update :display-name lib.temporal-bucket/ensure-ends-with-temporal-unit temporal-unit)
+                            binning       (update :display-name lib.binning/ensure-ends-with-binning binning semantic-type)))))))))
              result-cols)))))
 
 (mu/defn card-returned-columns :- [:maybe ::maybe-columns]

@@ -380,12 +380,11 @@
             native-model? (if (contains? last-stage :source-query/native-model?)
                             (:source-query/native-model? last-stage)
                             (lib.util/native-stage? last-stage))
-            ;; When :source-query/model? is present, it means fetch-source-query resolved a card
-            ;; as the source — so this is an outer query using a model, not the model's own query.
-            ;; In that case, aggregation columns should NOT be merged (the computed name like
-            ;; "Sum of Sum of Price" is better). For the model's own query, aggregation columns
-            ;; should be merged to preserve user-customized names.
-            own-model-query? (not (contains? last-stage :source-query/model?))]
+            ;; Set explicitly by [[metabase.query-processor.card]] when the card is run
+            ;; directly. When true, aggregation columns are merged and temporal/binning
+            ;; suffixes are NOT re-appended (preserving user-customized names).
+            ;; When absent/false, this is an outer query using the model as source.
+            own-model-query? (boolean (get-in query [:info :metadata/own-model-query?]))]
         (lib.card/merge-model-metadata cols model-metadata {:native-model?    native-model?
                                                             :own-model-query? own-model-query?})))))
 
