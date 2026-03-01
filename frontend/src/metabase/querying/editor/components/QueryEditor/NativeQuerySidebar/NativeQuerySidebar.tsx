@@ -30,6 +30,7 @@ type NativeQuerySidebarProps = {
   onOpenSnippetModalWithSelectedText: () => void;
   parameterValues: Record<string, RowValue>;
   setParameterValues: (newParameterValues: Record<string, RowValue>) => void;
+  parametersAreUserVisible?: boolean;
 };
 
 export function NativeQuerySidebar({
@@ -127,6 +128,7 @@ function TemplateTagsSidebar({
   onToggleTemplateTagsSidebar,
   setParameterValues,
   parameterValues,
+  parametersAreUserVisible,
   onChangeQuery,
 }: NativeQuerySidebarProps) {
   const sampleDatabaseId = useSelector(getSampleDatabaseId);
@@ -157,7 +159,7 @@ function TemplateTagsSidebar({
         onChangeQuery(newQuestion.query());
       }}
       getEmbeddedParameterVisibility={VISIBILITY_ALWAYS_ENABLED}
-      parametersAreUserVisible={false}
+      parametersAreUserVisible={parametersAreUserVisible}
     />
   );
 }

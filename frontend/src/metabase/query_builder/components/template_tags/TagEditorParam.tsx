@@ -458,6 +458,7 @@ class TagEditorParamInner extends Component<
               this.props.setParameterValue(tag.id, value);
             }}
             onChangeRequired={this.setRequired}
+            parametersAreUserVisible={parametersAreUserVisible}
           />
         )}
       </Box>
