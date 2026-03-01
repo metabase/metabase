@@ -99,7 +99,7 @@ const getTableOrderInSources = (
   tableOrdersInSources.get(card.metadata.table_id) ?? Number.POSITIVE_INFINITY;
 
 export const getAllCards = (groups: CardGroup[]): InspectorCard[] =>
-  groups.flatMap((group) => [...group.inputCards, ...group.outputCards]);
+  groups.flatMap((group) => group.inputCards.concat(group.outputCards));
 
 export const getVisibleGroups = (
   groups: CardGroup[],
