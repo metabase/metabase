@@ -72,9 +72,10 @@ function waitForAuthConfigAndStart() {
     return;
   }
 
-  // Poll for store and config with exponential backoff
+  // Poll for store for a second. If they provider hasn't mounted by then we'll just do normal auth
   let attempts = 0;
-  const maxAttempts = 20;
+  const maxAttempts = 100;
+  const delay = 10;
   const checkInterval = () => {
     if (attempts >= maxAttempts) {
       setAuthState({ status: "skipped" });
@@ -82,7 +83,6 @@ function waitForAuthConfigAndStart() {
     }
 
     attempts++;
-    const delay = Math.min(50 * Math.pow(1.5, attempts), 500); // exponential backoff, max 500ms
 
     setTimeout(() => {
       if (!checkForAuthConfig()) {
@@ -95,8 +95,11 @@ function waitForAuthConfigAndStart() {
 }
 
 function startAuth(authConfig: any) {
-  // Bail out: API key auth
-  if ("apiKey" in authConfig && authConfig.apiKey) {
+  // Bail out: API key auth or SAML — these can't done in parallel
+  if (
+    ("apiKey" in authConfig && authConfig.apiKey) ||
+    authConfig.preferredAuthMethod === "saml"
+  ) {
     setAuthState({ status: "skipped" });
     return;
   }
@@ -117,6 +120,11 @@ function startAuth(authConfig: any) {
         : undefined,
   })
     .then((result) => {
+      if (result === null) {
+        // Non-JWT auth method (e.g. SAML) — fall back to normal auth
+        setAuthState({ status: "skipped" });
+        return;
+      }
       setAuthState({
         status: "completed",
         session: result.session,
@@ -139,7 +147,7 @@ async function performFullAuthFlow(config: {
   session: any;
   user: any;
   siteSettings: Record<string, any>;
-}> {
+} | null> {
   const headers = getSdkRequestHeaders();
 
   // Step 1: Get JWT provider URI (skip discovery if jwtProviderUri provided)
@@ -161,7 +169,8 @@ async function performFullAuthFlow(config: {
 
     const ssoData = await ssoResponse.json();
     if (ssoData.method !== "jwt") {
-      throw new Error(`SAML_NOT_SUPPORTED_IN_EARLY_AUTH`);
+      // SAML (or any non-JWT method) requires a popup — can't be pre-fetched
+      return null;
     }
     providerUri = ssoData.url;
   }

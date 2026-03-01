@@ -499,6 +499,57 @@ describe(
       );
     });
 
+    it("skips bootstrap auth when preferredAuthMethod is saml", () => {
+      cy.log("Mounting with preferredAuthMethod: saml");
+      mountSdkContent(<InteractiveQuestion questionId={ORDERS_QUESTION_ID} />, {
+        sdkProviderProps: {
+          bootstrap: true,
+          authConfig: {
+            metabaseInstanceUrl: METABASE_INSTANCE_URL,
+            preferredAuthMethod: "saml",
+          },
+        },
+      });
+
+      cy.log("Checking bootstrap auth state is 'skipped'");
+      cy.window()
+        .its("METABASE_EMBEDDING_SDK_AUTH_STATE")
+        .should("have.property", "status", "skipped");
+    });
+
+    it("skips bootstrap auth when SSO discovery returns SAML", () => {
+      cy.log("Intercepting SSO discovery to return SAML for bootstrap");
+      let firstSsoDiscovery = true;
+      cy.intercept("GET", "**/auth/sso*", (req) => {
+        if (!req.url.includes("jwt=") && firstSsoDiscovery) {
+          firstSsoDiscovery = false;
+          req.reply({
+            statusCode: 200,
+            body: {
+              method: "saml",
+              url: "https://fake-saml-idp.example.com/sso",
+            },
+          });
+          return;
+        }
+        req.continue();
+      });
+
+      cy.log("Mounting with bootstrap=true (no preferredAuthMethod set)");
+      mountSdkContent(<InteractiveQuestion questionId={ORDERS_QUESTION_ID} />, {
+        sdkProviderProps: {
+          bootstrap: true,
+          authConfig: { metabaseInstanceUrl: METABASE_INSTANCE_URL },
+        },
+        waitForUser: false,
+      });
+
+      cy.log("Checking bootstrap auth state is 'skipped'");
+      cy.window()
+        .its("METABASE_EMBEDDING_SDK_AUTH_STATE")
+        .should("have.property", "status", "skipped");
+    });
+
     it("falls back to normal auth when bootstrap auth fails", () => {
       cy.log(
         "Intercepting first SSO discovery call to make bootstrap auth fail",
