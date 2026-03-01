@@ -131,7 +131,8 @@
    stage-number  :- :int
    field-ref     :- :mbql.clause/field]
   (or (when-let [column (lib.field.resolution/resolve-field-ref query stage-number field-ref)]
-        (let [column (if (and (::lib.field.resolution/fallback-metadata? column) (not (:fk-field-id column)))
+        ;; heal a broken field ref when the field name matches the name of the column that can be resolved
+        (let [column (if (and (::lib.field.resolution/fallback-metadata? column) (:id column) (not (:fk-field-id column)))
                        (or (lib.field.resolution/resolve-field-ref query stage-number (lib.ref/ref (dissoc column :id)))
                            column)
                        column)]
