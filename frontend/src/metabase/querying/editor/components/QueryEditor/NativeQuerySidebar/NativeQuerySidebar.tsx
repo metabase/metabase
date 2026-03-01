@@ -157,7 +157,7 @@ function TemplateTagsSidebar({
         onChangeQuery(newQuestion.query());
       }}
       getEmbeddedParameterVisibility={VISIBILITY_ALWAYS_ENABLED}
-      disableParameterSettings
+      parametersAreUserVisible={false}
     />
   );
 }

@@ -84,7 +84,7 @@ interface OwnProps {
     config: ParameterValuesConfig,
   ) => void;
   setParameterValue: (tagId: TemplateTagId, value: RowValue) => void;
-  disableParameterSettings?: boolean;
+  parametersAreUserVisible?: boolean;
 }
 
 function mapStateToProps(state: State) {
@@ -332,7 +332,7 @@ class TagEditorParamInner extends Component<
       parameter,
       embeddedParameterVisibility,
       setTemplateTagConfig,
-      disableParameterSettings = false,
+      parametersAreUserVisible = true,
     } = this.props;
 
     const isDimension = tag.type === "dimension";
@@ -387,7 +387,7 @@ class TagEditorParamInner extends Component<
           />
         )}
 
-        {!disableParameterSettings &&
+        {parametersAreUserVisible &&
           ((!isDimension && !isTable) || widgetOptions.length > 0) && (
             <FilterWidgetLabelInput
               tag={tag}
@@ -397,7 +397,7 @@ class TagEditorParamInner extends Component<
             />
           )}
 
-        {!disableParameterSettings && parameter && isTemporalUnit && (
+        {parametersAreUserVisible && parameter && isTemporalUnit && (
           <>
             <ContainerLabel>{t`Time grouping options`}</ContainerLabel>
             <Box mb="xl">
@@ -423,7 +423,7 @@ class TagEditorParamInner extends Component<
           </>
         )}
 
-        {!disableParameterSettings &&
+        {parametersAreUserVisible &&
           parameter &&
           canUseCustomSource(parameter) && (
             <InputContainer>
@@ -436,7 +436,7 @@ class TagEditorParamInner extends Component<
             </InputContainer>
           )}
 
-        {!disableParameterSettings &&
+        {parametersAreUserVisible &&
           parameter &&
           isSingleOrMultiSelectable(parameter) && (
             <ParameterMultiSelectInput

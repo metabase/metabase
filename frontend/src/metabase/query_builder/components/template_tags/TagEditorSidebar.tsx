@@ -42,7 +42,7 @@ interface TagEditorSidebarProps {
   setParameterValue: (tagId: TemplateTagId, value: RowValue) => void;
   onClose: () => void;
   getEmbeddedParameterVisibility: GetEmbeddedParamVisibility;
-  disableParameterSettings?: boolean;
+  parametersAreUserVisible?: boolean;
 }
 
 export function TagEditorSidebar({
@@ -56,7 +56,7 @@ export function TagEditorSidebar({
   setParameterValue,
   onClose,
   getEmbeddedParameterVisibility,
-  disableParameterSettings = false,
+  parametersAreUserVisible = true,
 }: TagEditorSidebarProps) {
   const [section, setSection] = useState<TabId>(() => {
     const tags = query.variableTemplateTags();
@@ -96,7 +96,7 @@ export function TagEditorSidebar({
             setTemplateTagConfig={setTemplateTagConfig}
             setParameterValue={setParameterValue}
             getEmbeddedParameterVisibility={getEmbeddedParameterVisibility}
-            disableParameterSettings={disableParameterSettings}
+            parametersAreUserVisible={parametersAreUserVisible}
           />
         ) : (
           <Box p="lg">
@@ -125,7 +125,7 @@ interface SettingsPaneProps {
   ) => void;
   setParameterValue: (tagId: TemplateTagId, value: RowValue) => void;
   getEmbeddedParameterVisibility: GetEmbeddedParamVisibility;
-  disableParameterSettings?: boolean;
+  parametersAreUserVisible?: boolean;
 }
 
 const SettingsPane = ({
@@ -137,7 +137,7 @@ const SettingsPane = ({
   setTemplateTagConfig,
   setParameterValue,
   getEmbeddedParameterVisibility,
-  disableParameterSettings = false,
+  parametersAreUserVisible = true,
 }: SettingsPaneProps) => {
   return tags.map((tag) => (
     <div key={tag.id}>
@@ -155,7 +155,7 @@ const SettingsPane = ({
         setTemplateTag={setTemplateTag}
         setTemplateTagConfig={setTemplateTagConfig}
         setParameterValue={setParameterValue}
-        disableParameterSettings={disableParameterSettings}
+        parametersAreUserVisible={parametersAreUserVisible}
       />
     </div>
   ));
