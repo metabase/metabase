@@ -225,20 +225,15 @@ const getRefreshToken = async ({
   MetabaseAuthConfig,
   "metabaseInstanceUrl" | "fetchRequestToken" | "preferredAuthMethod"
 > & { jwtProviderUri?: string }) => {
-  // If jwtProviderUri is provided, skip discovery
-  if (jwtProviderUri) {
-    return jwtDefaultRefreshTokenFunction(
-      jwtProviderUri,
-      metabaseInstanceUrl,
-      getSdkRequestHeaders(),
-      customGetRequestToken,
-    );
-  }
+  const shouldSkipSsoDiscovery = jwtProviderUri !== undefined;
 
-  const urlResponseJson = await connectToInstanceAuthSso(metabaseInstanceUrl, {
-    preferredAuthMethod,
-    headers: getSdkRequestHeaders(),
-  });
+  const urlResponseJson = shouldSkipSsoDiscovery
+    ? { method: "jwt", url: jwtProviderUri }
+    : await connectToInstanceAuthSso(metabaseInstanceUrl, {
+        preferredAuthMethod,
+        headers: getSdkRequestHeaders(),
+      });
+
   const { method, url: responseUrl, hash } = urlResponseJson || {};
   if (method === "saml") {
     const token = await openSamlLoginPopup(responseUrl);
