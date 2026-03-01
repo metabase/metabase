@@ -1158,6 +1158,7 @@
   sharing must be enabled."
   [{:keys [dashboard-id]} :- [:map
                               [:dashboard-id ms/PositiveInt]]
+   _query-params
    body :- [:map
             [:expires_in_minutes {:optional true} [:maybe ms/PositiveInt]]]]
   (api/check-superuser)
@@ -1165,16 +1166,22 @@
   (api/check-not-archived (api/read-check :model/Dashboard dashboard-id))
   (let [existing-public-uuid (t2/select-one-fn :public_uuid :model/Dashboard :id dashboard-id)
         expires-at (expiring-links/compute-expiry-timestamp (:expires_in_minutes body))
-        uuid (or existing-public-uuid
-                 (u/prog1 (str (random-uuid))
-                   (events/publish-event! :event/dashboard-public-link-created
-                                          {:object-id dashboard-id
-                                           :user-id api/*current-user-id*})
+        uuid (if existing-public-uuid
+               (do
+                 (when expires-at
                    (t2/update! :model/Dashboard dashboard-id
-                               (merge {:public_uuid       <>
-                                       :made_public_by_id api/*current-user-id*}
-                                      (when expires-at
-                                        {:public_link_expires_at expires-at})))))]
+                               {:public_link_expires_at expires-at
+                                :public_link_expired    false}))
+                 existing-public-uuid)
+               (u/prog1 (str (random-uuid))
+                 (events/publish-event! :event/dashboard-public-link-created
+                                        {:object-id dashboard-id
+                                         :user-id api/*current-user-id*})
+                 (t2/update! :model/Dashboard dashboard-id
+                             (merge {:public_uuid       <>
+                                     :made_public_by_id api/*current-user-id*}
+                                    (when expires-at
+                                      {:public_link_expires_at expires-at})))))]
     (cond-> {:uuid uuid}
       expires-at (assoc :public_link_expires_at (str expires-at)))))
 

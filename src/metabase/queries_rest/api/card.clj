@@ -949,6 +949,7 @@
   be enabled."
   [{:keys [card-id]} :- [:map
                          [:card-id ms/PositiveInt]]
+   _query-params
    body :- [:map
             [:expires_in_minutes {:optional true} [:maybe ms/PositiveInt]]]]
   (perms/check-has-application-permission :setting)
@@ -956,16 +957,22 @@
   (api/check-not-archived (api/read-check :model/Card card-id))
   (let [{existing-public-uuid :public_uuid} (t2/select-one [:model/Card :public_uuid :card_schema] :id card-id)
         expires-at (expiring-links/compute-expiry-timestamp (:expires_in_minutes body))
-        uuid (or existing-public-uuid
-                 (u/prog1 (str (random-uuid))
-                   (events/publish-event! :event/card-public-link-created
-                                          {:object-id card-id
-                                           :user-id api/*current-user-id*})
+        uuid (if existing-public-uuid
+               (do
+                 (when expires-at
                    (t2/update! :model/Card card-id
-                               (merge {:public_uuid       <>
-                                       :made_public_by_id api/*current-user-id*}
-                                      (when expires-at
-                                        {:public_link_expires_at expires-at})))))]
+                               {:public_link_expires_at expires-at
+                                :public_link_expired    false}))
+                 existing-public-uuid)
+               (u/prog1 (str (random-uuid))
+                 (events/publish-event! :event/card-public-link-created
+                                        {:object-id card-id
+                                         :user-id api/*current-user-id*})
+                 (t2/update! :model/Card card-id
+                             (merge {:public_uuid       <>
+                                     :made_public_by_id api/*current-user-id*}
+                                    (when expires-at
+                                      {:public_link_expires_at expires-at})))))]
     (cond-> {:uuid uuid}
       expires-at (assoc :public_link_expires_at (str expires-at)))))
 

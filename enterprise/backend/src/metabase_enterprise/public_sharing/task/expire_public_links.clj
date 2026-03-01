@@ -10,25 +10,35 @@
 
 (set! *warn-on-reflection* true)
 
+(defn- expire-links-for-model!
+  "Expire public links for a given model (Card or Dashboard) that have passed their expiry time."
+  [model]
+  (let [now        (java.time.Instant/now)
+        candidates (t2/select model
+                              {:select [:id :public_uuid :public_link_expires_at :public_link_expired]
+                               :where  [:and
+                                        [:not= :public_uuid nil]
+                                        [:not= :public_link_expires_at nil]
+                                        [:= :public_link_expired false]
+                                        [:< :public_link_expires_at now]]})
+        _          (log/infof "%s candidates to expire: %s" (name model) (pr-str candidates))
+        expired    (reduce (fn [cnt {:keys [id]}]
+                             (+ cnt (t2/update! model id {:public_link_expired true})))
+                           0
+                           candidates)]
+    (log/infof "Expired %d %s links" expired (name model))
+    expired))
+
 (defn- expire-public-links!
   "Find all cards and dashboards with public links that have passed their expiry time
   and mark them as expired."
   []
-  (let [now (java.time.Instant/now)
-        cards-expired (t2/update! :model/Card
-                                  {:public_link_expires_at [:< now]
-                                   :public_link_expired    false
-                                   :public_uuid            [:not= nil]}
-                                  {:public_link_expired true})
-        dashboards-expired (t2/update! :model/Dashboard
-                                       {:public_link_expires_at [:< now]
-                                        :public_link_expired    false
-                                        :public_uuid            [:not= nil]}
-                                       {:public_link_expired true})
-        total (+ (or cards-expired 0) (or dashboards-expired 0))]
-    (when (pos? total)
-      (log/infof "Expired %d public links (%d cards, %d dashboards)"
-                 total (or cards-expired 0) (or dashboards-expired 0)))))
+  (log/infof "Running expire-public-links! job at %s" (java.time.Instant/now))
+  (let [cards-expired      (expire-links-for-model! :model/Card)
+        dashboards-expired (expire-links-for-model! :model/Dashboard)
+        total              (+ cards-expired dashboards-expired)]
+    (log/infof "Expire result: %d total (%d cards, %d dashboards)"
+               total cards-expired dashboards-expired)))
 
 (task/defjob
   ^{:doc "Periodic job to expire public links that have passed their expiry time."}
