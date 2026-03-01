@@ -507,7 +507,7 @@
       (is (= {:status     "failed"
               :error      "You'll need to pick a value for 'Price' before this query can run."
               :error_type "missing-required-parameter"}
-             (client/client :get 202 (str "public/card/" uuid "/query")))))))
+             (client/client :get 400 (str "public/card/" uuid "/query")))))))
 
 (defn- card-with-date-field-filter []
   (assoc (shared-obj)
