@@ -158,9 +158,7 @@ describe("scenarios > admin > transforms", () => {
 
       queryEditor().button("Save").should("be.disabled");
 
-      editorSidebar()
-        .findByText(/Default filter widget value/)
-        .scrollIntoView();
+      editorSidebar().findByText("Default value").scrollIntoView();
       setDefaultValue();
 
       queryEditor().button("Save").should("be.enabled").click();
