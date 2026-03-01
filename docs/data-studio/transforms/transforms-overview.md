@@ -59,7 +59,7 @@ _Data Studio > Transforms_
 You can see all your Metabase's transforms:
 
 1. Make sure you have [appropriate permissions to see transforms](#permissions-for-transforms).
-2. Click on the **grid** icon on top right and go to **Data Studio**.
+2. Click the **grid** icon on top right and go to **Data Studio**.
 3. In the left sidebar, select **Transforms**.
 
 ## Create a transform
@@ -71,7 +71,7 @@ If you're using remote sync, you won't be able to create transforms if your inst
 To create a transform:
 
 1. Make sure you have [appropriate permissions for creating transforms](#permissions-for-transforms).
-2. Click on the **grid** icon on top right and go to **Data Studio**.
+2. Click the **grid** icon on top right and go to **Data Studio**.
 3. In the left sidebar, select **Transforms**.
 4. Click **+ New** and select a source for your transform.
 
@@ -84,6 +84,8 @@ To create a transform:
 5. Create the query or script for your transform.
 
    See [query-based transforms](query-transforms.md) and [Python transforms](python-transforms.md) for more information. You can reference target tables of other transforms when writing your transform.
+
+   If you're writing a SQL transform, variables _must_ be wrapped in optional blocks (`[[ ]]`), or given a default value. See [variables in SQL transforms](query-transforms.md#variables-in-sql-transforms) for more details.
 
    If you have the Metabot AI add-on, you can [use Metabot](#use-metabot-to-generate-code-for-transforms) to generate code for your transform.
 
@@ -191,13 +193,13 @@ Incremental transforms work differently for query-based transforms and Python tr
 
 ## Versioning transforms
 
-_Admin settings > General > Remote sync_
+_Admin > General > Remote sync_
 
 You can check your transforms into git with [Remote Sync](../../installation-and-operation/remote-sync.md). If you enable transform sync, Metabase will serialize transforms as YAML files and push them to your specified GitHub repo branch.
 
 To enable git sync of transforms:
 
-1. Go to Admin settings by click on the **grid** icon in top right and select **Admin**.
+1. Go to Admin settings by click the **grid** icon in top right and select **Admin**.
 2. On the **General** tab, pick **Remote sync** in the left sidebar.
 3. Follow the steps to [Set up Remote Sync](../../installation-and-operation/remote-sync.md), and toggle "Transforms" sync on.
 

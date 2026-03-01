@@ -1111,7 +1111,7 @@ describe("admin > permissions > sandboxes (tested via the API)", () => {
 
       cy.signInAsSandboxedUser();
       H.visitDashboard(ORDERS_DASHBOARD_ID);
-      H.openSharingMenu("Subscriptions");
+      H.openDashboardMenu("Subscriptions");
 
       // should forward to email since that is the only one setup
       H.sidebar().findByText("Email this dashboard").should("exist");
@@ -1233,7 +1233,7 @@ describe("admin > permissions > sandboxes (tested via the API)", () => {
           columnAssertion: Number(USERS.sandboxed.login_attributes.attr_uid),
         });
 
-        H.openSharingMenu("Subscriptions");
+        H.openDashboardMenu("Subscriptions");
 
         H.sidebar()
           .findByPlaceholderText("Enter user names or email addresses")

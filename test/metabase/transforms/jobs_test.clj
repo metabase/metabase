@@ -12,11 +12,17 @@
    [metabase.notification.seed :as notification.seed]
    [metabase.query-processor.compile :as qp.compile]
    [metabase.test :as mt]
+   [metabase.test.util.thread-local :as tu.thread-local]
    [metabase.transforms.execute :as transforms.execute]
    [metabase.transforms.jobs :as jobs]
    [metabase.transforms.test-dataset :as transforms-dataset]
    [metabase.transforms.test-util :refer [with-transform-cleanup!]]
-   [toucan2.core :as t2]))
+   [metabase.transforms.util :as transforms.u]
+   [toucan2.core :as t2])
+  (:import
+   (java.util.concurrent CyclicBarrier TimeUnit)))
+
+(set! *warn-on-reflection* true)
 
 (deftest basic-deps-test
   (let [ordering {1 #{2 3}
@@ -434,3 +440,70 @@
                        (catch Exception _))
                      (is (mt/received-email-subject? :crowberto #"The job .* had failures"))
                      (is (mt/received-email-body? :crowberto #"transform0")))))))))))))
+
+(deftest run-transforms!-race-condition-test
+  ;; Previously a race would ensure one transform run got the duplicate key error and aborted.
+  ;; Because it is possible to set up transforms to run on overlapping schedules, such races are inevitable.
+  ;; On duplicate key error we should go back to the waiting loop until the is_active slot is available.
+  (testing "Two concurrent run-transforms! that race on is_active state will both eventually run"
+    (mt/with-premium-features #{:transforms}
+      (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
+        (mt/dataset transforms-dataset/transforms-test
+          (let [mp (mt/metadata-provider)
+                table (t2/select-one :model/Table (mt/id :transforms_products))
+                sql (-> (lib/query mp (lib.metadata/table mp (mt/id :transforms_products)))
+                        (lib/with-fields [(lib.metadata/field mp (mt/id :transforms_products :name))])
+                        (lib/limit 10)
+                        qp.compile/compile
+                        :query)]
+            (with-transform-cleanup! [target {:type   :table
+                                              :schema (:schema table)
+                                              :name   "race_test"}]
+              (binding [tu.thread-local/*thread-local* false]
+                (mt/with-temp [:model/TransformTag tag {:name "race-tag"}
+                               :model/TransformJob job {:name "race-job" :schedule "0 0 * * * ? *"}
+                               :model/TransformJobTransformTag _ {:job_id (:id job) :tag_id (:id tag) :position 0}
+                               :model/Transform transform {:name       "race-transform"
+                                                           :source     {:type  :query
+                                                                        :query (lib/native-query mp sql)}
+                                                           :creator_id (mt/user->id :crowberto)
+                                                           :target     target}
+                               :model/TransformTransformTag _ {:transform_id (:id transform)
+                                                               :tag_id       (:id tag)
+                                                               :position     0}]
+                  (mt/with-model-cleanup [:model/TransformJobRun :model/TransformRun]
+                    (let [barrier-enter   (CyclicBarrier. 2)
+                          barrier-exit    (CyclicBarrier. 2)
+                          tl-tripped      (ThreadLocal.)
+                          await-barrier   (fn [^CyclicBarrier barrier]
+                                            (when-not (.get tl-tripped)
+                                              (.await barrier 5 TimeUnit/SECONDS)))
+                          on-enter        (fn [] (await-barrier barrier-enter))
+                          on-exit         (fn [] (await-barrier barrier-exit) (.set tl-tripped true))
+                          original-insert transforms.u/try-start-unless-already-running]
+                      (with-redefs [transforms.u/try-start-unless-already-running
+                                    (fn [transform-id run-method user-id]
+                                      (on-enter)
+                                      (let [[ret ex] (try
+                                                       [(original-insert transform-id run-method user-id)]
+                                                       (catch Throwable t [nil t]))]
+                                        (on-exit)
+                                        (if ex (throw ex) ret)))]
+                        (let [run1 (transforms.job-run/start-run! (:id job) :manual)
+                              run2 (transforms.job-run/start-run! (:id job) :manual)
+                              fut1 (future
+                                     (try
+                                       {:result (jobs/run-transforms! (:id run1) #{(:id transform)}
+                                                                      {:run-method :manual})}
+                                       (catch Exception e
+                                         {:error e})))
+                              fut2 (future
+                                     (try
+                                       {:result (jobs/run-transforms! (:id run2) #{(:id transform)}
+                                                                      {:run-method :manual})}
+                                       (catch Exception e
+                                         {:error e})))
+                              results [(deref fut1 30000 {:error :timeout})
+                                       (deref fut2 30000 {:error :timeout})]]
+                          (is (every? #(= :succeeded (-> % :result ::jobs/status)) results)
+                              "Both threads should succeed"))))))))))))))

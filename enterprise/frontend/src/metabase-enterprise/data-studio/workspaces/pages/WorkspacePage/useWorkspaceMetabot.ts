@@ -92,7 +92,7 @@ export function useWorkspaceMetabot({
     openedTabs,
     setActiveTab,
     addOpenedTransform,
-    setActiveTransform,
+    setActiveTransformRef,
     addUnsavedTransform,
     unsavedTransforms,
     patchEditedTransform,
@@ -128,10 +128,10 @@ export function useWorkspaceMetabot({
         type: "transform",
       };
       addOpenedTransform(taggedTransform);
-      setActiveTransform(taggedTransform);
+      setActiveTransformRef(taggedTransform);
       setTab(getTransformTabId(taggedTransform));
     },
-    [addOpenedTransform, setActiveTransform, setTab],
+    [addOpenedTransform, setActiveTransformRef, setTab],
   );
 
   const applySuggestion = useCallback(
@@ -246,9 +246,9 @@ export function useWorkspaceMetabot({
   const openTransform = useCallback(
     (nextTransform: { type: "transform" } & Transform) => {
       addOpenedTransform(nextTransform);
-      setActiveTransform(nextTransform);
+      setActiveTransformRef(nextTransform);
     },
-    [addOpenedTransform, setActiveTransform],
+    [addOpenedTransform, setActiveTransformRef],
   );
 
   const suggestionActions = useMemo<MetabotSuggestionActions>(
@@ -287,7 +287,7 @@ export function useWorkspaceMetabot({
       !openedTabs.some(
         (tab) =>
           tab.type === "transform" &&
-          getTransformId(tab.transform) ===
+          getTransformId(tab.transformRef) ===
             getTransformId(metabotContextTransform),
       )
     ) {
@@ -369,7 +369,7 @@ export function useWorkspaceMetabot({
         const existingTab = openedTabs.find(
           (tab) =>
             tab.type === "transform" &&
-            getTransformId(tab.transform) === localTransform.id,
+            getTransformId(tab.transformRef) === localTransform.id,
         );
         if (existingTab) {
           setActiveTab(existingTab);

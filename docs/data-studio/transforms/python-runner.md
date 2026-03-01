@@ -95,7 +95,7 @@ docker run -d \
 
 ### Metabase environment variables
 
-These settings can also be configured in the Metabase UI at **Admin Settings** > **Settings** > **Python Runner** (`/admin/settings/python-runner`). Note that environment variables take precedence over UI settings.
+These settings can also be configured in the Metabase UI at **Admin** > **Settings** > **Python Runner** (`/admin/settings/python-runner`). Note that environment variables take precedence over UI settings.
 
 | Variable                                  | Description                                                                        |
 | ----------------------------------------- | ---------------------------------------------------------------------------------- |

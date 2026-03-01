@@ -133,7 +133,14 @@
       (if-not ingested
         (do
           (when-not (serdes/load-find-local path)
-            (throw (ex-info "Failed to read file" {:path (serdes/log-path-str path)})))
+            (let [missing (last path)
+                  model (:model missing)
+                  id    (:id missing)]
+              (throw (ex-info (format "%s '%s' was not found" model id)
+                              {:path  (serdes/log-path-str path)
+                               :model model
+                               :id    id
+                               :error ::not-found}))))
           (log/debug "Local" {:path (serdes/log-path-str path)})
           ctx)
         (let [_                  (log/info "Loading" (cond-> {:path (serdes/log-path-str path)}

@@ -328,6 +328,8 @@
 (derive :event/update-transform ::transform-event)
 (derive :event/transform-delete ::transform-event)
 (derive :event/transform-run-start ::transform-event)
+(derive :event/transform-inspect-discover ::transform-event)
+(derive :event/transform-inspect-lens ::transform-event)
 
 (methodical/defmethod events/publish-event! ::transform-event
   [topic event]

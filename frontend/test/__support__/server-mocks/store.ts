@@ -9,12 +9,19 @@ export function setupBillingEndpoints({
   hasAdvancedTransformsAddOn = true,
   transformsBasicPrice = 100,
   transformsAdvancedPrice = 250,
+  trialDays,
+  previousAddOns = [],
 }: {
   billingPeriodMonths?: number;
   hasBasicTransformsAddOn?: boolean;
   hasAdvancedTransformsAddOn?: boolean;
   transformsBasicPrice?: number;
   transformsAdvancedPrice?: number;
+  trialDays?: number;
+  previousAddOns?: Array<{
+    product_type: string;
+    self_service: boolean;
+  }>;
 } = {}) {
   const cloudAddOns = [
     ...(hasBasicTransformsAddOn
@@ -36,7 +43,7 @@ export function setupBillingEndpoints({
             is_metered: false,
             product_type: "transforms-basic",
             token_features: [],
-            trial_days: null,
+            trial_days: trialDays,
             product_tiers: [],
           },
         ]
@@ -60,7 +67,7 @@ export function setupBillingEndpoints({
             is_metered: false,
             product_type: "transforms-advanced",
             token_features: [],
-            trial_days: null,
+            trial_days: trialDays,
             product_tiers: [],
           },
         ]
@@ -72,7 +79,7 @@ export function setupBillingEndpoints({
     version: "0",
     data: {
       billing_period_months: billingPeriodMonths,
-      previous_add_ons: [],
+      previous_add_ons: previousAddOns,
     },
   });
 }

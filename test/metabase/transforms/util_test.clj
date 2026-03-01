@@ -6,6 +6,7 @@
    [metabase.driver :as driver]
    [metabase.driver.util :as driver.u]
    [metabase.events.core :as events]
+   [metabase.lib.core :as lib]
    [metabase.permissions.models.data-permissions :as data-perms]
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.test :as mt]
@@ -351,3 +352,21 @@
       (mt/with-temp [:model/Table table {:transform_id nil}]
         (let [hydrated (t2/hydrate table :transform)]
           (is (nil? (:transform hydrated))))))))
+
+(deftest ^:parallel massage-sql-query-test
+  (testing "massage-sql-query sets disable-remaps? and disable-max-results?"
+    (let [query    {:database 1, :type :query, :query {:source-table 1}}
+          massaged (transforms.util/massage-sql-query query)]
+      (is (true? (get-in massaged [:middleware :disable-remaps?])))
+      (is (true? (get-in massaged [:middleware :disable-max-results?]))))))
+
+(deftest compile-source-no-limit-test
+  (testing "compile-source produces SQL without a LIMIT clause"
+    (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
+      (mt/with-premium-features #{:transforms}
+        (let [transform {:source {:type  "query"
+                                  :query (lib/query (mt/metadata-provider) (mt/mbql-query venues))}}
+              {:keys [query]} (transforms.util/compile-source transform)]
+          (is (string? query))
+          (is (not (re-find #"(?i)\bLIMIT\b" query))
+              (str "Expected no LIMIT clause in compiled SQL, got: " query)))))))

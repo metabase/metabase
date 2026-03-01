@@ -47,6 +47,36 @@ describe("scenarios > question > trendline", () => {
     cy.get("rect");
   });
 
+  it("should handle per-series trend line settings", () => {
+    setup({
+      name: "Per-series trend line settings",
+      query: {
+        "source-table": ORDERS_ID,
+        aggregation: [
+          ["avg", ["field", ORDERS.SUBTOTAL, null]],
+          ["sum", ["field", ORDERS.TOTAL, null]],
+        ],
+        breakout: [["field", ORDERS.CREATED_AT, { "temporal-unit": "year" }]],
+      },
+      display: "line",
+    });
+    H.openVizSettingsSidebar();
+    H.leftSidebar().within(() => {
+      cy.findByText("Display").click();
+      cy.findByText("Trend line").click();
+    });
+    H.trendLine().should("have.length", 2);
+
+    H.leftSidebar().within(() => {
+      cy.findByText("Data").click();
+      cy.findByTestId("settings-avg").click();
+    });
+    H.popover().within(() => {
+      cy.findByText("Show trend line for this series").click();
+    });
+    H.trendLine().should("have.length", 1);
+  });
+
   it("should display trend line for stack-100% chart (metabase#25614)", () => {
     setup({
       name: "25614",

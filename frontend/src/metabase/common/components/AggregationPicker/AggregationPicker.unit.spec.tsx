@@ -5,15 +5,14 @@ import { createMockMetadata } from "__support__/metadata";
 import { createMockEntitiesState } from "__support__/store";
 import { renderWithProviders, screen } from "__support__/ui";
 import * as Lib from "metabase-lib";
-import { createQuery, createQueryWithClauses } from "metabase-lib/test-helpers";
+import { DEFAULT_TEST_QUERY, SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
 import {
   COMMON_DATABASE_FEATURES,
   createMockCard,
 } from "metabase-types/api/mocks";
 import {
-  ORDERS,
-  SAMPLE_DB_ID,
+  ORDERS_ID,
   createOrdersTable,
   createPeopleTable,
   createProductsTable,
@@ -29,52 +28,81 @@ import {
 import { AggregationPicker } from "./AggregationPicker";
 
 function createQueryWithCountAggregation() {
-  return createQueryWithClauses({
-    aggregations: [{ operatorName: "count" }],
+  return Lib.createTestQuery(SAMPLE_PROVIDER, {
+    stages: [
+      {
+        source: {
+          type: "table",
+          id: ORDERS_ID,
+        },
+        aggregations: [{ type: "operator", operator: "count", args: [] }],
+      },
+    ],
   });
 }
 
 function createQueryWithMaxAggregation() {
-  return createQueryWithClauses({
-    aggregations: [
-      { operatorName: "max", tableName: "ORDERS", columnName: "QUANTITY" },
+  return Lib.createTestQuery(SAMPLE_PROVIDER, {
+    stages: [
+      {
+        source: {
+          type: "table",
+          id: ORDERS_ID,
+        },
+
+        aggregations: [
+          {
+            type: "operator",
+            operator: "max",
+            args: [{ type: "column", name: "QUANTITY" }],
+          },
+        ],
+      },
     ],
   });
 }
 
 function createQueryWithInlineExpression() {
-  return createQuery({
-    query: {
-      database: SAMPLE_DB_ID,
-      type: "query",
-      query: {
-        aggregation: [
-          [
-            "aggregation-options",
-            ["avg", ["field", ORDERS.QUANTITY, null]],
-            { name: "Avg Q", "display-name": "Avg Q" },
-          ],
+  return Lib.createTestQuery(SAMPLE_PROVIDER, {
+    stages: [
+      {
+        source: {
+          type: "table",
+          id: ORDERS_ID,
+        },
+        aggregations: [
+          {
+            name: "Avg Q",
+            value: {
+              type: "operator",
+              operator: "avg",
+              args: [
+                { type: "column", name: "QUANTITY", sourceName: "ORDERS" },
+              ],
+            },
+          },
         ],
       },
-    },
+    ],
   });
 }
 
 function createQueryWithInlineExpressionWithOperator() {
-  return createQuery({
-    query: {
-      database: SAMPLE_DB_ID,
-      type: "query",
-      query: {
-        aggregation: [
-          [
-            "aggregation-options",
-            ["count"],
-            { name: "My count", "display-name": "My count" },
-          ],
+  return Lib.createTestQuery(SAMPLE_PROVIDER, {
+    stages: [
+      {
+        source: { type: "table", id: ORDERS_ID },
+        aggregations: [
+          {
+            name: "My count",
+            value: {
+              type: "operator",
+              operator: "count",
+            },
+          },
         ],
       },
-    },
+    ],
   });
 }
 
@@ -115,7 +143,7 @@ function setup({
     }),
   }),
   metadata = createMetadata(),
-  query = createQuery({ metadata }),
+  query = Lib.createTestQuery(SAMPLE_PROVIDER, DEFAULT_TEST_QUERY),
   allowCustomExpressions,
 }: SetupOpts = {}) {
   const stageIndex = 0;

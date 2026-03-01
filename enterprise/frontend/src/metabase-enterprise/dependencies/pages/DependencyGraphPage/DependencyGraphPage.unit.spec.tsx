@@ -1,26 +1,26 @@
 import { Route } from "react-router";
 
-import { setupDependecyGraphEndpoint } from "__support__/server-mocks";
+import {
+  setupDependecyGraphEndpoint,
+  setupRecentViewsAndSelectionsEndpoints,
+} from "__support__/server-mocks";
 import { renderWithProviders, screen } from "__support__/ui";
 import { PLUGIN_DEPENDENCIES } from "metabase/plugins";
 import { createMockDependencyGraph } from "metabase-types/api/mocks";
 
 import { DependencyGraphPage } from "./DependencyGraphPage";
 
-jest.mock("../../components/DependencyGraph", () => ({
-  DependencyGraph: () => <p>Dependency Graph</p>,
-}));
-
 describe("DependencyGraphPage", () => {
   beforeEach(() => {
     setupDependecyGraphEndpoint(createMockDependencyGraph());
+    setupRecentViewsAndSelectionsEndpoints([], ["selections"]);
   });
   it("should show an app switcher if there is no context", async () => {
     renderWithProviders(<Route path="/" component={DependencyGraphPage} />, {
       withRouter: true,
     });
 
-    expect(await screen.findByText("Dependency Graph")).toBeInTheDocument();
+    expect(await screen.findByTestId("dependency-graph")).toBeInTheDocument();
     expect(screen.getByTestId("app-switcher-target")).toBeInTheDocument();
   });
 
@@ -44,7 +44,7 @@ describe("DependencyGraphPage", () => {
       },
     );
 
-    expect(await screen.findByText("Dependency Graph")).toBeInTheDocument();
+    expect(await screen.findByTestId("dependency-graph")).toBeInTheDocument();
     expect(screen.queryByTestId("app-switcher-target")).not.toBeInTheDocument();
   });
 });

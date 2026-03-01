@@ -2,6 +2,8 @@ import { useMemo } from "react";
 
 import { useListCollectionsQuery, useListSnippetsQuery } from "metabase/api";
 import type { TreeItem } from "metabase/data-studio/common/types";
+import { useSelector } from "metabase/lib/redux";
+import { PLUGIN_REMOTE_SYNC } from "metabase/plugins";
 
 import { buildActiveSnippetTree, buildArchivedSnippetTree } from "./utils";
 
@@ -20,6 +22,9 @@ export const useBuildSnippetTree = ({ archived = false } = {}): {
       namespace: "snippets",
       archived,
     });
+  const isRemoteSyncReadOnly = useSelector(
+    PLUGIN_REMOTE_SYNC.getIsRemoteSyncReadOnly,
+  );
 
   return useMemo(() => {
     if (
@@ -40,7 +45,11 @@ export const useBuildSnippetTree = ({ archived = false } = {}): {
       error,
       tree: archived
         ? buildArchivedSnippetTree(snippetCollections, snippets)
-        : buildActiveSnippetTree(snippetCollections, snippets),
+        : buildActiveSnippetTree(
+            snippetCollections,
+            snippets,
+            !isRemoteSyncReadOnly,
+          ),
     };
   }, [
     loadingSnippets,
@@ -49,5 +58,6 @@ export const useBuildSnippetTree = ({ archived = false } = {}): {
     snippetCollections,
     error,
     archived,
+    isRemoteSyncReadOnly,
   ]);
 };

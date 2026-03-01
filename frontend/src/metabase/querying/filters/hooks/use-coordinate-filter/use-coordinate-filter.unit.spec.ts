@@ -2,7 +2,7 @@ import { act, renderHook } from "@testing-library/react";
 
 import { checkNotNull } from "metabase/lib/types";
 import * as Lib from "metabase-lib";
-import { columnFinder, createQuery } from "metabase-lib/test-helpers";
+import { SAMPLE_PROVIDER, columnFinder } from "metabase-lib/test-helpers";
 import { PEOPLE_ID } from "metabase-types/api/mocks/presets";
 
 import type { NumberOrEmptyValue } from "./types";
@@ -33,7 +33,16 @@ interface ValidateFilterCase {
 }
 
 describe("useCoordinateFilter", () => {
-  const defaultQuery = Lib.withDifferentTable(createQuery(), PEOPLE_ID);
+  const defaultQuery = Lib.createTestQuery(SAMPLE_PROVIDER, {
+    stages: [
+      {
+        source: {
+          type: "table",
+          id: PEOPLE_ID,
+        },
+      },
+    ],
+  });
   const stageIndex = 0;
   const availableColumns = Lib.filterableColumns(defaultQuery, stageIndex);
   const latitudeColumn = columnFinder(defaultQuery, availableColumns)(

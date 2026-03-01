@@ -1,7 +1,7 @@
 import { memo } from "react";
 
 import type { ITreeNodeItem } from "metabase/common/components/tree/types";
-import { Text } from "metabase/common/components/type/Text";
+import { Text } from "metabase/ui";
 
 import { EntityViewSwitch } from "../EntityViewSwitch";
 import { FilterableTree } from "../FilterableTree";
@@ -48,7 +48,11 @@ export const PermissionsSidebarContent = memo(
           ) : (
             <div className={S.SidebarContentTitle}>{title}</div>
           )}
-          {description && <Text color="text-primary">{description}</Text>}
+          {description && (
+            <Text lh="normal" c="text-primary">
+              {description}
+            </Text>
+          )}
           {entityViewFocus && onEntityChange && (
             <EntityViewSwitch
               value={entityViewFocus}

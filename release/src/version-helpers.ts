@@ -168,9 +168,10 @@ export const getExtraTagsForVersion = ({
   // eg. v0.23.x / v1.23.x
   const baseTags = [getDotXs(ossVersion, 1), getDotXs(eeVersion, 1)];
   // eg. v0.23.4.x / v1.23.4.x
-  const minorTags = versionType !== "major"
-    ? [getDotXs(ossVersion, 2), getDotXs(eeVersion, 2)]
-    : [];
+  const minorTags =
+    versionType !== "major"
+      ? [getDotXs(ossVersion, 2), getDotXs(eeVersion, 2)]
+      : [];
 
   return [
     ...baseTags,
@@ -248,6 +249,7 @@ export const versionRequirements: Record<
   56: { java: 21, node: 22, platforms: "linux/amd64,linux/arm64" },
   57: { java: 21, node: 22, platforms: "linux/amd64,linux/arm64" },
   58: { java: 21, node: 22, platforms: "linux/amd64,linux/arm64" },
+  59: { java: 21, node: 22, platforms: "linux/amd64,linux/arm64" },
 };
 
 export const getBuildRequirements = (version: string) => {

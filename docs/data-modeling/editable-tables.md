@@ -1,5 +1,5 @@
 ---
-title: Editable tables 
+title: Editable tables
 summary: Admins can create, update, and delete data in tables right in Metabase.
 ---
 
@@ -23,8 +23,8 @@ Currently, editable tables are available for the following databases:
 
 To set up table editing, admins can:
 
-1. Click the **gear** icon in the top right.
-2. Select **Admin settings**.
+1. Click the **grid** icon in the top right.
+2. Select **Admin**.
 3. Click **Databases**.
 4. Select your database.
 5. Toggle on **Editable table data**.

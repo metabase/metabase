@@ -23,6 +23,7 @@
    [metabase.lib.core :as lib]
    [metabase.permissions-rest.data-permissions.graph :as data-perms.graph]
    [metabase.permissions.core :as perms]
+   [metabase.permissions.models.permissions-group-membership :as pgm]
    [metabase.permissions.test-util :as perms.test-util]
    [metabase.premium-features.test-util :as premium-features.test-util]
    [metabase.query-processor.util :as qp.util]
@@ -414,6 +415,13 @@
             (f temp-object))
           (finally
             (t2/delete! model :toucan/pk ((t2/select-pks-fn model) temp-object))))))))
+
+;; `with-temp` cleanup calls `t2/delete!` directly, which would hit our before-delete guard.
+;; Bind `*allow-direct-deletion*` so with-temp cleanup works.
+(methodical/defmethod t2.with-temp/do-with-temp* :around :model/PermissionsGroupMembership
+  [model explicit-attributes f]
+  (binding [pgm/*allow-direct-deletion* true]
+    (next-method model explicit-attributes f)))
 
 (defn- set-with-temp-defaults! []
   (doseq [[model defaults-fn] with-temp-defaults-fns]

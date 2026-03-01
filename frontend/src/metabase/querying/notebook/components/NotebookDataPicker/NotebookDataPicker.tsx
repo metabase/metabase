@@ -13,11 +13,11 @@ import type {
   MiniPickerItem,
   MiniPickerPickableItem,
 } from "metabase/common/components/Pickers/MiniPicker/types";
+import { isEmbedding } from "metabase/embedding/config";
 import { useDispatch, useSelector, useStore } from "metabase/lib/redux";
 import { checkNotNull } from "metabase/lib/types";
 import type { QueryEditorDatabasePickerItem } from "metabase/querying/editor/types";
 import { loadMetadataForTable } from "metabase/questions/actions";
-import { getIsEmbedding } from "metabase/selectors/embed";
 import { getMetadata } from "metabase/selectors/metadata";
 import { getIsTenantUser } from "metabase/selectors/user";
 import { Icon, TextInput } from "metabase/ui";
@@ -75,7 +75,7 @@ export function NotebookDataPicker({
   const store = useStore();
   const dispatch = useDispatch();
   const onChangeRef = useLatest(onChange);
-  const isEmbedding = useSelector(getIsEmbedding);
+  const isEmbed = isEmbedding();
   const isTenantUser = useSelector(getIsTenantUser);
 
   const handleChange = async (tableId: TableId) => {
@@ -97,7 +97,7 @@ export function NotebookDataPicker({
 
   // EMB-1144: force the embedding picker if user is a tenant user.
   //           this is to support the sidecar use-case where tenant users are given instance logins.
-  if (isEmbedding || isTenantUser) {
+  if (isEmbed || isTenantUser) {
     const canSelectTableColumns = table && isRaw && !isDisabled;
     return (
       <NotebookCellItem

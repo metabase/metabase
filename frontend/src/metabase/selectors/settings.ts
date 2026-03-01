@@ -45,7 +45,9 @@ export type StorePaths =
   /** redirects to the specific instance storage management page */
   | "account/storage"
   /** EE, self-hosted upsell that communicates back with the instance */
-  | "checkout/upgrade/self-hosted";
+  | "checkout/upgrade/self-hosted"
+  /** transforms add-ons management page */
+  | "account/transforms";
 
 const DEFAULT_STORE_URL = "https://store.metabase.com/";
 

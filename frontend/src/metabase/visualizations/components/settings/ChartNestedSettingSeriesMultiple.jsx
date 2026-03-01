@@ -4,9 +4,9 @@ import { Component } from "react";
 import { t } from "ttag";
 
 import { ColorSelector } from "metabase/common/components/ColorSelector";
-import { IconWrapper } from "metabase/common/components/IconWrapper";
 import CS from "metabase/css/core/index.css";
 import { getAccentColors } from "metabase/lib/colors/groups";
+import { Flex } from "metabase/ui";
 
 import {
   OptionsIcon,
@@ -82,7 +82,12 @@ export class ChartNestedSettingSeriesMultiple extends Component {
                     data-testid="series-name-input"
                   />
                   {objects.length > 1 ? (
-                    <IconWrapper className={cx(CS.ml1, CS.p1)}>
+                    <Flex
+                      align="center"
+                      justify="center"
+                      bdrs={6}
+                      className={cx(CS.ml1, CS.p1)}
+                    >
                       <OptionsIcon
                         name={isSelected(single) ? "chevronup" : "chevrondown"}
                         tooltip={
@@ -94,7 +99,7 @@ export class ChartNestedSettingSeriesMultiple extends Component {
                           )
                         }
                       />
-                    </IconWrapper>
+                    </Flex>
                   ) : null}
                 </div>
                 {objectSettingsWidgets &&

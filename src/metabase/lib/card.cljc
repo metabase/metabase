@@ -1,9 +1,11 @@
 (ns metabase.lib.card
   (:refer-clojure :exclude [mapv select-keys empty? not-empty])
   (:require
+   [clojure.string :as str]
    [medley.core :as m]
    [metabase.lib.binning :as lib.binning]
    [metabase.lib.computed :as lib.computed]
+   [metabase.lib.display-name :as lib.display-name]
    [metabase.lib.field.util :as lib.field.util]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
@@ -72,16 +74,21 @@
    field-metadata        :- [:maybe ::lib.schema.metadata/column]]
   (let [source-metadata-col (-> source-metadata-col
                                 (perf/update-keys u/->kebab-case-en))
-        ;; use the (possibly user-specified) display name as the "original display name" going forward ONLY IF THE
-        ;; CARD THIS CAME FROM WAS A MODEL! BUT DON'T USE IT IF IT ALREADY CONTAINS A `→`!!!
+        ;; For model columns, preserve the (possibly user-edited) display name as
+        ;; :lib/original-display-name so it takes priority in the display name pipeline.
+        ;; But only when it does NOT contain " → " — arrow-prefixed names from inner joins
+        ;; should be skipped here; the underlying field metadata already provides a clean
+        ;; :lib/original-display-name (e.g. "Name" for a joined "C → Name: Auto binned: Month").
         source-metadata-col (cond-> source-metadata-col
                               (and (:display-name source-metadata-col)
+                                   (not (str/includes? (:display-name source-metadata-col)
+                                                       lib.display-name/join-display-name-separator))
                                    ;; TODO (Cam 6/23/25) -- a little silly to fetch this Card like 100 times, maybe we
                                    ;; should just change this function to take `card` instead.
                                    (when card-id
                                      (when-some [card (lib.metadata/card metadata-providerable card-id)]
                                        (= (:type card) :model))))
-                              (assoc :lib/model-display-name (:display-name source-metadata-col)))
+                              (assoc :lib/original-display-name (:display-name source-metadata-col)))
         col (merge
              {:base-type :type/*, :lib/type :metadata/column}
              field-metadata
@@ -89,8 +96,8 @@
              {:lib/type                :metadata/column
               :lib/source-column-alias ((some-fn :lib/source-column-alias :name) source-metadata-col)})
         col (cond-> col
-              (:metabase.lib.field/temporal-unit source-metadata-col)
-              (assoc :inherited-temporal-unit (keyword (:metabase.lib.field/temporal-unit source-metadata-col)))
+              (:lib/temporal-unit source-metadata-col)
+              (assoc :inherited-temporal-unit (keyword (:lib/temporal-unit source-metadata-col)))
 
               ;; If the incoming source-metadata-col doesn't have `:semantic-type :type/FK`, drop
               ;; `:fk-target-field-id`. This comes up with metadata on SQL cards, which might be linked to their
@@ -147,7 +154,7 @@
   #{})
 
 (defn- updated-result-metadata
-  "Get `:result-metadata` from Card, but merge in updated values of `:active`."
+  "Get `:result-metadata` from Card, but merge in updated values of `:active` and `:visibility-type`."
   [metadata-providerable card]
   (when-let [saved-metadata-cols (not-empty (:result-metadata card))]
     (let [ids                       (into #{} (keep :id) saved-metadata-cols)
@@ -156,7 +163,11 @@
               (merge
                saved-metadata-col
                (when-let [metadata-provider-col (id->metadata-provider-col (:id saved-metadata-col))]
-                 (select-keys metadata-provider-col [:active]))))
+                 (let [legacy? (contains? saved-metadata-col :base_type)]
+                   (cond-> (select-keys metadata-provider-col [:active])
+                     (contains? metadata-provider-col :visibility-type)
+                     (assoc (if legacy? :visibility_type :visibility-type)
+                            (:visibility-type metadata-provider-col)))))))
             saved-metadata-cols))))
 
 (mu/defn card->underlying-query :- ::lib.schema/query
@@ -302,9 +313,7 @@
 (mu/defn source-card-type :- [:maybe ::lib.schema.metadata/card.type]
   "The type of the query's source-card, if it has one."
   [query :- ::lib.schema/query]
-  (when-let [card-id (lib.util/source-card-id query)]
-    (when-let [card (lib.metadata/card query card-id)]
-      (:type card))))
+  (some-> query lib.metadata.calculation/primary-source-card :type))
 
 (mu/defn source-card-is-model? :- :boolean
   "Is the query's source-card a model?"

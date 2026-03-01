@@ -79,15 +79,15 @@
        (lib.hierarchy/isa? (first clause) ::lib.schema.ref/ref)))
 
 ;;; TODO (Cam 8/28/25) -- base type is the original effective type!!! We shouldn't need a separate
-;;; `:metabase.lib.field/original-effective-type` key.
+;;; `:lib/original-effective-type` key.
 (defn original-isa?
   "Returns whether the type of `expression` isa? `typ`.
    If the expression has an original-effective-type due to bucketing, check that."
   [expression typ]
   (isa?
    (or (and (clause? expression)
-            ((some-fn :metabase.lib.field/original-effective-type :effective-type :base-type) (lib.options/options expression)))
-       (lib.schema.expression/type-of expression))
+            ((some-fn :lib/original-effective-type :effective-type :base-type) (lib.options/options expression)))
+       (lib.schema.expression/type-of-resolved expression))
    typ))
 
 (defn expression-name
@@ -108,7 +108,7 @@
 
             :else
             [:value {:lib/uuid (str (random-uuid))
-                     :effective-type (lib.schema.expression/type-of clause)}
+                     :effective-type (lib.schema.expression/type-of-resolved clause)}
              clause])
           (lib.options/update-options (fn [opts]
                                         (-> opts
@@ -523,7 +523,7 @@
         query     (fresh-uuids query (fn [old-uuid new-uuid]
                                        (vswap! remapping assoc! old-uuid new-uuid)))
         remapping (persistent! @remapping)]
-    (lib.util.match/replace query
+    (lib.util.match/replace-lite query
       [:aggregation opts old-uuid]
       [:aggregation opts (or (remapping old-uuid)
                              (throw (ex-info "Could not convert old :aggregation ref to new UUIDs"

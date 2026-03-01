@@ -25,6 +25,16 @@
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
+;;; --------------------------------------------------- Defaults ------------------------------------------------------
+
+(def ^:private ^:const default-field-values-limit
+  "Default number of field values to return when no limit is specified."
+  30)
+
+(def ^:private ^:const default-query-row-limit
+  "Default row limit for table queries when no limit is specified."
+  100)
+
 ;;; ---------------------------------------------------- Helpers ------------------------------------------------------
 
 (defn- check-tool-result
@@ -187,7 +197,7 @@
   "Get details for a table by ID."
   [{:keys [id]} :- [:map [:id ms/PositiveInt]]
    {:keys [with-fields with-field-values with-related-tables with-metrics with-measures with-segments]
-    :or   {with-fields true, with-field-values true, with-related-tables true,
+    :or   {with-fields true, with-field-values false, with-related-tables true,
            with-metrics true, with-measures false, with-segments false}}
    :- [:map
        [:with-field-values   {:optional true} [:maybe :boolean]]
@@ -216,13 +226,13 @@
     {:entity-type "table"
      :entity-id   id
      :field-id    field-id
-     :limit       (request/limit)})))
+     :limit       (or (request/limit) default-field-values-limit)})))
 
 (api.macros/defendpoint :get "/v1/metric/:id" :- ::metric
   "Get details for a metric by ID."
   [{:keys [id]} :- [:map [:id ms/PositiveInt]]
    {:keys [with-default-temporal-breakout with-field-values with-queryable-dimensions with-segments]
-    :or   {with-default-temporal-breakout true, with-field-values true,
+    :or   {with-default-temporal-breakout true, with-field-values false,
            with-queryable-dimensions true, with-segments false}}
    :- [:map
        [:with-default-temporal-breakout {:optional true} [:maybe :boolean]]
@@ -247,7 +257,7 @@
     {:entity-type "metric"
      :entity-id   id
      :field-id    field-id
-     :limit       (request/limit)})))
+     :limit       (or (request/limit) default-field-values-limit)})))
 
 (api.macros/defendpoint :post "/v1/search" :- ::search-response
   "Search for tables and metrics.
@@ -320,7 +330,9 @@
 (defn- construct-table-query
   "Build a query from a table using the provided query components."
   [body]
-  (let [args (mc/encode ::construct-query-table-request body deftool/request-transformer)
+  (let [body (cond-> body
+               (not (:limit body)) (assoc :limit default-query-row-limit))
+        args (mc/encode ::construct-query-table-request body deftool/request-transformer)
         data (check-tool-result (metabot-filters/query-datasource args))]
     {:query (-> (:query data)
                 json/encode

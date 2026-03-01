@@ -4,6 +4,9 @@ const esmPackages = require("./jest.esm-packages.js");
 
 const baseConfig = {
   moduleNameMapper: {
+    // Force jose to use Node.js runtime instead of browser runtime in jsdom environment.
+    // The browser runtime expects CryptoKey to be globally available, which jsdom doesn't provide.
+    "^jose$": "<rootDir>/node_modules/jose/dist/node/cjs/index.js",
     "^build-configs/(.*)$": "<rootDir>/frontend/build/$1",
     "\\.(css|less)$": "<rootDir>/frontend/test/__mocks__/styleMock.js",
     "\\.(jpg|jpeg|png|gif|eot|otf|webp|svg|ttf|woff|woff2|mp4|webm|wav|mp3|m4a|aac|oga)$":

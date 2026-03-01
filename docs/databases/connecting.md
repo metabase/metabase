@@ -14,7 +14,7 @@ Connect Metabase to your data sources.
 
 ## Adding a database connection
 
-To add a database connection, click on the **gear** icon in the top right, and navigate to **Admin settings** > **Databases** > **Add a database**.
+To add a database connection, click the **grid** icon in the top right, and navigate to **Admin** > **Databases** > **Add a database**.
 
 Fill out the fields for that database, and click **Save changes** at the bottom.
 
@@ -65,11 +65,11 @@ See [Syncing and scanning](./sync-scan.md).
 
 **Caution: Deleting a database is irreversible! All saved questions and dashboard cards based on the database will be deleted as well!**
 
-Go to **Admin settings** > **Databases** > your database and click **Remove this database**.
+Go to **Admin** > **Databases** > your database and click **Remove this database**.
 
 ## Restoring the Sample Database
 
-If you've deleted the Metabase [Sample Database](https://www.metabase.com/glossary/sample-database), go to **Admin settings** > **Databases** and click **Bring the Sample Database back**.
+If you've deleted the Metabase [Sample Database](https://www.metabase.com/glossary/sample-database), go to **Admin** > **Databases** and click **Bring the Sample Database back**.
 
 ## Troubleshooting
 

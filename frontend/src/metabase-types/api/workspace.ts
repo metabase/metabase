@@ -1,6 +1,7 @@
 import type { CollectionId } from "./collection";
 import type { DatabaseId } from "./database";
 import type { DatasetColumn, ResultsMetadata, RowValues } from "./dataset";
+import type { SchemaName } from "./table";
 import type {
   DraftTransformSource,
   Transform,
@@ -23,7 +24,7 @@ export type TaggedTransform = Transform & { type: "transform" };
  */
 export type UnsavedTransform = {
   type: "unsaved-transform";
-  id: number;
+  id: TransformId;
   name: string;
   source: DraftTransformSource;
   target: {
@@ -529,7 +530,7 @@ export type WorkspaceTransformRunResponse = {
   message?: string | null;
   table: {
     name: string;
-    schema?: string | null;
+    schema?: SchemaName | null;
   };
 };
 

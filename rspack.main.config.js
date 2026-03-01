@@ -96,8 +96,8 @@ const config = {
   // eventually we should have multiple (single file) entry points for various pieces of the app to enable code splitting
   entry: {
     "app-main": "./app-main.js",
-    "app-public": "./app-public.js",
-    "app-embed": "./app-embed.js",
+    "app-public": "./app-public.ts",
+    "app-embed": "./app-embed.ts",
     "app-embed-sdk": "./app-embed-sdk.tsx",
     "vendor-styles": "./css/vendor.css",
     styles: "./css/index.module.css",

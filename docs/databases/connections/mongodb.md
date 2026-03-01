@@ -6,7 +6,7 @@ redirect_from:
 
 # MongoDB
 
-To add a database connection, click on the **gear** icon in the top right, and navigate to **Admin settings** > **Databases** > **Add a database**.
+To add a database connection, click the **grid** icon in the top right, and navigate to **Admin** > **Databases** > **Add a database**.
 
 ## Supported versions
 
@@ -129,6 +129,12 @@ Metabase may not sync all of your fields. Since any document in a MongoDB collec
 Instead, Metabase gets a sample of the fields in a collection by scanning a sample of 1000 documents in each collection (the first 500 documents and the last 500 documents in each collection).
 
 If you're not seeing all of the fields show up for a collection in Metabase, one workaround is to include all possible keys in the first document of the collection, and give those keys null values. That way, Metabase will be able to recognize the correct schema for the entire collection.
+
+## Writeable connection
+
+{% include plans-blockquote.html feature="Writeable connection" is_plural=true%}
+
+Set up an additional connection used for write operations. See [Writeable connections](../writeable-connection.md).
 
 ## Database routing
 

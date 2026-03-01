@@ -109,9 +109,6 @@ describe("Text", () => {
         ).toHaveTextContent(
           "You can use Markdown here, and include variables {{like_this}}",
         );
-        expect(screen.getByTestId("editing-dashboard-text-container"))
-          .toHaveStyle(`border: 1px solid var(--mb-color-brand);
-                        color: var(--mb-color-text-tertiary);`);
       });
 
       it("should preview with text when it has content", () => {

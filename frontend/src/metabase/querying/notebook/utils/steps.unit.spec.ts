@@ -1,7 +1,7 @@
 import { createMockMetadata } from "__support__/metadata";
 import { checkNotNull } from "metabase/lib/types";
 import * as Lib from "metabase-lib";
-import { createQueryWithClauses } from "metabase-lib/test-helpers";
+import { SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
 import Question from "metabase-lib/v1/Question";
 import type { StructuredQuery as StructuredQueryObject } from "metabase-types/api";
 import {
@@ -287,8 +287,13 @@ describe("filtered and summarized query with post-aggregation filter", () => {
 
 describe("aggregated query without breakout", () => {
   it("provides 'join data' and 'custom column' actions", () => {
-    const query = createQueryWithClauses({
-      aggregations: [{ operatorName: "count" }],
+    const query = Lib.createTestQuery(SAMPLE_PROVIDER, {
+      stages: [
+        {
+          source: { type: "table", id: ORDERS_ID },
+          aggregations: [{ type: "operator", operator: "count", args: [] }],
+        },
+      ],
     });
 
     const question = Question.create({

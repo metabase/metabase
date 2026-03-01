@@ -234,8 +234,10 @@
 (mu/defn- existing-visible-columns :- ::lib.metadata.calculation/visible-columns
   [query                                                       :- ::lib.schema/query
    stage-number                                                :- :int
-   {:keys [include-joined? include-expressions?], :as options} :- ::lib.metadata.calculation/visible-columns.options]
-  (let [source-columns (previous-stage-or-source-visible-columns query stage-number options)]
+   {:keys [include-joined? include-expressions? include-sensitive-fields?], :as options} :- ::lib.metadata.calculation/visible-columns.options]
+  (let [source-columns (into []
+                             (lib.metadata/active-column-filter-xform {:include-sensitive? include-sensitive-fields?})
+                             (previous-stage-or-source-visible-columns query stage-number options))]
     (concat
      ;; 1: columns from the previous stage, source table or query
      source-columns
