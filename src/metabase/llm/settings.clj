@@ -90,5 +90,8 @@
   :type       :boolean
   :setter     :none
   :export?    false
-  :getter     (fn [] (or (some? (llm-anthropic-api-key))
-                         (premium-features/enable-metabot-v3?))))
+  :getter     (fn [] (or
+                      (premium-features/enable-metabot-v3?)
+                      (and
+                       (not (premium-features/is-hosted?))
+                       (some? (llm-anthropic-api-key))))))
