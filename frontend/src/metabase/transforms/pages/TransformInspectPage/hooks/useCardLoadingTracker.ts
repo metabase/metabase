@@ -6,8 +6,6 @@ import type { InspectorCardId } from "metabase-types/api";
 export const useCardLoadingTracker = (onAllCardsLoaded: () => void) => {
   const startedRef = useRef(new Set<InspectorCardId>());
   const loadedRef = useRef(new Set<InspectorCardId>());
-  const onAllCardsLoadedRef = useRef(onAllCardsLoaded);
-  onAllCardsLoadedRef.current = onAllCardsLoaded;
 
   const { emit, subscribe } = useSubscriber<InspectorCardId>({
     withBuffer: true,
@@ -25,10 +23,10 @@ export const useCardLoadingTracker = (onAllCardsLoaded: () => void) => {
         startedRef.current.size > 0 &&
         startedRef.current.size === loadedRef.current.size
       ) {
-        onAllCardsLoadedRef.current();
+        onAllCardsLoaded();
       }
     },
-    [emit],
+    [emit, onAllCardsLoaded],
   );
 
   return {
