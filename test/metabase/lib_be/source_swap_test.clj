@@ -215,13 +215,13 @@
         swapped-query  (lib-be/swap-source-in-query upgraded-query
                                                     {:type :table, :id (meta/id :orders)}
                                                     {:type :table, :id (meta/id :reviews)})]
-    (testing "upgrade should heal the wrong field id to the correct joined column"
+    (testing "upgrade should preserve the wrong field id as-is"
       (is (=? {:stages [{:filters [[:not-null {} [:field {:join-alias "Orders"}
-                                                  (meta/id :orders :product-id)]]]}]}
+                                                  (meta/id :reviews :product-id)]]]}]}
               upgraded-query)))
     (testing "should return an identical query if upgrade is not needed"
       (is (= upgraded-query (lib-be/upgrade-field-refs-in-query upgraded-query))))
-    (testing "should swap the healed joined column ref"
+    (testing "should preserve the wrong field id when swapping"
       (is (=? {:stages [{:filters [[:not-null {} [:field {:join-alias "Orders"}
                                                   (meta/id :reviews :product-id)]]]}]}
               swapped-query)))))
@@ -235,13 +235,13 @@
         swapped-query  (lib-be/swap-source-in-query upgraded-query
                                                     {:type :table, :id (meta/id :orders)}
                                                     {:type :table, :id (meta/id :reviews)})]
-    (testing "upgrade should heal both the wrong field id and add the missing join-alias"
-      (is (=? {:stages [{:filters [[:not-null {} [:field {:join-alias "Orders"}
-                                                  (meta/id :orders :product-id)]]]}]}
+    (testing "upgrade should preserve the wrong field id and missing join-alias as-is"
+      (is (=? {:stages [{:filters [[:not-null {} [:field (complement :join-alias)
+                                                  (meta/id :reviews :product-id)]]]}]}
               upgraded-query)))
     (testing "should return an identical query if upgrade is not needed"
       (is (= upgraded-query (lib-be/upgrade-field-refs-in-query upgraded-query))))
-    (testing "should swap the healed joined column ref"
+    (testing "swap should resolve the ref and add the correct join-alias"
       (is (=? {:stages [{:filters [[:not-null {} [:field {:join-alias "Orders"}
                                                   (meta/id :reviews :product-id)]]]}]}
               swapped-query)))))
@@ -630,15 +630,15 @@
         swapped-query  (lib-be/swap-source-in-query upgraded-query
                                                     {:type :table, :id (meta/id :products)}
                                                     {:type :table, :id (meta/id :orders)})]
-    (testing "should handle the wrong table field id when upgrading"
+    (testing "should preserve the wrong table field id when upgrading"
       (is (=? {:stages [{:source-table (meta/id :products)
-                         :filters [[:not-null {} [:field {} (meta/id :products :created-at)]]]}]}
+                         :filters [[:not-null {} [:field {} (meta/id :people :created-at)]]]}]}
               upgraded-query)))
     (testing "should return an identical query if upgrade is not needed"
       (is (= upgraded-query (lib-be/upgrade-field-refs-in-query upgraded-query))))
-    (testing "should swap the healed field id to the new table field id"
+    (testing "should preserve the wrong table field id when swapping"
       (is (=? {:stages [{:source-table (meta/id :orders)
-                         :filters [[:not-null {} [:field {} (meta/id :orders :created-at)]]]}]}
+                         :filters [[:not-null {} [:field {} (meta/id :people :created-at)]]]}]}
               swapped-query)))))
 
 (deftest ^:parallel swap-source-in-query-nonexistent-field-id-test

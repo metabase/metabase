@@ -131,15 +131,10 @@
    stage-number  :- :int
    field-ref     :- :mbql.clause/field]
   (or (when-let [column (lib.field.resolution/resolve-field-ref query stage-number field-ref)]
-        ;; heal a broken field ref when the field name matches the name of the column that can be resolved
-        (let [column (if (and (::lib.field.resolution/fallback-metadata? column) (:id column) (not (:fk-field-id column)))
-                       (or (lib.field.resolution/resolve-field-ref query stage-number (lib.ref/ref (dissoc column :id)))
-                           column)
-                       column)]
-          (when-not (::lib.field.resolution/fallback-metadata? column)
-            (let [new-field-ref (preserve-expression-name field-ref (lib.ref/ref column))]
-              (when-not (same-field-ref? field-ref new-field-ref)
-                new-field-ref)))))
+        (when-not (::lib.field.resolution/fallback-metadata? column)
+          (let [new-field-ref (preserve-expression-name field-ref (lib.ref/ref column))]
+            (when-not (same-field-ref? field-ref new-field-ref)
+              new-field-ref))))
       field-ref))
 
 (mu/defn- upgrade-field-refs-in-clauses :- [:sequential :any]
