@@ -393,6 +393,50 @@
                                          (meta/id :reviews :created-at)]]}]}
               swapped-query)))))
 
+(deftest ^:parallel swap-source-identity-with-implicit-join-filters-table-test
+  (let [query          (as-> (lib/query meta/metadata-provider (meta/table-metadata :orders)) q
+                         (let [cols (filter #(= (:name %) "CREATED_AT") (lib/filterable-columns q))]
+                           (reduce (fn [q col] (lib/filter q (lib/not-null col))) q cols)))
+        upgraded-query (lib-be/upgrade-field-refs-in-query query)
+        swapped-query  (lib-be/swap-source-in-query upgraded-query
+                                                    {:type :table, :id (meta/id :orders)}
+                                                    {:type :table, :id (meta/id :orders)})]
+    (testing "should preserve source-field for implicit joins after upgrade"
+      (is (=? {:stages [{:source-table (meta/id :orders)
+                         :filters [[:not-null {} [:field (complement :source-field) (meta/id :orders :created-at)]]
+                                   [:not-null {} [:field {:source-field (meta/id :orders :user-id)}
+                                                  (meta/id :people :created-at)]]
+                                   [:not-null {} [:field {:source-field (meta/id :orders :product-id)}
+                                                  (meta/id :products :created-at)]]]}]}
+              upgraded-query)))
+    (testing "should return an identical query if upgrade is not needed"
+      (is (= upgraded-query (lib-be/upgrade-field-refs-in-query upgraded-query))))
+    (testing "identity swap should preserve all source-field options"
+      (is (= upgraded-query swapped-query)))))
+
+(deftest ^:parallel swap-source-identity-with-implicit-join-filters-card-test
+  (let [orders-query   (lib/query meta/metadata-provider (meta/table-metadata :orders))
+        mp             (lib.tu/metadata-provider-with-card-from-query 1 orders-query)
+        query          (as-> (lib/query mp (lib.metadata/card mp 1)) q
+                         (let [cols (filter #(= (:name %) "CREATED_AT") (lib/filterable-columns q))]
+                           (reduce (fn [q col] (lib/filter q (lib/not-null col))) q cols)))
+        upgraded-query (lib-be/upgrade-field-refs-in-query query)
+        swapped-query  (lib-be/swap-source-in-query upgraded-query
+                                                    {:type :card, :id 1}
+                                                    {:type :card, :id 1})]
+    (testing "should upgrade card column to name-based ref and preserve implicit join refs"
+      (is (=? {:stages [{:source-card 1
+                         :filters [[:not-null {} [:field (complement :source-field) "CREATED_AT"]]
+                                   [:not-null {} [:field {:source-field (meta/id :orders :product-id)}
+                                                  (meta/id :products :created-at)]]
+                                   [:not-null {} [:field {:source-field (meta/id :orders :user-id)}
+                                                  (meta/id :people :created-at)]]]}]}
+              upgraded-query)))
+    (testing "should return an identical query if upgrade is not needed"
+      (is (= upgraded-query (lib-be/upgrade-field-refs-in-query upgraded-query))))
+    (testing "identity swap should preserve all refs"
+      (is (= upgraded-query swapped-query)))))
+
 (deftest ^:parallel swap-source-in-query-implicit-join-test
   (let [query          (as-> (lib/query meta/metadata-provider (meta/table-metadata :orders)) q
                          (lib/filter q (lib/= (m/find-first #(= (:name %) "CATEGORY") (lib/filterable-columns q)) "Widget")))
