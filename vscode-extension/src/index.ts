@@ -26,6 +26,7 @@ import { EmbeddedCodeProvider } from './embedded-code-provider'
 import { registerExportLoader } from './export-loader'
 import { registerLmTools } from './lm-tools'
 import { setOutputChannel } from './metabase-client'
+import { TableMetadataCache } from './table-metadata-cache'
 import { WorkspaceDataTreeProvider } from './workspace-data-tree-provider'
 import { WorkspaceManager } from './workspace-manager'
 
@@ -59,6 +60,7 @@ const { activate, deactivate } = defineExtension((context) => {
   }
   outputChannel.appendLine(`metastudioId: ${metastudioId.value}`)
 
+  const tableMetadataCache = new TableMetadataCache(outputChannel)
   const workspaceManager = new WorkspaceManager(workspacesSecret, outputChannel)
 
   // Migrate: clean up old single-workspace storage
@@ -87,7 +89,8 @@ const { activate, deactivate } = defineExtension((context) => {
   watch(
     () => [apiKey.value, workspacesSecret.value] as const,
     ([key, wsSecret]) => {
-      if (key === null || wsSecret === null) return // still loading from secure storage
+      if (key === null || wsSecret === null)
+        return // still loading from secure storage
       if (key && config.host) {
         workspaceDataProvider.setContext(config.host, key, workspaceManager)
         workspaceDataProvider.refresh().catch((err: unknown) => {
@@ -127,6 +130,7 @@ const { activate, deactivate } = defineExtension((context) => {
     outputChannel,
     diagnosticCollection,
     workspaceManager,
+    tableMetadataCache,
     panels,
   }
 
@@ -152,6 +156,7 @@ const { activate, deactivate } = defineExtension((context) => {
   useCommand('metastudio.refreshWorkspaceData', () => {
     const key = apiKey.value
     if (key && config.host) {
+      tableMetadataCache.clear()
       workspaceDataProvider.setContext(config.host, key, workspaceManager)
       workspaceDataProvider.refresh().catch((err: unknown) => {
         outputChannel.appendLine(`workspaceData refresh error: ${err instanceof Error ? err.message : String(err)}`)

@@ -168,6 +168,17 @@ export class WorkspaceDataTreeProvider implements vscode.TreeDataProvider<Worksp
     return []
   }
 
+  /** Return all output tables across all workspace nodes. */
+  getOutputTables(): OutputTableInfo[] {
+    const tables: OutputTableInfo[] = []
+    for (const node of this.nodes) {
+      if (node.kind === 'workspace') {
+        tables.push(...node.tables)
+      }
+    }
+    return tables
+  }
+
   private iconPath(name: string): { light: vscode.Uri; dark: vscode.Uri } {
     return {
       light: vscode.Uri.file(path.join(this.iconsPath, 'light', `${name}.svg`)),

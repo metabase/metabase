@@ -38,8 +38,11 @@ export function registerViewTableDataCommand(ctx: ExtensionCtx) {
       ctx.panels.tableDataPanel = panel
 
       panel.webview.onDidReceiveMessage(async (msg) => {
-        if ((msg.type === 'ready' || msg.type === 'refresh') && currentNode) {
+        if (msg.type === 'ready' && currentNode) {
           await loadTableSchema(ctx, currentNode)
+        }
+        if (msg.type === 'refresh' && currentNode) {
+          await loadTableSchema(ctx, currentNode, true)
         }
         if (msg.type === 'loadData' && currentNode) {
           await loadTableData(ctx, currentNode)
@@ -59,7 +62,7 @@ export function registerViewTableDataCommand(ctx: ExtensionCtx) {
   })
 }
 
-async function loadTableSchema(ctx: ExtensionCtx, node: OutputTableNode) {
+async function loadTableSchema(ctx: ExtensionCtx, node: OutputTableNode, bypassCache = false) {
   const host = config.host
   const apiKey = ctx.apiKey.value
   if (!host || !apiKey || !ctx.panels.tableDataPanel) return
@@ -70,6 +73,25 @@ async function loadTableSchema(ctx: ExtensionCtx, node: OutputTableNode) {
     type: 'tableDataLoading',
     tableName: table.schema ? `${table.schema}.${table.tableName}` : table.tableName,
   })
+
+  // Try the cache first (unless bypassed by an explicit refresh)
+  if (!bypassCache) {
+    const cached = ctx.tableMetadataCache.get(table.tableId)
+    if (cached) {
+      ctx.outputChannel.appendLine(`viewTableData: using cached schema for table ${table.tableId} (${table.schema}.${table.tableName})`)
+      ctx.panels.tableDataPanel.webview.postMessage({
+        type: 'tableSchemaInit',
+        data: {
+          tableName: table.tableName,
+          schema: table.schema,
+          columns: cached.fields.map(f => ({name: f.name, baseType: f.base_type})),
+        },
+      })
+      return
+    }
+  } else {
+    ctx.tableMetadataCache.invalidate(table.tableId)
+  }
 
   ctx.outputChannel.appendLine(`viewTableData: fetching schema id=${table.tableId} (${table.schema}.${table.tableName})`)
 
@@ -83,6 +105,9 @@ async function loadTableSchema(ctx: ExtensionCtx, node: OutputTableNode) {
     })
     return
   }
+
+  // Cache the result for future lookups
+  ctx.tableMetadataCache.set(table.tableId, result.result)
 
   ctx.outputChannel.appendLine(`viewTableData: got ${result.result.fields.length} fields`)
 
