@@ -133,7 +133,7 @@
   (or (when-let [column (lib.field.resolution/resolve-field-ref query stage-number field-ref)]
         (let [column (if (and (::lib.field.resolution/fallback-metadata? column) (not (:fk-field-id column)))
                        (or (lib.field.resolution/resolve-field-ref query stage-number (lib.ref/ref (dissoc column :id)))
-                           column))
+                           column)
                        column)]
           (when-not (::lib.field.resolution/fallback-metadata? column)
             (let [new-field-ref (preserve-expression-name field-ref (lib.ref/ref column))]
