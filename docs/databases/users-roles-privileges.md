@@ -1,6 +1,6 @@
 ---
 title: Database users, roles, and privileges
-summary: Set up database users and roles for Metabase: read-only access for queries, optional write permissions for transforms, uploads, actions, and model persistence.
+summary: "Set up database users and roles for Metabase: read-only access for queries, optional write permissions for transforms, uploads, actions, and model persistence."
 ---
 
 # Database users, roles, and privileges
