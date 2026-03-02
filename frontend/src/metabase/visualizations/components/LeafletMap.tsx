@@ -255,7 +255,10 @@ export class LeafletMap extends Component<LeafletMapProps> {
   }
 
   onFilter = (event: L.DrawEvents.Created) => {
-    const bounds = (event.layer as L.Rectangle).getBounds();
+    if (!(event.layer instanceof L.Rectangle)) {
+      return;
+    }
+    const bounds = event.layer.getBounds();
 
     const {
       series: [
