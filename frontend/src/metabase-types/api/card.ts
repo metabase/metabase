@@ -224,6 +224,7 @@ export type TableColumnOrderSetting = {
 
 export type StackType = "stacked" | "normalized" | null;
 export type StackValuesDisplay = "total" | "all" | "series";
+export type LegendPosition = "auto" | "top" | "bottom" | "left" | "right" | "none";
 
 export const numericScale = ["linear", "pow", "log"] as const;
 export type NumericScale = (typeof numericScale)[number];
@@ -291,6 +292,9 @@ export type VisualizationSettings = {
 
   // Trend
   "graph.show_trendline"?: boolean;
+
+  // Legend
+  "legend.position"?: LegendPosition;
 
   // Series
   "graph.dimensions"?: string[];
