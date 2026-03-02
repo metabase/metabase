@@ -3,9 +3,6 @@
     "name": "master",
     "hash": "c4749ad88014133dc063b9fa60024aaa9a11b85f"
   },
-  "upstream": {
-    "branch": "emb-291-expose-separate-pdf-and-card-result-download-toggles-in"
-  },
   "change": {
     "github": {
       "pr": {
