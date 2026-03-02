@@ -79,58 +79,48 @@
           (lib-be/bulk-load-query-metadata! metadata-provider referenced-ids)))
       (merge {} cards tables transforms segments measures))))
 
-(defn- run-swap* [{:keys [direct non-dashboard-transitive dashboard-ids direct-card-ids second-lvl-dash-ids]}
+(defn- run-swap* [{:keys [all-transitive-dependents transitive-card-ids]}
                   old-source new-source progress]
   (replacement.protocols/set-total! progress
-                                    (+ (count non-dashboard-transitive)
-                                       (count dashboard-ids)
-                                       (count direct)
-                                       (count second-lvl-dash-ids)))
+                                    (+ (count all-transitive-dependents)  ;; phase 1: upgrade
+                                       (count all-transitive-dependents))) ;; phase 2: swap
 
-  ;; phase 1: Upgrade all field refs with bulk metadata loading
-  (let [db-id (case (first old-source)
-                :card  (t2/select-one-fn :database_id :model/Card :id (second old-source))
-                :table (t2/select-one-fn :db_id :model/Table :id (second old-source)))
+  (let [db-id      (case (first old-source)
+                     :card  (t2/select-one-fn :database_id :model/Card :id (second old-source))
+                     :table (t2/select-one-fn :db_id :model/Table :id (second old-source)))
         batch-size 500]
 
-    ;; Process entities in batches, with a fresh metadata cache per batch
-    (doseq [batch (partition-all batch-size non-dashboard-transitive)]
+    ;; phase 1: Upgrade field refs for ALL transitive dependents
+    (doseq [batch (partition-all batch-size all-transitive-dependents)]
       (lib-be/with-metadata-provider-cache
         (let [metadata-provider (lib-be/application-database-metadata-provider db-id)
               loaded            (bulk-load-metadata-for-entities! metadata-provider batch)]
           (doseq [entity batch
-                  :let [object (get loaded entity)]]
-            (field-refs/upgrade! object)
-            (replacement.protocols/advance! progress))))))
+                  :let   [object (get loaded entity)]]
+            ;; upgrade! knows how to handle all entity types including dashboards
+            (field-refs/upgrade! entity object)
+            (replacement.protocols/advance! progress)))))
 
-  ;; phase 1b: Upgrade dashboard parameter targets (dashboards are in transitive but not loaded as entities)
-  (doseq [dashboard-id dashboard-ids]
-    (field-refs/dashboard-upgrade-field-refs! dashboard-id)
-    (replacement.protocols/advance! progress))
+    ;; phase 2: Swap sources for ALL transitive dependents (with batched metadata warming)
+    (let [failures (atom [])]
+      (doseq [batch (partition-all batch-size all-transitive-dependents)]
+        ;; Warm the metadata provider cache for this batch
+        ;; Even though do-swap! fetches entities itself, the metadata provider cache helps
+        (lib-be/with-metadata-provider-cache
+          (let [metadata-provider (lib-be/application-database-metadata-provider db-id)]
+            (bulk-load-metadata-for-entities! metadata-provider batch)
 
-  ;; phase 2: Swap the sources
-  (let [failures (atom [])]
-    (doseq [entity direct]
-      (try
-        (source-swap/do-swap! entity old-source new-source)
-        (catch Exception e
-          (log/warnf e "Failed to swap %s, continuing with next entity" entity)
-          (swap! failures conj {:entity entity :error (ex-message e)})))
-      (replacement.protocols/advance! progress))
+            (doseq [entity batch]
+              (try
+                ;; do-swap! knows how to handle all entity types including dashboards
+                (source-swap/do-swap! entity old-source new-source (set transitive-card-ids))
+                (catch Exception e
+                  (log/warnf e "Failed to swap %s, continuing with next entity" entity)
+                  (swap! failures conj {:entity entity :error (ex-message e)})))
+              (replacement.protocols/advance! progress)))))
 
-    ;; phase 2b: Update second-level dashboard parameter targets
-    (let [old-source-map (source-swap/source-ref->source-map old-source)
-          new-source-map (source-swap/source-ref->source-map new-source)]
-      (doseq [dashboard-id second-lvl-dash-ids]
-        (try
-          (swap.viz/dashboard-update-field-refs! dashboard-id old-source-map new-source-map (set direct-card-ids))
-          (catch Exception e
-            (log/warnf e "Failed to update second-level dashboard %d, continuing" dashboard-id)
-            (swap! failures conj {:entity [:dashboard dashboard-id] :error (ex-message e)})))
-        (replacement.protocols/advance! progress)))
-
-    (when (seq @failures)
-      {:failures @failures})))
+      (when (seq @failures)
+        {:failures @failures}))))
 
 (defn run-swap
   "Replace all usages of `old-source` with `new-source` across all dependent entities.
@@ -142,7 +132,9 @@
      (swap-source [:card 123] [:card 789])
 
    This finds all entities that depend on the old source and updates their queries
-   to reference the new source instead.
+   to reference the new source instead. This includes ALL transitive dependents,
+   which is necessary for implicit joins to work correctly (e.g., when card D filters
+   on Products.Category but is based on card C → card B → card A → Orders).
 
    Returns {:swapped [...]} with the list of entities that were updated."
   ([old-source new-source]
@@ -153,15 +145,16 @@
     progress]
    (assert (:success (source/check-replace-source old-source new-source)))
 
-   (let [all-transitive           (usages/transitive-usages old-source)
-         dashboard-ids            (into [] (comp (filter #(= :dashboard (first %))) (map second)) all-transitive)
-         non-dashboard-transitive (into [] (remove #(= :dashboard (first %))) all-transitive)
-         direct                   (usages/direct-usages     old-source)
-         direct-card-ids          (into [] (comp (filter #(= :card (first %))) (map second)) direct)
-         second-lvl-dash-ids      (usages/second-level-dashboard-ids direct-card-ids)]
-     (run-swap* {:non-dashboard-transitive non-dashboard-transitive
-                 :dashboard-ids            dashboard-ids
-                 :direct                   direct
-                 :direct-card-ids          direct-card-ids
-                 :second-lvl-dash-ids      second-lvl-dash-ids}
+   (let [all-transitive        (usages/transitive-usages old-source)
+         transitive-card-ids   (into [] (comp (filter #(= :card (first %))) (map second)) all-transitive)
+         transitive-dashboards (into [] (comp (filter #(= :dashboard (first %))) (map second)) all-transitive)
+         dashboards-with-cards (usages/second-level-dashboard-ids transitive-card-ids)
+         ;; Add dashboards containing transitive cards to the dependency list
+         all-dashboard-entities (map (fn [id] [:dashboard id])
+                                     (into (sorted-set) (concat transitive-dashboards dashboards-with-cards)))
+         ;; Combine all dependents: original transitive deps + additional dashboards
+         all-dependents        (into [] (concat (remove #(= :dashboard (first %)) all-transitive)
+                                                all-dashboard-entities))]
+     (run-swap* {:all-transitive-dependents all-dependents
+                 :transitive-card-ids       transitive-card-ids}
                 old-source new-source progress))))
