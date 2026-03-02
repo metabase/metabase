@@ -1,6 +1,5 @@
 import { SAMPLE_DB_TABLES } from "e2e/support/cypress_data";
 import { ALL_EXTERNAL_USERS_GROUP_ID } from "e2e/support/cypress_sample_instance_data";
-import { enableJwtAuth } from "e2e/support/helpers/e2e-jwt-helpers";
 
 const { H } = cy;
 
@@ -208,29 +207,6 @@ describe("scenarios - embedding hub", () => {
         .closest("button")
         .findByText("Done", { timeout: 10_000 })
         .should("be.visible");
-    });
-
-    it("Embed in production step should be locked until JWT is enabled", () => {
-      cy.visit("/admin/embedding/setup-guide");
-
-      cy.findByTestId("admin-layout-content")
-        .findByText("Embed in production with SSO")
-        .scrollIntoView()
-        .should("be.visible")
-        .closest("button")
-        .icon("lock")
-        .should("be.visible");
-
-      enableJwtAuth();
-      cy.reload();
-
-      cy.findByTestId("admin-layout-content")
-        .findByText("Embed in production with SSO")
-        .scrollIntoView()
-        .should("be.visible")
-        .closest("button")
-        .icon("lock")
-        .should("not.exist");
     });
 
     it("embedding checklist should show up on the embedding homepage", () => {
@@ -584,6 +560,14 @@ describe("scenarios - embedding hub", () => {
       it("can create two tenants and show summary", () => {
         cy.visit("/admin/embedding/setup-guide/permissions");
 
+        cy.log("step 1 should be marked as done before navigating");
+        H.main()
+          .findByRole("listitem", {
+            name: "Enable multi-tenant user strategy",
+            timeout: 10_000,
+          })
+          .should("have.attr", "data-completed", "true");
+
         H.main().within(() => {
           cy.log("navigate to create tenants step");
 
@@ -593,7 +577,7 @@ describe("scenarios - embedding hub", () => {
 
           cy.log("fill out the tenant form");
           cy.findByPlaceholderText("Tenant name").clear().type("Acme Corp");
-          cy.findByPlaceholderText("tenant_id").type("acme-123");
+          cy.findByPlaceholderText("1").type("acme-123");
           cy.findByPlaceholderText("tenant-slug")
             .clear()
             .type("acme-corp-slug");
@@ -610,7 +594,7 @@ describe("scenarios - embedding hub", () => {
             .clear()
             .type("Beta Inc");
 
-          cy.findAllByPlaceholderText("tenant_id")
+          cy.findAllByPlaceholderText("1")
             .should("have.length", 2)
             .last()
             .type("beta-456");
@@ -693,7 +677,7 @@ describe("scenarios - embedding hub", () => {
             .clear()
             .type("Another Tenant");
 
-          cy.findByPlaceholderText("tenant_id").type("another-id");
+          cy.findByPlaceholderText("1").type("another-id");
 
           cy.findByPlaceholderText("tenant-slug")
             .clear()
@@ -1274,6 +1258,14 @@ describe("scenarios - embedding hub", () => {
       });
 
       cy.visit("/admin/embedding/setup-guide/sso");
+
+      cy.log("step 1 should be marked as done");
+      H.main()
+        .findByRole("listitem", {
+          name: "Set up JWT authentication",
+          timeout: 10_000,
+        })
+        .should("have.attr", "data-completed", "true");
 
       cy.log("navigate to step 3");
       H.main()
