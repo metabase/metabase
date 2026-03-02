@@ -108,8 +108,8 @@
   :tools               [#'agent-tools/sql-search-tool
                         #'agent-tools/read-resource-tool
                         #'agent-tools/create-sql-query-code-edit-tool
-                        #'agent-tools/edit-sql-query-code-edit-tool
-                        #'agent-tools/replace-sql-query-code-edit-tool
+                        #'agent-tools/edit-sql-query-tool
+                        #'agent-tools/replace-sql-query-tool
                         #'agent-tools/ask-for-sql-clarification-tool]})
 
 (register-profile!
