@@ -82,10 +82,10 @@ describe("RemoteSyncSettingsForm", () => {
       });
     });
 
-    it("should show the 'Set up Remote Sync' button", async () => {
+    it("should show the 'Set up remote sync' button", async () => {
       // Verify the submit button shows correct text for new setup
       expect(
-        screen.getByRole("button", { name: /Set up Remote Sync/i }),
+        screen.getByRole("button", { name: /Set up remote sync/i }),
       ).toBeInTheDocument();
     });
 
