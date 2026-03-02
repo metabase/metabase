@@ -140,13 +140,22 @@
   Is kind of reverse transformation to `entity-id` function defined here.
 
   NOTE: Not implemented for `Database`, `Table` and `Field`, since those rely more on `path` than a single id. To be
-  done if a need arises."
+  done if a need arises.
+
+  Throws an exception if the entity with the given entity_id is not found."
   [model-name eid]
   (let [model (keyword "model" model-name)
         pk    (first (t2/primary-keys model))
         eid   (cond-> eid
-                (str/starts-with? eid "eid:") (subs 4))]
-    (t2/select-one-fn pk [model pk] :entity_id eid)))
+                (str/starts-with? eid "eid:") (subs 4))
+        ;; Use select-one to check if entity exists, then extract the pk value
+        entity (t2/select-one [model pk] :entity_id eid)]
+    (when-not entity
+      (throw (ex-info (format "No %s found with entity_id %s" model-name eid)
+                      {:model-name model-name
+                       :entity-id  eid
+                       :status     400})))
+    (get entity pk)))
 
 ;;; ## Hashing entities
 ;;; In the worst case, an entity is already present in two instances linked by serdes, and it doesn't have `entity_id`
