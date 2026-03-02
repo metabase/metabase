@@ -38,7 +38,7 @@ function getAuthState(): SdkAuthState | undefined {
  * Wait for the auth config to be available in the provider props store,
  * then start auth immediately.
  */
-function waitForAuthConfigAndStart() {
+function waitForAuthConfigAndStartEarlyAuthFlow() {
   const win = getWindow();
   if (!win) {
     return;
@@ -266,4 +266,4 @@ function getSdkRequestHeaders(hash?: string): Record<string, string> {
 }
 
 // Export the function to be called explicitly
-export { waitForAuthConfigAndStart };
+export { waitForAuthConfigAndStartEarlyAuthFlow };

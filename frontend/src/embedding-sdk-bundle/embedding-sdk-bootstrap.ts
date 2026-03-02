@@ -1,20 +1,25 @@
-import { waitForAuthConfigAndStart } from "./bootstrap-auth";
+import { waitForAuthConfigAndStartEarlyAuthFlow } from "./bootstrap-auth";
 
-// This is the bootstrap entry point (embedding-sdk-bootstrap.js).
-// It's tiny — just starts auth early and loads the bundle chunks in parallel.
-// Old NPM packages load embedding-sdk.js directly (backward compat).
+// Bootstrap entry point for the SDK bundle.
+//
+// On disk:   `app/embedding-sdk/chunks/embedding-sdk.js`
+// Served at: `app/embedding-sdk.js?packageVersion=X.Y.Z`
+//   (without packageVersion, the backend serves the legacy monolithic bundle
+//    from app/embedding-sdk/legacy/embedding-sdk.js instead)
+//
+// At build time, the inject-bundle-manifest rspack plugin:
+//   1. Replaces "__SDK_CHUNK_MANIFEST__" with the list of split chunk paths
+//   2. Appends the rspack runtime at the end of this file
+//
+// Because the runtime is already inlined, __webpack_require__ is available
+// when this script executes. The split chunks register themselves into
+// the module system as they load.
 
-// New NPM packages load this bootstrap instead. It loads multiple chunks:
-//   1. The runtime chunk (tiny, must load first — sets up module system)
-//   2. All split chunks + the entry chunk (loaded in parallel after runtime)
-// The chunk manifest is injected at build time by the rspack plugin.
+// Start auth in parallel with chunk loading
+waitForAuthConfigAndStartEarlyAuthFlow();
 
-// Start auth as soon as we have the auth config from the provider props store
-waitForAuthConfigAndStart();
-
-// Chunk manifest is injected at build time by the inject-bundle-manifest plugin.
-// The runtime chunk is inlined into this bootstrap file by the build plugin,
-// so the manifest only contains the split chunks to load in parallel.
+// Replaced at build time with { chunks: ["embedding-sdk/chunks/...js", ...] }
+// Paths are relative to /app/ (the baseUrl derived from document.currentScript.src)
 const manifest: { chunks: string[] } = "__SDK_CHUNK_MANIFEST__" as any;
 
 const scriptUrl =
@@ -35,8 +40,6 @@ function loadScript(filename: string): Promise<string> {
   });
 }
 
-// The runtime chunk is inlined at the end of this file by the build plugin,
-// so __webpack_require__ is already available. Load all split chunks in parallel.
 void Promise.all(manifest.chunks.map((filename) => loadScript(filename))).catch(
   (error) => {
     console.error("SDK Bootstrap: Failed to load bundle chunks:", error);
