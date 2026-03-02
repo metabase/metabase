@@ -154,6 +154,23 @@
         (.update liquibase "")
         (is (< 52 (liquibase/latest-applied-major-version conn (.getDatabase liquibase))))))))
 
+(deftest decide-liquibase-file-unrecognized-id-test
+  (mt/test-drivers #{:h2 :mysql :postgres}
+    (mt/with-temp-empty-app-db [conn driver/*driver*]
+      (liquibase/with-liquibase [liquibase conn]
+        (.update liquibase "")
+        (let [table-name (liquibase/changelog-table-name liquibase)]
+          (testing "Unrecognized ID format (no version prefix, no versioned file path) falls back to legacy file"
+            ;; Insert a fake changelog row with an unrecognized ID format — a plain numeric ID
+            ;; with a non-versioned file path — as the most recent migration
+            (jdbc/execute! {:connection conn}
+                           [(format "INSERT INTO %s (ID, AUTHOR, FILENAME, DATEEXECUTED, ORDEREXECUTED, EXECTYPE, MD5SUM)
+                                     VALUES ('12345', 'test', 'some/unknown/path.yaml', CURRENT_TIMESTAMP,
+                                             (SELECT MAX(ORDEREXECUTED) + 1 FROM %s), 'EXECUTED', 'x')"
+                                    table-name table-name)])
+            (is (= @#'liquibase/changelog-legacy-file
+                   (#'liquibase/decide-liquibase-file conn (.getDatabase liquibase))))))))))
+
 (deftest extract-numbers-special-case-test
   (testing "when specific migration verison is passed reports different major version"
     (is (= 55 (first (#'liquibase/extract-numbers "v56.2025-06-05T16:48:48"))))

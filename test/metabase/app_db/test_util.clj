@@ -76,10 +76,9 @@
    the changeset ID, matching what liquibase/prepend-version-to-directory-changeset-ids! does."
   [file-path id-str]
   (if-let [[_ version-str] (re-find #"migrations/(\d{3})/" file-path)]
-    (let [id id-str]
-      (if (str/starts-with? id "v")
-        id
-        (str "v" (parse-long version-str) "." id)))
+    (if (str/starts-with? id-str "v")
+      id-str
+      (str "v" (parse-long version-str) "." id-str))
     id-str))
 
 (defn liquibase-file->included-ids

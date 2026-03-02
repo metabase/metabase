@@ -34,7 +34,7 @@
    (liquibase.database.jvm JdbcConnection)
    (liquibase.exception LockException)
    (liquibase.lockservice LockService LockServiceFactory)
-   (liquibase.resource ClassLoaderResourceAccessor ResourceAccessor)))
+   (liquibase.resource ClassLoaderResourceAccessor)))
 
 (set! *warn-on-reflection* true)
 
@@ -67,7 +67,7 @@
 
 (defn- handle-special-case-migrations
   "This handles v56 migrations that were checked into the v55 branch to resolve an issue with
-  inadventently backported migrations in 55. We check if this or the bad backports are the most recent
+  inadvertently backported migrations in 55. We check if this or the bad backports are the most recent
   available migration and explicitly return 55 as the available major version if so."
   [s]
   (when (contains? special-case-migrations s)
@@ -560,6 +560,15 @@
   [conn]
   (some-> (highest-metabase-version-str conn) config/major-version))
 
+(defn- upsert-highest-metabase-version-setting!
+  "Insert or update the highest-metabase-version setting via raw JDBC."
+  [conn version-str]
+  (if (highest-metabase-version-str conn)
+    (jdbc/execute! {:connection conn}
+                   ["UPDATE setting SET \"VALUE\" = ? WHERE \"KEY\" = 'highest-metabase-version'" version-str])
+    (jdbc/execute! {:connection conn}
+                   ["INSERT INTO setting (\"KEY\", \"VALUE\") VALUES ('highest-metabase-version', ?)" version-str])))
+
 (defn update-highest-metabase-version!
   "Write the full version string to the highest-metabase-version setting if the current
    major version is higher than what's stored (or if nothing is stored yet).
@@ -571,11 +580,7 @@
           stored-major   (highest-metabase-major-version conn)]
       (when (and current-major
                  (or (nil? stored-major) (> current-major stored-major)))
-        (if stored-major
-          (jdbc/execute! {:connection conn}
-                         ["UPDATE setting SET \"VALUE\" = ? WHERE \"KEY\" = 'highest-metabase-version'" current-tag])
-          (jdbc/execute! {:connection conn}
-                         ["INSERT INTO setting (\"KEY\", \"VALUE\") VALUES ('highest-metabase-version', ?)" current-tag]))
+        (upsert-highest-metabase-version-setting! conn current-tag)
         (log/infof "Updated highest-metabase-version setting to %s" current-tag)))))
 
 (defn rollback-major-version!
@@ -660,9 +665,5 @@
                           (str/join ", " remaining-ids))))
            ;; Update the setting to reflect the target version so the lower version binary can start cleanly
            (let [target-version-str (str "v1." target-version ".0")]
-             (if (highest-metabase-version-str conn)
-               (jdbc/execute! {:connection conn}
-                              ["UPDATE setting SET \"VALUE\" = ? WHERE \"KEY\" = 'highest-metabase-version'" target-version-str])
-               (jdbc/execute! {:connection conn}
-                              ["INSERT INTO setting (\"KEY\", \"VALUE\") VALUES ('highest-metabase-version', ?)" target-version-str]))
+             (upsert-highest-metabase-version-setting! conn target-version-str)
              (log/infof "Updated highest-metabase-version setting to %s after rollback" target-version-str))))))))
