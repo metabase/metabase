@@ -116,6 +116,26 @@
       [:details ::ChannelTemplateEmailDetails]]]
     [::mc/default :any]]])
 
+(mr/def ::ChannelTemplateEmailDetailsUserProvided
+  "Email template details schema for API-provided templates. Only handlebars-text is allowed;
+  handlebars-resource is restricted to internal use only."
+  [:map
+   [:type    (ms/enum-keywords-and-strings :email/handlebars-text)]
+   [:subject string?]
+   [:recipient-type {:optional true} (ms/enum-keywords-and-strings :cc :bcc)]
+   [:body    string?]])
+
+(mr/def ::ChannelTemplateUserProvided
+  "Channel Template schema for API-provided templates. Does not allow handlebars-resource."
+  [:merge
+   [:map
+    [:channel_type [:fn #(= "channel" (-> % keyword namespace))]]]
+   [:multi {:dispatch :channel_type}
+    [:channel/email
+     [:map
+      [:details ::ChannelTemplateEmailDetailsUserProvided]]]
+    [::mc/default :any]]])
+
 (defn- check-valid-channel-template
   [channel-template]
   (mu/validate-throw ::ChannelTemplate channel-template))
