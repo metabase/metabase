@@ -188,7 +188,7 @@
     "@babel/preset-typescript": "^7.24.7",
     "@bahmutov/cypress-esbuild-preprocessor": "^2.2.7",
     "@csstools/postcss-global-data": "^3.1.0",
-    "@cypress/grep": "^4.0.1",
+    "@cypress/grep": "^6",
     "@cypress/react": "^9",
     "@cypress/skip-test": "^2.6.1",
     "@emotion/babel-plugin": "^11.11.0",
