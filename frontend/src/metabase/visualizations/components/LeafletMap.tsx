@@ -55,7 +55,7 @@ export interface LeafletMapProps {
 export class LeafletMap extends Component<LeafletMapProps> {
   mapRef = createRef<HTMLDivElement>();
   map: L.Map | null = null;
-  drawControl: L.DrawOptions | null = null;
+  drawControl: L.Control.Draw | null = null;
   _filter?: L.Draw.Rectangle;
 
   componentDidMount() {
@@ -236,10 +236,14 @@ export class LeafletMap extends Component<LeafletMapProps> {
     if (!this.map || !this.drawControl) {
       return;
     }
-    this._filter = new L.Draw.Rectangle(
-      this.map,
-      this.drawControl.options.rectangle,
-    );
+
+    const { options } = this.drawControl;
+
+    if (!isRectangleOptions(options)) {
+      return;
+    }
+
+    this._filter = new L.Draw.Rectangle(this.map, options.rectangle);
     this._filter.enable();
     this.props.onFiltering(true);
   }
@@ -377,4 +381,10 @@ function shouldRecalculateZoom(
   }
 
   return !prevPoints || nextPoints !== prevPoints;
+}
+
+function isRectangleOptions(
+  options: object,
+): options is { rectangle: L.DrawOptions.RectangleOptions } {
+  return "rectangle" in options;
 }
