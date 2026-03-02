@@ -10,8 +10,6 @@
   TODO:
   - figure out what's lacking compared to ai-service"
   (:require
-   [buddy.core.codecs :as codecs]
-   [buddy.core.hash :as buddy-hash]
    [clojure.string :as str]
    [metabase-enterprise.metabot-v3.self.claude :as claude]
    [metabase-enterprise.metabot-v3.self.core :as core]
@@ -20,7 +18,6 @@
    [metabase.analytics.core :as analytics]
    [metabase.analytics.prometheus :as prometheus]
    [metabase.api.common :as api]
-   [metabase.premium-features.core :as premium-features]
    [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.o11y :refer [with-span]]))
@@ -126,46 +123,43 @@
                              :error-type "llm-sse-error"}))
          part)))
 
-(defn- hashed-token-or-uuid
-  "Returns the SHA-256 hex hash of the premium embedding token or the analytics-uuid if the token is unset."
-  []
-  (or (some-> (not-empty (premium-features/premium-embedding-token))
-              buddy-hash/sha256
-              codecs/bytes->hex)
-      (analytics/analytics-uuid)))
-
 (defn- report-token-usage-xf
-  "Transducer that reports prometheus metrics and snowplow token_usage event
-  for :usage parts in the aisdk stream."
+  "Transducer that reports token_usage metrics for :usage parts in the aisdk stream.
+
+  Prometheus + Snowplow:
+    - `:profile-name` — the profile name (e.g. `:internal`)
+    - `:model`        — the model (e.g. `anthropic/claude-haiku-4-5`)
+    - `:tag`          — the specific purpose for which the tokens were used (e.g. 'agent', 'sql-fixing')
+
+   Snowplow only:
+    - `:request-id`   — UUID string for this request
+    - `:session-id`   — conversation UUID string
+    - `:source`       — the source of the request (e.g., 'metabot_agent', 'document_generate_content').
+                        Indicates which API endpoint or workflow initiated the LLM call."
   [{:keys [model profile-name request-id session-id source tag]}]
-  (let [start-ms      (u/start-timer)
-        token-or-uuid (hashed-token-or-uuid)]
+  (let [start-ms      (u/start-timer)]
     (map (fn [part]
            (when (= (:type part) :usage)
              (let [usage      (:usage part)
                    model      (or (:model part) model "unknown")
-                   labels     {:model model :source (or tag "none")}
                    prompt     (:promptTokens usage 0)
                    completion (:completionTokens usage 0)]
-               (prometheus/inc! :metabase-metabot/llm-input-tokens labels prompt)
-               (prometheus/inc! :metabase-metabot/llm-output-tokens labels completion)
-               (prometheus/observe! :metabase-metabot/llm-tokens-per-call labels (+ prompt completion))
-               ;; The caller can omit snowplow opts to skip snowplow tracking.
-               (when request-id
-                 (analytics/track-event! :snowplow/token_usage
-                                         {:hashed_metabase_license_token token-or-uuid
-                                          :user_id                       api/*current-user-id*
-                                          :model_id                      model
-                                          :duration_ms                   (long (u/since-ms start-ms))
-                                          :total_tokens                  (+ prompt completion)
-                                          :prompt_tokens                 prompt
-                                          :completion_tokens             completion
-                                          :estimated_costs_usd           0.0
-                                          :profile                       profile-name
-                                          :request_id                    request-id
-                                          :session_id                    session-id
-                                          :source                        source
-                                          :tag                           tag}))))
+               (analytics/track-token-usage!
+                ;; The caller can omit request-id (and other snowplow opts) to skip snowplow tracking.
+                {:prometheus          true
+                 :snowplow            (some? request-id)
+                 :profile             (some-> profile-name name)
+                 :model-id            model
+                 :prompt-tokens       prompt
+                 :completion-tokens   completion
+                 :total-tokens        (+ prompt completion)
+                 :estimated-costs-usd 0.0
+                 :duration-ms         (long (u/since-ms start-ms))
+                 :user-id             api/*current-user-id*
+                 :request-id          (some-> request-id analytics/uuid->token-usage-request-id)
+                 :session-id          session-id
+                 :source              source
+                 :tag                 tag})))
            part))))
 
 (defn- with-retries
@@ -211,18 +205,8 @@
   and user messages (`{:role :user, :content ...}`).  Each adapter converts
   these into its own wire format.
 
-  `tracking-opts` is a map with analytics context for prometheus and snowplow events.
-
-   Prometheus + Snowplow:
-    - `:profile-name` — keyword profile identifier (e.g. `:internal`)
-    - `:model`        — model identifier, added automatically from the `model` arg.
-    - `:tag`          — the specific purpose for which the tokens were used (e.g. 'agent', 'sql-fixing')
-
-   Snowplow only:
-    - `:request-id`   — UUID string for this request
-    - `:session-id`   — conversation UUID string
-    - `:source`       — the source of the request (e.g., 'metabot_agent', 'document_generate_content').
-                        Indicates which API endpoint or workflow initiated the LLM call.
+  `tracking-opts` is a map with analytics context for prometheus and snowplow events. See [[report-token-usage-xf]]
+  above for details.
 
   Returns a reducible that, when consumed, traces the full LLM round-trip
   (HTTP call + streaming response) as an OTel span. Retries transient errors
