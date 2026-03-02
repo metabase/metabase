@@ -155,9 +155,9 @@
     (testing "returns error message when init fails"
       (let [database   (mt/db)
             test-table (t2/select-one [:model/Table :schema :name] (mt/id :orders))]
-        (mt/with-dynamic-fn-redefs [driver/init-workspace-isolation!
-                                    (fn [_driver _database _workspace]
-                                      (throw (ex-info "permission denied" {:step :init})))]
+        (with-redefs [driver/init-workspace-isolation!
+                     (fn [_driver _database _workspace]
+                       (throw (ex-info "permission denied" {:step :init})))]
           (is (some? (driver/check-isolation-permissions
                       (driver/the-driver (:engine database))
                       database
@@ -169,9 +169,9 @@
     (testing "returns error message when grant fails"
       (let [database   (mt/db)
             test-table (t2/select-one [:model/Table :schema :name] (mt/id :orders))]
-        (mt/with-dynamic-fn-redefs [driver/grant-workspace-read-access!
-                                    (fn [_driver _database _workspace _tables]
-                                      (throw (ex-info "permission denied" {:step :grant})))]
+        (with-redefs [driver/grant-workspace-read-access!
+                     (fn [_driver _database _workspace _tables]
+                       (throw (ex-info "permission denied" {:step :grant})))]
           (is (some? (driver/check-isolation-permissions
                       (driver/the-driver (:engine database))
                       database
@@ -183,9 +183,9 @@
     (testing "returns error message when destroy fails"
       (let [database   (mt/db)
             test-table (t2/select-one [:model/Table :schema :name] (mt/id :orders))]
-        (mt/with-dynamic-fn-redefs [driver/destroy-workspace-isolation!
-                                    (fn [_driver _database _workspace]
-                                      (throw (ex-info "permission denied" {:step :destroy})))]
+        (with-redefs [driver/destroy-workspace-isolation!
+                     (fn [_driver _database _workspace]
+                       (throw (ex-info "permission denied" {:step :destroy})))]
           (is (some? (driver/check-isolation-permissions
                       (driver/the-driver (:engine database))
                       database
