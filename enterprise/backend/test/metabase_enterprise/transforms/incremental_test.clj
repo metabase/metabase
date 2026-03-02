@@ -64,7 +64,7 @@
   "Execute body with python-runner/build-table-query redef'd to include ORDER BY for deterministic test results."
   [checkpoint-field & body]
   `(let [original-fn# @#'python-runner/build-table-query]
-     (mt/with-dynamic-fn-redefs [python-runner/build-table-query
+     (with-redefs [python-runner/build-table-query
                                  (fn [table-id# source-incremental-strategy# transform-id# limit#]
                                    (build-table-query-with-order-by original-fn# table-id# source-incremental-strategy# transform-id# limit# ~checkpoint-field))]
        ~@body)))
