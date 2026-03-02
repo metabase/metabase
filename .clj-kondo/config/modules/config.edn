@@ -1977,7 +1977,8 @@
            request
            server
            util
-           enterprise/metabot-v3}}
+           enterprise/metabot-v3
+           enterprise/workspaces}}
 
   enterprise/ai-entity-analysis
   {:team "Metabot"
@@ -2566,6 +2567,7 @@
   {:team "Metabot"
    :api  #{metabase-enterprise.workspaces.api
            metabase-enterprise.workspaces.init}
+   :friends #{enterprise/agent-api}
    :uses #{api
            api-keys
            app-db
