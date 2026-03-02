@@ -378,7 +378,8 @@ export function waitForSyncToFinish({
         (table) =>
           table.name === tableName &&
           table.initial_sync_status === "complete" &&
-          table.fields?.length > 0,
+          table.fields &&
+          table.fields.length > 0,
       );
 
       if (!table) {
