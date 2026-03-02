@@ -259,7 +259,7 @@
 
 ;; TODO: Complete the dialect map
 (def driver->dialect
-  "Map of driver to parser dialect"
+  "Map of driver to parser dialect."
   {:postgres "postgres"
    :mysql "mysql"
    :mariadb "mysql"
@@ -267,11 +267,16 @@
    :snowflake "snowflake"
    :redshift "redshift"})
 
-(defn query->dialect
-  "Get queries dialect"
-  [query]
-  (when-some [db-id (:database query)]
+(defn database-id->dialect
+  "Get dialect for database id."
+  [db-id]
+  (when (integer? db-id)
     (-> db-id driver.u/database->driver driver->dialect)))
+
+(defn query->dialect
+  "Get queries dialect."
+  [query]
+  (database-id->dialect (:database query)))
 
 (mr/def ::validation-result
   [:map

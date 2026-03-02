@@ -2,6 +2,7 @@
   "Tool for replacing SQL query content entirely while preserving metadata."
   (:require
    [metabase-enterprise.metabot-v3.tools.edit-sql-query :as edit-sql-query]
+   [metabase-enterprise.metabot-v3.tools.util :as metabot-v3.tools.u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]))
 
@@ -36,7 +37,9 @@
                        :available-queries (keys queries-state)})))
 
     ;; Replace the SQL content - handle both formats
-    (let [updated-query (edit-sql-query/update-query-sql query sql)]
+    (let [dialect (metabot-v3.tools.u/query->dialect query)
+          {:keys [is-valid transpiled-sql]} (metabot-v3.tools.u/validate-sql dialect sql)
+          updated-query (edit-sql-query/update-query-sql query sql)]
       {:query-id      query-id
        :query-content sql
        :query         updated-query
