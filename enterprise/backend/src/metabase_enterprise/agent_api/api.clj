@@ -4,6 +4,7 @@
   (:require
    [clojure.string :as str]
    [malli.core :as mc]
+   [metabase-enterprise.agent-api.workspace :as agent-workspace]
    [metabase-enterprise.metabot-v3.tools.api :as tools.api]
    [metabase-enterprise.metabot-v3.tools.deftool :as deftool]
    [metabase-enterprise.metabot-v3.tools.entity-details :as entity-details]
@@ -15,6 +16,7 @@
    [metabase.api.macros :as api.macros]
    [metabase.api.macros.scope :as scope]
    [metabase.api.routes.common :as api.routes.common]
+   [metabase.api.util.handlers :as handlers]
    [metabase.auth-identity.core :as auth-identity]
    [metabase.query-processor :as qp]
    [metabase.query-processor.streaming :as qp.streaming]
@@ -537,4 +539,8 @@
 
 (def ^{:arglists '([request respond raise])} routes
   "`/api/agent/` routes."
-  (api.macros/ns-handler *ns* +auth))
+  (handlers/routes
+   (api.macros/ns-handler *ns* +auth)
+   (handlers/route-map-handler
+    {"/v1" (handlers/route-map-handler
+            {"/workspace" (agent-workspace/workspace-handler +auth)})})))
