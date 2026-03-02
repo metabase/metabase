@@ -131,7 +131,7 @@
 (mu/defn- day-bucketed-breakout-column? :- :boolean
   [column :- ::lib.schema.metadata/column]
   (let [breakout-sourced? (boolean (:lib/breakout? column))
-        day-bucketed? (= (:metabase.lib.field/temporal-unit column) :day)]
+        day-bucketed? (= (:lib/temporal-unit column) :day)]
     (and breakout-sourced? day-bucketed?)))
 
 (mu/defn matching-filterable-column :- [:maybe ::lib.schema.metadata/column]
@@ -144,7 +144,7 @@
     (or (lib.equality/find-matching-column query stage-number column-ref columns)
         ;; TODO (Cam 2026-02-11) HACK if we have a column ref that for some reason is missing the
         ;; `:join-alias` (likely from broken metadata converted from legacy metadata where `:source-alias` was renamed
-        ;; to `:lib/original-join-alias` but not `:metabase.lib.join/join-alias`) we still want find a match, so try
+        ;; to `:lib/original-join-alias` but not `:lib/join-alias`) we still want find a match, so try
         ;; using that if we failed without using it. This hack is needed to
         ;; make [[metabase.lib.drill-thru.column-filter-test/column-filter-join-alias-test]] pass.
         ;;

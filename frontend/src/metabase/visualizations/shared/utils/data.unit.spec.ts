@@ -68,7 +68,7 @@ describe("data utils", () => {
     describe("chart with multiple metrics", () => {
       it("should group dataset by dimension values", () => {
         const groupedData = getGroupedDataset(
-          rows,
+          { rows },
           multipleMetricsChartColumns,
           createMockVisualizationSettings({ column: () => {} }),
           columnFormatter,
@@ -101,7 +101,7 @@ describe("data utils", () => {
   describe("chart with a breakout", () => {
     it("should group dataset by dimension values and breakout", () => {
       const groupedData = getGroupedDataset(
-        rows,
+        { rows },
         breakoutChartColumns,
         createMockVisualizationSettings({ column: () => {} }),
         columnFormatter,
@@ -153,6 +153,43 @@ describe("data utils", () => {
           },
         },
       ]);
+    });
+
+    it("should use untranslatedRows for breakout keys when present", () => {
+      const translatedRows = [
+        [2020, "Appareil", 400, 90],
+        [2020, "Bidule", 450, 100],
+        [2021, "Appareil", 500, 110],
+        [2021, "Bidule", 550, 120],
+      ];
+
+      const groupedData = getGroupedDataset(
+        { rows: translatedRows, untranslatedRows: rows },
+        breakoutChartColumns,
+        createMockVisualizationSettings({ column: () => {} }),
+        columnFormatter,
+      );
+
+      expect(groupedData[0].breakout).toStrictEqual({
+        Doohickey: {
+          metrics: { count: 400 },
+          rawRows: [translatedRows[0]],
+        },
+        Gadget: {
+          metrics: { count: 450 },
+          rawRows: [translatedRows[1]],
+        },
+      });
+      expect(groupedData[1].breakout).toStrictEqual({
+        Doohickey: {
+          metrics: { count: 500 },
+          rawRows: [translatedRows[2]],
+        },
+        Gadget: {
+          metrics: { count: 550 },
+          rawRows: [translatedRows[3]],
+        },
+      });
     });
   });
 
@@ -228,6 +265,79 @@ describe("data utils", () => {
             dimensionColumn: dimensionColumn,
             metricColumn: avgMetricColumn,
           },
+        });
+      });
+    });
+
+    describe("with untranslatedRows", () => {
+      it("should use untranslated breakout values for series keys and translated for display", () => {
+        const data = createMockDatasetData({
+          cols: [dimensionColumn, breakoutColumn, countMetricColumn],
+          rows: [
+            [2020, "Appareil", 400, 90],
+            [2020, "Bidule", 450, 100],
+            [2021, "Appareil", 500, 110],
+            [2021, "Bidule", 550, 120],
+          ],
+          untranslatedRows: rows,
+        });
+
+        const series = getSeries(
+          data,
+          breakoutChartColumns,
+          columnFormatter,
+          createMockVisualizationSettings(),
+        );
+
+        expect(series).toHaveLength(2);
+        expect(series[0]).toMatchObject({
+          seriesKey: "Doohickey",
+          seriesName: "Appareil",
+          seriesInfo: {
+            breakoutValue: "Doohickey",
+          },
+        });
+        expect(series[1]).toMatchObject({
+          seriesKey: "Gadget",
+          seriesName: "Bidule",
+          seriesInfo: {
+            breakoutValue: "Gadget",
+          },
+        });
+      });
+
+      it("should apply custom title from settings using untranslated keys", () => {
+        const data = createMockDatasetData({
+          cols: [dimensionColumn, breakoutColumn, countMetricColumn],
+          rows: [
+            [2020, "Appareil", 400, 90],
+            [2020, "Bidule", 450, 100],
+            [2021, "Appareil", 500, 110],
+            [2021, "Bidule", 550, 120],
+          ],
+          untranslatedRows: rows,
+        });
+
+        const settings = createMockVisualizationSettings({
+          series_settings: {
+            Doohickey: { title: "Custom Name" },
+          },
+        });
+
+        const series = getSeries(
+          data,
+          breakoutChartColumns,
+          columnFormatter,
+          settings,
+        );
+
+        expect(series[0]).toMatchObject({
+          seriesKey: "Doohickey",
+          seriesName: "Custom Name",
+        });
+        expect(series[1]).toMatchObject({
+          seriesKey: "Gadget",
+          seriesName: "Bidule",
         });
       });
     });

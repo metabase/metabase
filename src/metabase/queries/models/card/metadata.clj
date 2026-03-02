@@ -6,7 +6,6 @@
    [metabase.api.common :as api]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
-   [metabase.lib.normalize :as lib.normalize]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.query-processor.metadata :as qp.metadata]
@@ -247,4 +246,4 @@ saved later when it is ready."
            (log/debug "Attempting to infer result metadata for Card")
            (assoc card :result_metadata (infer-metadata-with-model-overrides query card))))
        ;; now normalize the result metadata as needed so it passes the output schema check
-       (m/update-existing :result_metadata #(some->> % (lib.normalize/normalize [:sequential ::lib.schema.metadata/lib-or-legacy-column]))))))
+       (m/update-existing :result_metadata #(some->> % (lib/normalize [:sequential ::lib.schema.metadata/lib-or-legacy-column]))))))

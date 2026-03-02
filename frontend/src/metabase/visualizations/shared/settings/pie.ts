@@ -16,12 +16,13 @@ import type {
   ComputedVisualizationSettings,
   Formatter,
 } from "metabase/visualizations/types";
-import type {
-  DatasetColumn,
-  MaybeTranslatedSeries,
-  RawSeries,
-  RowValue,
-  RowValues,
+import {
+  type DatasetColumn,
+  type MaybeTranslatedSeries,
+  type RawSeries,
+  type RowValue,
+  type RowValues,
+  getRowsForStableKeys,
 } from "metabase-types/api";
 
 export function getPieDimensions(settings: ComputedVisualizationSettings) {
@@ -148,9 +149,10 @@ export function getColors(
 ) {
   const [
     {
-      data: { rows, cols },
+      data: { cols },
     },
   ] = rawSeries;
+  const rowsForKeys = getRowsForStableKeys(rawSeries[0].data);
   const dimensionName = getPieDimensions(currentSettings)[0];
 
   const dimensionIndex = cols.findIndex((col) => col.name === dimensionName);
@@ -158,7 +160,7 @@ export function getColors(
     (col) => col.name === currentSettings["pie.metric"],
   );
   const sortedRows = getSortedRows(
-    getAggregatedRows(rows, dimensionIndex, metricIndex),
+    getAggregatedRows(rowsForKeys, dimensionIndex, metricIndex),
     metricIndex,
   );
 
@@ -185,31 +187,6 @@ export function getPieRows(
       data: { rows: dataRows, untranslatedRows },
     },
   ] = rawSeries;
-
-  const untranslatedKeysToTranslatedKeys = new Map<string, string>();
-  if (untranslatedRows) {
-    untranslatedRows.forEach((row, i) => {
-      const untranslatedValue = row[0];
-      const translatedValue = dataRows[i][0];
-
-      if (
-        typeof untranslatedValue === "string" &&
-        typeof translatedValue === "string"
-      ) {
-        untranslatedKeysToTranslatedKeys.set(
-          untranslatedValue,
-          translatedValue,
-        );
-      }
-    });
-  } else {
-    dataRows.forEach((row) => {
-      if (typeof row[0] !== "string") {
-        return;
-      }
-      untranslatedKeysToTranslatedKeys.set(row[0], row[0]);
-    });
-  }
 
   if (!settings["pie.metric"] || !settings["pie.dimension"]) {
     return [];
@@ -245,11 +222,32 @@ export function getPieRows(
     colors = { ...colors, ...settings["pie.colors"] };
   }
 
+  const rowsForKeys = getRowsForStableKeys(rawSeries[0].data);
   const currentDataRows = getAggregatedRows(
-    dataRows,
+    rowsForKeys,
     dimensionDesc.index,
     metricDesc.index,
   );
+
+  // When translations are active, map untranslated keys to translated
+  // display values so labels show translated text while keys stay stable.
+  const translatedDisplayValues = new Map<string, RowValue>();
+  if (untranslatedRows) {
+    const seen = new Set<string>();
+    untranslatedRows.forEach((row, index) => {
+      const key = getKeyFromDimensionValue(row[dimensionDesc.index]);
+      if (!seen.has(key)) {
+        seen.add(key);
+        translatedDisplayValues.set(key, dataRows[index][dimensionDesc.index]);
+      }
+    });
+  }
+
+  const getDisplayValue = (dimensionValue: RowValue): RowValue => {
+    const key = getKeyFromDimensionValue(dimensionValue);
+    return translatedDisplayValues.get(key) ?? dimensionValue;
+  };
+
   const keyToCurrentDataRow = new Map<PieRow["key"], RowValues>(
     currentDataRows.map((dataRow) => [
       getKeyFromDimensionValue(dataRow[dimensionDesc.index]),
@@ -261,13 +259,6 @@ export function getPieRows(
   const savedPieRows = hasSortDimensionChanged
     ? []
     : (settings["pie.rows"] ?? []);
-  const savedColors = new Map<string, string>();
-  savedPieRows.forEach((pieRow) => {
-    savedColors.set(
-      untranslatedKeysToTranslatedKeys.get(pieRow.key) ?? pieRow.key,
-      pieRow.color,
-    );
-  });
 
   const savedPieKeys = savedPieRows.map((pieRow) => pieRow.key);
 
@@ -303,13 +294,14 @@ export function getPieRows(
         return newRow;
       }
 
-      const name = formatDimensionValue(dimensionValue);
+      const displayValue = getDisplayValue(dimensionValue);
+      const name = formatDimensionValue(displayValue);
 
       return {
         key,
         name,
         originalName: name,
-        color: savedColors.get(key) ?? color,
+        color,
         defaultColor: true,
         enabled: true,
         hidden: false,
@@ -349,13 +341,14 @@ export function getPieRows(
 
         const color = Color(colors[String(dimensionValue)]).hex();
         const key = getKeyFromDimensionValue(dimensionValue);
-        const name = formatDimensionValue(dimensionValue);
+        const displayValue = getDisplayValue(dimensionValue);
+        const name = formatDimensionValue(displayValue);
 
         return {
           key,
           name,
           originalName: name,
-          color: savedColors.get(key) ?? color,
+          color,
           defaultColor: true,
           enabled: true,
           hidden: false,

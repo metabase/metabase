@@ -96,8 +96,8 @@
              {:lib/type                :metadata/column
               :lib/source-column-alias ((some-fn :lib/source-column-alias :name) source-metadata-col)})
         col (cond-> col
-              (:metabase.lib.field/temporal-unit source-metadata-col)
-              (assoc :inherited-temporal-unit (keyword (:metabase.lib.field/temporal-unit source-metadata-col)))
+              (:lib/temporal-unit source-metadata-col)
+              (assoc :inherited-temporal-unit (keyword (:lib/temporal-unit source-metadata-col)))
 
               ;; If the incoming source-metadata-col doesn't have `:semantic-type :type/FK`, drop
               ;; `:fk-target-field-id`. This comes up with metadata on SQL cards, which might be linked to their
@@ -154,7 +154,7 @@
   #{})
 
 (defn- updated-result-metadata
-  "Get `:result-metadata` from Card, but merge in updated values of `:active`."
+  "Get `:result-metadata` from Card, but merge in updated values of `:active` and `:visibility-type`."
   [metadata-providerable card]
   (when-let [saved-metadata-cols (not-empty (:result-metadata card))]
     (let [ids                       (into #{} (keep :id) saved-metadata-cols)
@@ -163,7 +163,11 @@
               (merge
                saved-metadata-col
                (when-let [metadata-provider-col (id->metadata-provider-col (:id saved-metadata-col))]
-                 (select-keys metadata-provider-col [:active]))))
+                 (let [legacy? (contains? saved-metadata-col :base_type)]
+                   (cond-> (select-keys metadata-provider-col [:active])
+                     (contains? metadata-provider-col :visibility-type)
+                     (assoc (if legacy? :visibility_type :visibility-type)
+                            (:visibility-type metadata-provider-col)))))))
             saved-metadata-cols))))
 
 (mu/defn card->underlying-query :- ::lib.schema/query
@@ -309,9 +313,7 @@
 (mu/defn source-card-type :- [:maybe ::lib.schema.metadata/card.type]
   "The type of the query's source-card, if it has one."
   [query :- ::lib.schema/query]
-  (when-let [card-id (lib.util/source-card-id query)]
-    (when-let [card (lib.metadata/card query card-id)]
-      (:type card))))
+  (some-> query lib.metadata.calculation/primary-source-card :type))
 
 (mu/defn source-card-is-model? :- :boolean
   "Is the query's source-card a model?"

@@ -308,6 +308,38 @@ export type TransformRunTagsUpdated = ValidateEvent<{
   target_id: number;
 }>;
 
+export type TransformInspectLensLoadedEvent = ValidateEvent<{
+  event: "transform_inspect_lens_loaded";
+  target_id: TransformId;
+  event_detail: string;
+  duration_ms: number;
+}>;
+
+export type TransformInspectDrillLensClickedEvent = ValidateEvent<{
+  event: "transform_inspect_drill_lens_clicked";
+  target_id: TransformId;
+  event_detail: string;
+  triggered_from: "card_drills" | "join_analysis";
+}>;
+
+export type TransformInspectAlertClickedEvent = ValidateEvent<{
+  event: "transform_inspect_alert_clicked";
+  target_id: TransformId;
+  event_detail: string;
+}>;
+
+export type TransformInspectDrillLensClosedEvent = ValidateEvent<{
+  event: "transform_inspect_drill_lens_closed";
+  target_id: TransformId;
+  event_detail: string;
+}>;
+
+export type TransformInspectEvent =
+  | TransformInspectLensLoadedEvent
+  | TransformInspectDrillLensClickedEvent
+  | TransformInspectAlertClickedEvent
+  | TransformInspectDrillLensClosedEvent;
+
 export type DocumentCreatedEvent = ValidateEvent<{
   event: "document_created";
   target_id: number;
@@ -554,6 +586,11 @@ export type BookmarkEvent =
   | BookmarkCollectionEvent
   | BookmarkDocumentEvent;
 
+export type DataStudioOpenedEvent = ValidateEvent<{
+  event: "data_studio_opened";
+  triggered_from: "nav_menu";
+}>;
+
 export type DataStudioLibraryCreatedEvent = ValidateEvent<{
   event: "data_studio_library_created";
   target_id: number | null;
@@ -622,6 +659,7 @@ export type DataStudioTableFieldValuesDiscardedEvent = ValidateEvent<{
 }>;
 
 export type DataStudioEvent =
+  | DataStudioOpenedEvent
   | DataStudioLibraryCreatedEvent
   | DataStudioTablePublishedEvent
   | DataStudioGlossaryCreatedEvent
@@ -681,6 +719,7 @@ export type SimpleEvent =
   | TransformCreatedEvent
   | TransformCreateEvent
   | TransformRunTagsUpdated
+  | TransformInspectEvent
   | DocumentAddCardEvent
   | DocumentAddSmartLinkEvent
   | DocumentAddSupportingTextEvent

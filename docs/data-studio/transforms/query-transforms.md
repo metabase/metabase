@@ -45,6 +45,44 @@ Currently, you can't convert between different transform types (like converting 
 
 6. Optionally, assign tags to your transforms. Tags are used by [jobs](jobs-and-runs.md) to run transforms on schedule.
 
+## Variables in SQL transforms
+
+SQL transforms support [variables](../../questions/native-editor/sql-parameters.md) (`{% raw %}{{my_variable}} {% endraw %}`), which are only useful when combined with [snippets](../../questions/native-editor/snippets.md).
+
+For (a really simple) example, let's say you want to count rows per week across several tables. You could create a snippet called "rows per week" containing the full query with a `{% raw %}{{table}}{% endraw %}` variable:
+
+```sql
+{% raw %}
+SELECT
+  date_trunc('week', created_at) AS week,
+  count(*) AS row_count
+FROM {{table}}
+GROUP BY week
+ORDER BY week
+{% endraw %}
+```
+
+That way you can use the snippet to create multiple transforms, each sourced from different tables. Each transform's entire SQL is just:
+
+```sql
+{% raw %}{{snippet: rows per week}}{% endraw %}
+```
+
+In each transform's variable panel, set the default value of `table` to the target table (e.g., `orders`, `returns`, `subscriptions`). See [table variables](../../questions/native-editor/table-variables.md).
+
+If you ever need to change the query (say, to switch from weekly to daily granularity), you update the snippet once and every transform picks up the change on its next run.
+
+### Transform variable must be optional, or have a default value
+
+Parameters in transforms must either:
+
+- Wrap the variable in optional blocks (`[[ ]]`).
+- Supply a default value.
+
+The reason transform variables must have a default value (or be optional) is that transforms run on a schedule, so there's no way to pass a value to the variable when the job runs the transform.
+
+The incremental `{%raw%}[[WHERE id > {{checkpoint}}]]{% endraw %}` pattern shown in [Incremental query transforms](#incremental-query-transforms) is an example of this an optional variable in practice. See also [optional variables](../../questions/native-editor/optional-variables.md).
+
 ## Run a query transform
 
 See [Run a transform](transforms-overview.md#run-a-transform). You'll see logs for a transform run on the transform's page.

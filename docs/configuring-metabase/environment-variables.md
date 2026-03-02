@@ -1306,6 +1306,34 @@ If Metabase stops sending notifications like alerts, it may be because long-runn
   queries are clogging the notification queue. You may be able to unclog the queue by
   increasing the size of the thread pool dedicated to notifications.
 
+### `MB_OIDC_ALLOWED_NETWORKS`
+
+- Type: keyword
+- Default: `allow-all`
+- [Configuration file name](./config-file.md): `oidc-allowed-networks`
+
+What networks are OIDC requests allowed to? Possible values: 'allow-all' (default), 'allow-private', or 'external-only'.
+
+### `MB_OIDC_PROVIDERS`
+
+> Only available on Metabase [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans.
+
+- Type: json
+- Default: `[]`
+- [Configuration file name](./config-file.md): `oidc-providers`
+
+JSON containing OIDC provider configurations.
+
+### `MB_OIDC_USER_PROVISIONING_ENABLED`
+
+> Only available on Metabase [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans.
+
+- Type: boolean
+- Default: `true`
+- [Configuration file name](./config-file.md): `oidc-user-provisioning-enabled`
+
+When a user logs in via OIDC, create a Metabase account for them automatically if they don't have one.
+
 ### `MB_PERSISTED_MODEL_REFRESH_CRON_SCHEDULE`
 
 - Type: string
@@ -2146,6 +2174,8 @@ Type: string<br>
 Default: `null`
 
 A JDBC-style connection URI that can be used instead of most of `MB_DB_*` like [MB_DB_HOST](#mb_db_host). Also used when certain Connection String parameters are required for the connection. The connection type requirement is the same as [MB_DB_TYPE](#mb_db_type).
+
+Note that the `currentSchema` JDBC parameter has no effect. [The schema used for PostgreSQL application databases must be `public`](https://github.com/metabase/metabase/issues/37836).
 
 Examples:
 

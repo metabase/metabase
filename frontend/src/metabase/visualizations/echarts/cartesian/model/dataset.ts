@@ -37,12 +37,13 @@ import {
 } from "metabase/visualizations/lib/warnings";
 import type { ComputedVisualizationSettings } from "metabase/visualizations/types";
 import { isMetric } from "metabase-lib/v1/types/utils/isa";
-import type {
-  DatasetColumn,
-  RawSeries,
-  RowValue,
-  SingleSeries,
-  XAxisScale,
+import {
+  type DatasetColumn,
+  type RawSeries,
+  type RowValue,
+  type SingleSeries,
+  type XAxisScale,
+  getRowsForStableKeys,
 } from "metabase-types/api";
 
 import type { ShowWarning } from "../../types";
@@ -102,6 +103,7 @@ const aggregateColumnValuesForDatum = (
   cardId: number,
   dimensionIndex: number,
   breakoutIndex: number | undefined,
+  untranslatedBreakoutValue: RowValue | undefined,
   showWarning?: ShowWarning,
 ): void => {
   columns.forEach(({ column, isMetric }, columnIndex) => {
@@ -111,7 +113,7 @@ const aggregateColumnValuesForDatum = (
     const seriesKey =
       breakoutIndex == null
         ? getDatasetKey(column, cardId)
-        : getDatasetKey(column, cardId, row[breakoutIndex]);
+        : getDatasetKey(column, cardId, untranslatedBreakoutValue);
 
     // The dimension values should not be aggregated, only metrics
     if (isMetric && !isDimensionColumn) {
@@ -161,8 +163,9 @@ export const getJoinedCardsDataset = (
     const dimensionIndex = chartColumns.dimension.index;
     const breakoutIndex =
       "breakout" in chartColumns ? chartColumns.breakout.index : undefined;
+    const rowsForKeys = getRowsForStableKeys(cardSeries.data);
 
-    for (const row of rows) {
+    rows.forEach((row, rowIndex) => {
       const dimensionValue = row[dimensionIndex];
 
       // Get the existing datum by the dimension value if exists
@@ -174,6 +177,11 @@ export const getJoinedCardsDataset = (
         groupedData.set(dimensionValue, datum);
       }
 
+      const untranslatedBreakoutValue =
+        breakoutIndex != null
+          ? rowsForKeys[rowIndex][breakoutIndex]
+          : undefined;
+
       aggregateColumnValuesForDatum(
         datum,
         datasetColumns,
@@ -181,9 +189,10 @@ export const getJoinedCardsDataset = (
         card.id,
         dimensionIndex,
         breakoutIndex,
+        untranslatedBreakoutValue,
         showWarning,
       );
-    }
+    });
   });
 
   return Array.from(groupedData.values());

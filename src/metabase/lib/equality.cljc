@@ -142,7 +142,7 @@ are known to be the same."
     ;; from the same source.
    (columns-not-equal-by-fn-when-non-nil-in-both :lib/source col-1 col-2)
     ;; same join alias
-   (columns-not-equal-by-fn :metabase.lib.join/join-alias col-1 col-2)
+   (columns-not-equal-by-fn :lib/join-alias col-1 col-2)
     ;; same FK Field (for implicitly joined columns)
    (columns-not-equal-by-fn-when-non-nil-in-both :fk-field-id col-1 col-2)
    (columns-not-equal-by-fn :fk-join-alias col-1 col-2)
@@ -155,7 +155,7 @@ are known to be the same."
     ;; columns that don't have the same binning or temporal bucketing are never the same.
     ;;
     ;; same binning
-   (columns-not-equal-by-fn :metabase.lib.field/binning col-1 col-2)
+   (columns-not-equal-by-fn :lib/binning col-1 col-2)
     ;; same bucketing
    (when (columns-not-equal-by-fn (comp ignore-default-temporal-bucket lib.temporal-bucket/raw-temporal-bucket) col-1 col-2)
      'temporal-bucket)
@@ -204,7 +204,7 @@ are known to be the same."
   ;; TODO (Cam 6/19/25) -- seems busted to be using joins that happened at ANY LEVEL previously for equality purposes
   ;; so lightly but removing this breaks stuff. We should just remove this and do smarter matching like we do
   ;; in [[plausible-matches-for-name-with-join-alias]] below.
-  ((some-fn :metabase.lib.join/join-alias :lib/original-join-alias) column))
+  ((some-fn :lib/join-alias :lib/original-join-alias) column))
 
 (mu/defn- matching-join? :- :boolean
   [[_ref-kind {:keys [join-alias source-field source-field-name
@@ -232,7 +232,7 @@ are known to be the same."
          :name]))
 
 (defn- plausible-matches-for-name-with-join-alias [join-alias ref-name columns]
-  ;; first, look for matches for a join that came from the current stage -- `:metabase.lib.join/join-alias`; if we
+  ;; first, look for matches for a join that came from the current stage -- `:lib/join-alias`; if we
   ;; don't see any columns a match for that key, assume the join was from a previous stage and look at
   ;; `:lib/original-join-alias` instead.
   (letfn [(plausible-matches [columns]
@@ -276,7 +276,7 @@ are known to be the same."
                       columns))))]
     (when-let [columns-from-join (some (fn [k]
                                          (not-empty (filter #(= (k %) join-alias) columns)))
-                                       [:metabase.lib.join/join-alias
+                                       [:lib/join-alias
                                         :lib/original-join-alias])]
       (plausible-matches columns-from-join))))
 
@@ -393,7 +393,7 @@ are known to be the same."
     (or
      ;; try to find matches with the same join alias (which might be `nil` for both).
      ;;
-     ;; TODO (Cam 6/26/25) -- we should first try this using just the `:metabase.lib.join/join-alias` (join alias from
+     ;; TODO (Cam 6/26/25) -- we should first try this using just the `:lib/join-alias` (join alias from
      ;; this stage) and only then fall back to using `:lib/original-alias` and what not
      (when-let [matches (not-empty (filter #(clojure.core/= (column-join-alias %) join-alias) columns))]
        (if-not (next matches)

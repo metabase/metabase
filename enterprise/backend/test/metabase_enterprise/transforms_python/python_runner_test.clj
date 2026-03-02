@@ -480,7 +480,7 @@
                  (set (map :name (:fields metadata))))))
 
         (testing "types are preserved correctly"
-          (is (= {"id"           (if (= :snowflake driver) :type/Number :type/Integer)
+          (is (= {"id"           (if (= :snowflake driver) :type/BigInteger :type/Integer)
                   "price"        :type/Float
                   "active"       :type/Boolean
                   "created_tz"   (case driver

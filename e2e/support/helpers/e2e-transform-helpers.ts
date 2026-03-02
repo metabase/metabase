@@ -3,6 +3,7 @@ import type {
   Collection,
   CollectionId,
   PythonTransformTableAliases,
+  SchemaName,
   TransformId,
   TransformRun,
   TransformRunStatus,
@@ -128,6 +129,7 @@ export function createSqlTransform({
   visitTransform,
   sourceCheckpointStrategy,
   name = "SQL transform",
+  wrapId = true,
 }: {
   name?: string;
   sourceQuery: string;
@@ -136,6 +138,7 @@ export function createSqlTransform({
   tagIds?: TransformTagId[];
   visitTransform?: boolean;
   sourceCheckpointStrategy?: TransformSourceCheckpointStrategy;
+  wrapId?: boolean;
 }) {
   return createTransform(
     {
@@ -159,7 +162,7 @@ export function createSqlTransform({
       },
       tag_ids: tagIds,
     },
-    { wrapId: true, visitTransform },
+    { wrapId, visitTransform },
   );
 }
 
@@ -231,6 +234,46 @@ export function createAndRunMbqlTransform({
   }).then(({ body: transform }) => {
     // Run the transform
     runTransformAndWaitForSuccess(transform.id);
+
+    return cy.wrap({
+      transformId: transform.id,
+    });
+  });
+}
+
+/**
+ * Creates a SQL transform and runs it to create a table.
+ * @return: information about the created transform
+ */
+export function createAndRunSqlTransform({
+  sourceQuery,
+  targetTable,
+  targetSchema,
+  tagIds,
+  sourceCheckpointStrategy,
+  name = "Test SQL transform",
+}: {
+  sourceQuery: string;
+  targetTable: string;
+  targetSchema: SchemaName;
+  tagIds?: TransformTagId[];
+  sourceCheckpointStrategy?: TransformSourceCheckpointStrategy;
+  name?: string;
+}): Cypress.Chainable<{
+  transformId: TransformId;
+}> {
+  return createSqlTransform({
+    sourceQuery,
+    targetTable,
+    targetSchema,
+    tagIds,
+    name,
+    sourceCheckpointStrategy,
+    visitTransform: false,
+    wrapId: false,
+  }).then(({ body: transform }) => {
+    cy.request("POST", `/api/transform/${transform.id}/run`);
+    waitForSucceededTransformRuns();
 
     return cy.wrap({
       transformId: transform.id,

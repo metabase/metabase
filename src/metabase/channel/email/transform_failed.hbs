@@ -37,6 +37,13 @@
                 </div>
                 {{/if}}
               </div>
+              {{#if this.transform_href}}
+              <div style="margin-top: 16px;">
+                <a href="{{this.transform_href}}" style="display: inline-block; background-color: {{../context.application_color}}; color: #ffffff !important; font-weight: 700; font-size: 14px; border-radius: 8px; padding: 12px 16px; text-decoration: none;">
+                  View transform
+                </a>
+              </div>
+              {{/if}}
             </div>
             {{/each}}
 
