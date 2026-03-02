@@ -1,3 +1,4 @@
+import cx from "classnames";
 import { useMemo, useState } from "react";
 import { t } from "ttag";
 
@@ -22,6 +23,7 @@ type MetricSearchPanelProps = {
   selectedMetrics: SelectedMetric[];
   metricColors: SourceColorMap;
   definitions: MetricsViewerDefinitionEntry[];
+  isFullscreen: boolean;
   onAddMetric: (metric: SelectedMetric) => void;
   onRemoveMetric: (metricId: number, sourceType: "metric" | "measure") => void;
   onSwapMetric: (oldMetric: SelectedMetric, newMetric: SelectedMetric) => void;
@@ -44,6 +46,7 @@ export function MetricSearchPanel({
   onSwapMetric,
   onSetBreakout,
   onUpdateDefinition,
+  isFullscreen,
 }: MetricSearchPanelProps) {
   const [isFilterPillsExpanded, setIsFilterPillsExpanded] = useState(true);
 
@@ -72,58 +75,61 @@ export function MetricSearchPanel({
 
   return (
     <Stack gap="sm">
-      <Flex align="center" justify="space-between">
-        <Text fw={700} size="lg">{t`Explore`}</Text>
-        {hasDefinitions && (
-          <FilterPopover
-            definitions={readyDefinitions}
-            metricColors={metricColors}
-            onUpdateDefinition={onUpdateDefinition}
-          >
-            <Button.Group>
-              <Button
-                variant="light"
-                color="filter"
-                size="xs"
-                p="sm"
-                leftSection={
-                  <Icon
-                    name={hasFilters ? "filter_plus" : "filter"}
-                    size={14}
-                  />
-                }
-                className={hasFilters ? S.filterButtonWithCount : undefined}
-              >
-                {t`Filter`}
-              </Button>
-              {hasFilters && (
-                <Tooltip label={toggleLabel}>
-                  <Button
-                    variant="light"
-                    color="filter"
-                    size="xs"
-                    p="sm"
-                    aria-label={toggleLabel}
-                    onClick={(event) => {
-                      event.stopPropagation();
-                      setIsFilterPillsExpanded((prev) => !prev);
-                    }}
-                    className={S.filterButtonAttachment}
-                  >
-                    {filterCount}
-                  </Button>
-                </Tooltip>
-              )}
-            </Button.Group>
-          </FilterPopover>
-        )}
-      </Flex>
-      <Box className={S.container}>
+      {!isFullscreen && (
+        <Flex align="center" justify="space-between">
+          <Text fw={700} size="lg">{t`Explore`}</Text>
+          {hasDefinitions && (
+            <FilterPopover
+              definitions={readyDefinitions}
+              metricColors={metricColors}
+              onUpdateDefinition={onUpdateDefinition}
+            >
+              <Button.Group>
+                <Button
+                  variant="light"
+                  color="filter"
+                  size="xs"
+                  p="sm"
+                  leftSection={
+                    <Icon
+                      name={hasFilters ? "filter_plus" : "filter"}
+                      size={14}
+                    />
+                  }
+                  className={hasFilters ? S.filterButtonWithCount : undefined}
+                >
+                  {t`Filter`}
+                </Button>
+                {hasFilters && (
+                  <Tooltip label={toggleLabel}>
+                    <Button
+                      variant="light"
+                      color="filter"
+                      size="xs"
+                      p="sm"
+                      aria-label={toggleLabel}
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        setIsFilterPillsExpanded((prev) => !prev);
+                      }}
+                      className={S.filterButtonAttachment}
+                    >
+                      {filterCount}
+                    </Button>
+                  </Tooltip>
+                )}
+              </Button.Group>
+            </FilterPopover>
+          )}
+        </Flex>
+      )}
+      <Box className={cx(S.container, { [S.disabled]: isFullscreen })}>
         <Box>
           <MetricSearch
             selectedMetrics={selectedMetrics}
             metricColors={metricColors}
             definitions={definitions}
+            isFullscreen={isFullscreen}
             onAddMetric={onAddMetric}
             onRemoveMetric={onRemoveMetric}
             onSwapMetric={onSwapMetric}

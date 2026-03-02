@@ -35,12 +35,14 @@ type MetricsViewerTabContentProps = {
   errorsByDefinitionId: Map<MetricSourceId, string>;
   modifiedDefinitions: Map<MetricSourceId, MetricDefinition>;
   sourceColors: SourceColorMap;
+  isFullscreen: boolean;
   isExecuting: (id: MetricSourceId) => boolean;
   onTabUpdate: (updates: Partial<MetricsViewerTabState>) => void;
   onDimensionChange: (
     definitionId: MetricSourceId,
     dimension: DimensionMetadata,
   ) => void;
+  onToggleFullscreen: () => void;
 };
 
 export function MetricsViewerTabContent({
@@ -50,9 +52,11 @@ export function MetricsViewerTabContent({
   errorsByDefinitionId,
   modifiedDefinitions,
   sourceColors,
+  isFullscreen,
   isExecuting,
   onTabUpdate,
   onDimensionChange,
+  onToggleFullscreen,
 }: MetricsViewerTabContentProps) {
   const isLoading = useMemo(() => {
     return getObjectKeys(tab.dimensionMapping).some(isExecuting);
@@ -245,9 +249,10 @@ export function MetricsViewerTabContent({
         tab={tab}
         onTabUpdate={onTabUpdate}
         cardIdToDimensionId={cardIdToDimensionId}
+        isFullscreen={isFullscreen}
       />
-      {definitionForControls && (
-        <Flex justify="space-between" align="center">
+      {definitionForControls && !isFullscreen && (
+        <Flex justify="center">
           <Box />
           <MetricControls
             definition={definitionForControls}
@@ -260,14 +265,18 @@ export function MetricsViewerTabContent({
             onTemporalUnitChange={handleTemporalUnitChange}
             onBinningChange={handleBinningChange}
           />
-          <MetricLayoutControl
-            displayType={tab.display}
-            value={tab.layout}
-            onChange={handleLayoutChange}
-            seriesCount={rawSeries.length}
-          />
         </Flex>
       )}
+      <Box pos="absolute" bottom="1.75rem" right="1.5rem">
+        <MetricLayoutControl
+          displayType={tab.display}
+          value={tab.layout}
+          onChange={handleLayoutChange}
+          isFullscreen={isFullscreen}
+          onToggleFullscreen={onToggleFullscreen}
+          seriesCount={rawSeries.length}
+        />
+      </Box>
     </Stack>
   );
 }

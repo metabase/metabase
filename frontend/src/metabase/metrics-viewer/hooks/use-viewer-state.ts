@@ -120,6 +120,8 @@ export interface UseViewerStateResult {
     oldSourceId: MetricSourceId,
     measureId: MeasureId,
   ) => void;
+
+  toggleFullScreen: () => void;
 }
 
 export function useViewerState(): UseViewerStateResult {
@@ -463,6 +465,13 @@ export function useViewerState(): UseViewerStateResult {
     [loadAndReplace, dispatch, store],
   );
 
+  const toggleFullScreen = useCallback(() => {
+    setState((prevState) => ({
+      ...prevState,
+      isFullscreen: !prevState.isFullscreen,
+    }));
+  }, []);
+
   return {
     state,
     loadingIds,
@@ -482,5 +491,7 @@ export function useViewerState(): UseViewerStateResult {
     loadAndAddMeasure,
     loadAndReplaceMetric,
     loadAndReplaceMeasure,
+
+    toggleFullScreen,
   };
 }

@@ -9,3 +9,12 @@
   overflow: hidden;
   height: 100%;
 }
+
+.fullscreen_pillbar {
+  background-color: unset;
+}
+
+.fullscreen_pill {
+  background-color: var(--mb-color-background-secondary);
+  border: none;
+}

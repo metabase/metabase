@@ -80,6 +80,9 @@ export interface UseMetricsViewerResult {
     id: MetricSourceId,
     dimension: ProjectionClause | undefined,
   ) => void;
+
+  isFullScreen: boolean;
+  toggleFullScreen: () => void;
 }
 
 const FIXED_TAB_IDS = new Set(
@@ -103,6 +106,7 @@ export function useMetricsViewer(): UseMetricsViewerResult {
     loadAndAddMeasure,
     loadAndReplaceMetric,
     loadAndReplaceMeasure,
+    toggleFullScreen,
   } = useViewerState();
 
   const pendingBreakoutsRef = useRef<Record<MetricSourceId, string>>({});
@@ -348,5 +352,8 @@ export function useMetricsViewer(): UseMetricsViewerResult {
     changeCardDimension,
     updateDefinition,
     setBreakoutDimension,
+
+    isFullScreen: state.isFullscreen,
+    toggleFullScreen,
   };
 }

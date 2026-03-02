@@ -1,3 +1,4 @@
+import cx from "classnames";
 import { useCallback, useMemo, useState } from "react";
 import { t } from "ttag";
 
@@ -34,6 +35,7 @@ export interface DimensionPillProps {
   options: DimensionOption[];
   onSelect: (dimension: DimensionMetadata) => void;
   disabled?: boolean;
+  className?: string;
 }
 
 export function DimensionPill({
@@ -43,6 +45,7 @@ export function DimensionPill({
   options,
   onSelect,
   disabled,
+  className,
 }: DimensionPillProps) {
   const [isOpen, setIsOpen] = useState(false);
 
@@ -114,7 +117,7 @@ export function DimensionPill({
 
   const pillContent = (
     <Flex
-      className={S.pill}
+      className={cx(S.pill, className)}
       align="center"
       gap="xs"
       onClick={
@@ -124,10 +127,7 @@ export function DimensionPill({
       data-static={!hasMultipleOptions}
       data-placeholder={isPlaceholder || undefined}
     >
-      <SourceColorIndicator
-        colors={colors}
-        fallbackIcon={icon ?? "add"}
-      />
+      <SourceColorIndicator colors={colors} fallbackIcon={icon ?? "add"} />
       <Text size="sm" lh={1} c={isEmpty ? "text-tertiary" : undefined}>
         {pillLabel}
       </Text>

@@ -1,3 +1,5 @@
+import cx from "classnames";
+
 import type { IconName } from "metabase/ui";
 import { Flex } from "metabase/ui";
 import type { DimensionMetadata } from "metabase-lib/metric";
@@ -17,14 +19,22 @@ export interface DimensionItem {
 
 export interface DimensionPillBarProps {
   items: DimensionItem[];
-  onDimensionChange: (itemId: string | number, dimension: DimensionMetadata) => void;
+  onDimensionChange: (
+    itemId: string | number,
+    dimension: DimensionMetadata,
+  ) => void;
   disabled?: boolean;
+  classNames?: Partial<{
+    pillBar: string;
+    pill: string;
+  }>;
 }
 
 export function DimensionPillBar({
   items,
   onDimensionChange,
   disabled,
+  classNames,
 }: DimensionPillBarProps) {
   if (items.length === 0) {
     return null;
@@ -32,7 +42,7 @@ export function DimensionPillBar({
 
   return (
     <Flex
-      className={S.bar}
+      className={cx(S.bar, classNames?.pillBar)}
       align="center"
       justify="center"
       gap="sm"
@@ -47,6 +57,7 @@ export function DimensionPillBar({
           options={item.availableOptions}
           onSelect={(dimension) => onDimensionChange(item.id, dimension)}
           disabled={disabled}
+          className={classNames?.pill}
         />
       ))}
     </Flex>

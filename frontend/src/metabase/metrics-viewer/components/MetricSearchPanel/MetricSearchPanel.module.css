@@ -3,6 +3,10 @@
   border-radius: var(--mantine-radius-lg);
   background: var(--mb-color-background-primary);
   transition: border-color 150ms ease;
+
+  &.disabled {
+    border: none;
+  }
 }
 
 .container:focus-within {

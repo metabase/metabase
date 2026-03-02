@@ -32,6 +32,7 @@ type MetricsViewerVisualizationProps = {
   tab: MetricsViewerTabState;
   onTabUpdate: (updates: Partial<MetricsViewerTabState>) => void;
   cardIdToDimensionId: Record<CardId, MetricSourceId>;
+  isFullscreen: boolean;
 };
 
 export function MetricsViewerVisualization({
@@ -45,6 +46,7 @@ export function MetricsViewerVisualization({
   tab,
   onTabUpdate,
   cardIdToDimensionId,
+  isFullscreen,
 }: MetricsViewerVisualizationProps) {
   const clickActionsMode = new MetricsViewerClickActionsMode({
     definitions,
@@ -69,6 +71,14 @@ export function MetricsViewerVisualization({
         </DebouncedFrame>
         {dimensionItems.length > 0 && onDimensionChange && (
           <DimensionPillBar
+            classNames={
+              isFullscreen
+                ? {
+                    pill: S.fullscreen_pill,
+                    pillBar: S.fullscreen_pillbar,
+                  }
+                : undefined
+            }
             items={dimensionItems}
             onDimensionChange={onDimensionChange}
           />

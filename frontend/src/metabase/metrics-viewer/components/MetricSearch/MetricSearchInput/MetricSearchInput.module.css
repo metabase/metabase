@@ -9,6 +9,11 @@
   height: auto;
   min-height: unset;
   font-size: var(--mb-default-font-size);
+
+  &[disabled] {
+    background-color: unset;
+    cursor: default;
+  }
 }
 
 .inputField::placeholder {

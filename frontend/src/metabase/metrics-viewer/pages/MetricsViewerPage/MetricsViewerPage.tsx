@@ -28,6 +28,7 @@ export function MetricsViewerPage() {
     sourceOrder,
     sourceDataById,
     availableDimensions,
+    isFullScreen,
     isExecuting,
     addMetric,
     swapMetric,
@@ -41,6 +42,7 @@ export function MetricsViewerPage() {
     changeCardDimension,
     updateDefinition,
     setBreakoutDimension,
+    toggleFullScreen,
   } = useMetricsViewer();
 
   const hasDefinitions = definitions.length > 0;
@@ -57,6 +59,7 @@ export function MetricsViewerPage() {
           onSwapMetric={swapMetric}
           onSetBreakout={setBreakoutDimension}
           onUpdateDefinition={updateDefinition}
+          isFullscreen={isFullScreen}
         />
       </Box>
       <Flex flex="1 1 auto" mih={0}>
@@ -106,6 +109,8 @@ export function MetricsViewerPage() {
                   isExecuting={isExecuting}
                   onTabUpdate={updateActiveTab}
                   onDimensionChange={changeDimension}
+                  isFullscreen={isFullScreen}
+                  onToggleFullscreen={toggleFullScreen}
                 />
               ) : null}
             </Flex>
