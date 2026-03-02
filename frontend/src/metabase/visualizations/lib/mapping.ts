@@ -1,21 +1,25 @@
 import * as d3 from "d3";
-import L from "leaflet/dist/leaflet-src.js";
+import type { Feature, Position } from "geojson";
+import L from "leaflet";
+
+import type { RowValue } from "metabase-types/api";
 
 import { COUNTRY_NAME_TO_CODE, STATE_CODES } from "./mapping_codes";
 
-export function computeMinimalBounds(features) {
+export function computeMinimalBounds(features: Feature[]) {
   const points = getAllFeaturesPoints(features);
   const [west, east] = d3.extent(points, (d) => d[0]);
   const [north, south] = d3.extent(points, (d) => d[1]);
 
   return L.latLngBounds(
-    L.latLng(south, west), // SW
-    L.latLng(north, east), // NE
+    L.latLng(south ?? 0, west ?? 0), // SW
+    L.latLng(north ?? 0, east ?? 0), // NE
   );
 }
 
-export function getAllFeaturesPoints(features) {
-  const points = [];
+export function getAllFeaturesPoints(features: Feature[]) {
+  const points: Position[] = [];
+
   for (const feature of features) {
     if (feature.geometry.type === "Polygon") {
       for (const coordinates of feature.geometry.coordinates) {
@@ -34,6 +38,7 @@ export function getAllFeaturesPoints(features) {
       );
     }
   }
+
   return points;
 }
 
@@ -46,15 +51,18 @@ const stateNamesMap = new Map(
  *
  * Currently transforms US state names to state codes for the "us_states" region map, and just lowercases all others.
  */
-export function getCanonicalRowKey(key, region) {
-  key = String(key).toLowerCase();
+export function getCanonicalRowKey(key: RowValue, region?: string) {
+  const normalizedKey = String(key).toLowerCase();
   // Special case for supporting both US state names and state codes
   // This should be ok because we know there's no overlap between state names and codes, and we know the "us_states" region map expects codes
-  if (region === "us_states" && stateNamesMap.has(key)) {
-    return stateNamesMap.get(key);
-  } else if (region === "world_countries" && key in COUNTRY_NAME_TO_CODE) {
-    return COUNTRY_NAME_TO_CODE[key];
+  if (region === "us_states" && stateNamesMap.has(normalizedKey)) {
+    return stateNamesMap.get(normalizedKey);
+  } else if (
+    region === "world_countries" &&
+    normalizedKey in COUNTRY_NAME_TO_CODE
+  ) {
+    return COUNTRY_NAME_TO_CODE[normalizedKey];
   } else {
-    return key;
+    return normalizedKey;
   }
 }
