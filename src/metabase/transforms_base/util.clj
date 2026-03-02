@@ -520,6 +520,7 @@
 
    Performs:
    - Sync target table to AppDB
+   - Set `transform_id` on the target table
    - Publish Metabase events (unless `:publish-events?` is false)
    - Create/drop secondary indexes
 
@@ -531,9 +532,15 @@
         {:keys [run-id with-stage-timing-fn publish-events?]
          :or   {publish-events? true}} opts
         db-id (transforms-base.i/target-db-id transform)
-        database        (t2/select-one :model/Database db-id)]
+        database (t2/select-one :model/Database db-id)]
     ;; Sync target table
     (sync-target! target database)
+    ;; Mark the table as owned by this transform
+    (when-let [table (t2/select-one :model/Table
+                                    :db_id db-id
+                                    :schema (:schema target)
+                                    :name (:name target))]
+      (t2/update! :model/Table (:id table) {:transform_id (:id transform)}))
     ;; Publish event after sync so the table exists in AppDB.
     (when publish-events?
       (events/publish-event! :event/transform-run-complete

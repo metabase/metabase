@@ -126,18 +126,12 @@
                 ex-message-fn     #(exceptional-run-message message-log %)
                 result            (transforms.instrumentation/with-stage-timing [run-id [:computation :python-execution]]
                                     (transforms.u/run-cancelable-transform! run-id driver transform-details run-fn :ex-message-fn ex-message-fn))]
-            ;; Post-processing: sync, events, secondary indexes (after succeed-started-run!)
+            ;; Post-processing: sync, transform_id, events, secondary indexes (after succeed-started-run!)
             (transforms-base.u/complete-execution! transform
                                                    {:run-id               run-id
                                                     :with-stage-timing-fn (fn [rid stage thunk]
                                                                             (transforms.instrumentation/with-stage-timing [rid stage]
                                                                               (thunk)))})
-            ;; Table.transform_id update
-            (when-let [table (t2/select-one :model/Table
-                                            :db_id (:id db)
-                                            :schema (:schema target)
-                                            :name (:name target))]
-              (t2/update! :model/Table (:id table) {:transform_id transform-id}))
             {:run_id run-id :result result}))))
     (catch Throwable t
       (log/error t "Error executing Python transform")

@@ -335,11 +335,13 @@
                          :model/Table {table-id :id} {:db_id (mt/id) :name "test_output_table" :schema nil}]
             ;; Mock execute-base! to return success without actually running a query,
             ;; run-cancelable-transform! to bypass schema creation / cancellation infra,
-            ;; and complete-execution! to skip sync/events.
-            (with-redefs [transforms-base.i/execute-base!       (constantly {:status :succeeded})
-                          transforms-base.u/complete-execution!  (constantly nil)
-                          transforms.u/run-cancelable-transform! (fn [_run-id _driver _details run-fn & _opts]
-                                                                   (run-fn (a/promise-chan)))]
+            ;; and sync/indexes to skip driver calls. complete-execution! runs normally
+            ;; so it sets transform_id on the target table.
+            (with-redefs [transforms-base.i/execute-base!                            (constantly {:status :succeeded})
+                          transforms-base.u/sync-target!                             (constantly nil)
+                          transforms-base.u/execute-secondary-index-ddl-if-required! (constantly nil)
+                          transforms.u/run-cancelable-transform!                     (fn [_run-id _driver _details run-fn & _opts]
+                                                                                       (run-fn (a/promise-chan)))]
               (transforms.execute/execute! transform {:run-method :manual})
               (is (= transform-id
                      (t2/select-one-fn :transform_id :model/Table :id table-id))))))))))
