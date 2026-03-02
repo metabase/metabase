@@ -11,6 +11,7 @@
    [metabase.api.routes.common :as routes.common :refer [+static-apikey]]
    [metabase.api.util]
    [metabase.api.util.handlers :as handlers]
+   [metabase.apps.api]
    [metabase.bookmarks.api]
    [metabase.bug-reporting.api]
    [metabase.cache.api]
@@ -69,6 +70,7 @@
          metabase.activity-feed.api/keep-me
          metabase.analytics.api/keep-me
          metabase.api-keys.api/keep-me
+         metabase.apps.api/keep-me
          metabase.api.util/keep-me
          metabase.bookmarks.api/keep-me
          metabase.bug-reporting.api/keep-me
@@ -148,6 +150,7 @@
    "/alert"                (+auth metabase.pulse.api/alert-routes)
    "/analytics"            (+auth 'metabase.analytics.api)
    "/api-key"              (+auth 'metabase.api-keys.api)
+   "/app"                  (+auth 'metabase.apps.api)
    "/automagic-dashboards" (+auth metabase.xrays.api/automagic-dashboards-routes)
    "/bookmark"             (+auth 'metabase.bookmarks.api)
    "/bug-reporting"        (+auth 'metabase.bug-reporting.api)

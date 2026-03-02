@@ -88,7 +88,7 @@
     (cond
       ;; Case 1: Embedding SDK header is present - use ACS URL with token and origin
       embedding-sdk-header?
-      (str (acs-url) "?token=" (token-utils/generate-token) "&origin=" (java.net.URLEncoder/encode ^String origin "UTF-8"))
+      (str (acs-url) "?token=" (token-utils/generate-token) "&origin=" (java.net.URLEncoder/encode ^String (or origin (system/site-url)) "UTF-8"))
 
       ;; Case 2: No redirect parameter
       (nil? redirect)

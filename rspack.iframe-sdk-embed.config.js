@@ -19,6 +19,7 @@ const SCRIPT_TAG_PATH = path.resolve(
 const BUILD_PATH = __dirname + "/resources/frontend_client";
 const EMBEDDING_SRC_PATH = __dirname + "/enterprise/frontend/src/embedding";
 const SDK_BUNDLE_SRC_PATH = __dirname + "/frontend/src/embedding-sdk-bundle";
+const SDK_SHARED_SRC_PATH = __dirname + "/frontend/src/embedding-sdk-shared";
 
 const OUT_FILE_NAME = "embed.js";
 const OUT_TEMP_PATH = path.resolve(BUILD_PATH, "tmp-embed-js");
@@ -84,6 +85,7 @@ module.exports = {
       metabase: SRC_PATH,
       embedding: EMBEDDING_SRC_PATH,
       "embedding-sdk-bundle": SDK_BUNDLE_SRC_PATH,
+      "embedding-sdk-shared": SDK_SHARED_SRC_PATH,
       "sdk-iframe-embedding-script-ee-plugins": resolveEnterprisePathOrNoop(
         "/sdk-iframe-embedding-script-plugins",
       ),

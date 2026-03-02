@@ -1,4 +1,4 @@
-import { type ReactNode, useEffect, useMemo } from "react";
+import { type ReactNode, useEffect, useMemo, useRef } from "react";
 import { P, match } from "ts-pattern";
 
 import { PublicComponentStylesWrapper } from "embedding-sdk-bundle/components/private/PublicComponentStylesWrapper";
@@ -25,6 +25,7 @@ import { createTracker } from "metabase/lib/analytics-untyped";
 import { useSelector } from "metabase/lib/redux";
 import { PLUGIN_EMBEDDING_IFRAME_SDK } from "metabase/plugins";
 import { getSetting } from "metabase/selectors/settings";
+import { getUser } from "metabase/selectors/user";
 import { Stack } from "metabase/ui";
 
 import { useParamRerenderKey } from "../hooks/use-param-rerender-key";
@@ -126,6 +127,26 @@ const SdkIframeEmbedView = ({
 }): ReactNode => {
   const rerenderKey = useParamRerenderKey(settings);
   const loginStatus = useSdkSelector(getLoginStatus);
+  const user = useSelector(getUser);
+  const userInfoSentRef = useRef(false);
+
+  // Send user info to parent window when logged in
+  useEffect(() => {
+    if (loginStatus?.status === "success" && user && !userInfoSentRef.current) {
+      userInfoSentRef.current = true;
+      window.parent.postMessage(
+        {
+          type: "metabase.embed.userInfo",
+          data: {
+            id: user.id,
+            email: user.email,
+            commonName: user.common_name,
+          },
+        },
+        "*",
+      );
+    }
+  }, [loginStatus?.status, user]);
 
   if (loginStatus?.status === "error") {
     return (
