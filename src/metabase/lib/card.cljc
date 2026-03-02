@@ -218,8 +218,9 @@
   (cond-> [:description :display-name :semantic-type :fk-target-field-id :settings :visibility-type :lib/source-display-name]
     native-model? (conj :id)))
 
-;;; TODO (Cam 6/13/25) -- duplicated/overlapping responsibility with [[metabase.lib.field/previous-stage-metadata]] as
-;;; well as [[metabase.lib.metadata.result-metadata/merge-model-metadata]] -- find a way to deduplicate these
+;;; TODO (Cam 6/13/25) -- duplicated/overlapping responsibility
+;;; with [[metabase.lib.field.resolution/previous-stage-metadata]] as well
+;;; as [[metabase.lib.metadata.result-metadata/merge-model-metadata]] -- find a way to deduplicate these
 (mu/defn merge-model-metadata :- [:sequential ::lib.schema.metadata/column]
   "Merge metadata from source model metadata into result cols.
 
@@ -241,7 +242,7 @@
      (empty? result-cols)
      (not-empty model-cols)
 
-     :else ;; both not empty
+     :else ; both not empty
      (let [name->model-col (m/index-by :name model-cols)]
        (mapv (fn [result-col]
                (merge
@@ -251,7 +252,8 @@
                 (when (or own-model-query?
                           (not= (:lib/source result-col) :source/aggregations))
                   (when-let [model-col (get name->model-col (:name result-col))]
-                    (let [model-col (u/select-non-nil-keys model-col (model-preserved-keys native-model?))]
+                    (let [model-col (-> (u/select-non-nil-keys model-col (model-preserved-keys native-model?))
+                                        (assoc :lib/from-model? true))]
                       ;; For the model's own query, preserve the user-customized display name as-is.
                       ;; For outer queries using the model as source, append temporal/binning suffixes
                       ;; because the outer query may apply its own bucketing on top of the model columns.
