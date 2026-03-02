@@ -12,7 +12,7 @@ import { flushSync } from "react-dom";
 import _ from "underscore";
 
 import CS from "metabase/css/core/index.css";
-import { isCypressActive } from "metabase/env";
+import { isCypressActive, isStorybookActive } from "metabase/env";
 import { delay } from "metabase/lib/delay";
 import resizeObserver from "metabase/lib/resize-observer";
 
@@ -76,6 +76,8 @@ export function ExplicitSize<T>({
 
       timeoutId: ReturnType<typeof setTimeout> | null = null;
 
+      _isMounted = false;
+
       _currentElement: Element | null = null;
 
       _printMediaQuery = window.matchMedia && window.matchMedia("print");
@@ -115,11 +117,26 @@ export function ExplicitSize<T>({
       }
 
       componentDidMount() {
+        this._isMounted = true;
         this._initMediaQueryListener();
-        this._initResizeObserver();
-        // Set the size on the next tick. We had issues with wrapped components
-        // not adjusting if the size was fixed during mounting.
-        this.timeoutId = setTimeout(this._updateSize, 0);
+
+        // In Storybook, wait for fonts to load before measuring.
+        // This ensures visualizations render with correct font metrics,
+        // fixing flaky visual tests caused by font loading timing.
+        if (isStorybookActive && document.fonts) {
+          document.fonts.ready.then(() => {
+            if (!this._isMounted) {
+              return;
+            }
+            this._initResizeObserver();
+            this.timeoutId = setTimeout(this._updateSize, 0);
+          });
+        } else {
+          this._initResizeObserver();
+          // Set the size on the next tick. We had issues with wrapped components
+          // not adjusting if the size was fixed during mounting.
+          this.timeoutId = setTimeout(this._updateSize, 0);
+        }
       }
 
       componentDidUpdate() {
@@ -134,6 +151,7 @@ export function ExplicitSize<T>({
       }
 
       componentWillUnmount() {
+        this._isMounted = false;
         this._teardownResizeObserver();
         this._teardownQueryMediaListener();
         if (this.timeoutId !== null) {
@@ -226,7 +244,9 @@ export function ExplicitSize<T>({
       __updateSize = () => {
         const element = this._getElement();
         if (element) {
-          const { width, height } = element.getBoundingClientRect();
+          const rect = element.getBoundingClientRect();
+          const width = Math.round(rect.width);
+          const height = Math.round(rect.height);
 
           if (!width && !height) {
             // cypress raises lots of errors in timeline trying to call setState
