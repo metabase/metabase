@@ -5,6 +5,7 @@
    [metabase.api.common :as api]
    [metabase.audit-app.core :as audit-app]
    [metabase.collections.models.collection :as collection]
+   [metabase.driver.util :as driver.u]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
@@ -253,6 +254,22 @@
                              (update :order-by (fnil conj []) [:id]))))
 
 ;;;; Sql validation
+
+;; TODO: Complete the dialect map
+(def driver->dialect
+  "Map of driver to parser dialect"
+  {:postgres "postgres"
+   :mysql "mysql"
+   :mariadb "mysql"
+   :bigquery-cloud-sdk "bigquery"
+   :snowflake "snowflake"
+   :redshift "redshift"})
+
+(defn query->dialect
+  "Get queries dialect"
+  [query]
+  (when-some [db-id (:database query)]
+    (-> db-id driver.u/database->driver driver->dialect)))
 
 (mr/def ::validation-result
   [:map
