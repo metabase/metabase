@@ -103,8 +103,6 @@ If your password contains characters that aren't UTF-8, then you might need to a
 
 ## Writeable connection
 
-> Writeable connection requires the **Advanced transforms (SQL + Python)** add-on
-
 Set up an additional connection used for write operations. See [Writeable connections](../writeable-connection.md).
 
 ## Database routing

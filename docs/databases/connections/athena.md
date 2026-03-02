@@ -211,8 +211,6 @@ If Metabase also needs to create tables, you'll need additional AWS Glue permiss
 
 ## Writeable connection
 
-> Writeable connection requires the **Advanced transforms (SQL + Python)** add-on
-
 Set up an additional connection used for write operations. See [Writeable connections](../writeable-connection.md).
 
 ## Model features

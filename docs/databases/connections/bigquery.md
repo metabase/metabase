@@ -163,8 +163,6 @@ If you're having trouble with your BigQuery connection, you can check out this [
 
 ## Writeable connection
 
-> Writeable connection requires the **Advanced transforms (SQL + Python)** add-on
-
 Set up an additional connection used for write operations. See [Writeable connections](../writeable-connection.md).
 
 ## Model features

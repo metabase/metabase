@@ -133,8 +133,6 @@ The process for adding plugins when running via Docker is similar, but you'll ne
 
 ## Writeable connection
 
-> Writeable connection requires the **Advanced transforms (SQL + Python)** add-on
-
 Set up an additional connection used for write operations. See [Writeable connections](../writeable-connection.md).
 
 ## Danger zone

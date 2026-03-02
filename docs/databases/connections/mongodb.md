@@ -132,8 +132,6 @@ If you're not seeing all of the fields show up for a collection in Metabase, one
 
 ## Writeable connection
 
-> Writeable connection requires the **Advanced transforms (SQL + Python)** add-on
-
 Set up an additional connection used for write operations. See [Writeable connections](../writeable-connection.md).
 
 ## Database routing
