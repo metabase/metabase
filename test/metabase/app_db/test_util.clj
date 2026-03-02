@@ -106,7 +106,7 @@
           ["migrations/000_legacy_migrations.yaml" "migrations/001_update_migrations.yaml"]
           ["migrations/001_update_migrations.yaml"])
         (concat
-         ;; Monolithic migration files (v56-v59 pattern)
+         ;; Per-release migration files (v56-v59 pattern)
          (filter io/resource (for [n (range 56 100)]
                                (format "migrations/%03d_update_migrations.yaml" n)))
          ;; Directory-based migration files (v60+ pattern)

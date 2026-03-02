@@ -10,7 +10,8 @@
    [clojure.spec.alpha :as s]
    [clojure.string :as str])
   (:import
-   [clojure.lang ExceptionInfo]))
+   (clojure.lang ExceptionInfo)
+   (java.lang Integer)))
 
 #_:clj-kondo/ignore
 (set! *warn-on-reflection* true)
@@ -59,7 +60,7 @@
 
 (defn- file-version
   "Extracts the migration version number from a file.
-  For monolithic files like `059_update_migrations.yaml`, parses from the filename.
+  For per-release files like `059_update_migrations.yaml`, parses from the filename.
   For directory-based files like `060/20260106_125531.yaml`, parses from the parent directory name."
   [^java.io.File file]
   (if (directory-based-migration-file? file)
@@ -68,7 +69,7 @@
 
 (defn- changeset-version+id
   "Returns [version local-id] for a changeset.
-  For monolithic IDs like 'v49.00-032', parses from the ID itself.
+  For per-release IDs like 'v49.00-032', parses from the ID itself.
   For directory-based files, uses the directory for version and filename (without .yaml) for local-id."
   [file changeset-id]
   (let [id-str (str changeset-id)]
@@ -187,7 +188,7 @@
   "Enforces that changeset IDs use the correct format for the file type:
   - Directory-based files (v60+): any string ID is allowed
   - 001_update_migrations.yaml: any string ID is allowed (legacy file)
-  - Other monolithic files: IDs must match the timestamp format"
+  - Other per-release files: IDs must match the timestamp format"
   [change-log file]
   (when-not (or (directory-based-migration-file? file)
                 (= (file-version file) 1))
@@ -195,7 +196,7 @@
           bad-ids (remove #(re-matches change-set.strict/id-timestamp-format-re %) ids)]
       (when (seq bad-ids)
         (throw (validation-error
-                (format "Monolithic migration file contains non-timestamp ID formats: %s"
+                (format "Per-release migration file contains non-timestamp ID formats: %s"
                         (str/join ", " bad-ids))
                 {:invalid-ids (vec bad-ids)}))))))
 
@@ -220,6 +221,59 @@
       (throw (validation-error "Expected exactly one key." {:keys keys})))
     (first keys)))
 
+(defn- major-version
+  "Returns major version from id string, e.g. 44 from \"v44.00-034\".
+  For directory-based migrations (file path matches `NNN/`), extracts
+  version from the file path. Otherwise parses from the id string."
+  [id-str file]
+  (if-let [[_ file-version] (when file (re-find #"(\d{3})[/\\]" (str file)))]
+    (Integer/parseInt file-version)
+    (when (string? id-str)
+      (some-> (re-find #"\d+" id-str) Integer/parseInt))))
+
+(def change-types-supporting-rollback
+  "This set was generated with a little grep and awk from the docs here:
+  https://docs.liquibase.com/workflows/liquibase-community/liquibase-auto-rollback.html
+
+  If a new change type is introduced that supports automatic rollback, it should be added
+  to this set."
+  #{:addCheckConstraint
+    :addColumn
+    :addDefaultValue
+    :addForeignKeyConstraint
+    :addLookupTable
+    :addNotNullConstraint
+    :addPrimaryKey
+    :addUniqueConstraint
+    :createIndex
+    :createSequence
+    :createSynonym
+    :createTable
+    :createView
+    :disableCheckConstraint
+    :disableTrigger
+    :dropNotNullConstraint
+    :enableCheckConstraint
+    :enableTrigger
+    :renameColumn
+    :renameSequence
+    :renameTable
+    :renameTrigger
+    :renameView
+    ;; assumes all custom changes use the `def-migration` or `define-reversible-migration` in
+    ;; [[metabase.app-db.custom-migrations]]
+    :customChange})
+
+(defn- rollback-present-when-required?
+  "Ensures rollback key is present when change type doesn't support auto rollback.
+  `file` is used to extract version for directory-based migrations."
+  [{:keys [id changes] :as change-set} file]
+  (or
+   (let [v (major-version (str id) file)]
+     (and v (< v 45)))
+   (some change-types-supporting-rollback (mapcat keys changes))
+   (contains? change-set :rollback)))
+
 (defn- validate-database-change-log [change-log file]
   (when (string? change-log)
     (throw (validation-error "Expected `:databaseChangeLog` to be a map, not a string.")))
@@ -237,9 +291,12 @@
     (when-not (set/subset? (set (keys all)) #{:property :objectQuotingStrategy :changeSet})
       (throw (validation-error "Expected exactly one of :property, :objectQuotingStrategy, or :changeSet."
                                {:keys (keys all)})))
-    (doseq [{:keys [changeSet]} changeSet
-            :when (not (s/valid? ::changeSet changeSet))]
-      (throw (validation-error "Invalid change set." (s/explain-data ::changeSet changeSet))))))
+    (doseq [{:keys [changeSet]} changeSet]
+      (when-not (s/valid? ::changeSet changeSet)
+        (throw (validation-error "Invalid change set." (s/explain-data ::changeSet changeSet))))
+      (when-not (rollback-present-when-required? changeSet file)
+        (throw (validation-error "Rollback is required but not present."
+                                 {:id (:id changeSet)}))))))
 
 (defn- validate-migrations [migrations file]
   (require-database-change-log! migrations)
@@ -254,7 +311,7 @@
          (filter (fn [^java.io.File f]
                    (and (.isFile f)
                         (or
-                         ;; Monolithic files: 059_update_migrations.yaml
+                         ;; Per-release files: 059_update_migrations.yaml
                          (str/ends-with? (.getName f) "_update_migrations.yaml")
                          ;; Directory-based files: 060/20260106_125531.yaml
                          (directory-based-migration-file? f)))))
@@ -272,7 +329,7 @@
 
 (defn- display-name
   "Returns a human-readable name for a migration file.
-  For monolithic files, returns just the filename.
+  For per-release files, returns just the filename.
   For directory-based files, returns `parent/filename`."
   [^java.io.File file]
   (if (directory-based-migration-file? file)

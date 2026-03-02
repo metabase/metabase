@@ -67,57 +67,6 @@
                            []))) ; provide an empty list if dbms-val is nil
                      changes))))))
 
-(def change-types-supporting-rollback
-  "This set was generated with a little grep and awk from the docs here:
-  https://docs.liquibase.com/workflows/liquibase-community/liquibase-auto-rollback.html
-
-  If a new change type is introduced that supports automatic rollback, it should be added
-  to this set."
-  #{:addCheckConstraint
-    :addColumn
-    :addDefaultValue
-    :addForeignKeyConstraint
-    :addLookupTable
-    :addNotNullConstraint
-    :addPrimaryKey
-    :addUniqueConstraint
-    :createIndex
-    :createSequence
-    :createSynonym
-    :createTable
-    :createView
-    :disableCheckConstraint
-    :disableTrigger
-    :dropNotNullConstraint
-    :enableCheckConstraint
-    :enableTrigger
-    :renameColumn
-    :renameSequence
-    :renameTable
-    :renameTrigger
-    :renameView
-    ;; assumes all custom changes use the `def-migration` or `define-reversible-migration` in
-    ;; [[metabase.app-db.custom-migrations]]
-    :customChange})
-
-(defn- major-version
-  "Returns major version from id string, e.g. 44 from \"v44.00-034\".
-  Returns nil for IDs that don't match the versioned formats."
-  [id-str]
-  (when (string? id-str)
-    (when (or (re-matches id-timestamp-format-re id-str)
-              (re-matches id-number-format-re id-str))
-      (some-> (re-find #"\d+" id-str) Integer/parseInt))))
-
-(defn- rollback-present-when-required?
-  "Ensures rollback key is present when change type doesn't support auto rollback"
-  [{:keys [id changes] :as change-set}]
-  (or
-   (let [v (major-version (str id))]
-     (and v (< v 45)))
-   (some change-types-supporting-rollback (mapcat keys changes))
-   (contains? change-set :rollback)))
-
 (defn- disallow-delete-cascade-with-add-column
   "Returns false if addColumn changeSet uses deleteCascade. See Metabase issue #14321"
   [{:keys [changes]}]
@@ -131,7 +80,6 @@
 
 (s/def ::change-set
   (s/and
-   rollback-present-when-required?
    disallow-delete-cascade-with-add-column
    (s/keys :req-un [::id ::author ::changes ::comment]
            :opt-un [::preConditions])))

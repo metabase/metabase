@@ -26,7 +26,7 @@
   (str "databaseChangeLog:\n"
        "\n"
        "  - changeSet:\n"
-       "      id: \"1\"\n"
+       "      id: 1\n"
        "      author: " author "\n"
        "      comment: TODO\n"
        "      changes:\n"

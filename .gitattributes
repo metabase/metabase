@@ -1,6 +1,6 @@
-# Custom merge driver for monolithic YAML migration files.
+# Custom merge driver for per-release YAML migration files.
 # Treats each changeset as an atomic unit to avoid conflicts within changesets.
-# Only applies to monolithic *_update_migrations.yaml files — directory-based
+# Only applies to per-release *_update_migrations.yaml files — directory-based
 # migrations (e.g. 060/*.yaml) have one file per migration and don't need this.
 # Execute this in your shell to enable custom merge driver:
 # echo '\n[include]\npath=../.gitconfig' >> .git/config

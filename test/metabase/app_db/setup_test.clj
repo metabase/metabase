@@ -7,7 +7,6 @@
    [metabase.app-db.liquibase :as liquibase]
    [metabase.app-db.setup :as mdb.setup]
    [metabase.app-db.test-util :as mdb.test-util]
-   [metabase.config.core :as config]
    [metabase.driver :as driver]
    [metabase.test :as mt]
    [toucan2.core :as t2])
@@ -119,46 +118,23 @@
 
 (deftest downgrade-detection-test
   (mt/test-drivers #{:h2 :mysql :postgres}
-    (testing "Legacy fallback path (no highest-metabase-version setting)"
-      (mt/with-temp-empty-app-db [conn driver/*driver*]
-        ;; migrate to v45
-        (update-to-changelog-id "v45.00-001" conn)
+    (mt/with-temp-empty-app-db [conn driver/*driver*]
+      ;; migrate to v45
+      (update-to-changelog-id "v45.00-001" conn)
 
-        ;; the latest changeSet in `000_legacy_migrations.yaml` is `v44.00-044`. We can simulate a downgrade to that
-        ;; version by telling Liquibase that's the migrations file.
-        (with-redefs [liquibase/decide-liquibase-file (fn [& _args] "liquibase_legacy_migrations.yaml")]
-          (is (thrown-with-msg?
-               Exception #"You must run `java --add-opens java.base/java.nio=ALL-UNNAMED -jar metabase.jar migrate down` from version 45."
-               (#'mdb.setup/error-if-downgrade-required! (mdb.connection/data-source)))))
-
-        ;; check that the error correctly reports the version to run `downgrade` from
-        (update-to-changelog-id "v46.00-001" conn)
-        (with-redefs [liquibase/decide-liquibase-file (fn [& _args] "liquibase_legacy_migrations.yaml")]
-          (is (thrown-with-msg?
-               Exception #"You must run `java --add-opens java.base/java.nio=ALL-UNNAMED -jar metabase.jar migrate down` from version 46."
-               (#'mdb.setup/error-if-downgrade-required! (mdb.connection/data-source)))))))
-
-    (testing "Setting-based path (highest-metabase-version exists)"
-      (mt/with-temp-empty-app-db [conn driver/*driver*]
-        ;; fully migrate and write the setting
-        (liquibase/with-liquibase [liquibase conn]
-          (.update liquibase ""))
-        (with-open [raw-conn (.getConnection ^javax.sql.DataSource (mdb.connection/data-source))]
-          (jdbc/execute! {:connection raw-conn}
-                         ["INSERT INTO setting (\"KEY\", \"VALUE\") VALUES ('highest-metabase-version', 'v1.99.0')"]))
-        ;; Current binary version < 99 → should throw
+      ;; the latest changeSet in `000_legacy_migrations.yaml` is `v44.00-044`. We can simulate a downgrade to that
+      ;; version by telling Liquibase that's the migrations file.
+      (with-redefs [liquibase/decide-liquibase-file (fn [& _args] "liquibase_legacy_migrations.yaml")]
         (is (thrown-with-msg?
-             Exception #"You must run `java --add-opens java.base/java.nio=ALL-UNNAMED -jar metabase.jar migrate down` from version 99."
-             (#'mdb.setup/error-if-downgrade-required! (mdb.connection/data-source))))))))
+             Exception #"You must run `java --add-opens java.base/java.nio=ALL-UNNAMED -jar metabase.jar migrate down` from version 45."
+             (#'mdb.setup/error-if-downgrade-required! (mdb.connection/data-source)))))
 
-(deftest highest-metabase-version-written-after-setup-test
-  (mt/test-drivers #{:h2 :mysql :postgres}
-    (mt/with-temp-empty-app-db [_conn driver/*driver*]
-      (with-redefs [config/mb-version-info {:tag "v1.60.3" :hash "abc123"}]
-        (is (= :done
-               (mdb.setup/setup-db! driver/*driver* (mdb.connection/data-source) true true)))
-        (with-open [conn (.getConnection ^javax.sql.DataSource (mdb.connection/data-source))]
-          (is (= "v1.60.3" (liquibase/highest-metabase-version-str conn))))))))
+      ;; check that the error correctly reports the version to run `downgrade` from
+      (update-to-changelog-id "v46.00-001" conn)
+      (with-redefs [liquibase/decide-liquibase-file (fn [& _args] "liquibase_legacy_migrations.yaml")]
+        (is (thrown-with-msg?
+             Exception #"You must run `java --add-opens java.base/java.nio=ALL-UNNAMED -jar metabase.jar migrate down` from version 46."
+             (#'mdb.setup/error-if-downgrade-required! (mdb.connection/data-source))))))))
 
 ;; `delete!` below is ok in a parallel test since it's not actually executing anything
 #_{:clj-kondo/ignore [:metabase/validate-deftest]}

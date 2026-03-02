@@ -93,8 +93,6 @@
           :print         (print-migrations-and-quit-if-needed! liquibase data-source)
           :release-locks (liquibase/force-release-locks! liquibase))
        ;; Migrations were successful; commit everything and re-enable auto-commit
-        (when (#{:up :force} direction)
-          (liquibase/update-highest-metabase-version! conn))
         (.commit conn)
         (.setAutoCommit conn true)
         :done
@@ -161,37 +159,26 @@
             (log/info "Database encrypted..." (u/emoji "✅")))
           (log/debug "Database not encrypted and MB_ENCRYPTION_SECRET_KEY env variable not set."))))))
 
-(defn- throw-downgrade-error!
-  [db-version]
-  (throw (ex-info
-          (str (u/format-color 'red (trs "ERROR: Downgrade detected."))
-               "\n\n"
-               (trs "Your metabase instance appears to have been downgraded without a corresponding database downgrade.")
-               "\n\n"
-               (trs "You must run `java --add-opens java.base/java.nio=ALL-UNNAMED -jar metabase.jar migrate down` from version {0}." db-version)
-               "\n\n"
-               (trs "Once your database has been downgraded, try running the application again.")
-               "\n\n"
-               (trs "See: https://www.metabase.com/docs/latest/installation-and-operation/upgrading-metabase#rolling-back-an-upgrade"))
-          {})))
-
 (mu/defn- error-if-downgrade-required!
   [data-source :- (ms/InstanceOfClass javax.sql.DataSource)]
   (log/info (u/format-color 'cyan "Checking if a database downgrade is required..."))
   (with-open [conn (.getConnection ^javax.sql.DataSource data-source)]
-    (let [highest-stored (liquibase/highest-metabase-major-version conn)]
-      (if highest-stored
-        ;; Setting-based check: compare current binary version against stored high-water mark
-        (let [current-major (config/current-major-version)]
-          (when (and current-major (< current-major highest-stored))
-            (throw-downgrade-error! highest-stored)))
-        ;; Legacy fallback: compare changelog-based versions (for first upgrade to this code)
-        (liquibase/with-liquibase [liquibase conn]
-          (let [latest-available (liquibase/latest-available-major-version liquibase)
-                latest-applied   (liquibase/latest-applied-major-version conn (.getDatabase liquibase))]
-            ;; `latest-applied` will be `nil` for fresh installs
-            (when (and latest-applied (< latest-available latest-applied))
-              (throw-downgrade-error! latest-applied))))))))
+    (liquibase/with-liquibase [liquibase conn]
+      (let [latest-available (liquibase/latest-available-major-version liquibase)
+            latest-applied   (liquibase/latest-applied-major-version conn (.getDatabase liquibase))]
+        ;; `latest-applied` will be `nil` for fresh installs
+        (when (and latest-applied (< latest-available latest-applied))
+          (throw (ex-info
+                  (str (u/format-color 'red (trs "ERROR: Downgrade detected."))
+                       "\n\n"
+                       (trs "Your metabase instance appears to have been downgraded without a corresponding database downgrade.")
+                       "\n\n"
+                       (trs "You must run `java --add-opens java.base/java.nio=ALL-UNNAMED -jar metabase.jar migrate down` from version {0}." latest-applied)
+                       "\n\n"
+                       (trs "Once your database has been downgraded, try running the application again.")
+                       "\n\n"
+                       (trs "See: https://www.metabase.com/docs/latest/installation-and-operation/upgrading-metabase#rolling-back-an-upgrade"))
+                  {})))))))
 
 (mu/defn- run-schema-migrations!
   "Run through our DB migration process and make sure DB is fully prepared"
@@ -217,8 +204,6 @@
         (verify-db-connection db-type data-source)
         (error-if-downgrade-required! data-source)
         (run-schema-migrations! data-source auto-migrate?)
-        (with-open [conn (.getConnection ^javax.sql.DataSource data-source)]
-          (liquibase/update-highest-metabase-version! conn))
         (check-encryption))))
   :done)
 
