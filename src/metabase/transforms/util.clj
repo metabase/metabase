@@ -474,7 +474,11 @@
             base-query        (or source-query (lib/query metadata-provider table-metadata))
             lo                (when last_checkpoint_type (deserialize-checkpoint-value last_checkpoint_type last_checkpoint_value))
             filtered-query    (if lo (lib/filter base-query (lib/> column lo)) base-query)
-            limited-query     (if limit (lib/limit filtered-query limit) filtered-query)
+            ;; if limited need to order by the column otherwise you will get the MAX for the first N rows instead of top-k
+            limited-query     (if limit
+                                (-> (lib/order-by filtered-query column)
+                                    (lib/limit limit))
+                                filtered-query)
             query             (lib/aggregate (lib/append-stage limited-query) (lib/max column))
             query-result      (qp/process-query query)
             {:keys [results_metadata rows]} (:data query-result)
