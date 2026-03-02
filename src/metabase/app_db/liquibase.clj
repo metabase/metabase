@@ -12,6 +12,7 @@
    [metabase.classloader.core :as classloader]
    [metabase.config.core :as config]
    [metabase.util :as u]
+   [metabase.util.encryption :as encryption]
    [metabase.util.i18n :refer [trs]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
@@ -25,7 +26,7 @@
    (javax.sql DataSource)
    (liquibase Contexts LabelExpression Liquibase RuntimeEnvironment Scope Scope$Attr Scope$ScopedRunner UpdateSummaryOutputEnum)
    (liquibase.change.custom CustomChangeWrapper)
-   (liquibase.changelog ChangeLogIterator ChangeSet ChangeSet$ExecType)
+   (liquibase.changelog ChangeLogIterator ChangeSet ChangeSet$ExecType DatabaseChangeLog)
    (liquibase.changelog.filter AlreadyRanChangeSetFilter ChangeSetFilter ChangeSetFilterResult DbmsChangeSetFilter IgnoreChangeSetFilter)
    (liquibase.changelog.visitor AbstractChangeExecListener ChangeExecListener UpdateVisitor)
    (liquibase.command.core AbstractRollbackCommandStep)
@@ -147,12 +148,26 @@
     (liquibase.h2/h2-database liquibase-conn)
     (.findCorrectDatabaseImplementation (DatabaseFactory/getInstance) liquibase-conn)))
 
+(defn- prepend-version-to-directory-changeset-ids!
+  "For directory-based migrations (v60+), prepend v{version}. to changeset IDs
+   so they're compatible with old Metabase rollback code that filters WHERE id LIKE 'v%'."
+  [^DatabaseChangeLog changelog]
+  (let [id-field (doto (.getDeclaredField ChangeSet "id") (.setAccessible true))]
+    (doseq [^ChangeSet cs (.getChangeSets changelog)]
+      (let [id (.getId cs)
+            path (.getFilePath cs)]
+        (when (and (not (str/starts-with? id "v"))
+                   (re-find #"migrations/\d{3}/" path))
+          (when-let [[_ version] (re-find #"migrations/(\d{3})/" path)]
+            (.set id-field cs (str "v" (parse-long version) "." id))))))))
+
 (defn- liquibase ^Liquibase [^Connection conn ^Database database]
   (u/prog1 (Liquibase.
             ^String (decide-liquibase-file conn database)
             (ClassLoaderResourceAccessor. (classloader/the-classloader))
             database)
-    (.setObjectQuotingStrategy (.getDatabaseChangeLog <>) ObjectQuotingStrategy/QUOTE_ALL_OBJECTS)))
+    (.setObjectQuotingStrategy (.getDatabaseChangeLog <>) ObjectQuotingStrategy/QUOTE_ALL_OBJECTS)
+    (prepend-version-to-directory-changeset-ids! (.getDatabaseChangeLog <>))))
 
 (mu/defn do-with-liquibase
   "Impl for [[with-liquibase-macro]]."
@@ -528,6 +543,41 @@
           {:keys [id filename]} (first (jdbc/query {:connection conn} [query]))]
       (some-> id (extract-major-version filename)))))
 
+(defn highest-metabase-version-str
+  "Read the highest-metabase-version full string from the setting table via raw JDBC.
+   Handles decryption if the value was encrypted by Metabase's encryption system.
+   Returns nil if the setting table doesn't exist (fresh install) or setting is not found."
+  [conn]
+  (try
+    (when (table-exists? "SETTING" conn)
+      (some-> (:value (first (jdbc/query {:connection conn}
+                                         ["SELECT \"VALUE\" FROM setting WHERE \"KEY\" = 'highest-metabase-version'"])))
+              encryption/maybe-decrypt))
+    (catch Throwable _ nil)))
+
+(defn highest-metabase-major-version
+  "Read the highest-metabase-version and parse the major version number."
+  [conn]
+  (some-> (highest-metabase-version-str conn) config/major-version))
+
+(defn update-highest-metabase-version!
+  "Write the full version string to the highest-metabase-version setting if the current
+   major version is higher than what's stored (or if nothing is stored yet).
+   Uses raw JDBC since toucan2 may not be fully available during migration."
+  [conn]
+  (when (table-exists? "SETTING" conn)
+    (let [current-tag    (:tag config/mb-version-info)
+          current-major  (config/major-version current-tag)
+          stored-major   (highest-metabase-major-version conn)]
+      (when (and current-major
+                 (or (nil? stored-major) (> current-major stored-major)))
+        (if stored-major
+          (jdbc/execute! {:connection conn}
+                         ["UPDATE setting SET \"VALUE\" = ? WHERE \"KEY\" = 'highest-metabase-version'" current-tag])
+          (jdbc/execute! {:connection conn}
+                         ["INSERT INTO setting (\"KEY\", \"VALUE\") VALUES ('highest-metabase-version', ?)" current-tag]))
+        (log/infof "Updated highest-metabase-version setting to %s" current-tag)))))
+
 (defn rollback-major-version!
   "Roll back migrations later than given Metabase major version. If force is true, it will ignore any checks and always
   roll back"
@@ -573,13 +623,14 @@
                                                       (IgnoreChangeSetFilter.)
                                                       (DbmsChangeSetFilter. lb-db)
                                                       changeset-filter])))
-           error-ids (atom [])]
-       (when (and (not force) (> latest-applied latest-available))
+           error-ids (atom [])
+           highest-ever (or (highest-metabase-major-version conn) latest-applied)]
+       (when (and (not force) (> highest-ever latest-available))
          (throw (ex-info
                  (format "Cannot downgrade a database at version %d from Metabase version %d. You must run 'migrate down' from Metabase version >= %d."
-                         latest-applied latest-available latest-applied)
+                         highest-ever latest-available highest-ever)
                  {:latest-available latest-available
-                  :latest-applied   latest-applied})))
+                  :highest-ever     highest-ever})))
 
        (log/infof "Rolling back app database schema to version %d" target-version)
        (if (empty? ids-to-drop)
@@ -606,4 +657,12 @@
                           (if (seq @error-ids)
                             (format "there were errors in rollback (%s)" (str/join ", " @error-ids))
                             "they are not in the changelog file")
-                          (str/join ", " remaining-ids))))))))))
+                          (str/join ", " remaining-ids))))
+           ;; Update the setting to reflect the target version so the lower version binary can start cleanly
+           (let [target-version-str (str "v1." target-version ".0")]
+             (if (highest-metabase-version-str conn)
+               (jdbc/execute! {:connection conn}
+                              ["UPDATE setting SET \"VALUE\" = ? WHERE \"KEY\" = 'highest-metabase-version'" target-version-str])
+               (jdbc/execute! {:connection conn}
+                              ["INSERT INTO setting (\"KEY\", \"VALUE\") VALUES ('highest-metabase-version', ?)" target-version-str]))
+             (log/infof "Updated highest-metabase-version setting to %s after rollback" target-version-str))))))))

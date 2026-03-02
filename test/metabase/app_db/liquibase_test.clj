@@ -1,5 +1,6 @@
 (ns ^:mb/driver-tests metabase.app-db.liquibase-test
   (:require
+   [clojure.java.jdbc :as jdbc]
    [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.app-db.core :as mdb]
@@ -176,9 +177,32 @@
             (.update liquibase "")
             (is (= actual-latest-applied-version (liquibase/latest-applied-major-version conn (.getDatabase liquibase)))))
 
-          (testing "Cannot downgrade when there are changests from a newer version already ran which are not in the changelog file"
+          (testing "Cannot downgrade when highest-metabase-version > latest-available"
+            ;; Set the stored version higher than what's available — use UPDATE if it exists, INSERT otherwise
+            (let [higher-version-str (str "v1." (inc actual-latest-applied-version) ".0")]
+              (if (liquibase/highest-metabase-version-str conn)
+                (jdbc/execute! {:connection conn}
+                               ["UPDATE setting SET \"VALUE\" = ? WHERE \"KEY\" = 'highest-metabase-version'" higher-version-str])
+                (jdbc/execute! {:connection conn}
+                               ["INSERT INTO setting (\"KEY\", \"VALUE\") VALUES ('highest-metabase-version', ?)" higher-version-str])))
+            (is (thrown-with-msg? ExceptionInfo #"Cannot downgrade.*"
+                                  (liquibase/rollback-major-version! conn liquibase false (dec actual-latest-available-version))))
+            (testing "CAN downgrade if forced"
+              (liquibase/rollback-major-version! conn liquibase true (dec actual-latest-available-version)))
+            ;; clean up the setting for subsequent tests
+            (jdbc/execute! {:connection conn}
+                           ["DELETE FROM setting WHERE \"KEY\" = 'highest-metabase-version'"]))
+
+          (testing "Falls back to latest-applied when setting doesn't exist"
             (with-redefs [liquibase/latest-applied-major-version (constantly (inc actual-latest-applied-version))]
               (is (thrown-with-msg? ExceptionInfo #"Cannot downgrade.*"
-                                    (liquibase/rollback-major-version! conn liquibase false (dec actual-latest-available-version))))
-              (testing "CAN downgrade if forced"
-                (liquibase/rollback-major-version! conn liquibase true (dec actual-latest-available-version))))))))))
+                                    (liquibase/rollback-major-version! conn liquibase false (dec actual-latest-available-version))))))
+
+          (testing "Setting is updated to target version after rollback"
+            ;; Re-upgrade so there are changesets to roll back, and clear any leftover setting
+            (.update liquibase "")
+            (jdbc/execute! {:connection conn}
+                           ["DELETE FROM setting WHERE \"KEY\" = 'highest-metabase-version'"])
+            (liquibase/rollback-major-version! conn liquibase false (dec actual-latest-available-version))
+            (is (= (str "v1." (dec actual-latest-available-version) ".0")
+                   (liquibase/highest-metabase-version-str conn)))))))))
