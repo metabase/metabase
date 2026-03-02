@@ -19,9 +19,9 @@ Metabase supports user provisioning via the System for Cross-domain Identity Man
 
 To set up user provisioning:
 
-1. Click on the settings **Gear** icon in the upper right and navigate to **Admin** > **Settings**> **Authentication**.
+1. Click the **grid** icon in the upper right and navigate to **Admin** > **Settings**> **Authentication**.
 
-2. Click on the **User provisioning** tab.
+2. Click the **User provisioning** tab.
 3. Toggle on user provisioning.
 
 Metabase will tell you the SCIM endpoint URL and SCIM token to share with your identity provider.

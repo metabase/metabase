@@ -71,8 +71,8 @@ To obtain the OAuth token for the Slack aopp:
 
 To set up the app in Metabase:
 
-1. In Metabase, go to **Admin > Settings > Notification channels > Slack**. Click **Connect to Slack**
-2. Paste the token into **Slack bot user OAuth token**
+1. In Metabase, go to **Admin > Settings > Notification channels > Slack**. Click **Connect to Slack**.
+2. Paste the token into **Slack bot user OAuth token**.
 3. **Save changes** in Metabase.
 
    Metabase will automatically run a quick test to check that the API token is working properly. If something goes wrong, it'll give you an error message.

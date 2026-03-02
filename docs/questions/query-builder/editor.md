@@ -1,11 +1,11 @@
 ---
-title: Query builder
+title: The query builder
 redirect_from:
   - /docs/latest/questions/query-builder/introduction
   - /docs/latest/questions/query-builder
 ---
 
-# Query builder
+# The query builder
 
 Metabase includes a graphical query builder that lets you build interactive charts by building a query step by step from building blocks like filters and summaries.
 
@@ -31,15 +31,15 @@ To the right of each step in the query builder is a **Preview** button (looks li
 
 ## Pick data
 
-To start building a question with the query builder, you need to The data select the data you want to work with. You can pick pick a a table from a database, a[model](../../data-modeling/models.md), a [metric](../../data-modeling/metrics.md), or another saved question. You can search by typing, or browse your databases and collections.
+To start building a question with the query builder, you need to select the data you want to work with. You can pick pick a a table from a database, a[model](../../data-modeling/models.md), a [metric](../../data-modeling/metrics.md), or another saved question. You can search by typing, or browse your databases and collections.
 
 ![data picker](../images/data-picker.png)
 
-If your Metabase has the [Library collection](../../data-studio/library.md), then by default you'll only see the Data (tables) and Metrics from the library, but you can click on "Browse all" to find other sources.
+If your Metabase has the [Library collection](../../data-studio/library.md), then by default you'll only see the Data (tables) and Metrics from the library. To query other data sources, select "Browse all".
 
 ![library data picker](../images/library-data-picker.png)
 
-Once you select the data source, you can see it in a new browser tab by Cmd/Ctrl+Clicking on the data source's name in the query builder.
+Once you select the data source, you can preview the data, or view the data in a new browser tab by Cmd/Ctrl+Clicking on the data source's name.
 
 To choose which columns to include in your query, click on the arrow next to the data source. If you uncheck a column, you'll still be able to use the column while building a query (for example, in filters) but Metabase won't display the column in results.
 
@@ -79,7 +79,7 @@ Once you pick the data to query and hhe filters to apply, you can choose to summ
 
 See [Summarizing and grouping](./summarizing-and-grouping.md).
 
-Metabase comes with several built-inn summaries but you can also use custom expressions to write spreadsheet-like functions and simple arithmetic within or between aggregation functions.
+Metabase comes with several built-in summaries, but you can also use custom expressions to write spreadsheet-like functions and simple arithmetic within or between aggregation functions.
 
 For example, you could do `Average(sqrt[FieldX]) + Sum([FieldY])` or `Max(floor([FieldX] - [FieldY]))`, where `FieldX` and `FieldY` are fields in the currently selected table. [Learn more about writing expressions](./expressions.md).
 
@@ -120,7 +120,7 @@ Conversion is a one-way street: you can't convert a SQL question back into a que
 
 ## Visualizing your data
 
-Once you finish assembling your query from blocks, you can click **Visualize** to create a chart. Metabase will automatically pick the best visualization for your data, but you can change and customize it.
+To view results, click **Visualize** to create a chart. Metabase will automatically pick the best visualization for your data, but you can change and customize it.
 
 Check out [visualizing results](../visualizations/visualizing-results.md).
 
@@ -130,7 +130,7 @@ When viewing a chart, you can also click through questions to explore the data i
 
 ![Drill-through menu](../images/drill-through-menu.png)
 
-The drill-through menu will present different options depending on what you click on. You can then optionally save any exploration as a new question. Full drill-through menu is only available for questions built using the query builder. Questions built with the SQL/native editor will have only have [limited drill-through actions](../native-editor/writing-sql.md#drill-though-in-sql-questions). For more on how drill-through works, check out [Creating interactive charts](https://www.metabase.com/learn/metabase-basics/querying-and-dashboards/questions/drill-through).
+The drill-through menu will present different options depending on what you click on. You can then optionally save any exploration as a new question. The full drill-through menu is only available for questions built using the query builder. Questions built with the SQL/native editor have [limited drill-through actions](../native-editor/writing-sql.md#drill-though-in-sql-questions). For more on how drill-through works, check out [Creating interactive charts](https://www.metabase.com/learn/metabase-basics/querying-and-dashboards/questions/drill-through).
 
 ### Column heading drill-through
 

@@ -32,7 +32,7 @@ To temporarily adjust the logging configuration:
 1. Go to **Admin** > **Tools** > **Logs**.
 2. Click on **Customize log levels** above the logs.
 
-   You can select from log level presets for common troubleshooting tasks (for example, troubleshooting sync issues), or provide your own configuration as a JSON. For example, here's an override configuration that increases logging for troubleshooting linked filters:
+   You can select from log-level presets for common troubleshooting tasks (for example, troubleshooting sync issues), or provide your own configuration as JSON. For example, here's an override configuration that increases logging for troubleshooting linked filters:
 
    ```json
    {

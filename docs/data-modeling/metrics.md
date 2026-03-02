@@ -29,7 +29,7 @@ You can use custom expressions to combine multiple metrics, or perform calculati
 
 You can:
 
-- Pick metrics as aggregation columns in the Summarize block when creating questions, modify them or combine.
+- When creating questions in the query builder, you can  pick metrics as aggregation columns in the Summarize block. You can modify metrics, or combine them.
 - Save metrics to [collections](../exploration-and-organization/collections.md), including the [Library](../data-studio/library.md).
 - Add metrics to [dashboards](../dashboards/introduction.md).
 - View metrics in the [database browser](../exploration-and-organization/exploration.md#browse-your-databases).
@@ -88,7 +88,7 @@ These collection permissions also interact with the group's [data permissions](.
 
 ## Metrics in the Library
 
-You can add Metrics to the Library to better surface them to people writing queries in Metabase. See [Library metrics](../data-studio/library.md#metrics)
+By adding metrics to your Library, the query builder will display the metrics more prominently in menus. See [Library metrics](../data-studio/library.md#metrics)
 
 ## Verifying a metric
 

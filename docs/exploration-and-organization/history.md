@@ -39,8 +39,8 @@ Any change to the transform's query or script will be recorded as "changed sourc
 ### Reverting to previous versions
 
 1. Go to your transform in [Data studio > Transforms](../data-studio/transforms/transforms-overview.md).
-2. Click the **three dots** icon and select **History**
-3. Click on the **back arrow** beside a version to revert your item to that point in time.
+2. Click the **three dots** icon and select **History**.
+3. Click the **back arrow** beside a version to revert your item to that point in time.
 
 ## History for segments and measures
 

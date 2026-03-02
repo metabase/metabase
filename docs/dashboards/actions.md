@@ -27,10 +27,10 @@ Once you [created an action](../actions/introduction.md), you can add a button t
      ![Button types](./images/buttons.png)
 
 3. Pick an action to connect to the button.
-4. For every field in the action, select whether a user should supply the value themselves, or whether the action should use the value from the dashboard filter, see [Connecting an action to a dashboard filter](#connect-an-action-to-a-dashboard-filter).
+4. For every field in the action, select whether people should supply the value themselves, or whether the action should use the value from the dashboard filter. See [Connecting an action to a dashboard filter](#connect-an-action-to-a-dashboard-filter).
 5. Click **Done**, and **Save** the dashboard.
 
-People viewing the dashboard will not be able to click the button and perform your chosen action:
+People viewing the dashboard will be able to click the button and perform your chosen action:
 
 ![Button form](./images/button-form.png)
 
@@ -38,15 +38,15 @@ You can add as many buttons as you want, and wire them up to one or more filters
 
 ## Connect an action to a dashboard filter
 
-When people click the action button on a dashboard, they'll be prompted to input values in the fields defined by that action. Alternatively, you can pre-fill some action fields with the values selected for a dashboard filter. This is useful when a dashboard is filtered by an ID, and the action button should update the same ID.
+When people click the action button on a dashboard, they'll be prompted to input values in the fields defined by that action. Alternatively, you can pre-fill some action fields with the values selected for a dashboard filter. Passing filter values to action fields is useful when the dashboard filters by an ID, and you want the action button to update the record associated with that ID.
 
 To connect an action field to a filter on a dashboard:
 
 1. On a dashboard with an action button, click the **pencil icon** edit the dashboard.
-2. [Add a filter](./filters.md) to a dashboard, wire it up to any cards that you want to, and click **Done** in the bottom of the sidebar.
+2. [Add a filter](./filters.md) to a dashboard, connect the filter to one or more cards, and click **Done** in the bottom of the sidebar.
 3. [Add an action button to the dashboard](#add-an-action-button-to-a-dashboard) (if you haven't already).
 4. Hover over the action button and click on the **gear** icon, and select **Change action**.
-5. Click on the field's dropdown to select where the action should get it's value and pick a filter to connect to (filters will be referenced in the dropdown by their name):
+5. Click the field's dropdown to select where the action should get its value, and pick a filter to connect to (filters will be referenced in the dropdown by their name):
 
    ![Wiring up an action button to a dashboard filter](./images/id-value.png)
 

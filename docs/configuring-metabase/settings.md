@@ -34,7 +34,7 @@ For example, say you enable HTTPS redirect for a Metabase instance at the site U
 
 Admins can pick a dashboard to serve as the homepage. If people lack permissions to view the selected dashboard, Metabase will redirect them to the default homepage.
 
-If you've set a dashboard as your homepage, and want to revert to the default Metabase homepage, simply turn off the **Enabled** toggle to disable the Custom Homepage feature.
+To revert to the default Metabase homepage, simply toggle off Custom homepage.
 
 ## Email address for help requests
 

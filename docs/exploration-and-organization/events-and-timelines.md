@@ -47,7 +47,7 @@ You'll see an icon along the x-axis that plots the event. A vertical line will e
 
 ![An event on a chart](./images/example-event.png)
 
-You can't add an event to the [Library](../data-studio/library.md).
+You can't add a timeline with events to the [Library](../data-studio/library.md).
 
 ## Adding events when viewing a question
 

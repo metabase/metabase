@@ -75,7 +75,7 @@ If you try to delete a row that has foreign key references from other tables, yo
 
 Metabase offers two ways to modify data in your database: **editable table data** and [actions](../actions/introduction.md).
 
-### When to use editable table data
+### When to use editable tables
 
 Use editable table data to:
 

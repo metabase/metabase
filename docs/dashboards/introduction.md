@@ -25,7 +25,7 @@ You can make as many dashboards as you want. Go nuts.
 
 ## Example dashboard
 
-Every new Metabase instance comes with an example dashboard (unless your instance admin turned it off or deleted it). Example dashboard is yours to explore and play with. You can find the example dashboard (called **E-commerce insights**) in the **Examples** collection.
+Every new Metabase comes with an example dashboard, **E-commerce insights**, in the **Examples** collection (though your admin can turn off or delete the examples). The example dashboard is yours to explore and play with.
 
 ## How to create a dashboard
 
@@ -35,7 +35,7 @@ Every new Metabase instance comes with an example dashboard (unless your instanc
 2. Give your new dashboard a name and a description.
 3. Choose which [collections](../exploration-and-organization/collections.md) the dashboard should go in.
 4. Click **Create**, and Metabase will take you to your shiny new dashboard.
-5. This will create an empty dashboard. Next, you'll need to add some questions (charts) to the dashboard, see [Adding or saving questions to the dashboard](#adding-or-saving-questions-to-a-dashboard).
+5. Next, you'll need to add some questions (charts) to the dashboard, see [Adding or saving questions to the dashboard](#adding-or-saving-questions-to-a-dashboard).
 
 ## Adding or saving questions to a dashboard
 

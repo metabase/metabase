@@ -59,9 +59,9 @@ To add a custom map:
 
    ![Uploading a custom GeoJSON](./images/custom-geojson.png)
 
-   - **Name of the map** will be displayed in the region selector for [custom region maps](../questions/visualizations/map.md#custom-regions)
-   - **Region's identifier** is a GeoJSON field that identifies your region. The values in this field should match how the regions are referenced in your data. The field does not need to match the display name .
-   - **Region's display name** is a GeoJSON field that specifies how your region name will be displayed on a map. This field can be different from region's identifier.
+   - **Name of the map** will be displayed in the region selector for [custom region maps](../questions/visualizations/map.md#custom-regions).
+   - **Region's identifier** is a GeoJSON field that identifies your region. The values in this field should match how the data refers to the regions. The field doesn't need to match the display name .
+   - **Region's display name** is a GeoJSON field that specifies how maps will display region names. This field can be different from region's identifier.
 
 To pre-load one or more region maps when Metabase starts, you can use the environment variable [`MB_CUSTOM_GEOJSON`](./environment-variables.md#mb_custom_geojson) or a [config file option](./config-file.md) `custom-geojson` .
 

@@ -20,7 +20,7 @@ Before people can send alerts to a webhook, an admin or someone with [settings a
 To create a webhook:
 
 1. Click the **grid** icon in top right corner and select **Admin**.
-2. In the Admin console, go **Settings > Notification channels**
+2. In the Admin console, go **Settings > Notification channels**.
 3. In **Webhooks for alerts**, click **Add a webhoor**.
 4. Metabase will show you a short form to fill out:
 

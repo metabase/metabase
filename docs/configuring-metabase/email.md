@@ -67,9 +67,9 @@ _Admin > Settings > Email_
 
 For Metabase to send messages to people, you'll need to set up an email account to send emails via **SMTP** (simple mail transfer protocol). SMTP is an email standard that, when combined with SSL/TLS, provides security protection for emails.
 
-If you are on Metabase Cloud, see [Email on Metabase Cloud](#set-up-email-on-metabase-cloud) for email setup.
+If you're on Metabase Cloud, see [Set up email on Metabase Cloud](#set-up-email-on-metabase-cloud).
 
-To set up email on self-hosted Metabase instance:
+To set up email on self-hosted Metabase:
 
 1. Go to **Admin > Settings > Email**.
 2. Next to **Self-Hosted SMTP**, click **Configure**.
@@ -126,7 +126,7 @@ To configure allowed domains:
 2. Under **Allowed domains for notifications**, add allowed domains:
 
    - To allow all domains, leave the field empty (allowing all domains is the default).
-   - To specify multiple domains, separate each domain with a comma, with no space in between (e.g., "domain1,domain2").
+   - To specify multiple domains, separate each domain with a comma, with no space in between (e.g., `domain1,domain2`).
 
 You can also set this property using the environment variable [`MB_SUBSCRIPTION_ALLOWED_DOMAINS`](../configuring-metabase/environment-variables.md#mb_subscription_allowed_domains).
 

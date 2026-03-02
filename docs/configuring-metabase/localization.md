@@ -77,7 +77,7 @@ This setting doesn't affect [SQL queries](../questions/native-editor/writing-sql
 
 ## Dates and times display settings
 
-You can configure how dates and times look by default in your instance.
+You can configure the default formatting for dates and times. 
 
 Note that people can also override these localization options for specific fields or questions. For more info, see [Formatting](../data-modeling/formatting.md).
 

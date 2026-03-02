@@ -39,11 +39,10 @@ On Metabase [Pro](https://www.metabase.com/product/pro) and [Enterprise](https:/
 
 #### Slack
 
-For Slack subscriptions, you can set up a subscription for a channel (like #general), or for a single person via their Slack username.
+For Slack subscriptions, you can set up a subscription for a channel (like #general), or for a single person via their Slack username (not their display name).
 
 You can also send subscriptions to private channels, but that requires additional configuration, see [Sending alerts and subscriptions to private Slack channels](../configuring-metabase/slack.md#sending-alerts-and-subscriptions-to-private-slack-channels).
 
-> Note that Slack username can be different from Slack display name.
 
 If you rename the subscribed channel in Slack, you'll need to update the subscription to point to the new Slack channel name.
 
@@ -74,7 +73,7 @@ You can set filters to apply when Metabase sends the subscription to send "views
 
 If the questions on the dashboard return no results, you can tell Metabase to skip sending the email.
 
-This is helpful for dashboards that are displaying time-limited results (for example, "Survey responses over the last week"), or dashboards that display rare events (e.g. "Latest outage analysis").
+This is helpful for dashboards that are displaying time-limited results (for example, "Survey responses over the last week"), or dashboards that display rare events (like "Latest outage analysis").
 
 ## Email attachments
 
@@ -123,7 +122,7 @@ You can view a list of all alerts and dashboard subscriptions that people have s
 
 {% include plans-blockquote.html feature="Dashboard subscription filter customization" %}
 
-You can customize which filter values to apply to each dashboard subscription. That way you can send different groups of people an email (or Slack message) the contents of the dashboard with different filters applied. You only need to maintain one dashboard, which you can use to send results relevant to each subscriber. For example, send a dashboard filtered for "Marketing" department and "This week" date weekly to a marketing lead, and send the dashboard filtered for all departments and "This quarter" to the CEO.
+You can customize which filter values to apply to each dashboard subscription. That way you can send  an email (or Slack message) with the dashboard results to different groups of people, with different dashboard filters applied for each group. You only need to maintain one dashboard, which you can use to send results relevant to each subscriber. For example, send a dashboard filtered for "Marketing" department and "This week" date weekly to a marketing lead, and send the dashboard filtered for all departments and "This quarter" to the CEO.
 
 ### Setting filter values
 
