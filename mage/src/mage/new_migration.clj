@@ -23,8 +23,9 @@
            (ZonedDateTime/now ZoneOffset/UTC)))
 
 (defn- migration-template [author]
-  (str "databaseChangeLog:\n"
+  (str "## TODO: quick description of what feature/bug this migration is for\n"
        "\n"
+       "databaseChangeLog:\n"
        "  - changeSet:\n"
        "      id: 1\n"
        "      author: " author "\n"
