@@ -6,6 +6,7 @@ const { ORDERS, ORDERS_ID, PEOPLE_ID } = SAMPLE_DATABASE;
 describe("scenarios > admin > datamodel > segments", () => {
   beforeEach(() => {
     H.restore();
+    H.resetSnowplow();
     cy.signInAsAdmin();
     cy.viewport(1400, 860);
   });
@@ -41,6 +42,48 @@ describe("scenarios > admin > datamodel > segments", () => {
         .findByText("Segments are interesting subsets of tables")
         .should("be.visible");
       cy.button("Learn how to create segments").should("be.visible");
+    });
+
+    it("should track segment_created event when saving a new segment", () => {
+      cy.intercept("POST", "/api/segment").as("createSegment");
+      cy.visit("/admin/datamodel/segments");
+
+      cy.button("New segment").click();
+
+      cy.findByTestId("segment-editor").findByText("Select a table").click();
+      H.pickEntity({ path: ["Databases", /Sample Database/, "Orders"] });
+
+      cy.log("verify segment_create_started event was tracked");
+      H.expectUnstructuredSnowplowEvent({
+        event: "segment_create_started",
+        triggered_from: "admin_datamodel_segments",
+        target_id: ORDERS_ID,
+      });
+
+      cy.log("add filter");
+      cy.findByTestId("segment-editor")
+        .findByText("Add filters to narrow your answer")
+        .click();
+      H.popover().findByText("Total").click();
+      H.selectFilterOperator("Greater than");
+      H.popover().within(() => {
+        cy.findByLabelText("Filter value").type("100");
+        cy.button("Add filter").click();
+      });
+
+      cy.log("fill in segment name");
+      cy.findByLabelText("Name").type("High Value Orders");
+
+      cy.log("save segment");
+      cy.button("Save").click();
+      cy.wait("@createSegment");
+
+      cy.log("verify segment_created event was tracked");
+      H.expectUnstructuredSnowplowEvent({
+        event: "segment_created",
+        triggered_from: "admin_datamodel_segments",
+        result: "success",
+      });
     });
   });
 

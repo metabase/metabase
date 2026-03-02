@@ -671,6 +671,19 @@ export type MeasureCreatedEvent = ValidateEvent<{
   target_id: number | null;
 }>;
 
+export type SegmentCreateStartedEvent = ValidateEvent<{
+  event: "segment_create_started";
+  triggered_from: "data_studio_segments" | "admin_datamodel_segments";
+  target_id: number | null;
+}>;
+
+export type SegmentCreatedEvent = ValidateEvent<{
+  event: "segment_created";
+  triggered_from: "data_studio_segments" | "admin_datamodel_segments";
+  result: "success" | "failure";
+  target_id: number | null;
+}>;
+
 export type DataStudioEvent =
   | DataStudioOpenedEvent
   | DataStudioLibraryCreatedEvent
@@ -688,7 +701,9 @@ export type DataStudioEvent =
   | DataStudioTableFieldsRescannedEvent
   | DataStudioTableFieldValuesDiscardedEvent
   | MeasureCreateStartedEvent
-  | MeasureCreatedEvent;
+  | MeasureCreatedEvent
+  | SegmentCreateStartedEvent
+  | SegmentCreatedEvent;
 
 export type UnsavedChangesWarningDisplayedEvent = ValidateEvent<{
   event: "unsaved_changes_warning_displayed";

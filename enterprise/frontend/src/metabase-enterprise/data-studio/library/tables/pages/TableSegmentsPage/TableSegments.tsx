@@ -1,5 +1,6 @@
 import { t } from "ttag";
 
+import { trackSegmentCreateStarted } from "metabase/data-studio/analytics";
 import {
   EntityList,
   EntityListItem,
@@ -8,7 +9,7 @@ import { getUserCanWriteSegments } from "metabase/data-studio/selectors";
 import { useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { Flex } from "metabase/ui";
-import type { Table } from "metabase-types/api";
+import type { ConcreteTableId, Table } from "metabase-types/api";
 
 type TableSegmentsProps = {
   table: Table;
@@ -35,7 +36,11 @@ export function TableSegments({ table }: TableSegmentsProps) {
             ? {
                 label: t`New segment`,
                 url: Urls.dataStudioPublishedTableSegmentNew(table.id),
-                trackClickEvent: () => {},
+                trackClickEvent: () =>
+                  trackSegmentCreateStarted(
+                    "data_studio_segments",
+                    table.id as ConcreteTableId,
+                  ),
               }
             : undefined
         }
