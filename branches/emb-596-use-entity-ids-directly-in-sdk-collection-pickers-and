@@ -3,9 +3,6 @@
     "name": "master",
     "hash": "4bb8f9d2616989ccfbe9f610ce8ec4b0ab89320c"
   },
-  "upstream": {
-    "branch": "emb-596-use-entity-ids-directly-in-sdk-collection-pickers-and"
-  },
   "change": {
     "github": {
       "pr": {
