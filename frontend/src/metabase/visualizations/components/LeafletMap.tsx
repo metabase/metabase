@@ -1,4 +1,3 @@
-/* eslint-disable react/prop-types */
 import "leaflet-draw";
 import "leaflet/dist/leaflet.css";
 import "./LeafletMap.module.css";
@@ -8,26 +7,64 @@ import { Component, createRef } from "react";
 import _ from "underscore";
 
 import MetabaseSettings from "metabase/lib/settings";
+import type { OnChangeCardAndRun } from "metabase/visualizations/types";
 import * as Lib from "metabase-lib";
 import Question from "metabase-lib/v1/Question";
+import type Metadata from "metabase-lib/v1/metadata/Metadata";
 
-export class LeafletMap extends Component {
-  constructor(props) {
-    super(props);
+type LegacyColumn = {
+  name?: string;
+  field_ref?: unknown;
+  [key: string]: unknown;
+};
 
-    this.mapRef = createRef();
-  }
+type LeafletMapSeriesEntry = {
+  card: Record<string, unknown>;
+  data: {
+    cols: LegacyColumn[];
+  };
+};
+
+export interface LeafletMapProps {
+  className?: string;
+  width?: number;
+  height?: number;
+  bounds: L.LatLngBounds;
+  settings: Record<string, unknown>;
+  points?: unknown[] | null;
+  series: LeafletMapSeriesEntry[];
+  metadata?: Metadata;
+  token?: string | null;
+  zoomControl?: boolean;
+  zoom?: number | null;
+  lat?: number | null;
+  lng?: number | null;
+  onMapCenterChange: (lat: number, lng: number) => void;
+  onMapZoomChange: (zoom: number) => void;
+  onRenderError: (error?: unknown) => void;
+  onFiltering: (filtering: boolean) => void;
+  onChangeCardAndRun: OnChangeCardAndRun;
+}
+
+export class LeafletMap extends Component<LeafletMapProps> {
+  mapRef = createRef<HTMLDivElement>();
+  map!: L.Map;
+  drawControl!: L.Control.Draw;
+  _filter?: L.Draw.Rectangle;
 
   componentDidMount() {
     try {
       const element = this.mapRef.current;
+      if (!element) {
+        return;
+      }
 
-      const map = (this.map = L.map(element, {
+      const mapOptions = {
         scrollWheelZoom: true,
         wheelPxPerZoomLevel: 30,
         minZoom: 2,
         drawControlTooltips: false,
-        zoomSnap: false,
+        zoomSnap: 0,
         // Set max bounds for latitude only, allowing longitude to wrap
         maxBounds: [
           [-90, -Infinity], // Southwest corner (limit south, no limit west)
@@ -35,7 +72,8 @@ export class LeafletMap extends Component {
         ],
         maxBoundsViscosity: 1.0, // Completely prevent panning outside latitude bounds
         worldCopyJump: true, // Enable smooth horizontal wrapping
-      }));
+      } as L.MapOptions;
+      const map = (this.map = L.map(element, mapOptions));
 
       const drawnItems = new L.FeatureGroup();
       map.addLayer(drawnItems);
@@ -54,18 +92,21 @@ export class LeafletMap extends Component {
         },
       }));
       map.addControl(drawControl);
-      map.on("draw:created", this.onFilter);
+      map.on(
+        "draw:created" as any,
+        this.onFilter as unknown as L.LeafletEventHandlerFn,
+      );
 
       map.setView([0, 0], 8);
 
-      const mapTileUrl = MetabaseSettings.get("map-tile-server-url");
+      const mapTileUrl = MetabaseSettings.get("map-tile-server-url") ?? "";
       let mapTileHostname = "";
       try {
         mapTileHostname = new URL(mapTileUrl).host;
-      } catch (e) {}
+      } catch {}
       const mapTileAttribution = mapTileHostname.includes("openstreetmap.org")
         ? 'Map data © <a href="http://openstreetmap.org">OpenStreetMap</a> contributors'
-        : null;
+        : undefined;
 
       L.tileLayer(mapTileUrl, { attribution: mapTileAttribution }).addTo(map);
 
@@ -77,13 +118,15 @@ export class LeafletMap extends Component {
         const zoom = map.getZoom();
         this.props.onMapZoomChange(zoom);
       });
-    } catch (err) {
-      console.error(err);
-      this.props.onRenderError(err.message || err);
+    } catch (error) {
+      console.error(error);
+      this.props.onRenderError(
+        error instanceof Error ? error.message : (error ?? undefined),
+      );
     }
   }
 
-  componentDidUpdate(prevProps) {
+  componentDidUpdate(prevProps: LeafletMapProps) {
     const { bounds, settings, zoomControl, zoom, lat, lng } = this.props;
 
     if (prevProps.zoomControl !== zoomControl) {
@@ -128,8 +171,11 @@ export class LeafletMap extends Component {
     // Initial update or data changed: apply saved settings if available
     if (hasSavedView) {
       this.map.setView(
-        [settings["map.center_latitude"], settings["map.center_longitude"]],
-        settings["map.zoom"],
+        [
+          settings["map.center_latitude"] as number,
+          settings["map.center_longitude"] as number,
+        ],
+        settings["map.zoom"] as number,
       );
       return;
     }
@@ -149,10 +195,10 @@ export class LeafletMap extends Component {
           [0, bounds.getEast()],
         ]),
       );
-      const zoom = Math.min(latZoom, lonZoom);
+      const mapZoom = Math.min(latZoom, lonZoom);
       // NOTE: unclear why calling `fitBounds` twice is sometimes required to get it to work
       this.map.fitBounds(bounds);
-      this.map.setZoom(zoom);
+      this.map.setZoom(mapZoom);
       this.map.fitBounds(bounds);
     }
   }
@@ -182,17 +228,19 @@ export class LeafletMap extends Component {
   startFilter() {
     this._filter = new L.Draw.Rectangle(
       this.map,
-      this.drawControl.options.rectangle,
+      (this.drawControl.options as any).rectangle,
     );
     this._filter.enable();
     this.props.onFiltering(true);
   }
+
   stopFilter() {
-    this._filter && this._filter.disable();
+    this._filter?.disable();
     this.props.onFiltering(false);
   }
-  onFilter = (e) => {
-    const bounds = e.layer.getBounds();
+
+  onFilter = (event: L.DrawEvents.Created) => {
+    const bounds = (event.layer as L.Rectangle).getBounds();
 
     const {
       series: [
@@ -207,10 +255,10 @@ export class LeafletMap extends Component {
     } = this.props;
 
     const latitudeColumn = _.findWhere(cols, {
-      name: settings["map.latitude_column"],
+      name: settings["map.latitude_column"] as string | undefined,
     });
     const longitudeColumn = _.findWhere(cols, {
-      name: settings["map.longitude_column"],
+      name: settings["map.longitude_column"] as string | undefined,
     });
 
     const question = new Question(card, metadata);
@@ -233,8 +281,8 @@ export class LeafletMap extends Component {
       const updatedQuery = Lib.updateLatLonFilter(
         query,
         stageIndex,
-        Lib.fromLegacyColumn(query, stageIndex, latitudeColumn),
-        Lib.fromLegacyColumn(query, stageIndex, longitudeColumn),
+        Lib.fromLegacyColumn(query, stageIndex, latitudeColumn as any),
+        Lib.fromLegacyColumn(query, stageIndex, longitudeColumn as any),
         question.id(),
         filterBounds,
       );
@@ -264,11 +312,11 @@ export class LeafletMap extends Component {
     return {
       latitudeIndex: _.findIndex(
         cols,
-        (col) => col.name === settings["map.latitude_column"],
+        (col: LegacyColumn) => col.name === settings["map.latitude_column"],
       ),
       longitudeIndex: _.findIndex(
         cols,
-        (col) => col.name === settings["map.longitude_column"],
+        (col: LegacyColumn) => col.name === settings["map.longitude_column"],
       ),
     };
   }
@@ -297,7 +345,9 @@ export class LeafletMap extends Component {
         },
       ],
     } = this.props;
-    return _.findWhere(cols, { name: settings["map.metric_column"] });
+    return _.findWhere(cols, {
+      name: settings["map.metric_column"] as string | undefined,
+    });
   }
 }
 
@@ -305,7 +355,10 @@ export class LeafletMap extends Component {
  * Lightweight function to check if points have changed (e.g. due to filters)
  * so that we should recalculate the zoom.
  */
-function shouldRecalculateZoom(prevPoints, nextPoints) {
+function shouldRecalculateZoom(
+  prevPoints?: unknown[] | null,
+  nextPoints?: unknown[] | null,
+) {
   if (!prevPoints && !nextPoints) {
     return false;
   }

@@ -4,10 +4,12 @@ import { createRef } from "react";
 
 import MetabaseSettings from "metabase/lib/settings";
 
-import { LeafletMap } from "./LeafletMap";
+import { LeafletMap, type LeafletMapProps } from "./LeafletMap";
 
 describe("LeafletMap", () => {
-  const createProps = (overrides = {}) => ({
+  const createProps = (
+    overrides: Partial<LeafletMapProps> = {},
+  ): LeafletMapProps => ({
     series: [
       {
         card: {},
@@ -33,12 +35,13 @@ describe("LeafletMap", () => {
     onMapZoomChange: jest.fn(),
     onRenderError: jest.fn(),
     onFiltering: jest.fn(),
-    metadata: {},
+    onChangeCardAndRun: jest.fn(),
+    metadata: undefined,
     ...overrides,
   });
 
   beforeEach(() => {
-    jest.spyOn(MetabaseSettings, "get").mockImplementation((key) => {
+    jest.spyOn(MetabaseSettings, "get").mockImplementation((key: string) => {
       if (key === "map-tile-server-url") {
         return "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png";
       }
@@ -53,12 +56,13 @@ describe("LeafletMap", () => {
   describe("zoom preservation on component update", () => {
     it("should not recalculate zoom if points did not change", () => {
       const initialProps = createProps();
-      const ref = createRef();
+      const ref = createRef<LeafletMap>();
       const { rerender } = render(<LeafletMap ref={ref} {...initialProps} />);
-      const mapInstance = ref.current.map;
+      const mapInstance = ref.current?.map;
 
-      const setZoomSpy = jest.spyOn(mapInstance, "setZoom");
-      const setViewSpy = jest.spyOn(mapInstance, "setView");
+      expect(mapInstance).toBeDefined();
+      const setZoomSpy = jest.spyOn(mapInstance!, "setZoom");
+      const setViewSpy = jest.spyOn(mapInstance!, "setView");
 
       const updatedProps = createProps({ points: initialProps.points });
       rerender(<LeafletMap ref={ref} {...updatedProps} />);
@@ -69,14 +73,15 @@ describe("LeafletMap", () => {
 
     it("should recalculate zoom when points do change", () => {
       const initialProps = createProps();
-      const ref = createRef();
+      const ref = createRef<LeafletMap>();
       const { rerender } = render(<LeafletMap ref={ref} {...initialProps} />);
-      const mapInstance = ref.current.map;
+      const mapInstance = ref.current?.map;
 
-      const setZoomSpy = jest.spyOn(mapInstance, "setZoom");
-      const setViewSpy = jest.spyOn(mapInstance, "setView");
+      expect(mapInstance).toBeDefined();
+      const setZoomSpy = jest.spyOn(mapInstance!, "setZoom");
+      const setViewSpy = jest.spyOn(mapInstance!, "setView");
 
-      const differentPoints = [
+      const differentPoints: number[][] = [
         [1, 1],
         [2, 2],
       ];
