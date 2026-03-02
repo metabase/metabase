@@ -3,9 +3,6 @@
     "name": "master",
     "hash": "400b10f74caa10b1ba325d051129e25cd0a664de"
   },
-  "upstream": {
-    "branch": "emb-869-add-metabase-metabot-to-embed-flow-as-metabot-experience"
-  },
   "change": {
     "github": {
       "pr": {
