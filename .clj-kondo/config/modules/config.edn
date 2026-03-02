@@ -1569,12 +1569,30 @@
            models
            util}}
 
+  transforms-base
+  {:team "Querying"
+   :api  #{metabase.transforms-base.core
+           metabase.transforms-base.interface
+           metabase.transforms-base.ordering
+           metabase.transforms-base.util}
+   :uses #{driver
+           events
+           lib
+           lib-be
+           query-processor
+           sync
+           util}
+   :friends #{transforms
+              enterprise/transforms-python
+              enterprise/workspaces}}
+
   transforms
   {:team "Querying"
    :api  #{metabase.transforms.core
            metabase.transforms.feature-gating
            metabase.transforms.init
            metabase.transforms.interface
+           metabase.transforms.ordering
            metabase.transforms.schema
            metabase.transforms.util}
    :uses #{analytics
@@ -1594,6 +1612,7 @@
            sync
            task
            task-history
+           transforms-base
            util}
    :friends #{models
               enterprise/transforms-python
@@ -2457,6 +2476,22 @@
    :api  #{}
    :uses #{premium-features}}
 
+  enterprise/transforms-base
+  {:team "Querying"
+   :api  #{metabase-enterprise.transforms-base.core
+           metabase-enterprise.transforms-base.interface
+           metabase-enterprise.transforms-base.util}
+   :uses #{driver
+           events
+           lib
+           lib-be
+           premium-features
+           query-processor
+           sync
+           transforms-base
+           util}
+   :friends #{enterprise/transforms-python}}
+
   enterprise/transforms-python
   {:team "Querying"
    :api  #{metabase-enterprise.transforms-python.api
@@ -2476,6 +2511,8 @@
            query-processor
            settings
            transforms
+           transforms-base
+           enterprise/transforms-base
            util}}
 
   enterprise/upload-management
@@ -2509,7 +2546,9 @@
            sql-tools
            system
            transforms
+           transforms-base
            util
+           enterprise/transforms-base
            enterprise/transforms-python}}}
 
  ;; namespaces matching these patterns (with `re-find`) are excluded from the module linter. Since regex literals
