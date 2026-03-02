@@ -3,9 +3,6 @@
     "name": "master",
     "hash": "43371405734ee084cc75d4d07dc13522163e3078"
   },
-  "upstream": {
-    "branch": "new-iframe-embedding-setup-flow"
-  },
   "change": {
     "github": {
       "pr": {
