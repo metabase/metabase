@@ -1,13 +1,14 @@
 (ns metabase-enterprise.transforms-python.impl
   (:require
    [metabase-enterprise.transforms-python.execute :as transforms-python.execute]
+   [metabase.transforms-base.interface :as transforms-base.i]
    [metabase.transforms.interface :as transforms.i]))
 
-(defmethod transforms.i/target-db-id :python
+(defmethod transforms-base.i/target-db-id :python
   [transform]
   (-> transform :target :database))
 
-(defmethod transforms.i/source-db-id :python
+(defmethod transforms-base.i/source-db-id :python
   [transform]
   (-> transform :source :source-database))
 
@@ -32,7 +33,7 @@
     :else
     {:table-ref (select-keys v [:database_id :schema :table])}))
 
-(defmethod transforms.i/table-dependencies :python
+(defmethod transforms-base.i/table-dependencies :python
   [transform]
   (into #{}
         (map source-table-value->dependency)

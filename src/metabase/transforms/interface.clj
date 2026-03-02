@@ -7,17 +7,7 @@
    This namespace defines the scheduled-execution-specific `execute!` multimethod
    which handles transform_run tracking."
   (:require
-   [metabase.transforms-base.interface :as transforms-base.i]
-   [potemkin :as p]))
-
-;; Re-export core interface from transforms-base
-(p/import-vars
- [metabase.transforms-base.interface
-  transform->transform-type
-  source-db-id
-  target-db-id
-  table-dependencies
-  execute-base!])
+   [metabase.transforms-base.interface :as transforms-base.i]))
 
 ;; Scheduled execution multimethod - dispatches on transform type
 ;; This is separate from transforms-base.i/execute-base! which does NOT track transform_run
@@ -25,7 +15,7 @@
   "Execute a transform operation with transform_run tracking.
 
   This method creates transform_run rows, tracks status, and handles cancellation.
-  For base execution without database tracking, use [[execute-base!]] instead.
+  For base execution without database tracking, use [[metabase.transforms-base.interface/execute-base!]] instead.
 
   Options:
   - `:start-promise`

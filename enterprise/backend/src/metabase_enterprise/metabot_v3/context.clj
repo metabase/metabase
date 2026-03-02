@@ -8,7 +8,7 @@
    [metabase.config.core :as config]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
-   [metabase.transforms.util :as transforms.util]
+   [metabase.transforms-base.util :as transforms-base.util]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
@@ -146,9 +146,9 @@
                   (try
                     (if (and (= (:type item) "transform")
                              (not (:source_type item)))
-                      (let [transform (transforms.util/normalize-transform item)]
+                      (let [transform (transforms-base.util/normalize-transform item)]
                         (assoc transform
-                               :source_type (transforms.util/transform-source-type (:source transform))))
+                               :source_type (transforms-base.util/transform-source-type (:source transform))))
                       item)
                     (catch Exception e
                       (log/error e "Error annotating transform source type for metabot context")

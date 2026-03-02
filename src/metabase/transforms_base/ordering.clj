@@ -15,8 +15,11 @@
    [metabase.query-processor.preprocess :as qp.preprocess]
    [metabase.transforms-base.interface :as transforms-base.i]
    [metabase.transforms-base.util :as transforms-base.util]
+   [metabase.util.i18n :as i18n]
    [metabase.util.malli :as mu]
-   [toucan2.core :as t2]))
+   [toucan2.core :as t2])
+  (:import
+   (clojure.lang ExceptionInfo)))
 
 (set! *warn-on-reflection* true)
 
@@ -39,11 +42,25 @@
                    {:table table-id}))
             (lib/all-source-table-ids query)))))
 
-;; Default implementation for query transforms - can be overridden in transforms/ordering.clj
-;; for additional error handling
+(defn- database-routing-error-ex-data [^Throwable e]
+  (when e
+    (if (:database-routing-enabled (ex-data e))
+      (ex-data e)
+      (recur (.getCause e)))))
+
 (defmethod transforms-base.i/table-dependencies :query
   [transform]
-  (query-table-dependencies transform))
+  (try
+    (query-table-dependencies transform)
+    (catch ExceptionInfo e
+      (if-some [data (database-routing-error-ex-data e)]
+        (let [message (i18n/trs "Failed to run transform because the database {0} has database routing turned on. Running transforms on databases with db routing enabled is not supported." (:database-name data))]
+          (throw (ex-info message
+                          {:metabase.transforms.jobs/transform-failure true
+                           :metabase.transforms.jobs/failures [{:metabase.transforms.jobs/transform transform
+                                                                :metabase.transforms.jobs/message message}]}
+                          e)))
+        (throw e)))))
 
 ;;; ------------------------------------------------- Ordering Logic -------------------------------------------------
 

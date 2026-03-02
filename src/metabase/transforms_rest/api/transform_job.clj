@@ -5,6 +5,7 @@
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
    [metabase.models.interface :as mi]
+   [metabase.transforms-base.util :as transforms-base.util]
    [metabase.transforms.core :as transforms.core]
    [metabase.transforms.util :as transforms.util]
    [metabase.util.i18n :refer [deferred-tru LocalizedString]]
@@ -203,7 +204,7 @@
 (defn- add-next-run
   [{id :id :as job}]
   (if-let [start-time (-> id transforms.core/existing-trigger :next-fire-time)]
-    (assoc job :next_run {:start_time (str (transforms.util/->instant start-time))})
+    (assoc job :next_run {:start_time (str (transforms-base.util/->instant start-time))})
     job))
 
 (api.macros/defendpoint :get "/:job-id/transforms" :- [:sequential TransformResponse]
@@ -231,12 +232,12 @@
   (let [jobs (t2/select :model/TransformJob {:order-by [[:created_at :desc]]})]
     (into []
           (comp (map add-next-run)
-                (transforms.util/->date-field-filter-xf [:last_run :start_time] last-run-start-time)
-                (transforms.util/->date-field-filter-xf [:next_run :start_time] next-run-start-time)
-                (transforms.util/->status-filter-xf [:last_run :status] last-run-statuses)
-                (transforms.util/->tag-filter-xf [:tag_ids] tag-ids)
-                (map #(update % :last_run transforms.util/localize-run-timestamps))
-                (map #(update % :next_run transforms.util/localize-run-timestamps)))
+                (transforms-base.util/->date-field-filter-xf [:last_run :start_time] last-run-start-time)
+                (transforms-base.util/->date-field-filter-xf [:next_run :start_time] next-run-start-time)
+                (transforms-base.util/->status-filter-xf [:last_run :status] last-run-statuses)
+                (transforms-base.util/->tag-filter-xf [:tag_ids] tag-ids)
+                (map #(update % :last_run transforms-base.util/localize-run-timestamps))
+                (map #(update % :next_run transforms-base.util/localize-run-timestamps)))
           (t2/hydrate jobs :tag_ids :last_run))))
 
 (def ^{:arglists '([request respond raise])} routes

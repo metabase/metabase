@@ -6,6 +6,8 @@
    [metabase.driver.util :as driver.u]
    [metabase.lib.schema.common :as schema.common]
    [metabase.query-processor.compile :as qp.compile]
+   [metabase.transforms-base.interface :as transforms-base.i]
+   [metabase.transforms-base.util :as transforms-base.util]
    [metabase.transforms.instrumentation :as transforms.instrumentation]
    [metabase.transforms.interface :as transforms.i]
    [metabase.transforms.util :as transforms.util]
@@ -16,11 +18,11 @@
 
 (set! *warn-on-reflection* true)
 
-(defmethod transforms.i/source-db-id :query
+(defmethod transforms-base.i/source-db-id :query
   [transform]
   (-> transform :source :query :database))
 
-(defmethod transforms.i/target-db-id :query
+(defmethod transforms-base.i/target-db-id :query
   [transform]
   ;; For query transforms, the target needs to match the source, so use the query as the source of truth.
   (or (-> transform :source :query :database)
@@ -66,11 +68,11 @@
                                   :transform-id   id
                                   :transform-type (keyword (:type target))
                                   :conn-spec      conn-spec
-                                  :query          (transforms.util/compile-source transform)
+                                  :query          (transforms-base.util/compile-source transform)
                                   :output-schema  (:schema target)
-                                  :output-table   (transforms.util/qualified-table-name driver target)}
+                                  :output-table   (transforms-base.util/qualified-table-name driver target)}
                opts              (transform-opts transform-details)
-               features          (transforms.util/required-database-features transform)
+               features          (transforms-base.util/required-database-features transform)
                ;; For manual runs, use the triggering user; for cron, use owner/creator
                run-user-id       (if (and (= run-method :manual) user-id)
                                    user-id

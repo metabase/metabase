@@ -19,70 +19,16 @@
    [metabase.transforms.canceling :as canceling]
    [metabase.transforms.feature-gating :as transforms.gating]
    [metabase.transforms.instrumentation :as transforms.instrumentation]
-   [metabase.transforms.interface :as transforms.i]
    [metabase.transforms.schema :as transforms.schema]
    [metabase.transforms.settings :as transforms.settings]
    [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [potemkin :as p]
    [toucan2.core :as t2])
   (:import
    (java.sql SQLException)))
 
 (set! *warn-on-reflection* true)
-
-;; Re-export all base utility functions
-(p/import-vars
- [metabase.transforms-base.util
-  ;; Constants
-  transform-temp-table-prefix
-  ;; Type predicates
-  transform-type
-  query-transform?
-  native-query-transform?
-  python-transform?
-  transform-source-database
-  ;; Normalization
-  normalize-transform
-  transform-source-type
-  ;; Feature checks
-  required-database-features
-  ;; Table names & DDL
-  qualified-table-name
-  temp-table-name
-  create-table-from-schema!
-  drop-table!
-  rename-tables!
-  ;; Query compilation
-  massage-sql-query
-  supported-incremental-filter-type?
-  preprocess-incremental-query
-  validate-transform-query
-  compile-source
-  ;; Incremental query support
-  next-checkpoint
-  ;; Target table management
-  target-table
-  target-table-exists?
-  activate-table-and-mark-computed!
-  sync-target!
-  deactivate-table!
-  delete-target-table!
-  delete-target-table-by-id!
-  ;; Source table resolution
-  batch-lookup-table-ids
-  normalize-source-tables
-  resolve-source-tables
-  ;; Timestamps & filters
-  ->instant
-  utc-timestamp-string
-  localize-run-timestamps
-  ->date-field-filter-xf
-  ->status-filter-xf
-  ->tag-filter-xf
-  ;; Misc
-  db-routing-enabled?])
 
 ;;; ------------------------------------------------- Feature Gating -------------------------------------------------
 
@@ -90,8 +36,8 @@
   "Checking whether we have proper feature flags for using a given transform."
   [transform]
   (cond
-    (query-transform? transform) (transforms.gating/query-transforms-enabled?)
-    (python-transform? transform) (transforms.gating/python-transforms-enabled?)
+    (transforms-base.util/query-transform? transform) (transforms.gating/query-transforms-enabled?)
+    (transforms-base.util/python-transform? transform) (transforms.gating/python-transforms-enabled?)
     :else false))
 
 (defn enabled-source-types-for-user
@@ -229,7 +175,7 @@
        [:db [:fn {:error/message "Must a t2 database object"} #(= (t2/model %) :model/Database)]]]]
   (let [target (:target transform)]
     (transforms.instrumentation/with-stage-timing [run-id [:import :table-sync]]
-      (when-let [table (sync-target! target db)]
+      (when-let [table (transforms-base.util/sync-target! target db)]
         (t2/update! :model/Table (:id table) {:transform_id (:id transform)}))
       ;; This event must be published only after the sync is complete - the new table needs to be in AppDB.
       (events/publish-event! :event/transform-run-complete
@@ -237,7 +183,7 @@
                                        :transform-id (:id transform)
                                        :transform-type (keyword (:type target))
                                        :output-schema (:schema target)
-                                       :output-table (qualified-table-name (:engine db) target)}})
+                                       :output-table (transforms-base.util/qualified-table-name (:engine db) target)}})
       ;; Creating an index after sync means the filter column is known in the appdb.
       ;; The index would be synced the next time sync runs, but at time of writing, index sync is disabled.
       (execute-secondary-index-ddl-if-required! transform run-id db target))))

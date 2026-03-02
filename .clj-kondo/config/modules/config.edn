@@ -870,6 +870,7 @@
            metabase.models.interface
            metabase.models.resolution
            metabase.models.serialization
+           metabase.models.transforms.transform
            metabase.models.util.spec-update
            metabase.models.visualization-settings}
    :uses #{api
@@ -886,6 +887,7 @@
            search
            settings
            transforms
+           transforms-base
            util}
    :friends #{transforms}}
 
@@ -1592,7 +1594,6 @@
            metabase.transforms.feature-gating
            metabase.transforms.init
            metabase.transforms.interface
-           metabase.transforms.ordering
            metabase.transforms.schema
            metabase.transforms.util}
    :uses #{analytics
@@ -1627,7 +1628,7 @@
            lib-be
            query-processor
            sql-tools
-           transforms
+           transforms-base
            util}}
 
   transforms-rest
@@ -1644,6 +1645,7 @@
            server
            sql-tools
            transforms
+           transforms-base
            transforms-inspector
            util}}
 
@@ -2155,6 +2157,7 @@
            settings
            task
            transforms
+           transforms-base
            util}}
 
   enterprise/email
@@ -2272,6 +2275,7 @@
               system
               task
               transforms
+              transforms-base
               users
               util
               warehouses
@@ -2476,22 +2480,6 @@
    :api  #{}
    :uses #{premium-features}}
 
-  enterprise/transforms-base
-  {:team "Querying"
-   :api  #{metabase-enterprise.transforms-base.core
-           metabase-enterprise.transforms-base.interface
-           metabase-enterprise.transforms-base.util}
-   :uses #{driver
-           events
-           lib
-           lib-be
-           premium-features
-           query-processor
-           sync
-           transforms-base
-           util}
-   :friends #{enterprise/transforms-python}}
-
   enterprise/transforms-python
   {:team "Querying"
    :api  #{metabase-enterprise.transforms-python.api
@@ -2512,7 +2500,6 @@
            settings
            transforms
            transforms-base
-           enterprise/transforms-base
            util}}
 
   enterprise/upload-management
@@ -2548,7 +2535,6 @@
            transforms
            transforms-base
            util
-           enterprise/transforms-base
            enterprise/transforms-python}}}
 
  ;; namespaces matching these patterns (with `re-find`) are excluded from the module linter. Since regex literals

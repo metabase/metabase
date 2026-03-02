@@ -15,7 +15,8 @@
    [metabase.search.core :as search.core]
    [metabase.search.ingestion :as search]
    [metabase.search.spec :as search.spec]
-   [metabase.transforms.interface :as transforms.i]
+   [metabase.transforms-base.interface :as transforms-base.i]
+   [metabase.transforms-base.util :as transforms-base.util]
    [metabase.transforms.util :as transforms.util]
    [metabase.util :as u]
    [metabase.util.log :as log]
@@ -60,7 +61,7 @@
   ;; Inline can-write? logic since instance is a plain map without model metadata.
   ;; can-write? requires: can-read?, has-db-transforms-permission?, and transforms-editable?
   ;; can-read? requires: is-superuser? OR (is-data-analyst? AND source-tables-readable?)
-  (let [source-db-id (or (:source_database_id instance) (transforms.i/source-db-id instance))]
+  (let [source-db-id (or (:source_database_id instance) (transforms-base.i/source-db-id instance))]
     (and (or api/*is-superuser?*
              (and api/*is-data-analyst?*
                   (transforms.util/source-tables-readable? instance)))
@@ -72,7 +73,10 @@
   [source-tables]
   (update-vals source-tables #(if (map? %) (update-keys % keyword) %)))
 
-(defn- transform-source-out [m]
+(defn transform-source-out
+  "Deserialize a transform source map from JSON storage format.
+  Normalizes queries, keywordizes types and source-table refs."
+  [m]
   (-> m
       mi/json-out-without-keywordization
       (update-keys keyword)
@@ -81,9 +85,12 @@
       (m/update-existing :type keyword)
       (m/update-existing :source-incremental-strategy #(update-keys % keyword))))
 
-(defn- transform-source-in [m]
+(defn transform-source-in
+  "Serialize a transform source map for JSON storage.
+  Normalizes source-tables and prepares queries for serialization."
+  [m]
   (-> m
-      (m/update-existing :source-tables transforms.util/normalize-source-tables)
+      (m/update-existing :source-tables transforms-base.util/normalize-source-tables)
       (m/update-existing :query (comp lib/prepare-for-serialization lib-be/normalize-query))
       mi/json-in))
 
@@ -102,7 +109,7 @@
   (collection/check-collection-namespace :model/Transform collection_id)
   (when collection_id
     (collection/check-allowed-content :model/Transform collection_id))
-  (let [target-db-id (transforms.i/target-db-id transform)
+  (let [target-db-id (transforms-base.i/target-db-id transform)
         ;; This is defensive code to cope with some tests for remote sync, where we deserialize a transform
         ;; with a concrete database id within it, for a potentially non-existent database.
         ;; In practice, our serialized representation should not contain any database ids, and this should
@@ -114,9 +121,9 @@
     (-> transform
         (assoc-in [:target :database] target-db-id)
         (assoc
-         :source_type (transforms.util/transform-source-type source)
+         :source_type (transforms-base.util/transform-source-type source)
          :target_db_id (when valid-db-id? target-db-id)
-         :source_database_id (or source_database_id (transforms.i/source-db-id transform))))))
+         :source_database_id (or source_database_id (transforms-base.i/source-db-id transform))))))
 
 (t2/define-before-update :model/Transform
   [{:keys [source source_database_id] :as transform}]
@@ -125,17 +132,17 @@
     (collection/check-allowed-content :model/Transform new-collection))
   (cond-> transform
     source
-    (assoc :source_type (transforms.util/transform-source-type source)
-           :source_database_id (or source_database_id (transforms.i/source-db-id transform)))
+    (assoc :source_type (transforms-base.util/transform-source-type source)
+           :source_database_id (or source_database_id (transforms-base.i/source-db-id transform)))
 
     (or (:source (t2/changes transform)) (:target (t2/changes transform)))
     ;; No database existence check added here, unlike for insert. Just allow updates for an invalid target to fail.
-    (assoc :target_db_id (transforms.i/target-db-id transform))))
+    (assoc :target_db_id (transforms-base.i/target-db-id transform))))
 
 (t2/define-after-select :model/Transform
   [{:keys [source] :as transform}]
   (if source
-    (assoc transform :source_type (transforms.util/transform-source-type source))
+    (assoc transform :source_type (transforms-base.util/transform-source-type source))
     transform))
 
 (methodical/defmethod t2/batched-hydrate [:model/TransformRun :transform]
@@ -295,7 +302,7 @@
   "Fetch tables with their fields. The tables show up under the `:table` property."
   [transforms]
   (let [table-key-fn (fn [{:keys [target] :as transform}]
-                       [(transforms.i/target-db-id transform) (:schema target) (:name target)])
+                       [(transforms-base.i/target-db-id transform) (:schema target) (:name target)])
         table-keys (into #{} (map table-key-fn) transforms)
         table-keys-with-schema (filter second table-keys)
         table-keys-without-schema (keep (fn [[db-id schema table-name]]
