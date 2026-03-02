@@ -2,5 +2,20 @@
   "base": {
     "name": "integration-embedding-onboarding-improvements",
     "hash": "35d2431e2af0b3d41b4c3ad564c3932309082a79"
+  },
+  "upstream": {
+    "branch": "emb-1180-mark-get-embed-snippet-card-as-done-on-guest-embedding"
+  },
+  "change": {
+    "github": {
+      "pr": {
+        "number": 69889,
+        "gqlID": "PR_kwDOAczgH87EzdxM"
+      },
+      "comment": {
+        "gqlID": "IC_kwDOAczgH87p9u1I",
+        "url": "https://github.com/metabase/metabase/pull/69889#issuecomment-3925273928"
+      }
+    }
   }
 }
