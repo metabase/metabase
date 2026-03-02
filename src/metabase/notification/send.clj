@@ -3,6 +3,7 @@
    [java-time.api :as t]
    [metabase.analytics.prometheus :as prometheus]
    [metabase.channel.core :as channel]
+   [metabase.channel.temp-file :as temp-file]
    [metabase.config.core :as config]
    [metabase.notification.models :as models.notification]
    [metabase.notification.payload.core :as notification.payload]
@@ -154,20 +155,21 @@
                   (doseq [handler handlers]
                     (log/with-context {:handler_id   (:id handler)
                                        :channel_type (:channel_type handler)}
-                      (try
-                        (let [channel-type (:channel_type handler)
-                              messages     (channel/render-notification
-                                            channel-type
-                                            notification-payload
-                                            handler)]
-                          (log/debugf "Got %d messages for channel %s with template %d"
-                                      (count messages)
-                                      (handler->channel-name handler)
-                                      (-> handler :template :id))
-                          (doseq [message messages]
-                            (channel-send-retrying! id payload_type handler message)))
-                        (catch Exception e
-                          (log/errorf e "Error sending to channel %s" (handler->channel-name handler))))))
+                      (temp-file/with-temp-file-cleanup
+                        (try
+                          (let [channel-type (:channel_type handler)
+                                messages     (channel/render-notification
+                                              channel-type
+                                              notification-payload
+                                              handler)]
+                            (log/debugf "Got %d messages for channel %s with template %d"
+                                        (count messages)
+                                        (handler->channel-name handler)
+                                        (-> handler :template :id))
+                            (doseq [message messages]
+                              (channel-send-retrying! id payload_type handler message)))
+                          (catch Exception e
+                            (log/errorf e "Error sending to channel %s" (handler->channel-name handler)))))))
                   (log/info "Done processing notification")))
               (do-after-notification-sent hydrated-notification notification-payload (some? skip-reason))
               (prometheus/inc! :metabase-notification/send-ok {:payload-type payload_type}))))

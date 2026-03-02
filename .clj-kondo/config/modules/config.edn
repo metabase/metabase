@@ -292,6 +292,7 @@
            metabase.channel.render.core
            metabase.channel.settings
            metabase.channel.slack
+           metabase.channel.temp-file
            metabase.channel.template.core
            metabase.channel.urls}
    :uses #{analytics
