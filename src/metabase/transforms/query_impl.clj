@@ -4,6 +4,7 @@
    [metabase.driver :as driver]
    [metabase.driver.connection :as driver.conn]
    [metabase.transforms-base.interface :as transforms-base.i]
+   [metabase.transforms-base.util :as transforms-base.u]
    [metabase.transforms.instrumentation :as transforms.instrumentation]
    [metabase.transforms.interface :as transforms.i]
    [metabase.transforms.util :as transforms.u]
@@ -44,7 +45,13 @@
                   (when-not (= :succeeded (:status result))
                     (throw (or (:error result) (ex-info "Transform failed" {:status (:status result)}))))
                   result))))
-           ;; Table.transform_id update (the only post-processing beyond what execute-base! does)
+           ;; Post-processing: sync, events, secondary indexes (after succeed-started-run!)
+           (transforms-base.u/complete-execution! transform
+                                                  {:run-id               run-id
+                                                   :with-stage-timing-fn (fn [rid stage thunk]
+                                                                           (transforms.instrumentation/with-stage-timing [rid stage]
+                                                                             (thunk)))})
+           ;; Table.transform_id update
            (when-let [table (t2/select-one :model/Table
                                            :db_id (:id db)
                                            :schema (:schema target)

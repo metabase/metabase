@@ -13,7 +13,6 @@
    [metabase-enterprise.transforms-python.settings :as transforms-python.settings]
    [metabase.driver :as driver]
    [metabase.driver.util :as driver.u]
-   [metabase.events.core :as events]
    [metabase.transforms-base.interface :as transforms-base.i]
    [metabase.transforms-base.util :as transforms-base.u]
    [metabase.transforms.instrumentation :as transforms.instrumentation]
@@ -296,17 +295,15 @@
    - `:run-id` - optional, for cancellation signaling and instrumentation
    - `:with-stage-timing-fn` - optional, (fn [run-id stage thunk] result)
    - `:message-log` - optional, pre-created message log atom (for scheduled execution log polling)
-   - `:publish-events?` - whether to publish Metabase events (default true)
 
    Returns:
    {:status :succeeded | :failed | :cancelled
     :result <http response>
     :logs <string>
     :error <exception if failed>}"
-  [transform {:keys [cancelled? run-id with-stage-timing-fn message-log] :as opts}]
+  [transform {:keys [cancelled? run-id with-stage-timing-fn message-log]}]
   (assert (transforms-base.u/python-transform? transform) "Transform must be a python transform")
-  (let [publish-events? (get opts :publish-events? true)
-        message-log     (or message-log (empty-message-log))]
+  (let [message-log (or message-log (empty-message-log))]
     (try
       ;; Check cancellation before starting
       (when (and cancelled? (cancelled?))
@@ -337,25 +334,9 @@
           (log! message-log (i18n/tru "Python execution finished successfully in {0}"
                                       (u.format/format-milliseconds (u/since-ms start-ms))))
 
-          ;; Check cancellation after python but before sync
+          ;; Check cancellation after python
           (when (and cancelled? (cancelled?))
             (throw (ex-info "Transform cancelled after python execution" {:status :cancelled})))
-
-          ;; Sync target table
-          (transforms-base.u/sync-target! target db)
-
-          ;; Publish event after sync so the table exists in AppDB.
-          (when publish-events?
-            (events/publish-event! :event/transform-run-complete
-                                   {:object {:db-id (:id db)
-                                             :transform-id (:id transform)
-                                             :transform-type (keyword (:type target))
-                                             :output-schema (:schema target)
-                                             :output-table (transforms-base.u/qualified-table-name (:engine db) target)}}))
-
-          ;; Create secondary indexes if needed
-          (transforms-base.u/execute-secondary-index-ddl-if-required!
-           transform run-id db target with-stage-timing-fn)
 
           {:status :succeeded
            :result result

@@ -48,16 +48,18 @@
   transform->transform-type)
 
 (defmulti execute-base!
-  "Execute a transform and return results. Does NOT write transform_run rows.
+  "Execute a transform's core logic and return results.
 
-  This is the appdb-agnostic execution method used by workspaces and other
-  contexts that manage their own execution tracking.
+  Does NOT:
+  - Write transform_run rows
+  - Sync target tables (caller should use `complete-execution!` or `transforms-base.core/execute!`)
+  - Publish events (caller should use `complete-execution!` or `transforms-base.core/execute!`)
 
   Options:
   - `:cancelled?` - (fn [] boolean), polled during execution to check for cancellation
   - `:run-id` - optional, for instrumentation/metrics (nil skips metrics recording)
   - `:with-stage-timing-fn` - optional, (fn [run-id stage thunk]) for timing instrumentation
-  - `:publish-events?` - whether to publish related Metabase events (default true)
+  - `:message-log` - optional, pre-created message log atom (for python transforms)
 
   Returns a map:
   {:status :succeeded | :failed | :cancelled | :timeout
@@ -67,8 +69,8 @@
 
   Implementations should:
   - Check `(cancelled?)` at safe points and return {:status :cancelled} if true
-  - Still sync target tables (metabase_table writes are allowed)
-  - NOT create/update transform_run rows"
+  - NOT create/update transform_run rows
+  - NOT sync target tables or publish events (caller handles via complete-execution!)"
   {:added "0.57.0" :arglists '([transform options])}
   (fn [transform _options]
     (transform->transform-type transform)))

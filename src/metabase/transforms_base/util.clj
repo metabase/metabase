@@ -11,6 +11,7 @@
    [metabase.driver :as driver]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.util :as driver.u]
+   [metabase.events.core :as events]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
@@ -510,6 +511,39 @@
                       (fn []
                         (log/infof "Creating secondary index %s(%s) for target %s" index-name value (pr-str target))
                         (driver/create-index! driver (:id database) (:schema target) (:name target) index-name [value]))))))))
+
+;;; ------------------------------------------------- Post-Execution Completion -------------------------------------------------
+
+(defn complete-execution!
+  "Post-processing steps after a transform has been executed successfully.
+
+   Performs:
+   - Sync target table to AppDB
+   - Publish Metabase events (unless `:publish-events?` is false)
+   - Create/drop secondary indexes
+
+   This is called after the core execution completes. Callers that use
+   `run-cancelable-transform!` should call this AFTER `succeed-started-run!`
+   to preserve the correct order of operations."
+  [transform opts]
+  (let [{:keys [target]} transform
+        {:keys [run-id with-stage-timing-fn publish-events?]
+         :or   {publish-events? true}} opts
+        db-id (transforms-base.i/target-db-id transform)
+        database        (t2/select-one :model/Database db-id)]
+    ;; Sync target table
+    (sync-target! target database)
+    ;; Publish event after sync so the table exists in AppDB.
+    (when publish-events?
+      (events/publish-event! :event/transform-run-complete
+                             {:object {:db-id          db-id
+                                       :transform-id   (:id transform)
+                                       :transform-type (keyword (:type target))
+                                       :output-schema  (:schema target)
+                                       :output-table   (qualified-table-name (:engine database) target)}}))
+    ;; Create secondary indexes if needed
+    (execute-secondary-index-ddl-if-required!
+     transform run-id database target with-stage-timing-fn)))
 
 ;;; ------------------------------------------------- Source Table Resolution -------------------------------------------------
 
