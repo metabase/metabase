@@ -1,7 +1,6 @@
 (ns metabase-enterprise.metabot-v3.api.slackbot
   "`/api/ee/metabot-v3/slack` routes"
   (:require
-   [clj-http.client :as http]
    [clojure.string :as str]
    [malli.core :as mc]
    [metabase-enterprise.metabot-v3.api.slackbot.client :as slackbot.client]
@@ -10,6 +9,7 @@
    [metabase-enterprise.metabot-v3.api.slackbot.streaming :as slackbot.streaming]
    [metabase-enterprise.metabot-v3.api.slackbot.uploads :as slackbot.uploads]
    [metabase-enterprise.metabot-v3.config :as metabot-v3.config]
+   [metabase-enterprise.metabot-v3.feedback :as metabot-v3.feedback]
    [metabase-enterprise.metabot-v3.settings :as metabot.settings]
    [metabase-enterprise.sso.settings :as sso-settings]
    [metabase.api.macros :as api.macros]
@@ -21,7 +21,6 @@
                                                                 defenterprise-schema]]
    [metabase.request.core :as request]
    [metabase.settings.core :as setting]
-   [metabase.store-api.core :as store-api]
    [metabase.system.core :as system]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.json :as json]
@@ -294,16 +293,6 @@
 
 ;; ------------------------- FEEDBACK BUTTONS ------------------------------
 
-(defn- submit-feedback-to-harbormaster!
-  "Submit metabot feedback to Harbormaster via the Store API."
-  [feedback]
-  (let [token    (premium-features/premium-embedding-token)
-        base-url (store-api/store-api-url)]
-    (when-not (or (str/blank? token) (str/blank? base-url))
-      (http/post (str base-url "/api/v2/metabot/feedback/" token)
-                 {:content-type :json
-                  :body         (json/encode feedback)}))))
-
 (defn- replace-feedback-buttons-with-thanks
   "Update the Slack message to replace the feedback buttons with a confirmation."
   [client channel message-ts message-blocks]
@@ -318,26 +307,25 @@
 (defn- handle-feedback-action
   "Handle a metabot feedback button click from Slack."
   [{:keys [action slack-user-id channel-id message-ts message-blocks]}]
-  (let [positive? (= (:selected_option action) "positive")
-        {:keys [conversation_id]} (json/decode (:value action) true)
-        client    {:token (channel.settings/unobfuscated-slack-app-token)}
-        user-id   (slack-id->user-id slack-user-id)]
-    (future
-      (try
-        (when user-id
-          (submit-feedback-to-harbormaster!
+  (let [{:keys [conversation_id positive]} (json/decode (:value action) true)
+        client  {:token (channel.settings/unobfuscated-slack-app-token)}
+        user-id (slack-id->user-id slack-user-id)]
+    (when user-id
+      (future
+        (try
+          (metabot-v3.feedback/submit-to-harbormaster!
            {:metabot_id        (metabot-v3.config/resolve-dynamic-metabot-id nil)
-            :feedback          {:positive          positive?
+            :feedback          {:positive          positive
                                 :message_id        conversation_id
                                 :freeform_feedback ""}
             :conversation_data {}
             :version           (config/mb-version-info)
             :submission_time   (str (java.time.Instant/now))
             :is_admin          (boolean (t2/select-one-fn :is_superuser :model/User :id user-id))
-            :source            "slack"}))
-        (replace-feedback-buttons-with-thanks client channel-id message-ts message-blocks)
-        (catch Exception e
-          (log/error e "[slackbot] Error handling feedback action"))))))
+            :source            "slack"})
+          (replace-feedback-buttons-with-thanks client channel-id message-ts message-blocks)
+          (catch Exception e
+            (log/error e "[slackbot] Error handling feedback action")))))))
 
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :post "/interactive"

@@ -14,8 +14,12 @@
    [metabase-enterprise.metabot-v3.util :as metabot-v3.util]
    [metabase.api.common :as api]
    [metabase.permissions.core :as perms]
+<<<<<<< HEAD
    [metabase.system.core :as system]
    [metabase.util :as u]
+=======
+   [metabase.util.json :as json]
+>>>>>>> 92c01ff24b9 (wire up feedback buttons)
    [metabase.util.log :as log])
   (:import
    (java.util.concurrent Callable ExecutionException ExecutorService Executors Future ThreadFactory)))
@@ -390,6 +394,18 @@
   (str (java.util.UUID/nameUUIDFromBytes
         (.getBytes (str "slack:" team-id ":" channel ":" thread-ts)))))
 
+(defn- feedback-blocks [conversation-id]
+  [{:type     "actions"
+    :block_id "metabot_feedback"
+    :elements [{:type      "button"
+                :text      {:type "plain_text" :text ":thumbsup:" :emoji true}
+                :action_id "metabot_feedback_up"
+                :value     (json/encode {:conversation_id conversation-id :positive true})}
+               {:type      "button"
+                :text      {:type "plain_text" :text ":thumbsdown:" :emoji true}
+                :action_id "metabot_feedback_down"
+                :value     (json/encode {:conversation_id conversation-id :positive false})}]}])
+
 (defn send-response
   "Send a metabot response using Slack's streaming API for progressive updates.
    Shows tool execution status and streams text as it arrives."
@@ -416,36 +432,38 @@
                                            :team-id   (:team_id auth-info)
                                            :user-id   (:user event)})]
      (start-with-thinking!)
-     (letfn [(send-fallback [text]
-               (slackbot.client/post-message client (merge message-ctx {:text text})))]
-       (try
-         (let [_data-parts (make-streaming-ai-request
-                            (slack-thread->conversation-id (:team_id auth-info) channel thread-ts)
-                            prompt
-                            thread
-                            bot-user-id
-                            channel-id
-                            extra-history
-                            {:on-text       on-text
-                             :on-tool-start on-tool-start
-                             :on-tool-end   on-tool-end
-                             :on-data       on-data})]
-           (request-flush!)
-           (await slack-writer)
-           (if-let [{:keys [stream_ts channel]} @stream-state]
-             (do
-               (slackbot.client/stop-stream client channel stream_ts)
-               (send-visualizations! client channel thread-ts @prefetched-viz))
-             (send-fallback "I wasn't able to generate a response. Please try again.")))
-         (catch Exception e
-           (run! #(.cancel ^Future (:future %) true) (vals @prefetched-viz))
-           (log/error e "[slackbot] Error in streaming response")
-           (await slack-writer)
-           (if-let [{:keys [stream_ts channel]} @stream-state]
-             (try
-               (slackbot.client/append-markdown-text client channel stream_ts
-                                                     "\nSomething went wrong. Please try again.")
-               (slackbot.client/stop-stream client channel stream_ts)
-               (catch Exception stop-e
-                 (log/debug stop-e "[slackbot] Failed to stop stream during error cleanup")))
-             (send-fallback "Something went wrong. Please try again."))))))))
+     (let [conversation-id (slack-thread->conversation-id (:team_id auth-info) channel thread-ts)]
+       (letfn [(send-fallback [text]
+                 (slackbot.client/post-message client (merge message-ctx {:text text})))]
+         (try
+           (let [_data-parts (make-streaming-ai-request
+                              conversation-id
+                              prompt
+                              thread
+                              bot-user-id
+                              channel-id
+                              extra-history
+                              {:on-text       on-text
+                               :on-tool-start on-tool-start
+                               :on-tool-end   on-tool-end
+                               :on-data       on-data})]
+             (request-flush!)
+             (await slack-writer)
+             (if-let [{:keys [stream_ts channel]} @stream-state]
+               (do
+                 (slackbot.client/stop-stream client channel stream_ts (feedback-blocks conversation-id))
+                 (send-visualizations! client channel thread-ts @prefetched-viz))
+               (send-fallback "I wasn't able to generate a response. Please try again.")))
+           (catch Exception e
+             (run! #(.cancel ^Future (:future %) true) (vals @prefetched-viz))
+             (log/error e "[slackbot] Error in streaming response")
+             (await slack-writer)
+             (if-let [{:keys [stream_ts channel]} @stream-state]
+               (try
+                 (slackbot.client/append-markdown-text client channel stream_ts
+                                                       "\nSomething went wrong. Please try again.")
+                 (slackbot.client/stop-stream client channel stream_ts)
+                 (catch Exception stop-e
+                   (log/debug stop-e "[slackbot] Failed to stop stream during error cleanup")))
+               (send-fallback "Something went wrong. Please try again."))))))))))
+

@@ -1,8 +1,6 @@
 (ns metabase-enterprise.metabot-v3.api
   "`/api/ee/metabot-v3/` routes"
   (:require
-   [clj-http.client :as http]
-   [clojure.string :as str]
    [metabase-enterprise.api.routes.common :as ee.api.routes]
    [metabase-enterprise.metabot-v3.api.document]
    [metabase-enterprise.metabot-v3.api.metabot]
@@ -12,14 +10,13 @@
    [metabase-enterprise.metabot-v3.config :as metabot-v3.config]
    [metabase-enterprise.metabot-v3.context :as metabot-v3.context]
    [metabase-enterprise.metabot-v3.envelope :as metabot-v3.envelope]
+   [metabase-enterprise.metabot-v3.feedback :as metabot-v3.feedback]
    [metabase-enterprise.metabot-v3.util :as metabot-v3.u]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
    [metabase.api.util.handlers :as handlers]
    [metabase.app-db.core :as app-db]
-   [metabase.premium-features.core :as premium-features]
-   [metabase.store-api.core :as store-api]
    [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru]]
    [metabase.util.json :as json]
@@ -93,18 +90,6 @@
   (metabot-v3.context/log body :llm.log/fe->be)
   (streaming-request body))
 
-(defn- submit-feedback-to-harbormaster!
-  "Submit feedback to Harbormaster via the Store API. Throws on failure."
-  [feedback]
-  (let [token    (premium-features/premium-embedding-token)
-        base-url (store-api/store-api-url)]
-    (when (or (str/blank? token) (str/blank? base-url))
-      (throw (ex-info "Cannot build a request. The license token and/or Store api url are missing!"
-                      {:status-code 400})))
-    (http/post (str base-url "/api/v2/metabot/feedback/" token)
-               {:content-type :json
-                :body         (json/encode feedback)})))
-
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
 ;;
@@ -115,7 +100,7 @@
    _query-params
    feedback :- :map]
   (try
-    (submit-feedback-to-harbormaster! feedback)
+    (metabot-v3.feedback/submit-to-harbormaster! feedback)
     api/generic-204-no-content
     (catch Exception e
       (log/error e "Failed to submit feedback to Harbormaster")
