@@ -1,5 +1,5 @@
 import type { DatasetQuery, OpaqueDatasetQuery } from "./query";
-import type { Table, TableId } from "./table";
+import type { ConcreteTableId, Table } from "./table";
 import type { UserInfo } from "./user";
 
 export type MeasureId = number;
@@ -8,7 +8,7 @@ export interface Measure {
   id: MeasureId;
   name: string;
   description: string | null;
-  table_id: TableId;
+  table_id: ConcreteTableId;
   table?: Table;
   archived: boolean;
   definition: OpaqueDatasetQuery;
@@ -22,7 +22,7 @@ export interface Measure {
 
 export interface CreateMeasureRequest {
   name: string;
-  table_id: TableId;
+  table_id: ConcreteTableId;
   definition: DatasetQuery;
   description?: string;
 }
