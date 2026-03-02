@@ -1,6 +1,7 @@
 import { t } from "ttag";
 
 import { METAKEY } from "metabase/lib/browser";
+import { useMetabotEnabledEmbeddingAware } from "metabase/metabot/hooks";
 import { ActionIcon, type ActionIconProps, Icon, Tooltip } from "metabase/ui";
 import { useMetabotAgent } from "metabase-enterprise/metabot/hooks";
 
@@ -14,7 +15,12 @@ export function MetabotAppBarButton({
   className,
   ...rest
 }: MetabotAppBarButtonProps) {
+  const isMetabotEnabled = useMetabotEnabledEmbeddingAware();
   const metabot = useMetabotAgent("omnibot");
+
+  if (!isMetabotEnabled) {
+    return null;
+  }
 
   const handleClick = () => {
     if (!metabot.visible) {

@@ -140,6 +140,13 @@ export const trackDependencyEntitySelected = ({
   });
 };
 
+export const trackDataStudioOpened = () => {
+  trackSimpleEvent({
+    event: "data_studio_opened",
+    triggered_from: "nav_menu",
+  });
+};
+    
 export const trackMetricCreateStarted = (
   triggeredFrom: "browse_metrics" | "data_studio_library" | "command_palette",
 ) => {

@@ -1,3 +1,5 @@
+import { asNotNull } from "metabase/lib/types";
+import type { FieldId } from "metabase-types/api";
 import { ORDERS, PEOPLE, PRODUCTS } from "metabase-types/api/mocks/presets";
 
 import {
@@ -7,15 +9,14 @@ import {
 } from "./testMocks.spec";
 import { getValuesMode, isSearchable, searchField } from "./utils";
 
+const getField = (id: FieldId) => asNotNull(metadata.field(id));
+
 describe("Components > FieldValuesWidget > utils", () => {
   describe("isSearchable", () => {
-    const listField = metadata.field(PRODUCTS.CATEGORY);
-    const searchField = metadata.field(PEOPLE.EMAIL);
-    const nonExhaustiveListField = metadata.field(
-      LISTABLE_FIELD_WITH_MANY_VALUES_ID,
-    );
-
-    const idField = metadata.field(PRODUCTS.ID);
+    const listField = getField(PRODUCTS.CATEGORY);
+    const searchField = getField(PEOPLE.EMAIL);
+    const nonExhaustiveListField = getField(LISTABLE_FIELD_WITH_MANY_VALUES_ID);
+    const idField = getField(PRODUCTS.ID);
 
     describe("when the `valuesMode` is already set to 'search'", () => {
       it("should return return true unless fully disabled", () => {
@@ -58,21 +59,21 @@ describe("Components > FieldValuesWidget > utils", () => {
 
     describe("when passed fields that are searchable", () => {
       it("should return 'search'", () => {
-        const fields = [metadata.field(PEOPLE.EMAIL)];
+        const fields = [getField(PEOPLE.EMAIL)];
         expect(getValuesMode({ fields })).toBe("search");
       });
     });
 
     describe("when passed fields that are not searchable but listable", () => {
       it("should return 'list'", () => {
-        const fields = [metadata.field(PRODUCTS.CATEGORY)];
+        const fields = [getField(PRODUCTS.CATEGORY)];
         expect(getValuesMode({ fields })).toBe("list");
       });
     });
 
     describe("when passed fields that are not searchable and not listable", () => {
       it("should return 'none'", () => {
-        const fields = [metadata.field(ORDERS.SUBTOTAL)];
+        const fields = [getField(ORDERS.SUBTOTAL)];
         expect(getValuesMode({ fields })).toBe("none");
       });
     });
@@ -82,8 +83,8 @@ describe("Components > FieldValuesWidget > utils", () => {
     describe("`disablePKRemappingForSearch` is true and field is a PK", () => {
       const disablePKRemappingForSearch = true;
 
-      const stringPKField = metadata.field(STRING_PK_FIELD_ID);
-      const numberPKField = metadata.field(PRODUCTS.ID);
+      const stringPKField = getField(STRING_PK_FIELD_ID);
+      const numberPKField = getField(PRODUCTS.ID);
 
       it("should return same field when the field is searchable (the field is a string AND a PK)", () => {
         expect(searchField(stringPKField, disablePKRemappingForSearch)).toBe(
@@ -99,8 +100,8 @@ describe("Components > FieldValuesWidget > utils", () => {
     });
 
     describe("when the field is remapped to a searchable field", () => {
-      const stringField = metadata.field(PRODUCTS.TITLE);
-      const remappedField = metadata.field(PRODUCTS.CATEGORY).clone();
+      const stringField = getField(PRODUCTS.TITLE);
+      const remappedField = getField(PRODUCTS.CATEGORY).clone();
       remappedField.remappedExternalField = () => stringField;
 
       it("should return the remapped field", () => {
@@ -110,12 +111,12 @@ describe("Components > FieldValuesWidget > utils", () => {
 
     describe("when the field is remapped to a non-searchable field", () => {
       it("should ignore it and return the original field, assuming it is searchable", () => {
-        const numberField = metadata.field(ORDERS.TOTAL);
+        const numberField = getField(ORDERS.TOTAL);
 
-        const remappedField = metadata.field(PRODUCTS.CATEGORY).clone();
+        const remappedField = getField(PRODUCTS.CATEGORY).clone();
         remappedField.remappedExternalField = () => numberField;
 
-        const nonSearchableRemappedField = metadata.field(PRODUCTS.ID);
+        const nonSearchableRemappedField = getField(PRODUCTS.ID);
         nonSearchableRemappedField.remappedExternalField = () => numberField;
 
         expect(searchField(remappedField)).toBe(remappedField);
@@ -124,12 +125,12 @@ describe("Components > FieldValuesWidget > utils", () => {
     });
 
     it("should return the field if it is searchable", () => {
-      const searchableField = metadata.field(PRODUCTS.TITLE);
+      const searchableField = getField(PRODUCTS.TITLE);
       expect(searchField(searchableField)).toBe(searchableField);
     });
 
     it("should return null if the field is not searchable", () => {
-      const nonSearchableField = metadata.field(PRODUCTS.ID);
+      const nonSearchableField = getField(PRODUCTS.ID);
       expect(searchField(nonSearchableField)).toBeNull();
     });
   });
