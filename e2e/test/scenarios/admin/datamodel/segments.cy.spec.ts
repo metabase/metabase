@@ -46,19 +46,20 @@ describe("scenarios > admin > datamodel > segments", () => {
 
     it("should track segment_created event when saving a new segment", () => {
       cy.intercept("POST", "/api/segment").as("createSegment");
+      cy.intercept("GET", "/api/table/1").as("getTable");
       cy.visit("/admin/datamodel/segments");
 
       cy.button("New segment").click();
-
-      cy.findByTestId("segment-editor").findByText("Select a table").click();
-      H.pickEntity({ path: ["Databases", /Sample Database/, "Orders"] });
 
       cy.log("verify segment_create_started event was tracked");
       H.expectUnstructuredSnowplowEvent({
         event: "segment_create_started",
         triggered_from: "admin_datamodel_segments",
-        target_id: ORDERS_ID,
       });
+
+      cy.findByTestId("segment-editor").findByText("Select a table").click();
+      H.pickEntity({ path: ["Databases", /Sample Database/, "Orders"] });
+      cy.wait("@getTable");
 
       cy.log("add filter");
       cy.findByTestId("segment-editor")
@@ -72,10 +73,15 @@ describe("scenarios > admin > datamodel > segments", () => {
       });
 
       cy.log("fill in segment name");
-      cy.findByLabelText("Name").type("High Value Orders");
+      cy.findByLabelText(/Name your segment/i).type("High Value Orders");
+
+      cy.log("fill in description");
+      cy.findByLabelText(/Describe your segment/i).type(
+        "Orders with high values",
+      );
 
       cy.log("save segment");
-      cy.button("Save").click();
+      cy.button(/Save/).click();
       cy.wait("@createSegment");
 
       cy.log("verify segment_created event was tracked");
