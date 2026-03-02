@@ -5,7 +5,6 @@
    [metabase.api.common :as api]
    [metabase.audit-app.core :as audit-app]
    [metabase.collections.models.collection :as collection]
-   [metabase.driver.util :as driver.u]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
@@ -252,43 +251,3 @@
   [metabot-id & {:as opts}]
   (t2/select :model/Card (-> (metabot-metrics-and-models-query metabot-id opts)
                              (update :order-by (fnil conj []) [:id]))))
-
-;;;; Sql validation
-
-;; TODO: Complete the dialect map
-(def driver->dialect
-  "Map of driver to parser dialect."
-  {:postgres "postgres"
-   :mysql "mysql"
-   :mariadb "mysql"
-   :bigquery-cloud-sdk "bigquery"
-   :snowflake "snowflake"
-   :redshift "redshift"})
-
-(defn database-id->dialect
-  "Get dialect for database id."
-  [db-id]
-  (when (integer? db-id)
-    (-> db-id driver.u/database->driver driver->dialect)))
-
-(defn query->dialect
-  "Get queries dialect."
-  [query]
-  (database-id->dialect (:database query)))
-
-(mr/def ::validation-result
-  [:map
-   [:is-valid :boolean]
-   [:error-message {:optional true} :string]
-   [:dialect {:optional true} :string]
-   [:transpiled-sql {:optional true} :string]])
-
-(mu/defn validate-sql :- ::validation-result
-  "Validate sql query."
-  [dialect :- [:maybe :string]
-   sql :- [:string]]
-  (merge
-   {:is-valid true
-    :transpiled-sql sql}
-   (when (string? dialect)
-     {:dialect dialect})))
