@@ -20,6 +20,7 @@ import { t } from "ttag";
 
 import { getAccentColors } from "metabase/lib/colors/groups";
 import {
+  ActionIcon,
   Anchor,
   Box,
   FixedSizeIcon,
@@ -27,7 +28,6 @@ import {
   Icon,
   Stack,
   Tooltip,
-  UnstyledButton,
 } from "metabase/ui";
 import { isTypePK } from "metabase-lib/v1/types/utils/isa";
 import type { ErdField } from "metabase-types/api";
@@ -166,13 +166,15 @@ export const SchemaViewerTableNode = memo(function SchemaViewerTableNode({
       ? data.fields.slice(0, COLLAPSED_FIELD_COUNT)
       : data.fields;
 
-  const hiddenFieldCount = data.fields.length - COLLAPSED_FIELD_COUNT;
-
   return (
     <Stack
-      className={cx(S.card, { [S.focal]: data.is_focal })}
+      className={cx(S.card, {
+        [S.focal]: data.is_focal,
+        [S.expanded]: !isCollapsed,
+      })}
       gap={0}
       onDoubleClick={handleDoubleClick}
+      style={!isCollapsed ? { zIndex: 10 } : undefined}
     >
       <Group className={S.header} gap={8} px={16} py={20} wrap="nowrap">
         <FixedSizeIcon name="table2" style={{ color: iconColor }} />
@@ -188,18 +190,44 @@ export const SchemaViewerTableNode = memo(function SchemaViewerTableNode({
         >
           {data.name}
         </Box>
+        {canCollapse && (
+          <Tooltip
+            label={
+              isCollapsed
+                ? t`Show all ${data.fields.length} fields`
+                : t`Show first ${COLLAPSED_FIELD_COUNT} fields`
+            }
+            openDelay={TOOLTIP_OPEN_DELAY_MS}
+          >
+            <ActionIcon
+              variant="subtle"
+              c="text-tertiary"
+              size="sm"
+              onClick={(e) => {
+                e.stopPropagation();
+                setIsCollapsed(!isCollapsed);
+              }}
+            >
+              <Icon name={isCollapsed ? "field" : "dash"} size={14} />
+            </ActionIcon>
+          </Tooltip>
+        )}
         <Tooltip
           label={t`View table details`}
           openDelay={TOOLTIP_OPEN_DELAY_MS}
         >
-          <Anchor
+          <ActionIcon
+            component="a"
             href={tableDetailsUrl}
             target="_blank"
             className={S.detailsLink}
+            variant="subtle"
+            c="text-tertiary"
+            size="sm"
             onClick={(e) => e.stopPropagation()}
           >
-            <FixedSizeIcon name="external" c="text-tertiary" />
-          </Anchor>
+            <Icon name="external" size={14} />
+          </ActionIcon>
         </Tooltip>
       </Group>
       <Box className={S.fields}>
@@ -212,23 +240,20 @@ export const SchemaViewerTableNode = memo(function SchemaViewerTableNode({
           />
         ))}
       </Box>
-      {canCollapse && (
-        <UnstyledButton
-          className={S.collapseButton}
-          onClick={() => setIsCollapsed(!isCollapsed)}
+      {canCollapse && isCollapsed && (
+        <Box
+          px={16}
+          py={8}
+          style={{
+            textAlign: "center",
+            color: "var(--mb-color-text-tertiary)",
+            fontSize: "20px",
+            lineHeight: "1",
+            letterSpacing: "2px",
+          }}
         >
-          <Group gap={4} justify="center">
-            <FixedSizeIcon
-              name={isCollapsed ? "chevrondown" : "chevronup"}
-              c="text-tertiary"
-            />
-            <Box c="text-tertiary" fz="sm">
-              {isCollapsed
-                ? t`Show ${hiddenFieldCount} more fields`
-                : t`Show fewer fields`}
-            </Box>
-          </Group>
-        </UnstyledButton>
+          •••
+        </Box>
       )}
     </Stack>
   );
@@ -355,6 +380,9 @@ function CompactTableNode({
           })}
         </Stack>
       )}
+      <Box fz="0.5rem" c="text-secondary-inverse">
+        {t`(double-click to see details)`}
+      </Box>
     </Stack>
   );
 
