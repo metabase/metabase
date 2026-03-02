@@ -99,7 +99,7 @@ To connect to Azure SQL, you'll need to set the port to 1433.
 
 ## Writeable connection
 
-{% include plans-blockquote.html feature="Writeable connection" is_plural=true%}
+> Writeable connection requires the **Advanced transforms (SQL + Python)** add-on
 
 Set up an additional connection used for write operations. See [Writeable connections](../writeable-connection.md).
 

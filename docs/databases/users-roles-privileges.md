@@ -21,7 +21,7 @@ Bundling your privileges into roles based on use cases makes it easier to manage
 - Use the same `analytics` role for other BI tools in your [data stack](https://www.metabase.com/learn/grow-your-data-skills/data-fundamentals/data-landscape) that need read-only access to the analytics tables in your database.
 - Revoke the write access for `metabase_model_persistence` without affecting the write access for `metabase_actions`.
 
-On Metabase Pro/Enterprise plans, we recommend using separate [Writeable connections](./writeable-connection.md) for operations that require write access.
+We recommend using separate [Writeable connections](./writeable-connection.md) for operations that require write access.
 
 ## Minimum database privileges
 
