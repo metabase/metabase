@@ -169,14 +169,24 @@
                    :edits edits
                    :checklist checklist
                    :queries-state (shared/current-queries-state)})
-          structured  (assoc result :result-type :query)
-          qid         (:query-id result)
-          instr       (instructions/edit-sql-query-instructions-for qid)
-          results-url (streaming/query->question-url (:query result))]
-      {:output (format-query-output structured instr)
-       :structured-output structured
-       :instructions instr
-       :data-parts [(streaming/navigate-to-part results-url)]})
+          query (shared/query-by-id query_id)
+          dialect (query->dialect query)
+          validation-result (validate-sql dialect (:query-content result))]
+      (if (false? (:is-valid validation-result))
+        (let [structured  (assoc result :result-type :query)
+              qid         (:query-id result)
+              instr       (instructions/edit-sql-query-instructions-for qid)
+              results-url (streaming/query->question-url (:query result))]
+          {:output (format-query-output structured instr)
+           :structured-output structured
+           :instructions instr
+           :data-parts [(streaming/navigate-to-part results-url)]})
+        (let [instr (instructions/validation-error-instruction
+                     dialect (:error-message validation-result))]
+          {:output nil #_format-validaiton-error-output
+           :structured-output nil
+           :instructions instr
+           :data-parts nil})))
     (catch Exception e
       (log/error e "Error editing SQL query")
       (if (:agent-error? (ex-data e))
