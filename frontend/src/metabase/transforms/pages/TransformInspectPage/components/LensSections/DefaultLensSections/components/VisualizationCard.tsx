@@ -7,8 +7,8 @@ import { getMetadata } from "metabase/selectors/metadata";
 import { Box, Card, Loader, Stack } from "metabase/ui";
 import Visualization from "metabase/visualizations/components/Visualization";
 import * as Lib from "metabase-lib";
+import { defaultDisplay } from "metabase-lib/query/display";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
-import { defaultDisplay } from "metabase-lib/viz/display";
 import type {
   CardDisplayType,
   Dataset,
