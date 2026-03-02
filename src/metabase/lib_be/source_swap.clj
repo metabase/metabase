@@ -237,9 +237,9 @@
 
 (mr/def ::swap-source.field-id-mapping
   [:map
-   [:id->id [:map-of ::lib.schema.id/field ::lib.schema.id/field]]
-   [:id->name [:map-of ::lib.schema.id/field :string]]
-   [:source-field->source-field [:map-of ::lib.schema.id/field ::lib.schema.id/field]]])
+   [:old-id->new-column [:map-of ::lib.schema.id/field ::lib.schema.metadata/column]]
+   [:old-source-type ::swap-source.source-type]
+   [:new-source-type ::swap-source.source-type]])
 
 (mu/defn- build-field-id-mapping :- ::swap-source.field-id-mapping
   [query                                      :- ::lib.schema/query
@@ -249,45 +249,40 @@
             (case source-type
               :table (lib.metadata/fields query source-id)
               :card  (lib.card/saved-question-metadata query source-id)))
-          (column-id->column-id [old-columns new-column-by-key]
+          (old-column-id->new-column [old-columns new-column-by-key]
             (into {}
                   (keep (fn [old-column]
                           (when-let [new-column (get new-column-by-key (column-match-key old-column))]
-                            (when (and (:id old-column) (:id new-column))
-                              [(:id old-column) (:id new-column)]))))
-                  old-columns))
-          (column-id->column-name [columns]
-            (into {}
-                  (keep (fn [column]
-                          (when (and (:id column) (column-match-key column))
-                            [(:id column) (column-match-key column)])))
-                  columns))]
+                            (when (and (:id old-column))
+                              [(:id old-column) new-column]))))
+                  old-columns))]
     (let [old-columns (source->columns old-source-type old-source-id)
           new-columns (source->columns new-source-type new-source-id)
-          new-column-by-key (m/index-by column-match-key new-columns)
-          id->id (column-id->column-id old-columns new-column-by-key)]
-      {:id->id (if (and (= :table old-source-type) (= new-source-type :table)) id->id {})
-       :id->name (if (and (= :table old-source-type) (not= new-source-type :table)) (column-id->column-name old-columns) {})
-       :source-field->source-field id->id})))
+          new-column-by-key (m/index-by column-match-key new-columns)]
+      {:old-id->new-column (old-column-id->new-column old-columns new-column-by-key)
+       :old-source-type old-source-type
+       :new-source-type new-source-type})))
 
 (mu/defn- swap-field-ref :- :mbql.clause/field
   [query            :- ::lib.schema/query
    stage-number     :- :int
-   {:keys [id->id id->name source-field->source-field]} :- ::swap-source.field-id-mapping
+   {:keys [old-id->new-column old-source-type new-source-type]} :- ::swap-source.field-id-mapping
    field-ref        :- :mbql.clause/field]
   (let [old-id            (lib.ref/field-ref-id field-ref)
-        new-id            (get id->id old-id)
-        old-name          (lib.ref/field-ref-name field-ref)
-        new-name          (get id->name old-id)
-        old-source-field  (-> field-ref lib.options/options :source-field)
-        new-source-field  (get source-field->source-field old-source-field)
+        new-id-column     (get old-id->new-column old-id)
+        old-fk-id         (-> field-ref lib.options/options :source-field)
+        new-fk-id-column  (get old-id->new-column old-fk-id)
         swapped-field-ref (cond-> field-ref
-                            new-id
-                            (lib.ref/with-field-ref-id new-id)
-                            new-name
-                            (lib.ref/with-field-ref-name new-name)
-                            new-source-field
-                            (lib.options/update-options assoc :source-field new-source-field))]
+                            (and new-id-column (:id new-id-column) (= :table old-source-type) (= :table new-source-type))
+                            (lib.ref/with-field-ref-id (:id new-id-column))
+
+                            ;; base-type is required for name-based refs, make sure it's set
+                            (and new-id-column (:base-type new-id-column) (= :table old-source-type) (not= :table new-source-type))
+                            (-> (lib.options/update-options assoc :base-type (:base-type new-id-column))
+                                (lib.ref/with-field-ref-name (:name new-id-column)))
+
+                            (and new-fk-id-column (:id new-fk-id-column))
+                            (lib.options/update-options assoc :source-field (:id new-fk-id-column)))]
     (or (when-let [new-column (lib.field.resolution/resolve-field-ref query stage-number swapped-field-ref)]
           (when-not (::lib.field.resolution/fallback-metadata? new-column)
             (let [new-field-ref (preserve-expression-name field-ref (lib.ref/ref new-column))]
