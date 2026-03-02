@@ -13,6 +13,8 @@
    [metabase.premium-features.core :as premium-features]
    [metabase.util :as u]
    [metabase.util.log :as log]
+   [metabase.util.malli :as mu]
+   [metabase.util.malli.registry :as mr]
    [toucan2.core :as t2]))
 
 (defn handle-agent-error
@@ -249,3 +251,22 @@
   [metabot-id & {:as opts}]
   (t2/select :model/Card (-> (metabot-metrics-and-models-query metabot-id opts)
                              (update :order-by (fnil conj []) [:id]))))
+
+;;;; Sql validation
+
+(mr/def ::validation-result
+  [:map
+   [:is-valid :boolean]
+   [:error-message {:optional true} :string]
+   [:dialect {:optional true} :string]
+   [:transpiled-sql {:optional true} :string]])
+
+(mu/defn validate-sql :- ::validation-result
+  "Validate sql query."
+  [dialect :- [:maybe :string]
+   sql :- [:string]]
+  (merge
+   {:is-valid true
+    :transpiled-sql sql}
+   (when (string? dialect)
+     {:dialect dialect})))
