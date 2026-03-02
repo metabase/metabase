@@ -1,23 +1,25 @@
 import { updateMetadata } from "metabase/lib/redux/metadata";
 import { ForeignKeySchema, TableSchema } from "metabase/schema";
-import type {
-  BulkTableSelection,
-  BulkTableSelectionInfo,
-  DiscardTablesValuesRequest,
-  EditTablesRequest,
-  ForeignKey,
-  GetTableDataRequest,
-  GetTableQueryMetadataRequest,
-  GetTableRequest,
-  RescanTablesValuesRequest,
-  SyncTablesSchemaRequest,
-  Table,
-  TableData,
-  TableId,
-  TableListQuery,
-  UpdateTableFieldsOrderRequest,
-  UpdateTableListRequest,
-  UpdateTableRequest,
+import {
+  type BulkTableSelection,
+  type BulkTableSelectionInfo,
+  type ConcreteTableId,
+  type DiscardTablesValuesRequest,
+  type EditTablesRequest,
+  type ForeignKey,
+  type GetTableDataRequest,
+  type GetTableQueryMetadataRequest,
+  type GetTableRequest,
+  type RescanTablesValuesRequest,
+  type SyncTablesSchemaRequest,
+  type Table,
+  type TableData,
+  type TableId,
+  type TableListQuery,
+  type UpdateTableFieldsOrderRequest,
+  type UpdateTableListRequest,
+  type UpdateTableRequest,
+  isConcreteTableId,
 } from "metabase-types/api";
 
 import { Api } from "./api";
@@ -268,9 +270,12 @@ export const fetchForeignTablesMetadata = (
   params?: Omit<GetTableQueryMetadataRequest, "id">,
 ) => {
   return (dispatch: (action: unknown) => void) => {
-    const fkTableIds = new Set<TableId>();
+    const fkTableIds = new Set<ConcreteTableId>();
     for (const field of table.fields ?? []) {
-      if (field.target?.table_id != null) {
+      if (
+        field.target?.table_id != null &&
+        isConcreteTableId(field.target.table_id)
+      ) {
         fkTableIds.add(field.target.table_id);
       }
     }
