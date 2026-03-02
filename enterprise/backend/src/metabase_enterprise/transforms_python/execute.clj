@@ -114,6 +114,7 @@
                                     (let [result (transforms-base.i/execute-base!
                                                   transform
                                                   {:cancelled?           #(boolean (a/poll! cancel-chan))
+                                                   :cancel-chan          cancel-chan
                                                    :run-id               run-id
                                                    :message-log          message-log
                                                    :with-stage-timing-fn (fn [rid stage thunk]

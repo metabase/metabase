@@ -295,13 +295,14 @@
    - `:run-id` - optional, for cancellation signaling and instrumentation
    - `:with-stage-timing-fn` - optional, (fn [run-id stage thunk] result)
    - `:message-log` - optional, pre-created message log atom (for scheduled execution log polling)
+   - `:cancel-chan` - optional, pre-created promise-chan for cancellation (avoids bridging latency)
 
    Returns:
    {:status :succeeded | :failed | :cancelled
     :result <http response>
     :logs <string>
     :error <exception if failed>}"
-  [transform {:keys [cancelled? run-id with-stage-timing-fn message-log]}]
+  [transform {:keys [cancelled? run-id with-stage-timing-fn message-log cancel-chan]}]
   (assert (transforms-base.u/python-transform? transform) "Transform must be a python transform")
   (let [message-log (or message-log (empty-message-log))]
     (try
@@ -313,17 +314,19 @@
             db (t2/select-one :model/Database (:database target))
             ;; Use run-id if provided, otherwise generate a temp one for python runner
             effective-run-id (or run-id (rand-int Integer/MAX_VALUE))
-            cancel-chan (a/promise-chan)
-            ;; Bridge cancelled? to cancel-chan
-            _ (when cancelled?
-                (a/go
-                  (loop []
-                    (when-not (a/poll! cancel-chan)
-                      (if (cancelled?)
-                        (a/>! cancel-chan :cancel!)
-                        (do
-                          (a/<! (a/timeout 100))
-                          (recur)))))))
+            cancel-chan (or cancel-chan
+                            (let [ch (a/promise-chan)]
+                              ;; Bridge cancelled? to cancel-chan
+                              (when cancelled?
+                                (a/go
+                                  (loop []
+                                    (when-not (a/poll! ch)
+                                      (if (cancelled?)
+                                        (a/>! ch :cancel!)
+                                        (do
+                                          (a/<! (a/timeout 100))
+                                          (recur)))))))
+                              ch))
             start-ms (u/start-timer)]
 
         (log! message-log (i18n/tru "Executing Python transform"))
