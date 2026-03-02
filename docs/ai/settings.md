@@ -30,6 +30,12 @@ For now, Metabot is only available for Metabase Cloud. Before you can set up Met
 
 Once you've added Metabot AI in the Metabase store, you can log into your Metabase and configure it in _Admin > AI_.
 
+## Enable Metabot
+
+Both **Metabot** and **Embedded Metabot** are enabled by default on new Metabase instances.
+
+Toggle [Metabot](./metabot.md) on or off for your Metabase. When enabled, Metabot is available to help people create questions, analyze data, and answer questions about your data. When disabled, the Metabot icon and keyboard shortcuts are hidden.
+
 ## Verified content
 
 Admins on Pro and Enterprise plans can tell Metabot to only work with [models](../data-modeling/models.md) and [metrics](../data-modeling/metrics.md) that have been [verified](../exploration-and-organization/content-verification.md).
@@ -44,17 +50,15 @@ This setting only affects conversations started from **+ New → AI exploration*
 
 People can still @-mention items outside of this collection when prompting in AI exploration. Metabot can also see the person's current context (for example, Metabot will know about the dashboard they're currently viewing, even if the dashboard is outside the selected collection).
 
-## When embedding Metabot, you can pick a collection for Metabot to have access to
+## Embedded Metabot
 
-When embedding Metabot in your app, you can select a collection for Metabot:
+_Admin > AI > Embedded Metabot_
 
-2. Click **Embedded Metabot**.
-3. In the **Collection Embedded Metabot can use** section, click **Pick a collection**.
-4. Select the collection that contains the models and metrics you want Metabot to use.
+Embedded Metabot has the same settings as the main Metabot page, which you can configure independently and apply to people using your [full-app embed](../embedding/full-app-embedding.md) iframe.
 
-Metabot will use the models and metrics in that collection to help answer questions and generate queries. You can change this collection at any time. To give Metabot access to all collections, you can set the collection to the root collection, called "Our Analytics" (the default).
+Embedded Metabot is enabled by default. Toggle **Enable Embedded Metabot** to show or hide Metabot for embedded users in full-app embeds. When disabled, the Metabot icon and keyboard shortcuts are hidden from everyone in the embedded iframe.
 
-Alternatively (or additionally), you can restrict Metabot to [verified content](#verified-content).
+For now, the Metabot icon in full-app embeds isn't customizable.
 
 ## Tips for making the most of Metabot
 
