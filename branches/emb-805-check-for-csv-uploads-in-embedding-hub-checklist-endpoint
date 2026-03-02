@@ -3,9 +3,6 @@
     "name": "emb-752-integration-branch-for-embedding-hub",
     "hash": "a9980a5f08119500d9d65c654ccdfb1a6258577f"
   },
-  "upstream": {
-    "branch": "emb-805-check-for-csv-uploads-in-embedding-hub-checklist-endpoint"
-  },
   "change": {
     "github": {
       "pr": {
