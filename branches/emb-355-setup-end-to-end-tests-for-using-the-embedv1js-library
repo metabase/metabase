@@ -3,9 +3,6 @@
     "name": "new-iframe-embedding",
     "hash": "524a9ef27a7b4284b0ac7906d06a9ebb98405926"
   },
-  "upstream": {
-    "branch": "emb-355-setup-end-to-end-tests-for-using-the-embedv1js-library"
-  },
   "change": {
     "github": {
       "pr": {
