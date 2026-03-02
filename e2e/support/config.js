@@ -145,7 +145,7 @@ const defaultConfig = {
     config.env.grepFilterSpecs = true;
     config.env.grepOmitFiltered = true;
 
-    require("@cypress/grep/src/plugin")(config);
+    require("@cypress/grep/plugin")(config);
 
     if (isCI) {
       cypressSplit(on, config);
