@@ -104,7 +104,7 @@
 ;;; ------------------------------------------------ upgrade-field-refs ------------------------------------------------
 
 (mu/defn- same-field-ref? :- :boolean
-  "Checks if two field refs are the same. Ignores :lib/uuid. Does not ignore :base-type."
+  "Checks if two field refs are the same. Ignores :lib/uuid, :base-type, and :effective-type."
   [field-ref-1 :- :mbql.clause/field
    field-ref-2 :- :mbql.clause/field]
   (= (lib.options/update-options field-ref-1 dissoc :lib/uuid :base-type :effective-type)
