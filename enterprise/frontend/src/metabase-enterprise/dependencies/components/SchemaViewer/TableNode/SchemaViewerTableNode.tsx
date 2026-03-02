@@ -33,7 +33,7 @@ import { isTypePK } from "metabase-lib/v1/types/utils/isa";
 import type { ErdField } from "metabase-types/api";
 
 import { TOOLTIP_OPEN_DELAY_MS } from "../../../constants";
-import { useIsCompactMode } from "../SchemaViewerContext";
+import { useSchemaViewerContext } from "../SchemaViewerContext";
 import type { SchemaViewerFlowNode, SchemaViewerNodeData } from "../types";
 import { getNodesWithPositions } from "../utils";
 
@@ -59,7 +59,8 @@ export const SchemaViewerTableNode = memo(function SchemaViewerTableNode({
   const { fitView, getNodes, getEdges, setNodes } =
     useReactFlow<SchemaViewerFlowNode>();
   const updateNodeInternals = useUpdateNodeInternals();
-  const isCompactMode = useIsCompactMode();
+  const { isCompactMode, onToggleCompactMode, explicitFullMode } =
+    useSchemaViewerContext();
   const headerColor = data.is_focal ? "brand" : "text-primary";
 
   // Force React Flow to recalculate handle positions when switching modes
@@ -72,42 +73,62 @@ export const SchemaViewerTableNode = memo(function SchemaViewerTableNode({
   const [isCollapsed, setIsCollapsed] = useState(true);
 
   const handleDoubleClick = useCallback(() => {
-    if (focusedNodeId === id) {
-      // Already focused on this node, zoom out to fit all
-      fitView({ duration: 300 });
+    if (isCompactMode) {
+      // In compact mode: toggle to full mode and focus on node
+      onToggleCompactMode(false); // not explicit button click
+      // Recalculate layout for regular mode first, then fit view
+      const nodes = getNodes();
+      const edges = getEdges();
+      const newNodes = getNodesWithPositions(nodes, edges, false);
+      setNodes(newNodes);
+      const targetNode = newNodes.find((n) => n.id === id);
+      if (targetNode) {
+        fitView({
+          nodes: [targetNode],
+          duration: 300,
+          padding: 0.5,
+          minZoom: COMPACT_ZOOM_THRESHOLD,
+        });
+      }
+      focusedNodeId = id;
+    } else if (focusedNodeId === id) {
+      // In full mode with focused node
+      if (explicitFullMode) {
+        // User explicitly set full mode via button - just zoom out, don't switch to compact
+        fitView({ duration: 300 });
+      } else {
+        // Full mode was set via double-click - switch to compact and zoom out
+        onToggleCompactMode(false); // not explicit button click
+        // Use setTimeout to allow layout to update before fitting view
+        setTimeout(() => {
+          fitView({ duration: 300 });
+        }, 0);
+      }
       focusedNodeId = null;
     } else {
-      // Focus on this node
-      if (isCompactMode) {
-        // Recalculate layout for regular mode first, then fit view
-        const nodes = getNodes();
-        const edges = getEdges();
-        const newNodes = getNodesWithPositions(nodes, edges, false);
-        setNodes(newNodes);
-        const targetNode = newNodes.find((n) => n.id === id);
-        if (targetNode) {
-          fitView({
-            nodes: [targetNode],
-            duration: 300,
-            padding: 0.5,
-            minZoom: COMPACT_ZOOM_THRESHOLD,
-          });
-        }
-      } else {
-        const nodes = getNodes();
-        const node = nodes.find((n) => n.id === id);
-        if (node) {
-          fitView({
-            nodes: [node],
-            duration: 300,
-            padding: 0.5,
-            minZoom: COMPACT_ZOOM_THRESHOLD,
-          });
-        }
+      // In full mode with unfocused node: just focus on node
+      const nodes = getNodes();
+      const node = nodes.find((n) => n.id === id);
+      if (node) {
+        fitView({
+          nodes: [node],
+          duration: 300,
+          padding: 0.5,
+          minZoom: COMPACT_ZOOM_THRESHOLD,
+        });
       }
       focusedNodeId = id;
     }
-  }, [fitView, id, isCompactMode, getNodes, getEdges, setNodes]);
+  }, [
+    fitView,
+    id,
+    isCompactMode,
+    onToggleCompactMode,
+    explicitFullMode,
+    getNodes,
+    getEdges,
+    setNodes,
+  ]);
 
   // Find PK field IDs that are targets of self-referencing FKs
   const selfRefTargetIds = useMemo(() => {

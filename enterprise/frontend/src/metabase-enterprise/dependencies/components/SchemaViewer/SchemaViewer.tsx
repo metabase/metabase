@@ -158,6 +158,8 @@ export function SchemaViewer({
 }: SchemaViewerProps) {
   const [hops, setHops] = useState(initialHops ?? DEFAULT_HOPS);
   const [isCompactMode, setIsCompactMode] = useState(false);
+  // Track if user explicitly set full mode via toggle button (not double-click)
+  const [explicitFullMode, setExplicitFullMode] = useState(false);
 
   // Persist table selection + hops per database:schema
   const prefsKey =
@@ -300,6 +302,10 @@ export function SchemaViewer({
       databaseId != null
     ) {
       setIsCompactMode(savedPrefs.is_compact_mode);
+      // Restore explicit full mode preference
+      if (typeof savedPrefs.explicit_full_mode === "boolean") {
+        setExplicitFullMode(savedPrefs.explicit_full_mode);
+      }
       compactModeInitializedRef.current = currentContextKey;
     }
   }, [
@@ -399,10 +405,11 @@ export function SchemaViewer({
           table_ids: tableIds,
           hops,
           is_compact_mode: isCompactMode,
+          explicit_full_mode: explicitFullMode,
         });
       }
     },
-    [databaseId, schema, hops, isCompactMode, setSavedPrefs],
+    [databaseId, schema, hops, isCompactMode, explicitFullMode, setSavedPrefs],
   );
 
   const [nodes, setNodes, onNodesChange] = useNodesState<SchemaViewerFlowNode>(
@@ -428,10 +435,17 @@ export function SchemaViewer({
           table_ids: effectiveSelectedTableIds,
           hops: newHops,
           is_compact_mode: isCompactMode,
+          explicit_full_mode: explicitFullMode,
         });
       }
     },
-    [isUserModified, effectiveSelectedTableIds, isCompactMode, setSavedPrefs],
+    [
+      isUserModified,
+      effectiveSelectedTableIds,
+      isCompactMode,
+      explicitFullMode,
+      setSavedPrefs,
+    ],
   );
 
   // Handler for expanding to a related table via FK click
@@ -449,6 +463,7 @@ export function SchemaViewer({
           table_ids: newTableIds,
           hops,
           is_compact_mode: isCompactMode,
+          explicit_full_mode: explicitFullMode,
         });
       }
     },
@@ -458,6 +473,7 @@ export function SchemaViewer({
       schema,
       hops,
       isCompactMode,
+      explicitFullMode,
       setSavedPrefs,
     ],
   );
@@ -476,43 +492,37 @@ export function SchemaViewer({
     }
   }, [clipboard, shareUrl]);
 
-  const handleToggleCompactMode = useCallback(() => {
-    setIsCompactMode((prev) => {
-      const newMode = !prev;
-      // Save preference when user manually toggles
-      // Save compact mode preference regardless of table selection state
-      if (effectiveSelectedTableIds != null) {
-        setSavedPrefs({
-          table_ids: effectiveSelectedTableIds,
-          hops,
-          is_compact_mode: newMode,
-        });
-      } else if (prefsKey != null) {
-        // If no table selection yet, save just the compact mode preference
-        setSavedPrefs({ is_compact_mode: newMode });
-      }
-      return newMode;
-    });
-  }, [effectiveSelectedTableIds, hops, prefsKey, setSavedPrefs]);
+  const handleToggleCompactMode = useCallback(
+    (explicit = true) => {
+      setIsCompactMode((prev) => {
+        const newMode = !prev;
+        let newExplicitFullMode = explicitFullMode;
 
-  const handleMove = useCallback(
-    (_event: unknown, viewport: { zoom: number }) => {
-      // Auto-switch from compact to regular when zooming in past threshold
-      if (isCompactMode && viewport.zoom >= COMPACT_ZOOM_THRESHOLD) {
-        setIsCompactMode(false);
-        // Save preference when auto-switching to regular mode
+        // Track if user explicitly set full mode via button (not double-click)
+        if (explicit) {
+          newExplicitFullMode = newMode === false; // false = full mode
+          setExplicitFullMode(newExplicitFullMode);
+        }
+
+        // Save preference - always save mode state for persistence
         if (effectiveSelectedTableIds != null) {
           setSavedPrefs({
             table_ids: effectiveSelectedTableIds,
             hops,
-            is_compact_mode: false,
+            is_compact_mode: newMode,
+            explicit_full_mode: newExplicitFullMode,
           });
         } else if (prefsKey != null) {
-          setSavedPrefs({ is_compact_mode: false });
+          // If no table selection yet, save just the compact mode preference
+          setSavedPrefs({
+            is_compact_mode: newMode,
+            explicit_full_mode: newExplicitFullMode,
+          });
         }
-      }
+        return newMode;
+      });
     },
-    [isCompactMode, effectiveSelectedTableIds, hops, prefsKey, setSavedPrefs],
+    [effectiveSelectedTableIds, explicitFullMode, hops, prefsKey, setSavedPrefs],
   );
 
   const schemaViewerContextValue = useMemo(
@@ -520,8 +530,16 @@ export function SchemaViewer({
       visibleTableIds,
       onExpandToTable: handleExpandToTable,
       isCompactMode,
+      onToggleCompactMode: handleToggleCompactMode,
+      explicitFullMode,
     }),
-    [visibleTableIds, handleExpandToTable, isCompactMode],
+    [
+      visibleTableIds,
+      handleExpandToTable,
+      isCompactMode,
+      handleToggleCompactMode,
+      explicitFullMode,
+    ],
   );
 
   const graph = useMemo(() => {
@@ -533,7 +551,6 @@ export function SchemaViewer({
 
   // Determine initial compact mode when data first loads for a schema
   useEffect(() => {
-    debugger;
     if (
       data != null &&
       compactModeInitializedRef.current !== currentContextKey
@@ -579,7 +596,6 @@ export function SchemaViewer({
         fitView
         onNodesChange={onNodesChange}
         onEdgesChange={onEdgesChange}
-        onMove={handleMove}
       >
         <Background />
         <Controls showInteractive={false}>
