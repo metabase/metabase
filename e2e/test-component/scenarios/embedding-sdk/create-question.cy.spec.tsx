@@ -11,7 +11,6 @@ import {
   assertSdkNotebookEditorUsable,
   createQuestion,
   entityPickerModal,
-  entityPickerModalTab,
   modal,
   popover,
 } from "e2e/support/helpers";
@@ -55,7 +54,6 @@ describe("scenarios > embedding-sdk > interactive-question > creating a question
     });
 
     entityPickerModal().within(() => {
-      entityPickerModalTab("Browse").click();
       cy.findByText("First collection").click();
       cy.button("Select this collection").click();
     });
@@ -156,7 +154,6 @@ describe("scenarios > embedding-sdk > interactive-question > creating a question
     });
 
     entityPickerModal().within(() => {
-      entityPickerModalTab("Browse").click();
       cy.findByText("Orders in a dashboard").click();
       cy.button("Select this dashboard").click();
     });

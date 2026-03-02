@@ -1,7 +1,7 @@
 (ns metabase-enterprise.transforms-python.impl
   (:require
    [metabase-enterprise.transforms-python.execute :as transforms-python.execute]
-   [metabase-enterprise.transforms.interface :as transforms.i]))
+   [metabase.transforms.interface :as transforms.i]))
 
 (defmethod transforms.i/target-db-id :python
   [transform]

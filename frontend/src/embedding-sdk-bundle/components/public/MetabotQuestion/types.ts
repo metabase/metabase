@@ -1,5 +1,6 @@
 import type { CSSProperties } from "react";
 
+import type { SdkCollectionId } from "embedding-sdk-bundle/types/collection";
 import type { CommonStylingProps } from "embedding-sdk-bundle/types/props";
 
 /**
@@ -28,4 +29,14 @@ export interface MetabotQuestionProps extends CommonStylingProps {
    * A number or string specifying a CSS size value that specifies the width of the component
    */
   width?: CSSProperties["width"];
+
+  /**
+   * Whether to show the save button.
+   */
+  isSaveEnabled?: boolean;
+
+  /**
+   * The collection to save the question to. This will hide the collection picker from the save modal.
+   */
+  targetCollection?: SdkCollectionId;
 }

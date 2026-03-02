@@ -8,11 +8,24 @@ import type { CollectionItem } from "metabase-types/api";
 
 import { CollectionSyncList } from "../CollectionSyncList";
 
-export const TopLevelCollectionsList = () => {
-  const { data, isLoading, error } = useListCollectionItemsQuery({
-    id: "root",
-    models: ["collection"],
-  });
+interface TopLevelCollectionsListProps {
+  /**
+   * When true, skip other top-level collections and only show Library and Transforms.
+   * Useful for modal variant where only these options should be shown.
+   */
+  skipCollections?: boolean;
+}
+
+export const TopLevelCollectionsList = ({
+  skipCollections,
+}: TopLevelCollectionsListProps = {}) => {
+  const { data, isLoading, error } = useListCollectionItemsQuery(
+    {
+      id: "root",
+      models: ["collection"],
+    },
+    { skip: skipCollections },
+  );
 
   const { data: libraryCollectionData, isLoading: isLoadingLibrary } =
     useGetLibraryCollectionQuery();
@@ -25,6 +38,11 @@ export const TopLevelCollectionsList = () => {
 
   // Filter out personal collections and analytics collections, combine with library collection
   const collections = useMemo(() => {
+    // When skipCollections is true, only show library collection
+    if (skipCollections) {
+      return libraryCollection ? [libraryCollection] : [];
+    }
+
     const topLevelCollections = (data?.data ?? []).filter(
       (c) => !c.personal_owner_id && c.type !== "instance-analytics",
     );
@@ -35,7 +53,7 @@ export const TopLevelCollectionsList = () => {
     }
 
     return topLevelCollections;
-  }, [data, libraryCollection]);
+  }, [data, libraryCollection, skipCollections]);
 
   return (
     <CollectionSyncList
@@ -44,6 +62,7 @@ export const TopLevelCollectionsList = () => {
       error={error ? t`Failed to load collections` : null}
       isLoading={isLoading || isLoadingLibrary}
       showTransformsRow={PLUGIN_TRANSFORMS.isEnabled}
+      showLibraryPlaceholder={skipCollections && !libraryCollection}
     />
   );
 };

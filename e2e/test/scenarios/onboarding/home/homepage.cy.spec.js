@@ -435,7 +435,6 @@ describe("scenarios > home > custom homepage", () => {
       });
 
       H.entityPickerModal().within(() => {
-        H.entityPickerModalTab("Dashboards").click();
         //Ensure that personal collections have been removed
         cy.findByText("First collection").should("exist");
         cy.findByText(/personal collection/).should("not.exist");

@@ -3,6 +3,7 @@ import { getVisualizationTransformed } from "metabase/visualizations";
 import { getComputedSettingsForSeries } from "metabase/visualizations/lib/settings/visualization";
 import type { StaticVisualizationProps } from "metabase/visualizations/types";
 
+import { BoxPlotChart } from "../BoxPlotChart/BoxPlotChart";
 import { ComboChart } from "../ComboChart";
 import { FunnelBarChart } from "../FunnelBarChart";
 import { PieChart } from "../PieChart/PieChart";
@@ -41,6 +42,8 @@ export const StaticVisualization = ({
       return <ComboChart {...props} />;
     case "scatter":
       return <ScatterPlot {...props} />;
+    case "boxplot":
+      return <BoxPlotChart {...props} />;
     case "waterfall":
       return <WaterfallChart {...props} />;
     case "funnel":

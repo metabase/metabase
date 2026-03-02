@@ -196,7 +196,7 @@ describe("SmartScalar", () => {
       expect(screen.queryByText("50")).not.toBeInTheDocument();
 
       // show tooltip
-      userEvent.hover(lastChange);
+      await userEvent.hover(lastChange);
       const tooltip = await screen.findByRole("tooltip");
 
       expect(

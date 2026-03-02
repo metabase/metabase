@@ -9,6 +9,13 @@ import type { DatabaseId } from "./database";
 import type { GroupId } from "./group";
 import type { UserId } from "./user";
 
+export interface OidcAuthProvider {
+  type: "oidc";
+  key: string;
+  "login-prompt": string;
+  "sso-url": string;
+}
+
 export interface FormattingSettings {
   "type/Temporal"?: DateFormattingSettings;
   "type/Number"?: NumberFormattingSettings;
@@ -235,6 +242,7 @@ export type GdrivePayload = {
   error?: string;
 };
 
+/* eslint-disable-next-line @typescript-eslint/no-unused-vars -- used for types */
 const tokenStatusFeatures = [
   "advanced-config",
   "advanced-permissions",
@@ -258,8 +266,6 @@ const tokenStatusFeatures = [
   "metabase-store-managed",
   "metabot-v3",
   "no-upsell",
-  "offer-metabase-ai",
-  "offer-metabase-ai-tiered",
   "official-collections",
   "query-reference-validation",
   "question-error-logs",
@@ -281,6 +287,9 @@ const tokenStatusFeatures = [
 ] as const;
 
 export type TokenStatusFeature = (typeof tokenStatusFeatures)[number];
+
+export const REMOTE_SYNC_TYPES = ["read-only", "read-write"] as const;
+export type RemoteSyncType = (typeof REMOTE_SYNC_TYPES)[number];
 
 interface TokenStatusStoreUsers {
   email: string;
@@ -324,6 +333,7 @@ export const tokenFeatures = [
   "sso_google",
   "sso_jwt",
   "sso_ldap",
+  "sso_oidc",
   "sso_saml",
   "session_timeout_config",
   "whitelabel",
@@ -336,8 +346,6 @@ export const tokenFeatures = [
   "collection_cleanup",
   "cache_preemptive",
   "metabot_v3",
-  "offer_metabase_ai",
-  "offer_metabase_ai_tiered",
   "ai_sql_fixer",
   "ai_sql_generation",
   "ai_entity_analysis",
@@ -351,9 +359,10 @@ export const tokenFeatures = [
   "semantic_search",
   "transforms",
   "transforms-python",
-  "data_studio",
+  "library",
   "support-users",
   "tenants",
+  "workspaces",
 ] as const;
 
 export type TokenFeature = (typeof tokenFeatures)[number];
@@ -362,6 +371,9 @@ export type TokenFeatures = Record<TokenFeature, boolean>;
 export type PasswordComplexity = {
   total?: number;
   digit?: number;
+  upper?: number;
+  lower?: number;
+  special?: number;
 };
 
 export type SessionCookieSameSite = "lax" | "strict" | "none";
@@ -437,6 +449,7 @@ interface InstanceSettings {
   "example-dashboard-id": number | null;
   "has-sample-database?"?: boolean; // Careful! This can be undefined during setup!
   "instance-creation": string;
+  "llm-sql-generation-enabled": boolean;
   "read-only-mode": boolean;
   "search-typeahead-enabled": boolean;
   "show-homepage-data": boolean;
@@ -472,6 +485,7 @@ interface AdminSettings {
   "google-auth-auto-create-accounts-domain": string | null;
   "google-auth-configured": boolean;
   "premium-embedding-token": string | null;
+  "oidc-login-providers"?: OidcAuthProvider[];
   "other-sso-enabled?"?: boolean; // yes the question mark is in the variable name
   "show-database-syncing-modal": boolean;
   "token-status": TokenStatus | null;
@@ -559,6 +573,7 @@ interface PublicSettings {
   "ldap-group-mappings": Record<string /*ldap group name */, GroupId[]> | null;
   "ldap-group-membership-filter"?: string;
   "ldap-user-provisioning-enabled?": boolean;
+  "oidc-user-provisioning-enabled?": boolean;
   "loading-message": LoadingMessage;
   "map-tile-server-url": string;
   "native-query-autocomplete-match-style": AutocompleteMatchStyle;
@@ -580,6 +595,7 @@ interface PublicSettings {
   "snowplow-url": string;
   "start-of-week": DayOfWeekId;
   "token-features": TokenFeatures;
+  "transforms-enabled": boolean;
   version: Version;
   "version-info-last-checked": string | null;
   "airgap-enabled": boolean;
@@ -676,7 +692,7 @@ export interface EnterpriseSettings extends Settings {
   "remote-sync-token"?: string | null;
   "remote-sync-url"?: string | null;
   "remote-sync-branch"?: string | null;
-  "remote-sync-type"?: "read-only" | "read-write" | null;
+  "remote-sync-type"?: RemoteSyncType | null;
   "remote-sync-auto-import"?: boolean | null;
   "remote-sync-transforms"?: boolean | null;
   "login-page-illustration"?: IllustrationSettingValue;
@@ -707,6 +723,8 @@ export interface EnterpriseSettings extends Settings {
   "jwt-attribute-groups": string | null;
   "jwt-attribute-tenant": string | null;
   "jwt-group-sync": boolean | null;
+  "oidc-enabled": boolean;
+  "oidc-configured": boolean;
   "saml-enabled": boolean;
   "saml-configured": boolean;
   "saml-user-provisioning-enabled?": boolean;
@@ -740,6 +758,8 @@ export interface EnterpriseSettings extends Settings {
   "python-storage-s-3-path-style-access"?: boolean | null;
   "python-runner-timeout-seconds"?: number | null;
   "python-runner-test-run-timeout-seconds"?: number | null;
+  "llm-anthropic-api-key"?: string | null;
+  "llm-anthropic-model": string;
   /**
    * @deprecated
    */

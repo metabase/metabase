@@ -22,14 +22,9 @@ import { useChartEvents } from "metabase/visualizations/visualizations/Cartesian
 
 import { useChartDebug } from "./use-chart-debug";
 import { useModelsAndOption } from "./use-models-and-option";
+import { getDashboardAdjustedSettings } from "./utils";
 
-const HIDE_Y_AXIS_LABEL_WIDTH_THRESHOLD = 360;
-const HIDE_X_AXIS_LABEL_HEIGHT_THRESHOLD = 200;
-
-const HIDE_Y_AXIS_HEIGHT_THRESHOLD = 150;
-const INTERPOLATE_LINE_THRESHOLD = 150;
-
-function _CartesianChart(props: VisualizationProps) {
+function CartesianChartInner(props: VisualizationProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   // The width and height from props reflect the dimensions of the entire container which includes legend,
   // however, for correct ECharts option calculation we need to use the dimensions of the chart viewport
@@ -61,30 +56,16 @@ function _CartesianChart(props: VisualizationProps) {
     titleMenuItems,
   } = props;
 
-  const settings = useMemo(() => {
-    const settings = { ...originalSettings };
-    if (isDashboard) {
-      if (
-        outerWidth <= INTERPOLATE_LINE_THRESHOLD ||
-        outerHeight <= INTERPOLATE_LINE_THRESHOLD
-      ) {
-        settings["line.interpolate"] = "cardinal";
-      }
-
-      if (outerWidth <= HIDE_Y_AXIS_LABEL_WIDTH_THRESHOLD) {
-        settings["graph.y_axis.labels_enabled"] = false;
-      }
-
-      if (outerHeight <= HIDE_X_AXIS_LABEL_HEIGHT_THRESHOLD) {
-        settings["graph.x_axis.labels_enabled"] = false;
-      }
-
-      if (outerHeight <= HIDE_Y_AXIS_HEIGHT_THRESHOLD) {
-        settings["graph.y_axis.axis_enabled"] = false;
-      }
-    }
-    return settings;
-  }, [originalSettings, isDashboard, outerWidth, outerHeight]);
+  const settings = useMemo(
+    () =>
+      getDashboardAdjustedSettings(
+        originalSettings,
+        isDashboard ?? false,
+        outerWidth,
+        outerHeight,
+      ),
+    [originalSettings, isDashboard, outerWidth, outerHeight],
+  );
 
   const { chartModel, timelineEventsModel, option } = useModelsAndOption(
     {
@@ -218,7 +199,7 @@ function _CartesianChart(props: VisualizationProps) {
 export function CartesianChart(props: VisualizationProps) {
   return (
     <ChartRenderingErrorBoundary onRenderError={props.onRenderError}>
-      <_CartesianChart {...props} />
+      <CartesianChartInner {...props} />
     </ChartRenderingErrorBoundary>
   );
 }

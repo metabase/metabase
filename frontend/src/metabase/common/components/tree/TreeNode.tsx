@@ -42,10 +42,14 @@ const BaseTreeNode = React.forwardRef<HTMLLIElement, TreeNodeProps>(
           onSelect?.();
           break;
         case "ArrowRight":
-          !isExpanded && onToggleExpand();
+          if (!isExpanded) {
+            onToggleExpand();
+          }
           break;
         case "ArrowLeft":
-          isExpanded && onToggleExpand();
+          if (isExpanded) {
+            onToggleExpand();
+          }
           break;
       }
     };

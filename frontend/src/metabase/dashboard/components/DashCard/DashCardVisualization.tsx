@@ -257,6 +257,7 @@ export function DashCardVisualization({
     isFullscreen = false,
     isEditingParameter,
     onChangeLocation,
+    enableEntityNavigation,
   } = useDashboardContext();
 
   const datasets = useSelector((state) => getDashcardData(state, dashcard.id));
@@ -629,6 +630,7 @@ export function DashCardVisualization({
           renderLoadingView={renderLoadingView}
           titleMenuItems={titleMenuItems}
           errorMessageOverride={visualizerErrMsg}
+          enableEntityNavigation={enableEntityNavigation}
         />
       </EmbeddingEntityContextProvider>
     </div>

@@ -2,6 +2,7 @@ import fetchMock from "fetch-mock";
 
 import type {
   CheckDependenciesResponse,
+  DependencyGraph,
   DependencyNode,
   ListBreakingGraphNodesResponse,
   ListUnreferencedGraphNodesResponse,
@@ -10,23 +11,23 @@ import type {
 export function setupCheckCardDependenciesEndpoint(
   response: CheckDependenciesResponse,
 ) {
-  fetchMock.post("path:/api/ee/dependencies/check_card", response);
+  fetchMock.post("path:/api/ee/dependencies/check-card", response);
 }
 
 export function setupCheckCardDependenciesEndpointError() {
-  fetchMock.post("path:/api/ee/dependencies/check_card", { status: 500 });
+  fetchMock.post("path:/api/ee/dependencies/check-card", { status: 500 });
 }
 
 export function setupCheckSnippetDependenciesEndpoint(
   response: CheckDependenciesResponse,
 ) {
-  fetchMock.post("path:/api/ee/dependencies/check_snippet", response);
+  fetchMock.post("path:/api/ee/dependencies/check-snippet", response);
 }
 
 export function setupCheckTransformDependenciesEndpoint(
   response: CheckDependenciesResponse,
 ) {
-  fetchMock.post("path:/api/ee/dependencies/check_transform", response);
+  fetchMock.post("path:/api/ee/dependencies/check-transform", response);
 }
 
 export function setupListGraphNodeDependentsEndpoint(nodes: DependencyNode[]) {
@@ -47,4 +48,8 @@ export function setupListUnreferencedGraphNodesEndpoint(
   response: ListUnreferencedGraphNodesResponse,
 ) {
   fetchMock.get("path:/api/ee/dependencies/graph/unreferenced", response);
+}
+
+export function setupDependecyGraphEndpoint(response: DependencyGraph) {
+  fetchMock.get("path:/api/ee/dependencies/graph", response);
 }

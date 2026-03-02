@@ -14,7 +14,7 @@ import type { UiParameter } from "metabase-lib/v1/parameters/types";
 import type {
   Dashboard,
   DashboardCard,
-  Pulse,
+  DashboardSubscription,
   TokenFeatures,
 } from "metabase-types/api";
 import {
@@ -91,7 +91,7 @@ type SetupOpts = {
   parameters?: UiParameter[];
   isEmbeddingSdk?: boolean;
   setSharing?: (sharing: boolean) => void;
-  pulses?: (Partial<Pulse> & { id: number })[];
+  pulses?: (Partial<DashboardSubscription> & { id: number })[];
   currentUser?: {
     firstName: string;
     lastName: string;
@@ -174,7 +174,7 @@ export function setup({
   // Mock POST that updates the GET response
   fetchMock.post("path:/api/pulse", ({ options }) => {
     const body = JSON.parse(options.body as string);
-    const newPulse = { ...body, id: getNextId() } as Pulse & { id: number };
+    const newPulse = { ...body, id: getNextId() } as DashboardSubscription;
     pulses.push(newPulse);
     return newPulse;
   });

@@ -57,7 +57,9 @@ export const ActionButton = forwardRef<ActionButtonHandle, ActionButtonProps>(
     const isMountedRef = useRef(true);
 
     const resetTimeout = () => {
-      timeout.current && clearTimeout(timeout.current);
+      if (timeout.current) {
+        clearTimeout(timeout.current);
+      }
     };
 
     useEffect(() => {

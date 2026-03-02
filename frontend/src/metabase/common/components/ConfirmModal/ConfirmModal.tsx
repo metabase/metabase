@@ -39,11 +39,14 @@ export const ConfirmModal = ({
   const [confirming, setConfirming] = useState(false);
   const handleConfirm = async () => {
     const confirm = onConfirm();
-    if (confirm instanceof Promise) {
-      setConfirming(true);
-      await confirm;
+    try {
+      if (confirm instanceof Promise) {
+        setConfirming(true);
+        await confirm;
+      }
+    } finally {
+      setConfirming(false);
     }
-    setConfirming(false);
   };
 
   return (

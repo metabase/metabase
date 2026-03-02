@@ -6,7 +6,7 @@ import {
   type PaginationControlsProps,
 } from "metabase/common/components/PaginationControls";
 import { Box, Flex, type FlexProps, Icon, Stack } from "metabase/ui";
-import { SortDirection } from "metabase-types/api/sorting";
+import type { SortDirection } from "metabase-types/api";
 
 import CS from "./Table.module.css";
 import type { ColumnItem } from "./types";
@@ -139,9 +139,7 @@ function ColumnHeader({
       onClick={() =>
         onSort(
           String(column.key),
-          sortColumn === column.key && sortDirection === SortDirection.Asc
-            ? SortDirection.Desc
-            : SortDirection.Asc,
+          sortColumn === column.key && sortDirection === "asc" ? "desc" : "asc",
         )
       }
       {...rest}
@@ -150,9 +148,7 @@ function ColumnHeader({
       {
         column.name && column.key === sortColumn ? (
           <Icon
-            name={
-              sortDirection === SortDirection.Asc ? "chevronup" : "chevrondown"
-            }
+            name={sortDirection === "asc" ? "chevronup" : "chevrondown"}
             c="text-secondary"
             style={{ flexShrink: 0 }}
             size={8}

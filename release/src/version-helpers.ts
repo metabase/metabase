@@ -143,20 +143,41 @@ export const getDotXVersion = (version: string) => {
   return getDotXs(version, 2);
 };
 
-export const getExtraTagsForVersion = ({ version }: { version: string }) => {
-  const ossVerion = getOSSVersion(version);
+const shouldAddLatestTag = ({
+  version,
+  latestMajorVersion,
+}: {
+  version: string;
+  latestMajorVersion?: string;
+}) => {
+  const majorVersion = getMajorVersion(version);
+  return majorVersion === latestMajorVersion;
+};
+
+export const getExtraTagsForVersion = ({
+  version,
+  latestMajorVersion,
+}: {
+  version: string;
+  latestMajorVersion?: string;
+}) => {
+  const ossVersion = getOSSVersion(version);
   const eeVersion = getEnterpriseVersion(version);
   const versionType = getVersionType(version);
 
   // eg. v0.23.x / v1.23.x
-  const tags = [getDotXs(ossVerion, 1), getDotXs(eeVersion, 1)];
-
-  if (versionType === "major") {
-    return tags;
-  }
-
+  const baseTags = [getDotXs(ossVersion, 1), getDotXs(eeVersion, 1)];
   // eg. v0.23.4.x / v1.23.4.x
-  return [...tags, getDotXs(ossVerion, 2), getDotXs(eeVersion, 2)];
+  const minorTags =
+    versionType !== "major"
+      ? [getDotXs(ossVersion, 2), getDotXs(eeVersion, 2)]
+      : [];
+
+  return [
+    ...baseTags,
+    ...minorTags,
+    ...(shouldAddLatestTag({ version, latestMajorVersion }) ? ["latest"] : []),
+  ];
 };
 
 /**
@@ -228,6 +249,7 @@ export const versionRequirements: Record<
   56: { java: 21, node: 22, platforms: "linux/amd64,linux/arm64" },
   57: { java: 21, node: 22, platforms: "linux/amd64,linux/arm64" },
   58: { java: 21, node: 22, platforms: "linux/amd64,linux/arm64" },
+  59: { java: 21, node: 22, platforms: "linux/amd64,linux/arm64" },
 };
 
 export const getBuildRequirements = (version: string) => {

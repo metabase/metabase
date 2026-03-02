@@ -62,7 +62,6 @@ export const DatabaseForm = ({
   config = {},
 }: DatabaseFormProps): JSX.Element => {
   const isAdvanced = config.isAdvanced || false;
-  const engineFieldState = config.engine?.fieldState;
 
   const engines = useSelector(getEngines);
   const initialEngineKey = useMemo(() => {
@@ -119,7 +118,6 @@ export const DatabaseForm = ({
             // casting won't be needed after migrating all usages of engineKey
             engineKey={engineKey as EngineKey}
             engines={engines}
-            engineFieldState={engineFieldState}
             autofocusFieldName={autofocusFieldName}
             isAdvanced={isAdvanced}
             onEngineChange={handleEngineChange}

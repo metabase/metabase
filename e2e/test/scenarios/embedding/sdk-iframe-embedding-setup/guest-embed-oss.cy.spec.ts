@@ -119,6 +119,7 @@ describe(
 
     describe("Happy path", () => {
       it("Navigates through the guest-embed flow for a question and opens its embed page", () => {
+        cy.intercept("GET", "api/preview_embed/card/*").as("previewEmbed");
         visitNewEmbedPage();
 
         H.expectUnstructuredSnowplowEvent({ event: "embed_wizard_opened" });
@@ -154,7 +155,6 @@ describe(
 
         H.entityPickerModal().within(() => {
           cy.findByText("Select a chart").should("be.visible");
-          cy.findByText("Questions").click();
           cy.findByText(FIRST_QUESTION_NAME).click();
         });
 
@@ -238,6 +238,15 @@ describe(
           cy.findAllByText(/Copy code/)
             .first()
             .click();
+        });
+
+        cy.log(
+          'Embed preview requests should not have "X-Metabase-Client" header (EMB-945)',
+        );
+        cy.wait("@previewEmbed").then(({ request }) => {
+          expect(request?.headers?.["x-metabase-embedded-preview"]).to.equal(
+            "true",
+          );
         });
 
         H.expectUnstructuredSnowplowEvent({

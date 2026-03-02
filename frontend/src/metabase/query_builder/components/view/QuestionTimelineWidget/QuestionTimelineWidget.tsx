@@ -51,7 +51,11 @@ export const QuestionTimelineWidget = ({
   const handleCloseTimelines = () => dispatch(onCloseTimelines());
 
   function handleClick(isShowingTimelineSidebar: boolean, ack: () => void) {
-    isShowingTimelineSidebar ? handleCloseTimelines() : handleOpenTimelines();
+    if (isShowingTimelineSidebar) {
+      handleCloseTimelines();
+    } else {
+      handleOpenTimelines();
+    }
     ack();
   }
 

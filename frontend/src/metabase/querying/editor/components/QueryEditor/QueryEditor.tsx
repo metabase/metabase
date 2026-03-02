@@ -6,6 +6,7 @@ import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErr
 import { NativeQueryPreview } from "metabase/querying/notebook/components/NativeQueryPreview";
 import { Center, Flex, Modal } from "metabase/ui";
 import type * as Lib from "metabase-lib";
+import type { DatasetQuery } from "metabase-types/api";
 
 import { useQueryEditor } from "../../hooks/use-query-editor";
 import type { QueryEditorUiOptions, QueryEditorUiState } from "../../types";
@@ -27,6 +28,7 @@ type QueryEditorProps = {
   onChangeUiState: (newUiState: QueryEditorUiState) => void;
   onAcceptProposed?: () => void;
   onRejectProposed?: () => void;
+  onRunQueryStart?: (query: DatasetQuery) => boolean | void;
   onBlur?: () => void;
   topBarInnerContent?: ReactNode;
   height?: string | number;
@@ -42,6 +44,7 @@ export function QueryEditor({
   onChangeUiState,
   onAcceptProposed,
   onRejectProposed,
+  onRunQueryStart,
   onBlur,
   topBarInnerContent,
   height = "100%",
@@ -60,9 +63,11 @@ export function QueryEditor({
     isRunning,
     isResultDirty,
     setQuestion,
+    setParameterValues,
     runQuery,
     cancelQuery,
     openModal,
+    parameterValues,
     setSelectionRange,
     setModalSnippet,
     openSnippetModalWithSelectedText,
@@ -71,6 +76,7 @@ export function QueryEditor({
     toggleDataReferenceSidebar,
     toggleSnippetSidebar,
     toggleNativeQuerySidebar,
+    toggleTemplateTagsSidebar,
     togglePreviewQueryModal,
   } = useQueryEditor({
     query,
@@ -79,6 +85,7 @@ export function QueryEditor({
     proposedQuery,
     onChangeQuery,
     onChangeUiState,
+    onRunQueryStart,
   });
 
   const { ref, height: availableHeight } = useElementSize();
@@ -102,12 +109,17 @@ export function QueryEditor({
             modalSnippet={uiState.modalSnippet}
             nativeEditorSelectedText={selectedText}
             readOnly={uiOptions?.readOnly}
+            canChangeDatabase={uiOptions?.canChangeDatabase}
             isNative={isNative}
             isRunnable={isRunnable}
             isRunning={isRunning}
             isResultDirty={isResultDirty}
+            resizable={uiOptions?.resizable}
             isShowingDataReference={uiState.sidebarType === "data-reference"}
             isShowingSnippetSidebar={uiState.sidebarType === "snippet"}
+            isShowingTemplateTagsSidebar={
+              uiState.sidebarType === "template-tags"
+            }
             shouldDisableItem={uiOptions?.shouldDisableDataPickerItem}
             shouldDisableDatabase={uiOptions?.shouldDisableDatabasePickerItem}
             shouldShowLibrary={uiOptions?.shouldShowLibrary}
@@ -116,27 +128,32 @@ export function QueryEditor({
             onCancelQuery={cancelQuery}
             onToggleDataReference={toggleDataReferenceSidebar}
             onToggleSnippetSidebar={toggleSnippetSidebar}
+            onToggleTemplateTagsSidebar={toggleTemplateTagsSidebar}
             onOpenModal={openModal}
             onChangeModalSnippet={setModalSnippet}
             onInsertSnippet={insertSnippet}
             onChangeNativeEditorSelection={setSelectionRange}
             onAcceptProposed={onAcceptProposed}
             onRejectProposed={onRejectProposed}
+            editorHeight={uiOptions?.editorHeight}
+            hideRunButton={uiOptions?.hideRunButton}
             onBlur={onBlur}
             topBarInnerContent={topBarInnerContent}
             extraButton={extraEditorButton}
           />
-          <QueryEditorVisualization
-            question={question}
-            result={result}
-            rawSeries={rawSeries}
-            isNative={isNative}
-            isRunnable={isRunnable}
-            isRunning={isRunning}
-            isResultDirty={isResultDirty}
-            onRunQuery={runQuery}
-            onCancelQuery={cancelQuery}
-          />
+          {!uiOptions?.hidePreview && (
+            <QueryEditorVisualization
+              question={question}
+              result={result}
+              rawSeries={rawSeries}
+              isNative={isNative}
+              isRunnable={isRunnable}
+              isRunning={isRunning}
+              isResultDirty={isResultDirty}
+              onRunQuery={runQuery}
+              onCancelQuery={cancelQuery}
+            />
+          )}
           {!isNative && uiOptions?.canConvertToNative && (
             <NativeQueryPreviewSidebarToggle
               isNativeQueryPreviewSidebarOpen={
@@ -149,16 +166,22 @@ export function QueryEditor({
         {isNative && (
           <NativeQuerySidebar
             question={question}
+            query={query}
+            parameterValues={parameterValues}
+            setParameterValues={setParameterValues}
             isNative={isNative}
             isDataReferenceOpen={uiState.sidebarType === "data-reference"}
             isSnippetSidebarOpen={uiState.sidebarType === "snippet"}
+            isTemplateTagsSidebarOpen={uiState.sidebarType === "template-tags"}
             onInsertSnippet={insertSnippet}
             onToggleDataReference={toggleDataReferenceSidebar}
             onToggleSnippetSidebar={toggleSnippetSidebar}
+            onToggleTemplateTagsSidebar={toggleTemplateTagsSidebar}
             onChangeModalSnippet={setModalSnippet}
             onOpenSnippetModalWithSelectedText={
               openSnippetModalWithSelectedText
             }
+            onChangeQuery={onChangeQuery}
           />
         )}
         {!isNative && uiState.sidebarType === "native-query" && (
@@ -168,6 +191,7 @@ export function QueryEditor({
             convertToNativeButtonLabel={uiOptions?.convertToNativeButtonLabel}
             onConvertToNativeClick={convertToNative}
             readOnly={uiOptions?.readOnly}
+            disableDefaultLimit={uiOptions?.disableDefaultLimit}
           />
         )}
       </Flex>

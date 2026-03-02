@@ -10,6 +10,7 @@ export const BOOKMARK_TYPES = [
   "dashboard",
   "snippet",
   "indexed-entity",
+  "transform",
   "document",
   "table",
 ] as const;

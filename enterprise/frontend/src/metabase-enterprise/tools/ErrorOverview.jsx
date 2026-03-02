@@ -7,6 +7,7 @@ import {
   SettingsSection,
 } from "metabase/admin/components/SettingsSection";
 import CS from "metabase/css/core/index.css";
+import { fetchDataOrError } from "metabase/dashboard/utils";
 import { CardApi } from "metabase/services";
 
 import AuditParameters from "../audit_app/components/AuditParameters";
@@ -19,6 +20,7 @@ const getSortOrder = (isAscending) => (isAscending ? "asc" : "desc");
 
 const CARD_ID_COL = 0;
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default function ErrorOverview(props) {
   const reloadRef = useRef(null);
   // TODO: use isReloading to display a loading overlay
@@ -58,7 +60,8 @@ export default function ErrorOverview(props) {
 
     await Promise.all(
       checkedCardIds.map(
-        async (member) => await CardApi.query({ cardId: member }),
+        async (member) =>
+          await fetchDataOrError(CardApi.query({ cardId: member })),
       ),
     );
     setRowChecked({});

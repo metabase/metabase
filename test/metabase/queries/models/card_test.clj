@@ -8,6 +8,7 @@
    [metabase.lib.convert :as lib.convert]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.lib.test-util.notebook-helpers :as notebook-helpers]
    [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
    [metabase.queries.models.card :as card]
@@ -846,7 +847,7 @@
         (is (=? {:can_run_adhoc_query false}
                 (t2/hydrate no-query :can_run_adhoc_query)))))))
 
-(deftest audit-card-permisisons-test
+(deftest audit-card-permissions-test
   (testing "Cards in audit collections are not readable or writable on OSS, even if they exist (#42645)"
     ;; Here we're testing the specific scenario where an EE instance is downgraded to OSS, but still has the audit
     ;; collections and cards installed. Since we can't load audit content on OSS, let's just redef the audit collection
@@ -1363,3 +1364,76 @@
                  (count (:result_metadata card))))
           (finally
             (t2/delete! :model/Card (:id card))))))))
+
+(deftest create-native-model-external-remap-query-test
+  (testing "External remapping (FK) should work when querying through a native SQL model (#35842)"
+    (mt/with-temp [:model/Dimension _ {:field_id                (mt/id :orders :user_id)
+                                       :name                    "User ID"
+                                       :human_readable_field_id (mt/id :people :name)
+                                       :type                    :external}]
+      (mt/with-current-user (mt/user->id :crowberto)
+        (mt/with-model-cleanup [:model/Card]
+          (let [metadata    (qp.preprocess/query->expected-cols (mt/mbql-query orders))
+                card        (card/create-card! {:database_id            (mt/id)
+                                                :display                :table
+                                                :visualization_settings {}
+                                                :type                   :model
+                                                :name                   "Native Orders Model for external remap test"
+                                                :dataset_query          (mt/native-query {:query "SELECT * FROM ORDERS"})
+                                                :result_metadata        metadata}
+                                               @api/*current-user*)
+                mp          (mt/metadata-provider)
+                model-query (-> (lib/query mp (lib.metadata/card mp (:id card)))
+                                (lib/aggregate (lib/count))
+                                (notebook-helpers/add-breakout "User ID")
+                                (lib/limit 5))
+                result      (mt/user-http-request :crowberto :post 202 "dataset" model-query)
+                cols        (get-in result [:data :cols])
+                remap-col   (first (filter :remapped_from cols))
+                user-col    (first (filter #(= (:name %) (:remapped_from remap-col)) cols))]
+            (testing "remap column exists with :remapped_from pointing to original column"
+              (is (some? remap-col))
+              (is (= (:name user-col) (:remapped_from remap-col))))
+            (testing "original column has :remapped_to pointing to remap column"
+              (is (= (:name remap-col) (:remapped_to user-col))))
+            (testing "result rows contain remapped user names"
+              (let [col-names (mapv :name cols)
+                    remap-idx (.indexOf ^java.util.List col-names (:name remap-col))]
+                (is (every? string? (map #(nth % remap-idx) (get-in result [:data :rows]))))))))))))
+
+(deftest create-model-internal-remap-query-test
+  (testing "Internal remapping (custom values) should work when querying through a model (#57978)"
+    (mt/with-column-remappings [orders.quantity {0 "Zero" 1 "A" 2 "B" 3 "C" 4 "D"}]
+      (mt/with-current-user (mt/user->id :crowberto)
+        (mt/with-model-cleanup [:model/Card]
+          (let [mp    (mt/metadata-provider)
+                query (lib/query mp (lib.metadata/table mp (mt/id :orders)))
+                card  (card/create-card! {:database_id            (mt/id)
+                                          :display                :table
+                                          :visualization_settings {}
+                                          :type                   :model
+                                          :name                   "Orders Model for remap test"
+                                          :dataset_query          query}
+                                         @api/*current-user*)]
+            (testing "model result_metadata should not include remap columns"
+              (is (not-any? #(re-find #"(?i)remap" (:name %))
+                            (:result_metadata card))))
+            (let [mp          (mt/metadata-provider)
+                  model-query (-> (lib/query mp (lib.metadata/card mp (:id card)))
+                                  (lib/aggregate (lib/count))
+                                  (notebook-helpers/add-breakout "Quantity")
+                                  (lib/limit 5))
+                  result      (mt/user-http-request :crowberto :post 202 "dataset" model-query)
+                  cols        (get-in result [:data :cols])
+                  rows        (get-in result [:data :rows])
+                  qty-col     (first (filter #(= (:display_name %) "Quantity") cols))
+                  remap-col   (first (filter :remapped_from cols))]
+              (testing "original column has :remapped_to pointing to remap column"
+                (is (some? (:remapped_to qty-col)))
+                (is (= (:name remap-col) (:remapped_to qty-col))))
+              (testing "remap column has :remapped_from pointing to original column"
+                (is (some? (:remapped_from remap-col)))
+                (is (= (:name qty-col) (:remapped_from remap-col))))
+              (testing "remapped values appear correctly"
+                (is (= ["Zero" "A" "B" "C" "D"]
+                       (map last rows)))))))))))

@@ -2,7 +2,7 @@ import type {
   DependencyEntry,
   DependencyGroupType,
   DependencySortColumn,
-  DependencySortDirection,
+  SortDirection,
 } from "metabase-types/api";
 
 const BASE_URL = `/data-studio`;
@@ -31,23 +31,23 @@ export function dependencyDiagnostics() {
   return DIAGNOSTICS_URL;
 }
 
-export type DependencyListParams = {
+export type DependencyDiagnosticsParams = {
   page?: number;
   query?: string;
-  group_types?: DependencyGroupType[];
-  include_personal_collections?: boolean;
-  sort_column?: DependencySortColumn;
-  sort_direction?: DependencySortDirection;
+  groupTypes?: DependencyGroupType[];
+  includePersonalCollections?: boolean;
+  sortColumn?: DependencySortColumn;
+  sortDirection?: SortDirection;
 };
 
-function dependencyListQueryString({
+function dependencyDiagnosticsQueryString({
   page,
   query,
-  group_types,
-  include_personal_collections,
-  sort_column,
-  sort_direction,
-}: DependencyListParams = {}) {
+  groupTypes,
+  includePersonalCollections,
+  sortColumn,
+  sortDirection,
+}: DependencyDiagnosticsParams = {}) {
   const searchParams = new URLSearchParams();
 
   if (page != null) {
@@ -56,32 +56,32 @@ function dependencyListQueryString({
   if (query != null) {
     searchParams.set("query", query);
   }
-  if (group_types != null) {
-    group_types.forEach((groupType) => {
-      searchParams.append("group_types", groupType);
+  if (groupTypes != null) {
+    groupTypes.forEach((groupType) => {
+      searchParams.append("group-types", groupType);
     });
   }
-  if (include_personal_collections != null) {
+  if (includePersonalCollections != null) {
     searchParams.set(
-      "include_personal_collections",
-      String(include_personal_collections),
+      "include-personal-collections",
+      String(includePersonalCollections),
     );
   }
-  if (sort_column != null) {
-    searchParams.set("sort_column", sort_column);
+  if (sortColumn != null) {
+    searchParams.set("sort-column", sortColumn);
   }
-  if (sort_direction != null) {
-    searchParams.set("sort_direction", sort_direction);
+  if (sortDirection != null) {
+    searchParams.set("sort-direction", sortDirection);
   }
 
   const queryString = searchParams.toString();
   return queryString.length > 0 ? `?${queryString}` : "";
 }
 
-export function brokenDependencies(params?: DependencyListParams) {
-  return `${dependencyDiagnostics()}/broken${dependencyListQueryString(params)}`;
+export function brokenDependencies(params?: DependencyDiagnosticsParams) {
+  return `${dependencyDiagnostics()}/broken${dependencyDiagnosticsQueryString(params)}`;
 }
 
-export function unreferencedDependencies(params?: DependencyListParams) {
-  return `${dependencyDiagnostics()}/unreferenced${dependencyListQueryString(params)}`;
+export function unreferencedDependencies(params?: DependencyDiagnosticsParams) {
+  return `${dependencyDiagnostics()}/unreferenced${dependencyDiagnosticsQueryString(params)}`;
 }

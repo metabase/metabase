@@ -217,16 +217,26 @@
                              :status-code 404
                              :measure-id measure-id})))
           ;; Field-based aggregation
-          (let [expr (bucketed-column aggregation)
-                agg-expr (case (:function aggregation)
-                           :count          (lib/count)
-                           :count-distinct (lib/distinct expr)
-                           :sum            (lib/sum expr)
-                           :min            (lib/min expr)
-                           :max            (lib/max expr)
-                           :avg            (lib/avg expr))]
+          (let [agg-expr (if (= :count (:function aggregation))
+                           (lib/count)
+                           (let [expr (bucketed-column aggregation)]
+                             (case (:function aggregation)
+                               :count-distinct (lib/distinct expr)
+                               :sum            (lib/sum expr)
+                               :min            (lib/min expr)
+                               :max            (lib/max expr)
+                               :avg            (lib/avg expr))))]
             (lib/aggregate query agg-expr)))]
     (apply-aggregation-sort-order query-with-aggregation sort-order)))
+
+(defn- resolve-aggregation-column
+  "Resolve the column for an aggregation, skipping measures and field-less counts."
+  [resolve-visible-column aggregation]
+  (if (or (:measure-id aggregation)
+          (and (= :count (:function aggregation))
+               (not (:field-id aggregation))))
+    aggregation
+    (resolve-visible-column aggregation)))
 
 (defn- expression?
   [expr-or-column]
@@ -265,8 +275,7 @@
                                                                (lib/display-name base-query -1 column :long))))
                               resolve-visible-column)
                         fields)
-        ;; Measures and segments don't require column resolution
-        resolved-aggregations (map #(if (:measure-id %) % (resolve-visible-column %)) aggregations)
+        resolved-aggregations (map (partial resolve-aggregation-column resolve-visible-column) aggregations)
         resolved-filters (map #(if (:segment-id %) % (resolve-visible-column %)) filters)
         reduce-query (fn [query f coll] (reduce f query coll))
         query (-> base-query
@@ -340,8 +349,7 @@
                                                                (lib/display-name base-query -1 column :long))))
                               resolve-visible-column)
                         fields)
-        ;; Measures and segments don't require column resolution
-        all-aggregations (map #(if (:measure-id %) % (resolve-visible-column %)) aggregations)
+        all-aggregations (map (partial resolve-aggregation-column resolve-visible-column) aggregations)
         all-filters (map #(if (:segment-id %) % (resolve-visible-column %)) filters)
         reduce-query (fn [query f coll] (reduce f query coll))
         query (-> base-query

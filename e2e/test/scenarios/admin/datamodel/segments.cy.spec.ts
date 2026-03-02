@@ -22,9 +22,7 @@ describe("scenarios > admin > datamodel > segments", () => {
       cy.button("New segment").click();
 
       cy.findByTestId("segment-editor").findByText("Select a table").click();
-      H.entityPickerModal().within(() => {
-        cy.findByText("Orders").click();
-      });
+      H.pickEntity({ path: ["Databases", /Sample Database/, "Orders"] });
 
       cy.findByTestId("segment-editor").findByText("Orders").should("exist");
 

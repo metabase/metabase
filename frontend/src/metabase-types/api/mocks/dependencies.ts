@@ -156,7 +156,7 @@ export function createMockDependencyEdge(
 }
 
 export function createMockDependencyGraph(
-  opts?: Partial<DependencyGraph>,
+  opts: Partial<DependencyGraph> = {},
 ): DependencyGraph {
   return {
     nodes: [],

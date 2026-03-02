@@ -68,8 +68,12 @@ describe("scenarios > admin > tools > help > helping hand", () => {
           .click();
       }
 
-      ticket && cy.findByLabelText("Ticket").type(ticket);
-      notes && cy.findByLabelText("Notes").type(notes);
+      if (ticket) {
+        cy.findByLabelText("Ticket").type(ticket);
+      }
+      if (notes) {
+        cy.findByLabelText("Notes").type(notes);
+      }
 
       cy.button("Grant access").click();
     });

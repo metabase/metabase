@@ -16,7 +16,6 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
     H.openOrdersTable();
     // save question initially
     H.saveQuestion(undefined, undefined, {
-      tab: "Browse",
       path: ["Our analytics"],
     });
 

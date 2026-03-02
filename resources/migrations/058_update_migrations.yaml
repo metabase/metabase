@@ -1384,6 +1384,27 @@ databaseChangeLog:
                     AND c.type IN ('library', 'library-data', 'library-metrics')
                 )
 
+  - changeSet:
+      id: v58.2026-01-27T13:00:00
+      author: wotbrew
+      comment: Drop medallion names for data_layer enum use (hidden, internal instead)
+      changes:
+        - sql:
+            sql: >-
+              UPDATE metabase_table
+              SET data_layer = CASE data_layer
+                WHEN 'copper' THEN 'hidden'
+                ELSE 'final'
+              END
+      rollback:
+        - sql:
+            sql: >-
+              UPDATE metabase_table
+              SET data_layer = CASE data_layer
+                WHEN 'hidden' THEN 'copper'
+                ELSE 'bronze'
+              END
+
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
 ########################################################################################################################

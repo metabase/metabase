@@ -110,7 +110,10 @@
     [:database-name ms/NonBlankString] ; this must be unique
     [:table-definitions [:sequential ValidTableDefinition]]
     [:options [:map {:closed true}
-               [:native-ddl {:optional true} [:sequential :any]]]]]
+               [:native-ddl {:optional true} [:sequential :any]]
+               ;; When true, drivers that support it (e.g., MySQL) will disable FK checks during data loading.
+               ;; Useful for datasets with self-referencing FKs that need to be inserted in a single batch.
+               [:disable-fk-checks {:optional true} :boolean]]]]
    (ms/InstanceOfClass DatabaseDefinition)])
 
 ;; TODO - this should probably be a protocol instead
@@ -127,7 +130,11 @@
 
 (defn- hash-dataset*
   [^DatabaseDefinition db-def]
-  (codecs/bytes->hex (buddy-hash/sha1 (str (into (sorted-map) (get-dataset-definition db-def))))))
+  (let [db-def' (get-dataset-definition db-def)
+        ;; for routing tests (where hashes need to match despite content being different)
+        ;; it is important to be able to override the hash key
+        hash-key (:hash-key db-def' db-def')]
+    (codecs/bytes->hex (buddy-hash/sha1 (str (into (sorted-map) hash-key))))))
 
 (def hash-dataset
   "Provides a consistent hash for the DatabaseDefinition"

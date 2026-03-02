@@ -468,7 +468,7 @@ describe("issue 59830", () => {
 
     H.createQuestion(questionDetails, { visitQuestion: true });
     cy.icon("warning").should("not.exist");
-    cy.findByTestId("visualization-placeholder").should("be.visible");
+    cy.findByTestId("chart-container").should("be.visible");
   });
 });
 
@@ -847,5 +847,130 @@ describe("UXW-2696", () => {
         getChartPoints().should("have.length.greaterThan", 0);
       });
     });
+  });
+});
+
+describe("issue 69882", () => {
+  const DOOHICKEY_BAR_COLOR = "#227FD2";
+  const GADGET_LINE_COLOR = "#689636";
+
+  const questionDetails: StructuredQuestionDetails = {
+    name: "69882",
+    display: "combo" as const,
+    query: {
+      "source-table": ORDERS_ID,
+      aggregation: [["count"]],
+      breakout: [
+        ["field", PRODUCTS.CATEGORY, { "source-field": ORDERS.PRODUCT_ID }],
+        ["field", ORDERS.CREATED_AT, { "temporal-unit": "year" }],
+      ],
+    },
+    visualization_settings: {
+      series_settings: {
+        Doohickey: {
+          color: DOOHICKEY_BAR_COLOR,
+          title: "_Doohickey",
+          display: "bar",
+        },
+        Gadget: {
+          color: GADGET_LINE_COLOR,
+          title: "_Gadget",
+          display: "line",
+        },
+      },
+      "graph.x_axis.scale": "timeseries",
+      "graph.dimensions": ["CREATED_AT", "CATEGORY"],
+      "graph.metrics": ["count"],
+    },
+  };
+
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsAdmin();
+  });
+
+  it("should apply per-series display type on a question and dashcard (metabase#69882)", () => {
+    H.createQuestion(questionDetails, { visitQuestion: true, wrapId: true });
+
+    H.echartsContainer().should("be.visible");
+    H.chartPathWithFillColor(DOOHICKEY_BAR_COLOR).should("exist");
+    H.cartesianChartCircleWithColor(GADGET_LINE_COLOR);
+
+    H.createDashboard({ name: "Test Dashboard" }, { wrapId: true });
+    cy.get<number>("@questionId").then((cardId) => {
+      cy.get<number>("@dashboardId").then((dashboardId) => {
+        H.addQuestionToDashboard({ dashboardId, cardId });
+        H.visitDashboard(dashboardId);
+      });
+    });
+
+    cy.findByTestId("dashcard").within(() => {
+      H.echartsContainer().should("be.visible");
+      H.chartPathWithFillColor(DOOHICKEY_BAR_COLOR).should("exist");
+      H.cartesianChartCircleWithColor(GADGET_LINE_COLOR);
+    });
+  });
+});
+
+describe("issue #68819", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsAdmin();
+  });
+
+  it("should not crash when renaming an aggregation changes sibling column deduplication (metabase#68819)", () => {
+    // Create a question with two Sum of Total aggregations
+    // These will be deduplicated as "sum" and "sum_2"
+    const questionDetails: StructuredQuestionDetails = {
+      display: "bar" as const,
+      query: {
+        "source-table": ORDERS_ID,
+        aggregation: [
+          ["sum", ["field", ORDERS.TOTAL, null]],
+          ["sum", ["field", ORDERS.TOTAL, null]],
+        ],
+        breakout: [
+          ["field", ORDERS.CREATED_AT, { "temporal-unit": "month" }],
+          ["field", PRODUCTS.CATEGORY, { "source-field": ORDERS.PRODUCT_ID }],
+        ],
+      },
+      visualization_settings: {
+        "stackable.stack_type": "stacked",
+        "graph.dimensions": ["CREATED_AT", "CATEGORY"],
+        "graph.metrics": ["sum", "sum_2"],
+      },
+    };
+
+    H.createQuestion(questionDetails, { visitQuestion: true });
+
+    H.echartsContainer().should("be.visible");
+
+    H.openNotebook();
+
+    H.getNotebookStep("summarize")
+      .findByTestId("aggregate-step")
+      .findAllByTestId("notebook-cell-item")
+      .first()
+      .click();
+
+    cy.findByLabelText("Back").click();
+
+    H.popover().findByText("Custom Expression").click();
+
+    H.CustomExpressionEditor.nameInput().clear().type("Sum");
+    H.popover().button("Update").click();
+
+    H.saveSavedQuestion();
+
+    cy.button("Visualize").click();
+
+    // The bug would cause: TypeError: cannot read properties of undefined (reading 'name')
+    H.echartsContainer().should("be.visible");
+    cy.findByTestId("query-builder-main")
+      .findByText(/error/i)
+      .should("not.exist");
+
+    cy.reload();
+    H.echartsContainer().should("be.visible");
   });
 });

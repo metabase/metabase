@@ -142,7 +142,6 @@ describe("issue 9027", () => {
     cy.findByTestId("native-query-editor-container").icon("play").click();
 
     H.saveQuestion(QUESTION_NAME, undefined, {
-      tab: "Browse",
       path: ["Our analytics"],
     });
   });
@@ -285,7 +284,6 @@ describe("issue 14957", { tags: "@external" }, () => {
     cy.findByLabelText(PG_DB_NAME).click();
     H.NativeEditor.type("select pg_sleep(60)");
     H.saveQuestion("14957", undefined, {
-      tab: "Browse",
       path: ["Our analytics"],
     });
     H.modal().should("not.exist");
@@ -905,7 +903,10 @@ describe("issues 11914, 18978, 18977, 23857", () => {
 
     cy.log("Make sure user can change visualization but not save the question");
     H.openVizTypeSidebar();
-    cy.findByTestId("Number-button").click();
+    H.leftSidebar().within(() => {
+      cy.findByTestId("more-charts-toggle").click();
+      cy.icon("number").click();
+    });
     cy.findByTestId("scalar-value").should("exist");
     assertSaveIsDisabled();
 
@@ -960,13 +961,11 @@ describe("issue 19341", () => {
     H.miniPickerBrowseAll().click();
     H.entityPickerModal().within(() => {
       cy.findByTestId("loading-indicator").should("not.exist");
+      cy.findByText("Sample Database").click();
       cy.findByText("Orders").should("exist");
-      cy.findAllByRole("tab").should("not.exist");
 
       // Ensure the search doesn't list saved questions
-      cy.findByPlaceholderText("Search this database or everywhere…").type(
-        "Ord",
-      );
+      cy.findByPlaceholderText("Search…").type("Ord");
       cy.findByTestId("loading-indicator").should("not.exist");
 
       cy.findAllByTestId("result-item").then(($result) => {
@@ -979,7 +978,6 @@ describe("issue 19341", () => {
         expect(modelTypes).to.include("table");
       });
 
-      H.entityPickerModalTab("Tables").click();
       cy.findByText("Orders").click();
     });
 
@@ -1014,6 +1012,7 @@ describe("issue 19742", () => {
     H.miniPickerBrowseAll().click();
     H.entityPickerModal().within(() => {
       H.entityPickerModalItem(0, "Databases").click();
+      H.entityPickerModalItem(1, "Sample Database").click();
       cy.findByText("Orders").should("exist");
       cy.button("Close").click();
     });
@@ -1034,6 +1033,7 @@ describe("issue 19742", () => {
     H.miniPickerBrowseAll().click();
     H.entityPickerModal().within(() => {
       H.entityPickerModalItem(0, "Databases").click();
+      H.entityPickerModalItem(1, "Sample Database").click();
 
       cy.findByText("Orders").should("not.exist");
       cy.findByText("Products").should("exist");

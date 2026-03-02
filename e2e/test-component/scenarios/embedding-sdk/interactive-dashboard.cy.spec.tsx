@@ -213,6 +213,37 @@ describe("scenarios > embedding-sdk > interactive-dashboard", () => {
     });
   });
 
+  it('should render staged picker when passing `drillThroughQuestionProps.dataPicker = "staged"`', () => {
+    cy.get("@dashboardId").then((dashboardId) => {
+      mountSdkContent(
+        <InteractiveDashboard
+          dashboardId={dashboardId}
+          drillThroughQuestionProps={{ dataPicker: "staged" }}
+        />,
+      );
+    });
+
+    getSdkRoot().within(() => {
+      getTableCell("User ID", 1).findByText("1").should("be.visible").click();
+
+      H.popover().findByText("View this User's Orders").click();
+
+      cy.button("Edit question").click();
+
+      // Data step
+      cy.findByText("Orders").click();
+
+      cy.log("Go back to the bucket step");
+      H.popover().within(() => {
+        cy.icon("chevronleft").click();
+        cy.icon("chevronleft").click();
+
+        cy.findByText("Raw Data").should("be.visible");
+        cy.findByText("Models").should("be.visible");
+      });
+    });
+  });
+
   const idTypes = [
     {
       idType: "numeric ID",
@@ -422,3 +453,19 @@ describe("scenarios > embedding-sdk > interactive-dashboard > tabs", () => {
     });
   });
 });
+
+function getTableCell(columnName, rowIndex) {
+  cy.findAllByRole("columnheader").then(($columnHeaders) => {
+    const columnHeaderIndex = $columnHeaders
+      .toArray()
+      .findIndex(($columnHeader) => $columnHeader.textContent === columnName);
+    // eslint-disable-next-line metabase/no-unsafe-element-filtering
+    cy.findAllByRole("row")
+      .eq(rowIndex)
+      .findAllByTestId("cell-data")
+      .eq(columnHeaderIndex)
+      .as("cellData");
+  });
+
+  return cy.get("@cellData");
+}

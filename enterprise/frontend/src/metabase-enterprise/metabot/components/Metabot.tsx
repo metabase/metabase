@@ -94,7 +94,14 @@ export const MetabotAuthenticated = ({ hide, config }: MetabotProps) => {
 
   return (
     <ErrorBoundary key={errorBoundaryKey} errorComponent={ErrorFallback}>
-      <MetabotChat config={config} />
+      <Sidebar
+        isOpen={visible}
+        side="right"
+        width="30rem"
+        aria-hidden={!visible}
+      >
+        <MetabotChat config={config} />
+      </Sidebar>
     </ErrorBoundary>
   );
 };

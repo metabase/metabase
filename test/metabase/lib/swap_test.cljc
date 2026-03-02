@@ -156,8 +156,8 @@
             (is (=? (map :lib/source-uuid cols-before)
                     (map :lib/source-uuid cols-after)))
             (testing "even though the names have changed where they were swapped"
-              (let [aliases-before (mapv (juxt :metabase.lib.join/join-alias :lib/source-column-alias) cols-before)
-                    aliases-after  (mapv (juxt :metabase.lib.join/join-alias :lib/source-column-alias) cols-after)]
+              (let [aliases-before (mapv (juxt :lib/join-alias :lib/source-column-alias) cols-before)
+                    aliases-after  (mapv (juxt :lib/join-alias :lib/source-column-alias) cols-after)]
                 (is (not= (nth aliases-before i1)
                           (nth aliases-after  i1)))
                 (is (not= (nth aliases-before i2)

@@ -11,7 +11,9 @@ import { getCardsSeriesModels } from "metabase/visualizations/echarts/cartesian/
 import { dimensionIsNumeric } from "metabase/visualizations/lib/numeric";
 import { dimensionIsTimeseries } from "metabase/visualizations/lib/timeseries";
 import {
+  MAX_SERIES,
   columnsAreValid,
+  getColumnCardinality,
   getDefaultDimensionsAndMetrics,
   preserveExistingColumnsOrder,
 } from "metabase/visualizations/lib/utils";
@@ -60,18 +62,32 @@ export function getDefaultDimensions(
   rawSeries: RawSeries,
   settings: ComputedVisualizationSettings,
 ) {
-  const mainSeriesColumns = rawSeries[0]?.data?.cols;
-  const prevDimensions = (settings["graph.dimensions"] ?? [])
-    .filter(isNotNull)
-    .filter((columnName) =>
-      mainSeriesColumns.some((col) => col.name === columnName),
-    );
+  const [{ card, data }] = rawSeries;
+  const mainSeriesColumns = data?.cols ?? [];
+  const hasData = mainSeriesColumns.length > 0;
+  const prevDimensionsRaw = (settings["graph.dimensions"] ?? []).filter(
+    isNotNull,
+  );
+  const prevDimensions = hasData
+    ? prevDimensionsRaw.filter((columnName: string) =>
+        mainSeriesColumns.some((col: DatasetColumn) => col.name === columnName),
+      )
+    : prevDimensionsRaw;
   const defaultDimensions = getDefaultColumns(rawSeries).dimensions;
-  if (
+  const canReusePrevious =
     prevDimensions.length > 0 &&
     defaultDimensions.length > 0 &&
-    defaultDimensions[0] == null
-  ) {
+    defaultDimensions[0] == null &&
+    (!hasData ||
+      (columnsAreValid(
+        prevDimensionsRaw,
+        data,
+        getDefaultDimensionFilter(card.display),
+      ) &&
+        prevDimensionsRaw.filter((colName) => colName !== null).length ===
+          prevDimensionsRaw.length));
+
+  if (canReusePrevious) {
     return prevDimensions;
   }
 
@@ -82,14 +98,24 @@ export function getDefaultMetrics(
   rawSeries: RawSeries,
   settings: ComputedVisualizationSettings,
 ) {
-  const [{ card }] = rawSeries;
+  const [{ card, data }] = rawSeries;
+  const hasData = (data?.cols ?? []).length > 0;
   const prevMetrics = settings["graph.metrics"] ?? [];
   const defaultMetrics = getDefaultColumns(rawSeries).metrics;
-  if (
+  const canReusePrevious =
     prevMetrics.length > 0 &&
     defaultMetrics.length > 0 &&
-    defaultMetrics[0] == null
-  ) {
+    defaultMetrics[0] == null &&
+    (!hasData ||
+      (columnsAreValid(
+        prevMetrics,
+        data,
+        getDefaultMetricFilter(card.display),
+      ) &&
+        prevMetrics.filter((metric) => metric !== null).length ===
+          prevMetrics.length));
+
+  if (canReusePrevious) {
     return prevMetrics;
   }
   return defaultMetrics.slice(0, getMaxMetricsSupported(card.display));
@@ -262,7 +288,11 @@ export const getDefaultIsTimeSeries = (
 
 export const getDefaultXAxisScale = (
   vizSettings: ComputedVisualizationSettings,
+  display?: string,
 ) => {
+  if (display === "boxplot") {
+    return "ordinal";
+  }
   if (vizSettings["graph.x_axis._is_histogram"]) {
     return "histogram";
   }
@@ -284,9 +314,13 @@ export const getDefaultDataLabelsFrequency = () => "fit";
 export const getDefaultDataLabelsFormatting = () => "auto";
 
 export const getAvailableXAxisScales = (
-  [{ data }]: RawSeries,
+  [{ data, card }]: RawSeries,
   settings: ComputedVisualizationSettings,
 ) => {
+  if (card.display === "boxplot") {
+    return [{ name: t`Ordinal`, value: "ordinal" }];
+  }
+
   const options = [];
 
   const dimensionColumn = data.cols.find(
@@ -345,22 +379,62 @@ export const getDefaultGoalLabel = () => t`Goal`;
  * @returns object containing column names
  */
 export function getDefaultScatterColumns(data: DatasetData) {
-  const dimensions = data.cols.filter(isDimension);
-  const metrics = data.cols.filter(isMetric);
+  const { cols, rows } = data;
+  const dimensions = cols.filter(isDimension);
+  const metrics = cols.filter(isMetric);
 
-  if (dimensions.length === 2 && metrics.length < 2) {
+  let colorDimension; // used for color
+  let xAxisDimension; // only used when there's only one metric
+  if (dimensions.length === 2) {
+    const cardinality0 = getColumnCardinality(
+      cols,
+      rows,
+      cols.indexOf(dimensions[0]),
+    );
+    const cardinality1 = getColumnCardinality(
+      cols,
+      rows,
+      cols.indexOf(dimensions[1]),
+    );
+    if (cardinality0 <= cardinality1 && cardinality0 <= MAX_SERIES) {
+      colorDimension = dimensions[0].name;
+      xAxisDimension = dimensions[1].name;
+    } else if (cardinality0 <= cardinality1) {
+      xAxisDimension = dimensions[0].name;
+    } else if (cardinality1 <= MAX_SERIES) {
+      colorDimension = dimensions[1].name;
+      xAxisDimension = dimensions[0].name;
+    } else {
+      xAxisDimension = dimensions[1].name;
+    }
+  } else if (dimensions.length === 1) {
+    xAxisDimension = dimensions[0].name;
+  }
+
+  if (metrics.length === 3 || metrics.length === 2) {
     return {
-      dimensions: [dimensions[0].name],
-      metrics: [dimensions[1].name],
-      bubble: metrics.length === 1 ? metrics[0].name : null,
+      dimensions: colorDimension
+        ? [metrics[0].name, colorDimension]
+        : [metrics[0].name],
+      metrics: [metrics[1].name],
+      // we could use the third metric as the bubble, but it could break existing charts
+      // since scatter.bubble doesn't have persistDefault set like graph.dimensions and graph.metrics
+      bubble: null,
     };
-  } else {
+  } else if (metrics.length === 1 && xAxisDimension) {
     return {
-      dimensions: [null],
-      metrics: [null],
+      dimensions: colorDimension
+        ? [xAxisDimension, colorDimension]
+        : [xAxisDimension],
+      metrics: [metrics[0].name],
       bubble: null,
     };
   }
+  return {
+    dimensions: [null],
+    metrics: [null],
+    bubble: null,
+  };
 }
 
 /**

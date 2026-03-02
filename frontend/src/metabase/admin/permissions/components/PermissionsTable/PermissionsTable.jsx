@@ -107,7 +107,7 @@ export function PermissionsTable({
               <span className={cx(CS.flex, CS.alignCenter)}>
                 <Ellipsified>{entity.name}</Ellipsified>
                 {typeof entity.hint === "string" && (
-                  <Tooltip tooltip={entity.hint}>
+                  <Tooltip label={entity.hint}>
                     <HintIcon />
                   </Tooltip>
                 )}

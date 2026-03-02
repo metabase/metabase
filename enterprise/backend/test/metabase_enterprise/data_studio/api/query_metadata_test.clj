@@ -8,7 +8,7 @@
    [metabase.util :as u]))
 
 (deftest table-query-metadata-collection-permissions-test
-  (mt/with-premium-features #{:data-studio}
+  (mt/with-premium-features #{:library}
     (testing "GET /api/table/:id/query_metadata"
       (testing "Published tables in collections should be accessible with collection read permission (no data permissions)"
         (mt/with-temp [:model/Collection coll     {}
@@ -61,9 +61,28 @@
                 (is (some? response))
                 (is (= (u/the-id table) (:id response)))))))))))
 
+(deftest table-card-query-metadata-published-table-collection-perms-test
+  (mt/with-premium-features #{:library}
+    (testing "GET /api/table/card__:id/query_metadata"
+      (testing "Should include Field metadata for published tables accessible via collection permissions"
+        (mt/with-temp [:model/Collection table-coll {}
+                       :model/Table table {:is_published true :collection_id (u/the-id table-coll)}
+                       :model/Field field {:table_id (u/the-id table) :name "test-field"}
+                       :model/Card card {:dataset_query {:database (mt/id)
+                                                         :type :query
+                                                         :query {:source-table (u/the-id table)}}
+                                         :result_metadata [{:id (u/the-id field) :name "test-field"}]}
+                       :model/PermissionsGroup custom-group {}
+                       :model/PermissionsGroupMembership _ {:user_id (mt/user->id :rasta)
+                                                            :group_id (u/the-id custom-group)}]
+          (data-perms/set-database-permission! custom-group (mt/id) :perms/view-data :blocked)
+          (perms/grant-collection-read-permissions! custom-group (u/the-id table-coll))
+          (is (=? {:fields [{:id (u/the-id field) :name "test-field"}]}
+                  (mt/user-http-request :rasta :get 200 (format "table/card__%d/query_metadata" (u/the-id card))))))))))
+
 (deftest card-query-metadata-published-table-collection-perms-test
-  (testing "GET /api/card/:id/query_metadata should include published tables accessible via collection permissions"
-    (mt/with-premium-features #{:data-studio}
+  (testing "GET /api/card/:id/query_metadata should include published tables that are queryable"
+    (mt/with-premium-features #{:library}
       (mt/with-temp [:model/Collection table-coll {}
                      :model/Database db {}
                      :model/Table table {:db_id (u/the-id db) :is_published true :collection_id (u/the-id table-coll)}
@@ -76,7 +95,7 @@
                      :model/PermissionsGroup {group-id :id} {}
                      :model/PermissionsGroupMembership _ {:user_id (mt/user->id :rasta) :group_id group-id}]
         (mt/with-no-data-perms-for-all-users!
-          (data-perms/set-database-permission! group-id db :perms/view-data :blocked)
+          (data-perms/set-database-permission! group-id db :perms/view-data :unrestricted)
           (data-perms/set-database-permission! group-id db :perms/create-queries :no)
           (perms/grant-collection-read-permissions! group-id (u/the-id table-coll))
           (perms/grant-collection-read-permissions! group-id (u/the-id card-coll))
@@ -89,7 +108,7 @@
 
 (deftest dashboard-query-metadata-published-table-collection-perms-test
   (testing "GET /api/dashboard/:id/query_metadata should include published tables accessible via collection permissions"
-    (mt/with-premium-features #{:data-studio}
+    (mt/with-premium-features #{:library}
       (mt/with-temp [:model/Collection table-coll {}
                      :model/Database db {}
                      :model/Table table {:db_id (u/the-id db) :is_published true :collection_id (u/the-id table-coll)}
@@ -104,7 +123,7 @@
                      :model/PermissionsGroup {group-id :id} {}
                      :model/PermissionsGroupMembership _ {:user_id (mt/user->id :rasta) :group_id group-id}]
         (mt/with-no-data-perms-for-all-users!
-          (data-perms/set-database-permission! group-id db :perms/view-data :blocked)
+          (data-perms/set-database-permission! group-id db :perms/view-data :unrestricted)
           (data-perms/set-database-permission! group-id db :perms/create-queries :no)
           (perms/grant-collection-read-permissions! group-id (u/the-id table-coll))
           (perms/grant-collection-read-permissions! group-id (u/the-id card-coll))
@@ -118,7 +137,7 @@
 (deftest automagic-dashboards-query-metadata-published-table-collection-perms-test
   (testing "GET /api/automagic-dashboards/:entity/:entity-id-or-query/query_metadata"
     (testing "Should include published tables accessible via collection permissions"
-      (mt/with-premium-features #{:data-studio}
+      (mt/with-premium-features #{:library}
         (mt/with-temp [:model/Collection table-coll {}
                        :model/Table table {:is_published true :collection_id (u/the-id table-coll)}
                        :model/PermissionsGroup custom-group {}

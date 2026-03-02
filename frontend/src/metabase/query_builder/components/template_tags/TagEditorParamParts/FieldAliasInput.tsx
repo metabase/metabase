@@ -33,7 +33,7 @@ export function FieldAliasInput({ tag, onChange }: FieldAliasInputProps) {
       <ContainerLabel>
         <Group gap="xs">
           {t`Table and field alias`}
-          <FieldAlisHelpInfo />
+          <FieldAliasHelpInfo />
         </Group>
       </ContainerLabel>
       <TextInputBlurChange
@@ -46,7 +46,7 @@ export function FieldAliasInput({ tag, onChange }: FieldAliasInputProps) {
   );
 }
 
-function FieldAlisHelpInfo() {
+function FieldAliasHelpInfo() {
   return (
     <HoverCard>
       <HoverCard.Target>

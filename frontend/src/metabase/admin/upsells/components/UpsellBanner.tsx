@@ -14,6 +14,7 @@ import {
 
 import { UPGRADE_URL } from "../constants";
 
+import { useUpgradeAction } from "./UpgradeModal";
 import S from "./UpsellBanner.module.css";
 import {
   type DismissibleProps,
@@ -23,7 +24,6 @@ import { UpsellCta } from "./UpsellCta";
 import { UpsellGem } from "./UpsellGem";
 import { UpsellWrapper } from "./UpsellWrapper";
 import { trackUpsellClicked, trackUpsellViewed } from "./analytics";
-import { useUpsellLink } from "./use-upsell-link";
 
 type CardLinkProps =
   | {
@@ -50,7 +50,7 @@ export type UpsellBannerProps =
   | (UpsellBannerPropsBase & CardLinkProps)
   | (UpsellBannerPropsBase & CardLinkProps & DismissibleProps);
 
-export const _UpsellBanner: React.FC<UpsellBannerProps> = ({
+export const UpsellBannerInner: React.FC<UpsellBannerProps> = ({
   title,
   buttonText,
   buttonLink,
@@ -62,7 +62,7 @@ export const _UpsellBanner: React.FC<UpsellBannerProps> = ({
   onClick,
   ...props
 }: UpsellBannerProps) => {
-  const urlWithParams = useUpsellLink({
+  const { onClick: upgradeOnClick, url: upgradeUrl } = useUpgradeAction({
     url: buttonLink ?? UPGRADE_URL,
     campaign,
     location,
@@ -77,6 +77,9 @@ export const _UpsellBanner: React.FC<UpsellBannerProps> = ({
       ? props
       : { dismissible: false, onDismiss: () => {} };
   const gemSize = large ? 24 : undefined;
+
+  // Use onClick if provided, otherwise use upgrade action
+  const handleClick = onClick ?? upgradeOnClick;
 
   return (
     <Box
@@ -100,8 +103,8 @@ export const _UpsellBanner: React.FC<UpsellBannerProps> = ({
 
       <Flex align="center" gap="md">
         <UpsellCta
-          onClick={onClick}
-          url={buttonLink ? urlWithParams : undefined}
+          onClick={handleClick}
+          url={upgradeUrl}
           internalLink={internalLink}
           buttonText={buttonText}
           onClickCapture={() => trackUpsellClicked({ location, campaign })}
@@ -124,5 +127,5 @@ export const _UpsellBanner: React.FC<UpsellBannerProps> = ({
 };
 
 export const UpsellBanner = UpsellWrapperDismissible(
-  UpsellWrapper(_UpsellBanner),
+  UpsellWrapper(UpsellBannerInner),
 );

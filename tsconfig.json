@@ -2,7 +2,7 @@
   "extends": "./tsconfig.base.json",
   "compilerOptions": {
     "incremental": true,
-    "tsBuildInfoFile": ".tsbuildinfo",
+    "tsBuildInfoFile": "node_modules/.cache/.tsbuildinfo",
     "outDir": "build",
     "paths": {
       "*": [
@@ -36,7 +36,7 @@
     // The following files will load `frontend/src/metabase/app` which will conflict with
     // `frontend/src/metabase/App.tsx`, since now we're loading both JS and TS files.
     "frontend/src/metabase/app-main.js",
-    "frontend/src/metabase/app-public.js",
-    "frontend/src/metabase/app-embed.js"
+    "frontend/src/metabase/app-public.ts",
+    "frontend/src/metabase/app-embed.ts"
   ]
 }

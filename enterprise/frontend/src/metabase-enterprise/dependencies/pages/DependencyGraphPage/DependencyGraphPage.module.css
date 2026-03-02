@@ -1,6 +1,5 @@
-.ProfileLink {
-  position: absolute;
-  top: 1.25rem;
-  right: 3.5rem;
+.appSwitcher {
+  margin-left: auto;
+  margin-right: 2.5rem;
   background-color: var(--mb-color-background-secondary);
 }

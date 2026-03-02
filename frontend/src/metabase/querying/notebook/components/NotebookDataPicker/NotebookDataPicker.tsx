@@ -2,22 +2,21 @@ import { useMemo, useState } from "react";
 import { useLatest } from "react-use";
 import { t } from "ttag";
 
-import type { CollectionPickerItem } from "metabase/common/components/Pickers/CollectionPicker";
+import type { OmniPickerItem } from "metabase/common/components/Pickers";
 import {
-  type DataPickerItem,
   DataPickerModal,
-  createShouldShowItem,
   getDataPickerValue,
+  shouldDisableItemNotInDb,
 } from "metabase/common/components/Pickers/DataPicker";
 import { MiniPicker } from "metabase/common/components/Pickers/MiniPicker";
 import type {
   MiniPickerItem,
   MiniPickerPickableItem,
 } from "metabase/common/components/Pickers/MiniPicker/types";
+import { isEmbedding } from "metabase/embedding/config";
 import { useDispatch, useSelector, useStore } from "metabase/lib/redux";
 import type { QueryEditorDatabasePickerItem } from "metabase/querying/editor/types";
 import { loadCard, loadMetadataForTable } from "metabase/questions/actions";
-import { getIsEmbedding } from "metabase/selectors/embed";
 import { getMetadata } from "metabase/selectors/metadata";
 import { getIsTenantUser } from "metabase/selectors/user";
 import { Icon, TextInput } from "metabase/ui";
@@ -26,7 +25,7 @@ import {
   getQuestionIdFromVirtualTableId,
   getQuestionVirtualTableId,
 } from "metabase-lib/v1/metadata/utils/saved-questions";
-import type { RecentCollectionItem, TableId } from "metabase-types/api";
+import type { TableId } from "metabase-types/api";
 
 import {
   type NotebookContextType,
@@ -52,9 +51,7 @@ export interface NotebookDataPickerProps {
     table: Lib.TableMetadata | Lib.CardMetadata,
     metadataProvider: Lib.MetadataProvider,
   ) => void;
-  shouldDisableItem?: (
-    item: DataPickerItem | CollectionPickerItem | RecentCollectionItem,
-  ) => boolean;
+  shouldDisableItem?: (item: OmniPickerItem) => boolean;
   shouldDisableDatabase?: (item: QueryEditorDatabasePickerItem) => boolean;
   columnPicker: React.ReactNode;
   shouldShowLibrary?: boolean;
@@ -80,7 +77,7 @@ export function NotebookDataPicker({
   const store = useStore();
   const dispatch = useDispatch();
   const onChangeRef = useLatest(onChange);
-  const isEmbedding = useSelector(getIsEmbedding);
+  const isEmbed = isEmbedding();
   const isTenantUser = useSelector(getIsTenantUser);
 
   const handleChange = async (tableId: TableId) => {
@@ -107,7 +104,7 @@ export function NotebookDataPicker({
 
   // EMB-1144: force the embedding picker if user is a tenant user.
   //           this is to support the sidecar use-case where tenant users are given instance logins.
-  if (isEmbedding || isTenantUser) {
+  if (isEmbed || isTenantUser) {
     const canSelectTableColumns = table && isRaw && !isDisabled;
     return (
       <NotebookCellItem
@@ -164,9 +161,7 @@ type ModernDataPickerProps = {
   hasMetrics: boolean;
   isDisabled: boolean;
   onChange: (tableId: TableId) => void;
-  shouldDisableItem?: (
-    item: DataPickerItem | CollectionPickerItem | RecentCollectionItem,
-  ) => boolean;
+  shouldDisableItem?: (item: OmniPickerItem) => boolean;
   shouldDisableDatabase?: (database: QueryEditorDatabasePickerItem) => boolean;
   shouldShowLibrary?: boolean;
 };
@@ -198,28 +193,35 @@ function ModernDataPicker({
   const [focusPicker, setFocusPicker] = useState(false);
 
   const shouldHide = useMemo(() => {
-    const shouldShow = !canChangeDatabase
-      ? createShouldShowItem(modelList, databaseId)
-      : () => true;
+    const shouldDisableBasedOnDb = !canChangeDatabase
+      ? shouldDisableItemNotInDb(databaseId)
+      : () => false;
 
-    return (
-      item: MiniPickerItem | QueryEditorDatabasePickerItem | unknown,
-    ): item is MiniPickerPickableItem => {
+    return (item: MiniPickerItem | unknown): item is MiniPickerPickableItem => {
+      // FIXME: eww gross need to normalize db ids in minipicker
+      // @ts-expect-error - will fix when we align types with minipicker: UXW-2735
+      const dbId = item?.db_id ?? item?.database_id ?? item?.dbId ?? undefined;
+
       return Boolean(
-        !shouldShow(item as DataPickerItem) ||
-          shouldDisableItem?.(item as DataPickerItem) ||
+        // @ts-expect-error - Please fix 🥺
+        shouldDisableBasedOnDb({ ...item, database_id: dbId }) ||
+          shouldDisableItem?.(item as OmniPickerItem) ||
           (isObjectWithModel(item) &&
             item.model === "database" &&
             shouldDisableDatabase?.(item as QueryEditorDatabasePickerItem)),
       );
     };
-  }, [
-    databaseId,
-    canChangeDatabase,
-    modelList,
-    shouldDisableItem,
-    shouldDisableDatabase,
-  ]);
+  }, [databaseId, canChangeDatabase, shouldDisableItem, shouldDisableDatabase]);
+
+  // when you can't change databases, let's default to
+  // selecting that database in the picker
+  const defaultDbValue =
+    canChangeDatabase || !databaseId
+      ? undefined
+      : {
+          id: databaseId,
+          model: "database" as const,
+        };
 
   return (
     <>
@@ -227,7 +229,8 @@ function ModernDataPicker({
         value={tableValue}
         opened={isOpened && !isBrowsing}
         onClose={() => setIsOpened(false)}
-        models={modelList}
+        // minipicker doesn't support picking a database
+        models={modelList.filter((model) => model !== "database")}
         searchQuery={dataSourceSearchQuery}
         onBrowseAll={() => setIsBrowsing(true)}
         trapFocus={focusPicker}
@@ -246,12 +249,10 @@ function ModernDataPicker({
       {isOpened && isBrowsing && (
         <DataPickerModal
           title={title}
-          value={tableValue}
-          databaseId={canChangeDatabase ? undefined : databaseId}
+          value={tableValue ?? defaultDbValue}
+          onlyDatabaseId={canChangeDatabase ? undefined : databaseId}
           models={modelList}
-          onChange={(i) => {
-            onChange(i);
-          }}
+          onChange={onChange}
           onClose={() => {
             setIsBrowsing(false);
             setIsOpened(false);
@@ -264,6 +265,7 @@ function ModernDataPicker({
                   shouldDisableDatabase?.(i)),
             );
           }}
+          // searchQuery={dataSourceSearchQuery} ?
         />
       )}
       {isOpened || !table ? (

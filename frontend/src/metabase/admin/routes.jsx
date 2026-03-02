@@ -37,14 +37,15 @@ import {
 } from "metabase/admin/tools/components/ModelCacheRefreshJobs";
 import { EmbeddingHubAdminSettingsPage } from "metabase/embedding/embedding-hub";
 import { ModalRoute } from "metabase/hoc/ModalRoute";
+import { getAdminRoutes as getMetabotAdminRoutes } from "metabase/metabot/components/MetabotAdmin/MetabotAdminPage";
 import { DataModelV1 } from "metabase/metadata/pages/DataModelV1";
 import {
   PLUGIN_ADMIN_TOOLS,
   PLUGIN_ADMIN_USER_MENU_ROUTES,
+  PLUGIN_ADVANCED_PERMISSIONS,
   PLUGIN_CACHING,
   PLUGIN_DB_ROUTING,
   PLUGIN_DEPENDENCIES,
-  PLUGIN_METABOT,
   PLUGIN_SUPPORT,
   PLUGIN_TENANTS,
 } from "metabase/plugins";
@@ -83,6 +84,7 @@ export const getRoutes = (store, CanAccessSettings, IsAdmin) => {
             <Route path="create" component={DatabasePage} />
           </Route>
           <Route path=":databaseId/edit" component={DatabasePage} />
+          {PLUGIN_ADVANCED_PERMISSIONS.getWritableConnectionInfoRoutes(IsAdmin)}
           <Route path=":databaseId" component={DatabaseEditApp}>
             {PLUGIN_DB_ROUTING.getDestinationDatabaseRoutes(IsAdmin)}
           </Route>
@@ -262,7 +264,12 @@ export const getRoutes = (store, CanAccessSettings, IsAdmin) => {
             />
           </Route>
         </Route>
-        {PLUGIN_METABOT.getAdminRoutes()}
+
+        {/* Metabot */}
+        <Route path="metabot" component={createAdminRouteGuard("metabot")}>
+          {getMetabotAdminRoutes()}
+        </Route>
+
         <Route path="tools" component={createAdminRouteGuard("tools")}>
           <Route title={t`Tools`} component={ToolsApp}>
             <IndexRedirect to="help" />

@@ -27,10 +27,7 @@ describe("scenarios > data studio > library > metrics", () => {
     H.DataStudio.Metrics.saveButton().should("be.disabled");
 
     H.miniPickerBrowseAll().click();
-    H.entityPickerModal().within(() => {
-      cy.findByText("Databases").click();
-      cy.findByText("Orders").click();
-    });
+    H.pickEntity({ path: ["Databases", /Sample Database/, "Orders"] });
 
     H.getNotebookStep("summarize")
       .findByText("Pick a column to group by")
@@ -286,7 +283,6 @@ describe("scenarios > data studio > library > metrics", () => {
       .should("have.value", "Trusted Orders Metric - Duplicate");
     H.modal().findByTestId("dashboard-and-collection-picker-button").click();
 
-    H.entityPickerModalTab("Collections").click();
     H.entityPickerModal().within(() => {
       cy.findByText("Our analytics").click();
       cy.findByText("Library").click();
@@ -331,8 +327,7 @@ describe("scenarios > data studio > library > metrics", () => {
     H.popover().findByText("Move").click();
 
     cy.log("Select First collection as destination");
-    H.entityPickerModal().findByText("First collection").click();
-    H.entityPickerModal().button("Move").click();
+    H.pickEntity({ path: ["Our analytics", "First collection"], select: true });
 
     cy.wait("@updateCard");
 

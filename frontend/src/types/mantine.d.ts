@@ -20,6 +20,8 @@ declare module "@mantine/core" {
     colorScheme: "light" | "dark";
     updateColorSettings: (settings: ColorSettings) => void;
   }
+
+  // eslint-disable-next-line @typescript-eslint/no-empty-object-type -- module augment
   export interface MantineTheme extends _EmotionCompatibilityTheme {}
 
   export interface MantineThemeColorsOverride {

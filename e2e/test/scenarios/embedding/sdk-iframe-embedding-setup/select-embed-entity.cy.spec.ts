@@ -63,6 +63,7 @@ describe(suiteTitle, () => {
   });
 
   it("tracks event details with `isDefaultResource=false` when selecting a different dashboard", () => {
+    cy.intercept("GET", "api/preview_embed/dashboard/*").as("previewEmbed");
     cy.log("add two dashboards to activity log");
 
     H.createDashboard({ name: SECOND_DASHBOARD_NAME }).then(
@@ -98,6 +99,15 @@ describe(suiteTitle, () => {
     cy.wait("@dashboard");
     H.getSimpleEmbedIframeContent().within(() => {
       cy.findByText(SECOND_DASHBOARD_NAME).should("be.visible");
+    });
+
+    cy.log(
+      'Embed preview requests should not have "X-Metabase-Client" header (EMB-945)',
+    );
+    cy.wait("@previewEmbed").then(({ request }) => {
+      expect(request?.headers?.["x-metabase-embedded-preview"]).to.equal(
+        "true",
+      );
     });
 
     getEmbedSidebar().findByText("Next").click();
@@ -164,7 +174,7 @@ describe(suiteTitle, () => {
 
     H.entityPickerModal().within(() => {
       cy.findByText("Select a dashboard").should("be.visible");
-      cy.findByText("Dashboards").click();
+      cy.findByText("Our analytics").click();
       cy.findByText(SECOND_DASHBOARD_NAME).click();
     });
 
@@ -194,7 +204,7 @@ describe(suiteTitle, () => {
 
     H.entityPickerModal().within(() => {
       cy.findByText("Select a chart").should("be.visible");
-      cy.findByText("Questions").click();
+      cy.findByText("Our analytics").click();
       cy.findByText(FIRST_QUESTION_NAME).click();
     });
 

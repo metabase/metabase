@@ -11,7 +11,7 @@ redirect_from:
 
 Application settings are useful for granting groups access to some, but not all, of Metabase's administrative features.
 
-To set application permissions, got to the top right of the screen and click on the **gear** icon > **Admin settings** > **Permissions** > **Application**.
+To set application permissions, got to the top right of the screen and click the **grid** icon > **Admin** > **Permissions** > **Application**.
 
 ## Settings access
 
@@ -21,7 +21,6 @@ Settings access defines which groups can view and edit the settings under the Ad
 - [Email](../configuring-metabase/email.md)
 - [Slack](../configuring-metabase/slack.md)
 - [Webhooks](../configuring-metabase/webhooks.md)
-- [Authentication](../people-and-groups/start.md)
 - [Maps](../configuring-metabase/custom-maps.md)
 - [Localization](../configuring-metabase/localization.md)
 - [Appearance](../configuring-metabase/appearance.md)

@@ -111,13 +111,13 @@ describe("Onboarding", () => {
     expect(getItem("sql")).toHaveAttribute("data-active", "true");
   });
 
-  it("should scroll the last remembered item into view on page load", () => {
+  it("should scroll the last remembered item into view on page load", async () => {
     setup({ openItem: "sql" });
 
     expect(scrollIntoViewMock).toHaveBeenCalledTimes(1);
 
     // closing the item should not trigger `scrollIntoView` again
-    userEvent.click(getItemControl("Query with SQL"));
+    await userEvent.click(getItemControl("Query with SQL"));
     expect(scrollIntoViewMock).toHaveBeenCalledTimes(1);
   });
 

@@ -27,6 +27,9 @@ export interface MetabotContext {
   registerChatContextProvider: (
     fn: ChatContextProviderFn,
   ) => DeregisterChatContextProviderFn;
+
+  suggestionActions: unknown;
+  setSuggestionActions: (actions: unknown) => void;
 }
 
 export const useMetabotContext = () => {

@@ -204,7 +204,7 @@
         (appdb.scoring-test/with-index-contents
           [{:model "card"      :id c1 :name "test card recent"}
            {:model "card"      :id c2 :name "test card unseen"}
-           {:model "transform" :id t1 :name "test transform"}]
+           {:model "transform" :id t1 :name "test transform" :source_type "mbql"}]
           (testing "Transforms get a hardcoded 1-day recency (between recently viewed card and never viewed card)"
             (is (= [["card"      c1 "test card recent"]
                     ["transform" t1 "test transform"]

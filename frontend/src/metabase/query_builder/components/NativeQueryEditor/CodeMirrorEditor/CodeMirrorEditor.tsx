@@ -14,6 +14,7 @@ import {
   CodeMirror,
   type CodeMirrorRef,
 } from "metabase/common/components/CodeMirror";
+import { useSetting } from "metabase/common/hooks";
 import { isEventOverElement } from "metabase/lib/dom";
 import * as Lib from "metabase-lib";
 import type { CardId } from "metabase-types/api";
@@ -57,7 +58,7 @@ export const CodeMirrorEditor = forwardRef<
     query,
     proposedQuery,
     highlightedLineNumbers,
-    placeholder = getPlaceholderText(Lib.engine(query)),
+    placeholder: placeholderProp,
     readOnly,
     extensions: customExtensions,
     onChange,
@@ -71,6 +72,10 @@ export const CodeMirrorEditor = forwardRef<
   ref,
 ) {
   const editorRef = useRef<CodeMirrorRef>(null);
+  const llmSqlGenerationEnabled = useSetting("llm-sql-generation-enabled");
+  const placeholder =
+    placeholderProp ??
+    getPlaceholderText(Lib.engine(query), llmSqlGenerationEnabled);
   const baseExtensions = useExtensions({
     query,
     diff: !!proposedQuery,

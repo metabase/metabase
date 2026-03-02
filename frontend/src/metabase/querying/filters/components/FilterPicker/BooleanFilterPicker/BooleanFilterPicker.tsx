@@ -1,11 +1,11 @@
 import type { FormEvent } from "react";
 import { useMemo } from "react";
 
-import { BooleanPicker } from "metabase/querying/filters/components/BooleanPicker";
+import { BooleanPicker } from "metabase/querying/common/components/BooleanPicker";
+import { useBooleanFilter } from "metabase/querying/filters/hooks/use-boolean-filter";
 import { Box } from "metabase/ui";
 import * as Lib from "metabase-lib";
 
-import { useBooleanFilter } from "../../../hooks/use-boolean-filter";
 import { FilterPickerFooter } from "../FilterPickerFooter";
 import { FilterPickerHeader } from "../FilterPickerHeader";
 import { WIDTH } from "../constants";

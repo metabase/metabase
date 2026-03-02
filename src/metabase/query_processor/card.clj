@@ -205,7 +205,7 @@
   [{parameter-name :name, :keys [target]}]
   (or
    parameter-name
-   (lib.util.match/match-one target
+   (lib.util.match/match-lite target
      [:template-tag tag-name]
      (name tag-name))))
 

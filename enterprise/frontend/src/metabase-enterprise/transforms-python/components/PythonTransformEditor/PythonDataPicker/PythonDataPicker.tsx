@@ -23,6 +23,7 @@ import {
 
 type PythonDataPickerProps = {
   database?: DatabaseId;
+  disabled?: boolean;
   tables: PythonTransformTableAliases;
   readOnly?: boolean;
   onChange: (
@@ -34,6 +35,7 @@ type PythonDataPickerProps = {
 
 export function PythonDataPicker({
   database,
+  disabled,
   tables,
   readOnly,
   onChange,
@@ -118,31 +120,35 @@ export function PythonDataPicker({
       className={S.dataPicker}
       data-testid="python-data-picker"
     >
-      <Box>
-        <Text fw="bold">{t`Pick tables and alias them`}</Text>
-        <Text size="sm" c="text-tertiary" mb="sm">
-          {t`Select tables to use as data sources and provide aliases that can be referenced in your Python script.`}
-        </Text>
-        <Stack gap="md">
-          {tableSelections.map((selection, index) => (
-            <SelectionInput
-              key={index}
-              selection={selection}
-              database={database}
-              tables={tables}
-              usedAliases={usedAliases}
-              availableTables={availableTables}
-              onChange={(selection) => handleSelectionChange(index, selection)}
-              onRemove={() => handleRemoveTable(index)}
-              disabled={isLoadingTables || readOnly}
+      {database && (
+        <Box>
+          <Text fw="bold">{t`Pick tables and alias them`}</Text>
+          <Text size="sm" c="text-tertiary" mb="sm">
+            {t`Select tables to use as data sources and provide aliases that can be referenced in your Python script.`}
+          </Text>
+          <Stack gap="md">
+            {tableSelections.map((selection, index) => (
+              <SelectionInput
+                key={index}
+                selection={selection}
+                database={database}
+                tables={tables}
+                usedAliases={usedAliases}
+                availableTables={availableTables}
+                onChange={(selection) =>
+                  handleSelectionChange(index, selection)
+                }
+                onRemove={() => handleRemoveTable(index)}
+                disabled={disabled || isLoadingTables || readOnly}
+              />
+            ))}
+            <AddTableButton
+              onClick={handleAddTable}
+              disabled={availableTables.length === 0 || readOnly}
             />
-          ))}
-          <AddTableButton
-            onClick={handleAddTable}
-            disabled={availableTables.length === 0 || readOnly}
-          />
-        </Stack>
-      </Box>
+          </Stack>
+        </Box>
+      )}
     </Stack>
   );
 }

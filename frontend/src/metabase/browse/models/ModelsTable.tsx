@@ -21,7 +21,7 @@ import { getIcon } from "metabase/lib/icon";
 import { useDispatch } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { FixedSizeIcon, Flex, Icon, Repeat, Skeleton } from "metabase/ui";
-import { SortDirection, type SortingOptions } from "metabase-types/api/sorting";
+import type { SortingOptions } from "metabase-types/api";
 
 import {
   Cell,
@@ -55,7 +55,7 @@ const collectionProps: ResponsiveProps = {
 
 const DEFAULT_SORTING_OPTIONS: SortingOptions<SortColumn> = {
   sort_column: "collection",
-  sort_direction: SortDirection.Asc,
+  sort_direction: "asc",
 };
 
 export const ModelsTable = ({

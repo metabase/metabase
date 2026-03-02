@@ -92,7 +92,7 @@
 (defmulti ^:private gen-filter-clause
   {:arglists '([column operator])}
   (fn [_column operator]
-    (:short operator)))
+    operator))
 
 ;; Binary operators like :<
 (doseq [[op f] [[:<  lib/<]
@@ -127,9 +127,6 @@
                 [:not-null  lib/not-null]]]
   (defmethod gen-filter-clause op [column _op]
     (f column)))
-
-(defn- skipped-operator? [op]
-  (#{:inside} (:short op)))
 
 (defn- units-from [min-unit]
   (drop-while #(not= % min-unit) lib.schema.temporal-bucketing/ordered-datetime-truncation-units))
@@ -252,10 +249,26 @@
   ;; TODO: There's actually no difference right now. Clean this up?
   (gen-filter:date column))
 
+(defn- operators-for-column
+  "Returns a list of operators for the given column, based on its type."
+  [column]
+  (cond
+    (lib.types.isa/boolean? column)
+    [:= :is-null :not-null]
+
+    (lib.types.isa/numeric? column)
+    [:= :!= :> :< :between :>= :<= :is-null :not-null]
+
+    (lib.types.isa/string-or-string-like? column)
+    [:= :!= :contains :does-not-contain :starts-with :ends-with :is-empty :not-empty]
+
+    :else
+    [:is-null :not-null]))
+
 (defn- gen-filter:generic [column]
-  (when-let [operator (some->> (:operators column)
-                               (remove skipped-operator?)
-                               tu.rng/rand-nth)]
+  (when-let [operator (some-> (operators-for-column column)
+                              seq
+                              tu.rng/rand-nth)]
     (gen-filter-clause column operator)))
 
 (defn- gen-filter:inside [col1 col2]
@@ -290,9 +303,9 @@
        :else
        (let [result (gen-filter:generic column)]
          ;; Sometimes we pick a column with no filter operators, and result is nil. Recur in that case to roll again.
-         (if (= result ::no-operators)
+         (if (nil? result)
            (if (>= recursion-depth 20)
-             (throw (ex-info "Deep recusion in gen-filter* - no filterable columns, or none with valid :operators?"
+             (throw (ex-info "Deep recursion in gen-filter* - no filterable columns, or none with valid operators?"
                              {:filterable-columns *filterable-columns*}))
              (recur (inc recursion-depth)))
            result))))))

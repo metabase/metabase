@@ -27,8 +27,8 @@ describe(
       H.activateToken("bleeding-edge");
       H.resyncDatabase({ dbId: WRITABLE_DB_ID, tableName: SOURCE_TABLE });
 
-      cy.intercept("POST", "/api/ee/transform").as("createTransform");
-      cy.intercept("POST", "/api/ee/transform/*/run").as("runTransform");
+      cy.intercept("POST", "/api/transform").as("createTransform");
+      cy.intercept("POST", "/api/transform/*/run").as("runTransform");
     });
 
     describe("permission editor UI", () => {
@@ -241,7 +241,7 @@ describe(
           H.DataStudio.Transforms.header()
             .findByDisplayValue("Read Only Transform")
             .should("be.disabled");
-          H.DataStudio.Transforms.editDefinition().should("not.exist");
+          H.DataStudio.Transforms.editDefinitionButton().should("not.exist");
         });
       });
     });
@@ -283,7 +283,7 @@ describe(
           (tableId) => {
             cy.request({
               method: "POST",
-              url: "/api/ee/transform",
+              url: "/api/transform",
               failOnStatusCode: false,
               body: {
                 name: "Unauthorized Transform",
@@ -321,7 +321,7 @@ describe(
 
           cy.request({
             method: "POST",
-            url: `/api/ee/transform/${transform.id}/run`,
+            url: `/api/transform/${transform.id}/run`,
             failOnStatusCode: false,
           }).then((response) => {
             expect(response.status).to.eq(403);

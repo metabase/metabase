@@ -115,6 +115,7 @@ describe("MiniPicker", () => {
         value: {
           model: "table",
           id: 4,
+          // @ts-expect-error - needed to make compatible with minipicker and entity picker
           db_id: 1,
           schema: "pokemon",
           name: "cards",
@@ -194,7 +195,6 @@ describe("MiniPicker", () => {
         value: {
           id: 202,
           model: "card",
-          name: "Rosings",
           database_id: 1,
         },
       });

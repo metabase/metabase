@@ -8,6 +8,7 @@ import type {
   DatabaseLocalSettingAvailability,
   Database as DatabaseType,
   TableId,
+  Transform,
 } from "metabase-types/api";
 
 const getDefaultPluginDbRouting = () => ({
@@ -52,6 +53,30 @@ const getDefaultPluginTableEditing = () => ({
 
 export const PLUGIN_TABLE_EDITING = getDefaultPluginTableEditing();
 
+export type WorkspacesSectionProps = {
+  showLabel: boolean;
+};
+
+export type EditTransformMenuProps = {
+  transform: Transform;
+};
+
+const getDefaultPluginWorkspaces = () => ({
+  isEnabled: false,
+  AdminDatabaseWorkspacesSection: PluginPlaceholder as ComponentType<{
+    database: DatabaseType;
+    settingsAvailable?: Record<string, DatabaseLocalSettingAvailability>;
+    updateDatabase: (
+      database: { id: DatabaseId } & Partial<DatabaseData>,
+    ) => Promise<void>;
+  }>,
+  WorkspacesSection: PluginPlaceholder as ComponentType<WorkspacesSectionProps>,
+  getDataStudioWorkspaceRoutes: () => null as React.ReactElement | null,
+  EditTransformMenu: PluginPlaceholder as ComponentType<EditTransformMenuProps>,
+});
+
+export const PLUGIN_WORKSPACES = getDefaultPluginWorkspaces();
+
 /**
  * @internal Do not call directly. Use the main reinitialize function from metabase/plugins instead.
  */
@@ -62,4 +87,5 @@ export function reinitialize() {
     getDefaultPluginDatabaseReplication(),
   );
   Object.assign(PLUGIN_TABLE_EDITING, getDefaultPluginTableEditing());
+  Object.assign(PLUGIN_WORKSPACES, getDefaultPluginWorkspaces());
 }

@@ -78,6 +78,11 @@ function shouldInvalidateForCollection(
     return true;
   }
 
+  // Also invalidate for snippets namespace collections
+  if (newCollection.namespace === "snippets") {
+    return true;
+  }
+
   return false;
 }
 

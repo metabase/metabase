@@ -28,7 +28,7 @@ export const FileInput = forwardRef(function FileInput(
     (event: ChangeEvent<HTMLInputElement>) => {
       const { files } = event.target;
       setHasValue(files != null && files?.length > 0);
-      onChange && onChange(event);
+      onChange?.(event);
     },
     [onChange],
   );

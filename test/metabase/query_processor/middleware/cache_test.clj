@@ -44,7 +44,6 @@
 #_{:clj-kondo/ignore [:metabase/validate-deftest]}
 (use-fixtures :once (fn [thunk]
                       (initialize/initialize-if-needed! :db)
-                      (metabase.cache.core/enable-query-caching! true)
                       (thunk)))
 
 (def ^:private ^:dynamic *save-chan*
@@ -184,11 +183,7 @@
                                          nil              false}]
         (testing (format "cache strategy = %s" (pr-str cache-strategy))
           (is (= expected
-                 (boolean (#'cache/is-cacheable? {:cache-strategy cache-strategy}))))))
-      (testing "but enable-query-caching setting is still respected"
-        (mt/with-temporary-setting-values [enable-query-caching false]
-          (is (= false
-                 (boolean (#'cache/is-cacheable? {:cache-strategy (ttl-strategy)})))))))))
+                 (boolean (#'cache/is-cacheable? {:cache-strategy cache-strategy})))))))))
 
 (deftest empty-cache-test
   (testing "if there's nothing in the cache, cached results should *not* be returned"

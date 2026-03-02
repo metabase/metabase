@@ -7,6 +7,7 @@ import CS from "metabase/css/core/index.css";
 
 import S from "./NewModelOption.module.css";
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default class NewModelOption extends Component {
   state = {
     hover: false,

@@ -1,7 +1,7 @@
 .Container {
   /*
   Because this variable is defined dynamically in `PreviewPane.tsx`, we need to define
-  this variable here otherwise `yarn find-never-defined-css-variables` would fail.
+  this variable here otherwise `bun run find-never-defined-css-variables` would fail.
   */
   --background-url: ;
 

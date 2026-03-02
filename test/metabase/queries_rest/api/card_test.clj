@@ -304,8 +304,8 @@
     (let [;; any strings will work here (must be shorter than 254 chars), but these are semi-relaistic:
           client-string (mt/random-name)
           version-string (str "1." (rand-int 1000) "." (rand-int 1000))]
-      (mt/with-temp [:model/Database {database-id :id} {}
-                     :model/Card card-1 {:name "Card 1" :database_id database-id}]
+      (mt/with-temp [:model/Card card-1 {:name "Card 1"
+                                         :dataset_query (mt/mbql-query venues {:limit 1})}]
         (mt/with-premium-features #{:audit-app}
           (mt/user-http-request :crowberto :post 202 (str "card/" (u/the-id card-1) "/query")
                                 {:request-options {:headers {"x-metabase-client" client-string
@@ -705,7 +705,7 @@
   (testing "Make sure generated docstring resolves Malli schemas in the registry correctly (#46799)"
     (let [openapi-object         (open-api/open-api-spec (api.macros/ns-handler 'metabase.queries-rest.api.card) "/api/card")
           schemas                (get-in openapi-object [:components :schemas])
-          body-properties        (get-in openapi-object [:paths "/api/card/" :post :requestBody :content "application/json" :schema :properties])
+          body-properties        (get-in openapi-object [:paths "/api/card" :post :requestBody :content "application/json" :schema :properties])
           _                      (is (some? body-properties))
           resolve-schema         (fn resolve-schema [schema]
                                    (or (some-> schema
@@ -2003,7 +2003,7 @@
 ;;; |                                        Card updates that impact alerts                                         |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(defn- test-alert-deletion! [{:keys [message card deleted? expected-email-re f]}]
+(defn- test-alert-deletion! [{:keys [message card deleted? disable-links? expected-email-re should-re-not-match? f]}]
   (testing message
     (notification.tu/with-channel-fixtures [:channel/email]
       (api.notification-test/with-send-messages-sync!
@@ -2015,13 +2015,14 @@
                                                    {:type    :notification-recipient/user
                                                     :user_id (mt/user->id :rasta)}
                                                    {:type    :notification-recipient/raw-value
-                                                    :details {:value "ngoc@metabase.com"}}]}]}]
+                                                    :details {:value "ngoc@metabase.com"}}]}]
+                         :notification-card {:disable_links (boolean disable-links?)}}]
           (when deleted?
             (let [[email] (notification.tu/with-mock-inbox-email!
                             (f (->> notification :payload :card_id (t2/select-one :model/Card))))]
               (is (=? {:bcc     #{"rasta@metabase.com" "crowberto@metabase.com" "ngoc@metabase.com"}
                        :subject "One of your alerts has stopped working"
-                       :body    [{(str expected-email-re) true}]}
+                       :body    [{(str expected-email-re) (not should-re-not-match?)}]}
                       (mt/summarize-multipart-single-email email expected-email-re)))))
           (if deleted?
             (is (not (t2/exists? :model/Notification :id (:id notification)))
@@ -2035,7 +2036,25 @@
     :deleted?          true
     :expected-email-re #"Alerts about [A-Za-z]+ \(#\d+\) have stopped because the question was archived by Rasta Toucan"
     :f                 (fn [card]
-                         (mt/user-http-request :rasta :put 200 (str "card/" (u/the-id card)) {:archived true}))}))
+                         (mt/user-http-request :rasta :put 200 (str "card/" (u/the-id card)) {:archived true}))})
+
+  (test-alert-deletion!
+   {:message              "Archiving a Card should trigger Alert deletion with email links when disable_links: false"
+    :deleted?             true
+    :disable-links?       false
+    :expected-email-re    #"If you want to restore the alert, go to the <a href=\".*\">trash</a>"
+    :should-re-not-match? false
+    :f                    (fn [card]
+                            (mt/user-http-request :rasta :put 200 (str "card/" (u/the-id card)) {:archived true}))})
+
+  (test-alert-deletion!
+   {:message              "Archiving a Card should trigger Alert deletion without email links when disable_links: true"
+    :deleted?             true
+    :disable-links?       true
+    :expected-email-re    #"If you want to restore the alert, go to the <a href=\".*\">trash</a>"
+    :should-re-not-match? true
+    :f                    (fn [card]
+                            (mt/user-http-request :rasta :put 200 (str "card/" (u/the-id card)) {:archived true}))}))
 
 (deftest alert-deletion-test-2
   (test-alert-deletion!
@@ -2044,7 +2063,17 @@
     :deleted?          true
     :expected-email-re #"Alerts about <a href=\"https?://[^\/]+\/question/\d+\">([^<]+)<\/a> have stopped because the question was edited by Rasta Toucan"
     :f                 (fn [card]
-                         (mt/user-http-request :rasta :put 200 (str "card/" (u/the-id card)) {:display :line}))}))
+                         (mt/user-http-request :rasta :put 200 (str "card/" (u/the-id card)) {:display :line}))})
+
+  (test-alert-deletion!
+   {:message              "Validate changing display type triggers alert deletion without email links when disable_links: true"
+    :card                 {:display :table}
+    :deleted?             true
+    :disable-links?       true
+    :expected-email-re    #"Alerts about <a href=\"https?://[^\/]+\/question/\d+\">([^<]+)<\/a> have stopped because the question was edited by Rasta Toucan"
+    :should-re-not-match? true
+    :f                    (fn [card]
+                            (mt/user-http-request :rasta :put 200 (str "card/" (u/the-id card)) {:display :line}))}))
 
 (deftest alert-deletion-test-3
   (test-alert-deletion!
@@ -2591,7 +2620,8 @@
 
 (deftest ^:parallel download-response-headers-test
   (testing "Make sure CSV/etc. download requests come back with the correct headers"
-    (mt/with-temp [:model/Card card {:name "My Awesome Card"}]
+    (mt/with-temp [:model/Card card {:name "My Awesome Card"
+                                     :dataset_query (mt/mbql-query venues {:limit 1})}]
       (is (= {"Cache-Control"       "max-age=0, no-cache, must-revalidate, proxy-revalidate"
               "Content-Disposition" "attachment; filename=\"my_awesome_card_<timestamp>.csv\""
               "Content-Type"        "text/csv"
@@ -3794,6 +3824,19 @@
               (is (mi/can-read? collection))
               (is (mi/can-read? card)))
             (is (= [[1] [2]] (mt/rows (process-query))))))))))
+
+(deftest blocked-database-permissions-card-query-test
+  (testing "POST /api/card/:id/query should return an error when the user has blocked view-data permissions on the database (OSS)"
+    (mt/with-premium-features #{}
+      (mt/with-temp-copy-of-db
+        (mt/with-no-data-perms-for-all-users!
+          (data-perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/view-data :blocked)
+          (data-perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/create-queries :no)
+          (mt/with-temp [:model/Card {card-id :id} {:dataset_query (mt/mbql-query venues {:limit 1})}]
+            (is (malli= [:map
+                         [:status [:= "failed"]]
+                         [:error_type [:= "missing-required-permissions"]]]
+                        (mt/user-http-request :rasta :post 403 (format "card/%d/query" card-id))))))))))
 
 (defn- native-card-with-template-tags []
   {:dataset_query

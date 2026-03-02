@@ -757,3 +757,6 @@
 (defmethod sql-jdbc/impl-table-known-to-not-exist? :oracle
   [_ ^SQLException e]
   (= (.getErrorCode e) 942))
+
+(defmethod driver/llm-sql-dialect-resource :oracle [_]
+  "llm/prompts/dialects/oracle.md")

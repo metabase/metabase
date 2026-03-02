@@ -6,24 +6,13 @@ on:
       - "master"
       - "release-**"
   pull_request:
-    types: [opened, synchronize, reopened, labeled, unlabeled]
+    types: [opened, synchronize, reopened]
   merge_group:
   workflow_dispatch:
 
 jobs:
   files-changed:
-    # Runs on push, synchronize, reopened, opened, merge_group, workflow_dispatcher
-    # Runs on labeled/unlabeled for ci:all-cloud-drivers or break-quarantine-*
-    # Skips labeled/unlabeled for unrelated labels (like bug, documentation, etc.)
-    # Skips if ci skip or minimal-tests labels are present
-    if: |
-      !contains(github.event.pull_request.labels.*.name,'ci skip') &&
-      !contains(github.event.pull_request.labels.*.name,'minimal-tests') &&
-      (
-        !contains(fromJSON('["labeled", "unlabeled"]'), github.event.action) ||
-        github.event.label.name == 'ci:all-cloud-drivers' ||
-        startsWith(github.event.label.name, 'break-quarantine-')
-      )
+    if: ${{ !contains(github.event.pull_request.labels.*.name,'ci skip') && !contains(github.event.pull_request.labels.*.name,'minimal-tests') }}
     name: Check which files changed
     runs-on: ubuntu-22.04
     timeout-minutes: 5
@@ -114,7 +103,8 @@ jobs:
       (needs.files-changed.outputs.embedding_sdk_components == 'true' ||
       needs.files-changed.outputs.frontend_sources == 'true' ||
       needs.files-changed.outputs.embedding_documentation == 'true' ||
-      needs.files-changed.outputs.embedding_sdk_ci == 'true')
+      needs.files-changed.outputs.embedding_sdk_ci == 'true' ||
+      needs.files-changed.outputs.embedding_sdk_host_sample_apps == 'true')
     uses: ./.github/workflows/embedding-sdk-package-build.yml
     secrets: inherit
 
@@ -124,6 +114,7 @@ jobs:
     uses: ./.github/workflows/embedding-sdk.yml
     secrets: inherit
     with:
+      bundle-size-check: ${{ github.event_name == 'pull_request' && needs.uberjar.result == 'success' && needs.files-changed.outputs.frontend_sources == 'true' }}
       cli-snippets-type-check: ${{ needs.files-changed.outputs.frontend_sources == 'true' }}
       docs-snippets-type-check: ${{ needs.files-changed.outputs.embedding_documentation == 'true' }}
       documentation-validation: ${{ needs.files-changed.outputs.frontend_sources == 'true' }}

@@ -101,8 +101,8 @@ describe("metabot > convo state", () => {
     mockAgentEndpoint({
       stream: createMockReadableStream(
         (async function* () {
-          yield `2:{"type":"state","version":1,"value":{"testing":123}}`,
-            await pause1.promise;
+          yield `2:{"type":"state","version":1,"value":{"testing":123}}`;
+          await pause1.promise;
         })(),
       ),
     });

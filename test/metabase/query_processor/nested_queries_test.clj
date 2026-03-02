@@ -1697,7 +1697,7 @@
                                                                  (lib/with-join-alias (lib.metadata/field mp (mt/id "space table" "space column"))
                                                                                       "Space Table Alias"))])))
 
-                    (lib/breakout $q (m/find-first (every-pred (comp #{"Space Column"} :display-name) :source-alias)
+                    (lib/breakout $q (m/find-first (every-pred (comp #{"Space Column"} :display-name) :lib/original-join-alias)
                                                    (lib/breakoutable-columns $q)))
                     (lib/append-stage $q)
                     (lib/breakout $q (first (lib/breakoutable-columns $q)))

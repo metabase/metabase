@@ -1,1 +1,0 @@
-export { IconWrapper } from "./IconWrapper";

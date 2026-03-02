@@ -10,14 +10,7 @@
         "metamben",
         "wzimrin",
         "ericnormand",
-        "galdre"
-      ]
-    },
-    {
-      "name": "Drivers",
-      "label": ".Team/Drivers",
-      "members": [
-        "snoe",
+        "galdre",
         "rileythomp"
       ]
     },
@@ -62,7 +55,8 @@
         "tsplude",
         "lbrdnk",
         "piranha",
-        "crisptrutski"
+        "crisptrutski",
+        "undrfined"
       ]
     },
     {
@@ -86,16 +80,12 @@
         "eliotmetabase",
         "npfitz",
         "johnswanson",
-        "iethree",
         "nvoxland",
         "edpaget",
         "deniskaber",
         "alxnddr",
-        "bpander",
         "andsalves",
-        "gantoreno",
-        "kevinkelleher12",
-        "undrfined"
+        "kevinkelleher12"
       ]
     },
     {
@@ -111,6 +101,16 @@
         "stasgavrylov",
         "uladzimirdev",
         "egorgrushin"
+      ]
+    },
+    {
+      "name": "Growth Eng",
+      "label": ".Team/GrowthEng",
+      "members": [
+        "iethree",
+        "bpander",
+        "gantoreno",
+        "losrebellos"
       ]
     }
   ]

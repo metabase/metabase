@@ -3,42 +3,42 @@ import userEvent from "@testing-library/user-event";
 import { renderWithProviders, screen } from "__support__/ui";
 import { checkNotNull } from "metabase/lib/types";
 import * as Lib from "metabase-lib";
-import {
-  columnFinder,
-  createQuery,
-  findTemporalBucket,
-} from "metabase-lib/test-helpers";
+import { SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
+import type { TemporalUnit, TestColumnSpec } from "metabase-types/api";
+import { ORDERS_ID } from "metabase-types/api/mocks/presets";
 
 import { TimeseriesBucketPicker } from "./TimeseriesBucketPicker";
-
-function findBreakoutColumn(query: Lib.Query) {
-  const columns = Lib.breakoutableColumns(query, 0);
-  const findColumn = columnFinder(query, columns);
-  return findColumn("ORDERS", "CREATED_AT");
-}
-
-function findMonthBucket(query: Lib.Query, column: Lib.ColumnMetadata) {
-  return findTemporalBucket(query, column, "Month");
-}
 
 interface QueryWithBreakoutOpts {
   query?: Lib.Query;
   stageIndex?: number;
-  column?: Lib.ColumnMetadata;
-  bucket?: Lib.Bucket | null;
+  column?: TestColumnSpec;
+  bucket?: TemporalUnit | null;
 }
 
 function createQueryWithBreakout({
-  query: initialQuery = createQuery(),
-  column = findBreakoutColumn(initialQuery),
-  bucket = findMonthBucket(initialQuery, column),
+  column = {
+    type: "column",
+    sourceName: "ORDERS",
+    name: "CREATED_AT",
+  },
+  bucket = "month",
   stageIndex = -1,
 }: QueryWithBreakoutOpts = {}) {
-  const query = Lib.breakout(
-    initialQuery,
-    stageIndex,
-    Lib.withTemporalBucket(column, bucket),
-  );
+  const query = Lib.createTestQuery(SAMPLE_PROVIDER, {
+    stages: [
+      {
+        source: { type: "table", id: ORDERS_ID },
+        breakouts: [
+          {
+            ...column,
+            unit: bucket ?? undefined,
+          },
+        ],
+      },
+    ],
+  });
+
   const [breakout] = Lib.breakouts(query, stageIndex);
   return {
     query,
@@ -122,18 +122,9 @@ describe("TimeseriesBucketPicker", () => {
   });
 
   it("should show all options when the current bucket is below the More button", async () => {
-    const initialQuery = createQuery();
-    const initialColumn = findBreakoutColumn(initialQuery);
-    const bucket = findTemporalBucket(
-      initialQuery,
-      initialColumn,
-      "Quarter of year",
-    );
-
     const { query, breakout, column } = createQueryWithBreakout({
-      query: initialQuery,
-      column: initialColumn,
-      bucket,
+      column: { type: "column", sourceName: "ORDERS", name: "CREATED_AT" },
+      bucket: "quarter-of-year",
     });
 
     setup({ query, breakout, column });

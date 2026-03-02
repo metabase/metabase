@@ -1,7 +1,11 @@
 import { render } from "__support__/ui";
 import { delay } from "__support__/utils";
 import * as Lib from "metabase-lib";
-import { SAMPLE_METADATA, createQuery } from "metabase-lib/test-helpers";
+import {
+  DEFAULT_TEST_QUERY,
+  SAMPLE_METADATA,
+  SAMPLE_PROVIDER,
+} from "metabase-lib/test-helpers";
 import Question from "metabase-lib/v1/Question";
 import * as ML_Urls from "metabase-lib/v1/urls";
 
@@ -23,7 +27,7 @@ describe("AdHocQuestionLoader", () => {
 
   it("should load a question given a questionHash", async () => {
     const q = Question.create({ metadata: SAMPLE_METADATA }).setQuery(
-      createQuery(),
+      Lib.createTestQuery(SAMPLE_PROVIDER, DEFAULT_TEST_QUERY),
     );
     const questionHash = ML_Urls.getUrl(q).match(/(#.*)/)[1];
 

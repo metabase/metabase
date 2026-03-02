@@ -12,7 +12,10 @@ import { X_AXIS_DATA_KEY } from "../../constants/dataset";
 import type { ScatterPlotModel } from "../../model/types";
 import { getSharedEChartsOptions } from "../../option";
 import { buildAxes } from "../../option/axis";
-import { getGoalLineSeriesOption } from "../../option/goal-line";
+import {
+  getGoalLineParams,
+  getGoalLineSeriesOption,
+} from "../../option/goal-line";
 import { getTrendLinesOption } from "../../option/trend-line";
 import type { EChartsSeriesOption } from "../../option/types";
 import { getSeriesYAxisIndex } from "../../option/utils";
@@ -51,7 +54,7 @@ export function getScatterPlotOption(
       ),
     );
   const goalSeriesOption = getGoalLineSeriesOption(
-    chartModel,
+    getGoalLineParams(chartModel),
     settings,
     renderingContext,
   );
@@ -87,7 +90,8 @@ export function getScatterPlotOption(
       source: chartModel.trendLinesModel?.dataset as OptionSourceData,
       dimensions: [
         X_AXIS_DATA_KEY,
-        ...chartModel.trendLinesModel?.seriesModels.map((s) => s.dataKey),
+        ...(chartModel.trendLinesModel?.seriesModels.map((s) => s.dataKey) ??
+          []),
       ],
     });
   }

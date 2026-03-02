@@ -17,6 +17,7 @@
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.test.http-client :as client]
+   [metabase.test.util :as tu]
    [metabase.util :as u]
    [metabase.util.json :as json]
    [metabase.warehouse-schema.models.field-values :as field-values]
@@ -211,7 +212,17 @@
                  :id     table-id
                  :fields empty?}
                 (agent-client :rasta :get 200
-                              (str "agent/v1/table/" table-id "?with-fields=false&with-related-tables=false"))))))))
+                              (str "agent/v1/table/" table-id "?with-fields=false&with-related-tables=false"))))))
+
+    (testing "Field values are excluded by default"
+      (let [table-id (mt/id :orders)
+            table    (agent-client :rasta :get 200 (str "agent/v1/table/" table-id))]
+        (is (every? #(nil? (:field_values %)) (:fields table)))))
+
+    (testing "Field values are included when explicitly requested"
+      (let [table-id (mt/id :orders)
+            table    (agent-client :rasta :get 200 (str "agent/v1/table/" table-id "?with-field-values=true"))]
+        (is (some #(seq (:field_values %)) (:fields table)))))))
 
 (deftest get-metric-details-test
   (with-agent-api-setup!
@@ -261,16 +272,18 @@
     ;; Ensure field values exist for the field we'll test
     (ensure-fresh-field-values! (mt/id :people :state))
 
-    (testing "Returns field statistics and values for a table field"
+    (testing "Returns field statistics and values with default limit of 30"
       (let [table-id (mt/id :people)
             field-id (visible-field-id table-id "State")]
         (is (some? field-id) "Should find the State field")
-        (is (=? {:statistics {:distinct_count 49}
-                 :values     sequential?}
-                (agent-client :crowberto :get 200
-                              (format "agent/v1/table/%d/field/%s/values" table-id field-id))))))
+        (let [result (agent-client :crowberto :get 200
+                                   (format "agent/v1/table/%d/field/%s/values" table-id field-id))]
+          (is (=? {:statistics {:distinct_count 49}
+                   :values     sequential?}
+                  result))
+          (is (<= (count (:values result)) 30) "Should apply default limit of 30"))))
 
-    (testing "Respects limit parameter"
+    (testing "Respects explicit limit parameter"
       (let [table-id (mt/id :people)
             field-id (visible-field-id table-id "State")
             result   (agent-client :crowberto :get 200
@@ -312,9 +325,16 @@
         (let [decoded (decode-query response)]
           (is (= :mbql/query (lib/normalized-query-type decoded)))
           (is (= (mt/id) (lib/database-id decoded)))
-          (is (= (mt/id :orders) (lib/source-table-id decoded))))))
+          (is (= (mt/id :orders) (lib/primary-source-table-id decoded))))))
 
-    (testing "Constructs a query with a limit"
+    (testing "Applies default limit of 100 when no limit is specified"
+      (let [table-id (mt/id :orders)
+            response (agent-client :rasta :post 200 "agent/v1/construct-query"
+                                   {:table_id table-id})
+            decoded  (decode-query response)]
+        (is (= 100 (lib/current-limit decoded)))))
+
+    (testing "Respects explicit limit"
       (let [table-id (mt/id :orders)
             response (agent-client :rasta :post 200 "agent/v1/construct-query"
                                    {:table_id table-id
@@ -349,6 +369,23 @@
           (is (seq cols) "Should have column metadata")
           (is (every? :name cols) "Each column should have a name")
           (is (every? :base_type cols) "Each column should have a base_type"))))))
+
+(deftest execute-query-records-query-execution-test
+  (with-agent-api-setup!
+    (testing "Executed queries are recorded with :agent context"
+      (mt/with-temp [:model/User {user-id :id email :email} {:is_superuser true}]
+        (let [table-id       (mt/id :orders)
+              headers        (auth-headers email)
+              construct-resp (client/client :post 200 "agent/v1/construct-query"
+                                            {:request-options {:headers headers}}
+                                            {:table_id table-id :limit 5})
+              _              (client/client :post 202 "agent/v1/execute"
+                                            {:request-options {:headers headers}}
+                                            {:query (:query construct-resp)})
+              ;; QueryExecution is saved asynchronously, so poll for it
+              query-execution (tu/poll-until 2000
+                                             (t2/select-one :model/QueryExecution :executor_id user-id))]
+          (is (= :agent (:context query-execution))))))))
 
 (deftest get-metric-field-values-test
   (with-agent-api-setup!
@@ -395,6 +432,30 @@
                (agent-client :rasta :post 404 "agent/v1/construct-query"
                              {:metric_id 999999})))))))
 
+(deftest construct-query-with-count-aggregation-test
+  (with-agent-api-setup!
+    (testing "Count aggregation without field_id produces a valid query"
+      (let [table-id (mt/id :orders)
+            response (agent-client :rasta :post 200 "agent/v1/construct-query"
+                                   {:table_id     table-id
+                                    :aggregations [{:function "count"}]
+                                    :limit        10})]
+        (is (string? (:query response)))
+        (let [decoded (decode-query response)]
+          (is (= 1 (count (lib/aggregations decoded)))))))
+
+    (testing "Count aggregation with field_id still works"
+      (let [table-id (mt/id :orders)
+            table    (agent-client :rasta :get 200 (str "agent/v1/table/" table-id))
+            field-id (-> table :fields first :field_id)
+            response (agent-client :rasta :post 200 "agent/v1/construct-query"
+                                   {:table_id     table-id
+                                    :aggregations [{:function "count" :field_id field-id}]
+                                    :limit        10})]
+        (is (string? (:query response)))
+        (let [decoded (decode-query response)]
+          (is (= 1 (count (lib/aggregations decoded)))))))))
+
 (deftest construct-query-with-filters-test
   (with-agent-api-setup!
     (testing "Constructs a query with filters"
@@ -410,6 +471,26 @@
         (is (string? (:query response)))
         (let [decoded (decode-query response)]
           (is (seq (lib/filters decoded)) "Query should have filters"))))))
+
+(deftest get-table-details-with-measures-test
+  (with-agent-api-setup!
+    (let [measure-def (-> (lib/query (mt/metadata-provider)
+                                     (lib.metadata/table (mt/metadata-provider) (mt/id :orders)))
+                          (lib/aggregate (lib/sum (lib.metadata/field (mt/metadata-provider) (mt/id :orders :total)))))]
+      (mt/with-temp [:model/Measure {measure-id :id} {:name       "Total Revenue"
+                                                      :table_id   (mt/id :orders)
+                                                      :definition measure-def}]
+        (testing "with-measures=false (default) does not include measures"
+          (let [table (agent-client :rasta :get 200 (str "agent/v1/table/" (mt/id :orders)))]
+            (is (nil? (:measures table)))))
+
+        (testing "with-measures=true includes measures for the table"
+          (let [table (agent-client :rasta :get 200
+                                    (str "agent/v1/table/" (mt/id :orders) "?with-measures=true"))]
+            (is (sequential? (:measures table)))
+            (is (=? [{:id   measure-id
+                      :name "Total Revenue"}]
+                    (:measures table)))))))))
 
 (deftest search-finds-metrics-test
   (with-agent-api-setup!

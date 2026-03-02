@@ -2,11 +2,11 @@
   (:require
    [clojure.test :refer :all]
    [metabase-enterprise.transforms-python.execute :as transforms-python.execute]
-   [metabase-enterprise.transforms.test-dataset :as transforms-dataset]
-   [metabase-enterprise.transforms.test-util :as transforms.tu :refer [with-transform-cleanup!]]
-   [metabase-enterprise.transforms.util :as transforms.util]
    [metabase.test :as mt]
    [metabase.test.util :as test.util]
+   [metabase.transforms.test-dataset :as transforms-dataset]
+   [metabase.transforms.test-util :as transforms.tu :refer [with-transform-cleanup!]]
+   [metabase.transforms.util :as transforms.util]
    [toucan2.core :as t2])
   (:import
    (java.util.concurrent CountDownLatch)))

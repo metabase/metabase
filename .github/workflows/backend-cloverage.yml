@@ -1,12 +1,33 @@
 name: Backend-Cloverage
 
+# Module lists are generated dynamically by listing source directories.
+# The setup-oss and setup-ee jobs list folders in src/metabase/ and
+# enterprise/backend/src/metabase_enterprise/ respectively, convert
+# underscores to dashes (for Clojure namespace convention), and output
+# as JSON arrays for the matrix jobs to consume.
+#
+# jq flags: -R (raw string input), -s (slurp all lines into one string),
+# -c (compact single-line output for GitHub Actions).
+
 on:
   workflow_dispatch:
   schedule:
     - cron: '0 10 * * 1-5' # every weekday at 5am US eastern time
 
 jobs:
+  setup-oss:
+    runs-on: ubuntu-22.04
+    outputs:
+      modules: ${{ steps.get-modules.outputs.modules }}
+    steps:
+      - uses: actions/checkout@v4
+      - id: get-modules
+        run: |
+          modules=$(ls -1d src/metabase/*/ | xargs -n1 basename | tr '_' '-' | jq -R -s -c 'split("\n") | map(select(length > 0))')
+          echo "modules=$modules" >> $GITHUB_OUTPUT
+
   be-linter-cloverage:
+    needs: setup-oss
     # don't run this workflow on a cron for forks
     if: ${{ github.event_name != 'schedule' || github.repository == 'metabase/metabase' }}
     runs-on: ubuntu-22.04
@@ -14,96 +35,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        modules:
-          - actions
-          - activity-feed
-          - analytics
-          - analyze
-          - api
-          - api-keys
-          - api-routes
-          - app-db
-          - appearance
-          - audit-app
-          - auth-provider
-          - batch-processing
-          - bookmarks
-          - bug-reporting
-          - cache
-          - channel
-          - classloader
-          - cloud-migration
-          - cmd
-          - collections
-          - config
-          - connection-pool
-          - content-translation
-          - content-verification
-          - core
-          - dashboards
-          - database-routing
-          - driver
-          - driver-api
-          - eid-translation
-          - embedding
-          - events
-          - formatter
-          - geojson
-          - glossary
-          - graph
-          - indexed-entities
-          - internal-stats
-          - legacy-mbql
-          - lib
-          - lib-be
-          - logger
-          - login-history
-          - model-persistence
-          - models
-          - native-query-snippets
-          - notification
-          - parameters
-          - permissions
-          - pivot
-          - plugins
-          - premium-features
-          - product-feedback
-          - public-sharing
-          - pulse
-          - queries
-          - query-permissions
-          - query-processor
-          - remote-sync
-          - request
-          - revisions
-          - sample-data
-          - search
-          - secrets
-          - segments
-          - server
-          - session
-          - settings
-          - setup
-          - sso
-          - startup
-          - store-api
-          - sync
-          - system
-          - task
-          - task-history
-          - testing-api
-          - tiles
-          - timeline
-          - types
-          - upload
-          - user-key-value
-          - users
-          - util
-          - version
-          - view-log
-          - warehouse-schema
-          - warehouses
-          - xrays
+        modules: ${{ fromJson(needs.setup-oss.outputs.modules) }}
     steps:
       - uses: actions/checkout@v4
       - name: Prepare front-end environment
@@ -112,7 +44,7 @@ jobs:
         uses: ./.github/actions/prepare-backend
 
       - name: Build static viz frontend
-        run: yarn build-static-viz
+        run: bun run build-static-viz
         env:
           MB_EDITION: ee
       - name: Collect the test coverage
@@ -130,7 +62,19 @@ jobs:
           files: ./target/coverage/codecov.json
           flags: back-end
 
+  setup-ee:
+    runs-on: ubuntu-22.04
+    outputs:
+      modules: ${{ steps.get-modules.outputs.modules }}
+    steps:
+      - uses: actions/checkout@v4
+      - id: get-modules
+        run: |
+          modules=$(ls -1d enterprise/backend/src/metabase_enterprise/*/ | xargs -n1 basename | tr '_' '-' | jq -R -s -c 'split("\n") | map(select(length > 0))')
+          echo "modules=$modules" >> $GITHUB_OUTPUT
+
   be-linter-cloverage-enterprise:
+    needs: setup-ee
     # don't run this workflow on a cron for forks
     if: ${{ github.event_name != 'schedule' || github.repository == 'metabase/metabase' }}
     runs-on: ubuntu-22.04
@@ -138,53 +82,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        modules:
-          - action-v2
-          - advanced-config
-          - advanced-permissions
-          - ai-entity-analysis
-          - ai-sql-fixer
-          - ai-sql-generation
-          - analytics
-          - api
-          - audit-app
-          - auth-provider
-          - billing
-          - bookmarks
-          - cache
-          - cloud-add-ons
-          - comments
-          - content-translation
-          - content-verification
-          - core
-          - dashboard-subscription-filters
-          - database-replication
-          - database-routing
-          - dependencies
-          - documents
-          - email
-          - embedding-hub
-          - gsheets
-          - harbormaster
-          - impersonation
-          - internal-stats
-          - llm
-          - metabot-v3
-          - permission-debug
-          - premium-features
-          - public-sharing
-          - remote-sync
-          - sandbox
-          - scim
-          - search
-          - semantic-search
-          - serialization
-          - snippet-collections
-          - sso
-          - stale
-          - transforms
-          - transforms-python
-          - upload-management
+        modules: ${{ fromJson(needs.setup-ee.outputs.modules) }}
     steps:
       - uses: actions/checkout@v4
       - name: Prepare front-end environment
@@ -193,7 +91,7 @@ jobs:
         uses: ./.github/actions/prepare-backend
 
       - name: Build static viz frontend
-        run: yarn build-static-viz
+        run: bun run build-static-viz
         env:
           MB_EDITION: ee
       - name: Collect the test coverage

@@ -15,6 +15,7 @@ const propsSchema: Yup.SchemaOf<InteractiveQuestionProps> = Yup.object({
     .noUnknown(),
   deserializedCard: Yup.mixed().optional(),
   entityTypes: Yup.mixed().optional(),
+  dataPicker: Yup.mixed().optional(),
   height: Yup.mixed().optional(),
   initialSqlParameters: Yup.mixed().optional(),
   hiddenParameters: Yup.mixed().optional(),
@@ -40,7 +41,6 @@ const propsSchema: Yup.SchemaOf<InteractiveQuestionProps> = Yup.object({
   withChartTypeSelector: Yup.mixed().optional(),
   withDownloads: Yup.mixed().optional(),
   withAlerts: Yup.mixed().optional(),
-  withResetButton: Yup.mixed().optional(),
   onVisualizationChange: Yup.mixed().optional(),
 }).noUnknown();
 
