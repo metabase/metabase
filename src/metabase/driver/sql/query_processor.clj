@@ -1005,12 +1005,12 @@
           (comp (remove (fn [[_direction expr]]
                           (constant-expr? expr)))
                 (keep (fn [[direction expr]]
-                   (if (aggregation? expr)
-                     (let [[_aggregation index] expr
-                           agg                  (unwrap-aggregation-option (aggregations index))]
-                       (when-not (contains-clause? #{:cum-count :cum-sum :offset} agg)
-                         [(->honeysql driver agg) direction]))
-                     [(->honeysql driver expr) direction]))))
+                        (if (aggregation? expr)
+                          (let [[_aggregation index] expr
+                                agg                  (unwrap-aggregation-option (aggregations index))]
+                            (when-not (contains-clause? #{:cum-count :cum-sum :offset} agg)
+                              [(->honeysql driver agg) direction]))
+                          [(->honeysql driver expr) direction]))))
           order-bys)))
 
 (defn- window-aggregation-over-expr-for-query-with-breakouts
