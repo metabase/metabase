@@ -38,16 +38,18 @@ You can add widgets to the whole dashboard, to headers, or to individual dashboa
 
 ![Filter location](./images/filter-location.png)
 
-Dashboard-level widgets can be used and connected to cards on the entire dashboard, including all the tabs. Header-level widgets can only be connected to cards on the same tab. Card-level widgets can only be applied to the card.
+- **Dashboard-level widgets** can connect to cards on the entire dashboard, across all tabs.
+- **Header-level widgets** can only be connected to cards on the same tab.
+- **Card-level widgets** can only be connected to their individual cards.
 
-By default, you should add widgets to the dashboard itself, because proliferation of filters might make it difficult for people using the dashboard to keep track of which filter is applied to which card.
+By default, prefer dashboard-level widgets.
 
-If, however, your dashboard grows larger, and it doesn't make sense to break the dashboard up into multiple dashboards, you can add widgets to headings and cards so people can filter in place as they scroll through sections. In these cases, you should scope the effects of a heading widget to the section immediately below. Filters on cards should generally only update the card itself.
+If, however, your dashboard grows larger, and it doesn't make sense to break the dashboard up into multiple dashboards, you can add widgets to headings and cards so people can filter in place as they scroll through sections. In these cases, you should scope the effects of a heading widget to the section immediately below.
 
 If you want tab-specific widgets, you could either:
 
-- Add them to the dashboard itself, but only connect the widget to cards on a specific tab.
-- Use a heading filter.
+- Use a dashboard widget, but only connect the widget to cards on a specific tab. The dashboard widgets will only be visible when people select the tab.
+- Use a header widget.
 
 These are just rules of thumb to keep the user experience predictable. Do whatever works for your use case.
 
@@ -88,7 +90,7 @@ Single Date and Date Range will provide a calendar widget, while the other optio
 
 #### Issues with connecting to a date variable
 
-If you get a message like "A date variable in this card can only be connected to a time type with the Single date option," it's probably because you are connecting your filter to a [basic variable](../questions/native-editor/basic-sql-parameters.md) (and not a field filter) in a native query. you can handle it in a couple of ways.
+If you get a message like "A date variable in this card can only be connected to a time type with the Single date option," it's probably because you're connecting your filter to a [basic variable](../questions/native-editor/basic-sql-parameters.md) (and not a field filter) in a native query. You can handle this scenario in a couple of ways:
 
 - **If you want a date picker where people can select multiple dates**, you'll need to change the variable in your SQL code to a [field filter](../questions/native-editor/field-filters.md).
 - **If you want the filter widget to just take a single date**, you'll need to change the dashboard filter widget's type to "Single date".
@@ -239,7 +241,7 @@ To change the widget type:
 
 1. When viewing a dashboard, click the **pencil** icon to **Edit the dashboard**.
 2. Click on the filter or parameter you want to edit. A widget editing sidebar should pop up on the right side.
-3. In the sidebar, change the type of filter or parameter. Any connected columns will be disconnected.
+3. In the sidebar, change the type of filter or parameter.  Changing the widget type disconnects the widget from all cards. You'll need to reconnect to the relevant columns on each card for the new type. If you've changed the widget type by mistake and want to restore the widget and its connections to cards, you can exit dashboard edit mode without saving your changes.
 
 ### Change filter operator
 
@@ -249,13 +251,15 @@ To change the operator for a dashboard filter:
 
 1. When viewing a dashboard, click the **pencil** icon to **Edit the dashboard**.
 2. Click on the filter you want to edit. A widget editing sidebar should pop up on the right side.
-3. In **Filter operator**, pick the filter operator. The options will depend on the filter type. Some filter types (for example, ID) do not have operator selection.
+3. In **Filter operator**, pick the filter operator. The options will depend on the filter type. Some filter types (for example, ID) don't have operator selection.
 
 ### Set filter input type
 
-You can configure the how people will interact with the filter: using a dropdown, search box, or input box.
+You can set a widget to display options as a dropdown menu, search box, or input box.
 
-Keep in mind that the appearance of a dashboard filter is affected by more than just this setting, but also by the [metadata settings](../data-modeling/metadata-editing.md#filtering) for underlying column, and, if you're connecting your filter to a variable native query, the [settings for the variable](../questions/native-editor/filter-widgets.md#dropdown-menu-and-search). For example, if the column you're connecting a filter to is configured in the [metadata settings](../data-modeling/metadata-editing.md#filtering) to display a search box instead of a dropdown, the metadata setting will take precedence.
+[Metadata settings](../data-modeling/metadata-editing.md#filtering) for the filtered column, including [variable settings in native queries](../questions/native-editor/filter-widgets.md#dropdown-menu-and-search), can also affect the filter's appearance.
+
+For example, if the column you're connecting a filter to is configured in the [metadata settings](../data-modeling/metadata-editing.md#filtering) to display a search box instead of a dropdown, that metadata setting will take precedence.
 
 To configure filter input type:
 
@@ -309,7 +313,7 @@ A multi-select filter with the widget type [Dropdown list](#dropdown-list) or [S
 
 ### Set a default filter value
 
-You might want to set a default filter value like "Active," so that when people load your dashboard, they only see data for "Active" records (not "Inactive," "Canceled," and so on).
+You might want to set a default filter value, like "Active," so that when people load your dashboard, they only see data for "Active" records (not "Inactive," "Canceled," and so on).
 
 1. When viewing a dashboard, click the **pencil** icon to **Edit the dashboard**.
 2. Click on the filter you want to make required. A filter sidebar should pop up on the right side.
@@ -321,10 +325,10 @@ You can tell Metabase to require a filter so that people _must_ filter the dashb
 
 You might want to require a filter value if:
 
-- Your unfiltered dashboard contains questions that pull lots of data, as enforcing filtered data can prevent people from inadvertently querying tons of data and running up your data warehouse costs.
+- Your unfiltered dashboard contains questions that pull lots of data. Enforcing filtered data can prevent people from inadvertently querying tons of data and running up your data warehouse costs.
 - The questions on your dashboard don't make sense without a filter. For example, if you create a dashboard intended to view data relevant to a specific customer (as opposed to all customers), you can require a customer ID so that the dashboard only loads data for a particular customer.
 
-To make a dashboard filter required:
+To require a value for a dashboard filter:
 
 1. When viewing a dashboard, click the **pencil** icon to **Edit the dashboard**.
 2. Click on the filter you want to make required. A filter sidebar should pop up on the right side.
