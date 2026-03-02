@@ -703,6 +703,20 @@
                          :fields [[:field {} "DOES_NOT_EXIST"]]}]}
               swapped-query)))))
 
+(deftest ^:parallel swap-source-in-query-field-ref-without-base-type-test
+  (let [query          (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
+                           (lib/filter (lib/not-null (lib/ensure-uuid [:field {} (meta/id :orders :id)]))))
+        upgraded-query (lib-be/upgrade-field-refs-in-query query)
+        swapped-query  (lib-be/swap-source-in-query upgraded-query
+                                                    {:type :table, :id (meta/id :orders)}
+                                                    {:type :table, :id (meta/id :products)})]
+    (testing "upgrade should not modify the query when base-type is missing"
+      (is (= query upgraded-query)))
+    (testing "should swap the field id to the new table"
+      (is (=? {:stages [{:source-table (meta/id :products)
+                         :filters [[:not-null {} [:field {} (meta/id :products :id)]]]}]}
+              swapped-query)))))
+
 (deftest ^:parallel swap-source-in-parameter-target-implicit-join-test
   (let [query           (lib/query meta/metadata-provider (meta/table-metadata :orders))
         category-col    (m/find-first #(= "CATEGORY" (:name %)) (lib/filterable-columns query))
