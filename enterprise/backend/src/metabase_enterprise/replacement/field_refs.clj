@@ -121,36 +121,38 @@
           (t2/update! :model/DashboardCard (:id dashcard) changes))))))
 
 (defn upgrade!
-  "Upgrade field refs in an entity object.
+  "Upgrade field refs in an entity.
 
   The entity can be:
-  - A card map with :dataset_query
-  - A transform map with :source
-  - A segment map with :definition
-  - A measure map with :definition
-  - nil or other (no-op)"
-  [entity]
-  (when entity
-    (cond
-      ;; Card (has dataset_query)
-      (:dataset_query entity)
-      (card-upgrade-field-refs! entity)
+  - A [type id] tuple like [:dashboard 123] or [:card 456] (used by runner)
+  - A map object (card, transform, segment, or measure) with the entity already loaded
+  - nil or other (no-op)
 
-      ;; Transform (has source)
-      (and (:source entity) (:id entity))
-      (transform-upgrade-field-refs! entity)
+  For [type id] tuples, `loaded-object` should be the pre-fetched entity map from
+  bulk-load-metadata-for-entities!. Dashboards don't use loaded-object (not bulk-loaded)."
+  ([entity]
+   (upgrade! entity nil))
+  ([entity loaded-object]
+   (cond
+     ;; [type id] tuple format - used by runner
+     (and (vector? entity) (= 2 (count entity)))
+     (let [[entity-type entity-id] entity]
+       (case entity-type
+         :dashboard (dashboard-upgrade-field-refs! entity-id)
+         :card      (when loaded-object (card-upgrade-field-refs! loaded-object))
+         :transform (when loaded-object (transform-upgrade-field-refs! loaded-object))
+         :segment   (when loaded-object (segment-upgrade-field-refs! loaded-object))
+         :measure   (when loaded-object (measure-upgrade-field-refs! loaded-object))
+         ;; table, document - no-op
+         nil))
 
-      ;; Segment (has definition and typically comes from :model/Segment)
-      ;; We differentiate from measure by checking if it has :table_id (segments do, measures might not)
-      (and (:definition entity)
-           (:table_id entity)
-           (not (:aggregation entity))) ; measures have :aggregation in definition
-      (segment-upgrade-field-refs! entity)
+     ;; Direct entity map (for backwards compatibility)
+     (map? entity)
+     (cond
+       (:dataset_query entity) (card-upgrade-field-refs! entity)
+       (and (:source entity) (:id entity)) (transform-upgrade-field-refs! entity)
+       (and (:definition entity) (:table_id entity) (not (:aggregation entity))) (segment-upgrade-field-refs! entity)
+       (:definition entity) (measure-upgrade-field-refs! entity)
+       :else :do-nothing)
 
-      ;; Measure (has definition)
-      (:definition entity)
-      (measure-upgrade-field-refs! entity)
-
-      ;; Dashboard, document, table, or nil - no-op
-      :else
-      :do-nothing)))
+     :else :do-nothing)))

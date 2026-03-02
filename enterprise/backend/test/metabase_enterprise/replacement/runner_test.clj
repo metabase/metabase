@@ -2,12 +2,19 @@
   "Tests for bulk metadata loading in the replacement runner."
   (:require
    [clojure.test :refer [deftest is testing]]
+   [metabase-enterprise.dependencies.events]
+   [metabase-enterprise.replacement.field-refs :as field-refs]
    [metabase-enterprise.replacement.runner :as runner]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
-   [metabase.test :as mt]))
+   [metabase.queries.models.card :as card]
+   [metabase.test :as mt]
+   [toucan2.core :as t2]))
+
+(comment
+  metabase-enterprise.dependencies.events/keep-me)
 
 (deftest bulk-load-metadata-for-entities-test
   (testing "bulk-load-metadata-for-entities! fetches all entity types in bulk"
