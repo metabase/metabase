@@ -60,7 +60,7 @@ export interface LeafletMapProps {
 export class LeafletMap extends Component<LeafletMapProps> {
   mapRef = createRef<HTMLDivElement>();
   map: L.Map | null = null;
-  drawControl: L.Control.Draw | null = null;
+  drawControl: L.DrawOptions | null = null;
   _filter?: L.Draw.Rectangle;
 
   componentDidMount() {
@@ -243,7 +243,7 @@ export class LeafletMap extends Component<LeafletMapProps> {
     }
     this._filter = new L.Draw.Rectangle(
       this.map,
-      (this.drawControl.options as any).rectangle,
+      this.drawControl.options.rectangle,
     );
     this._filter.enable();
     this.props.onFiltering(true);
