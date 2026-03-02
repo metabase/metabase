@@ -2,6 +2,7 @@ import _ from "underscore";
 
 import { substitute_tags } from "cljs/metabase.parameters.shared";
 import { siteLocale, withInstanceLanguage } from "metabase/lib/i18n";
+import { isTextTagTarget } from "metabase-lib/v1/parameters/utils/targets";
 import type {
   Dashboard,
   ParameterValuesMap,
@@ -27,16 +28,18 @@ export function fillParametersInText({
 }: FillParametersInTextProps): string {
   const parametersByTag = dashcard?.parameter_mappings?.reduce(
     (acc, mapping) => {
-      // TODO: most likely we need to narrow down type of target for virtual
-      // dashcards to ParameterTextTarget, then as string can be removed
-      const tagId = mapping.target[1] as string;
+      if (!isTextTagTarget(mapping.target)) {
+        throw new Error(
+          `Expected a virtual dashcard text-tag mapping, got "${mapping.target[0]}"`,
+        );
+      }
+
+      const tagId = mapping.target[1];
       const parameter = dashboard.parameters?.find(
         (p) => p.id === mapping.parameter_id,
       );
 
       if (parameter) {
-        // same as above, parameterValue type can be narrowed down when
-        // ParameterTextTarget is used for virtual dashcards
         const rawParameterValue = parameterValues[parameter.id] as string;
         const parameterValue = urlEncode
           ? encodeURIComponent(rawParameterValue)
