@@ -2,6 +2,8 @@
   (:require
    [clojure.walk :as clojure.walk]
    [metabase.lib-be.core :as lib-be]
+   [metabase.lib.field.resolution :as lib.field.resolution]
+   [metabase.lib.options :as lib.options]
    [metabase.models.visualization-settings :as vs]
    [toucan2.core :as t2]))
 
@@ -32,32 +34,42 @@
   [query parameter-mapping]
   (update parameter-mapping :target #(lib-be/upgrade-field-ref-in-parameter-target query %)))
 
-(defn- dashboard-card-upgrade-field-refs!
-  [query card-id]
-  (doseq [dashcard (t2/select :model/DashboardCard :card_id card-id)]
-    (let [viz (vs/db->norm (:visualization_settings dashcard))
-          column-settings (::vs/column-settings viz)
-          column-settings' (upgrade-column-settings-keys query column-settings)
-          parameter-mappings (:parameter_mappings dashcard)
-          parameter-mappings' (mapv #(upgrade-parameter-mappings query %) parameter-mappings)
-          changes (cond-> {}
-                    (not= column-settings column-settings')
-                    (merge {:visualization_settings (-> viz
-                                                        (assoc ::vs/column-settings column-settings')
-                                                        vs/norm->db)})
+(defn- ->field-ref [#::vs{:keys [field-id field-metadata]}]
+  (-> [:field field-metadata field-id]
+      lib.options/ensure-uuid))
 
-                    (not= parameter-mappings parameter-mappings')
-                    (merge {:parameter_mappings parameter-mappings'}))]
-      (when (seq changes)
-        (t2/update! :model/DashboardCard (:id dashcard) changes)))))
+(defn- upgrade-card-column-settings
+  [query column-settings]
+  (reduce #(merge-with merge %1 %2)
+          {}
+          (for [[k v] column-settings]
+            (or (when (::vs/field-id k)
+                  (when-let [column (lib.field.resolution/resolve-field-ref query -1 (->field-ref k))]
+                    (when-not (:lib.field.resolution/fallback-metadata? column)
+                      (when-let [column-name ((some-fn :lib/deduplicated-name :name) column)]
+                        {{::vs/column-name column-name} v}))))
+                {k v}))))
 
 (defn- card-upgrade-field-refs!
   [card]
   (let [dataset-query  (:dataset_query card)
-        dataset-query' (lib-be/upgrade-field-refs-in-query dataset-query)]
-    (when (not= dataset-query dataset-query')
-      (t2/update! :model/Card (:id card) {:dataset_query dataset-query'}))
-    (dashboard-card-upgrade-field-refs! dataset-query' (:id card))))
+        dataset-query' (lib-be/upgrade-field-refs-in-query dataset-query)
+
+        viz             (vs/db->norm (:visualization_settings card))
+        column-settings (::vs/column-settings viz)
+        column-settings' (if dataset-query'
+                           (upgrade-card-column-settings dataset-query' column-settings)
+                           column-settings)
+        changes (cond-> {}
+                  (not= dataset-query dataset-query')
+                  (assoc :dataset_query dataset-query')
+
+                  (not= column-settings column-settings')
+                  (assoc :visualization_settings (-> viz
+                                                     (assoc ::vs/column-settings column-settings')
+                                                     vs/norm->db)))]
+    (when (seq changes)
+      (t2/update! :model/Card (:id card) changes))))
 
 (defn- transform-upgrade-field-refs!
   [transform]
