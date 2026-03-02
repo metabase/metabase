@@ -200,9 +200,10 @@ export function getNodesWithPositions(
         x: x - width / 2,
         y: y - height / 2,
       },
-      // Update style.height so React Flow updates the node wrapper dimensions
+      // Sync dimensions with React Flow's internal state
       style: {
         ...node.style,
+        width,
         height,
       },
     };

@@ -313,8 +313,8 @@ function CompactTableNode({
             const iconName = isMany
               ? "arrow_split"
               : direction === "outbound"
-                ? "triangle_right"
-                : "triangle_left";
+                ? "arrow_right"
+                : "arrow_left";
             const rotation = isMany ? (direction === "outbound" ? 0 : -180) : 0;
             return (
               <Group key={name} gap={6} wrap="nowrap">

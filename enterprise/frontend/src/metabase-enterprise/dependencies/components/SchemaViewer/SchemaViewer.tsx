@@ -1,11 +1,13 @@
 import { useClipboard } from "@mantine/hooks";
 import {
   Background,
+  ControlButton,
   Controls,
   Panel,
   ReactFlow,
   useEdgesState,
   useNodesState,
+  useReactFlow,
 } from "@xyflow/react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { t } from "ttag";
@@ -39,7 +41,7 @@ import S from "./SchemaViewer.module.css";
 import { SchemaViewerContext } from "./SchemaViewerContext";
 import { SchemaViewerTableNode } from "./TableNode";
 import { TableSelectorInput } from "./TableSelectorInput";
-import { MAX_ZOOM, MIN_ZOOM } from "./constants";
+import { COMPACT_ZOOM_THRESHOLD, MAX_ZOOM, MIN_ZOOM } from "./constants";
 import type { SchemaViewerFlowEdge, SchemaViewerFlowNode } from "./types";
 import { useSchemaViewerShareUrl } from "./useSchemaViewerShareUrl";
 import { toFlowGraph } from "./utils";
@@ -57,6 +59,38 @@ const PRO_OPTIONS = {
 };
 
 const DEFAULT_HOPS = 2;
+
+interface CompactModeToggleProps {
+  isCompactMode: boolean;
+  onToggle: () => void;
+}
+
+function CompactModeToggle({
+  isCompactMode,
+  onToggle,
+}: CompactModeToggleProps) {
+  const { fitView } = useReactFlow();
+
+  const handleClick = useCallback(() => {
+    onToggle();
+    // When switching to compact mode, fit the view to show whole schema
+    if (!isCompactMode) {
+      // Use setTimeout to allow layout to update before fitting view
+      setTimeout(() => {
+        fitView();
+      }, 0);
+    }
+  }, [isCompactMode, onToggle, fitView]);
+
+  return (
+    <ControlButton
+      onClick={handleClick}
+      title={isCompactMode ? t`Switch to full mode` : t`Switch to compact mode`}
+    >
+      <Icon name={isCompactMode ? "expand" : "contract"} />
+    </ControlButton>
+  );
+}
 
 interface SchemaViewerProps {
   modelId: CardId | undefined;
@@ -123,6 +157,7 @@ export function SchemaViewer({
   initialHops,
 }: SchemaViewerProps) {
   const [hops, setHops] = useState(initialHops ?? DEFAULT_HOPS);
+  const [isCompactMode, setIsCompactMode] = useState(false);
 
   // Persist table selection + hops per database:schema
   const prefsKey =
@@ -202,10 +237,12 @@ export function SchemaViewer({
   // Using an effect for this causes a race: the prefs restoration effect fires
   // before the cleanup effect and applies stale savedPrefs to the new context.
   const appliedPrefsRef = useRef(false);
+  const compactModeInitializedRef = useRef<string | null>(null);
   if (prevPrefsKeyRef.current !== prefsKey) {
     prevPrefsKeyRef.current = prefsKey;
     appliedPrefsRef.current = false;
     initializedContextRef.current = null;
+    compactModeInitializedRef.current = null;
   }
 
   // Fetch all tables in the database/schema for the dropdown
@@ -250,6 +287,28 @@ export function SchemaViewer({
     }
     return new Set(allTables.map((t) => t.id as ConcreteTableId));
   }, [allTables]);
+
+  // Restore compact mode preference early (don't wait for table validation)
+  useEffect(() => {
+    if (
+      !appliedPrefsRef.current &&
+      !isLoadingPrefs &&
+      savedPrefs != null &&
+      typeof savedPrefs === "object" &&
+      typeof savedPrefs.is_compact_mode === "boolean" &&
+      initialTableIds == null &&
+      databaseId != null
+    ) {
+      setIsCompactMode(savedPrefs.is_compact_mode);
+      compactModeInitializedRef.current = currentContextKey;
+    }
+  }, [
+    isLoadingPrefs,
+    savedPrefs,
+    initialTableIds,
+    databaseId,
+    currentContextKey,
+  ]);
 
   // Restore saved prefs once loaded (one-time per schema context)
   // Wait for allTables to validate that saved table IDs still exist
@@ -336,10 +395,14 @@ export function SchemaViewer({
           forSchema: schema,
           isUserModified: true, // User made a manual change
         });
-        setSavedPrefs({ table_ids: tableIds, hops });
+        setSavedPrefs({
+          table_ids: tableIds,
+          hops,
+          is_compact_mode: isCompactMode,
+        });
       }
     },
-    [databaseId, schema, hops, setSavedPrefs],
+    [databaseId, schema, hops, isCompactMode, setSavedPrefs],
   );
 
   const [nodes, setNodes, onNodesChange] = useNodesState<SchemaViewerFlowNode>(
@@ -361,10 +424,14 @@ export function SchemaViewer({
     (newHops: number) => {
       setHops(newHops);
       if (isUserModified && effectiveSelectedTableIds != null) {
-        setSavedPrefs({ table_ids: effectiveSelectedTableIds, hops: newHops });
+        setSavedPrefs({
+          table_ids: effectiveSelectedTableIds,
+          hops: newHops,
+          is_compact_mode: isCompactMode,
+        });
       }
     },
-    [isUserModified, effectiveSelectedTableIds, setSavedPrefs],
+    [isUserModified, effectiveSelectedTableIds, isCompactMode, setSavedPrefs],
   );
 
   // Handler for expanding to a related table via FK click
@@ -378,10 +445,21 @@ export function SchemaViewer({
           forSchema: schema,
           isUserModified: true, // User clicked to expand
         });
-        setSavedPrefs({ table_ids: newTableIds, hops });
+        setSavedPrefs({
+          table_ids: newTableIds,
+          hops,
+          is_compact_mode: isCompactMode,
+        });
       }
     },
-    [effectiveSelectedTableIds, databaseId, schema, hops, setSavedPrefs],
+    [
+      effectiveSelectedTableIds,
+      databaseId,
+      schema,
+      hops,
+      isCompactMode,
+      setSavedPrefs,
+    ],
   );
 
   const shareUrl = useSchemaViewerShareUrl({
@@ -398,9 +476,52 @@ export function SchemaViewer({
     }
   }, [clipboard, shareUrl]);
 
+  const handleToggleCompactMode = useCallback(() => {
+    setIsCompactMode((prev) => {
+      const newMode = !prev;
+      // Save preference when user manually toggles
+      // Save compact mode preference regardless of table selection state
+      if (effectiveSelectedTableIds != null) {
+        setSavedPrefs({
+          table_ids: effectiveSelectedTableIds,
+          hops,
+          is_compact_mode: newMode,
+        });
+      } else if (prefsKey != null) {
+        // If no table selection yet, save just the compact mode preference
+        setSavedPrefs({ is_compact_mode: newMode });
+      }
+      return newMode;
+    });
+  }, [effectiveSelectedTableIds, hops, prefsKey, setSavedPrefs]);
+
+  const handleMove = useCallback(
+    (_event: unknown, viewport: { zoom: number }) => {
+      // Auto-switch from compact to regular when zooming in past threshold
+      if (isCompactMode && viewport.zoom >= COMPACT_ZOOM_THRESHOLD) {
+        setIsCompactMode(false);
+        // Save preference when auto-switching to regular mode
+        if (effectiveSelectedTableIds != null) {
+          setSavedPrefs({
+            table_ids: effectiveSelectedTableIds,
+            hops,
+            is_compact_mode: false,
+          });
+        } else if (prefsKey != null) {
+          setSavedPrefs({ is_compact_mode: false });
+        }
+      }
+    },
+    [isCompactMode, effectiveSelectedTableIds, hops, prefsKey, setSavedPrefs],
+  );
+
   const schemaViewerContextValue = useMemo(
-    () => ({ visibleTableIds, onExpandToTable: handleExpandToTable }),
-    [visibleTableIds, handleExpandToTable],
+    () => ({
+      visibleTableIds,
+      onExpandToTable: handleExpandToTable,
+      isCompactMode,
+    }),
+    [visibleTableIds, handleExpandToTable, isCompactMode],
   );
 
   const graph = useMemo(() => {
@@ -409,6 +530,22 @@ export function SchemaViewer({
     }
     return toFlowGraph(data);
   }, [data]);
+
+  // Determine initial compact mode when data first loads for a schema
+  useEffect(() => {
+    debugger;
+    if (
+      data != null &&
+      compactModeInitializedRef.current !== currentContextKey
+    ) {
+      compactModeInitializedRef.current = currentContextKey;
+      const tablesWithManyFields = data.nodes.filter(
+        (node) => node.fields.length > 20,
+      ).length;
+      const shouldStartCompact = tablesWithManyFields > 1;
+      setIsCompactMode(shouldStartCompact);
+    }
+  }, [data, currentContextKey]);
 
   // User explicitly cleared all tables - show empty canvas
   const isExplicitlyEmpty =
@@ -442,9 +579,15 @@ export function SchemaViewer({
         fitView
         onNodesChange={onNodesChange}
         onEdgesChange={onEdgesChange}
+        onMove={handleMove}
       >
         <Background />
-        <Controls showInteractive={false} />
+        <Controls showInteractive={false}>
+          <CompactModeToggle
+            isCompactMode={isCompactMode}
+            onToggle={handleToggleCompactMode}
+          />
+        </Controls>
         {shareUrl != null && (
           <Panel position="top-right">
             <Tooltip
