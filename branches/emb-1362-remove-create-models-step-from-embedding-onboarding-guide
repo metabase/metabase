@@ -2,5 +2,16 @@
   "base": {
     "name": "integration-embedding-onboarding-improvements",
     "hash": "f5047bdfbef0a13924efb3ade6b0059163cbe5ca"
+  },
+  "upstream": {
+    "branch": "emb-1362-remove-create-models-step-from-embedding-onboarding-guide"
+  },
+  "change": {
+    "github": {
+      "pr": {
+        "number": 70256,
+        "gqlID": "PR_kwDOAczgH87HYE_B"
+      }
+    }
   }
 }
