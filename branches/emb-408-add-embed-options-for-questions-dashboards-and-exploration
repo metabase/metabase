@@ -3,9 +3,6 @@
     "name": "master",
     "hash": "b7de34818680b0c6184ef93cfab86fbcb37adb5e"
   },
-  "upstream": {
-    "branch": "emb-408-add-embed-options-for-questions-dashboards-and-exploration"
-  },
   "change": {
     "github": {
       "pr": {
