@@ -2,11 +2,21 @@
   "Tests for nested field access."
   (:require
    [clojure.test :refer :all]
+   [metabase.driver :as driver]
    [metabase.query-processor :as qp]
    [metabase.test :as mt]))
 
+;; Fake-sync doesn't create nested field rows in the app DB (only top-level fields).
+;; These tests use $tips.venue.name which looks up nested field IDs from the app DB.
+;; Skip BigQuery when fake-sync is active (on feature branches).
+(defn- drivers-with-nested-fields-that-work-with-fake-sync []
+  (cond-> (mt/normal-drivers-with-feature :nested-fields)
+    ;; BigQuery nested fields require real sync to populate the app DB with nested field rows
+    (driver/database-supports? :bigquery-cloud-sdk :test/use-fake-sync nil)
+    (disj :bigquery-cloud-sdk)))
+
 (deftest ^:parallel filter-test
-  (mt/test-drivers (mt/normal-drivers-with-feature :nested-fields)
+  (mt/test-drivers (drivers-with-nested-fields-that-work-with-fake-sync)
     (testing "Nested Field in FILTER"
       (mt/dataset geographical-tips
         ;; Get the first 10 tips where tip.venue.name == "Kyle's Low-Carb Grill"
@@ -28,7 +38,7 @@
                    (mt/formatted-rows [int str] (qp/process-query query))))))))))
 
 (deftest ^:parallel order-by-test
-  (mt/test-drivers (mt/normal-drivers-with-feature :nested-fields)
+  (mt/test-drivers (drivers-with-nested-fields-that-work-with-fake-sync)
     (testing "Nested Field in ORDER-BY"
       (mt/dataset geographical-tips
         ;; Let's get all the tips Kyle posted on Twitter sorted by tip.venue.name
@@ -69,7 +79,7 @@
                    :order-by [[:asc $tips.venue.name]]}))))))))
 
 (deftest ^:parallel aggregation-test
-  (mt/test-drivers (mt/normal-drivers-with-feature :nested-fields)
+  (mt/test-drivers (drivers-with-nested-fields-that-work-with-fake-sync)
     (testing "Nested Field in AGGREGATION"
       (mt/dataset geographical-tips
         (testing ":distinct aggregation"
@@ -87,7 +97,7 @@
                     {:aggregation [[:count $tips.venue.name]]})))))))))
 
 (deftest ^:parallel breakout-test
-  (mt/test-drivers (mt/normal-drivers-with-feature :nested-fields)
+  (mt/test-drivers (drivers-with-nested-fields-that-work-with-fake-sync)
     (testing "Nested Field in BREAKOUT"
       ;; Let's see how many tips we have by source.service
       (mt/dataset geographical-tips
@@ -103,7 +113,7 @@
                    (mt/formatted-rows [str int] (qp/process-query query))))))))))
 
 (deftest ^:parallel breakout-test-2
-  (mt/test-drivers (mt/normal-drivers-with-feature :nested-fields)
+  (mt/test-drivers (drivers-with-nested-fields-that-work-with-fake-sync)
     (testing "Nested Field in BREAKOUT"
       (mt/dataset geographical-tips
         (is (= [[nil 297]
@@ -118,7 +128,7 @@
                    :limit       4}))))))))
 
 (deftest ^:parallel fields-test
-  (mt/test-drivers (mt/normal-drivers-with-feature :nested-fields)
+  (mt/test-drivers (drivers-with-nested-fields-that-work-with-fake-sync)
     (testing "Nested Field in FIELDS"
       (mt/dataset geographical-tips
         ;; Return the first 10 tips with just tip.venue.name
@@ -139,7 +149,7 @@
                    :limit    10}))))))))
 
 (deftest ^:parallel children-and-parents-test
-  (mt/test-drivers (mt/normal-drivers-with-feature :nested-fields)
+  (mt/test-drivers (drivers-with-nested-fields-that-work-with-fake-sync)
     (testing "Can select both a child and its parent"
       (mt/dataset geographical-tips
         ;; Return the first 10 tips with just tip.venue.name
@@ -200,7 +210,7 @@
                    :limit    10}))))))))
 
 (deftest ^:parallel order-by-aggregation-test
-  (mt/test-drivers (mt/normal-drivers-with-feature :nested-fields)
+  (mt/test-drivers (drivers-with-nested-fields-that-work-with-fake-sync)
     (testing "Nested Field w/ ordering by aggregation"
       (mt/dataset geographical-tips
         (is (= [["jane"           4]
@@ -225,7 +235,7 @@
                    :order-by    [[:asc [:aggregation 0]]]}))))))))
 
 (deftest ^:parallel nested-query-test
-  (mt/test-drivers (mt/normal-drivers-with-feature :nested-fields)
+  (mt/test-drivers (drivers-with-nested-fields-that-work-with-fake-sync)
     (testing "Nested Field in a nested query"
       (mt/dataset geographical-tips
         (is (= [["facebook"   107 108]
@@ -242,7 +252,7 @@
                                   :source-table $$tips}}))))))))
 
 (deftest ^:parallel nested-query-2-test
-  (mt/test-drivers (mt/normal-drivers-with-feature :nested-fields)
+  (mt/test-drivers (drivers-with-nested-fields-that-work-with-fake-sync)
     (testing "Nested fields in a nested query where the outer query needs the nested field"
       (mt/dataset geographical-tips
         (is (= [["FACEBOOK"   107]
