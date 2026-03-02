@@ -146,7 +146,7 @@ export const trackDataStudioOpened = () => {
     triggered_from: "nav_menu",
   });
 };
-    
+
 export const trackMetricCreateStarted = (
   triggeredFrom: "browse_metrics" | "data_studio_library" | "command_palette",
 ) => {
