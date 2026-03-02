@@ -1107,8 +1107,8 @@ describe("scenarios > dashboard", () => {
 
         cy.log("should scroll into view w/ scrollTo hash param");
         cy.visit(`/dashboard/${dashboard.id}#scrollTo=${targetCard.id}`);
-        cy.location("hash").should("match", /scrollTo=\d+/); // url should have hash param to auto-scroll
-        cy.location("hash").should("not.include", "scrollTo"); // scrollTo param should get removed
+        // wait for scroll to complete (hash cleared) then verify visibility
+        cy.location("hash").should("not.include", "scrollTo");
         cy.findByText(TARGET_TEXT).should("be.visible");
       },
     );

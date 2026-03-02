@@ -4,7 +4,12 @@ import { assoc, assocIn, chain, dissoc, getIn } from "icepick";
 import slugg from "slugg";
 import _ from "underscore";
 
-import { utf8_to_b64url } from "metabase/lib/encoding";
+// eslint-disable-next-line no-restricted-imports
+import {
+  type SerializeCardOptions,
+  serializeCardForUrl,
+} from "metabase/lib/card";
+import { equals } from "metabase/lib/utils";
 import { applyParameter } from "metabase/querying/parameters/utils/query";
 import * as Lib from "metabase-lib";
 import {
@@ -24,10 +29,9 @@ import NativeQuery, {
 } from "metabase-lib/v1/queries/NativeQuery";
 import { STRUCTURED_QUERY_TEMPLATE } from "metabase-lib/v1/queries/StructuredQuery";
 import { isTransientId } from "metabase-lib/v1/queries/utils/card";
-import { sortObject } from "metabase-lib/v1/utils";
 import type {
+  Card,
   CardDisplayType,
-  Card as CardObject,
   CardType,
   CollectionId,
   DashCardId,
@@ -79,7 +83,7 @@ class Question {
    * The plain object presentation of this question, equal to the format that Metabase REST API understands.
    * It is called `card` for both historical reasons and to make a clear distinction to this class.
    */
-  _card: CardObject;
+  _card: Card;
 
   /**
    * The Question wrapper requires a metadata object because the queries it contains (like {@link StructuredQuery})
@@ -135,7 +139,7 @@ class Question {
     return this._card;
   }
 
-  setCard(card: CardObject): Question {
+  setCard(card: Card): Question {
     const q = this.clone();
     q._card = card;
     return q;
@@ -677,19 +681,10 @@ class Question {
     } else {
       // If it's saved, then it's dirty when the current card doesn't match the last saved version.
       // Omit `entity_id` and `dataset_query` as they have randomized idents
-      const origCardSerialized =
-        originalQuestion &&
-        originalQuestion._serializeForUrl({
-          includeEntityId: false,
-          includeDatasetQuery: false,
-          includeOriginalCardId: false,
-        });
-      const currentCardSerialized = this._serializeForUrl({
-        includeEntityId: false,
-        includeDatasetQuery: false,
-        includeOriginalCardId: false,
-      });
-      if (currentCardSerialized !== origCardSerialized) {
+      const originalCard = originalQuestion?._getValueForComparison();
+      const currentCard = this._getValueForComparison();
+
+      if (!equals(originalCard, currentCard)) {
         return true;
       }
 
@@ -724,60 +719,44 @@ class Question {
     );
   }
 
-  // Internal methods
-  _serializeForUrl({
-    includeEntityId = true,
-    includeDatasetQuery = true,
-    includeOriginalCardId = true,
-    includeDisplayIsLocked = false,
-    creationType,
-  }: {
-    includeEntityId?: boolean;
-    includeDatasetQuery?: boolean;
-    includeOriginalCardId?: boolean;
-    includeDisplayIsLocked?: boolean;
-    creationType?: string;
-  } = {}) {
-    const card = this._card;
-    const cardCopy = {
-      name: card.name,
-      description: card.description,
-      collection_id: card.collection_id,
-      dashboard_id: card.dashboard_id,
-      ...(includeEntityId ? { entity_id: card.entity_id } : {}),
-      ...(includeDatasetQuery
-        ? { dataset_query: Lib.toJsQuery(this.query()) }
-        : {}),
-      display: card.display,
-      ...(_.isEmpty(card.parameters)
-        ? undefined
-        : {
-            parameters: card.parameters,
-          }),
-      type: card.type,
-      ...(_.isEmpty(this._parameterValues)
-        ? undefined
-        : {
-            parameterValues: this._parameterValues,
-          }),
-      // this is kinda wrong. these values aren't really part of the card, but this is a convenient place to put them
-      visualization_settings: card.visualization_settings,
-      ...(includeOriginalCardId
-        ? {
-            original_card_id: card.original_card_id,
-          }
-        : {}),
-      ...(includeDisplayIsLocked
-        ? {
-            displayIsLocked: card.displayIsLocked,
-          }
-        : {}),
-
-      ...(creationType ? { creationType } : {}),
-      dashboardId: card.dashboardId,
-      dashcardId: card.dashcardId,
+  serializeForUrl(opts: SerializeCardOptions = {}) {
+    const card = {
+      ...this.card(),
+      dataset_query: Lib.toJsQuery(this.query()),
     };
-    return utf8_to_b64url(JSON.stringify(sortObject(cardCopy)));
+    return serializeCardForUrl(card, {
+      ...opts,
+      parameterValues: this._parameterValues,
+    });
+  }
+
+  // Internal methods
+  _getValueForComparison() {
+    const value = {
+      ...this._card,
+      ...this._parameterValues,
+    };
+
+    const keys = [
+      "collection_id",
+      "dashboard_id",
+      "dashboardId",
+      "dashcardId",
+      "description",
+      "display",
+      "name",
+      "parameters",
+      "parameterValues",
+      "type",
+      "visualization_settings",
+    ];
+
+    const res = {};
+    for (const key of keys) {
+      res[key] = value[key] ?? undefined;
+    }
+
+    return res;
   }
 
   _convertParametersToMbql({ isComposed }: { isComposed: boolean }): Question {
@@ -911,7 +890,7 @@ class Question {
       ? NATIVE_QUERY_TEMPLATE
       : STRUCTURED_QUERY_TEMPLATE,
   }: QuestionCreatorOpts = {}) {
-    let card: CardObject = {
+    let card: Card = {
       name,
       collection_id: collectionId,
       dashboard_id: dashboardId,

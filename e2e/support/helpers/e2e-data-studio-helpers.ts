@@ -52,6 +52,7 @@ export const DataStudio = {
     definitionTab: () =>
       DataStudio.Transforms.header().findByText("Definition"),
     runTab: () => DataStudio.Transforms.header().findByText("Run"),
+    inspectTab: () => DataStudio.Transforms.header().findByText("Inspect"),
     targetTab: () => DataStudio.Transforms.header().findByText("Target"),
     settingsTab: () => DataStudio.Transforms.header().findByText("Settings"),
     dependenciesTab: () =>
@@ -59,6 +60,9 @@ export const DataStudio = {
     visit: () => {
       cy.visit("/data-studio/transforms");
       DataStudio.Transforms.list().should("be.visible");
+    },
+    visitInspect: (transformId: TransformId) => {
+      cy.visit(`/data-studio/transforms/${transformId}/inspect`);
     },
     visitSettingsTab: (transformId: TransformId) =>
       cy.visit(`/data-studio/transforms/${transformId}/settings`),

@@ -137,13 +137,13 @@
   (if-let [aggregations (lib/aggregations query stage-number)]
     (let [columns (lib/visible-columns query stage-number)]
       (assoc-in query [:stages stage-number :aggregation]
-                (lib.util.match/replace aggregations
+                (lib.util.match/replace-lite aggregations
                   [:metric _ metric-id]
                   (if-let [{replacement :aggregation} (get lookup metric-id)]
                     ;; We have to replace references from the source-metric with references appropriate for
                     ;; this stage (expression/aggregation -> field, field-id to string)
-                    (let [replacement (lib.util.match/replace replacement
-                                        [(tag :guard #{:expression :field :aggregation}) _ _]
+                    (let [replacement (lib.util.match/replace-lite replacement
+                                        [#{:expression :field :aggregation} _ _]
                                         (if-let [col (lib/find-matching-column &match columns)]
                                           (lib/ref col)
                                           ;; This is probably due to a field-id where it shouldn't be
@@ -228,8 +228,8 @@
 
 (defn- add-join-aliases
   [x source-field->join-alias]
-  (lib.util.match/replace x
-    [:field (opts :guard (every-pred (comp source-field->join-alias :source-field) (complement :join-alias))) _]
+  (lib.util.match/replace-lite x
+    [:field (opts :guard (and (source-field->join-alias (:source-field opts)) (not (:join-alias opts)))) _]
     (assoc-in &match [1 :join-alias] (-> opts :source-field source-field->join-alias))))
 
 (defn- include-implicit-joins

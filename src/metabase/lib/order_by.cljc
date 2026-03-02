@@ -189,8 +189,8 @@
   ([query :- ::lib.schema/query
     current-order-by :- ::lib.schema.order-by/order-by]
    (let [lib-uuid (lib.options/uuid current-order-by)]
-     (lib.util.match/replace query
-       [direction (_ :guard #(= (:lib/uuid %) lib-uuid)) _]
+     (lib.util.match/replace-lite query
+       [direction {:lib/uuid (uuid :guard (= uuid lib-uuid))} _]
        (assoc &match 0 (opposite-direction direction))))))
 
 (mu/defn remove-all-order-bys :- ::lib.schema/query

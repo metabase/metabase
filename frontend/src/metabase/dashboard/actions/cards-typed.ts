@@ -516,7 +516,7 @@ export const removeCardFromDashboard = createThunkAction(
     },
 );
 
-const undoRemoveCardFromDashboard = createThunkAction(
+export const undoRemoveCardFromDashboard = createThunkAction(
   UNDO_REMOVE_CARD_FROM_DASH,
   ({ dashcardId, originalParameters }) =>
     (dispatch, getState) => {

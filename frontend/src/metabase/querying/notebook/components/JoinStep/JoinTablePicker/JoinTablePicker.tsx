@@ -3,10 +3,9 @@ import { useState } from "react";
 import { t } from "ttag";
 
 import { IconButtonWrapper } from "metabase/common/components/IconButtonWrapper";
+import { isEmbedding } from "metabase/embedding/config";
 import { METAKEY } from "metabase/lib/browser";
 import type { ColorName } from "metabase/lib/colors/types";
-import { useSelector } from "metabase/lib/redux";
-import { getIsEmbedding } from "metabase/selectors/embed";
 import { Box, Icon, Popover, Tooltip } from "metabase/ui";
 import type * as Lib from "metabase-lib";
 
@@ -37,11 +36,11 @@ export function JoinTablePicker({
   onChange,
 }: JoinTablePickerProps) {
   const [isOpened, setIsOpened] = useState(!table);
-  const isEmbedding = useSelector(getIsEmbedding);
+  const isEmbed = isEmbedding();
 
   return (
     <Box aria-label={t`Right table`}>
-      {isOpened || !table || isEmbedding ? (
+      {isOpened || !table || isEmbed ? (
         <NotebookDataPicker
           title={t`Pick data to join`}
           query={query}

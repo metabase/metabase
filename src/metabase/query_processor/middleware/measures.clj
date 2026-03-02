@@ -79,7 +79,7 @@
   "Replace :measure clauses in a stage with their actual aggregation expressions."
   [stage        :- ::lib.schema/stage
    id->measure  :- [:map-of pos-int? :map]]
-  (lib.util.match/replace stage
+  (lib.util.match/replace-lite stage
     [:measure opts (id :guard pos-int?)]
     (b/cond
       :let [measure (get id->measure id)]

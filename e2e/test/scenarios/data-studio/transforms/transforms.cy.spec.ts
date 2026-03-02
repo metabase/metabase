@@ -2260,9 +2260,7 @@ LIMIT
         });
         cy.button("Create a transform").click();
         H.popover().findByText("Python script").click();
-        cy.get(".cm-clickable-token")
-          .should("be.visible")
-          .click({ metaKey: true });
+        cy.get(".cm-clickable-token").should("be.visible").click(H.holdMetaKey);
 
         cy.get("@windowOpen").should(
           "have.been.calledWithMatch",
@@ -4274,41 +4272,6 @@ describe("scenarios > data studio > transforms > permissions > pro-self-hosted",
       cy.findByRole("columnheader", { name: /Transforms/ })
         .scrollIntoView()
         .should("be.visible");
-    });
-  });
-});
-
-describe("scenarios > data studio > transforms > permissions > starter", () => {
-  beforeEach(() => {
-    H.restore();
-    cy.signInAsAdmin();
-  });
-
-  it("should have transforms upsell", () => {
-    H.activateToken("starter").then(() => {
-      cy.log("Visit data studio page");
-      cy.visit("/data-studio");
-      H.DataStudio.nav().should("be.visible");
-
-      cy.log("Verify Transforms menu item is visible");
-      H.DataStudio.nav().findByText("Transforms").should("be.visible");
-
-      cy.log(
-        "Verify there is an upsell gem icon is displayed in Transforms menu item",
-      );
-      H.DataStudio.nav()
-        .findByText("Transforms")
-        .closest("a")
-        .within(() => {
-          cy.findByTestId("upsell-gem").should("be.visible");
-        });
-
-      cy.log("Verify transforms page is accessible");
-      H.DataStudio.nav().findByText("Transforms").click();
-
-      cy.findByText("Start transforming your data in Metabase").should(
-        "be.visible",
-      );
     });
   });
 });

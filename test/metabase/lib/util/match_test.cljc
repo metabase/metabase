@@ -1,7 +1,8 @@
 (ns metabase.lib.util.match-test
   {:clj-kondo/config '{:linters
                        {:discouraged-var {metabase.lib.util.match/match {:level :off}
-                                          metabase.lib.util.match/match-one {:level :off}}}}}
+                                          metabase.lib.util.match/match-one {:level :off}
+                                          metabase.lib.util.match/replace {:level :off}}}}}
   (:require
    [clojure.test :as t]
    [metabase.lib.util.match :as lib.util.match]))

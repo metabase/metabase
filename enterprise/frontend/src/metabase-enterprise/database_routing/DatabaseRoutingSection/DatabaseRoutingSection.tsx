@@ -134,7 +134,7 @@ export const DatabaseRoutingSection = ({
         </Stack>
         <Flex gap="md">
           <Tooltip label={disabledFeatMsg} disabled={!disabledFeatMsg}>
-            <Box>
+            <Box data-testid="database-routing-toggle-wrapper">
               <Switch
                 id="database-routing-toggle"
                 checked={enabled}

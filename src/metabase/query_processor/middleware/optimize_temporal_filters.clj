@@ -145,8 +145,8 @@
   (:end (u.date/range t unit)))
 
 (defn- change-temporal-unit-to-default [field]
-  (lib.util.match/replace field
-    [(_tag :guard #{:field :expression}) (_opts :guard (comp optimizable-units :temporal-unit)) _id-or-name]
+  (lib.util.match/replace-lite field
+    [#{:field :expression} {:temporal-unit (_ :guard optimizable-units)} _id-or-name]
     (lib/update-options &match assoc :temporal-unit :default)
 
     [:absolute-datetime _opts t _unit]
