@@ -63,6 +63,7 @@ export class LeafletMap extends Component<LeafletMapProps> {
         scrollWheelZoom: true,
         wheelPxPerZoomLevel: 30,
         minZoom: 2,
+
         zoomSnap: 0,
         // Set max bounds for latitude only, allowing longitude to wrap
         maxBounds: [
@@ -91,10 +92,7 @@ export class LeafletMap extends Component<LeafletMapProps> {
         },
       }));
       map.addControl(drawControl);
-      map.on(
-        "draw:created" as any,
-        this.onFilter as unknown as L.LeafletEventHandlerFn,
-      );
+      map.on("draw:created", this.onFilter);
 
       map.setView([0, 0], 8);
 
