@@ -51,7 +51,7 @@
 
 ;;; Naming
 
-;; re-using https://github.com/metabase/metabase/pull/61887/commits/c92e4a9cc451c61a13fef19ed9d6107873b17f07
+;; reusing https://github.com/metabase/metabase/pull/61887/commits/c92e4a9cc451c61a13fef19ed9d6107873b17f07
 ;; (original ws isolation code)
 (defn- instance-uuid-slug
   "Create a slug from the site UUID, taking the first character of each section."
