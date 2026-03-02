@@ -30,11 +30,21 @@ For now, Metabot is only available for Metabase Cloud. Before you can set up Met
 
 Once you've added Metabot AI in the Metabase store, you can log into your Metabase and configure it in _Admin > AI_.
 
+## Metabot options
+
+You can set options for Metabot, both for your Metabase instance, and (separately) for Metabot in [full-app embeds](../embedding/full-app-embeddding.md) (in the Embedded Metabot tab).
+
+- [Enable Metabot](#enable-metabot)
+- [Verified content](#enable-metabot)
+- [Collection Metabot can use](#collection-metabot-can-use)
+
 ## Enable Metabot
 
-Both **Metabot** and **Embedded Metabot** are enabled by default on new Metabase instances.
+Both **Metabot** and **Embedded Metabot** are enabled by default.
 
-Toggle [Metabot](./metabot.md) on or off for your Metabase. When enabled, Metabot is available to help people create questions, analyze data, and answer questions about your data. When disabled, the Metabot icon and keyboard shortcuts are hidden.
+Toggle [Metabot](./metabot.md) on or off for your Metabase or full-app embed. When enabled, Metabot is available to help people create questions, analyze data, and answer questions about your data. When disabled, the Metabot icon and keyboard shortcuts are hidden.
+
+For now, the Metabot icon in full-app embeds isn't customizable.
 
 ## Verified content
 
@@ -42,23 +52,13 @@ Admins on Pro and Enterprise plans can tell Metabot to only work with [models](.
 
 Restricting Metabot to verified models and metrics (and only models and metrics) helps Metabot produce more reliable answers, since you know someone has at least vetted the data Metabot can use.
 
-## Collection for natural language querying
+## Collection Metabot can use
 
 Select a collection (including its subcollections) to limit which collections Metabot searches during [AI exploration](../ai/metabot.md#ai-exploration).
 
 This setting only affects conversations started from **+ New → AI exploration**.
 
 People can still @-mention items outside of this collection when prompting in AI exploration. Metabot can also see the person's current context (for example, Metabot will know about the dashboard they're currently viewing, even if the dashboard is outside the selected collection).
-
-## Embedded Metabot
-
-_Admin > AI > Embedded Metabot_
-
-Embedded Metabot has the same settings as the main Metabot page, which you can configure independently and apply to people using your [full-app embed](../embedding/full-app-embedding.md) iframe.
-
-Embedded Metabot is enabled by default. Toggle **Enable Embedded Metabot** to show or hide Metabot for embedded users in full-app embeds. When disabled, the Metabot icon and keyboard shortcuts are hidden from everyone in the embedded iframe.
-
-For now, the Metabot icon in full-app embeds isn't customizable.
 
 ## Tips for making the most of Metabot
 
