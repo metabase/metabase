@@ -2,5 +2,20 @@
   "base": {
     "name": "integration-embedding-onboarding-improvements",
     "hash": "35d2431e2af0b3d41b4c3ad564c3932309082a79"
+  },
+  "upstream": {
+    "branch": "emb-1327-show-tenant_identifier-suggestions-in-a-menu-from-row-level"
+  },
+  "change": {
+    "github": {
+      "pr": {
+        "number": 69829,
+        "gqlID": "PR_kwDOAczgH87Eeu0v"
+      },
+      "comment": {
+        "gqlID": "IC_kwDOAczgH87pgf-V",
+        "url": "https://github.com/metabase/metabase/pull/69829#issuecomment-3917610901"
+      }
+    }
   }
 }
