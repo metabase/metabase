@@ -46,7 +46,7 @@ function DashCardPlaceholderInner({
 
   const shouldDisableItem = (item: OmniPickerItem) => {
     // don't allow adding items that are already saved in a different dashboard
-    // proably only applicable to search and recents
+    // probably only applicable to search and recents
     if (!isInDbTree(item) && item.dashboard_id) {
       if (item.dashboard_id !== dashboard.id) {
         return true;
