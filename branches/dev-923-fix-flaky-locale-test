@@ -3,9 +3,6 @@
     "name": "master",
     "hash": "7bc2093651695c4c2cde9afbc9e62429f89dcbf4"
   },
-  "upstream": {
-    "branch": "dev-923-fix-flaky-locale-test"
-  },
   "change": {
     "github": {
       "pr": {
