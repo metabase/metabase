@@ -326,7 +326,7 @@
   (testing "Executing a query transform sets transform_id on the target table"
     (mt/with-premium-features #{:transforms}
       (let [target {:type "table" :schema nil :name "test_output_table"}]
-        (mt/with-temp [:model/Database {db-id :id :as db} {:engine :h2}
+        (mt/with-temp [:model/Database {db-id :id} {:engine :h2}
                        :model/Transform {transform-id :id :as transform} {:target target
                                                                           :source {:type  "query"
                                                                                    :query {:database db-id}}}
