@@ -3,9 +3,6 @@
     "name": "master",
     "hash": "647058ec89718c7b164f5fec1072d9de63e5dc15"
   },
-  "upstream": {
-    "branch": "emb-644-update-securityclj-to-allow-cors-for-the-new-iframe-embeds-x"
-  },
   "change": {
     "github": {
       "pr": {
