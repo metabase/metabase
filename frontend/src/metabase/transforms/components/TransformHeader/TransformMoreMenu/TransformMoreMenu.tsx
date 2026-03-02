@@ -1,8 +1,8 @@
 import { type MouseEvent, useState } from "react";
-import { push } from "react-router-redux";
 import { t } from "ttag";
 
 import { useDispatch } from "metabase/lib/redux";
+import { push } from "metabase/lib/router";
 import * as Urls from "metabase/lib/urls";
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import { ActionIcon, Icon, Menu } from "metabase/ui";

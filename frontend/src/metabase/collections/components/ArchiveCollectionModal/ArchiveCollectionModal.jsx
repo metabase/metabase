@@ -1,13 +1,13 @@
 /* eslint-disable react/prop-types */
 import { Component } from "react";
 import { withRouter } from "react-router";
-import { push } from "react-router-redux";
 import { t } from "ttag";
 import _ from "underscore";
 
 import { ArchiveModal } from "metabase/common/components/ArchiveModal";
 import { Collections } from "metabase/entities/collections";
 import { connect } from "metabase/lib/redux";
+import { push } from "metabase/lib/router";
 import * as Urls from "metabase/lib/urls";
 
 const mapDispatchToProps = {

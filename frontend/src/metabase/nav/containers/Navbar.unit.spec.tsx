@@ -21,6 +21,7 @@ import {
   CLOSE_NAVBAR,
   OPEN_NAVBAR,
   isNavbarOpenForPathname,
+  locationChanged,
 } from "metabase/redux/app";
 import type { User } from "metabase-types/api";
 import {
@@ -258,11 +259,10 @@ function dispatchLocationChange({
   initialRoute = false,
   pathname,
 }: DispatchLocationChangeParams) {
-  store.dispatch({
-    type: "@@router/LOCATION_CHANGE",
-    payload: {
+  store.dispatch(
+    locationChanged({
       pathname,
       action: initialRoute ? "POP" : "PUSH",
-    },
-  });
+    }),
+  );
 }

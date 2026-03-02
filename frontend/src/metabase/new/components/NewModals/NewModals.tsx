@@ -1,7 +1,6 @@
 import { useCallback, useEffect } from "react";
 import type { WithRouterProps } from "react-router";
 import { withRouter } from "react-router";
-import { push } from "react-router-redux";
 import { useLocation } from "react-use";
 
 import ActionCreator from "metabase/actions/containers/ActionCreator";
@@ -17,6 +16,7 @@ import {
 import { SdkIframeEmbedSetupModal } from "metabase/embedding/embedding-iframe-sdk-setup/components/SdkIframeEmbedSetupModal";
 import { Collections } from "metabase/entities/collections/collections";
 import { useDispatch, useSelector } from "metabase/lib/redux";
+import { push } from "metabase/lib/router";
 import * as Urls from "metabase/lib/urls";
 import { PaletteShortcutsModal } from "metabase/palette/components/PaletteShortcutsModal/PaletteShortcutsModal";
 import { useRegisterShortcut } from "metabase/palette/hooks/useRegisterShortcut";

@@ -1,6 +1,5 @@
 import { useDisclosure } from "@mantine/hooks";
 import { useCallback, useMemo } from "react";
-import { push } from "react-router-redux";
 import { t } from "ttag";
 
 import { HACK_getParentCollectionFromEntityUpdateAction } from "metabase/archive/utils";
@@ -26,6 +25,7 @@ import { EntityItem } from "metabase/common/components/EntityItem";
 import { useToast } from "metabase/common/hooks/use-toast";
 import { bookmarks as BookmarkEntity } from "metabase/entities";
 import { connect, useDispatch } from "metabase/lib/redux";
+import { push } from "metabase/lib/router";
 import { entityForObject } from "metabase/lib/schema";
 import * as Urls from "metabase/lib/urls";
 import { getSetting } from "metabase/selectors/settings";

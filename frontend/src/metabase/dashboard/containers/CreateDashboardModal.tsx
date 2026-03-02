@@ -1,10 +1,10 @@
 import { useCallback } from "react";
-import { push } from "react-router-redux";
 import { t } from "ttag";
 
 import type { SdkCollectionId } from "embedding-sdk-bundle/types";
 import { useEscapeToCloseModal } from "metabase/common/hooks/use-escape-to-close-modal";
 import { useDispatch } from "metabase/lib/redux";
+import { push } from "metabase/lib/router";
 import * as Urls from "metabase/lib/urls";
 import { Modal, type ModalProps } from "metabase/ui";
 import type { CollectionId, Dashboard } from "metabase-types/api";

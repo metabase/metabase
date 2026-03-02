@@ -13,7 +13,6 @@ import classNames from "classnames";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { ResizableBox } from "react-resizable";
 import type { Route } from "react-router";
-import { replace } from "react-router-redux";
 import { useLocation } from "react-use";
 import { t } from "ttag";
 
@@ -24,6 +23,7 @@ import { ResizeHandle } from "metabase/common/components/ResizeHandle";
 import { Sortable } from "metabase/common/components/Sortable";
 import { PaneHeaderInput } from "metabase/data-studio/common/components/PaneHeader";
 import { useDispatch } from "metabase/lib/redux";
+import { replace } from "metabase/lib/router";
 import { checkNotNull } from "metabase/lib/types";
 import * as Urls from "metabase/lib/urls";
 import { NAME_MAX_LENGTH } from "metabase/transforms/constants";

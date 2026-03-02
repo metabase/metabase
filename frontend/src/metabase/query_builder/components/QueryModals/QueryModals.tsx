@@ -1,5 +1,4 @@
 import { useCallback } from "react";
-import { push } from "react-router-redux";
 import { t } from "ttag";
 import _ from "underscore";
 
@@ -10,6 +9,7 @@ import { SaveQuestionModal } from "metabase/common/components/SaveQuestionModal"
 import { type ToastArgs, useToast } from "metabase/common/hooks";
 import EntityCopyModal from "metabase/entities/containers/EntityCopyModal";
 import { useDispatch, useSelector } from "metabase/lib/redux";
+import { push } from "metabase/lib/router";
 import * as Urls from "metabase/lib/urls";
 import { QuestionAlertListModal } from "metabase/notifications/modals";
 import { setArchivedQuestion } from "metabase/query_builder/actions";

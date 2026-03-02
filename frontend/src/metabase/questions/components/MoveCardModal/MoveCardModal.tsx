@@ -1,5 +1,4 @@
 import { useState } from "react";
-import { push } from "react-router-redux";
 import { c, t } from "ttag";
 import _ from "underscore";
 
@@ -17,6 +16,7 @@ import { MoveModal } from "metabase/common/components/Pickers";
 import { Dashboards } from "metabase/entities/dashboards";
 import { INJECT_RTK_QUERY_QUESTION_VALUE } from "metabase/entities/questions";
 import { useDispatch } from "metabase/lib/redux";
+import { push } from "metabase/lib/router";
 import * as Urls from "metabase/lib/urls";
 import { API_UPDATE_QUESTION } from "metabase/query_builder/actions";
 import { addUndo } from "metabase/redux/undo";

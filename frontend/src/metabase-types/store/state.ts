@@ -1,5 +1,3 @@
-import type { RouterState } from "react-router-redux";
-
 import type { Api } from "metabase/api/api";
 import type { User } from "metabase-types/api";
 import type { DocumentsState } from "metabase-types/store/documents";
@@ -40,7 +38,6 @@ export interface State {
   pulse: PulseState;
   qb: QueryBuilderState;
   requests: RequestsState;
-  routing: RouterState;
   settings: SettingsState;
   setup: SetupState;
   upload: FileUploadState;

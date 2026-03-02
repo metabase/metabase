@@ -1,4 +1,3 @@
-import { push } from "react-router-redux";
 import { t } from "ttag";
 import _ from "underscore";
 
@@ -8,6 +7,7 @@ import {
   getGroupFocusPermissionsUrl,
 } from "metabase/admin/permissions/utils/urls";
 import { ModalRoute } from "metabase/hoc/ModalRoute";
+import { push } from "metabase/lib/router";
 import {
   PLUGIN_ADMIN_PERMISSIONS_TABLE_FIELDS_ACTIONS,
   PLUGIN_ADMIN_PERMISSIONS_TABLE_FIELDS_CONFIRMATIONS,

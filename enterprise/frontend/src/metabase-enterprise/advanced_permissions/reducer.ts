@@ -1,6 +1,5 @@
 import type { PayloadAction } from "@reduxjs/toolkit";
 import { createAction, createSlice } from "@reduxjs/toolkit";
-import { push } from "react-router-redux";
 
 import {
   LOAD_DATA_PERMISSIONS,
@@ -16,6 +15,7 @@ import {
   DATABASES_BASE_PATH,
   GROUPS_BASE_PATH,
 } from "metabase/admin/permissions/utils/urls";
+import { push } from "metabase/lib/router";
 import type { GroupId, Impersonation } from "metabase-types/api";
 
 export const getImpersonatedPostAction = (

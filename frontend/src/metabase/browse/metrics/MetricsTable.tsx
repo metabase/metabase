@@ -1,5 +1,4 @@
 import { type MouseEvent, useCallback, useMemo, useState } from "react";
-import { push } from "react-router-redux";
 import { c, t } from "ttag";
 
 import {
@@ -24,6 +23,7 @@ import { MarkdownPreview } from "metabase/common/components/MarkdownPreview";
 import { Bookmarks } from "metabase/entities/bookmarks";
 import { Questions } from "metabase/entities/questions";
 import { useDispatch } from "metabase/lib/redux";
+import { push } from "metabase/lib/router";
 import * as Urls from "metabase/lib/urls";
 import {
   Button,

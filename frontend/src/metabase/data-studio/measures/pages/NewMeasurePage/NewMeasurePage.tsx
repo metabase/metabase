@@ -1,7 +1,6 @@
 import type { ReactNode } from "react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { Route } from "react-router";
-import { push } from "react-router-redux";
 import { t } from "ttag";
 
 import { useCreateMeasureMutation } from "metabase/api";
@@ -9,6 +8,7 @@ import { LeaveRouteConfirmModal } from "metabase/common/components/LeaveConfirmM
 import { PageContainer } from "metabase/data-studio/common/components/PageContainer";
 import { getDatasetQueryPreviewUrl } from "metabase/data-studio/common/utils/get-dataset-query-preview-url";
 import { useDispatch, useSelector } from "metabase/lib/redux";
+import { push } from "metabase/lib/router";
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import { getMetadataWithHiddenTables } from "metabase/selectors/metadata";
 import { Button } from "metabase/ui";

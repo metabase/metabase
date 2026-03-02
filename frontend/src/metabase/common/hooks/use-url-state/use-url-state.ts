@@ -1,10 +1,10 @@
 import type { Location, Query } from "history";
 import { useCallback, useEffect, useState } from "react";
-import { push, replace } from "react-router-redux";
 import { useEffectOnce, useLatest } from "react-use";
 
 import { useDebouncedValue } from "metabase/common/hooks/use-debounced-value";
 import { useDispatch } from "metabase/lib/redux";
+import { push, replace } from "metabase/lib/router";
 
 type BaseState = Record<string, unknown>;
 

@@ -1,8 +1,8 @@
-import { push } from "react-router-redux";
 import _ from "underscore";
 
 import { Databases } from "metabase/entities/databases";
 import { connect } from "metabase/lib/redux";
+import { push } from "metabase/lib/router";
 import { closeNavbar } from "metabase/redux/app";
 import { getHasDatabaseWithJsonEngine } from "metabase/selectors/data";
 import {

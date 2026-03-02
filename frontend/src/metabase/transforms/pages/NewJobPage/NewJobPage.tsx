@@ -1,6 +1,5 @@
 import { useMemo, useState } from "react";
 import type { Route } from "react-router";
-import { push } from "react-router-redux";
 import { t } from "ttag";
 import _ from "underscore";
 
@@ -11,6 +10,7 @@ import {
 import { LeaveRouteConfirmModal } from "metabase/common/components/LeaveConfirmModal";
 import { PaneHeaderActions } from "metabase/data-studio/common/components/PaneHeader";
 import { useDispatch } from "metabase/lib/redux";
+import { push } from "metabase/lib/router";
 import * as Urls from "metabase/lib/urls";
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import type { ScheduleDisplayType, TransformTagId } from "metabase-types/api";

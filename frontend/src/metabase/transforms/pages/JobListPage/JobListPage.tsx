@@ -1,5 +1,4 @@
 import { useCallback, useMemo, useState } from "react";
-import { push } from "react-router-redux";
 import { t } from "ttag";
 
 import { useListTransformJobsQuery } from "metabase/api";
@@ -11,6 +10,7 @@ import { DataStudioBreadcrumbs } from "metabase/data-studio/common/components/Da
 import { PageContainer } from "metabase/data-studio/common/components/PageContainer";
 import { PaneHeader } from "metabase/data-studio/common/components/PaneHeader";
 import { useDispatch } from "metabase/lib/redux";
+import { push } from "metabase/lib/router";
 import * as Urls from "metabase/lib/urls";
 import { ListEmptyState } from "metabase/transforms/components/ListEmptyState";
 import type { TreeTableColumnDef } from "metabase/ui";

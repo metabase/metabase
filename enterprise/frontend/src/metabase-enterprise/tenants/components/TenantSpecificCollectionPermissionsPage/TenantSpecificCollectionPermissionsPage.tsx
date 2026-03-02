@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useMemo } from "react";
 import type { Route } from "react-router";
-import { push } from "react-router-redux";
 import { t } from "ttag";
 import _ from "underscore";
 
@@ -21,6 +20,7 @@ import type { CollectionIdProps } from "metabase/admin/permissions/selectors/col
 import { Collections } from "metabase/entities/collections";
 import { Groups } from "metabase/entities/groups";
 import { useDispatch, useSelector } from "metabase/lib/redux";
+import { push } from "metabase/lib/router";
 import type { Collection, CollectionId, GroupId } from "metabase-types/api";
 
 import {

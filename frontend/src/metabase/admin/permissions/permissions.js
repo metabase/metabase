@@ -1,5 +1,4 @@
 import { assocIn, getIn, merge } from "icepick";
-import { push } from "react-router-redux";
 import { t } from "ttag";
 import { isBoolean } from "underscore";
 
@@ -21,6 +20,7 @@ import {
   createThunkAction,
   handleActions,
 } from "metabase/lib/redux";
+import { push } from "metabase/lib/router";
 import {
   PLUGIN_ADVANCED_PERMISSIONS,
   PLUGIN_DATA_PERMISSIONS,

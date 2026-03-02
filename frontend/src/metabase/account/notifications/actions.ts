@@ -1,4 +1,4 @@
-import { push } from "react-router-redux";
+import { push } from "metabase/lib/router";
 
 import type { NotificationListItem } from "./types";
 

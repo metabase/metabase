@@ -1,7 +1,6 @@
-import { push } from "react-router-redux";
-
 import { DatabaseEngineList } from "metabase/databases/components/DatabaseEngineList";
 import { useDispatch } from "metabase/lib/redux";
+import { push } from "metabase/lib/router";
 
 import { trackDatabaseSelect } from "../analytics";
 

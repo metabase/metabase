@@ -1,11 +1,11 @@
 import type { Location } from "history";
 import { useEffect, useMemo } from "react";
-import { replace } from "react-router-redux";
 import { usePrevious } from "react-use";
 import { omit } from "underscore";
 
 import { parseHashOptions, stringifyHashOptions } from "metabase/lib/browser";
 import { useDispatch } from "metabase/lib/redux";
+import { replace } from "metabase/lib/router";
 import { isNullOrUndefined } from "metabase/lib/types";
 
 type SYNCED_KEY = "refresh" | "fullscreen";

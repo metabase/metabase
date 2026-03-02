@@ -2,7 +2,6 @@ import type { Location } from "history";
 
 import { createThunkAction } from "metabase/lib/redux";
 import { equals } from "metabase/lib/utils";
-import { getLocation } from "metabase/selectors/routing";
 import type { Dispatch } from "metabase-types/store";
 
 import {
@@ -29,17 +28,7 @@ export const popState = createThunkAction(
 
     const zoomedObjectId = getZoomedObjectId(getState());
     if (zoomedObjectId) {
-      const { state, query } = getLocation(getState());
-      const previouslyZoomedObjectId = state?.objectId || query?.objectId;
-
-      if (
-        previouslyZoomedObjectId &&
-        zoomedObjectId !== previouslyZoomedObjectId
-      ) {
-        dispatch(zoomInRow({ objectId: previouslyZoomedObjectId }));
-      } else {
-        dispatch(resetRowZoom());
-      }
+      dispatch(resetRowZoom());
       return;
     }
 

@@ -12,7 +12,6 @@ import {
 } from "@tiptap/react";
 import cx from "classnames";
 import { useMemo } from "react";
-import { push } from "react-router-redux";
 import { t } from "ttag";
 
 import { useListCommentsQuery } from "metabase/api/comment";
@@ -25,6 +24,7 @@ import {
 import { getListCommentsQuery } from "metabase/documents/utils/api";
 import { isWithinIframe } from "metabase/lib/dom";
 import { useDispatch, useSelector } from "metabase/lib/redux/hooks";
+import { push } from "metabase/lib/router";
 import { DropZone } from "metabase/rich_text_editing/tiptap/extensions/shared/dnd/DropZone";
 import { useDndHelpers } from "metabase/rich_text_editing/tiptap/extensions/shared/dnd/use-dnd-helpers";
 import { Box } from "metabase/ui";

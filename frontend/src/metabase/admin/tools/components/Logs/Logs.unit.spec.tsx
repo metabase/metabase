@@ -4,10 +4,7 @@ import { Route } from "react-router";
 
 import { act, renderWithProviders, screen, waitFor } from "__support__/ui";
 import { UtilApi } from "metabase/services";
-import {
-  createMockLocation,
-  createMockRoutingState,
-} from "metabase-types/store/mocks";
+import { createMockLocation } from "metabase-types/store/mocks";
 
 import { DEFAULT_POLLING_DURATION_MS, Logs } from "./Logs";
 import { maybeMergeLogs } from "./utils";
@@ -38,11 +35,6 @@ function setup({
     <Route path={location.pathname} component={() => <Logs />} />,
     {
       initialRoute: `${location.pathname}${location.search}`,
-      storeInitialState: {
-        routing: createMockRoutingState({
-          locationBeforeTransitions: location,
-        }),
-      },
       withRouter: true,
     },
   );

@@ -2,10 +2,10 @@ import type { Location, LocationDescriptor } from "history";
 import { Component } from "react";
 import * as React from "react";
 import { Route } from "react-router";
-import { push } from "react-router-redux";
 
 import { Modal } from "metabase/common/components/Modal";
 import { connect } from "metabase/lib/redux";
+import { push } from "metabase/lib/router";
 import MetabaseSettings from "metabase/lib/settings";
 
 type RouteParams = Record<string, string | undefined>;

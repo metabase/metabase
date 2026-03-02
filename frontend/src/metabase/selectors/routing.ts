@@ -1,16 +1,20 @@
-import { createSelector } from "@reduxjs/toolkit";
+import type { Location } from "history";
 
+import { getCurrentLocation } from "metabase/lib/router";
+import type { RouterProps } from "metabase/selectors/app";
 import type { State } from "metabase-types/store";
 
-const DEFAULT_LOCATION = { pathname: "" };
+export const isWorkspacePath = (pathname?: string | null) =>
+  pathname?.includes("/data-studio/workspaces/") ?? false;
 
-export const getLocation = (state: State) =>
-  state.routing?.locationBeforeTransitions ?? DEFAULT_LOCATION;
+export const getLocation = (_state: State, props?: RouterProps): Location =>
+  props?.location ?? (getCurrentLocation() as Location);
 
 /**
  * Returns true if the current route is within a workspace context.
  * Workspaces are accessed via /data-studio/workspaces/:workspaceId
  */
-export const getIsWorkspace = createSelector([getLocation], (location) => {
-  return location.pathname?.includes("/data-studio/workspaces/") ?? false;
-});
+export const getIsWorkspace = (_state: State, props?: RouterProps) => {
+  const location = getLocation(_state, props);
+  return isWorkspacePath(location.pathname);
+};

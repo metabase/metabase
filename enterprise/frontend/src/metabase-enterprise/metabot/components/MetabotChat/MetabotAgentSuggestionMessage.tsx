@@ -1,9 +1,7 @@
 import { unifiedMergeView } from "@codemirror/merge";
 import { useDisclosure } from "@mantine/hooks";
-import type { UnknownAction } from "@reduxjs/toolkit";
 import cx from "classnames";
 import { useMemo, useState } from "react";
-import { push } from "react-router-redux";
 import { useLocation, useMount } from "react-use";
 import { P, match } from "ts-pattern";
 import { t } from "ttag";
@@ -12,11 +10,12 @@ import _ from "underscore";
 import { useLazyGetTransformQuery } from "metabase/api";
 import { CodeMirror } from "metabase/common/components/CodeMirror";
 import { useDispatch, useSelector } from "metabase/lib/redux";
+import { push } from "metabase/lib/router";
 import * as Urls from "metabase/lib/urls";
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import EditorS from "metabase/query_builder/components/NativeQueryEditor/CodeMirrorEditor/CodeMirrorEditor.module.css";
 import { getMetadata } from "metabase/selectors/metadata";
-import { getIsWorkspace } from "metabase/selectors/routing";
+import { isWorkspacePath } from "metabase/selectors/routing";
 import {
   Button,
   Collapse,
@@ -109,7 +108,7 @@ export const AgentSuggestionMessage = ({
 }) => {
   const dispatch = useDispatch();
   const metadata = useSelector(getMetadata);
-  const isWorkspace = useSelector(getIsWorkspace);
+  const isWorkspace = isWorkspacePath(window.location.pathname);
   const suggestionActions = useMetabotSuggestionActions();
   const { sendErrorToast } = useMetadataToasts();
   const [isApplying, setIsApplying] = useState(false);
@@ -177,7 +176,7 @@ export const AgentSuggestionMessage = ({
       return;
     }
 
-    dispatch(push(getTransformUrl(suggestedTransform)) as UnknownAction);
+    dispatch(push(getTransformUrl(suggestedTransform)));
   };
 
   return (

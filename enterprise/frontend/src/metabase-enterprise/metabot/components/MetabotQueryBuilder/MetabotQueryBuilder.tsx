@@ -1,13 +1,13 @@
 import { isFulfilled, isRejected } from "@reduxjs/toolkit";
 import cx from "classnames";
 import { useEffect, useState } from "react";
-import { push } from "react-router-redux";
 import { isMatching } from "ts-pattern";
 import { t } from "ttag";
 import _ from "underscore";
 
 import { MetabotLogo } from "metabase/common/components/MetabotLogo";
 import { useDispatch } from "metabase/lib/redux";
+import { push } from "metabase/lib/router";
 import { MetabotPromptInput } from "metabase/metabot/components/MetabotPromptInput";
 import { useRouter } from "metabase/router";
 import {

@@ -1,6 +1,5 @@
 import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
-import { push } from "react-router-redux";
 
 import {
   setupCollectionByIdEndpoint,
@@ -17,6 +16,7 @@ import {
   waitFor,
   within,
 } from "__support__/ui";
+import { push } from "metabase/lib/router";
 import {
   createMockCollection,
   createMockRecentTableDatabaseInfo,
@@ -25,12 +25,13 @@ import {
 } from "metabase-types/api/mocks";
 import { createMockState } from "metabase-types/store/mocks";
 
-jest.mock("react-router-redux", () => ({
-  push: jest.fn(() => ({
-    type: "@@router/CALL_HISTORY_METHOD",
-    payload: { method: "push" },
-  })),
-}));
+jest.mock("metabase/lib/router", () => {
+  const actual = jest.requireActual("metabase/lib/router");
+  return {
+    ...actual,
+    push: jest.fn(() => () => {}),
+  };
+});
 
 import { EmbeddingHub } from "./EmbeddingHub";
 

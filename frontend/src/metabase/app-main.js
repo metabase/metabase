@@ -2,11 +2,11 @@
 // MUST be imported BEFORE `react` and `react-dom`
 import "metabase-dev";
 
-import { push } from "react-router-redux";
 import _ from "underscore";
 
 import { init } from "metabase/app";
 import api from "metabase/lib/api";
+import { push } from "metabase/lib/router";
 import { mainReducers } from "metabase/reducers-main";
 import { setErrorPage } from "metabase/redux/app";
 import { clearCurrentUser } from "metabase/redux/user";

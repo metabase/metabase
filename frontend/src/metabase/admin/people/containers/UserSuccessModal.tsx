@@ -1,7 +1,6 @@
 import cx from "classnames";
 import { useEffect } from "react";
 import type { WithRouterProps } from "react-router";
-import { push, replace } from "react-router-redux";
 import { jt, t } from "ttag";
 
 import { useGetUserQuery } from "metabase/api";
@@ -11,6 +10,7 @@ import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErr
 import { PasswordReveal } from "metabase/common/components/PasswordReveal";
 import CS from "metabase/css/core/index.css";
 import { useDispatch, useSelector } from "metabase/lib/redux";
+import { push, replace } from "metabase/lib/router";
 import { PLUGIN_TENANTS } from "metabase/plugins";
 import { getSetting, isSsoEnabled } from "metabase/selectors/settings";
 import { Box } from "metabase/ui";

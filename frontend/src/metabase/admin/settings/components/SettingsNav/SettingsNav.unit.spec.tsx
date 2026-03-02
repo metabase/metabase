@@ -8,11 +8,7 @@ import {
   createMockTokenFeatures,
   createMockVersionInfo,
 } from "metabase-types/api/mocks";
-import {
-  createMockLocation,
-  createMockRoutingState,
-  createMockSettingsState,
-} from "metabase-types/store/mocks";
+import { createMockSettingsState } from "metabase-types/store/mocks";
 
 import { SettingsNav } from "./SettingsNav";
 
@@ -40,11 +36,6 @@ const setup = async ({
     withRouter: true,
     initialRoute,
     storeInitialState: {
-      routing: createMockRoutingState({
-        locationBeforeTransitions: createMockLocation({
-          pathname: initialRoute,
-        }),
-      }),
       settings: createMockSettingsState(settings),
     },
   });

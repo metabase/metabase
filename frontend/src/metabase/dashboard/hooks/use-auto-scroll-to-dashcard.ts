@@ -1,9 +1,9 @@
 import type { LocationDescriptorObject } from "history";
 import { useCallback, useMemo } from "react";
-import { replace } from "react-router-redux";
 
 import { parseHashOptions, stringifyHashOptions } from "metabase/lib/browser";
 import { useDispatch } from "metabase/lib/redux";
+import { replace } from "metabase/lib/router";
 import type { DashCardId } from "metabase-types/api";
 
 export interface UseAutoScrollToDashcardResult {

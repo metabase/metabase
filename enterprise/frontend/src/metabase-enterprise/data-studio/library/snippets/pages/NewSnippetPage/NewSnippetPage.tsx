@@ -1,7 +1,6 @@
 import { sql } from "@codemirror/lang-sql";
 import { useEffect, useMemo, useState } from "react";
 import type { Route } from "react-router";
-import { push } from "react-router-redux";
 import { t } from "ttag";
 
 import { useCreateSnippetMutation } from "metabase/api";
@@ -20,6 +19,7 @@ import {
   PaneHeaderInput,
 } from "metabase/data-studio/common/components/PaneHeader";
 import { useDispatch, useSelector } from "metabase/lib/redux";
+import { push } from "metabase/lib/router";
 import * as Urls from "metabase/lib/urls";
 import { PLUGIN_REMOTE_SYNC, PLUGIN_SNIPPET_FOLDERS } from "metabase/plugins";
 import { Card, Flex, Stack } from "metabase/ui";

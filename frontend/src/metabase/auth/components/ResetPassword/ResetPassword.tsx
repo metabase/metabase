@@ -1,6 +1,5 @@
 import type { Location } from "history";
 import { useCallback } from "react";
-import { replace } from "react-router-redux";
 import { t } from "ttag";
 
 import { useGetPasswordResetTokenStatusQuery } from "metabase/api";
@@ -8,6 +7,7 @@ import { Button } from "metabase/common/components/Button";
 import { Link } from "metabase/common/components/Link";
 import { useToast } from "metabase/common/hooks/use-toast";
 import { useDispatch } from "metabase/lib/redux";
+import { replace } from "metabase/lib/router";
 
 import { resetPassword, validatePassword } from "../../actions";
 import type { ResetPasswordData } from "../../types";

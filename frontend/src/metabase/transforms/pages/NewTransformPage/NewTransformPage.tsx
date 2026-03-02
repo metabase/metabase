@@ -1,7 +1,6 @@
 import { useDisclosure } from "@mantine/hooks";
 import { useMemo, useState } from "react";
 import { Link, type Route } from "react-router";
-import { push } from "react-router-redux";
 import { t } from "ttag";
 
 import { skipToken, useGetCardQuery } from "metabase/api";
@@ -15,6 +14,7 @@ import {
   PaneHeaderInput,
 } from "metabase/data-studio/common/components/PaneHeader";
 import { useDispatch, useSelector } from "metabase/lib/redux";
+import { push } from "metabase/lib/router";
 import * as Urls from "metabase/lib/urls";
 import { PLUGIN_TRANSFORMS_PYTHON } from "metabase/plugins";
 import { getInitialUiState } from "metabase/querying/editor/components/QueryEditor";

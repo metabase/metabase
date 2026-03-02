@@ -1,6 +1,5 @@
 import { useMemo } from "react";
 import type { Route } from "react-router";
-import { push, replace } from "react-router-redux";
 import { t } from "ttag";
 
 import { DatabaseEditConnectionForm } from "metabase/admin/databases/components/DatabaseEditConnectionForm";
@@ -10,6 +9,7 @@ import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErr
 import { useDocsUrl } from "metabase/common/hooks";
 import { usePageTitle } from "metabase/hooks/use-page-title";
 import { useDispatch } from "metabase/lib/redux";
+import { push, replace } from "metabase/lib/router";
 import * as Urls from "metabase/lib/urls";
 import { addUndo } from "metabase/redux/undo";
 import { Flex, Icon, Modal, Text } from "metabase/ui";

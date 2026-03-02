@@ -1,5 +1,4 @@
 import { type MouseEvent, useCallback, useState } from "react";
-import { push } from "react-router-redux";
 import { t } from "ttag";
 
 import { getCollectionName } from "metabase/collections/utils";
@@ -19,6 +18,7 @@ import type { ResponsiveProps } from "metabase/common/components/ItemsTable/util
 import { MarkdownPreview } from "metabase/common/components/MarkdownPreview";
 import { getIcon } from "metabase/lib/icon";
 import { useDispatch } from "metabase/lib/redux";
+import { push } from "metabase/lib/router";
 import * as Urls from "metabase/lib/urls";
 import { FixedSizeIcon, Flex, Icon, Repeat, Skeleton } from "metabase/ui";
 import type { SortingOptions } from "metabase-types/api";

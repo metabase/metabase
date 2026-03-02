@@ -1,8 +1,7 @@
-import { push } from "react-router-redux";
-
 import { useListRecentsQuery } from "metabase/api";
 import { getName } from "metabase/lib/name";
 import { useDispatch } from "metabase/lib/redux";
+import { push } from "metabase/lib/router";
 import { RecentsListContent } from "metabase/nav/components/search/RecentsList/RecentsListContent";
 import { Paper } from "metabase/ui";
 import type {

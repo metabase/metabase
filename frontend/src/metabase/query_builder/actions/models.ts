@@ -1,7 +1,7 @@
-import { push } from "react-router-redux";
 import { createAction } from "redux-actions";
 import { t } from "ttag";
 
+import { push } from "metabase/lib/router";
 import { addUndo } from "metabase/redux/undo";
 import type {
   DatasetEditorTab,

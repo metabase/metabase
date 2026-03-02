@@ -3,7 +3,6 @@ import {
   createAction,
   createSlice,
 } from "@reduxjs/toolkit";
-import { LOCATION_CHANGE, push } from "react-router-redux";
 
 import {
   isSmallScreen,
@@ -11,6 +10,7 @@ import {
   shouldOpenInBlankWindow,
 } from "metabase/lib/dom";
 import { combineReducers, handleActions } from "metabase/lib/redux";
+import { push } from "metabase/lib/router";
 import type {
   DetailViewState,
   Dispatch,
@@ -19,18 +19,19 @@ import type {
   TempStorageValue,
 } from "metabase-types/store";
 
-interface LocationChangeAction {
-  type: string; // "@@router/LOCATION_CHANGE"
-  payload: {
-    pathname: string;
-    search: string;
-    hash: string;
-    action: string;
-    key: string;
-    state?: any;
-    query?: any;
-  };
+export interface LocationChangePayload {
+  pathname: string;
+  search?: string;
+  hash?: string;
+  action?: string;
+  key?: string;
+  state?: any;
+  query?: any;
 }
+
+export const locationChanged = createAction<LocationChangePayload>(
+  "metabase/app/LOCATION_CHANGED",
+);
 
 const SET_ERROR_PAGE = "metabase/app/SET_ERROR_PAGE";
 export function setErrorPage(error: any) {
@@ -60,7 +61,7 @@ const errorPage = handleActions(
   {
     [SET_ERROR_PAGE]: (_, { payload }) => payload,
     [RESET_ERROR_PAGE]: () => null,
-    [LOCATION_CHANGE]: () => null,
+    [locationChanged.type]: () => null,
   },
   null,
 );
@@ -89,9 +90,9 @@ const isNavbarOpen = handleActions(
     [OPEN_NAVBAR]: () => true,
     [TOGGLE_NAVBAR]: (isOpen) => !isOpen,
     [CLOSE_NAVBAR]: () => false,
-    [LOCATION_CHANGE]: (
+    [locationChanged.type]: (
       prevState: boolean,
-      { payload }: LocationChangeAction,
+      { payload }: { payload: LocationChangePayload },
     ) => {
       if (payload.state?.preserveNavbarState) {
         return prevState;

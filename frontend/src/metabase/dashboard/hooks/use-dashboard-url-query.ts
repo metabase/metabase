@@ -1,13 +1,13 @@
 import type { Location } from "history";
 import { useEffect, useMemo } from "react";
 import type { InjectedRouter } from "react-router";
-import { push, replace } from "react-router-redux";
 import { usePrevious } from "react-use";
 import _ from "underscore";
 
 import { useSetting } from "metabase/common/hooks";
 import { IS_EMBED_PREVIEW } from "metabase/lib/embed";
 import { useDispatch, useSelector } from "metabase/lib/redux";
+import { push, replace } from "metabase/lib/router";
 import * as Urls from "metabase/lib/urls";
 import { getParameterValuesBySlug } from "metabase-lib/v1/parameters/utils/parameter-values";
 

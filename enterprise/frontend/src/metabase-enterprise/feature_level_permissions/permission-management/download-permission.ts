@@ -1,4 +1,3 @@
-import { push } from "react-router-redux";
 import { t } from "ttag";
 
 import { Messages } from "metabase/admin/permissions/constants/messages";
@@ -22,6 +21,7 @@ import {
   getTablesPermission,
 } from "metabase/admin/permissions/utils/graph";
 import { getGroupFocusPermissionsUrl } from "metabase/admin/permissions/utils/urls";
+import { push } from "metabase/lib/router";
 import type { Group, GroupsPermissions } from "metabase-types/api";
 
 const getTooltipMessage = (isAdmin: boolean, isBlockedAccess: boolean) => {

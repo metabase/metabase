@@ -1,4 +1,3 @@
-import { push } from "react-router-redux";
 import { jt, t } from "ttag";
 
 import { useGetTableSelectionInfoQuery } from "metabase/api";
@@ -11,6 +10,7 @@ import {
   FormSubmitButton,
 } from "metabase/forms";
 import { useDispatch } from "metabase/lib/redux";
+import { push } from "metabase/lib/router";
 import * as Urls from "metabase/lib/urls";
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import type { PublishTablesModalProps } from "metabase/plugins";

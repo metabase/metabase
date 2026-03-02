@@ -1,7 +1,6 @@
-import { push } from "react-router-redux";
-
 import { getDashboard } from "metabase/dashboard/selectors";
 import { createThunkAction } from "metabase/lib/redux";
+import { push } from "metabase/lib/router";
 import * as Urls from "metabase/lib/urls";
 import type { Dashboard } from "metabase-types/api";
 

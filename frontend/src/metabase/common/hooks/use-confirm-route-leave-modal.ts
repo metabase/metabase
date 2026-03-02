@@ -1,10 +1,10 @@
 import type { Location } from "history";
 import { useCallback, useEffect, useState } from "react";
 import type { InjectedRouter, Route } from "react-router";
-import { goBack, push, replace } from "react-router-redux";
 import { match } from "ts-pattern";
 
 import { useDispatch } from "metabase/lib/redux";
+import { goBack, push, replace } from "metabase/lib/router";
 
 import { useBeforeUnload } from "./use-before-unload";
 

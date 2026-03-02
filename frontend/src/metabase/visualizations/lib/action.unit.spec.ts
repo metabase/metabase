@@ -1,3 +1,4 @@
+import { push } from "metabase/lib/router";
 import MetabaseSettings from "metabase/lib/settings";
 import type {
   QuestionChangeClickAction,
@@ -7,7 +8,17 @@ import Question from "metabase-lib/v1/Question";
 
 import { performAction } from "./action";
 
+jest.mock("metabase/lib/router", () => ({
+  push: jest.fn(() => () => {}),
+}));
+
+const mockPush = push as jest.MockedFunction<typeof push>;
+
 describe("performAction", () => {
+  beforeEach(() => {
+    mockPush.mockClear();
+  });
+
   it('should redirect using router if a "relative" url has been passed', () => {
     MetabaseSettings.set("site-url", "http://localhost");
     const action: UrlClickAction = {
@@ -27,20 +38,12 @@ describe("performAction", () => {
 
     expect(action.url).toHaveBeenCalledTimes(1);
 
-    expect(extraProps.dispatch).toHaveBeenCalledTimes(2);
-    expect(extraProps.dispatch).toHaveBeenCalledWith({
-      payload: {
-        args: [
-          {
-            hash: "",
-            pathname: "/auto/dashboard/adhoc/123Abc",
-            query: {},
-            search: "",
-          },
-        ],
-        method: "push",
-      },
-      type: "@@router/CALL_HISTORY_METHOD",
+    expect(mockPush).toHaveBeenCalledTimes(1);
+    expect(mockPush).toHaveBeenCalledWith({
+      hash: "",
+      pathname: "/auto/dashboard/adhoc/123Abc",
+      query: {},
+      search: "",
     });
   });
 
@@ -91,20 +94,12 @@ describe("performAction", () => {
 
         expect(action.url).toHaveBeenCalledTimes(1);
 
-        expect(extraProps.dispatch).toHaveBeenCalledTimes(2);
-        expect(extraProps.dispatch).toHaveBeenCalledWith({
-          payload: {
-            args: [
-              {
-                hash: "",
-                pathname: url,
-                query: {},
-                search: "",
-              },
-            ],
-            method: "push",
-          },
-          type: "@@router/CALL_HISTORY_METHOD",
+        expect(mockPush).toHaveBeenCalledTimes(1);
+        expect(mockPush).toHaveBeenCalledWith({
+          hash: "",
+          pathname: url,
+          query: {},
+          search: "",
         });
       },
     );
@@ -130,20 +125,12 @@ describe("performAction", () => {
 
         expect(action.url).toHaveBeenCalledTimes(1);
 
-        expect(extraProps.dispatch).toHaveBeenCalledTimes(2);
-        expect(extraProps.dispatch).toHaveBeenCalledWith({
-          payload: {
-            args: [
-              {
-                hash: "",
-                pathname: "/" + url,
-                query: {},
-                search: "",
-              },
-            ],
-            method: "push",
-          },
-          type: "@@router/CALL_HISTORY_METHOD",
+        expect(mockPush).toHaveBeenCalledTimes(1);
+        expect(mockPush).toHaveBeenCalledWith({
+          hash: "",
+          pathname: "/" + url,
+          query: {},
+          search: "",
         });
       },
     );
@@ -170,20 +157,12 @@ describe("performAction", () => {
 
       expect(action.url).toHaveBeenCalledTimes(1);
 
-      expect(extraProps.dispatch).toHaveBeenCalledTimes(2);
-      expect(extraProps.dispatch).toHaveBeenCalledWith({
-        payload: {
-          args: [
-            {
-              hash: "",
-              pathname: "/auto/dashboard/adhoc/123Abc",
-              query: {},
-              search: "",
-            },
-          ],
-          method: "push",
-        },
-        type: "@@router/CALL_HISTORY_METHOD",
+      expect(mockPush).toHaveBeenCalledTimes(1);
+      expect(mockPush).toHaveBeenCalledWith({
+        hash: "",
+        pathname: "/auto/dashboard/adhoc/123Abc",
+        query: {},
+        search: "",
       });
     });
 
@@ -209,21 +188,13 @@ describe("performAction", () => {
 
       expect(action.url).toHaveBeenCalledTimes(1);
 
-      expect(extraProps.dispatch).toHaveBeenCalledTimes(2);
-      expect(extraProps.dispatch).toHaveBeenCalledWith({
-        payload: {
-          args: [
-            {
-              hash: "",
-              pathname:
-                "/invalid_protocol://localhost/metabase/auto/dashboard/adhoc/123Abc",
-              query: {},
-              search: "",
-            },
-          ],
-          method: "push",
-        },
-        type: "@@router/CALL_HISTORY_METHOD",
+      expect(mockPush).toHaveBeenCalledTimes(1);
+      expect(mockPush).toHaveBeenCalledWith({
+        hash: "",
+        pathname:
+          "/invalid_protocol://localhost/metabase/auto/dashboard/adhoc/123Abc",
+        query: {},
+        search: "",
       });
     });
   });

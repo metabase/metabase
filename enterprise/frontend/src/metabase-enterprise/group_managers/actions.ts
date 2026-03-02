@@ -1,8 +1,7 @@
-import { push } from "react-router-redux";
-
 import { getAdminPaths } from "metabase/admin/app/selectors";
 import { permissionApi } from "metabase/api";
 import { createThunkAction } from "metabase/lib/redux";
+import { push } from "metabase/lib/router";
 
 import {
   getRevokeManagerGroupsRedirect,

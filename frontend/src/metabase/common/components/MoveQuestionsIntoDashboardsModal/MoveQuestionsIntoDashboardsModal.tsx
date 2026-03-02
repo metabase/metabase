@@ -2,7 +2,6 @@ import { QueryStatus } from "@reduxjs/toolkit/query";
 import type { Location } from "history";
 import { useEffect } from "react";
 import { withRouter } from "react-router";
-import { replace } from "react-router-redux";
 import { t } from "ttag";
 
 import {
@@ -12,6 +11,7 @@ import {
 } from "metabase/api";
 import { useUserAcknowledgement } from "metabase/common/hooks/use-user-acknowledgement";
 import { useDispatch, useSelector } from "metabase/lib/redux";
+import { replace } from "metabase/lib/router";
 import * as Urls from "metabase/lib/urls";
 import { addUndo } from "metabase/redux/undo";
 import { getUserIsAdmin } from "metabase/selectors/user";
