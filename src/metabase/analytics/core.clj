@@ -1,5 +1,6 @@
 (ns metabase.analytics.core
   (:require
+   [metabase.analytics.llm-token-usage]
    [metabase.analytics.prometheus]
    [metabase.analytics.quartz]
    [metabase.analytics.sdk]
@@ -9,6 +10,7 @@
    [potemkin :as p]))
 
 (comment
+  metabase.analytics.llm-token-usage/keep-me
   metabase.analytics.prometheus/keep-me
   metabase.analytics.quartz/keep-me
   metabase.analytics.sdk/keep-me
@@ -17,6 +19,13 @@
   metabase.analytics.stats/keep-me)
 
 (p/import-vars
+ [metabase.analytics.llm-token-usage
+
+  track-snowplow!
+  track-prometheus!
+  track-token-usage!
+  uuid->token-usage-request-id]
+
  [metabase.analytics.prometheus
 
   known-labels
@@ -43,7 +52,6 @@
 
  [metabase.analytics.settings
 
-  analytics-uuid
   anon-tracking-enabled
   anon-tracking-enabled!
   instance-creation]

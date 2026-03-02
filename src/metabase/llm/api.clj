@@ -1,11 +1,8 @@
 (ns metabase.llm.api
   "API endpoints for LLM-powered SQL generation (OSS)."
   (:require
-   [buddy.core.codecs :as codecs]
-   [buddy.core.hash :as buddy-hash]
    [clojure.java.io :as io]
    [clojure.set :as set]
-   [clojure.string :as str]
    [metabase.analytics.core :as analytics]
    [metabase.analytics.snowplow :as snowplow]
    [metabase.api.common :as api]
@@ -16,7 +13,6 @@
    [metabase.llm.anthropic :as llm.anthropic]
    [metabase.llm.context :as llm.context]
    [metabase.llm.settings :as llm.settings]
-   [metabase.premium-features.core :as premium-features]
    [metabase.request.core :as request]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
@@ -77,35 +73,6 @@
                                 :current_time         (current-datetime-str)
                                 :dialect_instructions dialect-instructions}
                          source-sql (assoc :source_sql source-sql))))
-
-(defn- track-token-usage!
-  "Track token usage for LLM API calls via Snowplow."
-  [{:keys [model prompt completion duration-ms user-id source tag]}]
-  (let [request-id      (-> (random-uuid)
-                            str
-                            ;; strip dashes and lower-case to mimic the ai-service uuid.hex formatting
-                            (str/replace "-" "")
-                            u/lower-case-en)
-        hashed-token    (some-> (not-empty (premium-features/premium-embedding-token))
-                                buddy-hash/sha256
-                                codecs/bytes->hex)
-        token-or-uuid   (or hashed-token
-                            (str "oss__" (analytics/analytics-uuid)))
-        ;; Just report 0.0 as estimated cost rather than providing an estimate that is guaranteed to get stale.
-        estimated-costs 0.0]
-    (snowplow/track-event! :snowplow/token_usage
-                           {:hashed-metabase-license-token token-or-uuid
-                            :request-id                    request-id
-                            :model-id                      model
-                            :total-tokens                  (+ prompt completion)
-                            :prompt-tokens                 prompt
-                            :completion-tokens             completion
-                            :estimated-costs-usd           estimated-costs
-                            :user-id                       user-id
-                            :duration-ms                   (some-> duration-ms long)
-                            :source                        source
-                            :tag                           tag}
-                           user-id)))
 
 (defn- track-sqlgen-event!
   "Track SQL generation usage via Snowplow simple_event."
@@ -250,15 +217,24 @@
             (let [{:keys [result usage duration-ms]} (llm.anthropic/chat-completion
                                                       {:system   system-prompt
                                                        :messages [{:role "user" :content prompt}]})]
-              (track-token-usage! (assoc usage
-                                         :duration-ms duration-ms
-                                         :user-id api/*current-user-id*
-                                         ;; for some reason, :source convention is snake_case and :tag is (mostly) kebab
-                                         :source "oss_metabot"
-                                         :tag "oss-sqlgen"))
-              (track-sqlgen-event! {:duration-ms (u/since-ms start-timer)
-                                    :result "success"
-                                    :engine engine})
+              (analytics/track-token-usage!
+               {:snowplow            true
+                :prometheus          true
+                :user-id             api/*current-user-id*
+                :request-id          (analytics/uuid->token-usage-request-id (random-uuid))
+                :model-id            (:model usage)
+                :prompt-tokens       (:prompt usage)
+                :completion-tokens   (:completion usage)
+                :total-tokens        (+ (:prompt usage) (:completion usage))
+                :estimated-costs-usd 0.0
+                :duration-ms         (some-> duration-ms long)
+                ;; for some reason, :source convention is snake_case and :tag is (mostly) kebab
+                :source              "oss_metabot"
+                :tag                 "oss-sqlgen"})
+              (track-sqlgen-event!
+               {:duration-ms (u/since-ms start-timer)
+                :result "success"
+                :engine engine})
               (let [sql                 (:sql result)
                     referenced-entities (mapv #(assoc % :model "table") tables)]
                 {:sql                 sql

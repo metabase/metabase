@@ -8,8 +8,8 @@
    [metabase-enterprise.metabot-v3.self.openrouter :as openrouter]
    [metabase-enterprise.metabot-v3.test-util :as mut]
    [metabase-enterprise.metabot-v3.tools.search :as metabot-search]
-   [metabase.analytics.core :as analytics]
    [metabase.analytics.prometheus :as prometheus]
+   [metabase.analytics.snowplow-test :as snowplow-test]
    [metabase.test :as mt]
    [metabase.util.malli :as mu]))
 
@@ -502,9 +502,8 @@
 ;;; ===================== Snowplow Analytics Tests =====================
 
 (deftest token-usage-snowplow-test
-  (testing "fires :snowplow/token_usage event per LLM call (Stage 1)"
-    (let [events     (atom [])
-          call-count (atom 0)
+  (testing "fires :snowplow/token_usage event per LLM call"
+    (let [call-count (atom 0)
           rasta-id   (mt/user->id :rasta)]
       (with-redefs [openrouter/openrouter
                     (fn [_]
@@ -522,41 +521,36 @@
                            [{:type :start :id "msg-2"}
                             {:type :text :text "Done"}
                             {:type :usage :usage {:promptTokens 150 :completionTokens 30}
-                             :model "test-model" :id "msg-2"}]))))
-                    analytics/track-event! (fn [schema data & _]
-                                             (swap! events conj {:schema schema :data data}))]
+                             :model "test-model" :id "msg-2"}]))))]
         (mt/with-log-level [metabase-enterprise.metabot-v3.agent.core :warn]
           (mt/with-current-user rasta-id
-            (into [] (agent/run-agent-loop
-                      {:messages        [{:role :user :content "test"}]
-                       :state           {}
-                       :context         {}
-                       :profile-id      :internal
-                       :conversation-id "00000000-0000-0000-0000-000000000001"})))))
-      (is (=? [{:schema :snowplow/token_usage
-                :data   {:hashed_metabase_license_token string?
-                         :user_id                       rasta-id
-                         :session_id                    "00000000-0000-0000-0000-000000000001"
-                         :model_id                      "test-model"
-                         :duration_ms                   nat-int?
-                         :total_tokens                  120
-                         :prompt_tokens                 100
-                         :completion_tokens             20
-                         :estimated_costs_usd           0.0
-                         :profile                       :internal
-                         :source                        "metabot_agent"
-                         :tag                           "agent"}}
-               {:schema :snowplow/token_usage
-                :data   {:hashed_metabase_license_token string?
-                         :user_id                       rasta-id
-                         :session_id                    "00000000-0000-0000-0000-000000000001"
-                         :model_id                      "test-model"
-                         :duration_ms                   nat-int?
-                         :total_tokens                  180
-                         :prompt_tokens                 150
-                         :completion_tokens             30
-                         :estimated_costs_usd           0.0
-                         :profile                       :internal
-                         :source                        "metabot_agent"
-                         :tag                           "agent"}}]
-              @events)))))
+            (snowplow-test/with-fake-snowplow-collector
+              (into [] (agent/run-agent-loop
+                        {:messages        [{:role :user :content "test"}]
+                         :state           {}
+                         :context         {}
+                         :profile-id      :internal
+                         :conversation-id "00000000-0000-0000-0000-000000000001"}))
+              (is (=? [{:user-id (str rasta-id)
+                        :data    {"model_id"            "test-model"
+                                  "total_tokens"         120
+                                  "prompt_tokens"        100
+                                  "completion_tokens"    20
+                                  "estimated_costs_usd"  0.0
+                                  "duration_ms"          nat-int?
+                                  "profile"              "internal"
+                                  "source"               "metabot_agent"
+                                  "tag"                  "agent"
+                                  "session_id"           "00000000-0000-0000-0000-000000000001"}}
+                       {:user-id (str rasta-id)
+                        :data    {"model_id"            "test-model"
+                                  "total_tokens"         180
+                                  "prompt_tokens"        150
+                                  "completion_tokens"    30
+                                  "estimated_costs_usd"  0.0
+                                  "duration_ms"          nat-int?
+                                  "profile"              "internal"
+                                  "source"               "metabot_agent"
+                                  "tag"                  "agent"
+                                  "session_id"           "00000000-0000-0000-0000-000000000001"}}]
+                      (snowplow-test/pop-event-data-and-user-id!))))))))))
