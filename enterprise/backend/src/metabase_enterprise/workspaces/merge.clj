@@ -26,7 +26,7 @@
                               [:global_id {:optional true} [:maybe ::ws.types/appdb-id]]
                               [:error {:optional true} :any]]
   "Make the given transform in the Changeset public, i.e. create or update the relevant model/Transform entities.
-   This should also clear it out from the Changset, as it no longer has any changes.
+   This should also clear it out from the Changeset, as it no longer has any changes.
 
    Creates a WorkspaceMergeTransform history record.
    - :ws-transform - The workspace transform to merge
