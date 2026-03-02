@@ -3,7 +3,7 @@
    [clojure.test :refer :all]
    [metabase-enterprise.metabot-v3.self.openrouter :as openrouter]
    [metabase-enterprise.metabot-v3.test-util :as mut]
-   [metabase.analytics.core :as analytics]
+   [metabase.analytics.snowplow-test :as snowplow-test]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]))
 
@@ -37,30 +37,25 @@
 
 (deftest native-generate-content-snowplow-test
   (mt/with-premium-features #{:metabot-v3}
-    (let [events   (atom [])
-          rasta-id (mt/user->id :rasta)]
+    (let [rasta-id (mt/user->id :rasta)]
       (with-redefs [openrouter/openrouter
                     (fn [_]
                       (mut/mock-llm-response
                        [{:type :start :id "msg-1"}
                         {:type :text :text "No chart available"}
                         {:type :usage :usage {:promptTokens 100 :completionTokens 20}
-                         :model "test-model" :id "msg-1"}]))
-                    analytics/track-event! (fn [schema data & _]
-                                             (swap! events conj {:schema schema :data data}))]
-        (mt/with-current-user rasta-id
+                         :model "test-model" :id "msg-1"}]))]
+        (snowplow-test/with-fake-snowplow-collector
           (mt/user-http-request :rasta
                                 :post 200 "ee/metabot-v3/document/native-generate-content"
-                                {:instructions "Show me sales data"})))
-      (is (=? [{:schema :snowplow/token_usage
-                :data   {:hashed_metabase_license_token string?
-                         :user_id                       rasta-id
-                         :model_id                      "test-model"
-                         :total_tokens                  120
-                         :prompt_tokens                 100
-                         :completion_tokens             20
-                         :estimated_costs_usd           0.0
-                         :source                        "document_generate_content"
-                         :tag                           "agent"
-                         :request_id                    string?}}]
-              @events)))))
+                                {:instructions "Show me sales data"})
+          (is (=? [{:user-id (str rasta-id)
+                    :data    {"model_id"           "test-model"
+                              "total_tokens"        120
+                              "prompt_tokens"       100
+                              "completion_tokens"   20
+                              "estimated_costs_usd" 0.0
+                              "duration_ms"         nat-int?
+                              "source"              "document_generate_content"
+                              "tag"                 "agent"}}]
+                  (snowplow-test/pop-event-data-and-user-id!))))))))
