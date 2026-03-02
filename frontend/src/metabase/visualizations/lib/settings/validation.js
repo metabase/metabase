@@ -12,7 +12,7 @@ import { MAX_SERIES } from "metabase/visualizations/lib/utils";
 export const validateDatasetRows = (series) => {
   const singleSeriesHasNoRows = ({ data: { rows } }) => rows.length === 0;
   if (_.every(series, singleSeriesHasNoRows)) {
-    throw new MinRowsError(1, 0);
+    throw new MinRowsError(0);
   }
 };
 

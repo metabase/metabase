@@ -171,7 +171,7 @@ class ChoroplethMapInner extends Component {
     },
   ]) {
     if (cols.length < 2) {
-      throw new MinColumnsError(2, cols.length);
+      throw new MinColumnsError(2);
     }
   }
 
