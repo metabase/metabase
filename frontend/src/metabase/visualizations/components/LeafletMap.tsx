@@ -12,17 +12,12 @@ import type { OnChangeCardAndRun } from "metabase/visualizations/types";
 import * as Lib from "metabase-lib";
 import Question from "metabase-lib/v1/Question";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
-
-type LegacyColumn = {
-  name?: string;
-  field_ref?: unknown;
-  [key: string]: unknown;
-};
+import type { DatasetColumn } from "metabase-types/api";
 
 type LeafletMapSeriesEntry = {
   card: Record<string, unknown>;
   data: {
-    cols: LegacyColumn[];
+    cols: DatasetColumn[];
   };
 };
 
@@ -280,7 +275,7 @@ export class LeafletMap extends Component<LeafletMapProps> {
     });
 
     const question = new Question(card, metadata);
-    if (this.supportsFilter()) {
+    if (this.supportsFilter() && latitudeColumn && longitudeColumn) {
       const query = question.query();
       const stageIndex = -1;
 
@@ -299,8 +294,8 @@ export class LeafletMap extends Component<LeafletMapProps> {
       const updatedQuery = Lib.updateLatLonFilter(
         query,
         stageIndex,
-        Lib.fromLegacyColumn(query, stageIndex, latitudeColumn as any),
-        Lib.fromLegacyColumn(query, stageIndex, longitudeColumn as any),
+        Lib.fromLegacyColumn(query, stageIndex, latitudeColumn),
+        Lib.fromLegacyColumn(query, stageIndex, longitudeColumn),
         question.id(),
         filterBounds,
       );
@@ -330,11 +325,11 @@ export class LeafletMap extends Component<LeafletMapProps> {
     return {
       latitudeIndex: _.findIndex(
         cols,
-        (col: LegacyColumn) => col.name === settings["map.latitude_column"],
+        (col) => col.name === settings["map.latitude_column"],
       ),
       longitudeIndex: _.findIndex(
         cols,
-        (col: LegacyColumn) => col.name === settings["map.longitude_column"],
+        (col) => col.name === settings["map.longitude_column"],
       ),
     };
   }
