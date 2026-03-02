@@ -98,3 +98,21 @@ Reference items using: [name](metabase://type/id)")
        "- Always provide a direct link using: "
        "`[Updated Query](metabase://query/" query-id ")` "
        "where Updated Query is a meaningful link text"))
+
+(defn validation-error-instruction
+  "Generate instructions for failed query validation. Matches Python `format_validation_error_instructions`."
+  [sql-engine error-message]
+  (str "The SQL query has a syntax error for the " sql-engine " dialect.\n"
+       "\n"
+       "Error details:\n"
+       error-message "\n"
+       "\n"
+       "Common issues to check:\n"
+       "- Dialect-specific function names (e.g., DATE_TRUNC vs TRUNC, ILIKE vs LIKE)\n"
+       "- Quote style for identifiers (double quotes vs backticks vs square brackets)\n"
+       "- String concatenation operators (|| vs + vs CONCAT)\n"
+       "- Date/time literal syntax and formatting functions\n"
+       "- NULL handling differences between dialects\n"
+       "- Case sensitivity of identifiers\n"
+       "\n"
+       "Please fix the syntax error and try again with the corrected SQL.\n"))
