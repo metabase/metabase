@@ -10,6 +10,7 @@ import {
 import type { ProcessedChatResponse } from "metabase/api/ai-streaming/process-stream";
 import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
 import { createAsyncThunk } from "metabase/lib/redux";
+import { setIsNativeEditorOpen } from "metabase/query_builder/actions";
 import { addUndo } from "metabase/redux/undo";
 import { getIsWorkspace } from "metabase/selectors/routing";
 import { getSetting } from "metabase/selectors/settings";
@@ -337,6 +338,10 @@ export const sendAgentRequest = createAsyncThunk<
               })
               .with({ type: "code_edit" }, (part) => {
                 dispatch(addSuggestedCodeEdit({ ...part.value, active: true }));
+
+                if (part.value.buffer_id === "qb") {
+                  dispatch(setIsNativeEditorOpen(true));
+                }
               })
               .with({ type: "navigate_to" }, (part) => {
                 dispatch(setNavigateToPath(part.value));

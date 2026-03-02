@@ -162,15 +162,16 @@
             :checklist checklist
             :queries-state (shared/current-queries-state)})
           {:keys [valid? error-message dialect]} validation-result
-          {:keys [query-id query]} action-result]
+          {:keys [query-id query query-content]} action-result]
       (if valid?
         (let [structured  (assoc action-result :result-type :query)
               instr       (instructions/edit-sql-query-instructions-for query-id)
-              results-url (streaming/query->question-url query)]
+              results-url (streaming/query->question-url query)
+              buffer-id  (first-code-editor-buffer-id)]
           {:output (format-query-output structured instr)
            :structured-output structured
            :instructions instr
-           :data-parts [(streaming/navigate-to-part results-url)]})
+           :data-parts [(if buffer-id (code-edit-part buffer-id query-content) (streaming/navigate-to-part results-url))]})
         (let [instr (instructions/sql-validation-error-instructions dialect error-message)]
           {:output (format-validation-error-output instr)
            :instructions instr})))
@@ -232,15 +233,16 @@
             :checklist checklist
             :queries-state (shared/current-queries-state)})
           {:keys [valid? dialect error-message]} validation-result
-          {:keys [query-id query]} action-result]
+          {:keys [query-id query query-content]} action-result]
       (if valid?
         (let [structured  (assoc action-result :result-type :query)
               instr       (instructions/replace-sql-query-instructions-for query-id)
-              results-url (streaming/query->question-url query)]
+              results-url (streaming/query->question-url query)
+              buffer-id  (first-code-editor-buffer-id)]
           {:output (format-query-output structured instr)
            :structured-output structured
            :instructions instr
-           :data-parts [(streaming/navigate-to-part results-url)]})
+           :data-parts [(if buffer-id (code-edit-part buffer-id query-content) (streaming/navigate-to-part results-url))]})
         (let [instr (instructions/sql-validation-error-instructions dialect error-message)]
           {:output (format-validation-error-output instr)
            :instructions instr})))

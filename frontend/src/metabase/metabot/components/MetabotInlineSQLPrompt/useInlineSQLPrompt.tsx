@@ -32,17 +32,16 @@ function useRegisterCodeEditorMetabotContext(
   databaseId: DatabaseId | null,
   bufferId: string,
 ): void {
-  useRegisterMetabotContextProvider(
-    async () => ({
+  useRegisterMetabotContextProvider(async () => {
+    return {
       user_is_viewing: [
         {
           type: "code_editor",
           buffers: [extractMetabotBufferContext(buffer, databaseId, bufferId)],
         },
       ],
-    }),
-    [buffer, databaseId, bufferId],
-  );
+    };
+  }, [buffer, databaseId, bufferId]);
 }
 
 export interface UseInlineSqlEditResult {
