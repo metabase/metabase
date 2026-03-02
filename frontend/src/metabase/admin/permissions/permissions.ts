@@ -2,8 +2,9 @@ import {
   type PayloadAction,
   type UnknownAction,
   createReducer,
+  current, // immer and icepick don't play nicely together
 } from "@reduxjs/toolkit";
-import { assocIn, getIn, merge } from "icepick";
+import { assocIn, merge } from "icepick";
 import { push } from "react-router-redux";
 import { t } from "ttag";
 import { isBoolean } from "underscore";
@@ -119,7 +120,8 @@ const LOAD_DATA_PERMISSIONS_FOR_DB =
   "metabase/admin/permissions/LOAD_DATA_PERMISSIONS_FOR_DB";
 export const loadDataPermissionsForDb = createThunkAction(
   LOAD_DATA_PERMISSIONS_FOR_DB,
-  (dbId: number | undefined) => async () => PermissionsApi.graphForDB({ dbId }),
+  (databaseId: number | undefined) => async () =>
+    PermissionsApi.graphForDB({ databaseId }),
 );
 function isLoadDataPermissionsForDbAction(
   action: UnknownAction,
@@ -594,10 +596,13 @@ const dataPermissions = createReducer<GroupsPermissions | null>(
     );
     builder.addMatcher(
       isLoadDataPermissionsForGroupAction,
-      (state, { payload }) => merge(payload.groups, state),
+      (state, { payload }) =>
+        state != null ? merge(payload.groups, current(state)) : payload.groups,
     );
-    builder.addMatcher(isLoadDataPermissionsForDbAction, (state, { payload }) =>
-      merge(payload.groups, state),
+    builder.addMatcher(
+      isLoadDataPermissionsForDbAction,
+      (state, { payload }) =>
+        state != null ? merge(payload.groups, current(state)) : payload.groups,
     );
     builder.addMatcher(isSaveDataPermissionsAction, (state, { payload }) =>
       mergeGroupsPermissionsUpdates(
@@ -610,6 +615,8 @@ const dataPermissions = createReducer<GroupsPermissions | null>(
       if (payload == null || state == null) {
         return state;
       }
+
+      state = current(state); // some of the update functions use icepick which is incompatible with immer
 
       const { value, groupId, entityId, metadata, permissionInfo } = payload;
 
@@ -720,10 +727,13 @@ const originalDataPermissions = createReducer<GroupsPermissions | null>(
     );
     builder.addMatcher(
       isLoadDataPermissionsForGroupAction,
-      (state, { payload }) => merge(payload.groups, state),
+      (state, { payload }) =>
+        state != null ? merge(payload.groups, current(state)) : payload.groups,
     );
-    builder.addMatcher(isLoadDataPermissionsForDbAction, (state, { payload }) =>
-      merge(payload.groups, state),
+    builder.addMatcher(
+      isLoadDataPermissionsForDbAction,
+      (state, { payload }) =>
+        state != null ? merge(payload.groups, current(state)) : payload.groups,
     );
     builder.addMatcher(isSaveDataPermissionsAction, (state, { payload }) =>
       mergeGroupsPermissionsUpdates(
@@ -785,7 +795,7 @@ const collectionPermissions = createReducer<CollectionPermissions | null>(
           value,
         } = payload;
         let newPermissionsState = assocIn(
-          state,
+          state != null ? current(state) : state,
           [groupId, collection.id],
           value,
         );
@@ -801,7 +811,7 @@ const collectionPermissions = createReducer<CollectionPermissions | null>(
               [groupId, descendent.id],
               shouldPropagateToChildren
                 ? value
-                : getIn(originalPermissionsState, [groupId, descendent.id]),
+                : originalPermissionsState?.[groupId]?.[descendent.id],
             );
           }
         }
@@ -847,7 +857,11 @@ function handleUpdateTenantCollectionPermission(
   { payload }: PayloadAction<UpdateTenantCollectionPermissionParams>,
 ) {
   const { groupId, collection, value, shouldPropagateToChildren } = payload;
-  let newPermissions = assocIn(state, [groupId, collection.id], value);
+  let newPermissions = assocIn(
+    state != null ? current(state) : state,
+    [groupId, collection.id],
+    value,
+  );
 
   if (shouldPropagateToChildren) {
     for (const descendent of getDecendentCollections(collection)) {
