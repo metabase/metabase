@@ -22,6 +22,7 @@ import {
   createMockSingleSeries,
   createMockVisualizationSettings,
 } from "metabase-types/api/mocks";
+import { createMockInsight } from "metabase-types/api/mocks/insight";
 import { isAbsoluteDateTimeUnit } from "metabase-types/guards/date-time";
 
 import { COMPARISON_TYPES } from "./constants";
@@ -51,22 +52,6 @@ const computeTrend = (
   _computeTrend(series, insights, settings, {
     getColor: color,
   });
-
-const createMockInsight = ({
-  col,
-  unit,
-}: {
-  col: string;
-  unit: Insight["unit"];
-}): Insight => ({
-  col,
-  unit,
-  offset: 0,
-  slope: 0,
-  "last-change": 0,
-  "last-value": 0,
-  "previous-value": 0,
-});
 
 const createMockInsights = ({
   col,

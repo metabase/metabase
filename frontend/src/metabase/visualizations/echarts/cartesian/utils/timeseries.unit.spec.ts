@@ -7,7 +7,10 @@ dayjs.extend(utc);
 dayjs.extend(timezone);
 
 import { getVisualizationTransformed } from "metabase/visualizations";
-import type { TimeSeriesInterval } from "metabase/visualizations/echarts/cartesian/model/types";
+import type {
+  CartesianChartDateTimeAbsoluteUnit,
+  TimeSeriesInterval,
+} from "metabase/visualizations/echarts/cartesian/model/types";
 import {
   computeTimeseriesDataInterval,
   computeTimeseriesTicksInterval,
@@ -15,7 +18,13 @@ import {
   normalizeDate,
 } from "metabase/visualizations/echarts/cartesian/utils/timeseries";
 import registerVisualizations from "metabase/visualizations/register";
-import type { DateTimeAbsoluteUnit, RawSeries } from "metabase-types/api";
+import type { ContinuousDomain } from "metabase/visualizations/shared/types/scale";
+import {
+  type DateTimeAbsoluteUnit,
+  type RawSeries,
+  type RowValue,
+  dateTimeAbsoluteUnits,
+} from "metabase-types/api";
 import {
   createMockColumn,
   createMockSingleSeries,
@@ -24,8 +33,8 @@ import {
 registerVisualizations();
 
 function computeDefinedTimeseriesDataInterval(
-  xValues: Parameters<typeof computeTimeseriesDataInterval>[0],
-  unit: Parameters<typeof computeTimeseriesDataInterval>[1],
+  xValues: RowValue[],
+  unit: DateTimeAbsoluteUnit | null,
 ): TimeSeriesInterval {
   const interval = computeTimeseriesDataInterval(xValues, unit);
 
@@ -39,7 +48,7 @@ function computeDefinedTimeseriesDataInterval(
 describe("visualization.lib.timeseries", () => {
   describe("computeTimeseriesDataIntervalIndex", () => {
     type DataIntervalTestCase = [
-      expectedUnit: TimeSeriesInterval["unit"],
+      expectedUnit: CartesianChartDateTimeAbsoluteUnit,
       expectedCount: number,
       data: string[],
     ];
@@ -80,14 +89,7 @@ describe("visualization.lib.timeseries", () => {
       });
     });
 
-    const units: DateTimeAbsoluteUnit[] = [
-      "minute",
-      "hour",
-      "day",
-      "week",
-      "month",
-      "year",
-    ];
+    const units = dateTimeAbsoluteUnits;
 
     units.forEach((testUnit) => {
       it(`should return one ${testUnit} when ${testUnit} interval is set`, () => {
@@ -135,13 +137,13 @@ describe("visualization.lib.timeseries", () => {
     // computeTimeseriesTicksInterval just uses tickFormat to measure the character length of the current formatting style
     const fakeTickFormat = (_value: unknown) => "2020-01-01";
     type TickInput = {
-      xDomain: Parameters<typeof computeTimeseriesTicksInterval>[0];
+      xDomain: ContinuousDomain;
       xInterval: TimeSeriesInterval;
       chartWidth: number;
-      tickFormat: Parameters<typeof computeTimeseriesTicksInterval>[3];
+      tickFormat: (value: RowValue) => string;
     };
     type TickExpected = {
-      expectedUnit: ReturnType<typeof computeTimeseriesTicksInterval>["unit"];
+      expectedUnit: CartesianChartDateTimeAbsoluteUnit;
       expectedCount: number;
     };
     const TEST_CASES: [TickInput, TickExpected][] = [

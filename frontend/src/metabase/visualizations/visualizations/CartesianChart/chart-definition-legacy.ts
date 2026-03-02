@@ -17,16 +17,15 @@ import { getRowsForStableKeys } from "metabase-types/api";
 // Replace this with defining settings models per visualization type which will contain all necessary info
 // about the dataset sufficient to compute settings defaults like series settings.
 export function transformSeries(series: RawSeries): RawSeries {
-  const newSeries: SingleSeries[] = ([] as SingleSeries[]).concat(
-    ...series.map((s, seriesIndex) =>
-      transformSingleSeries(s, series, seriesIndex),
-    ),
+  const newSeries: SingleSeries[] = series.flatMap((s, seriesIndex) =>
+    transformSingleSeries(s, series, seriesIndex),
   );
-  if (_.isEqual(series, newSeries) || newSeries.length === 0) {
+
+  if (newSeries.length === 0 || _.isEqual(series, newSeries)) {
     return series;
-  } else {
-    return newSeries;
   }
+
+  return newSeries;
 }
 
 type RowWithOrigin = RowValue[] & {
