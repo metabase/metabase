@@ -3,6 +3,7 @@ import L from "leaflet";
 import { createRef } from "react";
 
 import MetabaseSettings from "metabase/lib/settings";
+import { createMockColumn } from "metabase-types/api/mocks";
 
 import { LeafletMap, type LeafletMapProps } from "./LeafletMap";
 
@@ -14,7 +15,10 @@ describe("LeafletMap", () => {
       {
         card: {},
         data: {
-          cols: [{ name: "lat" }, { name: "lng" }],
+          cols: [
+            createMockColumn({ name: "lat" }),
+            createMockColumn({ name: "lng" }),
+          ],
         },
       },
     ],
