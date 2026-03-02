@@ -308,6 +308,13 @@ export type TransformRunTagsUpdated = ValidateEvent<{
   target_id: number;
 }>;
 
+export type TransformJobCreatedEvent = ValidateEvent<{
+  event: "transform_job_created";
+  triggered_from: "transform_job_new";
+  result: "success" | "failure";
+  target_id: number | null;
+}>;
+
 export type TransformInspectLensLoadedEvent = ValidateEvent<{
   event: "transform_inspect_lens_loaded";
   target_id: TransformId;
@@ -719,6 +726,7 @@ export type SimpleEvent =
   | TransformCreatedEvent
   | TransformCreateEvent
   | TransformRunTagsUpdated
+  | TransformJobCreatedEvent
   | TransformInspectEvent
   | DocumentAddCardEvent
   | DocumentAddSmartLinkEvent

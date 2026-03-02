@@ -70,6 +70,21 @@ export function trackTransformRunTagsUpdated({
   });
 }
 
+export function trackTransformJobCreated({
+  result,
+  jobId,
+}: {
+  result: "success" | "failure";
+  jobId?: TransformJobId;
+}) {
+  trackSimpleEvent({
+    event: "transform_job_created",
+    triggered_from: "transform_job_new",
+    result,
+    target_id: jobId ?? null,
+  });
+}
+
 export function trackTransformInspectLensLoaded({
   transformId,
   lensKey,
