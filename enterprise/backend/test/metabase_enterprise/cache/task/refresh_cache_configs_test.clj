@@ -663,6 +663,33 @@
                     (finally
                       (delete-cache-entry! original-cache-entry))))))))))))
 
+(deftest refresh-task-skips-router-database-cards-test
+  (mt/with-premium-features #{:cache-granular-controls :cache-preemptive}
+    (testing "Cards on router databases are skipped by refresh-task"
+      (binding [qp.util/*execute-async?*             false
+                task.cache/*run-cache-refresh-async* false]
+        (let [query {:database (mt/id), :type :native, :native {:query "SELECT 1;"}}]
+          (mt/with-temp [:model/Card {card-id :id} {:name          "Card on router DB"
+                                                    :database_id   (mt/id)
+                                                    :dataset_query query}
+                         :model/CacheConfig _       {:model                 "question"
+                                                     :model_id              card-id
+                                                     :strategy              :schedule
+                                                     :refresh_automatically true
+                                                     :next_run_at           nil
+                                                     :config                {:schedule "0 0 * * * ?"}}]
+            ;; Run the card once to populate the Query + QueryExecution tables
+            (run-query-for-card-id card-id [])
+            (mt/with-temp [:model/DatabaseRouter _ {:database_id    (mt/id)
+                                                    :user_attribute "db_name"}]
+              (let [process-query-calls (atom 0)]
+                (mt/with-dynamic-fn-redefs [qp/process-query (fn [& _args]
+                                                               (swap! process-query-calls inc)
+                                                               {:status :failed})]
+                  (@#'task.cache/refresh-cache-configs!)
+                  (testing "process-query should not have been called for the router-DB card"
+                    (is (= 0 @process-query-calls))))))))))))
+
 (deftest cache-preemptive-feature-flag-test
   (testing "Sanity check that we are correctly enforcing the :cache-preemptive feature flags"
     (mt/with-temp [:model/Card {card-id :id} {:name "Cached card"
