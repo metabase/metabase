@@ -3,9 +3,6 @@
     "name": "new-iframe-embedding-setup-flow",
     "hash": "b4c6e8eac15484ea6602e858bbd6ea560b485561"
   },
-  "upstream": {
-    "branch": "emb-574-update-new-embed-route-from-embednew-to-embed-wizard"
-  },
   "change": {
     "github": {
       "pr": {
