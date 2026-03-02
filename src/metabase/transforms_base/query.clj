@@ -124,8 +124,10 @@
         ;; Sync target table
         (transforms-base.u/sync-target! target database)
 
-        ;; Publish event (after sync, so table exists in AppDB)
-        (events/publish-event! :event/transform-run-complete {:object transform-details})
+        ;; Publish event (after sync, so table exists in AppDB).
+        ;; Skip for in-memory transforms (no :id) — workspace execution handles its own tracking.
+        (when id
+          (events/publish-event! :event/transform-run-complete {:object transform-details}))
 
         ;; Create secondary indexes if needed
         (transforms-base.u/execute-secondary-index-ddl-if-required!
