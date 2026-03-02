@@ -1,4 +1,5 @@
 const { H } = cy;
+import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
 const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
@@ -10,15 +11,25 @@ describe("scenarios > question > null", () => {
   });
 
   it("should display rows whose value is `null` (metabase#13571)", () => {
-    H.createQuestion({
+    H.createCardWithTestQuery({
       name: "13571",
-      query: {
-        "source-table": ORDERS_ID,
-        fields: [
-          ["field", ORDERS.ID, null],
-          ["field", ORDERS.DISCOUNT, null],
+      dataset_query: {
+        database: SAMPLE_DB_ID,
+        stages: [
+          {
+            source: { type: "table", id: ORDERS_ID },
+            filters: [
+              {
+                type: "operator",
+                operator: "=",
+                args: [
+                  { type: "column", name: "ID", sourceName: "ORDERS" },
+                  { type: "literal", value: 1 },
+                ],
+              },
+            ],
+          },
         ],
-        filter: ["=", ["field", ORDERS.ID, null], 1],
       },
     });
 

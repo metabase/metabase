@@ -1,3 +1,4 @@
+import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
 const { H } = cy;
@@ -13,14 +14,14 @@ describe("scenarios > question > detail visualization + custom column preview", 
     const CUSTOM_COLUMN_NAME = "Tax custom column";
 
     // Create a simple question and set visualization to "Detail" (Object Detail)
-    H.createQuestion(
-      {
-        name: "Detail viz with custom column (preview)",
-        query: { "source-table": ORDERS_ID },
-        display: "object",
+    H.createCardWithTestQuery({
+      name: "Detail viz with custom column (preview)",
+      dataset_query: {
+        database: SAMPLE_DB_ID,
+        stages: [{ source: { type: "table", id: ORDERS_ID } }],
       },
-      { visitQuestion: true },
-    );
+      display: "object",
+    }).then(H.visitCard);
 
     // Go to notebook editor and add a simple custom column
     H.openNotebook();

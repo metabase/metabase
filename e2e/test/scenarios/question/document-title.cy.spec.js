@@ -14,14 +14,11 @@ describe(
     it("should verify document title changes while loading a slow question (metabase#40051)", () => {
       cy.log("run a slow question");
 
-      H.visitQuestionAdhoc(
+      H.visitAdHocQuestionWithTestNativeQuery(
         {
           dataset_query: {
-            type: "native",
-            native: {
-              query: "select pg_sleep(60)",
-            },
             database: PG_DB_ID,
+            query: "select pg_sleep(60)",
           },
         },
         { skipWaiting: true },
