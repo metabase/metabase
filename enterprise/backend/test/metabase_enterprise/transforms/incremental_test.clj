@@ -65,8 +65,8 @@
   [checkpoint-field & body]
   `(let [original-fn# @#'python-runner/build-table-query]
      (with-redefs [python-runner/build-table-query
-                                 (fn [table-id# source-incremental-strategy# transform-id# limit#]
-                                   (build-table-query-with-order-by original-fn# table-id# source-incremental-strategy# transform-id# limit# ~checkpoint-field))]
+                   (fn [table-id# source-incremental-strategy# transform-id# limit#]
+                     (build-table-query-with-order-by original-fn# table-id# source-incremental-strategy# transform-id# limit# ~checkpoint-field))]
        ~@body)))
 
 (defn- execute-transform-with-ordering!
