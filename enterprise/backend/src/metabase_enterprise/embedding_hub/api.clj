@@ -70,6 +70,11 @@
       (t2/exists? :model/ConnectionImpersonation)
       (t2/exists? :model/DatabaseRouter)))
 
+(defn- has-published-guest-embed? []
+  ;; Check if at least one card or dashboard has embedding enabled (is published as a guest embed)
+  (or (t2/exists? :model/Card :enable_embedding true)
+      (t2/exists? :model/Dashboard :enable_embedding true)))
+
 (defn- embedding-hub-checklist []
   (let [enable-tenants?                  (and (perms/use-tenants)
                                               (has-shared-tenant-collections?))
@@ -80,7 +85,8 @@
      "create-dashboard"                  (has-user-created-dashboard?)
      "create-models"                     (has-user-created-models?)
      "configure-row-column-security"     (has-configured-sandboxes?)
-     "create-test-embed"                 (embedding.settings/embedding-hub-test-embed-snippet-created)
+     "create-test-embed"                 (or (has-published-guest-embed?)
+                                             (embedding.settings/embedding-hub-test-embed-snippet-created))
      "embed-production"                  (embedding.settings/embedding-hub-production-embed-snippet-created)
      "data-permissions-and-enable-tenants" (and enable-tenants?
                                                 create-tenants?

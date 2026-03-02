@@ -11,7 +11,7 @@ import { useToast } from "metabase/common/hooks";
 import { Button, Flex, Stack, Text } from "metabase/ui";
 import type { Database, DatabaseId } from "metabase-types/api";
 
-import { useUpdateTenantGroupPermissions } from "./hooks/use-update-tenant-permissions";
+import { useUpdateAllTenantUsersGroupPermissions } from "./hooks/use-update-all-tenant-users-group-permissions";
 
 const supportsConnectionImpersonation = (db: Database) =>
   db.features?.includes("connection-impersonation") ?? false;
@@ -26,7 +26,7 @@ export const ConnectionImpersonationStepContent = ({
   const [isUpdatingPermissions, setUpdatingPermissions] = useState(false);
 
   const { data: databasesResponse } = useListDatabasesQuery();
-  const { updateDataAccess } = useUpdateTenantGroupPermissions();
+  const { updateDataAccess } = useUpdateAllTenantUsersGroupPermissions();
 
   const databases = useMemo(
     () => databasesResponse?.data ?? [],
@@ -94,7 +94,6 @@ export const ConnectionImpersonationStepContent = ({
       </Text>
 
       <DatabaseMultiSelect
-        databases={databases}
         value={selectedDatabaseIds}
         onChange={setSelectedDatabaseIds}
         isOptionDisabled={(db) => !supportsConnectionImpersonation(db)}
