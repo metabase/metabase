@@ -4,8 +4,8 @@ import { jt, t } from "ttag";
 import {
   skipToken,
   useGetCardQuery,
+  useGetCardQueryMetadataQuery,
   useGetCollectionQuery,
-  useGetTableQueryMetadataQuery,
 } from "metabase/api";
 import { DateTime } from "metabase/common/components/DateTime";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
@@ -18,7 +18,7 @@ import { SidebarContent } from "metabase/query_builder/components/SidebarContent
 import { getMetadata } from "metabase/selectors/metadata";
 import { Box, Flex, Icon, type IconName } from "metabase/ui";
 import type Question from "metabase-lib/v1/Question";
-import { getQuestionVirtualTableId } from "metabase-lib/v1/metadata/utils/saved-questions";
+import Field from "metabase-lib/v1/metadata/Field";
 import * as ML_Urls from "metabase-lib/v1/urls";
 import type { CardId } from "metabase-types/api";
 
@@ -57,13 +57,9 @@ export const QuestionPane = ({
     data: card,
     isLoading: isLoadingCard,
     error: cardError,
-  } = useGetCardQuery({
-    id,
-  });
-  const { isLoading: isLoadingTable, error: tableError } =
-    useGetTableQueryMetadataQuery({
-      id: getQuestionVirtualTableId(id),
-    });
+  } = useGetCardQuery({ id });
+  const { isLoading: isLoadingMetadata, error: metadataError } =
+    useGetCardQueryMetadataQuery(id);
   const {
     data: collection,
     isLoading: isLoadingCollection,
@@ -71,8 +67,8 @@ export const QuestionPane = ({
   } = useGetCollectionQuery(
     card ? { id: card.collection_id ?? "root" } : skipToken,
   );
-  const isLoading = isLoadingCard || isLoadingTable || isLoadingCollection;
-  const error = cardError ?? tableError ?? collectionError;
+  const isLoading = isLoadingCard || isLoadingMetadata || isLoadingCollection;
+  const error = cardError ?? metadataError ?? collectionError;
   const metadata = useSelector(getMetadata);
 
   if (isLoading || error != null) {
@@ -80,10 +76,12 @@ export const QuestionPane = ({
   }
 
   const question = metadata.question(id);
-  const table = metadata.table(getQuestionVirtualTableId(id));
-  if (question == null || table == null) {
+  if (question == null) {
     return <LoadingAndErrorWrapper loading />;
   }
+
+  const result_metadata = question.card().result_metadata;
+  const fields = result_metadata?.map((data) => new Field(data));
 
   return (
     <SidebarContent
@@ -144,9 +142,9 @@ export const QuestionPane = ({
             </Box>
           </Flex>
         )}
-        {table.fields && (
+        {fields && (
           <FieldList
-            fields={table.fields}
+            fields={fields}
             onFieldClick={(f) => onItemClick("field", f)}
           />
         )}
