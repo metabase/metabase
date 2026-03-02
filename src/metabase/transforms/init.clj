@@ -8,6 +8,7 @@
    [metabase.models.transforms.transform-run-cancelation]
    [metabase.models.transforms.transform-tag]
    [metabase.models.transforms.transform-transform-tag]
+   [metabase.transforms-base.init]
    [metabase.transforms.canceling]
    [metabase.transforms.jobs]
    [metabase.transforms.query-impl]
