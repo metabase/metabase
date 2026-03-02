@@ -366,7 +366,7 @@
       (mt/with-premium-features #{:transforms}
         (let [transform {:source {:type  "query"
                                   :query (lib/query (mt/metadata-provider) (mt/mbql-query venues))}}
-              {:keys [query]} (transforms.util/compile-source transform)]
+              {:keys [query]} (transforms.util/compile-source transform (transforms.util/get-source-range-params transform))]
           (is (string? query))
           (is (not (re-find #"(?i)\bLIMIT\b" query))
               (str "Expected no LIMIT clause in compiled SQL, got: " query)))))))
