@@ -1571,29 +1571,11 @@
            models
            util}}
 
-  transforms-base
-  {:team "Querying"
-   :api  #{metabase.transforms-base.core
-           metabase.transforms-base.interface
-           metabase.transforms-base.ordering
-           metabase.transforms-base.util}
-   :uses #{driver
-           events
-           lib
-           lib-be
-           query-processor
-           sync
-           util}
-   :friends #{transforms
-              enterprise/transforms-python
-              enterprise/workspaces}}
-
   transforms
   {:team "Querying"
    :api  #{metabase.transforms.core
            metabase.transforms.feature-gating
            metabase.transforms.init
-           metabase.transforms.interface
            metabase.transforms.schema
            metabase.transforms.util}
    :uses #{analytics
@@ -1603,19 +1585,32 @@
            driver
            events
            lib
-           lib-be
            models
            premium-features
            queries
            query-processor
            revisions
            settings
-           sync
            task
            task-history
            transforms-base
            util}
    :friends #{models
+              enterprise/transforms-python
+              enterprise/workspaces}}
+
+  transforms-base
+  {:team "Querying"
+   :api  #{metabase.transforms-base.interface
+           metabase.transforms-base.util}
+   :uses #{driver
+           events
+           lib
+           lib-be
+           query-processor
+           sync
+           util}
+   :friends #{transforms
               enterprise/transforms-python
               enterprise/workspaces}}
 
