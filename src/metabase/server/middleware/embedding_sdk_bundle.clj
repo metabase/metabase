@@ -56,7 +56,7 @@
       ((serve-resource-handler resource) request))))
 
 (defn serve-chunk-handler
-  "Serve /app/embedding-sdk-chunks/:filename — split chunks loaded by the bootstrap.
+  "Serve /app/embedding-sdk/chunks/:filename — split chunks loaded by the bootstrap.
    Chunk filenames contain content hashes, so we always use far-future caching."
   [filename]
   (let [resource (str "frontend_client/app/embedding-sdk/chunks/" filename)]
