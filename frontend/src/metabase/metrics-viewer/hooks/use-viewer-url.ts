@@ -17,18 +17,29 @@ import {
   getInitialMetricsViewerTabLayout,
 } from "../types/viewer-state";
 import { defineCompactSchema } from "../utils/compact-schema";
-import type { DimensionFilterValue } from "../utils/metrics";
+import type {
+  DimensionFilterValue,
+  SerializedDimensionFilterValue,
+  SerializedSourceFilter,
+} from "../utils/metrics";
+import { extractDefinitionFilters } from "../utils/metrics";
 import { getEntryBreakout } from "../utils/series";
 import {
   createMeasureSourceId,
   createMetricSourceId,
 } from "../utils/source-ids";
 
+interface SerializedUrlFilter {
+  dimensionId: string;
+  value: SerializedDimensionFilterValue;
+}
+
 interface SerializedSource {
   type: "metric" | "measure";
   id: number;
   tableId?: number;
   breakout?: string;
+  filters?: SerializedUrlFilter[];
 }
 
 interface SerializedTabDef {
@@ -37,7 +48,7 @@ interface SerializedTabDef {
 }
 
 interface SerializedProjectionConfig {
-  dimensionFilter?: unknown;
+  dimensionFilter?: SerializedDimensionFilterValue;
   temporalUnit?: TemporalUnit;
   binning?: string;
 }
@@ -69,7 +80,9 @@ function definitionToSource(def: MetricDefinition): SerializedSource | null {
   return null;
 }
 
-function serializeDimensionFilter(value: DimensionFilterValue): unknown {
+function serializeDimensionFilter(
+  value: DimensionFilterValue,
+): SerializedDimensionFilterValue {
   if (value.type === "specific-date" || value.type === "time") {
     return {
       ...value,
@@ -80,22 +93,15 @@ function serializeDimensionFilter(value: DimensionFilterValue): unknown {
 }
 
 function deserializeDimensionFilter(
-  raw: unknown,
-): DimensionFilterValue | undefined {
-  if (!raw || typeof raw !== "object" || !("type" in raw)) {
-    return undefined;
-  }
-  const obj = raw as Record<string, unknown>;
-  if (
-    (obj.type === "specific-date" || obj.type === "time") &&
-    Array.isArray(obj.values)
-  ) {
+  raw: SerializedDimensionFilterValue,
+): DimensionFilterValue {
+  if (raw.type === "specific-date" || raw.type === "time") {
     return {
-      ...obj,
-      values: obj.values.map((value: unknown) => new Date(value as string)),
-    } as DimensionFilterValue;
+      ...raw,
+      values: raw.values.map((isoString) => new Date(isoString)),
+    };
   }
-  return obj as DimensionFilterValue;
+  return raw;
 }
 
 function tabToSerializedTab(tab: MetricsViewerTabState): SerializedTab {
@@ -155,6 +161,15 @@ function stateToSerializedState(
           source.breakout = dimInfo.id;
         }
       }
+
+      const definitionFilters = extractDefinitionFilters(entry.definition);
+      if (definitionFilters.length > 0) {
+        source.filters = definitionFilters.map((filter) => ({
+          dimensionId: filter.dimensionId,
+          value: serializeDimensionFilter(filter.value),
+        }));
+      }
+
       return [source];
     }),
     tabs: state.tabs.map(tabToSerializedTab),
@@ -162,11 +177,17 @@ function stateToSerializedState(
   };
 }
 
+const sourceFilterSchema = defineCompactSchema<SerializedUrlFilter>({
+  dimensionId: "d",
+  value: { key: "v" },
+});
+
 const sourceSchema = defineCompactSchema<SerializedSource>({
   type: "t",
   id: "i",
   tableId: { key: "T", optional: true },
   breakout: { key: "b", optional: true },
+  filters: { key: "F", schema: sourceFilterSchema, optional: true },
 });
 
 const tabDefSchema = defineCompactSchema<SerializedTabDef>({
@@ -229,6 +250,7 @@ export interface LoadSourcesRequest {
   metricIds: MetricId[];
   measureIds: MeasureId[];
   breakoutBySourceId?: Record<MetricSourceId, string>;
+  filtersBySourceId?: Record<MetricSourceId, SerializedSourceFilter[]>;
 }
 
 export function useViewerUrl(
@@ -291,19 +313,32 @@ export function useViewerUrl(
     const metricIds: MetricId[] = [];
     const measureIds: MeasureId[] = [];
     const breakoutBySourceId: Record<MetricSourceId, string> = {};
+    const filtersBySourceId: Record<MetricSourceId, SerializedSourceFilter[]> =
+      {};
 
     for (const source of serializedState.sources) {
+      const sourceId =
+        source.type === "metric"
+          ? createMetricSourceId(source.id)
+          : createMeasureSourceId(source.id);
+
       if (source.type === "metric") {
         metricIds.push(source.id);
-        if (source.breakout) {
-          breakoutBySourceId[createMetricSourceId(source.id)] = source.breakout;
-        }
       } else if (source.type === "measure") {
         measureIds.push(source.id);
-        if (source.breakout) {
-          breakoutBySourceId[createMeasureSourceId(source.id)] =
-            source.breakout;
-        }
+      }
+
+      if (source.breakout) {
+        breakoutBySourceId[sourceId] = source.breakout;
+      }
+
+      if (source.filters && source.filters.length > 0) {
+        filtersBySourceId[sourceId] = source.filters.map(
+          (serializedFilter) => ({
+            dimensionId: serializedFilter.dimensionId,
+            value: deserializeDimensionFilter(serializedFilter.value),
+          }),
+        );
       }
     }
 
@@ -342,10 +377,12 @@ export function useViewerUrl(
 
     if (metricIds.length > 0 || measureIds.length > 0) {
       const hasBreakouts = Object.keys(breakoutBySourceId).length > 0;
+      const hasFilters = Object.keys(filtersBySourceId).length > 0;
       onLoadSources({
         metricIds,
         measureIds,
         breakoutBySourceId: hasBreakouts ? breakoutBySourceId : undefined,
+        filtersBySourceId: hasFilters ? filtersBySourceId : undefined,
       });
     }
 

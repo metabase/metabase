@@ -19,8 +19,3 @@
 .inputField::placeholder {
   color: var(--mb-color-text-tertiary);
 }
-
-.dropdown {
-  z-index: 100;
-  overflow-y: auto;
-}

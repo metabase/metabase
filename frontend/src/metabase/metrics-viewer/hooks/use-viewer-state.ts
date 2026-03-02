@@ -110,8 +110,14 @@ export interface UseViewerStateResult {
   ) => void;
 
   initialize: (state: MetricsViewerPageState) => void;
-  loadAndAddMetric: (metricId: MetricId) => void;
-  loadAndAddMeasure: (measureId: MeasureId) => void;
+  loadAndAddMetric: (
+    metricId: MetricId,
+    transform?: (def: MetricDefinition) => MetricDefinition,
+  ) => void;
+  loadAndAddMeasure: (
+    measureId: MeasureId,
+    transform?: (def: MetricDefinition) => MetricDefinition,
+  ) => void;
   loadAndReplaceMetric: (
     oldSourceId: MetricSourceId,
     metricId: MetricId,
@@ -376,7 +382,11 @@ export function useViewerState(): UseViewerStateResult {
   }, []);
 
   const loadDefinition = useCallback(
-    async (id: MetricSourceId, loader: () => Promise<MetricDefinition>) => {
+    async (
+      id: MetricSourceId,
+      loader: () => Promise<MetricDefinition>,
+      transform?: (def: MetricDefinition) => MetricDefinition,
+    ) => {
       if (loadingRef.current.has(id)) {
         return;
       }
@@ -386,7 +396,10 @@ export function useViewerState(): UseViewerStateResult {
       addDefinition({ id, definition: null });
 
       try {
-        const definition = await loader();
+        const rawDefinition = await loader();
+        const definition = transform
+          ? transform(rawDefinition)
+          : rawDefinition;
         updateDefinition(id, definition);
 
         if (stateRef.current.tabs.length === 0) {
@@ -434,17 +447,27 @@ export function useViewerState(): UseViewerStateResult {
   );
 
   const loadAndAddMetric = useCallback(
-    (metricId: MetricId) =>
-      loadDefinition(createMetricSourceId(metricId), () =>
-        loadMetricDefinition(dispatch, store.getState, metricId),
+    (
+      metricId: MetricId,
+      transform?: (def: MetricDefinition) => MetricDefinition,
+    ) =>
+      loadDefinition(
+        createMetricSourceId(metricId),
+        () => loadMetricDefinition(dispatch, store.getState, metricId),
+        transform,
       ),
     [loadDefinition, dispatch, store],
   );
 
   const loadAndAddMeasure = useCallback(
-    (measureId: MeasureId) =>
-      loadDefinition(createMeasureSourceId(measureId), () =>
-        loadMeasureDefinition(dispatch, store.getState, measureId),
+    (
+      measureId: MeasureId,
+      transform?: (def: MetricDefinition) => MetricDefinition,
+    ) =>
+      loadDefinition(
+        createMeasureSourceId(measureId),
+        () => loadMeasureDefinition(dispatch, store.getState, measureId),
+        transform,
       ),
     [loadDefinition, dispatch, store],
   );

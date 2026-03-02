@@ -65,44 +65,68 @@ export type DimensionFilterValue =
   | { type: "time"; operator: TimeFilterParts["operator"]; values: Date[] }
   | { type: "default"; operator: DefaultFilterParts["operator"] };
 
-export function extractDimensionFilterValue(
+type SerializeDates<T> = T extends { values: Date[] }
+  ? Omit<T, "values"> & { values: string[] }
+  : T;
+
+export type SerializedDimensionFilterValue =
+  SerializeDates<DimensionFilterValue>;
+
+export type ParsedFilter = {
+  dimension: DimensionMetadata;
+  value: DimensionFilterValue;
+};
+
+export function parseFilter(
   definition: MetricDefinition,
   filterClause: FilterClause,
-): DimensionFilterValue | null {
+): ParsedFilter | null {
   const stringParts = LibMetric.stringFilterParts(definition, filterClause);
   if (stringParts) {
     return {
-      type: "string",
-      operator: stringParts.operator,
-      values: stringParts.values,
-      options: stringParts.options,
+      dimension: stringParts.dimension,
+      value: {
+        type: "string",
+        operator: stringParts.operator,
+        values: stringParts.values,
+        options: stringParts.options,
+      },
     };
   }
 
   const booleanParts = LibMetric.booleanFilterParts(definition, filterClause);
   if (booleanParts) {
     return {
-      type: "boolean",
-      operator: booleanParts.operator,
-      values: booleanParts.values,
+      dimension: booleanParts.dimension,
+      value: {
+        type: "boolean",
+        operator: booleanParts.operator,
+        values: booleanParts.values,
+      },
     };
   }
 
   const numberParts = LibMetric.numberFilterParts(definition, filterClause);
   if (numberParts) {
     return {
-      type: "number",
-      operator: numberParts.operator,
-      values: numberParts.values,
+      dimension: numberParts.dimension,
+      value: {
+        type: "number",
+        operator: numberParts.operator,
+        values: numberParts.values,
+      },
     };
   }
 
   const coordParts = LibMetric.coordinateFilterParts(definition, filterClause);
   if (coordParts) {
     return {
-      type: "coordinate",
-      operator: coordParts.operator,
-      values: coordParts.values,
+      dimension: coordParts.dimension,
+      value: {
+        type: "coordinate",
+        operator: coordParts.operator,
+        values: coordParts.values,
+      },
     };
   }
 
@@ -112,10 +136,13 @@ export function extractDimensionFilterValue(
   );
   if (specificParts) {
     return {
-      type: "specific-date",
-      operator: specificParts.operator,
-      values: specificParts.values,
-      hasTime: specificParts.hasTime,
+      dimension: specificParts.dimension,
+      value: {
+        type: "specific-date",
+        operator: specificParts.operator,
+        values: specificParts.values,
+        hasTime: specificParts.hasTime,
+      },
     };
   }
 
@@ -125,12 +152,15 @@ export function extractDimensionFilterValue(
   );
   if (relativeParts) {
     return {
-      type: "relative-date",
-      unit: relativeParts.unit,
-      value: relativeParts.value,
-      offsetUnit: relativeParts.offsetUnit,
-      offsetValue: relativeParts.offsetValue,
-      options: relativeParts.options,
+      dimension: relativeParts.dimension,
+      value: {
+        type: "relative-date",
+        unit: relativeParts.unit,
+        value: relativeParts.value,
+        offsetUnit: relativeParts.offsetUnit,
+        offsetValue: relativeParts.offsetValue,
+        options: relativeParts.options,
+      },
     };
   }
 
@@ -140,27 +170,36 @@ export function extractDimensionFilterValue(
   );
   if (excludeParts) {
     return {
-      type: "exclude-date",
-      operator: excludeParts.operator,
-      unit: excludeParts.unit,
-      values: excludeParts.values,
+      dimension: excludeParts.dimension,
+      value: {
+        type: "exclude-date",
+        operator: excludeParts.operator,
+        unit: excludeParts.unit,
+        values: excludeParts.values,
+      },
     };
   }
 
   const timeParts = LibMetric.timeFilterParts(definition, filterClause);
   if (timeParts) {
     return {
-      type: "time",
-      operator: timeParts.operator,
-      values: timeParts.values,
+      dimension: timeParts.dimension,
+      value: {
+        type: "time",
+        operator: timeParts.operator,
+        values: timeParts.values,
+      },
     };
   }
 
   const defaultParts = LibMetric.defaultFilterParts(definition, filterClause);
   if (defaultParts) {
     return {
-      type: "default",
-      operator: defaultParts.operator,
+      dimension: defaultParts.dimension,
+      value: {
+        type: "default",
+        operator: defaultParts.operator,
+      },
     };
   }
 
@@ -233,6 +272,34 @@ export function buildDimensionFilterClause(
         dimension,
       });
   }
+}
+
+// ── Serialized source filter ──
+
+export type SerializedSourceFilter = {
+  dimensionId: string;
+  value: DimensionFilterValue;
+};
+
+export function extractDefinitionFilters(
+  definition: MetricDefinition,
+): SerializedSourceFilter[] {
+  const filters = LibMetric.filters(definition);
+  const result: SerializedSourceFilter[] = [];
+
+  for (const clause of filters) {
+    const parsed = parseFilter(definition, clause);
+    if (!parsed) {
+      continue;
+    }
+    const dimInfo = LibMetric.dimensionValuesInfo(
+      definition,
+      parsed.dimension,
+    );
+    result.push({ dimensionId: dimInfo.id, value: parsed.value });
+  }
+
+  return result;
 }
 
 // ── Dimension classification ──
@@ -311,8 +378,17 @@ export function findDimensionById(
   def: MetricDefinition,
   dimensionId: string,
 ): DimensionMetadata | undefined {
-  const dims = LibMetric.projectionableDimensions(def);
-  return dims.find((dim) => {
+  return LibMetric.projectionableDimensions(def).find((dim) => {
+    const info = LibMetric.dimensionValuesInfo(def, dim);
+    return info.id === dimensionId;
+  });
+}
+
+export function findFilterDimensionById(
+  def: MetricDefinition,
+  dimensionId: string,
+): DimensionMetadata | undefined {
+  return LibMetric.filterableDimensions(def).find((dim) => {
     const info = LibMetric.dimensionValuesInfo(def, dim);
     return info.id === dimensionId;
   });
@@ -423,7 +499,7 @@ function removeFiltersOnDimension(
   return result;
 }
 
-function applyDimensionFilter(
+export function applyDimensionFilter(
   def: MetricDefinition,
   dimension: DimensionMetadata,
   filterValue: DimensionFilterValue,

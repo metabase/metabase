@@ -219,6 +219,52 @@ describe("defineCompactSchema", () => {
     });
   });
 
+  describe("single-object nested schema fields", () => {
+    const configSchema = defineCompactSchema<{
+      filter: string;
+      unit: string;
+    }>({
+      filter: "f",
+      unit: "u",
+    });
+
+    const parentSchema = defineCompactSchema<{
+      id: string;
+      config: { filter: string; unit: string };
+    }>({
+      id: "i",
+      config: { key: "c", schema: configSchema },
+    });
+
+    it("compacts a single nested object through the child schema", () => {
+      expect(
+        parentSchema.compact({
+          id: "1",
+          config: { filter: "date", unit: "month" },
+        }),
+      ).toEqual({
+        i: "1",
+        c: { f: "date", u: "month" },
+      });
+    });
+
+    it("expands a single nested object through the child schema", () => {
+      expect(
+        parentSchema.expand({ i: "1", c: { f: "date", u: "month" } }),
+      ).toEqual({
+        id: "1",
+        config: { filter: "date", unit: "month" },
+      });
+    });
+
+    it("round-trips a single nested object", () => {
+      const original = { id: "1", config: { filter: "date", unit: "month" } };
+      const compacted = parentSchema.compact(original);
+      const expanded = parentSchema.expand(compacted);
+      expect(expanded).toEqual(original);
+    });
+  });
+
   describe("falsy field values", () => {
     const schema = defineCompactSchema<{
       count: number;

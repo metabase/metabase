@@ -1,8 +1,7 @@
-import { useClickOutside } from "@mantine/hooks";
 import { type ReactNode, useCallback, useMemo, useRef, useState } from "react";
 import { t } from "ttag";
 
-import { Box, Flex, Paper, TextInput } from "metabase/ui";
+import { Flex, Popover, TextInput } from "metabase/ui";
 import type { ProjectionClause } from "metabase-lib/metric";
 
 import type {
@@ -34,7 +33,6 @@ type MetricSearchInputProps = {
   ) => void;
   children: (props: {
     searchText: string;
-    isOpen: boolean;
     onSelect: (metric: SelectedMetric) => void;
   }) => ReactNode;
   disabled: boolean;
@@ -62,12 +60,6 @@ export function MetricSearchInput({
     [definitions],
   );
 
-  const handleClose = useCallback(() => {
-    setIsOpen(false);
-  }, []);
-
-  const containerRef = useClickOutside(handleClose);
-
   const handleSelect = useCallback(
     (metric: SelectedMetric) => {
       onAddMetric(metric);
@@ -79,9 +71,6 @@ export function MetricSearchInput({
 
   const handleKeyDown = useCallback(
     (event: React.KeyboardEvent) => {
-      if (event.key === "Escape") {
-        handleClose();
-      }
       if (
         event.key === "Backspace" &&
         searchText === "" &&
@@ -91,7 +80,7 @@ export function MetricSearchInput({
         onRemoveMetric(last.id, last.sourceType);
       }
     },
-    [handleClose, searchText, selectedMetrics, onRemoveMetric],
+    [searchText, selectedMetrics, onRemoveMetric],
   );
 
   const handleContainerClick = useCallback(() => {
@@ -103,45 +92,53 @@ export function MetricSearchInput({
   }, []);
 
   return (
-    <Box ref={containerRef} pos="relative">
-      <Flex
-        className={S.inputWrapper}
-        align="center"
-        gap="sm"
-        px="sm"
-        py="xs"
-        onClick={handleContainerClick}
-      >
-        <Flex align="center" gap="sm" flex={1} wrap="wrap" mih={36}>
-          {selectedMetrics.map((metric) => {
-            const sid =
-              metric.sourceType === "metric"
-                ? createMetricSourceId(metric.id)
-                : createMeasureSourceId(metric.id);
-            const entry = definitionsBySourceId.get(sid);
-            if (!entry) {
-              return null;
-            }
-            return (
-              <MetricPill
-                key={`${metric.sourceType}-${metric.id}`}
-                metric={metric}
-                colors={metricColors[sid]}
-                definitionEntry={entry}
-                selectedMetricIds={selectedMetricIds}
-                selectedMeasureIds={selectedMeasureIds}
-                onSwap={onSwapMetric}
-                onRemove={onRemoveMetric}
-                onSetBreakout={(dim) => onSetBreakout(sid, dim)}
-                onOpen={handleClose}
-              />
-            );
-          })}
-          <Box pos="relative" flex={1} miw={120} ml="xs">
+    <Flex
+      className={S.inputWrapper}
+      align="center"
+      gap="sm"
+      px="sm"
+      py="xs"
+      onClick={handleContainerClick}
+    >
+      <Flex align="center" gap="sm" flex={1} wrap="wrap" mih={36}>
+        {selectedMetrics.map((metric) => {
+          const sid =
+            metric.sourceType === "metric"
+              ? createMetricSourceId(metric.id)
+              : createMeasureSourceId(metric.id);
+          const entry = definitionsBySourceId.get(sid);
+          if (!entry) {
+            return null;
+          }
+          return (
+            <MetricPill
+              key={`${metric.sourceType}-${metric.id}`}
+              metric={metric}
+              colors={metricColors[sid]}
+              definitionEntry={entry}
+              selectedMetricIds={selectedMetricIds}
+              selectedMeasureIds={selectedMeasureIds}
+              onSwap={onSwapMetric}
+              onRemove={onRemoveMetric}
+              onSetBreakout={(dim) => onSetBreakout(sid, dim)}
+              onOpen={() => setIsOpen(false)}
+            />
+          );
+        })}
+        <Popover
+          opened={isOpen}
+          onChange={setIsOpen}
+          position="bottom-start"
+          shadow="md"
+          withinPortal
+        >
+          <Popover.Target>
             <TextInput
               ref={inputRef}
               classNames={{ input: S.inputField }}
-              w="100%"
+              flex={1}
+              miw={120}
+              ml="xs"
               variant="unstyled"
               placeholder={
                 selectedMetrics.length === 0 ? t`Search for metrics...` : ""
@@ -155,28 +152,12 @@ export function MetricSearchInput({
               onKeyDown={handleKeyDown}
               disabled={disabled}
             />
-            {isOpen && (
-              <Paper
-                className={S.dropdown}
-                pos="absolute"
-                top="calc(100% + 4px)"
-                left={0}
-                shadow="md"
-                withBorder
-                mah={400}
-                maw={400}
-                miw={300}
-              >
-                {children({
-                  searchText,
-                  isOpen,
-                  onSelect: handleSelect,
-                })}
-              </Paper>
-            )}
-          </Box>
-        </Flex>
+          </Popover.Target>
+          <Popover.Dropdown p={0} miw={300} maw={400}>
+            {isOpen && children({ searchText, onSelect: handleSelect })}
+          </Popover.Dropdown>
+        </Popover>
       </Flex>
-    </Box>
+    </Flex>
   );
 }

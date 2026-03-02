@@ -93,6 +93,13 @@ export function defineCompactSchema<T>(
           result[field.compactKey] = val.map((item) =>
             field.schema!.compact(item),
           );
+        } else if (
+          field.schema &&
+          val != null &&
+          typeof val === "object" &&
+          !Array.isArray(val)
+        ) {
+          result[field.compactKey] = field.schema.compact(val);
         } else {
           result[field.compactKey] = val;
         }
@@ -128,6 +135,8 @@ export function defineCompactSchema<T>(
             result[fullKey] = val
               .map((item) => field.schema!.expand(item))
               .filter((item): item is NonNullable<typeof item> => item != null);
+          } else if (val != null && typeof val === "object") {
+            result[fullKey] = field.schema.expand(val);
           } else {
             result[fullKey] = field.hasDefault ? field.defaultValue : [];
           }

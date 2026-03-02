@@ -520,9 +520,9 @@
   "Extract specific date filter parts from a clause.
    Returns {operator, dimension, values, hasTime} or null."
   [definition filter-clause]
-  (-> (lib-metric.filter/specific-date-filter-parts definition filter-clause)
-      (update :values (fn [values] (mapv (comp u.time/dayjs-utc->local-date u.time/coerce-to-timestamp) values)))
-      filter-parts-cljs->js))
+  (some-> (lib-metric.filter/specific-date-filter-parts definition filter-clause)
+          (update :values (fn [values] (mapv (comp u.time/dayjs-utc->local-date u.time/coerce-to-timestamp) values)))
+          filter-parts-cljs->js))
 
 (defn ^:export relativeDateFilterClause
   "Create a relative date filter clause from parts.

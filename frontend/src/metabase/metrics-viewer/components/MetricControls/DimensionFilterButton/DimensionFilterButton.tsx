@@ -14,10 +14,7 @@ import type {
 import * as LibMetric from "metabase-lib/metric";
 
 import type { DimensionFilterValue } from "../../../utils/metrics";
-import {
-  buildDimensionFilterClause,
-  extractDimensionFilterValue,
-} from "../../../utils/metrics";
+import { buildDimensionFilterClause, parseFilter } from "../../../utils/metrics";
 import S from "../MetricControls.module.css";
 
 function getFilterDisplayName(
@@ -128,9 +125,9 @@ export function DimensionFilterButton({
 
   const handleSelect = useCallback(
     (filterClause: FilterClause) => {
-      const extracted = extractDimensionFilterValue(definition, filterClause);
-      if (extracted) {
-        onChange(extracted);
+      const parsed = parseFilter(definition, filterClause);
+      if (parsed) {
+        onChange(parsed.value);
       }
       setIsOpen(false);
     },

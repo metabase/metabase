@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef } from "react";
+import { useCallback, useMemo } from "react";
 
 import { objectFromEntries } from "metabase/lib/objects";
 import type {
@@ -18,13 +18,21 @@ import type {
   SelectedMetric,
   SourceColorMap,
 } from "../types/viewer-state";
-import { findDimensionById } from "../utils/metrics";
+import {
+  applyDimensionFilter,
+  buildBinnedBreakoutDef,
+  findDimensionById,
+  findFilterDimensionById,
+} from "../utils/metrics";
 import {
   computeSourceColors,
-  entryHasBreakout,
   getSelectedMetricsInfo,
 } from "../utils/series";
-import { createSourceId } from "../utils/source-ids";
+import {
+  createMeasureSourceId,
+  createMetricSourceId,
+  createSourceId,
+} from "../utils/source-ids";
 import { TAB_TYPE_REGISTRY } from "../utils/tab-config";
 import {
   type AvailableDimensionsResult,
@@ -89,6 +97,43 @@ const FIXED_TAB_IDS = new Set(
   TAB_TYPE_REGISTRY.filter((c) => c.fixedId).map((c) => c.fixedId!),
 );
 
+function buildUrlRestoreTransform(
+  sourceId: MetricSourceId,
+  request: LoadSourcesRequest,
+): ((definition: MetricDefinition) => MetricDefinition) | undefined {
+  const breakoutId = request.breakoutBySourceId?.[sourceId];
+  const filters = request.filtersBySourceId?.[sourceId];
+
+  if (!breakoutId && (!filters || filters.length === 0)) {
+    return undefined;
+  }
+
+  return (definition: MetricDefinition): MetricDefinition => {
+    let result = definition;
+
+    if (breakoutId) {
+      const dimension = findDimensionById(result, breakoutId);
+      if (dimension) {
+        result = buildBinnedBreakoutDef(
+          result,
+          LibMetric.dimensionReference(dimension),
+        );
+      }
+    }
+
+    if (filters) {
+      for (const filter of filters) {
+        const dimension = findFilterDimensionById(result, filter.dimensionId);
+        if (dimension) {
+          result = applyDimensionFilter(result, dimension, filter.value);
+        }
+      }
+    }
+
+    return result;
+  };
+}
+
 export function useMetricsViewer(): UseMetricsViewerResult {
   const {
     state,
@@ -109,39 +154,27 @@ export function useMetricsViewer(): UseMetricsViewerResult {
     toggleFullScreen,
   } = useViewerState();
 
-  const pendingBreakoutsRef = useRef<Record<MetricSourceId, string>>({});
-
   const handleLoadSources = useCallback(
     (request: LoadSourcesRequest) => {
-      if (request.breakoutBySourceId) {
-        pendingBreakoutsRef.current = { ...request.breakoutBySourceId };
+      for (const metricId of request.metricIds) {
+        const sourceId = createMetricSourceId(metricId);
+        loadAndAddMetric(
+          metricId,
+          buildUrlRestoreTransform(sourceId, request),
+        );
       }
-      request.metricIds.forEach(loadAndAddMetric);
-      request.measureIds.forEach(loadAndAddMeasure);
+      for (const measureId of request.measureIds) {
+        const sourceId = createMeasureSourceId(measureId);
+        loadAndAddMeasure(
+          measureId,
+          buildUrlRestoreTransform(sourceId, request),
+        );
+      }
     },
     [loadAndAddMetric, loadAndAddMeasure],
   );
 
   useViewerUrl(state, initialize, handleLoadSources);
-
-  useEffect(() => {
-    const pending = pendingBreakoutsRef.current;
-    if (Object.keys(pending).length === 0) {
-      return;
-    }
-
-    for (const entry of state.definitions) {
-      const uuid = pending[entry.id];
-      if (!uuid || !entry.definition || entryHasBreakout(entry)) {
-        continue;
-      }
-      const dimension = findDimensionById(entry.definition, uuid);
-      if (dimension) {
-        setBreakoutDimension(entry.id, LibMetric.dimensionReference(dimension));
-      }
-      delete pending[entry.id];
-    }
-  }, [state.definitions, setBreakoutDimension]);
 
   const activeTab = useMemo((): MetricsViewerTabState | null => {
     if (state.selectedTabId === ALL_TAB_ID || state.tabs.length === 0) {
