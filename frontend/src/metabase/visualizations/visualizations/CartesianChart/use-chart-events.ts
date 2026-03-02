@@ -63,6 +63,7 @@ export const useChartEvents = (
   }: VisualizationProps,
 ) => {
   const isBrushing = useRef<boolean>();
+  const isBrushingEnabled = useRef<boolean>();
   useTooltipMouseLeave(chartRef, onHoverChange, containerRef);
 
   const onOpenQuestion = useCallback(
@@ -315,6 +316,13 @@ export const useChartEvents = (
         canBrush(rawSeries, settings, onChangeCardAndRun) &&
         !hovered &&
         !clicked;
+
+      // Only dispatch actions when the brushing state actually changes
+      if (isBrushingEnabled.current === shouldEnableBrushing) {
+        return;
+      }
+
+      isBrushingEnabled.current = shouldEnableBrushing;
 
       setTimeout(() => {
         if (shouldEnableBrushing) {
