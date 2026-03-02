@@ -4,12 +4,12 @@
   (`:segment` forms are expanded into filter clauses.)"
   (:refer-clojure :exclude [mapv not-empty get-in])
   (:require
+   [metabase.lib.core :as lib]
    [metabase.lib.filter :as lib.filter]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.expression :as lib.schema.expression]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
-   [metabase.lib.util :as lib.util]
    [metabase.lib.util.match :as lib.util.match]
    [metabase.lib.walk :as lib.walk]
    [metabase.query-processor.error-type :as qp.error-type]
@@ -63,7 +63,7 @@
 (mu/defn- legacy-macro-filters :- [:maybe [:sequential ::lib.schema.expression/boolean]]
   "Get the filter(s) associated with a Segment."
   [legacy-macro :- ::legacy-macro]
-  (mapv lib.util/fresh-uuids
+  (mapv lib/fresh-uuids
         (get-in legacy-macro [:definition :filters])))
 
 (mr/def ::id->legacy-macro

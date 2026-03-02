@@ -125,7 +125,7 @@
           model?        (= (:type card) :model)
           native-model? (when model?
                           (-> (lib.card/card->underlying-query query card)
-                              (lib.util/native-stage? -1)))
+                              (lib/native-stage? -1)))
           ;; TODO this information WAS used
           ;; by [[metabase.query-processor.middleware.annotate/col-info-for-field-clause*]] which doesn't exist anymore
           ;; -- do we still need it? -- Cam

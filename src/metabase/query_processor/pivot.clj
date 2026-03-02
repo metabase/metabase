@@ -13,7 +13,6 @@
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.info :as lib.schema.info]
-   [metabase.lib.util :as lib.util]
    [metabase.models.visualization-settings :as mb.viz]
    [metabase.query-processor :as qp]
    [metabase.query-processor.error-type :as qp.error-type]
@@ -186,7 +185,7 @@
    (fn [query [_tag _opts expr :as order-by]]
      ;; keep any order bys on :aggregation references. Remove all other clauses.
      (cond-> query
-       (not (lib.util/clause-of-type? expr :aggregation))
+       (not (lib/clause-of-type? expr :aggregation))
        (lib/remove-clause order-by)))
    query
    (lib/order-bys query)))
