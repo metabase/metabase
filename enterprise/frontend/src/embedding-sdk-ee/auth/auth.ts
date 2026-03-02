@@ -11,7 +11,10 @@ import {
 } from "embedding/auth-common";
 import * as MetabaseError from "embedding-sdk-bundle/errors";
 import { getIsLocalhost } from "embedding-sdk-bundle/lib/get-is-localhost";
-import { PLUGIN_EMBEDDING_SDK_AUTH } from "embedding-sdk-bundle/store/auth";
+import {
+  PLUGIN_EMBEDDING_SDK_AUTH,
+  refreshTokenAsync as refreshTokenAsyncAction,
+} from "embedding-sdk-bundle/store/auth";
 import {
   getFetchRefreshTokenFn,
   getSessionTokenState,
@@ -59,18 +62,30 @@ PLUGIN_EMBEDDING_SDK_AUTH.initAuth = async (
   // Check if we can use the auth pre-fetched by the bootstrap chunk
   const earlyAuthStatus = getAuthState()?.status;
   if (earlyAuthStatus && earlyAuthStatus !== "skipped") {
-    await waitForAuthCompletion();
-    const authState = getAuthState() as SdkAuthState;
+    try {
+      await waitForAuthCompletion();
+    } catch {
+      // Timeout or unexpected error — clear stale state and fall back to normal auth.
+      clearAuthState();
+    }
+    const authState = getAuthState();
     // Clear the auth state after we read it, so that if `initAuth` is called again it doesn't retry to use the old state
     clearAuthState();
 
     if (
-      authState.status === "completed" &&
+      authState?.status === "completed" &&
       authState.session &&
       authState.user &&
       authState.siteSettings
     ) {
       api.sessionToken = authState.session.id;
+      // Store the session token in Redux so getOrRefreshSession finds it
+      // and doesn't trigger a redundant token refresh on the first API call.
+      dispatch(
+        refreshTokenAsyncAction.fulfilled(authState.session, "", {
+          metabaseInstanceUrl: authConfig.metabaseInstanceUrl,
+        }),
+      );
       dispatch(refreshCurrentUser.fulfilled(authState.user, "", undefined));
       dispatch(loadSettings(authState.siteSettings as Settings));
       MetabaseSettings.setAll(authState.siteSettings as Settings);
@@ -93,7 +108,7 @@ PLUGIN_EMBEDDING_SDK_AUTH.initAuth = async (
     // retry its own auth logic and handle the errors if it happens again.
     console.warn(
       "SDK: Bootstrap auth did not complete successfully (status: " +
-        authState.status +
+        (authState?.status ?? "unknown") +
         "). Falling back to normal auth flow.",
     );
   }
