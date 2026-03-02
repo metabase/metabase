@@ -128,7 +128,9 @@
       (transform-run/succeed-started-run! run-id)
       ret)
     (catch Throwable t
-      (transform-run/fail-started-run! run-id {:message (ex-message-fn t)})
+      (if (:timeout (ex-data t))
+        (transform-run/timeout-run! run-id {:message (ex-message-fn t)})
+        (transform-run/fail-started-run! run-id {:message (ex-message-fn t)}))
       (throw t))
     (finally
       (canceling/chan-end-run! run-id))))

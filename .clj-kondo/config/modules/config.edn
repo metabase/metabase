@@ -1601,7 +1601,8 @@
 
   transforms-base
   {:team "Querying"
-   :api  #{metabase.transforms-base.interface
+   :api  #{metabase.transforms-base.init
+           metabase.transforms-base.interface
            metabase.transforms-base.util}
    :uses #{driver
            events
