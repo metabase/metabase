@@ -155,7 +155,7 @@
     (testing "returns error message when init fails"
       (let [database   (mt/db)
             test-table (t2/select-one [:model/Table :schema :name] (mt/id :orders))]
-        (with-redefs [driver/init-workspace-isolation!
+        (mt/with-dynamic-fn-redefs [driver/init-workspace-isolation!
                                     (fn [_driver _database _workspace]
                                       (throw (ex-info "permission denied" {:step :init})))]
           (is (some? (driver/check-isolation-permissions
@@ -169,7 +169,7 @@
     (testing "returns error message when grant fails"
       (let [database   (mt/db)
             test-table (t2/select-one [:model/Table :schema :name] (mt/id :orders))]
-        (with-redefs [driver/grant-workspace-read-access!
+        (mt/with-dynamic-fn-redefs [driver/grant-workspace-read-access!
                                     (fn [_driver _database _workspace _tables]
                                       (throw (ex-info "permission denied" {:step :grant})))]
           (is (some? (driver/check-isolation-permissions
@@ -183,7 +183,7 @@
     (testing "returns error message when destroy fails"
       (let [database   (mt/db)
             test-table (t2/select-one [:model/Table :schema :name] (mt/id :orders))]
-        (with-redefs [driver/destroy-workspace-isolation!
+        (mt/with-dynamic-fn-redefs [driver/destroy-workspace-isolation!
                                     (fn [_driver _database _workspace]
                                       (throw (ex-info "permission denied" {:step :destroy})))]
           (is (some? (driver/check-isolation-permissions

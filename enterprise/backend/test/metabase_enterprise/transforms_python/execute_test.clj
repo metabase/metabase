@@ -50,7 +50,7 @@
 
                   (let [swap-latch (CountDownLatch. 1)
                         original-rename-tables-atomic! transforms-base.u/rename-tables!]
-                    (with-redefs [transforms-base.u/rename-tables! (fn [driver db-id rename-pairs]
+                    (mt/with-dynamic-fn-redefs [transforms-base.u/rename-tables! (fn [driver db-id rename-pairs]
                                                                                    (.await swap-latch)
                                                                                    (original-rename-tables-atomic! driver db-id rename-pairs))]
                       (let [transform-future (future

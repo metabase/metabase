@@ -59,7 +59,7 @@
                               :name "Test Python Transform"}
             run-id 101
             logged-messages (atom [])]
-        (with-redefs [log/log* (fn [_ level _ message]
+        (mt/with-dynamic-fn-redefs [log/log* (fn [_ level _ message]
                                                (swap! logged-messages conj {:level level :message message}))
                                     transform-run/running-run-for-transform-id (constantly nil)]
           (#'jobs/run-transform! run-id :scheduled nil python-transform)

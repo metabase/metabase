@@ -331,7 +331,7 @@
                        :model/TransformRun {run-id :id} {:transform_id transform-id
                                                          :status "running"
                                                          :run_method "manual"}]
-          (with-redefs [transforms-base.u/sync-target!                       (constantly table)
+          (mt/with-dynamic-fn-redefs [transforms-base.u/sync-target!                       (constantly table)
                                       events/publish-event!                              (constantly nil)
                                       transforms.u/execute-secondary-index-ddl-if-required! (constantly nil)]
             (transforms.u/handle-transform-complete! :run-id run-id :transform transform :db db)
