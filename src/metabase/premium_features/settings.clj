@@ -325,6 +325,10 @@
   "Should we allow users to use workspaces?"
   :workspaces)
 
+(define-premium-feature ^{:added "0.60.0"} enable-product-analytics?
+  "Should we enable Product Analytics?"
+  :product-analytics)
+
 (defn- -token-features []
   {:advanced_permissions           (enable-advanced-permissions?)
    :ai_sql_fixer                   (enable-ai-sql-fixer?)
@@ -378,6 +382,7 @@
    :transforms-python              (enable-python-transforms?)
    :upload_management              (enable-upload-management?)
    :whitelabel                     (enable-whitelabeling?)
+   :product_analytics              (enable-product-analytics?)
    :workspaces                     (enable-workspaces?)})
 
 (defsetting token-features

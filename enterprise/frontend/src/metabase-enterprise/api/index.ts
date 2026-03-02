@@ -1,4 +1,5 @@
 export * from "./ai-entity-analysis";
+export * from "./product-analytics";
 export * from "./api";
 export * from "./audit-info";
 export * from "./billing-info";

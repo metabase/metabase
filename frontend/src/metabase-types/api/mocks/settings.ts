@@ -145,6 +145,7 @@ export const createMockTokenFeatures = (
   "support-users": false,
   tenants: false,
   workspaces: false,
+  product_analytics: true,
   ...opts,
 });
 
@@ -257,6 +258,7 @@ export const createMockSettings = (
   "query-caching-ttl-ratio": 10,
   "query-caching-min-ttl": 60,
   "enable-password-login": true,
+  "enable-product-analytics?": true,
   "enable-public-sharing": false,
   "enable-xrays": false,
   engines: createMockEngines(),

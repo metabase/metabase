@@ -34,6 +34,7 @@ import { initializePlugin as initializeGroupManagers } from "./group_managers";
 import { initializePlugin as initializeMetabot } from "./metabot";
 import { initializePlugin as initializeModelPersistence } from "./model_persistence";
 import { initializePlugin as initializeModeration } from "./moderation";
+import { initializePlugin as initializeProductAnalytics } from "./product_analytics";
 import { initializePlugin as initializeRemoteSync } from "./remote_sync";
 import { initializePlugin as initializeResourceDownloads } from "./resource_downloads";
 import { initializePlugin as initializeSandboxes } from "./sandboxes";
@@ -74,6 +75,7 @@ export function initializePlugins() {
   initializeSmtpOverride();
   initializeSharing();
   initializeModeration();
+  initializeProductAnalytics();
   initializeAdvancedPermissions();
   initializeAiSqlFixer();
   initializeAiEntityAnalysis();
@@ -97,4 +99,5 @@ export function initializePlugins() {
   initializeSupport();
   initializeTenants?.();
   initializeWorkspaces();
+  initializeProductAnalytics();
 }

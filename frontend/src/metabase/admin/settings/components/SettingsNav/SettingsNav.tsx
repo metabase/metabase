@@ -10,7 +10,7 @@ import {
 import { UpsellGem } from "metabase/admin/upsells/components/UpsellGem";
 import { useHasTokenFeature, useSetting } from "metabase/common/hooks";
 import { useSelector } from "metabase/lib/redux";
-import { PLUGIN_REMOTE_SYNC } from "metabase/plugins";
+import { PLUGIN_PRODUCT_ANALYTICS, PLUGIN_REMOTE_SYNC } from "metabase/plugins";
 import { getLocation } from "metabase/selectors/routing";
 import { Divider, Flex } from "metabase/ui";
 
@@ -106,6 +106,14 @@ export function SettingsNav() {
         label={t`Public sharing`}
         icon="share"
       />
+      {PLUGIN_PRODUCT_ANALYTICS.isEnabled && (
+        <SettingsNavItem
+          path="product-analytics"
+          label={t`Product Analytics`}
+          icon="line"
+        />
+      )}
+
       <NavDivider />
       <SettingsNavItem path="license" label={t`License`} icon="store" />
       <SettingsNavItem

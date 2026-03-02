@@ -10,6 +10,13 @@
 
 (set! *warn-on-reflection* true)
 
+(defn- sanitize-kondo-edn
+  "Remove non-EDN tokens from clj-kondo output.
+   clj-kondo sometimes emits Java toString representations like `<vector: [...]>`
+   inside `:clj-kondo/ignore` metadata, which are not valid EDN."
+  [s]
+  (str/replace s #"<\w+:\s*([^>]*)>" "$1"))
+
 (defn- run-kondo
   "Run clj-kondo on the given files and return the EDN output."
   [files]
@@ -21,7 +28,7 @@
               "--config" "{:output {:format :edn}}"
               "--lint" (str/join ":" files))]
     (when (and (not= exit 0) (seq out))
-      (edn/read-string out))))
+      (edn/read-string (sanitize-kondo-edn out)))))
 
 (defn- unused-namespace-findings
   "Filter findings to only unused-namespace warnings."

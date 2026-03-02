@@ -138,6 +138,14 @@
   (println "Language:"        (System/getProperty "user.language"))
   (println "File encoding:"   (System/getProperty "file.encoding")))
 
+(defn ^:command collector
+  "Start Metabase in collector mode — a minimal event ingestion server for
+   Product Analytics. Only the /api/ee/product-analytics/send endpoint and
+   health probes are available."
+  []
+  (classloader/require 'metabase.core.collector)
+  ((resolve 'metabase.core.collector/start!)))
+
 (defn ^:command api-documentation
   "Generate an HTML file and a JSON file for Scalar docs for the Metabase API."
   []
