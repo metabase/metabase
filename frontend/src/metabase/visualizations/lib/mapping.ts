@@ -17,7 +17,7 @@ export function computeMinimalBounds(features: Feature[]) {
   );
 }
 
-export function getAllFeaturesPoints(features: Feature[]) {
+export function getAllFeaturesPoints(features: Feature[]): Position[] {
   const points: Position[] = [];
 
   for (const feature of features) {
@@ -51,7 +51,10 @@ const stateNamesMap = new Map(
  *
  * Currently transforms US state names to state codes for the "us_states" region map, and just lowercases all others.
  */
-export function getCanonicalRowKey(key: RowValue, region?: string) {
+export function getCanonicalRowKey(
+  key: RowValue,
+  region?: string,
+): string | undefined {
   const normalizedKey = String(key).toLowerCase();
   // Special case for supporting both US state names and state codes
   // This should be ok because we know there's no overlap between state names and codes, and we know the "us_states" region map expects codes

@@ -46,8 +46,8 @@ export const getTrendLineFunction = (insight: Insight): ApplyOperator => {
   const bestFit = insight["best-fit"];
 
   if (bestFit) {
-    return (x: number) => computeExpression(bestFit, x);
+    return (x) => computeExpression(bestFit, x);
   }
 
-  return (x: number) => x * insight.slope + insight.offset;
+  return (x) => x * insight.slope + insight.offset;
 };
