@@ -1,0 +1,6 @@
+;; Source of truth for release flags.
+;; Auto-loaded by clj-kondo via :config-paths, and read by metabase.release-flags.init at startup.
+;; See docs/developers-guide/release-flags.md for usage.
+{:metabase/release-flags
+ {"joke-of-the-day" {:description "Whether to show the joke of the day on the homepage."
+                     :start-date  "2026-02-24"}}}

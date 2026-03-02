@@ -66,6 +66,8 @@ import SearchApp from "metabase/search/containers/SearchApp";
 import { Setup } from "metabase/setup/components/Setup";
 import getCollectionTimelineRoutes from "metabase/timelines/collections/routes";
 
+import { ReleaseFlagPage } from "./dev/ReleaseFlags/ReleaseFlagPage";
+import { isProduction } from "./env";
 import {
   CanAccessDataModel,
   CanAccessDataStudio,
@@ -380,6 +382,12 @@ export const getRoutes = (store) => {
 
           {/* ACCOUNT */}
           {getAccountRoutes(store, IsAuthenticated)}
+
+          {/* Release Flags */}
+          {isProduction && <Redirect from="/release-flags" to="/" />}
+          <Route path="release-flags" component={IsAdmin}>
+            <IndexRoute component={ReleaseFlagPage} />
+          </Route>
 
           {/* ADMIN */}
           {getAdminRoutes(store, CanAccessSettings, IsAdmin)}

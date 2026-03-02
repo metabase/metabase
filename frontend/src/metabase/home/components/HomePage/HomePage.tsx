@@ -4,7 +4,9 @@ import { t } from "ttag";
 
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { useHomepageDashboard } from "metabase/common/hooks/use-homepage-dashboard";
+import { JokeOfTheDay } from "metabase/jokes";
 import { useDispatch, useSelector } from "metabase/lib/redux";
+import { hasReleaseFlag } from "metabase/lib/release-flags";
 import { updateUserSetting } from "metabase/redux/settings";
 import { addUndo } from "metabase/redux/undo";
 import { getHasDismissedCustomHomePageToast } from "metabase/selectors/app";
@@ -14,12 +16,14 @@ import { HomeLayout } from "../HomeLayout";
 
 export const HomePage = (): JSX.Element => {
   const { isLoadingDash } = useDashboardRedirect();
+
   if (isLoadingDash) {
     return <LoadingAndErrorWrapper loading={isLoadingDash} />;
   }
 
   return (
     <HomeLayout>
+      {hasReleaseFlag("joke-of-the-day") && <JokeOfTheDay />}
       <HomeContent />
     </HomeLayout>
   );

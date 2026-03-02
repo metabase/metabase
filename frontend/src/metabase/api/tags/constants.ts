@@ -34,6 +34,7 @@ export const TAG_TYPES = [
   "permissions-group",
   "persisted-info",
   "persisted-model",
+  "release-flags",
   "revision",
   "schema",
   "segment",

@@ -27,6 +27,7 @@
    [metabase.geojson.api]
    [metabase.glossary.api]
    [metabase.indexed-entities.api]
+   [metabase.joke-of-the-day.api]
    [metabase.llm.api]
    [metabase.logger.api]
    [metabase.login-history.api]
@@ -41,6 +42,7 @@
    [metabase.pulse.api]
    [metabase.queries-rest.api]
    [metabase.query-processor.api]
+   [metabase.release-flags.api]
    [metabase.revisions.api]
    [metabase.search.api]
    [metabase.segments.api]
@@ -171,6 +173,7 @@
    "/geojson"              'metabase.geojson.api
    "/glossary"             (+auth 'metabase.glossary.api)
    "/google"               (+auth metabase.sso.api/google-auth-routes)
+   "/joke-of-the-day"      'metabase.joke-of-the-day.api
    "/ldap"                 (+auth metabase.sso.api/ldap-routes)
    "/llm"                  (+auth metabase.llm.api/routes)
    "/logger"               (+auth 'metabase.logger.api)
@@ -187,6 +190,7 @@
    "/product-feedback"     'metabase.product-feedback.api
    "/public"               (+public-exceptions metabase.public-sharing-rest.api/routes)
    "/pulse"                metabase.pulse.api/pulse-routes
+   "/release-flags"        (+auth 'metabase.release-flags.api)
    "/revision"             (+auth 'metabase.revisions.api)
    "/search"               (+auth metabase.search.api/routes)
    "/segment"              (+auth 'metabase.segments.api)

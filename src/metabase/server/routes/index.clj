@@ -9,6 +9,7 @@
    [metabase.appearance.core :as appearance]
    [metabase.config.core :as config]
    [metabase.initialization-status.core :as init-status]
+   [metabase.release-flags.core :as release-flags]
    [metabase.settings.core :as setting]
    [metabase.system.core :as system]
    [metabase.users.settings :as users-settings]
@@ -81,10 +82,14 @@
 (defn- template-parameters
   [embeddable? {:keys [uri params nonce]}]
   (let [{:keys [anon-tracking-enabled google-auth-client-id], :as public-settings} (setting/user-readable-values-map #{:public})
+        all-release-flags (if (release-flags/release-flags-enabled?)
+                            (release-flags/all-flags)
+                            {})
         ;; We disable `locale` parameter on static embeds/public links (metabase#50313)
         should-load-locale-params? (not embeddable?)]
     {:bootstrapJS            (load-inline-js "index_bootstrap")
      :bootstrapJSON          (escape-script (json/encode public-settings))
+     :releaseFlagsJSON       (escape-script (json/encode all-release-flags))
      :assetOnErrorJS         (load-inline-js "asset_loading_error")
      :userLocalizationJSON   (escape-script (load-localization (when should-load-locale-params? (:locale params))))
      :siteLocalizationJSON   (escape-script (load-localization (system/site-locale)))

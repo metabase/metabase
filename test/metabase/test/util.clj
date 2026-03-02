@@ -284,6 +284,12 @@
              :schedule_type :daily
              :schedule_hour 15}))
 
+   :model/ReleaseFlag
+   (fn [_] {:flag        (u.random/random-name)
+            :description "Test release flag"
+            :start_date  (t/local-date)
+            :is_enabled  false})
+
    :model/Revision
    (fn [_] {:user_id (rasta-id)
             :is_creation false
