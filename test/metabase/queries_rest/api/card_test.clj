@@ -304,8 +304,8 @@
     (let [;; any strings will work here (must be shorter than 254 chars), but these are semi-relaistic:
           client-string (mt/random-name)
           version-string (str "1." (rand-int 1000) "." (rand-int 1000))]
-      (mt/with-temp [:model/Database {database-id :id} {}
-                     :model/Card card-1 {:name "Card 1" :database_id database-id}]
+      (mt/with-temp [:model/Card card-1 {:name "Card 1"
+                                         :dataset_query (mt/mbql-query venues {:limit 1})}]
         (mt/with-premium-features #{:audit-app}
           (mt/user-http-request :crowberto :post 202 (str "card/" (u/the-id card-1) "/query")
                                 {:request-options {:headers {"x-metabase-client" client-string
@@ -2620,7 +2620,8 @@
 
 (deftest ^:parallel download-response-headers-test
   (testing "Make sure CSV/etc. download requests come back with the correct headers"
-    (mt/with-temp [:model/Card card {:name "My Awesome Card"}]
+    (mt/with-temp [:model/Card card {:name "My Awesome Card"
+                                     :dataset_query (mt/mbql-query venues {:limit 1})}]
       (is (= {"Cache-Control"       "max-age=0, no-cache, must-revalidate, proxy-revalidate"
               "Content-Disposition" "attachment; filename=\"my_awesome_card_<timestamp>.csv\""
               "Content-Type"        "text/csv"
@@ -3823,6 +3824,19 @@
               (is (mi/can-read? collection))
               (is (mi/can-read? card)))
             (is (= [[1] [2]] (mt/rows (process-query))))))))))
+
+(deftest blocked-database-permissions-card-query-test
+  (testing "POST /api/card/:id/query should return an error when the user has blocked view-data permissions on the database (OSS)"
+    (mt/with-premium-features #{}
+      (mt/with-temp-copy-of-db
+        (mt/with-no-data-perms-for-all-users!
+          (data-perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/view-data :blocked)
+          (data-perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/create-queries :no)
+          (mt/with-temp [:model/Card {card-id :id} {:dataset_query (mt/mbql-query venues {:limit 1})}]
+            (is (malli= [:map
+                         [:status [:= "failed"]]
+                         [:error_type [:= "missing-required-permissions"]]]
+                        (mt/user-http-request :rasta :post 403 (format "card/%d/query" card-id))))))))))
 
 (defn- native-card-with-template-tags []
   {:dataset_query

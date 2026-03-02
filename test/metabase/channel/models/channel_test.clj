@@ -1,6 +1,7 @@
 (ns metabase.channel.models.channel-test
   (:require
    [clojure.test :refer :all]
+   [metabase.channel.models.channel] ;; ensure known-labels are loaded
    [metabase.notification.test-util :as notification.tu]
    [metabase.test :as mt]
    [metabase.util.encryption :as encryption]
@@ -63,3 +64,46 @@
                        (insert! {:details {:type    "email/handlebars-resource"
                                            :subject "Hello {{name}}"
                                            :path    nil}}))))))))
+
+(deftest channel-template-create-prometheus-metric-test
+  (testing "creating a ChannelTemplate increments the template-create prometheus counter"
+    (mt/with-prometheus-system! [_ system]
+      (mt/with-model-cleanup [:model/ChannelTemplate]
+        (t2/insert-returning-instance! :model/ChannelTemplate
+                                       {:channel_type :channel/email
+                                        :name         "Test Template"
+                                        :details      {:type    :email/handlebars-text
+                                                       :subject "Hello {{name}}"
+                                                       :body    "Welcome {{name}}"}})
+        (is (= 1.0 (mt/metric-value system :metabase-notification/template-create
+                                    {:channel-type :channel/email})))))))
+
+(deftest channel-template-update-prometheus-metric-test
+  (testing "updating a ChannelTemplate increments the template-update prometheus counter"
+    (mt/with-prometheus-system! [_ system]
+      (mt/with-temp [:model/ChannelTemplate {id :id} {:channel_type :channel/email
+                                                      :name         "Test Template"
+                                                      :details      {:type    :email/handlebars-text
+                                                                     :subject "Hello"
+                                                                     :body    "Original body"}}]
+        (t2/update! :model/ChannelTemplate id {:details {:type    :email/handlebars-text
+                                                         :subject "Hello"
+                                                         :body    "Updated body"}})
+        (is (= 1.0 (mt/metric-value system :metabase-notification/template-update
+                                    {:channel-type :channel/email})))))))
+
+(deftest channel-template-create-logging-test
+  (testing "creating a user-provided template logs the template body"
+    (mt/with-log-messages-for-level [messages :info]
+      (mt/with-model-cleanup [:model/ChannelTemplate]
+        (t2/insert-returning-instance! :model/ChannelTemplate
+                                       {:channel_type :channel/email
+                                        :name         "Test Template"
+                                        :details      {:type    :email/handlebars-text
+                                                       :subject "Hello"
+                                                       :body    "Secret {{password}}"}})
+        (is (some (fn [{:keys [message]}]
+                    (and (re-find #"ChannelTemplate create" message)
+                         (re-find #"handlebars-text" message)
+                         (re-find #"Secret" message)))
+                  (messages)))))))
