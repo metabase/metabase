@@ -3,9 +3,6 @@
     "name": "master",
     "hash": "c343eaa0a30aba0a483e159c3fed941166aebee7"
   },
-  "upstream": {
-    "branch": "emb-752-integration-branch-for-embedding-hub"
-  },
   "change": {
     "github": {
       "pr": {
