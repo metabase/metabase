@@ -3,9 +3,6 @@
     "name": "emb-941-scaffold-theme-listing-page-in-embedding-admin-settings",
     "hash": "a144c6f7911a172274ccd058b98719a4681cbe31"
   },
-  "upstream": {
-    "branch": "emb-962-compute-default-theme-colors-based-on-appearance-settings"
-  },
   "change": {
     "github": {
       "pr": {
