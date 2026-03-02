@@ -2,5 +2,16 @@
   "base": {
     "name": "emb-1327-show-tenant_identifier-suggestions-in-a-menu-from-row-level",
     "hash": "74f3c493a79442ea149f7a247a95ba1b88335858"
+  },
+  "upstream": {
+    "branch": "emb-1336-tenant-creation-should-differ-the-data-isolation-field-by"
+  },
+  "change": {
+    "github": {
+      "pr": {
+        "number": 70258,
+        "gqlID": "PR_kwDOAczgH87HYoss"
+      }
+    }
   }
 }
