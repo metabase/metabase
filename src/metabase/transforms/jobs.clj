@@ -15,7 +15,7 @@
    [metabase.transforms.execute :as transforms.execute]
    [metabase.transforms.instrumentation :as transforms.instrumentation]
    [metabase.transforms.settings :as transforms.settings]
-   [metabase.transforms.util :as transforms.util]
+   [metabase.transforms.util :as transforms.u]
    [metabase.util :as u]
    [metabase.util.i18n :as i18n]
    [metabase.util.log :as log]
@@ -78,7 +78,7 @@
       (Thread/sleep 2000))))
 
 (defn- run-transform! [run-id run-method user-id {transform-id :id :as transform}]
-  (if-not (transforms.util/check-feature-enabled transform)
+  (if-not (transforms.u/check-feature-enabled transform)
     (log/warnf "Skip running transform %d due to lacking premium features" transform-id)
     (do
       (block-until-not-already-running transform-id)

@@ -7,10 +7,10 @@
    [metabase.lib.schema.common :as schema.common]
    [metabase.query-processor.compile :as qp.compile]
    [metabase.transforms-base.interface :as transforms-base.i]
-   [metabase.transforms-base.util :as transforms-base.util]
+   [metabase.transforms-base.util :as transforms-base.u]
    [metabase.transforms.instrumentation :as transforms.instrumentation]
    [metabase.transforms.interface :as transforms.i]
-   [metabase.transforms.util :as transforms.util]
+   [metabase.transforms.util :as transforms.u]
    [metabase.util.i18n :as i18n]
    [metabase.util.log :as log]
    [metabase.util.malli.registry :as mr]
@@ -68,11 +68,11 @@
                                   :transform-id   id
                                   :transform-type (keyword (:type target))
                                   :conn-spec      conn-spec
-                                  :query          (transforms-base.util/compile-source transform)
+                                  :query          (transforms-base.u/compile-source transform)
                                   :output-schema  (:schema target)
-                                  :output-table   (transforms-base.util/qualified-table-name driver target)}
+                                  :output-table   (transforms-base.u/qualified-table-name driver target)}
                opts              (transform-opts transform-details)
-               features          (transforms-base.util/required-database-features transform)
+               features          (transforms-base.u/required-database-features transform)
                ;; For manual runs, use the triggering user; for cron, use owner/creator
                run-user-id       (if (and (= run-method :manual) user-id)
                                    user-id
@@ -81,18 +81,18 @@
              (throw (ex-info "The database does not support the requested transform target type."
                              {:driver driver, :database database, :features features})))
            ;; mark the execution as started and notify any observers
-           (let [{run-id :id} (transforms.util/try-start-unless-already-running id run-method run-user-id)]
+           (let [{run-id :id} (transforms.u/try-start-unless-already-running id run-method run-user-id)]
              (when start-promise
                (deliver start-promise [:started run-id]))
              (log/info "Executing transform" id "with target" (pr-str target)
                        (when (driver.conn/write-connection-requested?)
                          " using write connection"))
              (transforms.instrumentation/with-stage-timing [run-id [:computation :mbql-query]]
-               (transforms.util/run-cancelable-transform!
+               (transforms.u/run-cancelable-transform!
                 run-id driver transform-details
                 (fn [_cancel-chan]
                   (driver/run-transform! driver transform-details opts))))
-             (transforms.util/handle-transform-complete!
+             (transforms.u/handle-transform-complete!
               :run-id run-id
               :transform transform
               :db database)))))

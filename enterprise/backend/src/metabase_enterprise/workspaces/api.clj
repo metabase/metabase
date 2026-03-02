@@ -29,7 +29,7 @@
    [metabase.request.core :as request]
    [metabase.transforms.core :as transforms]
    [metabase.transforms.feature-gating :as transforms.gating]
-   [metabase.transforms.util :as transforms.util]
+   [metabase.transforms.util :as transforms.u]
    [metabase.util :as u]
    [metabase.util.i18n :as i18n :refer [deferred-tru tru]]
    [metabase.util.malli.registry :as mr]
@@ -801,7 +801,7 @@
   (doseq [field [:name :source :target]]
     (api/check-400 (get body field) (str (name field) " is required when creating a new transform")))
   ;; Check premium feature requirements
-  (api/check (transforms.util/check-feature-enabled body)
+  (api/check (transforms.u/check-feature-enabled body)
              [402 (deferred-tru "Premium features required for this transform type are not enabled.")])
   (t2/with-transaction [_tx]
     (let [workspace (u/prog1 (api/check-404 (t2/select-one :model/Workspace :id ws-id))

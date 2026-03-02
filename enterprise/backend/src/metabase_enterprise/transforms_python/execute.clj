@@ -11,10 +11,10 @@
    [metabase.driver.connection :as driver.conn]
    [metabase.driver.util :as driver.u]
    [metabase.transforms-base.interface :as transforms-base.i]
-   [metabase.transforms-base.util :as transforms-base.util]
+   [metabase.transforms-base.util :as transforms-base.u]
    [metabase.transforms.core :as transforms]
    [metabase.transforms.instrumentation :as transforms.instrumentation]
-   [metabase.transforms.util :as transforms.util]
+   [metabase.transforms.util :as transforms.u]
    [metabase.util :as u]
    [metabase.util.format :as u.format]
    [metabase.util.i18n :as i18n]
@@ -139,7 +139,7 @@
 (defn- create-table-and-insert-data!
   "Create a table from metadata and insert data from source."
   [driver db-id table-schema data-source]
-  (transforms-base.util/create-table-from-schema! driver db-id table-schema)
+  (transforms-base.u/create-table-from-schema! driver db-id table-schema)
   (insert-data! driver db-id table-schema data-source))
 
 (defn- transfer-with-rename-tables-strategy!
@@ -152,14 +152,14 @@
     (try
 
       (create-table-and-insert-data! driver db-id (table-schema source-table-name metadata) data-source)
-      (transforms-base.util/rename-tables! driver db-id {table-name temp-table-name
-                                                         source-table-name table-name})
-      (transforms-base.util/drop-table! driver db-id temp-table-name)
+      (transforms-base.u/rename-tables! driver db-id {table-name temp-table-name
+                                                      source-table-name table-name})
+      (transforms-base.u/drop-table! driver db-id temp-table-name)
 
       (catch Exception e
         (log/error e "Failed to transfer data using rename-tables strategy")
         (try
-          (transforms-base.util/drop-table! driver db-id source-table-name)
+          (transforms-base.u/drop-table! driver db-id source-table-name)
           (catch Exception _))
         (throw e)))))
 
@@ -172,13 +172,13 @@
     (try
 
       (create-table-and-insert-data! driver db-id (table-schema source-table-name metadata) data-source)
-      (transforms-base.util/drop-table! driver db-id table-name)
+      (transforms-base.u/drop-table! driver db-id table-name)
       (driver/rename-table! driver db-id source-table-name table-name)
 
       (catch Exception e
         (log/error e "Failed to transfer data using create-drop-rename strategy")
         (try
-          (transforms-base.util/drop-table! driver db-id source-table-name)
+          (transforms-base.u/drop-table! driver db-id source-table-name)
           (catch Exception _))
         (throw e)))))
 
@@ -189,7 +189,7 @@
   (log/info "Using drop-create fallback strategy")
   (try
 
-    (transforms-base.util/drop-table! driver db-id table-name)
+    (transforms-base.u/drop-table! driver db-id table-name)
     (create-table-and-insert-data! driver db-id (table-schema table-name metadata) data-source)
 
     (catch Exception e
@@ -204,8 +204,8 @@
   [driver {db-id :id}
    {:keys [target] :as transform}
    metadata temp-file]
-  (let [table-name (transforms-base.util/qualified-table-name driver target)
-        table-exists? (transforms-base.util/target-table-exists? transform)
+  (let [table-name (transforms-base.u/qualified-table-name driver target)
+        table-exists? (transforms-base.u/target-table-exists? transform)
         data-source {:type :jsonl-file
                      :file temp-file}]
 
@@ -221,8 +221,8 @@
   [driver {db-id :id :as db}
    {:keys [target] :as transform}
    metadata temp-file]
-  (let [table-name (transforms-base.util/qualified-table-name driver target)
-        table-exists? (transforms-base.util/target-table-exists? transform)
+  (let [table-name (transforms-base.u/qualified-table-name driver target)
+        table-exists? (transforms-base.u/target-table-exists? transform)
         data-source {:type :jsonl-file
                      :file temp-file}]
     (cond
@@ -249,7 +249,7 @@
 
 (defn- run-python-transform! [{:keys [source] :as transform} db run-id cancel-chan message-log]
   ;; Resolve name-based source table refs to table IDs (throws if any not found)
-  (let [resolved-source-tables (transforms-base.util/resolve-source-tables (:source-tables source))]
+  (let [resolved-source-tables (transforms-base.u/resolve-source-tables (:source-tables source))]
     ;; TODO restructure things such that s3 can we swapped out for other transfer mechanisms
     (with-open [^Closeable log-future-ref
                 (if (app-db/in-transaction?)
@@ -328,7 +328,7 @@
 
   Blocks until the transform returns."
   [transform {:keys [run-method start-promise user-id]}]
-  (assert (transforms-base.util/python-transform? transform) "Transform must be a python transform")
+  (assert (transforms-base.u/python-transform? transform) "Transform must be a python transform")
   (try
     (let [message-log                                                (empty-message-log)
           {:keys [target owner_user_id creator_id] transform-id :id} transform
@@ -337,7 +337,7 @@
           run-user-id                                                (if (and (= run-method :manual) user-id)
                                                                        user-id
                                                                        (or owner_user_id creator_id))
-          {run-id :id}                                               (transforms.util/try-start-unless-already-running transform-id run-method run-user-id)]
+          {run-id :id}                                               (transforms.u/try-start-unless-already-running transform-id run-method run-user-id)]
       (some-> start-promise (deliver [:started run-id]))
       (log! message-log (i18n/tru "Executing Python transform"))
       (driver.conn/with-write-connection
@@ -351,15 +351,15 @@
                                  :transform-type (keyword (:type target))
                                  :conn-spec      conn-spec
                                  :output-schema  (:schema target)
-                                 :output-table   (transforms-base.util/qualified-table-name driver target)}
+                                 :output-table   (transforms-base.u/qualified-table-name driver target)}
               run-fn            (fn [cancel-chan]
                                   (run-python-transform! transform db run-id cancel-chan message-log)
                                   (log! message-log (i18n/tru "Python execution finished successfully in {0}" (u.format/format-milliseconds (u/since-ms start-ms))))
                                   (save-log-to-transform-run-message! run-id message-log))
               ex-message-fn     #(exceptional-run-message message-log %)
               result            (transforms.instrumentation/with-stage-timing [run-id [:computation :python-execution]]
-                                  (transforms.util/run-cancelable-transform! run-id driver transform-details run-fn :ex-message-fn ex-message-fn))]
-          (transforms.util/handle-transform-complete!
+                                  (transforms.u/run-cancelable-transform! run-id driver transform-details run-fn :ex-message-fn ex-message-fn))]
+          (transforms.u/handle-transform-complete!
            :run-id run-id
            :transform transform
            :db db)

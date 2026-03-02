@@ -14,7 +14,7 @@
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.query-processor.preprocess :as qp.preprocess]
    [metabase.transforms-base.interface :as transforms-base.i]
-   [metabase.transforms-base.util :as transforms-base.util]
+   [metabase.transforms-base.util :as transforms-base.u]
    [metabase.util.i18n :as i18n]
    [metabase.util.malli :as mu]
    [toucan2.core :as t2])
@@ -30,7 +30,7 @@
   This is the base implementation - callers may wrap with additional error handling."
   [{:keys [source]}]
   (let [query (-> (:query source)
-                  transforms-base.util/massage-sql-query
+                  transforms-base.u/massage-sql-query
                   qp.preprocess/preprocess)
         driver (-> query
                    lib.metadata/database

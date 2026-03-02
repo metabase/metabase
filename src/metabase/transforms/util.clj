@@ -15,7 +15,7 @@
    [metabase.models.interface :as mi]
    [metabase.models.transforms.transform-run :as transform-run]
    [metabase.query-processor.pipeline :as qp.pipeline]
-   [metabase.transforms-base.util :as transforms-base.util]
+   [metabase.transforms-base.util :as transforms-base.u]
    [metabase.transforms.canceling :as canceling]
    [metabase.transforms.feature-gating :as transforms.gating]
    [metabase.transforms.instrumentation :as transforms.instrumentation]
@@ -36,8 +36,8 @@
   "Checking whether we have proper feature flags for using a given transform."
   [transform]
   (cond
-    (transforms-base.util/query-transform? transform) (transforms.gating/query-transforms-enabled?)
-    (transforms-base.util/python-transform? transform) (transforms.gating/python-transforms-enabled?)
+    (transforms-base.u/query-transform? transform) (transforms.gating/query-transforms-enabled?)
+    (transforms-base.u/python-transform? transform) (transforms.gating/python-transforms-enabled?)
     :else false))
 
 (defn enabled-source-types-for-user
@@ -145,9 +145,9 @@
   (when (driver.u/supports? (:engine database) :describe-indexes database)
     (let [driver     (:engine database)
           indexes    (driver/describe-table-indexes driver database target)
-          checkpoint (transforms-base.util/next-checkpoint transform)
+          checkpoint (transforms-base.u/next-checkpoint transform)
           {:keys [drop create]}
-          (#'transforms-base.util/decide-secondary-index-ddl
+          (#'transforms-base.u/decide-secondary-index-ddl
            {:filter-column (:filter-column checkpoint)
             :database      database
             :target        target
@@ -175,7 +175,7 @@
        [:db [:fn {:error/message "Must a t2 database object"} #(= (t2/model %) :model/Database)]]]]
   (let [target (:target transform)]
     (transforms.instrumentation/with-stage-timing [run-id [:import :table-sync]]
-      (when-let [table (transforms-base.util/sync-target! target db)]
+      (when-let [table (transforms-base.u/sync-target! target db)]
         (t2/update! :model/Table (:id table) {:transform_id (:id transform)}))
       ;; This event must be published only after the sync is complete - the new table needs to be in AppDB.
       (events/publish-event! :event/transform-run-complete
@@ -183,7 +183,7 @@
                                        :transform-id (:id transform)
                                        :transform-type (keyword (:type target))
                                        :output-schema (:schema target)
-                                       :output-table (transforms-base.util/qualified-table-name (:engine db) target)}})
+                                       :output-table (transforms-base.u/qualified-table-name (:engine db) target)}})
       ;; Creating an index after sync means the filter column is known in the appdb.
       ;; The index would be synced the next time sync runs, but at time of writing, index sync is disabled.
       (execute-secondary-index-ddl-if-required! transform run-id db target))))

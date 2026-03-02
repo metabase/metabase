@@ -10,7 +10,7 @@
    [metabase.lib.schema.common :as schema.common]
    [metabase.query-processor.compile :as qp.compile]
    [metabase.transforms-base.interface :as transforms-base.i]
-   [metabase.transforms-base.util :as transforms-base.util]
+   [metabase.transforms-base.util :as transforms-base.u]
    [metabase.util.log :as log]
    [metabase.util.malli.registry :as mr]
    [toucan2.core :as t2]))
@@ -91,13 +91,13 @@
                              :transform-id   id
                              :transform-type (keyword (:type target))
                              :conn-spec (driver/connection-spec driver database)
-                             :query (transforms-base.util/compile-source transform)
+                             :query (transforms-base.u/compile-source transform)
                              :output-schema (:schema target)
-                             :output-table (transforms-base.util/qualified-table-name driver target)}
+                             :output-table (transforms-base.u/qualified-table-name driver target)}
           opts (transform-opts transform-details)
-          features (transforms-base.util/required-database-features transform)]
+          features (transforms-base.u/required-database-features transform)]
 
-      (when (transforms-base.util/db-routing-enabled? database)
+      (when (transforms-base.u/db-routing-enabled? database)
         (throw (ex-info "Transforms are not supported on databases with DB routing enabled."
                         {:driver driver, :database database})))
       (when-not (every? (fn [feature] (driver.u/supports? (:engine database) feature database)) features)
@@ -122,13 +122,13 @@
           (throw (ex-info "Transform cancelled after query execution" {:status :cancelled})))
 
         ;; Sync target table
-        (transforms-base.util/sync-target! target database)
+        (transforms-base.u/sync-target! target database)
 
         ;; Publish event (after sync, so table exists in AppDB)
         (events/publish-event! :event/transform-run-complete {:object transform-details})
 
         ;; Create secondary indexes if needed
-        (transforms-base.util/execute-secondary-index-ddl-if-required!
+        (transforms-base.u/execute-secondary-index-ddl-if-required!
          transform run-id database target with-stage-timing-fn)
 
         {:status :succeeded

@@ -9,7 +9,7 @@
    [metabase.query-processor :as qp]
    [metabase.sql-tools.core :as sql-tools]
    [metabase.transforms-base.core :as transforms-base]
-   [metabase.transforms-base.util :as transforms-base.util]
+   [metabase.transforms-base.util :as transforms-base.u]
    [metabase.util.log :as log]
    [toucan2.core :as t2]))
 
@@ -96,7 +96,7 @@
   [{:keys [source]} remapping]
   (let [table-mapping          (:tables remapping no-mapping)
         remapped-source        (remap-python-source table-mapping source)
-        resolved-source-tables (transforms-base.util/resolve-source-tables (:source-tables remapped-source))
+        resolved-source-tables (transforms-base.u/resolve-source-tables (:source-tables remapped-source))
         {:as   result
          :keys [cols rows]}    (python-runner/execute-and-read-output!
                                 {:code          (:body remapped-source)
@@ -144,7 +144,7 @@
   "Run SQL transform query and return first 2000 rows without persisting.
    Returns a ::ws.t/query-result map with data nested under :data to match /api/dataset format."
   [{:keys [source]} remapping]
-  (run-query source (transforms-base.util/transform-source-type source) remapping
+  (run-query source (transforms-base.u/transform-source-type source) remapping
              {:error-context "Failed to run sql dry-run"}))
 
 (defn execute-adhoc-sql
@@ -165,7 +165,7 @@
   "Execute transform and return first 2000 rows without persisting.
    Returns a ::ws.t/query-result map with data nested under :data."
   [{:keys [source] :as transform} remapping]
-  (let [s-type (transforms-base.util/transform-source-type source)]
+  (let [s-type (transforms-base.u/transform-source-type source)]
     (case s-type
       (:native :mbql) (dry-run-sql transform remapping)
       :python         (dry-run-python transform remapping))))
@@ -182,7 +182,7 @@
    Transform or TransformRun rows to AppDB. The warehouse DB changes (actual table data)
    DO persist in the isolated schema."
   [{:keys [source target] :as transform} remapping]
-  (let [s-type          (transforms-base.util/transform-source-type source)
+  (let [s-type          (transforms-base.u/transform-source-type source)
         table-mapping   (:tables remapping no-mapping)
         target-fallback (:target-fallback remapping no-mapping)
         field-mapping   (:fields remapping no-mapping)

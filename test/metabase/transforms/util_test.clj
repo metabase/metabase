@@ -11,7 +11,8 @@
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.test :as mt]
    [metabase.test.data.sql :as sql.tx]
-   [metabase.transforms.util :as transforms.util]
+   [metabase.transforms-base.util :as transforms-base.u]
+   [metabase.transforms.util :as transforms.u]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -64,8 +65,8 @@
     (testing "tables with schema"
       (let [table-with-schema    {:name (name (driver.u/temp-table-name :postgres :schema/orders))}
             table-without-schema {:name (name (driver.u/temp-table-name :postgres :orders))}]
-        (is (true? (transforms.util/is-temp-transform-table? table-with-schema)))
-        (is (true? (transforms.util/is-temp-transform-table? table-without-schema)))))))
+        (is (true? (transforms.u/is-temp-transform-table? table-with-schema)))
+        (is (true? (transforms.u/is-temp-transform-table? table-without-schema)))))))
 
 (deftest create-table-from-schema!-test
   (testing "create-table-from-schema! preserves column order from schema definition"
@@ -85,7 +86,7 @@
         (mt/as-admin
           (try
             (testing "Creating table with ordered columns"
-              (transforms.util/create-table-from-schema! driver db-id table-schema)
+              (transforms-base.u/create-table-from-schema! driver db-id table-schema)
               (is (driver/table-exists? driver (mt/db) {:schema schema-name :name (name table-name)})))
 
             (when (get-method driver/describe-table driver)
@@ -112,7 +113,7 @@
 
 (deftest ^:parallel matching-timestamp?-test
   (testing "matching-timestamp? checks if a timestamp falls within a date range [start, end)"
-    (let [matching-timestamp? #'transforms.util/matching-timestamp?
+    (let [matching-timestamp? #'transforms-base.u/matching-timestamp?
           field-path          [:start_time]
           range-jan-feb       {:start "2024-01-01T00:00:00Z" :end "2024-02-01T00:00:00Z"}
           range-start-only    {:start "2024-01-01T00:00:00Z" :end nil}
@@ -155,30 +156,30 @@
                    :model/Table    t1 {:db_id (:id db) :name "table_one" :schema nil}
                    :model/Table    t2 {:db_id (:id db) :name "table_two" :schema "my_schema"}]
       (testing "returns nil for empty input"
-        (is (nil? (transforms.util/batch-lookup-table-ids [])))
-        (is (nil? (transforms.util/batch-lookup-table-ids nil))))
+        (is (nil? (transforms-base.u/batch-lookup-table-ids [])))
+        (is (nil? (transforms-base.u/batch-lookup-table-ids nil))))
 
       (testing "looks up table without schema"
         (let [refs [{:database_id (:id db) :schema nil :table "table_one"}]
-              result (transforms.util/batch-lookup-table-ids refs)]
+              result (transforms-base.u/batch-lookup-table-ids refs)]
           (is (= {[(:id db) nil "table_one"] (:id t1)} result))))
 
       (testing "looks up table with schema"
         (let [refs [{:database_id (:id db) :schema "my_schema" :table "table_two"}]
-              result (transforms.util/batch-lookup-table-ids refs)]
+              result (transforms-base.u/batch-lookup-table-ids refs)]
           (is (= {[(:id db) "my_schema" "table_two"] (:id t2)} result))))
 
       (testing "handles mixed refs with and without schema"
         (let [refs [{:database_id (:id db) :schema nil :table "table_one"}
                     {:database_id (:id db) :schema "my_schema" :table "table_two"}]
-              result (transforms.util/batch-lookup-table-ids refs)]
+              result (transforms-base.u/batch-lookup-table-ids refs)]
           (is (= {[(:id db) nil "table_one"] (:id t1)
                   [(:id db) "my_schema" "table_two"] (:id t2)}
                  result))))
 
       (testing "returns empty for non-existent table"
         (let [refs [{:database_id (:id db) :schema nil :table "nonexistent"}]
-              result (transforms.util/batch-lookup-table-ids refs)]
+              result (transforms-base.u/batch-lookup-table-ids refs)]
           (is (= {} result)))))))
 
 (deftest normalize-source-tables-test
@@ -186,7 +187,7 @@
     (mt/with-temp [:model/Database db {}
                    :model/Table    t1 {:db_id (:id db) :name "existing_table" :schema nil}]
       (testing "converts integer table ID to map format"
-        (let [result (transforms.util/normalize-source-tables {"t" (:id t1)})]
+        (let [result (transforms-base.u/normalize-source-tables {"t" (:id t1)})]
           (is (map? (get result "t")))
           (is (= (:id db) (get-in result ["t" :database_id])))
           (is (= "existing_table" (get-in result ["t" :table])))
@@ -194,27 +195,27 @@
 
       (testing "throws for non-existent integer table ID"
         (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Tables not found for ids: 999999"
-                              (transforms.util/normalize-source-tables {"t" 999999}))))
+                              (transforms-base.u/normalize-source-tables {"t" 999999}))))
 
       (testing "populates table_id for existing table"
         (let [source-tables {"t" {:database_id (:id db) :schema nil :table "existing_table"}}
-              result (transforms.util/normalize-source-tables source-tables)]
+              result (transforms-base.u/normalize-source-tables source-tables)]
           (is (= (:id t1) (get-in result ["t" :table_id])))))
 
       (testing "preserves existing table_id"
         (let [source-tables {"t" {:database_id (:id db) :schema nil :table "existing_table" :table_id 999}}
-              result (transforms.util/normalize-source-tables source-tables)]
+              result (transforms-base.u/normalize-source-tables source-tables)]
           (is (= 999 (get-in result ["t" :table_id])))))
 
       (testing "leaves table_id nil for non-existent table ref"
         (let [source-tables {"t" {:database_id (:id db) :schema nil :table "nonexistent"}}
-              result (transforms.util/normalize-source-tables source-tables)]
+              result (transforms-base.u/normalize-source-tables source-tables)]
           (is (nil? (get-in result ["t" :table_id])))))
 
       (testing "handles mixed int and map entries"
         (let [source-tables {"t1" (:id t1)
                              "t2" {:database_id (:id db) :schema nil :table "existing_table"}}
-              result (transforms.util/normalize-source-tables source-tables)]
+              result (transforms-base.u/normalize-source-tables source-tables)]
           (is (map? (get result "t1")))
           (is (= (:id t1) (get-in result ["t1" :table_id])))
           (is (= (:id t1) (get-in result ["t2" :table_id]))))))))
@@ -225,31 +226,31 @@
                    :model/Table    t1 {:db_id (:id db) :name "table_one" :schema nil}
                    :model/Table    t2 {:db_id (:id db) :name "table_two" :schema nil}]
       (testing "passes through integer entries (old format)"
-        (is (= {"t" 123} (transforms.util/resolve-source-tables {"t" 123}))))
+        (is (= {"t" 123} (transforms-base.u/resolve-source-tables {"t" 123}))))
 
       (testing "resolves map with table_id"
         (let [source-tables {"t" {:database_id (:id db) :schema nil :table "table_one" :table_id (:id t1)}}]
-          (is (= {"t" (:id t1)} (transforms.util/resolve-source-tables source-tables)))))
+          (is (= {"t" (:id t1)} (transforms-base.u/resolve-source-tables source-tables)))))
 
       (testing "looks up table_id for map without it"
         (let [source-tables {"t" {:database_id (:id db) :schema nil :table "table_one"}}]
-          (is (= {"t" (:id t1)} (transforms.util/resolve-source-tables source-tables)))))
+          (is (= {"t" (:id t1)} (transforms-base.u/resolve-source-tables source-tables)))))
 
       (testing "throws for non-existent table"
         (let [source-tables {"t" {:database_id (:id db) :schema nil :table "nonexistent"}}]
           (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Tables not found: nonexistent"
-                                (transforms.util/resolve-source-tables source-tables)))))
+                                (transforms-base.u/resolve-source-tables source-tables)))))
 
       (testing "throws with schema in error message"
         (let [source-tables {"t" {:database_id (:id db) :schema "my_schema" :table "nonexistent"}}]
           (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Tables not found: my_schema\.nonexistent"
-                                (transforms.util/resolve-source-tables source-tables)))))
+                                (transforms-base.u/resolve-source-tables source-tables)))))
 
       (testing "handles mixed entries (old and new format)"
         (let [source-tables {"t1" (:id t1)
                              "t2" {:database_id (:id db) :schema nil :table "table_two"}}]
           (is (= {"t1" (:id t1) "t2" (:id t2)}
-                 (transforms.util/resolve-source-tables source-tables))))))))
+                 (transforms-base.u/resolve-source-tables source-tables))))))))
 
 (deftest source-tables-readable?-test
   (testing "source-tables-readable? function"
@@ -262,17 +263,17 @@
               (testing "returns true for query transform when user can read database"
                 (let [transform {:source {:type :query
                                           :query {:database db-id}}}]
-                  (is (true? (transforms.util/source-tables-readable? transform)))))
+                  (is (true? (transforms.u/source-tables-readable? transform)))))
 
               (testing "returns true for python transform when user can read all source tables"
                 (let [transform {:source {:type :python
                                           :source-tables {"t1" table-id}}}]
-                  (is (true? (transforms.util/source-tables-readable? transform)))))
+                  (is (true? (transforms.u/source-tables-readable? transform)))))
 
               (testing "handles source tables with table_id in map format"
                 (let [transform {:source {:type :python
                                           :source-tables {"t1" {:table_id table-id}}}}]
-                  (is (true? (transforms.util/source-tables-readable? transform))))))))))))
+                  (is (true? (transforms.u/source-tables-readable? transform))))))))))))
 
 (deftest source-tables-readable-permissions-test
   (testing "source-tables-readable? with various permission levels"
@@ -290,7 +291,7 @@
                 (mt/with-db-perm-for-group! (perms-group/all-users) db-id :perms/view-data :blocked
                   (mt/with-db-perm-for-group! group db-id :perms/view-data :blocked
                     (binding [api/*current-user-id* (:id user)]
-                      (is (false? (transforms.util/source-tables-readable? transform))
+                      (is (false? (transforms.u/source-tables-readable? transform))
                           "User with blocked database access should not be able to read source database")))))))
 
           (testing "Python transforms - blocked database access"
@@ -301,7 +302,7 @@
                 (mt/with-db-perm-for-group! (perms-group/all-users) db-id :perms/view-data :blocked
                   (mt/with-db-perm-for-group! group db-id :perms/view-data :blocked
                     (binding [api/*current-user-id* (:id user)]
-                      (is (false? (transforms.util/source-tables-readable? transform))
+                      (is (false? (transforms.u/source-tables-readable? transform))
                           "User with blocked database access should not be able to read source tables")))))))
 
           (testing "Python transforms - granular access but missing some tables"
@@ -317,7 +318,7 @@
                       ;; Block table2 for the test group only
                       (data-perms/set-table-permission! (:id group) table2-id :perms/view-data :blocked)
                       (binding [api/*current-user-id* (:id user)]
-                        (is (false? (transforms.util/source-tables-readable? transform))
+                        (is (false? (transforms.u/source-tables-readable? transform))
                             "User who cannot read all source tables should have source_readable=false")))))))))))))
 
 (deftest handle-transform-complete-sets-transform-id-test
@@ -330,10 +331,10 @@
                        :model/TransformRun {run-id :id} {:transform_id transform-id
                                                          :status "running"
                                                          :run_method "manual"}]
-          (with-redefs [transforms.util/sync-target!                       (constantly table)
-                        events/publish-event!                              (constantly nil)
-                        transforms.util/execute-secondary-index-ddl-if-required! (constantly nil)]
-            (transforms.util/handle-transform-complete! :run-id run-id :transform transform :db db)
+          (mt/with-dynamic-fn-redefs [transforms-base.u/sync-target!                       (constantly table)
+                                      events/publish-event!                              (constantly nil)
+                                      transforms.u/execute-secondary-index-ddl-if-required! (constantly nil)]
+            (transforms.u/handle-transform-complete! :run-id run-id :transform transform :db db)
             (is (= transform-id
                    (t2/select-one-fn :transform_id :model/Table :id table-id)))))))))
 
@@ -356,7 +357,7 @@
 (deftest ^:parallel massage-sql-query-test
   (testing "massage-sql-query sets disable-remaps? and disable-max-results?"
     (let [query    {:database 1, :type :query, :query {:source-table 1}}
-          massaged (transforms.util/massage-sql-query query)]
+          massaged (transforms-base.u/massage-sql-query query)]
       (is (true? (get-in massaged [:middleware :disable-remaps?])))
       (is (true? (get-in massaged [:middleware :disable-max-results?]))))))
 
@@ -366,7 +367,7 @@
       (mt/with-premium-features #{:transforms}
         (let [transform {:source {:type  "query"
                                   :query (lib/query (mt/metadata-provider) (mt/mbql-query venues))}}
-              {:keys [query]} (transforms.util/compile-source transform)]
+              {:keys [query]} (transforms-base.u/compile-source transform)]
           (is (string? query))
           (is (not (re-find #"(?i)\bLIMIT\b" query))
               (str "Expected no LIMIT clause in compiled SQL, got: " query)))))))

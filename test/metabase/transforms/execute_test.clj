@@ -11,11 +11,11 @@
    [metabase.test :as mt]
    [metabase.test.data.interface :as tx]
    [metabase.test.data.sql :as sql.tx]
+   [metabase.transforms-base.util :as transforms-base.u]
    [metabase.transforms.execute :as transforms.execute]
    [metabase.transforms.query-test-util :as query-test-util]
    [metabase.transforms.test-dataset :as transforms-dataset]
    [metabase.transforms.test-util :as transforms.tu :refer [delete-schema! with-transform-cleanup!]]
-   [metabase.transforms.util :as transforms.util]
    [metabase.util :as u]
    [toucan2.core :as t2]))
 
@@ -140,7 +140,7 @@
                                   {:name "name" :type :type/Text :nullable? true}]}]
       (mt/as-admin
         (testing "create-table-from-schema! should create the table successfully"
-          (transforms.util/create-table-from-schema! driver db-id table-schema)
+          (transforms-base.u/create-table-from-schema! driver db-id table-schema)
           (let [table-exists? (driver/table-exists? driver db-id {:schema schema-name :name table-name})]
             (is (some? table-exists?) "Table should exist in the database schema")
             (driver/drop-table! driver db-id (:name table-schema))))))))
@@ -371,15 +371,15 @@
           transform-details {:output-table :test_schema/test_table
                              :database {:id 1}
                              :transform-type :table}]
-      (with-redefs [driver/table-exists? (constantly true)
-                    driver/compile-transform (fn [& _] (record-call! :compile-transform) mock-query)
-                    driver/execute-raw-queries! (fn [& _] (record-call! :execute-raw-queries!) mock-rows)
-                    driver/rename-tables! (fn [& _] (record-call! :rename-tables!))
-                    driver/rename-table! (fn [& _] (record-call! :rename-table!))
-                    driver/drop-table! (fn [& _] (record-call! :drop-table!))]
+      (mt/with-dynamic-fn-redefs [driver/table-exists? (constantly true)
+                                  driver/compile-transform (fn [& _] (record-call! :compile-transform) mock-query)
+                                  driver/execute-raw-queries! (fn [& _] (record-call! :execute-raw-queries!) mock-rows)
+                                  driver/rename-tables! (fn [& _] (record-call! :rename-tables!))
+                                  driver/rename-table! (fn [& _] (record-call! :rename-table!))
+                                  driver/drop-table! (fn [& _] (record-call! :drop-table!))]
         (testing "only create if table doesn't exist"
           (reset! calls [])
-          (with-redefs [driver/table-exists? (constantly false)]
+          (mt/with-dynamic-fn-redefs [driver/table-exists? (constantly false)]
             (driver/run-transform! driver/*driver* transform-details nil)
             (is (= [:compile-transform :execute-raw-queries!] @calls))))
         (testing "prefer create or replace strategy first"

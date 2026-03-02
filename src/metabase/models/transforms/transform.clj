@@ -16,8 +16,8 @@
    [metabase.search.ingestion :as search]
    [metabase.search.spec :as search.spec]
    [metabase.transforms-base.interface :as transforms-base.i]
-   [metabase.transforms-base.util :as transforms-base.util]
-   [metabase.transforms.util :as transforms.util]
+   [metabase.transforms-base.util :as transforms-base.u]
+   [metabase.transforms.util :as transforms.u]
    [metabase.util :as u]
    [metabase.util.log :as log]
    [methodical.core :as methodical]
@@ -34,8 +34,8 @@
 (defmethod mi/can-read? :model/Transform
   ([instance]
    (and (api/is-data-analyst?)
-        (transforms.util/source-tables-readable? instance)
-        (transforms.util/check-feature-enabled instance)))
+        (transforms.u/source-tables-readable? instance)
+        (transforms.u/check-feature-enabled instance)))
   ([_model pk]
    (when-let [transform (t2/select-one :model/Transform :id pk)]
      (mi/can-read? transform))))
@@ -64,7 +64,7 @@
   (let [source-db-id (or (:source_database_id instance) (transforms-base.i/source-db-id instance))]
     (and (or api/*is-superuser?*
              (and api/*is-data-analyst?*
-                  (transforms.util/source-tables-readable? instance)))
+                  (transforms.u/source-tables-readable? instance)))
          (perms/has-db-transforms-permission? api/*current-user-id* source-db-id)
          (remote-sync/transforms-editable?))))
 
@@ -90,7 +90,7 @@
   Normalizes source-tables and prepares queries for serialization."
   [m]
   (-> m
-      (m/update-existing :source-tables transforms-base.util/normalize-source-tables)
+      (m/update-existing :source-tables transforms-base.u/normalize-source-tables)
       (m/update-existing :query (comp lib/prepare-for-serialization lib-be/normalize-query))
       mi/json-in))
 
@@ -121,7 +121,7 @@
     (-> transform
         (assoc-in [:target :database] target-db-id)
         (assoc
-         :source_type (transforms-base.util/transform-source-type source)
+         :source_type (transforms-base.u/transform-source-type source)
          :target_db_id (when valid-db-id? target-db-id)
          :source_database_id (or source_database_id (transforms-base.i/source-db-id transform))))))
 
@@ -132,7 +132,7 @@
     (collection/check-allowed-content :model/Transform new-collection))
   (cond-> transform
     source
-    (assoc :source_type (transforms-base.util/transform-source-type source)
+    (assoc :source_type (transforms-base.u/transform-source-type source)
            :source_database_id (or source_database_id (transforms-base.i/source-db-id transform)))
 
     (or (:source (t2/changes transform)) (:target (t2/changes transform)))
@@ -142,7 +142,7 @@
 (t2/define-after-select :model/Transform
   [{:keys [source] :as transform}]
   (if source
-    (assoc transform :source_type (transforms-base.util/transform-source-type source))
+    (assoc transform :source_type (transforms-base.u/transform-source-type source))
     transform))
 
 (methodical/defmethod t2/batched-hydrate [:model/TransformRun :transform]
