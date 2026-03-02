@@ -103,7 +103,7 @@
   "Returns a list of existing migration files."
   [include-legacy?]
   (into (if include-legacy?
-          ["migrations/000_legacy_migrations.yaml" "migrations/001_update_migrations.yaml"]
+          ["liquibase_legacy_migrations.yaml" "migrations/001_update_migrations.yaml"]
           ["migrations/001_update_migrations.yaml"])
         (concat
          ;; Per-release migration files (v56-v59 pattern)

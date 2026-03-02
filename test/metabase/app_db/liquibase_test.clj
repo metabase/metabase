@@ -64,7 +64,7 @@
             (liquibase/consolidate-liquibase-changesets! conn liquibase)
 
             (testing "makes sure the change log filename are correctly set"
-              (is (= (set (mdb.test-util/liquibase-file->included-ids "migrations/000_legacy_migrations.yaml" driver/*driver* conn))
+              (is (= (set (mdb.test-util/liquibase-file->included-ids "liquibase_legacy_migrations.yaml" driver/*driver* conn))
                      (t2/select-fn-set :id table-name :filename "migrations/000_legacy_migrations.yaml")))
 
               (is (= (set (mdb.test-util/liquibase-file->included-ids "migrations/001_update_migrations.yaml" driver/*driver* conn))
@@ -166,7 +166,7 @@
             (jdbc/execute! {:connection conn}
                            [(format "INSERT INTO %s (ID, AUTHOR, FILENAME, DATEEXECUTED, ORDEREXECUTED, EXECTYPE, MD5SUM)
                                      VALUES ('12345', 'test', 'some/unknown/path.yaml', CURRENT_TIMESTAMP,
-                                             (SELECT MAX(ORDEREXECUTED) + 1 FROM %s), 'EXECUTED', 'x')"
+                                             (SELECT x FROM (SELECT MAX(ORDEREXECUTED) + 1 AS x FROM %s) AS t), 'EXECUTED', 'x')"
                                     table-name table-name)])
             (is (= @#'liquibase/changelog-legacy-file
                    (#'liquibase/decide-liquibase-file conn (.getDatabase liquibase))))))))))
