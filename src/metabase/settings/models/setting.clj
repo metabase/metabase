@@ -1401,7 +1401,8 @@
   ;; to revert any changes in the cache
   (try
     (t2/with-transaction [_conn]
-      (doseq [[k v] settings]
+      (doseq [[k v] settings
+              :when (registered? k)]
         (metabase.settings.models.setting/set! k v)))
     settings
     (catch Throwable e
