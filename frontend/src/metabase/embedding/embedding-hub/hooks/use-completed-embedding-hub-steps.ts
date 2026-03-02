@@ -26,7 +26,6 @@ export const useCompletedEmbeddingHubSteps = (): {
         "configure-row-column-security": false,
         "sso-configured": false,
         "embed-production": false,
-        "create-models": false,
         "data-permissions-and-enable-tenants": false,
 
         // "configure data permissions and enable tenants" sub-checklist

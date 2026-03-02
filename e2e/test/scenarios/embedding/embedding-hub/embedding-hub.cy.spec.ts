@@ -116,39 +116,6 @@ describe("scenarios - embedding hub", () => {
         .should("be.visible");
     });
 
-    [
-      { dbId: 1, dbName: "sample db" },
-      { dbId: 2, dbName: "sqlite db" },
-    ].forEach(({ dbId, dbName }) => {
-      it(`"Create models" step should be marked in ${dbName} as done after creating a model`, () => {
-        if (dbId === 2) {
-          H.addSqliteDatabase(dbName);
-        }
-
-        cy.log("Create a native query model via API");
-        H.createNativeQuestion(
-          {
-            name: "Test Model",
-            type: "model",
-            database: dbId,
-            native: { query: "SELECT 1 as t" },
-          },
-          { visitQuestion: true },
-        );
-
-        cy.log("Navigate to embedding setup guide");
-        cy.visit("/admin/embedding/setup-guide");
-
-        cy.log("'Create models' should now be marked as done");
-        cy.findByTestId("admin-layout-content")
-          .findByText("Create models")
-          .closest("button")
-          .scrollIntoView()
-          .findByText("Done", { timeout: 10_000 })
-          .should("be.visible");
-      });
-    });
-
     it('"Get embed snippet" card should take you to the embed flow', () => {
       cy.visit("/admin/embedding/setup-guide");
 
@@ -221,7 +188,6 @@ describe("scenarios - embedding hub", () => {
         .should("be.visible");
 
       cy.get("main").within(() => {
-        cy.findByText("Create models").should("be.visible");
         cy.findByText("Create a dashboard").should("be.visible");
         cy.findByText("Connect a database").should("be.visible").click();
       });
