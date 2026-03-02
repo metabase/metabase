@@ -30,6 +30,7 @@ import type {
   DashboardCard,
   Parameter,
   ParameterTarget,
+  VirtualCard,
 } from "metabase-types/api";
 
 import { DashCardCardParameterMapperButton } from "./DashCardCardParameterMapperButton";
@@ -46,7 +47,7 @@ interface DashCardCardParameterMapperContentProps {
   question: Question | undefined;
   editingParameter: Parameter | null | undefined;
   mappingOptions: ParameterMappingOption[];
-  card: Card;
+  card: Card | VirtualCard;
   selectedMappingOption: ParameterMappingOption | undefined;
   target: ParameterTarget | null | undefined;
   layoutHeight: number;
@@ -119,13 +120,9 @@ export const DashCardCardParameterMapperContent = ({
   const handleChangeTarget = useCallback(
     (target: ParameterTarget | null) => {
       if (editingParameter) {
+        const cardId = typeof card.id === "number" ? card.id : null;
         dispatch(
-          setParameterMapping(
-            editingParameter.id,
-            dashcard.id,
-            card.id,
-            target,
-          ),
+          setParameterMapping(editingParameter.id, dashcard.id, cardId, target),
         );
       }
     },

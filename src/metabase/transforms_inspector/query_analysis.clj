@@ -61,7 +61,7 @@
     (mapv (fn [join]
             {:strategy     (or (:strategy join) :left-join)
              :alias        (:alias join)
-             :source-table (lib/source-table-id join)
+             :source-table (-> join :stages first :source-table)
              :conditions   (:conditions join)})
           joins)))
 
@@ -85,7 +85,7 @@
                          qp.preprocess/preprocess)]
     (when (<= (count (:stages preprocessed)) 1)
       {:preprocessed-query preprocessed
-       :from-table-id      (lib/source-table-id preprocessed)
+       :from-table-id      (lib/primary-source-table-id preprocessed)
        :join-structure     (extract-mbql-join-structure preprocessed)
        :visited-fields     (extract-mbql-visited-fields preprocessed)})))
 

@@ -8,8 +8,9 @@ import type { CollectionId } from "metabase-types/api";
 export function getNewMenuItemAIExploration(
   hasDataAccess: boolean,
   collectionId?: CollectionId,
+  isMetabotEnabled?: boolean,
 ) {
-  if (!hasDataAccess) {
+  if (!hasDataAccess || !isMetabotEnabled) {
     return undefined;
   }
 

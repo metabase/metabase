@@ -1,6 +1,6 @@
 import { createMockMetadata } from "__support__/metadata";
-import type * as Lib from "metabase-lib";
-import { createQuery } from "metabase-lib/test-helpers";
+import * as Lib from "metabase-lib";
+import { createMetadataProvider } from "metabase-lib/test-helpers";
 import {
   createMockDatabase,
   createMockField,
@@ -25,16 +25,18 @@ const DATABASE = createMockDatabase({
   tables: [TABLE],
 });
 
-const QUERY = createQuery({
+const METADATA = createMockMetadata({ databases: [DATABASE] });
+const PROVIDER = createMetadataProvider({
   databaseId: DATABASE.id,
-  metadata: createMockMetadata({ databases: [DATABASE] }),
-  query: {
-    database: DATABASE.id,
-    type: "query",
-    query: {
-      "source-table": TABLE.id,
+  metadata: METADATA,
+});
+
+const QUERY = Lib.createTestQuery(PROVIDER, {
+  stages: [
+    {
+      source: { type: "table", id: TABLE.id },
     },
-  },
+  ],
 });
 
 describe("getName", () => {

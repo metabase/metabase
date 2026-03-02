@@ -2,10 +2,9 @@ import userEvent from "@testing-library/user-event";
 
 import { createMockEntitiesState } from "__support__/store";
 import { renderWithProviders, screen } from "__support__/ui";
-import { checkNotNull } from "metabase/lib/types";
 import { getMetadata } from "metabase/selectors/metadata";
 import * as Lib from "metabase-lib";
-import { createQuery } from "metabase-lib/test-helpers";
+import { DEFAULT_TEST_QUERY, SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
 import Question from "metabase-lib/v1/Question";
 import type { Card, Database, Table } from "metabase-types/api";
 import { createMockCard } from "metabase-types/api/mocks";
@@ -81,8 +80,7 @@ async function expectPopoverToHaveText(text: string) {
 const HIDDEN_VISIBILITY_TYPES = ["hidden", "technical", "cruft"] as const;
 
 const ORDERS_QUERY = (function () {
-  const query = createQuery({ databaseId: SAMPLE_DB_ID });
-
+  const query = Lib.createTestQuery(SAMPLE_PROVIDER, DEFAULT_TEST_QUERY);
   const availableColumns = Lib.fieldableColumns(query, -1);
   const columns = availableColumns.filter((column) => {
     const info = Lib.displayInfo(query, -1, column);
@@ -92,28 +90,26 @@ const ORDERS_QUERY = (function () {
   return Lib.withFields(query, -1, columns);
 })();
 
-const ORDERS_JOIN_PRODUCTS_QUERY = (function () {
-  let query = createQuery({ databaseId: SAMPLE_DB_ID });
-  const joinTable = checkNotNull(Lib.tableOrCardMetadata(query, PRODUCTS_ID));
-
-  query = Lib.join(
-    query,
-    -1,
-    Lib.joinClause(
-      joinTable,
-      [
-        Lib.joinConditionClause(
-          Lib.joinConditionOperators(query, -1)[0],
-          Lib.joinConditionLHSColumns(query, -1)[0],
-          Lib.joinConditionRHSColumns(query, -1, joinTable)[0],
-        ),
+const ORDERS_JOIN_PRODUCTS_QUERY = Lib.createTestQuery(SAMPLE_PROVIDER, {
+  stages: [
+    {
+      source: { type: "table", id: ORDERS_ID },
+      joins: [
+        {
+          source: { type: "table", id: PRODUCTS_ID },
+          strategy: "left-join",
+          conditions: [
+            {
+              operator: "=",
+              left: { type: "column", name: "ID", sourceName: "ORDERS" },
+              right: { type: "column", name: "ID", sourceName: "PRODUCTS" },
+            },
+          ],
+        },
       ],
-      Lib.availableJoinStrategies(query, -1)[0],
-    ),
-  );
-
-  return query;
-})();
+    },
+  ],
+});
 
 function createCardFromQuery({
   query,
@@ -130,14 +126,11 @@ describe("ViewOnlyTag", () => {
     it("should show the View-only badge when the source card is inaccessible", async () => {
       setup({
         card: createCardFromQuery({
-          query: createQuery({
-            databaseId: SAMPLE_DB_ID,
+          query: Lib.fromJsQuery(SAMPLE_PROVIDER, {
+            database: SAMPLE_DB_ID,
+            type: "query",
             query: {
-              database: SAMPLE_DB_ID,
-              type: "query",
-              query: {
-                "source-table": "card__123",
-              },
+              "source-table": "card__123",
             },
           }),
         }),
@@ -148,32 +141,28 @@ describe("ViewOnlyTag", () => {
     });
 
     it("should show the View-only badge when a joined card is inaccessible", async () => {
-      setup({
-        card: createCardFromQuery({
-          query: createQuery({
-            query: {
-              type: "query",
-              database: SAMPLE_DB_ID,
-              query: {
-                "source-table": ORDERS_ID,
-                joins: [
-                  {
-                    alias: "Orders Question",
-                    fields: "all",
-                    // This card does not exist
-                    "source-table": "card__123",
-                    condition: [
-                      "=",
-                      ["field", PRODUCTS.ID, null],
-                      ["field", ORDERS.PRODUCT_ID, null],
-                    ],
-                  },
-                ],
-              },
+      const query = Lib.fromJsQuery(SAMPLE_PROVIDER, {
+        database: SAMPLE_DB_ID,
+        type: "query",
+        query: {
+          "source-table": ORDERS_ID,
+          joins: [
+            {
+              alias: "Orders Question",
+              fields: "all",
+              // This card does not exist
+              "source-table": "card__123",
+              condition: [
+                "=",
+                ["field", PRODUCTS.ID, null],
+                ["field", ORDERS.PRODUCT_ID, null],
+              ],
             },
-          }),
-        }),
+          ],
+        },
       });
+
+      setup({ card: createCardFromQuery({ query }) });
 
       expect(screen.getByText("View-only")).toBeInTheDocument();
       await expectNoPopover();
