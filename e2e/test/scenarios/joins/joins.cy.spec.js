@@ -2,7 +2,7 @@ const { H } = cy;
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
-const { ORDERS, ORDERS_ID, PRODUCTS, PRODUCTS_ID } = SAMPLE_DATABASE;
+const { ORDERS_ID, PRODUCTS_ID } = SAMPLE_DATABASE;
 
 describe("scenarios > question > joined questions", () => {
   beforeEach(() => {
@@ -160,23 +160,56 @@ describe("scenarios > question > joined questions", () => {
       "metadata",
     );
 
-    H.createQuestion({
+    H.createCardWithTestQuery({
       name: "Q1",
-      query: {
-        aggregation: ["sum", ["field", ORDERS.TOTAL, null]],
-        breakout: [["field", ORDERS.PRODUCT_ID, null]],
-        // Make sure it works if a question has sorted metric (metabase#13744)
-        "order-by": [["asc", ["aggregation", 0]]],
-        "source-table": ORDERS_ID,
+      dataset_query: {
+        database: SAMPLE_DB_ID,
+        stages: [
+          {
+            source: { type: "table", id: ORDERS_ID },
+            aggregations: [
+              {
+                type: "operator",
+                operator: "sum",
+                args: [{ type: "column", name: "TOTAL", sourceName: "ORDERS" }],
+              },
+            ],
+            breakouts: [
+              { type: "column", name: "PRODUCT_ID", sourceName: "ORDERS" },
+            ],
+            // Make sure it works if a question has sorted metric (metabase#13744)
+            orderBys: [
+              {
+                type: "column",
+                name: "sum",
+                displayName: "Sum of Total",
+                direction: "asc",
+              },
+            ],
+          },
+        ],
       },
     });
 
-    H.createQuestion({
+    H.createCardWithTestQuery({
       name: "Q2",
-      query: {
-        aggregation: ["sum", ["field", PRODUCTS.RATING, null]],
-        breakout: [["field", PRODUCTS.ID, null]],
-        "source-table": PRODUCTS_ID,
+      dataset_query: {
+        database: SAMPLE_DB_ID,
+        stages: [
+          {
+            source: { type: "table", id: PRODUCTS_ID },
+            aggregations: [
+              {
+                type: "operator",
+                operator: "sum",
+                args: [
+                  { type: "column", name: "RATING", sourceName: "PRODUCTS" },
+                ],
+              },
+            ],
+            breakouts: [{ type: "column", name: "ID", sourceName: "PRODUCTS" }],
+          },
+        ],
       },
     });
 
@@ -314,26 +347,36 @@ describe("scenarios > question > joined questions", () => {
   });
 
   it("should remove a join when changing the source table", () => {
-    H.visitQuestionAdhoc(
+    H.visitAdHocQuestionWithTestQuery(
       {
         dataset_query: {
-          type: "query",
           database: SAMPLE_DB_ID,
-          query: {
-            "source-table": ORDERS_ID,
-            joins: [
-              {
-                alias: "Products",
-                condition: [
-                  "=",
-                  ["field", ORDERS.PRODUCT_ID, null],
-                  ["field", PRODUCTS.ID, { "join-alias": "Products" }],
-                ],
-                fields: "all",
-                "source-table": PRODUCTS_ID,
-              },
-            ],
-          },
+          stages: [
+            {
+              source: { type: "table", id: ORDERS_ID },
+              joins: [
+                {
+                  source: { type: "table", id: PRODUCTS_ID },
+                  strategy: "left-join",
+                  conditions: [
+                    {
+                      operator: "=",
+                      left: {
+                        type: "column",
+                        name: "PRODUCT_ID",
+                        sourceName: "ORDERS",
+                      },
+                      right: {
+                        type: "column",
+                        name: "ID",
+                        sourceName: "Products",
+                      },
+                    },
+                  ],
+                },
+              ],
+            },
+          ],
         },
       },
       { mode: "notebook" },

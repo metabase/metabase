@@ -1,4 +1,5 @@
 const { H } = cy;
+import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
   ORDERS_BY_YEAR_QUESTION_ID,
@@ -8,7 +9,7 @@ import {
   SECOND_COLLECTION_ID,
 } from "e2e/support/cypress_sample_instance_data";
 
-const { ORDERS, ORDERS_ID, PRODUCTS, PRODUCTS_ID } = SAMPLE_DATABASE;
+const { ORDERS_ID, PRODUCTS_ID } = SAMPLE_DATABASE;
 
 describe("scenarios > question > saved", () => {
   beforeEach(() => {
@@ -153,15 +154,13 @@ describe("scenarios > question > saved", () => {
   });
 
   it("should not add scrollbar to duplicate modal if question name is long (metabase#53364)", () => {
-    H.createQuestion(
-      {
-        name: "A".repeat(240),
-        query: {
-          "source-table": ORDERS_ID,
-        },
+    H.createCardWithTestQuery({
+      name: "A".repeat(240),
+      dataset_query: {
+        database: SAMPLE_DB_ID,
+        stages: [{ source: { type: "table", id: ORDERS_ID } }],
       },
-      { visitQuestion: true },
-    );
+    }).then(H.visitCard);
     H.openQuestionActions();
     H.popover().findByText("Duplicate").click();
 
@@ -387,29 +386,38 @@ describe("scenarios > question > saved", () => {
       it(`should show a View-only tag when a joined table is marked as ${visibilityType}`, () => {
         cy.signInAsAdmin();
         hideTable({ name: "Products", id: PRODUCTS_ID, visibilityType });
-        H.createQuestion(
-          {
-            name: "Joined question",
-            query: {
-              "source-table": ORDERS_ID,
-              joins: [
-                {
-                  "source-table": PRODUCTS_ID,
-                  alias: "Orders",
-                  condition: [
-                    "=",
-                    ["field", ORDERS.PRODUCT_ID, null],
-                    ["field", PRODUCTS.ID, { "join-alias": "Products" }],
-                  ],
-                  fields: "all",
-                },
-              ],
-            },
+        H.createCardWithTestQuery({
+          name: "Joined question",
+          dataset_query: {
+            database: SAMPLE_DB_ID,
+            stages: [
+              {
+                source: { type: "table", id: ORDERS_ID },
+                joins: [
+                  {
+                    source: { type: "table", id: PRODUCTS_ID },
+                    strategy: "left-join",
+                    conditions: [
+                      {
+                        operator: "=",
+                        left: {
+                          type: "column",
+                          name: "PRODUCT_ID",
+                          sourceName: "ORDERS",
+                        },
+                        right: {
+                          type: "column",
+                          name: "ID",
+                          sourceName: "Products",
+                        },
+                      },
+                    ],
+                  },
+                ],
+              },
+            ],
           },
-          {
-            visitQuestion: true,
-          },
-        );
+        }).then(H.visitCard);
         H.queryBuilderHeader()
           .findByText("View-only")
           .should("be.visible")
@@ -432,38 +440,31 @@ describe("scenarios > question > saved", () => {
     }
 
     it("should show a View-only tag when one of the source cards is unavailable", () => {
-      H.createQuestion(
-        {
-          name: "Products Question + Orders",
-          query: {
-            "source-table": `card__${ORDERS_QUESTION_ID}`,
-            joins: [
-              {
-                "source-table": PRODUCTS_ID,
-                alias: "Orders Question",
-                fields: "all",
-                condition: [
-                  "=",
-                  ["field", PRODUCTS.PRODUCT_ID, null],
-                  ["field", ORDERS.ID, { "join-alias": "Orders" }],
-                ],
-              },
-            ],
-          },
+      H.createCardWithTestQuery({
+        name: "Products Question + Orders",
+        dataset_query: {
+          database: SAMPLE_DB_ID,
+          stages: [
+            {
+              source: { type: "card", id: ORDERS_QUESTION_ID },
+              joins: [
+                {
+                  source: { type: "table", id: PRODUCTS_ID },
+                  strategy: "left-join",
+                },
+              ],
+            },
+          ],
         },
-        {
-          wrapId: true,
-          idAlias: "questionId",
-        },
-      );
+      }).then((card) => {
+        H.visitQuestion(ORDERS_QUESTION_ID);
+        moveQuestionTo(/Personal Collection/);
 
-      H.visitQuestion(ORDERS_QUESTION_ID);
-      moveQuestionTo(/Personal Collection/);
+        cy.signInAsNormalUser();
+        H.visitCard(card);
 
-      cy.signInAsNormalUser();
-      cy.get("@questionId").then(H.visitQuestion);
-
-      H.queryBuilderHeader().findByText("View-only").should("be.visible");
+        H.queryBuilderHeader().findByText("View-only").should("be.visible");
+      });
     });
   });
 

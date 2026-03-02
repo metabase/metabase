@@ -216,14 +216,24 @@ describe("scenarios > question > new", () => {
   });
 
   it("should handle ad-hoc question with old syntax (metabase#15372)", () => {
-    H.visitQuestionAdhoc({
+    H.visitAdHocQuestionWithTestQuery({
       dataset_query: {
-        type: "query",
-        query: {
-          "source-table": ORDERS_ID,
-          filter: ["=", ["field-id", ORDERS.USER_ID], 1],
-        },
         database: SAMPLE_DB_ID,
+        stages: [
+          {
+            source: { type: "table", id: ORDERS_ID },
+            filters: [
+              {
+                type: "operator",
+                operator: "=",
+                args: [
+                  { type: "column", name: "USER_ID", sourceName: "ORDERS" },
+                  { type: "literal", value: 1 },
+                ],
+              },
+            ],
+          },
+        ],
       },
     });
 
@@ -665,9 +675,12 @@ describe(
     });
 
     it("shows models and raw data options after creating a model", () => {
-      H.createQuestion({
+      H.createCardWithTestQuery({
         name: "Orders Model",
-        query: { "source-table": ORDERS_ID },
+        dataset_query: {
+          database: SAMPLE_DB_ID,
+          stages: [{ source: { type: "table", id: ORDERS_ID } }],
+        },
         type: "model",
       });
 

@@ -1,28 +1,33 @@
 const { H } = cy;
+import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
-import type {
-  DashboardDetails,
-  StructuredQuestionDetails,
-} from "e2e/support/helpers";
+import type { DashboardDetails } from "e2e/support/helpers";
 
-const { ORDERS_ID, ORDERS, PEOPLE_ID, PEOPLE } = SAMPLE_DATABASE;
+const { ORDERS_ID, PEOPLE_ID } = SAMPLE_DATABASE;
 
-const questionWith2TemporalBreakoutsDetails: StructuredQuestionDetails = {
+const questionWith2TemporalBreakoutsDetails = {
   name: "Test question",
-  query: {
-    "source-table": ORDERS_ID,
-    aggregation: [["count"]],
-    breakout: [
-      [
-        "field",
-        ORDERS.CREATED_AT,
-        { "base-type": "type/DateTime", "temporal-unit": "year" },
-      ],
-      [
-        "field",
-        ORDERS.CREATED_AT,
-        { "base-type": "type/DateTime", "temporal-unit": "month" },
-      ],
+  dataset_query: {
+    database: SAMPLE_DB_ID,
+    stages: [
+      {
+        source: { type: "table" as const, id: ORDERS_ID },
+        aggregations: [{ type: "operator" as const, operator: "count" }],
+        breakouts: [
+          {
+            type: "column" as const,
+            name: "CREATED_AT",
+            sourceName: "ORDERS",
+            unit: "year" as const,
+          },
+          {
+            type: "column" as const,
+            name: "CREATED_AT",
+            sourceName: "ORDERS",
+            unit: "month" as const,
+          },
+        ],
+      },
     ],
   },
   display: "table",
@@ -31,37 +36,68 @@ const questionWith2TemporalBreakoutsDetails: StructuredQuestionDetails = {
   },
 };
 
-const multiStageQuestionWith2TemporalBreakoutsDetails: StructuredQuestionDetails =
-  {
-    name: "Test question",
-    query: {
-      "source-query": questionWith2TemporalBreakoutsDetails.query,
-      filter: [">", ["field", "count", { "base-type": "type/Integer" }], 0],
-    },
-  };
-
-const questionWith2NumBinsBreakoutsDetails: StructuredQuestionDetails = {
+const multiStageQuestionWith2TemporalBreakoutsDetails = {
   name: "Test question",
-  query: {
-    "source-table": ORDERS_ID,
-    aggregation: [["count"]],
-    breakout: [
-      [
-        "field",
-        ORDERS.TOTAL,
-        {
-          "base-type": "type/Float",
-          binning: { strategy: "num-bins", "num-bins": 10 },
-        },
-      ],
-      [
-        "field",
-        ORDERS.TOTAL,
-        {
-          "base-type": "type/Float",
-          binning: { strategy: "num-bins", "num-bins": 50 },
-        },
-      ],
+  dataset_query: {
+    database: SAMPLE_DB_ID,
+    stages: [
+      {
+        source: { type: "table" as const, id: ORDERS_ID },
+        aggregations: [{ type: "operator" as const, operator: "count" }],
+        breakouts: [
+          {
+            type: "column" as const,
+            name: "CREATED_AT",
+            sourceName: "ORDERS",
+            unit: "year" as const,
+          },
+          {
+            type: "column" as const,
+            name: "CREATED_AT",
+            sourceName: "ORDERS",
+            unit: "month" as const,
+          },
+        ],
+      },
+      {
+        filters: [
+          {
+            type: "operator" as const,
+            operator: ">",
+            args: [
+              { type: "column" as const, name: "count" },
+              { type: "literal" as const, value: 0 },
+            ],
+          },
+        ],
+      },
+    ],
+  },
+};
+
+const questionWith2NumBinsBreakoutsDetails = {
+  name: "Test question",
+  dataset_query: {
+    database: SAMPLE_DB_ID,
+    stages: [
+      {
+        source: { type: "table" as const, id: ORDERS_ID },
+        aggregations: [{ type: "operator" as const, operator: "count" }],
+        breakouts: [
+          {
+            type: "column" as const,
+            name: "TOTAL",
+            sourceName: "ORDERS",
+            bins: 10,
+          },
+          {
+            type: "column" as const,
+            name: "TOTAL",
+            sourceName: "ORDERS",
+            bins: 50,
+          },
+        ],
+      },
     ],
   },
   display: "table",
@@ -70,37 +106,68 @@ const questionWith2NumBinsBreakoutsDetails: StructuredQuestionDetails = {
   },
 };
 
-const multiStageQuestionWith2NumBinsBreakoutsDetails: StructuredQuestionDetails =
-  {
-    name: "Test question",
-    query: {
-      "source-query": questionWith2NumBinsBreakoutsDetails.query,
-      filter: [">", ["field", "count", { "base-type": "type/Integer" }], 0],
-    },
-  };
-
-const questionWith2BinWidthBreakoutsDetails: StructuredQuestionDetails = {
+const multiStageQuestionWith2NumBinsBreakoutsDetails = {
   name: "Test question",
-  query: {
-    "source-table": PEOPLE_ID,
-    aggregation: [["count"]],
-    breakout: [
-      [
-        "field",
-        PEOPLE.LATITUDE,
-        {
-          "base-type": "type/Float",
-          binning: { strategy: "bin-width", "bin-width": 20 },
-        },
-      ],
-      [
-        "field",
-        PEOPLE.LATITUDE,
-        {
-          "base-type": "type/Float",
-          binning: { strategy: "bin-width", "bin-width": 10 },
-        },
-      ],
+  dataset_query: {
+    database: SAMPLE_DB_ID,
+    stages: [
+      {
+        source: { type: "table" as const, id: ORDERS_ID },
+        aggregations: [{ type: "operator" as const, operator: "count" }],
+        breakouts: [
+          {
+            type: "column" as const,
+            name: "TOTAL",
+            sourceName: "ORDERS",
+            bins: 10,
+          },
+          {
+            type: "column" as const,
+            name: "TOTAL",
+            sourceName: "ORDERS",
+            bins: 50,
+          },
+        ],
+      },
+      {
+        filters: [
+          {
+            type: "operator" as const,
+            operator: ">",
+            args: [
+              { type: "column" as const, name: "count" },
+              { type: "literal" as const, value: 0 },
+            ],
+          },
+        ],
+      },
+    ],
+  },
+};
+
+const questionWith2BinWidthBreakoutsDetails = {
+  name: "Test question",
+  dataset_query: {
+    database: SAMPLE_DB_ID,
+    stages: [
+      {
+        source: { type: "table" as const, id: PEOPLE_ID },
+        aggregations: [{ type: "operator" as const, operator: "count" }],
+        breakouts: [
+          {
+            type: "column" as const,
+            name: "LATITUDE",
+            sourceName: "PEOPLE",
+            binWidth: 20,
+          },
+          {
+            type: "column" as const,
+            name: "LATITUDE",
+            sourceName: "PEOPLE",
+            binWidth: 10,
+          },
+        ],
+      },
     ],
   },
   display: "table",
@@ -109,48 +176,88 @@ const questionWith2BinWidthBreakoutsDetails: StructuredQuestionDetails = {
   },
 };
 
-const multiStageQuestionWith2BinWidthBreakoutsDetails: StructuredQuestionDetails =
-  {
-    name: "Test question",
-    query: {
-      "source-query": questionWith2BinWidthBreakoutsDetails.query,
-      filter: [">", ["field", "count", { "base-type": "type/Integer" }], 0],
-    },
-  };
-
-const questionWith5TemporalBreakoutsDetails: StructuredQuestionDetails = {
+const multiStageQuestionWith2BinWidthBreakoutsDetails = {
   name: "Test question",
-  query: {
-    "source-table": ORDERS_ID,
-    aggregation: [["count"]],
-    breakout: [
-      [
-        "field",
-        ORDERS.CREATED_AT,
-        { "base-type": "type/DateTime", "temporal-unit": "year" },
-      ],
-      [
-        "field",
-        ORDERS.CREATED_AT,
-        { "base-type": "type/DateTime", "temporal-unit": "quarter" },
-      ],
-      [
-        "field",
-        ORDERS.CREATED_AT,
-        { "base-type": "type/DateTime", "temporal-unit": "month" },
-      ],
-      [
-        "field",
-        ORDERS.CREATED_AT,
-        { "base-type": "type/DateTime", "temporal-unit": "week" },
-      ],
-      [
-        "field",
-        ORDERS.CREATED_AT,
-        { "base-type": "type/DateTime", "temporal-unit": "day" },
-      ],
+  dataset_query: {
+    database: SAMPLE_DB_ID,
+    stages: [
+      {
+        source: { type: "table" as const, id: PEOPLE_ID },
+        aggregations: [{ type: "operator" as const, operator: "count" }],
+        breakouts: [
+          {
+            type: "column" as const,
+            name: "LATITUDE",
+            sourceName: "PEOPLE",
+            binWidth: 20,
+          },
+          {
+            type: "column" as const,
+            name: "LATITUDE",
+            sourceName: "PEOPLE",
+            binWidth: 10,
+          },
+        ],
+      },
+      {
+        filters: [
+          {
+            type: "operator" as const,
+            operator: ">",
+            args: [
+              { type: "column" as const, name: "count" },
+              { type: "literal" as const, value: 0 },
+            ],
+          },
+        ],
+      },
     ],
-    limit: 10,
+  },
+};
+
+const questionWith5TemporalBreakoutsDetails = {
+  name: "Test question",
+  dataset_query: {
+    database: SAMPLE_DB_ID,
+    stages: [
+      {
+        source: { type: "table" as const, id: ORDERS_ID },
+        aggregations: [{ type: "operator" as const, operator: "count" }],
+        breakouts: [
+          {
+            type: "column" as const,
+            name: "CREATED_AT",
+            sourceName: "ORDERS",
+            unit: "year" as const,
+          },
+          {
+            type: "column" as const,
+            name: "CREATED_AT",
+            sourceName: "ORDERS",
+            unit: "quarter" as const,
+          },
+          {
+            type: "column" as const,
+            name: "CREATED_AT",
+            sourceName: "ORDERS",
+            unit: "month" as const,
+          },
+          {
+            type: "column" as const,
+            name: "CREATED_AT",
+            sourceName: "ORDERS",
+            unit: "week" as const,
+          },
+          {
+            type: "column" as const,
+            name: "CREATED_AT",
+            sourceName: "ORDERS",
+            unit: "day" as const,
+          },
+        ],
+        limit: 10,
+      },
+    ],
   },
   display: "table",
   visualization_settings: {
@@ -158,53 +265,44 @@ const questionWith5TemporalBreakoutsDetails: StructuredQuestionDetails = {
   },
 };
 
-const questionWith5NumBinsBreakoutsDetails: StructuredQuestionDetails = {
+const questionWith5NumBinsBreakoutsDetails = {
   name: "Test question",
-  query: {
-    "source-table": ORDERS_ID,
-    aggregation: [["count"]],
-    breakout: [
-      [
-        "field",
-        ORDERS.TOTAL,
-        {
-          "base-type": "type/Float",
-        },
-      ],
-      [
-        "field",
-        ORDERS.TOTAL,
-        {
-          "base-type": "type/Float",
-          binning: { strategy: "default" },
-        },
-      ],
-      [
-        "field",
-        ORDERS.TOTAL,
-        {
-          "base-type": "type/Float",
-          binning: { strategy: "num-bins", "num-bins": 10 },
-        },
-      ],
-      [
-        "field",
-        ORDERS.TOTAL,
-        {
-          "base-type": "type/Float",
-          binning: { strategy: "num-bins", "num-bins": 50 },
-        },
-      ],
-      [
-        "field",
-        ORDERS.TOTAL,
-        {
-          "base-type": "type/Float",
-          binning: { strategy: "num-bins", "num-bins": 100 },
-        },
-      ],
+  dataset_query: {
+    database: SAMPLE_DB_ID,
+    stages: [
+      {
+        source: { type: "table" as const, id: ORDERS_ID },
+        aggregations: [{ type: "operator" as const, operator: "count" }],
+        breakouts: [
+          { type: "column" as const, name: "TOTAL", sourceName: "ORDERS" },
+          {
+            type: "column" as const,
+            name: "TOTAL",
+            sourceName: "ORDERS",
+            bins: "auto" as const,
+          },
+          {
+            type: "column" as const,
+            name: "TOTAL",
+            sourceName: "ORDERS",
+            bins: 10,
+          },
+          {
+            type: "column" as const,
+            name: "TOTAL",
+            sourceName: "ORDERS",
+            bins: 50,
+          },
+          {
+            type: "column" as const,
+            name: "TOTAL",
+            sourceName: "ORDERS",
+            bins: 100,
+          },
+        ],
+        limit: 10,
+      },
     ],
-    limit: 10,
   },
   display: "table",
   visualization_settings: {
@@ -239,8 +337,13 @@ const dashboardDetails: DashboardDetails = {
 function getNestedQuestionDetails(cardId: number) {
   return {
     name: "Nested question",
-    query: {
-      "source-table": `card__${cardId}`,
+    dataset_query: {
+      database: SAMPLE_DB_ID,
+      stages: [
+        {
+          source: { type: "card" as const, id: cardId },
+        },
+      ],
     },
     visualization_settings: {
       "table.pivot": false,
@@ -364,13 +467,11 @@ describe("scenarios > question > multiple column breakouts", () => {
           column1Name,
           column2Name,
         }: {
-          questionDetails: StructuredQuestionDetails;
+          questionDetails: Parameters<typeof H.createCardWithTestQuery>[0];
           column1Name: string;
           column2Name: string;
         }) {
-          H.createQuestion(questionDetails, {
-            visitQuestion: true,
-          });
+          H.createCardWithTestQuery(questionDetails).then(H.visitCard);
           H.openNotebook();
           H.getNotebookStep("summarize").findByText("Sort").click();
           H.popover().findByText(column1Name).click();
@@ -434,13 +535,13 @@ describe("scenarios > question > multiple column breakouts", () => {
           bucket1Name,
           bucket2Name,
         }: {
-          questionDetails: StructuredQuestionDetails;
+          questionDetails: Parameters<typeof H.createCardWithTestQuery>[0];
           columnPattern: RegExp;
           bucketLabel: string;
           bucket1Name: string;
           bucket2Name: string;
         }) {
-          H.createQuestion(questionDetails, { visitQuestion: true });
+          H.createCardWithTestQuery(questionDetails).then(H.visitCard);
           H.summarize();
           cy.findByTestId("pinned-dimensions")
             .findAllByLabelText(columnPattern)
@@ -506,9 +607,9 @@ describe("scenarios > question > multiple column breakouts", () => {
 
     describe("timeseries chrome", () => {
       it("should use the first breakout for the chrome in case there are multiple for this column", () => {
-        H.createQuestion(questionWith2TemporalBreakoutsDetails, {
-          visitQuestion: true,
-        });
+        H.createCardWithTestQuery(questionWith2TemporalBreakoutsDetails).then(
+          H.visitCard,
+        );
 
         cy.log("change the breakout");
         cy.findByTestId("timeseries-bucket-button")
@@ -564,11 +665,11 @@ describe("scenarios > question > multiple column breakouts", () => {
           column1Name,
           column2Name,
         }: {
-          questionDetails: StructuredQuestionDetails;
+          questionDetails: Parameters<typeof H.createCardWithTestQuery>[0];
           column1Name: string;
           column2Name: string;
         }) {
-          H.createQuestion(questionDetails, { visitQuestion: true });
+          H.createCardWithTestQuery(questionDetails).then(H.visitCard);
 
           cy.log("first breakout");
           tableHeaderClick(column1Name);
@@ -611,10 +712,10 @@ describe("scenarios > question > multiple column breakouts", () => {
           questionDetails,
           columnNamePattern,
         }: {
-          questionDetails: StructuredQuestionDetails;
+          questionDetails: Parameters<typeof H.createCardWithTestQuery>[0];
           columnNamePattern: RegExp;
         }) {
-          H.createQuestion(questionDetails, { visitQuestion: true });
+          H.createCardWithTestQuery(questionDetails).then(H.visitCard);
 
           cy.log("change display and assert the default settings");
           H.openVizTypeSidebar();
@@ -662,9 +763,9 @@ describe("scenarios > question > multiple column breakouts", () => {
       });
 
       it("should not be able to move columns items into measures and vice-versa", () => {
-        H.createQuestion(questionWith5TemporalBreakoutsDetails, {
-          visitQuestion: true,
-        });
+        H.createCardWithTestQuery(questionWith5TemporalBreakoutsDetails).then(
+          H.visitCard,
+        );
 
         const columnNamePattern = /^Created At/;
 
@@ -777,11 +878,11 @@ describe("scenarios > question > multiple column breakouts", () => {
           expression1,
           expression2,
         }: {
-          questionDetails: StructuredQuestionDetails;
+          questionDetails: Parameters<typeof H.createCardWithTestQuery>[0];
           expression1: string;
           expression2: string;
         }) {
-          H.createQuestion(questionDetails, { visitQuestion: true });
+          H.createCardWithTestQuery(questionDetails).then(H.visitCard);
           H.openNotebook();
 
           cy.log("add a post-aggregation expression for the first column");
@@ -901,7 +1002,7 @@ describe("scenarios > question > multiple column breakouts", () => {
           column2MinValue,
           column2MaxValue,
         }: {
-          questionDetails: StructuredQuestionDetails;
+          questionDetails: Parameters<typeof H.createCardWithTestQuery>[0];
           column1Name: string;
           column1MinValue: string;
           column1MaxValue: string;
@@ -909,7 +1010,7 @@ describe("scenarios > question > multiple column breakouts", () => {
           column2MinValue: string;
           column2MaxValue: string;
         }) {
-          H.createQuestion(questionDetails, { visitQuestion: true });
+          H.createCardWithTestQuery(questionDetails).then(H.visitCard);
           H.openNotebook();
 
           cy.log("add a filter for the first column");
@@ -963,7 +1064,7 @@ describe("scenarios > question > multiple column breakouts", () => {
           column2MinValue,
           column2MaxValue,
         }: {
-          questionDetails: StructuredQuestionDetails;
+          questionDetails: Parameters<typeof H.createCardWithTestQuery>[0];
           column1Name: string;
           column1MinValue: number;
           column1MaxValue: number;
@@ -971,7 +1072,7 @@ describe("scenarios > question > multiple column breakouts", () => {
           column2MinValue: number;
           column2MaxValue: number;
         }) {
-          H.createQuestion(questionDetails, { visitQuestion: true });
+          H.createCardWithTestQuery(questionDetails).then(H.visitCard);
           H.openNotebook();
 
           cy.log("add a filter for the first column");
@@ -1054,11 +1155,11 @@ describe("scenarios > question > multiple column breakouts", () => {
           column1Name,
           column2Name,
         }: {
-          questionDetails: StructuredQuestionDetails;
+          questionDetails: Parameters<typeof H.createCardWithTestQuery>[0];
           column1Name: string;
           column2Name: string;
         }) {
-          H.createQuestion(questionDetails, { visitQuestion: true });
+          H.createCardWithTestQuery(questionDetails).then(H.visitCard);
           H.openNotebook();
 
           cy.log("add an aggregation for the first column");
@@ -1121,11 +1222,11 @@ describe("scenarios > question > multiple column breakouts", () => {
           column1Name,
           column2Name,
         }: {
-          questionDetails: StructuredQuestionDetails;
+          questionDetails: Parameters<typeof H.createCardWithTestQuery>[0];
           column1Name: string;
           column2Name: string;
         }) {
-          H.createQuestion(questionDetails, { visitQuestion: true });
+          H.createCardWithTestQuery(questionDetails).then(H.visitCard);
           H.openNotebook();
 
           cy.log("add an aggregation");
@@ -1226,7 +1327,7 @@ describe("scenarios > question > multiple column breakouts", () => {
           column2MinValue,
           column2MaxValue,
         }: {
-          questionDetails: StructuredQuestionDetails;
+          questionDetails: Parameters<typeof H.createCardWithTestQuery>[0];
           column1Name: string;
           column1MinValue: string;
           column1MaxValue: string;
@@ -1234,7 +1335,7 @@ describe("scenarios > question > multiple column breakouts", () => {
           column2MinValue: string;
           column2MaxValue: string;
         }) {
-          H.createQuestion(questionDetails, { visitQuestion: true });
+          H.createCardWithTestQuery(questionDetails).then(H.visitCard);
 
           cy.log("add a filter for the first column");
           addDateBetweenFilter({
@@ -1286,7 +1387,7 @@ describe("scenarios > question > multiple column breakouts", () => {
           column2MinValue,
           column2MaxValue,
         }: {
-          questionDetails: StructuredQuestionDetails;
+          questionDetails: Parameters<typeof H.createCardWithTestQuery>[0];
           column1Name: string;
           column1MinValue: number;
           column1MaxValue: number;
@@ -1294,7 +1395,7 @@ describe("scenarios > question > multiple column breakouts", () => {
           column2MinValue: number;
           column2MaxValue: number;
         }) {
-          H.createQuestion(questionDetails, { visitQuestion: true });
+          H.createCardWithTestQuery(questionDetails).then(H.visitCard);
 
           cy.log("add a filter for the first column");
           addNumericBetweenFilter({
@@ -1386,13 +1487,13 @@ describe("scenarios > question > multiple column breakouts", () => {
           tableColumn1Name,
           tableColumn2Name,
         }: {
-          questionDetails: StructuredQuestionDetails;
+          questionDetails: Parameters<typeof H.createCardWithTestQuery>[0];
           queryColumn1Name: string;
           queryColumn2Name: string;
           tableColumn1Name: string;
           tableColumn2Name: string;
         }) {
-          H.createQuestion(questionDetails, { visitQuestion: true });
+          H.createCardWithTestQuery(questionDetails).then(H.visitCard);
           H.assertTableData({
             columns: [tableColumn1Name, tableColumn2Name, "Count"],
           });
@@ -1480,7 +1581,7 @@ describe("scenarios > question > multiple column breakouts", () => {
           column2MinValue,
           column2MaxValue,
         }: {
-          questionDetails: StructuredQuestionDetails;
+          questionDetails: Parameters<typeof H.createCardWithTestQuery>[0];
           column1Name: string;
           column1MinValue: string;
           column1MaxValue: string;
@@ -1488,10 +1589,10 @@ describe("scenarios > question > multiple column breakouts", () => {
           column2MinValue: string;
           column2MaxValue: string;
         }) {
-          H.createQuestion(questionDetails).then(({ body: card }) => {
-            H.createQuestion(getNestedQuestionDetails(card.id), {
-              visitQuestion: true,
-            });
+          H.createCardWithTestQuery(questionDetails).then((card) => {
+            H.createCardWithTestQuery(getNestedQuestionDetails(card.id)).then(
+              H.visitCard,
+            );
           });
           H.openNotebook();
 
@@ -1546,7 +1647,7 @@ describe("scenarios > question > multiple column breakouts", () => {
           column2MinValue,
           column2MaxValue,
         }: {
-          questionDetails: StructuredQuestionDetails;
+          questionDetails: Parameters<typeof H.createCardWithTestQuery>[0];
           column1Name: string;
           column1MinValue: number;
           column1MaxValue: number;
@@ -1554,10 +1655,10 @@ describe("scenarios > question > multiple column breakouts", () => {
           column2MinValue: number;
           column2MaxValue: number;
         }) {
-          H.createQuestion(questionDetails).then(({ body: card }) => {
-            H.createQuestion(getNestedQuestionDetails(card.id), {
-              visitQuestion: true,
-            });
+          H.createCardWithTestQuery(questionDetails).then((card) => {
+            H.createCardWithTestQuery(getNestedQuestionDetails(card.id)).then(
+              H.visitCard,
+            );
           });
           H.openNotebook();
 
@@ -1639,14 +1740,14 @@ describe("scenarios > question > multiple column breakouts", () => {
           column1Name,
           column2Name,
         }: {
-          questionDetails: StructuredQuestionDetails;
+          questionDetails: Parameters<typeof H.createCardWithTestQuery>[0];
           column1Name: string;
           column2Name: string;
         }) {
-          H.createQuestion(questionDetails).then(({ body: card }) => {
-            H.createQuestion(getNestedQuestionDetails(card.id), {
-              visitQuestion: true,
-            });
+          H.createCardWithTestQuery(questionDetails).then((card) => {
+            H.createCardWithTestQuery(getNestedQuestionDetails(card.id)).then(
+              H.visitCard,
+            );
           });
           H.openNotebook();
 
@@ -1709,14 +1810,14 @@ describe("scenarios > question > multiple column breakouts", () => {
           column1Name,
           column2Name,
         }: {
-          questionDetails: StructuredQuestionDetails;
+          questionDetails: Parameters<typeof H.createCardWithTestQuery>[0];
           column1Name: string;
           column2Name: string;
         }) {
-          H.createQuestion(questionDetails).then(({ body: card }) => {
-            H.createQuestion(getNestedQuestionDetails(card.id), {
-              visitQuestion: true,
-            });
+          H.createCardWithTestQuery(questionDetails).then((card) => {
+            H.createCardWithTestQuery(getNestedQuestionDetails(card.id)).then(
+              H.visitCard,
+            );
           });
           H.openNotebook();
 
@@ -1801,13 +1902,13 @@ describe("scenarios > question > multiple column breakouts", () => {
           questionDetails,
           columnName,
         }: {
-          questionDetails: StructuredQuestionDetails;
+          questionDetails: Parameters<typeof H.createCardWithTestQuery>[0];
           columnName: string;
         }) {
-          H.createQuestion(questionDetails).then(({ body: card }) => {
-            H.createQuestion(getNestedQuestionDetails(card.id), {
-              visitQuestion: true,
-            });
+          H.createCardWithTestQuery(questionDetails).then((card) => {
+            H.createCardWithTestQuery(getNestedQuestionDetails(card.id)).then(
+              H.visitCard,
+            );
           });
           const columnNameYear = columnName + ": Year";
           const columnNameMonth = columnName + ": Month";

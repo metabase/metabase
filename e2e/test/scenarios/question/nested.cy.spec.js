@@ -2,7 +2,7 @@ const { H } = cy;
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
-const { ORDERS, ORDERS_ID, PRODUCTS, PRODUCTS_ID, PEOPLE } = SAMPLE_DATABASE;
+const { ORDERS, ORDERS_ID, PRODUCTS, PRODUCTS_ID } = SAMPLE_DATABASE;
 
 const ordersJoinProductsQuery = {
   "source-table": ORDERS_ID,
@@ -106,27 +106,44 @@ describe("scenarios > question > nested", () => {
   });
 
   it("should handle duplicate column names in nested queries (metabase#10511)", () => {
-    H.createQuestion(
-      {
-        name: "10511",
-        query: {
-          filter: [">", ["field", "count", { "base-type": "type/Integer" }], 5],
-          "source-query": {
-            "source-table": ORDERS_ID,
-            aggregation: [["count"]],
-            breakout: [
-              ["field", ORDERS.CREATED_AT, { "temporal-unit": "month" }],
-              [
-                "field",
-                PRODUCTS.CREATED_AT,
-                { "temporal-unit": "month", "source-field": ORDERS.PRODUCT_ID },
-              ],
+    H.createCardWithTestQuery({
+      name: "10511",
+      dataset_query: {
+        database: SAMPLE_DB_ID,
+        stages: [
+          {
+            source: { type: "table", id: ORDERS_ID },
+            aggregations: [{ type: "operator", operator: "count" }],
+            breakouts: [
+              {
+                type: "column",
+                name: "CREATED_AT",
+                sourceName: "ORDERS",
+                unit: "month",
+              },
+              {
+                type: "column",
+                name: "CREATED_AT",
+                sourceName: "Products",
+                unit: "month",
+              },
             ],
           },
-        },
+          {
+            filters: [
+              {
+                type: "operator",
+                operator: ">",
+                args: [
+                  { type: "column", name: "count" },
+                  { type: "literal", value: 5 },
+                ],
+              },
+            ],
+          },
+        ],
       },
-      { visitQuestion: true },
-    );
+    }).then(H.visitCard);
 
     // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("10511");
@@ -316,12 +333,15 @@ describe("scenarios > question > nested", () => {
     it("should work with 'between' date filter (metabase#15352-1)", () => {
       assertOnFilter({
         name: "15352-1",
-        filter: [
-          "between",
-          ["field-id", ORDERS.CREATED_AT],
-          "2026-02-01",
-          "2026-02-29",
-        ],
+        filter: {
+          type: "operator",
+          operator: "between",
+          args: [
+            { type: "column", name: "CREATED_AT", sourceName: "ORDERS" },
+            { type: "literal", value: "2026-02-01" },
+            { type: "literal", value: "2026-02-29" },
+          ],
+        },
         value: "543",
       });
     });
@@ -329,11 +349,28 @@ describe("scenarios > question > nested", () => {
     it("should work with 'after/before' date filter (metabase#15352-2)", () => {
       assertOnFilter({
         name: "15352-2",
-        filter: [
-          "and",
-          [">", ["field-id", ORDERS.CREATED_AT], "2026-01-31"],
-          ["<", ["field-id", ORDERS.CREATED_AT], "2026-03-01"],
-        ],
+        filter: {
+          type: "operator",
+          operator: "and",
+          args: [
+            {
+              type: "operator",
+              operator: ">",
+              args: [
+                { type: "column", name: "CREATED_AT", sourceName: "ORDERS" },
+                { type: "literal", value: "2026-01-31" },
+              ],
+            },
+            {
+              type: "operator",
+              operator: "<",
+              args: [
+                { type: "column", name: "CREATED_AT", sourceName: "ORDERS" },
+                { type: "literal", value: "2026-03-01" },
+              ],
+            },
+          ],
+        },
         value: "543",
       });
     });
@@ -341,26 +378,37 @@ describe("scenarios > question > nested", () => {
     it("should work with 'on' date filter (metabase#15352-3)", () => {
       assertOnFilter({
         name: "15352-3",
-        filter: ["=", ["field-id", ORDERS.CREATED_AT], "2026-02-01"],
+        filter: {
+          type: "operator",
+          operator: "=",
+          args: [
+            { type: "column", name: "CREATED_AT", sourceName: "ORDERS" },
+            { type: "literal", value: "2026-02-01" },
+          ],
+        },
         value: "17",
       });
     });
 
     function assertOnFilter({ name, filter, value } = {}) {
-      H.createQuestion({
+      H.createCardWithTestQuery({
         name,
-        query: {
-          "source-table": ORDERS_ID,
-          filter,
-          aggregation: [["count"]],
+        dataset_query: {
+          database: SAMPLE_DB_ID,
+          stages: [
+            {
+              source: { type: "table", id: ORDERS_ID },
+              filters: [filter],
+              aggregations: [{ type: "operator", operator: "count" }],
+            },
+          ],
         },
-        type: "query",
         display: "scalar",
-      }).then(({ body: { id } }) => {
-        H.visitQuestion(id);
+      }).then((card) => {
+        H.visitQuestion(card.id);
         cy.findByTestId("scalar-value").findByText(value);
 
-        visitNestedQueryAdHoc(id);
+        visitNestedQueryAdHoc(card.id);
         cy.findByTestId("scalar-value").findByText(value);
       });
     }
@@ -503,15 +551,16 @@ describe("scenarios > question > nested", () => {
   });
 
   it("should create a nested question with post-aggregation filter (metabase#11561)", () => {
-    H.visitQuestionAdhoc({
+    H.visitAdHocQuestionWithTestQuery({
       dataset_query: {
         database: SAMPLE_DB_ID,
-        query: {
-          "source-table": ORDERS_ID,
-          aggregation: [["count"]],
-          breakout: [["field", PEOPLE.ID, { "source-field": ORDERS.USER_ID }]],
-        },
-        type: "query",
+        stages: [
+          {
+            source: { type: "table", id: ORDERS_ID },
+            aggregations: [{ type: "operator", operator: "count" }],
+            breakouts: [{ type: "column", name: "ID", sourceName: "People" }],
+          },
+        ],
       },
     });
 
@@ -585,11 +634,10 @@ function createNestedQuestion(
 }
 
 function visitNestedQueryAdHoc(id) {
-  return H.visitQuestionAdhoc({
+  return H.visitAdHocQuestionWithTestQuery({
     dataset_query: {
       database: SAMPLE_DB_ID,
-      type: "query",
-      query: { "source-table": `card__${id}` },
+      stages: [{ source: { type: "card", id } }],
     },
   });
 }

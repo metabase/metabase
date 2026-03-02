@@ -84,12 +84,12 @@ describe("scenarios > question > native query drill", () => {
 
   describe("query builder metadata", () => {
     it("should allow to save an ad-hoc native query when attempting to drill", () => {
-      H.visitQuestionAdhoc({
+      H.visitAdHocQuestionWithTestNativeQuery({
         display: "table",
         dataset_query: {
           database: SAMPLE_DB_ID,
-          type: "native",
-          native: peopleTableQuestionDetails.native,
+          query:
+            "SELECT ID, EMAIL, CREATED_AT FROM PEOPLE ORDER BY ID LIMIT 10",
         },
       });
       cy.wait("@dataset");

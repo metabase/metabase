@@ -2,7 +2,7 @@ const { H } = cy;
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
-const { ORDERS, ORDERS_ID, PRODUCTS, PRODUCTS_ID } = SAMPLE_DATABASE;
+const { ORDERS, ORDERS_ID, PRODUCTS_ID } = SAMPLE_DATABASE;
 
 describe("scenarios > question > settings", () => {
   beforeEach(() => {
@@ -61,26 +61,35 @@ describe("scenarios > question > settings", () => {
     it("should allow you to re-order columns even when one has been removed (metabase #14238, #29287)", () => {
       cy.viewport(1600, 800);
 
-      H.visitQuestionAdhoc({
+      H.visitAdHocQuestionWithTestQuery({
         dataset_query: {
           database: SAMPLE_DB_ID,
-          query: {
-            "source-table": ORDERS_ID,
-            joins: [
-              {
-                fields: "all",
-                alias: "Products",
-                "source-table": PRODUCTS_ID,
-                strategy: "left-join",
-                condition: [
-                  "=",
-                  ["field", ORDERS.PRODUCT_ID, {}],
-                  ["field", PRODUCTS.ID, { "join-alias": "Products" }],
-                ],
-              },
-            ],
-          },
-          type: "query",
+          stages: [
+            {
+              source: { type: "table", id: ORDERS_ID },
+              joins: [
+                {
+                  source: { type: "table", id: PRODUCTS_ID },
+                  strategy: "left-join",
+                  conditions: [
+                    {
+                      operator: "=",
+                      left: {
+                        type: "column",
+                        name: "PRODUCT_ID",
+                        sourceName: "ORDERS",
+                      },
+                      right: {
+                        type: "column",
+                        name: "ID",
+                        sourceName: "PRODUCTS",
+                      },
+                    },
+                  ],
+                },
+              ],
+            },
+          ],
         },
       });
       H.openVizSettingsSidebar();
@@ -114,39 +123,36 @@ describe("scenarios > question > settings", () => {
     it("should preserve correct order of columns after column removal via sidebar (metabase#13455)", () => {
       cy.viewport(2000, 1600);
       // Orders join Products
-      H.visitQuestionAdhoc({
+      H.visitAdHocQuestionWithTestQuery({
         dataset_query: {
-          type: "query",
-          query: {
-            "source-table": ORDERS_ID,
-            joins: [
-              {
-                fields: "all",
-                "source-table": PRODUCTS_ID,
-                condition: [
-                  "=",
-                  [
-                    "field",
-                    ORDERS.PRODUCT_ID,
-                    {
-                      "base-type": "type/Integer",
-                    },
-                  ],
-                  [
-                    "field",
-                    PRODUCTS.ID,
-                    {
-                      "base-type": "type/BigInteger",
-                      "join-alias": "Products",
-                    },
-                  ],
-                ],
-                alias: "Products",
-              },
-            ],
-            limit: 5,
-          },
           database: SAMPLE_DB_ID,
+          stages: [
+            {
+              source: { type: "table", id: ORDERS_ID },
+              joins: [
+                {
+                  source: { type: "table", id: PRODUCTS_ID },
+                  strategy: "left-join",
+                  conditions: [
+                    {
+                      operator: "=",
+                      left: {
+                        type: "column",
+                        name: "PRODUCT_ID",
+                        sourceName: "ORDERS",
+                      },
+                      right: {
+                        type: "column",
+                        name: "ID",
+                        sourceName: "PRODUCTS",
+                      },
+                    },
+                  ],
+                },
+              ],
+              limit: 5,
+            },
+          ],
         },
         display: "table",
       });
@@ -204,18 +210,19 @@ describe("scenarios > question > settings", () => {
 
     it("should be okay showing an empty joined table (metabase#29140)", () => {
       // Orders join Products
-      H.visitQuestionAdhoc({
+      H.visitAdHocQuestionWithTestQuery({
         dataset_query: {
-          type: "query",
-          query: {
-            "source-table": ORDERS_ID,
-            fields: [
-              ["field", ORDERS.PRODUCT_ID, { "base-type": "type/Integer" }],
-              ["field", ORDERS.SUBTOTAL, { "base-type": "type/Float" }],
-            ],
-            limit: 5,
-          },
           database: SAMPLE_DB_ID,
+          stages: [
+            {
+              source: { type: "table", id: ORDERS_ID },
+              fields: [
+                { type: "column", name: "PRODUCT_ID", sourceName: "ORDERS" },
+                { type: "column", name: "SUBTOTAL", sourceName: "ORDERS" },
+              ],
+              limit: 5,
+            },
+          ],
         },
         display: "table",
       });
@@ -240,11 +247,10 @@ describe("scenarios > question > settings", () => {
     });
 
     it("should change to column formatting when sidebar is already open (metabase#16043)", () => {
-      H.visitQuestionAdhoc({
+      H.visitAdHocQuestionWithTestQuery({
         dataset_query: {
-          type: "query",
-          query: { "source-table": ORDERS_ID },
           database: SAMPLE_DB_ID,
+          stages: [{ source: { type: "table", id: ORDERS_ID } }],
         },
       });
 
@@ -274,11 +280,10 @@ describe("scenarios > question > settings", () => {
     it("should respect renamed column names in the settings sidebar (metabase#18476)", () => {
       const newColumnTitle = "Pre-tax";
 
-      const questionDetails = {
+      H.visitAdHocQuestionWithTestQuery({
         dataset_query: {
           database: SAMPLE_DB_ID,
-          query: { "source-table": ORDERS_ID },
-          type: "query",
+          stages: [{ source: { type: "table", id: ORDERS_ID } }],
         },
         display: "table",
         visualization_settings: {
@@ -288,9 +293,7 @@ describe("scenarios > question > settings", () => {
             },
           },
         },
-      };
-
-      H.visitQuestionAdhoc(questionDetails);
+      });
 
       // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText(newColumnTitle);
@@ -418,64 +421,59 @@ describe("scenarios > question > settings", () => {
       { tags: "@skip" },
       () => {
         // products joined to orders with breakouts on 3 product columns followed by a custom column
-        H.createQuestion(
-          {
-            name: "repro 22563",
-            query: {
-              "source-query": {
-                "source-table": ORDERS_ID,
+        H.createCardWithTestQuery({
+          name: "repro 22563",
+          dataset_query: {
+            database: SAMPLE_DB_ID,
+            stages: [
+              {
+                source: { type: "table", id: ORDERS_ID },
                 joins: [
                   {
-                    alias: "Products",
-                    condition: [
-                      "=",
-                      ["field", ORDERS.PRODUCT_ID, null],
-                      [
-                        "field",
-                        PRODUCTS.ID,
-                        {
-                          "join-alias": "Products",
+                    source: { type: "table", id: PRODUCTS_ID },
+                    strategy: "left-join",
+                    conditions: [
+                      {
+                        operator: "=",
+                        left: {
+                          type: "column",
+                          name: "PRODUCT_ID",
+                          sourceName: "ORDERS",
                         },
-                      ],
+                        right: {
+                          type: "column",
+                          name: "ID",
+                          sourceName: "PRODUCTS",
+                        },
+                      },
                     ],
-                    "source-table": PRODUCTS_ID,
                   },
                 ],
-                aggregation: [["count"]],
-                breakout: [
-                  [
-                    "field",
-                    PRODUCTS.CATEGORY,
-                    {
-                      "base-type": "type/Text",
-                      "join-alias": "Products",
-                    },
-                  ],
-                  [
-                    "field",
-                    PRODUCTS.TITLE,
-                    {
-                      "base-type": "type/Text",
-                      "join-alias": "Products",
-                    },
-                  ],
-                  [
-                    "field",
-                    PRODUCTS.VENDOR,
-                    {
-                      "base-type": "type/Text",
-                      "join-alias": "Products",
-                    },
-                  ],
+                aggregations: [{ type: "operator", operator: "count" }],
+                breakouts: [
+                  { type: "column", name: "CATEGORY", sourceName: "Products" },
+                  { type: "column", name: "TITLE", sourceName: "Products" },
+                  { type: "column", name: "VENDOR", sourceName: "Products" },
                 ],
               },
-              expressions: {
-                two: ["+", 1, 1],
+              {
+                expressions: [
+                  {
+                    name: "two",
+                    value: {
+                      type: "operator",
+                      operator: "+",
+                      args: [
+                        { type: "literal", value: 1 },
+                        { type: "literal", value: 1 },
+                      ],
+                    },
+                  },
+                ],
               },
-            },
+            ],
           },
-          { visitQuestion: true },
-        );
+        }).then(H.visitCard);
 
         const columnNames = [
           "Products → Category",

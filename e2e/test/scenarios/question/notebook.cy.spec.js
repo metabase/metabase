@@ -3,8 +3,7 @@ import { SAMPLE_DB_ID, WRITABLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import { ADMIN_USER_ID } from "e2e/support/cypress_sample_instance_data";
 
-const { ORDERS, ORDERS_ID, PEOPLE, PEOPLE_ID, PRODUCTS, PRODUCTS_ID } =
-  SAMPLE_DATABASE;
+const { ORDERS, ORDERS_ID, PEOPLE_ID, PRODUCTS_ID } = SAMPLE_DATABASE;
 
 describe("scenarios > question > notebook", { tags: "@slow" }, () => {
   beforeEach(() => {
@@ -84,16 +83,27 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
   });
 
   it("should show the original custom expression filter field on subsequent click (metabase#14726)", () => {
-    H.visitQuestionAdhoc({
+    H.visitAdHocQuestionWithTestQuery({
+      display: "table",
       dataset_query: {
         database: SAMPLE_DB_ID,
-        query: {
-          "source-table": ORDERS_ID,
-          filter: ["between", ["field", ORDERS.ID, null], 96, 97],
-        },
-        type: "query",
+        stages: [
+          {
+            source: { type: "table", id: ORDERS_ID },
+            filters: [
+              {
+                type: "operator",
+                operator: "between",
+                args: [
+                  { type: "column", name: "ID", sourceName: "ORDERS" },
+                  { type: "literal", value: 96 },
+                  { type: "literal", value: 97 },
+                ],
+              },
+            ],
+          },
+        ],
       },
-      display: "table",
     });
 
     // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
@@ -157,14 +167,26 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
       },
     ).as("dataset");
 
-    const questionDetails = {
-      query: {
-        "source-table": ORDERS_ID,
-        filter: ["=", ["field", ORDERS.PRODUCT_ID, null], 2],
+    H.createCardWithTestQuery({
+      dataset_query: {
+        database: SAMPLE_DB_ID,
+        stages: [
+          {
+            source: { type: "table", id: ORDERS_ID },
+            filters: [
+              {
+                type: "operator",
+                operator: "=",
+                args: [
+                  { type: "column", name: "PRODUCT_ID", sourceName: "ORDERS" },
+                  { type: "literal", value: 2 },
+                ],
+              },
+            ],
+          },
+        ],
       },
-    };
-
-    H.createQuestion(questionDetails, { visitQuestion: true });
+    }).then(H.visitCard);
 
     // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.contains("Showing 98 rows");
@@ -400,17 +422,28 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
   });
 
   it("should treat max/min on a name as a string filter (metabase#21973)", () => {
-    const questionDetails = {
+    H.createCardWithTestQuery({
       name: "21973",
-      query: {
-        "source-table": PEOPLE_ID,
-        aggregation: [["max", ["field", PEOPLE.NAME, null]]],
-        breakout: [["field", PEOPLE.SOURCE, null]],
-      },
       display: "table",
-    };
-
-    H.createQuestion(questionDetails, { visitQuestion: true });
+      dataset_query: {
+        database: SAMPLE_DB_ID,
+        stages: [
+          {
+            source: { type: "table", id: PEOPLE_ID },
+            aggregations: [
+              {
+                type: "operator",
+                operator: "max",
+                args: [{ type: "column", name: "NAME", sourceName: "PEOPLE" }],
+              },
+            ],
+            breakouts: [
+              { type: "column", name: "SOURCE", sourceName: "PEOPLE" },
+            ],
+          },
+        ],
+      },
+    }).then(H.visitCard);
 
     H.filter();
     H.popover().within(() => {
@@ -422,17 +455,30 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
   });
 
   it("should treat max/min on a category as a string filter (metabase#22154)", () => {
-    const questionDetails = {
+    H.createCardWithTestQuery({
       name: "22154",
-      query: {
-        "source-table": PRODUCTS_ID,
-        aggregation: [["min", ["field", PRODUCTS.VENDOR, null]]],
-        breakout: [["field", PRODUCTS.CATEGORY, null]],
-      },
       display: "table",
-    };
-
-    H.createQuestion(questionDetails, { visitQuestion: true });
+      dataset_query: {
+        database: SAMPLE_DB_ID,
+        stages: [
+          {
+            source: { type: "table", id: PRODUCTS_ID },
+            aggregations: [
+              {
+                type: "operator",
+                operator: "min",
+                args: [
+                  { type: "column", name: "VENDOR", sourceName: "PRODUCTS" },
+                ],
+              },
+            ],
+            breakouts: [
+              { type: "column", name: "CATEGORY", sourceName: "PRODUCTS" },
+            ],
+          },
+        ],
+      },
+    }).then(H.visitCard);
 
     H.filter();
     H.popover().within(() => {
@@ -688,37 +734,115 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
       cy.get(H.POPOVER_ELEMENT).should("not.exist");
     }
 
-    const questionDetails = {
-      query: {
-        "source-table": ORDERS_ID,
-        expressions: {
-          E1: ["+", ["field", ORDERS.ID, null], 1],
-          E2: ["+", ["field", ORDERS.ID, null], 2],
-        },
-        filter: [
-          "and",
-          ["=", ["field", ORDERS.ID, null], 1],
-          ["=", ["field", ORDERS.ID, null], 2],
-          ["=", ["field", ORDERS.ID, null], 3],
-        ],
-        breakout: [
-          ["field", ORDERS.ID, null],
-          ["field", ORDERS.PRODUCT_ID, null],
-        ],
-        aggregation: [
-          ["count"],
-          ["sum", ["field", ORDERS.TAX, null]],
-          ["sum", ["field", ORDERS.SUBTOTAL, null]],
-          ["sum", ["field", ORDERS.TOTAL, null]],
-          ["avg", ["field", ORDERS.TOTAL, null]],
-        ],
-        "order-by": [
-          ["asc", ["aggregation", 0]],
-          ["asc", ["aggregation", 4]],
+    H.createCardWithTestQuery({
+      dataset_query: {
+        database: SAMPLE_DB_ID,
+        stages: [
+          {
+            source: { type: "table", id: ORDERS_ID },
+            expressions: [
+              {
+                name: "E1",
+                value: {
+                  type: "operator",
+                  operator: "+",
+                  args: [
+                    { type: "column", name: "ID", sourceName: "ORDERS" },
+                    { type: "literal", value: 1 },
+                  ],
+                },
+              },
+              {
+                name: "E2",
+                value: {
+                  type: "operator",
+                  operator: "+",
+                  args: [
+                    { type: "column", name: "ID", sourceName: "ORDERS" },
+                    { type: "literal", value: 2 },
+                  ],
+                },
+              },
+            ],
+            filters: [
+              {
+                type: "operator",
+                operator: "and",
+                args: [
+                  {
+                    type: "operator",
+                    operator: "=",
+                    args: [
+                      { type: "column", name: "ID", sourceName: "ORDERS" },
+                      { type: "literal", value: 1 },
+                    ],
+                  },
+                  {
+                    type: "operator",
+                    operator: "=",
+                    args: [
+                      { type: "column", name: "ID", sourceName: "ORDERS" },
+                      { type: "literal", value: 2 },
+                    ],
+                  },
+                  {
+                    type: "operator",
+                    operator: "=",
+                    args: [
+                      { type: "column", name: "ID", sourceName: "ORDERS" },
+                      { type: "literal", value: 3 },
+                    ],
+                  },
+                ],
+              },
+            ],
+            breakouts: [
+              { type: "column", name: "ID", sourceName: "ORDERS" },
+              { type: "column", name: "PRODUCT_ID", sourceName: "ORDERS" },
+            ],
+            aggregations: [
+              { type: "operator", operator: "count" },
+              {
+                type: "operator",
+                operator: "sum",
+                args: [{ type: "column", name: "TAX", sourceName: "ORDERS" }],
+              },
+              {
+                type: "operator",
+                operator: "sum",
+                args: [
+                  { type: "column", name: "SUBTOTAL", sourceName: "ORDERS" },
+                ],
+              },
+              {
+                type: "operator",
+                operator: "sum",
+                args: [{ type: "column", name: "TOTAL", sourceName: "ORDERS" }],
+              },
+              {
+                type: "operator",
+                operator: "avg",
+                args: [{ type: "column", name: "TOTAL", sourceName: "ORDERS" }],
+              },
+            ],
+            orderBys: [
+              {
+                direction: "asc",
+                type: "column",
+                name: "count",
+                displayName: "Count",
+              },
+              {
+                direction: "asc",
+                type: "column",
+                name: "avg",
+                displayName: "Average of Total",
+              },
+            ],
+          },
         ],
       },
-    };
-    H.createQuestion(questionDetails, { visitQuestion: true });
+    }).then(H.visitCard);
     H.openNotebook();
     verifyDragAndDrop();
     verifyPopoverDoesNotMoveElement({
@@ -847,13 +971,16 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
   );
 
   it("should open only one bucketing popover at a time (metabase#45036)", () => {
-    H.visitQuestionAdhoc(
+    H.visitAdHocQuestionWithTestQuery(
       {
         dataset_query: {
           database: SAMPLE_DB_ID,
-          type: "query",
-          query: { "source-table": PRODUCTS_ID, aggregation: [["count"]] },
-          parameters: [],
+          stages: [
+            {
+              source: { type: "table", id: PRODUCTS_ID },
+              aggregations: [{ type: "operator", operator: "count" }],
+            },
+          ],
         },
       },
       { mode: "notebook" },
@@ -931,21 +1058,54 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
     // The issue is reproducible on all viewports, but the smaller the viewport is,
     // the more likely the issue is going to occur.
     cy.viewport(300, 800);
-    H.createQuestion(
-      {
-        query: {
-          "source-table": ORDERS_ID,
-          expressions: {
-            [CUSTOM_COLUMN_LONG_NAME]: ["+", 1000, 1000],
+    H.createCardWithTestQuery({
+      dataset_query: {
+        database: SAMPLE_DB_ID,
+        stages: [
+          {
+            source: { type: "table", id: ORDERS_ID },
+            expressions: [
+              {
+                name: CUSTOM_COLUMN_LONG_NAME,
+                value: {
+                  type: "operator",
+                  operator: "+",
+                  args: [
+                    { type: "literal", value: 1000 },
+                    { type: "literal", value: 1000 },
+                  ],
+                },
+              },
+            ],
+            filters: [
+              {
+                type: "operator",
+                operator: "<",
+                args: [
+                  { type: "column", name: CUSTOM_COLUMN_LONG_NAME },
+                  { type: "literal", value: 1000000 },
+                ],
+              },
+            ],
+            aggregations: [
+              {
+                type: "operator",
+                operator: "avg",
+                args: [{ type: "column", name: CUSTOM_COLUMN_LONG_NAME }],
+              },
+            ],
+            breakouts: [{ type: "column", name: CUSTOM_COLUMN_LONG_NAME }],
+            orderBys: [
+              {
+                direction: "asc",
+                type: "column",
+                name: CUSTOM_COLUMN_LONG_NAME,
+              },
+            ],
           },
-          filter: ["<", ["expression", CUSTOM_COLUMN_LONG_NAME, null], 1000000],
-          aggregation: [["avg", ["expression", CUSTOM_COLUMN_LONG_NAME, null]]],
-          breakout: [["expression", CUSTOM_COLUMN_LONG_NAME, null]],
-          "order-by": [["asc", ["expression", CUSTOM_COLUMN_LONG_NAME, null]]],
-        },
+        ],
       },
-      { visitQuestion: true },
-    );
+    }).then(H.visitCard);
     H.openNotebook();
 
     H.verifyNotebookQuery("Orders", [
@@ -1091,10 +1251,16 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
 
   it("should support browser based navigation (metabase#55162)", () => {
     cy.intercept(`/api/table/${PRODUCTS_ID}/fks`).as("tableFK");
-    H.createQuestion(
-      { query: { "source-table": PRODUCTS_ID }, name: "products" },
-      { visitQuestion: true, wrapId: true },
-    );
+    H.createCardWithTestQuery({
+      name: "products",
+      dataset_query: {
+        database: SAMPLE_DB_ID,
+        stages: [{ source: { type: "table", id: PRODUCTS_ID } }],
+      },
+    }).then((card) => {
+      cy.wrap(card.id).as("questionId");
+      H.visitCard(card);
+    });
 
     cy.get("@questionId").then((PRODUCT_QUESTION_ID) => {
       cy.findByRole("button", { name: /Editor/ }).click();
