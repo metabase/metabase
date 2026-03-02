@@ -158,6 +158,14 @@ describe(suiteTitle, () => {
       cy.intercept("GET", "/api/activity/recents?*", { recents: [] }).as(
         "emptyRecentItems",
       );
+
+      // The embed wizard calls the search API to find recently created
+      // dashboards. Without this, the snapshot's admin-owned dashboards
+      // would be returned and selected as the default.
+      cy.log("simulate that there are no recently created dashboards");
+      cy.intercept("GET", "/api/search?*", { data: [], total: 0 }).as(
+        "emptySearch",
+      );
     });
 
     it("shows dashboard of id=1 when activity log is empty", () => {
