@@ -141,7 +141,7 @@ export interface GetTableRequest {
 }
 
 export interface GetTableQueryMetadataRequest {
-  id: TableId;
+  id: ConcreteTableId;
   include_sensitive_fields?: boolean;
   include_hidden_fields?: boolean;
   include_editable_data_model?: boolean;
