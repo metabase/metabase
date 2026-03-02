@@ -530,8 +530,9 @@
     [:structured_output
      [:map {:decode/tool-api-response #(update-keys % metabot-v3.u/safe->snake_case_en)}
       [:field_id :string]
-      [:statistics {:optional true} [:maybe ::statistics]]
-      [:values {:optional true} [:maybe [:sequential :any]]]]]]
+      [:value_metadata [:map
+                        [:field_values {:optional true} [:maybe [:sequential :any]]]
+                        [:statistics {:optional true} [:maybe ::statistics]]]]]]]
    [:map
     [:output :string]]])
 

@@ -106,7 +106,7 @@ export const showMetabot = (
 ) => act(() => dispatch(setVisible({ agentId, visible: true })));
 
 export const assertConversation = async (
-  expectedMessages: ["user" | "agent", string][],
+  expectedMessages: ["user" | "agent", string | RegExp][],
 ) => {
   if (!expectedMessages.length) {
     await waitFor(() => {
@@ -140,8 +140,8 @@ export const whoIsYourFavoriteResponse = [
 ];
 
 export const erroredResponse = [
-  `3:{"type": "error", "value": "Couldn't do the thing"}`,
-  `d:{"finishReason":"error","usage":{"promptTokens":4916,"completionTokens":8}}`,
+  `3:"Anthropic API key expired or invalid"`,
+  `d:{"finishReason":"error","usage":{}}`,
 ];
 
 // Setup function for metabot tests

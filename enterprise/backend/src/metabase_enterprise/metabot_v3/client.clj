@@ -94,9 +94,6 @@
 (defn- metric-selection-endpoint-url []
   (str (metabot-v3.settings/ai-service-base-url) "/v1/select-metric"))
 
-(defn- find-outliers-endpoint-url []
-  (str (metabot-v3.settings/ai-service-base-url) "/v1/find-outliers"))
-
 (defn- fix-sql-endpoint []
   (str (metabot-v3.settings/ai-service-base-url) "/v1/sql/fix"))
 
@@ -147,7 +144,7 @@
    Response chunks are encoded in the format understood by the frontend and AI Service, Clojure backend doesn't
    know anything about it and just shuttles them over.
    "
-  [{:keys [context message history profile-id conversation-id session-id state on-complete]}
+  [{:keys [context message history profile-id conversation-id session-id state debug? on-complete]}
    :- [:map
        [:context :map]
        [:message ::metabot-v3.client.schema/message]
@@ -156,16 +153,18 @@
        [:conversation-id :string]
        [:session-id :string]
        [:state :map]
+       [:debug? {:optional true} [:maybe :boolean]]
        [:on-complete {:optional true} [:function [:=> [:cat :any] :any]]]]]
   (premium-features/assert-has-feature :metabot-v3 "MetaBot")
   (try
     (let [url      (ai-url "/v2/agent/stream")
-          body     {:messages        (conj (vec history) message)
-                    :context         context
-                    :conversation_id conversation-id
-                    :profile_id      profile-id
-                    :user_id         api/*current-user-id*
-                    :state           state}
+          body     (cond-> {:messages        (conj (vec history) message)
+                            :context         context
+                            :conversation_id conversation-id
+                            :profile_id      profile-id
+                            :user_id         api/*current-user-id*
+                            :state           state}
+                     debug? (assoc :debug true))
           _        (metabot-v3.context/log body :llm.log/be->llm)
           _        (log/debugf "V2 request to AI Proxy:\n%s" (u/pprint-to-str body))
           options  (cond-> {:headers          {"Accept"                    "text/event-stream"
@@ -238,21 +237,6 @@
         (log/debugf "Response:\n%s" (u/pprint-to-str <>))))
     (catch Throwable e
       (throw (ex-info (format "Error in request to AI Service: %s" (ex-message e))
-                      {}
-                      e)))))
-
-(mu/defn find-outliers-request
-  "Make a request to AI Service to find outliers"
-  [values :- [:sequential [:map [:dimension :any] [:value :any]]]]
-  (try
-    (let [url (find-outliers-endpoint-url)
-          body {:values values}
-          options (build-request-options body)
-          response (post! url options)]
-      (u/prog1 (check-response! response body)
-        (log/debugf "Response:\n%s" (u/pprint-to-str <>))))
-    (catch Throwable e
-      (throw (ex-info (format "Error in request to AI service: %s" (ex-message e))
                       {}
                       e)))))
 

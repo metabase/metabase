@@ -69,7 +69,18 @@ export async function aiStreamingQuery(
     });
 
     if (!response.ok) {
-      throw new Error(`Response status: ${response.status}`);
+      let serverMessage: string | undefined;
+      try {
+        const body = await response.json();
+        if (typeof body?.message === "string") {
+          serverMessage = body.message;
+        }
+      } catch {
+        // ignore json parse errors
+      }
+      // Throw a string when we have a server message (matches P.string in error handler),
+      // otherwise throw an Error (falls through to the generic default message).
+      throw serverMessage ?? new Error(`Response status: ${response.status}`);
     }
 
     if (!response.body) {

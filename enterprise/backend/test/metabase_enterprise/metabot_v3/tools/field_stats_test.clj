@@ -39,45 +39,47 @@
 (deftest field-values-table-test
   (ensure-fresh-field-values! (mt/id :people :state))
   (ensure-fresh-field-values! (mt/id :products :category))
-  (let [mp (mt/metadata-provider)
-        people-id (mt/id :people)
-        people-query (table-query mp people-id)
-        birth-date-id (visible-field-id people-query (metabot-v3.tools.u/table-field-id-prefix people-id) "Birth Date")
-        state-id (visible-field-id people-query (metabot-v3.tools.u/table-field-id-prefix people-id) "State")
-        products-id (mt/id :products)
+  (let [mp             (mt/metadata-provider)
+        people-id      (mt/id :people)
+        people-query   (table-query mp people-id)
+        birth-date-id  (visible-field-id people-query (metabot-v3.tools.u/table-field-id-prefix people-id) "Birth Date")
+        state-id       (visible-field-id people-query (metabot-v3.tools.u/table-field-id-prefix people-id) "State")
+        products-id    (mt/id :products)
         products-query (table-query mp products-id)
-        category-id (visible-field-id products-query (metabot-v3.tools.u/table-field-id-prefix products-id) "Category")]
+        category-id    (visible-field-id products-query (metabot-v3.tools.u/table-field-id-prefix products-id) "Category")]
     (testing "No read permission results in an error."
       (is (thrown-with-msg? clojure.lang.ExceptionInfo #"You don't have permissions to do that."
                             (metabot-v3.tools.field-stats/field-values
                              {:entity-type "table", :entity-id people-id, :field-id state-id, :limit 5}))))
     (testing "Getting statistics and values for table fields works."
       (mt/as-admin
-        (are [table-id field-id output]
-             (= {:structured-output output}
+        (are [table-id field-id value-metadata]
+             (= {:structured-output {:result-type    :field-metadata
+                                     :field_id       field-id
+                                     :value_metadata value-metadata}}
                 (metabot-v3.tools.field-stats/field-values
                  {:entity-type "table", :entity-id table-id, :field-id field-id, :limit 5}))
-          people-id birth-date-id {:statistics
-                                   {:distinct-count 2308
-                                    :percent-null   0.0
-                                    :earliest       "1958-04-26"
-                                    :latest         "2000-04-03"}}
-          people-id state-id      {:statistics {:distinct-count 49
-                                                :percent-null   0.0
-                                                :percent-json   0.0
-                                                :percent-url    0.0
-                                                :percent-email  0.0
-                                                :percent-state  1.0
-                                                :average-length 2.0}
-                                   :values     ["AK" "AL" "AR" "AZ" "CA"]}
-          products-id category-id {:statistics {:distinct-count 4
-                                                :percent-null   0.0
-                                                :percent-json   0.0
-                                                :percent-url    0.0
-                                                :percent-email  0.0
-                                                :percent-state  0.0
-                                                :average-length 6.375}
-                                   :values     ["Doohickey" "Gadget" "Gizmo" "Widget"]})))))
+          people-id   birth-date-id {:statistics
+                                     {:distinct-count 2308
+                                      :percent-null   0.0
+                                      :earliest       "1958-04-26"
+                                      :latest         "2000-04-03"}}
+          people-id   state-id      {:statistics   {:distinct-count 49
+                                                    :percent-null   0.0
+                                                    :percent-json   0.0
+                                                    :percent-url    0.0
+                                                    :percent-email  0.0
+                                                    :percent-state  1.0
+                                                    :average-length 2.0}
+                                     :field_values ["AK" "AL" "AR" "AZ" "CA"]}
+          products-id category-id   {:statistics   {:distinct-count 4
+                                                    :percent-null   0.0
+                                                    :percent-json   0.0
+                                                    :percent-url    0.0
+                                                    :percent-email  0.0
+                                                    :percent-state  0.0
+                                                    :average-length 6.375}
+                                     :field_values ["Doohickey" "Gadget" "Gizmo" "Widget"]})))))
 
 (deftest field-values-model-test
   (ensure-fresh-field-values! (mt/id :orders :quantity))
@@ -98,13 +100,14 @@
                                {:entity-type "model", :entity-id model-id, :field-id state-id, :limit 5}))))
       (testing "Getting statistics and values for model fields works."
         (mt/as-admin
-          (are [field-id output]
-               (=? {:structured-output output}
+          (are [field-id value-metadata]
+               (=? {:structured-output {:field_id field-id
+                                        :value_metadata value-metadata}}
                    (metabot-v3.tools.field-stats/field-values
                     {:entity-type "model", :entity-id model-id, :field-id field-id, :limit 5}))
             quantity-id {:statistics {:distinct-count 62
                                       :percent-null   0.0}
-                         :values     [0 1 2 3 4]}
+                         :field_values [0 1 2 3 4]}
             state-id    {:statistics {:distinct-count 49
                                       :percent-null   0.0
                                       :percent-json   0.0
@@ -112,7 +115,7 @@
                                       :percent-email  0.0
                                       :percent-state  1.0
                                       :average-length 2.0}
-                         :values     ["AK" "AL" "AR" "AZ" "CA"]}
+                         :field_values ["AK" "AL" "AR" "AZ" "CA"]}
             category-id {:statistics {:distinct-count 4
                                       :percent-null   0.0
                                       :percent-json   0.0
@@ -120,7 +123,7 @@
                                       :percent-email  0.0
                                       :percent-state  0.0
                                       :average-length 6.375}
-                         :values     ["Doohickey" "Gadget" "Gizmo" "Widget"]}))))))
+                         :field_values ["Doohickey" "Gadget" "Gizmo" "Widget"]}))))))
 
 (deftest field-values-metric-test
   (ensure-fresh-field-values! (mt/id :orders :quantity))
@@ -141,13 +144,14 @@
                                {:entity-type "metric", :entity-id metric-id, :field-id birth-date-id, :limit 5}))))
       (testing "Getting statistics and values for metric fields works."
         (mt/as-admin
-          (are [field-id output]
-               (=? {:structured-output output}
+          (are [field-id value-metadata]
+               (=? {:structured-output {:field_id field-id
+                                        :value_metadata value-metadata}}
                    (metabot-v3.tools.field-stats/field-values
                     {:entity-type "metric", :entity-id metric-id, :field-id field-id, :limit 5}))
             quantity-id   {:statistics {:distinct-count 62
                                         :percent-null   0.0}
-                           :values     [0 1 2 3 4]}
+                           :field_values [0 1 2 3 4]}
             birth-date-id {:statistics
                            {:distinct-count 2308
                             :percent-null   0.0
@@ -171,7 +175,7 @@
         (let [result (metabot-v3.tools.field-stats/field-values
                       {:entity-type "table", :entity-id table-id, :field-id agent-field-id, :limit 10})]
           (testing "returns sandboxed field values"
-            (is (= ["African" "American"] (get-in result [:structured-output :values])))))
+            (is (= ["African" "American"] (get-in result [:structured-output :value_metadata :field_values])))))
         (finally
           (t2/delete! :model/FieldValues :field_id field-id :type :advanced))))))
 

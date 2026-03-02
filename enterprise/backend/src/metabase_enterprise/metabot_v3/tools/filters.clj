@@ -1,5 +1,8 @@
 (ns metabase-enterprise.metabot-v3.tools.filters
   (:require
+   [buddy.core.codecs :as codecs]
+   [metabase-enterprise.metabot-v3.agent.streaming :as streaming]
+   [metabase-enterprise.metabot-v3.tools.instructions :as instructions]
    [metabase-enterprise.metabot-v3.tools.util :as metabot-v3.tools.u]
    [metabase.api.common :as api]
    [metabase.lib-be.core :as lib-be]
@@ -9,7 +12,32 @@
    [metabase.lib.types.isa :as lib.types.isa]
    [metabase.lib.util :as lib.util]
    [metabase.util :as u]
-   [metabase.util.i18n :refer [tru]]))
+   [metabase.util.i18n :refer [tru]]
+   [metabase.util.json :as json]
+   [metabase.util.log :as log]))
+
+(set! *warn-on-reflection* true)
+
+;;; URL Generation for Auto-Navigation
+
+(defn- query->url-hash
+  "Convert an MLv2/MBQL query to a base64-encoded URL hash."
+  [query]
+  #_{:clj-kondo/ignore [:discouraged-var]}
+  (let [dataset-query (if (and (map? query) (:lib/type query))
+                        (lib/->legacy-MBQL query)
+                        query)]
+    (-> {:dataset_query dataset-query}
+        json/encode
+        (.getBytes "UTF-8")
+        codecs/bytes->b64-str)))
+
+(defn- query->results-url
+  "Convert a query to a /question# URL for navigation."
+  [query]
+  (str "/question#" (query->url-hash query)))
+
+;;; Filter Operations
 
 (defn- apply-filter-bucket
   [column bucket]
@@ -75,6 +103,178 @@
          (lib.types.isa/temporal? column))
     (apply-bucket bucket)))
 
+;;; Temporal bucket metadata
+;;
+;; Extraction buckets (e.g., :year-of-era) extract an integer component from a
+;; date/datetime.  Truncation buckets (e.g., :day) round to a boundary and expect
+;; date/datetime string values.
+;;
+;; This metadata drives both coercion (date-string → integer for extraction buckets)
+;; and validation (range checks, rejecting negative/numeric values for truncation
+;; buckets).  It is used by [[coerce-and-validate-temporal-filter]].
+
+(def ^:private extraction-bucket-specs
+  "Extraction bucket → `{:min :max :hint}`.
+  Filter values for extraction buckets must be integers (or integer-strings).
+  Date strings are rejected — the LLM should filter date fields directly without a bucket
+  for date range comparisons."
+  {:year-of-era      {}
+   :quarter-of-year  {:min 1 :max 4  :hint "quarter-of-year expects 1-4"}
+   :month-of-year    {:min 1 :max 12 :hint "month-of-year expects 1-12"}
+   :week-of-year     {:min 1 :max 53 :hint "week-of-year expects 1-53"}
+   :day-of-month     {:min 1 :max 31 :hint "day-of-month expects 1-31"}
+   :day-of-week      {:min 1 :max 7  :hint "day-of-week expects 1-7 (1=Monday, 7=Sunday)"}
+   :hour-of-day      {:min 0 :max 23 :hint "hour-of-day expects 0-23"}
+   :minute-of-hour   {:min 0 :max 59 :hint "minute-of-hour expects 0-59"}
+   :second-of-minute {:min 0 :max 59 :hint "second-of-minute expects 0-59"}})
+
+(def ^:private truncation-buckets
+  "Temporal buckets that truncate a date/datetime to a boundary (e.g., `:day` truncates to midnight).
+  Filter values for these buckets should be date/datetime strings, not relative integers."
+  #{:millisecond :second :minute :hour :day :week :month :quarter :year :day-of-year})
+
+(defn- agent-error!
+  "Throw an `:agent-error?` exception (returned to the LLM so it can retry)."
+  [msg]
+  (throw (ex-info msg {:agent-error? true :status-code 400})))
+
+(defn- coerce-extraction-value
+  "Coerce a single filter value to an integer for an extraction bucket.
+  Parses integer strings but rejects date strings — extraction buckets require plain
+  integers, not dates. If the LLM passes a date string like \"2025-09-01\" with bucket
+  \"day-of-month\", it almost certainly meant to filter the date field directly without
+  a bucket (date range comparison), not extract the day component.
+  Validates that the result is within the expected range."
+  [v {:keys [min max hint] :as _spec} bucket]
+  (letfn [(validate-range [n]
+            (when (neg? n)
+              (agent-error!
+               (str "Filter value " n " cannot be negative for temporal bucket '" (name bucket) "'. "
+                    "Temporal buckets extract components from dates (e.g., month-of-year extracts 1-12). "
+                    "If you need to filter relative to today (e.g., 'last 60 days'), don't use temporal "
+                    "buckets — filter the date field directly with a date range instead.")))
+            (when (and min max (not (<= min n max)))
+              (agent-error! (str "Filter value " n " is out of range for bucket '" (name bucket) "'. " hint ".")))
+            n)]
+    (cond
+      (number? v)
+      (validate-range v)
+
+      (string? v)
+      (try
+        (validate-range (Integer/parseInt v))
+        (catch NumberFormatException _
+          (agent-error!
+           (str "Filter with temporal bucket '" (name bucket) "' requires an integer value, "
+                "got: \"" v "\". For example, 'day-of-month' expects 15, not \"2024-01-15\". "
+                "If you need to filter by a date range (e.g., 'last 30 days'), don't use a "
+                "temporal bucket — filter the date field directly with operation "
+                "'greater-than-or-equal' and value '2025-01-15' (no bucket)."))))
+
+      :else v)))
+
+(defn- validate-truncation-value
+  "Reject numeric values for truncation buckets — they need date strings."
+  [v bucket]
+  (when (and (number? v) (or (neg? v) (< v 100)))
+    (agent-error!
+     (str "Filter value " v " is not valid for temporal bucket '" (name bucket) "'. "
+          "Temporal buckets like '" (name bucket) "' require date/datetime string values "
+          "(e.g., \"2024-01-15\"), not relative numbers. "
+          "To filter for 'last 30 days', use a direct date comparison without a bucket, "
+          "e.g., operation 'greater-than-or-equal' with value '2025-01-15' (the actual date)."))))
+
+(defn coerce-and-validate-temporal-filter
+  "Coerce and validate temporal filter values based on the bucket type.
+
+  For extraction buckets (e.g., `:year-of-era`): coerce date-string values to
+  integers and validate the range.
+  For truncation buckets (e.g., `:day`): reject numeric values that indicate
+  the LLM is trying to use relative date math.
+
+  Works on normalized filters (keyword keys and keyword buckets).
+  Called from [[add-filter]].
+
+  See also [[decode-temporal-filter]] for the raw (pre-normalization) variant
+  used in Malli schema decode transforms."
+  [{:keys [value values bucket] :as llm-filter}]
+  (if-let [spec (extraction-bucket-specs bucket)]
+    ;; Extraction bucket — coerce and validate values
+    (let [coerce-val #(coerce-extraction-value % spec bucket)]
+      (cond-> llm-filter
+        value  (update :value coerce-val)
+        values (update :values (partial mapv coerce-val))))
+    ;; Truncation bucket — validate values aren't numeric nonsense
+    (if (truncation-buckets bucket)
+      (do (doseq [v (or values (some-> value vector))]
+            (validate-truncation-value v bucket))
+          llm-filter)
+      ;; No bucket or unknown — pass through
+      llm-filter)))
+
+(defn decode-temporal-filter
+  "Decode a raw (pre-normalization) filter map for Malli schema `:decode/tool` transforms.
+
+  Operates on string keys (`\"bucket\"`, `\"value\"`, `\"values\"`) as they arrive from
+  the LLM's JSON, coercing and validating temporal filter values.
+
+  Example usage in a Malli schema:
+
+      [:map {:decode/tool filters/decode-temporal-filter}
+       [:bucket {:optional true} [:maybe :string]]
+       [:value {:optional true} :any]]"
+  [m]
+  (let [bucket-str (or (get m "bucket") (get m :bucket))
+        bucket-kw  (when bucket-str (keyword bucket-str))]
+    (if-not bucket-kw
+      m
+      (let [v-key    (if (contains? m "value") "value" :value)
+            vs-key   (if (contains? m "values") "values" :values)
+            as-norm  {:bucket bucket-kw
+                      :value  (get m v-key)
+                      :values (get m vs-key)}
+            coerced  (coerce-and-validate-temporal-filter as-norm)]
+        (cond-> m
+          (get m v-key)  (assoc v-key  (:value coerced))
+          (get m vs-key) (assoc vs-key (:values coerced)))))))
+
+(def ^:private temporal-extraction-operations
+  "Operations that extract an integer component from a date/datetime field (e.g. month 1-12).
+  These operations inherently expect small integer values, so they must be exempt from the
+  validation that rejects small integers on temporal columns."
+  #{:year-equals      :year-not-equals
+    :quarter-equals   :quarter-not-equals
+    :month-equals     :month-not-equals
+    :day-of-week-equals :day-of-week-not-equals
+    :hour-equals      :hour-not-equals
+    :minute-equals    :minute-not-equals
+    :second-equals    :second-not-equals})
+
+(defn- validate-temporal-column-values
+  "Reject clearly-wrong numeric values on temporal columns when no bucket is specified.
+  Negative numbers and small integers (< 100) on a datetime field are almost certainly the
+  LLM trying to express relative dates (e.g., -30 for 'last 30 days').
+
+  This validation requires the resolved `:column` metadata, so it runs in [[add-filter]]
+  rather than in the Malli decode layer.
+
+  Skips validation for temporal extraction operations (e.g. `month-equals`, `year-equals`)
+  because those operations explicitly expect small integer values."
+  [{:keys [value values bucket operation column] :as llm-filter}]
+  (when (and (nil? bucket)
+             column
+             (lib.types.isa/temporal? column)
+             (not (temporal-extraction-operations operation)))
+    (doseq [v (or values (some-> value vector))]
+      (when (and (number? v) (or (neg? v) (< v 100)))
+        (agent-error!
+         (str "Filter value " v " is not valid for a date/datetime field. "
+              "Date fields require date/datetime string values (e.g., \"2024-01-15\"), "
+              "not relative numbers. "
+              "To filter for 'last 30 days', compute the actual date and use "
+              "operation 'greater-than-or-equal' with value '2025-01-15' (the actual date).")))))
+  llm-filter)
+
 (defn- add-filter
   [query llm-filter]
   (if-let [segment-id (:segment-id llm-filter)]
@@ -86,7 +286,10 @@
                        :status-code 404
                        :segment-id segment-id})))
     ;; Standard field-based filter logic
-    (let [{:keys [operation value values]} llm-filter
+    (let [llm-filter (-> llm-filter
+                         coerce-and-validate-temporal-filter
+                         validate-temporal-column-values)
+          {:keys [operation value values]} llm-filter
           expr (filter-bucketed-column llm-filter)
           with-values-or-value (fn with-values-or-value
                                  ([f]
@@ -183,11 +386,16 @@
                            returned-cols)}))
 
 (defn query-metric
-  "Create a query based on a metric."
+  "Create a query based on a metric.
+  Returns structured output with the query and a navigate_to data part."
   [{:keys [metric-id] :as arguments}]
   (try
     (if (int? metric-id)
-      {:structured-output (query-metric* arguments)}
+      (let [result (query-metric* arguments)
+            results-url (query->results-url (:query result))]
+        {:structured-output (assoc result :result-type :query)
+         :instructions (instructions/query-created-instructions-for (:query-id result))
+         :data-parts [(streaming/navigate-to-part results-url)]})
       (throw (ex-info (str "Invalid metric_id " metric-id)
                       {:agent-error? true :status-code 400})))
     (catch Exception e
@@ -221,11 +429,15 @@
                            (lib/count)
                            (let [expr (bucketed-column aggregation)]
                              (case (:function aggregation)
-                               :count-distinct (lib/distinct expr)
+                               (:count-distinct :distinct) (lib/distinct expr)
                                :sum            (lib/sum expr)
                                :min            (lib/min expr)
                                :max            (lib/max expr)
-                               :avg            (lib/avg expr))))]
+                               :avg            (lib/avg expr)
+                               (throw (ex-info (str "Unsupported aggregation function: " (:function aggregation)
+                                                    ". Supported: count, count-distinct, sum, min, max, avg")
+                                               {:agent-error? true
+                                                :status-code 400})))))]
             (lib/aggregate query agg-expr)))]
     (apply-aggregation-sort-order query-with-aggregation sort-order)))
 
@@ -268,6 +480,10 @@
         field-id-prefix (metabot-v3.tools.u/card-field-id-prefix model-id)
         visible-cols (lib/visible-columns base-query)
         resolve-visible-column #(metabot-v3.tools.u/resolve-column % field-id-prefix visible-cols)
+        _ (log/debug "query_model field-id expectations"
+                     {:model-id model-id
+                      :field-id-prefix field-id-prefix
+                      :field-ids (vec (keep :field-id (concat fields filters group-by)))})
         resolve-order-by-column (fn [{:keys [field direction]}] {:field (resolve-visible-column field) :direction direction})
         projection (map (comp (juxt filter-bucketed-column (fn [{:keys [column bucket]}]
                                                              (let [column (cond-> column
@@ -299,11 +515,16 @@
                            returned-cols)}))
 
 (defn query-model
-  "Create a query based on a model."
+  "Create a query based on a model.
+  Returns structured output with the query and a navigate_to data part."
   [{:keys [model-id] :as arguments}]
   (try
     (if (int? model-id)
-      {:structured-output (query-model* arguments)}
+      (let [result (query-model* arguments)
+            results-url (query->results-url (:query result))]
+        {:structured-output (assoc result :result-type :query)
+         :instructions (instructions/query-created-instructions-for (:query-id result))
+         :data-parts [(streaming/navigate-to-part results-url)]})
       (throw (ex-info (str "Invalid model_id " model-id)
                       {:agent-error? true :status-code 400})))
     (catch Exception e
@@ -377,27 +598,18 @@
   [{:keys [table-id model-id] :as arguments}]
   (try
     (cond
-      (and table-id model-id)
-      (throw (ex-info "Cannot provide both table_id and model_id"
-                      {:agent-error? true :status-code 400}))
-
-      (int? model-id)
-      {:structured-output (query-datasource* arguments)}
-
-      (int? table-id)
-      {:structured-output (query-datasource* arguments)}
-
-      model-id
-      (throw (ex-info (str "Invalid model_id " model-id)
-                      {:agent-error? true :status-code 400}))
-
-      table-id
-      (throw (ex-info (str "Invalid table_id " table-id)
-                      {:agent-error? true :status-code 400}))
-
-      :else
-      (throw (ex-info "Either table_id or model_id must be provided"
-                      {:agent-error? true :status-code 400})))
+      (and table-id model-id) (throw (ex-info "Cannot provide both table_id and model_id"
+                                              {:agent-error? true :status-code 400}))
+      (int? model-id)         {:structured-output (-> (query-datasource* arguments)
+                                                      (assoc :result-type :query))}
+      (int? table-id)         {:structured-output (-> (query-datasource* arguments)
+                                                      (assoc :result-type :query))}
+      model-id                (throw (ex-info (str "Invalid model_id " model-id)
+                                              {:agent-error? true :status-code 400}))
+      table-id                (throw (ex-info (str "Invalid table_id " table-id)
+                                              {:agent-error? true :status-code 400}))
+      :else                   (throw (ex-info "Either table_id or model_id must be provided"
+                                              {:agent-error? true :status-code 400})))
     (catch Exception e
       (if (= (:status-code (ex-data e)) 404)
         {:output (ex-message e) :status-code 404}
@@ -454,7 +666,8 @@
           query-id (u/generate-nano-id)
           query-field-id-prefix (metabot-v3.tools.u/query-field-id-prefix query-id)]
       {:structured-output
-       {:type :query
+       {:result-type :query
+        :type :query
         :query-id query-id
         :query query
         :result-columns (into []

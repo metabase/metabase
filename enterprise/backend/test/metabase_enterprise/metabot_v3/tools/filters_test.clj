@@ -166,6 +166,66 @@
                   :status-code 400}
                  (metabot-v3.tools.filters/query-metric {:metric-id (str metric-id)}))))))))
 
+(deftest query-metric-temporal-value-validation-test
+  (let [mp (mt/metadata-provider)
+        created-at-meta (lib.metadata/field mp (mt/id :orders :created_at))
+        metric-query (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
+                         (lib/aggregate (lib/avg (lib.metadata/field mp (mt/id :orders :subtotal))))
+                         (lib/breakout (lib/with-temporal-bucket created-at-meta :month)))
+        legacy-metric-query (lib.convert/->legacy-MBQL metric-query)]
+    (mt/with-temp [:model/Card {metric-id :id} {:dataset_query legacy-metric-query
+                                                :database_id (mt/id)
+                                                :name "Average Order Value"
+                                                :description "The average subtotal of orders."
+                                                :type :metric}]
+      (mt/with-current-user (mt/user->id :crowberto)
+        (let [metric-details (metabot-v3.tools.entity-details/metric-details metric-id)
+              ->field-id #(u/prog1 (-> metric-details :queryable-dimensions (by-name %) :field_id)
+                            (when-not <>
+                              (throw (ex-info (str "Column " % " not found") {:column %}))))]
+          (testing "Negative value on temporal field without bucket is rejected"
+            (let [result (metabot-v3.tools.filters/query-metric
+                          {:metric-id metric-id
+                           :filters [{:field-id (->field-id "Created At")
+                                      :operation :greater-than-or-equal
+                                      :value -30}]
+                           :group-by []})]
+              (is (= 400 (:status-code result)))
+              (is (str/includes? (:output result) "not valid for a date/datetime field"))))
+          (testing "Small positive integer on temporal field without bucket is rejected"
+            (let [result (metabot-v3.tools.filters/query-metric
+                          {:metric-id metric-id
+                           :filters [{:field-id (->field-id "Created At")
+                                      :operation :greater-than-or-equal
+                                      :value 7}]
+                           :group-by []})]
+              (is (= 400 (:status-code result)))
+              (is (str/includes? (:output result) "not valid for a date/datetime field"))))
+          (testing "Date string on temporal field without bucket passes validation"
+            (is (=? {:structured-output {:type :query}}
+                    (metabot-v3.tools.filters/query-metric
+                     {:metric-id metric-id
+                      :filters [{:field-id (->field-id "Created At")
+                                 :operation :greater-than-or-equal
+                                 :value "2024-01-01"}]
+                      :group-by []}))))
+          (testing "Large integer (year) on temporal field without bucket passes validation"
+            (is (=? {:structured-output {:type :query}}
+                    (metabot-v3.tools.filters/query-metric
+                     {:metric-id metric-id
+                      :filters [{:field-id (->field-id "Created At")
+                                 :operation :greater-than-or-equal
+                                 :value 2024}]
+                      :group-by []}))))
+          (testing "Numeric value on non-temporal field without bucket passes validation"
+            (is (=? {:structured-output {:type :query}}
+                    (metabot-v3.tools.filters/query-metric
+                     {:metric-id metric-id
+                      :filters [{:field-id (->field-id "Discount")
+                                 :operation :greater-than-or-equal
+                                 :value -5}]
+                      :group-by []})))))))))
+
 (deftest ^:parallel query-model-test
   (mt/with-temp [:model/Card {model-id :id} {:dataset_query (mt/mbql-query orders {})
                                              :database_id (mt/id)

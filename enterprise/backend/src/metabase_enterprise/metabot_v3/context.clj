@@ -12,7 +12,8 @@
    [metabase.util.json :as json]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.registry :as mr])
+   [metabase.util.malli.registry :as mr]
+   [toucan2.core :as t2])
   (:import
    (java.time OffsetDateTime)
    (java.time.format DateTimeFormatter)))
@@ -114,8 +115,47 @@
       (log/error e "Error getting Python transform tables for context")
       [])))
 
+(defn- mbql-source-table-ids
+  "Given a context item with an MBQL query, return [database-id [table-id ...]] if it has
+  source-table references, or nil otherwise. Handles both MLv2/pMBQL and legacy formats."
+  [item]
+  (when (= "adhoc" (:type item))
+    (let [query       (:query item)
+          database-id (:database query)
+          normalized  (try (lib-be/normalize-query query) (catch Exception _ nil))
+          table-ids   (->> (:stages normalized)
+                           (keep :source-table)
+                           (filter pos-int?)
+                           distinct
+                           vec)]
+      (when (seq table-ids)
+        [database-id table-ids]))))
+
+(defn- mbql-source-tables-for-context
+  "Get source tables for an MBQL query, formatted for metabot context (with :type, :display_name, :fields, etc.).
+
+  Uses a direct table lookup without native-query permission checks. The user is already
+  viewing these tables in the notebook editor, so they have at least query-builder access.
+  The standard `used-tables-from-ids` requires `:query-builder-and-native` permissions
+  which is too restrictive for MBQL viewing context enrichment."
+  [[database-id table-ids]]
+  (try
+    (let [raw-tables (t2/select [:model/Table :id :name :schema]
+                                :db_id database-id
+                                :id [:in table-ids]
+                                :active true
+                                :visibility_type nil)
+          tables     (when (seq raw-tables)
+                       (table-utils/enhanced-database-tables database-id
+                                                             {:priority-tables  raw-tables
+                                                              :all-tables-limit (count raw-tables)}))]
+      (m/distinct-by :id tables))
+    (catch Exception e
+      (log/error e "Error getting MBQL source tables for context")
+      nil)))
+
 (defn- enhance-context-with-schema
-  "Enhance context by adding table schema information for native queries, SQL transforms, and Python transforms"
+  "Enhance context by adding table schema information for native queries, MBQL queries, SQL transforms, and Python transforms."
   [context]
   (if-let [user-viewing (get context :user_is_viewing)]
     (let [enhanced-viewing
@@ -124,6 +164,11 @@
                    ;; Handle native queries and SQL transforms
                    (when-let [query (query-for-sql-parsing item)]
                      (when-let [tables (seq (database-tables-for-context {:query query}))]
+                       (assoc item :used_tables tables)))
+
+                   ;; Handle MBQL/notebook queries
+                   (when-let [db-and-table-ids (mbql-source-table-ids item)]
+                     (when-let [tables (seq (mbql-source-tables-for-context db-and-table-ids))]
                        (assoc item :used_tables tables)))
 
                    ;; Handle Python transforms

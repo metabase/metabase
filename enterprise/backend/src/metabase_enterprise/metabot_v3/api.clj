@@ -2,7 +2,9 @@
   "`/api/ee/metabot-v3/` routes"
   (:require
    [clj-http.client :as http]
+   [clojure.core.async :as a]
    [clojure.string :as str]
+   [metabase-enterprise.metabot-v3.agent.core :as agent]
    [metabase-enterprise.metabot-v3.api.document]
    [metabase-enterprise.metabot-v3.api.metabot]
    [metabase-enterprise.metabot-v3.client :as metabot-v3.client]
@@ -10,21 +12,31 @@
    [metabase-enterprise.metabot-v3.config :as metabot-v3.config]
    [metabase-enterprise.metabot-v3.context :as metabot-v3.context]
    [metabase-enterprise.metabot-v3.envelope :as metabot-v3.envelope]
+   [metabase-enterprise.metabot-v3.self.core :as self.core]
+   [metabase-enterprise.metabot-v3.settings :as metabot-v3.settings]
    [metabase-enterprise.metabot-v3.util :as metabot-v3.u]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
    [metabase.api.util.handlers :as handlers]
    [metabase.app-db.core :as app-db]
+   [metabase.config.core :as config]
    [metabase.premium-features.core :as premium-features]
+   [metabase.server.streaming-response :as sr]
    [metabase.store-api.core :as store-api]
    [metabase.util :as u]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
    [metabase.util.malli.schema :as ms]
-   [toucan2.core :as t2]))
+   [toucan2.core :as t2])
+  (:import
+   (java.io OutputStream)))
 
-(defn- store-message! [conversation-id profile-id messages]
+(set! *warn-on-reflection* true)
+
+(defn- store-aiservice-messages!
+  "Store messages that are going from ai-service"
+  [conversation-id profile-id messages]
   (let [finish   (let [m (u/last messages)]
                    (when (= (:_type m) :FINISH_MESSAGE)
                      m))
@@ -50,26 +62,168 @@
                                        (map #(+ (:prompt %) (:completion %)))
                                        (apply +))})))
 
+(defn- extract-usage
+  "Extract usage from parts, taking the last `:usage` per model.
+
+  The agent loop emits cumulative usage — each `:usage` part subsumes all prior
+  usage for that model — so we simply take the last one per model rather than
+  summing. Returns a map keyed by model name:
+  {\"model-name\" {:prompt X :completion Y}}"
+  [parts]
+  (transduce
+   (filter #(= :usage (:type %)))
+   (completing
+    (fn [acc {:keys [usage model]}]
+      (let [model (or model "unknown")]
+        (assoc acc model {:prompt     (:promptTokens usage 0)
+                          :completion (:completionTokens usage 0)}))))
+   {}
+   parts))
+
+(defn- store-native-parts!
+  "Store assistant response parts directly to the database.
+
+  Takes AI SDK parts (after aisdk-xf combining) and stores them in the native format,
+  avoiding the intermediate 'aisdk messages' format.
+
+  Parts format: [{:type :text :text \"...\"} {:type :tool-input ...} ...]"
+  [conversation-id profile-id parts]
+  (let [state-part (u/seek #(and (= :data (:type %))
+                                 (= "state" (:data-type %)))
+                           parts)
+        usage      (extract-usage parts)
+        ;; Filter out :start, :usage, :finish, :data - these are metadata, not message content
+        ;; :data is like `:navigate_to`
+        content    (->> parts
+                        (remove #(#{:start :usage :finish :data} (:type %)))
+                        vec)]
+    (t2/with-transaction [_conn]
+      (when state-part
+        (app-db/update-or-insert! :model/MetabotConversation {:id conversation-id}
+                                  (constantly {:user_id api/*current-user-id*
+                                               :state   (:data state-part)})))
+      (t2/insert! :model/MetabotMessage
+                  {:conversation_id conversation-id
+                   :data            content
+                   :usage           usage
+                   :role            :assistant
+                   :profile_id      profile-id
+                   :total_tokens    (->> (vals usage)
+                                         (map #(+ (:prompt %) (:completion %)))
+                                         (reduce + 0))}))))
+
+(defn- streaming-writer-rf
+  "Creates a reducing function that writes AI SDK lines to an OutputStream.
+
+  Lines are written immediately with a newline and flushed for real-time streaming.
+  When `canceled-chan` is provided, polls it before each write and returns `reduced`
+  to stop the pipeline when the client has disconnected. Also catches EofException
+  (client closed connection) and converts it to `reduced` so the pipeline shuts down
+  cleanly without triggering upstream retries."
+  [^java.io.OutputStream os canceled-chan]
+  (fn
+    ([] nil)
+    ([_] nil)
+    ([acc ^String line]
+     (if (and canceled-chan (a/poll! canceled-chan))
+       (reduced acc)
+       (try
+         (.write os (.getBytes (str line "\n") "UTF-8"))
+         (.flush os)
+         (catch org.eclipse.jetty.io.EofException _
+           (reduced acc)))))))
+
+(defn- combine-text-parts-xf []
+  (fn [rf]
+    (let [pending (volatile! nil)]
+      (fn
+        ([] (rf))
+        ([result]
+         (let [p @pending]
+           (rf (if p (rf result p) result))))
+        ([result part]
+         (let [prev @pending]
+           (if (and prev (= :text (:type prev) (:type part)))
+             (do (vswap! pending update :text str (:text part))
+                 result)
+             (do (vreset! pending part)
+                 (if prev (rf result prev) result)))))))))
+
+(defn- native-agent-streaming-request
+  "Handle streaming request using native Clojure agent.
+
+  Streams AI SDK v4 line protocol to the client in real-time while simultaneously
+  collecting parts for database storage. Text parts are combined before storage
+  to consolidate streaming chunks into single text parts.
+
+  Monitors `canceled-chan` for client disconnection — when the client closes the
+  connection, the pipeline stops via `reduced` and collected parts are still persisted.
+
+  When `:debug?` is true, enables debug logging which emits a `debug_log` data
+  part at the end of the stream with full LLM request/response data per iteration."
+  [{:keys [profile-id message context history conversation-id state debug?]}]
+  (let [enriched-context (metabot-v3.context/create-context context)
+        messages         (concat history [message])]
+    (sr/streaming-response {:content-type "text/event-stream"} [^OutputStream os canceled-chan]
+      (let [parts-atom (atom [])
+            ;; Compose: collect parts AND convert to lines for streaming.
+            ;; In dev mode, emit usage parts in the SSE stream for debugging/benchmarking.
+            xf         (comp (u/tee-xf parts-atom)
+                             (self.core/aisdk-line-xf {:emit-usage? config/is-dev?}))]
+        (try
+          (transduce xf
+                     (streaming-writer-rf os canceled-chan)
+                     (agent/run-agent-loop
+                      (cond-> {:messages         messages
+                               :state            state
+                               :profile-id       (keyword profile-id)
+                               :context          enriched-context
+                               :conversation-id  conversation-id}
+                        debug? (assoc :debug? true))))
+          (catch org.eclipse.jetty.io.EofException _
+            (log/debug "Client disconnected during native agent streaming"))
+          (finally
+            (store-native-parts! conversation-id profile-id (into [] (combine-text-parts-xf) @parts-atom))))))))
+
 (defn streaming-request
   "Handles an incoming request, making all required tool invocation, LLM call loops, etc."
-  [{:keys [metabot_id profile_id message context history conversation_id state]}]
+  [{:keys [metabot_id profile_id message context history conversation_id state debug]}]
   (let [message    (metabot-v3.envelope/user-message message)
         metabot-id (metabot-v3.config/resolve-dynamic-metabot-id metabot_id)
         profile-id (metabot-v3.config/resolve-dynamic-profile-id profile_id metabot-id)
-        session-id (metabot-v3.client/get-ai-service-token api/*current-user-id* metabot-id)]
-    (store-message! conversation_id profile-id [message])
-    (metabot-v3.client/streaming-request
-     {:context         (metabot-v3.context/create-context context)
-      :metabot-id      metabot-id
-      :profile-id      profile-id
-      :session-id      session-id
-      :conversation-id conversation_id
-      :message         message
-      :history         history
-      :state           state
-      :on-complete     (fn [lines]
-                         (store-message! conversation_id profile-id (metabot-v3.u/aisdk->messages :assistant lines))
-                         :store-in-db)})))
+        ;; Only allow debug mode in dev — never in production
+        debug?     (and config/is-dev? (boolean debug))]
+    (store-aiservice-messages! conversation_id profile-id [message])
+
+    (if (metabot-v3.settings/use-native-agent)
+      ;; Use native Clojure agent
+      (do
+        (log/info "Using native Clojure agent" {:profile-id profile-id :debug? debug?})
+        (native-agent-streaming-request
+         {:profile-id      profile-id
+          :message         message
+          :context         context
+          :history         history
+          :conversation-id conversation_id
+          :state           state
+          :debug?          debug?}))
+
+      ;; Fallback to Python AI Service
+      (let [session-id (metabot-v3.client/get-ai-service-token api/*current-user-id* metabot-id)]
+        (log/info "Using Python AI Service" {:profile-id profile-id :debug? debug?})
+        (metabot-v3.client/streaming-request
+         {:context         (metabot-v3.context/create-context context)
+          :metabot-id      metabot-id
+          :profile-id      profile-id
+          :session-id      session-id
+          :conversation-id conversation_id
+          :message         message
+          :history         history
+          :state           state
+          :debug?          debug?
+          :on-complete     (fn [lines]
+                             (store-aiservice-messages! conversation_id profile-id (metabot-v3.u/aisdk->messages :assistant lines))
+                             :store-in-db)})))))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
@@ -86,7 +240,8 @@
             [:context ::metabot-v3.context/context]
             [:conversation_id ms/UUIDString]
             [:history [:maybe ::metabot-v3.client.schema/messages]]
-            [:state :map]]]
+            [:state :map]
+            [:debug {:optional true} [:maybe :boolean]]]]
   (metabot-v3.context/log body :llm.log/fe->be)
   (streaming-request body))
 
