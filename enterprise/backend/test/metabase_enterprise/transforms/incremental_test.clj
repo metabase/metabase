@@ -283,7 +283,7 @@
 (deftest run-incremental-transform-twice-test
   (testing "Running an incremental transform twice processes only new data on second run"
     (doseq [checkpoint-type [:integer :float :temporal]
-            transform-type [#_:native :mbql #_:python]
+            transform-type [:native :mbql :python]
             :when (valid-checkpoint-transform-combo? checkpoint-type transform-type)]
       (testing (format "with %s checkpoint on %s transform" (name checkpoint-type) (name transform-type))
         (mt/test-drivers (test-drivers)

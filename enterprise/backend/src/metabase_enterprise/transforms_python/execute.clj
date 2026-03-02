@@ -343,21 +343,27 @@
         (log/info "Executing Python transform" transform-id "with target" (pr-str target)
                   (when (driver.conn/write-connection-requested?)
                     " using write connection"))
-        (let [start-ms          (u/start-timer)
-              conn-spec         (driver/connection-spec driver db)
-              transform-details {:db-id          (:id db)
-                                 :transform-id   transform-id
-                                 :transform-type (keyword (:type target))
-                                 :conn-spec      conn-spec
-                                 :output-schema  (:schema target)
-                                 :output-table   (transforms.util/qualified-table-name driver target)}
-              run-fn            (fn [cancel-chan]
-                                  (run-python-transform! transform db run-id cancel-chan message-log)
-                                  (log! message-log (i18n/tru "Python execution finished successfully in {0}" (u.format/format-milliseconds (u/since-ms start-ms))))
-                                  (save-log-to-transform-run-message! run-id message-log))
-              ex-message-fn     #(exceptional-run-message message-log %)
-              result            (transforms.instrumentation/with-stage-timing [run-id [:computation :python-execution]]
-                                  (transforms.util/run-cancelable-transform! run-id driver transform-details run-fn :ex-message-fn ex-message-fn))]
+        (let [start-ms            (u/start-timer)
+              conn-spec           (driver/connection-spec driver db)
+              source-range-params (transforms.util/get-source-range-params transform)
+              transform-details   {:db-id          (:id db)
+                                   :transform-id   transform-id
+                                   :transform-type (keyword (:type target))
+                                   :conn-spec      conn-spec
+                                   :output-schema  (:schema target)
+                                   :output-table   (transforms.util/qualified-table-name driver target)}
+              run-fn              (fn [cancel-chan]
+                                    (run-python-transform! transform db run-id cancel-chan message-log)
+                                    (log! message-log (i18n/tru "Python execution finished successfully in {0}" (u.format/format-milliseconds (u/since-ms start-ms))))
+                                    (save-log-to-transform-run-message! run-id message-log)
+                                    (when source-range-params
+                                      (t2/update! :model/Transform
+                                                  (:id transform)
+                                                  {:last_checkpoint_type  (:type (:hi source-range-params))
+                                                   :last_checkpoint_value (transforms.util/serialize-checkpoint-value (:type (:hi source-range-params)) (:value (:hi source-range-params)))})))
+              ex-message-fn       #(exceptional-run-message message-log %)
+              result              (transforms.instrumentation/with-stage-timing [run-id [:computation :python-execution]]
+                                    (transforms.util/run-cancelable-transform! run-id driver transform-details run-fn :ex-message-fn ex-message-fn))]
           (transforms.util/handle-transform-complete!
            :run-id run-id
            :transform transform

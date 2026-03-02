@@ -469,11 +469,13 @@
             metadata-provider (lib-be/application-database-metadata-provider db-id)
             column            (lib.metadata/field metadata-provider checkpoint-filter-field-id)
             table-id          (:table-id column) ; todo should this be some kind of lib call?
+            limit             (-> transform :source :limit) ;; applies only to python (this is a mess)
             table-metadata    (lib.metadata/table metadata-provider table-id)
             base-query        (or source-query (lib/query metadata-provider table-metadata))
             lo                (when last_checkpoint_type (deserialize-checkpoint-value last_checkpoint_type last_checkpoint_value))
             filtered-query    (if lo (lib/filter base-query (lib/> column lo)) base-query)
-            query             (lib/aggregate (lib/append-stage filtered-query) (lib/max column))
+            limited-query     (if limit (lib/limit filtered-query limit) filtered-query)
+            query             (lib/aggregate (lib/append-stage limited-query) (lib/max column))
             query-result      (qp/process-query query)
             {:keys [results_metadata rows]} (:data query-result)
             [{:keys [base_type]}] (:columns results_metadata)
@@ -481,7 +483,8 @@
             hi                max-value]
         {:column column
          :lo     (when last_checkpoint_type {:type last_checkpoint_type, :value lo})
-         :hi     (if (some? hi) (interpret-database-checkpoint-value base_type hi) lo)}))))
+         :hi     (cond (some? hi) (interpret-database-checkpoint-value base_type hi)
+                       last_checkpoint_type {:type last_checkpoint_type, :value lo})}))))
 
 (defn compile-source
   "Compile the source query of a transform to SQL, applying incremental filtering if required."
