@@ -14,6 +14,7 @@
    [metabase.lib.schema.join :as lib.schema.join]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.lib.schema.parameter :as lib.schema.parameter]
+   [metabase.lib.schema.util :as lib.schema.util]
    [metabase.lib.util :as lib.util]
    [metabase.lib.walk :as lib.walk]
    [metabase.util :as u]
@@ -107,8 +108,8 @@
   "Checks if two field refs are the same. Ignores :lib/uuid, :base-type, and :effective-type."
   [field-ref-1 :- :mbql.clause/field
    field-ref-2 :- :mbql.clause/field]
-  (= (lib.options/update-options field-ref-1 dissoc :lib/uuid :base-type :effective-type)
-     (lib.options/update-options field-ref-2 dissoc :lib/uuid :base-type :effective-type)))
+  (= (lib.schema.util/mbql-clause-distinct-key field-ref-1)
+     (lib.schema.util/mbql-clause-distinct-key field-ref-2)))
 
 (mu/defn- walk-clause-field-refs :- :any
   "Walks a clause and applies a function to all `:field` clauses."
