@@ -59,7 +59,9 @@
                                     ;; This is for detecting circular refs below, and is later used as part of
                                     ;; permissions enforcement
                                     (assoc stage :qp/stage-is-from-source-card card-id))
-                    card-metadata (into [] (remove :remapped-from)
+                    ;; TODO (Cam 2026-02-25) Check if attaching the metadata is even necessary anymore
+                    card-metadata (into []
+                                        (remove :remapped-from)
                                         (lib.card/card-returned-columns metadata-providerable card))
                     last-stage    (cond-> (last stages)
                                     (seq card-metadata) (assoc :lib/stage-metadata {:lib/type :metadata/results, :columns card-metadata})
