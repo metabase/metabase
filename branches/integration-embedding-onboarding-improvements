@@ -2,5 +2,20 @@
   "base": {
     "name": "master",
     "hash": "908ca1a1d67955bc1d57e361b44b59a6305d5ba7"
+  },
+  "upstream": {
+    "branch": "integration-embedding-onboarding-improvements"
+  },
+  "change": {
+    "github": {
+      "pr": {
+        "number": 69456,
+        "gqlID": "PR_kwDOAczgH87C_UnL"
+      },
+      "comment": {
+        "gqlID": "IC_kwDOAczgH87oRigI",
+        "url": "https://github.com/metabase/metabase/pull/69456#issuecomment-3896911880"
+      }
+    }
   }
 }
