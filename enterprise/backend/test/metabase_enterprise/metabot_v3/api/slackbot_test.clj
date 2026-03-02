@@ -443,6 +443,27 @@
                 (is (vector? (:history opts)))
                 (is (fn? (:on-line opts)))))))))))
 
+(deftest slack-thread-conversation-id-test
+  (testing "Same thread produces same conversation ID"
+    (is (= (#'slackbot.streaming/slack-thread->conversation-id "T1" "C1" "123.456")
+           (#'slackbot.streaming/slack-thread->conversation-id "T1" "C1" "123.456"))))
+
+  (testing "Different threads produce different IDs"
+    (is (not= (#'slackbot.streaming/slack-thread->conversation-id "T1" "C1" "123.456")
+              (#'slackbot.streaming/slack-thread->conversation-id "T1" "C1" "789.012"))))
+
+  (testing "Different channels produce different IDs"
+    (is (not= (#'slackbot.streaming/slack-thread->conversation-id "T1" "C1" "123.456")
+              (#'slackbot.streaming/slack-thread->conversation-id "T1" "C2" "123.456"))))
+
+  (testing "Different workspaces produce different IDs"
+    (is (not= (#'slackbot.streaming/slack-thread->conversation-id "T1" "C1" "123.456")
+              (#'slackbot.streaming/slack-thread->conversation-id "T2" "C1" "123.456"))))
+
+  (testing "Result is valid UUID format"
+    (is (re-matches #"[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}"
+                    (#'slackbot.streaming/slack-thread->conversation-id "T1" "C1" "123.456")))))
+
 (deftest user-message-with-visualizations-test
   (testing "POST /events with visualizations uploads multiple images to Slack"
     (with-slackbot-setup
@@ -1255,3 +1276,4 @@
                                    {:slack-connect-client-id "id"
                                     :slack-connect-client-secret "secret"
                                     :metabot-slack-signing-secret "signing"}))))))
+
