@@ -69,15 +69,21 @@
       (log/errorf e "An exception was caught during msg update loop, run-id: %s" run-id))))
 
 (defn- open-python-message-update-future! ^Closeable [run-id message-log]
-  (let [cleanup (fn [fut]
-                  (future-cancel fut)
-                  (if (= ::timeout (try (deref fut 10000 ::timeout) (catch Throwable _)))
-                    (log/fatalf "Log polling task did not respond to interrupt, run-id: %s" run-id)
-                    (log/debugf "Log polling task done, run-id: %s" run-id)))
-        fut     (u.jvm/in-virtual-thread*
-                 (python-message-update-loop! run-id message-log))]
-    (reify Closeable
-      (close [_] (cleanup fut)))))
+  (if (app-db/in-transaction?)
+    ;; in a transaction (such as under mt/with-temp), it is not safe to poll for logs
+    (do
+      (log/warnf "Log polling disabled as we are within a database transaction, run-id: %s" run-id)
+      (reify Closeable (close [_])))
+    ;; poll updates until execution is complete
+    (let [cleanup (fn [fut]
+                    (future-cancel fut)
+                    (if (= ::timeout (try (deref fut 10000 ::timeout) (catch Throwable _)))
+                      (log/fatalf "Log polling task did not respond to interrupt, run-id: %s" run-id)
+                      (log/debugf "Log polling task done, run-id: %s" run-id)))
+          fut     (u.jvm/in-virtual-thread*
+                   (python-message-update-loop! run-id message-log))]
+      (reify Closeable
+        (close [_] (cleanup fut))))))
 
 (defn- exceptional-run-message [message-log ex]
   (str/join "\n" (remove str/blank? [(base/message-log->string message-log)
@@ -100,10 +106,7 @@
                                                                        (or owner_user_id creator_id))
           {run-id :id}                                               (transforms.u/try-start-unless-already-running transform-id run-method run-user-id)]
       (some-> start-promise (deliver [:started run-id]))
-      (with-open [_ (if (app-db/in-transaction?)
-                      ;; if in a transaction (such as under mt/with-temp), it is not safe to poll for logs
-                      ^Closeable (reify Closeable (close [_]))
-                      (open-python-message-update-future! run-id message-log))]
+      (with-open [_ (open-python-message-update-future! run-id message-log)]
         (driver.conn/with-write-connection
           (let [conn-spec         (driver/connection-spec driver db)
                 transform-details {:db-id (:id db) :conn-spec conn-spec :output-schema (:schema target)}
