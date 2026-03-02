@@ -300,9 +300,9 @@
    [:source [:or construct-source-model-schema construct-source-table-schema]]
    [:expressions {:optional true} [:sequential construct-expression-schema]]
    [:aggregations [:sequential construct-metric-schema]]
-   [:filters [:sequential construct-filter-schema]]
+   [:filters {:optional true} [:maybe [:sequential construct-filter-schema]]]
    [:group_by [:sequential construct-field-schema]]
-   [:limit [:maybe :int]]
+   [:limit {:optional true} [:maybe :int]]
    [:post_filters {:optional true} [:sequential construct-post-filter-schema]]
    [:visualization {:optional true} construct-visualization-schema]])
 
