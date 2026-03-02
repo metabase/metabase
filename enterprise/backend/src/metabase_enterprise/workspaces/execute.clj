@@ -193,7 +193,7 @@
         start-time      (java.time.Instant/now)
         result          (transforms-base/execute! remapped-xf)]
     {:status     (:status result)
-     :start_time (str start-time)
-     :end_time   (str (java.time.Instant/now))
+     :start_time start-time
+     :end_time   (java.time.Instant/now)
      :message    (or (:logs result) (some-> (:error result) ex-message))
      :table      (select-keys (:target remapped-xf) [:name :schema])}))
