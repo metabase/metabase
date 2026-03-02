@@ -3,8 +3,8 @@ name: Validate OpenAPI
 on:
   push:
     branches:
-      - 'master'
-      - 'release-**'
+      - "master"
+      - "release-**"
   pull_request:
 
 concurrency:
@@ -42,3 +42,5 @@ jobs:
         run: bun run generate-openapi
       - name: Validate OpenAPI spec
         run: bun run lint-openapi
+      - name: Split OpenAPI spec
+        run: bun run openapi:split

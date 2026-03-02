@@ -512,6 +512,8 @@
     "lint-prettier": "bun install && bun lint-prettier-pure",
     "lint-prettier-pure": "prettier --check --cache '{frontend,enterprise/frontend,e2e}/**/*.{js,jsx,ts,tsx,css}'",
     "lint-yaml": "yamllint **/*.{yaml,yml} --ignore=node_modules/**/*.{yaml,yml}",
+    "openapi:split": "redocly split resources/openapi/openapi.json --outDir=openapi-split",
+    "openapi:bundle": "redocly bundle resources/openapi-split/openapi.json --outDir=resources/openapi-bundle/openapi.json",
     "postinstall": "if [ -z \"$CI\" ]; then patch-package; fi",
     "precommit": "lint-staged",
     "preinstall": "node -e \"if(!/bun/.test(process.env.npm_execpath || '')) { console.error('Please use Bun, not npm or yarn.'); process.exit(1); }\"",
