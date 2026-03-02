@@ -60,10 +60,7 @@ const defaultConfig = {
       : undefined,
   },
 
-  // Note: We can't set `allowCypressEnv: false` yet because @cypress/grep
-  // plugin still uses Cypress.env() internally
-  // FIXME: enable once we upgrade (DEV-1620)
-  // allowCypressEnv: false,
+  allowCypressEnv: false,
 
   // This is the functionality of the old cypress-plugins.js file
   setupNodeEvents(cypressOn, config) {
