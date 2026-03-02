@@ -100,8 +100,8 @@
           {run-id :id}                                               (transforms.u/try-start-unless-already-running transform-id run-method run-user-id)]
       (some-> start-promise (deliver [:started run-id]))
       (with-open [_ (if (app-db/in-transaction?)
-                       ;; if in a transaction (such as under mt/with-temp), it is not safe to poll for logs
-                      (reify Closeable (close [_]))
+                      ;; if in a transaction (such as under mt/with-temp), it is not safe to poll for logs
+                      ^Closeable (reify Closeable (close [_]))
                       (open-python-message-update-future! run-id message-log))]
         (driver.conn/with-write-connection
           (let [conn-spec         (driver/connection-spec driver db)
