@@ -123,7 +123,12 @@
    style]
   (let [humanized-name     (u.humanization/name->human-readable-name :simple field-name)
         field-display-name (or ref-display-name
-                               ;; TODO EXPLAIN HACK
+                               ;; TODO (Cam 2026-02-27) HACK for Models, `:original-display-name` gets incorrectly
+                               ;; overriden at some point with a recalculated display name for the column, so user
+                               ;; edits to `:display-name` itself get stomped on. Since we want to preserve the user
+                               ;; edits in `:display-name` we should ignore `:original-display-name` which is
+                               ;; incorrect here. FIXME -- we should make sure `:original-display-name` is set right
+                               ;; away for metadata coming from models and we can remove this hack.
                                (when (or (not from-model?)
                                          (= source :source/joins))
                                  original-display-name)
