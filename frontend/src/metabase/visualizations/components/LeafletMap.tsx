@@ -63,7 +63,6 @@ export class LeafletMap extends Component<LeafletMapProps> {
         scrollWheelZoom: true,
         wheelPxPerZoomLevel: 30,
         minZoom: 2,
-        drawControlTooltips: false,
         zoomSnap: 0,
         // Set max bounds for latitude only, allowing longitude to wrap
         maxBounds: [
@@ -72,7 +71,7 @@ export class LeafletMap extends Component<LeafletMapProps> {
         ],
         maxBoundsViscosity: 1.0, // Completely prevent panning outside latitude bounds
         worldCopyJump: true, // Enable smooth horizontal wrapping
-      } as L.MapOptions;
+      } satisfies L.MapOptions;
       const map = (this.map = L.map(element, mapOptions));
 
       const drawnItems = new L.FeatureGroup();
