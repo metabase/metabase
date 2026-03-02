@@ -152,7 +152,7 @@
             run-id 102
             logged-messages (atom [])
             run-called? (atom false)]
-        (mt/with-dynamic-fn-redefs [log/log* (fn [_ level _ message]
+        (with-redefs [log/log* (fn [_ level _ message]
                                                (swap! logged-messages conj {:level level :message message}))
                                     transform-run/running-run-for-transform-id (constantly nil)
                                     transforms.execute/execute! (fn [_ _]
@@ -170,7 +170,7 @@
                              :name "Test Query Transform"}
             run-id 100
             logged-messages (atom [])]
-        (mt/with-dynamic-fn-redefs [log/log* (fn [_ level _ message]
+        (with-redefs [log/log* (fn [_ level _ message]
                                                (swap! logged-messages conj {:level level :message message}))
                                     transform-run/running-run-for-transform-id (constantly nil)]
           (#'jobs/run-transform! run-id :scheduled nil query-transform)
@@ -190,7 +190,7 @@
             run-id 102
             logged-messages (atom [])
             run-called? (atom false)]
-        (mt/with-dynamic-fn-redefs [log/log* (fn [_ level _ message]
+        (with-redefs [log/log* (fn [_ level _ message]
                                                (swap! logged-messages conj {:level level :message message}))
                                     transform-run/running-run-for-transform-id (constantly nil)
                                     transforms.execute/execute! (fn [_ _]
@@ -237,7 +237,7 @@
                                                                    :tag_id (:id tag)
                                                                    :position 0}]
                   (let [run-id-atom (atom nil)]
-                    (mt/with-dynamic-fn-redefs [jobs/run-transforms! (fn [run-id & _]
+                    (with-redefs [jobs/run-transforms! (fn [run-id & _]
                                                                        (reset! run-id-atom run-id)
                                                                        (throw (ex-info "Uncaught error" {})))]
                       (try
@@ -286,7 +286,7 @@
                                                                    :tag_id (:id tag)
                                                                    :position 0}]
                   (let [run-id-atom (atom nil)]
-                    (mt/with-dynamic-fn-redefs [jobs/run-transforms! (fn [run-id & _]
+                    (with-redefs [jobs/run-transforms! (fn [run-id & _]
                                                                        (reset! run-id-atom run-id)
                                                                        (throw (ex-info "Uncaught error" {})))]
                       (try
@@ -481,7 +481,7 @@
                           on-enter        (fn [] (await-barrier barrier-enter))
                           on-exit         (fn [] (await-barrier barrier-exit) (.set tl-tripped true))
                           original-insert transforms.u/try-start-unless-already-running]
-                      (mt/with-dynamic-fn-redefs [transforms.u/try-start-unless-already-running
+                      (with-redefs [transforms.u/try-start-unless-already-running
                                                   (fn [transform-id run-method user-id]
                                                     (on-enter)
                                                     (let [[ret ex] (try

@@ -395,7 +395,7 @@
 (deftest transform-function-without-libraries-test
   (testing "transform function works when no libraries exist"
     (mt/test-drivers #{:postgres}
-      (mt/with-dynamic-fn-redefs [t2/select-fn->fn (fn [k v model]
+      (with-redefs [t2/select-fn->fn (fn [k v model]
                                                      (when (and (= k :path)
                                                                 (= v :source)
                                                                 (= model :model/PythonLibrary))
@@ -412,7 +412,7 @@
 (deftest transform-function-library-import-error-test
   (testing "transform function handles missing library gracefully"
     (mt/test-drivers #{:postgres}
-      (mt/with-dynamic-fn-redefs [t2/select-fn->fn (fn [k v model]
+      (with-redefs [t2/select-fn->fn (fn [k v model]
                                                      (when (and (= k :path)
                                                                 (= v :source)
                                                                 (= model :model/PythonLibrary))
