@@ -140,6 +140,13 @@ export const trackDependencyEntitySelected = ({
   });
 };
 
+export const trackDataStudioOpened = () => {
+  trackSimpleEvent({
+    event: "data_studio_opened",
+    triggered_from: "nav_menu",
+  });
+};
+
 export const trackMeasureCreateStarted = (tableId: number) => {
   trackSimpleEvent({
     event: "measure_create_started",

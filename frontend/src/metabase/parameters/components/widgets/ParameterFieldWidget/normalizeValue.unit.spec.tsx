@@ -3,11 +3,10 @@ import { normalizeValue } from "./normalizeValue";
 describe("normalizeValue", () => {
   it("returns empty array if value is null", () => {
     const value = null;
-    const expected = [];
 
     const normalized = normalizeValue(value);
 
-    expect(normalized).toEqual(expected);
+    expect(normalized).toEqual([]);
   });
 
   it("returns value if value is an array", () => {
