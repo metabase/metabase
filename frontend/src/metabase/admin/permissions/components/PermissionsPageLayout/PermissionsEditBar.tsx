@@ -5,6 +5,7 @@ import { t } from "ttag";
 import { Button } from "metabase/common/components/Button";
 import { ConfirmModal } from "metabase/common/components/ConfirmModal";
 import { EditBar } from "metabase/common/components/EditBar";
+import { Flex, Text } from "metabase/ui";
 import type { PermissionsGraph } from "metabase-types/api";
 
 import { PermissionsConfirm } from "../PermissionsConfirm";
@@ -47,7 +48,14 @@ export function PermissionsEditBar({
       <ConfirmModal
         title={t`Save permissions?`}
         opened={modelOpened}
-        message={diff ? <PermissionsConfirm diff={diff} /> : undefined}
+        message={
+          diff ? (
+            <Flex direction="column" gap="lg">
+              <PermissionsConfirm diff={diff} />
+              <Text>{t`Are you sure you want to do this?`}</Text>
+            </Flex>
+          ) : undefined
+        }
         onConfirm={() => {
           onSave?.();
           closeModal();
