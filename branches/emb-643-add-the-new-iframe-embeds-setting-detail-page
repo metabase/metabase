@@ -3,9 +3,6 @@
     "name": "master",
     "hash": "f2b8b44d48e11c54eb77498302563d5968f00f46"
   },
-  "upstream": {
-    "branch": "emb-643-add-the-new-iframe-embeds-setting-detail-page"
-  },
   "change": {
     "github": {
       "pr": {
