@@ -147,7 +147,7 @@ export const trackDataStudioOpened = () => {
   });
 };
 
-export const trackMeasureCreateStarted = (tableId: number) => {
+export const trackMeasureCreateStarted = (tableId: ConcreteTableId) => {
   trackSimpleEvent({
     event: "measure_create_started",
     triggered_from: "data_studio_measures_list",
