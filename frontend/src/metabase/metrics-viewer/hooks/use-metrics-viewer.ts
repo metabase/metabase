@@ -11,6 +11,7 @@ import type { Dataset, MetricBreakoutValuesResponse } from "metabase-types/api";
 
 import { getDefinitionName } from "../adapters/definition-loader";
 import { ALL_TAB_ID } from "../constants";
+import type { MetricsViewerPageProps } from "../pages/MetricsViewerPage/MetricsViewerPage";
 import type {
   MetricSourceId,
   MetricsViewerDefinitionEntry,
@@ -24,10 +25,7 @@ import {
   findDimensionById,
   findFilterDimensionById,
 } from "../utils/metrics";
-import {
-  computeSourceColors,
-  getSelectedMetricsInfo,
-} from "../utils/series";
+import { computeSourceColors, getSelectedMetricsInfo } from "../utils/series";
 import {
   createMeasureSourceId,
   createMetricSourceId,
@@ -45,7 +43,6 @@ import {
 import { useDefinitionQueries } from "./use-definition-queries";
 import { useViewerState } from "./use-viewer-state";
 import { type LoadSourcesRequest, useViewerUrl } from "./use-viewer-url";
-
 export interface UseMetricsViewerResult {
   definitions: MetricsViewerDefinitionEntry[];
   tabs: MetricsViewerTabState[];
@@ -134,7 +131,9 @@ function buildUrlRestoreTransform(
   };
 }
 
-export function useMetricsViewer(): UseMetricsViewerResult {
+export function useMetricsViewer({
+  location,
+}: MetricsViewerPageProps): UseMetricsViewerResult {
   const {
     state,
     loadingIds,
@@ -158,10 +157,7 @@ export function useMetricsViewer(): UseMetricsViewerResult {
     (request: LoadSourcesRequest) => {
       for (const metricId of request.metricIds) {
         const sourceId = createMetricSourceId(metricId);
-        loadAndAddMetric(
-          metricId,
-          buildUrlRestoreTransform(sourceId, request),
-        );
+        loadAndAddMetric(metricId, buildUrlRestoreTransform(sourceId, request));
       }
       for (const measureId of request.measureIds) {
         const sourceId = createMeasureSourceId(measureId);
@@ -174,7 +170,7 @@ export function useMetricsViewer(): UseMetricsViewerResult {
     [loadAndAddMetric, loadAndAddMeasure],
   );
 
-  useViewerUrl(state, initialize, handleLoadSources);
+  useViewerUrl(state, initialize, handleLoadSources, location);
 
   const activeTab = useMemo((): MetricsViewerTabState | null => {
     if (state.selectedTabId === ALL_TAB_ID || state.tabs.length === 0) {

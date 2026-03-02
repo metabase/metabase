@@ -1,3 +1,5 @@
+import type { Location } from "history";
+
 import { Box, Flex, Stack } from "metabase/ui";
 
 import { BreakoutLegend } from "../../components/BreakoutLegend/BreakoutLegend";
@@ -12,7 +14,11 @@ import { useMetricsViewer } from "../../hooks/use-metrics-viewer";
 
 import S from "./MetricsViewerPage.module.css";
 
-export function MetricsViewerPage() {
+export type MetricsViewerPageProps = {
+  location: Location;
+};
+
+export function MetricsViewerPage(props: MetricsViewerPageProps) {
   const {
     definitions,
     tabs,
@@ -43,7 +49,7 @@ export function MetricsViewerPage() {
     updateDefinition,
     setBreakoutDimension,
     toggleFullScreen,
-  } = useMetricsViewer();
+  } = useMetricsViewer(props);
 
   const hasDefinitions = definitions.length > 0;
 

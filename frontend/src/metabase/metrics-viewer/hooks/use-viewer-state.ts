@@ -397,20 +397,27 @@ export function useViewerState(): UseViewerStateResult {
 
       try {
         const rawDefinition = await loader();
-        const definition = transform
-          ? transform(rawDefinition)
-          : rawDefinition;
-        updateDefinition(id, definition);
+        // for some reason, React may run updateDefinition's state update before addDefinition's
+        // it then corrects itself and runs them in the correct order
+        // but the temporarily incorrect ordering breaks our handling of the browser's forward/back buttons
+        // so wrap updateDefinition in a setTimeout to ensure it runs after addDefinition
+        setTimeout(() => {
+          const definition = transform
+            ? transform(rawDefinition)
+            : rawDefinition;
+          updateDefinition(id, definition);
 
-        if (stateRef.current.tabs.length === 0) {
-          const definitions: Record<MetricSourceId, MetricDefinition | null> = {
-            [id]: definition,
-          };
-          const tabs = computeDefaultTabs(definitions, [id]);
-          for (const tab of tabs) {
-            addTab(tab);
+          if (stateRef.current.tabs.length === 0) {
+            const definitions: Record<MetricSourceId, MetricDefinition | null> =
+              {
+                [id]: definition,
+              };
+            const tabs = computeDefaultTabs(definitions, [id]);
+            for (const tab of tabs) {
+              addTab(tab);
+            }
           }
-        }
+        }, 0);
       } catch {
         removeDefinition(id);
       } finally {
@@ -436,7 +443,10 @@ export function useViewerState(): UseViewerStateResult {
 
       try {
         const definition = await loader();
-        updateDefinition(newId, definition);
+        // see comment above setTimeout in loadDefinition
+        setTimeout(() => {
+          updateDefinition(newId, definition);
+        }, 0);
       } catch {
         removeDefinition(newId);
       } finally {

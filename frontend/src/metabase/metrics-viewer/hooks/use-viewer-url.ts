@@ -1,3 +1,4 @@
+import type { Location } from "history";
 import { useEffect, useRef } from "react";
 import { push, replace } from "react-router-redux";
 
@@ -227,23 +228,16 @@ function decodeState(hash: string): SerializedMetricsViewerPageState | null {
     selectedTabId: null,
   };
 
-  if (!hash || hash.length <= 1) {
+  if (!hash) {
     return empty;
   }
 
   try {
-    return rootSchema.expand(JSON.parse(atob(hash.slice(1)))) ?? empty;
+    return rootSchema.expand(JSON.parse(atob(hash))) ?? empty;
   } catch (err) {
     console.warn("Failed to decode metrics viewer URL state:", err);
     return empty;
   }
-}
-
-function buildUrl(state: SerializedMetricsViewerPageState): string {
-  if (state.sources.length === 0) {
-    return Urls.metricsViewer();
-  }
-  return Urls.metricsViewer(encodeState(state));
 }
 
 export interface LoadSourcesRequest {
@@ -257,50 +251,30 @@ export function useViewerUrl(
   state: MetricsViewerPageState,
   initialize: (state: MetricsViewerPageState) => void,
   onLoadSources: (request: LoadSourcesRequest) => void,
+  location: Location,
 ): void {
   const dispatch = useDispatch();
   const lastHashRef = useRef<string | null>(null);
-  const lastSearchRef = useRef<string | null>(null);
-  const isInitializedRef = useRef(false);
-  const skipNextUrlPushRef = useRef(false);
 
+  // sync URL to state
   useEffect(() => {
-    const hash = window.location.hash;
-    const search = window.location.search;
-
-    if (hash || search === lastSearchRef.current) {
-      return;
-    }
-    lastSearchRef.current = search;
-
-    const params = new URLSearchParams(search);
-    const metricId = params.get("metricId");
-
-    if (metricId) {
-      isInitializedRef.current = false;
-      lastHashRef.current = null;
-
-      const initialState: SerializedMetricsViewerPageState = {
-        sources: [{ type: "metric", id: parseInt(metricId, 10) }],
-        tabs: [],
-        selectedTabId: null,
-      };
-
-      const newUrl = buildUrl(initialState);
-      dispatch(replace(newUrl));
-    }
-  }, [dispatch]);
-
-  useEffect(() => {
-    const hash = window.location.hash;
-    const search = window.location.search;
-    const params = new URLSearchParams(search);
-
-    if (!hash && params.has("metricId")) {
-      return;
+    let hash = location.hash.slice(1);
+    if (!hash) {
+      // generate a hash for the initial URL based on its metricId param
+      const search = location.search;
+      const params = new URLSearchParams(search);
+      const metricId = params.get("metricId");
+      if (metricId) {
+        const initialState: SerializedMetricsViewerPageState = {
+          sources: [{ type: "metric", id: parseInt(metricId, 10) }],
+          tabs: [],
+          selectedTabId: null,
+        };
+        hash = encodeState(initialState);
+      }
     }
 
-    if (lastHashRef.current !== null && hash === lastHashRef.current) {
+    if (hash === lastHashRef.current) {
       return;
     }
     lastHashRef.current = hash;
@@ -385,33 +359,27 @@ export function useViewerUrl(
         filtersBySourceId: hasFilters ? filtersBySourceId : undefined,
       });
     }
+  }, [location, dispatch, initialize, onLoadSources]);
 
-    skipNextUrlPushRef.current = true;
-    isInitializedRef.current = true;
-  }, [initialize, onLoadSources, dispatch]);
-
+  // sync state to URL
   useEffect(() => {
-    if (!isInitializedRef.current) {
-      return;
-    }
-
-    if (skipNextUrlPushRef.current) {
-      skipNextUrlPushRef.current = false;
-      return;
-    }
-
-    if (state.definitions.length === 0 && state.tabs.length > 0) {
+    if (
+      state.definitions.length === 0 ||
+      state.definitions.some((d) => d.definition === null)
+    ) {
       return;
     }
 
     const serializedState = stateToSerializedState(state);
-    const newUrl = buildUrl(serializedState);
-    const hashIndex = newUrl.indexOf("#");
-    const newHash = hashIndex !== -1 ? newUrl.substring(hashIndex) : "";
-
-    if (newHash !== lastHashRef.current) {
-      lastHashRef.current = newHash;
-      dispatch(push(newUrl));
+    const hash = encodeState(serializedState);
+    if (hash !== lastHashRef.current) {
+      lastHashRef.current = hash;
+      const url = Urls.metricsViewer(hash);
+      if (!window.location.hash) {
+        dispatch(replace(url));
+      } else {
+        dispatch(push(url));
+      }
     }
   }, [state, dispatch]);
 }
