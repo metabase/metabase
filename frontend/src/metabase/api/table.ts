@@ -58,11 +58,19 @@ export const tableApi = Api.injectEndpoints({
         ),
     }),
     getTableQueryMetadata: builder.query<Table, GetTableQueryMetadataRequest>({
-      query: ({ id, ...params }) => ({
-        method: "GET",
-        url: `/api/table/${id}/query_metadata`,
-        params,
-      }),
+      query: ({ id, ...params }) => {
+        // @ts-expect-error: this is a runtime check for the type check
+        if (typeof id === "string" && id.startsWith("card__")) {
+          throw new Error(
+            `Cannot use getTableQueryMetadata with card__ id: ${id}`,
+          );
+        }
+        return {
+          method: "GET",
+          url: `/api/table/${id}/query_metadata`,
+          params,
+        };
+      },
       providesTags: (table) => (table ? provideTableTags(table) : []),
       onQueryStarted: (_, { queryFulfilled, dispatch }) =>
         handleQueryFulfilled(queryFulfilled, (data) =>
