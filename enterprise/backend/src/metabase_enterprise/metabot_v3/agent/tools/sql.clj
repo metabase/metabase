@@ -9,9 +9,11 @@
    [metabase-enterprise.metabot-v3.tools.instructions :as instructions]
    [metabase-enterprise.metabot-v3.tools.llm-representations :as llm-rep]
    [metabase-enterprise.metabot-v3.tools.replace-sql-query :as replace-sql-query-tools]
+   [metabase.driver.util :as driver.u]
    [metabase.util :as u]
    [metabase.util.log :as log]
-   [metabase.util.malli :as mu]))
+   [metabase.util.malli :as mu]
+   [metabase.util.malli.registry :as mr]))
 
 (set! *warn-on-reflection* true)
 
@@ -58,6 +60,48 @@
   (streaming/code-edit-part {:buffer_id buffer-id
                              :mode "rewrite"
                              :value sql}))
+
+;;;; Sql validation
+
+;; TODO: Complete the dialect map
+(def driver->dialect
+  "Map of driver to parser dialect."
+  {:postgres "postgres"
+   :mysql "mysql"
+   :mariadb "mysql"
+   :bigquery-cloud-sdk "bigquery"
+   :snowflake "snowflake"
+   :redshift "redshift"})
+
+(defn database-id->dialect
+  "Get dialect for database id."
+  [db-id]
+  (when (integer? db-id)
+    (-> db-id driver.u/database->driver driver->dialect)))
+
+(defn query->dialect
+  "Get queries dialect."
+  [query]
+  (database-id->dialect (:database query)))
+
+(mr/def ::validation-result
+  [:map
+   [:is-valid :boolean]
+   [:error-message {:optional true} :string]
+   [:dialect {:optional true} :string]
+   [:transpiled-sql {:optional true} :string]])
+
+(mu/defn validate-sql :- ::validation-result
+  "Validate sql query."
+  [dialect :- [:maybe :string]
+   sql :- [:string]]
+  (let [error nil]
+    (merge
+     {:is-valid true
+      :transpiled-sql sql}
+     (when (string? dialect)
+       {:dialect dialect})
+     (select-keys error [:error-message]))))
 
 (mu/defn ^{:tool-name "create_sql_query"
            :capabilities #{:permission-write-sql-queries}}
