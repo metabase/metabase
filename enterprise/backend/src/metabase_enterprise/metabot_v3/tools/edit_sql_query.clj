@@ -2,7 +2,6 @@
   "Tool for editing existing SQL queries."
   (:require
    [clojure.string :as str]
-   [metabase-enterprise.metabot-v3.tools.util :as metabot-v3.tools.u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]))
 
@@ -71,7 +70,7 @@
   - :query-id - The ID of the updated query
   - :query-content - The updated SQL content
   - :database - Database ID"
-  [{:keys [query-id edits queries-state] :as arg}]
+  [{:keys [query-id edits queries-state]}]
   (log/info "Editing SQL query" {:query-id query-id :edit-count (count edits)})
 
   ;; Look up query from in-memory state
@@ -91,9 +90,6 @@
 
       ;; Apply edits sequentially
       (let [new-sql (reduce apply-sql-edit current-sql edits)
-            dialect (metabot-v3.tools.u/query->dialect query)
-            ;; TODO: Use transpiled sql
-            {:keys [is-valid transpiled-sql]} (metabot-v3.tools.u/validate-sql dialect new-sql)
             updated-query (update-query-sql query new-sql)]
         {:query-id      query-id
          :query-content new-sql
