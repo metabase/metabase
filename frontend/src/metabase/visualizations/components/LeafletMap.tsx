@@ -48,8 +48,8 @@ export interface LeafletMapProps {
 
 export class LeafletMap extends Component<LeafletMapProps> {
   mapRef = createRef<HTMLDivElement>();
-  map!: L.Map;
-  drawControl!: L.Control.Draw;
+  map: L.Map | null = null;
+  drawControl: L.Control.Draw | null = null;
   _filter?: L.Draw.Rectangle;
 
   componentDidMount() {
@@ -127,6 +127,10 @@ export class LeafletMap extends Component<LeafletMapProps> {
   }
 
   componentDidUpdate(prevProps: LeafletMapProps) {
+    if (!this.map) {
+      return;
+    }
+
     const { bounds, settings, zoomControl, zoom, lat, lng } = this.props;
 
     if (prevProps.zoomControl !== zoomControl) {
@@ -204,6 +208,9 @@ export class LeafletMap extends Component<LeafletMapProps> {
   }
 
   componentWillUnmount() {
+    if (!this.map) {
+      return;
+    }
     this.map.remove();
   }
 
@@ -226,6 +233,9 @@ export class LeafletMap extends Component<LeafletMapProps> {
   }
 
   startFilter() {
+    if (!this.map || !this.drawControl) {
+      return;
+    }
     this._filter = new L.Draw.Rectangle(
       this.map,
       (this.drawControl.options as any).rectangle,
