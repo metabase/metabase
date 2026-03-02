@@ -120,7 +120,7 @@ _Admin > Settings > Appearance > Conceal Metabase_
 
 You can change every place in the app that says “Metabase” to something like “Acme Analytics,” or whatever you want to call your Metabase app.
 
-Setting a custom application name will also hide the "How to use Metabase" section in the navi
+Setting a custom application name will also hide the "How to use Metabase" section in the navigation.
 
 ### Documentation and references
 
