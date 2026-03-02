@@ -3,7 +3,9 @@ import { t } from "ttag";
 
 import { createAdminRouteGuard } from "metabase/admin/utils";
 import { AdminSettingsLayout } from "metabase/common/components/AdminLayout/AdminSettingsLayout";
+import { useMetabotEnabledEmbeddingAware } from "metabase/metabot/hooks";
 import { PLUGIN_METABOT, PLUGIN_REDUCERS } from "metabase/plugins";
+import { QueryBuilder } from "metabase/query_builder/containers/QueryBuilder";
 import { useLazyMetabotGenerateContentQuery } from "metabase-enterprise/api";
 import { MetabotPurchasePage } from "metabase-enterprise/metabot/components/MetabotAdmin/MetabotPurchasePage";
 import { MetabotDataStudioSidebar } from "metabase-enterprise/metabot/components/MetabotDataStudioSidebar";
@@ -21,6 +23,19 @@ import { getMetabotQuickLinks } from "./components/MetabotQuickLinks";
 import { getNewMenuItemAIExploration } from "./components/NewMenuItemAIExploration";
 import { MetabotContext, MetabotProvider, defaultContext } from "./context";
 import { getMetabotVisible, metabotReducer } from "./state";
+
+/**
+ * A wrapper component that renders MetabotQueryBuilder if metabot is enabled,
+ * otherwise falls back to the regular QueryBuilder.
+ */
+function MetabotQueryBuilderOrFallback(props: any) {
+  const isMetabotEnabled = useMetabotEnabledEmbeddingAware();
+  return isMetabotEnabled ? (
+    <MetabotQueryBuilder {...props} />
+  ) : (
+    <QueryBuilder {...props} />
+  );
+}
 
 /**
  * This is for Metabot in embedding
@@ -69,7 +84,7 @@ export function initializePlugin() {
     PLUGIN_METABOT.MetabotDataStudioButton = MetabotDataStudioButton;
     PLUGIN_METABOT.MetabotDataStudioSidebar = MetabotDataStudioSidebar;
     PLUGIN_METABOT.getMetabotQueryBuilderRoute = () => (
-      <Route path="ask" component={MetabotQueryBuilder} />
+      <Route path="ask" component={MetabotQueryBuilderOrFallback} />
     );
     PLUGIN_METABOT.getNewMenuItemAIExploration = getNewMenuItemAIExploration;
     PLUGIN_METABOT.useLazyMetabotGenerateContentQuery =

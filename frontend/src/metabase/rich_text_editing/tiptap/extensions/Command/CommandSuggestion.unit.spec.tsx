@@ -11,7 +11,6 @@ import {
 } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
 import { renderWithProviders, screen, within } from "__support__/ui";
-import { PLUGIN_METABOT } from "metabase/plugins";
 import { Input } from "metabase/ui";
 import registerVisualizations from "metabase/visualizations/register";
 import { type RecentItem, isRecentTableItem } from "metabase-types/api";
@@ -439,12 +438,9 @@ describe("CommandSuggestion", () => {
     });
 
     describe("when metabot is disabled", () => {
-      beforeEach(() => {
-        PLUGIN_METABOT.isEnabled = jest.fn(() => false);
-      });
-
       it("should show all available commands except Metabot", async () => {
         const settings = mockSettings({
+          "metabot-enabled?": false,
           "token-features": createMockTokenFeatures({
             metabot_v3: false,
           }),
@@ -458,12 +454,9 @@ describe("CommandSuggestion", () => {
     });
 
     describe("when metabot is enabled", () => {
-      beforeEach(() => {
-        PLUGIN_METABOT.isEnabled = jest.fn(() => true);
-      });
-
       it("should show all available commands including Metabot", async () => {
         const settings = mockSettings({
+          "metabot-enabled?": true,
           "token-features": createMockTokenFeatures({
             metabot_v3: true,
           }),

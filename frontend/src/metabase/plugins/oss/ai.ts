@@ -72,6 +72,7 @@ type PluginMetabotType = {
   getNewMenuItemAIExploration: (
     hasDataAccess: boolean,
     collectionId?: CollectionId,
+    isMetabotEnabled?: boolean,
   ) => React.ReactElement | undefined;
   getMetabotVisible: (state: State, conversation_id: string) => boolean;
   MetabotToggleButton: ComponentType<{ className?: string }>;
