@@ -802,3 +802,23 @@
                 [nil 1 3]]
                (mt/rows
                 (qp.pivot/run-pivot-query query))))))))
+
+(deftest ^:parallel offset-pivot-test
+  (testing "#70088"
+    (mt/test-drivers (mt/normal-drivers-with-feature :window-functions/cumulative :window-functions/offset)
+      (let [mp    (mt/metadata-provider)
+            query (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
+                      (lib/aggregate (lib/count))
+                      (lib/aggregate (-> (lib/offset (lib/count) -1)
+                                         (lib/update-options assoc :display-name "Previous Count")))
+                      (lib/breakout (-> (lib.metadata/field mp (mt/id :orders :created_at))
+                                        (lib/with-temporal-bucket :year))))]
+        ;;       Created At           | Pivot Group | Count | Previous Count
+        (is (= [["2016-01-01T00:00:00Z" 0               744     nil]
+                ["2017-01-01T00:00:00Z" 0              3610     744]
+                ["2018-01-01T00:00:00Z" 0              5834    3610]
+                ["2019-01-01T00:00:00Z" 0              6578    5834]
+                ["2020-01-01T00:00:00Z" 0              1994    6578]
+                [nil                    1             18760     nil]]
+               (mt/rows
+                (qp.pivot/run-pivot-query query))))))))

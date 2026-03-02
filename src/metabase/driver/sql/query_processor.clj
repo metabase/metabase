@@ -989,47 +989,61 @@
                 (or (clause-pred (first form))
                     (m/find-first (partial contains-clause? clause-pred) (rest form))))))
 
+;; NOCOMMIT
+(defn- constant-expr?
+  [expr]
+  (and (vector? expr)
+       (= (first expr) :field)
+       (= (second expr) "pivot-grouping")))
+
 (defn- over-order-bys
   "Returns a vector containing the `aggregations` specified by `order-bys` compiled to
   honeysql expressions for `driver` suitable for ordering in the over clause of a window function."
   [driver aggregations order-bys]
   (let [aggregations (vec aggregations)]
     (into []
-          (keep (fn [[direction expr]]
-                  (if (aggregation? expr)
-                    (let [[_aggregation index] expr
-                          agg (unwrap-aggregation-option (aggregations index))]
-                      (when-not (contains-clause? #{:cum-count :cum-sum :offset} agg)
-                        [(->honeysql driver agg) direction]))
-                    [(->honeysql driver expr) direction])))
+          (comp (remove (fn [[_direction expr]]
+                          (constant-expr? expr)))
+                (keep (fn [[direction expr]]
+                   (if (aggregation? expr)
+                     (let [[_aggregation index] expr
+                           agg                  (unwrap-aggregation-option (aggregations index))]
+                       (when-not (contains-clause? #{:cum-count :cum-sum :offset} agg)
+                         [(->honeysql driver agg) direction]))
+                     [(->honeysql driver expr) direction]))))
           order-bys)))
 
 (defn- window-aggregation-over-expr-for-query-with-breakouts
   "Order by the first breakout, then partition by all the other ones. See #42003 and
   https://metaboat.slack.com/archives/C05MPF0TM3L/p1714084449574689 for more info."
   [driver inner-query]
-  (let [breakouts (remove
-                   (comp driver-api/qp.util.transformations.nest-breakouts.externally-remapped-field
-                         #(nth % 2))
-                   (:breakout inner-query))
-        group-bys (:group-by (apply-top-level-clause driver :breakout {} inner-query))
+  (let [breakouts            (into []
+                                   (comp (remove
+                                          (comp driver-api/qp.util.transformations.nest-breakouts.externally-remapped-field
+                                                #(nth % 2)))
+                                         (remove constant-expr?))
+                                   (:breakout inner-query))
+        group-bys            (:group-by (apply-top-level-clause driver :breakout {} inner-query))
         finest-temp-breakout (driver-api/finest-temporal-breakout-index breakouts 2)
-        partition-exprs (when (> (count breakouts) 1)
-                          (if finest-temp-breakout
-                            (m/remove-nth finest-temp-breakout group-bys)
-                            (butlast group-bys)))
-        order-bys (over-order-bys driver (:aggregation inner-query)
-                                  (remove
-                                   (comp driver-api/qp.util.transformations.nest-breakouts.externally-remapped-field
-                                         #(nth % 2)
-                                         second)
-                                   (:order-by inner-query)))]
+        partition-exprs      (when (> (count breakouts) 1)
+                               (if finest-temp-breakout
+                                 (m/remove-nth finest-temp-breakout group-bys)
+                                 (butlast group-bys)))
+        order-bys            (remove
+                              (comp driver-api/qp.util.transformations.nest-breakouts.externally-remapped-field
+                                    #(nth % 2)
+                                    second)
+                              (:order-by inner-query))
+        order-bys            (over-order-bys driver
+                                             (:aggregation inner-query)
+                                             order-bys)]
     (merge
      (when (seq partition-exprs)
        {:partition-by (mapv (fn [expr]
                               [expr])
                             partition-exprs)})
-     {:order-by order-bys})))
+     (when (seq order-bys)
+       {:order-by order-bys}))))
 
 (defn- window-aggregation-over-expr-for-query-without-breakouts [driver inner-query]
   (when-let [order-bys (not-empty (:order-by (apply-top-level-clause driver :order-by {} inner-query)))]
@@ -1052,8 +1066,11 @@
              (throw (ex-info (tru "Window function requires either breakouts or order by in the query")
                              {:type  driver-api/qp.error-type.invalid-query
                               :query *inner-query*})))
-         m (f driver *inner-query*)]
-     (-> [:over [expr (merge m additional-hsql)]]
+         m (-> (f driver *inner-query*)
+               (merge additional-hsql))]
+     (-> (if (seq m)
+           [:over [expr m]]
+           [:inline nil])
          (h2x/with-database-type-info (h2x/database-type expr))))))
 
 (defn- format-rows-unbounded-preceding [_clause _args]
