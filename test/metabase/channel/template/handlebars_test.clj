@@ -58,6 +58,21 @@
     (with-temp-template! [tmpl-name "tmpl.hbs" "Hello {{uppercase name}}"]
       (is (= "Hello NGOC" (handlebars/render custom-hbs tmpl-name {:name "Ngoc"}))))))
 
+(deftest validate-template-path-test
+  (testing "valid paths are accepted"
+    (is (true? (handlebars/valid-template-path? "metabase/channel/email/password_reset.hbs")))
+    (is (true? (handlebars/valid-template-path? "metabase/channel/email/notification_card.hbs")))
+    (is (true? (handlebars/valid-template-path? "notification/channel_template/hello_world.hbs"))))
+
+  (is (false? (handlebars/valid-template-path? "foo/bar/baz.hbs")))
+  (is (false? (handlebars/valid-template-path? "/metabase/channel/email/foo.hbs")))
+
+  (testing "render rejects invalid paths"
+    (is (thrown-with-msg? clojure.lang.ExceptionInfo #"invalid template path"
+                          (handlebars/render "foo/bar.hbs" {})))
+    (is (thrown-with-msg? clojure.lang.ExceptionInfo #"invalid template path"
+                          (handlebars/render "metabase/channel/email/logo.clj" {})))))
+
 (deftest dotted-path-resolution-works-on-maps-test
   (are [template context]
        (= "" (handlebars/render-string template context))
