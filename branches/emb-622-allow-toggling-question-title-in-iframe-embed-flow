@@ -3,9 +3,6 @@
     "name": "emb-617-ability-to-showhide-title-in-staticquestion",
     "hash": "15c38e50b3a1e5e2e48a340d9ce3b0fef3227f31"
   },
-  "upstream": {
-    "branch": "emb-622-allow-toggling-question-title-in-iframe-embed-flow"
-  },
   "change": {
     "github": {
       "pr": {
