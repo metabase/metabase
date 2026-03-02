@@ -10,7 +10,6 @@
    [metabase.query-processor.compile :as qp.compile]
    [metabase.transforms-base.interface :as transforms-base.i]
    [metabase.transforms-base.util :as transforms-base.u]
-   [metabase.util.i18n :as i18n]
    [metabase.util.log :as log]
    [metabase.util.malli.registry :as mr]
    [toucan2.core :as t2]))
@@ -86,11 +85,7 @@
 
     (let [db (get-in source [:query :database])
           {driver :engine :as database} (t2/select-one :model/Database db)
-          _ (when (transforms-base.u/db-routing-enabled? database)
-              (throw (ex-info (i18n/tru "Failed to run the transform ({0}) because the database ({1}) has database routing turned on. Running transforms on databases with db routing enabled is not supported."
-                                        (:name transform)
-                                        (:name database))
-                              {:driver driver, :database database})))
+          _ (transforms-base.u/throw-if-db-routing-enabled! transform database)
           transform-details {:db-id db
                              :database database
                              :transform-id   id

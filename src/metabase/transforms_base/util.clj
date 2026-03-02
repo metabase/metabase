@@ -26,6 +26,7 @@
    [metabase.transforms-base.interface :as transforms-base.i]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
+   [metabase.util.i18n :as i18n]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
@@ -711,3 +712,13 @@
   (or (t2/exists? :model/DatabaseRouter :database_id (u/the-id db-or-id))
       (some->> (:router-database-id db-or-id)
                (t2/exists? :model/DatabaseRouter :database_id))))
+
+(defn throw-if-db-routing-enabled!
+  "Throws if the database has routing enabled. Call before any driver operations to get a
+   clear error message rather than a confusing driver-level failure."
+  [transform database]
+  (when (db-routing-enabled? database)
+    (throw (ex-info (i18n/tru "Failed to run the transform ({0}) because the database ({1}) has database routing turned on. Running transforms on databases with db routing enabled is not supported."
+                              (:name transform)
+                              (:name database))
+                    {:driver (:engine database), :database database}))))

@@ -20,6 +20,7 @@
    (try
      (let [db          (t2/select-one :model/Database (get-in source [:query :database]))
            driver      (:engine db)
+           _           (transforms-base.u/throw-if-db-routing-enabled! transform db)
            run-user-id (if (and (= run-method :manual) user-id)
                          user-id
                          (or owner_user_id creator_id))
