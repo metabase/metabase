@@ -3,6 +3,7 @@
    [malli.core :as mc]
    [metabase.analytics.prometheus :as prometheus]
    [metabase.api.common :as api]
+   [metabase.channel.template.handlebars :as handlebars]
    [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
    [metabase.permissions.core :as perms]
@@ -96,7 +97,10 @@
    [:multi {:dispatch (comp keyword :type)}
     [:email/handlebars-resource
      [:map
-      [:path string?]]]
+      [:path [:and
+              string?
+              [:fn {:error/message "invalid template path"}
+               handlebars/valid-template-path?]]]]]
     [:email/handlebars-text
      [:map
       [:body string?]]]]])
