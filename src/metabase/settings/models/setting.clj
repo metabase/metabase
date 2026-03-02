@@ -562,9 +562,12 @@
 
   1. From [[*user-local-values*]] if this Setting is allowed to have User-local values
   2. From [[*database-local-values*]] if this Setting is allowed to have Database-local values
-  3. From the corresponding env var (excluding empty string values)
+  3. From the corresponding env var (excluding empty string values) -- unless in isolated cache context
   4. From the application database (i.e., set via the admin panel) (excluding empty string values)
   5. The default value, if one was specified
+
+  When in an isolated cache context (i.e., [[setting.cache/*cache-atom*]] is bound), the cache is checked before
+  env vars. This allows test code using [[with-temporary-setting-values]] to override env var values.
 
   !!!!!!!!!! The value returned MAY OR MAY NOT be a String depending on the source !!!!!!!!!!
 
@@ -575,11 +578,16 @@
   Three-arity version can be used to specify how to parse non-empty String values (`parse-fn`) and under what
   conditions values can be returned directly (`pred`) -- see [[get-value-of-type]] for `:boolean` for example usage."
   ([setting-definition-or-name]
-   (let [setting (resolve-setting setting-definition-or-name)]
+   (let [setting (resolve-setting setting-definition-or-name)
+         ;; When in isolated cache context (thread-local), check cache before env vars
+         ;; so test values can override env var values
+         [source-3 source-4] (if setting.cache/*cache-atom*
+                               [db-or-cache-value env-var-value]
+                               [env-var-value db-or-cache-value])]
      (or-some (user-local-value setting)
               (database-local-value setting)
-              (env-var-value setting)
-              (db-or-cache-value setting)
+              (source-3 setting)
+              (source-4 setting)
               (:default setting)
               (when (and (:init setting) (not *disable-init*))
                 (init! setting)))))

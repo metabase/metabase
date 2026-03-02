@@ -26,6 +26,7 @@
    [metabase.permissions.models.permissions-group-membership :as pgm]
    [metabase.permissions.test-util :as perms.test-util]
    [metabase.premium-features.test-util :as premium-features.test-util]
+   [metabase.premium-features.token-check :as token-check]
    [metabase.query-processor.util :as qp.util]
    [metabase.search.core :as search]
    [metabase.settings.core :as setting]
@@ -38,6 +39,7 @@
    [metabase.test.fixtures :as fixtures]
    [metabase.test.initialize :as initialize]
    [metabase.test.util.log]
+   [metabase.test.util.thread-local :as thread-local]
    [metabase.timeline.models.timeline-event :as timeline-event]
    [metabase.util :as u]
    [metabase.util.files :as u.files]
@@ -536,9 +538,63 @@
     (t2/delete! :model/Setting :key setting-k))
   (setting.cache/restore-cache!))
 
+;; Most of the time setting/set! is not threadsafe. It is only threadsafe here because we are wrapping
+;; it in [[setting.cache/do-with-isolated-cache]] which binds a thread-local settings cache for us
+#_{:clj-kondo/ignore [:metabase/test-helpers-use-non-thread-safe-functions]}
+(defn do-with-temporary-setting-value
+  "Thread-safe version: temporarily set the value of the Setting named by keyword `setting-k` to `value` and execute
+  `thunk`. Uses an isolated cache and a rollback-only transaction to ensure thread isolation.
+
+  This is the preferred implementation for parallel tests. Changes are visible only to the current thread and are
+  rolled back when the thunk completes.
+
+  If the setting requires a premium feature (via its `:feature` key), this function will temporarily enable that
+  feature using thread-local binding, preserving any features already enabled by the test. This is thread-safe
+  unlike [[do-with-temporary-setting-value!]] which uses `with-redefs`.
+
+  When an env var value is set for the setting, the isolated cache will take precedence over the env var,
+  allowing tests to override env var values in a thread-safe manner.
+
+  Prefer the macro [[with-temporary-setting-values]] over using this function directly."
+  [setting-k value thunk & {:keys [raw-setting?]}]
+  (initialize/initialize-if-needed! :db :plugins)
+  (let [setting-k (name setting-k)
+        setting   (try
+                    (#'setting/resolve-setting setting-k)
+                    (catch Exception e
+                      (when-not raw-setting?
+                        (throw e))))
+        initial-cache (t2/select-fn->fn :key :value :model/Setting)]
+    (t2/with-transaction [_conn nil {:rollback-only true}]
+      (setting.cache/do-with-isolated-cache
+       initial-cache
+       (fn []
+         (try
+           (if raw-setting?
+             (upsert-raw-setting! (get initial-cache setting-k) setting-k value)
+             (let [required-feature (:feature setting)
+                   current-features (token-check/*token-features*)
+                   features-with-required (if required-feature
+                                            (conj current-features (name required-feature))
+                                            current-features)]
+               (binding [token-check/*token-features* (constantly features-with-required)]
+                 (setting/set! setting-k value :bypass-read-only? true))))
+           (catch Throwable e
+             (throw (ex-info (str "Error in with-temporary-setting-values: " (ex-message e))
+                             {:setting  setting-k
+                              :location (when setting
+                                          (symbol (name (:namespace setting)) (name setting-k)))
+                              :value    value}
+                             e))))
+         (testing (colorize/blue (format "\nSetting %s = %s\n" (keyword setting-k) (pr-str value)))
+           (thunk)))))))
+
 (defn do-with-temporary-setting-value!
-  "Temporarily set the value of the Setting named by keyword `setting-k` to `value` and execute `f`, then re-establish
-  the original value. This works much the same way as [[binding]].
+  "Non-thread-safe version: temporarily set the value of the Setting named by keyword `setting-k` to `value` and
+  execute `f`, then re-establish the original value. This works much the same way as [[binding]].
+
+  WARNING: This modifies global state and is not safe for parallel tests. Prefer the thread-safe version
+  [[do-with-temporary-setting-value]] for new code.
 
   If an env var value is set for the setting, this acts as a wrapper around [[do-with-temp-env-var-value!]].
 
@@ -551,7 +607,7 @@
   directly."
   [setting-k value thunk & {:keys [raw-setting? skip-init?]}]
   ;; plugins have to be initialized because changing `report-timezone` will call driver methods
-  (mb.hawk.parallel/assert-test-is-not-parallel "do-with-temporary-setting-value")
+  (mb.hawk.parallel/assert-test-is-not-parallel "do-with-temporary-setting-value!")
   (initialize/initialize-if-needed! :db :plugins)
   (let [setting-k (name setting-k)
         setting (try
@@ -595,17 +651,42 @@
                                  :original-value original-value}
                                 e))))))))))
 
-;;; TODO FIXME -- either rename this to `with-temporary-setting-values!` or fix it and make it thread-safe
-#_{:clj-kondo/ignore [:metabase/test-helpers-use-non-thread-safe-functions]}
 (defmacro with-temporary-setting-values
-  "Temporarily bind the site-wide values of one or more `Settings`, execute body, and re-establish the original values.
-  This works much the same way as `binding`.
+  "Temporarily bind the site-wide values of one or more `Settings`, execute body.
+  By default uses an isolated cache and rollback-only transaction for thread isolation.
+
+  When inside [[metabase.test/test-helpers-set-global-values!]], uses global state instead (non-thread-safe).
 
      (with-temporary-setting-values [google-auth-auto-create-accounts-domain \"metabase.com\"]
        (google-auth-auto-create-accounts-domain)) -> \"metabase.com\"
 
   If an env var value is set for the setting, this will change the env var rather than the setting stored in the DB.
-  To temporarily override the value of *read-only* env vars, use [[with-temp-env-var-value!]]."
+  To temporarily override the value of *read-only* env vars, use [[with-temp-env-var-value!]].
+
+  For explicitly non-thread-safe behavior, use [[with-temporary-setting-values!]]."
+  [[setting-k value & more :as bindings] & body]
+  (assert (even? (count bindings)) "mismatched setting/value pairs: is each setting name followed by a value?")
+  (if (empty? bindings)
+    `(do ~@body)
+    `((if thread-local/*thread-local*
+        do-with-temporary-setting-value
+        do-with-temporary-setting-value!)
+      ~(keyword setting-k) ~value
+      (fn []
+        (with-temporary-setting-values ~more
+          ~@body)))))
+
+(defmacro with-temporary-setting-values!
+  "Non-thread-safe version: temporarily bind the site-wide values of one or more `Settings`, execute body,
+  and re-establish the original values. This modifies global state.
+
+     (with-temporary-setting-values! [google-auth-auto-create-accounts-domain \"metabase.com\"]
+       (google-auth-auto-create-accounts-domain)) -> \"metabase.com\"
+
+  If an env var value is set for the setting, this will change the env var rather than the setting stored in the DB.
+  To temporarily override the value of *read-only* env vars, use [[with-temp-env-var-value!]].
+
+  For thread-safe behavior, use [[with-temporary-setting-values]]."
   [[setting-k value & more :as bindings] & body]
   (assert (even? (count bindings)) "mismatched setting/value pairs: is each setting name followed by a value?")
   (if (empty? bindings)
@@ -613,26 +694,60 @@
     `(do-with-temporary-setting-value!
       ~(keyword setting-k) ~value
       (fn []
-        (with-temporary-setting-values ~more
+        (with-temporary-setting-values! ~more
           ~@body)))))
 
-;;; TODO FIXME -- either rename this to `with-temporary-raw-setting-values!` or fix it and make it thread-safe
-#_{:clj-kondo/ignore [:metabase/test-helpers-use-non-thread-safe-functions]}
 (defmacro with-temporary-raw-setting-values
-  "Like [[with-temporary-setting-values]] but works with raw value and it allows settings that are not defined
-  using [[metabase.settings.models.setting/defsetting]]."
+  "Like [[with-temporary-setting-values]] but works with raw values and allows settings
+  that are not defined using [[metabase.settings.models.setting/defsetting]].
+
+  When inside [[metabase.test/test-helpers-set-global-values!]], uses global state instead (non-thread-safe).
+
+  For explicitly non-thread-safe behavior, use [[with-temporary-raw-setting-values!]]."
   [[setting-k value & more :as bindings] & body]
   (assert (even? (count bindings)) "mismatched setting/value pairs: is each setting name followed by a value?")
   (if (empty? bindings)
     `(do ~@body)
-    `(do-with-temporary-setting-value!
+    `((if thread-local/*thread-local*
+        do-with-temporary-setting-value
+        do-with-temporary-setting-value!)
       ~(keyword setting-k) ~value
       (fn []
         (with-temporary-raw-setting-values ~more
           ~@body))
       :raw-setting? true)))
 
-(defn do-with-discarded-setting-changes! [settings thunk]
+(defmacro with-temporary-raw-setting-values!
+  "Non-thread-safe version: like [[with-temporary-setting-values!]] but works with raw values and allows settings
+  that are not defined using [[metabase.settings.models.setting/defsetting]].
+
+  For thread-safe behavior, use [[with-temporary-raw-setting-values]]."
+  [[setting-k value & more :as bindings] & body]
+  (assert (even? (count bindings)) "mismatched setting/value pairs: is each setting name followed by a value?")
+  (if (empty? bindings)
+    `(do ~@body)
+    `(do-with-temporary-setting-value!
+      ~(keyword setting-k) ~value
+      (fn []
+        (with-temporary-raw-setting-values! ~more
+          ~@body))
+      :raw-setting? true)))
+
+(defn do-with-discarded-setting-changes
+  "Thread-safe version: execute `thunk` and discard any changes to `settings`."
+  [settings thunk]
+  (initialize/initialize-if-needed! :db :plugins)
+  ((reduce
+    (fn [thunk setting-k]
+      (fn []
+        (let [value (setting/read-setting setting-k)]
+          (do-with-temporary-setting-value setting-k value thunk :skip-init? true))))
+    thunk
+    settings)))
+
+(defn do-with-discarded-setting-changes!
+  "Non-thread-safe version: execute `thunk` and discard any changes to `settings`."
+  [settings thunk]
   (initialize/initialize-if-needed! :db :plugins)
   ((reduce
     (fn [thunk setting-k]
@@ -642,14 +757,31 @@
     thunk
     settings)))
 
-;;; TODO FIXME -- either rename this to `with-discarded-setting-changes!` or fix it and make it thread-safe
-#_{:clj-kondo/ignore [:metabase/test-helpers-use-non-thread-safe-functions]}
 (defmacro discard-setting-changes
-  "Execute `body` in a try-finally block, restoring any changes to listed `settings` to their original values at its
-  conclusion.
+  "Execute `body` in a try-finally block, restoring any changes to listed `settings`
+  to their original values at its conclusion.
+
+  When inside [[metabase.test/test-helpers-set-global-values!]], uses global state instead (non-thread-safe).
 
     (discard-setting-changes [site-name]
-      ...)"
+      ...)
+
+  For explicitly non-thread-safe behavior, use [[discard-setting-changes!]]."
+  {:style/indent 1}
+  [settings & body]
+  `((if thread-local/*thread-local*
+      do-with-discarded-setting-changes
+      do-with-discarded-setting-changes!)
+    ~(mapv keyword settings) (fn [] ~@body)))
+
+(defmacro discard-setting-changes!
+  "Non-thread-safe version: execute `body` in a try-finally block, restoring any changes to listed `settings`
+  to their original values at its conclusion.
+
+    (discard-setting-changes! [site-name]
+      ...)
+
+  For thread-safe behavior, use [[discard-setting-changes]]."
   {:style/indent 1}
   [settings & body]
   `(do-with-discarded-setting-changes! ~(mapv keyword settings) (fn [] ~@body)))
@@ -664,7 +796,7 @@
   The token-value binding will contain the random token that was set."
   [[token-value] & body]
   `(let [~token-value (premium-features.test-util/random-token)]
-     (with-redefs [metabase.premium-features.token-check/check-token
+     (with-redefs [token-check/check-token
                    (constantly {:valid    true
                                 :status   "fake"
                                 :features ["test" "fixture"]
