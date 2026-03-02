@@ -68,19 +68,21 @@
        ~@body)))
 
 (defmacro ^:private with-slackbot-setup
-  "Wrap body with all required settings for slackbot to be fully configured."
+  "Wrap body with all required settings for slackbot to be fully configured.
+   Uses `with-temporary-raw-setting-values` for secrets whose getters mask the value,
+   since `with-temporary-setting-values` would save and restore the masked value."
   [& body]
   `(with-redefs [slackbot.config/validate-bot-token! (constantly {:ok true})
                  slackbot.client/get-bot-user-id     (constantly "UBOT123")]
      (with-ensure-encryption
        (mt/with-premium-features #{:metabot-v3 :sso-slack}
          (mt/with-temporary-setting-values [site-url "https://localhost:3000"
-                                            metabot.settings/metabot-slack-signing-secret test-signing-secret
-                                            channel.settings/slack-app-token "xoxb-test"
                                             sso-settings/slack-connect-client-id "test-client-id"
-                                            sso-settings/slack-connect-client-secret "test-secret"
                                             sso-settings/slack-connect-enabled true]
-           ~@body)))))
+           (mt/with-temporary-raw-setting-values [metabot-slack-signing-secret test-signing-secret
+                                                  slack-app-token "xoxb-test"
+                                                  slack-connect-client-secret "test-secret"]
+             ~@body))))))
 
 (defn- compute-slack-signature
   "Compute a valid Slack signature for testing"
@@ -181,9 +183,9 @@
                 Pass ::no-user to simulate an unlinked Slack user (returns nil).
 
    Calls body-fn with a map containing tracking atoms:
-   {:post-calls, :delete-calls, :image-calls, :generate-png-calls, :generate-adhoc-png-calls,
-    :generate-card-output-calls, :generate-adhoc-output-calls, :ephemeral-calls,
-    :ai-request-calls, :fake-png-bytes, :stream-calls, :append-text-calls, :stop-stream-calls}"
+   {:post-calls, :delete-calls, :image-calls, :generate-card-output-calls,
+    :generate-adhoc-output-calls, :ephemeral-calls, :ai-request-calls,
+    :fake-png-bytes, :stream-calls, :append-text-calls, :stop-stream-calls}"
   [{:keys [ai-text data-parts user-id]
     :or   {data-parts []
            user-id    ::default}}
@@ -191,8 +193,6 @@
   (let [post-calls                  (atom [])
         delete-calls                (atom [])
         image-calls                 (atom [])
-        generate-png-calls          (atom [])
-        generate-adhoc-png-calls    (atom [])
         generate-card-output-calls  (atom [])
         generate-adhoc-output-calls (atom [])
         ephemeral-calls             (atom [])
@@ -246,9 +246,6 @@
              (doseq [line mock-lines]
                (on-line line)))
            mock-lines))
-       slackbot.query/generate-card-png        (fn [card-id & _opts]
-                                                 (swap! generate-png-calls conj card-id)
-                                                 fake-png-bytes)
        slackbot.query/generate-card-output     (fn [card-id]
                                                  (swap! generate-card-output-calls conj {:card-id card-id})
                                            ;; Mock returns image by default (simulating a chart card)
@@ -268,8 +265,6 @@
       (body-fn {:post-calls                  post-calls
                 :delete-calls                delete-calls
                 :image-calls                 image-calls
-                :generate-png-calls          generate-png-calls
-                :generate-adhoc-png-calls    generate-adhoc-png-calls
                 :generate-card-output-calls  generate-card-output-calls
                 :generate-adhoc-output-calls generate-adhoc-output-calls
                 :ephemeral-calls             ephemeral-calls
@@ -381,12 +376,13 @@
                                         (slack-request-options event-body)
                                         event-body)]
                 (is (= "ok" response))
-                (u/poll {:thunk #(>= (count @post-calls) 1)
+                (u/poll {:thunk #(some (fn [m] (= "I wasn't able to generate a response. Please try again." (:text m)))
+                                       @post-calls)
                          :done? true?
                          :timeout-ms 5000})
                 (testing "fallback message is sent"
-                  (is (= "I wasn't able to generate a response. Please try again."
-                         (:text (first @post-calls)))))
+                  (is (some #(= "I wasn't able to generate a response. Please try again." (:text %))
+                            @post-calls)))
                 (testing "stop-stream is never called"
                   (is (= 0 (count @stop-stream-calls))))))))))))
 
@@ -698,12 +694,10 @@
 
 (deftest generate-card-output-display-type-test
   (testing "generate-card-output returns correct type based on card display"
-    (let [fake-png-bytes (byte-array [0x89 0x50 0x4E 0x47])
-          mock-results {:data {:cols [{:name "x" :base_type :type/Integer}]
+    (let [mock-results {:data {:cols [{:name "x" :base_type :type/Integer}]
                                :rows [[1] [2]]}}]
       (mt/with-dynamic-fn-redefs
-        [slackbot.query/generate-card-png (constantly fake-png-bytes)
-         slackbot.query/pulse-card-query-results (constantly mock-results)]
+        [slackbot.query/pulse-card-query-results (constantly mock-results)]
 
         (testing "supported display types return :image"
           (doseq [display [:bar :line :pie :area :row :scatter :funnel
@@ -720,6 +714,92 @@
               (mt/with-temp [:model/Card {card-id :id} {:display display}]
                 (let [result (#'slackbot.query/generate-card-output card-id)]
                   (is (= :table (:type result))))))))))))
+
+;; -------------------------------- Visualization Error Handling Tests --------------------------------
+
+(deftest viz-error-posts-message-test
+  (testing "posts error to Slack when visualization generation fails"
+    (with-slackbot-setup
+      (let [event-body (update base-dm-event :event merge
+                               {:text      "Show me a chart"
+                                :channel   "C456"
+                                :ts        "1234567890.000010"
+                                :event_ts  "1234567890.000010"
+                                :thread_ts "1234567890.000000"})]
+        (with-slackbot-mocks
+          {:ai-text    "Here's your chart"
+           :data-parts [{:type "static_viz" :value {:entity_id 999999}}]}
+          (fn [{:keys [post-calls stop-stream-calls]}]
+            (mt/with-dynamic-fn-redefs
+              [slackbot.query/generate-card-output (fn [_card-id]
+                                                     (throw (ex-info "Unexpected render error" {})))]
+              (mt/client :post 200 "ee/metabot-v3/slack/events"
+                         (slack-request-options event-body) event-body)
+              (let [error-msg "Query execution failed, please try again."]
+                (u/poll {:thunk      #(and (>= (count @stop-stream-calls) 1)
+                                           (some (fn [m] (= error-msg (:text m))) @post-calls))
+                         :done?      true?
+                         :timeout-ms 5000})
+                (is (some #(= error-msg (:text %)) @post-calls))))))))))
+
+(deftest viz-error-does-not-block-other-vizs-test
+  (testing "a failing viz does not prevent subsequent vizs from rendering"
+    (with-slackbot-setup
+      (let [fake-png   (byte-array [0x89 0x50 0x4E 0x47])
+            event-body (update base-dm-event :event merge
+                               {:text      "Show me charts"
+                                :channel   "C456"
+                                :ts        "1234567890.000011"
+                                :event_ts  "1234567890.000011"
+                                :thread_ts "1234567890.000000"})]
+        (with-slackbot-mocks
+          {:ai-text    "Here are your charts"
+           :data-parts [{:type "static_viz" :value {:entity_id 999999}}
+                        {:type "static_viz" :value {:entity_id 123}}]}
+          (fn [{:keys [post-calls image-calls stop-stream-calls]}]
+            (mt/with-dynamic-fn-redefs
+              [slackbot.query/generate-card-output (fn [card-id]
+                                                     (if (= card-id 999999)
+                                                       (throw (ex-info "Unexpected render error" {}))
+                                                       {:type :image :content fake-png}))]
+              (mt/client :post 200 "ee/metabot-v3/slack/events"
+                         (slack-request-options event-body) event-body)
+              (u/poll {:thunk      #(and (>= (count @stop-stream-calls) 1)
+                                         (>= (count @image-calls) 1))
+                       :done?      true?
+                       :timeout-ms 5000})
+              (testing "error message posted for failing viz"
+                (is (some #(= "Query execution failed, please try again." (:text %))
+                          @post-calls)))
+              (testing "second card still rendered"
+                (is (= 1 (count @image-calls)))))))))))
+
+(deftest generate-card-output-failed-qp-result-test
+  (testing "throws when QP returns :status :failed for table card"
+    (mt/with-temp [:model/Card {card-id :id} {:display :table}]
+      (mt/with-dynamic-fn-redefs
+        [slackbot.query/pulse-card-query-results (constantly {:status :failed
+                                                              :error  "Permission denied"})]
+        (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Permission denied"
+                              (#'slackbot.query/generate-card-output card-id)))))))
+
+(deftest generate-card-output-failed-qp-result-image-test
+  (testing "throws when QP returns :status :failed for image card"
+    (mt/with-temp [:model/Card {card-id :id} {:display :bar}]
+      (mt/with-dynamic-fn-redefs
+        [slackbot.query/pulse-card-query-results (constantly {:status :failed
+                                                              :error  "Permission denied"})]
+        (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Permission denied"
+                              (#'slackbot.query/generate-card-output card-id)))))))
+
+(deftest ^:parallel generate-adhoc-output-failed-qp-result-test
+  (testing "throws when QP returns :status :failed"
+    (mt/with-dynamic-fn-redefs
+      [slackbot.query/execute-adhoc-query (constantly {:status :failed
+                                                       :error  "Table not found"
+                                                       :data   {:rows [] :cols []}})]
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Table not found"
+                            (slackbot.query/generate-adhoc-output {:database 1} :display :table))))))
 
 ;; -------------------------------- CSV Upload Tests --------------------------------
 
@@ -984,7 +1064,7 @@
                     (is (some #(= "You don't have permission to upload files." %)
                               @append-text-calls))))))))))))
 
-(deftest csv-file-detection-test
+(deftest ^:parallel csv-file-detection-test
   (testing "csv-file? correctly identifies CSV/TSV files"
     (is (true? (#'slackbot.uploads/csv-file? {:filetype "csv"})))
     (is (true? (#'slackbot.uploads/csv-file? {:filetype "tsv"})))

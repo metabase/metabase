@@ -112,6 +112,7 @@
   (let [timeout-seconds 20]
     (mdb/release-migration-locks! timeout-seconds))
   (perf/stop-monitoring!)
+  (shutdown-agents)
   (log/info "Metabase Shutdown COMPLETE"))
 
 (defenterprise ensure-audit-db-installed!

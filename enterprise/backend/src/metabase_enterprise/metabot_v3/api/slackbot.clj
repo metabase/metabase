@@ -177,13 +177,13 @@
         (catch Exception e
           (log/errorf e "[slackbot] Error processing %s: %s" event-type (ex-message e)))))))
 
-(defn ignore-event
+(defn- ignore-event
   "Handle any event we don't care to process"
   [event]
   (log/debugf "[slackbot] Ignoring event type=%s channel_type=%s subtype=%s ts=%s"
               (:type event) (:channel_type event) (:subtype event) (:ts event)))
 
-(defn assert-setup-complete
+(defn- assert-setup-complete
   "Asserts that all required Slack settings have been configured."
   []
   (when-not (slackbot.config/setup-complete?)
