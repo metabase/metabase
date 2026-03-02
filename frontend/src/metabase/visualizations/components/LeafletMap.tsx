@@ -7,6 +7,7 @@ import { Component, createRef } from "react";
 import _ from "underscore";
 
 import MetabaseSettings from "metabase/lib/settings";
+import { isNullOrUndefined } from "metabase/lib/types";
 import type { OnChangeCardAndRun } from "metabase/visualizations/types";
 import * as Lib from "metabase-lib";
 import Question from "metabase-lib/v1/Question";
@@ -25,12 +26,22 @@ type LeafletMapSeriesEntry = {
   };
 };
 
+type MapSettings = {
+  "map.latitude_column"?: string;
+  "map.longitude_column"?: string;
+  "map.metric_column"?: string;
+  "map.center_latitude"?: number;
+  "map.center_longitude"?: number;
+  "map.zoom"?: number;
+  [key: string]: unknown;
+};
+
 export interface LeafletMapProps {
   className?: string;
   width?: number;
   height?: number;
   bounds: L.LatLngBounds;
-  settings: Record<string, unknown>;
+  settings: MapSettings;
   points?: unknown[] | null;
   series: LeafletMapSeriesEntry[];
   metadata?: Metadata;
@@ -151,10 +162,10 @@ export class LeafletMap extends Component<LeafletMapProps> {
 
     this.map.invalidateSize();
 
-    const hasSavedView =
-      settings["map.center_latitude"] != null ||
-      settings["map.center_longitude"] != null ||
-      settings["map.zoom"] != null;
+    const [centerLatitude, centerLongitude] = [
+      settings["map.center_latitude"],
+      settings["map.center_longitude"],
+    ];
 
     // Pure resize (no data change): preserve user's current view
     if (!isInitialUpdate && !pointsChanged && dimensionsChanged) {
@@ -170,14 +181,11 @@ export class LeafletMap extends Component<LeafletMapProps> {
     }
 
     // Initial update or data changed: apply saved settings if available
-    if (hasSavedView) {
-      this.map.setView(
-        [
-          settings["map.center_latitude"] as number,
-          settings["map.center_longitude"] as number,
-        ],
-        settings["map.zoom"] as number,
-      );
+    if (
+      !isNullOrUndefined(centerLatitude) &&
+      !isNullOrUndefined(centerLongitude)
+    ) {
+      this.map.setView([centerLatitude, centerLongitude], settings["map.zoom"]);
       return;
     }
 
@@ -262,10 +270,10 @@ export class LeafletMap extends Component<LeafletMapProps> {
     } = this.props;
 
     const latitudeColumn = _.findWhere(cols, {
-      name: settings["map.latitude_column"] as string | undefined,
+      name: settings["map.latitude_column"],
     });
     const longitudeColumn = _.findWhere(cols, {
-      name: settings["map.longitude_column"] as string | undefined,
+      name: settings["map.longitude_column"],
     });
 
     const question = new Question(card, metadata);
@@ -353,7 +361,7 @@ export class LeafletMap extends Component<LeafletMapProps> {
       ],
     } = this.props;
     return _.findWhere(cols, {
-      name: settings["map.metric_column"] as string | undefined,
+      name: settings["map.metric_column"],
     });
   }
 }
