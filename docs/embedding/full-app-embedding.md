@@ -236,7 +236,7 @@ See [full app UI components](./full-app-ui-components.md). For more granular con
 
 ## Metabot in full-app embeds
 
-See [Embedded Metabot settings](../ai/settings.md#embedded-metabot).
+See [Embedded Metabot settings](../ai/settings.md#enable-metabot).
 
 ## Reference apps
 

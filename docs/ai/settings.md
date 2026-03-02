@@ -32,10 +32,10 @@ Once you've added Metabot AI in the Metabase store, you can log into your Metaba
 
 ## Metabot options
 
-You can set options for Metabot, both for your Metabase instance, and (separately) for Metabot in [full-app embeds](../embedding/full-app-embeddding.md) (in the Embedded Metabot tab).
+You can set options for Metabot, both for your Metabase instance, and (separately) for Metabot in [full-app embeds](../embedding/full-app-embedding.md) (in the Embedded Metabot tab).
 
 - [Enable Metabot](#enable-metabot)
-- [Verified content](#enable-metabot)
+- [Verified content](#verified-content)
 - [Collection Metabot can use](#collection-metabot-can-use)
 
 ## Enable Metabot
