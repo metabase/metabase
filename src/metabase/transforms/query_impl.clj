@@ -6,6 +6,7 @@
    [metabase.driver.util :as driver.u]
    [metabase.lib.schema.common :as schema.common]
    [metabase.query-processor.compile :as qp.compile]
+   [metabase.transforms-base.util :as transforms-base.util]
    [metabase.transforms.instrumentation :as transforms.instrumentation]
    [metabase.transforms.interface :as transforms.i]
    [metabase.transforms.util :as transforms.util]
@@ -16,6 +17,8 @@
 
 (set! *warn-on-reflection* true)
 
+;; These register on the transforms-base.i multimethods which are re-exported via
+;; potemkin/import-vars in transforms.i — so both namespaces see these methods.
 (defmethod transforms.i/source-db-id :query
   [transform]
   (-> transform :source :query :database))
@@ -68,9 +71,9 @@
                                   :conn-spec      conn-spec
                                   :query          (transforms.util/compile-source transform)
                                   :output-schema  (:schema target)
-                                  :output-table   (transforms.util/qualified-table-name driver target)}
+                                  :output-table   (transforms-base.util/qualified-table-name driver target)}
                opts              (transform-opts transform-details)
-               features          (transforms.util/required-database-features transform)
+               features          (transforms-base.util/required-database-features transform)
                ;; For manual runs, use the triggering user; for cron, use owner/creator
                run-user-id       (if (and (= run-method :manual) user-id)
                                    user-id

@@ -273,25 +273,7 @@
                {:table (mt/id :products)}}
              (transform-deps-for-db (t2/select-one :model/Transform :id t1)))))))
 
-(defn- rotations
-  [v]
-  (let [n (count v)
-        elements (cycle v)]
-    (into #{} (map #(take n (drop % elements)))
-          (range n))))
-
-(deftest find-cycle-test
-  (let [test-graph
-        {1 #{2}
-         2 #{3 5}
-         3 #{4}
-         4 #{6}
-         5 #{6}
-         6 #{7}
-         7 #{3}}
-        cycles (rotations [3 4 6 7])]
-    (is (contains? cycles
-                   (ordering/find-cycle test-graph)))))
+;; find-cycle-test moved to metabase.transforms-base.ordering-test
 
 (deftest get-transform-cycle-test
   (testing "cycle is detected in transform referencing itself"

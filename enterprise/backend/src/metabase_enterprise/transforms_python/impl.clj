@@ -3,6 +3,8 @@
    [metabase-enterprise.transforms-python.execute :as transforms-python.execute]
    [metabase.transforms.interface :as transforms.i]))
 
+;; These register on the transforms-base.i multimethods (re-exported via potemkin/import-vars
+;; in transforms.i), so both transforms.i and transforms-base.i see these methods.
 (defmethod transforms.i/target-db-id :python
   [transform]
   (-> transform :target :database))

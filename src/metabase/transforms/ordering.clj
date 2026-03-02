@@ -1,8 +1,6 @@
 (ns metabase.transforms.ordering
   (:require
-   [clojure.set :as set]
    [clojure.string :as str]
-   [flatland.ordered.set :refer [ordered-set]]
    [metabase.driver :as driver]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
@@ -10,13 +8,21 @@
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.query-processor.preprocess :as qp.preprocess]
+   [metabase.transforms-base.ordering :as transforms-base.ordering]
    [metabase.transforms.interface :as transforms.i]
    [metabase.transforms.util :as transforms.util]
    [metabase.util.i18n :as i18n]
    [metabase.util.malli :as mu]
+   [metabase.util.namespaces :as shared.ns]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
+
+;; Re-export pure graph algorithms from transforms-base for backwards compatibility.
+(shared.ns/import-fns
+ [metabase.transforms-base.ordering
+  find-cycle
+  available-transforms])
 
 (defn- database-routing-error-ex-data [^Throwable e]
   (when e
@@ -119,31 +125,6 @@
                                        (resolve-dependency dep output-tables transform-ids target-refs)))
                                deps))))))
 
-(defn find-cycle
-  "Finds a path containing a cycle in the directed graph `node->children`.
-
-  Optionally takes a set of starting nodes.  If starting nodes are specified, `node->children` can be any
-  function-equivalent.  Without starting nodes, `node->children` must specifically be a map."
-  ([node->children]
-   (find-cycle node->children (keys node->children)))
-  ([node->children starting-nodes]
-   (loop [stack (into [] (map #(vector % (ordered-set))) starting-nodes)
-          visited #{}]
-     (when-let [[node path] (peek stack)]
-       (cond
-         (contains? path node)
-         (into [] (drop-while (complement #{node})) (conj path node))
-
-         (contains? visited node)
-         (recur (pop stack) visited)
-
-         :else
-         (let [path' (conj path node)
-               stack' (into (pop stack)
-                            (map #(vector % path'))
-                            (node->children node))]
-           (recur stack' (conj visited node))))))))
-
 (defn get-transform-cycle
   "Get a cycle if it exists (otherwise `nil`). Cycle consists of:
 
@@ -170,18 +151,7 @@
         node->children   #(->> % transforms-by-id transforms.i/table-dependencies
                                (keep (fn [dep] (resolve-dependency dep output-tables transform-ids target-refs))))
         id->name         (comp :name transforms-by-id)
-        cycle            (find-cycle node->children [transform-id])]
+        cycle            (transforms-base.ordering/find-cycle node->children [transform-id])]
     (when cycle
       {:cycle-str (str/join " -> " (map id->name cycle))
        :cycle     cycle})))
-
-(defn available-transforms
-  "Given an ordering (see transform-ordering), a set of running transform ids, and a set of completed transform ids,
-  computes which transforms are currently able to be run.  Returns transform ids in the order that they appear in the
-  ordering map.  If you want them returned in a specific order, use a map with ordered keys, e.g., a sorted-map."
-  [ordering running complete]
-  (for [[transform-id deps] ordering
-        :when (and (not (or (running transform-id)
-                            (complete transform-id)))
-                   (empty? (set/difference deps complete)))]
-    transform-id))

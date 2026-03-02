@@ -1569,6 +1569,22 @@
            models
            util}}
 
+  transforms-base
+  {:team "Querying"
+   :api  #{metabase.transforms-base.core
+           metabase.transforms-base.interface
+           metabase.transforms-base.util}
+   :uses #{driver
+           lib
+           lib-be
+           premium-features
+           query-processor
+           settings
+           util}
+   :friends #{transforms
+              enterprise/transforms-python
+              enterprise/workspaces}}
+
   transforms
   {:team "Querying"
    :api  #{metabase.transforms.core
@@ -1594,6 +1610,7 @@
            sync
            task
            task-history
+           transforms-base
            util}
    :friends #{models
               enterprise/transforms-python
@@ -2476,6 +2493,7 @@
            query-processor
            settings
            transforms
+           transforms-base
            util}}
 
   enterprise/upload-management
@@ -2502,13 +2520,13 @@
            lib-be
            models
            queries
-           ;; NOTE: we will remove this once we get "pure transforms" module.
            query-processor
            request
            settings
            sql-tools
            system
            transforms
+           transforms-base
            util
            enterprise/transforms-python}}}
 
