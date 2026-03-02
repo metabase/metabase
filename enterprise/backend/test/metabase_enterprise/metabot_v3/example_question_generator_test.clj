@@ -4,6 +4,8 @@
    [metabase-enterprise.llm.settings :as llm]
    [metabase-enterprise.metabot-v3.example-question-generator :as native-generator]
    [metabase-enterprise.metabot-v3.self.openrouter :as openrouter]
+   [metabase-enterprise.metabot-v3.test-util :as test-util]
+   [metabase.analytics.snowplow-test :as snowplow-test]
    [metabase.test :as mt]))
 
 (set! *warn-on-reflection* true)
@@ -141,3 +143,46 @@
           template2 (#'native-generator/load-template "metabot/prompts/example_questions_table.selmer")]
       (is (string? template1))
       (is (identical? template1 template2)))))
+
+;;; ===================== Prometheus Metrics Tests =====================
+
+(deftest call-llm-prometheus-test
+  (mt/with-prometheus-system! [_ system]
+    (mt/with-temporary-setting-values [llm/ee-ai-metabot-provider "openrouter/test-model"]
+      (let [labels {:model "test-model" :source "example-question-generation"}]
+        (testing "increments llm-requests and observes duration on success"
+          (with-redefs [openrouter/openrouter
+                        (constantly (test-util/mock-llm-response
+                                     [{:type :start :id "m1"}
+                                      {:type :tool-input :id "call-1" :function "json"
+                                       :arguments {:questions ["q1"]}}]))]
+            (#'native-generator/call-llm "test prompt"))
+          (is (== 1 (mt/metric-value system :metabase-metabot/llm-requests labels)))
+          (is (pos? (:sum (mt/metric-value system :metabase-metabot/llm-duration-ms labels)))))))))
+
+;;; ===================== Snowplow Analytics Tests =====================
+
+(deftest call-llm-snowplow-test
+  (testing "fires token_usage snowplow event for call-llm"
+    (let [rasta-id (mt/user->id :rasta)]
+      (mt/with-temporary-setting-values [llm/ee-ai-metabot-provider "openrouter/test-model"]
+        (with-redefs [openrouter/openrouter
+                      (constantly (test-util/mock-llm-response
+                                   [{:type :start :id "msg-1"}
+                                    {:type :tool-input :id "call-1" :function "json"
+                                     :arguments {:questions ["q1"]}}
+                                    {:type :usage :usage {:promptTokens 100 :completionTokens 20}
+                                     :model "test-model" :id "msg-1"}]))]
+          (mt/with-current-user rasta-id
+            (snowplow-test/with-fake-snowplow-collector
+              (#'native-generator/call-llm "test prompt")
+              (is (=? [{:user-id (str rasta-id)
+                        :data    {"model_id"           "test-model"
+                                  "total_tokens"        120
+                                  "prompt_tokens"       100
+                                  "completion_tokens"   20
+                                  "estimated_costs_usd" 0.0
+                                  "duration_ms"         nat-int?
+                                  "source"              "example_question_generation_batch"
+                                  "tag"                 "example-question-generation"}}]
+                      (snowplow-test/pop-event-data-and-user-id!))))))))))
