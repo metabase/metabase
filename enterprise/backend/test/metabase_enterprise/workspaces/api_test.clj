@@ -93,18 +93,18 @@
   (testing "POST /api/ee/workspace/:id/archive calls destroy-workspace-isolation!"
     (let [called?   (atom false)
           workspace (ws.tu/create-ready-ws! "Archive Isolation Test")]
-      (with-redefs [ws.isolation/destroy-workspace-isolation!
-                    (fn [_database _workspace]
-                      (reset! called? true))]
+      (mt/with-dynamic-fn-redefs [ws.isolation/destroy-workspace-isolation!
+                                  (fn [_database _workspace]
+                                    (reset! called? true))]
         (mt/user-http-request :crowberto :post 200 (ws-url (:id workspace) "/archive"))
         (is @called? "destroy-workspace-isolation! should be called when archiving")))))
 
 (deftest archive-workspace-succeeds-when-cleanup-fails-test
   (testing "POST /api/ee/workspace/:id/archive succeeds even when destroy-workspace-isolation! fails"
     (ws.tu/with-workspaces! [workspace {:name "Archive Cleanup Fail Test"}]
-      (with-redefs [ws.isolation/destroy-workspace-isolation!
-                    (fn [_database _workspace]
-                      (throw (ex-info "Simulated cleanup failure" {:test true})))]
+      (mt/with-dynamic-fn-redefs [ws.isolation/destroy-workspace-isolation!
+                                  (fn [_database _workspace]
+                                    (throw (ex-info "Simulated cleanup failure" {:test true})))]
         (is (some? (mt/user-http-request :crowberto :post 200 (ws-url (:id workspace) "/archive"))))
         (is (= :archived (t2/select-one-fn :base_status :model/Workspace :id (:id workspace)))
             "Workspace should have status :archived despite cleanup failure")))))
@@ -113,9 +113,9 @@
   (testing "DELETE /api/ee/workspace/:id calls destroy-workspace-isolation!"
     (let [called?   (atom false)
           workspace (ws.tu/create-ready-ws! "Delete Isolation Test")]
-      (with-redefs [ws.isolation/destroy-workspace-isolation!
-                    (fn [_database _workspace]
-                      (reset! called? true))]
+      (mt/with-dynamic-fn-redefs [ws.isolation/destroy-workspace-isolation!
+                                  (fn [_database _workspace]
+                                    (reset! called? true))]
         (mt/user-http-request :crowberto :post 200 (ws-url (:id workspace) "/archive"))
         (mt/user-http-request :crowberto :delete 200 (ws-url (:id workspace)))
         (is @called? "destroy-workspace-isolation! should be called when deleting")))))
@@ -124,9 +124,9 @@
   (testing "POST /api/ee/workspace/:id/merge calls destroy-workspace-isolation!"
     (let [called?   (atom false)
           workspace (ws.tu/create-ready-ws! "Merge Isolation Test")]
-      (with-redefs [ws.isolation/destroy-workspace-isolation!
-                    (fn [_database _workspace]
-                      (reset! called? true))]
+      (mt/with-dynamic-fn-redefs [ws.isolation/destroy-workspace-isolation!
+                                  (fn [_database _workspace]
+                                    (reset! called? true))]
         (mt/user-http-request :crowberto :post 200 (ws-url (:id workspace) "/merge"))
         (is @called? "destroy-workspace-isolation! should be called when merging")))))
 
@@ -136,10 +136,10 @@
           workspace (ws.tu/create-ready-ws! "Unarchive Isolation Test")]
       (mt/user-http-request :crowberto :post 200 (ws-url (:id workspace) "/archive"))
       (testing "ensure-database-isolation! should be called when unarchiving"
-        (with-redefs [ws.isolation/ensure-database-isolation!
-                      (fn [_workspace _database]
-                        (reset! called? true)
-                        {:schema "test_schema" :database_details {}})]
+        (mt/with-dynamic-fn-redefs [ws.isolation/ensure-database-isolation!
+                                    (fn [_workspace _database]
+                                      (reset! called? true)
+                                      {:schema "test_schema" :database_details {}})]
           (mt/user-http-request :crowberto :post 200 (ws-url (:id workspace) "/unarchive"))
           (is @called?))))))
 
@@ -148,10 +148,10 @@
     (let [called?   (atom false)
           workspace (ws.tu/create-ready-ws! "Unarchive Grant Test")]
       (mt/user-http-request :crowberto :post 200 (ws-url (:id workspace) "/archive"))
-      (with-redefs [ws.impl/sync-grant-accesses!
-                    (fn [_workspace]
-                      (reset! called? true)
-                      nil)]
+      (mt/with-dynamic-fn-redefs [ws.impl/sync-grant-accesses!
+                                  (fn [_workspace]
+                                    (reset! called? true)
+                                    nil)]
         (mt/user-http-request :crowberto :post 200 (ws-url (:id workspace) "/unarchive"))
         (is @called? "sync-grant-accesses! should be called when unarchiving")))))
 
@@ -165,9 +165,9 @@
         (is (false? (t2/select-one-fn :access_granted :model/WorkspaceInput :workspace_id (:id workspace)))))
 
       (testing "Unarchive re-grants access and sets access_granted to true"
-        (with-redefs [ws.isolation/grant-read-access-to-tables!
-                      (fn [_database _workspace tables]
-                        (reset! granted-tables tables))]
+        (mt/with-dynamic-fn-redefs [ws.isolation/grant-read-access-to-tables!
+                                    (fn [_database _workspace tables]
+                                      (reset! granted-tables tables))]
           (mt/user-http-request :crowberto :post 200 (ws-url (:id workspace) "/unarchive"))
           (ws.tu/analyze-workspace! (:id workspace))
           (is (=? [{:schema string? :name "test_table_1"}] @granted-tables)
@@ -316,12 +316,12 @@
 
         (testing "No updates are propagated back to core app on merge failure"
           (let [update-transform! transforms.core/update-transform!]
-            (with-redefs [transforms.core/update-transform! (let [call-count (atom 0)]
-                                                              (fn [& args]
-                                                                (when (> @call-count 0)
-                                                                  (throw (Exception. "boom")))
-                                                                (swap! call-count inc)
-                                                                (apply update-transform! args)))]
+            (mt/with-dynamic-fn-redefs [transforms.core/update-transform! (let [call-count (atom 0)]
+                                                                            (fn [& args]
+                                                                              (when (> @call-count 0)
+                                                                                (throw (Exception. "boom")))
+                                                                              (swap! call-count inc)
+                                                                              (apply update-transform! args)))]
               (testing "API response: empty merged, single error"
                 (let [resp (mt/user-http-request :crowberto :post 200 (ws-url ws-id "/merge"))]
                   (is (empty? (get-in resp [:merged :transforms])))
@@ -574,8 +574,8 @@
           _ (mt/user-http-request :crowberto :post 204
                                   (ws-url ws-id "/transform" ws-x-1-id "/archive"))]
       (testing "Failure on merge"
-        (with-redefs [transforms.core/delete-transform! (fn [& _args]
-                                                          (throw (Exception. "boom")))]
+        (mt/with-dynamic-fn-redefs [transforms.core/delete-transform! (fn [& _args]
+                                                                        (throw (Exception. "boom")))]
           (let [resp (mt/user-http-request :crowberto :post 500
                                            (ws-url ws-id "/transform" ws-x-1-id "/merge"))]
             (testing "Response"
@@ -948,8 +948,8 @@
 
 (deftest workspace-setup-failure-logs-error-test
   (testing "Failed workspace setup logs error message"
-    (with-redefs [ws.isolation/ensure-database-isolation!
-                  (fn [& _] (throw (ex-info "Test isolation error" {})))]
+    (mt/with-dynamic-fn-redefs [ws.isolation/ensure-database-isolation!
+                                (fn [& _] (throw (ex-info "Test isolation error" {})))]
       (let [{ws-id :id} (ws.tu/initialize-ws! "Log tester #3")]
         (is (=? [{:task    :database-isolation
                   :status  :failure
@@ -1498,12 +1498,12 @@
             x2-ref (workspace-map :x2)
             x3-ref (workspace-map :x3)]
         ;; Use a mock that returns :table (required by the API schema)
-        (with-redefs [ws.execute/run-transform-with-remapping
-                      (fn [{:keys [target]} _remapping]
-                        {:status   :succeeded
-                         :end_time (Instant/now)
-                         :message  "Mocked execution"
-                         :table    (select-keys target [:schema :name])})]
+        (mt/with-dynamic-fn-redefs [ws.execute/run-transform-with-remapping
+                                    (fn [{:keys [target]} _remapping]
+                                      {:status   :succeeded
+                                       :end_time (Instant/now)
+                                       :message  "Mocked execution"
+                                       :table    (select-keys target [:schema :name])})]
           (testing "without flag, ancestors are not run"
             (let [result (mt/user-http-request :crowberto :post 200
                                                (ws-url workspace-id "/transform/" x3-ref "/run"))]
@@ -1531,17 +1531,17 @@
             x2-ref (workspace-map :x2)
             x3-ref (workspace-map :x3)]
         ;; Mock both run (for ancestors) and preview (for dry-run target)
-        (with-redefs [ws.execute/run-transform-with-remapping
-                      (fn [{:keys [target]} _remapping]
-                        {:status   :succeeded
-                         :end_time (Instant/now)
-                         :message  "Mocked execution"
-                         :table    (select-keys target [:schema :name])})
-                      ws.execute/run-transform-preview
-                      (fn [_transform _remapping]
-                        {:status :succeeded
-                         :data   {:rows [[1 "test"]]
-                                  :cols [{:name "id"} {:name "name"}]}})]
+        (mt/with-dynamic-fn-redefs [ws.execute/run-transform-with-remapping
+                                    (fn [{:keys [target]} _remapping]
+                                      {:status   :succeeded
+                                       :end_time (Instant/now)
+                                       :message  "Mocked execution"
+                                       :table    (select-keys target [:schema :name])})
+                                    ws.execute/run-transform-preview
+                                    (fn [_transform _remapping]
+                                      {:status :succeeded
+                                       :data   {:rows [[1 "test"]]
+                                                :cols [{:name "id"} {:name "name"}]}})]
           (testing "with flag, stale ancestors are run before dry-run"
             (let [result (mt/user-http-request :crowberto :post 200
                                                (ws-url workspace-id "/transform/" x3-ref "/dry-run")
@@ -1675,11 +1675,11 @@
     (let [isolated?      (atom false)
           workspace-used (atom nil)
           ws             (ws.tu/create-ready-ws! "Adhoc Query Isolation Test")]
-      (with-redefs [ws.isolation/do-with-workspace-isolation
-                    (fn [workspace thunk]
-                      (reset! isolated? true)
-                      (reset! workspace-used workspace)
-                      (thunk))]
+      (mt/with-dynamic-fn-redefs [ws.isolation/do-with-workspace-isolation
+                                  (fn [workspace thunk]
+                                    (reset! isolated? true)
+                                    (reset! workspace-used workspace)
+                                    (thunk))]
         (mt/user-http-request :crowberto :post 200
                               (ws-url (:id ws) "/query")
                               {:sql "SELECT 1"}))
@@ -2320,7 +2320,7 @@
     (let [mp    (mt/metadata-provider)
           query (lib/query mp (lib.metadata/table mp (mt/id :orders)))
           ws    (ws.tu/create-empty-ws! "Pending Input Test")]
-      (with-redefs [ws.isolation/grant-read-access-to-tables! (constantly nil)]
+      (mt/with-dynamic-fn-redefs [ws.isolation/grant-read-access-to-tables! (constantly nil)]
         ;; Add a transform so workspace has inputs
         (ws.common/add-to-changeset! (mt/user->id :crowberto) ws
                                      :transform nil
@@ -2348,8 +2348,8 @@
     (let [mp    (mt/metadata-provider)
           query (lib/query mp (lib.metadata/table mp (mt/id :orders)))
           ws    (ws.tu/create-empty-ws! "Grant Input Test")]
-      (with-redefs [ws.isolation/grant-read-access-to-tables!
-                    (fn [_database _workspace _tables] nil)]
+      (mt/with-dynamic-fn-redefs [ws.isolation/grant-read-access-to-tables!
+                                  (fn [_database _workspace _tables] nil)]
         ;; Add a transform so workspace has inputs
         (ws.common/add-to-changeset! (mt/user->id :crowberto) ws
                                      :transform nil
@@ -2364,9 +2364,9 @@
         (let [input-tables (t2/select [:model/WorkspaceInput :db_id :schema :table]
                                       :workspace_id (:id ws))
               grant-calls (atom [])]
-          (with-redefs [ws.isolation/grant-read-access-to-tables!
-                        (fn [_database _workspace tables]
-                          (swap! grant-calls conj (set (map :name tables))))]
+          (mt/with-dynamic-fn-redefs [ws.isolation/grant-read-access-to-tables!
+                                      (fn [_database _workspace tables]
+                                        (swap! grant-calls conj (set (map :name tables))))]
             (testing "granting with valid table coordinates succeeds"
               (let [result (mt/user-http-request :crowberto :post 200
                                                  (ws-url (:id ws) "/input/grant")
