@@ -269,6 +269,33 @@
                 (substitute {:price (field-filter "price" :type/Integer :number/!= [1 2])}
                             ["[{$match: " (param :price) "}]"]))))))))
 
+(deftest ^:parallel field-filter-test-8
+  (testing "ObjectId field filter (#38288)"
+    (testing "single ObjectId"
+      (let [oid-str "65b7a0aac98b5a9cbac6226e"
+            result (substitute {:id (field-filter "_id" :type/MongoBSONID :id oid-str)}
+                               ["[{$match: " (param :id) "}]"])]
+        (testing "result is a string containing the ObjectId in extended JSON format"
+          (is (string? result)))
+        (testing "result matches expected format"
+          (is (= (format "[{$match: {\"_id\": {\"$oid\":\"%s\"}}}]" oid-str)
+                 result)))))
+    (testing "multiple ObjectIds"
+      (let [oid-strs ["65b7a0aac98b5a9cbac6226e" "65b7a0aac98b5a9cbac6226f"]
+            result (substitute {:id (field-filter "_id" :type/MongoBSONID :id oid-strs)}
+                               ["[{$match: " (param :id) "}]"])]
+        (testing "result contains $in operator with ObjectIds in extended JSON format"
+          (is (string? result))
+          (is (str/includes? result "$in"))
+          (is (str/includes? result "$oid")))))
+    (testing "empty/nil ObjectId values"
+      (is (= "[{$match: {\"_id\": nil}}]"
+             (substitute {:id (field-filter "_id" :type/MongoBSONID :id nil)}
+                         ["[{$match: " (param :id) "}]"])))
+      (is (= "[{$match: {\"_id\": \"\"}}]"
+             (substitute {:id (field-filter "_id" :type/MongoBSONID :id "")}
+                         ["[{$match: " (param :id) "}]"]))))))
+
 (deftest ^:parallel substitute-native-query-snippets-test
   (testing "Native query snippet substitution"
     (is (= (strip (to-bson [{:$match {"price" {:$gt 2}}}]))
@@ -549,3 +576,62 @@
                                                    :widget-type :date/single
                                                    :default "2019-04-02"}}})]
         (is (seq (-> query qp/process-query mt/rows)))))))
+
+(deftest e2e-field-filter-objectid-test
+  (testing "ObjectId field filter works in native queries (#38288)"
+    (mt/test-driver :mongo
+      (testing "single ObjectId value"
+        (let [;; Get a real _id from the checkins table
+              first-id (-> (mt/rows (qp/process-query
+                                     (mt/query checkins
+                                       {:type   :native
+                                        :native {:query      (json/encode [{:$limit 1}
+                                                                           {:$project {:_id 1}}])
+                                                 :collection "checkins"}})))
+                           first
+                           first)
+              query  (mt/native-query
+                      {:collection "checkins"
+                       :query (json/encode
+                               [{:$match (json/raw-json-generator "{{id_filter}}")}
+                                {:$limit 10}])
+                       :template-tags {"id_filter" {:id "id_filter_id"
+                                                    :name "id_filter"
+                                                    :display-name "ID Filter"
+                                                    :type :dimension
+                                                    :dimension [:field (mt/id :checkins :_id) nil]
+                                                    :widget-type :id
+                                                    :default (str first-id)}}})]
+          (testing "query returns exactly one result"
+            (let [results (mt/rows (qp/process-query query))]
+              (is (= 1 (count results)))
+              (is (= first-id (-> results first first)))))))
+      (testing "multiple ObjectId values"
+        (let [;; Get first two _ids from the checkins table
+              first-two-ids (->> (mt/rows (qp/process-query
+                                            (mt/query checkins
+                                              {:type   :native
+                                               :native {:query      (json/encode [{:$limit 2}
+                                                                                  {:$project {:_id 1}}])
+                                                        :collection "checkins"}})))
+                                 (map first))
+              id-str (str/join "," (map str first-two-ids))
+              query  (mt/native-query
+                      {:collection "checkins"
+                       :query (json/encode
+                               [{:$match (json/raw-json-generator "{{id_filter}}")}
+                                {:$sort {:_id 1}}
+                                {:$limit 10}])
+                       :template-tags {"id_filter" {:id "id_filter_id"
+                                                    :name "id_filter"
+                                                    :display-name "ID Filter"
+                                                    :type :dimension
+                                                    :dimension [:field (mt/id :checkins :_id) nil]
+                                                    :widget-type :id
+                                                    :default id-str}}})]
+          (testing "query returns exactly two results with correct IDs"
+            (let [results (mt/rows (qp/process-query query))
+                  result-ids (map first results)]
+              (is (= 2 (count results)))
+              (is (= (set first-two-ids) (set result-ids))))))))))
+
