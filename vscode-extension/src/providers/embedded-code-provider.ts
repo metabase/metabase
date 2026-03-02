@@ -1,4 +1,3 @@
-import * as fs from 'node:fs/promises'
 import type {
   Disposable,
   Event,
@@ -7,6 +6,7 @@ import type {
   FileSystemProvider,
   Uri,
 } from 'vscode'
+import * as fs from 'node:fs/promises'
 import {
   EventEmitter,
   FileChangeType,
@@ -14,16 +14,18 @@ import {
   FileType,
   workspace,
 } from 'vscode'
-import {extractCodeFromYaml, updateCodeInYaml} from './yaml-code-helpers'
+import { extractCodeFromYaml, updateCodeInYaml } from '../yaml-code-helpers'
 
 // --- URI helpers ---
 
-function parseEmbeddedUri(uri: Uri): { yamlPath: string; lang: 'sql' | 'python' } {
+function parseEmbeddedUri(uri: Uri): { yamlPath: string, lang: 'sql' | 'python' } {
   const params = new URLSearchParams(uri.query)
   const yamlPath = params.get('yaml')
   const lang = params.get('lang')
-  if (!yamlPath) throw FileSystemError.FileNotFound(uri)
-  if (lang !== 'sql' && lang !== 'python') throw FileSystemError.FileNotFound(uri)
+  if (!yamlPath)
+    throw FileSystemError.FileNotFound(uri)
+  if (lang !== 'sql' && lang !== 'python')
+    throw FileSystemError.FileNotFound(uri)
   return { yamlPath, lang }
 }
 
@@ -71,7 +73,8 @@ export class EmbeddedCodeProvider implements FileSystemProvider {
         mtime: stat.mtimeMs,
         size: stat.size,
       }
-    } catch {
+    }
+    catch {
       throw FileSystemError.FileNotFound(uri)
     }
   }
@@ -82,8 +85,10 @@ export class EmbeddedCodeProvider implements FileSystemProvider {
       const content = await fs.readFile(yamlPath, 'utf-8')
       const code = extractCodeFromYaml(content, lang)
       return encoder.encode(code)
-    } catch (error) {
-      if (error instanceof FileSystemError) throw error
+    }
+    catch (error) {
+      if (error instanceof FileSystemError)
+        throw error
       throw FileSystemError.FileNotFound(uri)
     }
   }
@@ -95,8 +100,10 @@ export class EmbeddedCodeProvider implements FileSystemProvider {
       const yamlContent = await fs.readFile(yamlPath, 'utf-8')
       const updated = updateCodeInYaml(yamlContent, lang, newCode)
       await fs.writeFile(yamlPath, updated, 'utf-8')
-    } catch (error) {
-      if (error instanceof FileSystemError) throw error
+    }
+    catch (error) {
+      if (error instanceof FileSystemError)
+        throw error
       throw FileSystemError.Unavailable(uri)
     }
   }

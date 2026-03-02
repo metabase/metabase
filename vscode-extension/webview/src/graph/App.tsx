@@ -4,7 +4,7 @@ import type {
   GraphNodeModel,
   GraphViewEdge,
   GraphViewNode,
-} from '../../src/shared-types'
+} from '../../../src/shared-types'
 import type { GraphSelection, IsolatedPath } from './GraphContext'
 import type { GraphNodeType } from './GraphNode'
 import {
@@ -20,6 +20,7 @@ import {
   useReactFlow,
 } from '@xyflow/react'
 import { useEffect, useMemo, useState } from 'react'
+import { vscode } from '../vscode'
 import { GraphContext } from './GraphContext'
 import { GraphDependencyPanel } from './GraphDependencyPanel'
 import { GraphEdge } from './GraphEdge'
@@ -28,7 +29,6 @@ import { GraphInfoPanel } from './GraphInfoPanel'
 import { GraphNodeComponent } from './GraphNode'
 import { GraphNodeLayout } from './GraphNodeLayout'
 import { GraphSearchInput } from './GraphSearchInput'
-import { vscode } from './vscode'
 import '@xyflow/react/dist/style.css'
 
 const NODE_TYPES = {

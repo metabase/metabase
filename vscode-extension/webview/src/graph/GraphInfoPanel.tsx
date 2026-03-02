@@ -1,11 +1,11 @@
-import type { GraphViewEdge, GraphViewNode } from '../../src/shared-types'
+import type { GraphViewEdge, GraphViewNode } from '../../../src/shared-types'
 
 import { useContext } from 'react'
 
+import { Icon } from '../icons'
+import { vscode } from '../vscode'
 import { computeIsolatedPath, getFieldIconName, getNodeIconName, getNodeTypeInfo } from './graph-utils'
 import { GraphContext } from './GraphContext'
-import { Icon } from './icons'
-import { vscode } from './vscode'
 
 interface GraphInfoPanelProps {
   node: GraphViewNode

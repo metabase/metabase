@@ -1,8 +1,8 @@
-import type { GraphNodeModel, GraphViewNode } from '../../src/shared-types'
+import type { GraphNodeModel, GraphViewNode } from '../../../src/shared-types'
 import { useContext, useEffect, useMemo, useRef, useState } from 'react'
+import { Icon } from '../icons'
 import { getGroupTypeInfo, getIconNameForModel } from './graph-utils'
 import { GraphContext } from './GraphContext'
-import { Icon } from './icons'
 
 interface GraphFilterDropdownProps {
   nodes: GraphViewNode[]

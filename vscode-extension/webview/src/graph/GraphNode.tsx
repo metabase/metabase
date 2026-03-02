@@ -1,6 +1,6 @@
 import type { Node, NodeProps } from '@xyflow/react'
 import type { MouseEvent } from 'react'
-import type { GraphViewNode } from '../../src/shared-types'
+import type { GraphViewNode } from '../../../src/shared-types'
 import type { DependentGroup } from './graph-utils'
 import type { GraphSelection } from './GraphContext'
 import {
@@ -10,6 +10,7 @@ import {
   useNodesInitialized,
 } from '@xyflow/react'
 import { memo, useContext } from 'react'
+import { Icon } from '../icons'
 import {
 
   getDependencyGroupTitle,
@@ -19,7 +20,6 @@ import {
   getNodeTypeInfo,
 } from './graph-utils'
 import { GraphContext } from './GraphContext'
-import { Icon } from './icons'
 
 export type GraphNodeType = Node<GraphViewNode>
 

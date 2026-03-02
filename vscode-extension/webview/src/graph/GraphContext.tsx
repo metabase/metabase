@@ -1,4 +1,4 @@
-import type { GraphNodeModel } from '../../src/shared-types'
+import type { GraphNodeModel } from '../../../src/shared-types'
 import { createContext } from 'react'
 
 export interface GraphSelection {

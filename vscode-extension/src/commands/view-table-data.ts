@@ -1,11 +1,11 @@
-import {useCommand} from 'reactive-vscode'
-import {Uri, ViewColumn, window} from 'vscode'
+import type { ExtensionCtx } from '../extension-context'
+import type { OutputTableNode } from '../workspace-data-tree-provider'
 
-import type {ExtensionCtx} from '../extension-context'
-import type {OutputTableNode} from '../workspace-data-tree-provider'
-import {config} from '../config'
-import {getTableData, getTableSchema} from '../metabase-client'
-import {getTableDataWebviewHtml} from '../webview-html'
+import { useCommand } from 'reactive-vscode'
+import { Uri, ViewColumn, window } from 'vscode'
+import { config } from '../config'
+import { getTableData, getTableSchema } from '../metabase-client'
+import { getTableDataWebviewHtml } from '../webview-html'
 
 export function registerViewTableDataCommand(ctx: ExtensionCtx) {
   // Mutable ref so message handlers always use the latest node
@@ -19,7 +19,7 @@ export function registerViewTableDataCommand(ctx: ExtensionCtx) {
     }
 
     currentNode = node
-    const {table} = node
+    const { table } = node
     const title = table.schema ? `${table.schema}.${table.tableName}` : table.tableName
 
     const extensionUri = Uri.file(ctx.extensionPath)
@@ -28,7 +28,7 @@ export function registerViewTableDataCommand(ctx: ExtensionCtx) {
       const panel = window.createWebviewPanel(
         'metabaseTableData',
         title,
-        {viewColumn: ViewColumn.One, preserveFocus: false},
+        { viewColumn: ViewColumn.One, preserveFocus: false },
         {
           enableScripts: true,
           localResourceRoots: [Uri.joinPath(extensionUri, 'dist', 'webview')],
@@ -53,7 +53,8 @@ export function registerViewTableDataCommand(ctx: ExtensionCtx) {
         ctx.panels.tableDataPanel = null
         currentNode = null
       })
-    } else {
+    }
+    else {
       ctx.panels.tableDataPanel.title = title
       ctx.panels.tableDataPanel.reveal(ViewColumn.One, false)
     }
@@ -62,14 +63,14 @@ export function registerViewTableDataCommand(ctx: ExtensionCtx) {
   })
 }
 
-async function loadTableSchema(ctx: ExtensionCtx, node: OutputTableNode, bypassCache = false) {
+export async function loadTableSchema(ctx: ExtensionCtx, node: OutputTableNode, bypassCache = false) {
   const host = config.host
-  const apiKey = ctx.apiKey.value
-  if (!host || !apiKey || !ctx.panels.tableDataPanel) return
+  if (!host)
+    return
 
-  const {table} = node
+  const { table } = node
 
-  ctx.panels.tableDataPanel.webview.postMessage({
+  ctx.panels.tableDataPanel?.webview.postMessage({
     type: 'tableDataLoading',
     tableName: table.schema ? `${table.schema}.${table.tableName}` : table.tableName,
   })
@@ -79,17 +80,18 @@ async function loadTableSchema(ctx: ExtensionCtx, node: OutputTableNode, bypassC
     const cached = ctx.tableMetadataCache.get(table.tableId)
     if (cached) {
       ctx.outputChannel.appendLine(`viewTableData: using cached schema for table ${table.tableId} (${table.schema}.${table.tableName})`)
-      ctx.panels.tableDataPanel.webview.postMessage({
+      ctx.panels.tableDataPanel?.webview.postMessage({
         type: 'tableSchemaInit',
         data: {
           tableName: table.tableName,
           schema: table.schema,
-          columns: cached.fields.map(f => ({name: f.name, baseType: f.base_type})),
+          columns: cached.fields.map(f => ({ name: f.name, baseType: f.base_type })),
         },
       })
       return
     }
-  } else {
+  }
+  else {
     ctx.tableMetadataCache.invalidate(table.tableId)
   }
 
@@ -99,7 +101,7 @@ async function loadTableSchema(ctx: ExtensionCtx, node: OutputTableNode, bypassC
 
   if (result.status !== 'success') {
     ctx.outputChannel.appendLine(`viewTableData: schema error - ${result.message}`)
-    ctx.panels.tableDataPanel.webview.postMessage({
+    ctx.panels.tableDataPanel?.webview.postMessage({
       type: 'tableDataError',
       message: result.message,
     })
@@ -111,12 +113,12 @@ async function loadTableSchema(ctx: ExtensionCtx, node: OutputTableNode, bypassC
 
   ctx.outputChannel.appendLine(`viewTableData: got ${result.result.fields.length} fields`)
 
-  ctx.panels.tableDataPanel.webview.postMessage({
+  ctx.panels.tableDataPanel?.webview.postMessage({
     type: 'tableSchemaInit',
     data: {
       tableName: table.tableName,
       schema: table.schema,
-      columns: result.result.fields.map(f => ({name: f.name, baseType: f.base_type})),
+      columns: result.result.fields.map(f => ({ name: f.name, baseType: f.base_type })),
     },
   })
 }
@@ -124,9 +126,10 @@ async function loadTableSchema(ctx: ExtensionCtx, node: OutputTableNode, bypassC
 async function loadTableData(ctx: ExtensionCtx, node: OutputTableNode) {
   const host = config.host
   const apiKey = ctx.apiKey.value
-  if (!host || !apiKey || !ctx.panels.tableDataPanel) return
+  if (!host || !apiKey || !ctx.panels.tableDataPanel)
+    return
 
-  const {table} = node
+  const { table } = node
 
   ctx.panels.tableDataPanel.webview.postMessage({
     type: 'tableDataLoading',
@@ -154,7 +157,7 @@ async function loadTableData(ctx: ExtensionCtx, node: OutputTableNode) {
     data: {
       tableName: table.tableName,
       schema: table.schema,
-      columns: result.result.cols.map(c => ({name: c.name, baseType: c.base_type})),
+      columns: result.result.cols.map(c => ({ name: c.name, baseType: c.base_type })),
       rows: result.result.rows,
     },
   })

@@ -1,4 +1,4 @@
-import type { ContentGraph, ContentNode, TransformNode } from './metabase-lib'
+import type { ContentGraph, ContentNode, TransformNode } from '../metabase-lib'
 import * as path from 'node:path'
 import * as vscode from 'vscode'
 
@@ -32,9 +32,11 @@ export class ContentTreeProvider implements vscode.TreeDataProvider<ContentNode>
 
     if (element.kind === 'card') {
       item.contextValue = element.cardType === 'model' ? 'model' : element.cardType === 'metric' ? 'metric' : 'card'
-    } else if (element.kind === 'collection' && element.collectionType === 'library') {
+    }
+    else if (element.kind === 'collection' && element.collectionType === 'library') {
       item.contextValue = 'collectionLibrary'
-    } else {
+    }
+    else {
       item.contextValue = element.kind
     }
 
@@ -42,7 +44,8 @@ export class ContentTreeProvider implements vscode.TreeDataProvider<ContentNode>
       if (element.sourceQueryType === 'query') {
         item.contextValue = 'transformStructured'
         item.tooltip = 'Transforms based on the query builder cannot be run in a workspace'
-      } else {
+      }
+      else {
         item.contextValue = 'transform'
       }
       item.command = {
@@ -50,13 +53,15 @@ export class ContentTreeProvider implements vscode.TreeDataProvider<ContentNode>
         title: 'Preview Transform',
         arguments: [element],
       }
-    } else if (element.kind === 'card' && element.cardType === 'metric') {
+    }
+    else if (element.kind === 'card' && element.cardType === 'metric') {
       item.command = {
         command: 'metastudio.showCardPreview',
         title: 'Preview Metric',
         arguments: [element],
       }
-    } else if ('filePath' in element && element.filePath) {
+    }
+    else if ('filePath' in element && element.filePath) {
       item.command = {
         command: 'vscode.open',
         title: 'Open',

@@ -20,7 +20,7 @@ export default defineConfig({
     emptyOutDir: true,
     rollupOptions: {
       input: {
-        index: resolve(__dirname, "index.html"),
+        index: resolve(__dirname, "index.html"),  // graph view
         preview: resolve(__dirname, "preview.html"),
         "table-data": resolve(__dirname, "table-data.html"),
         notebook: resolve(__dirname, "notebook.html"),
