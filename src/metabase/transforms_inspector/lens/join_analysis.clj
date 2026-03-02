@@ -85,7 +85,7 @@
                                       [(strategy->hsql-join-type strategy) [join-table join-condition]]))
                          joins)]
     {:select (if (and outer? condition)
-               [[[:count :*]] [[:count [:case condition 1]]]]
+               [[[:count :*]] [[:count [:case condition [:inline 1]]]]]
                [[[:count :*]]])
      :from   [from-table]
      :join-by join-by}))
