@@ -1,0 +1,190 @@
+.modalBody {
+  overflow-y: auto;
+  max-height: calc(80vh - 100px);
+  padding: 1rem;
+}
+
+.fieldSection {
+  margin-bottom: 1.25rem;
+  border: 1px solid var(--mb-color-border);
+  border-radius: 0.375rem;
+  overflow: hidden;
+}
+
+.fieldLabel {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding: 0.375rem 0.75rem;
+  background: var(--mb-color-bg-light);
+  border: none;
+  border-bottom: 1px solid var(--mb-color-border);
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--mb-color-text-medium);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  text-align: left;
+  cursor: pointer;
+}
+
+.fieldLabel:hover {
+  background: var(--mb-color-bg-medium);
+}
+
+.chevron {
+  font-size: 1rem;
+  line-height: 1;
+  transition: transform 0.15s ease;
+  transform: rotate(-90deg);
+}
+
+.chevron::after {
+  content: "▾";
+}
+
+.chevronOpen {
+  transform: rotate(0deg);
+}
+
+.sideBySide {
+  display: flex;
+  overflow-x: auto;
+}
+
+.panel {
+  flex: 1;
+  min-width: 0;
+}
+
+.panelHeader {
+  padding: 0.25rem 0.75rem;
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  border-bottom: 1px solid var(--mb-color-border);
+}
+
+.panelHeaderBefore {
+  background: color-mix(
+    in srgb,
+    var(--mb-color-error) 8%,
+    var(--mb-color-background-primary)
+  );
+  color: var(--mb-color-error);
+}
+
+.panelHeaderAfter {
+  background: color-mix(
+    in srgb,
+    var(--mb-color-success) 8%,
+    var(--mb-color-background-primary)
+  );
+  color: var(--mb-color-success);
+}
+
+.panelDivider {
+  width: 1px;
+  background: var(--mb-color-border);
+  flex-shrink: 0;
+}
+
+.panelContent {
+  font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas,
+    monospace;
+  font-size: 0.75rem;
+  line-height: 1.6;
+}
+
+.diffRow {
+  display: flex;
+  align-items: stretch;
+  min-height: 1.5rem;
+}
+
+.unchangedRow {
+  background: transparent;
+}
+
+.removedRow {
+  background: color-mix(
+    in srgb,
+    var(--mb-color-error) 8%,
+    var(--mb-color-background-primary)
+  );
+}
+
+.addedRow {
+  background: color-mix(
+    in srgb,
+    var(--mb-color-success) 8%,
+    var(--mb-color-background-primary)
+  );
+}
+
+.emptyRow {
+  background: var(--mb-color-background-secondary);
+  min-height: 1.5rem;
+}
+
+.lineNum {
+  min-width: 2.5rem;
+  padding: 0 0.5rem;
+  text-align: right;
+  color: var(--mb-color-text-light);
+  user-select: none;
+  border-right: 1px solid var(--mb-color-border);
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+}
+
+.removedRow .lineNum {
+  background: color-mix(
+    in srgb,
+    var(--mb-color-error) 22%,
+    var(--mb-color-background-primary)
+  );
+  color: var(--mb-color-error);
+}
+
+.addedRow .lineNum {
+  background: color-mix(
+    in srgb,
+    var(--mb-color-success) 22%,
+    var(--mb-color-background-primary)
+  );
+  color: var(--mb-color-success);
+}
+
+.lineSign {
+  min-width: 1rem;
+  text-align: center;
+  flex-shrink: 0;
+  padding: 0 0.25rem;
+  font-weight: 700;
+}
+
+.removedRow .lineSign {
+  color: var(--mb-color-error);
+}
+
+.addedRow .lineSign {
+  color: var(--mb-color-success);
+}
+
+.lineContent {
+  padding: 0 0.5rem;
+  white-space: pre-wrap;
+  word-break: break-all;
+  flex: 1;
+  min-width: 0;
+}
+
+.noChanges {
+  padding: 2rem;
+  text-align: center;
+}
