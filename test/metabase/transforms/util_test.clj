@@ -1,6 +1,7 @@
 (ns ^:mb/driver-tests metabase.transforms.util-test
   "Tests for transform utility functions."
   (:require
+   [clojure.core.async :as a]
    [clojure.test :refer :all]
    [metabase.api.common :as api]
    [metabase.driver :as driver]
@@ -324,19 +325,24 @@
 
 (deftest execute-sets-transform-id-on-target-table-test
   (testing "Executing a query transform sets transform_id on the target table"
-    (mt/with-premium-features #{:transforms}
-      (let [target {:type "table" :schema nil :name "test_output_table"}]
-        (mt/with-temp [:model/Database {db-id :id} {:engine :h2}
-                       :model/Transform {transform-id :id :as transform} {:target target
-                                                                          :source {:type  "query"
-                                                                                   :query {:database db-id}}}
-                       :model/Table {table-id :id} {:db_id db-id :name "test_output_table" :schema nil}]
-          ;; Mock execute-base! to return success without actually running a query,
-          ;; so we can test that the post-processing (transform_id update) happens.
-          (with-redefs [transforms-base.i/execute-base! (constantly {:status :succeeded})]
-            (transforms.execute/execute! transform {:run-method :manual})
-            (is (= transform-id
-                   (t2/select-one-fn :transform_id :model/Table :id table-id)))))))))
+    (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
+      (mt/with-premium-features #{:transforms}
+        (let [target {:type "table" :schema nil :name "test_output_table"}]
+          (mt/with-temp [:model/Transform {transform-id :id :as transform}
+                         {:target target
+                          :source {:type  "query"
+                                   :query (lib/query (mt/metadata-provider) (mt/mbql-query venues))}}
+                         :model/Table {table-id :id} {:db_id (mt/id) :name "test_output_table" :schema nil}]
+            ;; Mock execute-base! to return success without actually running a query,
+            ;; run-cancelable-transform! to bypass schema creation / cancellation infra,
+            ;; and complete-execution! to skip sync/events.
+            (with-redefs [transforms-base.i/execute-base!       (constantly {:status :succeeded})
+                          transforms-base.u/complete-execution!  (constantly nil)
+                          transforms.u/run-cancelable-transform! (fn [_run-id _driver _details run-fn & _opts]
+                                                                   (run-fn (a/promise-chan)))]
+              (transforms.execute/execute! transform {:run-method :manual})
+              (is (= transform-id
+                     (t2/select-one-fn :transform_id :model/Table :id table-id))))))))))
 
 (deftest transform-hydration-test
   (testing "hydrating :transform on a table"
