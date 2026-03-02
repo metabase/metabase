@@ -8,7 +8,7 @@ export interface SingleSelectListFieldProps {
   options: Option[];
   optionRenderer: (option: Option) => JSX.Element;
   onSearchChange?: (value: string) => void;
-  placeholder: string;
+  placeholder?: string;
   isDashboardFilter?: boolean;
   isLoading?: boolean;
   checkedColor?: string;
