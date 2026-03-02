@@ -1276,4 +1276,3 @@
                                    {:slack-connect-client-id "id"
                                     :slack-connect-client-secret "secret"
                                     :metabot-slack-signing-secret "signing"}))))))
-
