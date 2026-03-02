@@ -372,11 +372,11 @@
                              :database {:id 1}
                              :transform-type :table}]
       (with-redefs [driver/table-exists? (constantly true)
-                   driver/compile-transform (fn [& _] (record-call! :compile-transform) mock-query)
-                   driver/execute-raw-queries! (fn [& _] (record-call! :execute-raw-queries!) mock-rows)
-                   driver/rename-tables! (fn [& _] (record-call! :rename-tables!))
-                   driver/rename-table! (fn [& _] (record-call! :rename-table!))
-                   driver/drop-table! (fn [& _] (record-call! :drop-table!))]
+                    driver/compile-transform (fn [& _] (record-call! :compile-transform) mock-query)
+                    driver/execute-raw-queries! (fn [& _] (record-call! :execute-raw-queries!) mock-rows)
+                    driver/rename-tables! (fn [& _] (record-call! :rename-tables!))
+                    driver/rename-table! (fn [& _] (record-call! :rename-table!))
+                    driver/drop-table! (fn [& _] (record-call! :drop-table!))]
         (testing "only create if table doesn't exist"
           (reset! calls [])
           (with-redefs [driver/table-exists? (constantly false)]

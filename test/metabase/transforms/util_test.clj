@@ -5,13 +5,14 @@
    [metabase.api.common :as api]
    [metabase.driver :as driver]
    [metabase.driver.util :as driver.u]
-   [metabase.events.core :as events]
    [metabase.lib.core :as lib]
    [metabase.permissions.models.data-permissions :as data-perms]
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.test :as mt]
    [metabase.test.data.sql :as sql.tx]
+   [metabase.transforms-base.interface :as transforms-base.i]
    [metabase.transforms-base.util :as transforms-base.u]
+   [metabase.transforms.execute :as transforms.execute]
    [metabase.transforms.util :as transforms.u]
    [toucan2.core :as t2]))
 
@@ -321,20 +322,19 @@
                         (is (false? (transforms.u/source-tables-readable? transform))
                             "User who cannot read all source tables should have source_readable=false")))))))))))))
 
-(deftest handle-transform-complete-sets-transform-id-test
-  (testing "handle-transform-complete! sets transform_id on the target table"
+(deftest execute-sets-transform-id-on-target-table-test
+  (testing "Executing a query transform sets transform_id on the target table"
     (mt/with-premium-features #{:transforms}
       (let [target {:type "table" :schema nil :name "test_output_table"}]
         (mt/with-temp [:model/Database {db-id :id :as db} {:engine :h2}
-                       :model/Transform {transform-id :id :as transform} {:target target}
-                       :model/Table {table-id :id :as table} {:db_id db-id :name "test_output_table" :schema nil}
-                       :model/TransformRun {run-id :id} {:transform_id transform-id
-                                                         :status "running"
-                                                         :run_method "manual"}]
-          (mt/with-dynamic-fn-redefs [transforms-base.u/sync-target!                       (constantly table)
-                                      events/publish-event!                              (constantly nil)
-                                      transforms.u/execute-secondary-index-ddl-if-required! (constantly nil)]
-            (transforms.u/handle-transform-complete! :run-id run-id :transform transform :db db)
+                       :model/Transform {transform-id :id :as transform} {:target target
+                                                                          :source {:type  "query"
+                                                                                   :query {:database db-id}}}
+                       :model/Table {table-id :id} {:db_id db-id :name "test_output_table" :schema nil}]
+          ;; Mock execute-base! to return success without actually running a query,
+          ;; so we can test that the post-processing (transform_id update) happens.
+          (with-redefs [transforms-base.i/execute-base! (constantly {:status :succeeded})]
+            (transforms.execute/execute! transform {:run-method :manual})
             (is (= transform-id
                    (t2/select-one-fn :transform_id :model/Table :id table-id)))))))))
 

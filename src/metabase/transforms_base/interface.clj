@@ -57,6 +57,7 @@
   - `:cancelled?` - (fn [] boolean), polled during execution to check for cancellation
   - `:run-id` - optional, for instrumentation/metrics (nil skips metrics recording)
   - `:with-stage-timing-fn` - optional, (fn [run-id stage thunk]) for timing instrumentation
+  - `:publish-events?` - whether to publish related Metabase events (default true)
 
   Returns a map:
   {:status :succeeded | :failed | :cancelled | :timeout

@@ -156,8 +156,8 @@
       (let [database   (mt/db)
             test-table (t2/select-one [:model/Table :schema :name] (mt/id :orders))]
         (with-redefs [driver/init-workspace-isolation!
-                     (fn [_driver _database _workspace]
-                       (throw (ex-info "permission denied" {:step :init})))]
+                      (fn [_driver _database _workspace]
+                        (throw (ex-info "permission denied" {:step :init})))]
           (is (some? (driver/check-isolation-permissions
                       (driver/the-driver (:engine database))
                       database
@@ -170,8 +170,8 @@
       (let [database   (mt/db)
             test-table (t2/select-one [:model/Table :schema :name] (mt/id :orders))]
         (with-redefs [driver/grant-workspace-read-access!
-                     (fn [_driver _database _workspace _tables]
-                       (throw (ex-info "permission denied" {:step :grant})))]
+                      (fn [_driver _database _workspace _tables]
+                        (throw (ex-info "permission denied" {:step :grant})))]
           (is (some? (driver/check-isolation-permissions
                       (driver/the-driver (:engine database))
                       database
@@ -184,8 +184,8 @@
       (let [database   (mt/db)
             test-table (t2/select-one [:model/Table :schema :name] (mt/id :orders))]
         (with-redefs [driver/destroy-workspace-isolation!
-                     (fn [_driver _database _workspace]
-                       (throw (ex-info "permission denied" {:step :destroy})))]
+                      (fn [_driver _database _workspace]
+                        (throw (ex-info "permission denied" {:step :destroy})))]
           (is (some? (driver/check-isolation-permissions
                       (driver/the-driver (:engine database))
                       database

@@ -11,6 +11,7 @@
    [metabase.query-processor.compile :as qp.compile]
    [metabase.transforms-base.interface :as transforms-base.i]
    [metabase.transforms-base.util :as transforms-base.u]
+   [metabase.util.i18n :as i18n]
    [metabase.util.log :as log]
    [metabase.util.malli.registry :as mr]
    [toucan2.core :as t2]))
@@ -78,73 +79,75 @@
     :result <driver result>
     :error <exception if failed>}"
   [{:keys [id source target] :as transform}
-   {:keys [cancelled? run-id with-stage-timing-fn]}]
-  (try
-    ;; Check cancellation before starting
-    (when (and cancelled? (cancelled?))
-      (throw (ex-info "Transform cancelled before start" {:status :cancelled})))
-
-    (let [db (get-in source [:query :database])
-          {driver :engine :as database} (t2/select-one :model/Database db)
-          transform-details {:db-id db
-                             :database database
-                             :transform-id   id
-                             :transform-type (keyword (:type target))
-                             :conn-spec (driver/connection-spec driver database)
-                             :query (transforms-base.u/compile-source transform)
-                             :output-schema (:schema target)
-                             :output-table (transforms-base.u/qualified-table-name driver target)}
-          opts (transform-opts transform-details)
-          features (transforms-base.u/required-database-features transform)]
-
-      (when (transforms-base.u/db-routing-enabled? database)
-        (throw (ex-info "Transforms are not supported on databases with DB routing enabled."
-                        {:driver driver, :database database})))
-      (when-not (every? (fn [feature] (driver.u/supports? (:engine database) feature database)) features)
-        (throw (ex-info "The database does not support the requested transform target type."
-                        {:driver driver, :database database, :features features})))
-
-      (log/info "Executing transform" id "with target" (pr-str target))
-
-      ;; Create schema if needed
-      (when-not (driver/schema-exists? driver db (:schema target))
-        (driver/create-schema-if-needed! driver (:conn-spec transform-details) (:schema target)))
-
-      ;; Check cancellation before running query
+   {:keys [cancelled? run-id with-stage-timing-fn] :as opts}]
+  (let [publish-events? (get opts :publish-events? true)]
+    (try
+      ;; Check cancellation before starting
       (when (and cancelled? (cancelled?))
-        (throw (ex-info "Transform cancelled before query execution" {:status :cancelled})))
+        (throw (ex-info "Transform cancelled before start" {:status :cancelled})))
 
-      ;; Run the actual transform
-      (let [result (driver/run-transform! driver transform-details opts)]
+      (let [db (get-in source [:query :database])
+            {driver :engine :as database} (t2/select-one :model/Database db)
+            transform-details {:db-id db
+                               :database database
+                               :transform-id   id
+                               :transform-type (keyword (:type target))
+                               :conn-spec (driver/connection-spec driver database)
+                               :query (transforms-base.u/compile-source transform)
+                               :output-schema (:schema target)
+                               :output-table (transforms-base.u/qualified-table-name driver target)}
+            opts (transform-opts transform-details)
+            features (transforms-base.u/required-database-features transform)]
 
-        ;; Check cancellation after query but before sync
+        (when (transforms-base.u/db-routing-enabled? database)
+          (throw (ex-info (i18n/tru "Failed to run the transform ({0}) because the database ({1}) has database routing turned on. Running transforms on databases with db routing enabled is not supported."
+                                    (:name transform)
+                                    (:name database))
+                          {:driver driver, :database database})))
+        (when-not (every? (fn [feature] (driver.u/supports? (:engine database) feature database)) features)
+          (throw (ex-info "The database does not support the requested transform target type."
+                          {:driver driver, :database database, :features features})))
+
+        (log/info "Executing transform" id "with target" (pr-str target))
+
+        ;; Create schema if needed
+        (when-not (driver/schema-exists? driver db (:schema target))
+          (driver/create-schema-if-needed! driver (:conn-spec transform-details) (:schema target)))
+
+        ;; Check cancellation before running query
         (when (and cancelled? (cancelled?))
-          (throw (ex-info "Transform cancelled after query execution" {:status :cancelled})))
+          (throw (ex-info "Transform cancelled before query execution" {:status :cancelled})))
 
-        ;; Sync target table
-        (transforms-base.u/sync-target! target database)
+        ;; Run the actual transform
+        (let [result (driver/run-transform! driver transform-details opts)]
 
-        ;; Publish event (after sync, so table exists in AppDB).
-        ;; Skip for in-memory transforms (no :id) — workspace execution handles its own tracking.
-        (when id
-          (events/publish-event! :event/transform-run-complete {:object transform-details}))
+          ;; Check cancellation after query but before sync
+          (when (and cancelled? (cancelled?))
+            (throw (ex-info "Transform cancelled after query execution" {:status :cancelled})))
 
-        ;; Create secondary indexes if needed
-        (transforms-base.u/execute-secondary-index-ddl-if-required!
-         transform run-id database target with-stage-timing-fn)
+          ;; Sync target table
+          (transforms-base.u/sync-target! target database)
 
-        {:status :succeeded
-         :result result}))
+          ;; Publish event after sync so the table exists in AppDB.
+          (when publish-events?
+            (events/publish-event! :event/transform-run-complete {:object transform-details}))
 
-    (catch Exception e
-      (let [data (ex-data e)]
-        (if (= :cancelled (:status data))
-          {:status :cancelled
-           :error e}
-          (do
-            (log/error e "Error executing transform")
-            {:status :failed
-             :error e}))))))
+          ;; Create secondary indexes if needed
+          (transforms-base.u/execute-secondary-index-ddl-if-required!
+           transform run-id database target with-stage-timing-fn)
+
+          {:status :succeeded
+           :result result}))
+
+      (catch Exception e
+        (let [data (ex-data e)]
+          (if (= :cancelled (:status data))
+            {:status :cancelled
+             :error e}
+            (do
+              (log/error e "Error executing transform")
+              {:status :failed
+               :error e})))))))
 
 ;;; ------------------------------------------------- Interface Implementation -------------------------------------------------
 

@@ -11,19 +11,14 @@
    [metabase.driver :as driver]
    [metabase.driver.sql-jdbc :as sql-jdbc]
    [metabase.driver.util :as driver.u]
-   [metabase.events.core :as events]
    [metabase.models.interface :as mi]
    [metabase.models.transforms.transform-run :as transform-run]
    [metabase.query-processor.pipeline :as qp.pipeline]
    [metabase.transforms-base.util :as transforms-base.u]
    [metabase.transforms.canceling :as canceling]
    [metabase.transforms.feature-gating :as transforms.gating]
-   [metabase.transforms.instrumentation :as transforms.instrumentation]
-   [metabase.transforms.schema :as transforms.schema]
    [metabase.transforms.settings :as transforms.settings]
    [metabase.util :as u]
-   [metabase.util.log :as log]
-   [metabase.util.malli :as mu]
    [toucan2.core :as t2])
   (:import
    (java.sql SQLException)))
@@ -137,56 +132,6 @@
       (throw t))
     (finally
       (canceling/chan-end-run! run-id))))
-
-(defn execute-secondary-index-ddl-if-required!
-  "If target table index modifications are required, executes those CREATE/DROP commands.
-  See [[metabase.transforms-util/decide-secondary-index-ddl]] for details."
-  [transform run-id database target]
-  (when (driver.u/supports? (:engine database) :describe-indexes database)
-    (let [driver     (:engine database)
-          indexes    (driver/describe-table-indexes driver database target)
-          checkpoint (transforms-base.u/next-checkpoint transform)
-          {:keys [drop create]}
-          (#'transforms-base.u/decide-secondary-index-ddl
-           {:filter-column (:filter-column checkpoint)
-            :database      database
-            :target        target
-            :indexes       indexes})]
-      (doseq [{:keys [index-name value]} drop]
-        (transforms.instrumentation/with-stage-timing [run-id [:import :drop-incremental-filter-index]]
-          (log/infof "Dropping secondary index %s(%s) for target %s" index-name value (pr-str target))
-          (driver/drop-index! driver (:id database) (:schema target) (:name target) index-name)))
-      (doseq [{:keys [index-name value]} create]
-        (transforms.instrumentation/with-stage-timing [run-id [:import :create-incremental-filter-index]]
-          (log/infof "Creating secondary index %s(%s) for target %s" index-name value (pr-str target))
-          (driver/create-index! driver (:id database) (:schema target) (:name target) index-name [value]))))))
-
-(mu/defn handle-transform-complete!
-  "Handles followup tasks for when a transform has completed.
-
-  Specifically, this syncs the target db, publishes a `:event/transform-run-complete` event, and potentially updates
-  the target table's index.
-
-  See [[metabase.transforms-util/decide-secondary-index-ddl]] for details on the index handling."
-  [& {:keys [run-id transform db]}
-   :- [:map
-       [:run-id ::transforms.schema/run-id]
-       [:transform ::transforms.schema/transform]
-       [:db [:fn {:error/message "Must a t2 database object"} #(= (t2/model %) :model/Database)]]]]
-  (let [target (:target transform)]
-    (transforms.instrumentation/with-stage-timing [run-id [:import :table-sync]]
-      (when-let [table (transforms-base.u/sync-target! target db)]
-        (t2/update! :model/Table (:id table) {:transform_id (:id transform)}))
-      ;; This event must be published only after the sync is complete - the new table needs to be in AppDB.
-      (events/publish-event! :event/transform-run-complete
-                             {:object {:db-id (:id db)
-                                       :transform-id (:id transform)
-                                       :transform-type (keyword (:type target))
-                                       :output-schema (:schema target)
-                                       :output-table (transforms-base.u/qualified-table-name (:engine db) target)}})
-      ;; Creating an index after sync means the filter column is known in the appdb.
-      ;; The index would be synced the next time sync runs, but at time of writing, index sync is disabled.
-      (execute-secondary-index-ddl-if-required! transform run-id db target))))
 
 (defn is-temp-transform-table?
   "Return true when `table` matches the transform temporary table naming pattern and transforms are enabled."

@@ -191,7 +191,7 @@
                                    :target (remap-target table-mapping target-fallback target)))
         _               (assert (:target remapped-xf) "Target mapping must not be nil")
         start-time      (java.time.Instant/now)
-        result          (transforms-base/execute! remapped-xf)]
+        result          (transforms-base/execute! remapped-xf {:publish-events? false})]
     {:status     (:status result)
      :start_time start-time
      :end_time   (java.time.Instant/now)
