@@ -568,3 +568,29 @@
           (is (= 42 (:metric-id @captured)))
           (is (= :compound (:filter-kind filter)))
           (is (= :or (:operator filter))))))))
+
+(deftest construct-notebook-query-aggregate-optional-filters-limit-test
+  (testing "aggregate queries accept omitted filters and limit"
+    (let [captured (atom nil)]
+      (with-redefs [filter-tools/query-datasource (fn [args]
+                                                    (reset! captured args)
+                                                    {:structured-output {:query-id "q-1"
+                                                                         :query {:database 1}}})
+                    create-chart-tools/create-chart (fn [_args]
+                                                      {:chart-id "c-1"
+                                                       :chart-type :table
+                                                       :chart-link "metabase://chart/c-1"
+                                                       :chart-content "<chart/>"
+                                                       :reactions [{:type :metabot.reaction/redirect
+                                                                    :url "/question#hash"}]})]
+        (let [result (agent-tools/construct-notebook-query-tool
+                      {:reasoning "aggregate without filters/limit"
+                       :query {:query_type "aggregate"
+                               :source {:table_id 34}
+                               :aggregations [{:function "count"}]
+                               :group_by [{:field_id "t34-14"}]}
+                       :visualization {:chart_type "bar"}})]
+          (is (map? result))
+          (is (= 34 (:table-id @captured)))
+          (is (= [] (:filters @captured)))
+          (is (nil? (:limit @captured))))))))

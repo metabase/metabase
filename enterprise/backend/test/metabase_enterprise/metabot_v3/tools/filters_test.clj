@@ -357,15 +357,27 @@
             (are [input] (=? expected-query (metabot-v3.tools.filters/query-model input))
               input
               (assoc input :fields nil)
-              (assoc input :fields [])))))
-      (testing "Missing model results in an error."
-        (is (= {:output "Not found."
-                :status-code 404}
-               (metabot-v3.tools.filters/query-model {:model-id Integer/MAX_VALUE}))))
-      (testing "Invalid model-id results in an error."
-        (is (= {:output (str "Invalid model_id " model-id)
-                :status-code 400}
-               (metabot-v3.tools.filters/query-model {:model-id (str model-id)})))))))
+              (assoc input :fields []))))
+        (testing "Cumulative count aggregation without field-id works"
+          (is (=? {:structured-output {:type :query
+                                       :query-id string?
+                                       :query {:database (mt/id)
+                                               :lib/type :mbql/query
+                                               :stages [{:lib/type :mbql.stage/mbql
+                                                         :source-card model-id
+                                                         :aggregation [[:cum-count {}]]}]}}}
+                  (metabot-v3.tools.filters/query-model
+                   {:model-id model-id
+                    :aggregations [{:function :cum-count}]
+                    :group-by []}))))
+        (testing "Missing model results in an error."
+          (is (= {:output "Not found."
+                  :status-code 404}
+                 (metabot-v3.tools.filters/query-model {:model-id Integer/MAX_VALUE}))))
+        (testing "Invalid model-id results in an error."
+          (is (= {:output (str "Invalid model_id " model-id)
+                  :status-code 400}
+                 (metabot-v3.tools.filters/query-model {:model-id (str model-id)}))))))))
 
 (deftest ^:parallel filter-records-table-test
   (testing "User has to have execution rights, otherwise the table should be invisible."
@@ -1170,7 +1182,19 @@
                 (metabot-v3.tools.filters/query-datasource
                  {:table-id table-id
                   :aggregations [{:field-id (->field-id "Total")
-                                  :function :cum-count}]})))))))
+                                  :function :cum-count}]}))))
+
+      (testing "Cumulative count aggregation without field-id"
+        (is (=? {:structured-output {:type :query
+                                     :query-id string?
+                                     :query {:database (mt/id)
+                                             :lib/type :mbql/query
+                                             :stages [{:lib/type :mbql.stage/mbql
+                                                       :source-table table-id
+                                                       :aggregation [[:cum-count {}]]}]}}}
+                (metabot-v3.tools.filters/query-datasource
+                 {:table-id table-id
+                  :aggregations [{:function :cum-count}]})))))))
 
 ;;; ======================= Conditional Aggregation Tests =======================
 

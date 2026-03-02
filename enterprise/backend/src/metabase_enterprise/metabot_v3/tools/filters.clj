@@ -566,11 +566,15 @@
   "Resolve the column for an aggregation, skipping measures, expression-refs, and field-less counts.
    Also resolves columns within conditional aggregation conditions."
   [resolve-visible-column aggregation]
-  (let [;; First, resolve the main column if needed
+  (let [field-id (:field-id aggregation)
+        missing-field-id? (or (nil? field-id)
+                              (and (string? field-id) (str/blank? field-id)))
+        ;; First, resolve the main column if needed
         resolved (if (or (:measure-id aggregation)
                          (:expression-ref aggregation)  ;; expression-ref doesn't need column resolution
-                         (and (= :count (:function aggregation))
-                              (not (:field-id aggregation)))
+                         ;; count and cum-count do not require a field.
+                         (and (#{:count :cum-count} (:function aggregation))
+                              missing-field-id?)
                          ;; count-where doesn't require a main field
                          (= :count-where (:function aggregation)))
                    aggregation
