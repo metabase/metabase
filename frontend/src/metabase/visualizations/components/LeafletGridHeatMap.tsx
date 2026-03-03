@@ -56,7 +56,7 @@ export class LeafletGridHeatMap extends LeafletMap<LeafletGridHeatMapProps> {
     }
 
     this.gridLayer = L.layerGroup([]).addTo(this.map);
-    this.componentDidUpdate(this.props as unknown as LeafletMapProps);
+    this.componentDidUpdate({} as LeafletGridHeatMapProps);
   }
 
   componentDidUpdate(prevProps: LeafletMapProps) {
@@ -87,7 +87,7 @@ export class LeafletGridHeatMap extends LeafletMap<LeafletGridHeatMapProps> {
         .scaleLinear([min ?? 0, max ?? 0], [successColor, errorColor])
         .interpolate(d3.interpolateHcl);
 
-      const gridSquares = gridLayer.getLayers() as L.Rectangle[];
+      const gridSquares = gridLayer.getLayers().filter(isRectangleLayer);
       const totalSquares = Math.max(points.length, gridSquares.length);
 
       const latitudeValues = points.map((row) => row[latitudeIndex]);
@@ -105,6 +105,7 @@ export class LeafletGridHeatMap extends LeafletMap<LeafletGridHeatMapProps> {
         if (index >= points.length) {
           gridLayer.removeLayer(gridSquares[index]);
         }
+
         if (index >= gridSquares.length) {
           const gridSquare = this._createGridSquare(index);
           gridLayer.addLayer(gridSquare);
@@ -216,4 +217,8 @@ export class LeafletGridHeatMap extends LeafletMap<LeafletGridHeatMapProps> {
       }
     }
   }
+}
+
+function isRectangleLayer(layer: L.Layer): layer is L.Rectangle {
+  return layer instanceof L.Rectangle;
 }
