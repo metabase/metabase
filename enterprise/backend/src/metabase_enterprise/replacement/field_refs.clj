@@ -62,17 +62,21 @@
   [[:pivot_table.column_split :rows]
    [:pivot_table.column_split :columns]
    [:pivot_table.column_split :values]
-   [:pivot_table.collapsed_rows :rows]
-   [:table.column_formatting :columns]])
+   [:pivot_table.collapsed_rows :rows]])
 
 (defn- upgrade-viz-settings-locations
   [viz-settings query]
-  (reduce (fn [viz location]
-            (if-some [refs' (some->> (get-in viz location)
-                                     (mapv #(or (upgrade-field-ref-to-name query %) %)))]
-              (assoc-in viz location refs')
-              viz))
-          viz-settings viz-settings-field-ref-locations))
+  (let [upgrade-refs (fn [refs]
+                       (mapv #(or (upgrade-field-ref-to-name query %) %) refs))
+        viz (reduce (fn [viz location]
+                      (if-some [refs' (some->> (get-in viz location) upgrade-refs)]
+                        (assoc-in viz location refs')
+                        viz))
+                    viz-settings viz-settings-field-ref-locations)]
+    ;; table.column_formatting is a vector of maps, each with a :columns key
+    (update-existing viz :table.column_formatting
+                     (fn [entries]
+                       (mapv #(update-existing % :columns upgrade-refs) entries)))))
 
 (defn- update-existing
   [mp k f & args]
