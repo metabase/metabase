@@ -160,7 +160,7 @@
   "Tell c3p0 to log a stack trace for any connections killed due to exceeding the timeout specified in
   [[jdbc-data-warehouse-unreturned-connection-timeout-seconds]].
 
-  Note: You also need to update the com.mchange log level to INFO or higher in the log4j configs in order to see the
+  Note: You also need to update the com.mchange log level to INFO or higher in the Log4j configs in order to see the
   stack traces in the logs."
   :visibility :internal
   :type       :boolean
