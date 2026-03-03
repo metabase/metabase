@@ -88,6 +88,7 @@ jobs:
   e2e-sample-apps-tests:
     needs: [get-sample-apps-data]
     strategy:
+      fail-fast: false
       matrix:
         test_suite: ${{ fromJSON(needs.get-sample-apps-data.outputs.matrix) }}
         environment: ["production", "development"]
@@ -194,6 +195,7 @@ jobs:
   e2e-shoppy-tests:
     needs: [get-sample-apps-data]
     strategy:
+      fail-fast: false
       matrix:
         environment: ["production", "development"]
     if: |
@@ -342,6 +344,7 @@ jobs:
   # For more details see `Embedding SDK integration tests with Host Apps` in `enterprise/frontend/src/embedding-sdk-package/dev.md`
   e2e-host-apps-tests:
     strategy:
+      fail-fast: false
       matrix:
         test_suite:
           [
