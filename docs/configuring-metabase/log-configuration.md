@@ -21,7 +21,7 @@ See [How to read logs](../troubleshooting-guide/server-logs.md).
 
 ## Configuring logging Level
 
-Metabase uses [log4j](https://logging.apache.org/log4j/2.x/)for logging configuration. Here is Metabase's [default logging configuration](https://github.com/metabase/metabase/blob/master/resources/log4j2.xml). Some troubleshooting tasks might require you to override this logging configuration (for example, to see more details about errors). See Log4j's docs for info on [log levels](https://logging.apache.org/log4j/2.x/manual/customloglevels.html).
+Metabase uses [Log4j](https://logging.apache.org/log4j/2.x/) for logging configuration. Here is Metabase's [default logging configuration](https://github.com/metabase/metabase/blob/master/resources/log4j2.xml). Some troubleshooting tasks might require you to override this logging configuration (for example, to see more details about errors). See Log4j's docs for info on [log levels](https://logging.apache.org/log4j/2.x/manual/customloglevels.html).
 
 ### Temporary override logging configuration
 
