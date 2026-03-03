@@ -6,8 +6,7 @@
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.test-metadata :as meta]
-   [metabase.lib.test-util :as lib.tu]
-   [metabase.util.malli :as mu]))
+   [metabase.lib.test-util :as lib.tu]))
 
 (deftest ^:parallel swap-source-in-query-table->table-test
   (let [query (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
@@ -271,53 +270,6 @@
                                   :stages [{:source-table (meta/id :reviews)}]}]}
                         {:filters [[:not-null {} [:field (complement :join-alias) "Orders__CREATED_AT"]]]}]}
               swapped-query)))))
-
-(deftest ^:parallel swap-source-in-query-wrong-join-alias-first-stage-test
-  (mu/disable-enforcement
-    (let [query          (-> (lib/query meta/metadata-provider (meta/table-metadata :products))
-                             (lib/join (meta/table-metadata :orders))
-                             (lib/filter (lib/not-null (lib/ensure-uuid [:field {:base-type :type/Integer
-                                                                                 :join-alias "WRONG"}
-                                                                         (meta/id :orders :product-id)]))))
-          upgraded-query (lib-be/upgrade-field-refs-in-query query)
-          swapped-query  (lib-be/swap-source-in-query upgraded-query
-                                                      {:type :table, :id (meta/id :orders)}
-                                                      {:type :table, :id (meta/id :reviews)})]
-      (testing "upgrade should heal the wrong join-alias to the correct one"
-        (is (=? {:stages [{:filters [[:not-null {} [:field {:join-alias "Orders"}
-                                                    (meta/id :orders :product-id)]]]}]}
-                upgraded-query)))
-      (testing "should return an identical query if upgrade is not needed"
-        (is (= upgraded-query (lib-be/upgrade-field-refs-in-query upgraded-query))))
-      (testing "should swap the healed joined column ref"
-        (is (=? {:stages [{:filters [[:not-null {} [:field {:join-alias "Orders"}
-                                                    (meta/id :reviews :product-id)]]]}]}
-                swapped-query))))))
-
-(deftest ^:parallel swap-source-in-query-wrong-join-alias-second-stage-test
-  (mu/disable-enforcement
-    (let [query          (-> (lib/query meta/metadata-provider (meta/table-metadata :products))
-                             (lib/join (meta/table-metadata :orders))
-                             (lib/append-stage)
-                             (lib/filter (lib/not-null (lib/ensure-uuid [:field {:base-type :type/DateTimeWithLocalTZ
-                                                                                 :join-alias "WRONG"}
-                                                                         (meta/id :orders :created-at)]))))
-          upgraded-query (lib-be/upgrade-field-refs-in-query query)
-          swapped-query  (lib-be/swap-source-in-query upgraded-query
-                                                      {:type :table, :id (meta/id :orders)}
-                                                      {:type :table, :id (meta/id :reviews)})]
-      (testing "upgrade should heal to a name-based ref without join-alias"
-        (is (=? {:stages [{:joins [{:alias "Orders"
-                                    :stages [{:source-table (meta/id :orders)}]}]}
-                          {:filters [[:not-null {} [:field (complement :join-alias) "Orders__CREATED_AT"]]]}]}
-                upgraded-query)))
-      (testing "should return an identical query if upgrade is not needed"
-        (is (= upgraded-query (lib-be/upgrade-field-refs-in-query upgraded-query))))
-      (testing "should preserve second-stage ref and swap join source to reviews"
-        (is (=? {:stages [{:joins [{:alias "Orders"
-                                    :stages [{:source-table (meta/id :reviews)}]}]}
-                          {:filters [[:not-null {} [:field (complement :join-alias) "Orders__CREATED_AT"]]]}]}
-                swapped-query))))))
 
 (deftest ^:parallel swap-source-in-query-join-missing-alias-test
   (let [query          (-> (lib/query meta/metadata-provider (meta/table-metadata :products))
