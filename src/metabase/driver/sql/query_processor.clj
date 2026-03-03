@@ -13,13 +13,14 @@
    [metabase.driver-api.core :as driver-api]
    [metabase.driver.common :as driver.common]
    [metabase.driver.sql.query-processor.deprecated :as sql.qp.deprecated]
+   [metabase.lib.util.match :as lib.util.match]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [metabase.util.performance :as perf :refer [some mapv every? select-keys empty? not-empty]]
+   [metabase.util.performance :as perf :refer [empty? every? mapv not-empty select-keys some]]
    [toucan2.pipeline :as t2.pipeline])
   (:import
    (java.time LocalDate LocalDateTime LocalTime OffsetDateTime OffsetTime ZonedDateTime)
@@ -989,12 +990,17 @@
                 (or (clause-pred (first form))
                     (m/find-first (partial contains-clause? clause-pred) (rest form))))))
 
-;; NOCOMMIT
-(defn- constant-expr?
+(defn- pivot-query-group-constant-expression?
+  "Whether this is a reference to the `pivot-group` constant expression added
+  by [[metabase.query-processor.pivot/add-pivot-group-breakout]]; if it is, we can safely exclude it from `GROUP BY`
+  and `ORDER BY` when generating an `OVER` window expression, since it is a constant value. (Some databases like
+  Redshift aren't happy if they include constant expressions in `OVER`).
+
+  See [[metabase.query-processor.pivot-test/offset-pivot-test]] for a test that fails if this is removed."
   [expr]
-  (and (vector? expr)
-       (= (first expr) :field)
-       (= (second expr) "pivot-grouping")))
+  (lib.util.match/match-lite expr
+    [(_ :guard #{:field :expression}) (_name :guard string?) (_opts :guard :qp.pivot/pivot-grouping?)]
+    true))
 
 (defn- over-order-bys
   "Returns a vector containing the `aggregations` specified by `order-bys` compiled to
@@ -1003,7 +1009,9 @@
   (let [aggregations (vec aggregations)]
     (into []
           (comp (remove (fn [[_direction expr]]
-                          (constant-expr? expr)))
+                          (when (pivot-query-group-constant-expression? expr)
+                            (log/debugf "Excluding %s from ORDER BY in OVER expression since it is a constant" (pr-str expr))
+                            true)))
                 (keep (fn [[direction expr]]
                         (if (aggregation? expr)
                           (let [[_aggregation index] expr
@@ -1021,7 +1029,11 @@
                                    (comp (remove
                                           (comp driver-api/qp.util.transformations.nest-breakouts.externally-remapped-field
                                                 #(nth % 2)))
-                                         (remove constant-expr?))
+                                         (remove (fn [expr]
+                                                   (when (pivot-query-group-constant-expression? expr)
+                                                     (log/debugf "Excluding %s from GROUP BY in OVER expression since it is a constant"
+                                                                 (pr-str expr))
+                                                     true))))
                                    (:breakout inner-query))
         group-bys            (:group-by (apply-top-level-clause driver :breakout {} inner-query))
         finest-temp-breakout (driver-api/finest-temporal-breakout-index breakouts 2)
@@ -1070,7 +1082,9 @@
                (merge additional-hsql))]
      (-> (if (seq m)
            [:over [expr m]]
-           [:inline nil])
+           (do
+             (log/debug "OVER contains no GROUP BYs or ORDER BYs, falling back to returning NULL")
+             [:inline nil]))
          (h2x/with-database-type-info (h2x/database-type expr))))))
 
 (defn- format-rows-unbounded-preceding [_clause _args]

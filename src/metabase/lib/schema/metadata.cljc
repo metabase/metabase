@@ -508,7 +508,18 @@
     ;; stage. [[metabase.lib.metadata.result-metadata/super-broken-legacy-field-ref]] uses this to know to force Field
     ;; ID refs for QP `:field_ref` in results metadata to preserve historic behavior to avoid breaking legacy viz
     ;; settings that use it as a key.
-    [:qp/implicit-field? {:optional true} [:maybe :boolean]]]
+    [:qp/implicit-field? {:optional true} [:maybe :boolean]]
+    ;;
+    ;; Whether this is the special `pivot-grouping` column added by the Pivot QP
+    ;; in [[metabase.query-processor.pivot/add-pivot-group-breakout]]. In `OVER` window function `GROUP BY` and `ORDER
+    ;; BY` this should be "optimized out" since some databases like Redshift don't allow constant expressions there.
+    ;; See also [[metabase.driver.sql.query-processor/pivot-query-group-constant-expression?]] (where this is used by
+    ;; the SQL QP) and [[metabase.query-processor.pivot-test/offset-pivot-test]] (a test that will fail if this key is
+    ;; removed)
+    ;;
+    ;; This should be propagated as-is to subsequent stages and copied into ref option maps, and from ref option maps
+    ;; into calculated metadata.
+    [:qp.pivot/pivot-grouping? {:optional true} [:maybe :boolean]]]
    ;;
    ;; Additional constraints
    ;;
@@ -525,6 +536,23 @@
           (map (fn [[old-key new-key]]
                  [old-key (str old-key " is deprecated; use " new-key " instead")]))
           lib.schema.common/deprecated-lib-key-renames))])
+
+(def keys
+  [{:doc                     "Blah blah blah"
+    :metadata-key            :display-name
+    :next-stage-key          :lib/original-display-name
+    :ref-key                 :display-name
+    :ref-behavior            :exclude
+    :metadata-behavior       :copy
+    :next-stage-behavior     :copy-if-unset
+    :saved-question-behavior :copy
+    :model-behavior          :copy}
+   {:metadata-key           :lib/temporal-unit
+    :ref-key                :temporal-unit
+    :next-stage-key         :inherited-temporal-unit
+    :ref-behavior           :copy
+    :metadata-behavior      :copy
+    :next-stage-propagation :copy-if-unset}])
 
 (mr/def ::persisted-info.definition
   "Definition spec for a cached table."
