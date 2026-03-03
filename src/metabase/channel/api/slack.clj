@@ -127,7 +127,7 @@
       {:status 400, :body (ex-data info)})))
 
 (def ^:private slack-manifest
-  (delay (slurp (io/resource "slack-manifest.yaml"))))
+  (delay (slurp (io/resource "metabase/slack-manifest.yaml"))))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen

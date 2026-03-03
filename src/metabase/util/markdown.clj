@@ -176,7 +176,7 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 (def ^:private html-entities
-  (delay (edn/read-string (slurp (io/resource "html-entities.edn")))))
+  (delay (edn/read-string (slurp (io/resource "metabase/html-entities.edn")))))
 
 (def ^:private escaped-chars-regex
   #"\\[\\/*_`'\[\](){}<>#+-.!$@%^&=|\?~]")
