@@ -25,7 +25,13 @@ You can make as many dashboards as you want. Go nuts.
 
 ## How to create a dashboard
 
-In the top right of the screen, click the **+ New** > **Dashboard**. Give your new dashboard a name and a description, choose which [collections](../exploration-and-organization/collections.md) the dashboard should go in, then click **Create**, and Metabase will take you to your shiny new dashboard.
+In the top right of the screen, click the **+ New** > **Dashboard**. 
+
+![Interactive dashboard](./images/create-new-dashboard.png)
+
+Give your new dashboard a name and a description, choose which [collections](../exploration-and-organization/collections.md) the dashboard should go in, then click **Create**, and Metabase will take you to your shiny new dashboard.
+
+![Interactive dashboard](./images/create-new-dashboard-2.png)
 
 ## Adding or saving questions to a dashboard
 
