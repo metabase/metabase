@@ -76,7 +76,7 @@ export function MetricsViewerTabs({
           </Tabs.Tab>
         )}
         {tabs.map((tab) => (
-          <Tabs.Tab key={tab.id} value={tab.id} px="md">
+          <Tabs.Tab key={tab.id} value={tab.id} px="md" aria-label={tab.label}>
             {tab.label}
             <ActionIcon
               size="xs"

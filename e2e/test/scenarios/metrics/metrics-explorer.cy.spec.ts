@@ -88,24 +88,23 @@ const ALL_MODELS = [
   PRODUCTS_SCALAR_METRIC,
 ];
 
+const SNAPSHOT_NAME = "metrics-explorer-snapshot";
+
 describe("scenarios > metrics > explorer", () => {
-  beforeEach(() => {
+  before(() => {
     H.restore();
     cy.signInAsAdmin();
     createMetrics(ALL_MODELS);
+    H.snapshot(SNAPSHOT_NAME);
+  });
+  beforeEach(() => {
+    H.restore(SNAPSHOT_NAME as any);
+    cy.signInAsAdmin();
   });
 
   // ============================================================================
   // Test Helpers
   // ============================================================================
-
-  /**
-   * Navigate to the metrics explorer page
-   */
-  const visitMetricsExplorer = () => {
-    cy.visit("/explore");
-    cy.get("[data-testid='metrics-viewer']").should("exist");
-  };
 
   /**
    * Add a metric or measure to the explorer via the search panel
@@ -128,6 +127,7 @@ describe("scenarios > metrics > explorer", () => {
     H.popover().findByText("Break out").click();
     const breakout = H.popover()
       .findAllByText(dimensionName)
+      .should("have.length.at.least", index)
       .eq(index)
       .closest("[role=option]");
 
@@ -137,33 +137,6 @@ describe("scenarios > metrics > explorer", () => {
     } else {
       breakout.click();
     }
-  };
-
-  /**
-   * Select a display type for the current tab
-   */
-  const selectDisplayType = (displayType: string) => {
-    cy.findByLabelText("Visualization").click();
-    cy.findByText(displayType).click();
-  };
-
-  /**
-   * Apply a filter to a metric definition
-   */
-  const applyMetricFilter = (
-    metricName: string,
-    filterType: string,
-    filterValue: string,
-  ) => {
-    cy.findByText(metricName)
-      .parent()
-      .within(() => {
-        cy.findByLabelText("Filter").click();
-      });
-    // Filter popover opens
-    cy.findByText(filterType).click();
-    cy.findByDisplayValue(filterValue).type(filterValue);
-    cy.findByText("Add filter").click();
   };
 
   /**
@@ -181,13 +154,6 @@ describe("scenarios > metrics > explorer", () => {
   };
 
   /**
-   * Get an active tab by its name
-   */
-  const getTab = (tabName: string) => {
-    return cy.findByText(tabName).parent("[role='tab']");
-  };
-
-  /**
    * Switch to a specific tab
    */
   const switchToTab = (tabName: string) => {
@@ -200,7 +166,7 @@ describe("scenarios > metrics > explorer", () => {
 
   describe("Entry points", () => {
     it("should show empty state on first load", () => {
-      visitMetricsExplorer();
+      H.MetricsViewer.goToViewer();
       cy.url().should("include", "/explore");
       cy.findByRole("heading", { name: "Start exploring" }).should("exist");
 
@@ -224,10 +190,12 @@ describe("scenarios > metrics > explorer", () => {
           type: "metric",
         },
       ]);
-      visitMetricsExplorer();
+      H.MetricsViewer.goToViewer();
       addMetric("Empty Metric");
 
-      cy.findByText(/No dice/).should("exist");
+      H.MetricsViewer.getMetricVisualization()
+        .findByText(/No dice/)
+        .should("exist");
     });
   });
 
@@ -238,7 +206,7 @@ describe("scenarios > metrics > explorer", () => {
   describe("Adding metrics and measures", () => {
     beforeEach(() => {
       intercedptDatasetQuery();
-      visitMetricsExplorer();
+      H.MetricsViewer.goToViewer();
     });
 
     it("should add multiple metrics", () => {
@@ -271,7 +239,7 @@ describe("scenarios > metrics > explorer", () => {
   describe("Breakouts", () => {
     beforeEach(() => {
       intercedptDatasetQuery();
-      visitMetricsExplorer();
+      H.MetricsViewer.goToViewer();
       addMetric("Count of orders");
       cy.wait("@dataset");
     });
@@ -288,7 +256,7 @@ describe("scenarios > metrics > explorer", () => {
       selectBreakout("Count of orders", "Source");
       cy.wait("@dataset");
       H.MetricsViewer.breakoutLegend()
-        .findByRole("heading", { name: "Source" })
+        .findByRole("heading", { name: /Source/ })
         .should("be.visible");
     });
 
@@ -308,7 +276,7 @@ describe("scenarios > metrics > explorer", () => {
   describe("Tabs", () => {
     beforeEach(() => {
       intercedptDatasetQuery();
-      visitMetricsExplorer();
+      H.MetricsViewer.goToViewer();
       addMetric("Count of orders");
       cy.wait("@dataset");
     });
@@ -342,7 +310,7 @@ describe("scenarios > metrics > explorer", () => {
   describe("Visualization settings", () => {
     beforeEach(() => {
       intercedptDatasetQuery();
-      visitMetricsExplorer();
+      H.MetricsViewer.goToViewer();
       addMetric("Count of orders");
       cy.wait("@dataset");
     });
@@ -373,104 +341,69 @@ describe("scenarios > metrics > explorer", () => {
   // Filters
   // ============================================================================
 
-  describe.skip("Filters", () => {
+  describe("Filters", () => {
     beforeEach(() => {
       intercedptDatasetQuery();
-      visitMetricsExplorer();
-      addMetric("Count");
+      H.MetricsViewer.goToViewer();
+      addMetric("Count of orders");
       cy.wait("@dataset");
+      selectBreakout("Count of orders", "Category");
     });
 
     it("should apply a categorical filter to a metric", () => {
-      cy.get("[data-testid='metrics-viewer-card']").within(() => {
-        cy.findByLabelText("Filter").click();
-      });
-      cy.findByText("Status").click();
-      cy.findByText("New").click();
-      cy.findByText("Apply filter").click();
-      cy.wait("@dataset");
-      // Verify metric is filtered
-      cy.get("[data-testid='metrics-filter-pills']").should(
+      H.MetricsViewer.breakoutLegend()
+        .should("contain.text", "Doohickey")
+        .should("contain.text", "Gadget")
+        .should("contain.text", "Gizmo")
+        .should("contain.text", "Widget");
+
+      H.MetricsViewer.getFilterButton().click();
+      H.popover().findByText("Category").click();
+
+      H.popover().findByText("Doohickey").click();
+      H.popover().findByText("Gadget").click();
+      H.popover().findByRole("button", { name: "Add filter" }).click();
+
+      H.MetricsViewer.getAllFilterPills()
+        .should("have.length", 1)
+        .should("contain.text", "Doohickey")
+        .should("contain.text", "Gadget")
+        .should("contain.text", "Category");
+
+      H.MetricsViewer.breakoutLegend()
+        .should("contain.text", "Doohickey")
+        .should("contain.text", "Gadget");
+
+      switchToTab("Category");
+      H.MetricsViewer.getMetricVisualization().should(
         "contain.text",
-        "Status",
+        "Doohickey",
       );
-    });
 
-    it("should apply a numeric range filter to a metric", () => {
-      cy.get("[data-testid='metrics-viewer-card']").within(() => {
-        cy.findByLabelText("Filter").click();
-      });
-      cy.findByText("ID").click();
-      cy.findByDisplayValue("").first().type("10");
-      cy.findByDisplayValue("").last().type("100");
-      cy.findByText("Apply filter").click();
-      cy.wait("@dataset");
-      cy.get("[data-testid='metrics-filter-pills']").should(
-        "contain.text",
-        "ID",
+      cy.log("filter on a per tab level");
+
+      H.MetricsViewer.getMerticControls()
+        .findByRole("button", { name: /All values/ })
+        .click();
+
+      H.popover().findByText("Doohickey").click();
+
+      H.popover().findByRole("button", { name: "Update filter" }).click();
+      H.MetricsViewer.getMetricVisualization().should(
+        "not.contain.text",
+        "Doohickey",
       );
-    });
 
-    it("should apply a temporal filter to a metric", () => {
-      cy.get("[data-testid='metrics-viewer-card']").within(() => {
-        cy.findByLabelText("Filter").click();
-      });
-      cy.findByText("Created At").click();
-      cy.findByPlaceholderText("Start date").type("03/01/2025");
-      cy.findByText("Apply filter").click();
-      cy.wait("@dataset");
-      cy.get("[data-testid='metrics-filter-pills']").should(
-        "contain.text",
-        "Created At",
-      );
-    });
+      cy.log("remove filter");
+      switchToTab("State");
+      H.MetricsViewer.getAllMetricVisualizations().should("have.length", 2);
 
-    it("should apply multiple filters to a single metric", () => {
-      // Apply first filter
-      cy.get("[data-testid='metrics-viewer-card']").within(() => {
-        cy.findByLabelText("Filter").click();
-      });
-      cy.findByText("Status").click();
-      cy.findByText("New").click();
-      cy.findByText("Apply filter").click();
-      cy.wait("@dataset");
-
-      // Apply second filter
-      cy.get("[data-testid='metrics-viewer-card']").within(() => {
-        cy.findByLabelText("Filter").click();
-      });
-      cy.findByText("ID").click();
-      cy.findByDisplayValue("").first().type("5");
-      cy.findByText("Apply filter").click();
-      cy.wait("@dataset");
-
-      cy.get("[data-testid='metrics-filter-pills']").should("have.length", 2);
-    });
-
-    it("should remove a filter from a metric", () => {
-      cy.get("[data-testid='metrics-viewer-card']").within(() => {
-        cy.findByLabelText("Filter").click();
-      });
-      cy.findByText("Status").click();
-      cy.findByText("New").click();
-      cy.findByText("Apply filter").click();
-      cy.wait("@dataset");
-
-      cy.get("[data-testid='filter-pill-remove']").first().click();
-      cy.wait("@dataset");
-      cy.get("[data-testid='metrics-filter-pills']").should("not.exist");
-    });
-
-    it("should handle metric with filter that excludes all data", () => {
-      cy.get("[data-testid='metrics-viewer-card']").within(() => {
-        cy.findByLabelText("Filter").click();
-      });
-      cy.findByText("ID").click();
-      cy.findByDisplayValue("").first().type("999999");
-      cy.findByDisplayValue("").last().type("999999");
-      cy.findByText("Apply filter").click();
-      cy.wait("@dataset");
-      cy.findByText("No data").should("exist");
+      H.MetricsViewer.getAllFilterPills()
+        .should("have.length", 1)
+        .eq(0)
+        .findByRole("button", { name: "Remove" })
+        .click();
+      H.MetricsViewer.getAllMetricVisualizations().should("have.length", 4);
     });
   });
 
@@ -481,12 +414,12 @@ describe("scenarios > metrics > explorer", () => {
   describe("Drill through", () => {
     beforeEach(() => {
       intercedptDatasetQuery();
-      visitMetricsExplorer();
+      H.MetricsViewer.goToViewer();
       addMetric("Count of orders");
       cy.wait("@dataset");
     });
 
-    it.only("should drill into more graual time dimensions on timeseries chart", () => {
+    it("should drill into more graual time dimensions on timeseries chart", () => {
       H.MetricsViewer.getMerticControls()
         .findByRole("button", { name: /by month/ })
         .should("exist");

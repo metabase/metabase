@@ -35,7 +35,7 @@ export function MetricSearchResults({
 
   if (results.length === 0) {
     return (
-      <Box p="xl">
+      <Box p="xl" data-testid="metrics-search-results">
         <Text c="text-secondary" ta="center">
           {t`No results found`}
         </Text>
@@ -44,7 +44,12 @@ export function MetricSearchResults({
   }
 
   return (
-    <Box mah={400} p="sm" className={S.listbox}>
+    <Box
+      mah={400}
+      p="sm"
+      className={S.listbox}
+      data-testid="metrics-search-results"
+    >
       {results.map((item, index) => (
         <MetricResultItem
           key={`${item.model}-${item.id}`}

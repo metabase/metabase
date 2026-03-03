@@ -3,7 +3,7 @@ import { useMemo } from "react";
 import { NULL_DISPLAY_VALUE } from "metabase/lib/constants";
 import { formatValue } from "metabase/lib/formatting";
 import { isEmpty } from "metabase/lib/validate";
-import { Box, Flex, Paper, Stack, Text } from "metabase/ui";
+import { Box, Flex, Paper, Stack, Text, Title } from "metabase/ui";
 import * as LibMetric from "metabase-lib/metric";
 import type { MetricBreakoutValuesResponse } from "metabase-types/api";
 
@@ -117,17 +117,17 @@ export function BreakoutLegend({
   }
 
   return (
-    <Box className={S.root}>
+    <Box className={S.root} data-testid="metrics-viewer-breakout-legend">
       <Paper withBorder radius="md" p="lg">
         <Stack gap="lg">
           {groups.map((group, gi) => (
             <Stack key={gi} gap="sm">
               <div>
-                <Text fw="bold" size="md" lh={1.3}>
+                <Title fw="bold" size="md" lh={1.3}>
                   {group.header}
-                </Text>
+                </Title>
                 {group.subtitle && (
-                  <Text size="sm" c="text-light" lh={1.3}>
+                  <Text size="sm" c="text-tertiary" lh={1.3}>
                     {group.subtitle}
                   </Text>
                 )}

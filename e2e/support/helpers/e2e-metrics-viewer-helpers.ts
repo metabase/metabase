@@ -7,10 +7,13 @@ type StructuredQuestionDetailsWithName = StructuredQuestionDetails & {
 };
 
 export const MetricsViewer = {
+  goToViewer: () => cy.visit("/explore"),
   searchInput: () => cy.findByTestId("metrics-viewer-search-input"),
   searchBarPills: () => cy.findAllByTestId("metrics-viewer-search-pill"),
   searchResults: () => cy.findByTestId("metrics-search-results"),
   breakoutLegend: () => cy.findByTestId("metrics-viewer-breakout-legend"),
+  getFilterButton: () => cy.findByRole("button", { name: /Filter/ }),
+  getAllFilterPills: () => cy.findAllByTestId("metrics-viewer-filter-pill"),
   tablist: () => cy.findByRole("tablist"),
   getTab: (tab: string) =>
     MetricsViewer.tablist().findByRole("tab", { name: tab }),
