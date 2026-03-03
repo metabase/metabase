@@ -14,6 +14,7 @@
    [metabase.lib.schema.join :as lib.schema.join]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.lib.schema.parameter :as lib.schema.parameter]
+   [metabase.lib.schema.ref :as lib.schema.ref]
    [metabase.lib.schema.util :as lib.schema.util]
    [metabase.lib.util :as lib.util]
    [metabase.lib.walk :as lib.walk]
@@ -104,12 +105,12 @@
 
 ;;; ------------------------------------------------ upgrade-field-refs ------------------------------------------------
 
-(mu/defn- same-field-ref? :- :boolean
-  "Checks if two field refs are the same. Ignores :lib/uuid, :base-type, and :effective-type."
-  [field-ref-1 :- :mbql.clause/field
-   field-ref-2 :- :mbql.clause/field]
-  (= (lib.schema.util/mbql-clause-distinct-key field-ref-1)
-     (lib.schema.util/mbql-clause-distinct-key field-ref-2)))
+(mu/defn- same-ref? :- :boolean
+  "Checks if two refs are the same. Ignores :lib/uuid, :base-type, and :effective-type."
+  [ref-1 :- ::lib.schema.ref/ref
+   ref-2 :- ::lib.schema.ref/ref]
+  (= (lib.schema.util/mbql-clause-distinct-key ref-1)
+     (lib.schema.util/mbql-clause-distinct-key ref-2)))
 
 (mu/defn- walk-clause-field-refs :- :any
   "Walks a clause and applies a function to all `:field` clauses."
@@ -121,24 +122,24 @@
                             (lib.util/field-clause? clause)
                             f))))
 
-(mu/defn- preserve-expression-name :- :mbql.clause/field
+(mu/defn- preserve-expression-name :- ::lib.schema.ref/ref
   "Copy the expression name from `old-field-ref` to `new-field-ref`."
-  [old-field-ref :- :mbql.clause/field
-   new-field-ref :- :mbql.clause/field]
-  (let [expression-name (lib.util/expression-name old-field-ref)]
-    (cond-> new-field-ref
+  [old-ref :- ::lib.schema.ref/ref
+   new-ref :- ::lib.schema.ref/ref]
+  (let [expression-name (lib.util/expression-name old-ref)]
+    (cond-> new-ref
       expression-name
       (lib.options/update-options assoc :lib/expression-name expression-name))))
 
-(mu/defn- upgrade-field-ref :- :mbql.clause/field
-  "Generate a new field ref for a column."
+(mu/defn- upgrade-field-ref :- ::lib.schema.ref/ref
+  "Generate a new ref for a column. Always takes a `:field` ref, may return a `:field` ref or an `:expression` ref."
   [query         :- ::lib.schema/query
    stage-number  :- :int
    field-ref     :- :mbql.clause/field]
   (or (when-let [column (lib.field.resolution/resolve-field-ref query stage-number field-ref)]
         (when-not (::lib.field.resolution/fallback-metadata? column)
           (let [new-field-ref (preserve-expression-name field-ref (lib.ref/ref column))]
-            (when-not (same-field-ref? field-ref new-field-ref)
+            (when-not (same-ref? field-ref new-field-ref)
               new-field-ref))))
       field-ref))
 
@@ -277,9 +278,9 @@
        :old-source-type old-source-type
        :new-source-type new-source-type})))
 
-(mu/defn- swap-field-ref :- :mbql.clause/field
+(mu/defn- swap-field-ref :- ::lib.schema.ref/ref
   "Swaps a field ref to reference the new source. Assumes that query has been upgraded to use alias-based field refs.
-  
+
   For ID-based refs:
   - Uses the new field ID when swapping table->table.
   - Uses the new column alias when swapping table->card.
@@ -289,6 +290,7 @@
   
   Also:
   - Resolves the new field ref and generates a new one based on the resolved column.
+  - Always takes a `:field` ref, may return a `:field` ref or an `:expression` ref.
   - Preserves the expression name from the original field ref."
   [query            :- ::lib.schema/query
    stage-number     :- :int
@@ -312,7 +314,7 @@
     (or (when-let [new-column (lib.field.resolution/resolve-field-ref query stage-number swapped-field-ref)]
           (when-not (::lib.field.resolution/fallback-metadata? new-column)
             (let [new-field-ref (preserve-expression-name field-ref (lib.ref/ref new-column))]
-              (when-not (same-field-ref? field-ref new-field-ref)
+              (when-not (same-ref? field-ref new-field-ref)
                 new-field-ref))))
         field-ref)))
 

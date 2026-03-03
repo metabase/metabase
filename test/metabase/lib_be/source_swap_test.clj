@@ -790,3 +790,28 @@
     (testing "should swap :source-field to reviews.product-id"
       (is (=? [:dimension [:field (meta/id :products :category) {:source-field (meta/id :reviews :product-id)}]]
               swapped-target)))))
+
+(deftest ^:parallel swap-source-in-query-field-ref-to-expression-test
+  (let [query          (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
+                           (lib/expression "expr" (lib/+ (meta/field-metadata :orders :id) 1))
+                           (lib/filter (lib/not-null (lib/ensure-uuid [:field {:base-type :type/Integer} "expr"]))))
+        upgraded-query (lib-be/upgrade-field-refs-in-query query)
+        swapped-query  (lib-be/swap-source-in-query upgraded-query
+                                                    {:type :table, :id (meta/id :orders)}
+                                                    {:type :table, :id (meta/id :products)})]
+    (testing "upgrade should convert :field ref pointing to expression into :expression ref"
+      (is (=? {:stages [{:source-table (meta/id :orders)
+                         :expressions  [[:+ {:lib/expression-name "expr"}
+                                         [:field {} (meta/id :orders :id)]
+                                         1]]
+                         :filters      [[:not-null {} [:expression {} "expr"]]]}]}
+              upgraded-query)))
+    (testing "should return an identical query if upgrade is not needed"
+      (is (= upgraded-query (lib-be/upgrade-field-refs-in-query upgraded-query))))
+    (testing "should swap source to products and update field refs inside expression"
+      (is (=? {:stages [{:source-table (meta/id :products)
+                         :expressions  [[:+ {:lib/expression-name "expr"}
+                                         [:field {} (meta/id :products :id)]
+                                         1]]
+                         :filters      [[:not-null {} [:expression {} "expr"]]]}]}
+              swapped-query)))))
