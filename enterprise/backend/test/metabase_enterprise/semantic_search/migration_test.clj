@@ -28,8 +28,9 @@
     (semantic.tu/with-test-db-defaults!
       (letfn [(migrate-and-get-db-version
                 [attempted-version]
-                (with-redefs [semantic.db.migration.impl/schema-version attempted-version
-                              semantic.db.migration.impl/migrate-schema! (constantly nil)]
+                (with-redefs [semantic.db.migration.impl/schema-version          attempted-version
+                              semantic.db.migration.impl/migrate-schema!         (constantly nil)
+                              semantic.db.migration.impl/migrate-dynamic-schema! (constantly nil)]
                   (log.capture/with-log-messages-for-level [messages [metabase-enterprise.semantic-search.db.migration :info]]
                     (semantic.db.connection/with-migrate-tx [tx]
                       (semantic.db.migration/maybe-migrate! tx nil)
@@ -190,6 +191,7 @@
                         "model_updated_at"
                         "name"
                         "official_collection"
+                        "personal_owner_id"
                         "pinned"
                         "text_search_vector"
                         "text_search_with_native_query_vector"
