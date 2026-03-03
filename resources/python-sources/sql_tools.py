@@ -1517,3 +1517,53 @@ class FieldReferenceWalker:
     def _missing_column_error(self, column_name):
         """Create a missing column error."""
         return frozenset([("type", "missing_column"), ("column", column_name)])
+
+#############################################################################
+# Transpile sql
+#############################################################################
+
+# Dialects that require identifier quoting due to case sensitivity.
+# These dialects fold unquoted identifiers to uppercase or lowercase,
+# which can cause issues when the LLM generates mixed-case identifiers.
+CASE_SENSITIVE_DIALECTS: set[str] = {
+    "snowflake",  # Folds unquoted to UPPERCASE
+    "oracle",  # Folds unquoted to UPPERCASE
+    "redshift",  # PostgreSQL-based, folds to lowercase
+    "postgres",  # Folds unquoted to lowercase
+}
+
+def transpile_sql(sql: str, from_dialect: str | None, to_dialect: str | None):
+    """Transpile sql string from one dialect to another.
+
+    Args:
+        sql: SQL query string
+        from_dialect: source sql dialect
+        to_dialect: target sql dialect
+
+    Returns:
+        JSON string with keys transpiled and use_identify on success.
+        On failure the object contains keys is_error and error_message.
+    """
+    if not from_dialect or not to_dialect:
+        return sql
+
+    result = {}
+
+    try:
+        use_identify = (from_dialect in CASE_SENSITIVE_DIALECTS 
+                        or from_dialect in CASE_SENSITIVE_DIALECTS)
+
+        transpiled = sqlglot.transpile(
+            sql,
+            read=from_dialect,
+            write=to_dialect,
+            pretty=True,
+            identify=use_identify,
+        )
+
+        result['transpiled'] = transpiled
+    except Exception as e:
+        result['is_error'] = True
+        result['error_message'] = e.args[0]
+
+    return json.dumps(result)
