@@ -537,23 +537,6 @@
                  [old-key (str old-key " is deprecated; use " new-key " instead")]))
           lib.schema.common/deprecated-lib-key-renames))])
 
-(def keys
-  [{:doc                     "Blah blah blah"
-    :metadata-key            :display-name
-    :next-stage-key          :lib/original-display-name
-    :ref-key                 :display-name
-    :ref-behavior            :exclude
-    :metadata-behavior       :copy
-    :next-stage-behavior     :copy-if-unset
-    :saved-question-behavior :copy
-    :model-behavior          :copy}
-   {:metadata-key           :lib/temporal-unit
-    :ref-key                :temporal-unit
-    :next-stage-key         :inherited-temporal-unit
-    :ref-behavior           :copy
-    :metadata-behavior      :copy
-    :next-stage-propagation :copy-if-unset}])
-
 (mr/def ::persisted-info.definition
   "Definition spec for a cached table."
   [:map
