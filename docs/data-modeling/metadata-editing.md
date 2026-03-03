@@ -63,6 +63,8 @@ You can toggle the visibility of a table by clicking on the **eye** icon next to
 
 To hide **all of the tables in a database** (say, if you've migrated to a new database), click on the **eye** icon next to the database name in the sidebar.
 
+To make schemas easier for people to work with, Metabase will [automatically hide some tables](../troubleshooting-guide/cant-see-tables.md#check-if-the-table-is-hidden).
+
 ## Field settings
 
 _Admin > Table Metadata > Database > Table > Field_
