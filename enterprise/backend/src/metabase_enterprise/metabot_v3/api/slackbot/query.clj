@@ -8,6 +8,7 @@
    [metabase.query-processor :as qp]
    [metabase.query-processor.middleware.permissions :as qp.perms]
    [metabase.query-processor.schema :as qp.schema]
+   [metabase.util :as u]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -79,6 +80,16 @@
   "Maximum number of columns Slack table blocks support."
   20)
 
+(def ^:dynamic *slack-table-max-cell-length*
+  "Maximum text length per cell. Longer values are truncated with ellipsis."
+  128)
+
+(def ^:dynamic *slack-table-max-chars*
+  "Undocumented Slack limit: table blocks exceeding 10,000 characters are rejected with
+   `table_character_count_must_not_exceed_10000`. We use 9,500 as a budget for cell text content
+   to leave headroom for any structural overhead Slack may count."
+  9500)
+
 (defn- normalize-column
   "Normalize column metadata from the wire format for use with formatters and type checks."
   [col]
@@ -96,14 +107,17 @@
 
 (defn- format-cell
   "Format a cell value for Slack table display.
-   Empty values are replaced with \"-\" since Slack requires non-empty text."
+   Empty values are replaced with \"-\" since Slack requires non-empty text.
+   Long values are truncated with ellipsis."
   [value formatter]
   (let [formatted (if (nil? value)
                     ""
                     (str (formatter value)))]
-    (if (= formatted "")
-      "-"
-      formatted)))
+    (cond
+      (= formatted "") "-"
+      (> (count formatted) *slack-table-max-cell-length*)
+      (str (u/truncate formatted (dec *slack-table-max-cell-length*)) "…")
+      :else formatted)))
 
 (defn- make-column-settings
   "Generate column settings for Slack table. Numbers are right-aligned."
@@ -123,9 +137,24 @@
         row
         formatters))
 
+(defn- row-char-count
+  "Total character count of all cell text values in a formatted row."
+  [row]
+  (transduce (map (comp count :text)) + row))
+
+(defn- take-rows-within-char-budget
+  "Take as many rows as fit within the character budget."
+  [rows budget]
+  (let [n (->> (map row-char-count rows)
+               (reductions +)
+               (take-while #(<= % budget))
+               count)]
+    (vec (take (max 1 n) rows))))
+
 (defn format-results-as-table-blocks
   "Format query results as Slack table blocks.
-   Truncates results if they exceed Slack's limits (100 rows, 20 columns).
+   Truncates results if they exceed Slack's limits (100 rows, 20 columns, ~10k chars).
+   Cell text is truncated to [[*slack-table-max-cell-length*]] characters.
    Works for any result shape including single-cell scalars.
    Filters hidden columns and handles FK remapping.
    Adds a context block with truncation message if results were truncated."
@@ -133,19 +162,19 @@
   (let [{:keys [cols rows]} (:data results)
         timezone-id         (get results :results_timezone)
         viz-settings        {}
-        ;; Prepare data: filter hidden columns, handle FK remapping
         {:keys [cols rows]} (channel.render/prepare-table-data cols rows)
         total-rows          (count rows)
-        ;; Apply truncation limits
         display-cols        (vec (take slack-table-max-cols cols))
         display-rows        (take slack-table-row-limit rows)
-        truncated-rows      (map #(vec (take slack-table-max-cols %)) display-rows)
-        displayed-rows      (count truncated-rows)
-        ;; Format for display
+        truncated-rows      (mapv #(vec (take slack-table-max-cols %)) display-rows)
         formatters          (create-cell-formatters display-cols timezone-id viz-settings)
         headers             (mapv #(str (or (:display_name %) (:name %) "")) display-cols)
         header-row          (mapv (fn [h] {:type "raw_text" :text (str h)}) headers)
         data-rows           (mapv #(make-table-row % formatters) truncated-rows)
+        data-rows           (take-rows-within-char-budget
+                             data-rows
+                             (- *slack-table-max-chars* (row-char-count header-row)))
+        displayed-rows      (count data-rows)
         all-rows            (into [header-row] data-rows)
         column-settings     (make-column-settings display-cols)
         table-block         {:type            "table"

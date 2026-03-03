@@ -1,6 +1,7 @@
 (ns metabase-enterprise.metabot-v3.api.slackbot.query-test
   "Integration tests for ad-hoc query execution and visualization."
   (:require
+   [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase-enterprise.metabot-v3.api.slackbot.query :as slackbot.query]
    [metabase.lib.core :as lib]
@@ -184,6 +185,33 @@
               rows        (:rows table-block)]
           (is (= 1 (count rows))) ; header only
           (is (= "Count" (get-in rows [0 0 :text])))))))
+
+  (testing "format-results-as-table-blocks truncates long cell values"
+    (binding [slackbot.query/*slack-table-max-cell-length* 20]
+      (let [long-text (apply str (repeat 50 "x"))
+            results   {:data {:rows [[1 long-text]]
+                              :cols [{:name "id" :display_name "ID" :base_type :type/Integer}
+                                     {:name "desc" :display_name "Description" :base_type :type/Text}]}}
+            blocks    (slackbot.query/format-results-as-table-blocks results)
+            cell-text (get-in (first blocks) [:rows 1 1 :text])]
+        (is (<= (count cell-text) 20))
+        (is (str/ends-with? cell-text "…")))))
+
+  (testing "format-results-as-table-blocks truncates rows to fit character budget"
+    (binding [slackbot.query/*slack-table-max-chars* 100]
+      (let [results {:data {:rows (vec (repeat 20 ["abcdefghij"]))
+                            :cols [{:name "val" :display_name "Value" :base_type :type/Text}]}}
+            blocks  (slackbot.query/format-results-as-table-blocks results)
+            data-rows (rest (:rows (first blocks)))]
+        (testing "does not include all rows"
+          (is (< (count data-rows) 20)))
+        (testing "includes truncation context block"
+          (is (= 2 (count blocks)))
+          (is (= "context" (:type (second blocks)))))
+        (testing "total cell text fits within character budget"
+          (let [total-chars (transduce (comp cat (map (comp count :text)))
+                                       + (:rows (first blocks)))]
+            (is (<= total-chars 100)))))))
 
   (testing "format-results-as-table-blocks handles FK remapped columns"
     (let [;; Simulate FK remapping: USER_ID is remapped to show USER.NAME
