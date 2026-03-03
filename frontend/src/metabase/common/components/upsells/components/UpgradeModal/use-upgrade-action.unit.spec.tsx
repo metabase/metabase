@@ -2,7 +2,7 @@ import { renderHookWithProviders } from "__support__/ui";
 import {
   DATA_STUDIO_UPGRADE_URL,
   UPGRADE_URL,
-} from "metabase/admin/upsells/constants";
+} from "metabase/common/components/upsells/constants";
 import {
   createMockSettingsState,
   createMockState,

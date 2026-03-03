@@ -3,7 +3,7 @@ import { t } from "ttag";
 import { SettingsSection } from "metabase/admin/components/SettingsSection";
 import { EmbeddingSettingsCard } from "metabase/admin/settings/components/EmbeddingSettings";
 import { NewEmbedButton } from "metabase/admin/settings/components/EmbeddingSettings/NewEmbedButton/NewEmbedButton";
-import { UpsellBanner } from "metabase/admin/upsells/components";
+import { UpsellBanner } from "metabase/common/components/upsells/components";
 import { useSetting } from "metabase/common/hooks";
 import { useSelector } from "metabase/lib/redux";
 import {

@@ -3,8 +3,8 @@ import { c, t } from "ttag";
 import { ExternalLink } from "metabase/common/components/ExternalLink";
 import { useHasTokenFeature } from "metabase/common/hooks";
 
-import { UpsellBigCard } from "./components";
-import S from "./components/Upsells.module.css";
+import { UpsellBigCard } from "metabase/common/components/upsells/components";
+import S from "metabase/common/components/upsells/components/Upsells.module.css";
 
 export const UpsellCloud = ({
   source,

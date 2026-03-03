@@ -3,8 +3,8 @@ import { t } from "ttag";
 import { useHasTokenFeature } from "metabase/common/hooks";
 import { PLUGIN_ADMIN_SETTINGS } from "metabase/plugins";
 
-import { UpsellBigCard } from "./components";
-import { UPGRADE_URL } from "./constants";
+import { UpsellBigCard } from "metabase/common/components/upsells/components";
+import { UPGRADE_URL } from "metabase/common/components/upsells/constants";
 
 export const UpsellPerformanceTools = ({ source }: { source: string }) => {
   const hasAuditEnabled = useHasTokenFeature("audit_app");

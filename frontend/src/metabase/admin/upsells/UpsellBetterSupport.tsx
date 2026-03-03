@@ -6,8 +6,8 @@ import { PLUGIN_ADMIN_SETTINGS } from "metabase/plugins";
 import { getSetting } from "metabase/selectors/settings";
 import { Text } from "metabase/ui";
 
-import { UpsellBanner } from "./components";
-import { UPGRADE_URL } from "./constants";
+import { UpsellBanner } from "metabase/common/components/upsells/components";
+import { UPGRADE_URL } from "metabase/common/components/upsells/constants";
 
 export const UpsellBetterSupport = ({ location }: { location: string }) => {
   const campaign = "better-hosting";
