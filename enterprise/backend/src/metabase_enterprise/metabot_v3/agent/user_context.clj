@@ -123,7 +123,7 @@
 
 (defmethod format-entity "table" [entity] (format-simple-entity entity))
 (defmethod format-entity "model" [entity] (format-simple-entity entity))
-(defmethod format-entity "question" [entity] (format-simple-entity entity))
+(defmethod format-entity "question" [entity] (if (native-query-item? entity) (format-entity "native" entity) (format-simple-entity entity)))
 (defmethod format-entity "metric" [entity] (format-simple-entity entity))
 (defmethod format-entity "dashboard" [entity] (format-simple-entity entity))
 
