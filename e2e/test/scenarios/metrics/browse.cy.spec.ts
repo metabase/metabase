@@ -8,6 +8,7 @@ import {
 import type { StructuredQuestionDetails } from "e2e/support/helpers";
 
 const { ORDERS_ID, ORDERS, PRODUCTS_ID, PRODUCTS } = SAMPLE_DATABASE;
+const { createMetrics } = H;
 
 type StructuredQuestionDetailsWithName = StructuredQuestionDetails & {
   name: string;

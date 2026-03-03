@@ -1,3 +1,5 @@
+import { t } from "ttag";
+
 import type {
   MetricsViewerDisplayType,
   MetricsViewerTabLayoutState,
@@ -37,7 +39,11 @@ export const MetricLayoutControl = ({
   const { supportsMultipleSeries } = DISPLAY_TYPE_REGISTRY[displayType];
 
   return (
-    <ActionIcon.Group bd="1px solid var(--mb-color-border)" bdrs="md">
+    <ActionIcon.Group
+      bd="1px solid var(--mb-color-border)"
+      bdrs="md"
+      data-testid="metrics-viewer-layout-controls"
+    >
       {seriesCount > 1 && (
         <>
           {supportsMultipleSeries ? (
@@ -46,6 +52,7 @@ export const MetricLayoutControl = ({
                 c="text-primary"
                 size="lg"
                 onClick={() => onChange({ ...value, split: false })}
+                aria-label={t`unified view`}
                 {...(!split && ACTIVE_BUTTON_PROPS)}
               >
                 <Icon name="layout_unified" />
@@ -62,6 +69,7 @@ export const MetricLayoutControl = ({
                   <ActionIcon
                     c="text-primary"
                     size="lg"
+                    aria-label={t`split view`}
                     onClick={() =>
                       onChange({
                         ...value,
