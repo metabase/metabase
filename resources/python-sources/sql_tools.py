@@ -1569,7 +1569,7 @@ def transpile_sql(sql: str, from_dialect: str = None, to_dialect: str = None):
     elif not from_dialect or not to_dialect:
         result['transpiled_sql'] = sql
         result['status'] = 'skipped'
-        result['reason'] = 'no_dialect'
+        result['reason'] = 'missing_dialect'
     else:
         try:
             use_identify = (from_dialect in CASE_SENSITIVE_DIALECTS 
