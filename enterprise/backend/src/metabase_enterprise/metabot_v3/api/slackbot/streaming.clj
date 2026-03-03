@@ -362,6 +362,13 @@
      :slack-writer         slack-writer
      :prefetched-viz       prefetched-viz}))
 
+(defn- slack-thread->conversation-id
+  "Generate deterministic conversation ID from Slack thread identifiers.
+   Same thread always produces the same UUID (v3)."
+  [team-id channel thread-ts]
+  (str (java.util.UUID/nameUUIDFromBytes
+        (.getBytes (str "slack:" team-id ":" channel ":" thread-ts)))))
+
 (defn send-response
   "Send a metabot response using Slack's streaming API for progressive updates.
    Shows tool execution status and streams text as it arrives."
@@ -392,7 +399,7 @@
                (slackbot.client/post-message client (merge message-ctx {:text text})))]
        (try
          (let [data-parts (make-streaming-ai-request
-                           (str (random-uuid))
+                           (slack-thread->conversation-id (:team_id auth-info) channel thread-ts)
                            prompt
                            thread
                            bot-user-id
