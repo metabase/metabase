@@ -1,4 +1,3 @@
-import type { CSSProperties } from "react";
 import { t } from "ttag";
 
 import NoResults from "assets/img/no_results.svg";
@@ -42,7 +41,7 @@ type HasColumnSettingsWidgetsProps = CommonProps & {
 };
 
 type ColumnSettingsProps = HasColumnSettingsWidgetsProps & {
-  style?: CSSProperties;
+  style?: React.CSSProperties;
   variant?: "default" | "form-field";
 };
 
