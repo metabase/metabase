@@ -130,6 +130,10 @@ Instead, Metabase gets a sample of the fields in a collection by scanning a samp
 
 If you're not seeing all of the fields show up for a collection in Metabase, one workaround is to include all possible keys in the first document of the collection, and give those keys null values. That way, Metabase will be able to recognize the correct schema for the entire collection.
 
+## Writeable connection
+
+Set up an additional connection used for write operations. See [Writeable connections](../writeable-connection.md).
+
 ## Database routing
 
 With database routing, an admin can build a question once using one database, and the question will run its query against a different database with the same schema depending on who is viewing the question.

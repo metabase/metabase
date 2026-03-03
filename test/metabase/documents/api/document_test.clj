@@ -2347,7 +2347,7 @@
               ;; Grant collection read permissions so user can access the document
              (perms/grant-collection-read-permissions! all-users-group coll-id)
 
-             (testing "User without download permissions yields permissions error in body (streaming uses 200)"
+             (testing "User without download permissions yields permissions error"
                 ;; Set download permissions to :no (no downloads allowed) for All Users group
                (data-perms/set-database-permission! all-users-group (mt/id) :perms/download-results :no)
 
@@ -2357,7 +2357,7 @@
                             [:ex-data [:map
                                        [:permissions-error? [:= true]]]]]
                            (mt/user-http-request :rasta
-                                                 :post 200
+                                                 :post 403
                                                  (format "document/%s/card/%s/query/csv" doc-id card-id)
                                                  {:parameters []
                                                   :format_rows false
