@@ -541,6 +541,41 @@
             (is (= (map :key (get-in funnel-card [:visualization_settings :funnel.rows]))
                    section-labels))))))))
 
+;; Test data with numeric first column and text second column
+;; This matches the bug scenario: SELECT 100 as val, 'step 1' as step
+(def ^:private funnel-numeric-first-rows
+  [[100 "homepage"]
+   [50 "cart"]
+   [25 "checkout"]
+   [10 "purchase"]])
+
+(tx/defdataset funnel-numeric-first-data
+  [["stages"
+    [{:field-name "val", :base-type :type/Integer}
+     {:field-name "step", :base-type :type/Text}]
+    funnel-numeric-first-rows]])
+
+(deftest render-funnel-with-numeric-first-column-test
+  (testing "Static-viz Funnel Chart auto-detects dimension/metric"
+    (mt/dataset funnel-numeric-first-data
+      (let [;; Query with numeric column first, text column second (like SELECT 100 as val, 'step 1' as step)
+            funnel-query {:database (mt/id)
+                          :type     :query
+                          :query
+                          {:source-table (mt/id :stages)
+                           :fields       [[:field (mt/id :stages :val)]
+                                          [:field (mt/id :stages :step)]]}}
+            ;; No explicit funnel.dimension setting - backend should auto-detect from column types
+            funnel-card  {:display       :funnel
+                          :dataset_query funnel-query
+                          :visualization_settings {}}]
+        (mt/with-temp [:model/Card {card-id :id} funnel-card]
+          (let [doc        (render.tu/render-card-as-hickory! card-id)
+                pulse-body (hik.s/select
+                            (hik.s/class "pulse-body")
+                            doc)]
+            (is (not (render-error? pulse-body)))))))))
+
 (deftest render-pie-chart-test
   (testing "The static-viz pie chart renders correctly."
     (mt/dataset test-data
