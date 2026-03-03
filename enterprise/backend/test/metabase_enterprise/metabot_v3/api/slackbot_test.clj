@@ -722,7 +722,7 @@
 
         (testing "supported display types return :image"
           (doseq [display [:bar :line :pie :area :row :scatter :funnel
-                           :waterfall :combo :progress :gauge :scalar
+                           :waterfall :combo :progress :gauge
                            :smartscalar :boxplot :sankey]]
             (testing (str "display type: " display)
               (mt/with-temp [:model/Card {card-id :id} {:display display}]
@@ -730,7 +730,7 @@
                   (is (= :image (:type result))))))))
 
         (testing "unsupported display types return :table"
-          (doseq [display [:table :pin_map :state :country :map :pivot]]
+          (doseq [display [:table :pin_map :state :country :map :pivot :scalar]]
             (testing (str "display type: " display)
               (mt/with-temp [:model/Card {card-id :id} {:display display}]
                 (let [result (#'slackbot.query/generate-card-output card-id)]
