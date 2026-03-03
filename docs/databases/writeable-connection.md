@@ -5,7 +5,7 @@ summary: Add an optional separate database connection for write operations like 
 
 ## Writeable connections
 
-{% include plans-blockquote.html feature="Writeable connections" is_plural=true%}
+> Writeable connection requires the **Advanced transforms (SQL + Python)** add-on
 
 _Admin > Databases > Writeable connection_
 

@@ -1,11 +1,14 @@
 import { renderWithProviders, screen } from "__support__/ui";
 import { ThemeProvider } from "metabase/ui";
 import registerVisualizations from "metabase/visualizations/register";
+import type { VisualizationProps } from "metabase/visualizations/types";
+import type { VisualizationSettings } from "metabase-types/api";
 import {
   createMockCard,
   createMockColumn,
   createMockDataset,
   createMockDatasetData,
+  createMockNumericColumn,
   createMockSingleSeries,
   createMockVisualizationSettings,
 } from "metabase-types/api/mocks";
@@ -16,7 +19,12 @@ registerVisualizations();
 
 const cardTitle = "cardTitle";
 
-const setup = (funnelProps, visualizationSettings = {}) => {
+type SetupFunnelProps = Pick<VisualizationProps, "showTitle">;
+
+const setup = (
+  funnelProps: SetupFunnelProps,
+  visualizationSettings: VisualizationSettings = {},
+) => {
   const card = createMockCard({
     display: "funnel",
   });
@@ -27,11 +35,10 @@ const setup = (funnelProps, visualizationSettings = {}) => {
       data: createMockDatasetData({
         cols: [
           createMockColumn({ id: 1, name: "foo", display_name: "foo" }),
-          createMockColumn({
+          createMockNumericColumn({
             id: 2,
             name: "bar",
             display_name: "bar",
-            effective_type: "type/Number",
           }),
         ],
         rows: [
@@ -49,23 +56,44 @@ const setup = (funnelProps, visualizationSettings = {}) => {
     column: jest.fn(),
     ...visualizationSettings,
   });
+  const funnelPropsForRender: VisualizationProps = {
+    series: [series],
+    rawSeries: [series],
+    data: series.data,
+    card,
+    settings,
+    fontFamily: "Lato",
+    isFullscreen: false,
+    isQueryBuilder: false,
+    isEmbeddingSdk: false,
+    showTitle: funnelProps.showTitle,
+    isDashboard: false,
+    isDocument: false,
+    isVisualizer: false,
+    isVisualizerCard: false,
+    isEditing: false,
+    isMobile: false,
+    isSettings: false,
+    width: 500,
+    height: 300,
+    visualizationIsClickable: () => false,
+    onRender: () => undefined,
+    onRenderError: () => undefined,
+    onActionDismissal: () => undefined,
+    onHoverChange: () => undefined,
+    onVisualizationClick: () => undefined,
+    onUpdateVisualizationSettings: () => undefined,
+    dispatch: jest.fn(),
+  };
 
   renderWithProviders(
     <ThemeProvider>
-      <Funnel
-        series={[series]}
-        rawSeries={[series]}
-        settings={settings}
-        visualizationIsClickable={jest.fn()}
-        card={card}
-        {...funnelProps}
-      />
-      ,
+      <Funnel {...funnelPropsForRender} />
     </ThemeProvider>,
   );
 };
 
-describe("funnel", () => {
+describe("Funnel", () => {
   it("should not render the title when showTitle=false", async () => {
     setup({ showTitle: false });
     expect(screen.queryByText(cardTitle)).not.toBeInTheDocument();
@@ -77,7 +105,7 @@ describe("funnel", () => {
   });
 
   describe("funnel bar chart", () => {
-    const setupFunnelBarChart = (funnelProps) =>
+    const setupFunnelBarChart = (funnelProps: SetupFunnelProps) =>
       setup(funnelProps, { "funnel.type": "bar" });
 
     it("should not render the title when showTitle=false", async () => {

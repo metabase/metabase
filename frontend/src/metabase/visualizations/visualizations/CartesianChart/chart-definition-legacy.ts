@@ -5,28 +5,46 @@ import { formatValue } from "metabase/lib/formatting";
 import { isEmpty } from "metabase/lib/validate";
 import { getComputedSettingsForSeries } from "metabase/visualizations/lib/settings/visualization";
 import { MAX_SERIES } from "metabase/visualizations/lib/utils";
+import type {
+  DatasetColumn,
+  RawSeries,
+  RowValue,
+  SingleSeries,
+} from "metabase-types/api";
 import { getRowsForStableKeys } from "metabase-types/api";
 
 // TODO: this series transformation is used only for the visualization settings computation which is excessive.
 // Replace this with defining settings models per visualization type which will contain all necessary info
 // about the dataset sufficient to compute settings defaults like series settings.
-export function transformSeries(series) {
-  const newSeries = [].concat(
-    ...series.map((s, seriesIndex) =>
-      transformSingleSeries(s, series, seriesIndex),
-    ),
+export function transformSeries(series: RawSeries): RawSeries {
+  const newSeries: SingleSeries[] = series.flatMap((s, seriesIndex) =>
+    transformSingleSeries(s, series, seriesIndex),
   );
-  if (_.isEqual(series, newSeries) || newSeries.length === 0) {
+
+  if (newSeries.length === 0 || _.isEqual(series, newSeries)) {
     return series;
-  } else {
-    return newSeries;
   }
+
+  return newSeries;
 }
 
-function transformSingleSeries(s, series, seriesIndex) {
+type RowWithOrigin = RowValue[] & {
+  _origin?: {
+    seriesIndex: number;
+    rowIndex: number;
+    row: RowValue[];
+    cols: DatasetColumn[];
+  };
+};
+
+function transformSingleSeries(
+  s: SingleSeries,
+  series: RawSeries,
+  seriesIndex: number,
+): SingleSeries[] {
   const { card, data } = s;
 
-  // HACK: prevents cards from being transformed too many times
+  // @ts-expect-error HACK: prevents cards from being transformed too many times
   if (data._transformed) {
     return [s];
   }
@@ -45,9 +63,9 @@ function transformSingleSeries(s, series, seriesIndex) {
   const metricColumnIndexes = metrics.map((metricName) =>
     _.findIndex(cols, (col) => col.name === metricName),
   );
-  const bubbleColumnIndex =
-    settings["scatter.bubble"] &&
-    _.findIndex(cols, (col) => col.name === settings["scatter.bubble"]);
+  const bubbleColumnIndex = settings["scatter.bubble"]
+    ? _.findIndex(cols, (col) => col.name === settings["scatter.bubble"])
+    : -1;
   const extraColumnIndexes =
     bubbleColumnIndex != null && bubbleColumnIndex >= 0
       ? [bubbleColumnIndex]
@@ -60,8 +78,8 @@ function transformSingleSeries(s, series, seriesIndex) {
       extraColumnIndexes,
     );
 
-    const breakoutValues = [];
-    const breakoutRowsByValue = new Map();
+    const breakoutValues: RowValue[] = [];
+    const breakoutRowsByValue = new Map<RowValue, RowWithOrigin[]>();
 
     for (let rowIndex = 0; rowIndex < rows.length; rowIndex++) {
       const row = rows[rowIndex];
@@ -77,7 +95,9 @@ function transformSingleSeries(s, series, seriesIndex) {
         }
       }
 
-      const newRow = rowColumnIndexes.map((columnIndex) => row[columnIndex]);
+      const newRow: RowWithOrigin = rowColumnIndexes.map(
+        (columnIndex) => row[columnIndex],
+      );
       newRow._origin = { seriesIndex, rowIndex, row, cols };
       seriesRows.push(newRow);
     }
@@ -103,8 +123,11 @@ function transformSingleSeries(s, series, seriesIndex) {
         _breakoutColumn: cols[seriesColumnIndex],
       },
       data: {
-        rows: breakoutRowsByValue.get(breakoutValue),
+        rows: breakoutRowsByValue.get(breakoutValue) ?? [],
         cols: rowColumnIndexes.map((i) => cols[i]),
+        results_metadata: data.results_metadata,
+        rows_truncated: data.rows_truncated,
+        native_form: data.native_form,
         results_timezone: data.results_timezone,
         _rawCols: cols,
         _transformed: true,
@@ -151,11 +174,14 @@ function transformSingleSeries(s, series, seriesIndex) {
         },
         data: {
           rows: rows.map((row, rowIndex) => {
-            const newRow = rowColumnIndexes.map((i) => row[i]);
+            const newRow: RowWithOrigin = rowColumnIndexes.map((i) => row[i]);
             newRow._origin = { seriesIndex, rowIndex, row, cols };
             return newRow;
           }),
           cols: rowColumnIndexes.map((i) => cols[i]),
+          results_metadata: data.results_metadata,
+          rows_truncated: data.rows_truncated,
+          native_form: data.native_form,
           results_timezone: data.results_timezone,
           _transformed: true,
           _rawCols: cols,
