@@ -47,15 +47,19 @@
   - query-id: ID of the query to visualize
   - chart-type: Type of chart to create (e.g., :bar, :line, :pie)
   - queries-state: Map of query-id to query data from agent state
+  - chart-name: Name of the chart
+  - chart-description: Description of the chart
 
   Returns a map with:
   - :chart-id - Unique ID for the chart
   - :chart-content - XML representation of the chart
   - :chart-link - Metabase link to the chart
   - :chart-type - Type of chart created
+  - :chart-name - Name of the chart
+  - :chart-description - Description of the chart
   - :query-id - ID of the source query
   - :reactions - Navigation action to show the chart"
-  [{:keys [query-id chart-type queries-state]}]
+  [{:keys [query-id chart-type queries-state chart-name chart-description]}]
   (log/info "Creating chart" {:query-id query-id
                               :chart-type chart-type
                               :available-queries (keys queries-state)})
@@ -86,6 +90,8 @@
                       :chart-type chart-type}]
 
       (log/info "Created chart" {:chart-id chart-id
+                                 :chart-name chart-name
+                                 :chart-description chart-description
                                  :chart-type chart-type
                                  :results-url results-url})
 
@@ -93,6 +99,8 @@
        :chart-content (format-chart-for-llm chart-data)
        :chart-link (format-chart-link chart-id)
        :chart-type chart-type
+       :chart-name chart-name
+       :chart-description chart-description
        :query-id query-id
        :instructions (str "Chart created successfully. The user is now viewing the chart.\n"
                           "Reference the chart using: [Chart](" (format-chart-link chart-id) ") "

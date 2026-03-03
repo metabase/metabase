@@ -3,7 +3,6 @@
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
-   [metabase-enterprise.metabot-v3.agent.tools :as agent-tools]
    [metabase-enterprise.metabot-v3.agent.tools.analytics :as agent-analytics]
    [metabase-enterprise.metabot-v3.agent.tools.shared :as shared]
    [metabase-enterprise.metabot-v3.tools.find-outliers :as outlier-tools]))
@@ -13,10 +12,7 @@
 (deftest find-outliers-tool-schema-test
   (testing "tool has correct :tool-name metadata"
     (let [tool-meta (meta #'agent-analytics/find-outliers-tool)]
-      (is (= "find_outliers" (:tool-name tool-meta)))))
-
-  (testing "tool is in state-dependent-tools"
-    (is (contains? @#'agent-tools/state-dependent-tools "find_outliers"))))
+      (is (= "find_outliers" (:tool-name tool-meta))))))
 
 ;;; ----------------------------------- query resolution from memory tests -------------------------------------------
 

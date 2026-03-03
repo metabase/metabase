@@ -1,6 +1,7 @@
 import type { ActionCreatorWithOptionalPayload } from "@reduxjs/toolkit";
 import type { BaseQueryFn } from "@reduxjs/toolkit/query";
 import type { TypedUseLazyQuery } from "@reduxjs/toolkit/src/query/react/buildHooks";
+import type { Node } from "@tiptap/core";
 import type { ComponentType } from "react";
 import React from "react";
 
@@ -84,6 +85,7 @@ type PluginMetabotType = {
     collectionId?: CollectionId,
   ) => React.ReactElement | undefined;
   getMetabotVisible: (state: State, conversation_id: string) => boolean;
+  MetabotNode: Node<{ getState?: () => State }> | null;
   MetabotAppBarButton: ComponentType;
   MetabotDataStudioButton: ComponentType;
   MetabotDataStudioSidebar: ComponentType;
@@ -171,6 +173,7 @@ const getDefaultPluginMetabot = (): PluginMetabotType => ({
   getMetabotQueryBuilderRoute: () => null,
   getNewMenuItemAIExploration: () => undefined,
   getMetabotVisible: () => false,
+  MetabotNode: null,
   MetabotAppBarButton: PluginPlaceholder,
   MetabotDataStudioButton: PluginPlaceholder,
   MetabotDataStudioSidebar: PluginPlaceholder,

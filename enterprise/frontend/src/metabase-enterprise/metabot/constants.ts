@@ -21,6 +21,7 @@ export const METABOT_PROFILE_OVERRIDES = {
   DEFAULT: undefined,
   SQL: "sql",
   TRANSFORMS_CODEGEN: "transforms_codegen",
+  DOCUMENT: "document",
 };
 
 export const METABOT_ERR_MSG = {

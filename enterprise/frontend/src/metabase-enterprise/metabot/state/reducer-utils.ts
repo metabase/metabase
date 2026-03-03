@@ -126,6 +126,7 @@ export const getMetabotInitialState = (): MetabotState => {
     conversations: {
       omnibot: createConversation("omnibot"),
       sql: createConversation("sql"),
+      document: createConversation("document"),
     },
     reactions: {
       navigateToPath: null,

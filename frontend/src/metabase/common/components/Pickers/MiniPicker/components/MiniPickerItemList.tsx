@@ -401,6 +401,7 @@ const ItemList = ({ children }: { children: React.ReactNode[] }) => {
 };
 
 const LocationInfo = ({ item }: { item: MiniPickerPickableItem }) => {
+  const { isCompact } = useMiniPickerContext();
   const isTable = isTableInDb(item);
 
   const itemText = isTable
@@ -422,7 +423,9 @@ const LocationInfo = ({ item }: { item: MiniPickerPickableItem }) => {
     <Flex gap="xs" align="center">
       {iconProps && <Icon {...iconProps} size={12} />}
       <Text size="sm" c="text-secondary">
-        <Ellipsified maw="18rem">{itemText}</Ellipsified>
+        <Ellipsified maw={isCompact ? "12rem" : "18rem"}>
+          {itemText}
+        </Ellipsified>
       </Text>
     </Flex>
   );
