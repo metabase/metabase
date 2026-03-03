@@ -99,10 +99,10 @@ Reference items using: [name](metabase://type/id)")
        "`[Updated Query](metabase://query/" query-id ")` "
        "where Updated Query is a meaningful link text"))
 
-(defn validation-error-instruction
+(defn sql-validation-error-instructions
   "Generate instructions for failed query validation. Matches Python `format_validation_error_instructions`."
-  [sql-engine error-message]
-  (str "The SQL query has a syntax error for the " sql-engine " dialect.\n"
+  [dialect error-message]
+  (str "The SQL query has a syntax error for the " dialect " dialect.\n"
        "\n"
        "Error details:\n"
        error-message "\n"

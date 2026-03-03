@@ -9,11 +9,9 @@
    [metabase-enterprise.metabot-v3.tools.instructions :as instructions]
    [metabase-enterprise.metabot-v3.tools.llm-representations :as llm-rep]
    [metabase-enterprise.metabot-v3.tools.replace-sql-query :as replace-sql-query-tools]
-   [metabase.driver.util :as driver.u]
    [metabase.util :as u]
    [metabase.util.log :as log]
-   [metabase.util.malli :as mu]
-   [metabase.util.malli.registry :as mr]))
+   [metabase.util.malli :as mu]))
 
 (set! *warn-on-reflection* true)
 
@@ -55,53 +53,21 @@
      instruction-text
      "</instructions>")))
 
+(defn- format-validation-error-output
+  [instruction-text]
+  (te/lines
+   "<result>"
+   "SQL query construction failed."
+   "</result>"
+   "<instructions>"
+   instruction-text
+   "</instructions>"))
+
 (defn- code-edit-part
   [buffer-id sql]
   (streaming/code-edit-part {:buffer_id buffer-id
                              :mode "rewrite"
                              :value sql}))
-
-;;;; Sql validation
-
-;; TODO: Complete the dialect map
-(def driver->dialect
-  "Map of driver to parser dialect."
-  {:postgres "postgres"
-   :mysql "mysql"
-   :mariadb "mysql"
-   :bigquery-cloud-sdk "bigquery"
-   :snowflake "snowflake"
-   :redshift "redshift"})
-
-(defn database-id->dialect
-  "Get dialect for database id."
-  [db-id]
-  (when (integer? db-id)
-    (-> db-id driver.u/database->driver driver->dialect)))
-
-(defn query->dialect
-  "Get queries dialect."
-  [query]
-  (database-id->dialect (:database query)))
-
-(mr/def ::validation-result
-  [:map
-   [:is-valid :boolean]
-   [:error-message {:optional true} :string]
-   [:dialect {:optional true} :string]
-   [:transpiled-sql {:optional true} :string]])
-
-(mu/defn validate-sql :- ::validation-result
-  "Validate sql query."
-  [dialect :- [:maybe :string]
-   sql :- [:string]]
-  (let [error nil]
-    (merge
-     {:is-valid true
-      :transpiled-sql sql}
-     (when (string? dialect)
-       {:dialect dialect})
-     (select-keys error [:error-message]))))
 
 (mu/defn ^{:tool-name "create_sql_query"
            :capabilities #{:permission-write-sql-queries}}
@@ -112,17 +78,22 @@
        [:database_id :int]
        [:sql_query :string]]]
   (try
-    (let [result (create-sql-query-tools/create-sql-query
-                  {:database-id database_id
-                   :sql sql_query})
-          structured    (assoc result :result-type :query)
-          query-id      (:query-id result)
-          instr         (instructions/query-created-instructions-for query-id)
-          results-url   (streaming/query->question-url (:query result))]
-      {:output (format-query-output structured instr {:preamble? true})
-       :structured-output structured
-       :instructions instr
-       :data-parts [(streaming/navigate-to-part results-url)]})
+    (let [{:keys [is-valid dialect error-message] :as result}
+          (create-sql-query-tools/create-sql-query
+           {:database-id database_id
+            :sql sql_query})]
+      (if is-valid
+        (let [structured    (assoc result :result-type :query)
+              query-id      (:query-id result)
+              instr         (instructions/query-created-instructions-for query-id)
+              results-url   (streaming/query->question-url (:query result))]
+          {:output (format-query-output structured instr {:preamble? true})
+           :structured-output structured
+           :instructions instr
+           :data-parts [(streaming/navigate-to-part results-url)]})
+        (let [instr (instructions/sql-validation-error-instructions dialect error-message)]
+          {:output (format-validation-error-output instr)
+           :instructions instr})))
     (catch Exception e
       (log/error e "Error creating SQL query")
       (if (:agent-error? (ex-data e))
