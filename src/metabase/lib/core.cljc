@@ -574,3 +574,12 @@
   **Code Health:** Discouraged; there are few legitimate use cases for working with raw card IDs outside lib."
   [a-query :- :metabase.lib.schema/query]
   (lib.util/source-card-id a-query))
+
+(mu/defn display-name-without-id :- :string
+  "Given a display name like `\"Something ID\"`, remove the \"ID\" portion and trim whitespace.
+
+  Useful to turn a FK field's name into a pseudo table name, when doing an implicit join.
+
+  **Code Health:** Healthy."
+  [field-display-name :- :string]
+  (lib.util/strip-id field-display-name))

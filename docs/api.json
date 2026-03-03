@@ -7280,6 +7280,13 @@
               "type" : "null"
             } ]
           },
+          "lib/from-model?" : {
+            "oneOf" : [ {
+              "type" : "boolean"
+            }, {
+              "type" : "null"
+            } ]
+          },
           "lib/card-id" : {
             "oneOf" : [ {
               "description" : "Valid Card ID",
@@ -8991,6 +8998,13 @@
               "oneOf" : [ {
                 "type" : "string",
                 "minLength" : 1
+              }, {
+                "type" : "null"
+              } ]
+            },
+            "lib/from-model?" : {
+              "oneOf" : [ {
+                "type" : "boolean"
               }, {
                 "type" : "null"
               } ]
@@ -10850,6 +10864,13 @@
                 "type" : "null"
               } ]
             },
+            "lib/from-model?" : {
+              "oneOf" : [ {
+                "type" : "boolean"
+              }, {
+                "type" : "null"
+              } ]
+            },
             "name" : {
               "type" : "string"
             },
@@ -11343,6 +11364,13 @@
               "fk-field-name" : {
                 "oneOf" : [ {
                   "type" : "string"
+                }, {
+                  "type" : "null"
+                } ]
+              },
+              "lib/from-model?" : {
+                "oneOf" : [ {
+                  "type" : "boolean"
                 }, {
                   "type" : "null"
                 } ]

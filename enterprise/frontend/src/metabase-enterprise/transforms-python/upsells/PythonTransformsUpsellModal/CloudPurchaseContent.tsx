@@ -30,8 +30,8 @@ export const CloudPurchaseContent = (props: CloudPurchaseContentProps) => {
 
   const handleCloudPurchase = useCallback(async () => {
     trackUpsellClicked({ location: LOCATION, campaign: CAMPAIGN });
+
     settingUpModalHandlers.open();
-    handleModalClose();
     try {
       await purchaseCloudAddOn({
         product_type: "transforms-advanced",
@@ -41,7 +41,9 @@ export const CloudPurchaseContent = (props: CloudPurchaseContentProps) => {
       sendErrorToast(
         t`It looks like something went wrong. Please refresh the page and try again.`,
       );
+    } finally {
       settingUpModalHandlers.close();
+      handleModalClose();
     }
   }, [
     handleModalClose,
