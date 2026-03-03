@@ -177,7 +177,7 @@
 
 ;; TODO (Chris 2026-03-03) We should also handle the case where table-id has not been backfilled yet...
 (defn- table-ref->id [ref]
-  (if (int? ref) ref (:table-id ref)))
+  (if (int? ref) ref (:table_id ref)))
 
 (defn- inputs-from-python-transform
   "Extract table refs from a python transform's source-tables.
