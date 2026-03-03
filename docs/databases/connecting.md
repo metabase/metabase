@@ -14,11 +14,28 @@ Connect Metabase to your data sources.
 
 ## Adding a database connection
 
-To add a database connection, click the **grid** icon in the top right, and navigate to **Admin** > **Databases** > **Add a database**.
+To add a database connection:
 
-Fill out the fields for that database, and click **Save changes** at the bottom.
+- Click the **gear icon** in the top right corner.
 
-The connection settings differ database to database. For the list of connection settings available for your database, click on the link to your database below.
+![Add database connection](./images/add-database-connection.png)
+
+- Go to **Admin settings**.
+
+![Add database connection](./images/add-database-connection-2.png)
+
+- Go to **Databases** > **Add database**.
+
+![Add database connection](./images/add-database-connection-3.png)
+
+- Fill out the required fields for your database, then click **Save** at the bottom..
+
+![Add database connection](./images/add-database-connection-4.png)
+
+
+Connection settings vary depending on the database type.
+For a list of connection options specific to your database, select it from the list below.
+
 
 ## Connecting to supported databases
 
