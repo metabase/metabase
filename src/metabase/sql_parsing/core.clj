@@ -393,3 +393,15 @@
   (validate-sql-query "postgres" "SELECT * FROM users")
 
   (referenced-fields "postgres" "SELECT id, name FROM users WHERE active = true"))
+
+;;;; Transpile sql
+
+(defn transpile-sql
+  "Transpiles sql string from one dialect to another."
+  [sql from-dialect to-dialect]
+  (-> (with-open [^Closeable ctx (python.pool/python-context)]
+        (with-python-timeout ctx default-timeout-ms
+          (-> ^Value (common/eval-python ctx "sql_tools.transpile_sql")
+              (.execute ^Value (object-array [sql from-dialect to-dialect]))
+              .asString)))
+      json/decode+kw))
