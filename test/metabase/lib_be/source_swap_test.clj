@@ -348,7 +348,7 @@
         query          (as-> (lib/query mp (meta/table-metadata :products)) q
                          (lib/join q (lib.metadata/card mp 1))
                          (lib/filter q (lib/not-null (m/find-first #(= (:name %) "PRODUCT_ID") (lib/filterable-columns q)))))
-        join-alias     (-> query :stages first :joins first :alias)
+        join-alias     (-> query lib/joins first lib/current-join-alias)
         upgraded-query (lib-be/upgrade-field-refs-in-query query)
         swapped-query  (lib-be/swap-source-in-query upgraded-query
                                                     {:type :card, :id 1}
@@ -790,6 +790,58 @@
     (testing "should swap :source-field to reviews.product-id"
       (is (=? [:dimension [:field (meta/id :products :category) {:source-field (meta/id :reviews :product-id)}]]
               swapped-target)))))
+
+(deftest ^:parallel upgrade-deduplicates-all-clauses-test
+  (let [orders-query   (lib/query meta/metadata-provider (meta/table-metadata :orders))
+        products-query (lib/query meta/metadata-provider (meta/table-metadata :products))
+        reviews-query  (lib/query meta/metadata-provider (meta/table-metadata :reviews))
+        mp             (-> meta/metadata-provider
+                           (lib.tu/metadata-provider-with-card-from-query 1 orders-query)
+                           (lib.tu/metadata-provider-with-card-from-query 2 products-query)
+                           (lib.tu/metadata-provider-with-card-from-query 3 reviews-query))
+        find-column    (fn [cols col-name]
+                         (m/find-first #(= col-name (:name %)) cols))
+        query          (as-> (lib/query mp (lib.metadata/card mp 1)) q
+                         (lib/join q (-> (lib/join-clause (lib.metadata/card mp 2))
+                                         (lib/with-join-fields [(meta/field-metadata :products :id)
+                                                                (find-column (lib/join-condition-rhs-columns q (lib.metadata/card mp 2) nil nil) "ID")])))
+                         (lib/with-fields q [(meta/field-metadata :orders :created-at)
+                                             (find-column (lib/fieldable-columns q) "CREATED_AT")])
+                         (lib/breakout q (meta/field-metadata :orders :created-at))
+                         (lib/breakout q (find-column (lib/breakoutable-columns q) "CREATED_AT"))
+                         (lib/order-by q (meta/field-metadata :orders :created-at))
+                         (lib/order-by q (find-column (lib/orderable-columns q) "CREATED_AT")))
+        join-alias     (-> query lib/joins first lib/current-join-alias)
+        upgraded-query (lib-be/upgrade-field-refs-in-query query)
+        swapped-query  (lib-be/swap-source-in-query upgraded-query
+                                                    {:type :card, :id 1}
+                                                    {:type :card, :id 3})]
+    (testing "before upgrade: 2 entries in each clause differing only in ref style"
+      (is (=? {:stages [{:fields   [[:field {} (meta/id :orders :created-at)]
+                                    [:field {} "CREATED_AT"]]
+                         :breakout [[:field {} (meta/id :orders :created-at)]
+                                    [:field {} "CREATED_AT"]]
+                         :order-by [[:asc {} [:field {} (meta/id :orders :created-at)]]
+                                    [:asc {} [:field {} "CREATED_AT"]]]
+                         :joins    [{:fields [[:field {:join-alias join-alias} (meta/id :products :id)]
+                                              [:field {:join-alias join-alias} "ID"]]}]}]}
+              query)))
+    (testing "upgrade deduplicates each clause to 1 name-based entry"
+      (is (=? {:stages [{:source-card 1
+                         :fields   [[:field {} "CREATED_AT"]]
+                         :breakout [[:field {} "CREATED_AT"]]
+                         :order-by [[:asc {} [:field {} "CREATED_AT"]]]
+                         :joins    [{:stages [{:source-card 2}]
+                                     :fields [[:field {:join-alias join-alias} "ID"]]}]}]}
+              upgraded-query)))
+    (testing "swap to reviews card preserves name-based refs"
+      (is (=? {:stages [{:source-card 3
+                         :fields   [[:field {} "CREATED_AT"]]
+                         :breakout [[:field {} "CREATED_AT"]]
+                         :order-by [[:asc {} [:field {} "CREATED_AT"]]]
+                         :joins    [{:stages [{:source-card 2}]
+                                     :fields [[:field {:join-alias join-alias} "ID"]]}]}]}
+              swapped-query)))))
 
 (deftest ^:parallel swap-source-in-query-field-ref-to-expression-test
   (let [query          (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
