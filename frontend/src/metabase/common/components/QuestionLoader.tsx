@@ -7,7 +7,7 @@ import { serializeCardForUrl } from "metabase/lib/card";
 import type Question from "metabase-lib/v1/Question";
 import type { CardId, UnsavedCard } from "metabase-types/api";
 
-export type QuestionLoaderChildState = {
+export type QuestionLoaderChildrenProps = {
   question: Question | null;
   loading: boolean;
   error: unknown;
@@ -18,7 +18,7 @@ type QuestionLoaderProps = {
   questionId?: CardId | null;
   questionHash?: string | null;
   includeSensitiveFields?: boolean;
-  children: (state: QuestionLoaderChildState) => ReactNode;
+  children: (state: QuestionLoaderChildrenProps) => ReactNode;
 };
 
 /*

@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { useMemo } from "react";
+import { useEffect, useMemo } from "react";
 
 import { skipToken, useGetCardQuery } from "metabase/api";
 import { useDispatch, useSelector } from "metabase/lib/redux";
@@ -8,11 +8,11 @@ import { getMetadata } from "metabase/selectors/metadata";
 import Question from "metabase-lib/v1/Question";
 import type { CardId } from "metabase-types/api";
 
-import type { QuestionLoaderChildState } from "./QuestionLoader";
+import type { QuestionLoaderChildrenProps } from "./QuestionLoader";
 
 type SavedQuestionLoaderProps = {
   questionId: CardId | null | undefined;
-  children: (state: QuestionLoaderChildState) => ReactNode;
+  children: (state: QuestionLoaderChildrenProps) => ReactNode;
 };
 
 /*
@@ -50,7 +50,7 @@ export function SavedQuestionLoader({
   } = useGetCardQuery(questionId != null ? { id: questionId } : skipToken);
 
   // Load metadata for the card when it's available
-  useMemo(() => {
+  useEffect(() => {
     if (card) {
       dispatch(loadMetadataForCard(card));
     }
@@ -66,5 +66,5 @@ export function SavedQuestionLoader({
   const loading = isCardLoading || isFetching;
   const error = cardError;
 
-  return children({ question, loading, error }) ?? null;
+  return children({ question, loading, error });
 }

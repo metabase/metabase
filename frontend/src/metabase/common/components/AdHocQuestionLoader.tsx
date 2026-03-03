@@ -9,7 +9,7 @@ import Question from "metabase-lib/v1/Question";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
 import type { UnsavedCard } from "metabase-types/api";
 
-type ChildState = {
+type ChildrenProps = {
   question: Question | null;
   loading: boolean;
   error: unknown;
@@ -23,13 +23,13 @@ type AdHocQuestionLoaderViewProps = {
     options?: { includeSensitiveFields?: boolean },
   ) => Promise<void>;
   includeSensitiveFields?: boolean;
-  children: (state: ChildState) => ReactNode;
+  children: (state: ChildrenProps) => ReactNode;
 };
 
 type AdHocQuestionLoaderProps = {
   questionHash: string | null;
   includeSensitiveFields?: boolean;
-  children: (state: ChildState) => ReactNode;
+  children: (state: ChildrenProps) => ReactNode;
 };
 
 /**
@@ -67,7 +67,7 @@ export function AdHocQuestionLoaderView({
   // keep a reference to the card as well to help with re-creating question
   // objects if the underlying metadata changes
   const [card, setCard] = useState<UnsavedCard | null>(null);
-  const [loadedHash, setLoadedHash] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState<unknown>(null);
 
   const metadataRef = useRef<Metadata | undefined>(metadata);
@@ -87,14 +87,15 @@ export function AdHocQuestionLoaderView({
      */
     async function loadQuestion() {
       if (!questionHash) {
+        setLoading(false);
         setError(null);
         setQuestion(null);
         setCard(null);
-        setLoadedHash(null);
         return;
       }
 
       try {
+        setLoading(true);
         setError(null);
 
         // get the card definition from the URL, the "card"
@@ -120,13 +121,15 @@ export function AdHocQuestionLoaderView({
         // as well
         setQuestion(newQuestion);
         setCard(deserializedCard);
-        setLoadedHash(questionHash);
       } catch (err) {
         if (!cancelled) {
           setError(err);
-          // Mark as "loaded" so we don't keep retrying a bad hash,
-          // but question will be null and error will be set
-          setLoadedHash(questionHash);
+          setQuestion(null);
+          setCard(null);
+        }
+      } finally {
+        if (!cancelled) {
+          setLoading(false);
         }
       }
     }
@@ -145,10 +148,6 @@ export function AdHocQuestionLoaderView({
       setQuestion(new Question(card, metadata));
     }
   }, [metadata, card]);
-
-  // Derive loading state: we're loading if we have a hash to load and it
-  // doesn't match what we've successfully loaded
-  const loading = questionHash != null && questionHash !== loadedHash;
 
   // call the child function with our loaded question
   return children({ question, loading, error });

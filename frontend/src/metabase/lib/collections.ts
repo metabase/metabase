@@ -9,7 +9,7 @@ export const getCrumbs = (
   collectionsById: Partial<Record<CollectionId, Collection>>,
   callback: (id: CollectionId) => void,
 ): Crumb[] => {
-  if (collection && collection.path) {
+  if (collection.path) {
     return [
       ...collection.path
         .map((id) => collectionsById[id])
@@ -20,18 +20,17 @@ export const getCrumbs = (
             () => callback(collection.id),
           ],
         ),
-      [collection.name] as Crumb,
-    ];
-  } else {
-    const rootCollection = collectionsById.root;
-
-    return [
-      ...(rootCollection
-        ? ([
-            [rootCollection.name, () => callback(rootCollection.id)],
-          ] as Crumb[])
-        : []),
-      [t`Unknown`] as Crumb,
+      [collection.name],
     ];
   }
+
+  const rootCollection = collectionsById.root;
+  if (!rootCollection) {
+    return [[t`Unknown`]];
+  }
+
+  return [
+    [rootCollection.name, () => callback(rootCollection.id)],
+    [t`Unknown`],
+  ];
 };

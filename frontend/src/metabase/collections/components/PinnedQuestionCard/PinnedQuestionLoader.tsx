@@ -1,10 +1,7 @@
 import { useMemo } from "react";
 
 import { useGetCardQuery } from "metabase/api";
-import {
-  QuestionResultLoader,
-  type QuestionResultLoaderChildState,
-} from "metabase/common/components/QuestionResultLoader";
+import { QuestionResultLoader } from "metabase/common/components/QuestionResultLoader";
 import { getResponseErrorMessage } from "metabase/lib/errors";
 import { useSelector } from "metabase/lib/redux";
 import { getMetadata } from "metabase/selectors/metadata";
@@ -63,13 +60,7 @@ const PinnedQuestionLoader = ({
 
   return (
     <QuestionResultLoader question={question} collectionPreview>
-      {({
-        loading,
-        error,
-        result,
-        results,
-        rawSeries,
-      }: QuestionResultLoaderChildState) =>
+      {({ loading, error, result, results, rawSeries }) =>
         children({
           question,
           loading: loading || results == null,

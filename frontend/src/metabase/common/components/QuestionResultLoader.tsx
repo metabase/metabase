@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { useEffectOnce } from "react-use";
 
 import type { Deferred } from "metabase/lib/promise";
 import { defer } from "metabase/lib/promise";
@@ -110,11 +111,9 @@ export function QuestionResultLoader({
   }, [loading]);
 
   // Initial load on mount
-  useEffect(() => {
+  useEffectOnce(() => {
     loadResult(question, onLoad, keepPreviousWhileLoading);
-    // Only run on mount
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  });
 
   // Reload when question changes
   useEffect(() => {
@@ -133,15 +132,13 @@ export function QuestionResultLoader({
       ? [{ card: question.card(), data: results[0].data }]
       : null;
 
-  return (
-    children({
-      results,
-      result,
-      rawSeries,
-      loading,
-      error,
-      cancel,
-      reload,
-    }) ?? null
-  );
+  return children({
+    results,
+    result,
+    rawSeries,
+    loading,
+    error,
+    cancel,
+    reload,
+  });
 }

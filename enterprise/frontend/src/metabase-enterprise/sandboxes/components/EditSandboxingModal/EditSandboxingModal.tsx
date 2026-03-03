@@ -11,10 +11,7 @@ import {
   QuestionPickerModal,
   getQuestionPickerValue,
 } from "metabase/common/components/Pickers/QuestionPicker";
-import {
-  QuestionLoader,
-  type QuestionLoaderChildState,
-} from "metabase/common/components/QuestionLoader";
+import { QuestionLoader } from "metabase/common/components/QuestionLoader";
 import { Radio } from "metabase/common/components/Radio";
 import { useToggle } from "metabase/common/hooks/use-toggle";
 import CS from "metabase/css/core/index.css";
@@ -428,7 +425,7 @@ const TargetName = ({ policy, policyTable, target }: TargetNameProps) => {
           }
           includeSensitiveFields
         >
-          {({ question }: QuestionLoaderChildState) => {
+          {({ question }) => {
             if (!question) {
               return null;
             }

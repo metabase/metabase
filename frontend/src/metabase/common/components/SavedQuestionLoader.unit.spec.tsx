@@ -6,7 +6,7 @@ import {
   setupUnauthorizedSchemaEndpoints,
 } from "__support__/server-mocks";
 import { renderWithProviders, screen } from "__support__/ui";
-import type { QuestionLoaderChildState } from "metabase/common/components/QuestionLoader";
+import type { QuestionLoaderChildrenProps } from "metabase/common/components/QuestionLoader";
 import Question from "metabase-lib/v1/Question";
 import type { Card, CardId } from "metabase-types/api";
 import {
@@ -24,7 +24,7 @@ function childrenRenderFn({
   loading,
   question,
   error,
-}: QuestionLoaderChildState) {
+}: QuestionLoaderChildrenProps) {
   if (error) {
     return <div>error</div>;
   }

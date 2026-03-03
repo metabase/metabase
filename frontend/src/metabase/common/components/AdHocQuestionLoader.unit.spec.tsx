@@ -12,6 +12,11 @@ import * as ML_Urls from "metabase-lib/v1/urls";
 
 import { AdHocQuestionLoaderView } from "./AdHocQuestionLoader";
 
+const getQuestionHash = (questionUrl: string) => {
+  const url = new URL(questionUrl);
+  return url.hash;
+};
+
 describe("AdHocQuestionLoader", () => {
   let loadMetadataSpy: jest.Mock;
   let mockChild: jest.Mock;
@@ -26,7 +31,7 @@ describe("AdHocQuestionLoader", () => {
     const q = Question.create({ metadata: SAMPLE_METADATA }).setQuery(
       Lib.createTestQuery(SAMPLE_PROVIDER, DEFAULT_TEST_QUERY),
     );
-    const questionHash = ML_Urls.getUrl(q).match(/(#.*)/)?.[1] ?? "";
+    const questionHash = getQuestionHash(ML_Urls.getUrl(q));
 
     render(
       <AdHocQuestionLoaderView
@@ -54,13 +59,13 @@ describe("AdHocQuestionLoader", () => {
     const q = Question.create({ metadata: SAMPLE_METADATA }).setQuery(
       Lib.createTestQuery(SAMPLE_PROVIDER, DEFAULT_TEST_QUERY),
     );
-    const questionHash = ML_Urls.getUrl(q).match(/(#.*)/)?.[1] ?? "";
+    const questionHash = getQuestionHash(ML_Urls.getUrl(q));
 
     // Create a different valid question with a different limit
     const q2 = Question.create({ metadata: SAMPLE_METADATA })
       .setQuery(Lib.createTestQuery(SAMPLE_PROVIDER, DEFAULT_TEST_QUERY))
       .updateSettings({ "table.pivot": true });
-    const newQuestionHash = ML_Urls.getUrl(q2).match(/(#.*)/)?.[1] ?? "";
+    const newQuestionHash = getQuestionHash(ML_Urls.getUrl(q2));
 
     const deserializeCardSpy = jest.spyOn(Card, "deserializeCardFromUrl");
 
@@ -99,7 +104,7 @@ describe("AdHocQuestionLoader", () => {
     const q = Question.create({ metadata: SAMPLE_METADATA }).setQuery(
       Lib.createTestQuery(SAMPLE_PROVIDER, DEFAULT_TEST_QUERY),
     );
-    const questionHash = ML_Urls.getUrl(q).match(/(#.*)/)?.[1] ?? "";
+    const questionHash = getQuestionHash(ML_Urls.getUrl(q));
 
     // Make loadMetadataForCard hang so we can observe loading state
     let resolveLoad: () => void;
