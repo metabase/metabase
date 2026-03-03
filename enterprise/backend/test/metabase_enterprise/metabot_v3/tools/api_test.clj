@@ -20,6 +20,7 @@
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.options :as lib.options]
    [metabase.test :as mt]
+   [metabase.transforms.crud :as transforms.crud]
    [metabase.util :as u]
    [metabase.util.malli.registry :as mr]
    [toucan2.core :as t2]))
@@ -1303,7 +1304,9 @@
         (testing "With superuser permissions"
           (is (=? {:structured_output [(mt/obj->json->obj (select-keys t1 [:id :entity_id :name :description :source]))
                                          ;; note: t2 not included because it's a (non-native) MBQL query
-                                       (mt/obj->json->obj (select-keys t3 [:id :entity_id :name :description :source]))]
+                                       ;; API converts source-tables from vec back to map for FE
+                                       (mt/obj->json->obj (transforms.crud/source-tables-vec->map-for-fe
+                                                           (select-keys t3 [:id :entity_id :name :description :source])))]
                    :conversation_id conversation-id}
                   (-> (mt/user-http-request :rasta :post 200 "ee/metabot-tools/get-transforms"
                                             {:request-options {:headers {"x-metabase-session" crowberto-ai-token}}}
@@ -1348,7 +1351,9 @@
         (testing "With superuser permissions"
           (doseq [transform [t1 t2]]
             (testing (:name transform)
-              (is (=? {:structured_output (mt/obj->json->obj (select-keys transform [:id :entity_id :name :description :source :target]))
+              ;; API converts source-tables from vec back to map for FE
+              (is (=? {:structured_output (mt/obj->json->obj (transforms.crud/source-tables-vec->map-for-fe
+                                                              (select-keys transform [:id :entity_id :name :description :source :target])))
                        :conversation_id conversation-id}
                       (mt/user-http-request :rasta :post 200 "ee/metabot-tools/get-transform-details"
                                             {:request-options {:headers {"x-metabase-session" crowberto-ai-token}}}

@@ -57,7 +57,11 @@
       (let [source-tables (:source-tables source)]
         (if (empty? source-tables)
           true
-          (let [table-ids (into [] (keep :table_id) source-tables)]
+          ;; source-tables may be vec [{:alias .. :table_id ..}] or legacy map {alias -> id/ref}.
+          ;; Extract table-ids from whichever format we have.
+          (let [table-ids (if (sequential? source-tables)
+                            (into [] (keep :table_id) source-tables)
+                            (into [] (keep (fn [[_ v]] (if (int? v) v (:table_id v)))) source-tables))]
             (and (seq table-ids)
                  (every? (fn [table-id]
                            (when-let [table (t2/select-one :model/Table table-id)]

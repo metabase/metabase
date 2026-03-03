@@ -2813,9 +2813,9 @@
             _        (t2/insert! :workspace_transform
                                  {:ref_id       (str (random-uuid))
                                   :workspace_id ws-id
+                                  :name         "ws-transform"
                                   :source       int-source
                                   :target       target
-                                  :source_type  "python"
                                   :created_at   :%now
                                   :updated_at   :%now})
             get-source-tables (fn [table-name pk-map]
