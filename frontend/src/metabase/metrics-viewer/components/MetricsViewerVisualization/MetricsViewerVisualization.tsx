@@ -55,9 +55,9 @@ export function MetricsViewerVisualization({
     cardIdToDimensionId,
   });
 
-  if (layout?.split === false || !layout || rawSeries.length === 1) {
-    return (
-      <Flex direction="column" flex="1 0 auto" gap="sm" className={className}>
+  return (
+    <Flex direction="column" flex="1 0 auto" gap="sm" className={className}>
+      {layout?.split === false || !layout || rawSeries.length === 1 ? (
         <DebouncedFrame className={S.chartWrapper}>
           <Visualization
             className={S.chart}
@@ -69,47 +69,46 @@ export function MetricsViewerVisualization({
             onChangeCardAndRun={noop}
           />
         </DebouncedFrame>
-        {dimensionItems.length > 0 && onDimensionChange && (
-          <DimensionPillBar
-            classNames={
-              isFullscreen
-                ? {
-                    pill: S.fullscreen_pill,
-                    pillBar: S.fullscreen_pillbar,
-                  }
-                : undefined
-            }
-            items={dimensionItems}
-            onDimensionChange={onDimensionChange}
-          />
-        )}
-      </Flex>
-    );
-  } else {
-    return (
-      <SimpleGrid cols={layout.spacing} flex={1} spacing={0}>
-        {rawSeries.map((series, i) => (
-          <Stack
-            gap="sm"
-            className={className}
-            key={`series-${i}`}
-            data-in-grid
-          >
-            <DebouncedFrame className={S.chartWrapper}>
-              <Visualization
-                className={S.chart}
-                rawSeries={[series]}
-                isQueryBuilder={false}
-                hideLegend
-                onBrush={onBrush}
-                mode={clickActionsMode}
-                onChangeCardAndRun={noop}
-                autoAdjustSettings
-              />
-            </DebouncedFrame>
-          </Stack>
-        ))}
-      </SimpleGrid>
-    );
-  }
+      ) : (
+        <SimpleGrid cols={layout.spacing} flex={1} spacing={0}>
+          {rawSeries.map((series, i) => (
+            <Stack
+              gap="sm"
+              className={className}
+              key={`series-${i}`}
+              data-in-grid
+            >
+              <DebouncedFrame className={S.chartWrapper}>
+                <Visualization
+                  className={S.chart}
+                  rawSeries={[series]}
+                  isQueryBuilder={false}
+                  hideLegend
+                  onBrush={onBrush}
+                  mode={clickActionsMode}
+                  onChangeCardAndRun={noop}
+                  autoAdjustSettings
+                />
+              </DebouncedFrame>
+            </Stack>
+          ))}
+        </SimpleGrid>
+      )}
+
+      {dimensionItems.length > 0 && onDimensionChange && (
+        <DimensionPillBar
+          classNames={
+            isFullscreen
+              ? {
+                  pill: S.fullscreen_pill,
+                  pillBar: S.fullscreen_pillbar,
+                }
+              : undefined
+          }
+          items={dimensionItems}
+          onDimensionChange={onDimensionChange}
+        />
+      )}
+    </Flex>
+  );
 }
