@@ -12,6 +12,7 @@
   - `replace-sql-query`."
   (:require
    [metabase-enterprise.metabot-v3.tools.sql-validation :as metabot-v3.tools.sql-validation]
+   [metabase.util.i18n :refer [tru]]
    [metabase.util.malli.registry :as mr]))
 
 (mr/def ::action-result
@@ -33,3 +34,17 @@
   [:map
    [:validation-result ::metabot-v3.tools.sql-validation/validation-result]
    [:action-result {:optional true} ::action-result]])
+
+(defn update-query-sql
+  "Update a dataset_query map with new SQL content."
+  [query new-sql]
+  (cond
+    (:stages query)
+    (assoc-in query [:stages 0 :native] new-sql)
+
+    (:native query)
+    (assoc-in query [:native :query] new-sql)
+
+    :else
+    (throw (ex-info (tru "Unsupported query format")
+                    {:agent-error? true}))))

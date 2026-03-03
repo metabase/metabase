@@ -20,20 +20,6 @@
    ;; Try legacy format
    (get-in query [:native :query])))
 
-(defn update-query-sql
-  "Update a dataset_query map with new SQL content."
-  [query new-sql]
-  (cond
-    (:stages query)
-    (assoc-in query [:stages 0 :native] new-sql)
-
-    (:native query)
-    (assoc-in query [:native :query] new-sql)
-
-    :else
-    (throw (ex-info (tru "Unsupported query format")
-                    {:agent-error? true}))))
-
 (defn- apply-sql-edit
   "Apply a targeted string replacement to SQL content."
   [sql {:keys [old_string new_string replace_all]}]
@@ -96,8 +82,8 @@
             (metabot-v3.tools.sql-validation/validate-sql dialect new-sql)]
         (merge {:validation-result validation-result}
                (when valid?
-                 (let [updated-query (update-query-sql query transpiled-sql)]
+                 (let [updated-query (metabot-v3.tools.sql.common/update-query-sql query transpiled-sql)]
                    {:action-result {:query-id      query-id
-                                    :query-content new-sql
+                                    :query-content transpiled-sql
                                     :query         updated-query
                                     :database      (:database query)}})))))))

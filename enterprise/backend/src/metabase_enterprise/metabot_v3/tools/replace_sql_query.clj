@@ -1,14 +1,15 @@
 (ns metabase-enterprise.metabot-v3.tools.replace-sql-query
   "Tool for replacing SQL query content entirely while preserving metadata."
   (:require
-   [metabase-enterprise.metabot-v3.tools.edit-sql-query :as edit-sql-query]
-   [metabase-enterprise.metabot-v3.tools.util :as metabot-v3.tools.u]
+   [metabase-enterprise.metabot-v3.tools.sql-validation :as metabot-v3.tools.sql-validation]
+   [metabase-enterprise.metabot-v3.tools.sql.common :as metabot-v3.tools.sql.common]
    [metabase.util.i18n :refer [tru]]
-   [metabase.util.log :as log]))
+   [metabase.util.log :as log]
+   [metabase.util.malli :as mu]))
 
 (set! *warn-on-reflection* true)
 
-(defn replace-sql-query
+(mu/defn replace-sql-query :- ::metabot-v3.tools.sql.common/operation-result
   "Replace the SQL content of an existing query while preserving metadata.
 
   This is different from edit-sql-query in that it completely replaces the SQL
@@ -36,11 +37,15 @@
                        :query-id query-id
                        :available-queries (keys queries-state)})))
 
-    ;; Replace the SQL content - handle both formats
-    (let [dialect (metabot-v3.tools.u/query->dialect query)
-          {:keys [is-valid transpiled-sql]} (metabot-v3.tools.u/validate-sql dialect sql)
-          updated-query (edit-sql-query/update-query-sql query sql)]
-      {:query-id      query-id
-       :query-content sql
-       :query         updated-query
-       :database      (:database query)})))
+    (let [dialect (metabot-v3.tools.sql-validation/query->dialect query)
+
+          {:keys [valid? transpiled-sql] :as validation-result}
+          (metabot-v3.tools.sql-validation/validate-sql dialect sql)]
+      (merge {:validation-result validation-result}
+             (when valid?
+               (let [;; Replace the SQL content - handle both formats
+                     updated-query (metabot-v3.tools.sql.common/update-query-sql query transpiled-sql)]
+                 {:action-result {:query-id      query-id
+                                  :query-content transpiled-sql
+                                  :query         updated-query
+                                  :database      (:database query)}}))))))
