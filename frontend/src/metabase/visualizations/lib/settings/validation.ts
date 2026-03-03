@@ -10,7 +10,6 @@ import { getCartesianChartColumns } from "metabase/visualizations/lib/graph/colu
 import { MAX_SERIES } from "metabase/visualizations/lib/utils";
 import type {
   DatasetColumn,
-  RowValue,
   RowValues,
   Series,
   SingleSeries,
@@ -74,9 +73,7 @@ export const getBreakoutCardinality = (
   }
 
   const breakoutIndex = chartColumns.breakout.index;
-  const uniqueValues = new Set(
-    rows.map((row: RowValue[]) => row[breakoutIndex]),
-  );
+  const uniqueValues = new Set(rows.map((row) => row[breakoutIndex]));
   return uniqueValues.size;
 };
 
