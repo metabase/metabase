@@ -6,6 +6,8 @@
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
+   [metabase.util.malli :as mu]
+   [metabase.util.malli.registry :as mr]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -26,7 +28,19 @@
                      :database-id database-id})))
   (api/read-check :model/Database database-id))
 
-(defn create-sql-query
+(mr/def ::action-result
+  [:map
+   [:query-id :any]
+   [:query-content :any]
+   [:query :any]
+   [:database :any]])
+
+(mr/def ::create-sql-query-result
+  [:map
+   [:validation-result ::metabot-v3.tools.sql-validation/validation-result]
+   [:action-result {:optional true} ::action-result]])
+
+(mu/defn create-sql-query :- ::create-sql-query-result
   "Create a new SQL query in memory.
 
   Parameters:
@@ -54,12 +68,12 @@
 
         {:keys [valid? transpiled-sql] :as validation-result}
         (metabot-v3.tools.sql-validation/validate-sql dialect sql)]
-    (if valid?
-      (let [dataset-query (create-native-query database-id transpiled-sql)
-            query-id (u/generate-nano-id)
-            _card-name (or name (str "SQL Query " (random-uuid)))]
-        {:query-id      query-id
-         :query-content transpiled-sql
-         :query         dataset-query
-         :database      database-id})
-      validation-result)))
+    (merge {:validation-result validation-result}
+           (when valid?
+             (let [dataset-query (create-native-query database-id transpiled-sql)
+                   query-id (u/generate-nano-id)
+                   _card-name (or name (str "SQL Query " (random-uuid)))]
+               {:action-result {:query-id      query-id
+                                :query-content transpiled-sql
+                                :query         dataset-query
+                                :database      database-id}})))))
