@@ -69,41 +69,47 @@ export const PermissionsSelect = memo(function PermissionsSelect({
   const actionsForCurrentValue = actions?.[selectedOption.value] || [];
   const hasActions = actionsForCurrentValue.length > 0;
 
+  const triggerContent = (
+    <PermissionsSelectRoot
+      isDisabled={isDisabled}
+      aria-haspopup="listbox"
+      data-testid="permissions-select"
+      aria-disabled={isDisabled}
+      onClick={isDisabled ? undefined : () => setOpened((o) => !o)}
+    >
+      {isDisabled ? (
+        <DisabledPermissionOption
+          {...selectedOption}
+          isHighlighted={isHighlighted ?? false}
+          hint={disabledTooltip}
+          iconColor="text-tertiary"
+        />
+      ) : (
+        <SelectedOption {...selectedOption} />
+      )}
+
+      {warning && (
+        <Tooltip label={warning}>
+          <WarningIcon />
+        </Tooltip>
+      )}
+
+      <Icon
+        style={{ visibility: isDisabled ? "hidden" : "visible" }}
+        name="chevrondown"
+        size={16}
+        c="text-tertiary"
+      />
+    </PermissionsSelectRoot>
+  );
+
+  if (!opened) {
+    return triggerContent;
+  }
+
   return (
-    <Popover opened={opened} onChange={setOpened} disabled={isDisabled}>
-      <Popover.Target>
-        <PermissionsSelectRoot
-          isDisabled={isDisabled}
-          aria-haspopup="listbox"
-          data-testid="permissions-select"
-          aria-disabled={isDisabled}
-          onClick={isDisabled ? undefined : () => setOpened((o) => !o)}
-        >
-          {isDisabled ? (
-            <DisabledPermissionOption
-              {...selectedOption}
-              isHighlighted={isHighlighted ?? false}
-              hint={disabledTooltip}
-              iconColor="text-tertiary"
-            />
-          ) : (
-            <SelectedOption {...selectedOption} />
-          )}
-
-          {warning && (
-            <Tooltip label={warning}>
-              <WarningIcon />
-            </Tooltip>
-          )}
-
-          <Icon
-            style={{ visibility: isDisabled ? "hidden" : "visible" }}
-            name="chevrondown"
-            size={16}
-            c="text-tertiary"
-          />
-        </PermissionsSelectRoot>
-      </Popover.Target>
+    <Popover opened onChange={setOpened}>
+      <Popover.Target>{triggerContent}</Popover.Target>
       <Popover.Dropdown>
         <Fragment>
           <OptionsList role="listbox">
