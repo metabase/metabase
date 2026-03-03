@@ -66,8 +66,10 @@
   "Returns true if the template path is safe: ends with .hbs, does not contain ..,
   and starts with one of the allowed prefixes."
   [^String path]
-  (and (str/ends-with? path ".hbs")
-       (some #(str/starts-with? path %) allowed-template-prefixes)))
+  (boolean
+   (and (str/ends-with? path ".hbs")
+        (not (str/includes? path ".."))
+        (some #(str/starts-with? path %) allowed-template-prefixes))))
 
 (defn- validate-template-path!
   "Validate that a template path is safe, throw if not."

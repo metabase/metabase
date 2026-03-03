@@ -21,13 +21,13 @@
 
 (defn do-with-temp-template!
   [filename content thunk]
-  ;; create the channel_template folder if not exists
   (let [temp-file (format "test_resources/%s" filename)]
-    (try
-      (spit temp-file content)
-      (thunk filename)
-      (finally
-        (io/delete-file temp-file)))))
+    (with-redefs [handlebars/allowed-template-prefixes #{""}]
+      (try
+        (spit temp-file content)
+        (thunk filename)
+        (finally
+          (io/delete-file temp-file))))))
 
 (defmacro with-temp-template!
   [[filename-binding filename content] & body]
@@ -50,8 +50,6 @@
 (deftest render-test
   (testing "Render a template with a context."
     (with-temp-template! [tmpl-name "tmpl.hbs" "Hello {{name}}"]
-      (is (= "Hello Ngoc" (handlebars/render tmpl-name {:name "Ngoc"}))))
-    (with-temp-template! [tmpl-name "tmpl.handlebars" "Hello {{name}}"]
       (is (= "Hello Ngoc" (handlebars/render tmpl-name {:name "Ngoc"})))))
 
   (testing "with custom req"
