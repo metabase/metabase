@@ -164,8 +164,7 @@ export class LeafletGridHeatMap extends LeafletMap<LeafletGridHeatMapProps> {
       weight: 1,
       stroke: true,
       fillOpacity: 0.5,
-      strokeOpacity: 1.0,
-    } as L.PathOptions);
+    });
     gridSquare.on("click", this._onVisualizationClick.bind(this, index));
     gridSquare.on("mousemove", this._onHoverChange.bind(this, index));
     gridSquare.on("mouseout", this._onHoverChange.bind(this, null));
