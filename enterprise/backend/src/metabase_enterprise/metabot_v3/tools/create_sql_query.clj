@@ -1,7 +1,7 @@
 (ns metabase-enterprise.metabot-v3.tools.create-sql-query
   "Tool for creating new SQL queries."
   (:require
-   [metabase-enterprise.metabot-v3.tools.util :as metabot-v3.tools.u]
+   [metabase-enterprise.metabot-v3.tools.sql-validation :as metabot-v3.tools.sql-validation]
    [metabase.api.common :as api]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
@@ -50,13 +50,16 @@
   (validate-database-access database-id)
 
   ;; Create the in-memory query structure
-  (let [dialect (metabot-v3.tools.u/database-id->dialect database-id)
-        ;; TODO: Use transpiled sql
-        {:keys [is-valid transpiled-sql]} @(def rere (metabot-v3.tools.u/validate-sql dialect sql))
-        dataset-query (create-native-query database-id sql)
-        query-id (u/generate-nano-id)
-        _card-name (or name (str "SQL Query " (random-uuid)))]
-    {:query-id      query-id
-     :query-content sql
-     :query         dataset-query
-     :database      database-id}))
+  (let [dialect (metabot-v3.tools.sql-validation/database-id->dialect database-id)
+
+        {:keys [is-valid transpiled-sql] :as validation-result}
+        (metabot-v3.tools.sql-validation/validate-sql dialect sql)]
+    (if is-valid
+      (let [dataset-query (create-native-query database-id transpiled-sql)
+            query-id (u/generate-nano-id)
+            _card-name (or name (str "SQL Query " (random-uuid)))]
+        {:query-id      query-id
+         :query-content transpiled-sql
+         :query         dataset-query
+         :database      database-id})
+      validation-result)))
