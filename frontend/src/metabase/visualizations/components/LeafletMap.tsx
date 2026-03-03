@@ -1,4 +1,3 @@
-/* eslint-disable react/prop-types */
 import "leaflet-draw";
 import "leaflet/dist/leaflet.css";
 import "./LeafletMap.module.css";
@@ -8,26 +7,64 @@ import { Component, createRef } from "react";
 import _ from "underscore";
 
 import MetabaseSettings from "metabase/lib/settings";
+import { isNullOrUndefined } from "metabase/lib/types";
+import type { OnChangeCardAndRun } from "metabase/visualizations/types";
 import * as Lib from "metabase-lib";
 import Question from "metabase-lib/v1/Question";
+import type Metadata from "metabase-lib/v1/metadata/Metadata";
+import type { Series } from "metabase-types/api";
+import type { Point } from "metabase-types/api/dataset";
+import { isObject } from "metabase-types/guards/common";
 
-export class LeafletMap extends Component {
-  constructor(props) {
-    super(props);
+type MapSettings = {
+  "map.latitude_column"?: string;
+  "map.longitude_column"?: string;
+  "map.metric_column"?: string;
+  "map.center_latitude"?: number;
+  "map.center_longitude"?: number;
+  "map.zoom"?: number;
+};
 
-    this.mapRef = createRef();
-  }
+export interface LeafletMapProps {
+  className?: string;
+  width?: number;
+  height?: number;
+  bounds: L.LatLngBounds;
+  settings: MapSettings;
+  points?: Point[] | null;
+  series: Series;
+  metadata?: Metadata;
+  token?: string | null;
+  zoomControl?: boolean;
+  zoom?: number | null;
+  lat?: number | null;
+  lng?: number | null;
+  onMapCenterChange: (lat: number, lng: number) => void;
+  onMapZoomChange: (zoom: number) => void;
+  onRenderError: (error?: unknown) => void;
+  onFiltering: (filtering: boolean) => void;
+  onChangeCardAndRun: OnChangeCardAndRun;
+}
+
+export class LeafletMap extends Component<LeafletMapProps> {
+  mapRef = createRef<HTMLDivElement>();
+  map: L.Map | null = null;
+  drawControl: L.Control.Draw | null = null;
+  _filter?: L.Draw.Rectangle;
 
   componentDidMount() {
     try {
       const element = this.mapRef.current;
+      if (!element) {
+        return;
+      }
 
-      const map = (this.map = L.map(element, {
+      const mapOptions: L.MapOptions = {
         scrollWheelZoom: true,
         wheelPxPerZoomLevel: 30,
         minZoom: 2,
-        drawControlTooltips: false,
-        zoomSnap: false,
+
+        zoomSnap: 0,
         // Set max bounds for latitude only, allowing longitude to wrap
         maxBounds: [
           [-90, -Infinity], // Southwest corner (limit south, no limit west)
@@ -35,7 +72,8 @@ export class LeafletMap extends Component {
         ],
         maxBoundsViscosity: 1.0, // Completely prevent panning outside latitude bounds
         worldCopyJump: true, // Enable smooth horizontal wrapping
-      }));
+      };
+      const map = (this.map = L.map(element, mapOptions));
 
       const drawnItems = new L.FeatureGroup();
       map.addLayer(drawnItems);
@@ -58,14 +96,14 @@ export class LeafletMap extends Component {
 
       map.setView([0, 0], 8);
 
-      const mapTileUrl = MetabaseSettings.get("map-tile-server-url");
+      const mapTileUrl = MetabaseSettings.get("map-tile-server-url") ?? "";
       let mapTileHostname = "";
       try {
         mapTileHostname = new URL(mapTileUrl).host;
-      } catch (e) {}
+      } catch {}
       const mapTileAttribution = mapTileHostname.includes("openstreetmap.org")
         ? 'Map data © <a href="http://openstreetmap.org">OpenStreetMap</a> contributors'
-        : null;
+        : undefined;
 
       L.tileLayer(mapTileUrl, { attribution: mapTileAttribution }).addTo(map);
 
@@ -77,13 +115,19 @@ export class LeafletMap extends Component {
         const zoom = map.getZoom();
         this.props.onMapZoomChange(zoom);
       });
-    } catch (err) {
-      console.error(err);
-      this.props.onRenderError(err.message || err);
+    } catch (error) {
+      console.error(error);
+      this.props.onRenderError(
+        error instanceof Error ? error.message : (error ?? undefined),
+      );
     }
   }
 
-  componentDidUpdate(prevProps) {
+  componentDidUpdate(prevProps: LeafletMapProps) {
+    if (!this.map) {
+      return;
+    }
+
     const { bounds, settings, zoomControl, zoom, lat, lng } = this.props;
 
     if (prevProps.zoomControl !== zoomControl) {
@@ -107,10 +151,10 @@ export class LeafletMap extends Component {
 
     this.map.invalidateSize();
 
-    const hasSavedView =
-      settings["map.center_latitude"] != null ||
-      settings["map.center_longitude"] != null ||
-      settings["map.zoom"] != null;
+    const [centerLatitude, centerLongitude] = [
+      settings["map.center_latitude"],
+      settings["map.center_longitude"],
+    ];
 
     // Pure resize (no data change): preserve user's current view
     if (!isInitialUpdate && !pointsChanged && dimensionsChanged) {
@@ -126,11 +170,11 @@ export class LeafletMap extends Component {
     }
 
     // Initial update or data changed: apply saved settings if available
-    if (hasSavedView) {
-      this.map.setView(
-        [settings["map.center_latitude"], settings["map.center_longitude"]],
-        settings["map.zoom"],
-      );
+    if (
+      !isNullOrUndefined(centerLatitude) &&
+      !isNullOrUndefined(centerLongitude)
+    ) {
+      this.map.setView([centerLatitude, centerLongitude], settings["map.zoom"]);
       return;
     }
 
@@ -149,15 +193,18 @@ export class LeafletMap extends Component {
           [0, bounds.getEast()],
         ]),
       );
-      const zoom = Math.min(latZoom, lonZoom);
+      const mapZoom = Math.min(latZoom, lonZoom);
       // NOTE: unclear why calling `fitBounds` twice is sometimes required to get it to work
       this.map.fitBounds(bounds);
-      this.map.setZoom(zoom);
+      this.map.setZoom(mapZoom);
       this.map.fitBounds(bounds);
     }
   }
 
   componentWillUnmount() {
+    if (!this.map) {
+      return;
+    }
     this.map.remove();
   }
 
@@ -180,19 +227,29 @@ export class LeafletMap extends Component {
   }
 
   startFilter() {
-    this._filter = new L.Draw.Rectangle(
-      this.map,
-      this.drawControl.options.rectangle,
-    );
+    if (!this.map || !this.drawControl) {
+      return;
+    }
+
+    const { options } = this.drawControl;
+
+    const rectangleOptions = getRectangleDrawOptions(options);
+
+    this._filter = new L.Draw.Rectangle(this.map, rectangleOptions);
     this._filter.enable();
     this.props.onFiltering(true);
   }
+
   stopFilter() {
-    this._filter && this._filter.disable();
+    this._filter?.disable();
     this.props.onFiltering(false);
   }
-  onFilter = (e) => {
-    const bounds = e.layer.getBounds();
+
+  onFilter = (event: L.DrawEvents.Created) => {
+    if (!(event.layer instanceof L.Rectangle)) {
+      return;
+    }
+    const bounds = event.layer.getBounds();
 
     const {
       series: [
@@ -214,7 +271,7 @@ export class LeafletMap extends Component {
     });
 
     const question = new Question(card, metadata);
-    if (this.supportsFilter()) {
+    if (this.supportsFilter() && latitudeColumn && longitudeColumn) {
       const query = question.query();
       const stageIndex = -1;
 
@@ -297,7 +354,9 @@ export class LeafletMap extends Component {
         },
       ],
     } = this.props;
-    return _.findWhere(cols, { name: settings["map.metric_column"] });
+    return _.findWhere(cols, {
+      name: settings["map.metric_column"],
+    });
   }
 }
 
@@ -305,10 +364,27 @@ export class LeafletMap extends Component {
  * Lightweight function to check if points have changed (e.g. due to filters)
  * so that we should recalculate the zoom.
  */
-function shouldRecalculateZoom(prevPoints, nextPoints) {
+function shouldRecalculateZoom(
+  prevPoints?: Point[] | null,
+  nextPoints?: Point[] | null,
+) {
   if (!prevPoints && !nextPoints) {
     return false;
   }
 
   return !prevPoints || nextPoints !== prevPoints;
+}
+
+function getRectangleDrawOptions(
+  options: L.ControlOptions,
+): L.DrawOptions.RectangleOptions | undefined {
+  if (!("draw" in options)) {
+    return undefined;
+  }
+
+  if (!isObject(options.draw) || !isObject(options.draw.rectangle)) {
+    return undefined;
+  }
+
+  return options.draw.rectangle;
 }
