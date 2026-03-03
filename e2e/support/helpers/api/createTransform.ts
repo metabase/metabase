@@ -39,12 +39,13 @@ export function createTransform(
       tag_ids,
       collection_id,
     })
-    .then(({ body }) => {
+    .then((response) => {
       if (wrapId) {
-        cy.wrap(body.id).as(idAlias);
+        cy.wrap(response.body.id).as(idAlias);
       }
       if (visitTransform) {
         cy.visit(`/data-studio/transforms/${body.id}`);
       }
+      return cy.wrap(response);
     });
 }
