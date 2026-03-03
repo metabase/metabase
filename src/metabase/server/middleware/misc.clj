@@ -45,7 +45,7 @@
   [handler]
   (fn [request respond raise]
     (handler request
-             (if-not (request/api-call? request)
+             (if-not (or (request/api-call? request) (request/auth-call? request))
                respond
                (comp respond add-content-type*))
              raise)))
