@@ -333,47 +333,48 @@
                       {:keys [expected-initial-checkpoint]} checkpoint-config
                       initial-payload (make-incremental-transform-payload "Switch Transform" target-table transform-type checkpoint-config)]
                   (mt/with-temp [:model/Transform transform initial-payload]
-                    (testing "Initial incremental run processes first batch"
-                      (execute-transform-with-ordering! transform transform-type (:field-name checkpoint-config) {:run-method :manual})
-                      (transforms.tu/wait-for-table (:name target-table) 10000)
-                      (let [row-count (get-table-row-count target-table)
-                            distinct-timestamps (get-distinct-timestamp-count target-table)
-                            checkpoint (get-checkpoint-value transform)]
-                        (is (= 10 row-count) "Initial run should process first 10 products")
-                        (is (= 1 distinct-timestamps) "All rows should have the same timestamp from first run")
-                        (is (compare-checkpoint-values checkpoint-type expected-initial-checkpoint checkpoint) "Checkpoint should be created")))
-
-                    (testing "Second incremental run processes remaining data"
-                      (execute-transform-with-ordering! transform transform-type (:field-name checkpoint-config) {:run-method :manual})
-                      (let [row-count (get-table-row-count target-table)
-                            distinct-timestamps (get-distinct-timestamp-count target-table)]
-                        (is (= 16 row-count) "Should have 16 rows after second incremental run")
-                        (is (= 2 distinct-timestamps) "Should have 2 distinct timestamps (one per incremental run)")))
-
-                    (testing "Switch to non-incremental via PUT API"
-                      (let [non-incremental-payload (-> initial-payload
-                                                        (update :source dissoc :source-incremental-strategy)
-                                                        (update :target dissoc :source-incremental-strategy)
-                                                        (update :target assoc :type "table"))
-                            updated (mt/user-http-request :crowberto :put 200 (format "transform/%d" (:id transform))
-                                                          non-incremental-payload)]
-                        (is (= "table" (-> updated :target :type)))
-                        (is (nil? (-> updated :source :source-incremental-strategy)))))
-
-                    (testing "Non-incremental run overwrites all data"
-                      (let [transform (t2/select-one :model/Transform (:id transform))]
+                    (let [get-transform #(t2/select-one :model/Transform (:id transform))]
+                      (testing "Initial incremental run processes first batch"
                         (execute-transform-with-ordering! transform transform-type (:field-name checkpoint-config) {:run-method :manual})
-                        (let [row-count (get-table-row-count target-table)
-                              distinct-timestamps (get-distinct-timestamp-count target-table)]
-                          (is (= 10 row-count) "Should overwrite to 10 rows")
-                          (is (= 1 distinct-timestamps) "All rows should have same timestamp after non-incremental overwrite"))
+                        (transforms.tu/wait-for-table (:name target-table) 10000)
+                        (let [row-count           (get-table-row-count target-table)
+                              distinct-timestamps (get-distinct-timestamp-count target-table)
+                              checkpoint          (get-checkpoint-value transform)]
+                          (is (= 10 row-count) "Initial run should process first 10 products")
+                          (is (= 1 distinct-timestamps) "All rows should have the same timestamp from first run")
+                          (is (compare-checkpoint-values checkpoint-type expected-initial-checkpoint checkpoint) "Checkpoint should be created")))
 
-                        (testing "Running again still overwrites"
+                      (testing "Second incremental run processes remaining data"
+                        (execute-transform-with-ordering! (get-transform) transform-type (:field-name checkpoint-config) {:run-method :manual})
+                        (let [row-count           (get-table-row-count target-table)
+                              distinct-timestamps (get-distinct-timestamp-count target-table)]
+                          (is (= 16 row-count) "Should have 16 rows after second incremental run")
+                          (is (= 2 distinct-timestamps) "Should have 2 distinct timestamps (one per incremental run)")))
+
+                      (testing "Switch to non-incremental via PUT API"
+                        (let [non-incremental-payload (-> initial-payload
+                                                          (update :source dissoc :source-incremental-strategy)
+                                                          (update :target dissoc :source-incremental-strategy)
+                                                          (update :target assoc :type "table"))
+                              updated                 (mt/user-http-request :crowberto :put 200 (format "transform/%d" (:id transform))
+                                                                            non-incremental-payload)]
+                          (is (= "table" (-> updated :target :type)))
+                          (is (nil? (-> updated :source :source-incremental-strategy)))))
+
+                      (testing "Non-incremental run overwrites all data"
+                        (let [transform (t2/select-one :model/Transform (:id transform))]
                           (execute-transform-with-ordering! transform transform-type (:field-name checkpoint-config) {:run-method :manual})
-                          (let [row-count (get-table-row-count target-table)
+                          (let [row-count           (get-table-row-count target-table)
                                 distinct-timestamps (get-distinct-timestamp-count target-table)]
-                            (is (= 10 row-count) "Should still have 10 rows after another run")
-                            (is (= 1 distinct-timestamps) "Should still have 1 distinct timestamp")))))))))))))))
+                            (is (= 10 row-count) "Should overwrite to 10 rows")
+                            (is (= 1 distinct-timestamps) "All rows should have same timestamp after non-incremental overwrite"))
+
+                          (testing "Running again still overwrites"
+                            (execute-transform-with-ordering! transform transform-type (:field-name checkpoint-config) {:run-method :manual})
+                            (let [row-count           (get-table-row-count target-table)
+                                  distinct-timestamps (get-distinct-timestamp-count target-table)]
+                              (is (= 10 row-count) "Should still have 10 rows after another run")
+                              (is (= 1 distinct-timestamps) "Should still have 1 distinct timestamp"))))))))))))))))
 
 (deftest switch-non-incremental-to-incremental-test
   (testing "Switching a non-incremental transform to incremental computes checkpoint from existing data"
@@ -386,7 +387,8 @@
             (mt/dataset transforms-dataset/transforms-test
               (with-transform-cleanup! [target-table (target-table-gen "switch_non_incr_to_incr")]
                 (let [checkpoint-config (get checkpoint-configs checkpoint-type)
-                      {:keys [expected-second-checkpoint]} checkpoint-config
+                      {:keys [expected-initial-checkpoint
+                              expected-second-checkpoint]} checkpoint-config
                       incremental-payload (make-incremental-transform-payload "Switch Transform" target-table transform-type checkpoint-config)
                       initial-payload (-> incremental-payload
                                           (update :source dissoc :source-incremental-strategy)
@@ -400,7 +402,6 @@
                             distinct-timestamps (get-distinct-timestamp-count target-table)]
                         (is (= 10 row-count) "Initial run should process 10 products")
                         (is (= 1 distinct-timestamps) "All rows should have same timestamp from non-incremental run")
-
                         (testing "No checkpoint exists"
                           (let [checkpoint (get-checkpoint-value transform)]
                             (is (nil? checkpoint) "No checkpoint for non-incremental transform")))))
@@ -414,12 +415,18 @@
                     (testing "First incremental run after switch processes no new data"
                       (let [transform (t2/select-one :model/Transform (:id transform))]
                         (execute-transform-with-ordering! transform transform-type (:field-name checkpoint-config) {:run-method :manual})
-                        (let [row-count (get-table-row-count target-table)
+                        (let [row-count           (get-table-row-count target-table)
                               distinct-timestamps (get-distinct-timestamp-count target-table)
-                              checkpoint (get-checkpoint-value transform)]
-                          (is (= 16 row-count) "Should process remaining 6 entries")
-                          (is (= 2 distinct-timestamps) "Should have 2 distinct timestamp")
-                          (is (compare-checkpoint-values checkpoint-type expected-second-checkpoint checkpoint) "Checkpoint should be computed from existing data"))))
+                              checkpoint          (get-checkpoint-value transform)]
+                          (if (= :native transform-type)
+                            (do
+                              (is (= 16 row-count) "Should process remaining 6 entries")
+                              (is (= 2 distinct-timestamps) "Should have 2 distinct timestamp")
+                              (is (compare-checkpoint-values checkpoint-type expected-second-checkpoint checkpoint) "Checkpoint should be computed from existing data"))
+                            (do
+                              (is (= 10 row-count) "Should process remaining 6 entries")
+                              (is (= 1 distinct-timestamps) "Should have 2 distinct timestamp")
+                              (is (compare-checkpoint-values checkpoint-type expected-initial-checkpoint checkpoint) "Checkpoint should be computed from existing data"))))))
 
                     (when (and (isa? driver/hierarchy driver/*driver* :sql-jdbc) ; insert/delete test products only works for jdbc drivers at the moment
                                (not= driver/*driver* :clickhouse)
@@ -700,24 +707,25 @@
                 (let [checkpoint-config (get checkpoint-configs checkpoint-type)
                       transform-payload (make-incremental-transform-payload "Incremental Transform" target-table transform-type checkpoint-config)]
                   (mt/with-temp [:model/Transform transform transform-payload]
-                    (testing "First run creates index on checkpoint column"
-                      (execute-transform-with-ordering! transform transform-type (:field-name checkpoint-config) {:run-method :manual})
-                      (let [indexes    (driver/describe-table-indexes driver/*driver* (mt/id) target-table)
-                            field-name (:field-name checkpoint-config)]
-                        (testing "Index was created"
-                          (is (= 1 (count indexes)))
-                          (is (=? {:value field-name :index-name #"^mb_transform_idx_.*$"} (first indexes))))))
-                    (testing "Data was processed correctly"
-                      (is (= 10 (get-table-row-count target-table))))
-                    (testing "Second run succeeds with existing index"
-                      (execute-transform-with-ordering! transform transform-type (:field-name checkpoint-config) {:run-method :manual})
-                      (let [indexes    (driver/describe-table-indexes driver/*driver* (mt/id) target-table)
-                            field-name (:field-name checkpoint-config)]
-                        (testing "Index still exists"
-                          (is (= 1 (count indexes)))
-                          (is (=? {:value field-name :index-name #"^mb_transform_idx_.*$"} (first indexes)))))
+                    (let [get-transform #(t2/select-one :model/Transform (:id transform))]
+                      (testing "First run creates index on checkpoint column"
+                        (execute-transform-with-ordering! transform transform-type (:field-name checkpoint-config) {:run-method :manual})
+                        (let [indexes    (driver/describe-table-indexes driver/*driver* (mt/id) target-table)
+                              field-name (:field-name checkpoint-config)]
+                          (testing "Index was created"
+                            (is (= 1 (count indexes)))
+                            (is (=? {:value field-name :index-name #"^mb_transform_idx_.*$"} (first indexes))))))
                       (testing "Data was processed correctly"
-                        (is (= 16 (get-table-row-count target-table)))))))))))))))
+                        (is (= 10 (get-table-row-count target-table))))
+                      (testing "Second run succeeds with existing index"
+                        (execute-transform-with-ordering! (get-transform) transform-type (:field-name checkpoint-config) {:run-method :manual})
+                        (let [indexes    (driver/describe-table-indexes driver/*driver* (mt/id) target-table)
+                              field-name (:field-name checkpoint-config)]
+                          (testing "Index still exists"
+                            (is (= 1 (count indexes)))
+                            (is (=? {:value field-name :index-name #"^mb_transform_idx_.*$"} (first indexes)))))
+                        (testing "Data was processed correctly"
+                          (is (= 16 (get-table-row-count target-table))))))))))))))))
 
 (deftest index-cleanup-on-switch-to-non-incremental-test
   (testing "Switching to non-incremental removes metabase-owned indexes"

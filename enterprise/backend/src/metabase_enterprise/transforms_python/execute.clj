@@ -200,21 +200,28 @@
   (fn [_ _ transform _ _] (-> transform :target :type keyword)))
 
 (defmethod transfer-file-to-db :table-incremental
-  [driver {db-id :id}
+  [driver {db-id :id :as db}
    {:keys [target] :as transform}
    metadata temp-file]
-  (let [table-name (transforms.util/qualified-table-name driver target)
-        table-exists? (transforms.util/target-table-exists? transform)
-        data-source {:type :jsonl-file
-                     :file temp-file}]
+  ;; First incremental run: no checkpoint exists yet, behave like non-incremental
+  ;; to drop and recreate the table rather than appending to existing data.
+  ;; Only applies to Python transforms - MBQL transforms handle this in query-impl.
+  (if (and (transforms.util/python-transform? transform)
+           (nil? (:last_checkpoint_type transform)))
+    ((get-method transfer-file-to-db :table) driver db transform metadata temp-file)
+    ;; Normal incremental: append if table exists, create if it doesn't
+    (let [table-name (transforms.util/qualified-table-name driver target)
+          table-exists? (transforms.util/target-table-exists? transform)
+          data-source {:type :jsonl-file
+                       :file temp-file}]
 
-    ;; once we have more than just append, dispatch on :target-incremental-strategy
+      ;; once we have more than just append, dispatch on :target-incremental-strategy
 
-    (if (not table-exists?)
-      (do
-        (log/info "New table")
-        (create-table-and-insert-data! driver db-id (table-schema table-name metadata) data-source))
-      (insert-data! driver db-id (table-schema table-name metadata) data-source))))
+      (if (not table-exists?)
+        (do
+          (log/info "New table")
+          (create-table-and-insert-data! driver db-id (table-schema table-name metadata) data-source))
+        (insert-data! driver db-id (table-schema table-name metadata) data-source)))))
 
 (defmethod transfer-file-to-db :table
   [driver {db-id :id :as db}
