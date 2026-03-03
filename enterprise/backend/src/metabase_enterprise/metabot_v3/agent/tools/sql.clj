@@ -250,18 +250,25 @@
        [:query_id [:or :string :int]]
        [:checklist :string]
        [:new_query :string]]]
-  (let [result (replace-sql-query-tools/replace-sql-query
-                {:query-id query_id
-                 :sql new_query
-                 :checklist checklist
-                 :queries-state (shared/current-queries-state)})
-        structured (assoc result :result-type :query)
-        qid        (:query-id result)
-        instr      (instructions/replace-sql-query-instructions-for qid)
-        buffer-id  (first-code-editor-buffer-id)]
-    (if buffer-id
-      {:output (format-query-output structured instr)
-       :structured-output structured
-       :instructions instr
-       :data-parts [(code-edit-part buffer-id (:query-content result))]}
-      {:output "No active code editor buffer found for SQL editing."})))
+  (let [buffer-id  (first-code-editor-buffer-id)]
+    (if (nil? buffer-id)
+      {:output "No active code editor buffer found for SQL editing."}
+      (let [{:keys [validation-result action-result]}
+            (replace-sql-query-tools/replace-sql-query
+             {:query-id query_id
+              :sql new_query
+              :checklist checklist
+              :queries-state (shared/current-queries-state)})
+
+            {:keys [valid? dialect error-message]} validation-result
+            {:keys [query-id query-content]} action-result]
+        (if valid?
+          (let [structured (assoc action-result :result-type :query)
+                instr      (instructions/replace-sql-query-instructions-for query-id)]
+            {:output (format-query-output structured instr)
+             :structured-output structured
+             :instructions instr
+             :data-parts [(code-edit-part buffer-id query-content)]})
+          (let [instr (instructions/sql-validation-error-instructions dialect error-message)]
+            {:output (format-validation-error-output instr)
+             :instructions instr}))))))
