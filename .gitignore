@@ -115,7 +115,6 @@ dev/serialization_deltas/
 .shadow-cljs
 .clerk
 mise.local.toml
-docker-compose.local.yml
 
 # lsp: ignore all but the config file
 .lsp/*
