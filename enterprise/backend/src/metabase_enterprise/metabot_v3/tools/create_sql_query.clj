@@ -52,9 +52,9 @@
   ;; Create the in-memory query structure
   (let [dialect (metabot-v3.tools.sql-validation/database-id->dialect database-id)
 
-        {:keys [is-valid transpiled-sql] :as validation-result}
+        {:keys [valid? transpiled-sql] :as validation-result}
         (metabot-v3.tools.sql-validation/validate-sql dialect sql)]
-    (if is-valid
+    (if valid?
       (let [dataset-query (create-native-query database-id transpiled-sql)
             query-id (u/generate-nano-id)
             _card-name (or name (str "SQL Query " (random-uuid)))]
