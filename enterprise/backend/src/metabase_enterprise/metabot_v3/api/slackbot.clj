@@ -69,7 +69,8 @@
                     :provider "slack-connect"
                     :provider_id slack-user-id
                     {:join  [[:core_user :user] [:= :user.id :auth_identity.user_id]]
-                     :where [:= :user.is_active true]}))
+                     :where [:= :user.is_active true]
+                     :order-by [[:created_at :desc]]}))
 
 (defn- slack-user-authorize-link
   "Link to page where user can initiate SSO auth flow to authorize slackbot"
