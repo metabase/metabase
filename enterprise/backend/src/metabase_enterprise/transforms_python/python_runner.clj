@@ -294,6 +294,7 @@
              (> (count (:source-tables source)) 1))
     (throw (ex-info "Incremental transforms for python only supports one source table" {})))
   (doseq [[table-name v] (:source-tables source)
+          ;; TODO (Chris 2026-03-03) We should also handle the case where table-id has not been backfilled yet...
           :let [table-id                                (if (int? v) v (:table_id v))
                 {:keys [s3-client bucket-name objects]} shared-storage
                 {data-path :path}                       (get objects [:table table-id :data])

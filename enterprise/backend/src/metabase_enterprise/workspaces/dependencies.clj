@@ -175,6 +175,10 @@
     (inputs-from-native-query query db-id)
     (inputs-from-mbql-query query)))
 
+;; TODO (Chris 2026-03-03) We should also handle the case where table-id has not been backfilled yet...
+(defn- table-ref->id [ref]
+  (if (int? ref) ref (:table-id ref)))
+
 (defn- inputs-from-python-transform
   "Extract table refs from a python transform's source-tables vec.
    Python transforms require tables to exist. Batch lookup by table_id."
