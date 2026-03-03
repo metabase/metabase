@@ -160,10 +160,7 @@
       [table-block])))
 
 (def ^:private supported-png-display-types
-  "Display types that should render as PNG images rather than Slack tables.
-   These correspond to the render methods in channel.render.body and
-   frontend static-viz components. Map types (pin_map, state, country)
-   are explicitly unsupported per channel.render.card/detect-pulse-chart-type."
+  "Display types that should render as PNG images rather than Slack tables."
   #{:smartscalar :gauge :progress
     :bar :line :area :combo :row :pie
     :scatter :boxplot :waterfall :funnel})
