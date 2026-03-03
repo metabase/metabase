@@ -57,7 +57,9 @@ export interface LeafletMapProps {
   onChangeCardAndRun: OnChangeCardAndRun;
 }
 
-export class LeafletMap extends Component<LeafletMapProps> {
+export class LeafletMap<
+  T extends LeafletMapProps = LeafletMapProps,
+> extends Component<T> {
   mapRef = createRef<HTMLDivElement>();
   map: L.Map | null = null;
   drawControl: L.Control.Draw | null = null;
