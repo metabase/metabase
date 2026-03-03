@@ -57,6 +57,25 @@
               (is (str/includes? output "If the returned SQL query is NOT correct"))
               (is (str/includes? output "Make further refinements using this tool again")))))))))
 
+(deftest edit-sql-query-validation-error-output-test
+  (testing "edit_sql_query output is adjusted for validation failure"
+    (mt/test-drivers #{:h2 :postgres}
+      (mt/with-current-user (mt/user->id :crowberto)
+        (mt/with-temp [:model/Database {db-id :id} {:engine :postgres}]
+          (let [query-id "test-edit-q-validation-failure"
+                memory   (atom {:state {:queries {query-id {:database db-id
+                                                            :type     :native
+                                                            :native   {:query "SELECT * FROM t"}}}}})
+                result   (binding [shared/*memory-atom* memory]
+                           (agent-sql/edit-sql-query-tool
+                            {:query_id  query-id
+                             :edits     [{:old_string "SELECT *"
+                                          :new_string "SELECT ="}]}))
+                output   (:output result)]
+            (is (string? output))
+            (is (str/starts-with? (:instructions result) "The SQL query has a syntax error"))
+            (is (str/starts-with? (:output result) "<result>\nSQL query construction failed.\n</result>\n<instructions>\nThe SQL query has a syntax error"))))))))
+
 (deftest replace-sql-query-output-test
   (testing "replace_sql_query output includes replace-specific instructions with query ID"
     (mt/test-drivers #{:h2}
