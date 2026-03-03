@@ -234,10 +234,7 @@ export class LeafletMap extends Component<LeafletMapProps> {
 
     const rectangleOptions = getRectangleDrawOptions(options);
 
-    this._filter = new L.Draw.Rectangle(
-      this.map,
-      isRectangleDrawOptions(rectangleOptions),
-    );
+    this._filter = new L.Draw.Rectangle(this.map, rectangleOptions);
     this._filter.enable();
     this.props.onFiltering(true);
   }
@@ -374,28 +371,16 @@ function shouldRecalculateZoom(prevPoints?: Point[], nextPoints?: Point[]) {
   return !prevPoints || nextPoints !== prevPoints;
 }
 
-function getRectangleDrawOptions(options: L.ControlOptions) {
+function getRectangleDrawOptions(
+  options: L.ControlOptions,
+): L.DrawOptions.RectangleOptions | undefined {
   if (!("draw" in options)) {
     return undefined;
   }
 
-  if (
-    typeof options.draw !== "object" ||
-    options.draw === null ||
-    !("rectangle" in options.draw)
-  ) {
+  if (!_.isObject(options.draw) || !("rectangle" in options.draw)) {
     return undefined;
   }
 
   return options.draw.rectangle;
-}
-
-function isRectangleDrawOptions(
-  options: unknown,
-): L.DrawOptions.RectangleOptions | undefined {
-  if (typeof options === "boolean" || isNullOrUndefined(options)) {
-    return undefined;
-  }
-
-  return options;
 }
