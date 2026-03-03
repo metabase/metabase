@@ -7,12 +7,12 @@ import { Box, Flex, Paper, Stack, Text, Title } from "metabase/ui";
 import * as LibMetric from "metabase-lib/metric";
 import type { MetricBreakoutValuesResponse } from "metabase-types/api";
 
-import { getDefinitionName } from "../../adapters/definition-loader";
 import type {
   MetricSourceId,
   MetricsViewerDefinitionEntry,
   SourceColorMap,
 } from "../../types/viewer-state";
+import { getDefinitionName } from "../../utils/metrics";
 import { entryHasBreakout, getEntryBreakout } from "../../utils/series";
 
 import S from "./BreakoutLegend.module.css";

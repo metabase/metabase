@@ -1,7 +1,9 @@
 import { useCallback, useRef, useState } from "react";
 
+import { measureApi, metricApi } from "metabase/api";
 import { objectFromEntries } from "metabase/lib/objects";
 import { useDispatch, useStore } from "metabase/lib/redux";
+import { getMetadata } from "metabase/selectors/metadata";
 import type {
   DimensionMetadata,
   MetricDefinition,
@@ -11,10 +13,6 @@ import * as LibMetric from "metabase-lib/metric";
 import type { MeasureId } from "metabase-types/api";
 import type { MetricId } from "metabase-types/api/metric";
 
-import {
-  loadMeasureDefinition,
-  loadMetricDefinition,
-} from "../adapters/definition-loader";
 import { ALL_TAB_ID } from "../constants";
 import type {
   MetricSourceId,
@@ -30,6 +28,44 @@ import {
   createMetricSourceId,
 } from "../utils/source-ids";
 import { computeDefaultTabs, findMatchingDimensionForTab } from "../utils/tabs";
+
+async function loadMetricDefinition(
+  dispatch: ReturnType<typeof useDispatch>,
+  getState: ReturnType<typeof useStore>["getState"],
+  metricId: MetricId,
+): Promise<MetricDefinition> {
+  const result = await dispatch(
+    metricApi.endpoints.getMetric.initiate(metricId),
+  );
+  if (!result.data) {
+    throw new Error(`Failed to load metric ${metricId}`);
+  }
+  const provider = LibMetric.metadataProvider(getMetadata(getState()));
+  const meta = LibMetric.metricMetadata(provider, metricId);
+  if (!meta) {
+    throw new Error(`Metric ${metricId} not found in metadata`);
+  }
+  return LibMetric.fromMetricMetadata(provider, meta);
+}
+
+async function loadMeasureDefinition(
+  dispatch: ReturnType<typeof useDispatch>,
+  getState: ReturnType<typeof useStore>["getState"],
+  measureId: MeasureId,
+): Promise<MetricDefinition> {
+  const result = await dispatch(
+    measureApi.endpoints.getMeasure.initiate(measureId),
+  );
+  if (!result.data) {
+    throw new Error(`Failed to load measure ${measureId}`);
+  }
+  const provider = LibMetric.metadataProvider(getMetadata(getState()));
+  const meta = LibMetric.measureMetadata(provider, measureId);
+  if (!meta) {
+    throw new Error(`Measure ${measureId} not found in metadata`);
+  }
+  return LibMetric.fromMeasureMetadata(provider, meta);
+}
 
 function getValidSelectedTabId(
   currentSelectedId: string | null,
