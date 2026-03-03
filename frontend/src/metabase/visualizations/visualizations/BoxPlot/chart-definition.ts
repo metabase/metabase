@@ -11,10 +11,8 @@ import {
   getDefaultSize,
   getMinSize,
 } from "metabase/visualizations/shared/utils/sizes";
-import type {
-  ComputedVisualizationSettings,
-  VisualizationSettingsDefinitions,
-} from "metabase/visualizations/types";
+import type { ComputedVisualizationSettings } from "metabase/visualizations/types";
+import { toVisualizationSettingsDefinitions } from "metabase/visualizations/types";
 import { transformSeries } from "metabase/visualizations/visualizations/CartesianChart/chart-definition-legacy";
 import { isDimension, isMetric } from "metabase-lib/v1/types/utils/isa";
 import type { DatasetData, RawSeries } from "metabase-types/api";
@@ -48,10 +46,10 @@ export const BOXPLOT_CHART_DEFINITION = {
     validateChartDataSettings(settings);
   },
 
-  settings: {
+  settings: toVisualizationSettingsDefinitions({
     ...BOXPLOT_SETTINGS,
     ...GRAPH_GOAL_SETTINGS,
     ...GRAPH_AXIS_SETTINGS,
     ...BOXPLOT_DATA_SETTINGS,
-  } as any as VisualizationSettingsDefinitions,
+  }),
 };

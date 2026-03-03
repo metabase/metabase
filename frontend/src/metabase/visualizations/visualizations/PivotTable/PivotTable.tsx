@@ -33,7 +33,12 @@ import {
   getDefaultSize,
   getMinSize,
 } from "metabase/visualizations/shared/utils/sizes";
-import type { VisualizationProps } from "metabase/visualizations/types";
+import {
+  type Visualization,
+  type VisualizationDefinition,
+  type VisualizationProps,
+  toVisualizationSettingsDefinitions,
+} from "metabase/visualizations/types";
 import type { State } from "metabase-types/store";
 
 import {
@@ -622,9 +627,13 @@ export const PivotTable = Object.assign(
     defaultSize: getDefaultSize("pivot"),
     canSavePng: false,
     isSensible,
-    checkRenderable,
-    settings,
+    checkRenderable: (series, visualizationSettings) =>
+      checkRenderable(series as any, visualizationSettings),
+    settings: toVisualizationSettingsDefinitions(settings),
     columnSettings,
     isLiveResizable: () => false,
+  } satisfies VisualizationDefinition & {
+    columnSettings: typeof columnSettings;
+    isLiveResizable: () => boolean;
   },
-);
+) as Visualization;

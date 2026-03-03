@@ -15,7 +15,7 @@ import {
 import { publicReducers } from "metabase/reducers-public";
 import { registerVisualization } from "metabase/visualizations";
 import { BarChart } from "metabase/visualizations/visualizations/BarChart";
-import { Heading } from "metabase/visualizations/visualizations/Heading";
+import { HeadingViz as Heading } from "metabase/visualizations/visualizations/Heading";
 import type { Dashboard } from "metabase-types/api";
 import {
   createMockCard,
@@ -37,7 +37,6 @@ import {
 
 import { PublicOrEmbeddedDashboardView } from "./PublicOrEmbeddedDashboardView";
 
-// @ts-expect-error: incompatible prop types with registerVisualization
 registerVisualization(BarChart);
 // @ts-expect-error: incompatible prop types with registerVisualization
 registerVisualization(Heading);

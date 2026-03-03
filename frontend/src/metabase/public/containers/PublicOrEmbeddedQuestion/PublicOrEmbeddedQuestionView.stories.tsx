@@ -41,13 +41,9 @@ import {
   type PublicOrEmbeddedQuestionViewProps,
 } from "./PublicOrEmbeddedQuestionView";
 
-// @ts-expect-error: incompatible prop types with registerVisualization
 registerVisualization(PivotTable);
-// @ts-expect-error: incompatible prop types with registerVisualization
 registerVisualization(SmartScalar);
-// @ts-expect-error: incompatible prop types with registerVisualization
 registerVisualization(BarChart);
-// @ts-expect-error: incompatible prop types with registerVisualization
 registerVisualization(Table);
 
 export default {

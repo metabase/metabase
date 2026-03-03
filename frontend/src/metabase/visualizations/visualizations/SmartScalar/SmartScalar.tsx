@@ -8,6 +8,10 @@ import {
   ScalarWrapper,
 } from "metabase/visualizations/components/ScalarValue/ScalarValue";
 import { useBrowserRenderingContext } from "metabase/visualizations/hooks/use-browser-rendering-context";
+import {
+  type NormalizableVisualizationProps,
+  useNormalizedVisualizationProps,
+} from "metabase/visualizations/hooks/use-normalized-visualization-props";
 import { ChartSettingsError } from "metabase/visualizations/lib/errors";
 import { compactifyValue } from "metabase/visualizations/lib/scalar_utils";
 import { columnSettings } from "metabase/visualizations/lib/settings/column";
@@ -19,7 +23,6 @@ import {
 import type {
   VisualizationDefinition,
   VisualizationPassThroughProps,
-  VisualizationProps,
 } from "metabase/visualizations/types";
 import { isDimension, isMetric } from "metabase-lib/v1/types/utils/isa";
 
@@ -46,20 +49,25 @@ import {
   validateComparisons,
 } from "./utils";
 
-export function SmartScalar({
-  onVisualizationClick,
-  isDashboard,
-  settings,
-  visualizationIsClickable,
-  series,
-  rawSeries,
-  gridSize,
-  width,
-  height,
-  totalNumGridCols,
-  fontFamily,
-  onRenderError,
-}: VisualizationProps & VisualizationPassThroughProps) {
+type SmartScalarProps = NormalizableVisualizationProps &
+  VisualizationPassThroughProps;
+
+function SmartScalarComponent(props: SmartScalarProps) {
+  const normalizedProps = useNormalizedVisualizationProps(props);
+  const { totalNumGridCols } = props;
+  const {
+    onVisualizationClick,
+    isDashboard,
+    settings,
+    visualizationIsClickable,
+    series,
+    rawSeries,
+    gridSize,
+    width: normalizedWidth,
+    height: normalizedHeight,
+    fontFamily,
+    onRenderError,
+  } = normalizedProps;
   const scalarRef = useRef(null);
   const { getColor } = useBrowserRenderingContext({ fontFamily });
 
@@ -81,7 +89,9 @@ export function SmartScalar({
 
   const { value, clicked, comparisons, display, formatOptions } = trend;
 
-  const innerHeight = isDashboard ? height - DASHCARD_HEADER_HEIGHT : height;
+  const innerHeight = isDashboard
+    ? normalizedHeight - DASHCARD_HEADER_HEIGHT
+    : normalizedHeight;
 
   const isClickable = onVisualizationClick != null;
 
@@ -103,7 +113,7 @@ export function SmartScalar({
 
   const { displayValue, fullScalarValue } = compactifyValue(
     value,
-    width,
+    normalizedWidth,
     formatOptions,
   );
 
@@ -126,8 +136,8 @@ export function SmartScalar({
             gridSize={gridSize}
             height={valueHeight}
             totalNumGridCols={totalNumGridCols}
-            value={displayValue as string}
-            width={getValueWidth(width)}
+            value={String(displayValue)}
+            width={getValueWidth(normalizedWidth)}
           />
         </span>
       </ScalarValueContainer>
@@ -140,7 +150,7 @@ export function SmartScalar({
             fontFamily={fontFamily}
             formatOptions={formatOptions}
             tooltipComparisons={comparisons}
-            width={width}
+            width={normalizedWidth}
           />
         </Box>
       )}
@@ -153,7 +163,7 @@ export function SmartScalar({
               fontFamily={fontFamily}
               formatOptions={formatOptions}
               tooltipComparisons={[comparison]}
-              width={width}
+              width={normalizedWidth}
             />
           </Box>
         ))}
@@ -161,7 +171,7 @@ export function SmartScalar({
   );
 }
 
-Object.assign(SmartScalar, {
+export const SmartScalar = Object.assign(SmartScalarComponent, {
   getUiName: () => t`Trend`,
   identifier: "smartscalar",
   iconName: "smartscalar",

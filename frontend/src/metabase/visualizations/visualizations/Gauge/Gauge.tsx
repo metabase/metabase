@@ -6,7 +6,10 @@ import { useCallback, useEffect, useRef } from "react";
 import CS from "metabase/css/core/index.css";
 import { formatValue } from "metabase/lib/formatting";
 import { segmentIsValid } from "metabase/visualizations/lib/utils";
-import type { VisualizationProps } from "metabase/visualizations/types";
+import type {
+  VisualizationDefinition,
+  VisualizationProps,
+} from "metabase/visualizations/types";
 
 import { GaugeArc } from "./GaugeArc";
 import { GaugeNeedle } from "./GaugeNeedle";
@@ -30,9 +33,7 @@ import {
 import { isGaugeRange, isGaugeSegmentsArray } from "./types";
 import { getValue, radians } from "./utils";
 
-Object.assign(Gauge, GAUGE_CHART_DEFINITION);
-
-export function Gauge({
+function GaugeComponent({
   className,
   isSettings,
   height: heightProp,
@@ -245,3 +246,8 @@ export function Gauge({
     </div>
   );
 }
+
+export const Gauge = Object.assign(
+  GaugeComponent,
+  GAUGE_CHART_DEFINITION as VisualizationDefinition,
+);

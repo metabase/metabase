@@ -1,6 +1,10 @@
 import { t } from "ttag";
 
 import {
+  type NormalizableVisualizationProps,
+  useNormalizedVisualizationProps,
+} from "metabase/visualizations/hooks/use-normalized-visualization-props";
+import {
   getDefaultSize,
   getMinSize,
 } from "metabase/visualizations/shared/utils/sizes";
@@ -10,27 +14,26 @@ import {
   getCartesianChartDefinition,
 } from "metabase/visualizations/visualizations/CartesianChart/chart-definition";
 
-import type {
-  VisualizationProps,
-  VisualizationSettingsDefinitions,
-} from "../../types";
+import type { VisualizationDefinition } from "../../types";
 
-Object.assign(
-  ComboChart,
-  getCartesianChartDefinition({
-    getUiName: () => t`Combo`,
-    identifier: "combo",
-    iconName: "lineandbar",
-    // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
-    noun: t`line and bar chart`,
-    minSize: getMinSize("combo"),
-    defaultSize: getDefaultSize("combo"),
-    settings: {
-      ...COMBO_CHARTS_SETTINGS_DEFINITIONS,
-    } as any as VisualizationSettingsDefinitions,
-  }),
-);
+const COMBO_CHART_DEFINITION = getCartesianChartDefinition({
+  getUiName: () => t`Combo`,
+  identifier: "combo",
+  iconName: "lineandbar",
+  // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
+  noun: t`line and bar chart`,
+  minSize: getMinSize("combo"),
+  defaultSize: getDefaultSize("combo"),
+  settings: COMBO_CHARTS_SETTINGS_DEFINITIONS,
+}) as VisualizationDefinition;
 
-export function ComboChart(props: VisualizationProps) {
-  return <CartesianChart {...props} />;
+function ComboChartComponent(props: NormalizableVisualizationProps) {
+  const normalizedProps = useNormalizedVisualizationProps(props);
+
+  return <CartesianChart {...normalizedProps} />;
 }
+
+export const ComboChart = Object.assign(
+  ComboChartComponent,
+  COMBO_CHART_DEFINITION,
+);

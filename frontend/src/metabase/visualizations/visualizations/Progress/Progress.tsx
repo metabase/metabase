@@ -5,7 +5,7 @@ import { t } from "ttag";
 import CS from "metabase/css/core/index.css";
 import { formatValue } from "metabase/lib/formatting";
 import { Flex, Icon } from "metabase/ui";
-import type { VisualizationProps } from "metabase/visualizations/types";
+import type { NormalizableVisualizationProps } from "metabase/visualizations/hooks/use-normalized-visualization-props";
 
 import { PROGRESS_CHART_DEFINITION } from "./chart-definition";
 import {
@@ -22,9 +22,7 @@ const MAX_BAR_HEIGHT = 65;
 const MIN_BAR_HEIGHT = 30;
 const COMPONENT_HEIGHT_TO_MIN_BAR_HEIGHT = 99;
 
-Object.assign(Progress, PROGRESS_CHART_DEFINITION);
-
-export function Progress(props: VisualizationProps) {
+function ProgressComponent(props: NormalizableVisualizationProps) {
   const {
     className,
     isMobile,
@@ -216,6 +214,11 @@ export function Progress(props: VisualizationProps) {
     </div>
   );
 }
+
+export const Progress = Object.assign(
+  ProgressComponent,
+  PROGRESS_CHART_DEFINITION,
+);
 
 function computeBarHeight({
   cardHeight,

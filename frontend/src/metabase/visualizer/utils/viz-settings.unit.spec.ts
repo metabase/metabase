@@ -6,7 +6,6 @@ import { getColumnVizSettings } from "./viz-settings";
 
 // @ts-expect-error: incompatible prop types with registerVisualization
 registerVisualization(Map);
-// @ts-expect-error: incompatible prop types with registerVisualization
 registerVisualization(BarChart);
 
 describe("getColumnVizSettings", () => {

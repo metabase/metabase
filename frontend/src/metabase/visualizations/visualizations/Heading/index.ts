@@ -4,13 +4,17 @@ import {
   getDefaultSize,
   getMinSize,
 } from "metabase/visualizations/shared/utils/sizes";
+import {
+  type VisualizationDefinition,
+  toVisualizationSettingsDefinitions,
+} from "metabase/visualizations/types";
 
-import { Heading } from "./Heading";
+import { Heading as HeadingComponent } from "./Heading";
 
-const HeadingWrapper = Object.assign(Heading, {
+const HEADING_DEFINITION: VisualizationDefinition = {
   getUiName: () => t`Heading`,
   identifier: "heading",
-  iconName: "heading",
+  iconName: "string",
   canSavePng: false,
 
   noHeader: true,
@@ -24,8 +28,9 @@ const HeadingWrapper = Object.assign(Heading, {
   checkRenderable: () => {
     // heading can always be rendered, nothing needed here
   },
+  isSensible: () => false,
 
-  settings: {
+  settings: toVisualizationSettingsDefinitions({
     "card.title": {
       dashboard: false,
       // eslint-disable-next-line ttag/no-module-declaration
@@ -41,7 +46,9 @@ const HeadingWrapper = Object.assign(Heading, {
     "dashcard.background": {
       default: false,
     },
-  },
-});
+  }),
+};
 
-export { HeadingWrapper as Heading };
+export const HeadingViz = Object.assign(HeadingComponent, HEADING_DEFINITION);
+
+export { HeadingComponent as Heading };

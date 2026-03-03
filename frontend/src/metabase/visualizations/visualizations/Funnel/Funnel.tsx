@@ -9,6 +9,7 @@ import ChartCaption from "metabase/visualizations/components/ChartCaption";
 import { TransformedVisualization } from "metabase/visualizations/components/TransformedVisualization";
 import { ChartSettingOrderedSimple } from "metabase/visualizations/components/settings/ChartSettingOrderedSimple";
 import { useBrowserRenderingContext } from "metabase/visualizations/hooks/use-browser-rendering-context";
+import { useNormalizedVisualizationProps } from "metabase/visualizations/hooks/use-normalized-visualization-props";
 import { groupRawSeriesMetrics } from "metabase/visualizations/lib/dataset";
 import {
   ChartSettingsError,
@@ -25,7 +26,9 @@ import {
 } from "metabase/visualizations/shared/utils/sizes";
 import type {
   ComputedVisualizationSettings,
+  VisualizationDefinition,
   VisualizationProps,
+  VisualizationSettingsDefinitions,
 } from "metabase/visualizations/types";
 import { BarChart } from "metabase/visualizations/visualizations/BarChart";
 import { funnelToBarTransform } from "metabase/visualizations/visualizations/Funnel/funnel-bar-transform";
@@ -44,7 +47,7 @@ const getUniqueFunnelRows = (rows: FunnelRow[]) => {
   return [...new Map(rows.map((row) => [row.key, row])).values()];
 };
 
-Object.assign(Funnel, {
+const FUNNEL_CHART_DEFINITION: VisualizationDefinition = {
   getUiName: () => t`Funnel`,
   identifier: "funnel",
   iconName: "funnel",
@@ -187,10 +190,11 @@ Object.assign(Funnel, {
       getDefault: (series: RawSeries) => (series.length > 1 ? "bar" : "funnel"),
       useRawSeries: true,
     },
-  },
-});
+  } as VisualizationSettingsDefinitions,
+};
 
-export function Funnel(props: VisualizationProps) {
+function FunnelComponent(props: VisualizationProps) {
+  const normalizedProps = useNormalizedVisualizationProps(props);
   const {
     headerIcon,
     settings,
@@ -206,7 +210,7 @@ export function Funnel(props: VisualizationProps) {
     isDashboard,
     isEditing,
     titleMenuItems,
-  } = props;
+  } = normalizedProps;
   const hasTitle = showTitle && settings["card.title"];
 
   const groupedRawSeries = groupRawSeriesMetrics(
@@ -219,7 +223,7 @@ export function Funnel(props: VisualizationProps) {
   if (settings["funnel.type"] === "bar") {
     return (
       <TransformedVisualization
-        originalProps={{ ...props, rawSeries: groupedRawSeries }}
+        originalProps={{ ...normalizedProps, rawSeries: groupedRawSeries }}
         VisualizationComponent={BarChart}
         transformSeries={funnelToBarTransform}
         renderingContext={renderingContext}
@@ -249,10 +253,12 @@ export function Funnel(props: VisualizationProps) {
         />
       )}
       <FunnelNormal
-        {...props}
+        {...normalizedProps}
         rawSeries={groupedRawSeries}
         className={CS.flexFull}
       />
     </div>
   );
 }
+
+export const Funnel = Object.assign(FunnelComponent, FUNNEL_CHART_DEFINITION);

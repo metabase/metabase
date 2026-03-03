@@ -3,7 +3,7 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import DashboardS from "metabase/css/dashboard.module.css";
-import { Box, Tooltip } from "metabase/ui";
+import { Box, type IconName, Tooltip } from "metabase/ui";
 import {
   ScalarValue,
   ScalarWrapper,
@@ -26,9 +26,11 @@ import type {
   ComputedVisualizationSettings,
   VisualizationPassThroughProps,
   VisualizationProps,
+  VisualizationSettingsDefinitions,
 } from "metabase/visualizations/types";
 import { BarChart } from "metabase/visualizations/visualizations/BarChart";
 import type { DatasetColumn, DatasetData } from "metabase-types/api/dataset";
+import type { VisualizationDisplay } from "metabase-types/api/visualization";
 
 import { ScalarValueContainer } from "./ScalarValueContainer";
 import { scalarToBarTransform } from "./scalars-bar-transform";
@@ -53,8 +55,8 @@ export class Scalar extends Component<
   VisualizationProps & VisualizationPassThroughProps
 > {
   static getUiName = () => t`Number`;
-  static identifier = "scalar";
-  static iconName = "number";
+  static identifier: VisualizationDisplay = "scalar";
+  static iconName: IconName = "number";
   static canSavePng = false;
 
   static minSize = getMinSize("scalar");
@@ -68,7 +70,7 @@ export class Scalar extends Component<
     // scalar can always be rendered, nothing needed here
   }
 
-  static settings = {
+  static settings: VisualizationSettingsDefinitions = {
     ...fieldSetting("scalar.field", {
       get section() {
         return t`Formatting`;
@@ -145,7 +147,7 @@ export class Scalar extends Component<
       // widget: "number",
     },
     click_behavior: {},
-  };
+  } as VisualizationSettingsDefinitions;
 
   _scalar: HTMLElement | null = null;
 

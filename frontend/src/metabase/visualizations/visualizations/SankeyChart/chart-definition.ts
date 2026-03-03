@@ -238,5 +238,5 @@ export const SANKEY_CHART_DEFINITION: VisualizationDefinition = {
   hasEmptyState: true,
   settings: {
     ...SETTINGS_DEFINITIONS,
-  } as any as VisualizationSettingsDefinitions,
+  } as VisualizationSettingsDefinitions,
 };

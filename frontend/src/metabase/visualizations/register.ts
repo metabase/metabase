@@ -12,7 +12,7 @@ import { ComboChart } from "./visualizations/ComboChart";
 import { DashCardPlaceholder } from "./visualizations/DashCardPlaceholder";
 import { Funnel } from "./visualizations/Funnel";
 import { Gauge } from "./visualizations/Gauge";
-import { Heading } from "./visualizations/Heading";
+import { HeadingViz as Heading } from "./visualizations/Heading";
 import { IFrameViz } from "./visualizations/IFrameViz";
 import { LineChart } from "./visualizations/LineChart";
 import { LinkViz } from "./visualizations/LinkViz";
@@ -46,17 +46,23 @@ export default function () {
   registerVisualization(ScatterPlot);
   registerVisualization(BoxPlot);
   registerVisualization(PieChart);
+  // @ts-expect-error: migrate Map to tsx
   registerVisualization(Map);
   registerVisualization(Funnel);
   registerVisualization(ObjectDetail);
   registerVisualization(PivotTable);
   registerVisualization(SankeyChart);
-
+  // @ts-expect-error: not a real visualization, requires type rework
   registerVisualization(ActionViz);
+  // @ts-expect-error: not a real visualization, requires type rework
   registerVisualization(DashCardPlaceholder);
+  // @ts-expect-error: not a real visualization, requires type rework
   registerVisualization(Heading);
+  // @ts-expect-error: not a real visualization, requires type rework
   registerVisualization(LinkViz);
+  // @ts-expect-error: not a real visualization, requires type rework
   registerVisualization(Text);
+  // @ts-expect-error: not a real visualization, requires type rework
   registerVisualization(IFrameViz);
 
   registerVisualization(ListViz);

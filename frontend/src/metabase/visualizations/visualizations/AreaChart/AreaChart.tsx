@@ -1,6 +1,10 @@
 import { t } from "ttag";
 
 import {
+  type NormalizableVisualizationProps,
+  useNormalizedVisualizationProps,
+} from "metabase/visualizations/hooks/use-normalized-visualization-props";
+import {
   getDefaultSize,
   getMinSize,
 } from "metabase/visualizations/shared/utils/sizes";
@@ -10,27 +14,26 @@ import {
   getCartesianChartDefinition,
 } from "metabase/visualizations/visualizations/CartesianChart/chart-definition";
 
-import type {
-  VisualizationProps,
-  VisualizationSettingsDefinitions,
-} from "../../types";
+import type { VisualizationDefinition } from "../../types";
 
-Object.assign(
-  AreaChart,
-  getCartesianChartDefinition({
-    getUiName: () => t`Area`,
-    identifier: "area",
-    iconName: "area",
-    // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
-    noun: t`area chart`,
-    minSize: getMinSize("area"),
-    defaultSize: getDefaultSize("area"),
-    settings: {
-      ...COMBO_CHARTS_SETTINGS_DEFINITIONS,
-    } as any as VisualizationSettingsDefinitions,
-  }),
-);
+const AREA_CHART_DEFINITION = getCartesianChartDefinition({
+  getUiName: () => t`Area`,
+  identifier: "area",
+  iconName: "area",
+  // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
+  noun: t`area chart`,
+  minSize: getMinSize("area"),
+  defaultSize: getDefaultSize("area"),
+  settings: COMBO_CHARTS_SETTINGS_DEFINITIONS,
+}) as VisualizationDefinition;
 
-export function AreaChart(props: VisualizationProps) {
-  return <CartesianChart {...props} />;
+function AreaChartComponent(props: NormalizableVisualizationProps) {
+  const normalizedProps = useNormalizedVisualizationProps(props);
+
+  return <CartesianChart {...normalizedProps} />;
 }
+
+export const AreaChart = Object.assign(
+  AreaChartComponent,
+  AREA_CHART_DEFINITION,
+);

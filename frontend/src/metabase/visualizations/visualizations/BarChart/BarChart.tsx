@@ -1,6 +1,10 @@
 import { t } from "ttag";
 
 import {
+  type NormalizableVisualizationProps,
+  useNormalizedVisualizationProps,
+} from "metabase/visualizations/hooks/use-normalized-visualization-props";
+import {
   getDefaultSize,
   getMinSize,
 } from "metabase/visualizations/shared/utils/sizes";
@@ -10,27 +14,23 @@ import {
   getCartesianChartDefinition,
 } from "metabase/visualizations/visualizations/CartesianChart/chart-definition";
 
-import type {
-  VisualizationProps,
-  VisualizationSettingsDefinitions,
-} from "../../types";
+import type { VisualizationDefinition } from "../../types";
 
-Object.assign(
-  BarChart,
-  getCartesianChartDefinition({
-    getUiName: () => t`Bar`,
-    identifier: "bar",
-    iconName: "bar",
-    // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
-    noun: t`bar chart`,
-    minSize: getMinSize("bar"),
-    defaultSize: getDefaultSize("bar"),
-    settings: {
-      ...COMBO_CHARTS_SETTINGS_DEFINITIONS,
-    } as any as VisualizationSettingsDefinitions,
-  }),
-);
+const BAR_CHART_DEFINITION = getCartesianChartDefinition({
+  getUiName: () => t`Bar`,
+  identifier: "bar",
+  iconName: "bar",
+  // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
+  noun: t`bar chart`,
+  minSize: getMinSize("bar"),
+  defaultSize: getDefaultSize("bar"),
+  settings: COMBO_CHARTS_SETTINGS_DEFINITIONS,
+}) as VisualizationDefinition;
 
-export function BarChart(props: VisualizationProps) {
-  return <CartesianChart {...props} />;
+function BarChartComponent(props: NormalizableVisualizationProps) {
+  const normalizedProps = useNormalizedVisualizationProps(props);
+
+  return <CartesianChart {...normalizedProps} />;
 }
+
+export const BarChart = Object.assign(BarChartComponent, BAR_CHART_DEFINITION);

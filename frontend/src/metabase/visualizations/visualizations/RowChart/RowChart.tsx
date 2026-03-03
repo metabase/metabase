@@ -23,7 +23,7 @@ import {
 import { getComputedSettingsForSeries } from "metabase/visualizations/lib/settings/visualization";
 import { MAX_SERIES } from "metabase/visualizations/lib/utils";
 import type { RowChartProps } from "metabase/visualizations/shared/components/RowChart";
-import { RowChart } from "metabase/visualizations/shared/components/RowChart";
+import { RowChart as SharedRowChart } from "metabase/visualizations/shared/components/RowChart";
 import type { BarData } from "metabase/visualizations/shared/components/RowChart/types";
 import type {
   GroupedDatum,
@@ -44,6 +44,7 @@ import {
 import type {
   ComputedVisualizationSettings,
   RemappingHydratedChartData,
+  VisualizationDefinition,
   VisualizationProps,
 } from "metabase/visualizations/types";
 import {
@@ -83,7 +84,7 @@ interface RowChartRendererProps extends RowChartProps<GroupedDatum> {
 function RowChartRendererInner(props: RowChartRendererProps) {
   return (
     <RowChartContainer data-testid="row-chart-container">
-      <RowChart {...props} />
+      <SharedRowChart {...props} />
     </RowChartContainer>
   );
 }
@@ -327,22 +328,25 @@ const RowChartVisualization = ({
   );
 };
 
-RowChartVisualization.getUiName = () => t`Row`;
-RowChartVisualization.identifier = "row";
-RowChartVisualization.iconName = "horizontal_bar";
-// eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
-RowChartVisualization.noun = t`row chart`;
-
-RowChartVisualization.noHeader = true;
-RowChartVisualization.minSize = getMinSize("row");
-RowChartVisualization.defaultSize = getDefaultSize("row");
-
-RowChartVisualization.settings = {
+const rowChartSettings = {
   ...ROW_CHART_SETTINGS,
   ...GRAPH_DATA_SETTINGS,
 };
 
-RowChartVisualization.isSensible = ({ cols, rows }: DatasetData) => {
+rowChartSettings["graph.metrics"] = {
+  ...rowChartSettings["graph.metrics"],
+  get title() {
+    return t`X-axis`;
+  },
+};
+rowChartSettings["graph.dimensions"] = {
+  ...rowChartSettings["graph.dimensions"],
+  get title() {
+    return t`Y-axis`;
+  },
+};
+
+const rowChartIsSensible = ({ cols, rows }: DatasetData) => {
   return (
     rows.length > 1 &&
     cols.length >= 2 &&
@@ -351,29 +355,16 @@ RowChartVisualization.isSensible = ({ cols, rows }: DatasetData) => {
   );
 };
 
-RowChartVisualization.isLiveResizable = (series: any[]) => {
+const rowChartIsLiveResizable = (series: any[]) => {
   const totalRows = series.reduce((sum, s) => sum + s.data.rows.length, 0);
   return totalRows < 10;
-};
-
-RowChartVisualization.settings["graph.metrics"] = {
-  ...RowChartVisualization.settings["graph.metrics"],
-  get title() {
-    return t`X-axis`;
-  },
-};
-RowChartVisualization.settings["graph.dimensions"] = {
-  ...RowChartVisualization.settings["graph.dimensions"],
-  get title() {
-    return t`Y-axis`;
-  },
 };
 
 /**
  * Required to make it compatible with series settings without rewriting them fully
  * It expands a single card + dataset into multiple "series" and sets _seriesKey which is needed for settings to work
  */
-RowChartVisualization.transformSeries = (originalMultipleSeries: any) => {
+const rowChartTransformSeries = (originalMultipleSeries: any) => {
   const [series] = originalMultipleSeries;
   const settings: ComputedVisualizationSettings = getComputedSettingsForSeries(
     originalMultipleSeries,
@@ -418,7 +409,7 @@ RowChartVisualization.transformSeries = (originalMultipleSeries: any) => {
     : originalMultipleSeries;
 };
 
-RowChartVisualization.checkRenderable = (
+const rowChartCheckRenderable = (
   series: any[],
   settings: VisualizationSettings,
 ) => {
@@ -428,8 +419,24 @@ RowChartVisualization.checkRenderable = (
   validateStacking(settings);
 };
 
-RowChartVisualization.hasEmptyState = true;
+const ROW_CHART_DEFINITION: VisualizationDefinition = {
+  getUiName: () => t`Row`,
+  identifier: "row",
+  iconName: "horizontal_bar",
+  // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
+  noun: t`row chart`,
+  noHeader: true,
+  minSize: getMinSize("row"),
+  defaultSize: getDefaultSize("row"),
+  settings: rowChartSettings as any,
+  isSensible: rowChartIsSensible,
+  isLiveResizable: rowChartIsLiveResizable,
+  transformSeries: rowChartTransformSeries,
+  checkRenderable: rowChartCheckRenderable,
+  hasEmptyState: true,
+};
 
-RowChartVisualization.getUiName = () => t`Row`;
-
-export { RowChartVisualization as RowChart };
+export const RowChart = Object.assign(
+  RowChartVisualization,
+  ROW_CHART_DEFINITION,
+);

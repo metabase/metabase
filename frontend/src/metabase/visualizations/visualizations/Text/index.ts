@@ -4,13 +4,17 @@ import {
   getDefaultSize,
   getMinSize,
 } from "metabase/visualizations/shared/utils/sizes";
+import {
+  type VisualizationDefinition,
+  toVisualizationSettingsDefinitions,
+} from "metabase/visualizations/types";
 
 import { Text } from "./Text";
 
-const TextWrapper = Object.assign(Text, {
+const TEXT_DEFINITION: VisualizationDefinition = {
   getUiName: () => t`Text`,
   identifier: "text",
-  iconName: "text",
+  iconName: "string",
   canSavePng: false,
 
   disableSettingsConfig: false,
@@ -24,8 +28,9 @@ const TextWrapper = Object.assign(Text, {
   checkRenderable: () => {
     // text can always be rendered, nothing needed here
   },
+  isSensible: () => false,
 
-  settings: {
+  settings: toVisualizationSettingsDefinitions({
     "card.title": {
       dashboard: false,
       // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
@@ -84,7 +89,9 @@ const TextWrapper = Object.assign(Text, {
       widget: "toggle",
       default: true,
     },
-  },
-});
+  }),
+};
+
+const TextWrapper = Object.assign(Text, TEXT_DEFINITION);
 
 export { TextWrapper as Text };
