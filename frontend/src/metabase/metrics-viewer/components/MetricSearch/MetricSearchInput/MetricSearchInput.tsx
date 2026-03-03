@@ -151,6 +151,7 @@ export function MetricSearchInput({
               onClick={handleInputClick}
               onKeyDown={handleKeyDown}
               disabled={disabled}
+              data-testid="metrics-viewer-search-input"
             />
           </Popover.Target>
           <Popover.Dropdown p={0} miw={300} maw={400}>
