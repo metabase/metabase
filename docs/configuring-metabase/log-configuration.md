@@ -25,16 +25,21 @@ Metabase uses [Log4j](https://logging.apache.org/log4j/2.x/) for logging configu
 
 ### Temporary override logging configuration
 
-To temporarily adjust the logging configuration, go to **Admin** > **Tools** > **Logs** and click on **Customize log levels**.
+_Admin > Tools > Logs_.
 
-You can select from log level presets for common troubleshooting tasks (for example, troubleshooting sync issues), or provide your own configuration as a JSON. For example, here's an override configuration that increases logging for troubleshooting linked filters:
+To temporarily adjust the logging configuration:
 
-```json
-{
-  "metabase.parameters.chain-filter": "debug",
-  "metabase.parameters.chain-filter.dedupe-joins": "debug"
-}
-```
+1. Go to **Admin** > **Tools** > **Logs**.
+2. Click on **Customize log levels** above the logs.
+
+   You can select from log-level presets for common troubleshooting tasks (for example, troubleshooting sync issues), or provide your own configuration as JSON. For example, here's an override configuration that increases logging for troubleshooting linked filters:
+
+   ```json
+   {
+     "metabase.parameters.chain-filter": "debug",
+     "metabase.parameters.chain-filter.dedupe-joins": "debug"
+   }
+   ```
 
 The override from Admin settings will be temporary. You can select for how long the override should be in place (e.g., 60 minutes). When the override times out, the logging configuration will revert to the default logging configuration (or a custom configuration if you're using a [custom log file](#use-a-custom-log-configuration-file)).
 
