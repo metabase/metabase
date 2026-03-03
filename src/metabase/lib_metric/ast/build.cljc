@@ -202,36 +202,59 @@
        (= :field (first arg))
        (pos-int? (nth arg 2 nil))))
 
+(def ^:private mbql-agg-hierarchy
+  "Hierarchy for dispatching on MBQL aggregation keywords."
+  (-> (make-hierarchy)
+      (derive :sum      :column-agg)
+      (derive :avg      :column-agg)
+      (derive :min      :column-agg)
+      (derive :max      :column-agg)
+      (derive :distinct :column-agg)))
+
+(defmulti ^:private mbql-aggregation->node*
+  "Convert MBQL aggregation clause to AST aggregation node.
+   Dispatches on the aggregation keyword."
+  {:arglists '([agg-type mbql-clause])}
+  (fn [agg-type _mbql-clause] agg-type)
+  :hierarchy #'mbql-agg-hierarchy)
+
+(defmethod mbql-aggregation->node* :count
+  [_ mbql-clause]
+  (let [[_agg-type _opts & args] mbql-clause
+        first-arg (first args)]
+    (if (nil? first-arg)
+      {:node/type :aggregation/count}
+      (if (simple-field-ref? first-arg)
+        {:node/type :aggregation/count
+         :column    (let [[_field _opts field-id] first-arg]
+                      (column-node field-id))}
+        {:node/type :aggregation/mbql
+         :clause    mbql-clause}))))
+
+(defmethod mbql-aggregation->node* :column-agg
+  [agg-type mbql-clause]
+  (let [[_agg-type _opts & args] mbql-clause
+        first-arg (first args)]
+    (if (simple-field-ref? first-arg)
+      {:node/type (keyword "aggregation" (name agg-type))
+       :column    (let [[_field _opts field-id] first-arg]
+                    (column-node field-id))}
+      {:node/type :aggregation/mbql
+       :clause    mbql-clause})))
+
+(defmethod mbql-aggregation->node* :default
+  [_ mbql-clause]
+  {:node/type :aggregation/mbql
+   :clause    mbql-clause})
+
 (defn- mbql-aggregation->node
   "Convert MBQL aggregation clause to AST aggregation node.
    Simple aggregations over field references (e.g. sum(price)) produce typed nodes.
    Complex aggregations (e.g. avg(case(...))) fall through to :aggregation/mbql."
   [mbql-clause]
   (when mbql-clause
-    (let [[agg-type _opts & args] mbql-clause
-          first-arg (first args)]
-      (case agg-type
-        :count
-        (if (nil? first-arg)
-          {:node/type :aggregation/count}
-          (if (simple-field-ref? first-arg)
-            {:node/type :aggregation/count
-             :column    (let [[_field _opts field-id] first-arg]
-                          (column-node field-id))}
-            {:node/type :aggregation/mbql
-             :clause    mbql-clause}))
-
-        (:sum :avg :min :max :distinct)
-        (if (simple-field-ref? first-arg)
-          {:node/type (keyword "aggregation" (name agg-type))
-           :column    (let [[_field _opts field-id] first-arg]
-                        (column-node field-id))}
-          {:node/type :aggregation/mbql
-           :clause    mbql-clause})
-
-        ;; Fall back to raw MBQL for complex aggregations
-        {:node/type :aggregation/mbql
-         :clause    mbql-clause}))))
+    (let [[agg-type] mbql-clause]
+      (mbql-aggregation->node* agg-type mbql-clause))))
 
 ;;; -------------------- Source Construction --------------------
 

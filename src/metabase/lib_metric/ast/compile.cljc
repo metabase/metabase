@@ -105,25 +105,28 @@
 
 ;;; -------------------- Aggregation Compilation --------------------
 
-(defn- compile-aggregation-node
+(defmulti compile-aggregation-node
   "Compile aggregation node to MBQL aggregation clause."
-  [node]
-  (case (:node/type node)
-    :aggregation/count    (if-let [col (:column node)]
-                            [:count {:lib/uuid (random-uuid-str)}
-                             (column-node->field-ref col {})]
-                            [:count {:lib/uuid (random-uuid-str)}])
-    :aggregation/sum      [:sum {:lib/uuid (random-uuid-str)}
-                           (column-node->field-ref (:column node) {})]
-    :aggregation/avg      [:avg {:lib/uuid (random-uuid-str)}
-                           (column-node->field-ref (:column node) {})]
-    :aggregation/min      [:min {:lib/uuid (random-uuid-str)}
-                           (column-node->field-ref (:column node) {})]
-    :aggregation/max      [:max {:lib/uuid (random-uuid-str)}
-                           (column-node->field-ref (:column node) {})]
-    :aggregation/distinct [:distinct {:lib/uuid (random-uuid-str)}
-                           (column-node->field-ref (:column node) {})]
-    :aggregation/mbql     (:clause node)))
+  {:arglists '([node])}
+  (fn [node] (:node/type node))
+  :hierarchy #'ast.schema/ast-hierarchy)
+
+(defmethod compile-aggregation-node :aggregation/count
+  [{:keys [column]}]
+  (if column
+    [:count {:lib/uuid (random-uuid-str)}
+     (column-node->field-ref column {})]
+    [:count {:lib/uuid (random-uuid-str)}]))
+
+(defmethod compile-aggregation-node :aggregation/column
+  [{:keys [column] :as node}]
+  (let [agg-kw (keyword (name (:node/type node)))]
+    [agg-kw {:lib/uuid (random-uuid-str)}
+     (column-node->field-ref column {})]))
+
+(defmethod compile-aggregation-node :aggregation/mbql
+  [{:keys [clause]}]
+  clause)
 
 ;;; -------------------- Source Compilation --------------------
 
