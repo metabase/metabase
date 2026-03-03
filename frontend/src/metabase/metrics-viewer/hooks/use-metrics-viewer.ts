@@ -85,9 +85,6 @@ export interface UseMetricsViewerResult {
     id: MetricSourceId,
     dimension: ProjectionClause | undefined,
   ) => void;
-
-  isFullScreen: boolean;
-  toggleFullScreen: () => void;
 }
 
 function buildUrlRestoreTransform(
@@ -146,7 +143,6 @@ export function useMetricsViewer({
     loadAndAddMeasure,
     loadAndReplaceMetric,
     loadAndReplaceMeasure,
-    toggleFullScreen,
   } = useViewerState();
 
   const handleLoadSources = useCallback(
@@ -380,8 +376,5 @@ export function useMetricsViewer({
     changeCardDimension,
     updateDefinition,
     setBreakoutDimension,
-
-    isFullScreen: state.isFullscreen,
-    toggleFullScreen,
   };
 }

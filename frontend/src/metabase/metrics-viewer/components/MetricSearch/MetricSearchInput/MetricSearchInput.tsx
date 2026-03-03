@@ -35,7 +35,6 @@ type MetricSearchInputProps = {
     searchText: string;
     onSelect: (metric: SelectedMetric) => void;
   }) => ReactNode;
-  disabled: boolean;
 };
 
 export function MetricSearchInput({
@@ -44,7 +43,6 @@ export function MetricSearchInput({
   definitions,
   selectedMetricIds,
   selectedMeasureIds,
-  disabled = false,
   onAddMetric,
   onRemoveMetric,
   onSwapMetric,
@@ -150,7 +148,6 @@ export function MetricSearchInput({
               }}
               onClick={handleInputClick}
               onKeyDown={handleKeyDown}
-              disabled={disabled}
               data-testid="metrics-viewer-search-input"
             />
           </Popover.Target>
