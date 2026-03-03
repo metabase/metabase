@@ -7,7 +7,6 @@
    [metabase.lib-metric.metadata.provider :as lib-metric.provider]
    [metabase.lib-metric.schema :as lib-metric.schema]
    [metabase.lib.core :as lib]
-   [metabase.lib.field :as lib.field]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.util :as lib.util]
@@ -42,7 +41,7 @@
    (column->computed-pair column nil))
   ([column group]
    (let [target (lib/ref column)
-         has-field-values (lib.field/infer-has-field-values column)]
+         has-field-values (lib/infer-has-field-values column)]
      {:dimension (cond-> {:id   nil
                           :name (:name column)}
                    (:display-name column)    (assoc :display-name (:display-name column))
