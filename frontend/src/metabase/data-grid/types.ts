@@ -14,6 +14,7 @@ import type {
   Table,
 } from "@tanstack/react-table";
 import type { VirtualItem } from "@tanstack/react-virtual";
+import type { CoreOptions } from "@tanstack/table-core/src/core/table";
 import type React from "react";
 import type { RefObject } from "react";
 
@@ -179,6 +180,12 @@ export interface DataGridOptions<TData = any, TValue = any> {
 
   /** Pinning state of columns */
   columnPinning?: ColumnPinningState;
+
+  /** number of top pinned rows */
+  pinnedTopRowsCount?: number;
+
+  /** Custom row ID accessor */
+  getRowId?: CoreOptions<TData>["getRowId"];
 
   /** Array of column sorting options */
   sorting?: SortingState;

@@ -1,6 +1,8 @@
 import {
   type ColumnSizingState,
   type PaginationState,
+  type Row,
+  type RowData,
   getCoreRowModel,
   getPaginationRowModel,
   getSortedRowModel,
@@ -43,6 +45,7 @@ import { maybeExpandColumnWidths } from "../utils/maybe-expand-column-widths";
 
 import { useCellSelection } from "./use-cell-selection";
 import { useExpandColumnsToMinGridWidth } from "./use-expand-columns-to-min-grid-width";
+import { useRowPinningByCount } from "./use-row-pinning-by-count";
 
 // Disable pagination by setting pageSize to -1
 const DISABLED_PAGINATION_STATE = { pageSize: -1, pageIndex: 0 };
@@ -52,6 +55,12 @@ const getColumnOrder = (dataColumnsOrder: string[], hasRowIdColumn: boolean) =>
   _.uniq(
     hasRowIdColumn ? [ROW_ID_COLUMN_ID, ...dataColumnsOrder] : dataColumnsOrder,
   );
+
+export const defaultGetRowId = <TData extends RowData>(
+  originalRow: TData,
+  index: number,
+  parent?: Row<TData>,
+) => `${parent ? [parent.id, index].join(".") : index}`;
 
 /**
  * Main hook for creating and managing a data grid instance.
@@ -63,6 +72,7 @@ export const useDataGridInstance = <TData, TValue>({
   columnOrder: controlledColumnOrder,
   columnSizingMap: controlledColumnSizingMap,
   columnPinning: controlledColumnPinning,
+  pinnedTopRowsCount,
   sorting,
   defaultRowHeight = 36,
   minGridWidth: minGridWidthProp,
@@ -79,6 +89,7 @@ export const useDataGridInstance = <TData, TValue>({
   onColumnResize,
   onColumnReorder,
   measurementRenderWrapper,
+  getRowId = defaultGetRowId,
 }: DataGridOptions<TData, TValue>): DataGridInstance<TData> => {
   const gridRef = useRef<HTMLDivElement>(null);
   const hasRowIdColumn = rowId != null;
@@ -223,13 +234,21 @@ export const useDataGridInstance = <TData, TValue>({
       : minGridWidthProp - getScrollBarSize();
   }, [enablePagination, minGridWidthProp]);
 
+  const rowPinning = useRowPinningByCount({
+    top: pinnedTopRowsCount,
+    data,
+    getRowId,
+  });
+
   const table = useReactTable({
     data,
     columns,
+    getRowId,
     state: {
       columnSizing: columnSizingMap,
       columnOrder,
       columnPinning: controlledColumnPinning ?? { left: [ROW_ID_COLUMN_ID] },
+      rowPinning,
       sorting,
       pagination,
       rowSelection: rowSelection ?? {},
