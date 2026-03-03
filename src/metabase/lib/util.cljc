@@ -410,27 +410,6 @@
       (native-stage? query -1)
       (update :stages conj {:lib/type :mbql.stage/mbql}))))
 
-(defn join-strings-with-conjunction
-  "This is basically [[clojure.string/join]] but uses commas to join everything but the last two args, which are joined
-  by a string `conjunction`. Uses Oxford commas for > 2 args.
-
-  (join-strings-with-conjunction \"and\" [\"X\" \"Y\" \"Z\"])
-  ;; => \"X, Y, and Z\""
-  [conjunction coll]
-  (when (seq coll)
-    (if (= (count coll) 1)
-      (first coll)
-      (let [conjunction (str \space (str/trim conjunction) \space)]
-        (if (= (count coll) 2)
-          ;; exactly 2 args: X and Y
-          (str (first coll) conjunction (second coll))
-          ;; > 2 args: X, Y, and Z
-          (str
-           (str/join ", " (butlast coll))
-           ","
-           conjunction
-           (last coll)))))))
-
 (mu/defn legacy-string-table-id->card-id :- [:maybe ::lib.schema.id/card]
   "If `table-id` is a legacy `card__<id>`-style string, parse the `<id>` part to an integer Card ID. Only for legacy
   queries! You don't need to use this in MBQL 5 since this is converted automatically by [[metabase.lib.convert]] to
