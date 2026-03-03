@@ -33,6 +33,7 @@ export function useTestPythonTransform(
     }
 
     const request = executePython({
+      type: source.type,
       code: source.body,
       source_tables: source["source-tables"],
     });
@@ -65,7 +66,7 @@ function getError(error: unknown) {
 
   if (typeof error === "object" && error !== null) {
     if ("name" in error && error.name === "AbortError") {
-      return { message: t`Python script execution was canceled` };
+      return { message: t`Transform execution was canceled` };
     }
   }
   return {

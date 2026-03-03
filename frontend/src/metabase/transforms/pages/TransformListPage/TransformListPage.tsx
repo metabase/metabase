@@ -145,20 +145,39 @@ export const TransformListPage = ({
     const data = buildTreeData(collections, transforms);
     // Only show Python library item if there's at least one item in the table
     // It will trigger the upsell modal if the feature isn't enabled.
-    const shouldShowPythonLibraryRow =
+    const shouldShowCodeLibraryRow =
       data.length > 0 &&
       (hasPythonTransformsFeature || shouldShowPythonTransformsUpsell);
 
-    if (shouldShowPythonLibraryRow) {
+    if (shouldShowCodeLibraryRow) {
       data.push({
-        id: "library",
-        name: t`Python library`,
-        nodeType: "library",
-        icon: "snippet",
-        url: Urls.transformPythonLibrary({
-          path: PLUGIN_TRANSFORMS_PYTHON.sharedLibImportPath,
-        }),
+        id: "code-library",
+        name: t`Code library`,
+        nodeType: "folder",
+        icon: "folder",
         source_readable: transformsDatabases.length > 0,
+        children: [
+          {
+            id: "python-library",
+            name: t`Python library`,
+            nodeType: "library",
+            icon: "snippet",
+            url: Urls.transformPythonLibrary({
+              path: PLUGIN_TRANSFORMS_PYTHON.sharedLibImportPaths["python"],
+            }),
+            source_readable: transformsDatabases.length > 0,
+          },
+          {
+            id: "javascript-library",
+            name: t`JavaScript library`,
+            nodeType: "library",
+            icon: "snippet",
+            url: Urls.transformPythonLibrary({
+              path: PLUGIN_TRANSFORMS_PYTHON.sharedLibImportPaths["javascript"],
+            }),
+            source_readable: transformsDatabases.length > 0,
+          },
+        ],
       });
     }
     return data;

@@ -25,11 +25,12 @@ import {
 import { getInitialUiState } from "metabase/querying/editor/components/QueryEditor";
 import { useTransformPermissions } from "metabase/transforms/hooks/use-transform-permissions";
 import { Box, Center, Group, Icon } from "metabase/ui";
-import type {
-  Database,
-  DatasetQuery,
-  DraftTransformSource,
-  Transform,
+import {
+  type Database,
+  type DatasetQuery,
+  type DraftTransformSource,
+  type Transform,
+  isAdvancedTransformSource,
 } from "metabase-types/api";
 
 import { useQueryComplexityChecks } from "../../components/QueryComplexityWarning";
@@ -233,7 +234,7 @@ function TransformQueryPageBody({
                 illustrationElement={<Icon name="key" size={100} />}
               />
             </Center>
-          ) : source.type === "python" ? (
+          ) : isAdvancedTransformSource(source) ? (
             <PLUGIN_TRANSFORMS_PYTHON.TransformEditor
               source={source}
               proposedSource={
@@ -322,7 +323,7 @@ export function TransformQueryPageEditor({
   onRunTransform,
   onRun,
 }: TransformQueryPageEditorProps) {
-  return source.type === "python" ? (
+  return isAdvancedTransformSource(source) ? (
     <PLUGIN_TRANSFORMS_PYTHON.TransformEditor
       source={source}
       uiOptions={uiOptions}

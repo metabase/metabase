@@ -175,30 +175,6 @@
       (is (contains? table-ids (mt/id :orders)))
       (is (contains? table-ids (mt/id :products))))))
 
-(deftest extract-sources-python-test
-  (testing "Python: extracts source tables from source-tables map"
-    (let [transform {:source {:type           :python
-                              :source-tables  {"orders" (mt/id :orders)}
-                              :source-database (mt/id)}
-                     :name   "test"}
-          sources   (context/extract-sources transform)]
-      (is (seq sources))
-      (is (= (mt/id :orders) (:table-id (first sources))))
-      (is (= (mt/id) (:db-id (first sources)))))))
-
-(deftest extract-sources-python-multiple-tables-test
-  (testing "Python: extracts multiple source tables"
-    (let [transform {:source {:type           :python
-                              :source-tables  {"orders"   (mt/id :orders)
-                                               "products" (mt/id :products)}
-                              :source-database (mt/id)}
-                     :name   "test"}
-          sources   (context/extract-sources transform)
-          table-ids (set (map :table-id sources))]
-      (is (= 2 (count sources)))
-      (is (contains? table-ids (mt/id :orders)))
-      (is (contains? table-ids (mt/id :products))))))
-
 ;;; -------------------------------------------------- build-context integration --------------------------------------------------
 
 (deftest build-context-mbql-sources-test

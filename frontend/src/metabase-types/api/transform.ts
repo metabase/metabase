@@ -23,12 +23,31 @@ export type TransformOwner = Pick<
   "id" | "email" | "first_name" | "last_name"
 >;
 
+export const ADVANCED_TRANSFORM_TYPES = {
+  python: {
+    displayName: "Python",
+    commentString: "#",
+  },
+  javascript: {
+    displayName: "JavaScript",
+    commentString: "//",
+  },
+} satisfies Record<string, { displayName: string; commentString: string }>;
+
+export type AdvancedTransformType = keyof typeof ADVANCED_TRANSFORM_TYPES;
+
+export function isAdvancedTransformType(
+  type: string,
+): type is AdvancedTransformType {
+  return type in ADVANCED_TRANSFORM_TYPES;
+}
+
 export type Transform = {
   id: TransformId;
   name: string;
   description: string | null;
   source: TransformSource;
-  source_type: "native" | "python" | "mbql";
+  source_type: "native" | "mbql" | AdvancedTransformType;
   target: TransformTarget;
   collection_id: CollectionId | null;
   created_at: string;
@@ -70,14 +89,14 @@ export type TransformSourceCheckpointStrategy = {
 export type SourceIncrementalStrategy = TransformSourceCheckpointStrategy;
 
 export type PythonTransformSourceDraft = {
-  type: "python";
+  type: AdvancedTransformType;
   body: string;
   "source-database": DatabaseId | undefined;
   "source-tables": PythonTransformTableAliases;
 };
 
 export type PythonTransformSource = {
-  type: "python";
+  type: AdvancedTransformType;
   body: string;
   "source-database": DatabaseId;
   "source-tables": PythonTransformTableAliases;
@@ -96,8 +115,15 @@ export type TransformTargetAppendStrategy = {
   type: "append";
 };
 export type DraftTransformSource =
-  | Transform["source"]
+  | QueryTransformSource
+  | PythonTransformSource
   | PythonTransformSourceDraft;
+
+export function isAdvancedTransformSource(
+  source: DraftTransformSource,
+): source is PythonTransformSource | PythonTransformSourceDraft {
+  return isAdvancedTransformType(source.type);
+}
 
 export type DraftTransform = Partial<
   Pick<Transform, "id" | "name" | "description" | "target">
@@ -266,6 +292,7 @@ export type ListTransformRunsResponse = {
 } & PaginationResponse;
 
 export type TestPythonTransformRequest = {
+  type: AdvancedTransformType;
   code: string;
   source_tables: PythonTransformTableAliases;
 };
@@ -286,11 +313,13 @@ export type PythonLibrary = {
 
 export type GetPythonLibraryRequest = {
   path: string;
+  type: AdvancedTransformType;
 };
 
 export type UpdatePythonLibraryRequest = {
   path: string;
   source: string;
+  type: AdvancedTransformType;
 };
 
 export type ExtractColumnsFromQueryRequest = {

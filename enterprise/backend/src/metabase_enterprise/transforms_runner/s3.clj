@@ -1,6 +1,6 @@
-(ns metabase-enterprise.transforms-python.s3
+(ns metabase-enterprise.transforms-runner.s3
   (:require
-   [metabase-enterprise.transforms-python.settings :as transforms-python.settings]
+   [metabase-enterprise.transforms-runner.settings :as runner.settings]
    [metabase.util.log :as log])
   (:import
    (clojure.lang IDeref)
@@ -29,12 +29,12 @@
 (defn- working-dir-for-run
   "The path within the target bucket within which to store all the files for this run."
   []
-  (let [shared-prefix (some-> (transforms-python.settings/python-storage-s-3-prefix) (str "/"))]
+  (let [shared-prefix (some-> (runner.settings/python-storage-s-3-prefix) (str "/"))]
     (str shared-prefix "run-" (System/nanoTime) "-" (rand-int 10000))))
 
 (defmacro ^:private maybe-with-endpoint* [builder endpoint]
   `(let [builder# ~builder]
-     (when-let [region# (transforms-python.settings/python-storage-s-3-region)]
+     (when-let [region# (runner.settings/python-storage-s-3-region)]
        (.region builder# (Region/of region#)))
      (when ~endpoint (.endpointOverride builder# (URI/create ~endpoint)))
      builder#))
@@ -46,7 +46,7 @@
   (maybe-with-endpoint* builder endpoint))
 
 (defn- s3-configuration ^S3Configuration []
-  (let [path-style-access (transforms-python.settings/python-storage-s-3-path-style-access)]
+  (let [path-style-access (runner.settings/python-storage-s-3-path-style-access)]
     (-> (S3Configuration/builder)
         (.pathStyleAccessEnabled path-style-access)
         ;; Disable chunked encoding when using path-style access, as most S3-compatible
@@ -65,8 +65,8 @@
 
 (defn- maybe-with-credentials*
   [credentials-provider]
-  (let [access-key (transforms-python.settings/python-storage-s-3-access-key)
-        secret-key (transforms-python.settings/python-storage-s-3-secret-key)]
+  (let [access-key (runner.settings/python-storage-s-3-access-key)
+        secret-key (runner.settings/python-storage-s-3-secret-key)]
     (if (or access-key secret-key)
       (if-not (and access-key secret-key)
         (do (log/warnf "Ignoring %s because %s is not defined"
@@ -90,15 +90,15 @@
   ^S3Client []
   (.build
    (doto (S3Client/builder)
-     (maybe-with-endpoint-s3-client (transforms-python.settings/python-storage-s-3-endpoint))
+     (maybe-with-endpoint-s3-client (runner.settings/python-storage-s-3-endpoint))
      maybe-with-credentials-s3-client
      (.serviceConfiguration (s3-configuration)))))
 
 (defn- create-s3-presigner-for-container
   "Create S3 presigner for container operations (presigned URLs). Uses distinct container-endpoint if relevant."
   ^S3Presigner []
-  (let [container-endpoint (transforms-python.settings/python-storage-s-3-container-endpoint)
-        endpoint           (or container-endpoint (transforms-python.settings/python-storage-s-3-endpoint))]
+  (let [container-endpoint (runner.settings/python-storage-s-3-container-endpoint)
+        endpoint           (or container-endpoint (runner.settings/python-storage-s-3-endpoint))]
     (.build
      (doto (S3Presigner/builder)
        (maybe-with-endpoint-s3-presigner endpoint)
@@ -126,7 +126,7 @@
 (defn- s3-shared-storage [table-name->id]
   (let [work-dir-name       (working-dir-for-run)
         container-presigner (create-s3-presigner-for-container)
-        bucket-name         (transforms-python.settings/python-storage-s-3-bucket)
+        bucket-name         (runner.settings/python-storage-s-3-bucket)
         ref                 (fn [method relative-path]
                               (let [path (str work-dir-name "/" relative-path)]
                                 {:path   path

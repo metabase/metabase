@@ -1,12 +1,12 @@
-(ns metabase-enterprise.transforms-python.python-runner
+(ns metabase-enterprise.transforms-runner.runner
   (:require
    [clj-http.client :as http]
    [clojure.core.async :as a]
    [clojure.java.io :as io]
    [clojure.string :as str]
    [medley.core :as m]
-   [metabase-enterprise.transforms-python.s3 :as s3]
-   [metabase-enterprise.transforms-python.settings :as transforms-python.settings]
+   [metabase-enterprise.transforms-runner.s3 :as s3]
+   [metabase-enterprise.transforms-runner.settings :as runner.settings]
    [metabase.analytics.prometheus :as prometheus]
    [metabase.config.core :as config]
    [metabase.lib-be.core :as lib-be]
@@ -33,7 +33,7 @@
   "Returns HTTP headers with Authorization bearer token if configured.
   Throws configuration error in production if token is not set."
   []
-  (let [api-token (transforms-python.settings/python-runner-api-token)]
+  (let [api-token (runner.settings/python-runner-api-token)]
     (if api-token
       {"Authorization" (str "Bearer " api-token)}
       (if config/is-prod?
@@ -175,7 +175,7 @@
 (defn get-logs
   "Return the logs of the current running python process"
   [run-id]
-  (let [server-url (transforms-python.settings/python-runner-url)]
+  (let [server-url (runner.settings/python-runner-url)]
     (python-runner-request server-url :get "/logs" {:query-params {:request_id run-id}})))
 
 (mu/defn record-python-api-call!
@@ -200,23 +200,25 @@
 (defn execute-python-code-http-call!
   "Calls the /execute endpoint of the python runner. Blocks until the run either succeeds or fails and returns
   the response from the server."
-  [{:keys [server-url code request-id run-id table-name->id shared-storage timeout-secs]}]
-  (let [{:keys [objects]} shared-storage
+  [{:keys [server-url code request-id run-id table-name->id shared-storage timeout-secs runtime]}]
+  (let [{:keys [objects]}                       shared-storage
         {:keys [output output-manifest events]} objects
-        url-for-path             (fn [path] (:url (get objects path)))
-        table-name->url          (update-vals table-name->id #(url-for-path [:table % :data]))
-        table-name->manifest-url (update-vals table-name->id #(url-for-path [:table % :manifest]))
-        payload                  {:code                code
-                                  :library             (t2/select-fn->fn :path :source :model/PythonLibrary)
-                                  :timeout             (or timeout-secs (transforms-python.settings/python-runner-timeout-seconds))
-                                  :request_id          (or request-id run-id)
-                                  :output_url          (:url output)
-                                  :output_manifest_url (:url output-manifest)
-                                  :events_url          (:url events)
-                                  :table_mapping       table-name->url
-                                  :manifest_mapping    table-name->manifest-url}
-        response                 (with-python-api-timing [run-id]
-                                   (python-runner-request server-url :post "/execute" {:body (json/encode payload)}))]
+        runtime                                 (or runtime "python")
+        url-for-path                            (fn [path] (:url (get objects path)))
+        table-name->url                         (update-vals table-name->id #(url-for-path [:table % :data]))
+        table-name->manifest-url                (update-vals table-name->id #(url-for-path [:table % :manifest]))
+        payload                                 {:code                code
+                                                 :library             (t2/select-fn->fn :path :source :model/TransformLibrary :language runtime)
+                                                 :timeout             (or timeout-secs (runner.settings/python-runner-timeout-seconds))
+                                                 :request_id          (or request-id run-id)
+                                                 :output_url          (:url output)
+                                                 :output_manifest_url (:url output-manifest)
+                                                 :events_url          (:url events)
+                                                 :table_mapping       table-name->url
+                                                 :manifest_mapping    table-name->manifest-url
+                                                 :runtime             runtime}
+        response                                (with-python-api-timing [run-id]
+                                                  (python-runner-request server-url :post "/execute" {:body (json/encode payload)}))]
     ;; when a 500 is returned we observe a string in the body (despite the python returning json)
     ;; always try to parse the returned string as json before yielding (could tighten this up at some point)
     (update response :body (fn [string-if-error]
@@ -342,6 +344,7 @@
      :source-tables - Map of table-name -> table-id (already resolved)
      :row-limit     - Max rows to return (also limits input rows)
      :timeout-secs  - Optional timeout override
+     :runtime       - Optional runtime override (default: \"python\")
 
    Returns:
      {:status  :succeeded/:failed
@@ -350,9 +353,9 @@
       :logs    [{:message ...} ...]   ; events from Python execution
       :message \"error message\"}     ; on failure
 "
-  [{:keys [code source-tables per-input-limit row-limit timeout-secs]}]
+  [{:keys [code source-tables per-input-limit row-limit timeout-secs runtime]}]
   (with-open [shared-storage-ref (s3/open-shared-storage! source-tables)]
-    (let [server-url (transforms-python.settings/python-runner-url)
+    (let [server-url (runner.settings/python-runner-url)
           _          (copy-tables-to-s3! {:shared-storage @shared-storage-ref
                                           :source         {:source-tables source-tables}
                                           :limit          (or per-input-limit row-limit)})
@@ -363,7 +366,8 @@
             :request-id     (u/generate-nano-id)
             :table-name->id source-tables
             :timeout-secs   timeout-secs
-            :shared-storage @shared-storage-ref})
+            :shared-storage @shared-storage-ref
+            :runtime runtime})
           events (read-events @shared-storage-ref)]
       (cond
         (:timeout body)

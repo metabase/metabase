@@ -1685,7 +1685,7 @@ describe("scenarios > data studio > workspaces", () => {
       cy.log("Create transform via UI with model reference");
       Workspaces.visitTransformListPage();
       cy.button("Create a transform").click();
-      H.popover().findByText("SQL query").click();
+      H.popover().findByText(/SQL/).click();
       H.popover().findByText("Writable Postgres12").click();
 
       cy.get("@modelId").then((modelId) => {
@@ -1763,7 +1763,7 @@ describe("scenarios > data studio > workspaces", () => {
           databaseId: WRITABLE_DB_ID,
           schema: "Schema B",
         }).then((id2) => {
-          createPythonTransform({
+          createAdvancedTransform({
             body: TEST_PYTHON_TRANSFORM,
             sourceTables: { foo: id1, bar: id2 },
             visitTransform: true,
@@ -1906,7 +1906,7 @@ describe("scenarios > data studio > workspaces", () => {
             databaseId: WRITABLE_DB_ID,
             schema: "Schema B",
           }).then((id2) => {
-            createPythonTransform({
+            createAdvancedTransform({
               body: TEST_PYTHON_TRANSFORM_MULTI_TABLE,
               sourceTables: { animals_a: id1, animals_b: id2 },
               visitTransform: true,
@@ -2269,7 +2269,7 @@ describe("scenarios > data studio > workspaces", () => {
     it("should not show error when editing a new transform in a workspace (GDGT-1445)", () => {
       Workspaces.visitTransformListPage();
       cy.findByLabelText("Create a transform").click();
-      H.popover().findByText("SQL query").click();
+      H.popover().findByText(/SQL/).click();
       // to avoid flakiness on editor's focus
       cy.findByTestId("native-query-top-bar").should(
         "contain.text",
@@ -2515,7 +2515,7 @@ function createTransforms({ visit }: { visit?: boolean } = { visit: false }) {
   });
 
   H.getTableId({ name: "Animals", databaseId: WRITABLE_DB_ID }).then((id) => {
-    createPythonTransform({
+    createAdvancedTransform({
       body: TEST_PYTHON_TRANSFORM,
       sourceTables: { foo: id },
     });
@@ -2561,7 +2561,7 @@ function createSqlTransform(opts: {
   });
 }
 
-function createPythonTransform(opts: {
+function createAdvancedTransform(opts: {
   body: string;
   sourceTables: PythonTransformTableAliases;
   targetTable?: string;
@@ -2569,7 +2569,7 @@ function createPythonTransform(opts: {
   tagIds?: TransformTagId[];
   visitTransform?: boolean;
 }) {
-  return H.createPythonTransform({
+  return H.createAdvancedTransform({
     targetTable: TARGET_TABLE_PYTHON,
     targetSchema: TARGET_SCHEMA,
     ...opts,

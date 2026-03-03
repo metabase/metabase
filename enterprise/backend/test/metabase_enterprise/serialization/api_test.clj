@@ -39,7 +39,7 @@
    #"/databases/.*/schemas/(.*)"               :schema
    #"/databases/(.*)\.yaml"                    :database
    #"/transforms/(.*)\.yaml"                   :transform
-   #"/python-libraries/(.*)\.yaml"             :python-library])
+   #"/transform-libraries/(.*)\.yaml" :transform-library])
 
 (defn- file-type
   "Find out entity type by file path"
@@ -122,13 +122,13 @@
               (testing "API respects parameters"
                 (let [f (mt/user-http-request :crowberto :post 200 "ee/serialization/export" {}
                                               :all_collections false :data_model false :settings true)]
-                  (is (= #{:log :dir :settings :transform :python-library}
+                  (is (= #{:log :dir :settings :transform :transform-library}
                          (tar-file-types f)))))
 
               (testing "We can export just a single collection"
                 (let [f (mt/user-http-request :crowberto :post 200 "ee/serialization/export" {}
                                               :collection (:id coll) :data_model false :settings false)]
-                  (is (= #{:log :dir :dashboard :card :collection :transform :python-library}
+                  (is (= #{:log :dir :dashboard :card :collection :transform :transform-library}
                          (tar-file-types f)))))
 
               (testing "We can export two collections"
@@ -144,18 +144,18 @@
                 (let [f (mt/user-http-request :crowberto :post 200 "ee/serialization/export" {}
                                               ;; eid:... syntax is kept for backward compat
                                               :collection (str "eid:" (:entity_id coll)) :data_model false :settings false)]
-                  (is (= #{:log :dir :dashboard :card :collection :transform :python-library}
+                  (is (= #{:log :dir :dashboard :card :collection :transform :transform-library}
                          (tar-file-types f)))))
 
               (testing "We can export that collection using entity id"
                 (let [f (mt/user-http-request :crowberto :post 200 "ee/serialization/export" {}
                                               :collection (:entity_id coll) :data_model false :settings false)]
-                  (is (= #{:log :dir :dashboard :card :collection :transform :python-library}
+                  (is (= #{:log :dir :dashboard :card :collection :transform :transform-library}
                          (tar-file-types f)))))
 
               (testing "Default export: all-collections, data-model, settings"
                 (let [f (mt/user-http-request :crowberto :post 200 "ee/serialization/export" {})]
-                  (is (= #{:transform :log :dir :dashboard :card :collection :settings :schema :database :python-library}
+                  (is (= #{:transform :log :dir :dashboard :card :collection :settings :schema :database :transform-library}
                          (tar-file-types f)))))
 
               (testing "On exception API returns log"
@@ -221,7 +221,7 @@
                     io/input-stream)
             ba  (#'api.serialization/ba-copy res)]
         (testing "Archive contains correct number of files with proper log entries"
-          (is (= 13
+          (is (= 14
                  (with-open [tar (open-tar ba)]
                    (count
                     (for [^TarArchiveEntry e (u.compress/entries tar)
@@ -229,7 +229,7 @@
                       (do
                         (condp re-find (.getName e)
                           #"/export.log$" (testing "Log contains extract and store entries"
-                                            (is (= (+ #_extract 12 #_store 12)
+                                            (is (= (+ #_extract 13 #_store 13)
                                                    (count (line-seq (io/reader tar))))))
                           nil)
                         (.getName e))))))))
@@ -243,7 +243,7 @@
                    "settings"        false
                    "field_values"    false
                    "duration_ms"     (every-pred number? pos?)
-                   "count"           12
+                   "count"           13
                    "error_count"     0
                    "source"          "api"
                    "secrets"         false
@@ -273,7 +273,7 @@
                                                   {:request-options {:headers {"content-type" "multipart/form-data"}}}
                                                   {:file ba}))]
           (testing "Log contains imported entity types"
-            (is (= #{"Collection" "Dashboard" "Card" "PythonLibrary" "TransformJob" "TransformTag"}
+            (is (= #{"Collection" "Dashboard" "Card" "TransformLibrary" "TransformJob" "TransformTag"}
                    (log-types (line-seq (io/reader (io/input-stream res)))))))
 
           (testing "Entities are restored in the database"
@@ -285,8 +285,8 @@
                      "direction"     "import"
                      "duration_ms"   pos?
                      "source"        "api"
-                     "models"        "Card,Collection,Dashboard,PythonLibrary,TransformJob,TransformTag"
-                     "count"         12
+                     "models"        "Card,Collection,Dashboard,TransformJob,TransformLibrary,TransformTag"
+                     "count"         13
                      "error_count"   0
                      "success"       true
                      "error_message" nil}
@@ -349,7 +349,7 @@
                                           :continue_on_error true)
                 log (slurp (io/input-stream res))]
             (testing "Log shows loaded entities and error"
-              (is (= #{"Dashboard" "Card" "Collection" "TransformJob" "TransformTag" "PythonLibrary"}
+              (is (= #{"Dashboard" "Card" "Collection" "TransformJob" "TransformTag" "TransformLibrary"}
                      (log-types (str/split-lines log))))
               (is (re-find #"Collection 'DoesNotExist' was not found" log)))
 
@@ -359,9 +359,9 @@
                        "direction"   "import"
                        "source"      "api"
                        "duration_ms" int?
-                       "count"       11
+                       "count"       12
                        "error_count" 1
-                       "models"      "Collection,Dashboard,PythonLibrary,TransformJob,TransformTag"}
+                       "models"      "Collection,Dashboard,TransformJob,TransformLibrary,TransformTag"}
                       (-> (snowplow-test/pop-event-data-and-user-id!) last :data))))))))))
 
 (deftest import-invalid-archive-test
@@ -429,7 +429,7 @@
             (doseq [^TarArchiveEntry e (u.compress/entries tar)]
               (condp re-find (.getName e)
                 #"/export.log$" (testing "Log shows extract entries, error, and store entries"
-                                  (is (= (+ #_extract 12 #_error 1 #_store 11)
+                                  (is (= (+ #_extract 13 #_error 1 #_store 12)
                                          (count (line-seq (io/reader tar))))))
                 nil))))
 
@@ -442,7 +442,7 @@
                    "settings"        false
                    "field_values"    false
                    "duration_ms"     pos?
-                   "count"           11
+                   "count"           13
                    "error_count"     1
                    "source"          "api"
                    "secrets"         false

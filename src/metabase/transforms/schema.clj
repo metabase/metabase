@@ -3,6 +3,7 @@
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.queries.schema :as queries.schema]
+   [metabase.transforms.interface :as transforms.i]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]))
 
@@ -32,6 +33,19 @@
   [:multi {:dispatch :type}
    ["checkpoint" ::checkpoint-strategy]])
 
+(defn runner-source-schema
+  "Schema for a runner-based transform source. The :type must be a registered runner language
+  (registered via [[transforms.i/register-runner!]]). All runner languages share the same shape."
+  []
+  [:map
+   [:source-database {:optional true} :int]
+   [:source-tables [:map-of :string ::source-table-value]]
+   [:type {:decode/normalize lib.schema.common/normalize-keyword}
+    [:fn {:error/message "must be a registered runner language"}
+     transforms.i/runner-language?]]
+   [:body :string]
+   [:source-incremental-strategy {:optional true} ::source-incremental-strategy]])
+
 (mr/def ::transform-source
   [:multi {:dispatch (comp keyword :type)}
    [:query
@@ -39,14 +53,8 @@
      [:type {:decode/normalize lib.schema.common/normalize-keyword} [:= :query]]
      [:query ::queries.schema/query]
      [:source-incremental-strategy {:optional true} ::source-incremental-strategy]]]
-   [:python
-    [:map
-     [:source-database {:optional true} :int]
-     ;; NB: if source is checkpoint, only one table allowed
-     [:source-tables   [:map-of :string ::source-table-value]]
-     [:type {:decode/normalize lib.schema.common/normalize-keyword} [:= :python]]
-     [:body :string]
-     [:source-incremental-strategy {:optional true} ::source-incremental-strategy]]]])
+   [:malli.core/default
+    (runner-source-schema)]])
 
 (mr/def ::append-config
   [:map [:type [:= "append"]]])

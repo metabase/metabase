@@ -10,6 +10,7 @@ import * as Urls from "metabase/lib/urls";
 import { Button, Group } from "metabase/ui";
 
 type PythonLibraryEditorHeaderProps = {
+  typeDisplayName: string;
   isDirty?: boolean;
   isSaving?: boolean;
   onSave: () => void;
@@ -17,6 +18,7 @@ type PythonLibraryEditorHeaderProps = {
 };
 
 export const PythonLibraryEditorHeader = ({
+  typeDisplayName,
   isDirty,
   isSaving,
   onSave,
@@ -27,10 +29,14 @@ export const PythonLibraryEditorHeader = ({
       breadcrumbs={
         <DataStudioBreadcrumbs>
           <Link to={Urls.transformList()}>{t`Transforms`}</Link>
-          {t`Python library`}
+          {typeDisplayName + " " + t`library`}
         </DataStudioBreadcrumbs>
       }
-      title={<PanelHeaderTitle>{t`Python library`}</PanelHeaderTitle>}
+      title={
+        <PanelHeaderTitle>
+          {typeDisplayName + " " + t`library`}
+        </PanelHeaderTitle>
+      }
       actions={
         (isDirty || isSaving) && (
           <Group wrap="nowrap">

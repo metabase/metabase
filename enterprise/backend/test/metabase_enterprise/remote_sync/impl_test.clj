@@ -1070,16 +1070,17 @@
               (is (true? (remote-sync.settings/remote-sync-transforms))
                   "remote-sync-transforms should be auto-enabled after successful import with transforms"))))))))
 
-(deftest import!-auto-enables-transforms-setting-when-python-libraries-detected-test
-  (testing "import! auto-enables remote-sync-transforms setting only after successful import with python-libraries"
+(deftest import!-auto-enables-transforms-setting-when-transform-libraries-detected-test
+  (testing "import! auto-enables remote-sync-transforms setting only after successful import with transform-libraries"
     (mt/with-premium-features #{:transforms}
-      (mt/with-model-cleanup [:model/RemoteSyncTask :model/PythonLibrary :model/RemoteSyncObject]
+      (mt/with-model-cleanup [:model/RemoteSyncTask :model/TransformLibrary :model/RemoteSyncObject]
         (mt/with-temporary-setting-values [remote-sync-transforms false
                                            remote-sync-enabled true]
           (let [task-id (t2/insert-returning-pk! :model/RemoteSyncTask {:sync_task_type "import" :initiated_by (mt/user->id :rasta)})
                 lib-entity-id "auto-enable-lib-xxxxx"
-                test-files {"main" {(str "python-libraries/" lib-entity-id ".yaml")
-                                    (format "path: uncommon.py
+                test-files {"main" {(str "transform-libraries/" lib-entity-id ".yaml")
+                                    (format "language: python
+path: uncommon.py
 source: |
   # shared code
   def shared_func():
@@ -1088,7 +1089,7 @@ entity_id: %s
 created_at: '2024-08-28T09:46:18.671622Z'
 serdes/meta:
 - id: %s
-  model: PythonLibrary
+  model: TransformLibrary
 " lib-entity-id lib-entity-id)}}
                 mock-source (test-helpers/create-mock-source :initial-files test-files)]
             (is (false? (remote-sync.settings/remote-sync-transforms))
@@ -1097,7 +1098,7 @@ serdes/meta:
               (is (= :success (:status result))
                   "Import should succeed")
               (is (true? (remote-sync.settings/remote-sync-transforms))
-                  "remote-sync-transforms should be auto-enabled after successful import with python-libraries"))))))))
+                  "remote-sync-transforms should be auto-enabled after successful import with transform-libraries"))))))))
 
 (deftest import!-keeps-transforms-setting-disabled-when-no-transforms-present-test
   (testing "import! keeps remote-sync-transforms setting disabled when no transforms are present"
@@ -1132,7 +1133,7 @@ serdes/meta:
                     "remote-sync-transforms should be disabled when no transforms in remote")))))))))
 
 (deftest import!-includes-all-optional-paths-regardless-of-settings-test
-  (testing "import! always includes all optional paths (transforms, python-libraries, snippets)"
+  (testing "import! always includes all optional paths (transforms, transform-libraries, snippets)"
     (mt/with-model-cleanup [:model/RemoteSyncTask]
       (let [task-id (t2/insert-returning-pk! :model/RemoteSyncTask {:sync_task_type "import" :initiated_by (mt/user->id :rasta)})]
         (mt/with-temporary-setting-values [remote-sync-transforms false]
@@ -1151,8 +1152,8 @@ serdes/meta:
                     (let [filter-strs (map str @paths-passed)]
                       (is (some #(str/includes? % "transforms") filter-strs)
                           "transforms path should be included in filters")
-                      (is (some #(str/includes? % "python-libraries") filter-strs)
-                          "python-libraries path should be included in filters")
+                      (is (some #(str/includes? % "transform-libraries") filter-strs)
+                          "transform-libraries path should be included in filters")
                       (is (some #(str/includes? % "snippets") filter-strs)
                           "snippets path should be included in filters"))))))))))))
 

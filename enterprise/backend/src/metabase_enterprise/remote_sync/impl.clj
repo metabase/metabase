@@ -24,7 +24,7 @@
   (:import (metabase_enterprise.remote_sync.source.protocol SourceSnapshot)))
 
 (defn- snapshot-has-transforms?
-  "Checks if the snapshot contains any Transform, PythonLibrary entities,
+  "Checks if the snapshot contains any Transform, TransformLibrary entities,
    non-built-in TransformTags, or transforms-namespace collections.
    Used to auto-enable/disable remote-sync-transforms setting during import.
 
@@ -179,7 +179,7 @@
    Conflict types detected:
    - :entity-id-conflict - Items with existing entity IDs that are NOT already synced
    - :library-conflict - First import only, local Library exists, import has Library
-   - :transforms-not-enabled - Import has Transform/TransformTag/PythonLibrary, setting disabled
+   - :transforms-not-enabled - Import has Transform/TransformTag/TransformLibrary, setting disabled
    - :snippets-without-library - Import has NativeQuerySnippet, Library not remote-synced"
   [ingestable first-import?]
   (let [ingest-list (serialization/ingest-list ingestable)
@@ -242,7 +242,7 @@
               last-imported-version (remote-sync.task/last-version)
               first-import? (nil? last-imported-version)
               path-filters [#"collections/.*" #"databases/.*" #"actions/.*"
-                            #"transforms/.*" #"python-libraries/.*" #"snippets/.*"]
+                            #"transforms/.*" #"transform-libraries/.*" #"snippets/.*"]
               base-ingestable (source.p/->ingestable snapshot {:path-filters path-filters})
               has-transforms? (snapshot-has-transforms? base-ingestable)
               {:keys [conflicts summary]} (get-conflicts base-ingestable first-import?)

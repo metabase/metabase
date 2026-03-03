@@ -10,6 +10,7 @@ import { useDispatch, useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { getShouldShowPythonTransformsUpsell } from "metabase/transforms/selectors";
 import { Button, Center, Icon, Loader, Menu, Tooltip } from "metabase/ui";
+import type { AdvancedTransformType } from "metabase-types/api";
 
 import { trackTransformCreate } from "../../analytics";
 import { CreateTransformCollectionModal } from "../CreateTransformCollectionModal";
@@ -33,14 +34,14 @@ export const CreateTransformMenu = () => {
   const { data: databases, isLoading } = useListDatabasesQuery({
     include_analytics: true,
   });
-  const shouldShowPythonScriptOption =
+  const shouldShowAdvancedTransformsOptions =
     hasPythonTransformsFeature || shouldShowPythonTransformsUpsell;
 
-  const handlePythonClick = () => {
-    dispatch(push(Urls.newPythonTransform())); // Route will show upsell modal if feature is not enabled
+  const navigateToNewAdvancedTransform = (type: AdvancedTransformType) => {
+    dispatch(push(Urls.newAdvancedTransform(type))); // Route will show upsell modal if feature is not enabled
 
     if (hasPythonTransformsFeature) {
-      trackTransformCreate({ creationType: "python" });
+      trackTransformCreate({ creationType: "advanced" });
     }
   };
 
@@ -64,6 +65,42 @@ export const CreateTransformMenu = () => {
             <>
               <Menu.Label>{t`Create your transform with…`}</Menu.Label>
               <Menu.Item
+                leftSection={<Icon name="sql" />}
+                onClick={() => {
+                  trackTransformCreate({ creationType: "native" });
+                  dispatch(push(Urls.newNativeTransform()));
+                }}
+              >
+                {t`SQL`}
+              </Menu.Item>
+
+              {shouldShowAdvancedTransformsOptions && (
+                <>
+                  <Menu.Item
+                    leftSection={<Icon name="code_block" />}
+                    rightSection={
+                      !hasPythonTransformsFeature ? (
+                        <UpsellGem size={14} />
+                      ) : null
+                    }
+                    onClick={() => navigateToNewAdvancedTransform("python")}
+                  >
+                    {t`Python`}
+                  </Menu.Item>
+                  <Menu.Item
+                    leftSection={<Icon name="code_block" />}
+                    rightSection={
+                      !hasPythonTransformsFeature ? (
+                        <UpsellGem size={14} />
+                      ) : null
+                    }
+                    onClick={() => navigateToNewAdvancedTransform("javascript")}
+                  >
+                    {t`JavaScript`}
+                  </Menu.Item>
+                </>
+              )}
+              <Menu.Item
                 leftSection={<Icon name="notebook" />}
                 onClick={() => {
                   trackTransformCreate({ creationType: "query" });
@@ -72,27 +109,6 @@ export const CreateTransformMenu = () => {
               >
                 {t`Query builder`}
               </Menu.Item>
-              <Menu.Item
-                leftSection={<Icon name="sql" />}
-                onClick={() => {
-                  trackTransformCreate({ creationType: "native" });
-                  dispatch(push(Urls.newNativeTransform()));
-                }}
-              >
-                {t`SQL query`}
-              </Menu.Item>
-
-              {shouldShowPythonScriptOption && (
-                <Menu.Item
-                  leftSection={<Icon name="code_block" />}
-                  rightSection={
-                    !hasPythonTransformsFeature ? <UpsellGem size={14} /> : null
-                  }
-                  onClick={handlePythonClick}
-                >
-                  {t`Python script`}
-                </Menu.Item>
-              )}
               <Menu.Item
                 leftSection={<Icon name="insight" />}
                 onClick={() => {

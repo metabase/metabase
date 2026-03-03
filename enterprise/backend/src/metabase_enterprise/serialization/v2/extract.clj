@@ -35,7 +35,7 @@
     (conj "Setting")
 
     (not (:no-transforms opts))
-    (conj "Transform" "TransformTag" "TransformJob" "PythonLibrary")))
+    (conj "Transform" "TransformTag" "TransformJob" "TransformLibrary")))
 
 (defn make-targets-of-type
   "Returns a targets seq with model type and given ids"

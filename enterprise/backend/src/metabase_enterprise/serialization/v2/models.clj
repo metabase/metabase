@@ -35,7 +35,7 @@
           content
           ["FieldValues"
            "Metabot"
-           "PythonLibrary"
+           "TransformLibrary"
            "Setting"
            "Transform"
            "TransformJob"

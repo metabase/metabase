@@ -47,6 +47,31 @@ def transform():
   };
 }
 
+export function getInitialJavascriptSource(): PythonTransformSourceDraft {
+  return {
+    type: "javascript",
+    "source-database": undefined,
+    "source-tables": {},
+    body: `// Write your Javascript transformation script here
+import * as common from "./common.js";
+
+export function transform() {
+  /**
+   * Your transformation function.
+   *
+   * Select tables above to add them as function parameters.
+   *
+   * Returns:
+   *   Object array to write to the destination table
+   */
+
+  // Your transformation logic here
+
+  return [{"message": "Hello from Javascript transform!"}];
+}`,
+  };
+}
+
 export function getInitialCardSource(card: Card): QueryTransformSource {
   return { type: "query", query: card.dataset_query };
 }

@@ -3574,6 +3574,77 @@ databaseChangeLog:
             path: instance_analytics_views/query_log/v2/h2-query_log.sql
             relativeToChangelogFile: true
 
+  - changeSet:
+      id: v59.2026-02-24T12:00:00
+      author: galdre
+      comment: Rename python_library to transform_library for unified multi-language library support
+      changes:
+        - renameTable:
+            oldTableName: python_library
+            newTableName: transform_library
+
+  - changeSet:
+      id: v59.2026-02-24T12:00:01
+      author: galdre
+      comment: Add language column to transform_library (existing rows default to python)
+      changes:
+        - addColumn:
+            tableName: transform_library
+            columns:
+              - column:
+                  name: language
+                  type: varchar(32)
+                  remarks: Language identifier (python, javascript, r, clojure, julia)
+                  defaultValue: python
+                  constraints:
+                    nullable: false
+      rollback:
+        - dropColumn:
+            tableName: transform_library
+            columnName: language
+
+  - changeSet:
+      id: v59.2026-02-24T12:00:02
+      author: galdre
+      comment: Drop old path-only unique constraint (replaced by language+path constraint)
+      changes:
+        - dropUniqueConstraint:
+            tableName: transform_library
+            constraintName: uk_python_library_path
+      rollback:
+        - addUniqueConstraint:
+            tableName: transform_library
+            columnNames: path
+            constraintName: uk_python_library_path
+
+  - changeSet:
+      id: v59.2026-02-24T12:01:00
+      author: galdre
+      comment: Add (language, path) unique constraint to transform_library
+      changes:
+        - addUniqueConstraint:
+            tableName: transform_library
+            columnNames: language, path
+            constraintName: uk_transform_library_language_path
+      rollback:
+        - dropUniqueConstraint:
+            tableName: transform_library
+            constraintName: uk_transform_library_language_path
+
+  - changeSet:
+      id: v59.2026-02-24T12:02:00
+      author: galdre
+      comment: Insert default common.js entry in transform_library
+      preConditions:
+        - onFail: MARK_RAN
+        - sqlCheck:
+            expectedResult: 0
+            sql: SELECT count(*) FROM transform_library WHERE language = 'javascript' AND path = 'common.js'
+      changes:
+        - sql:
+            sql: INSERT INTO transform_library (path, source, entity_id, language) VALUES ('common.js', '', 'aHWo_0yPLwKqpQPlFNzCg', 'javascript')
+      rollback:
+
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
 ########################################################################################################################

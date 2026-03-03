@@ -1,4 +1,5 @@
 import type {
+  AdvancedTransformType,
   CardId,
   CollectionId,
   DatabaseId,
@@ -45,12 +46,8 @@ export function newNativeTransform() {
   return `${TRANSFORMS_ROOT_URL}/new/native`;
 }
 
-export function newPythonTransform() {
-  return `${TRANSFORMS_ROOT_URL}/new/python`;
-}
-
-export function pythonTransformsUpsell() {
-  return `${TRANSFORMS_ROOT_URL}/python-transforms`;
+export function newAdvancedTransform(type: AdvancedTransformType = "python") {
+  return `${TRANSFORMS_ROOT_URL}/new/advanced/${type}`;
 }
 
 export function newTransformFromCard(cardId: CardId) {

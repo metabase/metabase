@@ -22,10 +22,14 @@ import { getMetadata } from "metabase/selectors/metadata";
 import { useTransformPermissions } from "metabase/transforms/hooks/use-transform-permissions";
 import { Box, Center } from "metabase/ui";
 import * as Lib from "metabase-lib";
-import type {
-  Database,
-  DraftTransformSource,
-  Transform,
+import {
+  type AdvancedTransformType,
+  type Database,
+  type DraftTransformSource,
+  type PythonTransformSourceDraft,
+  type Transform,
+  isAdvancedTransformSource,
+  isAdvancedTransformType,
 } from "metabase-types/api";
 
 import { TransformEditor } from "../../components/TransformEditor";
@@ -38,6 +42,7 @@ import { CreateTransformModal } from "./CreateTransformModal";
 import {
   getDefaultValues,
   getInitialCardSource,
+  getInitialJavascriptSource,
   getInitialNativeSource,
   getInitialPythonSource,
   getInitialQuerySource,
@@ -156,7 +161,7 @@ function NewTransformPageBody({
             overflow: "hidden",
           }}
         >
-          {source.type === "python" ? (
+          {isAdvancedTransformSource(source) ? (
             <PLUGIN_TRANSFORMS_PYTHON.TransformEditor
               source={source}
               proposedSource={
@@ -219,14 +224,37 @@ export function NewNativeTransformPage({ route }: NewNativeTransformPageProps) {
   return <NewTransformPage initialSource={initialSource} route={route} />;
 }
 
-type NewPythonTransformPageProps = {
+type NewAdvancedTransformPageParams = {
+  type?: string;
+};
+
+type NewAdvancedTransformPageProps = {
+  params: NewAdvancedTransformPageParams;
   route: Route;
 };
 
-export function NewPythonTransformPage({ route }: NewPythonTransformPageProps) {
-  const initialSource = useMemo(() => getInitialPythonSource(), []);
-  return <NewTransformPage initialSource={initialSource} route={route} />;
+export function NewAdvancedTransformPage({
+  params,
+  route,
+}: NewAdvancedTransformPageProps) {
+  const typeParam = params?.type || "";
+  const type: AdvancedTransformType = isAdvancedTransformType(typeParam)
+    ? typeParam
+    : "python";
+  const initialSource = useMemo(() => sourceFunctionMap[type](), [type]);
+
+  return (
+    <NewTransformPage initialSource={initialSource} route={route} key={type} />
+  );
 }
+
+const sourceFunctionMap: Record<
+  AdvancedTransformType,
+  () => PythonTransformSourceDraft
+> = {
+  javascript: getInitialJavascriptSource,
+  python: getInitialPythonSource,
+};
 
 type NewCardTransformPageParams = {
   cardId: string;

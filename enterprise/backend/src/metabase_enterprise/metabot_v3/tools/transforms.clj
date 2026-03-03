@@ -1,7 +1,7 @@
 (ns metabase-enterprise.metabot-v3.tools.transforms
   (:require
    [metabase-enterprise.metabot-v3.tools.util :as metabot-v3.tools.u]
-   [metabase-enterprise.transforms-python.api :as transforms-python.api]
+   [metabase-enterprise.transforms-runner.api :as transforms-runner.api]
    [metabase.transforms.core :as transforms]
    [metabase.transforms.schema :as transforms.schema]
    [metabase.util.malli.registry :as mr]))
@@ -15,7 +15,7 @@
   (try
     {:structured_output
      (->> (transforms/get-transforms)
-          (into [] (comp (filter #(or (transforms/python-transform? %)
+          (into [] (comp (filter #(or (transforms/runner-transform? %)
                                       (transforms/native-query-transform? %)))
                          (filter :source_readable)
                          (map #(select-keys % [:id :entity_id :name :type :description :source])))))}
@@ -36,6 +36,6 @@
   [{:keys [path]}]
   (try
     {:structured_output
-     (transforms-python.api/get-python-library-by-path path)}
+     (transforms-runner.api/get-library-by-path path nil)}
     (catch Exception e
       (metabot-v3.tools.u/handle-agent-error e))))
