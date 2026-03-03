@@ -104,12 +104,17 @@
   (and (app-mention? event)
        (has-files? event)))
 
+(defn bot-tag
+  "Convert bot user id to a the tag template syntax used in message text"
+  [bot-user-id]
+  (str "<@" bot-user-id ">"))
+
 (defn mentions-bot?
   "Check if event @mentions the bot.
    Some events, like file uploads in channels, don't come through as app_mention."
   [event bot-user-id]
   (some-> (:text event)
-          (str/includes? (str "<@" bot-user-id ">"))))
+          (str/includes? (bot-tag bot-user-id))))
 
 (defn dm-or-channel-mention?
   "Check if event is an dm or channel w/ mention of the bot."
@@ -118,6 +123,11 @@
    (dm? event)
    (and (channel-message? event)
         (mentions-bot? event bot-id))))
+
+(defn event->prompt
+  "Prepare the message event as a prompt that can be sent to an agent"
+  [event bot-user-id]
+  (str/replace (:text event) (bot-tag bot-user-id) "@Metabot"))
 
 (defn event->reply-context
   "Extract the necessary context for a reply from the given `event`"

@@ -375,8 +375,7 @@
   ([client event]
    (send-response client event nil))
   ([client event extra-history]
-   (let [prompt        (:text event)
-         channel-id    (:channel event)
+   (let [channel-id    (:channel event)
          message-ctx   (slackbot.events/event->reply-context event)
          channel       (:channel message-ctx)
          thread-ts     (:thread_ts message-ctx)
@@ -387,6 +386,7 @@
          auth-info     @auth-future
          thread        @thread-future
          bot-user-id   (:user_id auth-info)
+         prompt        (slackbot.events/event->prompt event bot-user-id)
 
          {:keys [on-text on-tool-start on-tool-end on-data
                  request-flush! start-with-thinking! stream-state slack-writer prefetched-viz]}
