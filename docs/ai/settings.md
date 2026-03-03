@@ -32,7 +32,7 @@ Once you've added Metabot AI in the Metabase store, you can log into your Metaba
 
 ## Metabot options
 
-You can set options for Metabot, both for your Metabase instance, and (separately) for Metabot in [full-app embeds](../embedding/full-app-embedding.md) (in the Embedded Metabot tab).
+You can set options for Metabot, both for your internal Metabase, and (separately) for embedded Metabase contexts. That way you can, say, use Metabot in your Metabase, while not giving access to Metabot in your embedded Metabase.
 
 - [Enable Metabot](#enable-metabot)
 - [Verified content](#verified-content)
@@ -40,11 +40,18 @@ You can set options for Metabot, both for your Metabase instance, and (separatel
 
 ## Enable Metabot
 
-Both **Metabot** and **Embedded Metabot** are enabled by default.
+Toggle [Metabot](./metabot.md) on or off for your Metabase or embedded contexts. Both Metabot and Embedded Metabot are enabled by default.
 
-Toggle [Metabot](./metabot.md) on or off for your Metabase or full-app embed. When enabled, Metabot is available to help people create questions, analyze data, and answer questions about your data. When disabled, the Metabot icon and keyboard shortcuts are hidden.
+### Interal Metabot
 
-For now, the Metabot icon in full-app embeds isn't customizable.
+When enabled, Metabot is available to help people create questions, analyze data, and answer questions about your data. When disabled, the Metabot icon and keyboard shortcuts are hidden.
+
+### Embedded Metabot
+
+The toggle will turn embedded Metabot on or off. The toggle affects both full-app embeds and modular embeds.
+
+- [Full-app embedding](../embedding/full-app-embedding.md): The Metabot icon and keyboard shortcuts are only available when Metabot is enabled. Turning off Embedded Metabot will hide these icons and disable the keyboard shortcuts. For now, the Metabot icon can't be customized in full-app embedding.
+- [Modular embedding](../embedding/modular-embedding.md) The toggle doesn't add Metabot anywhere; you have to explicitly include a chat component (like the SDK's [`MetabotQuestion`](../embedding/sdk/ai-chat.md)) in your application. If, however, you've added a component, and you turn off the Embedded Metabot toggle, your chat component will stop working, so you should also remove or hide the component in your application.
 
 ## Verified content
 
