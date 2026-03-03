@@ -60,13 +60,22 @@
            ;; important to test routing before calling compile-source (whose qp middleware will also throw)
            _                             (throw-if-db-routing-enabled transform driver database)]
        (driver.conn/with-write-connection
-         (let [conn-spec         (driver/connection-spec driver database)
+         (let [conn-spec           (driver/connection-spec driver database)
+               source-range-params (transforms.util/get-source-range-params transform)
+               ;; First incremental run (no checkpoint) should behave like non-incremental
+               ;; to drop and recreate the table rather than appending to existing data.
+               ;; Only applies to MBQL transforms - other transform types handle this differently.
+               effective-transform-type (if (and (not (transforms.util/native-query-transform? transform))
+                                                 (= :table-incremental (keyword (:type target)))
+                                                 (nil? (:last_checkpoint_type transform)))
+                                          :table
+                                          (keyword (:type target)))
                transform-details {:db-id          db
                                   :database       database
                                   :transform-id   id
-                                  :transform-type (keyword (:type target))
+                                  :transform-type effective-transform-type
                                   :conn-spec      conn-spec
-                                  :query          (transforms.util/compile-source transform)
+                                  :query          (transforms.util/compile-source transform source-range-params)
                                   :output-schema  (:schema target)
                                   :output-table   (transforms.util/qualified-table-name driver target)}
                opts              (transform-opts transform-details)
@@ -89,11 +98,14 @@
                (transforms.util/run-cancelable-transform!
                 run-id driver transform-details
                 (fn [_cancel-chan]
-                  (driver/run-transform! driver transform-details opts))))
+                  (driver/run-transform! driver transform-details opts)
+                  (when source-range-params
+                    (transforms.util/save-watermark! (:id transform) source-range-params)))))
              (transforms.util/handle-transform-complete!
               :run-id run-id
               :transform transform
-              :db database)))))
+              :db database
+              :source-range-params source-range-params)))))
      (catch Throwable t
        (if (= :already-running (:error (ex-data t)))
          (log/warnf "Transform %d is already running" id)
