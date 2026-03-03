@@ -4,7 +4,8 @@ import {
   SortableContext,
   horizontalListSortingStrategy,
 } from "@dnd-kit/sortable";
-import { flexRender } from "@tanstack/react-table";
+import { type Row, flexRender } from "@tanstack/react-table";
+import type { VirtualItem } from "@tanstack/react-virtual";
 import cx from "classnames";
 import type React from "react";
 import { useCallback, useEffect, useMemo } from "react";
@@ -18,7 +19,10 @@ import {
   ADD_COLUMN_BUTTON_WIDTH,
   DEFAULT_FONT_SIZE,
   HEADER_HEIGHT,
+  PINNED_BORDER_SEPARATOR_WIDTH,
   PINNED_COLUMN_Z_INDEX,
+  PINNED_ROW_Z_INDEX,
+  ROW_ID_COLUMN_ID,
 } from "metabase/data-grid/constants";
 import { isVirtualRow } from "metabase/data-grid/guards";
 import { DataGridThemeProvider } from "metabase/data-grid/hooks/use-table-theme";
@@ -151,6 +155,37 @@ export const DataGrid = function DataGrid<TData>({
       ? "var(--mb-color-background-primary)"
       : backgroundColor);
 
+  const lastPinnedColumn = table.getLeftVisibleLeafColumns().at(-1);
+  const isLastPinnedColumnRowId = lastPinnedColumn?.id === ROW_ID_COLUMN_ID;
+
+  const lastTopPinnedRow = table.getTopRows().at(-1);
+
+  const getRowPositionStyles = (
+    row: Row<TData>,
+    virtualRow?: VirtualItem,
+  ): React.CSSProperties => {
+    const pinnedPosition = row.getIsPinned();
+    /**
+     * It supports only top for now.
+     */
+    if (pinnedPosition === "top") {
+      return {
+        position: "sticky",
+        top: `${HEADER_HEIGHT + 1 + (virtualRow?.start ?? 0)}px`,
+        zIndex: PINNED_ROW_Z_INDEX,
+        backgroundColor: stickyElementsBackgroundColor,
+      };
+    }
+    if (!virtualRow) {
+      return {};
+    }
+    return {
+      position: "absolute",
+      minHeight: `${virtualRow.size}px`,
+      transform: `translateY(${virtualRow.start}px)`,
+    };
+  };
+
   return (
     <DataGridThemeProvider theme={theme}>
       <DndContext {...dndContextProps}>
@@ -211,16 +246,21 @@ export const DataGrid = function DataGrid<TData>({
                       );
                       const width = header.column.getSize();
                       const isPinned = header.column.getIsPinned();
+                      const isLastPinned =
+                        header.column.id === lastPinnedColumn?.id;
+                      const totalWidth = isPinned
+                        ? width + PINNED_BORDER_SEPARATOR_WIDTH
+                        : width;
                       const style: React.CSSProperties = isPinned
                         ? {
-                            width,
+                            width: totalWidth,
                             position: "sticky",
                             left: `${virtualColumn.start}px`,
                             zIndex: PINNED_COLUMN_Z_INDEX,
                             backgroundColor: stickyElementsBackgroundColor,
                           }
                         : {
-                            width,
+                            width: totalWidth,
                           };
 
                       const headerContent = isPinned ? (
@@ -246,6 +286,10 @@ export const DataGrid = function DataGrid<TData>({
                         <div
                           key={header.id}
                           style={style}
+                          className={cx({
+                            [S.cellWithRightSeparator]:
+                              isLastPinned && !isLastPinnedColumnRowId,
+                          })}
                           data-header-id={header.id}
                         >
                           {headerContent}
@@ -270,6 +314,7 @@ export const DataGrid = function DataGrid<TData>({
               })}
               style={{
                 display: "grid",
+                alignContent: "start",
                 position: "relative",
                 height: `${getTotalHeight()}px`,
                 backgroundColor: theme?.cell?.backgroundColor,
@@ -282,14 +327,7 @@ export const DataGrid = function DataGrid<TData>({
                   ? maybeVirtualRow
                   : { row: maybeVirtualRow, virtualRow: undefined };
 
-                const virtualRowStyles: React.CSSProperties =
-                  virtualRow != null
-                    ? {
-                        position: "absolute",
-                        minHeight: `${virtualRow.size}px`,
-                        transform: `translateY(${virtualRow.start}px)`,
-                      }
-                    : {};
+                const rowPositionStyles = getRowPositionStyles(row, virtualRow);
 
                 const dataIndex =
                   virtualRow != null ? virtualRow.index : row.index;
@@ -306,9 +344,11 @@ export const DataGrid = function DataGrid<TData>({
                     data-row-selected={row.getIsSelected()}
                     className={cx(S.row, classNames?.row, {
                       [S.active]: active,
+                      [S.rowWithBottomSeparator]:
+                        row.id === lastTopPinnedRow?.id,
                     })}
                     style={{
-                      ...virtualRowStyles,
+                      ...rowPositionStyles,
                       ...styles?.row,
                     }}
                   >
@@ -325,14 +365,19 @@ export const DataGrid = function DataGrid<TData>({
                     {virtualColumns.map((virtualColumn) => {
                       const cell = row.getVisibleCells()[virtualColumn.index];
                       const isPinned = cell.column.getIsPinned();
+                      const isLastPinned =
+                        cell.column.id === lastPinnedColumn?.id;
                       const width = cell.column.getSize();
+                      const totalWidth = isPinned
+                        ? width + PINNED_BORDER_SEPARATOR_WIDTH
+                        : width;
                       const columnDef = cell.column.columnDef;
                       const isSelectable =
                         selection.isEnabled && columnDef?.meta?.enableSelection;
 
                       const style: React.CSSProperties = isPinned
                         ? {
-                            width,
+                            width: totalWidth,
                             position: "sticky",
                             left: `${virtualColumn.start}px`,
                             zIndex: PINNED_COLUMN_Z_INDEX,
@@ -342,7 +387,7 @@ export const DataGrid = function DataGrid<TData>({
                             ...styles?.bodyCell,
                           }
                         : {
-                            width,
+                            width: totalWidth,
                             ...styles?.bodyCell,
                           };
                       return (
@@ -353,6 +398,8 @@ export const DataGrid = function DataGrid<TData>({
                           data-selectable-cell={isSelectable ? "" : undefined}
                           className={cx(S.bodyCell, classNames?.bodyCell, {
                             [S.focusedCell]: selection.isCellFocused(cell),
+                            [S.cellWithRightSeparator]:
+                              isLastPinned && !isLastPinnedColumnRowId,
                           })}
                           onClick={(e) => {
                             if (hasModifierKeys(e)) {

@@ -1,5 +1,6 @@
 import type {
   CellContext,
+  ColumnPinningState,
   ColumnSizingState,
   SortingState,
 } from "@tanstack/react-table";
@@ -710,12 +711,36 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
     return isDashcardViewTable ? width : undefined;
   }, [isDashcardViewTable, width]);
 
+  const columnPinning = useMemo<ColumnPinningState | undefined>(() => {
+    if (!settings["table.freeze_columns"]) {
+      return undefined;
+    }
+    const count = Math.min(
+      settings["table.freeze_columns_count"] ?? 1,
+      columnsOptions.length,
+    );
+    const pinnedIds = rowId != null ? [ROW_ID_COLUMN_ID] : [];
+    for (let i = 0; i < count; i++) {
+      pinnedIds.push(columnsOptions[i].id);
+    }
+    return { left: pinnedIds };
+  }, [settings, rowId, columnsOptions]);
+
+  const pinnedTopRowsCount = useMemo<number | undefined>(() => {
+    if (!settings["table.freeze_rows"]) {
+      return undefined;
+    }
+    return Math.min(settings["table.freeze_rows_count"] ?? 1, rows.length);
+  }, [settings, rows]);
+
   const tableProps = useDataGridInstance({
     data: rows,
     rowId,
     sorting,
     columnOrder,
     columnSizingMap,
+    columnPinning,
+    pinnedTopRowsCount,
     columnsOptions,
     theme: dataGridTheme,
     onColumnResize: handleColumnResize,

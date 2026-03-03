@@ -139,6 +139,19 @@
   visibility: visible;
 }
 
+.cellWithRightSeparator {
+  border-right: 3px solid var(--mb-color-border-subtle);
+}
+
+.rowWithBottomSeparator {
+  /*
+    Since each cell already has border-bottom: 1px,
+    the total horizontal separator is now 2px + 1px = 3px,
+    matching the vertical cellWithRightSeparator at 3px.
+  */
+  border-bottom: 2px solid var(--mb-color-border-subtle);
+}
+
 /** Used for storybook examples for class Styles Api */
 .__storybookStylesApiBodyCellExample {
   background-color: #eef6fd;

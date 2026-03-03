@@ -43,6 +43,7 @@ export const useChartSettingsSections = ({
 
     const sectionSortOrder = [
       "data",
+      "columns",
       "display",
       "axes",
       "ranges",

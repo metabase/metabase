@@ -106,7 +106,7 @@ export class Table extends Component<TableProps, TableState> {
     },
     "table.row_index": {
       get section() {
-        return t`Columns`;
+        return t`Display`;
       },
       get title() {
         return t`Show row index`;
@@ -114,6 +114,60 @@ export class Table extends Component<TableProps, TableState> {
       inline: true,
       widget: "toggle",
       default: false,
+    },
+    "table.freeze_columns": {
+      get section() {
+        return t`Display`;
+      },
+      get title() {
+        return t`Freeze columns`;
+      },
+      inline: true,
+      widget: "toggle",
+      default: false,
+    },
+    "table.freeze_columns_count": {
+      get section() {
+        return t`Display`;
+      },
+      get title() {
+        return t`Number of columns to freeze`;
+      },
+      widget: "number",
+      default: 1,
+      getHidden: (series: Series, settings: VisualizationSettings) =>
+        !settings["table.freeze_columns"],
+      readDependencies: ["table.freeze_columns"],
+      props: {
+        options: { isInteger: true, isNonNegative: true },
+      },
+    },
+    "table.freeze_rows": {
+      get section() {
+        return t`Display`;
+      },
+      get title() {
+        return t`Freeze rows`;
+      },
+      inline: true,
+      widget: "toggle",
+      default: false,
+    },
+    "table.freeze_rows_count": {
+      get section() {
+        return t`Display`;
+      },
+      get title() {
+        return t`Number of rows to freeze`;
+      },
+      widget: "number",
+      default: 1,
+      getHidden: (series: Series, settings: VisualizationSettings) =>
+        !settings["table.freeze_rows"],
+      readDependencies: ["table.freeze_rows"],
+      props: {
+        options: { isInteger: true, isNonNegative: true },
+      },
     },
     "table.pivot": {
       get section() {
