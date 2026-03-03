@@ -413,7 +413,6 @@ describe(
         });
 
         cy.log("Checking request counts");
-        cy.wait(500);
         cy.get("@authSsoDiscovery.all").then((i: any) => {
           cy.log(`SSO discovery: ${i.length}`);
           expect(i.length).to.be.at.least(1);
@@ -455,7 +454,6 @@ describe(
         });
 
         cy.log("Checking request counts");
-        cy.wait(500);
         cy.get("@authSsoDiscovery.all").then((i: any) => {
           cy.log(`SSO discovery: ${i.length} (expected 0)`);
           expect(i.length).to.equal(0);
@@ -488,7 +486,6 @@ describe(
           cy.findByText("Orders").should("exist");
         });
 
-        cy.wait(500);
         cy.log("Capturing baseline request counts");
         const baseline: Record<string, number> = {};
         cy.get("@bundleRequest.all").then((i: any) => {
@@ -511,8 +508,6 @@ describe(
         cy.document().then((doc) => {
           doc.dispatchEvent(new CustomEvent("metabase-sdk-bundle-loaded"));
         });
-
-        cy.wait(500);
 
         cy.log(
           "Checking question still renders and no extra requests were fired",
