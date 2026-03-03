@@ -2,6 +2,8 @@ import { useCallback, useMemo, useState } from "react";
 import { t } from "ttag";
 
 import { SourceColorIndicator } from "metabase/common/components/SourceColorIndicator";
+import { canAccessDataStudio } from "metabase/data-studio/selectors";
+import { useSelector } from "metabase/lib/redux";
 import {
   dataStudioMetric,
   dataStudioPublishedTableMeasure,
@@ -48,6 +50,7 @@ export function MetricPill({
   onOpen,
 }: MetricPillProps) {
   const [popoverState, setPopoverState] = useState<PillPopoverState>("closed");
+  const hasDataStudioAccess = useSelector(canAccessDataStudio);
 
   const dimensions = useMemo(
     () =>
@@ -237,13 +240,15 @@ export function MetricPill({
               <Menu.Divider />
             </>
           )}
-          <Menu.Item
-            leftSection={<Icon name="pencil" />}
-            rightSection={<Icon name="external" />}
-            onClick={handleEditInDataStudio}
-          >
-            {t`Edit in Data Studio`}
-          </Menu.Item>
+          {hasDataStudioAccess && (
+            <Menu.Item
+              leftSection={<Icon name="pencil" />}
+              rightSection={<Icon name="external" />}
+              onClick={handleEditInDataStudio}
+            >
+              {t`Edit in Data Studio`}
+            </Menu.Item>
+          )}
           {metric.sourceType === "metric" && (
             <Menu.Item
               leftSection={<Icon name="info" />}
