@@ -195,28 +195,40 @@
 
 ;;; -------------------- Aggregation Construction --------------------
 
+(defn- simple-field-ref?
+  "Returns true if the argument is a simple [:field opts id] reference."
+  [arg]
+  (and (sequential? arg)
+       (= :field (first arg))
+       (pos-int? (nth arg 2 nil))))
+
 (defn- mbql-aggregation->node
-  "Convert MBQL aggregation clause to AST aggregation node."
+  "Convert MBQL aggregation clause to AST aggregation node.
+   Simple aggregations over field references (e.g. sum(price)) produce typed nodes.
+   Complex aggregations (e.g. avg(case(...))) fall through to :aggregation/mbql."
   [mbql-clause]
   (when mbql-clause
-    (let [[agg-type _opts & args] mbql-clause]
+    (let [[agg-type _opts & args] mbql-clause
+          first-arg (first args)]
       (case agg-type
-        :count    {:node/type :aggregation/count}
-        :sum      {:node/type :aggregation/sum
-                   :column    (let [[_field _opts field-id] (first args)]
-                                (column-node field-id))}
-        :avg      {:node/type :aggregation/avg
-                   :column    (let [[_field _opts field-id] (first args)]
-                                (column-node field-id))}
-        :min      {:node/type :aggregation/min
-                   :column    (let [[_field _opts field-id] (first args)]
-                                (column-node field-id))}
-        :max      {:node/type :aggregation/max
-                   :column    (let [[_field _opts field-id] (first args)]
-                                (column-node field-id))}
-        :distinct {:node/type :aggregation/distinct
-                   :column    (let [[_field _opts field-id] (first args)]
-                                (column-node field-id))}
+        :count
+        (if (nil? first-arg)
+          {:node/type :aggregation/count}
+          (if (simple-field-ref? first-arg)
+            {:node/type :aggregation/count
+             :column    (let [[_field _opts field-id] first-arg]
+                          (column-node field-id))}
+            {:node/type :aggregation/mbql
+             :clause    mbql-clause}))
+
+        (:sum :avg :min :max :distinct)
+        (if (simple-field-ref? first-arg)
+          {:node/type (keyword "aggregation" (name agg-type))
+           :column    (let [[_field _opts field-id] first-arg]
+                        (column-node field-id))}
+          {:node/type :aggregation/mbql
+           :clause    mbql-clause})
+
         ;; Fall back to raw MBQL for complex aggregations
         {:node/type :aggregation/mbql
          :clause    mbql-clause}))))

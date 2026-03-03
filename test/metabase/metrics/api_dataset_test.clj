@@ -675,6 +675,22 @@
             (is (= "completed" (:status response)))
             (is (= 203 (first-result response)))))))))
 
+(deftest dataset-measure-avg-case-test
+  (testing "POST /api/metric/dataset with source-measure avg(case(rating >= 4, 1, 0))"
+    (let [mp             (mt/metadata-provider)
+          table-metadata (lib.metadata/table mp (mt/id :products))
+          rating-col     (lib.metadata/field mp (mt/id :products :rating))
+          pmbql-query    (-> (lib/query mp table-metadata)
+                             (lib/aggregate (lib/avg (lib/case [[(lib/>= rating-col 4) 1]] 0))))]
+      (mt/with-temp [:model/Measure measure {:name       "High Rating Ratio"
+                                             :table_id   (mt/id :products)
+                                             :definition pmbql-query}]
+        (mt/with-full-data-perms-for-all-users!
+          (let [response (dataset-request {:expression [:measure {:lib/uuid "a"} (:id measure)]})]
+            (is (= "completed" (:status response)))
+            (is (number? (first-result response)))
+            (is (<= 0 (first-result response) 1) "ratio should be between 0 and 1")))))))
+
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                              Category 9b: Measure Source - Advanced Features                                    |
 ;;; +----------------------------------------------------------------------------------------------------------------+
