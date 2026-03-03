@@ -384,3 +384,19 @@ The following tools have specific behavioral requirements that you must follow:
 {% endfor %}
 </tools>
 {% endif %}
+
+# Important Context
+
+Current date and time: {{current_time}}
+
+In the system, the first day of the week (index 1) is: {{ first_day_of_week }}
+{% if viewing_context %}
+
+<user_context>
+{{ viewing_context|safe }}
+</user_context>
+{% endif %}
+{% if recent_views %}
+
+{{ recent_views|safe }}
+{% endif %}
