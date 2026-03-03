@@ -120,6 +120,38 @@
         [result]    (vals first-row)]
     (= result 1)))
 
+(def supported-db-versions
+  "https://www.metabase.com/docs/latest/installation-and-operation/migrating-from-h2#supported-databases-for-storing-your-metabase-application-data"
+  {:h2 {:major 2 :minor 1 :patch 214}
+   :postgres {:major 12 :minor 0 :patch 0}
+   :mysql {:major 8 :minor 0 :patch 17}
+   :maria {:major 10 :minor 4 :patch 0}})
+
+(defn- parse-db-version
+  [product-version]
+  (let [[_ major minor patch] (re-find #"^(\d+)\.(\d+)\.(\d+)" product-version)]
+    {:major (parse-long major)
+     :minor (or (parse-long minor) 0)
+     :patch (or (parse-long patch) 0)}))
+
+(mu/defn- db-version
+  :- [:map
+      [:major [:int {:min 0}]]
+      [:minor [:int {:min 0}]]
+      [:patch [:int {:min 0}]]]
+  [metadata :- (ms/InstanceOfClass java.sql.DatabaseMetaData)]
+  (merge
+   (parse-db-version (.getDatabaseProductVersion metadata))
+   {:major (.getDatabaseMajorVersion metadata)
+    :minor (.getDatabaseMinorVersion metadata)}))
+
+(defn- supported-app-db-version?
+  [db-type {:keys [major minor patch]}]
+  (let [required-version (get supported-db-versions db-type)]
+    (and required-version
+         (not (pos? (compare ((juxt :major :minor :patch) required-version)
+                             [major minor patch]))))))
+
 (mu/defn- verify-db-connection
   "Test connection to application database with `data-source` and throw an exception if we have any troubles
   connecting."
@@ -131,9 +163,13 @@
          (catch Throwable e
            (throw (ex-info error-msg {} e)))))
   (with-open [conn (.getConnection ^javax.sql.DataSource data-source)]
-    (let [metadata (.getMetaData conn)]
-      (log/infof "Successfully verified %s %s application database connection. %s"
-                 (.getDatabaseProductName metadata) (.getDatabaseProductVersion metadata) (u/emoji "✅")))))
+    (let [metadata (.getMetaData conn)
+          db-version (db-version metadata)]
+      (if (supported-app-db-version? db-type db-version)
+        (log/infof "Successfully verified %s %s application database connection. %s"
+                   (.getDatabaseProductName metadata) (.getDatabaseProductVersion metadata) (u/emoji "✅"))
+        ; TODO make this message better
+        (throw (ex-info "App DB version not supported." db-version))))))
 
 (mu/defn- check-encryption
   "Ensure encryption env variable is correctly set if needed, and encrypt the database if it needs to be
