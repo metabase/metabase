@@ -123,8 +123,36 @@
 
 (defmethod format-entity "table" [entity] (format-simple-entity entity))
 (defmethod format-entity "model" [entity] (format-simple-entity entity))
-(defmethod format-entity "question" [entity] (format-simple-entity entity))
-(defmethod format-entity "metric" [entity] (format-simple-entity entity))
+
+(defn- format-chart-config-ids
+  "Format chart config IDs for a viewing context item.
+  Returns a string describing available chart config IDs, or nil if no chart configs are present."
+  [{:keys [id chart_configs]}]
+  (when (seq chart_configs)
+    (if (= 1 (count chart_configs))
+      (str id)
+      (str/join ", " (map-indexed (fn [idx _] (str id "-" idx)) chart_configs)))))
+
+(defmethod format-entity "question"
+  [entity]
+  (te/lines
+   "The user is currently viewing a saved question."
+   (te/field "Question ID" (:id entity))
+   (te/field "Name" (fully-qualified-name entity))
+   (te/field "Description" (:description entity))
+   (when-let [config-ids (format-chart-config-ids entity)]
+     (te/field "Chart Config IDs" config-ids))))
+
+(defmethod format-entity "metric"
+  [entity]
+  (te/lines
+   "The user is currently viewing a metric."
+   (te/field "Metric ID" (:id entity))
+   (te/field "Name" (fully-qualified-name entity))
+   (te/field "Description" (:description entity))
+   (when-let [config-ids (format-chart-config-ids entity)]
+     (te/field "Chart Config IDs" config-ids))))
+
 (defmethod format-entity "dashboard" [entity] (format-simple-entity entity))
 
 ;;; Viewing Context Formatting
@@ -135,6 +163,8 @@
   (te/lines "The user is currently in the notebook editor viewing a query."
             (te/field "Query ID" (:id item))
             (te/field "Database ID" (get-in item [:query :database]))
+            (when-let [config-ids (format-chart-config-ids item)]
+              (te/field "Chart Config IDs (for analyze_chart tool)" config-ids))
             (te/field "Tables used" (some->> (:used_tables item)
                                              (map format-entity)
                                              te/lines))))
@@ -166,6 +196,8 @@
      (te/field "Current SQL query" (te/code sql-text "sql"))
      (te/field "Database SQL engine" (:sql_engine item))
      (te/field "Query error" (te/code (:error item)))
+     (when-let [config-ids (format-chart-config-ids item)]
+       (te/field "Chart Config IDs (for analyze_chart tool)" config-ids))
      (te/field "Tables used" (some->> (:used_tables item)
                                       (map format-entity)
                                       te/lines)))))
