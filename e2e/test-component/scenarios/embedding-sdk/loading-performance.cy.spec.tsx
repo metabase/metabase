@@ -1,14 +1,9 @@
-import {
-  InteractiveQuestion,
-  MetabaseProvider,
-} from "@metabase/embedding-sdk-react";
+import { InteractiveQuestion } from "@metabase/embedding-sdk-react";
 
 import { ORDERS_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
 import { getSdkRoot } from "e2e/support/helpers/e2e-embedding-sdk-helpers";
 import {
-  DEFAULT_SDK_AUTH_PROVIDER_CONFIG,
   getSdkBundleScriptElement,
-  mountSdk,
   mountSdkContent,
 } from "e2e/support/helpers/embedding-sdk-component-testing";
 import {
