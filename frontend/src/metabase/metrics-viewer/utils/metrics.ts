@@ -338,13 +338,13 @@ export function isDimensionCandidate(dimension: DimensionMetadata): boolean {
   );
 }
 
-const GEO_SUBTYPE_PRIORITY = {
-  country: 0,
-  state: 1,
-  city: 2,
-} as const;
+export const GEO_SUBTYPE_PRIORITY: readonly GeoSubtype[] = [
+  "country",
+  "state",
+  "city",
+];
 
-type GeoSubtype = keyof typeof GEO_SUBTYPE_PRIORITY;
+export type GeoSubtype = "country" | "state" | "city";
 
 const GEO_SUBTYPE_PREDICATES: Array<{
   subtype: GeoSubtype;
@@ -355,13 +355,13 @@ const GEO_SUBTYPE_PREDICATES: Array<{
   { subtype: "city", predicate: LibMetric.isCity },
 ];
 
-export function getGeoDimensionRank(dim: DimensionMetadata): number {
+export function getGeoSubtype(dim: DimensionMetadata): GeoSubtype | null {
   for (const { subtype, predicate } of GEO_SUBTYPE_PREDICATES) {
     if (predicate(dim)) {
-      return GEO_SUBTYPE_PRIORITY[subtype] ?? 999;
+      return subtype;
     }
   }
-  return 999;
+  return null;
 }
 
 // ── Dimension lookup ──
