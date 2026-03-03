@@ -13,9 +13,8 @@
   [feedback]
   (let [token    (premium-features/premium-embedding-token)
         base-url (store-api/store-api-url)]
-    (if (or (str/blank? token) (str/blank? base-url))
-      false
-      (do (http/post (str base-url "/api/v2/metabot/feedback/" token)
-                     {:content-type :json
-                      :body         (json/encode feedback)})
-          true))))
+    (when (or (str/blank? token) (str/blank? base-url))
+      (throw (ex-info "Missing token or URL for submitting feedback to Harbormaster" {:token token :base-url base-url})))
+    (http/post (str base-url "/api/v2/metabot/feedback/" token
+                    {:content-type :json
+                     :body         (json/encode feedback)}))))
