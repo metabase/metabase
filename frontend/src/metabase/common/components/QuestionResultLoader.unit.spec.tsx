@@ -3,7 +3,7 @@ import { renderWithProviders, screen, waitFor } from "__support__/ui";
 import Question from "metabase-lib/v1/Question";
 import { createMockCard, createMockDataset } from "metabase-types/api/mocks";
 
-import type { QuestionResultLoaderChildState } from "./QuestionResultLoader";
+import type { QuestionResultLoaderChildrenProps } from "./QuestionResultLoader";
 import { QuestionResultLoader } from "./QuestionResultLoader";
 
 describe("QuestionResultLoader", () => {
@@ -14,7 +14,7 @@ describe("QuestionResultLoader", () => {
     setupCardQueryEndpoints(question.card(), dataset);
 
     const childrenFn = jest.fn(
-      ({ loading, result }: QuestionResultLoaderChildState) => (
+      ({ loading, result }: QuestionResultLoaderChildrenProps) => (
         <div data-testid="content">
           {loading ? "loading" : result ? "loaded" : "no result"}
         </div>

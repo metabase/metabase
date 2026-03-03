@@ -8,7 +8,7 @@ import { runQuestionQuery } from "metabase/services";
 import type Question from "metabase-lib/v1/Question";
 import type { Dataset, RawSeries } from "metabase-types/api";
 
-export type QuestionResultLoaderChildState = {
+export type QuestionResultLoaderChildrenProps = {
   results: Dataset[] | null;
   result: Dataset | null;
   rawSeries: RawSeries | null;
@@ -23,7 +23,7 @@ type QuestionResultLoaderProps = {
   onLoad?: (results: Dataset[]) => void;
   keepPreviousWhileLoading?: boolean;
   collectionPreview?: boolean;
-  children: (state: QuestionResultLoaderChildState) => ReactNode;
+  children: (state: QuestionResultLoaderChildrenProps) => ReactNode;
 };
 
 /*
