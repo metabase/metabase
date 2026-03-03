@@ -11,7 +11,7 @@ import {
 import type { WithRouterProps } from "react-router";
 import { t } from "ttag";
 
-import { UpsellGem } from "metabase/admin/upsells/components/UpsellGem";
+import { UpsellGem } from "metabase/common/components/upsells/components/UpsellGem";
 import {
   skipToken,
   useGetCollectionQuery,

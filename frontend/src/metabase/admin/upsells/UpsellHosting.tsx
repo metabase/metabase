@@ -5,7 +5,7 @@ import { getPlan, isProPlan } from "metabase/common/utils/plan";
 import { useSelector } from "metabase/lib/redux";
 import { getIsHosted } from "metabase/setup/selectors";
 
-import { UpsellBanner } from "./components";
+import { UpsellBanner } from "metabase/common/components/upsells/components";
 
 export const UpsellHostingBanner = ({ location }: { location: string }) => {
   const isHosted = useSelector(getIsHosted);

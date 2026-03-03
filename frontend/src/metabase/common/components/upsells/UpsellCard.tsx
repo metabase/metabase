@@ -3,15 +3,15 @@ import { useMount } from "react-use";
 
 import { Box, Flex, Image, Stack, Text, Title } from "metabase/ui";
 
-import { useUpgradeAction } from "../../../admin/upsells/components/UpgradeModal";
-import { UpsellCta } from "../../../admin/upsells/components/UpsellCta";
-import { UpsellGem } from "../../../admin/upsells/components/UpsellGem";
-import { UpsellWrapper } from "../../../admin/upsells/components/UpsellWrapper";
+import { useUpgradeAction } from "metabase/common/components/upsells/components/UpgradeModal";
+import { UpsellCta } from "metabase/common/components/upsells/components/UpsellCta";
+import { UpsellGem } from "metabase/common/components/upsells/components/UpsellGem";
+import { UpsellWrapper } from "metabase/common/components/upsells/components/UpsellWrapper";
 import {
   trackUpsellClicked,
   trackUpsellViewed,
-} from "../../../admin/upsells/components/analytics";
-import { UPGRADE_URL } from "../../../admin/upsells/constants";
+} from "metabase/common/components/upsells/components/analytics";
+import { UPGRADE_URL } from "metabase/common/components/upsells/constants";
 
 import S from "./UpsellCard.module.css";
 

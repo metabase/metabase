@@ -5,7 +5,7 @@ import { push } from "react-router-redux";
 import { useLocation } from "react-use";
 
 import ActionCreator from "metabase/actions/containers/ActionCreator";
-import { UpgradeModal } from "metabase/admin/upsells/components/UpgradeModal";
+import { UpgradeModal } from "metabase/common/components/upsells/components/UpgradeModal";
 import CreateCollectionModal from "metabase/collections/containers/CreateCollectionModal";
 import { Modal } from "metabase/common/components/Modal";
 import { CreateDashboardModal } from "metabase/dashboard/containers/CreateDashboardModal";
