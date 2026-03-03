@@ -28,8 +28,8 @@
 
 (mr/def ::validation-result
   [:map
-   [:dialect :string]
    [:valid? :boolean]
+   [:dialect {:optional true} :string]
    [:error-message {:optional true} :string]
    [:transpiled-sql {:optional true} :string]])
 
@@ -40,13 +40,14 @@
    sql :- :string]
   (let [{:keys [error-message transpiled-sql status]}
         (sql-tools/transpile-sql sql dialect dialect)]
-    (merge {:dialect dialect}
+    (merge (when (some? dialect)
+             {:dialect dialect})
            (cond (= :success status)
-                 {:vaild? true
+                 {:valid? true
                   :transpiled-sql transpiled-sql}
 
                  (= :skipped status)
-                 {:vaild? true
+                 {:valid? true
                   :transpiled-sql transpiled-sql}
 
                  (= :error status)
