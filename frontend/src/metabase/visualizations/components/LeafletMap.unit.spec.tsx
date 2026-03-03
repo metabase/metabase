@@ -3,7 +3,11 @@ import L from "leaflet";
 import { createRef } from "react";
 
 import MetabaseSettings from "metabase/lib/settings";
-import { createMockColumn } from "metabase-types/api/mocks";
+import {
+  createMockCard,
+  createMockColumn,
+  createMockDatasetData,
+} from "metabase-types/api/mocks";
 
 import { LeafletMap, type LeafletMapProps } from "./LeafletMap";
 
@@ -13,13 +17,13 @@ describe("LeafletMap", () => {
   ): LeafletMapProps => ({
     series: [
       {
-        card: {},
-        data: {
+        card: createMockCard(),
+        data: createMockDatasetData({
           cols: [
             createMockColumn({ name: "lat" }),
             createMockColumn({ name: "lng" }),
           ],
-        },
+        }),
       },
     ],
     settings: {

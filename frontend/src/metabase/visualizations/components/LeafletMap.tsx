@@ -12,14 +12,7 @@ import type { OnChangeCardAndRun } from "metabase/visualizations/types";
 import * as Lib from "metabase-lib";
 import Question from "metabase-lib/v1/Question";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
-import type { DatasetColumn } from "metabase-types/api";
-
-type LeafletMapSeriesEntry = {
-  card: Record<string, unknown>;
-  data: {
-    cols: DatasetColumn[];
-  };
-};
+import type { Series } from "metabase-types/api";
 
 type MapSettings = {
   "map.latitude_column"?: string;
@@ -38,7 +31,7 @@ export interface LeafletMapProps {
   bounds: L.LatLngBounds;
   settings: MapSettings;
   points?: unknown[] | null;
-  series: LeafletMapSeriesEntry[];
+  series: Series;
   metadata?: Metadata;
   token?: string | null;
   zoomControl?: boolean;
