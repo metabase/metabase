@@ -320,11 +320,15 @@ export function getClickBehaviorSettings(
 ): VisualizationSettings {
   const newSettings: VisualizationSettings = {};
 
-  if (settings?.click_behavior) {
+  if (!settings) {
+    return newSettings;
+  }
+
+  if (settings.click_behavior) {
     newSettings.click_behavior = settings.click_behavior;
   }
 
-  const columnSettings = getColumnClickBehavior(settings?.column_settings);
+  const columnSettings = getColumnClickBehavior(settings.column_settings);
 
   if (columnSettings) {
     newSettings.column_settings = columnSettings;
@@ -334,7 +338,7 @@ export function getClickBehaviorSettings(
 }
 
 function getColumnClickBehavior(
-  columnSettings: Record<string, ColumnSettings> | null | undefined,
+  columnSettings: Record<string, ColumnSettings> | undefined,
 ): Record<string, ColumnSettings> | null {
   if (columnSettings == null) {
     return null;
