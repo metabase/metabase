@@ -1,5 +1,6 @@
 // NOTE: need to load visualizations first for getSettings to work
 import "metabase/visualizations";
+
 import {
   getClickBehaviorSettings,
   getComputedSettings,
@@ -96,8 +97,7 @@ describe("settings framework", () => {
         mockObject,
         () => {},
       );
-      widgets.map(deleteFunctions);
-      expect(widgets).toEqual([
+      expect(widgets).toMatchObject([
         {
           id: "foo",
           title: "Foo",
@@ -162,7 +162,7 @@ describe("settings framework", () => {
         mockObject,
         onChangeSettings,
       );
-      widgets[0].onChange("bar");
+      widgets[0].onChange?.("bar");
       expect(onChangeSettings.mock.calls).toEqual([[{ foo: "bar" }]]);
     });
   });
@@ -173,13 +173,13 @@ describe("settings framework", () => {
         getClickBehaviorSettings({
           column_settings: {
             col1: {
-              click_behavior: { type: "stub" },
+              click_behavior: { type: "action" },
               not_click_behavior: { type: "another stub" },
             },
           },
         }),
       ).toEqual({
-        column_settings: { col1: { click_behavior: { type: "stub" } } },
+        column_settings: { col1: { click_behavior: { type: "action" } } },
       });
     });
 
@@ -208,11 +208,3 @@ describe("settings framework", () => {
     });
   });
 });
-
-function deleteFunctions(object) {
-  for (const property in object) {
-    if (typeof object[property] === "function") {
-      delete object[property];
-    }
-  }
-}

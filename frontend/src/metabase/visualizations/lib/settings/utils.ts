@@ -4,16 +4,23 @@ import {
   columnsAreValid,
   getDefaultDimensionAndMetric,
 } from "metabase/visualizations/lib/utils";
+import type { SeriesSettingDefinition } from "metabase/visualizations/types";
 import { isDimension, isMetric } from "metabase-lib/v1/types/utils/isa";
+import type {
+  DatasetColumn,
+  Series,
+  TableColumnOrderSetting,
+  VisualizationSettings,
+} from "metabase-types/api";
 
-export function getOptionFromColumn(col) {
+export function getOptionFromColumn(col: DatasetColumn) {
   return {
     name: col.display_name,
     value: col.name,
   };
 }
 
-export function metricSetting(id, def = {}) {
+export function metricSetting(id: string, def: SeriesSettingDefinition = {}) {
   return fieldSetting(id, {
     fieldFilter: isMetric,
     getDefault: (series) => getDefaultDimensionAndMetric(series).metric,
@@ -21,7 +28,10 @@ export function metricSetting(id, def = {}) {
   });
 }
 
-export function dimensionSetting(id, def = {}) {
+export function dimensionSetting(
+  id: string,
+  def: SeriesSettingDefinition = {},
+) {
   return fieldSetting(id, {
     fieldFilter: isDimension,
     getDefault: (series) => getDefaultDimensionAndMetric(series).dimension,
@@ -29,44 +39,42 @@ export function dimensionSetting(id, def = {}) {
   });
 }
 
-const DEFAULT_FIELD_FILTER = (column) => true;
+const DEFAULT_FIELD_FILTER = (_column: DatasetColumn) => true;
+
+type FieldFilterFn = (column: DatasetColumn) => boolean;
 
 export function getDefaultColumn(
-  series,
-  vizSettings,
-  fieldFilter = DEFAULT_FIELD_FILTER,
-) {
+  series: Series,
+  _vizSettings: VisualizationSettings,
+  fieldFilter: FieldFilterFn = DEFAULT_FIELD_FILTER,
+): string | undefined {
   const [{ data }] = series;
   return data.cols.find(fieldFilter)?.name;
 }
 
-/**
- * @typedef {import("metabase/visualizations/types").VisualizationSettingsDefinitions} VisualizationSettingsDefinitions
- * @typedef {(column: DatasetColumn) => boolean} FieldFilterFn
- */
-
-/**
- * @param {string} id
- * @param {VisualizationSettingsDefinitions[string] & { fieldFilter?: FieldFilterFn }} settings
- * @returns {VisualizationSettingsDefinitions}
- */
 export function fieldSetting(
-  id,
+  id: string,
   {
     fieldFilter = DEFAULT_FIELD_FILTER,
     showColumnSetting,
     autoOpenWhenUnset,
     ...def
+  }: SeriesSettingDefinition & {
+    fieldFilter?: FieldFilterFn;
+    showColumnSetting?: boolean;
+    autoOpenWhenUnset?: boolean;
   } = {},
-) {
+): {
+  [id]: SeriesSettingDefinition;
+} {
   return {
     [id]: {
       widget: "field",
-      isValid: ([{ card, data }], vizSettings) =>
+      isValid: ([{ card, data }]) =>
         columnsAreValid(card.visualization_settings[id], data, fieldFilter),
       getDefault: (series, vizSettings) =>
         getDefaultColumn(series, vizSettings, fieldFilter),
-      getProps: ([{ card, data }], vizSettings) => ({
+      getProps: ([{ data }]) => ({
         options: data.cols.filter(fieldFilter).map(getOptionFromColumn),
         columns: data.cols,
         showColumnSetting,
@@ -77,6 +85,8 @@ export function fieldSetting(
   };
 }
 
-export function getDeduplicatedTableColumnSettings(tableColumnsSettings) {
+export function getDeduplicatedTableColumnSettings(
+  tableColumnsSettings: TableColumnOrderSetting[],
+): TableColumnOrderSetting[] {
   return _.uniq(tableColumnsSettings, false, (item) => item.name);
 }

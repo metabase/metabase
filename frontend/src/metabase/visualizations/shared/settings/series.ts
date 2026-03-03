@@ -10,7 +10,7 @@ export const SERIES_COLORS_SETTING_KEY = "series_settings.colors";
 export const getSeriesColors = (
   seriesVizSettingsKeys: string[],
   settings: VisualizationSettings,
-  seriesVizSettingsDefaultKeys: string[],
+  seriesVizSettingsDefaultKeys: (string | undefined)[],
 ) => {
   const assignments: Record<string, string> = {};
 
