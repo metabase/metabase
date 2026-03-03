@@ -364,7 +364,7 @@
   (testing "compile-source produces SQL without a LIMIT clause"
     (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
       (mt/with-premium-features #{:transforms}
-        (let [transform {:source {:type  "query"
+        (let [transform {:source {:type  :query
                                   :query (lib/query (mt/metadata-provider) (mt/mbql-query venues))}}
               {:keys [query]} (transforms.util/compile-source transform (transforms.util/get-source-range-params transform))]
           (is (string? query))

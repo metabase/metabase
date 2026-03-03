@@ -100,10 +100,7 @@
                 (fn [_cancel-chan]
                   (driver/run-transform! driver transform-details opts)
                   (when source-range-params
-                    (t2/update! :model/Transform
-                                (:id transform)
-                                {:last_checkpoint_type  (:type (:hi source-range-params))
-                                 :last_checkpoint_value (transforms.util/serialize-checkpoint-value (:type (:hi source-range-params)) (:value (:hi source-range-params)))})))))
+                    (transforms.util/save-watermark! (:id transform) source-range-params)))))
              (transforms.util/handle-transform-complete!
               :run-id run-id
               :transform transform

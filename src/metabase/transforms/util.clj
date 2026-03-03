@@ -40,7 +40,7 @@
    [toucan2.core :as t2])
   (:import
    (java.sql SQLException)
-   (java.time Instant LocalDate LocalDateTime LocalTime OffsetDateTime OffsetTime ZoneOffset ZonedDateTime)
+   (java.time Instant LocalDate LocalDateTime LocalTime OffsetDateTime OffsetTime ZonedDateTime)
    (java.util Date)))
 
 (set! *warn-on-reflection* true)
@@ -429,38 +429,43 @@
       (catch Exception e
         (qp.catch-exceptions/exception-response e)))))
 
-(defn serialize-checkpoint-value [type value]
+(defn- serialize-checkpoint-value [type value]
   (case type
     "DateTime" value
     nil nil
     (str value)))
 
+(defn save-watermark!
+  "Commits the incremental transforms :hi watermark value to the appdb."
+  [transform-id source-range-params]
+  (t2/update! :model/Transform
+              transform-id
+              {:last_checkpoint_type  (:type (:hi source-range-params))
+               :last_checkpoint_value (serialize-checkpoint-value (:type (:hi source-range-params)) (:value (:hi source-range-params)))}))
+
 (defn- deserialize-checkpoint-value [last_checkpoint_type last_checkpoint_value]
   (case last_checkpoint_type
-    "DateTime" last_checkpoint_value #_(-> (Instant/parse last_checkpoint_value) (.atOffset (ZoneOffset/ofHours 0)))
+    "DateTime" last_checkpoint_value
     "Integer"  (bigint last_checkpoint_value)
     "Float"    (bigdec last_checkpoint_value)
     "Decimal"  (bigdec last_checkpoint_value)))
 
 (defn- interpret-database-checkpoint-value [base-type qp-value]
   (case base-type
-    :type/Integer {:type "Integer",  :value  (bigint qp-value)}
-    :type/Float {:type "Float",    :value  (bigdec qp-value)}
-    :type/Decimal {:type "Decimal",  :value  (bigdec qp-value)}
-    :type/DateTime {:type "DateTime", :value qp-value #_(-> (Instant/parse qp-value) (.atOffset (ZoneOffset/ofHours 0)))})
-  #_(cond
-      (string? qp-value) {:type "text", :value qp-value}
-      (integer? qp-value)            {:type "integer", :value (bigint qp-value)}
-      (float?   qp-value)            {:type "decimal", :value (bigdec qp-value)}
-      (decimal? qp-value)            {:type "decimal", :value qp-value}
-      (instance? Instant   qp-value) {:type "instant", :value qp-value}
-      (instance? Date      qp-value) {:type "instant", :value (.toInstant ^Date qp-value)}
-      (instance? LocalDate qp-value) {:type "date",    :value qp-value}
-    ;; todo offset date time etc
-    ;; todo clean this up?
-      :else (throw (ex-info "Checkpoint value was not of a supported type" {}))))
+    :type/Integer  {:type "Integer",  :value  (bigint qp-value)}
+    :type/Float    {:type "Float",    :value  (bigdec qp-value)}
+    :type/Decimal  {:type "Decimal",  :value  (bigdec qp-value)}
+    :type/DateTime {:type "DateTime", :value qp-value}))
 
-(defn get-source-range-params [{:keys [source] :as transform}]
+(defn get-source-range-params
+  "Returns information on the incremental range filters that ought to be applied to a source query.
+
+  Returns a map:
+   :column (the lib column value of the incremental filter column)
+   Range predicate terms (maps :type, :value), can be nil (in which case the filter clause should be omitted):
+   :lo     values in the source table must be > this :value.
+   :hi     values in the source table must be <= this :value."
+  [{:keys [source] :as transform}]
   (let [{source-query :query, :keys [source-incremental-strategy]} source
         {:keys [checkpoint-filter-field-id]} source-incremental-strategy]
     (when checkpoint-filter-field-id
@@ -468,13 +473,13 @@
             db-id             (transforms.i/target-db-id transform)
             metadata-provider (lib-be/application-database-metadata-provider db-id)
             column            (lib.metadata/field metadata-provider checkpoint-filter-field-id)
-            table-id          (:table-id column) ; todo should this be some kind of lib call?
-            limit             (-> transform :source :limit) ;; applies only to python (this is a mess)
+            table-id          (:table-id column)
+            limit             (-> transform :source :limit)
             table-metadata    (lib.metadata/table metadata-provider table-id)
             base-query        (or source-query (lib/query metadata-provider table-metadata))
             lo                (when last_checkpoint_type (deserialize-checkpoint-value last_checkpoint_type last_checkpoint_value))
             filtered-query    (if lo (lib/filter base-query (lib/> column lo)) base-query)
-            ;; if limited need to order by the column otherwise you will get the MAX for the first N rows instead of top-k
+            ;; if limited need to order by the column otherwise you will get the MAX for the first N rows in arbitrary order instead of top-k
             limited-query     (if limit
                                 (-> (lib/order-by filtered-query column)
                                     (lib/limit limit))

@@ -364,10 +364,7 @@
                                     (log! message-log (i18n/tru "Python execution finished successfully in {0}" (u.format/format-milliseconds (u/since-ms start-ms))))
                                     (save-log-to-transform-run-message! run-id message-log)
                                     (when source-range-params
-                                      (t2/update! :model/Transform
-                                                  (:id transform)
-                                                  {:last_checkpoint_type  (:type (:hi source-range-params))
-                                                   :last_checkpoint_value (transforms.util/serialize-checkpoint-value (:type (:hi source-range-params)) (:value (:hi source-range-params)))})))
+                                      (transforms.util/save-watermark! (:id transform) source-range-params)))
               ex-message-fn       #(exceptional-run-message message-log %)
               result              (transforms.instrumentation/with-stage-timing [run-id [:computation :python-execution]]
                                     (transforms.util/run-cancelable-transform! run-id driver transform-details run-fn :ex-message-fn ex-message-fn))]
