@@ -300,7 +300,7 @@
    - `:cancel-chan` - optional, pre-created promise-chan for cancellation (avoids bridging latency)
 
    Returns:
-   {:status :succeeded | :failed | :cancelled
+   {:status :succeeded | :failed | :cancelled | :timeout
     :result <http response>
     :logs <string>
     :error <exception if failed>}"
