@@ -2,6 +2,7 @@ import { t } from "ttag";
 
 import { GRAPH_GOAL_SETTINGS } from "metabase/visualizations/lib/settings/goal";
 import { getDefaultDimensionLabel } from "metabase/visualizations/lib/settings/graph";
+import type { Series, VisualizationSettings } from "metabase-types/api";
 
 export const ROW_CHART_SETTINGS = {
   "stackable.stack_type": {
@@ -164,7 +165,7 @@ export const ROW_CHART_SETTINGS = {
     },
     widget: "number",
     default: 0,
-    getHidden: (_series, vizSettings) =>
+    getHidden: (_series: Series, vizSettings: VisualizationSettings) =>
       vizSettings["graph.y_axis.auto_range"] !== false,
   },
   "graph.y_axis.max": {
@@ -180,7 +181,7 @@ export const ROW_CHART_SETTINGS = {
     },
     widget: "number",
     default: 100,
-    getHidden: (_series, vizSettings) =>
+    getHidden: (_series: Series, vizSettings: VisualizationSettings) =>
       vizSettings["graph.y_axis.auto_range"] !== false,
   },
   "graph.x_axis.labels_enabled": {
@@ -210,10 +211,10 @@ export const ROW_CHART_SETTINGS = {
       return t`Y-axis`;
     },
     widget: "input",
-    getHidden: (series, vizSettings) =>
+    getHidden: (_series: Series, vizSettings: VisualizationSettings) =>
       vizSettings["graph.x_axis.labels_enabled"] === false,
     getDefault: getDefaultDimensionLabel,
-    getProps: (series) => ({
+    getProps: (series: Series) => ({
       placeholder: getDefaultDimensionLabel(series),
     }),
   },
@@ -244,12 +245,13 @@ export const ROW_CHART_SETTINGS = {
       return t`X-axis`;
     },
     widget: "input",
-    getHidden: (_series, vizSettings) =>
+    getHidden: (_series: Series, vizSettings: VisualizationSettings) =>
       vizSettings["graph.y_axis.labels_enabled"] === false,
-    getDefault: (series, vizSettings) => {
+    getDefault: (series: Series, vizSettings: VisualizationSettings) => {
       // If there are multiple series, we check if the metric names match.
       // If they do, we use that as the default y axis label.
-      const [metric] = vizSettings["graph.metrics"];
+      const [metric] =
+        (vizSettings["graph.metrics"] as string[] | undefined) ?? [];
       const metricNames = Array.from(
         new Set(
           series.map(({ data: { cols } }) => {
@@ -271,7 +273,7 @@ export const ROW_CHART_SETTINGS = {
     },
     widget: "toggle",
     inline: true,
-    getHidden: (_series, vizSettings) =>
+    getHidden: (_series: Series, vizSettings: VisualizationSettings) =>
       vizSettings["stackable.stack_type"] === "normalized",
     default: false,
   },
@@ -283,7 +285,7 @@ export const ROW_CHART_SETTINGS = {
       return t`Value labels formatting`;
     },
     widget: "segmentedControl",
-    getHidden: (_series, vizSettings) =>
+    getHidden: (_series: Series, vizSettings: VisualizationSettings) =>
       vizSettings["graph.show_values"] !== true ||
       vizSettings["stackable.stack_type"] === "normalized",
     props: {
