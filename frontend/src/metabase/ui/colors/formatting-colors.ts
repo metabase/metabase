@@ -1,4 +1,4 @@
-import { color } from "metabase/lib/colors";
+import { color } from ".";
 
 export function assignUserColors(
   userIds: string[],

@@ -1,6 +1,5 @@
 import { trackSimpleEvent } from "metabase/lib/analytics";
-
-import type { ChecklistItemCTA, ChecklistItemValue } from "./types";
+import type { ChecklistItemCTA, ChecklistItemValue } from "metabase-types/analytics";
 
 export const trackChecklistItemExpanded = (value: ChecklistItemValue) => {
   trackSimpleEvent({

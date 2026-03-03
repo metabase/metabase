@@ -1,24 +1,5 @@
 import { FIELD_SEMANTIC_TYPES_MAP } from "metabase/lib/core";
-import type { IconName } from "metabase/ui";
-import type ForeignKey from "metabase-lib/v1/metadata/ForeignKey";
-
-export function foreignKeyCountsByOriginTable(fks: ForeignKey[]) {
-  return fks
-    .map(function (fk) {
-      return fk.origin?.table?.id ?? undefined;
-    })
-    .reduce<Record<number | string, number>>(function (prev, curr) {
-      if (curr !== undefined) {
-        if (curr in prev) {
-          prev[curr]++;
-        } else {
-          prev[curr] = 1;
-        }
-      }
-
-      return prev;
-    }, {});
-}
+import type { IconName } from "metabase-types/ui";
 
 export function getSemanticTypeIcon(
   semanticType: string | null | undefined,

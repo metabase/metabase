@@ -1,6 +1,5 @@
-import type { Deferred } from "metabase/lib/promise";
 import { CardApi } from "metabase/services";
-import type { Card, Dataset, ParameterQueryObject } from "metabase-types/api";
+import type { Card, Dataset, Deferred, ParameterQueryObject } from "metabase-types/api";
 
 interface Options {
   questionId: number;

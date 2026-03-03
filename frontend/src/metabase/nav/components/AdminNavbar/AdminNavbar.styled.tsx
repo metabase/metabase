@@ -2,11 +2,11 @@
 import styled from "@emotion/styled";
 
 import { Link } from "metabase/common/components/Link";
-import { alpha, darken } from "metabase/lib/colors";
 import {
   breakpointMaxLarge,
   breakpointMaxMedium,
 } from "metabase/styled-components/theme";
+import { alpha, darken } from "metabase/ui/colors";
 import { color } from "metabase/ui/utils/colors";
 
 import { ADMIN_NAVBAR_HEIGHT } from "../../constants";

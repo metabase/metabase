@@ -29,7 +29,7 @@ import type {
   CollectionId,
   CollectionNamespace,
   CollectionPermissions,
-  Group as GroupType,
+  DataPermissionValue, Group as GroupType 
 } from "metabase-types/api";
 import type {
   CollectionTreeItem,
@@ -39,7 +39,7 @@ import type {
 
 import { COLLECTION_OPTIONS } from "../constants/collections-permissions";
 import { Messages } from "../constants/messages";
-import type { DataPermissionValue, SpecialGroupType } from "../types";
+import type { SpecialGroupType } from "../types";
 
 import { getPermissionWarningModal } from "./confirmations";
 

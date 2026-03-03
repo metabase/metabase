@@ -4,8 +4,8 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import { ColorRangeSelector } from "metabase/common/components/ColorRangeSelector";
-import { getAccentColors } from "metabase/lib/colors/groups";
 import MetabaseSettings from "metabase/lib/settings";
+import { getAccentColors } from "metabase/ui/colors/groups";
 import { ChartSettingsError } from "metabase/visualizations/lib/errors";
 import { columnSettings } from "metabase/visualizations/lib/settings/column";
 import {

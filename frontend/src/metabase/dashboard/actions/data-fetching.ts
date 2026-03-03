@@ -26,7 +26,6 @@ import {
   isVirtualDashCard,
 } from "metabase/dashboard/utils";
 import { entityCompatibleQuery } from "metabase/lib/entities";
-import type { Deferred } from "metabase/lib/promise";
 import { defer } from "metabase/lib/promise";
 import { createAsyncThunk, createThunkAction } from "metabase/lib/redux";
 import { equals } from "metabase/lib/utils";
@@ -55,6 +54,7 @@ import type {
   DashboardCard,
   DashboardId,
   Dataset,
+  Deferred,
   JsonQuery,
   ParameterValuesMap,
   QuestionDashboardCard,

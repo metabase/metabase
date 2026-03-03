@@ -1,6 +1,6 @@
-import { isPivotGroupColumn } from "metabase/lib/data_grid";
 import { isNotNull } from "metabase/lib/types";
 import { isCartesianChart } from "metabase/visualizations";
+import { isPivotGroupColumn } from "metabase/visualizations/lib/data_grid";
 import { getComputedSettingsForSeries } from "metabase/visualizations/lib/settings/visualization";
 import {
   getDefaultDimensionFilter,

@@ -1,6 +1,6 @@
 import { SAMPLE_DB_ID, USER_GROUPS } from "e2e/support/cypress_data";
 import { DOCUMENT_WITH_TWO_CARDS } from "e2e/support/document-initial-data";
-import { DataPermissionValue } from "metabase/admin/permissions/types";
+import { DataPermissionValue } from "metabase-types/api";
 
 const { H } = cy;
 

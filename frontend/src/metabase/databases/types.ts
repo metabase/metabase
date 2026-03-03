@@ -24,8 +24,6 @@ export interface EngineFieldProps {
   placeholder?: string;
 }
 
-export type FormLocation = "admin" | "setup" | "embedding_setup" | "full-page";
-
 export type FieldState = "default" | "hidden" | "disabled";
 
 export interface DatabaseFormConfig {

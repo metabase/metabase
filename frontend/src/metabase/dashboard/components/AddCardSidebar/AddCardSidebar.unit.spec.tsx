@@ -9,8 +9,8 @@ import { renderWithProviders, screen, waitFor } from "__support__/ui";
 import { getNextId } from "__support__/utils";
 import { ROOT_COLLECTION as ROOT } from "metabase/entities/collections";
 import { checkNotNull } from "metabase/lib/types";
-// TODO: Move this to a more suitable location for sharing.
 import { MockDashboardContext } from "metabase/public/containers/PublicOrEmbeddedDashboard/mock-context";
+// TODO: Move this to a more suitable location for sharing.
 import type { Collection, CollectionItem, Dashboard } from "metabase-types/api";
 import {
   createMockCollection,

@@ -1,8 +1,7 @@
 import { Messages } from "metabase/admin/permissions/constants/messages";
 import { isRestrictivePermission } from "metabase/admin/permissions/utils/graph";
 import { PLUGIN_ADVANCED_PERMISSIONS } from "metabase/plugins";
-
-import { DataPermissionValue } from "../../types";
+import { DataPermissionValue } from "metabase-types/api";
 
 export const getNativePermissionDisabledTooltip = (
   isAdmin: boolean,

@@ -1,8 +1,8 @@
 import { c, t } from "ttag";
 
 import { Link } from "metabase/common/components/Link";
-import { color } from "metabase/lib/colors";
 import { Box, Flex, Icon, Text } from "metabase/ui";
+import { color } from "metabase/ui/colors";
 import type { CloudMigration } from "metabase-types/api/cloud-migration";
 
 import { LargeIconContainer, MigrationCard } from "./CloudPanel.styled";

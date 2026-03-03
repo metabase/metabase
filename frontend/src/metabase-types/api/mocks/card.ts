@@ -1,4 +1,3 @@
-import type { PieRow } from "metabase/visualizations/echarts/pie/model/types";
 import type {
   Card,
   CardQueryMetadata,
@@ -6,6 +5,7 @@ import type {
   ColumnSingleFormattingSetting,
   ModerationReview,
   NativeDatasetQuery,
+  PieRow,
   PublicCard,
   ScalarSegment,
   SeriesOrderSetting,

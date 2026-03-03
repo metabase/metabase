@@ -5,8 +5,8 @@ import { t } from "ttag";
 
 import { Ellipsified } from "metabase/common/components/Ellipsified";
 import { SelectList } from "metabase/common/components/SelectList";
-import type { ColorName } from "metabase/lib/colors/types";
 import { Button, type ButtonProps, Popover } from "metabase/ui";
+import type { ColorName } from "metabase/ui/colors/types";
 import * as Lib from "metabase-lib";
 
 import S from "./BaseBucketPickerPopover.module.css";

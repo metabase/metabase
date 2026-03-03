@@ -1,10 +1,10 @@
-import {
-  DataPermission,
-  DataPermissionValue,
-} from "metabase/admin/permissions/types";
 import Database from "metabase-lib/v1/metadata/Database";
 import Schema from "metabase-lib/v1/metadata/Schema";
 import type { SchemasPermissions } from "metabase-types/api";
+import {
+  DataPermission,
+  DataPermissionValue,
+} from "metabase-types/api";
 import { createMockDatabase, createMockSchema } from "metabase-types/api/mocks";
 
 import { upgradeViewPermissionsIfNeeded } from "./graph";

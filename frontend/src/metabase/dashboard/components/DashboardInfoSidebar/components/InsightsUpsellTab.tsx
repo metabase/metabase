@@ -1,4 +1,4 @@
-import { UpsellUsageAnalytics } from "metabase/admin/upsells";
+import { UpsellUsageAnalytics } from "metabase/common/components/upsells/UpsellUsageAnalytics";
 import { Flex } from "metabase/ui";
 import type { CardType } from "metabase-types/api";
 

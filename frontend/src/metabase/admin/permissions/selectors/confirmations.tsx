@@ -19,9 +19,9 @@ import type {
   Group,
   GroupsPermissions,
 } from "metabase-types/api";
+import { DataPermission, DataPermissionValue } from "metabase-types/api";
 
 import type { DatabaseEntityId, EntityId, SchemaEntityId } from "../types";
-import { DataPermission, DataPermissionValue } from "../types";
 
 export const getDefaultGroupHasHigherAccessText = (defaultGroup: Group) =>
   t`The "${defaultGroup.name}" group has a higher level of access than this, which will override this setting. You should limit or revoke the "${defaultGroup.name}" group's access to this item.`;

@@ -3,8 +3,8 @@ import type { HTMLAttributes, MouseEvent } from "react";
 import { useCallback } from "react";
 
 import CS from "metabase/css/core/index.css";
-import type { ColorName } from "metabase/lib/colors/types";
 import { Box, Center } from "metabase/ui";
+import type { ColorName } from "metabase/ui/colors/types";
 
 import ColorPillS from "./ColorPill.module.css";
 import type { PillSize } from "./types";

@@ -1,25 +1,10 @@
 import {
-  foreignKeyCountsByOriginTable,
   getSemanticTypeIcon,
   getSemanticTypeName,
 } from "metabase/lib/schema_metadata";
-import type ForeignKey from "metabase-lib/v1/metadata/ForeignKey";
 import { TYPE } from "metabase-lib/v1/types/constants";
 
 describe("schema_metadata", () => {
-  describe("foreignKeyCountsByOriginTable", () => {
-    it("should count occurrences by origin.table.id", () => {
-      expect(
-        foreignKeyCountsByOriginTable([
-          { origin: { table: { id: 123 } } },
-          { origin: { table: { id: 123 } } },
-          { origin: { table: { id: 123 } } },
-          { origin: { table: { id: 456 } } },
-        ] as ForeignKey[]),
-      ).toEqual({ 123: 3, 456: 1 });
-    });
-  });
-
   describe("getSemanticTypeIcon", () => {
     it("should return an icon associated with the given semantic type", () => {
       expect(getSemanticTypeIcon(TYPE.PK)).toEqual("label");

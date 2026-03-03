@@ -18,7 +18,6 @@ import {
 import { Fields } from "metabase/entities/fields";
 import { Questions } from "metabase/entities/questions";
 import { Segments } from "metabase/entities/segments";
-import { color } from "metabase/lib/colors";
 import {
   createEntity,
   entityCompatibleQuery,
@@ -38,6 +37,7 @@ import {
   getMetadata,
   getMetadataUnfiltered,
 } from "metabase/selectors/metadata";
+import { color } from "metabase/ui/colors";
 import {
   convertSavedQuestionToVirtualTable,
   getCollectionVirtualSchemaId,

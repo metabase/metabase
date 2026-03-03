@@ -1,5 +1,10 @@
 import type { ReactNode } from "react";
 
+import type {
+  DataPermission,
+  DataPermissionValue,
+} from "metabase-types/api";
+
 export type GroupRouteParams = {
   groupId?: number;
   databaseId?: number;
@@ -41,15 +46,6 @@ export type EntityId = DatabaseEntityId &
 
 export type EntityWithGroupId = EntityId & { groupId: number };
 
-export enum DataPermission {
-  VIEW_DATA = "view-data",
-  CREATE_QUERIES = "create-queries",
-  DOWNLOAD = "download",
-  DATA_MODEL = "data-model",
-  DETAILS = "details",
-  TRANSFORMS = "transforms",
-}
-
 export enum DataPermissionType {
   ACCESS = "access",
   NATIVE = "native",
@@ -57,26 +53,6 @@ export enum DataPermissionType {
   DOWNLOAD = "download",
   DATA_MODEL = "data-model",
   TRANSFORMS = "transforms",
-}
-
-export enum DataPermissionValue {
-  BLOCKED = "blocked",
-  CONTROLLED = "controlled",
-  IMPERSONATED = "impersonated",
-  LEGACY_NO_SELF_SERVICE = "legacy-no-self-service",
-  NO = "no",
-  QUERY_BUILDER = "query-builder",
-  QUERY_BUILDER_AND_NATIVE = "query-builder-and-native",
-  SANDBOXED = "sandboxed",
-  UNRESTRICTED = "unrestricted",
-  // download specific values
-  NONE = "none",
-  LIMITED = "limited",
-  FULL = "full",
-  // details specific values
-  YES = "yes",
-  // data model specific values
-  ALL = "all",
 }
 
 export type PermissionSubject = "schemas" | "tables" | "fields";

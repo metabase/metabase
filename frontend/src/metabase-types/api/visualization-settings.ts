@@ -1,3 +1,13 @@
+// this type is not full, we need to extend it later
+export type Widget = {
+  id: string;
+  section: string;
+  hidden?: boolean;
+  props: Record<string, unknown>;
+  title?: string;
+  widget?: string | React.ComponentType<any>;
+};
+
 // SmartScalar (Trend Chart)
 export type SmartScalarComparisonType =
   | "anotherColumn"

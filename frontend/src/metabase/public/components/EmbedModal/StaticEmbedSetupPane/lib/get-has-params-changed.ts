@@ -1,6 +1,6 @@
 import _ from "underscore";
 
-import type { EmbeddingParameters } from "metabase/public/lib/types";
+import type { EmbeddingParameters } from "metabase-types/api";
 
 function getNonDisabledEmbeddingParams(
   embeddingParams: EmbeddingParameters,

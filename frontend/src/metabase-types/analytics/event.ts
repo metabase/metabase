@@ -1,17 +1,26 @@
-import type { FormLocation } from "metabase/databases/types";
-import type {
-  ChecklistItemCTA,
-  ChecklistItemValue,
-} from "metabase/home/components/Onboarding/types";
 import type { KeyboardShortcutId } from "metabase/palette/shortcuts";
-import type { ClickActionSection } from "metabase/visualizations/types";
 import type {
+  ClickActionSection,
   ConcreteTableId,
   Engine,
   RelatedDashboardXRays,
   TransformId,
   VisualizationDisplay,
 } from "metabase-types/api";
+
+export type FormLocation = "admin" | "setup" | "embedding_setup" | "full-page";
+
+export type ChecklistItemValue =
+  | "database"
+  | "invite"
+  | "x-ray"
+  | "notebook"
+  | "sql"
+  | "dashboard"
+  | "subscription"
+  | "alert";
+
+export type ChecklistItemCTA = "primary" | "secondary";
 
 type SimpleEventSchema = {
   event: string;

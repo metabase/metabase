@@ -3,6 +3,7 @@ import type React from "react";
 
 import type { OptionsType } from "metabase/lib/formatting/types";
 import type { IconName, IconProps } from "metabase/ui";
+import type { ColorGetter } from "metabase/ui/colors/types";
 import type { Mode } from "metabase/visualizations/click-actions/Mode";
 import type {
   TextHeightMeasurer,
@@ -44,8 +45,6 @@ export interface Padding {
 
 export type Formatter = (value: unknown, options?: OptionsType) => string;
 export type TableCellFormatter = (value: RowValue) => React.ReactNode;
-
-export type ColorGetter = (colorName: string) => string;
 
 export interface RenderingContext {
   getColor: ColorGetter;

@@ -7,7 +7,7 @@ import {
 import { useSetting } from "metabase/common/hooks";
 import { GUEST_EMBED_EMBEDDING_TYPE } from "metabase/embedding/constants";
 import { getStaticEmbedSetupPublishHandlers } from "metabase/public/components/EmbedModal/StaticEmbedSetupPane/lib/get-static-embed-setup-publish-handlers";
-import type { EmbeddingParameters } from "metabase/public/lib/types";
+import type { EmbeddingParameters } from "metabase-types/api";
 
 import { useSdkIframeEmbedSetupContext } from "../context";
 import { getResourceTypeFromExperience } from "../utils/get-resource-type-from-experience";

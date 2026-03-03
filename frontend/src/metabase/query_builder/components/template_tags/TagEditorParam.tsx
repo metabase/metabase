@@ -6,7 +6,6 @@ import { type DispatchFn, connect } from "metabase/lib/redux";
 import { TemporalUnitSettings } from "metabase/parameters/components/ParameterSettings/TemporalUnitSettings";
 import { ValuesSourceSettings } from "metabase/parameters/components/ValuesSourceSettings";
 import { isSingleOrMultiSelectable } from "metabase/parameters/utils/parameter-type";
-import type { EmbeddingParameterVisibility } from "metabase/public/lib/types";
 import { setTemplateTagConfig } from "metabase/query_builder/actions";
 import { getOriginalQuestion } from "metabase/query_builder/selectors";
 import { fetchField } from "metabase/redux/metadata";
@@ -24,6 +23,7 @@ import {
 } from "metabase-lib/v1/parameters/utils/template-tag-options";
 import type {
   DimensionReference,
+  EmbeddingParameterVisibility,
   FieldId,
   Parameter,
   ParameterValuesConfig,

@@ -1,9 +1,9 @@
 import { assocIn } from "icepick";
 
 import { PLUGIN_ADVANCED_PERMISSIONS } from "metabase/plugins";
+import { DataPermission, DataPermissionValue } from "metabase-types/api";
 import type { State } from "metabase-types/store";
 
-import { DataPermission, DataPermissionValue } from "../../types";
 
 import { state as mockState } from "./data-permissions.unit.spec.fixtures";
 

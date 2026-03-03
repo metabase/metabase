@@ -2,8 +2,8 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import { canonicalCollectionId } from "metabase/collections/utils";
-import type { IconName } from "metabase/ui";
 import type { Collection, Timeline, TimelineIcon } from "metabase-types/api";
+import type { IconName } from "metabase-types/ui";
 
 export const getTimelineName = (timeline: Timeline) => {
   return timeline.default && timeline.collection

@@ -1,11 +1,12 @@
 import type { ReactNode } from "react";
 
 import type { SdkIframeEmbedSetupSettings } from "metabase/embedding/embedding-iframe-sdk-setup/types";
-import type { CurrencyStyle } from "metabase/lib/formatting";
+
 
 import type { InputSettingType } from "./actions";
 import type { DashboardId } from "./dashboard";
 import type { DatabaseId } from "./database";
+import type { CurrencyStyle } from "./formatting";
 import type { GroupId } from "./group";
 import type { UserId } from "./user";
 

@@ -8,13 +8,13 @@ import { Select } from "metabase/common/components/Select";
 import CS from "metabase/css/core/index.css";
 import {
   canEditMembership,
-  getGroupColor,
   getGroupNameLocalized,
   isAdminGroup,
   isDefaultGroup,
 } from "metabase/lib/groups";
 import { isNotNull } from "metabase/lib/types";
 import { Icon } from "metabase/ui";
+import { color } from "metabase/ui/colors";
 import type { GroupInfo } from "metabase-types/api";
 
 type GroupSelectProps = {
@@ -46,6 +46,16 @@ function getSections(groups: GroupInfo[]) {
         }
       : null,
   ].filter(isNotNull);
+}
+
+function getGroupColor(group: Pick<GroupInfo, "magic_group_type">) {
+  if (isAdminGroup(group)) {
+    return color("filter");
+  } else if (isDefaultGroup(group)) {
+    return color("text-secondary");
+  } else {
+    return color("brand");
+  }
 }
 
 export const GroupSelect = ({

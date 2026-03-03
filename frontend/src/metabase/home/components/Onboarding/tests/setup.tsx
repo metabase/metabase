@@ -7,6 +7,7 @@ import {
 } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
 import { renderWithProviders } from "__support__/ui";
+import type { ChecklistItemValue } from "metabase-types/analytics";
 import type { TokenFeatures } from "metabase-types/api";
 import {
   createMockSettings,
@@ -20,7 +21,6 @@ import {
 } from "metabase-types/store/mocks";
 
 import { Onboarding } from "../Onboarding";
-import type { ChecklistItemValue } from "../types";
 
 export type SetupProps = {
   isAdmin?: boolean;

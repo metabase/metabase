@@ -2,6 +2,9 @@ import { getIn } from "icepick";
 import { t } from "ttag";
 import _ from "underscore";
 
+import { displayNameForColumn } from "metabase/lib/formatting";
+import { ChartSettingIconRadio } from "metabase/visualizations/components/settings/ChartSettingIconRadio";
+import { ChartSettingsTableFormatting } from "metabase/visualizations/components/settings/ChartSettingsTableFormatting";
 import {
   COLLAPSED_ROWS_SETTING,
   COLUMN_FORMATTING_SETTING,
@@ -11,10 +14,7 @@ import {
   COLUMN_SORT_ORDER_DESC,
   COLUMN_SPLIT_SETTING,
   isPivotGroupColumn,
-} from "metabase/lib/data_grid";
-import { displayNameForColumn } from "metabase/lib/formatting";
-import { ChartSettingIconRadio } from "metabase/visualizations/components/settings/ChartSettingIconRadio";
-import { ChartSettingsTableFormatting } from "metabase/visualizations/components/settings/ChartSettingsTableFormatting";
+} from "metabase/visualizations/lib/data_grid";
 import { columnSettings } from "metabase/visualizations/lib/settings/column";
 import type { ComputedVisualizationSettings } from "metabase/visualizations/types";
 import { migratePivotColumnSplitSetting } from "metabase-lib/v1/queries/utils/pivot";

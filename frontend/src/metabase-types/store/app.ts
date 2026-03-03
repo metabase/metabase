@@ -1,4 +1,4 @@
-import type { ChecklistItemValue } from "metabase/home/components/Onboarding/types";
+import type { ChecklistItemValue } from "metabase-types/analytics";
 import type { Table } from "metabase-types/api";
 import type { CollectionId } from "metabase-types/api/collection";
 

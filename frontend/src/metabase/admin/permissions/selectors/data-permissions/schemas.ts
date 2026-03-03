@@ -9,7 +9,9 @@ import {
   PLUGIN_FEATURE_LEVEL_PERMISSIONS,
 } from "metabase/plugins";
 import type Database from "metabase-lib/v1/metadata/Database";
-import type { Group, GroupsPermissions } from "metabase-types/api";
+import type { DataPermission, type DataPermissionValue,
+  Group,
+  GroupsPermissions } from "metabase-types/api";
 
 import { DATA_PERMISSION_OPTIONS } from "../../constants/data-permissions";
 import { Messages } from "../../constants/messages";
@@ -18,12 +20,11 @@ import {
   navigateToGranularPermissions,
 } from "../../permissions";
 import type {
-  DataPermissionValue,
   DatabaseEntityId,
   PermissionSectionConfig,
   SpecialGroupType,
 } from "../../types";
-import { DataPermission, DataPermissionType } from "../../types";
+import { DataPermissionType } from "../../types";
 import {
   getPermissionWarning,
   getPermissionWarningModal,

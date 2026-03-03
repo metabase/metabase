@@ -1,7 +1,6 @@
 import { getLibraryCollectionType } from "metabase/data-studio/utils";
 import { PERSONAL_COLLECTIONS } from "metabase/entities/collections/constants";
 import { PLUGIN_COLLECTIONS } from "metabase/plugins";
-import type { IconName } from "metabase/ui";
 import { getIconForVisualizationType } from "metabase/visualizations";
 import type {
   CardType,
@@ -11,6 +10,7 @@ import type {
   SearchModel,
   VisualizationDisplay,
 } from "metabase-types/api";
+import type { IconName } from "metabase-types/ui";
 
 import type { ColorName } from "./colors/types";
 

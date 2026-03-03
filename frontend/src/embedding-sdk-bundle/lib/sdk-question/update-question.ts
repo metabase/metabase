@@ -1,7 +1,6 @@
 import _ from "underscore";
 
 import type { SdkQuestionState } from "embedding-sdk-bundle/types/question";
-import type { Deferred } from "metabase/lib/promise";
 import { computeQuestionPivotTable } from "metabase/query_builder/actions/core/pivot-table";
 import { getAdHocQuestionWithVizSettings } from "metabase/query_builder/actions/core/utils";
 import { createRawSeries } from "metabase/query_builder/utils";
@@ -9,7 +8,7 @@ import { loadMetadataForCard } from "metabase/questions/actions";
 import { getMetadata } from "metabase/selectors/metadata";
 import * as Lib from "metabase-lib";
 import Question from "metabase-lib/v1/Question";
-import type { ParameterValuesMap } from "metabase-types/api";
+import type { Deferred, ParameterValuesMap } from "metabase-types/api";
 import type { EntityToken } from "metabase-types/api/entity";
 import type { Dispatch, GetState } from "metabase-types/store";
 

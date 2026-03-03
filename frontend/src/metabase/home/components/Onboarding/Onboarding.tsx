@@ -40,13 +40,13 @@ import {
   Title,
   rem,
 } from "metabase/ui";
+import type { ChecklistItemValue } from "metabase-types/analytics";
 
 import S from "./Onboarding.module.css";
 import {
   trackChecklistItemCTAClicked,
   trackChecklistItemExpanded,
 } from "./analytics";
-import type { ChecklistItemValue } from "./types";
 
 export const Onboarding = () => {
   const applicationName = useSelector(getApplicationName);

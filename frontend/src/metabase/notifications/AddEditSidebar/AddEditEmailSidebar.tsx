@@ -4,7 +4,6 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import { getCurrentUser } from "metabase/admin/datamodel/selectors";
-import { DataPermissionValue } from "metabase/admin/permissions/types";
 import {
   type ScheduleChangeProp,
   SchedulePicker,
@@ -22,13 +21,14 @@ import { PLUGIN_DASHBOARD_SUBSCRIPTION_PARAMETERS_SECTION_OVERRIDE } from "metab
 import { canAccessSettings } from "metabase/selectors/user";
 import { Icon, Title } from "metabase/ui";
 import type { UiParameter } from "metabase-lib/v1/parameters/types";
-import type {
-  Channel,
-  ChannelApiResponse,
-  ChannelSpec,
-  Dashboard,
-  ScheduleSettings,
-  User,
+import {
+  type Channel,
+  type ChannelApiResponse,
+  type ChannelSpec,
+  type Dashboard,
+  DataPermissionValue,
+  type ScheduleSettings,
+  type User,
 } from "metabase-types/api";
 import type { DraftDashboardSubscription } from "metabase-types/store";
 

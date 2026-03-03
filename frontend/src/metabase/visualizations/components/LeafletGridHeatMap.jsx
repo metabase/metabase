@@ -2,7 +2,7 @@ import * as d3 from "d3";
 import L from "leaflet";
 import { t } from "ttag";
 
-import { color } from "metabase/lib/colors";
+import { color } from "metabase/ui/colors";
 import * as Lib from "metabase-lib";
 import Question from "metabase-lib/v1/Question";
 import { isMetric, isNumeric } from "metabase-lib/v1/types/utils/isa";

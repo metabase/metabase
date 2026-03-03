@@ -1,8 +1,4 @@
 import type {
-  EmbeddingParameters,
-  EmbeddingType,
-} from "metabase/public/lib/types";
-import type {
   BaseEntityId,
   CardDisplayType,
   ClickBehavior,
@@ -31,6 +27,7 @@ import type {
 } from "./actions";
 import type { Card, CardId, VisualizationSettings } from "./card";
 import type { Dataset } from "./dataset";
+import type { EmbeddingParameters, EmbeddingType } from "./embed";
 import type { ModerationReview } from "./moderation";
 import type { SearchModel } from "./search";
 

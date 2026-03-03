@@ -2,8 +2,8 @@
 import styled from "@emotion/styled";
 
 import { SelectList as BaseSelectList } from "metabase/common/components/SelectList";
-import type { ColorName } from "metabase/lib/colors/types";
 import { Button, type ButtonProps, Icon } from "metabase/ui";
+import type { ColorName } from "metabase/ui/colors/types";
 import { color } from "metabase/ui/utils/colors";
 
 export const TriggerIcon = styled(Icon)`

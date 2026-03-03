@@ -1,6 +1,6 @@
 import { t } from "ttag";
 
-import { UpsellStorage } from "metabase/admin/upsells";
+import { UpsellStorage } from "metabase/common/components/upsells/UpsellStorage";
 import * as Urls from "metabase/lib/urls";
 
 import { CSVPanelEmptyState } from "./AddDataModalEmptyStates";

@@ -1,5 +1,4 @@
-import type { ColorName } from "metabase/lib/colors/types";
-import type { IconName } from "metabase/ui";
+import type { ColorName } from "metabase/ui/colors/types";
 import type {
   BaseEntityId,
   CollectionEssentials,
@@ -9,6 +8,7 @@ import type {
   PaginationResponse,
   VisualizationDisplay,
 } from "metabase-types/api";
+import type { IconName } from "metabase-types/ui";
 
 import type { CardId, CardType } from "./card";
 import type { DatabaseId } from "./database";

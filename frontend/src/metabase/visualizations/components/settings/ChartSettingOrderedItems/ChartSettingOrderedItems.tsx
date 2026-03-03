@@ -6,8 +6,8 @@ import type {
   SortableDivider,
 } from "metabase/common/components/Sortable";
 import { Sortable, SortableList } from "metabase/common/components/Sortable";
-import type { AccentColorOptions } from "metabase/lib/colors/types";
 import type { IconProps } from "metabase/ui";
+import type { AccentColorOptions } from "metabase/ui/colors/types";
 
 import { ColumnItem } from "../ColumnItem";
 

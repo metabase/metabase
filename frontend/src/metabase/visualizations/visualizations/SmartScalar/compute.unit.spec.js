@@ -1,5 +1,5 @@
-import { color, colors } from "metabase/lib/colors";
 import { formatValue } from "metabase/lib/formatting/value";
+import { color, colors } from "metabase/ui/colors";
 import { computeChange } from "metabase/visualizations/lib/numeric";
 import {
   CHANGE_ARROW_ICONS,

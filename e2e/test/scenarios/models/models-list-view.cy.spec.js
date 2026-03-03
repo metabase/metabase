@@ -1,6 +1,6 @@
 import Color from "color";
 
-import { colors } from "metabase/lib/colors";
+import { colors } from "metabase/ui/colors";
 
 const { H } = cy;
 

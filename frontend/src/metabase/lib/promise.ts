@@ -1,14 +1,10 @@
 import { noop } from "underscore";
 
+import type { Deferred } from "metabase-types/api";
+
 // returns a promise that resolves after a given duration
 export function delay(duration: number) {
   return new Promise((resolve) => setTimeout(resolve, duration));
-}
-
-export interface Deferred<T = unknown> {
-  promise: Promise<T>;
-  resolve(value?: T | PromiseLike<T>): void;
-  reject(reason?: any): void;
 }
 
 export function defer<T>(): Deferred<T> {

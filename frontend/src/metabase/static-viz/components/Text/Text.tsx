@@ -1,7 +1,7 @@
 import type { TextProps } from "@visx/text";
 import { Text as VText } from "@visx/text";
 
-import type { ColorPalette } from "metabase/lib/colors/types";
+import type { ColorPalette } from "metabase/ui/colors/types";
 
 type Props = Omit<TextProps, "color"> & {
   color?: keyof ColorPalette;

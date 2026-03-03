@@ -1,10 +1,11 @@
 import type { StackProps } from "metabase/ui";
 import type { ComputedVisualizationSettings } from "metabase/visualizations/types";
 import type Question from "metabase-lib/v1/Question";
+import type { Widget } from "metabase-types/api";
 import type { QueryBuilderUIControls } from "metabase-types/store";
 
 import type { UseChartSettingsStateReturned } from "../hooks";
-import type { CommonChartSettingsProps, Widget } from "../types";
+import type { CommonChartSettingsProps } from "../types";
 
 export type BaseChartSettingsProps = {
   initial?: QueryBuilderUIControls["initialChartSetting"];

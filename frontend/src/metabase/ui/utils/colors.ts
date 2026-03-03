@@ -1,9 +1,10 @@
 import type { MantineColorsTuple } from "@mantine/core";
 
 import type { ResolvedColorScheme } from "metabase/lib/color-scheme";
-import { ALL_COLOR_NAMES, deriveFullMetabaseTheme } from "metabase/lib/colors";
-import type { ColorName, MetabaseColorKey } from "metabase/lib/colors/types";
 import type { ColorSettings } from "metabase-types/api";
+
+import { ALL_COLOR_NAMES, deriveFullMetabaseTheme } from "../colors";
+import type { ColorName, MetabaseColorKey } from "../colors/types";
 
 const ORIGINAL_COLORS = [
   "dark",
