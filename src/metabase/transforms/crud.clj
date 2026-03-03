@@ -155,8 +155,8 @@
                        (transforms-base.u/->status-filter-xf [:last_run :status] last-run-statuses)
                        (transforms-base.u/->tag-filter-xf [:tag_ids] tag-ids)
                        (map #(update % :last_run transforms-base.u/localize-run-timestamps))
-                       (map source-tables-vec->map-for-fe))) ;; TODO(FE-source-tables): remove
-           transforms.u/add-source-readable))))
+                       (map transforms.u/add-source-readable)
+                       (map source-tables-vec->map-for-fe))))))) ;; TODO(FE-source-tables): remove
 
 (defn get-transform
   "Get a specific transform."
@@ -167,8 +167,8 @@
         (t2/hydrate :last_run :transform_tag_ids :creator :owner)
         (u/update-some :last_run transforms-base.u/localize-run-timestamps)
         (assoc :table target-table)
-        source-tables-vec->map-for-fe ;; TODO(FE-source-tables): remove
-        transforms.u/add-source-readable)))
+        transforms.u/add-source-readable
+        source-tables-vec->map-for-fe))) ;; TODO(FE-source-tables): remove
 
 (defn create-transform!
   "Create new transform in the appdb.
@@ -229,8 +229,8 @@
                     (t2/hydrate (t2/select-one :model/Transform id) :transform_tag_ids :creator :owner))]
     (events/publish-event! :event/transform-update {:object transform :user-id api/*current-user-id*})
     (-> transform
-        source-tables-vec->map-for-fe ;; TODO(FE-source-tables): remove
-        transforms.u/add-source-readable)))
+        transforms.u/add-source-readable
+        source-tables-vec->map-for-fe))) ;; TODO(FE-source-tables): remove
 
 (defn delete-transform!
   "Delete a transform and publish the delete event."

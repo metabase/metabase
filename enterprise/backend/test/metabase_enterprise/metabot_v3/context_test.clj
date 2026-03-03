@@ -144,7 +144,7 @@
                                         :source {:type "python"
                                                  :source-database 2
                                                  :source-tables [{:alias "orders" :table_id 24}
-                                                                  {:alias "products" :table_id 31}]}}}]}
+                                                                 {:alias "products" :table_id 31}]}}]}
               result (#'context/enhance-context-with-schema input)
               used-tables (get-in result [:user_is_viewing 0 :used_tables])]
           (is (= mock-tables used-tables)))))))

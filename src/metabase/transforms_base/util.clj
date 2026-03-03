@@ -617,8 +617,7 @@
   Throws if an integer table ID references a non-existent table.
   Map refs with non-existent tables get nil table_id (resolved later at execute time)."
   [source-tables]
-  (let [int-table-ids    (into #{} (keep :table_id) source-tables)
-        ;; Entries that have table_id but lack table metadata need lookup
+  (let [;; Entries that have table_id but lack table metadata need lookup
         needs-metadata   (filter (fn [e] (and (:table_id e) (not (:table e)))) source-tables)
         int-id->metadata (when (seq needs-metadata)
                            (let [ids (into #{} (map :table_id) needs-metadata)]

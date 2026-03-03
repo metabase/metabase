@@ -174,8 +174,8 @@
              403
              (deferred-tru "A table with that name already exists."))
   (-> (transforms.core/create-transform! body)
-      transforms.core/source-tables-vec->map-for-fe ;; TODO(FE-source-tables): remove
-      transforms.u/add-source-readable))
+      transforms.u/add-source-readable
+      transforms.core/source-tables-vec->map-for-fe)) ;; TODO(FE-source-tables): remove
 
 (api.macros/defendpoint :get "/:id" :- TransformResponse
   "Get a specific transform."
@@ -193,8 +193,8 @@
         dep-ids         (get global-ordering id)
         dependencies    (map id->transform dep-ids)]
     (->> (t2/hydrate dependencies :creator :owner)
-         (mapv transforms.core/source-tables-vec->map-for-fe) ;; TODO(FE-source-tables): remove
-         transforms.u/add-source-readable)))
+         transforms.u/add-source-readable
+         (mapv transforms.core/source-tables-vec->map-for-fe)))) ;; TODO(FE-source-tables): remove
 
 (def ^:private MergeHistoryEntry
   [:map
