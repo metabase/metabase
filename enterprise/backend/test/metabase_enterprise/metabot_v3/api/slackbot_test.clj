@@ -443,7 +443,7 @@
                 (is (vector? (:history opts)))
                 (is (fn? (:on-line opts)))))))))))
 
-(deftest slack-thread-conversation-id-test
+(deftest ^:parallel slack-thread-conversation-id-test
   (testing "Same thread produces same conversation ID"
     (is (= (#'slackbot.streaming/slack-thread->conversation-id "T1" "C1" "123.456")
            (#'slackbot.streaming/slack-thread->conversation-id "T1" "C1" "123.456"))))
