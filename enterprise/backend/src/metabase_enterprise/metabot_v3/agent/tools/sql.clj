@@ -78,11 +78,11 @@
        [:database_id :int]
        [:sql_query :string]]]
   (try
-    (let [{:keys [is-valid dialect error-message] :as result}
+    (let [{:keys [valid? dialect error-message] :as result}
           (create-sql-query-tools/create-sql-query
            {:database-id database_id
             :sql sql_query})]
-      (if is-valid
+      (if valid?
         (let [structured    (assoc result :result-type :query)
               query-id      (:query-id result)
               instr         (instructions/query-created-instructions-for query-id)
