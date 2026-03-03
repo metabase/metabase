@@ -2427,12 +2427,13 @@
                   :message "Failed to connect to Database"}
                  (mt/user-http-request :crowberto :get 200 (str "database/" id "/healthcheck")))))))
     (testing "connection-type passed and configured"
-      (mt/with-temp [:model/Database {id :id} {:details {:host "primary"}
-                                               :write_data_details {:host "write"}}]
-        (with-redefs [driver/available? (constantly true)
-                      driver/can-connect? (constantly true)]
-          (is (= {:status "ok"}
-                 (mt/user-http-request :crowberto :get 200 (str "database/" id "/healthcheck?connection-type=write-data")))))))
+      (mt/with-premium-features #{:writable-connection}
+        (mt/with-temp [:model/Database {id :id} {:details {:host "primary"}
+                                                 :write_data_details {:host "write"}}]
+          (with-redefs [driver/available? (constantly true)
+                        driver/can-connect? (constantly true)]
+            (is (= {:status "ok"}
+                   (mt/user-http-request :crowberto :get 200 (str "database/" id "/healthcheck?connection-type=write-data"))))))))
     (testing "connection-type passed but not configured returns 400"
       (mt/with-temp [:model/Database {id :id} {:details {:host "primary"}}]
         (with-redefs [driver/available? (constantly true)]
