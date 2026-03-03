@@ -6,11 +6,11 @@ export const SDK_AUTH_STATE_KEY = "METABASE_EMBEDDING_SDK_AUTH_STATE";
 /**
  * Status of the SDK authentication process.
  *
- * - "idle": No auth started (initial state or old package version)
+ * - "idle": No auth started
  * - "in-progress": Package is performing auth right now
  * - "completed": Package finished auth successfully, data is cached
  * - "error": Package auth failed, bundle should retry
- * - "skipped": Package explicitly skipped auth (skipPackageAuth or non-JWT auth)
+ * - "skipped": Package explicitly skipped auth (useLegacyMonolithicBundle or non-JWT auth)
  */
 export type SdkAuthStatus =
   | "idle"

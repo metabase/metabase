@@ -80,7 +80,5 @@ window.METABASE_EMBEDDING_SDK_BUNDLE = sdkBundleExports;
 
 // Signal that the bundle is ready. In the bootstrap flow (chunked loading),
 // rspack defers entry execution until all chunks are registered, so this event
-// fires only after everything is ready. In the monolithic flow this is a
-// harmless extra signal — the NPM package's dual-listen resolves on whichever
-// signal arrives first.
+// fires only after everything is ready.
 document.dispatchEvent(new CustomEvent("metabase-sdk-bundle-loaded"));
