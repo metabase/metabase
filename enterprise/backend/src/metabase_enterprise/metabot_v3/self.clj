@@ -156,7 +156,7 @@
                  :estimated-costs-usd 0.0
                  :duration-ms         (long (u/since-ms start-ms))
                  :user-id             api/*current-user-id*
-                 :request-id          (some-> request-id analytics/uuid->token-usage-request-id)
+                 :request-id          (some-> request-id analytics/uuid->ai-service-hex-uuid)
                  :session-id          session-id
                  :source              source
                  :tag                 tag})))

@@ -8,14 +8,6 @@
 
 (set! *warn-on-reflection* true)
 
-;;; ------------------------------------------- uuid->token-usage-request-id -------------------------------------------
-
-(deftest uuid->token-usage-request-id-test
-  (testing "UUID string produces 32-char hex string"
-    (is (re-matches #"[0-9a-f]{32}" (llm-token-usage/uuid->token-usage-request-id (str (random-uuid))))))
-  (testing "UUID object produces 32-char hex string"
-    (is (re-matches #"[0-9a-f]{32}" (llm-token-usage/uuid->token-usage-request-id (random-uuid))))))
-
 ;;; ------------------------------------------- track-snowplow! -------------------------------------------
 
 (def ^:private base-usage

@@ -221,7 +221,7 @@
                {:snowplow            true
                 :prometheus          true
                 :user-id             api/*current-user-id*
-                :request-id          (analytics/uuid->token-usage-request-id (random-uuid))
+                :request-id          (analytics/uuid->ai-service-hex-uuid (random-uuid))
                 :model-id            (:model usage)
                 :prompt-tokens       (:prompt usage)
                 :completion-tokens   (:completion usage)
