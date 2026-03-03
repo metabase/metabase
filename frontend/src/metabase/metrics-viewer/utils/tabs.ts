@@ -16,7 +16,7 @@ import {
   getInitialMetricsViewerTabLayout,
 } from "../types/viewer-state";
 
-import { isDimensionCandidate } from "./metrics";
+import { GEO_SUBTYPE_PRIORITY, isDimensionCandidate } from "./metrics";
 import { TAB_TYPE_REGISTRY, getTabConfig } from "./tab-config";
 
 // ── Dimension icon helper ──
@@ -179,36 +179,48 @@ function findFirstDimOfType(
   return null;
 }
 
-function findBestRankedDim(
+function findDimBySubtype(
   dims: Map<string, DimensionInfo>,
   type: MetricsViewerTabType,
-  ranker: (dim: DimensionMetadata) => number,
-  targetRank: number,
+  getSubtype: (dim: DimensionMetadata) => string | null,
+  targetSubtype: string,
 ): DimensionInfo | null {
   for (const [, info] of dims) {
-    if (info.type === type && ranker(info.dimension) === targetRank) {
+    if (info.type === type && getSubtype(info.dimension) === targetSubtype) {
       return info;
     }
   }
   return null;
 }
 
-function computeBestRank(
+function pickBestSubtype(found: Set<string>): string | null {
+  for (const subtype of GEO_SUBTYPE_PRIORITY) {
+    if (found.has(subtype)) {
+      return subtype;
+    }
+  }
+  return found.size > 0 ? (found.values().next().value ?? null) : null;
+}
+
+function computeBestSubtype(
   dimsBySource: Map<MetricSourceId, Map<string, DimensionInfo>>,
   type: MetricsViewerTabType,
-  ranker: (dim: DimensionMetadata) => number,
-): number {
-  let best = Infinity;
+  getSubtype: (dim: DimensionMetadata) => string | null,
+): string | null {
+  const found = new Set<string>();
 
   for (const [, dims] of dimsBySource) {
     for (const [, info] of dims) {
       if (info.type === type) {
-        best = Math.min(best, ranker(info.dimension));
+        const subtype = getSubtype(info.dimension);
+        if (subtype) {
+          found.add(subtype);
+        }
       }
     }
   }
 
-  return best;
+  return pickBestSubtype(found);
 }
 
 function resolveAggregateDimensions(
@@ -218,13 +230,13 @@ function resolveAggregateDimensions(
 ): Record<MetricSourceId, string> {
   const mapping: Record<MetricSourceId, string> = {};
 
-  if (config.dimensionRanker) {
-    const targetRank = computeBestRank(
+  if (config.dimensionSubtype) {
+    const targetSubtype = computeBestSubtype(
       dimsBySource,
       config.type,
-      config.dimensionRanker,
+      config.dimensionSubtype,
     );
-    if (targetRank === Infinity) {
+    if (!targetSubtype) {
       return mapping;
     }
 
@@ -233,11 +245,11 @@ function resolveAggregateDimensions(
       if (!dims) {
         continue;
       }
-      const match = findBestRankedDim(
+      const match = findDimBySubtype(
         dims,
         config.type,
-        config.dimensionRanker,
-        targetRank,
+        config.dimensionSubtype,
+        targetSubtype,
       );
       if (match) {
         mapping[sourceId] = match.id;
@@ -449,11 +461,11 @@ export function createTabFromDimension(
 
 // ── Tab dimension matching ──
 
-function findExistingTabRank(
+function findExistingTabSubtype(
   tab: StoredMetricsViewerTab,
-  ranker: (dim: DimensionMetadata) => number,
+  getSubtype: (dim: DimensionMetadata) => string | null,
   baseDefinitions?: Record<MetricSourceId, MetricDefinition | null>,
-): number | null {
+): string | null {
   if (!baseDefinitions) {
     return null;
   }
@@ -465,46 +477,30 @@ function findExistingTabRank(
     }
     const dimInfo = getDimensionsByType(def).get(dimName);
     if (dimInfo) {
-      return ranker(dimInfo.dimension);
+      return getSubtype(dimInfo.dimension);
     }
   }
 
   return null;
 }
 
-function findBestRankInDimensions(
+function findBestSubtypeInDimensions(
   dimsByType: Map<string, DimensionInfo>,
   tabType: MetricsViewerTabType,
-  ranker: (dim: DimensionMetadata) => number,
-): number | null {
-  let best: number | null = null;
+  getSubtype: (dim: DimensionMetadata) => string | null,
+): string | null {
+  const found = new Set<string>();
 
   for (const [, info] of dimsByType) {
     if (info.type === tabType) {
-      const rank = ranker(info.dimension);
-      if (best === null || rank < best) {
-        best = rank;
+      const subtype = getSubtype(info.dimension);
+      if (subtype) {
+        found.add(subtype);
       }
     }
   }
 
-  return best;
-}
-
-function findDimensionByRank(
-  dimensionsByType: Map<string, DimensionInfo>,
-  config: (typeof TAB_TYPE_REGISTRY)[number],
-  targetRank: number,
-): string | null {
-  for (const [, info] of dimensionsByType) {
-    if (
-      info.type === config.type &&
-      config.dimensionRanker!(info.dimension) === targetRank
-    ) {
-      return info.id;
-    }
-  }
-  return null;
+  return pickBestSubtype(found);
 }
 
 function findReferenceFromTab(
@@ -533,6 +529,7 @@ function findReferenceFromTab(
 function findDimensionBySourceMatch(
   dimensionsByType: Map<string, DimensionInfo>,
   reference: DimensionInfo,
+  getSubtype?: (dim: DimensionMetadata) => string | null,
 ): string | null {
   let nameMatch: DimensionInfo | null = null;
 
@@ -543,8 +540,17 @@ function findDimensionBySourceMatch(
     if (LibMetric.isSameSource(info.dimension, reference.dimension)) {
       return info.id;
     }
-    if (!nameMatch && info.name === reference.name) {
-      nameMatch = info;
+    if (
+      !nameMatch &&
+      reference.name &&
+      info.name?.toLowerCase() === reference.name.toLowerCase()
+    ) {
+      if (
+        !getSubtype ||
+        getSubtype(info.dimension) === getSubtype(reference.dimension)
+      ) {
+        nameMatch = info;
+      }
     }
   }
 
@@ -575,29 +581,40 @@ export function findMatchingDimensionForTab(
 
   const reference = findReferenceFromTab(tab, config.type, baseDefinitions);
   if (reference) {
-    const match = findDimensionBySourceMatch(dimensionsByType, reference);
+    const match = findDimensionBySourceMatch(
+      dimensionsByType,
+      reference,
+      config.dimensionSubtype,
+    );
     if (match) {
       return match;
     }
   }
 
-  if (!config.dimensionRanker) {
-    return findFirstDimOfType(dimensionsByType, tab.type)?.id ?? null;
-  }
+  if (config.dimensionSubtype) {
+    const targetSubtype =
+      findExistingTabSubtype(tab, config.dimensionSubtype, baseDefinitions) ??
+      findBestSubtypeInDimensions(
+        dimensionsByType,
+        config.type,
+        config.dimensionSubtype,
+      );
 
-  const targetRank =
-    findExistingTabRank(tab, config.dimensionRanker, baseDefinitions) ??
-    findBestRankInDimensions(
-      dimensionsByType,
-      config.type,
-      config.dimensionRanker,
+    if (!targetSubtype) {
+      return null;
+    }
+
+    return (
+      findDimBySubtype(
+        dimensionsByType,
+        config.type,
+        config.dimensionSubtype,
+        targetSubtype,
+      )?.id ?? null
     );
-
-  if (targetRank === null) {
-    return null;
   }
 
-  return findDimensionByRank(dimensionsByType, config, targetRank);
+  return findFirstDimOfType(dimensionsByType, tab.type)?.id ?? null;
 }
 
 // ── Dimension picker ──

@@ -9,7 +9,7 @@ import type {
 } from "../types/viewer-state";
 
 import {
-  getGeoDimensionRank,
+  getGeoSubtype,
   getMapRegionForDimension,
   isGeoDimension,
 } from "./metrics";
@@ -39,7 +39,7 @@ export interface TabTypeDefinition {
   fixedLabel?: string;
 
   dimensionPredicate: (dim: DimensionMetadata) => boolean;
-  dimensionRanker?: (dim: DimensionMetadata) => number;
+  dimensionSubtype?: (dim: DimensionMetadata) => string | null;
 
   defaultDisplayType: MetricsViewerDisplayType;
   availableDisplayTypes: ChartTypeOption[];
@@ -95,7 +95,7 @@ export const TAB_TYPE_REGISTRY: TabTypeDefinition[] = [
     fixedId: "geo",
     fixedLabel: "Location",
     dimensionPredicate: isGeoDimension,
-    dimensionRanker: getGeoDimensionRank,
+    dimensionSubtype: getGeoSubtype,
     defaultDisplayType: "map",
     availableDisplayTypes: GEO_CHART_TYPES,
   },
