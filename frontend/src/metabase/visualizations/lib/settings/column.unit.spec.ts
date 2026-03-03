@@ -1,31 +1,39 @@
+import { checkNotNull } from "metabase/lib/types";
 import { getComputedSettings } from "metabase/visualizations/lib/settings";
 import registerVisualizations from "metabase/visualizations/register";
+import type { DatasetColumn, Series } from "metabase-types/api";
+import {
+  createMockColumn,
+  createMockSingleSeries,
+} from "metabase-types/api/mocks";
 
 import { NUMBER_COLUMN_SETTINGS, columnSettings } from "./column";
 
 registerVisualizations();
 
-function seriesWithColumn(col) {
+function seriesWithColumn(column?: Partial<DatasetColumn>): Series {
   return [
-    {
-      card: {},
-      data: {
-        cols: [
-          {
-            name: "foo",
-            base_type: "type/Float",
-            semantic_type: "type/Currency",
-            ...col,
-          },
-        ],
+    createMockSingleSeries(
+      {},
+      {
+        data: {
+          cols: [
+            createMockColumn({
+              name: "foo",
+              base_type: "type/Float",
+              semantic_type: "type/Currency",
+              ...column,
+            }),
+          ],
+        },
       },
-    },
+    ),
   ];
 }
 
 describe("column settings", () => {
   it("should find by column name", () => {
-    const series = seriesWithColumn({});
+    const series = seriesWithColumn();
     const defs = { ...columnSettings() };
     const stored = {
       column_settings: {
@@ -35,7 +43,7 @@ describe("column settings", () => {
       },
     };
     const computed = getComputedSettings(defs, series, stored);
-    expect(computed.column(series[0].data.cols[0]).currency).toEqual("BTC");
+    expect(computed.column?.(series[0].data.cols[0]).currency).toEqual("BTC");
   });
 
   it("should find by column 'field' ID ref", () => {
@@ -52,7 +60,7 @@ describe("column settings", () => {
       },
     };
     const computed = getComputedSettings(defs, series, stored);
-    expect(computed.column(series[0].data.cols[0]).currency).toEqual("BTC");
+    expect(computed.column?.(series[0].data.cols[0]).currency).toEqual("BTC");
   });
 
   it("should find by column name if it also has a 'field-literal' ref", () => {
@@ -68,10 +76,10 @@ describe("column settings", () => {
       },
     };
     const computed = getComputedSettings(defs, series, stored);
-    expect(computed.column(series[0].data.cols[0]).currency).toEqual("BTC");
+    expect(computed.column?.(series[0].data.cols[0]).currency).toEqual("BTC");
   });
 
-  it("should find by column name if it also has a 'aggregation' ref", () => {
+  it("should find by column name if it also has an 'aggregation' ref", () => {
     const series = seriesWithColumn({
       field_ref: ["aggregation", 0],
     });
@@ -84,7 +92,7 @@ describe("column settings", () => {
       },
     };
     const computed = getComputedSettings(defs, series, stored);
-    expect(computed.column(series[0].data.cols[0]).currency).toEqual("BTC");
+    expect(computed.column?.(series[0].data.cols[0]).currency).toEqual("BTC");
   });
 
   it("should set a time style but no date style for hour-of-day", () => {
@@ -95,8 +103,8 @@ describe("column settings", () => {
     });
     const defs = { ...columnSettings() };
     const computed = getComputedSettings(defs, series, {});
-    const { time_enabled, time_style, date_style } = computed.column(
-      series[0].data.cols[0],
+    const { time_enabled, time_style, date_style } = checkNotNull(
+      computed.column?.(series[0].data.cols[0]),
     );
     expect(time_enabled).toEqual("minutes");
     expect(time_style).toEqual("h:mm A");
@@ -109,19 +117,29 @@ describe("column settings", () => {
     });
     const defs = { ...columnSettings() };
     const computed = getComputedSettings(defs, series, {});
-    const { number_style } = computed.column(series[0].data.cols[0]);
+    const { number_style } = checkNotNull(
+      computed.column?.(series[0].data.cols[0]),
+    );
     expect(number_style).toBe("percent");
   });
 
   describe("NUMBER_COLUMN_SETTINGS", () => {
     it("should have coherent options and onChange (metabase#54728)", () => {
       const onChangeSpy = jest.fn();
-      const { options, onChange } =
-        NUMBER_COLUMN_SETTINGS.currency_in_header.getProps(
-          undefined,
-          undefined,
-          onChangeSpy,
-        );
+      const getProps = checkNotNull(
+        NUMBER_COLUMN_SETTINGS.currency_in_header?.getProps,
+      );
+
+      const { options, onChange } = getProps(
+        createMockColumn(),
+        {},
+        onChangeSpy,
+        undefined,
+        jest.fn(),
+      ) as {
+        options: { value: boolean }[];
+        onChange: (value: boolean) => void;
+      };
 
       onChange(options[0].value);
       expect(onChangeSpy).toHaveBeenCalledWith(true);
