@@ -9,72 +9,104 @@
 
 (use-fixtures :once (fixtures/initialize :db :web-server :test-users))
 
+(defn- do-with-sample-metrics-archived
+  "Temporarily archive any metric cards belonging to the sample database so they
+   don't interfere with test assertions. Restores them after `thunk` completes."
+  [thunk]
+  (let [sample-db-id   (t2/select-one-pk :model/Database :is_sample true)
+        metric-ids     (when sample-db-id
+                         (t2/select-pks-vec :model/Card
+                                            :type :metric
+                                            :archived false
+                                            :database_id sample-db-id))]
+    (if (seq metric-ids)
+      (try
+        (t2/query {:update :report_card
+                   :set    {:archived true}
+                   :where  [:in :id metric-ids]})
+        (thunk)
+        (finally
+          (t2/query {:update :report_card
+                     :set    {:archived false}
+                     :where  [:in :id metric-ids]})))
+      (thunk))))
+
+(defmacro with-sample-metrics-archived
+  "Execute `body` with any sample-database metric cards temporarily archived."
+  [& body]
+  `(do-with-sample-metrics-archived (fn [] ~@body)))
+
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                              GET /api/metric/                                                  |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 (deftest list-metric-returns-accessible-metric-test
   (testing "GET /api/metric returns metric the user has access to"
-    (mt/with-temp [:model/Card metric {:name          "Test Metric"
-                                       :type          :metric
-                                       :description   "A test metric"
-                                       :dataset_query (mt/mbql-query venues {:aggregation [[:count]]})}]
-      (let [response (mt/user-http-request :rasta :get 200 "metric")]
-        (is (= 1 (:total response)))
-        (is (= 500 (:limit response)))
-        (is (= 0 (:offset response)))
-        (is (= 1 (count (:data response))))
-        (let [returned-metric (first (:data response))]
-          (is (= (:id metric) (:id returned-metric)))
-          (is (= "Test Metric" (:name returned-metric)))
-          (is (= "A test metric" (:description returned-metric))))))))
+    (with-sample-metrics-archived
+      (mt/with-temp [:model/Card metric {:name          "Test Metric"
+                                         :type          :metric
+                                         :description   "A test metric"
+                                         :dataset_query (mt/mbql-query venues {:aggregation [[:count]]})}]
+        (let [response (mt/user-http-request :rasta :get 200 "metric")]
+          (is (= 1 (:total response)))
+          (is (= 500 (:limit response)))
+          (is (= 0 (:offset response)))
+          (is (= 1 (count (:data response))))
+          (let [returned-metric (first (:data response))]
+            (is (= (:id metric) (:id returned-metric)))
+            (is (= "Test Metric" (:name returned-metric)))
+            (is (= "A test metric" (:description returned-metric)))))))))
 
 (deftest list-metric-limit-test
   (testing "GET /api/metric respects limit parameter"
-    (mt/with-temp [:model/Card _metric1 {:name          "Metric A"
-                                         :type          :metric
-                                         :dataset_query (mt/mbql-query venues {:aggregation [[:count]]})}
-                   :model/Card _metric2 {:name          "Metric B"
-                                         :type          :metric
-                                         :dataset_query (mt/mbql-query venues {:aggregation [[:count]]})}
-                   :model/Card _metric3 {:name          "Metric C"
-                                         :type          :metric
-                                         :dataset_query (mt/mbql-query venues {:aggregation [[:count]]})}]
-      (let [response (mt/user-http-request :rasta :get 200 "metric" :limit 2)]
-        (is (= 3 (:total response)))
-        (is (= 2 (:limit response)))
-        (is (= 2 (count (:data response))))))))
+    (with-sample-metrics-archived
+      (mt/with-temp [:model/Card _metric1 {:name          "Metric A"
+                                           :type          :metric
+                                           :dataset_query (mt/mbql-query venues {:aggregation [[:count]]})}
+                     :model/Card _metric2 {:name          "Metric B"
+                                           :type          :metric
+                                           :dataset_query (mt/mbql-query venues {:aggregation [[:count]]})}
+                     :model/Card _metric3 {:name          "Metric C"
+                                           :type          :metric
+                                           :dataset_query (mt/mbql-query venues {:aggregation [[:count]]})}]
+        (let [response (mt/user-http-request :rasta :get 200 "metric" :limit 2)]
+          (is (= 3 (:total response)))
+          (is (= 2 (:limit response)))
+          (is (= 2 (count (:data response)))))))))
 
 (deftest list-metric-offset-test
   (testing "GET /api/metric respects offset parameter"
-    (mt/with-temp [:model/Card _metric1 {:name          "Metric A"
-                                         :type          :metric
-                                         :dataset_query (mt/mbql-query venues {:aggregation [[:count]]})}
-                   :model/Card _metric2 {:name          "Metric B"
-                                         :type          :metric
-                                         :dataset_query (mt/mbql-query venues {:aggregation [[:count]]})}
-                   :model/Card _metric3 {:name          "Metric C"
-                                         :type          :metric
-                                         :dataset_query (mt/mbql-query venues {:aggregation [[:count]]})}]
-      (let [response (mt/user-http-request :rasta :get 200 "metric" :offset 1 :limit 2)]
-        (is (= 3 (:total response)))
-        (is (= 1 (:offset response)))
-        (is (= 2 (count (:data response))))))))
+    (with-sample-metrics-archived
+      (mt/with-temp [:model/Card _metric1 {:name          "Metric A"
+                                           :type          :metric
+                                           :dataset_query (mt/mbql-query venues {:aggregation [[:count]]})}
+                     :model/Card _metric2 {:name          "Metric B"
+                                           :type          :metric
+                                           :dataset_query (mt/mbql-query venues {:aggregation [[:count]]})}
+                     :model/Card _metric3 {:name          "Metric C"
+                                           :type          :metric
+                                           :dataset_query (mt/mbql-query venues {:aggregation [[:count]]})}]
+        (let [response (mt/user-http-request :rasta :get 200 "metric" :offset 1 :limit 2)]
+          (is (= 3 (:total response)))
+          (is (= 1 (:offset response)))
+          (is (= 2 (count (:data response)))))))))
 
 (deftest list-metric-excludes-archived-test
   (testing "GET /api/metric does not return archived metric"
-    (mt/with-temp [:model/Card _metric {:name          "Archived Metric"
-                                        :type          :metric
-                                        :archived      true
-                                        :dataset_query (mt/mbql-query venues {:aggregation [[:count]]})}]
-      (is (= 0 (:total (mt/user-http-request :rasta :get 200 "metric")))))))
+    (with-sample-metrics-archived
+      (mt/with-temp [:model/Card _metric {:name          "Archived Metric"
+                                          :type          :metric
+                                          :archived      true
+                                          :dataset_query (mt/mbql-query venues {:aggregation [[:count]]})}]
+        (is (= 0 (:total (mt/user-http-request :rasta :get 200 "metric"))))))))
 
 (deftest list-metric-excludes-non-metric-test
   (testing "GET /api/metric does not return non-metric cards"
-    (mt/with-temp [:model/Card _card {:name          "Regular Card"
-                                      :type          :question
-                                      :dataset_query (mt/mbql-query venues {:aggregation [[:count]]})}]
-      (is (= 0 (:total (mt/user-http-request :rasta :get 200 "metric")))))))
+    (with-sample-metrics-archived
+      (mt/with-temp [:model/Card _card {:name          "Regular Card"
+                                        :type          :question
+                                        :dataset_query (mt/mbql-query venues {:aggregation [[:count]]})}]
+        (is (= 0 (:total (mt/user-http-request :rasta :get 200 "metric"))))))))
 
 (deftest list-metric-hydrates-collection-test
   (testing "GET /api/metric hydrates collection information"
