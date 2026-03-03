@@ -106,7 +106,7 @@ export type SourceColorMap = Partial<Record<MetricSourceId, string[]>>;
 
 export type SelectedMetric = {
   id: number;
-  name: string;
+  name: string | null;
   sourceType: "metric" | "measure";
   tableId?: ConcreteTableId;
   isLoading?: boolean;
