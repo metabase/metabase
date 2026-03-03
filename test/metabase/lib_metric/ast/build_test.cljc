@@ -307,6 +307,51 @@
       (is (= :filter/not (:node/type result)))
       (is (= :filter/comparison (get-in result [:child :node/type]))))))
 
+(deftest ^:parallel mbql-filter->ast-filter-exclude-day-of-week-test
+  (let [;; Exclude Monday (1) and Sunday (7) using ISO day-of-week
+        ;; This is the pMBQL shape produced by lib/fe_util/exclude-date-filter-clause
+        result (ast.build/mbql-filter->ast-filter
+                [:!= {} [:get-day-of-week {} [:dimension {} uuid-2] :iso] 1 7])]
+    (is (some? result) "should produce an AST filter node")
+    (is (= :filter/comparison (:node/type result)))
+    (is (= :!= (:operator result)))
+    (is (= :ast/dimension-expression (get-in result [:dimension :node/type])))
+    (is (= :get-day-of-week (get-in result [:dimension :expression-op])))
+    (is (= uuid-2 (get-in result [:dimension :dimension :dimension-id])))
+    (is (= [:iso] (get-in result [:dimension :args])))
+    (is (= [1 7] (:values result)))))
+
+(deftest ^:parallel mbql-filter->ast-filter-exclude-month-test
+  (let [;; Exclude March (3) and December (12)
+        result (ast.build/mbql-filter->ast-filter
+                [:!= {} [:get-month {} [:dimension {} uuid-2]] 3 12])]
+    (is (some? result) "should produce an AST filter node")
+    (is (= :ast/dimension-expression (get-in result [:dimension :node/type])))
+    (is (= :get-month (get-in result [:dimension :expression-op])))
+    (is (= uuid-2 (get-in result [:dimension :dimension :dimension-id])))
+    (is (nil? (get-in result [:dimension :args])) "get-month has no extra args")
+    (is (= [3 12] (:values result)))))
+
+(deftest ^:parallel mbql-filter->ast-filter-exclude-hour-test
+  (let [;; Exclude hour 0 and hour 23
+        result (ast.build/mbql-filter->ast-filter
+                [:!= {} [:get-hour {} [:dimension {} uuid-2]] 0 23])]
+    (is (some? result) "should produce an AST filter node")
+    (is (= :ast/dimension-expression (get-in result [:dimension :node/type])))
+    (is (= :get-hour (get-in result [:dimension :expression-op])))
+    (is (= uuid-2 (get-in result [:dimension :dimension :dimension-id])))
+    (is (= [0 23] (:values result)))))
+
+(deftest ^:parallel mbql-filter->ast-filter-exclude-quarter-test
+  (let [;; Exclude Q2 and Q4
+        result (ast.build/mbql-filter->ast-filter
+                [:!= {} [:get-quarter {} [:dimension {} uuid-2]] 2 4])]
+    (is (some? result) "should produce an AST filter node")
+    (is (= :ast/dimension-expression (get-in result [:dimension :node/type])))
+    (is (= :get-quarter (get-in result [:dimension :expression-op])))
+    (is (= uuid-2 (get-in result [:dimension :dimension :dimension-id])))
+    (is (= [2 4] (:values result)))))
+
 (deftest ^:parallel mbql-filters->ast-filter-test
   (testing "single filter returns that filter"
     (let [result (ast.build/mbql-filters->ast-filter [[:= {} [:dimension {} uuid-1] 42]])]

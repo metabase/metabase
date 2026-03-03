@@ -34,6 +34,19 @@
     (column-node->field-ref (:column mapping) (or options {}))
     (throw (ex-info "Unable to resolve dimension" {:dimension-id dimension-id}))))
 
+(defn- resolve-dimension-or-expression
+  "Resolve a dimension ref or dimension expression node to MBQL.
+   For :ast/dimension-ref nodes, delegates to resolve-dimension-ref.
+   For :ast/dimension-expression nodes, resolves the inner dimension ref
+   and wraps the result in the expression operator."
+  [node mappings]
+  (case (:node/type node)
+    :ast/dimension-ref (resolve-dimension-ref node mappings)
+    :ast/dimension-expression
+    (let [{:keys [expression-op dimension args]} node
+          resolved-field (resolve-dimension-ref dimension mappings)]
+      (into [expression-op {:lib/uuid (random-uuid-str)} resolved-field] args))))
+
 ;;; -------------------- Filter Compilation --------------------
 
 (defmulti compile-filter-node
@@ -44,37 +57,37 @@
 (defmethod compile-filter-node :filter/comparison
   [{:keys [operator dimension values]} mappings]
   (into [operator {:lib/uuid (random-uuid-str)}
-         (resolve-dimension-ref dimension mappings)]
+         (resolve-dimension-or-expression dimension mappings)]
         values))
 
 (defmethod compile-filter-node :filter/between
   [{:keys [dimension min max]} mappings]
   [:between {:lib/uuid (random-uuid-str)}
-   (resolve-dimension-ref dimension mappings)
+   (resolve-dimension-or-expression dimension mappings)
    min max])
 
 (defmethod compile-filter-node :filter/string
   [{:keys [operator dimension value options]} mappings]
   [operator (merge {:lib/uuid (random-uuid-str)} options)
-   (resolve-dimension-ref dimension mappings)
+   (resolve-dimension-or-expression dimension mappings)
    value])
 
 (defmethod compile-filter-node :filter/null
   [{:keys [operator dimension]} mappings]
   [operator {:lib/uuid (random-uuid-str)}
-   (resolve-dimension-ref dimension mappings)])
+   (resolve-dimension-or-expression dimension mappings)])
 
 (defmethod compile-filter-node :filter/in
   [{:keys [operator dimension values]} mappings]
   (into [operator {:lib/uuid (random-uuid-str)}
-         (resolve-dimension-ref dimension mappings)]
+         (resolve-dimension-or-expression dimension mappings)]
         values))
 
 (defmethod compile-filter-node :filter/inside
   [{:keys [lat-dimension lon-dimension north east south west]} mappings]
   [:inside {:lib/uuid (random-uuid-str)}
-   (resolve-dimension-ref lat-dimension mappings)
-   (resolve-dimension-ref lon-dimension mappings)
+   (resolve-dimension-or-expression lat-dimension mappings)
+   (resolve-dimension-or-expression lon-dimension mappings)
    north east south west])
 
 (defmethod compile-filter-node :filter/temporal
@@ -82,7 +95,7 @@
   (let [opts (cond-> {:lib/uuid (random-uuid-str)}
                offset-value (assoc :offset-value offset-value)
                offset-unit  (assoc :offset-unit offset-unit))]
-    [operator opts (resolve-dimension-ref dimension mappings) value unit]))
+    [operator opts (resolve-dimension-or-expression dimension mappings) value unit]))
 
 (defmethod compile-filter-node :filter/and
   [{:keys [children]} mappings]

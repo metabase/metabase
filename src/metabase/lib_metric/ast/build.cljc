@@ -86,6 +86,27 @@
              :dimension-id dimension-id}
       (seq normalized-opts) (assoc :options normalized-opts))))
 
+;;; -------------------- Dimension Expression Detection --------------------
+
+(defn- expression-wrapped-dimension?
+  "Returns true if clause is a temporal extraction expression wrapping a dimension ref."
+  [clause]
+  (and (sequential? clause)
+       (operators/temporal-extraction? (first clause))))
+
+(defn- dimension-ref-or-expression
+  "Convert a dimension ref or expression-wrapped dimension ref to an AST node.
+   If the clause is a temporal extraction expression, builds a :ast/dimension-expression node.
+   Otherwise delegates to dimension-ref->ast-dimension-ref."
+  [clause]
+  (if (expression-wrapped-dimension? clause)
+    (let [[expression-op _opts inner-dim & extra-args] clause]
+      (cond-> {:node/type     :ast/dimension-expression
+               :expression-op expression-op
+               :dimension     (dimension-ref->ast-dimension-ref inner-dim)}
+        (seq extra-args) (assoc :args (vec extra-args))))
+    (dimension-ref->ast-dimension-ref clause)))
+
 ;;; -------------------- Filter Construction --------------------
 
 (defn mbql-filter->ast-filter
@@ -123,7 +144,7 @@
         (let [[dimension-ref & values] args]
           {:node/type :filter/comparison
            :operator  operator
-           :dimension (dimension-ref->ast-dimension-ref dimension-ref)
+           :dimension (dimension-ref-or-expression dimension-ref)
            :values    (vec values)})
 
         ;; Range filters (between, inside)
@@ -131,13 +152,13 @@
         (case operator
           :between (let [[dimension-ref min-val max-val] args]
                      {:node/type :filter/between
-                      :dimension (dimension-ref->ast-dimension-ref dimension-ref)
+                      :dimension (dimension-ref-or-expression dimension-ref)
                       :min       min-val
                       :max       max-val})
           :inside (let [[lat-ref lon-ref north east south west] args]
                     {:node/type :filter/inside
-                     :lat-dimension (dimension-ref->ast-dimension-ref lat-ref)
-                     :lon-dimension (dimension-ref->ast-dimension-ref lon-ref)
+                     :lat-dimension (dimension-ref-or-expression lat-ref)
+                     :lon-dimension (dimension-ref-or-expression lon-ref)
                      :north     north
                      :east      east
                      :south     south
@@ -148,7 +169,7 @@
         (let [[dimension-ref value] args]
           {:node/type :filter/string
            :operator  operator
-           :dimension (dimension-ref->ast-dimension-ref dimension-ref)
+           :dimension (dimension-ref-or-expression dimension-ref)
            :value     value
            :options   (perf/select-keys opts [:case-sensitive])})
 
@@ -157,14 +178,14 @@
         (let [[dimension-ref] args]
           {:node/type :filter/null
            :operator  operator
-           :dimension (dimension-ref->ast-dimension-ref dimension-ref)})
+           :dimension (dimension-ref-or-expression dimension-ref)})
 
         ;; In filters
         (operators/multi-value? operator)
         (let [[dimension-ref & values] args]
           {:node/type :filter/in
            :operator  operator
-           :dimension (dimension-ref->ast-dimension-ref dimension-ref)
+           :dimension (dimension-ref-or-expression dimension-ref)
            :values    (vec values)})
 
         ;; Temporal filters
@@ -174,7 +195,7 @@
               offset-unit  (or pos-offset-unit (:offset-unit opts))]
           (cond-> {:node/type :filter/temporal
                    :operator  operator
-                   :dimension (dimension-ref->ast-dimension-ref dimension-ref)
+                   :dimension (dimension-ref-or-expression dimension-ref)
                    :value     value
                    :unit      (keyword unit)}
             offset-value (assoc :offset-value offset-value

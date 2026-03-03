@@ -49,6 +49,18 @@
    [:dimension-id ::lib-metric.schema/dimension-id]
    [:options {:optional true} [:maybe ::dimension-ref-options]]])
 
+(mr/def ::dimension-expression-node
+  "A dimension reference wrapped in an expression (e.g. temporal extraction like :get-day-of-week)."
+  [:map
+   [:node/type [:= :ast/dimension-expression]]
+   [:expression-op keyword?]
+   [:dimension ::dimension-ref-node]
+   [:args {:optional true} [:maybe [:sequential :any]]]])
+
+(mr/def ::dimension-or-expression
+  "A dimension reference or an expression wrapping one."
+  [:or ::dimension-ref-node ::dimension-expression-node])
+
 (mr/def ::dimension-mapping-node
   "Connects a dimension to a physical column."
   [:map
@@ -113,14 +125,14 @@
   [:map
    [:node/type [:= :filter/comparison]]
    [:operator [:enum := :!= :< :<= :> :>=]]
-   [:dimension ::dimension-ref-node]
+   [:dimension ::dimension-or-expression]
    [:values [:sequential :any]]])
 
 (mr/def ::filter-between
   "Between filter for range checks."
   [:map
    [:node/type [:= :filter/between]]
-   [:dimension ::dimension-ref-node]
+   [:dimension ::dimension-or-expression]
    [:min :any]
    [:max :any]])
 
@@ -129,7 +141,7 @@
   [:map
    [:node/type [:= :filter/string]]
    [:operator [:enum :contains :starts-with :ends-with :does-not-contain]]
-   [:dimension ::dimension-ref-node]
+   [:dimension ::dimension-or-expression]
    [:value string?]
    [:options {:optional true} [:map [:case-sensitive {:optional true} [:maybe boolean?]]]]])
 
@@ -138,22 +150,22 @@
   [:map
    [:node/type [:= :filter/null]]
    [:operator [:enum :is-null :not-null :is-empty :not-empty]]
-   [:dimension ::dimension-ref-node]])
+   [:dimension ::dimension-or-expression]])
 
 (mr/def ::filter-in
   "Multi-value filter (in, not-in)."
   [:map
    [:node/type [:= :filter/in]]
    [:operator [:enum :in :not-in]]
-   [:dimension ::dimension-ref-node]
+   [:dimension ::dimension-or-expression]
    [:values [:sequential :any]]])
 
 (mr/def ::filter-inside
   "Geographic bounding-box filter."
   [:map
    [:node/type [:= :filter/inside]]
-   [:lat-dimension ::dimension-ref-node]
-   [:lon-dimension ::dimension-ref-node]
+   [:lat-dimension ::dimension-or-expression]
+   [:lon-dimension ::dimension-or-expression]
    [:north :any]
    [:east :any]
    [:south :any]
@@ -164,7 +176,7 @@
   [:map
    [:node/type [:= :filter/temporal]]
    [:operator [:enum :time-interval :relative-time-interval]]
-   [:dimension ::dimension-ref-node]
+   [:dimension ::dimension-or-expression]
    [:value int?]
    [:unit keyword?]
    [:offset-value {:optional true} [:maybe int?]]

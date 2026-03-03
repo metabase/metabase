@@ -50,6 +50,10 @@
 (defmethod walk-node :filter/in         [inner ast] (cond-> ast (:dimension ast) (update :dimension inner)))
 (defmethod walk-node :filter/temporal   [inner ast] (cond-> ast (:dimension ast) (update :dimension inner)))
 
+(defmethod walk-node :ast/dimension-expression
+  [inner ast]
+  (update ast :dimension inner))
+
 (defmethod walk-node :filter/inside
   [inner ast]
   (cond-> ast

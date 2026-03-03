@@ -290,6 +290,56 @@
     (is (= :not (first filter)))
     (is (= := (first (nth filter 2))))))
 
+;;; -------------------------------------------------- Dimension Expression Compilation --------------------------------------------------
+
+(deftest ^:parallel compile-dimension-expression-filter-test
+  (testing "compiles filter with dimension-expression node (exclude day-of-week)"
+    (let [dim-expr {:node/type     :ast/dimension-expression
+                    :expression-op :get-day-of-week
+                    :dimension     dim-ref-2
+                    :args          [:iso]}
+          ast-with-filter (assoc sample-ast :filter
+                                 {:node/type :filter/comparison
+                                  :operator  :!=
+                                  :dimension dim-expr
+                                  :values    [1 7]})
+          result          (ast.compile/compile-to-mbql ast-with-filter)
+          filter-clause   (first (get-in result [:stages 0 :filters]))]
+      (is (= :!= (first filter-clause)))
+      (is (string? (get-in filter-clause [1 :lib/uuid])))
+      ;; The third element should be the expression wrapping the field
+      (let [expr (nth filter-clause 2)]
+        (is (= :get-day-of-week (first expr)))
+        (is (string? (get-in expr [1 :lib/uuid])))
+        ;; Inner field ref
+        (is (= :field (first (nth expr 2))))
+        (is (= 2 (nth (nth expr 2) 2))) ; field id from mapping
+        ;; Extra arg :iso
+        (is (= :iso (nth expr 3))))
+      ;; Values
+      (is (= 1 (nth filter-clause 3)))
+      (is (= 7 (nth filter-clause 4)))))
+
+  (testing "compiles filter with dimension-expression node without extra args"
+    (let [dim-expr {:node/type     :ast/dimension-expression
+                    :expression-op :get-month
+                    :dimension     dim-ref-2}
+          ast-with-filter (assoc sample-ast :filter
+                                 {:node/type :filter/comparison
+                                  :operator  :!=
+                                  :dimension dim-expr
+                                  :values    [3 12]})
+          result          (ast.compile/compile-to-mbql ast-with-filter)
+          filter-clause   (first (get-in result [:stages 0 :filters]))]
+      (is (= :!= (first filter-clause)))
+      (let [expr (nth filter-clause 2)]
+        (is (= :get-month (first expr)))
+        (is (= :field (first (nth expr 2))))
+        ;; No extra args beyond opts and field ref
+        (is (= 3 (count expr))))
+      (is (= 3 (nth filter-clause 3)))
+      (is (= 12 (nth filter-clause 4))))))
+
 ;;; -------------------------------------------------- Group By / Breakout Compilation --------------------------------------------------
 
 (deftest ^:parallel compile-group-by-test

@@ -12,6 +12,8 @@
 (defn leading-dimension-ref
   "Extract the dimension UUID from a filter clause's leading argument.
    Filter clauses look like: [:operator opts [:dimension opts uuid] value ...]
+   Also handles expression-wrapped dimensions like:
+     [:!= opts [:get-day-of-week opts [:dimension opts uuid] :iso] 1 7]
    Compound filters (:and, :or, :not) don't have a leading dimension ref.
    Returns the UUID string or nil."
   [filter-clause]
@@ -20,10 +22,20 @@
     (let [operator (first filter-clause)
           third    (nth filter-clause 2 nil)]
       (when-not (#{:and :or :not} operator)
-        (when (and (vector? third)
-                   (= :dimension (first third))
-                   (>= (count third) 3))
-          (nth third 2))))))
+        (when (vector? third)
+          (cond
+            ;; Direct dimension ref: [:dimension opts uuid]
+            (and (= :dimension (first third))
+                 (>= (count third) 3))
+            (nth third 2)
+
+            ;; Expression-wrapped dimension: [:get-day-of-week opts [:dimension opts uuid] ...]
+            (operators/temporal-extraction? (first third))
+            (let [inner (nth third 2 nil)]
+              (when (and (vector? inner)
+                         (= :dimension (first inner))
+                         (>= (count inner) 3))
+                (nth inner 2)))))))))
 
 (defn build-filter-positions
   "Build a map of {dimension-id -> [filter-indices]} from a sequence of filters.

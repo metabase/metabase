@@ -46,6 +46,10 @@
 (doseq [op [:in :not-in]]
   (hierarchy/derive op ::multi-value))
 
+;; Temporal extraction operators (wrap dimension refs in filters like exclude-date)
+(doseq [op [:get-day-of-week :get-month :get-hour :get-quarter]]
+  (hierarchy/derive op ::temporal-extraction))
+
 ;; All operator categories are filter operators (for display-info compatibility)
 (doseq [cat [::nullary ::comparison ::string-op ::range ::temporal ::compound ::multi-value]]
   (hierarchy/derive cat ::filter-operator))
@@ -114,6 +118,11 @@
   "Returns true if `op` is a multi-value operator."
   [op]
   (hierarchy/isa? op ::multi-value))
+
+(defn temporal-extraction?
+  "Returns true if `op` is a temporal extraction operator (e.g. :get-day-of-week)."
+  [op]
+  (hierarchy/isa? op ::temporal-extraction))
 
 (defn filter-operator?
   "Returns true if `op` is any kind of filter operator."
