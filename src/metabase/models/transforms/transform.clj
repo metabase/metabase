@@ -83,7 +83,7 @@
   (-> m
       (m/update-existing :source-tables
                          (fn [st]
-                           (-> (if (map? st)
+                           (-> (if (map? st) ;; TODO(FE-source-tables): remove map->vec conversion
                                  (transforms-base.u/source-tables-map->vec st)
                                  st)
                                transforms-base.u/normalize-source-tables)))
