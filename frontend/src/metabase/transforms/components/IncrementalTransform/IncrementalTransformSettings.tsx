@@ -26,7 +26,7 @@ import {
 import type * as Lib from "metabase-lib";
 import {
   type AdvancedTransformType,
-  type TransformSource,
+  type DraftTransformSource,
   isAdvancedTransformSource,
 } from "metabase-types/api";
 
@@ -38,7 +38,7 @@ import { NativeQueryColumnSelect } from "./NativeQueryColumnSelect";
 import type { IncrementalSettingsFormValues } from "./form";
 
 type IncrementalTransformSettingsProps = {
-  source: TransformSource;
+  source: DraftTransformSource;
   incremental: boolean;
   onIncrementalChange: (value: boolean) => void;
   variant?: "embedded" | "standalone";
@@ -207,7 +207,7 @@ function TargetStrategyFields({
 }
 
 type SourceStrategyFieldsProps = {
-  source: TransformSource;
+  source: DraftTransformSource;
   query: Lib.Query | null;
   type: "query" | "native" | AdvancedTransformType;
   readOnly?: boolean;
@@ -256,7 +256,7 @@ function SourceStrategyFields({
               disabled={readOnly}
             />
           )}
-          {isAdvancedTransformSource(source) && "source-tables" in source && (
+          {isAdvancedTransformSource(source) && (
             <PythonKeysetColumnSelect
               name="checkpointFilterUniqueKey"
               label={t`Field to check for new values`}

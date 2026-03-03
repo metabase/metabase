@@ -7,12 +7,10 @@ import type { PythonTransformEditorProps } from "metabase/plugins";
 import { Box, Flex, Stack, Text } from "metabase/ui";
 import {
   ADVANCED_TRANSFORM_TYPES,
-  type DatabaseId,
   type PythonTransformTableAliases,
-  type Table,
 } from "metabase-types/api";
 
-import { isPythonTransformSource } from "../../utils";
+import { getPythonSourceValidationResult } from "../../utils";
 
 import { PythonDataPicker } from "./PythonDataPicker";
 import { PythonEditorBody } from "./PythonEditorBody";
@@ -48,32 +46,16 @@ export function PythonTransformEditor({
     onChangeSource(newSource);
   };
 
-  const handleDatabaseChange = (databaseId: DatabaseId) => {
-    // Clear table selections when database changes
-    const newSource = {
-      ...source,
-      "source-database": databaseId,
-      "source-tables": {},
-    };
-    onChangeSource(newSource);
-  };
-
-  const handleDataChange = (
-    database: DatabaseId,
-    sourceTables: PythonTransformTableAliases,
-    tableInfo: Table[],
-  ) => {
+  const handleDataChange = (sourceTables: PythonTransformTableAliases) => {
     const updatedScript = updateTransformSignature(
       source.body,
       sourceTables,
-      tableInfo,
       source.type,
     );
 
     const newSource = {
       ...source,
       body: updatedScript,
-      "source-database": database,
       "source-tables": sourceTables,
     };
     onChangeSource(newSource);
@@ -117,7 +99,7 @@ export function PythonTransformEditor({
     // }
     if (isRunning) {
       cancel();
-    } else if (isPythonTransformSource(source)) {
+    } else if (getPythonSourceValidationResult(source).isValid) {
       handleRun();
     }
   };
@@ -128,18 +110,14 @@ export function PythonTransformEditor({
   return (
     <Flex h="100%" w="100%" direction="column">
       <PythonTransformTopBar
-        databaseId={source["source-database"]}
         isEditMode={isEditMode}
         readOnly={uiOptions?.readOnly}
         transform={transform}
-        onDatabaseChange={handleDatabaseChange}
-        canChangeDatabase={uiOptions?.canChangeDatabase}
       />
       <Flex className={S.editorBodyWrapper}>
         {isEditMode && (
           <PythonDataPicker
             disabled={uiOptions?.readOnly}
-            database={source["source-database"]}
             tables={source["source-tables"]}
             onChange={handleDataChange}
           />
@@ -148,7 +126,7 @@ export function PythonTransformEditor({
           <PythonEditorBody
             type={source.type}
             disabled={uiOptions?.readOnly}
-            isRunnable={isPythonTransformSource(source)}
+            sourceValidationResult={getPythonSourceValidationResult(source)}
             isRunning={isRunning}
             isDirty={isDirty}
             isEditMode={isEditMode}

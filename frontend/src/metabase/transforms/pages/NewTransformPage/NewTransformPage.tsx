@@ -36,7 +36,7 @@ import { TransformEditor } from "../../components/TransformEditor";
 import { NAME_MAX_LENGTH } from "../../constants";
 import { useRegisterMetabotTransformContext } from "../../hooks/use-register-transform-metabot-context";
 import { useSourceState } from "../../hooks/use-source-state";
-import { getValidationResult, isCompleteSource } from "../../utils";
+import { getValidationResult } from "../../utils";
 
 import { CreateTransformModal } from "./CreateTransformModal";
 import {
@@ -189,10 +189,11 @@ function NewTransformPageBody({
           )}
         </Box>
       </PageContainer>
-      {isModalOpened && isCompleteSource(source) && (
+      {isModalOpened && (
         <CreateTransformModal
           source={source}
           defaultValues={getDefaultValues(name, suggestedTransform)}
+          databases={databases}
           onCreate={handleCreate}
           onClose={closeModal}
         />

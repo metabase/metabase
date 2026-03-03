@@ -1,25 +1,21 @@
 import type {
   AdvancedTransformType,
   PythonTransformTableAliases,
-  Table,
-  TableId,
 } from "metabase-types/api";
 
 export function updateTransformSignature(
   script: string,
   tables: PythonTransformTableAliases,
-  tableInfo: Table[],
   type: AdvancedTransformType,
 ): string {
   return type === "python"
-    ? updatePythonTransformSignature(script, tables, tableInfo)
-    : updateJavascriptTransformSignature(script, tables, tableInfo);
+    ? updatePythonTransformSignature(script, tables)
+    : updateJavascriptTransformSignature(script, tables);
 }
 
 function updatePythonTransformSignature(
   script: string,
   tables: PythonTransformTableAliases,
-  tableInfo: Table[],
 ): string {
   const tableAliases = Object.keys(tables);
   const transformRegex = /^def\s+transform\s*\([^)]*\)\s*:\s*\n(\s*)/m;
@@ -48,9 +44,7 @@ function updatePythonTransformSignature(
       const newArgsSection = tableAliases
         .map((alias) => {
           const padding = " ".repeat(maxAliasLength - alias.length);
-          const tableId = tables[alias];
-          const tableName = getTableName(tableInfo, tableId);
-          return `        ${alias}:${padding} DataFrame containing the data from the "${tableName}" table`;
+          return `        ${alias}:${padding} DataFrame containing the data from the table aliased as "${alias}"`;
         })
         .join("\n");
 
@@ -120,12 +114,7 @@ ${newSignature}
 ${tableAliases
   .map((alias) => {
     const padding = " ".repeat(maxAliasLength - alias.length);
-    const tableId = tables[alias];
-    const tableName = getTableName(tableInfo, tableId);
-    if (alias === tableName) {
-      return `        ${alias}:${padding} DataFrame containing the data from the corresponding table`;
-    }
-    return `        ${alias}:${padding} DataFrame containing the data from table "${tableName}"`;
+    return `        ${alias}:${padding} DataFrame containing the data from table aliased as "${alias}"`;
   })
   .join("\n")}`
         : ""
@@ -144,7 +133,6 @@ ${tableAliases
 function updateJavascriptTransformSignature(
   script: string,
   tables: PythonTransformTableAliases,
-  tableInfo: Table[],
 ): string {
   const tableAliases = Object.keys(tables);
   const transformRegex =
@@ -174,9 +162,7 @@ function updateJavascriptTransformSignature(
       const newArgsSection = tableAliases
         .map((alias) => {
           const padding = " ".repeat(maxAliasLength - alias.length);
-          const tableId = tables[alias];
-          const tableName = getTableName(tableInfo, tableId);
-          return `        ${alias}:${padding} Object array containing the data from the "${tableName}" table`;
+          return `        ${alias}:${padding} Object array containing the data from the table aliased as "${alias}"`;
         })
         .join("\n");
 
@@ -246,12 +232,7 @@ ${newSignature}
 ${tableAliases
   .map((alias) => {
     const padding = " ".repeat(maxAliasLength - alias.length);
-    const tableId = tables[alias];
-    const tableName = getTableName(tableInfo, tableId);
-    if (alias === tableName) {
-      return `  ${alias}:${padding} Array containing the data from the corresponding table`;
-    }
-    return `  ${alias}:${padding} Array containing the data from table "${tableName}"`;
+    return `  ${alias}:${padding} Array containing the data from the table aliased as "${alias}"`;
   })
   .join("\n")}`
         : ""
@@ -265,13 +246,4 @@ ${tableAliases
 `;
 
   return script + functionTemplate;
-}
-
-function getTableName(tableInfo: Table[], tableId: TableId) {
-  const table = tableInfo.find((t) => t.id === tableId);
-  if (!table) {
-    return undefined;
-  }
-
-  return [table.db?.name, table.schema, table.name].filter(Boolean).join(".");
 }

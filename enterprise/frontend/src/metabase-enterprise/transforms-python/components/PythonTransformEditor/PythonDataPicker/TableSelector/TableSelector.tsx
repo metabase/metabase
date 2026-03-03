@@ -15,41 +15,29 @@ import {
   Stack,
   Tooltip,
 } from "metabase/ui";
-import type {
-  ConcreteTableId,
-  DatabaseId,
-  Table,
-  TableId,
-} from "metabase-types/api";
+import type { ConcreteTableId, Table, TableId } from "metabase-types/api";
 import { isConcreteTableId } from "metabase-types/api";
+
+import type { TableSelection } from "../types";
 
 import S from "./TableSelector.module.css";
 
 export function TableSelector({
-  database,
-  availableTables,
+  selection,
   selectedTableIds,
   disabled,
   onChange,
   onRemove,
   table,
 }: {
-  database: DatabaseId | undefined;
-  table: Table | undefined;
-  availableTables: Table[];
+  selection: TableSelection;
   selectedTableIds: ConcreteTableId[];
   disabled?: boolean;
-  onChange: (table: Table | undefined) => void;
+  onChange: (tableId: TableId, table: OmniPickerItem) => void;
   onRemove: () => void;
+  table: Table | undefined;
 }) {
   const [isOpened, { open, close }] = useDisclosure();
-
-  function handleChange(tableId: TableId | undefined) {
-    const table = availableTables.find((table) => table.id === tableId);
-    if (table) {
-      onChange(table);
-    }
-  }
 
   function shouldDisableItem(item: OmniPickerItem) {
     if (item.model === "table") {
@@ -75,9 +63,9 @@ export function TableSelector({
             {table ? (
               <>
                 <Box fz="sm" c="text-secondary" fw="normal">
-                  {table?.db?.name} / {table?.schema}
+                  {`${table.db?.name} / ${table.schema}`}
                 </Box>
-                <Box c="text-primary">{table?.display_name}</Box>
+                <Box c="text-primary">{table.display_name}</Box>
               </>
             ) : (
               <Box c="text-primary">{t`Select a table…`}</Box>
@@ -100,9 +88,8 @@ export function TableSelector({
       {isOpened && (
         <DataPickerModal
           title={t`Pick a table`}
-          value={getDataPickerValue(table) ?? getDefaultDatabase(database)}
-          onlyDatabaseId={database}
-          onChange={handleChange}
+          value={getDataPickerValue(selection.tableId)}
+          onChange={onChange}
           onClose={close}
           shouldDisableItem={shouldDisableItem}
           models={["table"]}
@@ -118,24 +105,14 @@ export function TableSelector({
   );
 }
 
-function getDefaultDatabase(dbId?: DatabaseId): DataPickerValue | undefined {
-  if (!dbId) {
-    return;
-  }
-  return {
-    model: "database",
-    id: dbId,
-  };
-}
-
 function getDataPickerValue(
-  table: Table | undefined,
+  tableId: TableId | undefined,
 ): DataPickerValue | undefined {
-  if (!table) {
+  if (!tableId) {
     return;
   }
   return {
     model: "table",
-    id: table.id,
+    id: tableId,
   };
 }
