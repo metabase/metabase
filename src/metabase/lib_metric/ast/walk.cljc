@@ -1,6 +1,7 @@
 (ns metabase.lib-metric.ast.walk
   "Functions for walking and transforming AST nodes."
   (:require
+   [metabase.lib-metric.ast.schema :as ast.schema]
    [metabase.util.performance :as perf]))
 
 (defn node?
@@ -27,43 +28,60 @@
   [x]
   (and (node? x) (= :ast/dimension-ref (:node/type x))))
 
+(defmulti walk-node
+  "Walk a single AST node, calling inner on child nodes.
+   Returns the walked node (before outer is applied)."
+  {:arglists '([inner node])}
+  (fn [_inner node] (:node/type node))
+  :hierarchy #'ast.schema/ast-hierarchy)
+
+(defmethod walk-node :filter/compound
+  [inner ast]
+  (update ast :children #(perf/mapv inner %)))
+
+(defmethod walk-node :filter/not
+  [inner ast]
+  (update ast :child inner))
+
+(defmethod walk-node :filter/comparison [inner ast] (cond-> ast (:dimension ast) (update :dimension inner)))
+(defmethod walk-node :filter/between    [inner ast] (cond-> ast (:dimension ast) (update :dimension inner)))
+(defmethod walk-node :filter/string     [inner ast] (cond-> ast (:dimension ast) (update :dimension inner)))
+(defmethod walk-node :filter/null       [inner ast] (cond-> ast (:dimension ast) (update :dimension inner)))
+(defmethod walk-node :filter/in         [inner ast] (cond-> ast (:dimension ast) (update :dimension inner)))
+(defmethod walk-node :filter/temporal   [inner ast] (cond-> ast (:dimension ast) (update :dimension inner)))
+
+(defmethod walk-node :filter/inside
+  [inner ast]
+  (cond-> ast
+    (:lat-dimension ast) (update :lat-dimension inner)
+    (:lon-dimension ast) (update :lon-dimension inner)))
+
+(defmethod walk-node :ast/root
+  [inner ast]
+  (cond-> ast
+    (:filter ast)     (update :filter inner)
+    (:source ast)     (update :source inner)
+    (:group-by ast)   (update :group-by #(perf/mapv inner %))
+    (:dimensions ast) (update :dimensions #(perf/mapv inner %))
+    (:mappings ast)   (update :mappings #(perf/mapv inner %))))
+
+(defmethod walk-node :source/any
+  [inner ast]
+  (cond-> ast
+    (:filters ast) (update :filters inner)))
+
+(defmethod walk-node :default
+  [_inner ast]
+  ast)
+
 (defn walk
   "Walk AST, calling inner on child nodes and outer on the result.
    Similar to clojure.walk/walk but AST-aware."
   [inner outer ast]
   (outer
-   (cond
-     (not (node? ast)) ast
-
-     ;; Compound filter nodes with :children
-     (#{:filter/and :filter/or} (:node/type ast))
-     (update ast :children #(perf/mapv inner %))
-
-     ;; Negation filter with single :child
-     (= :filter/not (:node/type ast))
-     (update ast :child inner)
-
-     ;; Leaf filter nodes - walk into :dimension
-     (filter-node? ast)
-     (cond-> ast
-       (:dimension ast) (update :dimension inner))
-
-     ;; Root node - walk source, filter, group-by, dimensions, and mappings
-     (= :ast/root (:node/type ast))
-     (cond-> ast
-       (:filter ast)     (update :filter inner)
-       (:source ast)     (update :source inner)
-       (:group-by ast)   (update :group-by #(perf/mapv inner %))
-       (:dimensions ast) (update :dimensions #(perf/mapv inner %))
-       (:mappings ast)   (update :mappings #(perf/mapv inner %)))
-
-     ;; Source nodes with filters
-     (#{:source/metric :source/measure} (:node/type ast))
-     (cond-> ast
-       (:filters ast) (update :filters inner))
-
-     ;; All other nodes have no child nodes to walk
-     :else ast)))
+   (if (node? ast)
+     (walk-node inner ast)
+     ast)))
 
 (defn postwalk
   "Walk AST depth-first, applying f to each node after recursing into children."
@@ -126,6 +144,30 @@
   [pred replacement ast]
   (transform pred (constantly replacement) ast))
 
+(defmulti ^:private remove-filters-node
+  "Remove matching filter children from a node. Returns the transformed node."
+  {:arglists '([pred node])}
+  (fn [_pred node] (:node/type node))
+  :hierarchy #'ast.schema/ast-hierarchy)
+
+(defmethod remove-filters-node :filter/compound
+  [pred node]
+  (let [filtered-children (filterv #(and (some? %) (not (pred %))) (:children node))]
+    (case (count filtered-children)
+      0 nil
+      1 (first filtered-children)
+      (assoc node :children filtered-children))))
+
+(defmethod remove-filters-node :filter/not
+  [pred node]
+  (if (pred (:child node))
+    nil
+    node))
+
+(defmethod remove-filters-node :default
+  [_pred node]
+  node)
+
 (defn remove-filters
   "Remove all filter nodes matching predicate from compound filters.
    For :filter/and and :filter/or, filters out matching children.
@@ -133,21 +175,7 @@
   [pred ast]
   (postwalk
    (fn [node]
-     (cond
-       (not (node? node))
-       node
-
-       (#{:filter/and :filter/or} (:node/type node))
-       (let [filtered-children (filterv #(and (some? %) (not (pred %))) (:children node))]
-         (case (count filtered-children)
-           0 nil
-           1 (first filtered-children)
-           (assoc node :children filtered-children)))
-
-       (= :filter/not (:node/type node))
-       (if (pred (:child node))
-         nil
-         node)
-
-       :else node))
+     (if (node? node)
+       (remove-filters-node pred node)
+       node))
    ast))
