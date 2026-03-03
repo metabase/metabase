@@ -308,19 +308,28 @@
 (defn- source->checkpoint-filter-column
   "Resolve the checkpoint filter column for an incremental transform.
 
-  Tries to resolve the column using the unique key first.
-  Falls back to looking up the column by name from the target table if a `:checkpoint-filter` is specified.
+  Supports three strategies:
+  - field-id: MBQL/Python transforms with field ID from source table
+  - unique-key: Legacy MBQL/Python or native query fallback
+  - checkpoint-filter: Native queries with plain column name
 
   Validates that the resolved column has a supported type for checkpoint filtering (numeric or temporal).
   Throws an exception if the column type is not supported."
   [query source-incremental-strategy table metadata-provider]
-  (let [{:keys [checkpoint-filter checkpoint-filter-unique-key]} source-incremental-strategy]
+  (let [{:keys [checkpoint-filter checkpoint-filter-unique-key checkpoint-filter-field-id]}
+        source-incremental-strategy]
     (when-some [{column-name :name
                  :keys [base-type]
                  :as column}
                 (cond
+                  ;; New approach: field-id for MBQL/Python
+                  checkpoint-filter-field-id
+                  (lib.metadata/field metadata-provider checkpoint-filter-field-id)
+
+                  ;; Existing approaches: unique-key or column name
                   checkpoint-filter-unique-key
                   (source->checkpoint-filter-unique-key query source-incremental-strategy)
+
                   checkpoint-filter
                   (when-some [field-id (t2/select-one-pk :model/Field
                                                          :table_id (:id table)
@@ -378,7 +387,7 @@
   For native queries with a `checkpoint` template tag, adds the checkpoint as a parameter.
   For MBQL queries, adds a filter clause `WHERE checkpoint_column > checkpoint`.
   Returns the query unchanged on first run (no checkpoint) or for native queries without the checkpoint tag."
-  [query source-incremental-strategy checkpoint source-range-params]
+  [query checkpoint source-range-params]
   (if source-range-params
     (if (lib/native? query)
       (throw (ex-info "native appdb watermarks are not yet implemented" {}))
@@ -394,8 +403,7 @@
                    :target [:variable [:template-tag "checkpoint"]]
                    :value  checkpoint-value})
           query)
-        ;; mbql query
-        (lib/filter query (lib/> (source->checkpoint-filter-unique-key query source-incremental-strategy) checkpoint-value)))
+        query)
       query)))
 
 (defn- post-process-incremental-query
@@ -496,7 +504,7 @@
 (defn compile-source
   "Compile the source query of a transform to SQL, applying incremental filtering if required."
   [{:keys [source] :as transform} source-range-params]
-  (let [{:keys [source-incremental-strategy] query-type :type} source]
+  (let [{query-type :type} source]
     (assert (= :query query-type))
     (let [checkpoint          (next-checkpoint transform)
           query               (:query source)
@@ -505,7 +513,7 @@
                 (or (= :clickhouse driver)
                     driver/*compile-with-inline-parameters*)]
         (-> query
-            (preprocess-incremental-query source-incremental-strategy checkpoint source-range-params)
+            (preprocess-incremental-query checkpoint source-range-params)
             massage-sql-query
             qp.compile/compile
             (post-process-incremental-query driver source checkpoint))))))

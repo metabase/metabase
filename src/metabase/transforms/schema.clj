@@ -24,9 +24,11 @@
    [:type [:= "checkpoint"]]
    ;; for native
    [:checkpoint-filter {:optional true} :string]
-   ;; for mbql and python
+   ;; for mbql and python (legacy - keep for native compatibility)
    [:checkpoint-filter-unique-key {:optional true}
-    ::lib.schema/column-unique-key]])
+    ::lib.schema/column-unique-key]
+   ;; for mbql and python (new approach)
+   [:checkpoint-filter-field-id {:optional true} :int]])
 
 (mr/def ::source-incremental-strategy
   [:multi {:dispatch :type}

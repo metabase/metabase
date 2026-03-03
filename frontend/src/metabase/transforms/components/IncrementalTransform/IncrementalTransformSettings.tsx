@@ -231,7 +231,7 @@ function SourceStrategyFields({
         <>
           {type === "query" && query && (
             <MBQLKeysetColumnSelect
-              name="checkpointFilterUniqueKey"
+              name="checkpointFilterFieldId"
               label={t`Field to check for new values`}
               placeholder={t`Pick a field`}
               description={t`Pick the field that we should scan to determine which records are new or changed`}
@@ -254,7 +254,7 @@ function SourceStrategyFields({
           )}
           {type === "python" && "source-tables" in source && (
             <PythonKeysetColumnSelect
-              name="checkpointFilterUniqueKey"
+              name="checkpointFilterFieldId"
               label={t`Field to check for new values`}
               placeholder={t`Pick a field`}
               description={t`Pick the field that we should scan to determine which records are new or changed`}
