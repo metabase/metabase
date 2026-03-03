@@ -306,12 +306,12 @@ export const getNullReplacerTransform = (
   seriesModels: SeriesModel[],
 ): TransformFn => {
   const replaceNullsWithZeroDataKeys = seriesModels
-    .filter(
-      (seriesModel) =>
-        settings.series?.(seriesModel.legacySeriesSettingsObjectKey)[
-          "line.missing"
-        ] === "zero",
-    )
+    .filter((seriesModel) => {
+      const seriesSettings = settings.series?.(
+        seriesModel.legacySeriesSettingsObjectKey,
+      );
+      return seriesSettings?.["line.missing"] === "zero";
+    })
     .map((seriesModel) => seriesModel.dataKey);
 
   return (datum) => {
