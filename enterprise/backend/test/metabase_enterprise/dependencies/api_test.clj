@@ -3,6 +3,7 @@
    [clojure.test :refer :all]
    [medley.core :as m]
    [metabase-enterprise.dependencies.api :as deps.api]
+   [metabase-enterprise.dependencies.core :as dependencies]
    [metabase-enterprise.dependencies.events]
    [metabase-enterprise.dependencies.findings :as dependencies.findings]
    [metabase-enterprise.dependencies.task.backfill :as dependencies.backfill]
@@ -679,6 +680,31 @@
                                         {:id (:id transform)
                                          :source (:source transform)
                                          :target (:target transform)}))))))))
+
+(deftest check-card-bad-transforms-filtered-by-can-read-test
+  (testing "POST /api/ee/dependencies/check-card filters bad_transforms by mi/can-read?"
+    (mt/dataset test-data
+      (mt/with-premium-features #{:dependencies :transforms}
+        (mt/with-temp [:model/User user {:email "test@test.com"}
+                       :model/Transform transform {}]
+          (mt/with-model-cleanup [:model/Card :model/Dependency]
+            (let [base-card (card/create-card! (basic-card) user)
+                  proposed-card {:id (:id base-card)
+                                 :type :question
+                                 :dataset_query (:dataset_query base-card)}]
+              ;; Mock errors-from-proposed-edits to report the transform as broken
+              (with-redefs [dependencies/errors-from-proposed-edits
+                            (constantly {:transform {(:id transform) #{:some-error}}})]
+                (testing "Admin sees broken transforms in response"
+                  (let [response (mt/user-http-request :crowberto :post 200 "ee/dependencies/check_card"
+                                                       proposed-card)]
+                    (is (false? (:success response)))
+                    (is (=? [{:id (:id transform)}]
+                            (:bad_transforms response)))))
+                (testing "Non-admin user cannot see broken transforms they lack read permission for"
+                  (let [response (mt/user-http-request :rasta :post 200 "ee/dependencies/check_card"
+                                                       proposed-card)]
+                    (is (= [] (:bad_transforms response)))))))))))))
 
 (deftest graph-permissions-test
   (testing "GET /api/ee/dependencies/graph requires read permissions on the starting entity"

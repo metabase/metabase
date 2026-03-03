@@ -165,9 +165,9 @@
             {:base-type base-type
              :effective-type (or effective-type base-type)})
           (wrap-clauses [x]
-            (lib.util.match/replace x
+            (lib.util.match/replace-lite x
               ;; don't replace anything that's already bucketed or otherwise is not subject to autobucketing
-              (_ :guard (partial should-not-be-autobucketed? query stage-path))
+              (x :guard (should-not-be-autobucketed? query stage-path x))
               &match
 
               ;; if it's a `:field` clause and `field-id->type-info` tells us it's a `:type/Temporal` (but not
@@ -175,7 +175,7 @@
               [:field _opts (_id-or-name :guard datetime-but-not-time?)]
               (lib/with-temporal-bucket &match :day)
 
-              [:expression (_opts :guard (comp date-or-datetime-clause? expression-opts->type-info)) _name]
+              [:expression (opts :guard (date-or-datetime-clause? (expression-opts->type-info opts))) _name]
               (lib/with-temporal-bucket &match :day)))
           (rewrite-clause [stage clause-to-rewrite]
             (m/update-existing stage clause-to-rewrite wrap-clauses))]

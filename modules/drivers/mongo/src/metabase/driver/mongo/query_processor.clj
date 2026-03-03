@@ -1045,8 +1045,8 @@ function(bin) {
   "Rename :join-alias properties fields to ::join-local.
   See [[find-mapped-field-name]] for an explanation why this is done."
   [expr alias]
-  (driver-api/replace expr
-    [:field _ {:join-alias alias}]
+  (driver-api/replace-lite expr
+    [:field _ {:join-alias (a :guard (= a alias))}]
     (update &match 2 set/rename-keys {:join-alias ::join-local})))
 
 (defn- get-field-mappings [source-query projections]
@@ -1761,14 +1761,14 @@ function(bin) {
                        source-alias)
                 [:field source-alias opts]
                 [:field id-or-name opts])))]
-    (driver-api/replace form
-      :field
+    (driver-api/replace-lite form
+      [:field & _]
       (update-field-ref &match)
 
-      (join :guard (every-pred map?
-                               driver-api/qp.add.alias
-                               #(not= (driver-api/qp.add.alias %) (:alias %))))
-      (recur (assoc join :alias (driver-api/qp.add.alias join))))))
+      (join :guard (and (map? join)
+                        (driver-api/qp.add.alias join)
+                        (not= (driver-api/qp.add.alias join) (:alias join))))
+      (&recur (assoc join :alias (driver-api/qp.add.alias join))))))
 
 (defn- preprocess
   [inner-query]

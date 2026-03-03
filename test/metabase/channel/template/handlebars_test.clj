@@ -57,3 +57,13 @@
   (testing "with custom req"
     (with-temp-template! [tmpl-name "tmpl.hbs" "Hello {{uppercase name}}"]
       (is (= "Hello NGOC" (handlebars/render custom-hbs tmpl-name {:name "Ngoc"}))))))
+
+(deftest dotted-path-resolution-works-on-maps-test
+  (are [template context]
+       (= "" (handlebars/render-string template context))
+    "{{x.y}}"       {"x" "a string"}
+    "{{x.y}}"       {"x" 42}
+    "{{x.toString}}" {"x" 42}
+    "{{x.y.z}}"     {"x" {"y" (Object.)}})
+  (is (= "hello" (handlebars/render-string "{{x.y}}" {"x" {"y" "hello"}})))
+  (is (= "deep" (handlebars/render-string "{{a.b.c}}" {"a" {"b" {"c" "deep"}}}))))

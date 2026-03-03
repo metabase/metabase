@@ -51,7 +51,7 @@ describe("scenarios > dashboard > subscriptions", () => {
       openDashboardSubscriptions();
 
       // The sidebar starts open after the method there, so test that clicking the icon closes it
-      H.openSharingMenu("Subscriptions");
+      H.openDashboardMenu("Subscriptions");
       H.sidebar().should("not.exist");
     });
   });
@@ -517,8 +517,8 @@ describe("scenarios > dashboard > subscriptions", () => {
     it("should allow non-admin users to create subscriptions", () => {
       cy.signInAsNormalUser();
       H.visitDashboard(ORDERS_DASHBOARD_ID);
-      H.openSharingMenu();
-      H.sharingMenu().findByText("Subscriptions").should("be.visible");
+      H.openDashboardMenu();
+      H.popover().findByText("Subscriptions").should("be.visible");
     });
   });
 
@@ -829,7 +829,7 @@ describe("scenarios > dashboard > subscriptions", () => {
 function openDashboardSubscriptions(dashboard_id = ORDERS_DASHBOARD_ID) {
   // Orders in a dashboard
   H.visitDashboard(dashboard_id);
-  H.openSharingMenu("Subscriptions");
+  H.openDashboardMenu("Subscriptions");
 }
 
 function assignRecipient({

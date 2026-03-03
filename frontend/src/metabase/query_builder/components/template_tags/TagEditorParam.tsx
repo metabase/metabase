@@ -2,7 +2,7 @@ import { Component } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
-import { connect } from "metabase/lib/redux";
+import { type DispatchFn, connect } from "metabase/lib/redux";
 import { TemporalUnitSettings } from "metabase/parameters/components/ParameterSettings/TemporalUnitSettings";
 import { ValuesSourceSettings } from "metabase/parameters/components/ValuesSourceSettings";
 import { isSingleOrMultiSelectable } from "metabase/parameters/utils/parameter-type";
@@ -79,6 +79,10 @@ interface OwnProps {
   database?: Database | null;
   databases: Database[];
   setTemplateTag: (tag: TemplateTag) => void;
+  setTemplateTagConfig?: (
+    tag: TemplateTag,
+    config: ParameterValuesConfig,
+  ) => void;
   setParameterValue: (tagId: TemplateTagId, value: RowValue) => void;
 }
 
@@ -89,7 +93,23 @@ function mapStateToProps(state: State) {
   };
 }
 
-const mapDispatchToProps = { fetchField, setTemplateTagConfig };
+const mapDispatchToProps = (
+  dispatch: DispatchFn,
+  props: OwnProps,
+): DispatchProps => {
+  return {
+    fetchField(fieldId, force) {
+      dispatch(fetchField(fieldId, force));
+    },
+    setTemplateTagConfig(tag, config) {
+      if (props.setTemplateTagConfig) {
+        props.setTemplateTagConfig(tag, config);
+        return;
+      }
+      dispatch(setTemplateTagConfig(tag, config));
+    },
+  };
+};
 
 const EMPTY_VALUES_CONFIG: ParameterValuesConfig = {
   isMultiSelect: false,

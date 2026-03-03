@@ -132,13 +132,13 @@
   ;; clear out recent query executions!
   (t2/delete! :model/QueryExecution)
   (testing "POST /api/dataset"
-    (testing "\nEven if a query fails we still expect a 202 response from the API"
+    (testing "\nA failed query should return a 400 response from the API"
       ;; Error message's format can differ a bit depending on DB version and the comment we prepend to it, so check
       ;; that it exists and contains the substring "Syntax error in SQL statement"
       (let [query  {:database (mt/id)
                     :type     "native"
                     :native   {:query "foobar"}}
-            result (mt/user-http-request :crowberto :post 202 "dataset" query)]
+            result (mt/user-http-request :crowberto :post 400 "dataset" query)]
         (testing "\nAPI Response"
           (is (malli= [:map
                        [:data        [:map
@@ -375,6 +375,19 @@
                      [:error  [:= "You do not have permissions to run this query."]]]
                     (mt/user-http-request :rasta :post "dataset"
                                           (mt/mbql-query venues {:limit 1}))))))))
+
+(deftest blocked-database-permissions-test
+  (testing "POST /api/dataset should return an error when the user has blocked view-data permissions on the database (OSS)"
+    (mt/with-premium-features #{}
+      (mt/with-temp-copy-of-db
+        (mt/with-no-data-perms-for-all-users!
+          (perms/set-database-permission! (perms/all-users-group) (mt/id) :perms/view-data :blocked)
+          (perms/set-database-permission! (perms/all-users-group) (mt/id) :perms/create-queries :no)
+          (is (malli= [:map
+                       [:status [:= "failed"]]
+                       [:error  [:= "You do not have permissions to run this query."]]]
+                      (mt/user-http-request :rasta :post "dataset"
+                                            (mt/mbql-query venues {:limit 1})))))))))
 
 (deftest api-card-join-permissions-test
   (testing "POST /api/dataset should error for card join permission violations"
@@ -1093,12 +1106,14 @@
               ;; Set table-level permissions
               (perms/set-table-permission! all-users (mt/id :venues) :perms/view-data :unrestricted)
               (perms/set-table-permission! all-users (mt/id :venues) :perms/create-queries :no)
-              ;; In OSS: published tables don't grant database access, so user gets 403 at database check
+              ;; In OSS: published tables don't grant database access, so user gets a permission error
               (testing "Query should be blocked because OSS doesn't grant database access via published tables"
-                (is (= "You don't have permissions to do that."
-                       (mt/with-current-user user-id
-                         (mt/user-http-request user-id :post 403 "dataset"
-                                               (mt/mbql-query venues {:limit 1})))))))))))))
+                (is (malli= [:map
+                             [:status [:= "failed"]]
+                             [:error  [:= "You do not have permissions to run this query."]]]
+                            (mt/with-current-user user-id
+                              (mt/user-http-request user-id :post "dataset"
+                                                    (mt/mbql-query venues {:limit 1})))))))))))))
 
 (deftest query-metadata-sensitive-fields-test
   (testing "POST /api/dataset/query_metadata"

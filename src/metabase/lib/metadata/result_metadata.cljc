@@ -249,7 +249,7 @@
   [col   :- ::kebab-cased-map
    a-ref :- ::mbql.s/Reference]
   (let [a-ref (remove-namespaced-options a-ref)]
-    (lib.util.match/replace a-ref
+    (lib.util.match/replace-lite a-ref
       [:field (id :guard pos-int?) opts]
       [:field id (not-empty (cond-> (dissoc opts :effective-type :inherited-temporal-unit)
                               (:source-field opts) (dissoc :join-alias)
@@ -258,13 +258,13 @@
       [:field (field-name :guard string?) opts]
       [:field field-name (not-empty (dissoc opts :inherited-temporal-unit))]
 
-      [:expression expression-name (opts :guard (some-fn :base-type :effective-type))]
+      [:expression expression-name (opts :guard (or (:base-type opts) (:effective-type opts)))]
       (let [fe-friendly-opts (dissoc opts :base-type :effective-type)]
         (if (seq fe-friendly-opts)
           [:expression expression-name fe-friendly-opts]
           [:expression expression-name]))
 
-      [:aggregation aggregation-index (opts :guard (some-fn :base-type :effective-type))]
+      [:aggregation aggregation-index (opts :guard (or (:base-type opts) (:effective-type opts)))]
       (let [fe-friendly-opts (dissoc opts :base-type :effective-type)]
         (if (seq fe-friendly-opts)
           [:aggregation aggregation-index fe-friendly-opts]
@@ -396,6 +396,16 @@
         (lib.field.util/add-source-and-desired-aliases-xform query)
         cols))
 
+(defn- add-nested-display-names
+  "Compute nested display-names for columns with `:parent-id`. Raw field metadata from the metadata provider has leaf
+  display-names (e.g. \"Child\"), but QP results should have the full nested path (e.g. \"Grandparent: Parent: Child\")."
+  [query cols]
+  (mapv (fn [col]
+          (if (:parent-id col)
+            (assoc col :display-name (lib.metadata.calculation/display-name query -1 col))
+            col))
+        cols))
+
 (mu/defn- add-extra-metadata :- [:sequential ::kebab-cased-map]
   "Add extra metadata to the [[lib/returned-columns]] that only comes back with QP results metadata."
   [query        :- ::lib.schema/query
@@ -423,6 +433,7 @@
            deduplicate-names
            (add-legacy-field-refs query)
            (merge-model-metadata query)
+           (add-nested-display-names query)
            (add-source-and-desired-aliases query)))))
 
 (defn- add-unit [col]

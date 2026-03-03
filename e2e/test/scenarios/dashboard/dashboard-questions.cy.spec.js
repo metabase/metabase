@@ -23,7 +23,7 @@ describe("Dashboard > Dashboard Questions", () => {
 
     it("can save a new question to a dashboard and move it to a collection", () => {
       // visit dash first to set it as recently opened
-      cy.visit(`/dashboard/${S.ORDERS_DASHBOARD_ID}`);
+      H.visitDashboard(S.ORDERS_DASHBOARD_ID);
 
       H.newButton("Question").click();
       H.miniPicker().within(() => {
@@ -43,10 +43,12 @@ describe("Dashboard > Dashboard Questions", () => {
       H.modal().findByText("Orders in a dashboard");
       H.modal().button("Save").click();
 
-      // should take you to the edit dashboard screen + url has hash param to auto-scroll
+      // should take you to the edit dashboard screen and auto-scroll to the new card
       cy.url().should("include", "/dashboard/");
-      cy.location("hash").should("match", /scrollTo=\d+/); // url should have hash param to auto-scroll
-      H.dashboardCards().findByText("Orders with a discount");
+      cy.location("hash").should("not.include", "scrollTo");
+      H.dashboardCards()
+        .findByText("Orders with a discount")
+        .should("be.visible");
       cy.findByTestId("edit-bar").findByText("You're editing this dashboard.");
 
       // we can't use the save dashboard util, because we're not actually saving any changes
@@ -70,7 +72,7 @@ describe("Dashboard > Dashboard Questions", () => {
       H.appBar().findByText("Orders in a dashboard").should("not.exist"); // dashboard name should no longer be visible
 
       // card should still be visible in dashboard
-      cy.visit(`/dashboard/${S.ORDERS_DASHBOARD_ID}`);
+      H.visitDashboard(S.ORDERS_DASHBOARD_ID);
       H.dashboardCards().findByText("Orders with a discount");
     });
 
@@ -201,10 +203,10 @@ describe("Dashboard > Dashboard Questions", () => {
         cy.button("Okay").click();
       });
 
-      // its in the new dash + url has hash param to auto-scroll
+      // its in the new dash and auto-scrolls to the card
       cy.url().should("include", "/dashboard/");
-
-      cy.location("hash").should("match", /scrollTo=\d+/); // url should have hash param to auto-scroll
+      cy.location("hash").should("not.include", "scrollTo");
+      H.dashboardCards().findByText("Total Orders").should("be.visible");
       H.undoToast().findByText("Orders in a dashboard");
       H.dashboardCards().should("contain", "Total Orders");
 
@@ -390,6 +392,8 @@ describe("Dashboard > Dashboard Questions", () => {
     });
 
     it("can save a native question to a dashboard", () => {
+      cy.intercept("POST", "/api/card").as("createCard");
+
       H.startNewNativeQuestion({ query: "SELECT 123" });
 
       // this reduces the flakiness
@@ -402,6 +406,7 @@ describe("Dashboard > Dashboard Questions", () => {
         cy.button("Save").click();
       });
 
+      cy.wait("@createCard", { timeout: 30 * 1000 }); // trying something dumb...
       cy.findByTestId("edit-bar").button("Save").click();
       H.dashboardCards().findByText("Half Orders");
     });
@@ -965,12 +970,12 @@ describe("Dashboard > Dashboard Questions", () => {
 
       cy.log("should navigate user to the tab the question was saved to");
       cy.url().should("include", "/dashboard/");
-      cy.location("hash").should("match", /scrollTo=\d+/); // url should have hash param to auto-scroll
+      cy.location("hash").should("not.include", "scrollTo");
       cy.location("search").should("contain", "tab"); // url should have tab param configured
       H.assertTabSelected(TAB_TWO_NAME);
-      H.dashboardCards().within(() => {
-        cy.findByText(DASHBOARD_QUESTION_NAME).should("exist");
-      });
+      H.dashboardCards()
+        .findByText(DASHBOARD_QUESTION_NAME)
+        .should("be.visible");
     });
 
     it("should allow a user to copy a question into a tab", () => {
@@ -1009,12 +1014,12 @@ describe("Dashboard > Dashboard Questions", () => {
 
       cy.log("should navigate user to the tab the question was saved to");
       cy.url().should("include", "/dashboard/");
-      cy.location("hash").should("match", /scrollTo=\d+/); // url should have hash param to auto-scroll
+      cy.location("hash").should("not.include", "scrollTo");
       cy.location("search").should("contain", "tab"); // url should have tab param configured
       H.assertTabSelected(TAB_ONE_NAME);
-      H.dashboardCards().within(() => {
-        cy.findByText("Orders, Count - Duplicate").should("exist");
-      });
+      H.dashboardCards()
+        .findByText("Orders, Count - Duplicate")
+        .should("be.visible");
     });
   });
 

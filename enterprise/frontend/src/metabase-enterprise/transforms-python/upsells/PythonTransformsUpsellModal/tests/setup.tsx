@@ -1,3 +1,5 @@
+import { Route } from "react-router";
+
 import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
 import type { ENTERPRISE_PLUGIN_NAME } from "__support__/enterprise-typed";
 import {
@@ -16,7 +18,6 @@ import { createMockState } from "metabase-types/store/mocks";
 import { PythonTransformsUpsellModal } from "../PythonTransformsUpsellModal";
 
 export const setup = ({
-  isOpen = true,
   isHosted,
   isStoreUser,
   billingPeriodMonths = 12,
@@ -66,9 +67,13 @@ export const setup = ({
   setupPropertiesEndpoints(createMockSettings(settings));
 
   renderWithProviders(
-    <PythonTransformsUpsellModal isOpen={isOpen} onClose={onClose} />,
+    <Route
+      component={() => <PythonTransformsUpsellModal onClose={onClose} />}
+      path="/"
+    />,
     {
       storeInitialState: state,
+      withRouter: true,
     },
   );
 

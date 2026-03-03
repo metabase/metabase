@@ -160,7 +160,7 @@
   "Rewrite `:inside` filter clauses as a pair of `:between` clauses."
   {:deprecated "0.57.0"}
   [m]
-  (lib.util.match/replace m
+  (lib.util.match/replace-lite m
     [:inside lat-field lon-field lat-max lon-min lat-min lon-max]
     [:and
      [:between lat-field lat-min lat-max]
@@ -170,7 +170,7 @@
   "Rewrite `:is-null` and `:not-null` filter clauses as simpler `:=` and `:!=`, respectively."
   {:deprecated "0.57.0"}
   [m]
-  (lib.util.match/replace m
+  (lib.util.match/replace-lite m
     [:is-null field]  [:=  field nil]
     [:not-null field] [:!= field nil]))
 
@@ -194,7 +194,7 @@
   {:deprecated "0.57.0"}
   [m]
   #_{:clj-kondo/ignore [:deprecated-var]}
-  (lib.util.match/replace m
+  (lib.util.match/replace-lite m
     [:is-empty clause]
     (if (emptyable? clause)
       [:or [:= clause nil] [:= clause ""]]
@@ -210,11 +210,11 @@
   {:deprecated "0.57.0"}
   [m unit]
   #_{:clj-kondo/ignore [:deprecated-var]}
-  (lib.util.match/replace m
+  (lib.util.match/replace-lite m
     [:field id-or-name opts]
     [:field id-or-name (assoc opts :temporal-unit unit)]
 
-    :expression
+    [:expression & _]
     (let [[_expression expression-name opts] &match]
       [:expression expression-name (assoc opts :temporal-unit unit)])))
 
@@ -223,21 +223,21 @@
   {:deprecated "0.57.0"}
   [m]
   #_{:clj-kondo/ignore [:deprecated-var]}
-  (lib.util.match/replace m
-    [:time-interval field-or-expression n unit] (recur [:time-interval field-or-expression n unit nil])
+  (lib.util.match/replace-lite m
+    [:time-interval field-or-expression n unit] (&recur [:time-interval field-or-expression n unit nil])
 
     ;; replace current/last/next with corresponding value of n and recur
-    [:time-interval field-or-expression :current unit options] (recur [:time-interval field-or-expression  0 unit options])
-    [:time-interval field-or-expression :last    unit options] (recur [:time-interval field-or-expression -1 unit options])
-    [:time-interval field-or-expression :next    unit options] (recur [:time-interval field-or-expression  1 unit options])
+    [:time-interval field-or-expression :current unit options] (&recur [:time-interval field-or-expression  0 unit options])
+    [:time-interval field-or-expression :last    unit options] (&recur [:time-interval field-or-expression -1 unit options])
+    [:time-interval field-or-expression :next    unit options] (&recur [:time-interval field-or-expression  1 unit options])
 
-    [:time-interval field-or-expression (n :guard #{-1}) unit (_ :guard :include-current)]
+    [:time-interval field-or-expression (n :guard #{-1}) unit {:include-current identity}]
     [:between
      (replace-field-or-expression field-or-expression unit)
      [:relative-datetime n unit]
      [:relative-datetime 0 unit]]
 
-    [:time-interval field-or-expression (n :guard #{1}) unit (_ :guard :include-current)]
+    [:time-interval field-or-expression (n :guard #{1}) unit {:include-current identity}]
     [:between
      (replace-field-or-expression field-or-expression unit)
      [:relative-datetime 0 unit]
@@ -246,7 +246,7 @@
     [:time-interval field-or-expression (n :guard #{-1 0 1}) unit _]
     [:= (replace-field-or-expression field-or-expression unit) [:relative-datetime n unit]]
 
-    [:time-interval field-or-expression (n :guard neg?) unit (_ :guard :include-current)]
+    [:time-interval field-or-expression (n :guard neg?) unit {:include-current identity}]
     [:between
      (replace-field-or-expression field-or-expression unit)
      [:relative-datetime n unit]
@@ -258,7 +258,7 @@
      [:relative-datetime n unit]
      [:relative-datetime -1 unit]]
 
-    [:time-interval field-or-expression n unit (_ :guard :include-current)]
+    [:time-interval field-or-expression n unit {:include-current identity}]
     [:between
      (replace-field-or-expression field-or-expression unit)
      [:relative-datetime 0 unit]
@@ -275,7 +275,7 @@
   {:deprecated "0.57.0"}
   [m]
   #_{:clj-kondo/ignore [:deprecated-var]}
-  (lib.util.match/replace
+  (lib.util.match/replace-lite
     m
     [:relative-time-interval col value bucket offset-value offset-bucket]
     (let [col-default-bucket (cond-> col (and (vector? col) (= 3 (count col)))
@@ -298,7 +298,7 @@
   {:deprecated "0.57.0"}
   [m]
   #_{:clj-kondo/ignore [:deprecated-var]}
-  (lib.util.match/replace
+  (lib.util.match/replace-lite
     m
     [:during col value unit]
     (let [col-default-bucket (cond-> col
@@ -315,8 +315,7 @@
   {:deprecated "0.57.0"}
   [m]
   #_{:clj-kondo/ignore [:deprecated-var]}
-  (lib.util.match/replace
-    m
+  (lib.util.match/replace-lite m
     [:if & args]
     (into [:case] args)))
 
@@ -325,7 +324,7 @@
   {:deprecated "0.57.0"}
   [m]
   #_{:clj-kondo/ignore [:deprecated-var]}
-  (lib.util.match/replace m
+  (lib.util.match/replace-lite m
     [:in & args]
     (into [:=] args)
 
@@ -341,7 +340,7 @@
   {:deprecated "0.57.0"}
   [m]
   #_{:clj-kondo/ignore [:deprecated-var]}
-  (lib.util.match/replace m
+  (lib.util.match/replace-lite m
     [:does-not-contain & args]
     [:not (into [:contains] args)]))
 
@@ -360,7 +359,7 @@
   {:deprecated "0.57.0"}
   [m]
   #_{:clj-kondo/ignore [:deprecated-var]}
-  (lib.util.match/replace m
+  (lib.util.match/replace-lite m
     [:= field x y & more]
     (apply vector :or (for [x (concat [x y] more)]
                         [:= field x]))
@@ -384,12 +383,12 @@
   {:deprecated "0.57.0"}
   [m]
   #_{:clj-kondo/ignore [:deprecated-var]}
-  (lib.util.match/replace m
-    [clause field & (args :guard (partial some (partial = [:relative-datetime :current])))]
+  (lib.util.match/replace-lite m
+    [clause field & (args :guard (some (partial = [:relative-datetime :current]) args))]
     (let [temporal-unit (or (lib.util.match/match-lite field
                               [:field _ {:temporal-unit temporal-unit}] temporal-unit)
                             :default)]
-      (into [clause field] (lib.util.match/replace args
+      (into [clause field] (lib.util.match/replace-lite args
                              [:relative-datetime :current]
                              [:relative-datetime 0 temporal-unit])))))
 
@@ -421,16 +420,16 @@
   {:deprecated "0.57.0"}
   [m]
   #_{:clj-kondo/ignore [:deprecated-var]}
-  (lib.util.match/replace m
+  (lib.util.match/replace-lite m
     [(op :guard temporal-extract-ops) field & args]
     [:temporal-extract field (temporal-extract-ops->unit [op (first args)])]))
 
 (defn- desugar-divide-with-extra-args
   {:deprecated "0.57.0"}
   [expression]
-  (lib.util.match/replace expression
+  (lib.util.match/replace-lite expression
     [:/ x y z & more]
-    (recur (into [:/ [:/ x y]] (cons z more)))))
+    (&recur (into [:/ [:/ x y]] (cons z more)))))
 
 (defn- temporal-case-expression
   "Creates a `:case` expression with a condition for each value of the given unit."
@@ -452,13 +451,13 @@
   {:deprecated "0.57.0"}
   [expression]
   #_{:clj-kondo/ignore [:deprecated-var]}
-  (lib.util.match/replace expression
+  (lib.util.match/replace-lite expression
     [:month-name column]
-    (recur (temporal-case-expression column :month-of-year 12))
+    (&recur (temporal-case-expression column :month-of-year 12))
     [:quarter-name column]
-    (recur (temporal-case-expression column :quarter-of-year 4))
+    (&recur (temporal-case-expression column :quarter-of-year 4))
     [:day-name column]
-    (recur (temporal-case-expression column :day-of-week 7))))
+    (&recur (temporal-case-expression column :day-of-week 7))))
 
 (mu/defn desugar-expression :- ::mbql.s/FieldOrExpressionDef
   "Rewrite various 'syntactic sugar' expressions like `:/` with more than two args into something simpler for drivers

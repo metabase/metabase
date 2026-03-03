@@ -454,7 +454,7 @@ function createMbqlTransformWithDependentMbqlTransforms() {
                   type: "query",
                   query: {
                     "source-table": tableId,
-                    fields: [["field", fieldId, null]],
+                    filter: [">", ["field", fieldId, null], 1],
                   },
                 },
               },

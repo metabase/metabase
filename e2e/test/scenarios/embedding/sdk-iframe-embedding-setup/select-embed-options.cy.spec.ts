@@ -191,11 +191,14 @@ describe(suiteTitle, () => {
       .and("be.disabled");
 
     cy.log("Email warning should only be shown on non-guest embedding");
+    // Use trigger("mouseenter") instead of realHover() because Chrome v133+
+    // headless CDP hit-testing on elements near disabled inputs suppresses
+    // mouse boundary events, preventing the Tooltip from appearing.
     getEmbedSidebar()
       .findByLabelText("Allow subscriptions")
       .closest("[data-testid=tooltip-warning]")
       .icon("info")
-      .realHover();
+      .trigger("mouseenter");
     H.tooltip().should(
       "contain.text",
       "Not available if Guest Mode is selected",
@@ -228,10 +231,14 @@ describe(suiteTitle, () => {
       cy.button("Next").click();
       cy.button("Next").click();
 
+      // Trigger mouseover (not mouseenter) because this HoverCard is outside a
+      // HoverCardGroup, so Mantine attaches a React onMouseEnter prop. React 18
+      // simulates onMouseEnter from mouseover events (which bubble to the React
+      // root for delegation). Native mouseenter doesn't bubble and React ignores it.
       cy.findByLabelText("Allow subscriptions")
         .closest("[data-testid=tooltip-warning]")
         .icon("info")
-        .realHover();
+        .trigger("mouseover");
     });
     H.hovercard().should(
       "contain.text",
@@ -563,7 +570,7 @@ describe(suiteTitle, () => {
       .findByLabelText("Allow alerts")
       .closest("[data-testid=tooltip-warning]")
       .icon("info")
-      .realHover();
+      .trigger("mouseenter");
     H.tooltip().should(
       "contain.text",
       "Not available if Guest Mode is selected",
@@ -599,7 +606,7 @@ describe(suiteTitle, () => {
       cy.findByLabelText("Allow alerts")
         .closest("[data-testid=tooltip-warning]")
         .icon("info")
-        .realHover();
+        .trigger("mouseover");
     });
     H.hovercard().should(
       "contain.text",

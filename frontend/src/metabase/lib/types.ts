@@ -4,6 +4,13 @@ export const isNotNull = <T>(value: T | null | undefined): value is T => {
   return value != null;
 };
 
+export const asNotNull = <T>(value: T | null | undefined): T => {
+  if (isNotNull(value)) {
+    return value;
+  }
+  throw new TypeError("value is null or undefined");
+};
+
 export const isNotFalsy = <T>(
   value: T | null | undefined | false | "",
 ): value is T => {

@@ -554,6 +554,11 @@ export type BookmarkEvent =
   | BookmarkCollectionEvent
   | BookmarkDocumentEvent;
 
+export type DataStudioOpenedEvent = ValidateEvent<{
+  event: "data_studio_opened";
+  triggered_from: "nav_menu";
+}>;
+
 export type DataStudioLibraryCreatedEvent = ValidateEvent<{
   event: "data_studio_library_created";
   target_id: number | null;
@@ -622,6 +627,7 @@ export type DataStudioTableFieldValuesDiscardedEvent = ValidateEvent<{
 }>;
 
 export type DataStudioEvent =
+  | DataStudioOpenedEvent
   | DataStudioLibraryCreatedEvent
   | DataStudioTablePublishedEvent
   | DataStudioGlossaryCreatedEvent

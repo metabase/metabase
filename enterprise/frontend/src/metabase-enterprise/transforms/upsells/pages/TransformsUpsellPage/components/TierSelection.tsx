@@ -9,20 +9,12 @@ import S from "./TierSelection.module.css";
 
 export type TransformTier = "basic" | "advanced";
 
-type TierOption = {
-  value: TransformTier;
-  label: string;
-  price: number;
-  description?: string;
-};
-
 type TierSelectionProps = {
   advancedTransformsPrice: number;
   basicTransformsPrice: number;
   billingPeriod: BillingPeriod;
   selectedTier: TransformTier;
   setSelectedTier: (tier: TransformTier) => void;
-  showAdvancedOnly: boolean;
 };
 
 export const TierSelection = (props: TierSelectionProps) => {
@@ -31,52 +23,25 @@ export const TierSelection = (props: TierSelectionProps) => {
     advancedTransformsPrice,
     selectedTier,
     setSelectedTier,
-    showAdvancedOnly,
     basicTransformsPrice,
   } = props;
 
-  const { tierOptions, advancedTierOption } = useMemo(() => {
-    const advancedTierOption: TierOption = {
-      value: "advanced",
-      label: t`SQL + Python`,
-      price: advancedTransformsPrice,
-      description: t`Run Python-based transforms alongside SQL to handle more complex logic and data workflows.`,
-    };
-
-    const tierOptions: TierOption[] = [
+  const tierOptions = useMemo(() => {
+    return [
       {
         value: "basic",
         label: t`SQL only`,
         price: basicTransformsPrice,
       },
-      advancedTierOption,
+      {
+        value: "advanced",
+        label: t`SQL + Python`,
+        price: advancedTransformsPrice,
+        description: t`Run Python-based transforms alongside SQL to handle more complex logic and data workflows.`,
+      },
     ];
-
-    return {
-      tierOptions,
-      advancedTierOption,
-    };
   }, [advancedTransformsPrice, basicTransformsPrice]);
   const billingPeriodLabel = billingPeriod === "monthly" ? t`month` : t`year`;
-
-  if (showAdvancedOnly) {
-    // Single tier display (upgrade from basic)
-    return (
-      <Card withBorder p="md" radius="md">
-        <Flex direction="column" style={{ flex: 1 }}>
-          <Group justify="space-between" align="flex-start">
-            <Text fw="bold">{advancedTierOption.label}</Text>
-            <Text fw="bold">{`$${advancedTierOption.price} / ${billingPeriodLabel}`}</Text>
-          </Group>
-          {advancedTierOption.description && (
-            <Text size="sm" c="text-secondary" mt="sm">
-              {advancedTierOption.description}
-            </Text>
-          )}
-        </Flex>
-      </Card>
-    );
-  }
 
   return (
     <Radio.Group

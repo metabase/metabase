@@ -133,7 +133,15 @@
         (when (and parent-id
                    ;; check that we haven't nested yet
                    (or (nil? field-display-name)
-                       (= field-display-name humanized-name)))
+                       (= field-display-name humanized-name)
+                       ;; For card-metadata columns, :name may be the dotted form
+                       ;; (e.g. "grandparent.parent"). Humanizing it doesn't produce
+                       ;; the leaf display-name, so also check against the raw field's
+                       ;; display-name from the metadata provider.
+                       (when-let [field-id (when (pos-int? (:id col))
+                                             (:id col))]
+                         (when-let [raw-field (lib.metadata/field query field-id)]
+                           (= field-display-name (:display-name raw-field))))))
           (nest-display-name query col))
         (when-let [[source-index source-clause]
                    (and source-uuid

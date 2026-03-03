@@ -8,6 +8,7 @@
    [metabase-enterprise.impersonation.util-test :as impersonation.util-test]
    [metabase-enterprise.test :as met]
    [metabase.driver :as driver]
+   [metabase.driver.connection :as driver.conn]
    [metabase.driver.settings :as driver.settings]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
@@ -261,6 +262,94 @@
                      java.lang.Exception
                      (mt/run-mbql-query venues
                        {:aggregation [[:count]]})))))))))))
+
+(deftest conn-impersonation-with-write-connection-test
+  (testing "Impersonation works correctly when queries go through the write connection pool"
+    (mt/test-drivers (mt/normal-drivers-with-feature :connection-impersonation)
+      (mt/with-premium-features #{:advanced-permissions}
+        (let [venues-table (sql.tx/qualify-and-quote driver/*driver* "test-data" "venues")
+              role-name    (u/lower-case-en (mt/random-name))]
+          (tx/with-temp-roles! driver/*driver*
+            (impersonation-granting-details driver/*driver* (mt/db))
+            {role-name {venues-table {}}}
+            (impersonation-default-user driver/*driver*)
+            (impersonation-default-role driver/*driver*)
+            (let [details (impersonation-details driver/*driver* (mt/db))]
+              (mt/with-temp [:model/Database database {:engine             driver/*driver*
+                                                       :details            details
+                                                       :write_data_details details}]
+                (mt/with-db database
+                  (when (driver/database-supports? driver/*driver* :connection-impersonation-requires-role nil)
+                    (t2/update! :model/Database :id (mt/id)
+                                (assoc-in (mt/db) [:details :role] (impersonation-default-role driver/*driver*))))
+                  (sync/sync-database! database {:scan :schema})
+                  (impersonation.util-test/with-impersonations!
+                    {:impersonations [{:db-id (mt/id) :attribute "impersonation_attr"}]
+                     :attributes     {"impersonation_attr" role-name}}
+                    (testing "Read connection: impersonation restricts access as expected"
+                      (is (= [[100]]
+                             (mt/formatted-rows [int]
+                                                (mt/run-mbql-query venues {:aggregation [[:count]]})))))
+                    (testing "Write connection: impersonation still restricts access"
+                      (driver.conn/with-write-connection
+                        (is (= [[100]]
+                               (mt/formatted-rows [int]
+                                                  (mt/run-mbql-query venues {:aggregation [[:count]]}))))))
+                    (testing "Write connection: impersonation blocks disallowed tables"
+                      (driver.conn/with-write-connection
+                        (is (thrown?
+                             java.lang.Exception
+                             (mt/run-mbql-query checkins {:aggregation [[:count]]})))))))))))))))
+
+;; Proves `with-write-connection` actually routes to the write connection pool by using
+;; two different Postgres users: a readonly user (for read) who is NOT a member of the
+;; impersonation role, and the original superuser (for write) who can SET ROLE to anything.
+;; If the write path mistakenly used the read pool, the SET ROLE would fail.
+(deftest conn-impersonation-with-write-connection-test-2
+  (testing "Write connection is actually used: read-only user cannot SET ROLE, but write user can"
+    (mt/test-driver :postgres
+      (mt/with-premium-features #{:advanced-permissions}
+        (let [details       (:details (mt/db))
+              password      (:password details)
+              readonly-user (u/lower-case-en (mt/random-name))
+              spec          (sql-jdbc.conn/db->pooled-connection-spec (mt/id))
+              venues-table  (sql.tx/qualify-and-quote :postgres "test-data" "venues")
+              role-name     (u/lower-case-en (mt/random-name))]
+          (try
+            (driver/execute-raw-queries! :postgres spec
+                                         [[(format "CREATE ROLE %s WITH LOGIN PASSWORD '%s'" readonly-user password)]
+                                          [(format "GRANT USAGE ON SCHEMA public TO %s" readonly-user)]
+                                          [(format "GRANT SELECT ON ALL TABLES IN SCHEMA public TO %s" readonly-user)]])
+            ;; The impersonation role is granted to (:user details) — the superuser — not readonly-user.
+            (tx/with-temp-roles! :postgres
+              details
+              {role-name {venues-table {}}}
+              (:user details)
+              nil
+              (let [readonly-details (assoc details :user readonly-user)
+                    write-details    {:user     (:user details)
+                                      :password password}]
+                (mt/with-temp [:model/Database database {:engine             :postgres
+                                                         :details            readonly-details
+                                                         :write_data_details write-details}]
+                  (mt/with-db database
+                    (sync/sync-database! database {:scan :schema})
+                    (impersonation.util-test/with-impersonations!
+                      {:impersonations [{:db-id (mt/id) :attribute "impersonation_attr"}]
+                       :attributes     {"impersonation_attr" role-name}}
+                      (testing "Negative: read-only user fails because it cannot assume the impersonation role"
+                        (is (thrown?
+                             java.lang.Exception
+                             (mt/run-mbql-query venues {:aggregation [[:count]]}))))
+                      (testing "Positive: write user succeeds because it can assume the impersonation role"
+                        (driver.conn/with-write-connection
+                          (is (= [[100]]
+                                 (mt/formatted-rows [int]
+                                                    (mt/run-mbql-query venues {:aggregation [[:count]]})))))))))))
+            (finally
+              (driver/execute-raw-queries! :postgres spec
+                                           [[(format "DROP OWNED BY %s" readonly-user)]
+                                            [(format "DROP ROLE IF EXISTS %s" readonly-user)]]))))))))
 
 (deftest conn-impersonation-columns-test
   (mt/test-drivers (mt/normal-drivers-with-feature :test/column-impersonation)

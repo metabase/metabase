@@ -2,23 +2,30 @@ import { waitForElementToBeRemoved } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
 import { render, screen } from "__support__/ui";
+import type { OptionsType } from "metabase/lib/formatting";
+import type Field from "metabase-lib/v1/metadata/Field";
+import type { FieldValue, RowValue } from "metabase-types/api";
 
 import { Value as ValueComponent } from "../../Value";
 
 import SingleSelectListField from "./index";
 
-const value = [];
+const value: RowValue[] = [];
 const firstOption = "AK";
 const secondOption = "AL";
-const options = [[firstOption], [secondOption]];
-const fields = [];
+const options: FieldValue[] = [[firstOption], [secondOption]];
+const fields: Field[] = [];
 const formatOptions = {};
 
-function showRemapping(fields) {
+function showRemapping(fields: Field[]) {
   return fields.length === 1;
 }
 
-function renderValue(fields, formatOptions, value, options) {
+function renderValue(
+  fields: Field[],
+  formatOptions: Partial<OptionsType>,
+  value: unknown,
+) {
   return (
     <ValueComponent
       value={value}

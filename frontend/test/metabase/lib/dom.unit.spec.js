@@ -1,3 +1,5 @@
+import { setupSdkPlugins } from "__support__/enterprise";
+import { mockSettings } from "__support__/settings";
 import { ensureMetabaseProviderPropsStore } from "embedding-sdk-shared/lib/ensure-metabase-provider-props-store";
 import { mockIsEmbeddingSdk } from "metabase/embedding-sdk/mocks/config-mock";
 import {
@@ -8,6 +10,7 @@ import {
   setSelectionPosition,
   shouldOpenInBlankWindow,
 } from "metabase/lib/dom";
+import { createMockTokenFeatures } from "metabase-types/api/mocks";
 
 describe("getSelectionPosition/setSelectionPosition", () => {
   let container;
@@ -103,6 +106,11 @@ describe("open()", () => {
     await mockIsEmbeddingSdk();
     // Ensure a clean store before each test
     ensureMetabaseProviderPropsStore().cleanup();
+
+    mockSettings({
+      "token-features": createMockTokenFeatures({ embedding_sdk: true }),
+    });
+    setupSdkPlugins();
   });
 
   afterEach(() => {
