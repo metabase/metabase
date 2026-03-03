@@ -341,7 +341,7 @@
   "Create a specific date filter clause from parts.
    Parts: {:operator :keyword, :dimension dimension, :values [date-string], :has-time boolean}"
   [{:keys [operator dimension values has-time]}]
-  (let [values (mapv #(u.time/format-date-for-filter % has-time) values)]
+  (let [values (perf/mapv #(u.time/format-date-for-filter % has-time) values)]
     (lib.options/ensure-uuid
      (case operator
        :between [:between {} (dimension-ref dimension) (first values) (second values)]
@@ -495,7 +495,7 @@
   "Create a time filter clause from parts.
    Parts: {:operator :keyword, :dimension dimension, :values [time-string]}"
   [{:keys [operator dimension values]}]
-  (let [values (mapv #(u.time/format-for-base-type % :type/Time) values)]
+  (let [values (perf/mapv #(u.time/format-for-base-type % :type/Time) values)]
     (lib.options/ensure-uuid
      (case operator
        (:is-null :not-null) [operator {} (dimension-ref dimension)]
@@ -526,4 +526,4 @@
                            :dimension dimension
                            :values    [(nth filter-clause 3)]})))))]
       (when parts
-        (update parts :values (fn [values] (mapv u.time/coerce-to-time values)))))))
+        (update parts :values (fn [values] (perf/mapv u.time/coerce-to-time values)))))))

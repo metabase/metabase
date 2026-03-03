@@ -5,7 +5,6 @@
    [metabase.lib-metric.operators :as operators]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
-   [metabase.lib.query :as lib.query]
    [metabase.lib.util :as lib.util]
    [metabase.util.performance :as perf]))
 
@@ -14,7 +13,7 @@
 (defn- ensure-pmbql
   "Ensure query is in pMBQL format. Converts legacy MBQL if needed."
   [metadata-provider mbql-query]
-  (lib.query/query metadata-provider mbql-query))
+  (lib/query metadata-provider mbql-query))
 
 ;;; -------------------- Primitive Node Construction --------------------
 

@@ -25,6 +25,8 @@
 (def ^:private mock-provider
   "A mock metadata provider that returns test metric/measure metadata."
   (reify lib.metadata.protocols/MetadataProvider
+    (database [_this]
+      nil)
     (metadatas [_this spec]
       (let [lib-type (:lib/type spec)
             ids      (:id spec)]
@@ -36,7 +38,9 @@
           [sample-measure-metadata]
 
           :else
-          [])))))
+          [])))
+    (setting [_this _setting-name]
+      nil)))
 
 ;;; -------------------------------------------------- toJsMetricDefinition --------------------------------------------------
 
