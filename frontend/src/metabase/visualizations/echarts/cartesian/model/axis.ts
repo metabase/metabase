@@ -45,6 +45,7 @@ import {
   tryGetDate,
 } from "metabase/visualizations/echarts/cartesian/utils/timeseries";
 import { computeNumericDataInterval } from "metabase/visualizations/lib/numeric";
+import { getLineAreaBarComparisonSettings } from "metabase/visualizations/lib/settings";
 import type {
   ColumnSettings,
   ComputedVisualizationSettings,
@@ -65,31 +66,6 @@ import type { ShowWarning } from "../../types";
 
 import { getAxisTransforms } from "./transforms";
 import { getFormattingOptionsWithoutScaling } from "./util";
-
-const KEYS_TO_COMPARE = new Set([
-  "number_style",
-  "currency",
-  "currency_style",
-  "number_separators",
-  "decimals",
-  "scale",
-  "prefix",
-  "suffix",
-]);
-
-function getLineAreaBarComparisonSettings(
-  columnSettings: Record<string, unknown>,
-) {
-  return _.pick(columnSettings, (value, key) => {
-    if (!KEYS_TO_COMPARE.has(key)) {
-      return false;
-    }
-    if ((key === "prefix" || key === "suffix") && value === "") {
-      return false;
-    }
-    return true;
-  });
-}
 
 const uniqueCards = (seriesModels: SeriesModel[]) =>
   _.uniq(seriesModels.map(({ cardId }) => cardId)).length;
