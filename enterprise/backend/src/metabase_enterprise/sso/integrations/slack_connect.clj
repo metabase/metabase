@@ -82,8 +82,8 @@
   (check-slack-connect-prereqs!)
   (let [{:keys [code state error error_description]} (:params request)
         oidc-state-cookie (get-in request [:cookies "metabase.OIDC_STATE" :value])]
-    (log/infof "Slack Connect SSO callback: has-code=%s, has-state=%s, has-oidc-cookie=%s, error=%s, error_description=%s"
-               (boolean code) (boolean state) (boolean oidc-state-cookie) error error_description)
+    (log/infof "Slack Connect SSO callback: has-code=%s, state=%s, oidc-state-cookie=%s, error=%s, error_description=%s"
+               (boolean code) state oidc-state-cookie error error_description)
     (when-not oidc-state-cookie
       (log/warnf "Slack Connect callback missing OIDC state cookie. Request cookies: %s"
                  (keys (:cookies request))))
