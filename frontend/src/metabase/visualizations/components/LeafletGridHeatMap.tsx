@@ -177,8 +177,10 @@ export class LeafletGridHeatMap extends LeafletMap<LeafletGridHeatMapProps> {
     const point = points[index];
     const metricColumn = this._getMetricColumn();
     const { latitudeColumn, longitudeColumn } = this._getLatLonColumns();
-    const seriesEntry = series[0] as GridHeatMapSeries;
-    const { rows, cols } = seriesEntry.data;
+    const seriesEntry = series[0];
+    const origin = hasRowsInSeries(seriesEntry)
+      ? { row: seriesEntry.data.rows[index], cols: seriesEntry.data.cols }
+      : undefined;
 
     return {
       value: point?.[2],
@@ -194,7 +196,7 @@ export class LeafletGridHeatMap extends LeafletMap<LeafletGridHeatMapProps> {
         },
       ],
       event: e.originalEvent,
-      origin: { row: rows[index], cols },
+      origin,
       settings,
     };
   }
@@ -220,4 +222,10 @@ export class LeafletGridHeatMap extends LeafletMap<LeafletGridHeatMapProps> {
 
 function isRectangleLayer(layer: L.Layer): layer is L.Rectangle {
   return layer instanceof L.Rectangle;
+}
+
+function hasRowsInSeries(
+  series: LeafletMapProps["series"][number] | undefined,
+): series is GridHeatMapSeries {
+  return !!series && "rows" in series.data && Array.isArray(series.data.rows);
 }
