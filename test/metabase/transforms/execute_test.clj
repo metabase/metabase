@@ -2,6 +2,7 @@
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
+   [metabase.config.core :as config]
    [metabase.driver :as driver]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.lib.core :as lib]
@@ -505,33 +506,35 @@
 
 (deftest transform-creates-write-pool-test
   (mt/test-drivers (mt/normal-driver-select {:+parent :sql-jdbc, :+features [:transforms/table]})
-    (mt/dataset transforms-dataset/transforms-test
-      (let [db-id             (mt/id)
-            write-cache-key   [db-id :write-data]
-            schema            (t2/select-one-fn :schema :model/Table (mt/id :transforms_products))
-            old-write-details (:write_data_details (mt/db))]
-        (when-not old-write-details
-          (t2/update! :model/Database db-id {:write_data_details (:details (mt/db))}))
-        (try
-          (sql-jdbc.conn/invalidate-pool-for-db! (mt/db))
-          (testing "write pool does not exist before transform execution"
-            (is (not (contains? @@#'sql-jdbc.conn/pool-cache-key->connection-pool write-cache-key))))
-          (with-transform-cleanup! [target-table {:type   "table"
-                                                  :schema schema
-                                                  :name   "pool_test"}]
-            (let [mp                  (mt/metadata-provider)
-                  transforms-products (lib.metadata/table mp (mt/id :transforms_products))
-                  products-category   (lib.metadata/field mp (mt/id :transforms_products :category))
-                  query               (-> (lib/query mp transforms-products)
-                                          (lib/filter (lib/= products-category "Widget")))]
-              (mt/with-temp [:model/Transform transform {:name   "pool-test"
-                                                         :source {:type  :query
-                                                                  :query query}
-                                                         :target target-table}]
-                (transforms.execute/execute! transform {:run-method :manual})
-                (transforms.tu/wait-for-table (:name target-table) 10000)
-                (testing "write pool is created during transform execution"
-                  (is (contains? @@#'sql-jdbc.conn/pool-cache-key->connection-pool write-cache-key))))))
-          (finally
-            (t2/update! :model/Database db-id {:write_data_details old-write-details})
-            (sql-jdbc.conn/invalidate-pool-for-db! (mt/db))))))))
+    (when config/ee-available?
+      (mt/with-premium-features #{:writable-connection}
+        (mt/dataset transforms-dataset/transforms-test
+          (let [db-id             (mt/id)
+                write-cache-key   [db-id :write-data]
+                schema            (t2/select-one-fn :schema :model/Table (mt/id :transforms_products))
+                old-write-details (:write_data_details (mt/db))]
+            (when-not old-write-details
+              (t2/update! :model/Database db-id {:write_data_details (:details (mt/db))}))
+            (try
+              (sql-jdbc.conn/invalidate-pool-for-db! (mt/db))
+              (testing "write pool does not exist before transform execution"
+                (is (not (contains? @@#'sql-jdbc.conn/pool-cache-key->connection-pool write-cache-key))))
+              (with-transform-cleanup! [target-table {:type   "table"
+                                                      :schema schema
+                                                      :name   "pool_test"}]
+                (let [mp                  (mt/metadata-provider)
+                      transforms-products (lib.metadata/table mp (mt/id :transforms_products))
+                      products-category   (lib.metadata/field mp (mt/id :transforms_products :category))
+                      query               (-> (lib/query mp transforms-products)
+                                              (lib/filter (lib/= products-category "Widget")))]
+                  (mt/with-temp [:model/Transform transform {:name   "pool-test"
+                                                             :source {:type  :query
+                                                                      :query query}
+                                                             :target target-table}]
+                    (transforms.execute/execute! transform {:run-method :manual})
+                    (transforms.tu/wait-for-table (:name target-table) 10000)
+                    (testing "write pool is created during transform execution"
+                      (is (contains? @@#'sql-jdbc.conn/pool-cache-key->connection-pool write-cache-key))))))
+              (finally
+                (t2/update! :model/Database db-id {:write_data_details old-write-details})
+                (sql-jdbc.conn/invalidate-pool-for-db! (mt/db))))))))))
