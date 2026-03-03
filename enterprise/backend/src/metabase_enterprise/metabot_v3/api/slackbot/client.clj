@@ -139,6 +139,12 @@
   [client message]
   (slack-post-json client "/chat.update" message))
 
+(defn open-view
+  "Open a Slack modal view, triggered from an interaction."
+  [client {:keys [trigger_id view]}]
+  (:body (slack-post-json client "/views.open" {:trigger_id trigger_id
+                                                :view       view})))
+
 (defn download-file
   "Download a file from Slack using the client's token for authentication.
    Returns byte array of file contents."

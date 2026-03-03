@@ -8,7 +8,6 @@
    [metabase-enterprise.metabot-v3.api.slackbot.events :as slackbot.events]
    [metabase-enterprise.metabot-v3.api.slackbot.streaming :as slackbot.streaming]
    [metabase-enterprise.metabot-v3.api.slackbot.uploads :as slackbot.uploads]
-   [metabase-enterprise.metabot-v3.config :as metabot-v3.config]
    [metabase-enterprise.metabot-v3.feedback :as metabot-v3.feedback]
    [metabase-enterprise.metabot-v3.settings :as metabot.settings]
    [metabase-enterprise.sso.settings :as sso-settings]
@@ -291,6 +290,48 @@
 
 ;; ------------------------- FEEDBACK BUTTONS ------------------------------
 
+(def ^:private issue-type-options
+  [{:text {:type "plain_text" :text "Wrong or unhelpful chart"}  :value "unhelpful-chart"}
+   {:text {:type "plain_text" :text "Wrong chart type"}          :value "wrong-chart-type"}
+   {:text {:type "plain_text" :text "Incorrect data or results"} :value "not-factual"}
+   {:text {:type "plain_text" :text "Did not follow request"}    :value "did-not-follow-request"}
+   {:text {:type "plain_text" :text "Incomplete response"}       :value "incomplete-response"}
+   {:text {:type "plain_text" :text "Other"}                     :value "other"}])
+
+(defn- feedback-modal-view
+  "Build a Slack modal view for collecting detailed feedback."
+  [positive private-metadata]
+  {:type             "modal"
+   :callback_id      "metabot_feedback_modal"
+   :notify_on_close  false
+   :title            {:type "plain_text" :text "Metabot feedback"}
+   :submit           {:type "plain_text" :text "Submit"}
+   :close            {:type "plain_text" :text "Cancel"}
+   :private_metadata (json/encode private-metadata)
+   :blocks
+   (let [freeform-block {:type     "input"
+                         :block_id "freeform_feedback"
+                         :optional true
+                         :element  {:type        "plain_text_input"
+                                    :action_id   "freeform_input"
+                                    :multiline   true
+                                    :placeholder {:type "plain_text"
+                                                  :text (if positive
+                                                          "Tell us what you liked!"
+                                                          "What could be improved about this response?")}}
+                         :label    {:type "plain_text" :text "Any details you'd like to share? (optional)"}}]
+     (if positive
+       [freeform-block]
+       [{:type     "input"
+         :block_id "issue_type"
+         :optional true
+         :element  {:type        "static_select"
+                    :action_id   "issue_type_select"
+                    :placeholder {:type "plain_text" :text "Select issue type"}
+                    :options     issue-type-options}
+         :label    {:type "plain_text" :text "What kind of issue are you reporting? (optional)"}}
+        freeform-block]))})
+
 (defn- replace-feedback-buttons-with-thanks
   "Update the Slack message to replace the feedback buttons with a confirmation."
   [client channel message-ts message-blocks]
@@ -302,48 +343,92 @@
                                             :ts      message-ts
                                             :blocks  updated-blocks})))
 
+(defn- build-base-feedback
+  "Build the common feedback payload fields."
+  [user-id conversation-id positive]
+  {:metabot_id        1
+   :feedback          {:positive          positive
+                       :message_id        conversation-id
+                       :freeform_feedback ""}
+   :conversation_data {}
+   :version           config/mb-version-info
+   :submission_time   (str (java.time.OffsetDateTime/now))
+   :is_admin          (boolean (t2/select-one-fn :is_superuser :model/User :id user-id))
+   :source            "slack"})
+
 (defn- handle-feedback-action
-  "Handle a metabot feedback button click from Slack."
-  [{:keys [action slack-user-id channel-id message-ts message-blocks]}]
+  "Handle a metabot feedback button click from Slack.
+   Opens the detail modal immediately (trigger_id expires in 3s), then records
+   basic feedback and replaces the buttons in the background."
+  [{:keys [action trigger-id slack-user-id channel-id message-ts message-blocks]}]
   (let [{:keys [conversation_id positive]} (json/decode (:value action) true)
         client  {:token (channel.settings/unobfuscated-slack-app-token)}
         user-id (slack-id->user-id slack-user-id)]
     (when user-id
+      (try
+        (slackbot.client/open-view
+         client
+         {:trigger_id trigger-id
+          :view       (feedback-modal-view positive {:conversation_id conversation_id
+                                                     :positive        positive
+                                                     :user_id         user-id})})
+        (catch Exception e
+          (log/errorf e "[slackbot] Error opening feedback modal: %s" (ex-data e))))
       (future
         (try
           (metabot-v3.feedback/submit-to-harbormaster!
-           {:metabot_id        (metabot-v3.config/resolve-dynamic-metabot-id nil)
-            :feedback          {:positive          positive
-                                :message_id        conversation_id
-                                :freeform_feedback ""}
-            :conversation_data {}
-            :version           config/mb-version-info
-            :submission_time   (str (java.time.OffsetDateTime/now))
-            :is_admin          (boolean (t2/select-one-fn :is_superuser :model/User :id user-id))
-            :source            "slack"})
+           (build-base-feedback user-id conversation_id positive))
           (replace-feedback-buttons-with-thanks client channel-id message-ts message-blocks)
           (catch Exception e
-            (log/error e "[slackbot] Error handling feedback action")))))))
+            (log/errorf e "[slackbot] Error submitting feedback: %s" (ex-data e))))))))
+
+(defn- handle-feedback-modal-submission
+  "Handle submission of the feedback details modal."
+  [payload]
+  (let [private-metadata (json/decode (get-in payload [:view :private_metadata]) true)
+        {:keys [conversation_id positive user_id]} private-metadata
+        values           (get-in payload [:view :state :values])
+        issue-type       (get-in values [:issue_type :issue_type_select :selected_option :value])
+        freeform         (get-in values [:freeform_feedback :freeform_input :value])]
+    (when (or issue-type (not (str/blank? freeform)))
+      (future
+        (try
+          (metabot-v3.feedback/submit-to-harbormaster!
+           (cond-> (build-base-feedback user_id conversation_id positive)
+             true       (assoc-in [:feedback :freeform_feedback] (or freeform ""))
+             issue-type (assoc-in [:feedback :issue_type] issue-type)))
+          (catch Exception e
+            (log/error e "[slackbot] Error submitting feedback modal")))))))
 
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :post "/interactive"
-  "Handle interactive payloads from Slack (button clicks, etc.)."
+  "Handle interactive payloads from Slack (button clicks, modal submissions)."
   [_route-params _query-params _body request]
   (assert-valid-slack-req request)
-  (let [payload        (-> (get-in request [:params :payload])
-                           (json/decode true))
-        actions        (:actions payload)
-        slack-user     (get-in payload [:user :id])
-        channel-id     (get-in payload [:channel :id])
-        message-ts     (get-in payload [:message :ts])
-        message-blocks (get-in payload [:message :blocks])]
-    (doseq [action actions]
-      (when (str/starts-with? (:action_id action) "metabot_feedback")
-        (handle-feedback-action {:action         action
-                                 :slack-user-id  slack-user
-                                 :channel-id     channel-id
-                                 :message-ts     message-ts
-                                 :message-blocks message-blocks})))
+  (let [payload (-> (get-in request [:params :payload])
+                    (json/decode true))]
+    (case (:type payload)
+      "block_actions"
+      (let [actions        (:actions payload)
+            slack-user     (get-in payload [:user :id])
+            trigger-id     (:trigger_id payload)
+            channel-id     (get-in payload [:channel :id])
+            message-ts     (get-in payload [:message :ts])
+            message-blocks (get-in payload [:message :blocks])]
+        (doseq [action actions]
+          (when (= (:action_id action) "metabot_feedback")
+            (handle-feedback-action {:action         action
+                                     :trigger-id     trigger-id
+                                     :slack-user-id  slack-user
+                                     :channel-id     channel-id
+                                     :message-ts     message-ts
+                                     :message-blocks message-blocks}))))
+
+      "view_submission"
+      (when (= (get-in payload [:view :callback_id]) "metabot_feedback_modal")
+        (handle-feedback-modal-submission payload))
+
+      nil)
     {:status 200 :body ""}))
 
 (def ^{:arglists '([request respond raise])} routes

@@ -395,16 +395,14 @@
         (.getBytes (str "slack:" team-id ":" channel ":" thread-ts)))))
 
 (defn- feedback-blocks [conversation-id]
-  [{:type     "actions"
+  [{:type     "context_actions"
     :block_id "metabot_feedback"
-    :elements [{:type      "button"
-                :text      {:type "plain_text" :text ":thumbsup:" :emoji true}
-                :action_id "metabot_feedback_up"
-                :value     (json/encode {:conversation_id conversation-id :positive true})}
-               {:type      "button"
-                :text      {:type "plain_text" :text ":thumbsdown:" :emoji true}
-                :action_id "metabot_feedback_down"
-                :value     (json/encode {:conversation_id conversation-id :positive false})}]}])
+    :elements [{:type            "feedback_buttons"
+                :action_id       "metabot_feedback"
+                :positive_button {:text  {:type "plain_text" :text "Good"}
+                                  :value (json/encode {:conversation_id conversation-id :positive true})}
+                :negative_button {:text  {:type "plain_text" :text "Bad"}
+                                  :value (json/encode {:conversation_id conversation-id :positive false})}}]}])
 
 (defn send-response
   "Send a metabot response using Slack's streaming API for progressive updates.
