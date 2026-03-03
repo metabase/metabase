@@ -275,6 +275,18 @@ If you are fixing SQL errors it is FORBIDDEN to replace referenced models and ta
 
 Current date and time: {{current_time}}
 
+In the system, the first day of the week (index 1) is: {{ first_day_of_week }}
+{% if viewing_context %}
+
+<user_context>
+{{ viewing_context|safe }}
+</user_context>
+{% endif %}
+{% if recent_views %}
+
+{{ recent_views|safe }}
+{% endif %}
+
 ## Data Source Types
 
 - **Tables**: Raw data sources in the database
