@@ -38,6 +38,7 @@ import type {
 } from "../types";
 
 import { MiniPickerItem } from "./MiniPickerItem";
+import styles from "./MiniPickerItem.module.css";
 
 export function MiniPickerItemList() {
   const { path, searchQuery } = useMiniPickerContext();
@@ -364,6 +365,10 @@ function SearchItemList({ query }: { query: string }) {
                 onChange(item);
               }}
               rightSection={<LocationInfo item={item} />}
+              classNames={{
+                itemLabel: styles.leftSection,
+                itemSection: styles.rightSection,
+              }}
             />
           );
         })}
@@ -401,7 +406,6 @@ const ItemList = ({ children }: { children: React.ReactNode[] }) => {
 };
 
 const LocationInfo = ({ item }: { item: MiniPickerPickableItem }) => {
-  const { isCompact } = useMiniPickerContext();
   const isTable = isTableInDb(item);
 
   const itemText = isTable
@@ -420,12 +424,10 @@ const LocationInfo = ({ item }: { item: MiniPickerPickableItem }) => {
       });
 
   return (
-    <Flex gap="xs" align="center">
-      {iconProps && <Icon {...iconProps} size={12} />}
-      <Text size="sm" c="text-secondary">
-        <Ellipsified maw={isCompact ? "12rem" : "18rem"}>
-          {itemText}
-        </Ellipsified>
+    <Flex gap="xs" align="center" ml="auto" style={{ overflow: "hidden" }}>
+      {iconProps && <Icon {...iconProps} size={12} miw={12} />}
+      <Text size="sm" c="text-secondary" miw="0">
+        <Ellipsified>{itemText}</Ellipsified>
       </Text>
     </Flex>
   );

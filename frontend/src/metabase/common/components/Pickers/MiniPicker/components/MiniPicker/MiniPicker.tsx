@@ -31,7 +31,7 @@ export type MiniPickerProps = {
   menuDropdownProps?: MenuDropdownProps;
   closeOnClickOutside?: boolean;
   menuDropdownRef?: Ref<HTMLDivElement>;
-  isCompact?: boolean;
+  className?: string;
 };
 
 export function MiniPicker({
@@ -48,8 +48,8 @@ export function MiniPicker({
   children = <Box />,
   menuDropdownProps,
   closeOnClickOutside = true,
-  isCompact,
   menuDropdownRef,
+  className,
 }: MiniPickerProps) {
   const { data: libraryCollection } = PLUGIN_LIBRARY.useGetLibraryCollection();
 
@@ -94,7 +94,6 @@ export function MiniPicker({
         canBrowse: !!onBrowseAll,
         libraryCollection,
         shouldShowLibrary,
-        isCompact,
       }}
     >
       <Menu
@@ -116,7 +115,11 @@ export function MiniPicker({
           {...menuDropdownProps}
           ref={menuDropdownRef}
         >
-          {isLoadingPath ? <MiniPickerListLoader /> : <MiniPickerPane />}
+          {isLoadingPath ? (
+            <MiniPickerListLoader />
+          ) : (
+            <MiniPickerPane className={className} />
+          )}
         </Menu.Dropdown>
       </Menu>
     </MiniPickerContext.Provider>

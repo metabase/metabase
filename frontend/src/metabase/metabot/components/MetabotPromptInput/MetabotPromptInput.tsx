@@ -42,7 +42,6 @@ export interface MetabotPromptInputProps {
     suggestionModels: SuggestionModel[];
     onlyDatabaseId?: DatabaseId;
   };
-  isCompact?: boolean;
 }
 export const MetabotPromptInput = forwardRef<
   MetabotPromptInputRef | null,
@@ -58,7 +57,6 @@ export const MetabotPromptInput = forwardRef<
       onChange,
       onSubmit,
       onStop,
-      isCompact,
       ...props
     },
     ref,
@@ -82,7 +80,6 @@ export const MetabotPromptInput = forwardRef<
             createMetabotMentionSuggestionNew({
               searchModels: suggestionConfig.suggestionModels,
               onlyDatabaseId: suggestionConfig.onlyDatabaseId,
-              isCompact,
             }),
           ),
         },

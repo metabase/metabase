@@ -36,7 +36,6 @@ export const MetabotChatEditor = forwardRef<
           ref={ref}
           disabled={isResponding}
           data-testid="metabot-chat-input"
-          isCompact
         />
       </Box>
       <UnstyledButton
