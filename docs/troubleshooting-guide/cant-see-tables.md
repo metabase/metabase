@@ -74,7 +74,10 @@ Metabase uses a group-based permission model: people belong to groups, and admin
 
 **Explanation**
 
-If an Admin sets the table visibility to **Hidden**, you will be able to use SQL to query the table but will not be able to see it in **Browse** > **Databases** or as a data source in the Query Builder.
+There are two reasons a table might be hidden in Metabase.
+
+- **An admin manually hides the table**. If an Admin sets the table visibility to **Hidden**, you will be able to use SQL to query the table but will not be able to see it in **Browse** > **Databases** or as a data source in the Query Builder.
+- **Metabase automatically hides tables whose names match certain patterns**, like the names of tables for web framework internals (frameworks like Django, Drupal, and Rails with table names like `django_migrations`, `cache*`, and `schema_migrations`). You can manually unhide these in **Admin > Table Metadata**. Once you make these tables visible, Metabase won't re-hide them on future syncs. See the [full list of auto-hidden table name patterns](https://github.com/metabase/metabase/blob/0a5091e9b78eaa86269de2a2a59226b33fd59602/src/metabase/sync/sync_metadata/tables.clj#L26) in the Metabase source code.
 
 ## MongoDB
 
