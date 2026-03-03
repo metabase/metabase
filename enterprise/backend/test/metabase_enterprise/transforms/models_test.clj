@@ -4,6 +4,13 @@
    [metabase.test :as mt]
    [toucan2.core :as t2]))
 
+(defn- find-source-table
+  "Find a source table entry by alias in the source-tables vec."
+  [saved alias]
+  (some #(when (= alias (:alias %))
+           %)
+        (get-in saved [:source :source-tables])))
+
 (deftest python-transform-source-table-resolution-on-save-test
   (testing "Python transform source-tables with name refs get table_id resolved on save"
     (mt/with-temp [:model/Database {db-id :id} {}
@@ -23,7 +30,7 @@
                                                             :name     "output"
                                                             :database db-id}}]
           (let [saved        (t2/select-one :model/Transform :id (:id transform))
-                source-table (get-in saved [:source :source-tables "input"])]
+                source-table (find-source-table saved "input")]
             (is (= table-id (:table_id source-table))
                 "table_id should be resolved from database lookup"))))
 
@@ -40,7 +47,7 @@
                                                             :name     "output"
                                                             :database db-id}}]
           (let [saved        (t2/select-one :model/Transform :id (:id transform))
-                source-table (get-in saved [:source :source-tables "input"])]
+                source-table (find-source-table saved "input")]
             (is (nil? (:table_id source-table))
                 "table_id should be nil for non-existent table"))))
 
@@ -58,6 +65,6 @@
                                                             :name     "output"
                                                             :database db-id}}]
           (let [saved        (t2/select-one :model/Transform :id (:id transform))
-                source-table (get-in saved [:source :source-tables "input"])]
+                source-table (find-source-table saved "input")]
             (is (= 999 (:table_id source-table))
                 "explicit table_id should be preserved")))))))

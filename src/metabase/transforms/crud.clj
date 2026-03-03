@@ -26,6 +26,7 @@
 
 (set! *warn-on-reflection* true)
 
+;; TODO(FE-source-tables): Remove this function and all call sites when FE adopts the array format for source-tables.
 (defn source-tables-vec->map-for-fe
   "Convert source-tables from internal vec format to legacy map format for FE compatibility.
   Remove this when FE adopts the array format."

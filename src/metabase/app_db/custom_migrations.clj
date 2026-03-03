@@ -1867,14 +1867,16 @@
                                         {"alias" alias "table_id" v}
                                         (assoc v "alias" alias)))
                                     st)]
-                  (json-in (assoc parsed "source-tables" entries)))))))]
-    (doseq [table-name [:transform :workspace_transform]]
-      (doseq [{:keys [id source]} (t2/query {:select [:id :source]
-                                             :from   [table-name]})]
-        (when-let [new-source (convert-source-tables source)]
+                  (json-in (assoc parsed "source-tables" entries)))))))
+        pk-cols {:transform       [:id]
+                 :workspace_transform [:workspace_id :ref_id]}]
+    (doseq [[table-name pks] pk-cols]
+      (doseq [row (t2/query {:select (into [:source] pks)
+                             :from   [table-name]})]
+        (when-let [new-source (convert-source-tables (:source row))]
           (t2/query {:update table-name
                      :set    {:source new-source}
-                     :where  [:= :id id]})))))
+                     :where  (into [:and] (map #(vector := % (get row %)) pks))})))))
   ;; Rollback: convert source-tables from vec [{alias: ..., table_id: ...}] back to map {alias: table_id}
   (let [convert-back
         (fn [source-json]
@@ -1885,11 +1887,13 @@
                                         [(get entry "alias")
                                          (or (get entry "table_id") entry)]))
                               st)]
-                  (json-in (assoc parsed "source-tables" m)))))))]
-    (doseq [table-name [:transform :workspace_transform]]
-      (doseq [{:keys [id source]} (t2/query {:select [:id :source]
-                                             :from   [table-name]})]
-        (when-let [new-source (convert-back source)]
+                  (json-in (assoc parsed "source-tables" m)))))))
+        pk-cols {:transform       [:id]
+                 :workspace_transform [:workspace_id :ref_id]}]
+    (doseq [[table-name pks] pk-cols]
+      (doseq [row (t2/query {:select (into [:source] pks)
+                             :from   [table-name]})]
+        (when-let [new-source (convert-back (:source row))]
           (t2/query {:update table-name
                      :set    {:source new-source}
-                     :where  [:= :id id]}))))))
+                     :where  (into [:and] (map #(vector := % (get row %)) pks))}))))))
