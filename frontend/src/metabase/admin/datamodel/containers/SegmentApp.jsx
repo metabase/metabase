@@ -1,13 +1,16 @@
 /* eslint-disable react/prop-types */
 import { useCallback, useState } from "react";
 import { push } from "react-router-redux";
+import { t } from "ttag";
 import _ from "underscore";
 
 import { LeaveRouteConfirmModal } from "metabase/common/components/LeaveConfirmModal";
 import { useCallbackEffect } from "metabase/common/hooks/use-callback-effect";
+import { trackSegmentCreated } from "metabase/data-studio/analytics";
 import { Segments } from "metabase/entities/segments";
 import { Tables } from "metabase/entities/tables";
 import { connect } from "metabase/lib/redux";
+import { useMetadataToasts } from "metabase/metadata/hooks";
 
 import { SegmentForm } from "../components/SegmentForm";
 import { updatePreviewSummary } from "../datamodel";
@@ -20,7 +23,7 @@ const mapDispatchToProps = {
   onChangeLocation: push,
 };
 
-const mapStateToProps = (state, props) => ({
+const mapStateToProps = (state) => ({
   previewSummary: getPreviewSummary(state),
 });
 
@@ -78,6 +81,7 @@ const CreateSegmentForm = ({
   ...props
 }) => {
   const [isDirty, setIsDirty] = useState(false);
+  const { sendErrorToast } = useMetadataToasts();
 
   /**
    * Navigation is scheduled so that LeaveConfirmationModal's isEnabled
@@ -91,14 +95,27 @@ const CreateSegmentForm = ({
 
       scheduleCallback(async () => {
         try {
-          await createSegment(segment);
+          const { payload } = await createSegment(segment);
+          trackSegmentCreated(
+            "success",
+            "admin_datamodel_segments",
+            payload.segment?.id,
+          );
           onChangeLocation("/admin/datamodel/segments");
         } catch (error) {
+          sendErrorToast(t`Failed to create segment`);
+          trackSegmentCreated("failure", "admin_datamodel_segments");
           setIsDirty(isDirty);
         }
       });
     },
-    [scheduleCallback, createSegment, isDirty, onChangeLocation],
+    [
+      scheduleCallback,
+      createSegment,
+      onChangeLocation,
+      sendErrorToast,
+      isDirty,
+    ],
   );
 
   return (
