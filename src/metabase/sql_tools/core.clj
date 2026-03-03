@@ -182,3 +182,9 @@
   (let [parser (sql-tools.settings/current-parser-backend)]
     (metrics/with-operation-timing [parser "add-into-clause"]
       (interface/add-into-clause-impl parser driver sql table-name))))
+
+(mu/defn transpile-sql :- :string
+  [sql from-dialect to-dialect]
+  ;; template tag detection
+  (interface/transpile-sql-impl (sql-tools.settings/sql-tools-parser-backend)
+                                sql from-dialect to-dialect))
