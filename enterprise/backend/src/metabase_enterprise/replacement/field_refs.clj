@@ -52,24 +52,25 @@
 
 (defn- card-upgrade-field-refs!
   [card]
-  (let [dataset-query  (:dataset_query card)
-        dataset-query' (lib-be/upgrade-field-refs-in-query dataset-query)
+  (when (-> card :dataset_query :stages seq)
+    (let [dataset-query  (:dataset_query card)
+          dataset-query' (lib-be/upgrade-field-refs-in-query dataset-query)
 
-        viz             (vs/db->norm (:visualization_settings card))
-        column-settings (::vs/column-settings viz)
-        column-settings' (if dataset-query'
-                           (upgrade-card-column-settings dataset-query' column-settings)
-                           column-settings)
-        changes (cond-> {}
-                  (not= dataset-query dataset-query')
-                  (assoc :dataset_query dataset-query')
+          viz             (vs/db->norm (:visualization_settings card))
+          column-settings (::vs/column-settings viz)
+          column-settings' (if dataset-query'
+                             (upgrade-card-column-settings dataset-query' column-settings)
+                             column-settings)
+          changes (cond-> {}
+                    (not= dataset-query dataset-query')
+                    (assoc :dataset_query dataset-query')
 
-                  (not= column-settings column-settings')
-                  (assoc :visualization_settings (-> viz
-                                                     (assoc ::vs/column-settings column-settings')
-                                                     vs/norm->db)))]
-    (when (seq changes)
-      (t2/update! :model/Card (:id card) changes))))
+                    (not= column-settings column-settings')
+                    (assoc :visualization_settings (-> viz
+                                                       (assoc ::vs/column-settings column-settings')
+                                                       vs/norm->db)))]
+      (when (seq changes)
+        (t2/update! :model/Card (:id card) changes)))))
 
 (defn- transform-upgrade-field-refs!
   [transform]
