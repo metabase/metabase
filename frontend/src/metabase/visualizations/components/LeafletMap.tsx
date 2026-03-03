@@ -21,7 +21,6 @@ type MapSettings = {
   "map.center_latitude"?: number;
   "map.center_longitude"?: number;
   "map.zoom"?: number;
-  [key: string]: unknown;
 };
 
 export interface LeafletMapProps {
