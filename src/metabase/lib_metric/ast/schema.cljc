@@ -60,7 +60,9 @@
 ;;; -------------------- Aggregation Nodes --------------------
 
 (mr/def ::aggregation-count
-  [:map [:node/type [:= :aggregation/count]]])
+  [:map
+   [:node/type [:= :aggregation/count]]
+   [:column {:optional true} [:maybe ::column-node]]])
 
 (mr/def ::aggregation-sum
   [:map

@@ -109,7 +109,10 @@
   "Compile aggregation node to MBQL aggregation clause."
   [node]
   (case (:node/type node)
-    :aggregation/count    [:count {:lib/uuid (random-uuid-str)}]
+    :aggregation/count    (if-let [col (:column node)]
+                            [:count {:lib/uuid (random-uuid-str)}
+                             (column-node->field-ref col {})]
+                            [:count {:lib/uuid (random-uuid-str)}])
     :aggregation/sum      [:sum {:lib/uuid (random-uuid-str)}
                            (column-node->field-ref (:column node) {})]
     :aggregation/avg      [:avg {:lib/uuid (random-uuid-str)}
