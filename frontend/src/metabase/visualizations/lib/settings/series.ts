@@ -292,8 +292,6 @@ export function seriesSetting({
  * Computes the colors for the series based on their keys and settings.
  * It filters out series that do not have a single key and maps them to their keys.
  * Then it retrieves the colors using the `getSeriesColors` function.
- * @param series - The series to compute colors for.
- * @param settings - The visualization settings.
  * @returns An object mapping series keys to their colors.
  */
 export function getColors(
