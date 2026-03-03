@@ -1,7 +1,7 @@
 import { t } from "ttag";
 import _ from "underscore";
 
-import { getIframeDomainName } from "metabase/visualizations/visualizations/IFrameViz/utils";
+import { getIframeDomainName } from "metabase/dashboard/visualizations/IFrameViz/utils";
 import type {
   DashCardId,
   Dashboard,

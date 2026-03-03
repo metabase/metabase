@@ -35,6 +35,7 @@ import { syncHistoryWithStore } from "react-router-redux";
 
 import { initializePlugins } from "ee-plugins";
 import { ModifiedBackend } from "metabase/common/components/dnd/ModifiedBackend";
+import registerDashboardVisualizations from "metabase/dashboard/visualizations/register";
 import { createTracker } from "metabase/lib/analytics";
 import api from "metabase/lib/api";
 import { initializeEmbedding } from "metabase/lib/embed";
@@ -94,6 +95,7 @@ function _init(reducers, getRoutes, callback) {
   );
 
   registerVisualizations();
+  registerDashboardVisualizations();
 
   store.dispatch(refreshSiteSettings());
 

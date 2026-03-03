@@ -8,8 +8,8 @@ import {
   isQuestionDashCard,
   isVirtualDashCard,
 } from "metabase/dashboard/utils";
+import { getAllowedIframeAttributes } from "metabase/dashboard/visualizations/IFrameViz/utils";
 import { getGroupName } from "metabase/querying/filters/utils/groups";
-import { getAllowedIframeAttributes } from "metabase/visualizations/visualizations/IFrameViz/utils";
 import * as Lib from "metabase-lib";
 import { TemplateTagDimension } from "metabase-lib/v1/Dimension";
 import type { DimensionOptionsSection } from "metabase-lib/v1/DimensionOptions/types";
