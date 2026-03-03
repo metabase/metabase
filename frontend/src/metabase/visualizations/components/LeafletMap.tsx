@@ -58,7 +58,7 @@ export class LeafletMap extends Component<LeafletMapProps> {
         return;
       }
 
-      const mapOptions = {
+      const mapOptions: L.MapOptions = {
         scrollWheelZoom: true,
         wheelPxPerZoomLevel: 30,
         minZoom: 2,
@@ -71,7 +71,7 @@ export class LeafletMap extends Component<LeafletMapProps> {
         ],
         maxBoundsViscosity: 1.0, // Completely prevent panning outside latitude bounds
         worldCopyJump: true, // Enable smooth horizontal wrapping
-      } satisfies L.MapOptions;
+      };
       const map = (this.map = L.map(element, mapOptions));
 
       const drawnItems = new L.FeatureGroup();
