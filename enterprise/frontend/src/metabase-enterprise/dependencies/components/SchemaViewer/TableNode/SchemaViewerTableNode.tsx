@@ -29,6 +29,7 @@ import {
   Stack,
   Tooltip,
 } from "metabase/ui";
+import { Ellipsified } from "metabase/common/components/Ellipsified";
 import { isTypePK } from "metabase-lib/v1/types/utils/isa";
 import type { ErdField } from "metabase-types/api";
 
@@ -343,81 +344,26 @@ function CompactTableNode({
     return data.fields.filter((field) => data.connectedFieldIds.has(field.id));
   }, [data.fields, data.connectedFieldIds]);
 
-  const fieldCount = data.fields.length;
-  const tooltipContent = (
-    <Stack gap={4}>
-      <Box fw="bold" c="inherit">
-        {data.name}
-      </Box>
-      <Box fz="xs" c="inherit" style={{ opacity: 0.7 }}>
-        {t`${fieldCount} fields`}
-      </Box>
-      {connectedTables.length > 0 && (
-        <Stack gap={2}>
-          {connectedTables.map(({ name, direction, cardinality }) => {
-            const isMany = cardinality === "many";
-            const iconName = isMany
-              ? "arrow_split"
-              : direction === "outbound"
-                ? "arrow_right"
-                : "arrow_left";
-            const rotation = isMany ? (direction === "outbound" ? 0 : -180) : 0;
-            return (
-              <Group key={name} gap={6} wrap="nowrap">
-                <Icon
-                  name={iconName}
-                  size={10}
-                  style={{
-                    opacity: 0.8,
-                    transform: rotation ? `rotate(${rotation}deg)` : undefined,
-                  }}
-                />
-                <Box fz="sm" c="inherit" style={{ opacity: 0.8 }}>
-                  {name}
-                </Box>
-              </Group>
-            );
-          })}
-        </Stack>
-      )}
-      <Box fz="0.5rem" c="text-secondary-inverse">
-        {t`(double-click to see details)`}
-      </Box>
-    </Stack>
-  );
-
   return (
-    <Tooltip
-      label={tooltipContent}
-      openDelay={TOOLTIP_OPEN_DELAY_MS}
-      position="top"
+    <Stack
+      className={cx(S.card, S.compact, { [S.focal]: data.is_focal })}
+      gap={0}
+      onDoubleClick={onDoubleClick}
     >
-      <Stack
-        className={cx(S.card, S.compact, { [S.focal]: data.is_focal })}
-        gap={0}
-        onDoubleClick={onDoubleClick}
-      >
-        <Group className={S.compactHeader} gap={12} px={16} wrap="nowrap">
-          <FixedSizeIcon name="table2" size={24} style={{ color: iconColor }} />
-          <Box
-            fz={34}
-            c={headerColor}
-            style={{
-              overflow: "hidden",
-              textOverflow: "ellipsis",
-              whiteSpace: "nowrap",
-            }}
-          >
+      <Group className={S.compactHeader} gap={12} px={16} wrap="nowrap">
+        <FixedSizeIcon name="table2" size={24} style={{ color: iconColor }} />
+        <Box fz={34} c={headerColor} miw={0} style={{ flex: 1 }}>
+          <Ellipsified tooltipProps={{ openDelay: TOOLTIP_OPEN_DELAY_MS }}>
             {data.name}
-          </Box>
-        </Group>
-        {/* Handles at bottom for edge connections - same IDs as full mode */}
-        <CompactHandles
-          connectedFields={connectedFields}
-          selfRefTargetIds={selfRefTargetIds}
-        />
-      </Stack>
-    </Tooltip>
+          </Ellipsified>
+        </Box>
+      </Group>
+      {/* Handles at bottom for edge connections - same IDs as full mode */}
+      <CompactHandles
+        connectedFields={connectedFields}
+        selfRefTargetIds={selfRefTargetIds}
+      />
+    </Stack>
   );
 }
 

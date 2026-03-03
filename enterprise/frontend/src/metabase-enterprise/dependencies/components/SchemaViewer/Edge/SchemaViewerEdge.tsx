@@ -3,7 +3,7 @@ import {
   getSmoothStepPath,
   useNodesInitialized,
 } from "@xyflow/react";
-import { memo, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { memo, useMemo } from "react";
 
 import { usePalette } from "metabase/common/hooks/use-palette";
 
@@ -14,9 +14,6 @@ import type { SchemaViewerEdgeData } from "../types";
 const GAP = 4;
 const W = 8;
 const H = 6;
-
-// Arrow geometry (centered triangle pointing right before rotation)
-const ARROW_POINTS = "-6,-6 6,0 -6,6";
 
 type SymbolType = "one" | "many";
 
@@ -198,44 +195,14 @@ export const SchemaViewerEdge = memo(function SchemaViewerEdge(
     });
   }
 
-  // Compute midpoint arrow position + angle from the rendered path
-  const pathRef = useRef<SVGPathElement>(null);
-  const [midArrow, setMidArrow] = useState<{
-    x: number;
-    y: number;
-    angle: number;
-  } | null>(null);
-
-  useLayoutEffect(() => {
-    const el = pathRef.current;
-    if (!el || isHidden) {
-      setMidArrow(null);
-      return;
-    }
-    const len = el.getTotalLength();
-    const mid = el.getPointAtLength(len / 2);
-    const ahead = el.getPointAtLength(Math.min(len / 2 + 1, len));
-    const angle =
-      Math.atan2(ahead.y - mid.y, ahead.x - mid.x) * (180 / Math.PI);
-    setMidArrow({ x: mid.x, y: mid.y, angle });
-  }, [edgePath, isHidden]);
-
   return (
     <>
       <path
-        ref={pathRef}
         d={edgePath}
         fill="none"
         style={style}
         className={`react-flow__edge-path ${animationClass}`}
       />
-      {midArrow && (
-        <polygon
-          points={ARROW_POINTS}
-          transform={`translate(${midArrow.x},${midArrow.y}) rotate(${midArrow.angle}) scale(${scale})`}
-          fill={stroke}
-        />
-      )}
       {!isHidden && (
         <g>
           <SourceSymbol
