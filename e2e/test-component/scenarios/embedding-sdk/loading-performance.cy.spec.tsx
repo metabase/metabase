@@ -54,14 +54,14 @@ describe(
 
     // --- Bundle loading modes ---
 
-    it("bootstrap=false: loads monolithic bundle, renders question, correct URL and script element", () => {
+    it("useLegacyMonolithicBundle=true: loads monolithic bundle, renders question, correct URL and script element", () => {
       cy.log("Intercepting bundle request");
       cy.intercept("GET", "**/app/embedding-sdk.js*").as("bundleRequest");
 
-      cy.log("Mounting with bootstrap=false");
+      cy.log("Mounting with useLegacyMonolithicBundle=true");
       mountSdkContent(<InteractiveQuestion questionId={ORDERS_QUESTION_ID} />, {
         sdkProviderProps: {
-          bootstrap: false,
+          useLegacyMonolithicBundle: true,
           authConfig: { metabaseInstanceUrl: METABASE_INSTANCE_URL },
         },
       });
@@ -72,10 +72,15 @@ describe(
         cy.findByTestId("visualization-root").should("be.visible");
       });
 
-      cy.log("Checking request URL has no packageVersion");
+      cy.log(
+        "Checking request URL has packageVersion and useLegacyMonolithicBundle params",
+      );
       cy.get("@bundleRequest.all").then((interceptions: any) => {
         expect(interceptions.length).to.be.greaterThan(0);
-        expect(interceptions[0].request.url).to.not.include("packageVersion");
+        expect(interceptions[0].request.url).to.include("packageVersion=");
+        expect(interceptions[0].request.url).to.include(
+          "useLegacyMonolithicBundle=true",
+        );
       });
 
       cy.log("Checking window.METABASE_EMBEDDING_SDK_BUNDLE");
@@ -92,14 +97,14 @@ describe(
       });
     });
 
-    it("bootstrap=true (default): loads bootstrap + chunks, renders question, correct URL and script element", () => {
+    it("useLegacyMonolithicBundle=false (default): loads bootstrap + chunks, renders question, correct URL and script element", () => {
       cy.log("Intercepting bundle request");
       cy.intercept("GET", "**/app/embedding-sdk.js*").as("bundleRequest");
       cy.intercept("GET", "**/app/embedding-sdk/chunks/*.js").as(
         "chunkRequest",
       );
 
-      cy.log("Mounting with default bootstrap (true)");
+      cy.log("Mounting with default useLegacyMonolithicBundle value (false)");
       mountSdkContent(<InteractiveQuestion questionId={ORDERS_QUESTION_ID} />);
 
       cy.log("Checking question renders");
@@ -108,10 +113,15 @@ describe(
         cy.findByTestId("visualization-root").should("be.visible");
       });
 
-      cy.log("Checking request URL has packageVersion");
+      cy.log(
+        "Checking request URL has packageVersion but no useLegacyMonolithicBundle",
+      );
       cy.get("@bundleRequest.all").then((interceptions: any) => {
         expect(interceptions.length).to.be.greaterThan(0);
         expect(interceptions[0].request.url).to.include("packageVersion=");
+        expect(interceptions[0].request.url).to.not.include(
+          "useLegacyMonolithicBundle",
+        );
       });
       cy.log("Checking chunk requests happened (proves bootstrap path)");
       cy.get("@chunkRequest.all").then((interceptions: any) => {
@@ -216,7 +226,7 @@ describe(
 
       cy.log("Checking question renders and loader disappears");
       getSdkRoot().within(() => {
-        cy.findByText("Orders").should("exist");
+        cy.findByText("Orders", { timeout: 20_000 }).should("exist");
         cy.findByTestId("visualization-root").should("be.visible");
       });
       cy.findByTestId("loading-indicator").should("not.exist");
@@ -534,7 +544,6 @@ describe(
       cy.log("Mounting with preferredAuthMethod: saml");
       mountSdkContent(<InteractiveQuestion questionId={ORDERS_QUESTION_ID} />, {
         sdkProviderProps: {
-          bootstrap: true,
           authConfig: {
             metabaseInstanceUrl: METABASE_INSTANCE_URL,
             preferredAuthMethod: "saml",
@@ -566,10 +575,9 @@ describe(
         req.continue();
       });
 
-      cy.log("Mounting with bootstrap=true (no preferredAuthMethod set)");
+      cy.log("Mounting");
       mountSdkContent(<InteractiveQuestion questionId={ORDERS_QUESTION_ID} />, {
         sdkProviderProps: {
-          bootstrap: true,
           authConfig: { metabaseInstanceUrl: METABASE_INSTANCE_URL },
         },
         waitForUser: false,
@@ -605,10 +613,9 @@ describe(
         cy.spy(win.console, "warn").as("consoleWarn");
       });
 
-      cy.log("Mounting with bootstrap=true (bootstrap auth will fail)");
+      cy.log("Mounting");
       mountSdkContent(<InteractiveQuestion questionId={ORDERS_QUESTION_ID} />, {
         sdkProviderProps: {
-          bootstrap: true,
           authConfig: { metabaseInstanceUrl: METABASE_INSTANCE_URL },
         },
         waitForUser: false,

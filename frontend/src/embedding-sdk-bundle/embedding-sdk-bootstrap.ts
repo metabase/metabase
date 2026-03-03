@@ -3,9 +3,7 @@ import { waitForAuthConfigAndStartEarlyAuthFlow } from "./bootstrap-auth";
 // Bootstrap entry point for the SDK bundle.
 //
 // On disk:   `app/embedding-sdk/chunks/embedding-sdk.js`
-// Served at: `app/embedding-sdk.js?packageVersion=X.Y.Z`
-//   (without packageVersion, the backend serves the legacy monolithic bundle
-//    from app/embedding-sdk/legacy/embedding-sdk.js instead)
+// Served at: `app/embedding-sdk.js?packageVersion={version}` unless `useLegacyMonolithicBundle=true` is also passed
 //
 // At build time, the inject-bundle-manifest rspack plugin:
 //   1. Replaces "__SDK_CHUNK_MANIFEST__" with the list of split chunk paths

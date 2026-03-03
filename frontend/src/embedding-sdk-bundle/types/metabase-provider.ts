@@ -68,10 +68,11 @@ export interface MetabaseProviderProps {
   allowConsoleLog?: boolean;
 
   /**
-   * Whether to load the small bootstrap bundle that starts authentication
-   * in parallel with the main SDK bundle download. Defaults to true.
+   * Whether to load the full SDK bundle directly as a single file (legacy behavior),
+   * instead of the optimized bootstrap that loads chunks in parallel and starts
+   * authentication early.
    *
-   * Set to false to load the full SDK bundle directly (legacy behavior).
+   * Defaults to false (uses the optimized bootstrap loader).
    **/
-  bootstrap?: boolean;
+  useLegacyMonolithicBundle?: boolean;
 }

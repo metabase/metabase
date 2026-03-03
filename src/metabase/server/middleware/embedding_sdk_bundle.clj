@@ -44,13 +44,17 @@
 
 (defn serve-bundle-handler
   "Serve /app/embedding-sdk.js.
-   When `packageVersion` query param is present, serve the bootstrap (chunked loading).
-   Otherwise, serve the legacy monolithic bundle.
+   When `packageVersion` query param is present and `useLegacyMonolithicBundle`
+   is not `true`, serve the bootstrap entry (chunked loading with parallel auth).
+   Otherwise, serve the legacy monolithic bundle (backward compat for old packages).
    Prod: ETag + 60s caching (200/304). Dev: no-store."
   []
   (fn [request]
     (let [package-version (get-in request [:query-params "packageVersion"])
-          resource        (if (some? package-version)
+          use-legacy      (get-in request [:query-params "useLegacyMonolithicBundle"])
+          use-bootstrap?  (and (some? package-version)
+                               (not= "true" use-legacy))
+          resource        (if use-bootstrap?
                             bootstrap-resource
                             bundle-resource)]
       ((serve-resource-handler resource) request))))

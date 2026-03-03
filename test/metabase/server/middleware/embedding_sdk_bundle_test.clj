@@ -1,5 +1,6 @@
 (ns metabase.server.middleware.embedding-sdk-bundle-test
   (:require
+   [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.config.core :as config]
    [metabase.server.lib.etag-cache :as lib.etag-cache]
@@ -68,6 +69,45 @@
         (is (= 404 (:status resp)))
         (is (= "no-store" (get-in resp [:headers "Cache-Control"])))
         (is (nil? (get-in resp [:headers "Vary"])))))))
+
+;; -- Bundle routing: packageVersion triggers bootstrap, absence → legacy --
+
+(deftest serve-bundle-handler-routes-by-query-param
+  (testing "No query params (old package) → serves legacy resource"
+    (let [requested-resource (atom nil)]
+      (with-redefs [config/is-prod? false
+                    response/resource-response (fn [resource]
+                                                 (reset! requested-resource resource)
+                                                 {:status 200 :headers {} :body "legacy-js"})]
+        (let [handler (mw.embedding-sdk-bundle/serve-bundle-handler)
+              resp    (handler {:headers {}})]
+          (is (= 200 (:status resp)))
+          (is (str/includes? @requested-resource "legacy/"))))))
+
+  (testing "packageVersion present → serves bootstrap resource"
+    (let [requested-resource (atom nil)]
+      (with-redefs [config/is-prod? false
+                    response/resource-response (fn [resource]
+                                                 (reset! requested-resource resource)
+                                                 {:status 200 :headers {} :body "bootstrap-js"})]
+        (let [handler (mw.embedding-sdk-bundle/serve-bundle-handler)
+              resp    (handler {:headers {}
+                                :query-params {"packageVersion" "0.59.0"}})]
+          (is (= 200 (:status resp)))
+          (is (str/includes? @requested-resource "chunks/"))))))
+
+  (testing "packageVersion + useLegacyMonolithicBundle=true → serves legacy resource"
+    (let [requested-resource (atom nil)]
+      (with-redefs [config/is-prod? false
+                    response/resource-response (fn [resource]
+                                                 (reset! requested-resource resource)
+                                                 {:status 200 :headers {} :body "legacy-js"})]
+        (let [handler (mw.embedding-sdk-bundle/serve-bundle-handler)
+              resp    (handler {:headers {}
+                                :query-params {"packageVersion" "0.59.0"
+                                               "useLegacyMonolithicBundle" "true"}})]
+          (is (= 200 (:status resp)))
+          (is (str/includes? @requested-resource "legacy/")))))))
 
 ;; -- Chunk handler (dynamic filenames with content hashes) --
 

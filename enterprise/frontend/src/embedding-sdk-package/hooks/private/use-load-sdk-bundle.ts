@@ -16,8 +16,8 @@ const SDK_PACKAGE_VERSION = process.env.VERSION || "unknown";
 
 /**
  * Dual-listen: resolves when the SDK bundle is ready, regardless of whether
- * the server responded with the bootstrap (new backend) or the monolithic
- * bundle (old backend / bootstrap=false).
+ * the server responded with the bootstrap (new backend with packageVersion param)
+ * or the monolithic bundle (old backend / useLegacyMonolithicBundle=true).
  *
  * - On script `load`: if `window.METABASE_EMBEDDING_SDK_BUNDLE` is already
  *   set, the monolithic bundle ran synchronously → resolve.
@@ -44,7 +44,7 @@ const waitForScriptLoading = (script: HTMLScriptElement) => {
     const onScriptLoad = () => {
       if (window.METABASE_EMBEDDING_SDK_BUNDLE) {
         // Old backend served the monolithic bundle (or new backend served
-        // monolithic because bootstrap=false / no packageVersion param).
+        // monolithic because no packageVersion param or useLegacyMonolithicBundle=true).
         // The global is set synchronously during script execution → resolve.
         settle(() => resolve());
       } else {
@@ -78,7 +78,7 @@ const waitForScriptLoading = (script: HTMLScriptElement) => {
 const loadSdkBundle = (
   metabaseInstanceUrl: string,
   existingLoadingPromise: Promise<void> | null | undefined,
-  useBootstrap: boolean,
+  useLegacyMonolithicBundle: boolean,
 ): Promise<void> => {
   if (existingLoadingPromise) {
     return existingLoadingPromise;
@@ -99,11 +99,17 @@ const loadSdkBundle = (
   script.async = true;
   script.dataset[SDK_BUNDLE_SCRIPT_DATA_ATTRIBUTE_PASCAL_CASED] = "true";
 
-  // if we don't pass the packageVersion, the backend will serve the monolithic bundle
-  // that doesn't use chunks or the parallel auth
-  script.src = useBootstrap
-    ? `${baseUrl}?packageVersion=${encodeURIComponent(SDK_PACKAGE_VERSION)}`
-    : baseUrl;
+  // New packages always send packageVersion so the backend can distinguish them
+  // from old packages (which send no params and get the legacy bundle).
+  // When useLegacyMonolithicBundle is true, we also add that param so the backend
+  // serves the monolithic bundle even for new packages.
+  const params = new URLSearchParams({
+    packageVersion: SDK_PACKAGE_VERSION,
+  });
+  if (useLegacyMonolithicBundle) {
+    params.set("useLegacyMonolithicBundle", "true");
+  }
+  script.src = `${baseUrl}?${params}`;
 
   document.body.appendChild(script);
 
@@ -111,14 +117,14 @@ const loadSdkBundle = (
 };
 
 interface UseLoadSdkBundleOptions {
-  bootstrap: boolean;
+  useLegacyMonolithicBundle: boolean;
 }
 
 export function useLoadSdkBundle(
   metabaseInstanceUrl: string,
   options: UseLoadSdkBundleOptions,
 ) {
-  const { bootstrap } = options;
+  const { useLegacyMonolithicBundle } = options;
 
   useEffect(() => {
     const metabaseProviderPropsStore = ensureMetabaseProviderPropsStore();
@@ -143,7 +149,7 @@ export function useLoadSdkBundle(
     const loadingPromise = loadSdkBundle(
       metabaseInstanceUrl,
       existingLoadingPromise,
-      bootstrap,
+      useLegacyMonolithicBundle,
     );
 
     metabaseProviderPropsStore.updateInternalProps({
@@ -167,5 +173,5 @@ export function useLoadSdkBundle(
           loadingError: SdkLoadingError.Error,
         });
       });
-  }, [metabaseInstanceUrl, bootstrap]);
+  }, [metabaseInstanceUrl, useLegacyMonolithicBundle]);
 }
