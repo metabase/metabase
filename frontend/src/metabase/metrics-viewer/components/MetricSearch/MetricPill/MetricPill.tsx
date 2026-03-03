@@ -115,7 +115,7 @@ export function MetricPill({
 
   const handleGoToMetric = useCallback(() => {
     window.open(
-      metricQuestionUrl({ id: metric.id, name: metric.name }),
+      metricQuestionUrl({ id: metric.id, name: metric.name ?? undefined }),
       "_blank",
     );
     setPopoverState("closed");
@@ -164,9 +164,9 @@ export function MetricPill({
             onContextMenu={handleContextMenu}
             removeButtonProps={{
               mr: 0,
-              "aria-label": metric.isLoading
-                ? t`Remove metric`
-                : t`Remove ${metric.name}`,
+              "aria-label": metric.name
+                ? t`Remove ${metric.name}`
+                : t`Remove metric`,
             }}
             data-testid="metrics-viewer-search-pill"
           >

@@ -491,7 +491,7 @@ export function getSelectedMetricsInfo(
         {
           id: parsed.id,
           sourceType: parsed.type,
-          name: entry.id,
+          name: null,
           isLoading,
         },
       ];
