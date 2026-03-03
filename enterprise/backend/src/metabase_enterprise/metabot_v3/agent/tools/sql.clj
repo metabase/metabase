@@ -110,19 +110,26 @@
    :- [:map {:closed true}
        [:database_id :int]
        [:sql_query :string]]]
-  (let [result (create-sql-query-tools/create-sql-query
-                {:database-id database_id
-                 :sql sql_query})
-        structured (assoc result :result-type :query)
-        query-id   (:query-id result)
-        instr      (instructions/query-created-instructions-for query-id)
-        buffer-id  (first-code-editor-buffer-id)]
-    (if buffer-id
-      {:output (format-query-output structured instr {:preamble? true})
-       :structured-output structured
-       :instructions instr
-       :data-parts [(code-edit-part buffer-id (:query-content result))]}
-      {:output "No active code editor buffer found for SQL editing."})))
+  (let [buffer-id  (first-code-editor-buffer-id)]
+    (if (nil? buffer-id)
+      {:output "No active code editor buffer found for SQL editing."}
+      (let [{:keys [validation-result action-result]}
+            (create-sql-query-tools/create-sql-query
+             {:database-id database_id
+              :sql sql_query})
+
+            {:keys [valid? dialect error-message]} validation-result
+            {:keys [query-id query-content]} action-result]
+        (if valid?
+          (let [structured (assoc action-result :result-type :query)
+                instr      (instructions/query-created-instructions-for query-id)]
+            {:output (format-query-output structured instr {:preamble? true})
+             :structured-output structured
+             :instructions instr
+             :data-parts [(code-edit-part buffer-id query-content)]})
+          (let [instr (instructions/sql-validation-error-instructions dialect error-message)]
+            {:output (format-validation-error-output instr)
+             :instructions instr}))))))
 
 (mu/defn ^{:tool-name "edit_sql_query"
            :capabilities #{:permission-write-sql-queries}}
