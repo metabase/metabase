@@ -100,11 +100,12 @@
                             :id        (:toolCallId chunk)
                             :function  (:toolName chunk)
                             :arguments (parse-tool-arguments chunks)}
-    :tool-output-available {:type     :tool-output
-                            :id       (:toolCallId chunk)
-                            :function (:toolName chunk)
-                            :result   (:result chunk)
-                            :error    (:error chunk)}))
+    :tool-output-available {:type        :tool-output
+                            :id          (:toolCallId chunk)
+                            :function    (:toolName chunk)
+                            :result      (:result chunk)
+                            :error       (:error chunk)
+                            :duration-ms (::duration-ms chunk)}))
 
 (defn aisdk-xf
   "Collect a stream of AI SDK v5 chunks into a list of parts (joins by id)."
@@ -360,30 +361,39 @@
 
   If the tool has a `:decode` metadata function, it is applied to the parsed
   arguments before invocation. The decode function can coerce values and throw
-  `:agent-error?` exceptions for validation failures."
+  `:agent-error?` exceptions for validation failures.
+
+  Chunks have a ::duration-ms key added for internal use which is not part of the aisdk spec."
   [tool-call-id tool-name tool chunks]
   (with-span :info {:name         :metabot-v3.agent/run-tool
                     :tool-name    tool-name
                     :tool-call-id tool-call-id}
-    (try
-      (let [{:keys [arguments]} (into {} (aisdk-xf) chunks)
-            arguments (coerce-stringified-json arguments)
-            decode    (tool-decode-fn tool)
-            arguments (cond-> arguments decode decode)]
-        (log/debug "Executing tool" {:tool-name tool-name :arguments arguments})
-        (let [tool-fn (tool-call-fn tool)
-              result  (tool-fn arguments)]
-          (log/debug "Tool returned" {:tool-name tool-name :result-type (type result)})
-          (collect-tool-result tool-call-id tool-name result)))
-      (catch Exception e
-        (if (:agent-error? (ex-data e))
-          (log/debugf "Tool %s: agent validation error: %s" tool-name (ex-message e))
-          (log/warn e "Tool execution failed" {:tool-name tool-name}))
-        [{:type       :tool-output-available
-          :toolCallId tool-call-id
-          :toolName   tool-name
-          :error      {:message (concise-tool-error e)
-                       :type    (str (type e))}}]))))
+    (let [start-ms (u/start-timer)
+          assoc-ms (fn [duration-ms]
+                     (fn [chunk]
+                       (cond-> chunk
+                         (= (:type chunk) :tool-output-available) (assoc ::duration-ms duration-ms))))
+          results  (try
+                     (let [{:keys [arguments]} (into {} (aisdk-xf) chunks)
+                           arguments (coerce-stringified-json arguments)
+                           decode    (tool-decode-fn tool)
+                           arguments (cond-> arguments decode decode)]
+                       (log/debug "Executing tool" {:tool-name tool-name :arguments arguments})
+                       (let [tool-fn (tool-call-fn tool)
+                             result  (tool-fn arguments)]
+                         (log/debug "Tool returned" {:tool-name tool-name :result-type (type result)})
+                         (collect-tool-result tool-call-id tool-name result)))
+                     (catch Exception e
+                       (if (:agent-error? (ex-data e))
+                         (log/debugf "Tool %s: agent validation error: %s" tool-name (ex-message e))
+                         (log/warn e "Tool execution failed" {:tool-name tool-name}))
+                       [{:type         :tool-output-available
+                         :toolCallId   tool-call-id
+                         :toolName     tool-name
+                         :error        {:message (concise-tool-error e)
+                                        :type    (str (type e))}}]))]
+      (mapv (assoc-ms (u/since-ms start-ms))
+            results))))
 
 (defn tool-executor-xf
   "Transducer that executes tool calls in parallel on virtual threads.
