@@ -1904,6 +1904,16 @@ Maximum number of leaf fields synced per collection of document database. Curren
 
 Process batches updates synchronously. If true, all `submit!` calls will be processed immediately. Default is false.
 
+### `MB_THREAD_INTERRUPT_ESCALATION_TIMEOUT_MS`
+
+- Type: integer
+- Default: `0`
+
+By default, this is 0 and the thread interrupt escalation does not run.
+
+Timeout in milliseconds to wait after query cancellation before escalating to thread interruption.
+        This is used to free up threads that are stuck waiting for a DB response after a query has been cancelled.
+
 ### `MB_UNAGGREGATED_QUERY_ROW_LIMIT`
 
 - Type: integer
