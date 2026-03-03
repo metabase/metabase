@@ -201,13 +201,14 @@
         (is (pos? (mt/metric-value system :metabase-db-connection/write-op
                                    {:connection-type "default"}))))))
   (testing "write-op counter tracks write-data connection acquisitions"
-    (mt/with-prometheus-system! [_ system]
-      (mt/test-drivers (descendants driver/hierarchy :sql-jdbc)
-        (let [db (mt/db)]
-          (mt/with-temp-vals-in-db :model/Database (:id db) {:write_data_details (:details db)}
-            (driver.conn/with-write-connection
-              (sql-jdbc.execute/do-with-connection-with-options
-               driver/*driver* (mt/id) nil
-               (fn [_conn] nil)))
-            (is (pos? (mt/metric-value system :metabase-db-connection/write-op
-                                       {:connection-type "write-data"})))))))))
+    (mt/with-premium-features #{:writable-connection}
+      (mt/with-prometheus-system! [_ system]
+        (mt/test-drivers (descendants driver/hierarchy :sql-jdbc)
+          (let [db (mt/db)]
+            (mt/with-temp-vals-in-db :model/Database (:id db) {:write_data_details (:details db)}
+              (driver.conn/with-write-connection
+                (sql-jdbc.execute/do-with-connection-with-options
+                 driver/*driver* (mt/id) nil
+                 (fn [_conn] nil)))
+              (is (pos? (mt/metric-value system :metabase-db-connection/write-op
+                                         {:connection-type "write-data"}))))))))))
