@@ -55,6 +55,10 @@
                       (not= query query')
                       (assoc :dataset_query query')
 
+                      ;; result_metadata is set to nil for native queries if not present in changes
+                      (and (not= query query') (lib/native-only-query? query'))
+                      (assoc :result_metadata (:result_metadata card))
+
                       (= (:table_id card) (ultimate-table-id query old-source))
                       (assoc :table_id    (ultimate-table-id query new-source)))]
         ;; no changes, so don't update

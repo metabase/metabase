@@ -91,6 +91,10 @@
                   (not= dataset-query dataset-query')
                   (assoc :dataset_query dataset-query')
 
+                  ;; result_metadata is set to nil for native queries is not present in changes
+                  (and (not= dataset-query dataset-query') (lib/native-only-query? dataset-query'))
+                  (assoc :result_metadata (:result_metadata card))
+
                   (not= viz viz')
                   (assoc :visualization_settings viz'))]
     (when (seq changes)
