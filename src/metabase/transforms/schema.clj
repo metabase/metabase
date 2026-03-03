@@ -19,6 +19,15 @@
   "Either a table ID (int) or a reference map."
   [:or :int ::source-table-ref])
 
+(mr/def ::source-table-entry
+  "A source table entry in the array format. Combines alias with table reference."
+  [:map
+   [:alias :string]
+   [:database_id {:optional true} :int]
+   [:schema {:optional true} [:maybe :string]]
+   [:table {:optional true} :string]
+   [:table_id {:optional true} [:maybe :int]]])
+
 (mr/def ::checkpoint-strategy
   [:map
    [:type [:= "checkpoint"]]
@@ -43,7 +52,11 @@
     [:map
      [:source-database {:optional true} :int]
      ;; NB: if source is checkpoint, only one table allowed
-     [:source-tables   [:map-of :string ::source-table-value]]
+     ;; Accepts both new array format and legacy map format (from FE).
+     ;; Map format is converted to array in transform-source-in.
+     [:source-tables   [:or
+                        [:sequential ::source-table-entry]
+                        [:map-of :string ::source-table-value]]]
      [:type {:decode/normalize lib.schema.common/normalize-keyword} [:= :python]]
      [:body :string]
      [:source-incremental-strategy {:optional true} ::source-incremental-strategy]]]])

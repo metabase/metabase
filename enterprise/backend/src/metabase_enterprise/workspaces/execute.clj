@@ -17,19 +17,21 @@
 
 (defn- remap-python-source
   "Remap source-tables in a Python transform source to point to isolated tables.
-   Handles both legacy integer format and new map format (from PR #66934)."
+   source-tables is a vec of `{:alias ... :table_id ... :database_id ... :schema ... :table ...}`."
   [table-mapping source]
-  (letfn [(remap [{:keys [database_id schema table table_id] :as table-ref}]
-            (if-let [{:keys [id db-id schema table]} (or (table-mapping table-ref)
-                                                         (some-> table_id table-mapping)
-                                                         (when table
-                                                           (table-mapping [database_id schema table])))]
-              ;; Prefer table ID when available; map format won't work until PR #66934 is merged:
-              ;; https://github.com/metabase/metabase/pull/66934
-              (or id {:database_id db-id, :schema schema, :table table})
-              ;; Leave it un-mapped if we don't have an override.
-              table-ref))]
-    (update source :source-tables update-vals remap)))
+  (letfn [(remap [{:keys [database_id schema table table_id] :as entry}]
+            (if-let [{:keys [id db-id] target-schema :schema target-table :table}
+                     (or (table-mapping entry)
+                         (some-> table_id table-mapping)
+                         (when table
+                           (table-mapping [database_id schema table])))]
+              (merge entry
+                     (when id {:table_id id})
+                     (when db-id {:database_id db-id})
+                     (when target-schema {:schema target-schema})
+                     (when target-table {:table target-table}))
+              entry))]
+    (update source :source-tables (fn [entries] (mapv remap entries)))))
 
 (defn- remap-sql-source [table-mapping source]
   (let [remapping (reduce

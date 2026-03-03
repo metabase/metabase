@@ -79,7 +79,9 @@
    [:python
     [:map {:closed true}
      [:source-database {:optional true} :int]
-     [:source-tables   [:map-of [:string {:min 1}] :int]]
+     [:source-tables   [:or
+                        [:sequential [:map [:alias [:string {:min 1}]] [:table_id :int]]]
+                        [:map-of [:string {:min 1}] :int]]]
      [:type [:= "python"]]
      [:body :string]]]])
 

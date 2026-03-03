@@ -26,16 +26,13 @@
 
 (set! *warn-on-reflection* true)
 
-(defn python-source-table-ref->table-id
-  "Change source of python transform from name->table-ref to name->table-id.
-
-  We now supported table-ref as source but since FE is still expecting table-id we need to temporarily do this.
-  Should update FE to fully use table-ref"
+(defn source-tables-vec->map-for-fe
+  "Convert source-tables from internal vec format to legacy map format for FE compatibility.
+  Remove this when FE adopts the array format."
   [transform]
   (if (transforms-base.u/python-transform? transform)
     (update-in transform [:source :source-tables]
-               (fn [source-tables]
-                 (update-vals source-tables #(if (int? %) % (:table_id %)))))
+               transforms-base.u/source-tables-vec->alias-id-map)
     transform))
 
 (defn check-database-feature
@@ -157,7 +154,7 @@
                        (transforms-base.u/->status-filter-xf [:last_run :status] last-run-statuses)
                        (transforms-base.u/->tag-filter-xf [:tag_ids] tag-ids)
                        (map #(update % :last_run transforms-base.u/localize-run-timestamps))
-                       (map python-source-table-ref->table-id)))
+                       (map source-tables-vec->map-for-fe)))
            transforms.u/add-source-readable))))
 
 (defn get-transform
@@ -169,7 +166,7 @@
         (t2/hydrate :last_run :transform_tag_ids :creator :owner)
         (u/update-some :last_run transforms-base.u/localize-run-timestamps)
         (assoc :table target-table)
-        python-source-table-ref->table-id
+        source-tables-vec->map-for-fe
         transforms.u/add-source-readable)))
 
 (defn create-transform!
@@ -231,7 +228,7 @@
                     (t2/hydrate (t2/select-one :model/Transform id) :transform_tag_ids :creator :owner))]
     (events/publish-event! :event/transform-update {:object transform :user-id api/*current-user-id*})
     (-> transform
-        python-source-table-ref->table-id
+        source-tables-vec->map-for-fe
         transforms.u/add-source-readable)))
 
 (defn delete-transform!
