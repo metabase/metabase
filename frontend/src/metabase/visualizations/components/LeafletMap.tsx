@@ -14,6 +14,7 @@ import Question from "metabase-lib/v1/Question";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
 import type { Series } from "metabase-types/api";
 import type { Point } from "metabase-types/api/dataset";
+import { isObject } from "metabase-types/guards/common";
 
 type MapSettings = {
   "map.latitude_column"?: string;
@@ -381,7 +382,7 @@ function getRectangleDrawOptions(
     return undefined;
   }
 
-  if (!_.isObject(options.draw) || !("rectangle" in options.draw)) {
+  if (!isObject(options.draw) || !isObject(options.draw.rectangle)) {
     return undefined;
   }
 
