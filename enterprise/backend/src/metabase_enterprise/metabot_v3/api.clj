@@ -19,7 +19,6 @@
    [metabase.app-db.core :as app-db]
    [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru]]
-   [metabase.util.json :as json]
    [metabase.util.log :as log]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
@@ -100,7 +99,8 @@
    _query-params
    feedback :- :map]
   (try
-    (metabot-v3.feedback/submit-to-harbormaster! feedback)
+    (api/check-400 (metabot-v3.feedback/submit-to-harbormaster! feedback)
+                   "Cannot submit feedback. The license token and/or Store API URL are missing!")
     api/generic-204-no-content
     (catch Exception e
       (log/error e "Failed to submit feedback to Harbormaster")

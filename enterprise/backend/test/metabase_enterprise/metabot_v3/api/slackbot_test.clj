@@ -11,6 +11,7 @@
    [metabase-enterprise.metabot-v3.api.slackbot.streaming :as slackbot.streaming]
    [metabase-enterprise.metabot-v3.api.slackbot.uploads :as slackbot.uploads]
    [metabase-enterprise.metabot-v3.client :as metabot-v3.client]
+   [metabase-enterprise.metabot-v3.feedback :as metabot-v3.feedback]
    [metabase-enterprise.metabot-v3.settings :as metabot.settings]
    [metabase-enterprise.sso.settings :as sso-settings]
    [metabase.channel.settings :as channel.settings]
@@ -219,8 +220,8 @@
        slackbot.client/append-markdown-text (fn [_ _channel _stream-ts text]
                                               (swap! append-text-calls conj text)
                                               {:ok true})
-       slackbot.client/stop-stream          (fn [_ channel stream-ts]
-                                              (swap! stop-stream-calls conj {:channel channel :stream_ts stream-ts})
+       slackbot.client/stop-stream          (fn [_ channel stream-ts & [blocks]]
+                                              (swap! stop-stream-calls conj {:channel channel :stream_ts stream-ts :blocks blocks})
                                               {:ok true})
        slackbot.client/post-message (fn [_ msg]
                                       (swap! post-calls conj msg)
@@ -1354,3 +1355,103 @@
                                    {:slack-connect-client-id "id"
                                     :slack-connect-client-secret "secret"
                                     :metabot-slack-signing-secret "signing"}))))))
+
+;; -------------------------------- Feedback Tests --------------------------------
+
+(deftest feedback-blocks-test
+  (testing "feedback-blocks generates correct Slack block structure"
+    (let [conversation-id "test-conv-123"
+          blocks          (#'slackbot.streaming/feedback-blocks conversation-id)]
+      (is (= 1 (count blocks)))
+      (let [{:keys [type block_id elements]} (first blocks)]
+        (is (= "actions" type))
+        (is (= "metabot_feedback" block_id))
+        (is (= 2 (count elements)))
+        (testing "thumbs up button"
+          (let [btn (first elements)]
+            (is (str/starts-with? (:action_id btn) "metabot_feedback"))
+            (is (= {:conversation_id conversation-id :positive true}
+                   (json/decode (:value btn) true)))))
+        (testing "thumbs down button"
+          (let [btn (second elements)]
+            (is (str/starts-with? (:action_id btn) "metabot_feedback"))
+            (is (= {:conversation_id conversation-id :positive false}
+                   (json/decode (:value btn) true)))))))))
+
+(deftest streaming-response-includes-feedback-blocks-test
+  (testing "send-response passes feedback blocks to stop-stream"
+    (with-slackbot-setup
+      (let [event-body base-dm-event]
+        (with-slackbot-mocks
+          {:ai-text "Here is a response"}
+          (fn [{:keys [stop-stream-calls]}]
+            (let [response (mt/client :post 200 "ee/metabot-v3/slack/events"
+                                      (slack-request-options event-body)
+                                      event-body)]
+              (is (= "ok" response))
+              (u/poll {:thunk      #(>= (count @stop-stream-calls) 1)
+                       :done?      true?
+                       :timeout-ms 5000})
+              (testing "stop-stream was called with feedback blocks"
+                (let [{:keys [blocks]} (first @stop-stream-calls)]
+                  (is (= 1 (count blocks)))
+                  (is (= "metabot_feedback" (:block_id (first blocks))))
+                  (is (= 2 (count (:elements (first blocks))))))))))))))
+
+(deftest handle-feedback-action-authenticated-test
+  (testing "feedback action submits to harbormaster and replaces buttons for authenticated user"
+    (let [conversation-id    "conv-123"
+          harbormaster-calls (atom [])
+          update-calls       (atom [])]
+      (with-redefs [slackbot/slack-id->user-id               (constantly (mt/user->id :rasta))
+                    metabot-v3.feedback/submit-to-harbormaster! (fn [feedback]
+                                                                  (swap! harbormaster-calls conj feedback)
+                                                                  {:status 200})
+                    slackbot.client/update-message             (fn [_ msg]
+                                                                 (swap! update-calls conj msg)
+                                                                 {:ok true})]
+        (let [action {:action_id "metabot_feedback_up"
+                      :value     (json/encode {:conversation_id conversation-id :positive true})}
+              result (#'slackbot/handle-feedback-action
+                      {:action         action
+                       :slack-user-id  "U123"
+                       :channel-id     "C123"
+                       :message-ts     "123.456"
+                       :message-blocks [{:type "section" :text "Hi"}
+                                        {:type "actions" :block_id "metabot_feedback"}]})]
+          @result
+          (testing "harbormaster was called with correct feedback"
+            (is (= 1 (count @harbormaster-calls)))
+            (is (true? (get-in (first @harbormaster-calls) [:feedback :positive])))
+            (is (= conversation-id (get-in (first @harbormaster-calls) [:feedback :message_id])))
+            (is (= "slack" (:source (first @harbormaster-calls)))))
+          (testing "feedback buttons were replaced with thanks"
+            (is (= 1 (count @update-calls)))
+            (let [blocks (:blocks (first @update-calls))]
+              (is (not-any? #(= (:block_id %) "metabot_feedback") blocks))
+              (is (some #(= "Thanks for your feedback!" (get-in % [:elements 0 :text])) blocks)))))))))
+
+(deftest handle-feedback-action-unauthenticated-test
+  (testing "feedback action is silently skipped for unauthenticated user"
+    (let [harbormaster-calls (atom [])
+          update-calls       (atom [])]
+      (with-redefs [slackbot/slack-id->user-id               (constantly nil)
+                    metabot-v3.feedback/submit-to-harbormaster! (fn [feedback]
+                                                                  (swap! harbormaster-calls conj feedback)
+                                                                  {:status 200})
+                    slackbot.client/update-message             (fn [_ msg]
+                                                                 (swap! update-calls conj msg)
+                                                                 {:ok true})]
+        (let [action {:action_id "metabot_feedback_down"
+                      :value     (json/encode {:conversation_id "conv-456" :positive false})}
+              result (#'slackbot/handle-feedback-action
+                      {:action         action
+                       :slack-user-id  "U-UNKNOWN"
+                       :channel-id     "C123"
+                       :message-ts     "123.456"
+                       :message-blocks [{:type "actions" :block_id "metabot_feedback"}]})]
+          (is (nil? result) "should return nil (no future spawned)")
+          (testing "harbormaster was not called"
+            (is (= 0 (count @harbormaster-calls))))
+          (testing "buttons were not replaced"
+            (is (= 0 (count @update-calls)))))))))

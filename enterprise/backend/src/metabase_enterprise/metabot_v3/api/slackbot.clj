@@ -143,7 +143,7 @@
         text          (:text event)
         has-text?     (not (str/blank? text))
         file-handling (when (seq files)
-                        (slackbot.uploads/handle-file-uploads files))
+                        (slackbot.uploads/handle-file-uploads client files))
         extra-history (cond
                         ;; Pre-flight error (uploads disabled, no permission)
                         (:error file-handling)
@@ -215,10 +215,8 @@
          (slackbot.events/dm-or-channel-mention? event (slackbot.client/get-bot-user-id client)))
         (process-async handle-message-file-share client event)
 
-        (slackbot.events/app-mention? event)
-        (process-async slackbot.streaming/send-response client event)
-
-        (slackbot.events/dm? event)
+        (or (slackbot.events/app-mention? event)
+            (slackbot.events/dm? event))
         (process-async slackbot.streaming/send-response client event)
 
         :else
@@ -319,8 +317,8 @@
                                 :message_id        conversation_id
                                 :freeform_feedback ""}
             :conversation_data {}
-            :version           (config/mb-version-info)
-            :submission_time   (str (java.time.Instant/now))
+            :version           config/mb-version-info
+            :submission_time   (str (java.time.OffsetDateTime/now))
             :is_admin          (boolean (t2/select-one-fn :is_superuser :model/User :id user-id))
             :source            "slack"})
           (replace-feedback-buttons-with-thanks client channel-id message-ts message-blocks)
@@ -340,7 +338,7 @@
         message-ts     (get-in payload [:message :ts])
         message-blocks (get-in payload [:message :blocks])]
     (doseq [action actions]
-      (when (= (:action_id action) "metabot_feedback")
+      (when (str/starts-with? (:action_id action) "metabot_feedback")
         (handle-feedback-action {:action         action
                                  :slack-user-id  slack-user
                                  :channel-id     channel-id
@@ -359,7 +357,7 @@
   ;; 1. create a tunnel via `ngrok http 3000`
   ;; 2. update your site url to the provided tunnel url
   (system/site-url! "https://<random-id>.ngrok-free.app")
-  ;; 4. visit this url in yoru browser, following the setup flow outlined there
+  ;; 4. visit this url in your browser, following the setup flow outlined there
   (str (system/site-url) "/admin/metabot/slackbot")
   ;; 6. verify you've setup your instance correctly
   (slackbot.config/setup-complete?)

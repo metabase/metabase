@@ -9,11 +9,13 @@
 
 (defn submit-to-harbormaster!
   "Submit metabot feedback to Harbormaster via the Store API.
-   No-ops when the license token or Store API URL is missing."
+   Returns true if feedback was submitted, false if token/URL is missing."
   [feedback]
   (let [token    (premium-features/premium-embedding-token)
         base-url (store-api/store-api-url)]
-    (when-not (or (str/blank? token) (str/blank? base-url))
-      (http/post (str base-url "/api/v2/metabot/feedback/" token)
-                 {:content-type :json
-                  :body         (json/encode feedback)}))))
+    (if (or (str/blank? token) (str/blank? base-url))
+      false
+      (do (http/post (str base-url "/api/v2/metabot/feedback/" token)
+                     {:content-type :json
+                      :body         (json/encode feedback)})
+          true))))
