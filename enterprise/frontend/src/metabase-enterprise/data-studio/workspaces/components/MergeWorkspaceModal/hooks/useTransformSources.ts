@@ -95,19 +95,26 @@ export function useTransformSources(
 
 /**
  * The backend may return source-tables as either:
- *   { alias: tableId }
- *   { alias: { "table-id": tableId, ... } }
- * Normalize to the lowest-common-denominator { alias: tableId } shape.
+ *   { alias: tableId }                          — a naked ConcreteTableId
+ *   { alias: { "table-id": tableId, ... } }     — kebab-case key
+ *   { alias: { "table_id": tableId, ... } }     — snake_case key
+ * Normalize to the canonical { alias: tableId } shape.
  */
 function normalizeSourceTables(
-  raw: Record<string, ConcreteTableId | { "table-id": ConcreteTableId }>,
+  raw: Record<string, ConcreteTableId | Record<string, unknown>>,
 ): PythonTransformTableAliases {
   const result: PythonTransformTableAliases = {};
   for (const [alias, value] of Object.entries(raw)) {
-    result[alias] =
-      typeof value === "object" && value != null && "table-id" in value
-        ? value["table-id"]
-        : (value as ConcreteTableId);
+    if (typeof value === "number") {
+      result[alias] = value;
+    } else if (typeof value === "object" && value != null) {
+      const tableId =
+        (value as Record<string, unknown>)["table-id"] ??
+        (value as Record<string, unknown>)["table_id"];
+      if (typeof tableId === "number") {
+        result[alias] = tableId as ConcreteTableId;
+      }
+    }
   }
   return result;
 }
