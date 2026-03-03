@@ -1,4 +1,4 @@
-/* eslint-disable react/prop-types */
+import type { CSSProperties } from "react";
 import { t } from "ttag";
 
 import NoResults from "assets/img/no_results.svg";
@@ -9,30 +9,68 @@ import {
   getSettingsWidgets,
 } from "metabase/visualizations/lib/settings";
 import { getSettingDefinitionsForColumn } from "metabase/visualizations/lib/settings/column";
+import type {
+  FormattingColumn,
+  SettingsExtra,
+} from "metabase/visualizations/types";
+import type {
+  ColumnSettings as ApiColumnSettings,
+  FieldFormattingSettings,
+  Series,
+  VisualizationSettings,
+} from "metabase-types/api";
+
+type ColumnSettingsValue = ApiColumnSettings;
+type ColumnSettingsInput = ColumnSettingsValue | FieldFormattingSettings;
+
+type CommonProps = {
+  column: FormattingColumn;
+  inheritedSettings?: ColumnSettingsValue;
+  onChange?: (settings: ColumnSettingsValue) => void;
+  onChangeSetting?: (settings: Partial<VisualizationSettings>) => void;
+  allowlist?: ReadonlySet<string>;
+  denylist?: ReadonlySet<string>;
+  extraData?: Omit<SettingsExtra, "series">;
+};
+
+type GetWidgetsProps = CommonProps & {
+  storedSettings: ColumnSettingsValue;
+};
+
+type HasColumnSettingsWidgetsProps = CommonProps & {
+  value?: ColumnSettingsInput | null;
+};
+
+type ColumnSettingsProps = HasColumnSettingsWidgetsProps & {
+  style?: CSSProperties;
+  variant?: "default" | "form-field";
+};
 
 function getWidgets({
   column,
-  inheritedSettings,
+  inheritedSettings = {},
   storedSettings,
   onChange,
   onChangeSetting,
   allowlist,
   denylist,
-  extraData,
-}) {
+  extraData = {},
+}: GetWidgetsProps) {
   // fake series
-  const series = [{ card: {}, data: { rows: [], cols: [] } }];
+  const series: Series = [];
+  const defaultUnit = "default";
 
   // add a "unit" to make certain settings work
-  if (column.unit == null) {
-    column = { ...column, unit: "default" };
-  }
+  const columnWithUnit: FormattingColumn =
+    "unit" in column && column.unit != null
+      ? column
+      : ({ ...column, unit: defaultUnit } as FormattingColumn);
 
-  const settingsDefs = getSettingDefinitionsForColumn(series, column);
+  const settingsDefs = getSettingDefinitionsForColumn(series, columnWithUnit);
 
   const computedSettings = getComputedSettings(
     settingsDefs,
-    column,
+    columnWithUnit,
     { ...inheritedSettings, ...storedSettings },
     { series, ...extraData },
   );
@@ -41,7 +79,7 @@ function getWidgets({
     settingsDefs,
     storedSettings,
     computedSettings,
-    column,
+    columnWithUnit,
     (changedSettings) => {
       if (onChange) {
         onChange({ ...storedSettings, ...changedSettings });
@@ -60,8 +98,11 @@ function getWidgets({
   );
 }
 
-export function hasColumnSettingsWidgets({ value, ...props }) {
-  const storedSettings = value || {};
+export function hasColumnSettingsWidgets({
+  value,
+  ...props
+}: HasColumnSettingsWidgetsProps) {
+  const storedSettings: ColumnSettingsValue = { ...(value ?? {}) };
   return getWidgets({ storedSettings, ...props }).length > 0;
 }
 
@@ -70,8 +111,8 @@ export const ColumnSettings = ({
   value,
   variant = "default",
   ...props
-}) => {
-  const storedSettings = value || {};
+}: ColumnSettingsProps) => {
+  const storedSettings: ColumnSettingsValue = { ...(value ?? {}) };
   const widgets = getWidgets({ storedSettings, ...props });
 
   return (

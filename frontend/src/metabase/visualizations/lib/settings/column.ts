@@ -27,9 +27,11 @@ import {
   getDefaultNumberSeparators,
   getDefaultNumberStyle,
 } from "metabase/visualizations/shared/settings/column";
-import type {
-  ComputedVisualizationSettings,
-  VisualizationSettingsDefinitions,
+import {
+  type ComputedVisualizationSettings,
+  type FormattingColumn,
+  type VisualizationSettingsDefinitions,
+  getFormattingColumnUnit,
 } from "metabase/visualizations/types";
 import {
   getColumnKey,
@@ -148,19 +150,21 @@ export const DATE_COLUMN_SETTINGS: VisualizationSettingsDefinitions = {
       return t`Date style`;
     },
     widget: "select",
-    getDefault: ({ unit }) => {
+    getDefault: (column) => {
+      const unit = getFormattingColumnUnit(column);
       // Grab the first option's value. If there were no options (for
       // hour-of-day probably), use an empty format string instead.
       const [{ value = "" } = {}] = getDateStyleOptionsForUnit(unit);
       return value;
     },
-    isValid: ({ unit }, settings) => {
+    isValid: (column, settings) => {
+      const unit = getFormattingColumnUnit(column);
       const options = getDateStyleOptionsForUnit(unit ?? "default");
       return !!_.findWhere(options, { value: settings.date_style });
     },
-    getProps: ({ unit }, settings) => ({
+    getProps: (column, settings) => ({
       options: getDateStyleOptionsForUnit(
-        unit ?? "default",
+        getFormattingColumnUnit(column) ?? "default",
         settings.date_abbreviate != null
           ? Boolean(settings.date_abbreviate)
           : undefined,
@@ -169,8 +173,9 @@ export const DATE_COLUMN_SETTINGS: VisualizationSettingsDefinitions = {
           : undefined,
       ),
     }),
-    getHidden: ({ unit }) =>
-      getDateStyleOptionsForUnit(unit ?? "default").length < 2,
+    getHidden: (column) =>
+      getDateStyleOptionsForUnit(getFormattingColumnUnit(column) ?? "default")
+        .length < 2,
   },
   date_separator: {
     get title() {
@@ -200,7 +205,8 @@ export const DATE_COLUMN_SETTINGS: VisualizationSettingsDefinitions = {
     widget: "toggle",
     default: false,
     inline: true,
-    getHidden: ({ unit }, settings) => {
+    getHidden: (column, settings) => {
+      const unit = getFormattingColumnUnit(column);
       const format = getDateFormatFromStyle(
         settings.date_style,
         unit ?? "default",
@@ -214,16 +220,22 @@ export const DATE_COLUMN_SETTINGS: VisualizationSettingsDefinitions = {
       return t`Show the time`;
     },
     widget: "radio",
-    isValid: ({ unit }, settings) => {
-      const options = getTimeEnabledOptionsForUnit(unit);
+    isValid: (column, settings) => {
+      const options = getTimeEnabledOptionsForUnit(
+        getFormattingColumnUnit(column),
+      );
       return !!_.findWhere(options, { value: settings.time_enabled });
     },
-    getProps: ({ unit }) => {
-      const options = getTimeEnabledOptionsForUnit(unit);
+    getProps: (column) => {
+      const options = getTimeEnabledOptionsForUnit(
+        getFormattingColumnUnit(column),
+      );
       return { options };
     },
-    getHidden: (column) => !hasHour(column.unit) || isDateWithoutTime(column),
-    getDefault: ({ unit }) => (hasHour(unit) ? "minutes" : null),
+    getHidden: (column) =>
+      !hasHour(getFormattingColumnUnit(column)) || isDateWithoutTime(column),
+    getDefault: (column) =>
+      hasHour(getFormattingColumnUnit(column)) ? "minutes" : null,
   },
   time_style: {
     get title() {
@@ -232,7 +244,9 @@ export const DATE_COLUMN_SETTINGS: VisualizationSettingsDefinitions = {
     widget: "radio",
     default: "h:mm A",
     getProps: (column) => ({
-      options: getTimeStyleOptions(column.unit ?? "default"),
+      options: getTimeStyleOptions(
+        getFormattingColumnUnit(column) ?? "default",
+      ),
     }),
     getHidden: (column, settings) =>
       !settings.time_enabled || isDateWithoutTime(column),
@@ -456,7 +470,7 @@ const COMMON_COLUMN_SETTINGS: VisualizationSettingsDefinitions = {
 
 export function getSettingDefinitionsForColumn(
   series: Series,
-  column: DatasetColumn,
+  column: FormattingColumn,
 ) {
   const visualization = getVisualizationRaw(series);
   const extraColumnSettings =
@@ -464,7 +478,8 @@ export function getSettingDefinitionsForColumn(
       ? visualization.columnSettings(column)
       : visualization?.columnSettings || {};
 
-  if (isDate(column) || (column.unit && column.unit !== "default")) {
+  const unit = getFormattingColumnUnit(column);
+  if (isDate(column) || (unit && unit !== "default")) {
     return {
       ...extraColumnSettings,
       ...DATE_COLUMN_SETTINGS,
