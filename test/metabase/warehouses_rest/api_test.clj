@@ -2716,7 +2716,7 @@
 (deftest update-database-write-data-details-test
   (testing "PUT /api/database/:id with write_data_details"
     (testing "Superusers can set write_data_details"
-      (mt/with-premium-features #{:advanced-permissions}
+      (mt/with-premium-features #{:writable-connection}
         (mt/with-temp [:model/Database {db-id :id} {:engine :h2
                                                     :details {:host "localhost"}}]
           (with-redefs [driver/can-connect? (constantly true)]
@@ -2730,7 +2730,7 @@
                 (is (= {:host "write-host" :password "write-pass" :write-data-connection true}
                        (:write_data_details db)))))))))
     (testing "Superusers can clear write_data_details by setting it to nil"
-      (mt/with-premium-features #{:advanced-permissions}
+      (mt/with-premium-features #{:writable-connection}
         (mt/with-temp [:model/Database {db-id :id} {:engine :h2
                                                     :details {:host "localhost"}
                                                     :write_data_details {:host "write-host"}}]
@@ -2740,7 +2740,7 @@
             (let [db (t2/select-one :model/Database :id db-id)]
               (is (nil? (:write_data_details db))))))))
     (testing "Sensitive fields are preserved when protected-password is sent"
-      (mt/with-premium-features #{:advanced-permissions}
+      (mt/with-premium-features #{:writable-connection}
         (mt/with-temp [:model/Database {db-id :id} {:engine :h2
                                                     :details {:host "localhost"}
                                                     :write_data_details {:host "write-host"
@@ -2753,7 +2753,7 @@
             (let [db (t2/select-one :model/Database :id db-id)]
               (is (= "new-write-host" (get-in db [:write_data_details :host])))
               (is (= "original-pass" (get-in db [:write_data_details :password]))))))))
-    (testing "Returns 402 without :advanced-permissions feature"
+    (testing "Returns 402 without :writable-connection feature"
       (with-redefs [premium-features/has-feature? (constantly false)]
         (mt/with-temp [:model/Database {db-id :id} {:engine :h2
                                                     :details {:host "localhost"}}]
@@ -2762,7 +2762,7 @@
 
 (deftest put-validates-write-data-details-connection-test
   (testing "PUT /api/database/:id returns 400 when write connection test fails"
-    (mt/with-premium-features #{:advanced-permissions}
+    (mt/with-premium-features #{:writable-connection}
       (mt/with-temp [:model/Database {db-id :id} {:engine  :h2
                                                   :details {:host "localhost"}}]
         (with-redefs [driver/can-connect? (fn [_engine details]
@@ -2777,7 +2777,7 @@
 (deftest write-data-details-guardrails-test
   (testing "PUT /api/database/:id write_data_details guardrails"
     (testing "write-data-connection must not be truthy in details"
-      (mt/with-premium-features #{:advanced-permissions}
+      (mt/with-premium-features #{:writable-connection}
         (mt/with-temp [:model/Database {db-id :id} {:engine  :h2
                                                     :details {:host "localhost"}}]
           (is (= "write-data-connection must not be set in details"
@@ -2785,14 +2785,14 @@
                                        {:details {:host                  "localhost"
                                                   :write-data-connection true}}))))))
     (testing "write-data-connection must be truthy in write_data_details"
-      (mt/with-premium-features #{:advanced-permissions}
+      (mt/with-premium-features #{:writable-connection}
         (mt/with-temp [:model/Database {db-id :id} {:engine  :h2
                                                     :details {:host "localhost"}}]
           (is (= "write-data-connection must be set in write_data_details"
                  (mt/user-http-request :crowberto :put 400 (format "database/%d" db-id)
                                        {:write_data_details {:host "write-host"}}))))))
     (testing "Destination-database must be false in write_data_details"
-      (mt/with-premium-features #{:advanced-permissions}
+      (mt/with-premium-features #{:writable-connection}
         (mt/with-temp [:model/Database {db-id :id} {:engine  :h2
                                                     :details {:host "localhost"}}]
           (is (= "destination-database must be false in write_data_details"
@@ -2801,7 +2801,7 @@
                                                              :write-data-connection true
                                                              :destination-database  true}}))))))
     (testing "Fields hidden for write connections must not be in write_data_details"
-      (mt/with-premium-features #{:advanced-permissions}
+      (mt/with-premium-features #{:writable-connection}
         (mt/with-temp [:model/Database {db-id :id} {:engine  :h2
                                                     :details {:host "localhost"}}]
           (is (str/includes?
@@ -2811,7 +2811,7 @@
                                                            :auto_run_queries      true}})
                "write_data_details must not contain fields hidden for write connections")))))
     (testing "Cannot set write_data_details on a destination database"
-      (mt/with-premium-features #{:advanced-permissions}
+      (mt/with-premium-features #{:writable-connection}
         (mt/with-temp [:model/Database {router-id :id} {:engine  :h2
                                                         :details {:host "localhost"}}
                        :model/Database {dest-id :id} {:engine             :h2
@@ -2822,7 +2822,7 @@
                                        {:write_data_details {:host                  "write-host"
                                                              :write-data-connection true}}))))))
     (testing "Cannot set write_data_details on a router database"
-      (mt/with-premium-features #{:advanced-permissions}
+      (mt/with-premium-features #{:writable-connection}
         (mt/with-temp [:model/Database {router-id :id} {:engine  :h2
                                                         :details {:host "localhost"}}
                        :model/Database {_dest-id :id} {:engine :h2
