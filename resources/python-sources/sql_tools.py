@@ -1532,7 +1532,7 @@ CASE_SENSITIVE_DIALECTS: set[str] = {
     "postgres",  # Folds unquoted to lowercase
 }
 
-def transpile_sql(sql: str, from_dialect: str | None, to_dialect: str | None):
+def transpile_sql(sql: str, from_dialect: str = None, to_dialect: str = None):
     """Transpile sql string from one dialect to another.
 
     Args:
@@ -1544,26 +1544,25 @@ def transpile_sql(sql: str, from_dialect: str | None, to_dialect: str | None):
         JSON string with keys transpiled and use_identify on success.
         On failure the object contains keys is_error and error_message.
     """
-    if not from_dialect or not to_dialect:
-        return sql
-
     result = {}
+    if not from_dialect or not to_dialect:
+        result['transpiled'] = sql
+    else:
+        try:
+            use_identify = (from_dialect in CASE_SENSITIVE_DIALECTS 
+                            or from_dialect in CASE_SENSITIVE_DIALECTS)
 
-    try:
-        use_identify = (from_dialect in CASE_SENSITIVE_DIALECTS 
-                        or from_dialect in CASE_SENSITIVE_DIALECTS)
+            transpiled = sqlglot.transpile(
+                sql,
+                read=from_dialect,
+                write=to_dialect,
+                pretty=True,
+                identify=use_identify,
+            )[0]
 
-        transpiled = sqlglot.transpile(
-            sql,
-            read=from_dialect,
-            write=to_dialect,
-            pretty=True,
-            identify=use_identify,
-        )
-
-        result['transpiled'] = transpiled
-    except Exception as e:
-        result['is_error'] = True
-        result['error_message'] = e.args[0]
+            result['transpiled'] = transpiled
+        except Exception as e:
+            result['is_error'] = True
+            result['error_message'] = e.args[0]
 
     return json.dumps(result)
