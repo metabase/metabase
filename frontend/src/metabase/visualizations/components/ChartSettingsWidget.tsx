@@ -21,6 +21,7 @@ type Props = {
   variant?: "default" | "form-field";
   borderBottom?: boolean;
   dataTestId?: string;
+  // TODO: double check if it is used somewhere
   unset?: boolean;
   id: string;
 };
