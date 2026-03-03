@@ -38,36 +38,61 @@
   (-> [:field field-metadata field-id]
       lib.options/ensure-uuid))
 
+(defn- upgrade-field-ref-to-name
+  [query field-ref]
+  (when (vector? field-ref)
+    (when-let [column (lib.field.resolution/resolve-field-ref query -1 field-ref)]
+      (when-not (:lib.field.resolution/fallback-metadata? column)
+        ((some-fn :lib/deduplicated-name :name) column)))))
+
 (defn- upgrade-card-column-settings
-  [query column-settings]
+  [column-settings query]
   (reduce #(merge-with merge %1 %2)
           {}
           (for [[k v] column-settings]
             (or (when (::vs/field-id k)
-                  (when-let [column (lib.field.resolution/resolve-field-ref query -1 (->field-ref k))]
-                    (when-not (:lib.field.resolution/fallback-metadata? column)
-                      (when-let [column-name ((some-fn :lib/deduplicated-name :name) column)]
-                        {{::vs/column-name column-name} v}))))
+                  (when-some [column-name (upgrade-field-ref-to-name query (->field-ref k))]
+                    {{::vs/column-name column-name} v}))
                 {k v}))))
+
+(def ^:private viz-settings-field-ref-locations
+  [[:pivot_table.column_split :rows]
+   [:pivot_table.column_split :columns]
+   [:pivot_table.column_split :values]
+   [:pivot_table.collapsed_rows :rows]
+   [:table.column_formatting :columns]])
+
+(defn- upgrade-viz-settings-locations
+  [viz-settings query]
+  (reduce (fn [viz location]
+            (if-some [refs' (some->> (get-in viz location)
+                                     (mapv #(or (upgrade-field-ref-to-name query %) %)))]
+              (assoc-in viz location refs')
+              viz))
+          viz-settings viz-settings-field-ref-locations))
+
+(defn- update-existing
+  [mp k f & args]
+  (if (contains? mp k)
+    (apply update mp k f args)
+    mp))
 
 (defn- card-upgrade-field-refs!
   [card]
   (let [dataset-query  (:dataset_query card)
         dataset-query' (lib-be/upgrade-field-refs-in-query dataset-query)
-
-        viz             (vs/db->norm (:visualization_settings card))
-        column-settings (::vs/column-settings viz)
-        column-settings' (if dataset-query'
-                           (upgrade-card-column-settings dataset-query' column-settings)
-                           column-settings)
+        viz            (:visualization_settings card)
+        viz' (-> viz
+                 vs/db->norm
+                 (update-existing ::vs/column-settings upgrade-card-column-settings dataset-query')
+                 (upgrade-viz-settings-locations dataset-query')
+                 vs/norm->db)
         changes (cond-> {}
                   (not= dataset-query dataset-query')
                   (assoc :dataset_query dataset-query')
 
-                  (not= column-settings column-settings')
-                  (assoc :visualization_settings (-> viz
-                                                     (assoc ::vs/column-settings column-settings')
-                                                     vs/norm->db)))]
+                  (not= viz viz')
+                  (assoc :visualization_settings viz'))]
     (when (seq changes)
       (t2/update! :model/Card (:id card) changes))))
 
