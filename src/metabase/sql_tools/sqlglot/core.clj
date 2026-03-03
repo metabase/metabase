@@ -176,3 +176,7 @@
                           (update :tables #(when % (vec %)))
                           (update :columns #(when % (vec %))))]
     (sql-parsing/replace-names (driver->dialect driver) sql-string replacements')))
+
+(defmethod sql-tools/transpile-sql-impl :sqlglot
+  [_parser sql from-dialect to-dialect]
+  (sql-parsing/transpile-sql sql from-dialect to-dialect))
