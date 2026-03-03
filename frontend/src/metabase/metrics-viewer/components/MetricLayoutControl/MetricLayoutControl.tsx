@@ -3,14 +3,7 @@ import type {
   MetricsViewerTabLayoutState,
 } from "metabase/metrics-viewer/types";
 import { DISPLAY_TYPE_REGISTRY } from "metabase/metrics-viewer/utils";
-import {
-  ActionIcon,
-  Center,
-  Divider,
-  HoverCard,
-  Icon,
-  Slider,
-} from "metabase/ui";
+import { ActionIcon, Center, HoverCard, Icon, Slider } from "metabase/ui";
 
 const ACTIVE_BUTTON_PROPS = {
   c: "brand" as const,
@@ -96,13 +89,8 @@ export const MetricLayoutControl = ({
               />
             </Center>
           )}
-
-          <Divider orientation="vertical" />
         </>
       )}
-      <ActionIcon c="text-primary" size="lg">
-        <Icon name="expand" />
-      </ActionIcon>
     </ActionIcon.Group>
   );
 };
