@@ -2,8 +2,10 @@
   (:require
    [clojure.walk :as clojure.walk]
    [metabase.lib-be.core :as lib-be]
+   [metabase.lib.core :as lib]
    [metabase.lib.field.resolution :as lib.field.resolution]
    [metabase.lib.options :as lib.options]
+   [metabase.lib.util :as lib.util]
    [metabase.models.visualization-settings :as vs]
    [toucan2.core :as t2]))
 
@@ -40,10 +42,11 @@
 
 (defn- upgrade-field-ref-to-name
   [query field-ref]
-  (when (vector? field-ref)
-    (when-let [column (lib.field.resolution/resolve-field-ref query -1 field-ref)]
-      (when-not (:lib.field.resolution/fallback-metadata? column)
-        ((some-fn :lib/deduplicated-name :name) column)))))
+  (let [field-ref (lib/->pMBQL field-ref)]
+    (when (lib.util/field-clause? field-ref)
+      (when-let [column (lib.field.resolution/resolve-field-ref query -1 field-ref)]
+        (when-not (:lib.field.resolution/fallback-metadata? column)
+          ((some-fn :lib/deduplicated-name :name) column))))))
 
 (defn- upgrade-card-column-settings
   [column-settings query]
