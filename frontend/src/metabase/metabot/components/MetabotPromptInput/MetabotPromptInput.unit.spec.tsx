@@ -3,24 +3,23 @@ import userEvent from "@testing-library/user-event";
 import type { EditorState } from "@tiptap/pm/state";
 import { createRef } from "react";
 
+import {
+  setupCollectionByIdEndpoint,
+  setupDatabasesEndpoints,
+} from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
 import { renderWithProviders } from "__support__/ui";
+import { ROOT_COLLECTION } from "metabase/entities/collections";
 import type { MetabotPromptInputRef } from "metabase/metabot";
 import { MetabotMentionPluginKey } from "metabase/rich_text_editing/tiptap/extensions/MetabotMention/MetabotMentionExtension";
 import type { SuggestionModel } from "metabase/rich_text_editing/tiptap/extensions/shared/types";
+import {
+  createMockCollection,
+  createMockDatabase,
+} from "metabase-types/api/mocks";
 import { createMockState } from "metabase-types/store/mocks";
 
 import { MetabotPromptInput } from "./MetabotPromptInput";
-
-jest.mock(
-  "metabase/rich_text_editing/tiptap/extensions/Mention/MentionSuggestion",
-  () => ({
-    createMentionSuggestion: () =>
-      function MockMentionSuggestion() {
-        return <div aria-label="Mention Dialog" role="dialog" />;
-      },
-  }),
-);
 
 const defaultProps = {
   value: "",
@@ -34,6 +33,12 @@ const defaultProps = {
 
 const setup = (props = {}) => {
   const settings = mockSettings({ "site-url": "http://localhost:3000" });
+  const rootCollection = createMockCollection(ROOT_COLLECTION);
+
+  setupDatabasesEndpoints([createMockDatabase({ id: 1, name: "DB 1" })]);
+  setupCollectionByIdEndpoint({
+    collections: [rootCollection],
+  });
 
   return renderWithProviders(
     <MetabotPromptInput {...defaultProps} {...props} autoFocus />,
@@ -93,12 +98,12 @@ describe("MetabotPromptInput", () => {
 
     await userEvent.type(getEditor(), "@");
 
-    expect(await screen.findByLabelText("Mention Dialog")).toBeInTheDocument();
+    expect(await screen.findByTestId("mini-picker")).toBeInTheDocument();
 
     await userEvent.keyboard("{Escape}");
 
     await waitFor(() => {
-      expect(screen.queryByLabelText("Mention Dialog")).not.toBeInTheDocument();
+      expect(screen.queryByTestId("mini-picker")).not.toBeInTheDocument();
     });
   });
 });

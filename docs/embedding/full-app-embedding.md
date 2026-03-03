@@ -234,6 +234,10 @@ Additionally, each person within a single customer account could also be a membe
 
 See [full app UI components](./full-app-ui-components.md). For more granular control over embedded components, consider using [Modular embedding](./modular-embedding.md) instead.
 
+## Metabot in full-app embeds
+
+See [Embedded Metabot settings](../ai/settings.md#enable-metabot).
+
 ## Reference apps
 
 To build a sample full app embed using SSO with JWT, see our reference apps:

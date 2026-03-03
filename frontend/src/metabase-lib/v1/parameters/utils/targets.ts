@@ -33,8 +33,14 @@ function isConcreteFieldReference(
   return reference[0] === "field" || reference[0] === "expression";
 }
 
+export function isTextTagTarget(
+  target: ParameterTarget,
+): target is ParameterTextTarget {
+  return target[0] === "text-tag";
+}
+
 export function getTemplateTagFromTarget(target: ParameterTarget) {
-  if (!target?.[1] || target?.[0] === "text-tag") {
+  if (!target?.[1] || isTextTagTarget(target)) {
     return null;
   }
 
@@ -43,7 +49,7 @@ export function getTemplateTagFromTarget(target: ParameterTarget) {
 }
 
 export function getTextTagFromTarget(target: ParameterTarget) {
-  if (!target?.[1] || target?.[0] !== "text-tag") {
+  if (!target?.[1] || !isTextTagTarget(target)) {
     return null;
   }
 
