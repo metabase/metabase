@@ -3,6 +3,7 @@ import L from "leaflet";
 import { createRef } from "react";
 
 import MetabaseSettings from "metabase/lib/settings";
+import type { Point } from "metabase-types/api/dataset";
 import {
   createMockCard,
   createMockColumn,
@@ -89,7 +90,7 @@ describe("LeafletMap", () => {
       const setZoomSpy = jest.spyOn(mapInstance!, "setZoom");
       const setViewSpy = jest.spyOn(mapInstance!, "setView");
 
-      const differentPoints: number[][] = [
+      const differentPoints: Point[] = [
         [1, 1],
         [2, 2],
       ];

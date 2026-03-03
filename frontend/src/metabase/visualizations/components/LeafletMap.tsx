@@ -13,6 +13,7 @@ import * as Lib from "metabase-lib";
 import Question from "metabase-lib/v1/Question";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
 import type { Series } from "metabase-types/api";
+import type { Point } from "metabase-types/api/dataset";
 
 type MapSettings = {
   "map.latitude_column"?: string;
@@ -29,7 +30,7 @@ export interface LeafletMapProps {
   height?: number;
   bounds: L.LatLngBounds;
   settings: MapSettings;
-  points?: unknown[] | null;
+  points?: Point[] | null;
   series: Series;
   metadata?: Metadata;
   token?: string | null;
@@ -365,10 +366,7 @@ export class LeafletMap extends Component<LeafletMapProps> {
  * Lightweight function to check if points have changed (e.g. due to filters)
  * so that we should recalculate the zoom.
  */
-function shouldRecalculateZoom(
-  prevPoints?: unknown[] | null,
-  nextPoints?: unknown[] | null,
-) {
+function shouldRecalculateZoom(prevPoints?: Point[], nextPoints?: Point[]) {
   if (!prevPoints && !nextPoints) {
     return false;
   }
