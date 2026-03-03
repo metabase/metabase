@@ -46,6 +46,7 @@ import type {
   RemappingHydratedChartData,
   VisualizationDefinition,
   VisualizationProps,
+  VisualizationSettingsDefinitions,
 } from "metabase/visualizations/types";
 import {
   getClickData,
@@ -328,7 +329,7 @@ const RowChartVisualization = ({
   );
 };
 
-const rowChartSettings = {
+const rowChartSettings: VisualizationSettingsDefinitions = {
   ...ROW_CHART_SETTINGS,
   ...GRAPH_DATA_SETTINGS,
 };
@@ -428,7 +429,7 @@ const ROW_CHART_DEFINITION: VisualizationDefinition = {
   noHeader: true,
   minSize: getMinSize("row"),
   defaultSize: getDefaultSize("row"),
-  settings: rowChartSettings as any,
+  settings: rowChartSettings,
   isSensible: rowChartIsSensible,
   isLiveResizable: rowChartIsLiveResizable,
   transformSeries: rowChartTransformSeries,

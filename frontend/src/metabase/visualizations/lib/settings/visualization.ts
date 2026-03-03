@@ -4,7 +4,18 @@ import { t } from "ttag";
 import { isVirtualDashCard } from "metabase/dashboard/utils";
 import { getVisualizationRaw } from "metabase/visualizations";
 import { trackCardSetToHideWhenNoResults } from "metabase/visualizations/lib/settings/analytics";
+import type {
+  ComputedVisualizationSettings,
+  SettingsExtra,
+  VisualizationSettingsDefinitions,
+} from "metabase/visualizations/types";
 import { normalize } from "metabase-lib/v1/queries/utils/normalize";
+import type {
+  ColumnSettings,
+  DimensionReference,
+  Series,
+  VisualizationSettings,
+} from "metabase-types/api";
 
 import {
   getComputedSettings,
@@ -12,7 +23,7 @@ import {
   getSettingsWidgets,
 } from "../settings";
 
-const COMMON_SETTINGS = {
+const COMMON_SETTINGS: VisualizationSettingsDefinitions = {
   "card.title": {
     get title() {
       return t`Title`;
@@ -41,24 +52,25 @@ const COMMON_SETTINGS = {
     dashboard: true,
     getHidden: ([{ card }]) => isVirtualDashCard(card),
     onUpdate: (value, extra) => {
-      if (!value) {
+      if (!value || extra.dashboardId == null) {
         return;
       }
-
       trackCardSetToHideWhenNoResults(extra.dashboardId);
     },
   },
   click_behavior: {},
 };
 
-function getSettingDefinitionsForSeries(series) {
+function getSettingDefinitionsForSeries(
+  series: Series | null | undefined,
+): VisualizationSettingsDefinitions {
   if (!series) {
     return {};
   }
   const visualization = getVisualizationRaw(series);
   const definitions = {
     ...COMMON_SETTINGS,
-    ...(visualization.settings || {}),
+    ...(visualization?.settings || {}),
   };
   for (const id in definitions) {
     definitions[id].id = id;
@@ -66,10 +78,13 @@ function getSettingDefinitionsForSeries(series) {
   return definitions;
 }
 
-function normalizeColumnSettings(columnSettings) {
-  const newColumnSettings = {};
+function normalizeColumnSettings(
+  columnSettings: Record<string, ColumnSettings>,
+): Record<string, ColumnSettings> {
+  const newColumnSettings: Record<string, ColumnSettings> = {};
   for (const oldColumnKey of Object.keys(columnSettings)) {
-    const [refOrName, fieldRef] = JSON.parse(oldColumnKey);
+    const [refOrName, fieldRef]: [string, DimensionReference] =
+      JSON.parse(oldColumnKey);
     // if the key is a reference, normalize the mbql syntax
     const newColumnKey =
       refOrName === "ref"
@@ -80,9 +95,10 @@ function normalizeColumnSettings(columnSettings) {
   return newColumnSettings;
 }
 
-export function getStoredSettingsForSeries(series) {
-  let storedSettings =
-    (series && series[0] && series[0].card.visualization_settings) || {};
+export function getStoredSettingsForSeries(
+  series: Series | null | undefined,
+): VisualizationSettings {
+  let storedSettings = series?.[0]?.card?.visualization_settings ?? {};
   if (storedSettings.column_settings) {
     // normalize any settings stored under old style keys: [ref, [fk->, 1, 2]]
     storedSettings = assocIn(
@@ -94,14 +110,10 @@ export function getStoredSettingsForSeries(series) {
   return storedSettings;
 }
 
-/**
- * @import { ComputedVisualizationSettings } from "metabase/visualizations/types";
- *
- * @param {any} series
- * @param {{ enableEntityNavigation?: boolean }} [extra]
- * @returns {ComputedVisualizationSettings}
- */
-export function getComputedSettingsForSeries(series, extra = {}) {
+export function getComputedSettingsForSeries(
+  series: Series | null | undefined,
+  extra: SettingsExtra = {},
+): ComputedVisualizationSettings {
   if (!series) {
     return {};
   }
@@ -111,7 +123,9 @@ export function getComputedSettingsForSeries(series, extra = {}) {
   return getComputedSettings(settingsDefs, series, storedSettings, extra);
 }
 
-export function getPersistableDefaultSettingsForSeries(series) {
+export function getPersistableDefaultSettingsForSeries(
+  series: Series | null | undefined,
+): ComputedVisualizationSettings {
   // A complete set of settings (not only defaults) is loaded because
   // some persistable default settings need other settings as dependency for calculating the default value
   const settingsDefs = getSettingDefinitionsForSeries(series);
@@ -120,10 +134,10 @@ export function getPersistableDefaultSettingsForSeries(series) {
 }
 
 export function getSettingsWidgetsForSeries(
-  series,
-  onChangeSettings,
+  series: Series | null | undefined,
+  onChangeSettings: (newSettings: Partial<VisualizationSettings>) => void,
   isDashboard = false,
-  extra = {},
+  extra: SettingsExtra = {},
 ) {
   const settingsDefs = getSettingDefinitionsForSeries(series);
   const storedSettings = getStoredSettingsForSeries(series);
@@ -133,7 +147,7 @@ export function getSettingsWidgetsForSeries(
     settingsDefs,
     storedSettings,
     computedSettings,
-    series,
+    series ?? [],
     onChangeSettings,
     { isDashboard, ...extra },
   ).filter(
