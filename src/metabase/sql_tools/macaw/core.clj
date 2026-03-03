@@ -189,3 +189,8 @@
   ;; Note: :case-insensitive :agnostic causes ClassCastException in Macaw's replace-names
   ;; due to regex pattern handling. Omit it for now until Macaw is fixed.
   (macaw/replace-names sql-string replacements (merge (dissoc (macaw-options driver) :case-insensitive) opts)))
+
+(defmethod sql-tools/transpile-sql-impl :macaw
+  [_parser _sql _from-dialect _to-dialect]
+  (throw (java.lang.UnsupportedOperationException.
+          "sql-tools/transpile-sql :macaw is not implemented.")))
