@@ -59,7 +59,9 @@
                                     ;; This is for detecting circular refs below, and is later used as part of
                                     ;; permissions enforcement
                                     (assoc stage :qp/stage-is-from-source-card card-id))
-                    card-metadata (into [] (remove :remapped-from)
+                    ;; TODO (Cam 2026-02-25) Check if attaching the metadata is even necessary anymore
+                    card-metadata (into []
+                                        (remove :remapped-from)
                                         (lib.card/card-returned-columns metadata-providerable card))
                     last-stage    (cond-> (last stages)
                                     (seq card-metadata) (assoc :lib/stage-metadata {:lib/type :metadata/results, :columns card-metadata})
@@ -125,7 +127,7 @@
           model?        (= (:type card) :model)
           native-model? (when model?
                           (-> (lib.card/card->underlying-query query card)
-                              (lib.util/native-stage? -1)))
+                              (lib/native-stage? -1)))
           ;; TODO this information WAS used
           ;; by [[metabase.query-processor.middleware.annotate/col-info-for-field-clause*]] which doesn't exist anymore
           ;; -- do we still need it? -- Cam

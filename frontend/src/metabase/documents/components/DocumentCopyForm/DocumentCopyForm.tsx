@@ -11,8 +11,9 @@ import {
 } from "metabase/forms";
 import { Button, Stack } from "metabase/ui";
 import type { CollectionId } from "metabase-types/api";
+import type { Document } from "metabase-types/api/document";
 
-type CopyDocumentProperties = {
+export type CopyDocumentProperties = {
   collection_id: CollectionId | null;
   name: string;
 };

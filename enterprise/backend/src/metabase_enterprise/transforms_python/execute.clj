@@ -120,28 +120,6 @@
     (reify Closeable
       (close [_] (cleanup fut)))))
 
-(defn- maybe-retry-with-backoff
-  [driver thunk]
-  ;; bigquery can have eventual consistency hiccups where the table is not yet available for insertion
-  ;; immediately after creation, so we retry a few times with backoff
-  (if (= driver :bigquery-cloud-sdk)
-    (loop [attempt 0]
-      (let [ret (try
-                  (thunk)
-                  (catch Exception e
-                    (if (and (< attempt 5)
-                             (or (str/includes? (str e) "not found")
-                                 (str/includes? (str e) "Not found")))
-                      (let [delay-ms (* 150 (Math/pow 2 attempt))]
-                        (log/debugf "BigQuery operation failed (attempt %d), retrying in %dms" (inc attempt) delay-ms)
-                        (Thread/sleep (long delay-ms))
-                        ::recur)
-                      (throw e))))]
-        (if (= ::recur ret)
-          (recur (inc attempt))
-          ret)))
-    (thunk)))
-
 (defn- table-schema [table-name metadata]
   {:name (if (keyword? table-name) table-name (keyword table-name))
    :columns (mapv (fn [{:keys [name base_type #_database_type]}]
@@ -155,8 +133,7 @@
   "Insert data from source into an existing table."
   [driver db-id table-schema data-source]
   (let [data-source (assoc data-source :table-schema table-schema)]
-    (->> #(driver/insert-from-source! driver db-id table-schema data-source)
-         (maybe-retry-with-backoff driver))))
+    (driver/insert-from-source! driver db-id table-schema data-source)))
 
 (defn- create-table-and-insert-data!
   "Create a table from metadata and insert data from source."

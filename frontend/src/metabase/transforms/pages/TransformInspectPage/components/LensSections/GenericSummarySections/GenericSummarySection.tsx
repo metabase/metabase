@@ -1,6 +1,7 @@
 import { useMemo } from "react";
 import { msgid, ngettext, t } from "ttag";
 
+import { Ellipsified } from "metabase/common/components/Ellipsified";
 import {
   Box,
   Card,
@@ -66,7 +67,9 @@ export const GenericSummarySection = ({
             original.card.metadata.table_id,
             [...sources, target].filter((t) => t !== undefined),
           ),
-        cell: (props) => <Text>{String(props.getValue() ?? "-")}</Text>,
+        cell: (props) => (
+          <Ellipsified>{String(props.getValue() ?? "-")}</Ellipsified>
+        ),
       },
       {
         id: "row_count",

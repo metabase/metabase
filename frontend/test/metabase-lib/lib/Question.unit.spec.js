@@ -590,7 +590,7 @@ describe("Question", () => {
 
   describe("URLs", () => {
     const adhocUrl =
-      "/question#eyJkYXRhc2V0X3F1ZXJ5Ijp7ImRhdGFiYXNlIjoxLCJsaWIvdHlwZSI6Im1icWwvcXVlcnkiLCJzdGFnZXMiOlt7ImxpYi90eXBlIjoibWJxbC5zdGFnZS9tYnFsIiwic291cmNlLXRhYmxlIjoyfV19LCJkaXNwbGF5IjoidGFibGUiLCJuYW1lIjoiUmF3IG9yZGVycyBkYXRhIiwidmlzdWFsaXphdGlvbl9zZXR0aW5ncyI6e319";
+      "/question#eyJkYXRhc2V0X3F1ZXJ5Ijp7ImRhdGFiYXNlIjoxLCJsaWIvdHlwZSI6Im1icWwvcXVlcnkiLCJzdGFnZXMiOlt7ImxpYi90eXBlIjoibWJxbC5zdGFnZS9tYnFsIiwic291cmNlLXRhYmxlIjoyfV19LCJkaXNwbGF5IjoidGFibGUiLCJuYW1lIjoiUmF3IG9yZGVycyBkYXRhIiwicGFyYW1ldGVyVmFsdWVzIjp7fSwidmlzdWFsaXphdGlvbl9zZXR0aW5ncyI6e319";
 
     // Covered a lot in query_builder/actions.spec.js, just very basic cases here
     // (currently getUrl has logic that is strongly tied to the logic query builder Redux actions)
@@ -982,9 +982,11 @@ describe("Question", () => {
         const deserializedCard = {
           ...card,
           parameters,
-          id: undefined,
           original_card_id: card.id,
+          parameterValues: {},
         };
+
+        delete deserializedCard.id;
 
         expect(parseUrl(url)).toEqual({
           pathname: "/question",
