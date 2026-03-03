@@ -110,6 +110,45 @@ export function getDimensionsByType(
   return result;
 }
 
+// ── Dynamic tab label resolution ──
+
+export function findMostSpecificCommonLabel(
+  displayNames: string[],
+  fallback: string,
+): string {
+  if (displayNames.length === 0) {
+    return fallback;
+  }
+
+  const first = displayNames[0];
+  if (displayNames.every((name) => name === first)) {
+    return first;
+  }
+
+  const wordSets = displayNames.map((name) => new Set(name.split(/\s+/)));
+  const commonWords = [...wordSets[0]].filter((word) =>
+    wordSets.every((set) => set.has(word)),
+  );
+
+  return commonWords.length > 0 ? commonWords.join(" ") : fallback;
+}
+
+function resolveTabDisplayNames(
+  dimensionMapping: Record<MetricSourceId, string>,
+  dimsBySource: Map<MetricSourceId, Map<string, DimensionInfo>>,
+): string[] {
+  const displayNames: string[] = [];
+
+  for (const [sourceId, dimensionId] of getObjectEntries(dimensionMapping)) {
+    const dimensionInfo = dimsBySource.get(sourceId)?.get(dimensionId);
+    if (dimensionInfo) {
+      displayNames.push(dimensionInfo.displayName);
+    }
+  }
+
+  return displayNames;
+}
+
 // ── Default tab creation ──
 
 function classifyDimensionsBySource(
@@ -319,10 +358,12 @@ export function computeDefaultTabs(
         continue;
       }
 
+      const fallbackLabel = config.fixedLabel ?? config.type;
+      const displayNames = resolveTabDisplayNames(mapping, dimsBySource);
       tabs.push({
         id: config.fixedId!,
         type: config.type,
-        label: config.fixedLabel!,
+        label: findMostSpecificCommonLabel(displayNames, fallbackLabel),
         display: config.defaultDisplayType,
         dimensionMapping: mapping,
         projectionConfig: {},

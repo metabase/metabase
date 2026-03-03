@@ -1,6 +1,6 @@
 import { useCallback, useMemo } from "react";
 
-import { objectFromEntries } from "metabase/lib/objects";
+import { getObjectEntries, objectFromEntries } from "metabase/lib/objects";
 import type {
   DimensionMetadata,
   MetricDefinition,
@@ -31,11 +31,11 @@ import {
   createMetricSourceId,
   createSourceId,
 } from "../utils/source-ids";
-import { TAB_TYPE_REGISTRY } from "../utils/tab-config";
 import {
   type AvailableDimensionsResult,
   type SourceDisplayInfo,
   createTabFromDimension,
+  findMostSpecificCommonLabel,
   getAvailableDimensionsForPicker,
   getDimensionsByType,
 } from "../utils/tabs";
@@ -89,10 +89,6 @@ export interface UseMetricsViewerResult {
   isFullScreen: boolean;
   toggleFullScreen: () => void;
 }
-
-const FIXED_TAB_IDS = new Set(
-  TAB_TYPE_REGISTRY.filter((c) => c.fixedId).map((c) => c.fixedId!),
-);
 
 function buildUrlRestoreTransform(
   sourceId: MetricSourceId,
@@ -243,27 +239,30 @@ export function useMetricsViewer({
     [state.tabs],
   );
 
-  const effectiveTabs = useMemo(
-    () =>
-      state.tabs.map((tab) => {
-        if (FIXED_TAB_IDS.has(tab.id)) {
-          return tab;
+  const effectiveTabs = useMemo(() => {
+    const dimsBySource = new Map(
+      state.definitions
+        .filter((entry) => entry.definition != null)
+        .map(
+          (entry) =>
+            [entry.id, getDimensionsByType(entry.definition!)] as const,
+        ),
+    );
+
+    return state.tabs.map((tab) => {
+      const displayNames: string[] = [];
+      for (const [sourceId, dimensionId] of getObjectEntries(
+        tab.dimensionMapping,
+      )) {
+        const dimensionInfo = dimsBySource.get(sourceId)?.get(dimensionId);
+        if (dimensionInfo) {
+          displayNames.push(dimensionInfo.displayName);
         }
-        const mappingEntries = Object.entries(tab.dimensionMapping);
-        if (mappingEntries.length === 0) {
-          return tab;
-        }
-        const [firstSourceId, firstDimensionId] = mappingEntries[0];
-        const def = definitionsBySourceId[firstSourceId as MetricSourceId];
-        if (!def) {
-          return tab;
-        }
-        const dimsByType = getDimensionsByType(def);
-        const dimInfo = dimsByType.get(firstDimensionId);
-        return dimInfo ? { ...tab, label: dimInfo.displayName } : tab;
-      }),
-    [state.tabs, definitionsBySourceId],
-  );
+      }
+      const label = findMostSpecificCommonLabel(displayNames, tab.label);
+      return label !== tab.label ? { ...tab, label } : tab;
+    });
+  }, [state.tabs, state.definitions]);
 
   const availableDimensions = useMemo(
     () =>
