@@ -2,7 +2,8 @@
   (:require
    [clojure.test :refer [deftest is testing]]
    [metabase.lib-metric.filter :as lib-metric.filter]
-   [metabase.lib-metric.metadata.provider :as lib-metric.metadata.provider]))
+   [metabase.lib-metric.metadata.provider :as lib-metric.metadata.provider]
+   [metabase.util.time :as u.time]))
 
 ;;; -------------------------------------------------- Test Data --------------------------------------------------
 
@@ -743,14 +744,14 @@
           parts (lib-metric.filter/time-filter-parts mock-definition clause)]
       (is (= :> (:operator parts)))
       (is (= (:id mock-time-dim) (:id (:dimension parts))))
-      (is (= ["09:00:00"] (:values parts))))))
+      (is (= [(u.time/coerce-to-time "09:00:00")] (:values parts))))))
 
 (deftest ^:parallel time-filter-parts-between-test
   (testing "time-filter-parts extracts between parts"
     (let [clause [:between {} [:dimension {} "00000000-0000-0000-0000-000000000005"] "09:00:00" "17:00:00"]
           parts (lib-metric.filter/time-filter-parts mock-definition clause)]
       (is (= :between (:operator parts)))
-      (is (= ["09:00:00" "17:00:00"] (:values parts))))))
+      (is (= [(u.time/coerce-to-time "09:00:00") (u.time/coerce-to-time "17:00:00")] (:values parts))))))
 
 (deftest ^:parallel time-filter-parts-returns-nil-for-non-time-test
   (testing "time-filter-parts returns nil for non-time dimension"
