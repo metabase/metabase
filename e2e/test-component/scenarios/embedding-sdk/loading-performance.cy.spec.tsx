@@ -56,7 +56,7 @@ describe(
 
     it("useLegacyMonolithicBundle=true: loads monolithic bundle, renders question, correct URL and script element", () => {
       cy.log("Intercepting bundle request");
-      cy.intercept("GET", "**/app/embedding-sdk.js*").as("bundleRequest");
+      cy.intercept("GET", "**/app/embedding-sdk.js?*").as("bundleRequest");
 
       cy.log("Mounting with useLegacyMonolithicBundle=true");
       mountSdkContent(<InteractiveQuestion questionId={ORDERS_QUESTION_ID} />, {
@@ -99,7 +99,7 @@ describe(
 
     it("useLegacyMonolithicBundle=false (default): loads bootstrap + chunks, renders question, correct URL and script element", () => {
       cy.log("Intercepting bundle request");
-      cy.intercept("GET", "**/app/embedding-sdk.js*").as("bundleRequest");
+      cy.intercept("GET", "**/app/embedding-sdk.js?*").as("bundleRequest");
       cy.intercept("GET", "**/app/embedding-sdk/chunks/*.js").as(
         "chunkRequest",
       );
@@ -274,7 +274,7 @@ describe(
 
     it("remount after loaded skips re-download", () => {
       cy.log("Intercepting bundle requests");
-      cy.intercept("GET", "**/app/embedding-sdk.js*").as("bundleRequest");
+      cy.intercept("GET", "**/app/embedding-sdk.js?*").as("bundleRequest");
 
       cy.log("First mount");
       mountSdkContent(<InteractiveQuestion questionId={ORDERS_QUESTION_ID} />);
@@ -476,7 +476,7 @@ describe(
       });
 
       it("extra CustomEvent after settle is harmless (no extra requests)", () => {
-        cy.intercept("GET", "**/app/embedding-sdk.js*").as("bundleRequest");
+        cy.intercept("GET", "**/app/embedding-sdk.js?*").as("bundleRequest");
 
         mountSdkContent(
           <InteractiveQuestion questionId={ORDERS_QUESTION_ID} />,
