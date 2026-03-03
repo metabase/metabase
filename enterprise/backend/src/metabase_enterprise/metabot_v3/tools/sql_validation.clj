@@ -1,6 +1,7 @@
 (ns metabase-enterprise.metabot-v3.tools.sql-validation
   (:require
    [metabase.driver.util :as driver.u]
+   [metabase.sql-tools.core :as sql-tools]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]))
 
@@ -27,19 +28,27 @@
 
 (mr/def ::validation-result
   [:map
-   [:is-valid :boolean]
+   [:dialect :string]
+   [:valid? :boolean]
    [:error-message {:optional true} :string]
-   [:dialect {:optional true} :string]
    [:transpiled-sql {:optional true} :string]])
 
 (mu/defn validate-sql :- ::validation-result
-  "Validate sql query."
+  "Validate sql query. Query is considered valid is transpilation is skipped due to missing dialect or query
+  containing that contains template tags."
   [dialect :- [:maybe :string]
-   sql :- [:string]]
-  (let [error nil]
-    (merge
-     {:is-valid true
-      :transpiled-sql sql}
-     (when (string? dialect)
-       {:dialect dialect})
-     (select-keys error [:error-message]))))
+   sql :- :string]
+  (let [{:keys [error-message transpiled-sql status]}
+        (sql-tools/transpile-sql sql dialect dialect)]
+    (merge {:dialect dialect}
+           (cond (= :success status)
+                 {:vaild? true
+                  :transpiled-sql transpiled-sql}
+
+                 (= :skipped status)
+                 {:vaild? true
+                  :transpiled-sql transpiled-sql}
+
+                 (= :error status)
+                 {:valid? false
+                  :error-message error-message}))))
