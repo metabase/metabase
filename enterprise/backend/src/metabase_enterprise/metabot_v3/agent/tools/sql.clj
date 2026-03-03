@@ -78,15 +78,17 @@
        [:database_id :int]
        [:sql_query :string]]]
   (try
-    (let [{:keys [valid? dialect error-message] :as result}
+    (let [{:keys [validation-result action-result]}
           (create-sql-query-tools/create-sql-query
            {:database-id database_id
-            :sql sql_query})]
+            :sql sql_query})
+
+          {:keys [valid? dialect error-message]} validation-result
+          {:keys [query-id query]} action-result]
       (if valid?
-        (let [structured    (assoc result :result-type :query)
-              query-id      (:query-id result)
+        (let [structured    (assoc action-result :result-type :query)
               instr         (instructions/query-created-instructions-for query-id)
-              results-url   (streaming/query->question-url (:query result))]
+              results-url   (streaming/query->question-url query)]
           {:output (format-query-output structured instr {:preamble? true})
            :structured-output structured
            :instructions instr
