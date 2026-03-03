@@ -163,7 +163,7 @@
   "Display types that should render as PNG images rather than Slack tables."
   #{:smartscalar :gauge :progress
     :bar :line :area :combo :row :pie
-    :scatter :boxplot :waterfall :funnel})
+    :scatter :boxplot :waterfall :funnel :sankey})
 
 (defn generate-adhoc-output
   "Generate output for an ad-hoc query based on display type.
@@ -233,4 +233,3 @@
         (throw-on-failed-query! results)
         {:type    :table
          :content (format-results-as-table-blocks results)}))))
-
