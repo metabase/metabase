@@ -139,7 +139,7 @@
    :model_updated_at    (some-> updated_at to-instant)
    :last_viewed_at      (some-> last_viewed_at to-instant)
    :legacy_input        [:cast (json/encode legacy_input) :jsonb]
-   :metadata            [:cast (json/encode doc) :jsonb]
+   :metadata            [:cast (json/encode (dissoc doc :embedding)) :jsonb]
    :embedding           [:raw (format-embedding embedding-vec)]
    :text_search_vector  (if (:name doc)
                           [:||
