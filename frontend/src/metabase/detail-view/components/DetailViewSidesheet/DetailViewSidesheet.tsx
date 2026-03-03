@@ -40,6 +40,7 @@ import {
 } from "metabase/ui";
 import { DeleteObjectModal } from "metabase/visualizations/components/ObjectDetail/DeleteObjectModal";
 import * as Lib from "metabase-lib";
+import type Question from "metabase-lib/v1/types/Question";
 import { isPK } from "metabase-lib/v1/types/utils/isa";
 import type {
   DatasetColumn,
@@ -54,6 +55,7 @@ import { Sidesheet } from "./Sidesheet";
 import { extractData, getActionItems, getModelId } from "./utils";
 
 interface Props {
+  question: Question;
   columnSettings: TableColumnOrderSetting[] | undefined;
   columns: DatasetColumn[];
   columnsSettings: (OptionsType | undefined)[];
@@ -71,6 +73,7 @@ interface Props {
 }
 
 export function DetailViewSidesheet({
+  question,
   columns: columnsFromProp,
   columnSettings,
   columnsSettings,
@@ -105,7 +108,7 @@ export function DetailViewSidesheet({
     return getRowName(columns, row) || rowId;
   }, [columns, row, rowId]);
   const icon = getEntityIcon(table?.entity_type);
-  const modelId = getModelId(table);
+  const modelId = getModelId(question);
   const isNavEnabled = rowFromProps != null && showNav;
   const hasPk = columns.some(isPK);
 

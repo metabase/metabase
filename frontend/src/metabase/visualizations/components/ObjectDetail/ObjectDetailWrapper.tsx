@@ -76,6 +76,7 @@ export function ObjectDetailWrapper({
 
       return (
         <DetailViewSidesheet
+          question={question}
           columnSettings={settings?.["table.columns"]}
           columns={columns}
           columnsSettings={columnsSettings}
