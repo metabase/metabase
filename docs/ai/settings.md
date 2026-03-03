@@ -50,7 +50,7 @@ When enabled, Metabot is available to help people create questions, analyze data
 
 The toggle will turn embedded Metabot on or off. The toggle affects both full-app embeds and modular embeds.
 
-- [Full-app embedding](../embedding/full-app-embedding.md): The Metabot icon and keyboard shortcuts are only available when Metabot is enabled. Turning off Embedded Metabot will hide these icons and disable the keyboard shortcuts. For now, the Metabot icon can't be customized in full-app embedding.
+- [Full-app embedding](../embedding/full-app-embedding.md): The Metabot icon and keyboard shortcuts are only available when Metabot is enabled. Turning off Embedded Metabot will hide these icons and disable the keyboard shortcuts.
 - [Modular embedding](../embedding/modular-embedding.md) The toggle doesn't add Metabot anywhere; you have to explicitly include a chat component (like the SDK's [`MetabotQuestion`](../embedding/sdk/ai-chat.md)) in your application. If, however, you've added a component, and you turn off the Embedded Metabot toggle, your chat component will stop working, so you should also remove or hide the component in your application.
 
 ## Verified content
