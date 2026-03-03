@@ -2,15 +2,19 @@ import type {
   BulkTableInfo,
   BulkTableSelection,
   BulkTableSelectionInfo,
+  ConcreteTableId,
   ForeignKey,
   PublishTablesResponse,
   Schema,
   Table,
+  TableId,
 } from "metabase-types/api";
 
-export const createMockTable = (opts?: Partial<Table>): Table => {
+export function createMockTable<TId extends TableId = ConcreteTableId>(
+  opts?: Partial<Table<TId>>,
+): Table<TId> {
   return {
-    id: 1,
+    id: 1 as TId,
     db_id: 1,
     display_name: "Table",
     name: "table",
@@ -34,7 +38,7 @@ export const createMockTable = (opts?: Partial<Table>): Table => {
     is_published: false,
     ...opts,
   };
-};
+}
 
 export const createMockSchema = (opts?: Partial<Schema>): Schema => ({
   id: "1",

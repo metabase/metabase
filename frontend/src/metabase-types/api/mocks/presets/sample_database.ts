@@ -1,4 +1,5 @@
 import type {
+  ConcreteTableId,
   Database,
   DatasetColumn,
   Field,
@@ -263,7 +264,9 @@ export const createSampleDatabase = (opts?: Partial<Database>): Database =>
     ...opts,
   });
 
-export const createOrdersTable = (opts?: Partial<Table>): Table =>
+export const createOrdersTable = (
+  opts?: Partial<Table<ConcreteTableId>>,
+): Table<ConcreteTableId> =>
   createMockTable({
     id: ORDERS_ID,
     db_id: SAMPLE_DB_ID,
@@ -284,7 +287,9 @@ export const createOrdersTable = (opts?: Partial<Table>): Table =>
     ...opts,
   });
 
-export const createPeopleTable = (opts?: Partial<Table>): Table =>
+export const createPeopleTable = (
+  opts?: Partial<Table<ConcreteTableId>>,
+): Table<ConcreteTableId> =>
   createMockTable({
     id: PEOPLE_ID,
     db_id: SAMPLE_DB_ID,
@@ -309,7 +314,9 @@ export const createPeopleTable = (opts?: Partial<Table>): Table =>
     ...opts,
   });
 
-export const createProductsTable = (opts?: Partial<Table>): Table =>
+export const createProductsTable = (
+  opts?: Partial<Table<ConcreteTableId>>,
+): Table<ConcreteTableId> =>
   createMockTable({
     id: PRODUCTS_ID,
     db_id: SAMPLE_DB_ID,
@@ -330,7 +337,9 @@ export const createProductsTable = (opts?: Partial<Table>): Table =>
     ...opts,
   });
 
-export const createReviewsTable = (opts?: Partial<Table>): Table =>
+export const createReviewsTable = (
+  opts?: Partial<Table<ConcreteTableId>>,
+): Table<ConcreteTableId> =>
   createMockTable({
     id: REVIEWS_ID,
     db_id: SAMPLE_DB_ID,

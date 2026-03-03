@@ -40,8 +40,8 @@ export type TableDataSource =
 
 export type TableFieldOrder = "database" | "alphabetical" | "custom" | "smart";
 
-export type Table = {
-  id: TableId;
+export type Table<TId extends TableId = TableId> = {
+  id: TId;
   type?: CardType;
   name: string;
   display_name: string;
@@ -84,6 +84,8 @@ export type Table = {
   is_published: boolean;
   collection?: Collection;
 };
+
+export type VirtualTable = Table<VirtualTableId>;
 
 export type TableOwner = Pick<
   UserInfo,
