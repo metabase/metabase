@@ -155,12 +155,19 @@ jobs:
 
       - name: Send notification to Slack via Zapier
         if: success() && steps.compare.outputs.status == 'increased'
+        env:
+          WEBHOOK_URL: ${{ secrets.EMBEDDING_ZAPIER_WEBHOOK_URL }}
+          PR_TITLE: ${{ github.event.pull_request.title }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          PR_URL: ${{ github.event.pull_request.html_url }}
+          SIZE_CHANGE: ${{ steps.compare.outputs.size_change_percent }}
+          THRESHOLD: ${{ env.BUNDLE_SIZE_THRESHOLD_PERCENT }}
         shell: bash
         run: |
-          curl -s -X POST "${{ secrets.EMBEDDING_ZAPIER_WEBHOOK_URL }}" \
-            -d '⚠️ Embedding SDK bundle size increased by ${{ steps.compare.outputs.size_change_percent }}% (threshold: ${{ env.BUNDLE_SIZE_THRESHOLD_PERCENT }}%)
+          curl -s -X POST "$WEBHOOK_URL" \
+            --data-urlencode "message=⚠️ Embedding SDK bundle size increased by ${SIZE_CHANGE}% (threshold: ${THRESHOLD}%)
 
-          PR #${{ github.event.pull_request.number }} ${{ github.event.pull_request.title }} (${{ github.event.pull_request.html_url }})'
+          PR #${PR_NUMBER} ${PR_TITLE} (${PR_URL})"
 
       - name: Comment on PR if bundle size has decreased
         uses: ./.github/actions/notify-pull-request
