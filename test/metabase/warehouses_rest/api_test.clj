@@ -7,6 +7,7 @@
    [medley.core :as m]
    [metabase.analytics.snowplow-test :as snowplow-test]
    [metabase.audit-app.core :as audit]
+   [metabase.config.core :as config]
    [metabase.driver :as driver]
    [metabase.driver.settings :as driver.settings]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
@@ -2426,14 +2427,15 @@
           (is (= {:status "error"
                   :message "Failed to connect to Database"}
                  (mt/user-http-request :crowberto :get 200 (str "database/" id "/healthcheck")))))))
-    (testing "connection-type passed and configured"
-      (mt/with-premium-features #{:writable-connection}
-        (mt/with-temp [:model/Database {id :id} {:details {:host "primary"}
-                                                 :write_data_details {:host "write"}}]
-          (with-redefs [driver/available? (constantly true)
-                        driver/can-connect? (constantly true)]
-            (is (= {:status "ok"}
-                   (mt/user-http-request :crowberto :get 200 (str "database/" id "/healthcheck?connection-type=write-data"))))))))
+    (when config/ee-available?
+      (testing "connection-type passed and configured"
+        (mt/with-premium-features #{:writable-connection}
+          (mt/with-temp [:model/Database {id :id} {:details {:host "primary"}
+                                                   :write_data_details {:host "write"}}]
+            (with-redefs [driver/available? (constantly true)
+                          driver/can-connect? (constantly true)]
+              (is (= {:status "ok"}
+                     (mt/user-http-request :crowberto :get 200 (str "database/" id "/healthcheck?connection-type=write-data")))))))))
     (testing "connection-type passed but not configured returns 400"
       (mt/with-temp [:model/Database {id :id} {:details {:host "primary"}}]
         (with-redefs [driver/available? (constantly true)]
@@ -2762,18 +2764,19 @@
                                 {:write_data_details {:host "write-host"}}))))))
 
 (deftest put-validates-write-data-details-connection-test
-  (testing "PUT /api/database/:id returns 400 when write connection test fails"
-    (mt/with-premium-features #{:writable-connection}
-      (mt/with-temp [:model/Database {db-id :id} {:engine  :h2
-                                                  :details {:host "localhost"}}]
-        (with-redefs [driver/can-connect? (fn [_engine details]
-                                            (if (:write-data-connection details)
-                                              (throw (Exception. "Write connection failed"))
-                                              true))]
-          (let [response (mt/user-http-request :crowberto :put 400 (format "database/%d" db-id)
-                                               {:write_data_details {:host "totally-bogus-host"
-                                                                     :write-data-connection true}})]
-            (is (= "Write connection failed" (:message response)))))))))
+  (when config/ee-available?
+    (testing "PUT /api/database/:id returns 400 when write connection test fails"
+      (mt/with-premium-features #{:writable-connection}
+        (mt/with-temp [:model/Database {db-id :id} {:engine  :h2
+                                                    :details {:host "localhost"}}]
+          (with-redefs [driver/can-connect? (fn [_engine details]
+                                              (if (:write-data-connection details)
+                                                (throw (Exception. "Write connection failed"))
+                                                true))]
+            (let [response (mt/user-http-request :crowberto :put 400 (format "database/%d" db-id)
+                                                 {:write_data_details {:host "totally-bogus-host"
+                                                                       :write-data-connection true}})]
+              (is (= "Write connection failed" (:message response))))))))))
 
 (deftest write-data-details-guardrails-test
   (testing "PUT /api/database/:id write_data_details guardrails"
