@@ -363,7 +363,10 @@ export class LeafletMap extends Component<LeafletMapProps> {
  * Lightweight function to check if points have changed (e.g. due to filters)
  * so that we should recalculate the zoom.
  */
-function shouldRecalculateZoom(prevPoints?: Point[], nextPoints?: Point[]) {
+function shouldRecalculateZoom(
+  prevPoints?: Point[] | null,
+  nextPoints?: Point[] | null,
+) {
   if (!prevPoints && !nextPoints) {
     return false;
   }
