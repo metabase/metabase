@@ -116,7 +116,6 @@
         "kbar": "0.1.0-beta.45",
         "leaflet": "^1.2.0",
         "leaflet-draw": "^0.4.9",
-        "leaflet.heat": "^0.2.0",
         "lodash.debounce": "^4.0.8",
         "lodash.orderby": "^4.6.0",
         "merge-refs": "^1.3.0",
@@ -3668,8 +3667,6 @@
     "leaflet": ["leaflet@1.7.1", "", {}, "sha512-/xwPEBidtg69Q3HlqPdU3DnrXQOvQU/CCHA1tcDQVzOwm91YMYaILjNp7L4Eaw5Z4sOYdbBz6koWyibppd8Zqw=="],
 
     "leaflet-draw": ["leaflet-draw@0.4.14", "", {}, "sha512-O99KSPjyHNMDE+uD/fpdPydvQfTE8QruaG7ylEEtKCIaSSb60mCWoDdGUqGEHU9PGPu2JxbEfkGTXY9eYv7aEw=="],
-
-    "leaflet.heat": ["leaflet.heat@0.2.0", "", {}, "sha1-EJ2M9Ybwre5B8Fr/Ax4np3/swik="],
 
     "less": ["less@4.2.2", "", { "dependencies": { "copy-anything": "^2.0.1", "parse-node-version": "^1.0.1", "tslib": "^2.3.0" }, "optionalDependencies": { "errno": "^0.1.1", "graceful-fs": "^4.1.2", "image-size": "~0.5.0", "make-dir": "^2.1.0", "mime": "^1.4.1", "needle": "^3.1.0", "source-map": "~0.6.0" }, "bin": { "lessc": "bin/lessc" } }, "sha512-tkuLHQlvWUTeQ3doAqnHbNn8T6WX1KA8yvbKG9x4VtKtIjHsVKQZCH11zRgAfbDAXC2UNIg/K9BYAAcEzUIrNg=="],
 
