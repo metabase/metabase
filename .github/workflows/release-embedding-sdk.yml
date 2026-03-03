@@ -11,6 +11,11 @@ on:
         default: "release-x.58.x"
         options:
           - release-x.58.x
+      tag-as-latest:
+        description: "Tag this release as 'latest' on npm"
+        type: boolean
+        required: false
+        default: false
 
 concurrency:
   # We want to ensure only one job is running at a time per branch because
@@ -30,6 +35,7 @@ jobs:
           **Inputs:**
 
           - \`branch\`: ${{ inputs.branch }}
+          - \`tag-as-latest\`: ${{ inputs.tag-as-latest }}
 
           triggered by: @${{ github.event.sender.login }}
           EOF
