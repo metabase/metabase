@@ -88,7 +88,6 @@ export interface MetricsViewerPageState {
   definitions: MetricsViewerDefinitionEntry[];
   tabs: MetricsViewerTabState[];
   selectedTabId: string | null;
-  isFullscreen: boolean;
 }
 
 export function getInitialMetricsViewerPageState(): MetricsViewerPageState {
@@ -96,7 +95,6 @@ export function getInitialMetricsViewerPageState(): MetricsViewerPageState {
     definitions: [],
     tabs: [],
     selectedTabId: null,
-    isFullscreen: false,
   };
 }
 

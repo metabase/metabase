@@ -24,15 +24,11 @@ export const MetricLayoutControl = ({
   value,
   onChange,
   seriesCount,
-  isFullscreen,
-  onToggleFullscreen,
 }: {
   displayType: MetricsViewerDisplayType;
   value: MetricsViewerTabLayoutState;
   onChange: (val: MetricsViewerTabLayoutState) => void;
   seriesCount: number;
-  isFullscreen: boolean;
-  onToggleFullscreen: () => void;
 }) => {
   const { split, spacing } = value;
 
@@ -112,8 +108,8 @@ export const MetricLayoutControl = ({
           <Divider orientation="vertical" />
         </>
       )}
-      <ActionIcon c="text-primary" size="lg" onClick={onToggleFullscreen}>
-        <Icon name={isFullscreen ? "contract" : "expand"} />
+      <ActionIcon c="text-primary" size="lg">
+        <Icon name="expand" />
       </ActionIcon>
     </ActionIcon.Group>
   );

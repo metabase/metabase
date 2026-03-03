@@ -1,4 +1,3 @@
-import cx from "classnames";
 import { useCallback, useMemo, useState } from "react";
 import { t } from "ttag";
 
@@ -35,7 +34,6 @@ export interface DimensionPillProps {
   options: DimensionOption[];
   onSelect: (dimension: DimensionMetadata) => void;
   disabled?: boolean;
-  className?: string;
 }
 
 export function DimensionPill({
@@ -45,7 +43,6 @@ export function DimensionPill({
   options,
   onSelect,
   disabled,
-  className,
 }: DimensionPillProps) {
   const [isOpen, setIsOpen] = useState(false);
 
@@ -117,7 +114,7 @@ export function DimensionPill({
 
   const pillContent = (
     <Flex
-      className={cx(S.pill, className)}
+      className={S.pill}
       align="center"
       gap="xs"
       onClick={

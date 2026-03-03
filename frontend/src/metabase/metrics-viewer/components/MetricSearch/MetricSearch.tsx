@@ -16,7 +16,6 @@ type MetricSearchProps = {
   selectedMetrics: SelectedMetric[];
   metricColors: SourceColorMap;
   definitions: MetricsViewerDefinitionEntry[];
-  isFullscreen: boolean;
   onAddMetric: (metric: SelectedMetric) => void;
   onRemoveMetric: (metricId: number, sourceType: "metric" | "measure") => void;
   onSwapMetric: (oldMetric: SelectedMetric, newMetric: SelectedMetric) => void;
@@ -30,7 +29,6 @@ export function MetricSearch({
   selectedMetrics,
   metricColors,
   definitions,
-  isFullscreen,
   onAddMetric,
   onRemoveMetric,
   onSwapMetric,
@@ -66,7 +64,6 @@ export function MetricSearch({
       onRemoveMetric={onRemoveMetric}
       onSwapMetric={onSwapMetric}
       onSetBreakout={onSetBreakout}
-      disabled={isFullscreen}
     >
       {({ searchText, onSelect }) => (
         <MetricSearchDropdown
