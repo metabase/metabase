@@ -42,7 +42,7 @@ You can set options for Metabot, both for your internal Metabase, and (separatel
 
 Toggle [Metabot](./metabot.md) on or off for your Metabase or embedded contexts. Both Metabot and Embedded Metabot are enabled by default.
 
-### Interal Metabot
+### Internal Metabot
 
 When enabled, Metabot is available to help people create questions, analyze data, and answer questions about your data. When disabled, the Metabot icon and keyboard shortcuts are hidden.
 
