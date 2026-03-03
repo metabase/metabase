@@ -137,19 +137,26 @@
                              [:new_string :string]
                              [:replace_all {:optional true} [:maybe :boolean]]]]]]]
   (try
-    (let [result (edit-sql-query-tools/edit-sql-query
-                  {:query-id query_id
-                   :edits edits
-                   :checklist checklist
-                   :queries-state (shared/current-queries-state)})
-          structured  (assoc result :result-type :query)
-          qid         (:query-id result)
-          instr       (instructions/edit-sql-query-instructions-for qid)
-          results-url (streaming/query->question-url (:query result))]
-      {:output (format-query-output structured instr)
-       :structured-output structured
-       :instructions instr
-       :data-parts [(streaming/navigate-to-part results-url)]})
+    (let [{:keys [validation-result action-result]}
+          (edit-sql-query-tools/edit-sql-query
+           {:query-id query_id
+            :edits edits
+            :checklist checklist
+            :queries-state (shared/current-queries-state)})
+
+          {:keys [valid? error-message dialect]} validation-result
+          {:keys [query-id query]} action-result]
+      (if valid?
+        (let [structured  (assoc action-result :result-type :query)
+              instr       (instructions/edit-sql-query-instructions-for query-id)
+              results-url (streaming/query->question-url query)]
+          {:output (format-query-output structured instr)
+           :structured-output structured
+           :instructions instr
+           :data-parts [(streaming/navigate-to-part results-url)]})
+        (let [instr (instructions/sql-validation-error-instructions dialect error-message)]
+          {:output (format-validation-error-output instr)
+           :instructions instr})))
     (catch Exception e
       (log/error e "Error editing SQL query")
       (if (:agent-error? (ex-data e))
