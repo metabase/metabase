@@ -3,8 +3,10 @@
   (:require
    [clojure.string :as str]
    [metabase-enterprise.metabot-v3.tools.sql-validation :as metabot-v3.tools.sql-validation]
+   [metabase-enterprise.metabot-v3.tools.sql.common :as metabot-v3.tools.sql.common]
    [metabase.util.i18n :refer [tru]]
-   [metabase.util.log :as log]))
+   [metabase.util.log :as log]
+   [metabase.util.malli :as mu]))
 
 (set! *warn-on-reflection* true)
 
@@ -58,7 +60,7 @@
       :else
       (str/replace-first sql old_string new_string))))
 
-(defn edit-sql-query
+(mu/defn edit-sql-query :- ::metabot-v3.tools.sql.common/operation-result
   "Edit an existing SQL query from in-memory state.
 
   Parameters:
@@ -67,10 +69,7 @@
   - name: New name for the query (optional)
   - description: New description for the query (optional)
 
-  Returns a map with:
-  - :query-id - The ID of the updated query
-  - :query-content - The updated SQL content
-  - :database - Database ID"
+  Returns an `operation-result` map. For details see its docstring."
   [{:keys [query-id edits queries-state]}]
   (log/info "Editing SQL query" {:query-id query-id :edit-count (count edits)})
 
@@ -95,10 +94,10 @@
 
             {:keys [valid? transpiled-sql] :as validation-result}
             (metabot-v3.tools.sql-validation/validate-sql dialect new-sql)]
-        (if valid?
-          (let [updated-query (update-query-sql query transpiled-sql)]
-            {:query-id      query-id
-             :query-content new-sql
-             :query         updated-query
-             :database      (:database query)})
-          validation-result)))))
+        (merge {:validation-result validation-result}
+               (when valid?
+                 (let [updated-query (update-query-sql query transpiled-sql)]
+                   {:action-result {:query-id      query-id
+                                    :query-content new-sql
+                                    :query         updated-query
+                                    :database      (:database query)}})))))))
