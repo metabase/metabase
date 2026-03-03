@@ -2,8 +2,9 @@ import userEvent from "@testing-library/user-event";
 import { type ComponentProps, useState } from "react";
 
 import { renderWithProviders, screen } from "__support__/ui";
-import type { Widget } from "metabase/visualizations/components/ChartSettings/types";
 import { ChartSettingsWidgetPopover } from "metabase/visualizations/components/ChartSettingsWidgetPopover";
+
+import type { Widget } from "../types";
 
 type PopoverProps = ComponentProps<typeof ChartSettingsWidgetPopover>;
 
