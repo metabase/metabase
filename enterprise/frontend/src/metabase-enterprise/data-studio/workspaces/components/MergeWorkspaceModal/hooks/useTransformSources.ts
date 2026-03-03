@@ -4,8 +4,8 @@ import { useGetTransformQuery } from "metabase/api";
 import { useSelector } from "metabase/lib/redux";
 import { getMetadata } from "metabase/selectors/metadata";
 import { useGetWorkspaceTransformQuery } from "metabase-enterprise/api";
+import { extractTableId } from "metabase-enterprise/transforms-python/components/PythonTransformEditor/PythonDataPicker/utils";
 import type {
-  ConcreteTableId,
   PythonTransformSource,
   PythonTransformTableAliases,
   TransformSource,
@@ -94,26 +94,17 @@ export function useTransformSources(
 }
 
 /**
- * The backend may return source-tables as either:
- *   { alias: tableId }                          — a naked ConcreteTableId
- *   { alias: { "table-id": tableId, ... } }     — kebab-case key
- *   { alias: { "table_id": tableId, ... } }     — snake_case key
- * Normalize to the canonical { alias: tableId } shape.
+ * Normalize source-tables from the backend (which may contain map refs with table_id)
+ * to the canonical { alias: tableId } shape.
  */
 function normalizeSourceTables(
-  raw: Record<string, ConcreteTableId | Record<string, unknown>>,
+  raw: Record<string, unknown>,
 ): PythonTransformTableAliases {
   const result: PythonTransformTableAliases = {};
   for (const [alias, value] of Object.entries(raw)) {
-    if (typeof value === "number") {
-      result[alias] = value;
-    } else if (typeof value === "object" && value != null) {
-      const tableId =
-        (value as Record<string, unknown>)["table-id"] ??
-        (value as Record<string, unknown>)["table_id"];
-      if (typeof tableId === "number") {
-        result[alias] = tableId as ConcreteTableId;
-      }
+    const id = extractTableId(value as Record<string, unknown>);
+    if (id != null) {
+      result[alias] = id;
     }
   }
   return result;

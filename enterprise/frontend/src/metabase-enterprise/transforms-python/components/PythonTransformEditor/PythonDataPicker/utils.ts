@@ -1,14 +1,36 @@
 import { slugify as toSlug } from "metabase/lib/formatting";
-import type { PythonTransformTableAliases } from "metabase-types/api";
+import type {
+  ConcreteTableId,
+  PythonTransformTableAliases,
+} from "metabase-types/api";
 
 import type { TableSelection } from "./types";
+
+/**
+ * Extract a ConcreteTableId from a source-tables value, which may be either
+ * a bare integer (old format) or a map with table_id (new format).
+ */
+export function extractTableId(
+  value: ConcreteTableId | Record<string, unknown>,
+): ConcreteTableId | undefined {
+  if (typeof value === "number") {
+    return value;
+  }
+  if (typeof value === "object" && value != null) {
+    const id = (value as Record<string, unknown>)["table_id"];
+    if (typeof id === "number") {
+      return id as ConcreteTableId;
+    }
+  }
+  return undefined;
+}
 
 export function getInitialTableSelections(
   tables: PythonTransformTableAliases | undefined,
 ) {
   if (tables && Object.keys(tables).length > 0) {
-    return Object.entries(tables).map(([alias, tableId]) => ({
-      tableId,
+    return Object.entries(tables).map(([alias, value]) => ({
+      tableId: extractTableId(value),
       alias,
     }));
   }

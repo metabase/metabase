@@ -1,10 +1,11 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { t } from "ttag";
 
 import { skipToken, useListTablesQuery } from "metabase/api";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { Box, Button, Icon, Stack, Text } from "metabase/ui";
 import type {
+  ConcreteTableId,
   DatabaseId,
   PythonTransformTableAliases,
   Table,
@@ -16,6 +17,7 @@ import S from "./PythonDataPicker.module.css";
 import { TableSelector } from "./TableSelector";
 import type { TableSelection } from "./types";
 import {
+  extractTableId,
   getInitialTableSelections,
   selectionsToTableAliases,
   slugify,
@@ -174,6 +176,13 @@ function SelectionInput({
 }) {
   const table = availableTables.find((table) => table.id === selection.tableId);
 
+  const selectedTableIds = useMemo((): ConcreteTableId[] => {
+    return Object.values(tables).flatMap((v) => {
+      const id = extractTableId(v);
+      return id != null ? [id] : [];
+    });
+  }, [tables]);
+
   function handleAliasChange(newAlias: string) {
     const newSelection = {
       ...selection,
@@ -218,7 +227,7 @@ function SelectionInput({
       <TableSelector
         database={database}
         table={table}
-        selectedTableIds={Object.values(tables)}
+        selectedTableIds={selectedTableIds}
         onChange={handleTableChange}
         onRemove={onRemove}
         availableTables={availableTables}

@@ -175,17 +175,25 @@
     (inputs-from-native-query query db-id)
     (inputs-from-mbql-query query)))
 
-;; TODO (Chris 2026-03-03) We should also handle the case where table-id has not been backfilled yet...
-(defn- table-ref->id [ref]
-  (if (int? ref) ref (:table_id ref)))
+(defn- source-table-ref->table-ref
+  "Paper over a small unfortunate difference in shape"
+  [table-ref]
+  (-> (select-keys table-ref [:schema :table :table_id])
+      (assoc :db_id (:database_id table-ref))))
 
 (defn- inputs-from-python-transform
   "Extract table refs from a python transform's source-tables.
-   Python transforms require tables to exist (they map name -> table_id). Batch lookup."
+   Uses metadata from map refs directly; only looks up the database for bare integer IDs."
   [source-tables]
-  (let [table-ids  (map (comp table-ref->id val) source-tables)
-        table-refs (batch-table-refs-from-ids table-ids)]
-    (u/keepv table-refs table-ids)))
+  (let [{maps true ints false} (group-by (comp map? val) source-tables)
+        ;; Maps already have schema/table metadata
+        map-refs  (map (comp source-table-ref->table-ref val) maps)
+        ;; Integers need a batch lookup
+        int-ids   (map val ints)
+        int-refs  (when (seq int-ids)
+                    (let [lookup (batch-table-refs-from-ids int-ids)]
+                      (keep lookup int-ids)))]
+    (into (vec map-refs) int-refs)))
 
 (mu/defn analyze-entity :- ::analysis
   "Analyze a workspace entity to find its dependencies.
