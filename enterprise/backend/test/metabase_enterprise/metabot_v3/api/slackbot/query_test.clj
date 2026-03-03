@@ -96,6 +96,18 @@
           (testing "returns parseable PNG"
             (is (some? image))))))))
 
+(deftest render-dimensions-test
+  (testing "render-dimensions calculates width from display type aspect ratios"
+    (testing "bar chart uses 2:1 ratio (12:6 default)"
+      (is (= {:width 1280 :height 640}
+             (#'slackbot.query/render-dimensions :bar))))
+    (testing "pie chart uses 3:2 ratio (12:8 default)"
+      (is (= {:width 960 :height 640}
+             (#'slackbot.query/render-dimensions :pie))))
+    (testing "unknown display type falls back to 2:1 ratio"
+      (is (= {:width 1280 :height 640}
+             (#'slackbot.query/render-dimensions :unknown-type))))))
+
 ;;; ------------------------------------------------ Table Blocks ----------------------------------------------------
 
 (deftest format-results-as-table-blocks-test

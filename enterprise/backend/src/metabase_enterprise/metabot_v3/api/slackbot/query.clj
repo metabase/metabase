@@ -12,13 +12,33 @@
 
 (set! *warn-on-reflection* true)
 
-(def ^:private render-width-px
-  "Width in pixels used when rendering cards and ad-hoc queries to PNG for Slack."
-  1280)
+(def ^:private render-base-height-px
+  "Base height in pixels for rendered PNGs. Width is calculated from aspect ratio."
+  640)
 
 (def ^:private render-padding-x-px
   "Horizontal padding in pixels applied to rendered PNGs."
   32)
+
+(def ^:private display-aspect-ratios
+  "Non-default aspect ratios (width:height) for display types, derived from dashboard card size defaults.
+   Most display types use the default 2:1 ratio."
+  {:pie       3/2  ; 12:8
+   :waterfall 7/3  ; 14:6
+   :sankey    8/5}) ; 16:10
+
+(def ^:private default-aspect-ratio
+  "Default aspect ratio when display type not found."
+  2/1)
+
+(defn- render-dimensions
+  "Calculate render dimensions for a display type based on aspect ratios.
+   Keeps height consistent at render-base-height-px and scales width by aspect ratio."
+  [display]
+  (let [aspect-ratio (get display-aspect-ratios (keyword display) default-aspect-ratio)
+        render-width (long (* render-base-height-px aspect-ratio))]
+    {:width  render-width
+     :height render-base-height-px}))
 
 (defn- throw-on-failed-query!
   [results]
@@ -39,11 +59,12 @@
   "Render query results to PNG."
   [results display]
   (let [adhoc-card {:display                display
-                    :visualization_settings {}}]
+                    :visualization_settings {}}
+        {:keys [width]} (render-dimensions display)]
     (channel.render/render-adhoc-card-to-png
      adhoc-card
      results
-     render-width-px
+     width
      {:channel.render/padding-x render-padding-x-px})))
 
 ;;; ------------------------------------------ Slack Table Blocks ----------------------------------------------------
@@ -138,9 +159,14 @@
                     :text (format "Showing %d of %d rows" displayed-rows total-rows)}]}]
       [table-block])))
 
-(def ^:private chart-display-types
-  "Display types that should render as PNG images rather than Slack tables."
-  #{:bar :line :pie :area :row :scatter :funnel :waterfall :combo :progress :gauge})
+(def ^:private supported-png-display-types
+  "Display types that should render as PNG images rather than Slack tables.
+   These correspond to the render methods in channel.render.body and
+   frontend static-viz components. Map types (pin_map, state, country)
+   are explicitly unsupported per channel.render.card/detect-pulse-chart-type."
+  #{:smartscalar :gauge :progress
+    :bar :line :area :combo :row :pie
+    :scatter :boxplot :waterfall :funnel})
 
 (defn generate-adhoc-output
   "Generate output for an ad-hoc query based on display type.
@@ -154,22 +180,13 @@
   (let [display (keyword display)
         results (execute-adhoc-query query)]
     (throw-on-failed-query! results)
-    (if (contains? chart-display-types display)
+    (if (contains? supported-png-display-types display)
       {:type    :image
        :content (generate-adhoc-png results display)}
       {:type    :table
        :content (format-results-as-table-blocks results)})))
 
 ;;; ------------------------------------------ Saved Card Visualization ----------------------------------------------------
-
-(def ^:private supported-png-display-types
-  "Display types that can be rendered as PNG images for Slack.
-   These correspond to the render methods in channel.render.body and
-   frontend static-viz components. Map types (pin_map, state, country)
-   are explicitly unsupported per channel.render.card/detect-pulse-chart-type."
-  #{:scalar :smartscalar :gauge :progress
-    :bar :line :area :combo :row :pie
-    :scatter :boxplot :waterfall :funnel :sankey})
 
 (defn pulse-card-query-results
   "Execute a query for a saved card, returning results suitable for rendering."
@@ -189,7 +206,8 @@
 (defn- render-saved-card-png
   "Render a saved card (already fetched from DB) to PNG bytes."
   [card]
-  (let [options {:channel.render/include-title? true
+  (let [{:keys [width]} (render-dimensions (:display card))
+        options {:channel.render/include-title? true
                  :channel.render/padding-x render-padding-x-px
                  :channel.render/padding-y 0}
         results (pulse-card-query-results card)]
@@ -198,7 +216,7 @@
     (channel.render/render-pulse-card-to-png (channel.render/defaulted-timezone card)
                                              card
                                              results
-                                             render-width-px
+                                             width
                                              options)))
 
 (defn generate-card-output
@@ -218,3 +236,4 @@
         (throw-on-failed-query! results)
         {:type    :table
          :content (format-results-as-table-blocks results)}))))
+

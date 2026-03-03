@@ -333,3 +333,4 @@
                                                   :thread_ts thread-ts})
 
   (def thread (slackbot.client/fetch-thread client message)))
+
