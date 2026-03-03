@@ -67,13 +67,6 @@ export type DimensionFilterValue =
   | { type: "time"; operator: TimeFilterParts["operator"]; values: Date[] }
   | { type: "default"; operator: DefaultFilterParts["operator"] };
 
-type SerializeDates<T> = T extends { values: Date[] }
-  ? Omit<T, "values"> & { values: string[] }
-  : T;
-
-export type SerializedDimensionFilterValue =
-  SerializeDates<DimensionFilterValue>;
-
 export type ParsedFilter = {
   dimension: DimensionMetadata;
   value: DimensionFilterValue;
@@ -278,16 +271,16 @@ export function buildDimensionFilterClause(
 
 // ── Serialized source filter ──
 
-export type SerializedSourceFilter = {
+export type SourceFilter = {
   dimensionId: string;
   value: DimensionFilterValue;
 };
 
 export function extractDefinitionFilters(
   definition: MetricDefinition,
-): SerializedSourceFilter[] {
+): SourceFilter[] {
   const filters = LibMetric.filters(definition);
-  const result: SerializedSourceFilter[] = [];
+  const result: SourceFilter[] = [];
 
   for (const clause of filters) {
     const parsed = parseFilter(definition, clause);

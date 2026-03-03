@@ -1,10 +1,18 @@
 type RequiredField = string;
 
+type RequiredKeyField = { key: string };
+
 type OptionalField = { key: string; optional: true };
 
 type DefaultField = { key: string; default: unknown };
 
 type NestedField = { key: string; schema: CompactSchema<unknown> };
+
+type NestedOptionalField = {
+  key: string;
+  schema: CompactSchema<unknown>;
+  optional: true;
+};
 
 type NestedDefaultField = {
   key: string;
@@ -14,9 +22,11 @@ type NestedDefaultField = {
 
 export type FieldDescriptor =
   | RequiredField
+  | RequiredKeyField
   | OptionalField
   | DefaultField
   | NestedField
+  | NestedOptionalField
   | NestedDefaultField;
 
 export type SchemaConfig<T> = { [K in keyof T]-?: FieldDescriptor };
@@ -37,9 +47,11 @@ interface NormalizedField {
 function isObjectDescriptor(
   descriptor: FieldDescriptor,
 ): descriptor is
+  | RequiredKeyField
   | OptionalField
   | DefaultField
   | NestedField
+  | NestedOptionalField
   | NestedDefaultField {
   return typeof descriptor !== "string";
 }
