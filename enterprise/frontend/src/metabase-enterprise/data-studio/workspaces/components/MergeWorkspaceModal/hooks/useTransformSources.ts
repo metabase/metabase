@@ -5,6 +5,7 @@ import { useSelector } from "metabase/lib/redux";
 import { getMetadata } from "metabase/selectors/metadata";
 import { useGetWorkspaceTransformQuery } from "metabase-enterprise/api";
 import type {
+  ConcreteTableId,
   PythonTransformSource,
   PythonTransformTableAliases,
   TransformSource,
@@ -78,18 +79,37 @@ export function useTransformSources(
   return {
     oldSource,
     oldSourceTables: isPythonTransformSource(globalTransform?.source)
-      ? globalTransform.source["source-tables"]
+      ? normalizeSourceTables(globalTransform.source["source-tables"])
       : undefined,
     oldTarget: globalTransform?.target,
     newSource,
     newSourceTables: isPythonTransformSource(workspaceTransform?.source)
-      ? workspaceTransform.source["source-tables"]
+      ? normalizeSourceTables(workspaceTransform.source["source-tables"])
       : undefined,
     newTarget: workspaceTransform?.target,
     hasError,
     isLoading,
     diffStats,
   };
+}
+
+/**
+ * The backend may return source-tables as either:
+ *   { alias: tableId }
+ *   { alias: { "table-id": tableId, ... } }
+ * Normalize to the lowest-common-denominator { alias: tableId } shape.
+ */
+function normalizeSourceTables(
+  raw: Record<string, ConcreteTableId | { "table-id": ConcreteTableId }>,
+): PythonTransformTableAliases {
+  const result: PythonTransformTableAliases = {};
+  for (const [alias, value] of Object.entries(raw)) {
+    result[alias] =
+      typeof value === "object" && value != null && "table-id" in value
+        ? value["table-id"]
+        : (value as ConcreteTableId);
+  }
+  return result;
 }
 
 function isPythonTransformSource(
