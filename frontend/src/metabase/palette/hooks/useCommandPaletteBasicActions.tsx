@@ -10,6 +10,7 @@ import {
   useHasTokenFeature,
   useSearchListQuery,
 } from "metabase/common/hooks";
+import { trackMetricCreateStarted } from "metabase/data-studio/analytics";
 import { Collections } from "metabase/entities/collections/collections";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
@@ -176,6 +177,7 @@ export const useCommandPaletteBasicActions = ({
         section: "basic",
         icon: "metric",
         perform: () => {
+          trackMetricCreateStarted("command_palette");
           dispatch(closeModal());
           dispatch(push("metric/query"));
           dispatch(
