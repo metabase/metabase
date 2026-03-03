@@ -64,6 +64,12 @@
    [:pivot_table.column_split :values]
    [:pivot_table.collapsed_rows :rows]])
 
+(defn- update-existing
+  [mp k f & args]
+  (if (contains? mp k)
+    (apply update mp k f args)
+    mp))
+
 (defn- upgrade-viz-settings-locations
   [viz-settings query]
   (let [upgrade-refs (fn [refs]
@@ -77,12 +83,6 @@
     (update-existing viz :table.column_formatting
                      (fn [entries]
                        (mapv #(update-existing % :columns upgrade-refs) entries)))))
-
-(defn- update-existing
-  [mp k f & args]
-  (if (contains? mp k)
-    (apply update mp k f args)
-    mp))
 
 (defn- card-upgrade-field-refs!
   [card]
