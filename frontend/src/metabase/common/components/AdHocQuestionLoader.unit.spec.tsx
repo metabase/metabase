@@ -13,7 +13,7 @@ import * as ML_Urls from "metabase-lib/v1/urls";
 import { AdHocQuestionLoaderView } from "./AdHocQuestionLoader";
 
 const getQuestionHash = (questionUrl: string) => {
-  const url = new URL(questionUrl);
+  const url = new URL(questionUrl, "http://example.com");
   return url.hash;
 };
 

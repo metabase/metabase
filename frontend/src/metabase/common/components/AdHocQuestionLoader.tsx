@@ -67,7 +67,7 @@ export function AdHocQuestionLoaderView({
   // keep a reference to the card as well to help with re-creating question
   // objects if the underlying metadata changes
   const [card, setCard] = useState<UnsavedCard | null>(null);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(Boolean(questionHash));
   const [error, setError] = useState<unknown>(null);
 
   const metadataRef = useRef<Metadata | undefined>(metadata);

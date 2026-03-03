@@ -5,11 +5,11 @@ import { isNotNull } from "metabase/lib/types";
 import type { Collection, CollectionId } from "metabase-types/api";
 
 export const getCrumbs = (
-  collection: Collection,
+  collection: Collection | undefined,
   collectionsById: Partial<Record<CollectionId, Collection>>,
   callback: (id: CollectionId) => void,
 ): Crumb[] => {
-  if (collection.path) {
+  if (collection?.path) {
     return [
       ...collection.path
         .map((id) => collectionsById[id])
