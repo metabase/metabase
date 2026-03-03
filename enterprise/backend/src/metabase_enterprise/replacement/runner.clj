@@ -79,7 +79,7 @@
           (lib-be/bulk-load-query-metadata! metadata-provider referenced-ids)))
       (merge {} cards tables transforms segments measures))))
 
-(defn- run-swap* [{:keys [all-transitive-dependents transitive-card-ids]}
+(defn- run-swap* [{:keys [all-transitive-dependents]}
                   old-source new-source progress]
   (replacement.protocols/set-total! progress
                                     (+ (count all-transitive-dependents)  ;; phase 1: upgrade
@@ -113,7 +113,7 @@
             (doseq [entity batch]
               (try
                 ;; do-swap! knows how to handle all entity types including dashboards
-                (source-swap/do-swap! entity old-source new-source (set transitive-card-ids))
+                (source-swap/do-swap! entity old-source new-source)
                 (catch Exception e
                   (log/warnf e "Failed to swap %s, continuing with next entity" entity)
                   (swap! failures conj {:entity entity :error (ex-message e)})))
@@ -145,16 +145,6 @@
     progress]
    (assert (:success (source/check-replace-source old-source new-source)))
 
-   (let [all-transitive        (usages/transitive-usages old-source)
-         transitive-card-ids   (into [] (comp (filter #(= :card (first %))) (map second)) all-transitive)
-         transitive-dashboards (into [] (comp (filter #(= :dashboard (first %))) (map second)) all-transitive)
-         dashboards-with-cards (usages/second-level-dashboard-ids transitive-card-ids)
-         ;; Add dashboards containing transitive cards to the dependency list
-         all-dashboard-entities (map (fn [id] [:dashboard id])
-                                     (into (sorted-set) (concat transitive-dashboards dashboards-with-cards)))
-         ;; Combine all dependents: original transitive deps + additional dashboards
-         all-dependents        (into [] (concat (remove #(= :dashboard (first %)) all-transitive)
-                                                all-dashboard-entities))]
-     (run-swap* {:all-transitive-dependents all-dependents
-                 :transitive-card-ids       transitive-card-ids}
+   (let [all-transitive        (usages/transitive-usages old-source)]
+     (run-swap* {:all-transitive-dependents all-transitive}
                 old-source new-source progress))))

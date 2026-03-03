@@ -73,10 +73,9 @@
 
 (defn dashboard-update-field-refs!
   "Swap field refs in parameter_mappings and column_settings on all DashboardCards
-  in the given dashboard. Skips dashcards whose card_id is in `exclude-card-ids`
-  (those were already processed by [[dashboard-card-update-field-refs!]])."
-  [dashboard-id old-source new-source exclude-card-ids]
-  (doseq [dashcard (t2/select :model/DashboardCard :dashboard_id dashboard-id)
-          :when (not (contains? exclude-card-ids (:card_id dashcard)))]
+  in the given dashboard."
+  [dashboard-id old-source new-source]
+  ;; todo: bulk load the card queries. We don't upgrade them but we need the information. We should not n+1 these
+  (doseq [dashcard (t2/select :model/DashboardCard :dashboard_id dashboard-id)]
     (when-let [query (dashcard-query dashcard)]
       (update-dashcard-field-refs! dashcard query old-source new-source))))
