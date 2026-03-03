@@ -48,30 +48,31 @@
   (assert (= :card entity-type))
   (let [card (t2/select-one :model/Card :id entity-id)]
     (assert (some? card))
-    (let [query (:dataset_query card)
-          query' (update-query query old-source new-source {})
-          changes (cond-> {}
-                    (not= query query')
-                    (assoc :dataset_query query')
+    (when (-> card :dataset_query :stages seq)
+      (let [query (:dataset_query card)
+            query' (update-query query old-source new-source {})
+            changes (cond-> {}
+                      (not= query query')
+                      (assoc :dataset_query query')
 
-                    (= (:table_id card) (ultimate-table-id query old-source))
-                    (assoc :table_id    (ultimate-table-id query new-source)))]
-      ;; no changes, so don't update
-      (when (seq changes)
-        (t2/update! :model/Card entity-id changes)
-        ;; TODO: not sure we really want this code to have to know about dependency tracking
-        ;; TODO: publishing this event twice per update seems bad
-        #_(events/publish-event! :event/card-update
-                                 {:object (merge card changes)
-                                  :user-id (:id @api/*current-user*)
-                                  :previous-object card})
-        ;; todo: we still want to publish the card changed event here, but we should suppress the depdency analysis
-        ;; and do it ourselves. This probably should be moved higher up so it's a bit more generic than this
-        ;; paritcular spot
-        (models.dependency/swap-dependency! :card entity-id old-source new-source))
-      (swap.viz/dashboard-card-update-field-refs! entity-id
-                                                  (source-ref->source-map old-source)
-                                                  (source-ref->source-map new-source)))))
+                      (= (:table_id card) (ultimate-table-id query old-source))
+                      (assoc :table_id    (ultimate-table-id query new-source)))]
+        ;; no changes, so don't update
+        (when (seq changes)
+          (t2/update! :model/Card entity-id changes)
+          ;; TODO: not sure we really want this code to have to know about dependency tracking
+          ;; TODO: publishing this event twice per update seems bad
+          #_(events/publish-event! :event/card-update
+                                   {:object (merge card changes)
+                                    :user-id (:id @api/*current-user*)
+                                    :previous-object card})
+          ;; todo: we still want to publish the card changed event here, but we should suppress the depdency analysis
+          ;; and do it ourselves. This probably should be moved higher up so it's a bit more generic than this
+          ;; paritcular spot
+          (models.dependency/swap-dependency! :card entity-id old-source new-source))
+        (swap.viz/dashboard-card-update-field-refs! entity-id
+                                                    (source-ref->source-map old-source)
+                                                    (source-ref->source-map new-source))))))
 
 (defn- segment-swap!
   [[entity-type entity-id] old-source new-source]
