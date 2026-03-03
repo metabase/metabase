@@ -5,7 +5,9 @@ import type {
   DimensionMetadata,
   ExcludeDateFilterParts,
   FilterClause,
+  MeasureDisplayInfo,
   MetricDefinition,
+  MetricDisplayInfo,
   NumberFilterParts,
   ProjectionClause,
   RelativeDateFilterParts,
@@ -292,10 +294,7 @@ export function extractDefinitionFilters(
     if (!parsed) {
       continue;
     }
-    const dimInfo = LibMetric.dimensionValuesInfo(
-      definition,
-      parsed.dimension,
-    );
+    const dimInfo = LibMetric.dimensionValuesInfo(definition, parsed.dimension);
     result.push({ dimensionId: dimInfo.id, value: parsed.value });
   }
 
@@ -692,4 +691,22 @@ export function getProjectionInfo(def: MetricDefinition): ProjectionInfo {
     isBinnable,
     hasBinning,
   };
+}
+
+// ── Definition display helpers ──
+
+export function getDefinitionName(def: MetricDefinition): string | null {
+  const meta = LibMetric.sourceMetricOrMeasureMetadata(def);
+  return meta ? LibMetric.displayInfo(def, meta).displayName : null;
+}
+
+export function getDefinitionColumnName(def: MetricDefinition): string | null {
+  const meta = LibMetric.sourceMetricOrMeasureMetadata(def);
+  if (!meta) {
+    return null;
+  }
+  const info = LibMetric.displayInfo(def, meta) as
+    | MetricDisplayInfo
+    | MeasureDisplayInfo;
+  return info.columnName ?? null;
 }

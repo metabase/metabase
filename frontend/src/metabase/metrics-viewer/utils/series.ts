@@ -21,10 +21,6 @@ import type {
   VisualizationSettings,
 } from "metabase-types/api";
 
-import {
-  getDefinitionColumnName,
-  getDefinitionName,
-} from "../adapters/definition-loader";
 import type {
   MetricSourceId,
   MetricsViewerDefinitionEntry,
@@ -33,7 +29,11 @@ import type {
   SourceColorMap,
 } from "../types/viewer-state";
 
-import { findDimensionById } from "./metrics";
+import {
+  findDimensionById,
+  getDefinitionColumnName,
+  getDefinitionName,
+} from "./metrics";
 import { nextSyntheticCardId, parseSourceId } from "./source-ids";
 import { DISPLAY_TYPE_REGISTRY } from "./tab-config";
 import { getDimensionIcon } from "./tabs";

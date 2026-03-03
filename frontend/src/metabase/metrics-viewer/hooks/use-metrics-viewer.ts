@@ -9,7 +9,6 @@ import type {
 import * as LibMetric from "metabase-lib/metric";
 import type { Dataset, MetricBreakoutValuesResponse } from "metabase-types/api";
 
-import { getDefinitionName } from "../adapters/definition-loader";
 import { ALL_TAB_ID } from "../constants";
 import type { MetricsViewerPageProps } from "../pages/MetricsViewerPage/MetricsViewerPage";
 import type {
@@ -24,6 +23,7 @@ import {
   buildBinnedBreakoutDef,
   findDimensionById,
   findFilterDimensionById,
+  getDefinitionName,
 } from "../utils/metrics";
 import { computeSourceColors, getSelectedMetricsInfo } from "../utils/series";
 import {
