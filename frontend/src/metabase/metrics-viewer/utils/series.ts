@@ -183,7 +183,7 @@ function splitByBreakout(
       .join(": ");
 
     const seriesKey = getSeriesVizSettingsKey(
-      cols[metricColumnIndexes[0]],
+      cols[metricColumnIndexes[0] || 0], // TODO: Find a better solution here
       false,
       true,
       1,

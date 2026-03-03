@@ -96,7 +96,7 @@ export const TAB_TYPE_REGISTRY: TabTypeDefinition[] = [
     fixedLabel: "Location",
     dimensionPredicate: isGeoDimension,
     dimensionRanker: getGeoDimensionRank,
-    defaultDisplayType: "bar",
+    defaultDisplayType: "map",
     availableDisplayTypes: GEO_CHART_TYPES,
   },
   {
