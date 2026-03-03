@@ -2,6 +2,7 @@
   "Tool for editing existing SQL queries."
   (:require
    [clojure.string :as str]
+   [metabase-enterprise.metabot-v3.tools.sql-validation :as metabot-v3.tools.sql-validation]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]))
 
@@ -88,10 +89,16 @@
                         {:agent-error? true
                          :query-id query-id})))
 
-      ;; Apply edits sequentially
-      (let [new-sql (reduce apply-sql-edit current-sql edits)
-            updated-query (update-query-sql query new-sql)]
-        {:query-id      query-id
-         :query-content new-sql
-         :query         updated-query
-         :database      (:database query)}))))
+      (let [;; Apply edits sequentially
+            new-sql (reduce apply-sql-edit current-sql edits)
+            dialect (metabot-v3.tools.sql-validation/query->dialect query)
+
+            {:keys [valid? transpiled-sql] :as validation-result}
+            (metabot-v3.tools.sql-validation/validate-sql dialect new-sql)]
+        (if valid?
+          (let [updated-query (update-query-sql query transpiled-sql)]
+            {:query-id      query-id
+             :query-content new-sql
+             :query         updated-query
+             :database      (:database query)})
+          validation-result)))))
