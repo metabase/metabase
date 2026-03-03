@@ -819,3 +819,20 @@
                                          1]]
                          :filters      [[:not-null {} [:expression {} "expr"]]]}]}
               swapped-query)))))
+
+(deftest ^:parallel upgrade-field-ref-in-parameter-target-expression-test
+  (let [query           (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
+                            (lib/expression "expr" (lib/+ (meta/field-metadata :orders :id) 1)))
+        target          [:dimension (lib/->legacy-MBQL (lib/ensure-uuid [:field {:base-type :type/Integer} "expr"]))]
+        upgraded-target (lib-be/upgrade-field-ref-in-parameter-target query target)
+        swapped-target  (lib-be/swap-source-in-parameter-target query target
+                                                                {:type :table, :id (meta/id :orders)}
+                                                                {:type :table, :id (meta/id :products)})]
+    (testing "upgrade should convert :field ref pointing to expression into :expression ref"
+      (is (=? [:dimension [:expression "expr" {:base-type :type/Integer}]]
+              upgraded-target)))
+    (testing "should return an identical target if upgrade is not needed"
+      (is (= upgraded-target (lib-be/upgrade-field-ref-in-parameter-target query upgraded-target))))
+    (testing "swap should also convert the :field ref pointing to expression"
+      (is (=? [:dimension [:expression "expr" {:base-type :type/Integer}]]
+              swapped-target)))))
