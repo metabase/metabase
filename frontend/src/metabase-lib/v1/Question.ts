@@ -20,7 +20,10 @@ import {
 import type { NotificationTriggerType } from "metabase-lib/v1/Alert/constants";
 import type Database from "metabase-lib/v1/metadata/Database";
 import Metadata from "metabase-lib/v1/metadata/Metadata";
-import { getQuestionVirtualTableId } from "metabase-lib/v1/metadata/utils/saved-questions";
+import {
+  getQuestionIdFromVirtualTableId,
+  getQuestionVirtualTableId,
+} from "metabase-lib/v1/metadata/utils/saved-questions";
 import { getCardUiParameters } from "metabase-lib/v1/parameters/utils/cards";
 import { getTemplateTagParametersFromCard } from "metabase-lib/v1/parameters/utils/template-tags";
 import { InternalQuery } from "metabase-lib/v1/queries/InternalQuery";
@@ -29,26 +32,27 @@ import NativeQuery, {
 } from "metabase-lib/v1/queries/NativeQuery";
 import { STRUCTURED_QUERY_TEMPLATE } from "metabase-lib/v1/queries/StructuredQuery";
 import { isTransientId } from "metabase-lib/v1/queries/utils/card";
-import type {
-  Card,
-  CardDisplayType,
-  CardType,
-  CollectionId,
-  DashCardId,
-  Dashboard,
-  DashboardId,
-  DatabaseId,
-  DatasetData,
-  DatasetQuery,
-  Field,
-  LastEditInfo,
-  ParameterDimensionTarget,
-  ParameterId,
-  Parameter as ParameterObject,
-  ParameterValuesMap,
-  TableId,
-  UserInfo,
-  VisualizationSettings,
+import {
+  type Card,
+  type CardDisplayType,
+  type CardType,
+  type CollectionId,
+  type DashCardId,
+  type Dashboard,
+  type DashboardId,
+  type DatabaseId,
+  type DatasetData,
+  type DatasetQuery,
+  type Field,
+  type LastEditInfo,
+  type ParameterDimensionTarget,
+  type ParameterId,
+  type Parameter as ParameterObject,
+  type ParameterValuesMap,
+  type TableId,
+  type UserInfo,
+  type VisualizationSettings,
+  isConcreteTableId,
 } from "metabase-types/api";
 import { isDimensionTarget } from "metabase-types/guards";
 
@@ -383,8 +387,14 @@ class Question {
 
     // we want to check the metadata for the underlying table, not the model
     const sourceTableId = Lib.sourceTableOrCardId(query);
-    const table = this.metadata().table(sourceTableId);
 
+    if (!isConcreteTableId(sourceTableId)) {
+      const cardId = getQuestionIdFromVirtualTableId(sourceTableId);
+      const question = this.metadata().question(cardId);
+      return question.supportsImplicitActions();
+    }
+
+    const table = this.metadata().table(sourceTableId);
     const hasSinglePk =
       table?.fields?.filter((field) => field.isPK())?.length === 1;
     const { isNative } = Lib.queryDisplayInfo(this.query());
