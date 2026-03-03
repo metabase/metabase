@@ -16,7 +16,7 @@ import {
 } from "metabase-lib/v1/metadata/utils/saved-questions";
 import type NativeQuery from "metabase-lib/v1/queries/NativeQuery";
 import * as ML_Urls from "metabase-lib/v1/urls";
-import type { TableId } from "metabase-types/api";
+import { type TableId, isConcreteTableId } from "metabase-types/api";
 
 import { HeadBreadcrumbs } from "../HeaderBreadcrumbs/HeaderBreadcrumbs";
 import HeaderS from "../HeaderBreadcrumbs/HeaderBreadcrumbs.module.css";
@@ -204,9 +204,13 @@ function QuestionTableBadges({
 }
 
 function getTableOrQuestion(metadata: Metadata, id: TableId | null) {
-  return (
-    metadata.table(id) ?? metadata.question(getQuestionIdFromVirtualTableId(id))
-  );
+  if (id == null) {
+    return null;
+  } else if (isConcreteTableId(id)) {
+    return metadata.table(id);
+  } else {
+    return metadata.question(getQuestionIdFromVirtualTableId(id));
+  }
 }
 
 function getTableOrQuestionUrl(tableOrQuestion: Table | Question) {
