@@ -94,11 +94,12 @@ function getColumnIndexesByName(cols: DatasetColumn[]): ColumnIndexes {
   return colIndexes;
 }
 
-export const isNonEmptyString = (value: RowValue): value is string =>
-  typeof value === "string" && value.length > 0;
+export const isNonEmptyString = (
+  value: RowValue | undefined,
+): value is string => typeof value === "string" && value.length > 0;
 
-export const isEmptyString = (val: RowValue): boolean =>
-  typeof val === "string" && !val.length;
+export const isEmptyString = (value: RowValue | undefined): value is string =>
+  typeof value === "string" && value.length === 0;
 
 export const OPERATOR_FORMATTER_FACTORIES: Record<
   ColumnFormattingOperator,
@@ -139,8 +140,8 @@ export const OPERATOR_FORMATTER_FACTORIES: Record<
 
 export function compileFormatter(
   format: ColumnFormattingSetting,
-  columnName: string | null,
-  columnExtents: ColumnExtents | null,
+  columnName: string | null = null,
+  columnExtents: ColumnExtents | null = null,
   isRowFormatter: boolean = false,
 ): Formatter {
   if (format.type === "single") {
@@ -224,7 +225,10 @@ function clampAlpha(alpha: number): number {
 
 // NOTE: implement `extent` like this rather than using d3.extent since rows may
 // be a Java `List` rather than a JavaScript Array when used in Pulse formatting
-export function extent(rows: RowValues[], colIndex: number): Extent {
+export function extent(
+  rows: (RowValue | undefined)[][],
+  colIndex: number,
+): Extent {
   let min = Infinity;
   let max = -Infinity;
   const length = rows.length;

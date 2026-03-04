@@ -3,16 +3,21 @@ import Color from "color";
 import { ALL_OPERATOR_NAMES } from "metabase/visualizations/components/settings/ChartSettingsTableFormatting";
 import {
   OPERATOR_FORMATTER_FACTORIES,
-  canCompareSubstrings,
   compileFormatter,
   extent,
+  isEmptyString,
+  isNonEmptyString,
 } from "metabase/visualizations/lib/table_format";
 
 describe("compileFormatter", () => {
   it("should return a function, even for unsupported operators", () => {
     const formatter = compileFormatter({
       type: "single",
-      operator: "this-non-existant-operator-is-used-for-testing",
+      operator: "this-non-existant-operator-is-used-for-testing" as never,
+      value: null,
+      color: "#ffffff",
+      columns: [],
+      highlight_row: false,
     });
 
     expect(formatter).toBeDefined();
@@ -34,7 +39,7 @@ describe("compileFormatter", () => {
       "does-not-contain",
       "starts-with",
       "ends-with",
-    ];
+    ] as const;
 
     textFormatters.forEach((factoryName) => {
       const factory = OPERATOR_FORMATTER_FACTORIES[factoryName]("", "#fff");
@@ -123,23 +128,37 @@ describe("compileFormatter", () => {
   });
 });
 
-describe("canCompareSubstrings", () => {
-  it("should return true for strings", () => {
-    expect(canCompareSubstrings("foo", "bar")).toBe(true);
+describe("isNonEmptyString", () => {
+  it("should return true for non-empty strings", () => {
+    expect(isNonEmptyString("foo")).toBe(true);
   });
 
   it("should return false for any non-strings", () => {
-    expect(canCompareSubstrings(1, 2)).toBe(false);
-    expect(canCompareSubstrings(1, "foo")).toBe(false);
-    expect(canCompareSubstrings(null, "foo")).toBe(false);
-    expect(canCompareSubstrings("foo", undefined)).toBe(false);
-    expect(canCompareSubstrings("foo", [])).toBe(false);
+    expect(isNonEmptyString(1)).toBe(false);
+    expect(isNonEmptyString(null)).toBe(false);
+    expect(isNonEmptyString(undefined)).toBe(false);
+    expect(isNonEmptyString([])).toBe(false);
   });
 
-  it("should return false for any empty strings", () => {
-    expect(canCompareSubstrings("", "foo")).toBe(false);
-    expect(canCompareSubstrings("foo", "")).toBe(false);
-    expect(canCompareSubstrings("", "")).toBe(false);
+  it("should return false for an empty string", () => {
+    expect(isNonEmptyString("")).toBe(false);
+  });
+});
+
+describe("isEmptyString", () => {
+  it("should return false for non-empty strings", () => {
+    expect(isEmptyString("foo")).toBe(false);
+  });
+
+  it("should return false for any non-strings", () => {
+    expect(isEmptyString(1)).toBe(false);
+    expect(isEmptyString(null)).toBe(false);
+    expect(isEmptyString(undefined)).toBe(false);
+    expect(isEmptyString([])).toBe(false);
+  });
+
+  it("should return true for an empty string", () => {
+    expect(isEmptyString("")).toBe(true);
   });
 });
 
@@ -169,9 +188,9 @@ describe("compileFormatter with extreme ranges", () => {
         columns: ["value"],
         colors: ["#FFFFFF", "#88BF4D"],
         min_type: "custom",
-        min_value: "0",
+        min_value: 0,
         max_type: "custom",
-        max_value: "1000000000",
+        max_value: 1000000000,
       },
       "value",
       { value: [0, 1000000000] },
@@ -182,7 +201,7 @@ describe("compileFormatter with extreme ranges", () => {
       expect(color).not.toBeNull();
 
       // Ensure the color can be parsed by Color library (no scientific notation issues)
-      expect(() => Color(color)).not.toThrow();
+      expect(() => Color(color ?? "")).not.toThrow();
     });
   });
 
@@ -193,19 +212,19 @@ describe("compileFormatter with extreme ranges", () => {
         columns: ["value"],
         colors: ["rgba(255, 255, 255, 0.0000001)", "rgba(255, 255, 255, 1)"], // Alpha below MIN_ALPHA threshold
         min_type: "custom",
-        min_value: "0",
+        min_value: 0,
         max_type: "custom",
-        max_value: "1000000",
+        max_value: 1000000,
       },
       "value",
-      { value: [0, 1, 1000000] },
+      { value: [0, 1] },
     );
 
     [0, 1, 999999].forEach((val) => {
       const color = formatter(val);
       expect(color).not.toBeNull();
       expect(color).not.toMatch(/e[+-]\d+/i);
-      const colorObject = Color(color);
+      const colorObject = Color(color ?? "");
       expect(colorObject.alpha()).toBeLessThan(0.75);
     });
 

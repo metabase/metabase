@@ -16,6 +16,7 @@ import type {
   DashboardTabId,
 } from "./dashboard";
 import type { Database, DatabaseId } from "./database";
+import type { RowValue } from "./dataset";
 import type { Document, DocumentId } from "./document";
 import type { BaseEntityId } from "./entity-id";
 import type { Field } from "./field";
@@ -171,7 +172,7 @@ export type ColumnSingleFormattingSetting = {
   operator: ColumnFormattingOperator;
   color: string;
   highlight_row: boolean;
-  value: string | number;
+  value: RowValue;
 };
 export type ColumnRangeFormattingSetting = {
   columns: string[];
