@@ -64,26 +64,26 @@
       can-create-queries        (conj "permission:save_questions")
       can-create-native-queries (conj "permission:write_sql_queries"))))
 
-(defn- format-viz-caption
-  "Build the caption text for a visualization message.
-   Combines the AI-generated caption with a link to the query in Metabase."
-  [caption link]
+(defn- format-viz-title
+  "Build the title text for a visualization message.
+   Combines the title with a link to the query in Metabase."
+  [title link]
   (let [full-link (when link (str (system/site-url) link))]
     (cond
-      (and caption full-link) (str "📊 <" full-link "|" caption ">")
-      caption                 caption
-      full-link               (str "📊 <" full-link "|Open in Metabase>")
-      :else                   nil)))
+      (and title full-link) (str "📊 <" full-link "|" title ">")
+      title                 title
+      full-link             (str "📊 <" full-link "|Open in Metabase>")
+      :else                 nil)))
 
 (defn- deliver-viz!
-  "Post the visualization as a new message with a caption and link.
-   Both tables and images follow the same pattern: post content with caption."
-  [client channel thread-ts {:keys [type content]} filename caption link]
-  (let [text (or (format-viz-caption caption link) "Query results")]
+  "Post the visualization as a new message with a title and link.
+   Both tables and images follow the same pattern: post content with title."
+  [client channel thread-ts {:keys [type content]} filename title link]
+  (let [text (or (format-viz-title title link) "Query results")]
     (case type
-      :table (let [caption-block {:type "section"
-                                  :text {:type "mrkdwn" :text text}}
-                   blocks        (into [caption-block] content)]
+      :table (let [title-block {:type "section"
+                                :text {:type "mrkdwn" :text text}}
+                   blocks      (into [title-block] content)]
                (slackbot.client/post-message client {:channel   channel
                                                      :thread_ts thread-ts
                                                      :blocks    blocks
@@ -211,15 +211,14 @@
 (defn- send-visualizations!
   "Wait for all in-flight visualization futures and post results to Slack.
    Called after stop-stream so results always appear after streamed text.
-   For saved cards (static_viz), uses the actual card name as the caption."
+   For saved cards (static_viz), uses the actual card name as the title."
   [client channel thread-ts prefetched-viz]
-  (doseq [[idx {:keys [^Future future filename caption link]}] prefetched-viz]
+  (doseq [[idx {:keys [^Future future filename title link]}] prefetched-viz]
     (try
       (let [output   (.get future)
-            ;; For saved cards, prefer the actual card name over the AI-generated caption
-            caption  (or (:card-name output) caption)
-            filename (or (some-> caption (u/slugify {:max-length 80})) filename)]
-        (deliver-viz! client channel thread-ts output filename caption link))
+            title    (or (:card-name output) title)
+            filename (or (some-> title (u/slugify {:max-length 80})) filename)]
+        (deliver-viz! client channel thread-ts output filename title link))
       (catch ExecutionException e
         (let [cause (or (.getCause e) e)]
           (log/errorf cause "Visualization future %d failed" idx)
@@ -278,7 +277,7 @@
    - `:request-flush!` — schedules a drain of pending text to Slack
    - `:stream-state` — volatile holding `{:stream_ts :channel}` once started, nil before
    - `:slack-writer` — agent; callers should `(await slack-writer)` before stopping the stream
-   - `:prefetched-viz` — atom holding `{index -> {:future Future :filename str :caption str :link str}}` for in-flight visualizations"
+   - `:prefetched-viz` — atom holding `{index -> {:future Future :filename str :title str :link str}}` for in-flight visualizations"
   [client {:keys [channel thread-ts team-id user-id]}]
   (let [stream-state      (volatile! nil)
         stream-attempted? (volatile! false)
@@ -345,8 +344,8 @@
         on-data (fn [idx content]
                   (when (viz-data-types (:type content))
                     (let [value    (:value content)
-                          caption  (:caption value)
-                          filename (or (some-> caption (u/slugify {:max-length 80}))
+                          title    (:title value)
+                          filename (or (some-> title (u/slugify {:max-length 80}))
                                        (case (:type content)
                                          "static_viz" (str "chart-" (:entity_id value))
                                          "adhoc_viz"  (str "adhoc-" (System/currentTimeMillis))))
@@ -357,7 +356,7 @@
                       (swap! prefetched-viz assoc idx
                              {:future   (.submit viz-prefetch-executor ^Callable task)
                               :filename filename
-                              :caption  caption
+                              :title    title
                               :link     link}))))]
     {:on-text              on-text
      :on-tool-start        on-tool-start
