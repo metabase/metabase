@@ -637,29 +637,26 @@
   (some (fn [error]
           (let [schema (:schema error)
                 props (or (mc/properties schema)
-                          (mc/type-properties schema))]
-            (when (:error/expected-type props)
-              error)))
+                          (mc/type-properties schema))
+                expected-type (:error/expected-type props)]
+            (when expected-type
+              [error expected-type])))
         (:errors explanation)))
 
-(defn- parent-operator-tag
+(defn- parent-operator-name
   "Given an expression and an error's `:in` path, determine the MBQL operator tag
    of the clause containing the failing subexpression. Returns nil if the path is
-   empty (root-level error) or the parent cannot be determined."
+   empty (root-level error) or the parent cannot be determined.
+   Return a user-facing display name for an MBQL operator tag"
   [expr in-path]
   (when (and (seq in-path) (every? integer? in-path))
     (let [parent-path (pop (vec in-path))
           parent (if (empty? parent-path)
                    expr
                    (get-in expr parent-path))]
-      (when (and (vector? parent) (keyword? (first parent)))
-        (first parent)))))
-
-(defn- operator-display-name
-  "Return a user-facing display name for an MBQL operator tag."
-  [tag]
-  (or (get infix-operator-display-name tag)
-      (name tag)))
+      (when (vector? parent)
+        (when-let [tag (and (keyword? (first parent)) (first parent))]
+          (or (get infix-operator-display-name tag) (name tag)))))))
 
 (defn- expected-type-description
   "Return a translated, user-facing description of an expected type."
@@ -676,6 +673,27 @@
       :type/DateTime (i18n/tru "a date time")
       :type/Temporal (i18n/tru "a date, time, or date time")
       nil)))
+
+(defn- friendly-error-message
+  [explanation]
+  (let [error (first (:errors explanation))
+        schema (:schema error)
+        props (or (mc/properties schema)
+                  (mc/type-properties schema))
+        message-or-fn (:error/message props)]
+    (when (:error/friendly props)
+      (if (fn? message-or-fn)
+        (str (message-or-fn))
+        (str message-or-fn)))))
+
+(defn- type-error-message
+  [explanation expr]
+  (let [[type-error expected-type] (find-type-error explanation)
+        op-name (when type-error (parent-operator-name expr (:in type-error)))
+        type-desc (when expected-type (expected-type-description expected-type))]
+    (if (and op-name type-desc)
+      (i18n/tru "Types are incompatible: {0} expects {1}." op-name type-desc)
+      (i18n/tru "Types are incompatible."))))
 
 (mu/defn diagnose-expression :- [:maybe [:map [:message :string]]]
   "Checks `expr` for type errors and, if `expression-mode` is :expression and
@@ -704,25 +722,9 @@
                       :aggregation aggregation-explainer
                       :filter filter-explainer)]
       (or (when-let [explanation (explainer expr)]
-            (let [error (first (:errors explanation))
-                  schema (:schema error)
-                  props (or (mc/properties schema)
-                            (mc/type-properties schema))
-                  error-friendly? (:error/friendly props)
-                  error-message-or-fn (:error/message props)
-                  error-message (if (fn? error-message-or-fn) (str (error-message-or-fn)) (str error-message-or-fn))
-                  type-error (find-type-error explanation)
-                  op-tag (when type-error (parent-operator-tag expr (:in type-error)))
-                  expected (when type-error
-                             (:error/expected-type
-                              (or (mc/properties (:schema type-error))
-                                  (mc/type-properties (:schema type-error)))))
-                  op-name (when op-tag (operator-display-name op-tag))
-                  type-desc (when expected (expected-type-description expected))
-                  fallback-message (if (and op-name type-desc)
-                                     (i18n/tru "Types are incompatible: {0} expects {1}." op-name type-desc)
-                                     (i18n/tru "Types are incompatible."))
-                  message (if error-friendly? error-message fallback-message)]
+            (let [friendly-message (friendly-error-message explanation)
+                  type-message (type-error-message explanation expr)
+                  message (or friendly-message type-message)]
               {:message message
                :friendly true}))
           (when-let [dependency-path
