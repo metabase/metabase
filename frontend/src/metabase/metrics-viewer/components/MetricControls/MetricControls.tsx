@@ -13,6 +13,7 @@ import { getProjectionInfo } from "../../utils/metrics";
 import { getTabConfig } from "../../utils/tab-config";
 
 import { BinningButton } from "./BinningButton";
+import { Box } from "metabase/ui";
 import { BucketButton } from "./BucketButton";
 import { ChartTypePicker } from "./ChartTypePicker";
 import { DimensionFilterButton } from "./DimensionFilterButton";
@@ -79,11 +80,13 @@ export function MetricControls({
       gap="xs"
       data-testid="metrics-viewer-controls"
     >
-      <ChartTypePicker
-        chartTypes={chartTypes}
-        value={effectiveDisplayType}
-        onChange={onDisplayTypeChange}
-      />
+      <Box ml="sm" mr="xs">
+        <ChartTypePicker
+          chartTypes={chartTypes}
+          value={effectiveDisplayType}
+          onChange={onDisplayTypeChange}
+        />
+      </Box>
       {hasFilterControls && projectionInfo.filterDimension && (
         <>
           <Divider orientation="vertical" className={S.divider} />
