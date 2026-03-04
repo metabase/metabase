@@ -192,11 +192,16 @@
 
   (testing "converts dimension reference with binning option"
     (let [result (ast.build/dimension-ref->ast-dimension-ref [:dimension {"binning" {"strategy" "default"}} uuid-1])]
-      ;; Binning strategy value stays as string since it's a value, not a keyword
       (is (= {:node/type    :ast/dimension-ref
               :dimension-id uuid-1
-              :options      {:binning {:strategy "default"}}}
-             result)))))
+              :options      {:binning {:strategy :default}}}
+             result))))
+
+  (testing "converts binning strategy string values to keywords"
+    (let [result (ast.build/dimension-ref->ast-dimension-ref
+                  [:dimension {"binning" {"strategy" "num-bins" "num-bins" 10}} uuid-1])]
+      (is (= :num-bins (get-in result [:options :binning :strategy])))
+      (is (= 10 (get-in result [:options :binning :num-bins]))))))
 
 ;;; -------------------------------------------------- Filter Conversion --------------------------------------------------
 

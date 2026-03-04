@@ -268,6 +268,44 @@
       (is (= 42 (nth (:expression new-definition) 2)))
       (is (= mock-provider (:metadata-provider new-definition))))))
 
+;;; -------------------------------------------------- fromJsMetricDefinition nil-safety --------------------------------------------------
+
+(deftest ^:parallel fromJsMetricDefinition-nil-filter-dropped-test
+  (testing "instance filter with nil/missing :filter is dropped"
+    (let [js-def     #js {:expression #js ["metric" #js {"lib/uuid" "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"} 42]
+                          :filters    #js [#js {"lib/uuid" "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"}]}
+          definition (lib-metric.js/fromJsMetricDefinition mock-provider js-def)]
+      (is (= [] (:filters definition))
+          "instance filter with nil :filter should be dropped"))))
+
+(deftest ^:parallel fromJsMetricDefinition-malformed-projection-dropped-test
+  (testing "malformed dimension-ref in projection is dropped"
+    (let [js-def     #js {:expression  #js ["metric" #js {"lib/uuid" "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"} 42]
+                          :projections #js [#js {:type       "metric"
+                                                 :id         42
+                                                 :projection #js [#js ["dimension" #js {} "uuid-1"]
+                                                                  #js ["bad"]]}]}
+          definition (lib-metric.js/fromJsMetricDefinition mock-provider js-def)]
+      (is (= 1 (count (:projections definition))))
+      ;; The valid dimension-ref should be kept, the malformed one dropped
+      (let [proj-refs (get-in definition [:projections 0 :projection])]
+        (is (<= (count proj-refs) 1)
+            "malformed dimension-ref should be filtered out")))))
+
+(deftest ^:parallel fromJsMetricDefinition-null-opts-source-instance-test
+  (testing "source instance with null opts doesn't crash"
+    (let [leaf1   [:metric {:lib/uuid "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"} 42]
+          leaf2   [:measure {:lib/uuid "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb"} 99]
+          definition (assoc sample-definition
+                            :expression [:+ {} leaf1 leaf2]
+                            :filters [{:lib/uuid "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"
+                                       :filter   [:= {} [:dimension {} "d1"] "v1"]}])
+          ;; Simulate JS array with null opts
+          js-inst #js ["metric" nil 42]
+          result  (lib-metric.js/filters definition js-inst)]
+      (is (array? result))
+      (is (= 1 (.-length result))))))
+
 ;;; -------------------------------------------------- filter --------------------------------------------------
 
 (deftest ^:parallel filter-adds-clause-test

@@ -120,7 +120,7 @@
   (let [tag  (aget js-array 0)
         opts (aget js-array 1)
         id   (aget js-array 2)
-        uuid (gobject/get opts "lib/uuid")]
+        uuid (when opts (gobject/get opts "lib/uuid"))]
     [(keyword tag) {:lib/uuid uuid} id]))
 
 (defn ^:export metadataProvider
@@ -262,16 +262,18 @@
       (let [norm-expression (lib-metric.schema/normalize-math-expression expression)
             ;; Normalize instance filters
             raw-filters     (or (:filters definition) [])
-            norm-filters    (mapv (fn [inst-filter]
-                                    {:lib/uuid (:lib/uuid inst-filter)
-                                     :filter   (lib-metric.schema/normalize-filter-clause (:filter inst-filter))})
+            norm-filters    (into []
+                                  (keep (fn [inst-filter]
+                                          (when-let [f (lib-metric.schema/normalize-filter-clause (:filter inst-filter))]
+                                            {:lib/uuid (:lib/uuid inst-filter)
+                                             :filter   f})))
                                   raw-filters)
             ;; Normalize typed projections
             raw-projections (or (:projections definition) [])
             norm-projections (mapv (fn [tp]
                                      {:type       (keyword (:type tp))
                                       :id         (:id tp)
-                                      :projection (mapv lib-metric.schema/normalize-dimension-ref (:projection tp))})
+                                      :projection (into [] (keep lib-metric.schema/normalize-dimension-ref) (:projection tp))})
                                    raw-projections)]
         {:lib/type          :metric/definition
          :expression        norm-expression

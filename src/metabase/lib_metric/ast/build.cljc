@@ -71,7 +71,7 @@
                                 ;; Recursively normalize nested maps
                                 (map? v) (normalize-string-keys v)
                                 ;; Only convert strings to keywords for specific known fields
-                                (and (string? v) (contains? #{:temporal-unit} norm-key)) (keyword v)
+                                (and (string? v) (contains? #{:temporal-unit :strategy} norm-key)) (keyword v)
                                 :else v)]
                  (assoc m norm-key norm-val)))
              {}
