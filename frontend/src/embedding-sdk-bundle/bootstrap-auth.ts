@@ -50,7 +50,7 @@ function waitForAuthConfigAndStartEarlyAuthFlow() {
   }
 
   // Subscribe to store changes
-  const checkForAuthConfigAndStartAuth = () => {
+  const checkForAuthConfigAndStartJwtAuth = () => {
     const store = win.METABASE_PROVIDER_PROPS_STORE;
 
     if (!store) {
@@ -61,14 +61,14 @@ function waitForAuthConfigAndStartEarlyAuthFlow() {
     const authConfig = state?.props?.authConfig;
 
     if (authConfig) {
-      startAuth(authConfig);
+      startJwtAuth(authConfig);
       return true;
     }
     return false;
   };
 
   // Check immediately
-  if (checkForAuthConfigAndStartAuth()) {
+  if (checkForAuthConfigAndStartJwtAuth()) {
     return;
   }
 
@@ -85,7 +85,7 @@ function waitForAuthConfigAndStartEarlyAuthFlow() {
     attempts++;
 
     setTimeout(() => {
-      if (!checkForAuthConfigAndStartAuth()) {
+      if (!checkForAuthConfigAndStartJwtAuth()) {
         checkInterval();
       }
     }, delay);
@@ -94,7 +94,7 @@ function waitForAuthConfigAndStartEarlyAuthFlow() {
   checkInterval();
 }
 
-function startAuth(authConfig: any) {
+function startJwtAuth(authConfig: any) {
   // Bail out: API key auth or SAML — these can't done in parallel
   if (
     ("apiKey" in authConfig && authConfig.apiKey) ||
