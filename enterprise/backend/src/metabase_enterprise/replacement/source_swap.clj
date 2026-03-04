@@ -124,21 +124,15 @@
   [[_entity-type dashboard-id] old-source new-source]
   (let [old-source-map (source-ref->source-map old-source)
         new-source-map (source-ref->source-map new-source)]
-    (swap.viz/dashboard-update-field-refs! dashboard-id old-source-map new-source-map #{})))
+    (swap.viz/dashboard-update-field-refs! dashboard-id old-source-map new-source-map)))
 
 (defn do-swap!
-  "Swap old-source to new-source in an entity.
-
-  For dashboards, pass transitive-card-ids to exclude cards that were already processed."
-  ([[entity-type _entity-id :as entity] old-source new-source]
-   (do-swap! entity old-source new-source #{}))
-  ([[entity-type _entity-id :as entity] old-source new-source transitive-card-ids]
-   (case entity-type
-     :card      (card-swap!      entity old-source new-source)
-     :transform (transform-swap! entity old-source new-source)
-     :segment   (segment-swap!   entity old-source new-source)
-     :measure   (measure-swap!   entity old-source new-source)
-     :dashboard (let [old-source-map (source-ref->source-map old-source)
-                      new-source-map (source-ref->source-map new-source)]
-                  (swap.viz/dashboard-update-field-refs! _entity-id old-source-map new-source-map transitive-card-ids))
-     nil)))
+  "Swap old-source to new-source in an entity."
+  [[entity-type _entity-id :as entity] old-source new-source]
+  (case entity-type
+    :card      (card-swap!      entity old-source new-source)
+    :transform (transform-swap! entity old-source new-source)
+    :segment   (segment-swap!   entity old-source new-source)
+    :measure   (measure-swap!   entity old-source new-source)
+    :dashboard (dashboard-swap! entity old-source new-source)
+    nil))
