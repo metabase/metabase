@@ -6,21 +6,44 @@
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]))
 
-;; TODO: Should use only the driver for mapping
-(def driver->dialect
-  "Map of driver to parser dialect."
-  {:postgres "postgres"
-   :mysql "mysql"
-   :mariadb "mysql"
-   :bigquery-cloud-sdk "bigquery"
-   :snowflake "snowflake"
-   :redshift "redshift"})
+(def dialect-mapping
+  "Maps query dialect into parser dialect representation. Matches ai-service py implmentation."
+  {;; PostgreSQL family
+   "postgres" "postgres",
+   "postgresql" "postgres",
+   ;; MySQL family
+   "mysql" "mysql",
+   "mariadb" "mysql",
+   ;; Cloud warehouses
+   "bigquery-cloud-sdk" "bigquery",
+   "bigquery" "bigquery",
+   "snowflake" "snowflake",
+   "redshift" "redshift",
+   ;; Presto/Trino family (Athena uses Trino/Presto syntax)
+   "athena" "trino",
+   "presto" "presto",
+   "presto-jdbc" "presto",
+   "trino" "trino",
+   "starburst" "trino",
+   ;; Analytics engines
+   "clickhouse" "clickhouse",
+   ;; Spark family
+   "databricks" "databricks",
+   "sparksql" "spark",
+   "spark" "spark",
+   ;; Enterprise databases
+   "oracle" "oracle",
+   "sqlserver" "tsql",
+   ;; Embedded/lightweight
+   "sqlite" "sqlite",
+   ;; H2 uses generic dialect as best effort
+   "h2" nil})
 
 (defn database-id->dialect
   "Get dialect for database id."
   [db-id]
   (when (integer? db-id)
-    (-> db-id driver.u/database->driver driver->dialect)))
+    (-> db-id driver.u/database->driver name dialect-mapping)))
 
 (defn query->dialect
   "Get queries dialect."
@@ -54,14 +77,15 @@
    sql :- :string]
   (if (or (nil? dialect)
           (str/blank? sql)
+          (not (contains? dialect-mapping dialect))
           (contains-template-tags? sql))
     {:valid? true
      :dialect dialect
      :transpiled-sql sql}
-    (let [{:keys [error-message transpiled-sql status]}
-          (sql-tools/transpile-sql sql dialect dialect)]
-      (merge (when (some? dialect)
-               {:dialect dialect})
+    (let [dialect* (dialect-mapping dialect)
+          {:keys [error-message transpiled-sql status]}
+          (sql-tools/transpile-sql sql dialect* dialect*)]
+      (merge {:dialect dialect*}
              (cond (= :success status)
                    {:valid? true
                     :transpiled-sql transpiled-sql}

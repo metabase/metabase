@@ -63,12 +63,12 @@
    {:context "Validation should be skipped when no dialect is provided"
     :dialect nil :sql "SELECT * FROM users"
     :expected {:valid? true :dialect nil}}
-   #_{:context "Validation should be skipped for unknown dialects"
-      :dialect "unknown_dialect" :sql "SELECT * FROM users"
-      :expected {:valid? true :dialect "unknown_dialect"}}
-   #_{:context "Validation should be skipped for explicitly unsupported dialects"
-      :dialect "druid" :sql "SELECT * FROM users"
-      :expected {:valid? true :dialect "druid"}}
+   {:context "Validation should be skipped for unknown dialects"
+    :dialect "unknown_dialect" :sql "SELECT * FROM users"
+    :expected {:valid? true :dialect "unknown_dialect"}}
+   {:context "Validation should be skipped for explicitly unsupported dialects"
+    :dialect "druid" :sql "SELECT * FROM users"
+    :expected {:valid? true :dialect "druid"}}
    {:context "Empty SQL should pass validation (graceful handling)"
     :dialect "postgres" :sql ""
     :expected {:valid? true :dialect "postgres"}}
