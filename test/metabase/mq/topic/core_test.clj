@@ -3,14 +3,14 @@
    [clojure.test :refer :all]
    [metabase.mq.core :as mq]
    [metabase.mq.impl :as mq.impl]
-   [metabase.mq.topic.test-util :as tpt])
+   [metabase.mq.test-util :as mq.tu])
   (:import (clojure.lang ExceptionInfo)
            (java.util.concurrent CyclicBarrier)))
 
 (set! *warn-on-reflection* true)
 
-(deftest ^:parallel e2e-publish-subscribe-test
-  (tpt/with-sync-topics
+(deftest e2e-publish-subscribe-test
+  (mq.tu/with-sync-mq
     (let [received (atom [])]
       (mq/listen! :topic/e2e
                   (fn [message]
@@ -29,8 +29,8 @@
           (mq/put t "message-3"))
         (is (= ["message-1" "message-2"] @received))))))
 
-(deftest ^:parallel batch-publish-e2e-test
-  (tpt/with-sync-topics
+(deftest batch-publish-e2e-test
+  (mq.tu/with-sync-mq
     (let [received (atom [])]
       (mq/listen! :topic/batch
                   (fn [message]
@@ -46,8 +46,8 @@
 
       (mq/unlisten! :topic/batch))))
 
-(deftest ^:parallel error-handling-e2e-test
-  (tpt/with-sync-topics
+(deftest error-handling-e2e-test
+  (mq.tu/with-sync-mq
     (let [received (atom [])]
       (mq/listen! :topic/errors
                   (fn [message]
@@ -67,9 +67,9 @@
 
       (mq/unlisten! :topic/errors))))
 
-(deftest ^:parallel batch-partial-failure-test
+(deftest batch-partial-failure-test
   (testing "When listener throws on one message in a batch, remaining messages are still delivered"
-    (tpt/with-sync-topics
+    (mq.tu/with-sync-mq
       (let [received (atom [])]
         (mq/listen! :topic/batch-fail
                     (fn [message]
@@ -87,8 +87,8 @@
 
         (mq/unlisten! :topic/batch-fail)))))
 
-(deftest ^:parallel concurrent-subscribe-throws-test
-  (tpt/with-sync-topics
+(deftest concurrent-subscribe-throws-test
+  (mq.tu/with-sync-mq
     (let [topic-name :topic/concurrent-sub-test
           n          10
           barrier    (CyclicBarrier. n)
@@ -110,8 +110,8 @@
           (is (= (dec n) (count (filter #{:error} @results))))))
       (mq/unlisten! topic-name))))
 
-(deftest ^:parallel late-subscriber-test
-  (tpt/with-sync-topics
+(deftest late-subscriber-test
+  (mq.tu/with-sync-mq
     (mq/with-topic :topic/late [t]
       (mq/put t "old-message"))
 

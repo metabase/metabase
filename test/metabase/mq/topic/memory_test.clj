@@ -23,7 +23,7 @@
        (finally
          (topic.backend/shutdown! :topic.backend/memory)))))
 
-(deftest ^:parallel publish-and-subscribe-test
+(deftest publish-and-subscribe-test
   (with-memory-topics
     (let [received (atom [])]
       (mq/listen! :topic/test
@@ -40,7 +40,7 @@
 
       (mq/unlisten! :topic/test))))
 
-(deftest ^:parallel batch-publish-test
+(deftest batch-publish-test
   (with-memory-topics
     (let [received (atom [])]
       (mq/listen! :topic/batch
@@ -57,7 +57,7 @@
 
       (mq/unlisten! :topic/batch))))
 
-(deftest ^:parallel subscribe-only-sees-new-messages-test
+(deftest subscribe-only-sees-new-messages-test
   (with-memory-topics
     (mq/with-topic :topic/late-join [t]
       (mq/put t "before-subscribe"))
@@ -75,7 +75,7 @@
 
       (mq/unlisten! :topic/late-join))))
 
-(deftest ^:parallel unsubscribe-stops-delivery-test
+(deftest unsubscribe-stops-delivery-test
   (with-memory-topics
     (let [received (atom [])]
       (mq/listen! :topic/unsub
@@ -96,7 +96,7 @@
       (testing "No messages received after unsubscribe"
         (is (= ["before"] @received))))))
 
-(deftest ^:parallel error-handling-test
+(deftest error-handling-test
   (with-memory-topics
     (let [received (atom [])]
       (mq/listen! :topic/errors
@@ -118,7 +118,7 @@
 
       (mq/unlisten! :topic/errors))))
 
-(deftest ^:parallel double-subscribe-throws-test
+(deftest double-subscribe-throws-test
   (with-memory-topics
     (mq/listen! :topic/double (fn [_] nil))
     (testing "Subscribing twice to the same topic throws"
@@ -126,7 +126,7 @@
                             (mq/listen! :topic/double (fn [_] nil)))))
     (mq/unlisten! :topic/double)))
 
-(deftest ^:parallel concurrent-publish-ordering-test
+(deftest concurrent-publish-ordering-test
   (testing "Concurrent publishes are delivered in ID order, not insertion order"
     (with-memory-topics
       (let [received (atom [])
@@ -152,7 +152,7 @@
           (is (= (count @received) (count (distinct @received)))))
         (mq/unlisten! :topic/concurrent-order)))))
 
-(deftest ^:parallel topic-isolation-test
+(deftest topic-isolation-test
   (with-memory-topics
     (let [received-a (atom [])
           received-b (atom [])]

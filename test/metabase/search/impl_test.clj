@@ -7,7 +7,7 @@
    [java-time.api :as t]
    [metabase.api.common :as api]
    [metabase.config.core :as config]
-   [metabase.mq.queue.test-util :as mq.test-util]
+   [metabase.mq.test-util :as mq.tu]
    [metabase.queries-rest.api.card :as api.card]
    [metabase.search.appdb.index :as search.index]
    [metabase.search.config :as search.config]
@@ -287,7 +287,7 @@
   (when (search/supports-index?)
     (#'search.index/sync-tracking-atoms!)
     (let [search-term (str (random-uuid))]
-      (mq.test-util/with-sync-queue
+      (mq.tu/with-sync-mq
         (mt/with-temp
           [:model/Card {card-id :id} {:name search-term}]
           (mt/with-current-user (mt/user->id :crowberto)

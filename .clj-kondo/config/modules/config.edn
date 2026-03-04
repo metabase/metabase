@@ -548,7 +548,7 @@
            metabase.driver.common.parameters
            metabase.driver.common.parameters.parse
            metabase.driver.connection
-          metabase.driver.connection.workspaces
+           metabase.driver.connection.workspaces
            metabase.driver.ddl.interface
            metabase.driver.h2
            metabase.driver.impl
@@ -582,11 +582,13 @@
            legacy-mbql
            lib
            lib-be
+           mq
            premium-features
            query-processor
            settings
            sql-tools
            system
+           startup
            util
            warehouse-schema
            warehouses}}
@@ -1317,6 +1319,7 @@
            lib
            lib-be
            models
+           mq
            permissions
            premium-features
            queries
@@ -1403,7 +1406,9 @@
            config
            events
            models
+           mq
            premium-features
+           startup
            util
            enterprise/advanced-permissions}}
 
@@ -1863,7 +1868,9 @@
            events
            lib
            models
+           mq
            query-processor
+           startup
            util
            warehouse-schema}}
 

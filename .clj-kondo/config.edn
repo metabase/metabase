@@ -188,13 +188,7 @@
      ;; Safe in tests, where we typically use a private, temporary index per thread.
      metabase.search.core/reindex!
      metabase.util/run-count!
-     next.jdbc/execute!
-     ;; MQ functions are safe in parallel tests because with-memory-queue and
-     ;; with-memory-topics bind fresh isolated atoms via dynamic vars
-     metabase.mq.core/listen!
-     metabase.mq.core/stop-listening!
-     metabase.mq.core/subscribe!
-     metabase.mq.core/unsubscribe!}}
+     next.jdbc/execute!}}
 
   :metabase/i-like-making-cams-eyes-bleed-with-horrifically-long-tests
   {:level      :warning
@@ -233,8 +227,7 @@
   ;;
 
   :invalid-arity       {:skip-args [metabase.lib.util.match/match
-                                    metabase.lib.util.match/match-lite
-                                    metabase.lib.util.match/match-many]}                    ; TODO (cam): can we fix these?
+                                    metabase.lib.util.match/match-lite]}                    ; TODO (cam): can we fix these?
   :refer-all           {:level :warning, :exclude [clojure.test]}
   :unused-referred-var {:exclude {compojure.core [GET DELETE POST PUT]}}
 
@@ -253,13 +246,11 @@
     (metabase.lib.util.match/match)
     (metabase.lib.util.match/match-one)
     (metabase.lib.util.match/match-lite)
-    (metabase.lib.util.match/match-many)
     (metabase.lib.util.match/replace)
     (metabase.lib.util.match/replace-in)
     (metabase.driver-api.core/match)
     (metabase.driver-api.core/match-one)
     (metabase.driver-api.core/match-lite)
-    (metabase.driver-api.core/match-many)
     (metabase.driver-api.core/replace)
     (metabase.driver-api.core/replace-in)
     (metabase.query-processor.middleware.cache-backend.interface/with-cached-results)
@@ -313,12 +304,11 @@
    metabase.lib.convert/->legacy-MBQL                 {:message "Conversion to legacy MBQL is discouraged, please use Lib to manipulate MBQL queries"}
    metabase.lib.core/->legacy-MBQL                    {:message "Conversion to legacy MBQL is discouraged, please use Lib to manipulate MBQL queries"}
    metabase.lib.equality/find-column-indexes-for-refs {:message "Use lib.equality/closest-matches-in-metadata or lib.equality/find-closest-matches-for-refs instead of lib.equality/find-column-indexes-for-refs"}
-   metabase.lib.util.match/match                      {:message "Use lib.util.match/match-many instead of lib.util.match/match."}
-   metabase.lib.util.match/match-one                  {:message "Use lib.util.match/match-lite instead of lib.util.match/match-one."}
    metabase-enterprise.transforms.interface/execute!  {:message "Use metabase-enterprise.transforms.execute/execute! instead of metabase-enterprise.transforms.interface/execute!"}
    next.jdbc/active-tx?                               {:message "Use metabase.app-db.core/in-transaction? to see if we are in a transaction"}
    toucan2.core/debug                                 {:message "Don't commit code using t2/debug"}
-   toucan2.tools.debug/debug                          {:message "Don't commit code using t2/debug"}}
+   toucan2.tools.debug/debug                          {:message "Don't commit code using t2/debug"}
+   }
 
   :discouraged-namespace
   {camel-snake-kebab.core {:message "CSK is not Turkish-safe, use the versions in metabase.util instead."}
@@ -594,8 +584,6 @@
    metabase.model-persistence.test-util/with-persistence-enabled!                                                            hooks.metabase.model-persistence.test-util/with-persistence-enabled!
    metabase.mq.core/with-queue                                                                                              hooks.common/let-second
    metabase.mq.core/with-topic                                                                                              hooks.common/let-second
-   metabase.mq.queue.impl/with-queue                                                                                        hooks.common/let-second
-   metabase.mq.topic.impl/with-topic                                                                                        hooks.common/let-second
    metabase.models.interface/define-batched-hydration-method                                                                 hooks.metabase.models.interface/define-hydration-method
    metabase.models.interface/define-simple-hydration-method                                                                  hooks.metabase.models.interface/define-hydration-method
    metabase.permissions.core/allow-changing-all-users-group-members                                                          hooks.common/do*

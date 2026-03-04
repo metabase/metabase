@@ -12,7 +12,7 @@
    [metabase.driver :as driver]
    [metabase.driver.sql-jdbc :as sql-jdbc]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
-   [metabase.mq.queue.test-util :as qt]
+   [metabase.mq.test-util :as mq.tu]
    [metabase.query-processor :as qp]
    [metabase.test :as mt]
    [metabase.test.data.sql :as sql.tx]
@@ -535,7 +535,7 @@
               field-values #(vec (:values (field-values/get-latest-full-field-values field-id)))
               create!      #(action-v2.tu/create-rows! table-id %)
               update!      #(action-v2.tu/update-rows! table-id %)]
-          (qt/with-sync-queue
+          (mq.tu/with-sync-mq
             (is (= [] (field-values)))
 
             (create! [{:n "a"}])

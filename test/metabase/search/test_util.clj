@@ -1,7 +1,7 @@
 (ns metabase.search.test-util
   (:require
    [metabase.api.common :as api]
-   [metabase.mq.queue.test-util :as mq.test-util]
+   [metabase.mq.test-util :as mq.tu]
    [metabase.permissions.util :as perms-util]
    [metabase.request.core :as request] ;; For now, this is specialized to the appdb engine, but we should be able to generalize it to all engines.
    [metabase.search.appdb.index :as search.index]
@@ -18,7 +18,7 @@
 (defmacro with-sync-search-indexing
   "Perform all search indexing synchronously."
   [& body]
-  `(mq.test-util/with-sync-queue
+  `(mq.tu/with-sync-mq
      ~@body))
 
 #_{:clj-kondo/ignore [:metabase/test-helpers-use-non-thread-safe-functions]}
