@@ -1,3 +1,11 @@
 {
-  "continuations": null
+  "continuations": [
+    {
+      "command": [
+        "upstack",
+        "restack"
+      ],
+      "branch": "emb-1336-tenant-creation-should-differ-the-data-isolation-field-by"
+    }
+  ]
 }
