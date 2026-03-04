@@ -226,7 +226,7 @@
                                  :value -5}]
                       :group-by []})))))))))
 
-(deftest ^:parallel query-model-test
+(deftest ^:parallel query-model-permissions-and-errors-test
   (mt/with-temp [:model/Card {model-id :id} {:dataset_query (mt/mbql-query orders {})
                                              :database_id (mt/id)
                                              :name "Orders Model"
@@ -239,12 +239,27 @@
                               :filters []
                               :group-by []}))))
     (mt/with-current-user (mt/user->id :crowberto)
+      (testing "Missing model results in an error."
+        (is (= {:output "Not found."
+                :status-code 404}
+               (metabot-v3.tools.filters/query-model {:model-id Integer/MAX_VALUE}))))
+      (testing "Invalid model-id results in an error."
+        (is (= {:output (str "Invalid model_id " model-id)
+                :status-code 400}
+               (metabot-v3.tools.filters/query-model {:model-id (str model-id)})))))))
+
+(deftest ^:parallel query-model-queries-test
+  (mt/with-temp [:model/Card {model-id :id} {:dataset_query (mt/mbql-query orders {})
+                                             :database_id (mt/id)
+                                             :name "Orders Model"
+                                             :description "The _real_ orders."
+                                             :type :model}]
+    (mt/with-current-user (mt/user->id :crowberto)
       (let [model-details (-> (metabot-v3.tools.entity-details/get-table-details {:model-id model-id})
                               :structured-output)
             ->field-id #(u/prog1 (-> model-details :fields (by-name %) :field_id)
                           (when-not <>
-                            (throw (ex-info (str "Column " % " not found") {:column %}))))
-            order-created-at-field-id (->field-id "Created At")]
+                            (throw (ex-info (str "Column " % " not found") {:column %}))))]
         (testing "Trivial query works."
           (is (=? {:structured-output {:type :query,
                                        :query-id string?
@@ -276,6 +291,49 @@
                                     :function :sum}]
                     :group-by [{:field-id (->field-id "Product ID")
                                 :field-granularity :year}]}))))
+        (testing "With empty or missing fields and no summary, all fields are returned"
+          (let [expected-query {:structured-output
+                                {:type :query,
+                                 :query-id string?
+                                 :query {:database (mt/id)
+                                         :lib/type :mbql/query
+                                         :stages [{:lib/type :mbql.stage/mbql
+                                                   :source-card model-id
+                                                   :filters [[:!= {} [:field {} "USER_ID"] 3 42]]}]}}}
+                input {:model-id model-id
+                       :filters [{:field-id (->field-id "User ID")
+                                  :operation :not-equals
+                                  :values [3 42]}]}]
+            (are [input] (=? expected-query (metabot-v3.tools.filters/query-model input))
+              input
+              (assoc input :fields nil)
+              (assoc input :fields []))))
+        (testing "Cumulative count aggregation without field-id works"
+          (is (=? {:structured-output {:type :query
+                                       :query-id string?
+                                       :query {:database (mt/id)
+                                               :lib/type :mbql/query
+                                               :stages [{:lib/type :mbql.stage/mbql
+                                                         :source-card model-id
+                                                         :aggregation [[:cum-count {}]]}]}}}
+                  (metabot-v3.tools.filters/query-model
+                   {:model-id model-id
+                    :aggregations [{:function :cum-count}]
+                    :group-by []}))))))))
+
+(deftest ^:parallel query-model-temporal-bucketing-test
+  (mt/with-temp [:model/Card {model-id :id} {:dataset_query (mt/mbql-query orders {})
+                                             :database_id (mt/id)
+                                             :name "Orders Model"
+                                             :description "The _real_ orders."
+                                             :type :model}]
+    (mt/with-current-user (mt/user->id :crowberto)
+      (let [model-details (-> (metabot-v3.tools.entity-details/get-table-details {:model-id model-id})
+                              :structured-output)
+            ->field-id #(u/prog1 (-> model-details :fields (by-name %) :field_id)
+                          (when-not <>
+                            (throw (ex-info (str "Column " % " not found") {:column %}))))
+            order-created-at-field-id (->field-id "Created At")]
         (testing "Temporal bucketing works for temporal columns."
           (is (=? {:structured-output {:type :query,
                                        :query-id string?
@@ -340,44 +398,7 @@
                                {:field-id (->field-id "Total")}]
                       :filters [{:field-id (->field-id "User ID")
                                  :operation :not-equals
-                                 :values [3 42]}]}))))
-        (testing "With empty or missing fields and no summary, all fields are returned"
-          (let [expected-query {:structured-output
-                                {:type :query,
-                                 :query-id string?
-                                 :query {:database (mt/id)
-                                         :lib/type :mbql/query
-                                         :stages [{:lib/type :mbql.stage/mbql
-                                                   :source-card model-id
-                                                   :filters [[:!= {} [:field {} "USER_ID"] 3 42]]}]}}}
-                input {:model-id model-id
-                       :filters [{:field-id (->field-id "User ID")
-                                  :operation :not-equals
-                                  :values [3 42]}]}]
-            (are [input] (=? expected-query (metabot-v3.tools.filters/query-model input))
-              input
-              (assoc input :fields nil)
-              (assoc input :fields []))))
-        (testing "Cumulative count aggregation without field-id works"
-          (is (=? {:structured-output {:type :query
-                                       :query-id string?
-                                       :query {:database (mt/id)
-                                               :lib/type :mbql/query
-                                               :stages [{:lib/type :mbql.stage/mbql
-                                                         :source-card model-id
-                                                         :aggregation [[:cum-count {}]]}]}}}
-                  (metabot-v3.tools.filters/query-model
-                   {:model-id model-id
-                    :aggregations [{:function :cum-count}]
-                    :group-by []}))))
-        (testing "Missing model results in an error."
-          (is (= {:output "Not found."
-                  :status-code 404}
-                 (metabot-v3.tools.filters/query-model {:model-id Integer/MAX_VALUE}))))
-        (testing "Invalid model-id results in an error."
-          (is (= {:output (str "Invalid model_id " model-id)
-                  :status-code 400}
-                 (metabot-v3.tools.filters/query-model {:model-id (str model-id)}))))))))
+                                 :values [3 42]}]}))))))))
 
 (deftest ^:parallel filter-records-table-test
   (testing "User has to have execution rights, otherwise the table should be invisible."
