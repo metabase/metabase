@@ -619,10 +619,11 @@ describe("scenarios - embedding hub", () => {
           const tenants = response.body.data;
 
           const acmeTenant = tenants.find(
-            (t: { slug: string }) => t.slug === "acme-corp-slug",
+            (tenant: { slug: string }) => tenant.slug === "acme-corp-slug",
           );
+
           const betaTenant = tenants.find(
-            (t: { slug: string }) => t.slug === "beta-inc-slug",
+            (tenant: { slug: string }) => tenant.slug === "beta-inc-slug",
           );
 
           expect(acmeTenant).to.exist;
@@ -683,6 +684,28 @@ describe("scenarios - embedding hub", () => {
 
         cy.log("we should still be on the create tenants step");
         H.main().findByPlaceholderText("Tenant name").should("be.visible");
+      });
+
+      it("reloads with strategy pre-selected and 'Select data' step unlocked when RLS is configured", () => {
+        cy.visit("/admin/embedding/setup-guide/permissions");
+
+        cy.log(
+          "'Select data' step should not be locked when RLS is configured",
+        );
+        H.main()
+          .findByRole("listitem", { name: "Select data to make available" })
+          .icon("lock")
+          .should("not.exist");
+
+        cy.log("strategy picker should show RLS pre-selected");
+        H.main()
+          .findByText("Which data segregation strategy does your database use?")
+          .scrollIntoView()
+          .click();
+
+        H.main()
+          .findByRole("radio", { name: /Row and column level security/ })
+          .should("have.attr", "aria-checked", "true");
       });
 
       it("shows autocomplete suggestions for tenant_identifier based on selected field values", () => {
@@ -1179,6 +1202,107 @@ describe("scenarios - embedding hub", () => {
       H.tooltip()
         .findByText("This database doesn't support connection impersonation")
         .should("be.visible");
+    });
+
+    it("creates a tenant with database_role attribute when using connection impersonation", () => {
+      cy.visit("/admin/embedding/setup-guide/permissions");
+
+      cy.log("select connection impersonation strategy");
+      H.main()
+        .findByRole("radio", { name: /Connection impersonation/ })
+        .scrollIntoView()
+        .click();
+
+      H.main()
+        .findByRole("button", { name: "Use connection impersonation" })
+        .scrollIntoView()
+        .click();
+
+      cy.log("navigate to create tenants step");
+      H.main().findByRole("listitem", { name: "Create tenants" }).click();
+
+      cy.log("fill out the tenant form");
+      H.main().within(() => {
+        cy.findByPlaceholderText("Tenant name").clear().type("Acme Corp");
+        cy.findByPlaceholderText("tenant_role").type("acme_role");
+        cy.findByPlaceholderText("tenant-slug").clear().type("acme-corp");
+      });
+
+      H.main().findByRole("button", { name: "Next" }).click();
+
+      cy.log("success toast should show");
+      H.undoToast()
+        .findByText("Tenants created successfully")
+        .should("be.visible");
+
+      cy.log("tenant should have database_role attribute");
+      cy.request("GET", "/api/ee/tenant").should((response) => {
+        const tenantBySlug = response.body.data.find(
+          (tenant: { slug: string }) => tenant.slug === "acme-corp",
+        );
+
+        expect(tenantBySlug.attributes).to.deep.equal({
+          database_role: "acme_role",
+        });
+      });
+    });
+  });
+
+  describe("database routing create tenants step", () => {
+    beforeEach(() => {
+      H.restore("setup");
+      cy.signInAsAdmin();
+      H.activateToken("bleeding-edge");
+
+      H.updateSetting("use-tenants", true);
+
+      cy.request("POST", "/api/collection", {
+        name: "Shared collection",
+        namespace: "shared-tenant-collection",
+      });
+    });
+
+    it("creates a tenant with database_slug attribute when using database routing", () => {
+      cy.visit("/admin/embedding/setup-guide/permissions");
+
+      cy.log("select database routing strategy");
+      H.main()
+        .findByRole("radio", { name: /Database routing/ })
+        .scrollIntoView()
+        .click();
+
+      H.main()
+        .findByRole("button", { name: "Use database routing" })
+        .scrollIntoView()
+        .click();
+
+      cy.log("navigate to create tenants step");
+      H.main().findByRole("listitem", { name: "Create tenants" }).click();
+
+      cy.log("fill out the tenant form");
+      H.main().within(() => {
+        cy.findByPlaceholderText("Tenant name").clear().type("Acme Corp");
+        cy.findByPlaceholderText("tenant-db-slug").type("acme-db");
+        cy.findByPlaceholderText("tenant-slug").clear().type("acme-corp");
+      });
+
+      H.main().findByRole("button", { name: "Next" }).click();
+
+      cy.log("success toast should show");
+      H.undoToast()
+        .findByText("Tenants created successfully")
+        .should("be.visible");
+
+      cy.log("tenant should have database_slug attribute");
+      cy.request("GET", "/api/ee/tenant").should((response) => {
+        const tenantBySlug = response.body.data.find(
+          (tenant: { slug: string }) => tenant.slug === "acme-corp",
+        );
+
+        expect(tenantBySlug.attributes).to.deep.equal({
+          database_slug: "acme-db",
+        });
+      });
     });
   });
 
