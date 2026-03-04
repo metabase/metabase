@@ -95,6 +95,20 @@ We suggest you leave this off unless you're doing manual [timezone](../../config
 
 This can be useful for [auditing](../../usage-and-performance-tools/usage-analytics.md) and debugging, but prevents BigQuery from caching results and may increase your costs.
 
+### Maximum bytes billed per query
+
+Set an upper limit on the number of bytes a single query can scan. If a query would exceed this limit, BigQuery rejects it before it runs — preventing accidental full-table scans on large tables from causing unexpected costs.
+
+The value is specified in **bytes**. For example:
+
+| Limit | Bytes                |
+|-------|----------------------|
+| 1 GB  | `1073741824`         |
+| 10 GB | `10737418240`        |
+| 1 TB  | `1099511627776`      |
+
+Leave blank for no limit (the default).
+
 ### Alternate hostname
 
 If you want to use a different hostname to connect to BigQuery. Format: `https://<hostname>:<port>`. If you're using a proxy service to connect to BigQuery (e.g. a privacy proxy that anonymizes PII), you should configure this field to the proxy hostname or IP. Remember to set the complete URI with protocol and port number.
