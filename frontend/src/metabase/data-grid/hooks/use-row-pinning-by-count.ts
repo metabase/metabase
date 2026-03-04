@@ -1,12 +1,11 @@
-import type { RowPinningState } from "@tanstack/react-table";
-import type { CoreOptions } from "@tanstack/table-core/src/core/table";
+import type { Row, RowPinningState } from "@tanstack/react-table";
 import { useMemo } from "react";
 
 type UseRowPinningByCountProps<TData> = {
   top?: number;
   bottom?: number;
   data: TData[];
-  getRowId: NonNullable<CoreOptions<TData>["getRowId"]>;
+  getRowId: (originalRow: TData, index: number, parent?: Row<TData>) => string;
 };
 
 export const useRowPinningByCount = <TData>({
