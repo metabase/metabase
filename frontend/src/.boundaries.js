@@ -39,18 +39,18 @@ const rules = [
     allow: ["lib/*"],
     message: "Basic modules can only import from lib modules",
   },
-  {
-    from: ["lib/lib"],
-    allow: ["basic/mlv2"],
-  },
+  // {
+  //   from: ["lib/lib"],
+  //   allow: ["basic/mlv2"],
+  // },
   {
     from: ["basic/ui"],
     allow: ["lib/lib"],
   },
-  {
-    from: ["shared/querying"],
-    allow: ["feature/query_builder"],
-  },
+  // {
+  //   from: ["shared/querying"],
+  //   allow: ["feature/query_builder"],
+  // },
   {
     from: ["shared/*"],
     allow: ["lib/*", "basic/*", "shared/*"],
