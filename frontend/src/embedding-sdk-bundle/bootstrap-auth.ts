@@ -72,7 +72,7 @@ function waitForAuthConfigAndStartEarlyAuthFlow() {
     return;
   }
 
-  // Poll for store for a second. If they provider hasn't mounted by then we'll just do normal auth
+  // Poll for store for a second. If the provider hasn't mounted by then we'll just do normal auth
   let attempts = 0;
   const maxAttempts = 100;
   const delay = 10;
