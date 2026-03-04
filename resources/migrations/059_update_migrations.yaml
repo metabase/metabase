@@ -3561,7 +3561,7 @@ databaseChangeLog:
 
   ## The original changeset that made this not null has been removed, but keep the switch to nullable to handle existing DBs.
   - changeSet:
-      id: v59.2026-03-04T11:02:53
+      id: v59.2026-03-01T11:02:53
       author: nvoxland
       comment: Make transform.source_database_id nullable
       changes:

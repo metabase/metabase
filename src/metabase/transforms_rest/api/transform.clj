@@ -84,7 +84,7 @@
    [:source :any]
    [:target :any]
    [:source_type :keyword]
-   [:source_database_id {:optional true} [:maybe pos-int?]]
+   [:source_db_id {:optional true} [:maybe pos-int?]]
    [:source_readable {:optional true} [:maybe :boolean]]
    [:entity_id [:maybe :string]]
    [:created_at :any]
@@ -100,7 +100,10 @@
    [:table {:optional true} [:maybe :map]]
    [:owner_user_id {:optional true} [:maybe pos-int?]]
    [:owner_email {:optional true} [:maybe :string]]
-   [:owner {:optional true} [:maybe OwnerResponse]]])
+   [:owner {:optional true} [:maybe OwnerResponse]]
+   [:can_read {:optional true} :boolean]
+   [:can_write {:optional true} :boolean]
+   [:can_execute {:optional true} :boolean]])
 
 (def ^:private TransformRunResponse
   [:map {:closed true}
@@ -192,7 +195,7 @@
         global-ordering (transforms.core/transform-ordering (vals id->transform))
         dep-ids         (get global-ordering id)
         dependencies    (map id->transform dep-ids)]
-    (->> (t2/hydrate dependencies :creator :owner)
+    (->> (t2/hydrate dependencies :creator :owner :can_read :can_write :can_execute)
          (mapv transforms.core/python-source-table-ref->table-id)
          transforms.u/add-source-readable)))
 
