@@ -757,6 +757,10 @@
                          (lib/join q (-> (lib/join-clause (lib.metadata/card mp 2))
                                          (lib/with-join-fields [(meta/field-metadata :products :id)
                                                                 (find-column (lib/join-condition-rhs-columns q (lib.metadata/card mp 2) nil nil) "ID")])))
+                         (lib/expression q "expr_1" (lib/+ (meta/field-metadata :orders :id)
+                                                           (find-column (lib/fieldable-columns q) "ID")))
+                         (lib/expression q "expr_2" (lib/+ (meta/field-metadata :orders :id)
+                                                           (find-column (lib/fieldable-columns q) "ID")))
                          (lib/with-fields q [(meta/field-metadata :orders :created-at)
                                              (find-column (lib/fieldable-columns q) "CREATED_AT")])
                          (lib/breakout q (meta/field-metadata :orders :created-at))
@@ -770,7 +774,15 @@
                                                     {:type :card, :id 3})]
     (testing "before upgrade: 2 entries in each clause differing only in ref style"
       (is (=? {:stages [{:fields   [[:field {} (meta/id :orders :created-at)]
-                                    [:field {} "CREATED_AT"]]
+                                    [:field {} "CREATED_AT"]
+                                    [:expression {} "expr_1"]
+                                    [:expression {} "expr_2"]]
+                         :expressions [[:+ {:lib/expression-name "expr_1"}
+                                        [:field {} (meta/id :orders :id)]
+                                        [:field {} (meta/id :orders :id)]]
+                                       [:+ {:lib/expression-name "expr_2"}
+                                        [:field {} (meta/id :orders :id)]
+                                        [:field {} (meta/id :orders :id)]]]
                          :breakout [[:field {} (meta/id :orders :created-at)]
                                     [:field {} "CREATED_AT"]]
                          :order-by [[:asc {} [:field {} (meta/id :orders :created-at)]]
@@ -778,9 +790,17 @@
                          :joins    [{:fields [[:field {:join-alias join-alias} (meta/id :products :id)]
                                               [:field {:join-alias join-alias} "ID"]]}]}]}
               query)))
-    (testing "upgrade deduplicates each clause to 1 name-based entry"
+    (testing "upgrade deduplicates each clause to 1 name-based entry, except for expressions"
       (is (=? {:stages [{:source-card 1
-                         :fields   [[:field {} "CREATED_AT"]]
+                         :fields   [[:field {} "CREATED_AT"]
+                                    [:expression {} "expr_1"]
+                                    [:expression {} "expr_2"]]
+                         :expressions [[:+ {:lib/expression-name "expr_1"}
+                                        [:field {} "ID"]
+                                        [:field {} "ID"]]
+                                       [:+ {:lib/expression-name "expr_2"}
+                                        [:field {} "ID"]
+                                        [:field {} "ID"]]]
                          :breakout [[:field {} "CREATED_AT"]]
                          :order-by [[:asc {} [:field {} "CREATED_AT"]]]
                          :joins    [{:stages [{:source-card 2}]
@@ -788,7 +808,15 @@
               upgraded-query)))
     (testing "swap to reviews card preserves name-based refs"
       (is (=? {:stages [{:source-card 3
-                         :fields   [[:field {} "CREATED_AT"]]
+                         :fields   [[:field {} "CREATED_AT"]
+                                    [:expression {} "expr_1"]
+                                    [:expression {} "expr_2"]]
+                         :expressions [[:+ {:lib/expression-name "expr_1"}
+                                        [:field {} "ID"]
+                                        [:field {} "ID"]]
+                                       [:+ {:lib/expression-name "expr_2"}
+                                        [:field {} "ID"]
+                                        [:field {} "ID"]]]
                          :breakout [[:field {} "CREATED_AT"]]
                          :order-by [[:asc {} [:field {} "CREATED_AT"]]]
                          :joins    [{:stages [{:source-card 2}]
