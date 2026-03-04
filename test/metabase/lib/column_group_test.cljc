@@ -497,8 +497,9 @@
                {::lib.column-group/group-type :group-type/join.implicit
                 :fk-join-alias                "Reviews - Product"
                 :fk-field-id                  (meta/id :reviews :product-id)}]
-              (lib/group-columns cols)))))
+              (lib/group-columns cols))))))
 
+(deftest ^:parallel multiple-joins-same-table-display-names-test
   (testing "Multiple joins to the same table should have distinguishable display names (#37025)"
     (let [query (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
                     (lib/join (lib/join-clause (meta/table-metadata :products)
