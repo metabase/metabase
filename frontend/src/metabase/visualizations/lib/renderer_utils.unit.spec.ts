@@ -1,14 +1,31 @@
-import dayjs from "dayjs";
+import dayjs, { type Dayjs } from "dayjs";
 
 import {
   getXValues,
   parseXValue,
 } from "metabase/visualizations/lib/renderer_utils";
+import type {
+  RowValues,
+  Series,
+  VisualizationSettings,
+} from "metabase-types/api";
+import {
+  createMockCard,
+  createMockColumn,
+  createMockDatasetData,
+} from "metabase-types/api/mocks";
+import { isObject } from "metabase-types/guards";
 
 describe("getXValues", () => {
-  function getXValuesForRows(listOfRows, settings = {}) {
-    const series = listOfRows.map((rows) => ({ data: { rows, cols: [{}] } }));
-    series._raw = series;
+  function getXValuesForRows(
+    listOfRows: RowValues[][],
+    settings: VisualizationSettings = {},
+  ) {
+    const series: Series = listOfRows.map((rows) => ({
+      card: createMockCard(),
+      data: createMockDatasetData({ rows, cols: [createMockColumn()] }),
+    }));
+    Object.assign(series, { _raw: series });
     return getXValues({ settings, series });
   }
 
@@ -67,59 +84,90 @@ describe("getXValues", () => {
   });
 
   it("should use raw row ordering rather than broken out series", () => {
-    const series = [
+    const series: Series = [
       // these are broken out series. the ordering here is ignored
-      { data: { rows: [["a"], ["b"]], cols: [{}] } },
-      { data: { rows: [["c"], ["d"]], cols: [{}] } },
+      {
+        card: createMockCard(),
+        data: createMockDatasetData({
+          rows: [["a"], ["b"]],
+          cols: [createMockColumn()],
+        }),
+      },
+      {
+        card: createMockCard(),
+        data: createMockDatasetData({
+          rows: [["c"], ["d"]],
+          cols: [createMockColumn()],
+        }),
+      },
     ];
-    series._raw = [
-      { data: { rows: [["d"], ["c"], ["b"], ["a"]], cols: [{}] } },
-    ];
+    Object.assign(series, {
+      _raw: [
+        {
+          data: {
+            rows: [["d"], ["c"], ["b"], ["a"]],
+            cols: [createMockColumn()],
+          },
+        },
+      ],
+    });
     const settings = {};
     expect(getXValues({ settings, series })).toEqual(["d", "c", "b", "a"]);
   });
 
   it("should return empty array when data has no rows and columns", () => {
-    const series = [{ data: { rows: [], cols: [] } }];
-    series._raw = [{ data: { rows: [], cols: [] } }];
+    const series: Series = [
+      {
+        card: createMockCard(),
+        data: createMockDatasetData({ rows: [], cols: [] }),
+      },
+    ];
+    Object.assign(series, { _raw: [{ data: { rows: [], cols: [] } }] });
 
     expect(getXValues({ settings: {}, series })).toEqual([]);
   });
 
   it("should use the correct column as the dimension for raw series", () => {
-    const series = [
+    const series: Series = [
       {
-        data: {
+        card: createMockCard(),
+        data: createMockDatasetData({
           rows: [["second", "first"]],
-          cols: [{ name: "second" }, { name: "first" }],
-        },
+          cols: [
+            createMockColumn({ name: "second" }),
+            createMockColumn({ name: "first" }),
+          ],
+        }),
       },
     ];
-    series._raw = [
-      {
-        data: {
-          rows: [["first", "second"]],
-          cols: [{ name: "first" }, { name: "second" }],
+    Object.assign(series, {
+      _raw: [
+        {
+          data: {
+            rows: [["first", "second"]],
+            cols: [{ name: "first" }, { name: "second" }],
+          },
         },
-      },
-    ];
+      ],
+    });
     const settings = { "graph.dimensions": ["second"] };
     expect(getXValues({ settings, series })).toEqual(["second"]);
   });
 
   it("should use the correct column as the dimension for parsing options", () => {
-    const series = [
+    const series: Series = [
       {
-        data: {
+        card: createMockCard(),
+        data: createMockDatasetData({
           rows: [["foo", "2019-09-01T00:00:00Z"]],
           cols: [
-            { name: "other" },
-            { name: "date", base_type: "type/DateTime" },
+            createMockColumn({ name: "other" }),
+            createMockColumn({ name: "date", base_type: "type/DateTime" }),
           ],
-        },
+        }),
       },
     ];
-    series._raw = series;
+    Object.assign(series, { _raw: series });
     const settings = { "graph.dimensions": ["date"] };
     const [xVal] = getXValues({ settings, series });
     expect(dayjs.isDayjs(xVal)).toBe(true);
@@ -133,7 +181,9 @@ describe("getXValues", () => {
           [["2019-08-11"], ["2019-W33"]],
         ],
         { "graph.x_axis.scale": "timeseries" },
-      ).map((x) => x.format()),
+      )
+        .filter((value): value is Dayjs => isObject(value) && "format" in value)
+        .map((value) => value.format()),
     ).toEqual([
       "2019-08-11T00:00:00Z",
       "2019-08-12T00:00:00Z",
@@ -142,7 +192,7 @@ describe("getXValues", () => {
   });
 
   it("should include nulls for ordinal", () => {
-    const settings = { "graph.x_axis.scale": "ordinal" };
+    const settings: VisualizationSettings = { "graph.x_axis.scale": "ordinal" };
     const xValues = getXValuesForRows([[["foo"], [null], ["bar"]]], settings);
     expect(xValues).toEqual(["foo", "(empty)", "bar"]);
   });
@@ -161,7 +211,9 @@ describe("getXValues", () => {
         "graph.x_axis.scale": "timeseries",
       },
     );
-    const formattedXValues = xValues.map((v) => v.format("YYYY-MM-DD"));
+    const formattedXValues = xValues
+      .filter((value): value is Dayjs => isObject(value) && "format" in value)
+      .map((value) => value.format("YYYY-MM-DD"));
     expect(formattedXValues).toEqual(["2019-01-02", "2019-01-03"]);
   });
 
@@ -172,7 +224,9 @@ describe("getXValues", () => {
         "graph.x_axis.scale": "timeseries",
       },
     );
-    const formattedXValues = xValues.map((v) => v.format("YYYY-MM-DD"));
+    const formattedXValues = xValues
+      .filter((value): value is Dayjs => isObject(value) && "format" in value)
+      .map((value) => value.format("YYYY-MM-DD"));
     expect(formattedXValues).toEqual(["2019-01-02", "2019-01-03"]);
   });
 });

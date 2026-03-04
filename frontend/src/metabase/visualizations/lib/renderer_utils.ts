@@ -25,10 +25,10 @@ import {
 } from "./warnings";
 
 type ParseOptions = {
-  isNumeric: boolean;
-  isTimeseries: boolean;
-  isQuantitative: boolean;
-  unit: DatetimeUnit | undefined;
+  isNumeric?: boolean;
+  isTimeseries?: boolean;
+  isQuantitative?: boolean;
+  unit?: DatetimeUnit;
 };
 
 type Warn = (warning: VisualizationWarning) => void;
@@ -37,7 +37,7 @@ export function parseXValue(
   xValue: RowValue,
   options: ParseOptions,
   warn: Warn = () => undefined,
-) {
+): RowValue | Dayjs {
   const { parsedValue, warning } = memoizedParseXValue(xValue, options);
   if (warning !== undefined) {
     warn(warning);
@@ -50,7 +50,7 @@ const memoizedParseXValue = _.memoize(
     xValue: RowValue,
     { isNumeric, isTimeseries, isQuantitative, unit }: ParseOptions,
   ): {
-    parsedValue: RowValue;
+    parsedValue: RowValue | Dayjs;
     warning?: VisualizationWarning;
   } => {
     // don't parse as timestamp if we're going to display as a quantitative
@@ -102,7 +102,7 @@ export function getXValues({
   const rawSeries =
     isObjectWithRaw(series) && series._raw ? series._raw : series;
   const warn = () => undefined; // no op since warning in handled by getDatas
-  const uniqueValues = new Set();
+  const uniqueValues = new Set<Exclude<RowValue, null | undefined> | Dayjs>();
   let isAscending = true;
   let isDescending = true;
   for (const { data } of rawSeries) {
