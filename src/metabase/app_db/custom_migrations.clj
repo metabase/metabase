@@ -1872,7 +1872,8 @@
                  :workspace_transform [:workspace_id :ref_id]}]
     (doseq [[table-name pks] pk-cols]
       (doseq [row (t2/query {:select (into [:source] pks)
-                             :from   [table-name]})]
+                             :from   [table-name]
+                             :where  [:like :source "%\"type\":\"python\"%"]})]
         (when-let [new-source (convert-source-tables (:source row))]
           (t2/query {:update table-name
                      :set    {:source new-source}
@@ -1892,7 +1893,8 @@
                  :workspace_transform [:workspace_id :ref_id]}]
     (doseq [[table-name pks] pk-cols]
       (doseq [row (t2/query {:select (into [:source] pks)
-                             :from   [table-name]})]
+                             :from   [table-name]
+                             :where  [:like :source "%\"type\":\"python\"%"]})]
         (when-let [new-source (convert-back (:source row))]
           (t2/query {:update table-name
                      :set    {:source new-source}
