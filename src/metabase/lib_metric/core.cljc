@@ -38,6 +38,10 @@
      replace-clause
      swap-clauses]
     [lib-metric.definition
+     expression-leaf-id
+     expression-leaf-type
+     expression-leaf-uuid
+     expression-leaves
      filters
      from-measure-metadata
      from-metric-metadata
@@ -75,6 +79,10 @@
      (def remove-clause "See [[lib-metric.clause/remove-clause]]." lib-metric.clause/remove-clause)
      (def replace-clause "See [[lib-metric.clause/replace-clause]]." lib-metric.clause/replace-clause)
      (def swap-clauses "See [[lib-metric.clause/swap-clauses]]." lib-metric.clause/swap-clauses)
+     (def expression-leaf-id "See [[lib-metric.definition/expression-leaf-id]]." lib-metric.definition/expression-leaf-id)
+     (def expression-leaf-type "See [[lib-metric.definition/expression-leaf-type]]." lib-metric.definition/expression-leaf-type)
+     (def expression-leaf-uuid "See [[lib-metric.definition/expression-leaf-uuid]]." lib-metric.definition/expression-leaf-uuid)
+     (def expression-leaves "See [[lib-metric.definition/expression-leaves]]." lib-metric.definition/expression-leaves)
      (def filters "See [[lib-metric.definition/filters]]." lib-metric.definition/filters)
      (def from-measure-metadata "See [[lib-metric.definition/from-measure-metadata]]." lib-metric.definition/from-measure-metadata)
      (def from-metric-metadata "See [[lib-metric.definition/from-metric-metadata]]." lib-metric.definition/from-metric-metadata)

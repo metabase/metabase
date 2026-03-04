@@ -5,7 +5,6 @@
    [metabase.api.macros :as api.macros]
    [metabase.collections.models.collection :as collection]
    [metabase.lib-metric.core :as lib-metric]
-   [metabase.lib-metric.definition :as lib-metric.def]
    [metabase.lib-metric.schema :as lib-metric.schema]
    [metabase.metrics.core :as metrics]
    [metabase.query-processor :as qp]
@@ -104,13 +103,13 @@
 (defn- collect-expression-uuids
   "Collect all :lib/uuid values from leaf nodes in an expression tree."
   [expr]
-  (mapv lib-metric.def/expression-leaf-uuid (lib-metric.def/expression-leaves expr)))
+  (mapv lib-metric/expression-leaf-uuid (lib-metric/expression-leaves expr)))
 
 (defn- collect-expression-leaves
   "Collect [type id] pairs from leaf nodes in an expression tree."
   [expr]
-  (mapv (juxt lib-metric.def/expression-leaf-type lib-metric.def/expression-leaf-id)
-        (lib-metric.def/expression-leaves expr)))
+  (mapv (juxt lib-metric/expression-leaf-type lib-metric/expression-leaf-id)
+        (lib-metric/expression-leaves expr)))
 
 (mr/def ::Definition
   "Schema for the definition object within a dataset request.

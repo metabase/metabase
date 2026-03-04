@@ -638,6 +638,17 @@
         (is (= []
                (search-request-data :rasta :q "test")))))))
 
+(deftest measure-permissions-test
+  (testing "Measures on tables for which the user does not have access to should not show up in results"
+    (mt/with-temp [:model/Database {db-id :id} {}
+                   :model/Table    {table-id :id} {:db_id  db-id
+                                                   :schema nil}
+                   :model/Measure  _ {:table_id table-id
+                                      :name     "test measure"}]
+      (mt/with-no-data-perms-for-all-users!
+        (is (= []
+               (search-request-data :rasta :q "test")))))))
+
 (deftest permissions-test-8
   (testing "Databases for which the user does not have access to should not show up in results"
     (mt/with-temp [:model/Database _db-1  {:name "db-1"}
