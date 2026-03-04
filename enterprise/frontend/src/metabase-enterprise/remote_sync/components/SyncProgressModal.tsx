@@ -1,6 +1,6 @@
 import { t } from "ttag";
 
-import { ActionButton } from "metabase/common/components/ActionButton";
+import ActionButton from "metabase/common/components/ActionButton";
 import { useToast } from "metabase/common/hooks";
 import { useSelector } from "metabase/lib/redux";
 import { getUserIsAdmin } from "metabase/selectors/user";
