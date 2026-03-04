@@ -6,9 +6,9 @@
    [clojure.test :refer :all]
    [compojure.response]
    [medley.core :as m]
-   [metabase-enterprise.metabot-v3.api :as api]
    [metabase-enterprise.metabot-v3.client :as client]
    [metabase-enterprise.metabot-v3.client-test :as client-test]
+   [metabase-enterprise.metabot-v3.persistence :as persistence]
    [metabase-enterprise.metabot-v3.util :as metabot.u]
    [metabase.search.test-util :as search.tu]
    [metabase.server.instance :as server.instance]
@@ -100,8 +100,8 @@
         (search.tu/with-index-disabled
           (mt/with-premium-features #{:metabot-v3}
             (with-redefs [client/ai-url      (constantly ai-url)
-                          api/store-message! (fn [_conv-id _prof-id msgs]
-                                               (reset! messages msgs))
+                          persistence/store-message! (fn [_conv-id _prof-id msgs]
+                                                       (reset! messages msgs))
                           sr/async-cancellation-poll-interval-ms 5]
               (testing "Closing body stream drops connection"
                 (let [body (mt/user-real-request :rasta :post 202 "ee/metabot-v3/agent-streaming"

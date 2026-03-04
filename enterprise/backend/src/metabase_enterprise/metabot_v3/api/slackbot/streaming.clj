@@ -66,14 +66,11 @@
    For bot messages: merges tool calls/data from DB with text from Slack.
    This preserves tool history that Slack doesn't store while respecting edits."
   [thread bot-user-id conversation-id]
-  (let [bot-msg-ids   (->> (:messages thread)
-                           (filter :bot_id)
-                           (keep :ts)
-                           set)
-        _             (log/infof "[slackbot] Looking up message history for conversation %s, bot-msg-ids: %s"
-                                 conversation-id (pr-str bot-msg-ids))
-        msg-history   (slackbot.persistence/get-message-history conversation-id bot-msg-ids)
-        _             (log/infof "[slackbot] Found message history for %d bot messages" (count msg-history))]
+  (let [bot-msg-ids (->> (:messages thread)
+                         (filter :bot_id)
+                         (keep :ts)
+                         set)
+        msg-history (slackbot.persistence/get-message-history conversation-id bot-msg-ids)]
     (->> (:messages thread)
          (filter :text)
          (mapcat (fn [{:keys [bot_id ts text] :as _msg}]
@@ -149,30 +146,28 @@
         capabilities   (compute-capabilities)
         thread-history (thread->history thread bot-user-id conversation-id)
         history        (into (vec thread-history) extra-history)
-        _              (log/infof "[slackbot] Sending history to agent:\n%s"
-                                  (pr-str history))
-        handle-line (fn [line]
-                      (when-let [[type content] (metabot-v3.u/parse-aisdk-line line)]
-                        (case type
-                          :TEXT
-                          (when (and on-text (seq content))
-                            (on-text content))
+        handle-line    (fn [line]
+                         (when-let [[type content] (metabot-v3.u/parse-aisdk-line line)]
+                           (case type
+                             :TEXT
+                             (when (and on-text (seq content))
+                               (on-text content))
 
-                          :TOOL_CALL
-                          (when on-tool-start
-                            (on-tool-start {:id        (:toolCallId content)
-                                            :tool-name (:toolName content)}))
+                             :TOOL_CALL
+                             (when on-tool-start
+                               (on-tool-start {:id        (:toolCallId content)
+                                               :tool-name (:toolName content)}))
 
-                          :TOOL_RESULT
-                          (when on-tool-end
-                            (on-tool-end {:id     (:toolCallId content)
-                                          :result (:result content)}))
+                             :TOOL_RESULT
+                             (when on-tool-end
+                               (on-tool-end {:id     (:toolCallId content)
+                                             :result (:result content)}))
 
-                          :DATA
-                          (when on-data
-                            (on-data (vswap! data-idx inc) content))
+                             :DATA
+                             (when on-data
+                               (on-data (vswap! data-idx inc) content))
 
-                          (log/debugf "Ignoring AI SDK line of type %s" type))))
+                             (log/debugf "Ignoring AI SDK line of type %s" type))))
 
         _              (metabot-v3.persistence/store-message! conversation-id profile-id [message]
                                                               :slack-msg-id slack-msg-id)

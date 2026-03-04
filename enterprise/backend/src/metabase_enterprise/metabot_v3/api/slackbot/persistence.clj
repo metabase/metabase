@@ -1,7 +1,6 @@
 (ns metabase-enterprise.metabot-v3.api.slackbot.persistence
   "Slack-specific persistence: reconstruct conversation history from stored messages."
   (:require
-   [metabase.util.log :as log]
    [toucan2.core :as t2]))
 
 (def ^:private history-message-types
@@ -25,17 +24,11 @@
   "Fetch tool call history for Slack messages. Returns {slack-msg-id -> [messages...]}."
   [conversation-id slack-msg-ids]
   (when (seq slack-msg-ids)
-    (let [messages (t2/select :model/MetabotMessage
-                              :conversation_id conversation-id
-                              :role "assistant"
-                              :slack_msg_id [:in slack-msg-ids])]
-      (log/infof "[slackbot.persistence] Found %d messages for slack-msg-ids %s" (count messages) (pr-str slack-msg-ids))
-      (doseq [m messages]
-        (log/infof "[slackbot.persistence] Message slack_msg_id=%s, data types: %s"
-                   (:slack_msg_id m)
-                   (pr-str (mapv :_type (:data m)))))
-      (->> messages
-           (keep (fn [{:keys [slack_msg_id] :as msg}]
-                   (when-let [parts (seq (extract-history-messages msg))]
-                     [slack_msg_id parts])))
-           (into {})))))
+    (->> (t2/select :model/MetabotMessage
+                    :conversation_id conversation-id
+                    :role "assistant"
+                    :slack_msg_id [:in slack-msg-ids])
+         (keep (fn [{:keys [slack_msg_id] :as msg}]
+                 (when-let [parts (seq (extract-history-messages msg))]
+                   [slack_msg_id parts])))
+         (into {}))))
