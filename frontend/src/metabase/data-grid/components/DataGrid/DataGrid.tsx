@@ -18,6 +18,7 @@ import { SortableHeader } from "metabase/data-grid/components/SortableHeader/Sor
 import {
   ADD_COLUMN_BUTTON_WIDTH,
   DEFAULT_FONT_SIZE,
+  HEADER_BORDER_SIZE,
   HEADER_HEIGHT,
   PINNED_BORDER_SEPARATOR_WIDTH,
   PINNED_COLUMN_Z_INDEX,
@@ -164,6 +165,9 @@ export const DataGrid = function DataGrid<TData>({
     row: Row<TData>,
     virtualRow?: VirtualItem,
   ): React.CSSProperties => {
+    if (!virtualRow) {
+      return {};
+    }
     const pinnedPosition = row.getIsPinned();
     /**
      * It supports only top for now.
@@ -171,13 +175,10 @@ export const DataGrid = function DataGrid<TData>({
     if (pinnedPosition === "top") {
       return {
         position: "sticky",
-        top: `${HEADER_HEIGHT + 1 + (virtualRow?.start ?? 0)}px`,
+        top: `${HEADER_HEIGHT + virtualRow.start + HEADER_BORDER_SIZE}px`,
         zIndex: PINNED_ROW_Z_INDEX,
         backgroundColor: stickyElementsBackgroundColor,
       };
-    }
-    if (!virtualRow) {
-      return {};
     }
     return {
       position: "absolute",

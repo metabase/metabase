@@ -24,6 +24,9 @@
   top: 0;
   z-index: 2;
   border-bottom: 1px solid var(--mb-color-border-subtle);
+  /*
+    HEADER_HEIGHT (36px) + HEADER_BORDER_SIZE (1px).
+  */
   height: 37px;
 }
 
