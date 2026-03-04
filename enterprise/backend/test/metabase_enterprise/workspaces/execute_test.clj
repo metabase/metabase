@@ -320,13 +320,10 @@
 
 (deftest workspace-mbql-remapping-throws-test
   (testing "workspace remapping throws on MBQL queries (not yet supported)"
-    (let [query {:lib/type             :mbql/query
-                 :database             1
-                 :stages               [{:lib/type     :mbql.stage/mbql
-                                         :source-table 1}]
-                 :middleware           {:workspace-remapping
-                                        {:tables {{:schema "public" :table "orders"}
-                                                  {:schema "ws_isolated" :table "public__orders"}}}}}]
+    (let [query (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
+                    (assoc-in [:middleware :workspace-remapping]
+                              {:tables {{:schema "public" :table "orders"}
+                                        {:schema "ws_isolated" :table "public__orders"}}}))]
       (is (thrown-with-msg? ExceptionInfo
                             #"Workspace remapping is currently only supported for native queries"
                             (ws.qp.middleware/apply-workspace-remapping query))))))
