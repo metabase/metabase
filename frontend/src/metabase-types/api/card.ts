@@ -38,6 +38,8 @@ export type CardType = (typeof CARD_TYPES)[number];
 export type CardDashboardInfo = Pick<Dashboard, "id" | "name">;
 export type CardDocumentInfo = Pick<Document, "id" | "name">;
 
+export type WrappedCardId = `card__${CardId}`;
+
 export interface Card<Q extends DatasetQuery = DatasetQuery>
   extends UnsavedCard<Q> {
   id: CardId;
