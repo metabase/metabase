@@ -30,7 +30,7 @@ And a lot of the time, you'll then **group** that metric by:
 
 Adding a summarize step lets you choose how to aggregate the data from the previous step. You can pick one or more metrics, and optionally group those metrics by one or more dimensions (columns). When picking your metrics you can choose from basic functions like `sum`, `average`, and `count`; or you can pick a common metric defined by an admin; or you can create a [custom expression](./expressions.md) by writing a formula.
 
-Common metrics include:
+Basic metrics include:
 
 - **Count of rows:** the total of number of rows in the table, after any filters have been applied. If you're looking at your `Orders` table and want to know how many orders were placed with a price greater than \$40, you’d filter by “Price greater than 40,” and then select `Count of rows`, because you want Metabase to count how many orders matched your filter.
 - **Sum of …:** the sum of all the values in a specific column.
@@ -48,7 +48,7 @@ If you summarize and add a grouping you can then summarize _again_. You can also
 
 You can also add metrics and groupings on the results page in a sidebar: the top of the sidebar where you pick the number ("metric") you want to see, and the part below is where you pick how to group that number (or how to "break it out").
 
-If your admins have created any named [metrics](../../data-modeling/metrics.md) that are specific to your company or organization, they will be in this dropdown under the **Common Metrics** section. These might be things like your company’s official way of calculating revenue.
+If your admins have created any named [metrics](../../data-modeling/metrics.md) or [measures](../../data-studio/data-structure.md#measures) that are specific to your company or organization, they will be in this dropdown under the **Metrics** or **Measures** section. These might be things like your company’s official way of calculating revenue.
 
 By default, Metabase will limit the number of aggregated rows displayed to 10,000 rows. You can change this limit with the environment variable [`MB_AGGREGATED_QUERY_ROW_LIMIT`](../../configuring-metabase/environment-variables.md#mb_aggregated_query_row_limit).
 

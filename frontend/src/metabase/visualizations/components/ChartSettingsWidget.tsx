@@ -1,5 +1,5 @@
 import cx from "classnames";
-import type * as React from "react";
+import type { ComponentType } from "react";
 
 import PopoverS from "metabase/common/components/Popover/Popover.module.css";
 import FormS from "metabase/css/components/form.module.css";
@@ -13,7 +13,7 @@ type Props = {
   hint?: string;
   hidden?: boolean;
   disabled?: boolean;
-  widget?: React.ComponentType<{ id: string }>;
+  widget?: string | ComponentType<{ id: string }>;
   inline?: boolean;
   marginBottom?: string;
   props?: Record<string, unknown>;
