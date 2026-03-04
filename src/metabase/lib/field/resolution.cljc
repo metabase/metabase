@@ -45,10 +45,8 @@
   "If this is a nested column, add metadata about the parent column."
   [metadata-providerable             :- ::lib.schema.metadata/metadata-providerable
    {:keys [parent-id], :as metadata} :- ::lib.schema.metadata/column]
-  (if-not parent-id
-    metadata
-    (let [parent-metadata                     (lib.metadata/field metadata-providerable parent-id)
-          {parent-name         :name
+  (if-some [parent-metadata (when parent-id (lib.metadata/field metadata-providerable parent-id))]
+    (let [{parent-name         :name
            parent-nfc-path     :nfc-path
            parent-display-name :display-name} (add-parent-column-metadata metadata-providerable parent-metadata)
           new-name                            (str parent-name
@@ -63,7 +61,8 @@
                  :nfc-path                               (conj (vec parent-nfc-path) (:name parent-metadata))
                  :display-name                           new-display-name
                  ;; this is used by the `display-name-method` for `:metadata/column` in [[metabase.lib.field]]
-                 :lib/simple-display-name new-display-name)))))
+                 :lib/simple-display-name new-display-name)))
+    metadata))
 
 (mu/defn- field-metadata :- [:maybe ::lib.metadata.calculation/visible-column]
   "Metadata about the field from the metadata provider."
@@ -331,7 +330,8 @@
         (if-some [source-cols (or (when-some [previous-stage-number (lib.util/previous-stage-number query stage-number)]
                                     (lib.metadata.calculation/returned-columns query previous-stage-number))
                                   (when-some [source-card-id (:source-card (lib.util/query-stage query stage-number))]
-                                    (lib.metadata.calculation/returned-columns query (lib.metadata/card query source-card-id))))]
+                                    (when-some [card (lib.metadata/card query source-card-id)]
+                                      (lib.metadata.calculation/returned-columns query card))))]
           (let [previous-stage-cols (filter #(= (:lib/original-join-alias %) join-alias)
                                             source-cols)]
             ;; try to resolve by what is PROBABLY the correct name in a previous stage e.g. `Join` + `COLUMN` becomes
