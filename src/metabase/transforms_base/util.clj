@@ -555,27 +555,6 @@
 
 ;;; ------------------------------------------------- Source Table Schemas -------------------------------------------------
 
-(mr/def ::source-table-entry
-  "A source table entry in the array format. Combines alias with table reference."
-  [:map
-   [:alias :string]
-   [:database_id {:optional true} :int]
-   [:schema {:optional true} [:maybe :string]]
-   [:table {:optional true} :string]
-   [:table_id {:optional true} [:maybe :int]]])
-
-;;; ------------------------------------------------- Source Table Format Conversion -------------------------------------------------
-
-(mu/defn source-tables-map->vec :- [:sequential ::source-table-entry]
-  "Convert map format `{alias -> value}` to vec format `[{:alias alias ...}]`.
-  Handles both int values (`{alias: table_id}`) and ref map values (`{alias: {:database_id ...}}`)."
-  [m :- [:map-of :string [:or :int :map]]]
-  (mapv (fn [[alias v]]
-          (if (int? v)
-            {:alias alias :table_id v}
-            (assoc v :alias alias)))
-        m))
-
 (mu/defn source-tables-vec->alias-id-map :- [:map-of :string [:maybe :int]]
   "Convert source-table entries to `{alias -> table_id}` map."
   [entries :- [:sequential ::source-table-entry]]
@@ -675,6 +654,27 @@
                       {:unresolved unresolved
                        :transform-message "Input table not found"})))
     resolved))
+
+(mr/def ::source-table-entry
+  "A source table entry in the array format. Combines alias with table reference."
+  [:map
+   [:alias :string]
+   [:database_id {:optional true} :int]
+   [:schema {:optional true} [:maybe :string]]
+   [:table {:optional true} :string]
+   [:table_id {:optional true} [:maybe :int]]])
+
+(mu/defn source-tables-map->vec :- [:sequential ::source-table-entry]
+  "Convert map format `{alias -> value}` to vec format `[{:alias alias ...}]`.
+  Handles both int values (`{alias: table_id}`) and ref map values (`{alias: {:database_id ...}}`.
+  Enriches entries with full metadata via [[normalize-source-tables]]."
+  [m :- [:map-of :string [:or :int :map]]]
+  (normalize-source-tables
+   (mapv (fn [[alias v]]
+           (if (int? v)
+             {:alias alias :table_id v}
+             (assoc v :alias alias)))
+         m)))
 
 ;;; ------------------------------------------------- Timestamp Helpers -------------------------------------------------
 

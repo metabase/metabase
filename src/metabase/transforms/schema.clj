@@ -49,10 +49,9 @@
      ;; NB: if source is checkpoint, only one table allowed
      ;; decode/normalize: convert FE map format to vec and enrich with DB metadata
      [:source-tables   [:sequential {:decode/normalize (fn [st]
-                                                         (-> (if (map? st)
-                                                               (transforms-base.u/source-tables-map->vec st)
-                                                               st)
-                                                             transforms-base.u/normalize-source-tables))}
+                                                         (if (map? st)
+                                                           (transforms-base.u/source-tables-map->vec st)
+                                                           st))}
                         ::source-table-entry]]
      [:type {:decode/normalize lib.schema.common/normalize-keyword} [:= :python]]
      [:body :string]
