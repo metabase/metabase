@@ -3,9 +3,8 @@ import _ from "underscore";
 
 import { getSubpathSafeUrl } from "metabase/lib/urls";
 import type { HoveredObject } from "metabase/visualizations/types";
-import type { ClickObjectDataRow } from "metabase-lib";
+import type { ClickObject } from "metabase-lib";
 import { isPK } from "metabase-lib/v1/types/utils/isa";
-import type { DatasetColumn } from "metabase-types/api";
 
 import {
   LeafletMap,
@@ -17,16 +16,7 @@ type IndexedPoint = LeafletMapPoint<[number]>;
 
 interface LeafletMarkerPinMapProps extends LeafletMapProps<IndexedPoint> {
   onHoverChange?: (hoverObject?: HoveredObject | null) => void;
-  onVisualizationClick?: (
-    clickObject: {
-      value: unknown;
-      column: DatasetColumn | null;
-      element: HTMLElement;
-      origin: { row: unknown[]; cols: DatasetColumn[] };
-      settings: LeafletMapProps["settings"];
-      data: ClickObjectDataRow[];
-    } | null,
-  ) => void;
+  onVisualizationClick?: (clickObject: ClickObject | null) => void;
 }
 
 export class LeafletMarkerPinMap extends LeafletMap<LeafletMarkerPinMapProps> {
@@ -189,14 +179,14 @@ export class LeafletMarkerPinMap extends LeafletMap<LeafletMarkerPinMapProps> {
       const pkIndex = _.findIndex(cols, isPK);
       const hasPk = pkIndex >= 0;
 
-      const data: ClickObjectDataRow[] = cols.map((col, index) => ({
+      const data = cols.map((col, index) => ({
         col,
         value: rows[rowIndex][index],
       }));
 
       onVisualizationClick({
         value: hasPk ? rows[rowIndex][pkIndex] : null,
-        column: hasPk ? cols[pkIndex] : null,
+        column: hasPk ? cols[pkIndex] : undefined,
         element: (marker as unknown as { _icon: HTMLElement })._icon,
         origin: { row: rows[rowIndex], cols },
         settings,
