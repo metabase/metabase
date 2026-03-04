@@ -12,52 +12,52 @@
 
 (use-fixtures :once (fixtures/initialize :db))
 
-(deftest transform-stats-rolling-to-yesterday-test
-  (testing "completed runs appear in rolling stats, then move to yesterday's stats when end_time is backdated"
+(deftest transform-stats-tier-based-metering-test
+  (testing "all runs are bucketed into basic or advanced based on the transforms-python feature flag"
     (mt/with-temp [:model/Transform {native-id :id} {}
                    :model/Transform {python-id :id} {:source {:type            "python"
                                                               :source-database (mt/id)}
                                                      :target {:type     "table"
                                                               :name     (str "test_python_" (random-uuid))
                                                               :database (mt/id)}}]
-      (let [stats-before          (premium-features/transform-stats)
-            native-before         (:transform-native-runs stats-before)
-            rolling-native-before (:transform-rolling-native-runs stats-before)
-            python-before         (:transform-python-runs stats-before)
-            rolling-python-before (:transform-rolling-python-runs stats-before)
-            yesterday-utc         (t/minus (t/offset-date-time (t/zone-offset "+00")) (t/days 1))]
+      (let [stats-before    (premium-features/transform-stats)
+            basic-before    (:basic-runs stats-before)
+            advanced-before (:advanced-runs stats-before)
+            rolling-basic-before    (:rolling-basic-runs stats-before)
+            rolling-advanced-before (:rolling-advanced-runs stats-before)
+            yesterday-utc   (t/minus (t/offset-date-time (t/zone-offset "+00")) (t/days 1))]
 
-        (testing "native"
+        (testing "without advanced add-on, all runs go to basic-runs"
+          ;; run a native transform
           (let [{run-id :id} (transform-run/start-run! native-id {:run_method "manual"})]
             (transform-run/succeed-started-run! run-id)
 
-            (testing "completed run appears in rolling stats only"
+            (testing "completed run appears in rolling-basic-runs"
               (let [stats (premium-features/transform-stats)]
-                (is (= (inc rolling-native-before) (:transform-rolling-native-runs stats)))
-                (is (= native-before               (:transform-native-runs stats)))))
+                (is (= (inc rolling-basic-before) (:rolling-basic-runs stats)))
+                (is (= 0                         (:rolling-advanced-runs stats)))
+                (is (= basic-before               (:basic-runs stats)))))
 
-            (testing "a run for yesterday is visible under yesterday's stats only"
+            (testing "backdated run appears in basic-runs"
               (t2/update! :model/TransformRun :id run-id {:end_time yesterday-utc})
               (let [stats (premium-features/transform-stats)]
-                (is (= rolling-native-before (:transform-rolling-native-runs stats)))
-                (is (= (inc native-before)   (:transform-native-runs stats)))))))
+                (is (= rolling-basic-before (:rolling-basic-runs stats)))
+                (is (= (inc basic-before)   (:basic-runs stats)))
+                (is (= 0                   (:advanced-runs stats)))))))
 
-        (testing "python stats not modified by native runs"
-          (let [stats (premium-features/transform-stats)]
-            (is (= python-before (:transform-python-runs stats)))
-            (is (= rolling-python-before (:transform-rolling-python-runs stats)))))
+        (testing "with advanced add-on, all runs go to advanced-runs"
+          (mt/with-premium-features #{:transforms :transforms-python}
+            ;; run a python transform
+            (let [{run-id :id} (transform-run/start-run! python-id {:run_method "manual"})]
+              (transform-run/succeed-started-run! run-id)
 
-        (testing "python"
-          (let [{run-id :id} (transform-run/start-run! python-id {:run_method "manual"})]
-            (transform-run/succeed-started-run! run-id)
+              (testing "completed run appears in rolling-advanced-runs"
+                (let [stats (premium-features/transform-stats)]
+                  (is (= 0 (:rolling-basic-runs stats)))
+                  (is (pos? (:rolling-advanced-runs stats)))))
 
-            (testing "completed run appears in rolling stats only"
-              (let [stats (premium-features/transform-stats)]
-                (is (= (inc rolling-python-before)  (:transform-rolling-python-runs stats)))
-                (is (= python-before                (:transform-python-runs stats)))))
-
-            (testing "a run for yesterday is visible under yesterday's state only"
-              (t2/update! :model/TransformRun :id run-id {:end_time yesterday-utc})
-              (let [stats (premium-features/transform-stats)]
-                (is (= rolling-python-before (:transform-rolling-python-runs stats)))
-                (is (= (inc python-before)   (:transform-python-runs stats)))))))))))
+              (testing "backdated run appears in advanced-runs"
+                (t2/update! :model/TransformRun :id run-id {:end_time yesterday-utc})
+                (let [stats (premium-features/transform-stats)]
+                  (is (= 0     (:basic-runs stats)))
+                  (is (pos?    (:advanced-runs stats))))))))))))
