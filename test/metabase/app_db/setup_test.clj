@@ -36,6 +36,16 @@
     (is (false? (#'mdb.setup/supported-app-db-version? :h2 {:major 2 :minor 0 :patch 214})))
     (is (false? (#'mdb.setup/supported-app-db-version? :h2 {:major 1 :minor 1 :patch 214})))))
 
+(deftest parse-db-version-test
+  (testing "Can parse H2 version strings"
+    (is (= {:major 2 :minor 1 :patch 214} (#'mdb.setup/parse-db-version "2.1.214 (2022-06-13)"))))
+  (testing "Can parse postgres version strings"
+    (is (= {:major 2 :minor 1 :patch 214} (#'mdb.setup/parse-db-version "TODO"))))
+  (testing "Can parse mysql version strings"
+    (is (= {:major 2 :minor 1 :patch 214} (#'mdb.setup/parse-db-version "TODO"))))
+  (testing "Can parse mariadb version strings"
+    (is (= {:major 2 :minor 1 :patch 214} (#'mdb.setup/parse-db-version "TODO")))))
+
 (deftest setup-db-test
   (testing "Should be able to set up an arbitrary application DB"
     (letfn [(test* [data-source]
