@@ -6,6 +6,7 @@
    [metabase-enterprise.metabot-v3.self :as self]
    [metabase.analytics.core :as analytics]
    [metabase.api.common :as api]
+   [metabase.util.json :as json]
    [metabase.util.log :as log]))
 
 (set! *warn-on-reflection* true)
@@ -54,30 +55,15 @@
    {:description "User request doesn't fit standard categories"
     :examples    ["Any other request not covered above."]}})
 
-(def ^:private user-intent-schema
-  {:type       "object"
-   :properties {:intent {:type "string"
-                         :enum (vec (keys user-intents))}}
-   :required             ["intent"]
-   :additionalProperties false})
-
 (defn- render-user-intents-table
   "Render user-intents as a plain-text table."
   []
-  (let [header "Intent | Description | Examples"
-        sep    "-------|-------------|--------"
+  (let [header "| Intent Category | Description | Examples |"
+        sep    "|-----------------|-------------|----------|"
         rows   (map (fn [[intent {:keys [description examples]}]]
-                      (str intent " | " description " | " (str/join "; " examples)))
+                      (str "| " intent " | " description " | " (str/join "; " examples) " |"))
                     user-intents)]
     (str/join "\n" (concat [header sep] rows))))
-
-(defn- extract-conversation-context
-  "Take the last 3 messages and serialize to a plain string."
-  [messages]
-  (->> (take-last 3 messages)
-       (map (fn [{:keys [role content]}]
-              (str (name role) ": " content)))
-       (str/join "\n")))
 
 (defn- build-intent-prompt [conversation-context]
   (str "You are a user intent classification engine for requests to an AI agent operating on top of Metabase.\n"
@@ -87,22 +73,31 @@
        "<conversation_context>\n"
        conversation-context
        "\n</conversation_context>\n\n"
-       "Return a JSON object with a single \"intent\" field containing the category name."))
+       "## Output format\n"
+       "Return the category wrapped in a <category> tag so that we can easily extract it from the string.\n"
+       "Only respond with the <category> tag including the intent category name - nothing else.\n\n"
+       "**Example:**\n"
+       "User: \"I want to see sales by region for Q1.\"\n"
+       "You: \"<category>query_data</category>\"\n\n"
+       "Classify the user's intent into one of the Intent Categories above.\n"))
 
 (defn- classify-user-intent!
   "Classify the user's message into one of the [[user-intent]] categories.
   Returns the intent string.
-  Raises an exception if the classified intent is not in the known intents."
-  [conversation-context]
-  (let [result (self/call-llm-structured
-                (llm/ee-ai-metabot-provider)
-                [{:role "user" :content (build-intent-prompt conversation-context)}]
-                user-intent-schema
-                0.0
-                50
-                {:tag "user-intent-classification"})
-        intent (:intent result)]
-    ;; The LLM's response should conform to the user-intent-schema. It's a bug if this check fails.
+  Raises an exception if the classified intent is not in the known intents.
+  Uses plain-text extraction (no tool calls) so it works with models that don't support function calling."
+  [messages]
+  (let [context (json/encode (take-last 3 messages))
+        text    (transduce (keep (fn [{:keys [type text]}] (when (= type :text) text)))
+                           str
+                           (self/call-llm (llm/ee-ai-metabot-provider-lite)
+                                          nil
+                                          [{:role "user" :content (build-intent-prompt context)}]
+                                          []
+                                          ;; Omit :request-id from tracking-opts to skip snowplow token_usage event
+                                          ;; since this is for internal usage.
+                                          {:tag "user-intent-classification"}))
+        intent  (second (re-find #"<category>([^<]+)</category>" text))]
     (when-not (contains? user-intents intent)
       (throw (ex-info (str "Classified intent '" intent "' not in known intents")
                       {:intent        intent
@@ -129,7 +124,6 @@
   (future
     (try
       (-> messages
-          extract-conversation-context
           classify-user-intent!
           (track-user-intent! tracking-opts))
       (catch Exception e

@@ -656,8 +656,8 @@
 (deftest user-intent-snowplow-fires-event-test
   (testing "fires :snowplow/ai_service_event 'user_intent' when :track-user-intent? is true"
     (let [rasta-id (mt/user->id :rasta)]
-      (with-redefs [openrouter/openrouter    (fn [_] (mut/mock-llm-response mock-llm-response-for-intent))
-                    self/call-llm-structured (fn [& _] {:intent "query_data"})]
+      (with-redefs [openrouter/openrouter (fn [_] (mut/mock-llm-response mock-llm-response-for-intent))
+                    self/call-llm       (fn [& _] [{:type :text :text "<category>query_data</category>"}])]
         (mt/with-current-user rasta-id
           (snowplow-test/with-fake-snowplow-collector
             (run! identity (agent/run-agent-loop
@@ -696,10 +696,10 @@
 (deftest user-intent-classifier-exception-swallowed-test
   (testing "does not propagate exception if classify-user-intent throws"
     (let [classify-called (atom false)]
-      (with-redefs [openrouter/openrouter    (fn [_] (mut/mock-llm-response mock-llm-response-for-intent))
-                    self/call-llm-structured (fn [& _]
-                                               (reset! classify-called true)
-                                               (throw (ex-info "LLM error" {})))]
+      (with-redefs [openrouter/openrouter (fn [_] (mut/mock-llm-response mock-llm-response-for-intent))
+                    self/call-llm       (fn [& _]
+                                          (reset! classify-called true)
+                                          (throw (ex-info "LLM error" {})))]
         ;; Should not throw — exception is caught inside the background future
         (run! identity (agent/run-agent-loop
                         {:messages            [{:role :user :content "test"}]
