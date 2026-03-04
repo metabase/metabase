@@ -56,7 +56,6 @@ import type {
   ComputedVisualizationSettings,
   VisualizationProps,
 } from "../../types";
-import { toVisualizationSettingsDefinitions } from "../../types";
 
 interface TableProps extends VisualizationProps {
   isShowingDetailsOnlyColumns?: boolean;
@@ -93,7 +92,7 @@ export class Table extends Component<TableProps, TableState> {
 
   static isPivoted = _isPivoted;
 
-  static settings = toVisualizationSettingsDefinitions({
+  static settings = {
     ...columnSettings({ hidden: true }),
     "table.pagination": {
       get section() {
@@ -249,7 +248,7 @@ export class Table extends Component<TableProps, TableState> {
       },
       readDependencies: [DataGrid.COLUMN_FORMATTING_SETTING, "table.pivot"],
     },
-  });
+  };
 
   static columnSettings = (column: DatasetColumn) => {
     const settings: Record<

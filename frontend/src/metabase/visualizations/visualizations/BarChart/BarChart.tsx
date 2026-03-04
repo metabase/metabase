@@ -10,7 +10,7 @@ import {
   getCartesianChartDefinition,
 } from "metabase/visualizations/visualizations/CartesianChart/chart-definition";
 
-import type { VisualizationDefinition, VisualizationProps } from "../../types";
+import type { VisualizationProps } from "../../types";
 
 const BAR_CHART_DEFINITION = getCartesianChartDefinition({
   getUiName: () => t`Bar`,
@@ -21,7 +21,7 @@ const BAR_CHART_DEFINITION = getCartesianChartDefinition({
   minSize: getMinSize("bar"),
   defaultSize: getDefaultSize("bar"),
   settings: COMBO_CHARTS_SETTINGS_DEFINITIONS,
-}) as VisualizationDefinition;
+});
 
 function BarChartComponent(props: VisualizationProps) {
   return <CartesianChart {...props} />;

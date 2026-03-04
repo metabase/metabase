@@ -10,7 +10,7 @@ import {
   getCartesianChartDefinition,
 } from "metabase/visualizations/visualizations/CartesianChart/chart-definition";
 
-import type { VisualizationDefinition, VisualizationProps } from "../../types";
+import type { VisualizationProps } from "../../types";
 
 const COMBO_CHART_DEFINITION = getCartesianChartDefinition({
   getUiName: () => t`Combo`,
@@ -21,7 +21,7 @@ const COMBO_CHART_DEFINITION = getCartesianChartDefinition({
   minSize: getMinSize("combo"),
   defaultSize: getDefaultSize("combo"),
   settings: COMBO_CHARTS_SETTINGS_DEFINITIONS,
-}) as VisualizationDefinition;
+});
 
 function ComboChartComponent(props: VisualizationProps) {
   return <CartesianChart {...props} />;

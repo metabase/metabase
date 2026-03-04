@@ -11,13 +11,15 @@ import {
   getDefaultSize,
   getMinSize,
 } from "metabase/visualizations/shared/utils/sizes";
-import type { ComputedVisualizationSettings } from "metabase/visualizations/types";
-import { toVisualizationSettingsDefinitions } from "metabase/visualizations/types";
+import type {
+  ComputedVisualizationSettings,
+  VisualizationDefinition,
+} from "metabase/visualizations/types";
 import { transformSeries } from "metabase/visualizations/visualizations/CartesianChart/chart-definition-legacy";
 import { isDimension, isMetric } from "metabase-lib/v1/types/utils/isa";
 import type { DatasetData, RawSeries } from "metabase-types/api";
 
-export const BOXPLOT_CHART_DEFINITION = {
+export const BOXPLOT_CHART_DEFINITION: VisualizationDefinition = {
   getUiName: () => t`Box Plot`,
   identifier: "boxplot",
   iconName: "boxplot",
@@ -28,7 +30,14 @@ export const BOXPLOT_CHART_DEFINITION = {
   maxMetricsSupported: Infinity,
   maxDimensionsSupported: 2,
   noHeader: true,
-  transformSeries,
+  transformSeries: (series) => {
+    if ("_raw" in series) {
+      return series;
+    }
+
+    const transformed = transformSeries(series);
+    return Object.assign([...transformed], { _raw: series });
+  },
 
   isSensible: ({ cols, rows }: DatasetData) => {
     return (
@@ -46,10 +55,10 @@ export const BOXPLOT_CHART_DEFINITION = {
     validateChartDataSettings(settings);
   },
 
-  settings: toVisualizationSettingsDefinitions({
+  settings: {
     ...BOXPLOT_SETTINGS,
     ...GRAPH_GOAL_SETTINGS,
     ...GRAPH_AXIS_SETTINGS,
     ...BOXPLOT_DATA_SETTINGS,
-  }),
+  },
 };

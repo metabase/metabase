@@ -19,8 +19,10 @@ import {
   validateStacking,
 } from "metabase/visualizations/lib/settings/validation";
 import { SERIES_SETTING_KEY } from "metabase/visualizations/shared/settings/series";
-import type { Visualization } from "metabase/visualizations/types";
-import { toVisualizationSettingsDefinitions } from "metabase/visualizations/types";
+import type {
+  Visualization,
+  VisualizationDefinition,
+} from "metabase/visualizations/types";
 import { isDimension, isMetric } from "metabase-lib/v1/types/utils/isa";
 import type {
   Series,
@@ -39,9 +41,20 @@ const transformCartesianSeries = (series: Series): TransformedSeries => {
   return Object.assign([...transformed], { _raw: series });
 };
 
+export type CartesianChartProps = Pick<
+  VisualizationDefinition,
+  | "getUiName"
+  | "identifier"
+  | "iconName"
+  | "minSize"
+  | "defaultSize"
+  | "settings"
+> &
+  Partial<Visualization>;
+
 export const getCartesianChartDefinition = (
-  props: Partial<Visualization>,
-): Partial<Visualization> => {
+  props: CartesianChartProps,
+): VisualizationDefinition => {
   return {
     noHeader: true,
     supportsVisualizer: true,
@@ -102,16 +115,15 @@ export const getCartesianChartDefinition = (
   };
 };
 
-export const COMBO_CHARTS_SETTINGS_DEFINITIONS =
-  toVisualizationSettingsDefinitions({
-    ...STACKABLE_SETTINGS,
-    ...LINE_SETTINGS,
-    ...GRAPH_GOAL_SETTINGS,
-    ...GRAPH_TREND_SETTINGS,
-    ...GRAPH_COLORS_SETTINGS,
-    ...GRAPH_AXIS_SETTINGS,
-    ...GRAPH_DISPLAY_VALUES_SETTINGS,
-    ...GRAPH_DATA_SETTINGS,
-    ...TOOLTIP_SETTINGS,
-    ...LEGEND_SETTINGS,
-  });
+export const COMBO_CHARTS_SETTINGS_DEFINITIONS = {
+  ...STACKABLE_SETTINGS,
+  ...LINE_SETTINGS,
+  ...GRAPH_GOAL_SETTINGS,
+  ...GRAPH_TREND_SETTINGS,
+  ...GRAPH_COLORS_SETTINGS,
+  ...GRAPH_AXIS_SETTINGS,
+  ...GRAPH_DISPLAY_VALUES_SETTINGS,
+  ...GRAPH_DATA_SETTINGS,
+  ...TOOLTIP_SETTINGS,
+  ...LEGEND_SETTINGS,
+};

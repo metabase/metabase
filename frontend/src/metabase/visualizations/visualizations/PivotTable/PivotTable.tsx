@@ -32,10 +32,9 @@ import {
   getDefaultSize,
   getMinSize,
 } from "metabase/visualizations/shared/utils/sizes";
-import {
-  type VisualizationDefinition,
-  type VisualizationProps,
-  toVisualizationSettingsDefinitions,
+import type {
+  VisualizationDefinition,
+  VisualizationProps,
 } from "metabase/visualizations/types";
 import type { State } from "metabase-types/store";
 
@@ -625,7 +624,7 @@ const PIVOT_TABLE_VIZ_DEFINITION: VisualizationDefinition = {
   isSensible,
   checkRenderable: (series, visualizationSettings) =>
     checkRenderable(series, visualizationSettings),
-  settings: toVisualizationSettingsDefinitions(settings),
+  settings,
   columnSettings,
   isLiveResizable: () => false,
 };

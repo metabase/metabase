@@ -14,10 +14,8 @@ import {
 } from "metabase/visualizations/shared/utils/sizes";
 import type {
   ComputedVisualizationSettings,
-  VisualizationDefinition,
   VisualizationProps,
 } from "metabase/visualizations/types";
-import { toVisualizationSettingsDefinitions } from "metabase/visualizations/types";
 import { isDimension, isMetric } from "metabase-lib/v1/types/utils/isa";
 
 import { CartesianChart } from "../CartesianChart";
@@ -46,7 +44,7 @@ const WATERFALL_CHART_DEFINITION = getCartesianChartDefinition({
   maxMetricsSupported: 1,
   maxDimensionsSupported: 1,
   supportsVisualizer: false,
-  settings: toVisualizationSettingsDefinitions({
+  settings: {
     ...GRAPH_AXIS_SETTINGS,
     "waterfall.increase_color": {
       // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
@@ -88,8 +86,8 @@ const WATERFALL_CHART_DEFINITION = getCartesianChartDefinition({
     ...GRAPH_DISPLAY_VALUES_SETTINGS,
     ...GRAPH_DATA_SETTINGS,
     ...TOOLTIP_SETTINGS,
-  }),
-}) as VisualizationDefinition;
+  },
+});
 
 function WaterfallChartComponent(props: VisualizationProps) {
   return <CartesianChart {...props} />;

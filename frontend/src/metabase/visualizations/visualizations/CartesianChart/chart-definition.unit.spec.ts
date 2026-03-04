@@ -1,11 +1,16 @@
 import { SERIES_SETTING_KEY } from "metabase/visualizations/shared/settings/series";
 import type { VisualizationSettings } from "metabase-types/api";
 
-import { getCartesianChartDefinition } from "./chart-definition";
+import {
+  type CartesianChartProps,
+  getCartesianChartDefinition,
+} from "./chart-definition";
 
 describe("chart-definition", () => {
   describe("onDisplayUpdate", () => {
-    const onDisplayUpdate = getCartesianChartDefinition({}).onDisplayUpdate!;
+    const onDisplayUpdate = getCartesianChartDefinition(
+      {} as CartesianChartProps,
+    ).onDisplayUpdate!;
 
     it("should reset individual series display", () => {
       const settings: VisualizationSettings = {

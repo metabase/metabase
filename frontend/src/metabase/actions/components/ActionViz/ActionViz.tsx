@@ -4,10 +4,7 @@ import {
   getDefaultSize,
   getMinSize,
 } from "metabase/visualizations/shared/utils/sizes";
-import {
-  type VisualizationDefinition,
-  toVisualizationSettingsDefinitions,
-} from "metabase/visualizations/types";
+import type { VisualizationDefinition } from "metabase/visualizations/types";
 import type { VisualizationSettings } from "metabase-types/api";
 
 import Action from "./Action";
@@ -87,7 +84,7 @@ const ACTION_VIZ_DEFINITION: VisualizationDefinition = {
   checkRenderable: () => true,
   isSensible: () => false,
 
-  settings: toVisualizationSettingsDefinitions(ACTION_SETTINGS),
+  settings: ACTION_SETTINGS,
 };
 
 // eslint-disable-next-line import/no-default-export -- deprecated usage

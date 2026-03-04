@@ -10,7 +10,7 @@ import {
   getCartesianChartDefinition,
 } from "metabase/visualizations/visualizations/CartesianChart/chart-definition";
 
-import type { VisualizationDefinition, VisualizationProps } from "../../types";
+import type { VisualizationProps } from "../../types";
 
 const AREA_CHART_DEFINITION = getCartesianChartDefinition({
   getUiName: () => t`Area`,
@@ -21,7 +21,7 @@ const AREA_CHART_DEFINITION = getCartesianChartDefinition({
   minSize: getMinSize("area"),
   defaultSize: getDefaultSize("area"),
   settings: COMBO_CHARTS_SETTINGS_DEFINITIONS,
-}) as VisualizationDefinition;
+});
 
 function AreaChartComponent(props: VisualizationProps) {
   return <CartesianChart {...props} />;

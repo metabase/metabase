@@ -4,10 +4,7 @@ import {
   getDefaultSize,
   getMinSize,
 } from "metabase/visualizations/shared/utils/sizes";
-import {
-  type VisualizationDefinition,
-  toVisualizationSettingsDefinitions,
-} from "metabase/visualizations/types";
+import type { VisualizationDefinition } from "metabase/visualizations/types";
 
 import { Text } from "./Text";
 
@@ -30,7 +27,7 @@ const TEXT_DEFINITION: VisualizationDefinition = {
   },
   isSensible: () => false,
 
-  settings: toVisualizationSettingsDefinitions({
+  settings: {
     "card.title": {
       dashboard: false,
       // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
@@ -89,7 +86,7 @@ const TEXT_DEFINITION: VisualizationDefinition = {
       widget: "toggle",
       default: true,
     },
-  }),
+  },
 };
 
 const TextWrapper = Object.assign(Text, TEXT_DEFINITION);

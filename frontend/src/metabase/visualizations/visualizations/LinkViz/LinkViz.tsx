@@ -11,10 +11,7 @@ import { useSelector } from "metabase/lib/redux";
 import { modelToUrl } from "metabase/lib/urls";
 import { SearchResults } from "metabase/nav/components/search/SearchResults";
 import { fillParametersInText } from "metabase/visualizations/shared/utils/parameter-substitution";
-import {
-  type VisualizationDefinition,
-  toVisualizationSettingsDefinitions,
-} from "metabase/visualizations/types";
+import type { VisualizationDefinition } from "metabase/visualizations/types";
 import type {
   Dashboard,
   LinkCardSettings,
@@ -221,7 +218,7 @@ const LINK_VIZ_DEFINITION: VisualizationDefinition = {
   defaultSize: settings.defaultSize,
   checkRenderable: settings.checkRenderable,
   isSensible: () => false,
-  settings: toVisualizationSettingsDefinitions(settings.settings),
+  settings,
 };
 
 export const LinkViz = Object.assign(LinkVizInner, LINK_VIZ_DEFINITION, {

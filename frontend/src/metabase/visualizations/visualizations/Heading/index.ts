@@ -4,10 +4,7 @@ import {
   getDefaultSize,
   getMinSize,
 } from "metabase/visualizations/shared/utils/sizes";
-import {
-  type VisualizationDefinition,
-  toVisualizationSettingsDefinitions,
-} from "metabase/visualizations/types";
+import type { VisualizationDefinition } from "metabase/visualizations/types";
 
 import { Heading as HeadingComponent } from "./Heading";
 
@@ -30,7 +27,7 @@ const HEADING_DEFINITION: VisualizationDefinition = {
   },
   isSensible: () => false,
 
-  settings: toVisualizationSettingsDefinitions({
+  settings: {
     "card.title": {
       dashboard: false,
       // eslint-disable-next-line ttag/no-module-declaration
@@ -46,7 +43,7 @@ const HEADING_DEFINITION: VisualizationDefinition = {
     "dashcard.background": {
       default: false,
     },
-  }),
+  },
 };
 
 export const HeadingViz = Object.assign(HeadingComponent, HEADING_DEFINITION);

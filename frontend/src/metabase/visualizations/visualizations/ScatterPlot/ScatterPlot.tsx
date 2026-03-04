@@ -16,8 +16,7 @@ import {
   GRAPH_TREND_SETTINGS,
   TOOLTIP_SETTINGS,
 } from "../../lib/settings/graph";
-import type { VisualizationDefinition, VisualizationProps } from "../../types";
-import { toVisualizationSettingsDefinitions } from "../../types";
+import type { VisualizationProps } from "../../types";
 
 const SCATTER_PLOT_DEFINITION = getCartesianChartDefinition({
   getUiName: () => t`Scatter`,
@@ -27,7 +26,7 @@ const SCATTER_PLOT_DEFINITION = getCartesianChartDefinition({
   noun: t`scatter plot`,
   minSize: getMinSize("scatter"),
   defaultSize: getDefaultSize("scatter"),
-  settings: toVisualizationSettingsDefinitions({
+  settings: {
     ...GRAPH_BUBBLE_SETTINGS,
     ...GRAPH_GOAL_SETTINGS,
     ...GRAPH_TREND_SETTINGS,
@@ -35,8 +34,8 @@ const SCATTER_PLOT_DEFINITION = getCartesianChartDefinition({
     ...GRAPH_AXIS_SETTINGS,
     ...GRAPH_DATA_SETTINGS,
     ...TOOLTIP_SETTINGS,
-  }),
-}) as VisualizationDefinition;
+  },
+});
 
 function ScatterPlotComponent(props: VisualizationProps) {
   return <CartesianChart {...props} />;

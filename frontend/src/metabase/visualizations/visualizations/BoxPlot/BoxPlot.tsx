@@ -21,10 +21,7 @@ import {
 } from "metabase/visualizations/echarts/tooltip";
 import { useBrowserRenderingContext } from "metabase/visualizations/hooks/use-browser-rendering-context";
 import { getDashboardAdjustedSettings } from "metabase/visualizations/shared/settings-adjustments";
-import type {
-  VisualizationDefinition,
-  VisualizationProps,
-} from "metabase/visualizations/types";
+import type { VisualizationProps } from "metabase/visualizations/types";
 import {
   CartesianChartLegendLayout,
   CartesianChartRoot,
@@ -254,5 +251,5 @@ function BoxPlotComponent(props: VisualizationProps) {
 
 export const BoxPlot = Object.assign(
   BoxPlotComponent,
-  BOXPLOT_CHART_DEFINITION as VisualizationDefinition,
+  BOXPLOT_CHART_DEFINITION,
 );

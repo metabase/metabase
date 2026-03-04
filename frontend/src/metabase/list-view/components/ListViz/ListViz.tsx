@@ -23,7 +23,6 @@ import type {
   VisualizationDefinition,
   VisualizationProps,
 } from "metabase/visualizations/types";
-import { toVisualizationSettingsDefinitions } from "metabase/visualizations/types";
 import * as Lib from "metabase-lib";
 import {
   isAvatarURL,
@@ -54,7 +53,7 @@ const LIST_VIZ_DEFINITION: VisualizationDefinition & {
   checkRenderable: () => {},
   isSensible: () => true,
 
-  settings: toVisualizationSettingsDefinitions({
+  settings: {
     ...columnSettings({ hidden: true }),
     "list.entity_icon": {
       default: null,
@@ -111,7 +110,7 @@ const LIST_VIZ_DEFINITION: VisualizationDefinition & {
         };
       },
     },
-  }),
+  },
 
   // TODO Unify with the same code in Table viz
   columnSettings: (column: DatasetColumn) => {

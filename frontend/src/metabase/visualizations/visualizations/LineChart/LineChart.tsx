@@ -10,7 +10,7 @@ import {
   getCartesianChartDefinition,
 } from "metabase/visualizations/visualizations/CartesianChart/chart-definition";
 
-import type { VisualizationDefinition, VisualizationProps } from "../../types";
+import type { VisualizationProps } from "../../types";
 
 const LINE_CHART_DEFINITION = getCartesianChartDefinition({
   getUiName: () => t`Line`,
@@ -21,7 +21,7 @@ const LINE_CHART_DEFINITION = getCartesianChartDefinition({
   minSize: getMinSize("line"),
   defaultSize: getDefaultSize("line"),
   settings: COMBO_CHARTS_SETTINGS_DEFINITIONS,
-}) as VisualizationDefinition;
+});
 
 function LineChartComponent(props: VisualizationProps) {
   return <CartesianChart {...props} />;
