@@ -1,8 +1,8 @@
 (ns metabase-enterprise.metabot-v3.tools.create-sql-query
   "Tool for creating new SQL queries."
   (:require
-   [metabase-enterprise.metabot-v3.tools.sql-validation :as metabot-v3.tools.sql-validation]
    [metabase-enterprise.metabot-v3.tools.sql.common :as metabot-v3.tools.sql.common]
+   [metabase-enterprise.metabot-v3.tools.sql.validation :as metabot-v3.tools.sql.validation]
    [metabase.api.common :as api]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
@@ -51,10 +51,10 @@
   ;; Validate access
   (validate-database-access database-id)
 
-  (let [dialect (metabot-v3.tools.sql-validation/database-id->dialect database-id)
+  (let [dialect (metabot-v3.tools.sql.validation/database-id->dialect database-id)
 
         {:keys [valid? transpiled-sql] :as validation-result}
-        (metabot-v3.tools.sql-validation/validate-sql dialect sql)]
+        (metabot-v3.tools.sql.validation/validate-sql dialect sql)]
     (merge {:validation-result validation-result}
            (when valid?
              (let [;; Create the in-memory query structure
