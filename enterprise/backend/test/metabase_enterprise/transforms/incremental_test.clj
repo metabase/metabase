@@ -206,17 +206,12 @@
     (some-> result :data :rows first first bigint)))
 
 (defn get-checkpoint-value [transform]
-  ;; For appdb-backed incremental transforms (with checkpoint-filter-field-id),
-  ;; reload from database to get persisted checkpoint values.
-  ;; For legacy transforms, compute from target table.
-  (let [transform (if (get-in transform [:source :source-incremental-strategy :checkpoint-filter-field-id])
-                    (t2/select-one :model/Transform (:id transform))
-                    transform)
-        {:keys [last_checkpoint_type last_checkpoint_value]} transform]
-    (or (when last_checkpoint_type
-          (#'transforms.u/deserialize-checkpoint-value last_checkpoint_type last_checkpoint_value))
-        (#'transforms.u/next-checkpoint-value
-         (transforms.u/next-checkpoint transform)))))
+  "Get the checkpoint value from appdb for the given transform.
+   Reloads the transform from the database to get the latest persisted checkpoint."
+  (let [reloaded (t2/select-one :model/Transform (:id transform))
+        {:keys [last_checkpoint_type last_checkpoint_value]} reloaded]
+    (when last_checkpoint_type
+      (#'transforms.u/deserialize-checkpoint-value last_checkpoint_type last_checkpoint_value))))
 
 (defn- compare-checkpoint-values
   "Compare two checkpoint values with type-appropriate logic. "
@@ -580,8 +575,9 @@
               (is (= 1 (count (next.jdbc/execute! db-spec ["SELECT true FROM information_schema.tables WHERE table_name = ?" target-table])))))
             (testing "sync has picked up table"
               (is (=? {:name target-table, :fields [{:name "id"}]} (-> (t2/select-one :model/Table :name target-table) (t2/hydrate :fields)))))
-            (testing "checkpoint is recognized"
-              (is (some? (transforms.u/next-checkpoint transform))))))))))
+            (testing "checkpoint is recognized in appdb"
+              (let [reloaded (t2/select-one :model/Transform (:id transform))]
+                (is (some? (:last_checkpoint_type reloaded)))))))))))
 
 (deftest checkpoint-field-does-not-exist-test
   (mt/test-drivers #{:postgres}                             ; no db specifics
@@ -607,8 +603,9 @@
               (is (=? {:name target-table, :fields [{:name "id"}]} (-> (t2/select-one :model/Table :name target-table) (t2/hydrate :fields)))))
             (testing "target table has expected data"
               (is (= [{:id 42}] (pg-table-rows db-spec target-table))))
-            (testing "checkpoint is not recognized, so transform acts as if no checkpoint"
-              (is (nil? (transforms.u/next-checkpoint transform))))))))))
+            (testing "checkpoint is not persisted to appdb (no checkpoint-filter-field-id)"
+              (let [reloaded (t2/select-one :model/Transform (:id transform))]
+                (is (nil? (:last_checkpoint_type reloaded)))))))))))
 
 (deftest changing-query-keeps-checkpoint-test
   (mt/test-drivers #{:postgres}                             ; no db specifics

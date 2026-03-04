@@ -342,45 +342,6 @@
                          :base-type   base-type})))
       column)))
 
-(defn next-checkpoint
-  "Build a query to compute the MAX of the checkpoint column from the target table.
-
-  Returns a map with `:query` (MBQL query selecting the max) and `:filter-column` (column metadata),
-  or `nil` if the transform doesn't use checkpoint-based incremental strategy or the target table doesn't exist."
-  [{:keys [source target] :as transform}]
-  (let [db-id (transforms.i/target-db-id transform)]
-    (when (checkpoint-incremental? source)
-      (when-let [table (target-table db-id target)]
-        (let [metadata-provider (lib-be/application-database-metadata-provider db-id)
-              table-metadata (lib.metadata/table metadata-provider (:id table))
-              query (lib/query metadata-provider table-metadata)]
-          (when-let [filter-column (source->checkpoint-filter-column query
-                                                                     (:source-incremental-strategy source)
-                                                                     table metadata-provider)]
-            {:query (-> query (lib/aggregate (lib/max filter-column)))
-             :filter-column filter-column}))))))
-
-(defn- next-checkpoint-value
-  "Execute the checkpoint query and normalize the result for database insertion.
-  Returns `nil` if the target table is empty."
-  [{:keys [query filter-column]}]
-  (let [{:keys [base-type]} filter-column
-        v (some-> query qp/process-query :data :rows first first)]
-    ;; QP return values are lossy, we do a bit of parsing to ensure they're of the right
-    ;; shape for reinsertion
-    (cond
-      (nil? v)
-      nil
-
-      (isa? base-type :type/Integer)
-      (bigint v)
-
-      ;; any other number that's not an integer, should be a decimal/float
-      (number? v)
-      (bigdec v)
-
-      :else v)))
-
 (defn- build-filtered-subquery
   "Build a HoneySQL subquery for a table tag with incremental filtering applied.
 
