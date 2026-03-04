@@ -33,7 +33,7 @@ export function getQuestionVirtualTableId(id: CardId): WrappedCardId {
 }
 
 export function isVirtualCardId(
-  id: TableId | WrappedCardId,
+  id: TableId | WrappedCardId | null,
 ): id is WrappedCardId {
   return typeof id === "string" && id.startsWith("card__");
 }
