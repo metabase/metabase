@@ -1,6 +1,7 @@
 (ns metabase-enterprise.metabot-v3.agent.core-test
   (:require
    [clojure.test :refer :all]
+   [metabase-enterprise.metabot-v3.agent.analytics :as agent-analytics]
    [metabase-enterprise.metabot-v3.agent.core :as agent]
    [metabase-enterprise.metabot-v3.agent.memory :as memory]
    [metabase-enterprise.metabot-v3.api :as api]
@@ -11,6 +12,7 @@
    [metabase.analytics.prometheus :as prometheus]
    [metabase.analytics.snowplow-test :as snowplow-test]
    [metabase.test :as mt]
+   [metabase.test.util :as tu]
    [metabase.util.malli :as mu]))
 
 (set! *warn-on-reflection* true)
@@ -451,11 +453,11 @@
                             (mut/mock-llm-response
                              [{:type :text :text "Done"}]))))]
           (mt/with-log-level [metabase-enterprise.metabot-v3.agent.core :warn]
-            (into [] (agent/run-agent-loop
-                      {:messages   [{:role :user :content "test"}]
-                       :state      {}
-                       :profile-id :internal
-                       :context    {}})))))
+            (run! identity (agent/run-agent-loop
+                            {:messages   [{:role :user :content "test"}]
+                             :state      {}
+                             :profile-id :internal
+                             :context    {}})))))
       (is (== 1 (mt/metric-value system :metabase-metabot/agent-requests
                                  {:profile-id "internal"})))
       (is (== 2 (:sum (mt/metric-value system :metabase-metabot/agent-iterations
@@ -480,11 +482,11 @@
     (testing "records agent-errors on failure"
       (with-redefs [openrouter/openrouter (fn [_] (throw (ex-info "boom" {})))]
         (mt/with-log-level [metabase-enterprise.metabot-v3.agent.core :fatal]
-          (into [] (agent/run-agent-loop
-                    {:messages   [{:role :user :content "test"}]
-                     :state      {}
-                     :profile-id :internal
-                     :context    {}}))))
+          (run! identity (agent/run-agent-loop
+                          {:messages   [{:role :user :content "test"}]
+                           :state      {}
+                           :profile-id :internal
+                           :context    {}}))))
       (is (== 1 (mt/metric-value system :metabase-metabot/agent-requests
                                  {:profile-id "internal"})))
       (is (== 0 (:sum (mt/metric-value system :metabase-metabot/agent-iterations
@@ -529,12 +531,12 @@
         (mt/with-log-level [metabase-enterprise.metabot-v3.agent.core :warn]
           (mt/with-current-user rasta-id
             (snowplow-test/with-fake-snowplow-collector
-              (into [] (agent/run-agent-loop
-                        {:messages        [{:role :user :content "test"}]
-                         :state           {}
-                         :context         {}
-                         :profile-id      :internal
-                         :conversation-id "00000000-0000-0000-0000-000000000001"}))
+              (run! identity (agent/run-agent-loop
+                              {:messages        [{:role :user :content "test"}]
+                               :state           {}
+                               :context         {}
+                               :profile-id      :internal
+                               :conversation-id "00000000-0000-0000-0000-000000000001"}))
               ;; The collector also contains token_usage events; filter for just ai_service_events.
               (let [events (snowplow-test/pop-event-data-and-user-id!)
                     tool-events (filter #(= "agent_used_tool" (get-in % [:data "event"])) events)]
@@ -574,12 +576,12 @@
         (mt/with-log-level [metabase-enterprise.metabot-v3.agent.core :warn]
           (mt/with-current-user rasta-id
             (snowplow-test/with-fake-snowplow-collector
-              (into [] (agent/run-agent-loop
-                        {:messages        [{:role :user :content "test"}]
-                         :state           {}
-                         :context         {}
-                         :profile-id      :internal
-                         :conversation-id "00000000-0000-0000-0000-000000000002"}))
+              (run! identity (agent/run-agent-loop
+                              {:messages        [{:role :user :content "test"}]
+                               :state           {}
+                               :context         {}
+                               :profile-id      :internal
+                               :conversation-id "00000000-0000-0000-0000-000000000002"}))
               (let [events (snowplow-test/pop-event-data-and-user-id!)
                     tool-events (filter #(= "agent_used_tool" (get-in % [:data "event"])) events)]
                 (is (=? [{:data {"event"  "agent_used_tool"
@@ -610,12 +612,12 @@
         (mt/with-log-level [metabase-enterprise.metabot-v3.agent.core :warn]
           (mt/with-current-user rasta-id
             (snowplow-test/with-fake-snowplow-collector
-              (into [] (agent/run-agent-loop
-                        {:messages        [{:role :user :content "test"}]
-                         :state           {}
-                         :context         {}
-                         :profile-id      :internal
-                         :conversation-id "00000000-0000-0000-0000-000000000001"}))
+              (run! identity (agent/run-agent-loop
+                              {:messages        [{:role :user :content "test"}]
+                               :state           {}
+                               :context         {}
+                               :profile-id      :internal
+                               :conversation-id "00000000-0000-0000-0000-000000000001"}))
               ;; Filter for just token_usage events (other events may also be present)
               (let [events      (snowplow-test/pop-event-data-and-user-id!)
                     token-events (filter #(contains? (:data %) "total_tokens") events)]
@@ -642,3 +644,69 @@
                                     "tag"                  "agent"
                                     "session_id"           "00000000-0000-0000-0000-000000000001"}}]
                         token-events))))))))))
+
+;;; ===================== User Intent Classification Tests =====================
+
+(def ^:private mock-llm-response-for-intent
+  [{:type :start :id "msg-1"}
+   {:type :text :text "Done"}
+   {:type :usage :usage {:promptTokens 10 :completionTokens 5}
+    :model "test-model" :id "msg-1"}])
+
+(deftest user-intent-snowplow-fires-event-test
+  (testing "fires :snowplow/ai_service_event 'user_intent' when :track-user-intent? is true"
+    (let [rasta-id (mt/user->id :rasta)]
+      (with-redefs [openrouter/openrouter    (fn [_] (mut/mock-llm-response mock-llm-response-for-intent))
+                    self/call-llm-structured (fn [& _] {:intent "query_data"})]
+        (mt/with-current-user rasta-id
+          (snowplow-test/with-fake-snowplow-collector
+            (run! identity (agent/run-agent-loop
+                            {:messages            [{:role :user :content "Show sales by region"}]
+                             :state               {}
+                             :context             {}
+                             :profile-id          :internal
+                             :conversation-id     "00000000-0000-0000-0000-000000000002"
+                             :track-user-intent?  true}))
+            (tu/poll-until 5000
+                           (some #(= "user_intent" (get-in % [:properties "data" "data" "event"]))
+                                 @snowplow-test/*snowplow-collector*))
+            (let [events        (snowplow-test/pop-event-data-and-user-id!)
+                  intent-events (filter #(= "user_intent" (get-in % [:data "event"])) events)]
+              (is (=? [{:user-id (str rasta-id)
+                        :data    {"event"         "user_intent"
+                                  "source"        "metabot_agent"
+                                  "profile"       "internal"
+                                  "session_id"    "00000000-0000-0000-0000-000000000002"
+                                  "event_details" {"intent" "query_data"}}}]
+                      intent-events)))))))))
+
+(deftest user-intent-not-tracked-when-disabled-test
+  (testing "does not fire user_intent event when :track-user-intent? is false"
+    (let [classify-called (atom false)]
+      (with-redefs [openrouter/openrouter                                   (fn [_] (mut/mock-llm-response mock-llm-response-for-intent))
+                    agent-analytics/classify-and-track-user-intent-async! (fn [_ _] (reset! classify-called true))]
+        (run! identity (agent/run-agent-loop
+                        {:messages        [{:role :user :content "test"}]
+                         :state           {}
+                         :context         {}
+                         :profile-id      :internal
+                         :conversation-id "00000000-0000-0000-0000-000000000003"}))
+        (is (false? @classify-called))))))
+
+(deftest user-intent-classifier-exception-swallowed-test
+  (testing "does not propagate exception if classify-user-intent throws"
+    (let [classify-called (atom false)]
+      (with-redefs [openrouter/openrouter    (fn [_] (mut/mock-llm-response mock-llm-response-for-intent))
+                    self/call-llm-structured (fn [& _]
+                                               (reset! classify-called true)
+                                               (throw (ex-info "LLM error" {})))]
+        ;; Should not throw — exception is caught inside the background future
+        (run! identity (agent/run-agent-loop
+                        {:messages            [{:role :user :content "test"}]
+                         :state               {}
+                         :context             {}
+                         :profile-id          :internal
+                         :conversation-id     "00000000-0000-0000-0000-000000000004"
+                         :track-user-intent?  true}))
+        (tu/poll-until 5000 @classify-called)
+        (is (true? @classify-called))))))

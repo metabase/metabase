@@ -2,6 +2,7 @@
   "Main agent loop implementation using reducible streaming infrastructure."
   (:require
    [clojure.string :as str]
+   [metabase-enterprise.metabot-v3.agent.analytics :as agent-analytics]
    [metabase-enterprise.metabot-v3.agent.memory :as memory]
    [metabase-enterprise.metabot-v3.agent.messages :as messages]
    [metabase-enterprise.metabot-v3.agent.profiles :as profiles]
@@ -308,13 +309,16 @@
                                 :tools    (count tools)
                                 :max-iter (:max-iterations profile)
                                 :msgs     (count messages)})
-    {:profile         profile
-     :tools           tools
-     :context         context
-     :memory-atom     memory-atom
-     :request-id      (str (random-uuid))
-     :conversation-id conversation-id
-     :tracking-opts   tracking-opts}))
+    {:profile       profile
+     :tools         tools
+     :context       context
+     :memory-atom   memory-atom
+     :tracking-opts (merge {:profile-name (:name profile)
+                            :request-id   (str (random-uuid))
+                            :session-id   conversation-id
+                            :source       "metabot_agent"
+                            :tag          "agent"}
+                           tracking-opts)}))
 
 (defn- initial-loop-state
   "Create initial loop state from agent config and reduction context."
@@ -353,15 +357,9 @@
   [{:keys [agent rf result iteration usage-atom] :as loop-state}]
   (with-span :debug {:name      :metabot-v3.agent/loop-step
                      :iteration iteration}
-    (let [{:keys [profile tools context memory-atom request-id conversation-id tracking-opts]} agent
+    (let [{:keys [profile tools context memory-atom tracking-opts]} agent
           max-iter      (:max-iterations profile 10)
-          tracking-opts (merge {:profile-name (:name profile)
-                                :iteration    iteration
-                                :request-id   request-id
-                                :session-id   conversation-id
-                                :source       "metabot_agent"
-                                :tag          "agent"}
-                               tracking-opts)
+          tracking-opts (assoc tracking-opts :iteration iteration)
           parts-atom    (atom [])
           llm-call      (call-llm @memory-atom context profile tools iteration tracking-opts)
           xf         (comp (accumulate-usage-xf usage-atom)
@@ -432,10 +430,12 @@
             [:tracking-opts {:optional true} [:maybe [:map
                                                       [:source {:optional true} [:maybe :string]]
                                                       [:tag {:optional true} [:maybe :string]]]]]
+            [:track-user-intent? {:optional true} [:maybe :boolean]]
             [:debug? {:optional true} [:maybe :boolean]]]]
-  (let [profile-id (:profile-id opts)
-        debug?     (:debug? opts)
-        labels     {:profile-id (name profile-id)}]
+  (let [profile-id         (:profile-id opts)
+        debug?             (:debug? opts)
+        track-user-intent? (:track-user-intent? opts)
+        labels             {:profile-id (name profile-id)}]
     (reify clojure.lang.IReduceInit
       (reduce [_ rf init]
         (with-span :info {:name       :metabot-v3.agent/run-agent-loop
@@ -445,10 +445,16 @@
           (let [start-ms (u/start-timer)]
             (binding [*debug-log* (when debug? (atom []))]
               (try
-                (let [{:keys [result iteration]} (->> (initial-loop-state (init-agent opts) rf init (atom {}))
-                                                      (iterate loop-step)
-                                                      (drop-while #(= :continue (:status %)))
-                                                      first)]
+                (let [agent              (init-agent opts)
+                      _                  (when track-user-intent?
+                                           (agent-analytics/classify-and-track-user-intent-async!
+                                            (:messages opts)
+                                            (:tracking-opts agent)))
+                      {result    :result
+                       iteration :iteration} (->> (initial-loop-state agent rf init (atom {}))
+                                                  (iterate loop-step)
+                                                  (drop-while #(= :continue (:status %)))
+                                                  first)]
                   (prometheus/observe! :metabase-metabot/agent-iterations labels iteration)
                   ;; Emit debug log as a data part if debug mode was active
                   (if (and debug? (seq @*debug-log*))
