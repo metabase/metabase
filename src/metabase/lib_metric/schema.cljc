@@ -140,9 +140,25 @@
        (lib.schema.common/normalize-options-map (or opts {}))
        dimension-id])))
 
+(defn- normalize-value-clause
+  "Normalize a [:value opts literal] clause from API format."
+  [x]
+  (when (and (sequential? x)
+             (= 3 (count x))
+             (let [tag (first x)]
+               (or (= tag "value") (= tag :value))))
+    (let [[_tag opts literal] x
+          norm-opts (lib.schema.common/normalize-options-map (or opts {}))]
+      [:value
+       (cond-> norm-opts
+         (:base-type norm-opts)      (update :base-type lib.schema.common/normalize-keyword)
+         (:effective-type norm-opts)  (update :effective-type lib.schema.common/normalize-keyword))
+       literal])))
+
 (defn normalize-filter-clause
   "Recursively normalize a filter clause from API format.
-   Converts string operators to keywords and normalizes dimension references."
+   Converts string operators to keywords and normalizes dimension references
+   and value clauses."
   [clause]
   (when (sequential? clause)
     (let [[op opts & args] clause
@@ -156,10 +172,12 @@
         :not
         [operator norm-opts (normalize-filter-clause (first args))]
 
-        ;; All other filters - normalize dimension refs in args
+        ;; All other filters - normalize dimension refs and value clauses in args
         (into [operator norm-opts]
               (map (fn [arg]
-                     (or (normalize-dimension-ref arg) arg))
+                     (or (normalize-dimension-ref arg)
+                         (normalize-value-clause arg)
+                         arg))
                    args))))))
 
 (mr/def ::filter-clause

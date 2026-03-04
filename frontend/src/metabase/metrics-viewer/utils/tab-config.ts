@@ -107,12 +107,7 @@ export const TAB_TYPE_REGISTRY: TabTypeDefinition[] = [
     dimensionPredicate: (dim) =>
       LibMetric.isCategory(dim) &&
       !isGeoDimension(dim) &&
-      !LibMetric.isBoolean(dim) &&
-      !LibMetric.isPrimaryKey(dim) &&
-      !LibMetric.isForeignKey(dim) &&
-      !LibMetric.isURL(dim) &&
-      !LibMetric.isEntityName(dim) &&
-      !LibMetric.isTitle(dim),
+      !LibMetric.isBoolean(dim),
     defaultDisplayType: "bar",
     availableDisplayTypes: CATEGORY_CHART_TYPES,
   },

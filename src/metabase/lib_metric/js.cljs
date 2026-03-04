@@ -297,17 +297,23 @@
          :metadata-provider provider}))))
 
 (defn- expression->js
-  "Convert a CLJS expression tree to JS, preserving namespaced keys like :lib/uuid."
+  "Convert a CLJS expression tree to JS, preserving namespaced keys like :lib/uuid.
+   BigInts are wrapped in [:value opts string] clauses so the QP uses :type/BigInteger
+   for parsing rather than the column's own type (which may be :type/Integer)."
   [expr]
   (cond
-    (keyword? expr) (u/qualified-name expr)
-    (map? expr)     (let [obj #js {}]
-                      (doseq [[k v] expr]
-                        (gobject/set obj (u/qualified-name k) (expression->js v)))
-                      obj)
-    (vector? expr)  (to-array (map expression->js expr))
-    (u.number/bigint? expr) (str expr)
-    :else           expr))
+    (keyword? expr)         (u/qualified-name expr)
+    (map? expr)             (let [obj #js {}]
+                              (doseq [[k v] expr]
+                                (gobject/set obj (u/qualified-name k) (expression->js v)))
+                              obj)
+    (vector? expr)          (to-array (map expression->js expr))
+    (u.number/bigint? expr) (let [opts #js {}]
+                              (gobject/set opts "base-type" "type/BigInteger")
+                              (gobject/set opts "effective-type" "type/BigInteger")
+                              (gobject/set opts "lib/uuid" (str (random-uuid)))
+                              (to-array #js ["value" opts (str expr)]))
+    :else                   expr))
 
 (defn- instance-filter->js
   "Convert an instance-filter map to JS, preserving :lib/uuid key."

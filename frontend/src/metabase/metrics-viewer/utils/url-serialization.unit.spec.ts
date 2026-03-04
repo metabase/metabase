@@ -5,6 +5,14 @@ import {
   encodeState,
 } from "./url-serialization";
 
+function encodeStateOrThrow(state: SerializedMetricsViewerPageState): string {
+  const result = encodeState(state);
+  if (result === undefined) {
+    throw new Error("encodeState returned undefined unexpectedly");
+  }
+  return result;
+}
+
 describe("url-serialization", () => {
   describe("encodeState / decodeState round-trip", () => {
     it("round-trips a state with sources and tabs", () => {
@@ -30,7 +38,7 @@ describe("url-serialization", () => {
         selectedTabId: "tab-1",
       };
 
-      const hash = encodeState(state);
+      const hash = encodeStateOrThrow(state);
       const decoded = decodeState(hash);
       expect(decoded).toEqual(state);
     });
@@ -100,7 +108,7 @@ describe("url-serialization", () => {
         selectedTabId: null,
       };
 
-      const hash = encodeState(state);
+      const hash = encodeStateOrThrow(state);
       const decoded = decodeState(hash);
       expect(decoded).toEqual(state);
     });
@@ -128,7 +136,7 @@ describe("url-serialization", () => {
         selectedTabId: null,
       };
 
-      const hash = encodeState(state);
+      const hash = encodeStateOrThrow(state);
       const decoded = decodeState(hash);
       expect(decoded).toEqual(state);
     });
@@ -183,7 +191,7 @@ describe("url-serialization", () => {
         selectedTabId: "tab-1",
       };
 
-      const hash = encodeState(state);
+      const hash = encodeStateOrThrow(state);
       const decoded = decodeState(hash);
       expect(decoded).toEqual(state);
     });
@@ -203,7 +211,7 @@ describe("url-serialization", () => {
         selectedTabId: null,
       };
 
-      const hash = encodeState(state);
+      const hash = encodeStateOrThrow(state);
       const decoded = decodeState(hash);
       expect(decoded).toEqual(state);
     });
@@ -223,7 +231,7 @@ describe("url-serialization", () => {
         selectedTabId: null,
       };
 
-      const hash = encodeState(state);
+      const hash = encodeStateOrThrow(state);
       const decoded = decodeState(hash);
       expect(decoded).toEqual(state);
     });
@@ -242,7 +250,8 @@ describe("url-serialization", () => {
         tabs: [],
         selectedTabId: null,
       };
-      return decodeState(encodeState(state)).sources[0].filters![0].value;
+      return decodeState(encodeStateOrThrow(state)).sources[0].filters![0]
+        .value;
     }
 
     it("revives specific-date Date values after encode/decode", () => {
@@ -291,6 +300,30 @@ describe("url-serialization", () => {
       };
 
       expect(roundTripFilter(filter)).toEqual(filter);
+    });
+  });
+
+  describe("BigInt filter revival through encode/decode", () => {
+    it("revives BigInt values in number filters after encode/decode", () => {
+      const filter: DimensionFilterValue = {
+        type: "number",
+        operator: "=",
+        values: [BigInt("9007199254740993"), BigInt("-9007199254740993")],
+      };
+      const state: SerializedMetricsViewerPageState = {
+        sources: [
+          {
+            type: "metric",
+            id: 1,
+            filters: [{ dimensionId: "price", value: filter }],
+          },
+        ],
+        tabs: [],
+        selectedTabId: null,
+      };
+
+      const decoded = decodeState(encodeStateOrThrow(state));
+      expect(decoded.sources[0].filters![0].value).toEqual(filter);
     });
   });
 
