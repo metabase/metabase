@@ -133,7 +133,7 @@
            version}}
 
   analyze
-  {:team "Querying"
+  {:team "Graphy"
    :api  #{metabase.analyze.core
            metabase.analyze.query-results}
    :uses #{config
@@ -548,6 +548,8 @@
            metabase.driver.common
            metabase.driver.common.parameters
            metabase.driver.common.parameters.parse
+           metabase.driver.connection
+          metabase.driver.connection.workspaces
            metabase.driver.ddl.interface
            metabase.driver.h2
            metabase.driver.impl
@@ -569,7 +571,8 @@
            metabase.driver.sql.util
            metabase.driver.sync
            metabase.driver.util}
-   :uses #{app-db
+   :uses #{analytics
+           app-db
            appearance
            auth-provider
            classloader
@@ -690,7 +693,7 @@
            util}}
 
   graph
-  {:team "Querying"
+  {:team "Graphy"
    :api  #{metabase.graph.core}
    :uses #{util}}
 
@@ -1186,6 +1189,7 @@
            metabase.query-processor.middleware.add-remaps
            metabase.query-processor.middleware.annotate
            metabase.query-processor.middleware.cache-backend.db
+           metabase.query-processor.middleware.catch-exceptions
            metabase.query-processor.middleware.constraints
            metabase.query-processor.middleware.limit
            metabase.query-processor.middleware.permissions
@@ -1459,7 +1463,7 @@
            util}}
 
   sync
-  {:team "Querying"
+  {:team "Graphy"
    :api  #{metabase.sync.api
            metabase.sync.core
            metabase.sync.init
@@ -2074,7 +2078,7 @@
            warehouses-rest}}
 
   enterprise/dependencies
-  {:team "Querying"
+  {:team "Graphy"
    :api  #{metabase-enterprise.dependencies.api
            metabase-enterprise.dependencies.core
            metabase-enterprise.dependencies.init}
@@ -2419,7 +2423,7 @@
   enterprise/transforms
   {:team "Querying"
    :api  #{}
-   :uses #{}}
+   :uses #{premium-features}}
 
   enterprise/transforms-python
   {:team "Querying"

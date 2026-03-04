@@ -13,6 +13,7 @@
   This namespace provides the public API for workspace isolation."
   (:require
    [metabase.driver :as driver]
+   [metabase.driver.connection.workspaces :as driver.w]
    [metabase.driver.util :as driver.u]))
 
 ;;;; Delegation to driver methods
@@ -43,8 +44,8 @@
 (defn do-with-workspace-isolation
   "Impl of* with-workspace-isolation*."
   [workspace thunk]
-  (driver/with-swapped-connection-details (:database_id workspace)
-                                          (:database_details workspace)
+  (driver.w/with-swapped-connection-details (:database_id workspace)
+    (:database_details workspace)
     (thunk)))
 
 (defmacro with-workspace-isolation

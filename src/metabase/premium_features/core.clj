@@ -31,7 +31,8 @@
   plan-alias
   quotas
   TokenStatus
-  clear-cache!]
+  clear-cache!
+  transform-stats]
 
  (metabase.premium-features.settings
   active-users-count

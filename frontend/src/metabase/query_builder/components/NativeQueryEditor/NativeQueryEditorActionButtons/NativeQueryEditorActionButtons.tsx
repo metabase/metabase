@@ -30,6 +30,7 @@ interface NativeQueryEditorActionButtonsProps {
   cancelQuery?: () => void;
   toggleDataReference?: () => void;
   toggleSnippetSidebar?: () => void;
+  toggleTemplateTagsEditor?: () => void;
   onOpenModal?: (modalType: QueryModalType) => void;
   onFormatQuery?: () => void;
 }
@@ -43,6 +44,7 @@ export const NativeQueryEditorActionButtons = (
     snippets,
     features,
     toggleDataReference,
+    toggleTemplateTagsEditor,
     onFormatQuery,
   } = props;
 
@@ -78,7 +80,11 @@ export const NativeQueryEditorActionButtons = (
         <SnippetSidebarButton {...props} size={ICON_SIZE} />
       )}
       {features.variables && (
-        <NativeVariablesButton {...props} size={ICON_SIZE} />
+        <NativeVariablesButton
+          {...props}
+          size={ICON_SIZE}
+          onClick={toggleTemplateTagsEditor}
+        />
       )}
       {showFormatButton && onFormatQuery && (
         <Tooltip label={t`Auto-format`}>

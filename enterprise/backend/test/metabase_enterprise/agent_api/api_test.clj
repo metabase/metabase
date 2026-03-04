@@ -212,7 +212,17 @@
                  :id     table-id
                  :fields empty?}
                 (agent-client :rasta :get 200
-                              (str "agent/v1/table/" table-id "?with-fields=false&with-related-tables=false"))))))))
+                              (str "agent/v1/table/" table-id "?with-fields=false&with-related-tables=false"))))))
+
+    (testing "Field values are excluded by default"
+      (let [table-id (mt/id :orders)
+            table    (agent-client :rasta :get 200 (str "agent/v1/table/" table-id))]
+        (is (every? #(nil? (:field_values %)) (:fields table)))))
+
+    (testing "Field values are included when explicitly requested"
+      (let [table-id (mt/id :orders)
+            table    (agent-client :rasta :get 200 (str "agent/v1/table/" table-id "?with-field-values=true"))]
+        (is (some #(seq (:field_values %)) (:fields table)))))))
 
 (deftest get-metric-details-test
   (with-agent-api-setup!
@@ -262,16 +272,18 @@
     ;; Ensure field values exist for the field we'll test
     (ensure-fresh-field-values! (mt/id :people :state))
 
-    (testing "Returns field statistics and values for a table field"
+    (testing "Returns field statistics and values with default limit of 30"
       (let [table-id (mt/id :people)
             field-id (visible-field-id table-id "State")]
         (is (some? field-id) "Should find the State field")
-        (is (=? {:statistics {:distinct_count 49}
-                 :values     sequential?}
-                (agent-client :crowberto :get 200
-                              (format "agent/v1/table/%d/field/%s/values" table-id field-id))))))
+        (let [result (agent-client :crowberto :get 200
+                                   (format "agent/v1/table/%d/field/%s/values" table-id field-id))]
+          (is (=? {:statistics {:distinct_count 49}
+                   :values     sequential?}
+                  result))
+          (is (<= (count (:values result)) 30) "Should apply default limit of 30"))))
 
-    (testing "Respects limit parameter"
+    (testing "Respects explicit limit parameter"
       (let [table-id (mt/id :people)
             field-id (visible-field-id table-id "State")
             result   (agent-client :crowberto :get 200
@@ -315,7 +327,14 @@
           (is (= (mt/id) (lib/database-id decoded)))
           (is (= (mt/id :orders) (lib/source-table-id decoded))))))
 
-    (testing "Constructs a query with a limit"
+    (testing "Applies default limit of 100 when no limit is specified"
+      (let [table-id (mt/id :orders)
+            response (agent-client :rasta :post 200 "agent/v1/construct-query"
+                                   {:table_id table-id})
+            decoded  (decode-query response)]
+        (is (= 100 (lib/current-limit decoded)))))
+
+    (testing "Respects explicit limit"
       (let [table-id (mt/id :orders)
             response (agent-client :rasta :post 200 "agent/v1/construct-query"
                                    {:table_id table-id

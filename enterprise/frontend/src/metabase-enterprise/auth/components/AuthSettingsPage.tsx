@@ -9,7 +9,10 @@ import { LdapAuthCard } from "metabase/admin/settings/auth/containers/LdapAuthCa
 import { ManageApiKeys } from "metabase/admin/settings/components/ApiKeys/ManageApiKeys";
 import { AdminSettingInput } from "metabase/admin/settings/components/widgets/AdminSettingInput";
 import { useHasTokenFeature } from "metabase/common/hooks";
-import { PLUGIN_AUTH_PROVIDERS } from "metabase/plugins";
+import {
+  type AuthSettingsPageProps,
+  PLUGIN_AUTH_PROVIDERS,
+} from "metabase/plugins";
 
 import { JwtAuthCard } from "../containers/JwtAuthCard";
 import { SamlAuthCard } from "../containers/SamlAuthCard";
@@ -17,9 +20,9 @@ import { useHasSsoEnabled } from "../utils";
 
 import { SessionTimeoutSetting } from "./SessionTimeoutSetting";
 
-type Tabs = "authentication" | "user-provisioning" | "api-keys";
-
-export function AuthSettingsPage({ tab = "authentication" }: { tab?: Tabs }) {
+export function AuthSettingsPage({
+  tab = "authentication",
+}: AuthSettingsPageProps) {
   if (tab === "api-keys") {
     return <ManageApiKeys />;
   }

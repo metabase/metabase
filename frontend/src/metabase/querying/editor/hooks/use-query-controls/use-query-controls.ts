@@ -91,6 +91,10 @@ export function useQueryControls(
     toggleSidebar("native-query");
   };
 
+  const toggleTemplateTagsSidebar = () => {
+    toggleSidebar("template-tags");
+  };
+
   const toggleModal = (modalType: QueryEditorModalType) => {
     onChangeUiState({
       ...uiState,
@@ -113,6 +117,7 @@ export function useQueryControls(
     toggleDataReferenceSidebar,
     toggleSnippetSidebar,
     toggleNativeQuerySidebar,
+    toggleTemplateTagsSidebar,
     togglePreviewQueryModal,
   };
 }

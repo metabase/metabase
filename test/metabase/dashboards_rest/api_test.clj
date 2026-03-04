@@ -3886,40 +3886,6 @@
                           :user-id (str (mt/user->id :crowberto))}
                          (last (snowplow-test/pop-event-data-and-user-id!)))))))))))))
 
-(deftest dashcard-http-action-execution-test
-  (mt/test-drivers (mt/normal-drivers-with-feature :actions)
-    (mt/with-actions-test-data-and-actions-enabled
-      (mt/with-actions [{:keys [action-id model-id]} {:type :http}]
-        (testing "Executing dashcard with action"
-          (mt/with-temp [:model/Dashboard {dashboard-id :id} {}
-                         :model/DashboardCard {dashcard-id :id} {:dashboard_id dashboard-id
-                                                                 :action_id action-id
-                                                                 :card_id model-id}]
-            (let [execute-path (format "dashboard/%s/dashcard/%s/execute"
-                                       dashboard-id
-                                       dashcard-id)]
-              (testing "Should be able to execute an action"
-                (is (= {:the_parameter 1}
-                       (mt/user-http-request :crowberto :post 200 execute-path
-                                             {:parameters {"id" 1}}))))
-              (testing "Should handle errors"
-                (is (= {:remote-status 400
-                        :message       "oops"}
-                       (mt/user-http-request :crowberto :post 400 execute-path
-                                             {:parameters {"id" 1 "fail" "true"}}))))
-              (testing "Extra parameter should fail gracefully"
-                (is (partial= {:message "No destination parameter found for #{\"extra\"}. Found: #{\"id\" \"fail\"}"}
-                              (mt/user-http-request :crowberto :post 400 execute-path
-                                                    {:parameters {"extra" 1}}))))
-              (testing "Missing parameter should fail gracefully"
-                (is (has-valid-action-execution-error-message?
-                     (mt/user-http-request :crowberto :post 400 execute-path
-                                           {:parameters {}}))))
-              (testing "Sending an invalid number should fail gracefully"
-                (is (has-valid-action-execution-error-message?
-                     (mt/user-http-request :crowberto :post 400 execute-path
-                                           {:parameters {"id" "BAD"}})))))))))))
-
 (deftest dashcard-implicit-action-execution-insert-test
   (mt/test-drivers (mt/normal-drivers-with-feature :actions)
     (mt/with-actions-test-data-and-actions-enabled

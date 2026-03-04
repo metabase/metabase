@@ -1,6 +1,11 @@
+import { WRITABLE_DB_ID } from "e2e/support/cypress_data";
 import { createMockSearchResult } from "metabase-types/api/mocks";
 
 const { H } = cy;
+
+const SOURCE_TABLE = "Animals";
+const TARGET_TABLE = "transform_table";
+const TARGET_SCHEMA = "Schema A";
 
 describe("issue #68378", () => {
   beforeEach(() => {
@@ -75,6 +80,50 @@ describe("issue GDGT-1776", () => {
     cy.findByTestId("loading-indicator").should("not.exist");
     H.main().findByText("Something’s gone wrong").should("not.exist");
     cy.button("Cancel").should("be.visible");
+  });
+});
+
+describe("issue GDGT-1774", () => {
+  beforeEach(() => {
+    H.restore("postgres-writable");
+    H.resetTestTable({ type: "postgres", table: "many_schemas" });
+    cy.signInAsAdmin();
+    H.activateToken("bleeding-edge");
+    H.resyncDatabase({ dbId: WRITABLE_DB_ID, tableName: SOURCE_TABLE });
+  });
+
+  it("should display field options in the incremental update field picker (GDGT-1774)", () => {
+    H.getTableId({ name: SOURCE_TABLE })
+      .then((tableId) =>
+        H.createTransform({
+          name: "Incremental MBQL transform",
+          source: {
+            type: "query",
+            query: {
+              database: WRITABLE_DB_ID,
+              type: "query",
+              query: { "source-table": tableId },
+            },
+            "source-incremental-strategy": { type: "checkpoint" },
+          },
+          target: {
+            type: "table-incremental",
+            database: WRITABLE_DB_ID,
+            name: TARGET_TABLE,
+            schema: TARGET_SCHEMA,
+            "target-incremental-strategy": { type: "append" },
+          },
+        }),
+      )
+      .then((res) => H.DataStudio.Transforms.visitSettingsTab(res.body.id));
+
+    cy.log("Field picker should be visible and have selectable options");
+    cy.findByLabelText("Field to check for new values")
+      .scrollIntoView()
+      .should("be.visible")
+      .click();
+
+    H.popover().findAllByRole("option").should("have.length.greaterThan", 0);
   });
 });
 

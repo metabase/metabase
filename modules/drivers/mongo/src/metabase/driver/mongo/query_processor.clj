@@ -1045,8 +1045,8 @@ function(bin) {
   "Rename :join-alias properties fields to ::join-local.
   See [[find-mapped-field-name]] for an explanation why this is done."
   [expr alias]
-  (driver-api/replace expr
-    [:field _ {:join-alias alias}]
+  (driver-api/replace-lite expr
+    [:field _ {:join-alias (a :guard (= a alias))}]
     (update &match 2 set/rename-keys {:join-alias ::join-local})))
 
 (defn- get-field-mappings [source-query projections]
@@ -1076,8 +1076,8 @@ function(bin) {
         source-field-mappings (get-field-mappings source-query projections)
         ;; Find the fields the join condition refers to that are not coming from the joined query.
         ;; These have to be bound in the :let property of the $lookup stage, they cannot be referred to directly.
-        own-fields (driver-api/match condition
-                     [:field _ (_ :guard #(not= (:join-alias %) alias))])
+        own-fields (driver-api/match-many condition
+                     [:field _ (opts :guard (not= (:join-alias opts) alias))] &match)
         ;; Map the own fields to a fresh alias and to its rvalue.
         mapping (map (fn [f] (let [alias (-> (format "let_%s_" (->lvalue f))
                                              ;; ~ in let aliases provokes a parse error in Mongo. For correct function,
@@ -1663,13 +1663,12 @@ function(bin) {
 (defn- query->collection-name
   "Return `:collection` from a source query, if it exists."
   [query]
-  (driver-api/match-one query
-    (_ :guard (every-pred map? :collection))
+  (driver-api/match-lite query
+    {:collection (collection :guard identity)}
     ;; ignore source queries inside `:joins` or `:collection` outside of a `:source-query`
-    (when (let [parents (set &parents)]
-            (and (contains? parents :source-query)
-                 (not (contains? parents :joins))))
-      (:collection &match))))
+    (when (and (some #{:source-query} &parents)
+               (not (some #{:joins} &parents)))
+      collection)))
 
 (defn- log-aggregation-pipeline [form]
   (when-not driver-api/*disable-qp-logging*
@@ -1762,14 +1761,14 @@ function(bin) {
                        source-alias)
                 [:field source-alias opts]
                 [:field id-or-name opts])))]
-    (driver-api/replace form
-      :field
+    (driver-api/replace-lite form
+      [:field & _]
       (update-field-ref &match)
 
-      (join :guard (every-pred map?
-                               driver-api/qp.add.alias
-                               #(not= (driver-api/qp.add.alias %) (:alias %))))
-      (recur (assoc join :alias (driver-api/qp.add.alias join))))))
+      (join :guard (and (map? join)
+                        (driver-api/qp.add.alias join)
+                        (not= (driver-api/qp.add.alias join) (:alias join))))
+      (&recur (assoc join :alias (driver-api/qp.add.alias join))))))
 
 (defn- preprocess
   [inner-query]

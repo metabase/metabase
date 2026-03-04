@@ -2,10 +2,9 @@ import { createMockMetadata } from "__support__/metadata";
 import { checkNotNull } from "metabase/lib/types";
 import * as Lib from "metabase-lib";
 import {
-  columnFinder,
-  createQuery,
-  createQueryWithClauses,
-  getJoinQueryHelpers,
+  DEFAULT_TEST_QUERY,
+  SAMPLE_PROVIDER,
+  createMetadataProvider,
 } from "metabase-lib/test-helpers";
 import Question from "metabase-lib/v1/Question";
 import type Database from "metabase-lib/v1/metadata/Database";
@@ -32,6 +31,7 @@ import {
   createMockTemplateTag,
 } from "metabase-types/api/mocks";
 import {
+  ORDERS_ID,
   PRODUCTS,
   PRODUCTS_ID,
   REVIEWS_ID,
@@ -55,60 +55,93 @@ const metadata = createMockMetadata({
 
 const db = metadata.database(SAMPLE_DB_ID) as Database;
 const productsTable = metadata.table(PRODUCTS_ID) as Table;
-
-const queryOrders = createQuery();
-
-const queryNonDateBreakout = createQueryWithClauses({
-  aggregations: [{ operatorName: "count" }],
-  breakouts: [{ tableName: "ORDERS", columnName: "QUANTITY" }],
+const provider = createMetadataProvider({
+  databaseId: db.id,
+  metadata,
 });
 
-const query1DateBreakout = createQueryWithClauses({
-  aggregations: [{ operatorName: "count" }],
-  breakouts: [
-    {
-      tableName: "ORDERS",
-      columnName: "CREATED_AT",
-      temporalBucketName: "Month",
-    },
-  ],
-});
+const queryOrders = Lib.createTestQuery(provider, DEFAULT_TEST_QUERY);
 
-const query2DateBreakouts = createQueryWithClauses({
-  aggregations: [{ operatorName: "count" }],
-  breakouts: [
+const queryNonDateBreakout = Lib.createTestQuery(provider, {
+  stages: [
     {
-      tableName: "ORDERS",
-      columnName: "CREATED_AT",
-      temporalBucketName: "Month",
-    },
-    {
-      tableName: "PRODUCTS",
-      columnName: "CREATED_AT",
-      temporalBucketName: "Month",
-    },
-  ],
-});
-
-const queryDateBreakoutsMultiStage = createQueryWithClauses({
-  query: Lib.appendStage(
-    createQueryWithClauses({
-      aggregations: [{ operatorName: "count" }],
+      source: { type: "table", id: ORDERS_ID },
+      aggregations: [{ type: "operator", operator: "count", args: [] }],
       breakouts: [
         {
-          tableName: "ORDERS",
-          columnName: "CREATED_AT",
-          temporalBucketName: "Month",
+          type: "column",
+          name: "QUANTITY",
+          sourceName: "ORDERS",
         },
       ],
-    }),
-  ),
-  aggregations: [{ operatorName: "count" }],
-  breakouts: [
+    },
+  ],
+});
+
+const query1DateBreakout = Lib.createTestQuery(SAMPLE_PROVIDER, {
+  stages: [
     {
-      tableName: "ORDERS",
-      columnName: "CREATED_AT",
-      temporalBucketName: "Year",
+      source: { type: "table", id: ORDERS_ID },
+      aggregations: [{ type: "operator", operator: "count" }],
+      breakouts: [
+        {
+          type: "column",
+          name: "CREATED_AT",
+          sourceName: "ORDERS",
+          unit: "month",
+        },
+      ],
+    },
+  ],
+});
+
+const query2DateBreakouts = Lib.createTestQuery(SAMPLE_PROVIDER, {
+  stages: [
+    {
+      source: { type: "table", id: ORDERS_ID },
+      aggregations: [{ type: "operator", operator: "count" }],
+      breakouts: [
+        {
+          type: "column",
+          name: "CREATED_AT",
+          sourceName: "ORDERS",
+          unit: "month",
+        },
+        {
+          type: "column",
+          name: "CREATED_AT",
+          sourceName: "PRODUCTS",
+          unit: "month",
+        },
+      ],
+    },
+  ],
+});
+
+const queryDateBreakoutsMultiStage = Lib.createTestQuery(SAMPLE_PROVIDER, {
+  stages: [
+    {
+      source: { type: "table", id: ORDERS_ID },
+      aggregations: [{ type: "operator", operator: "count" }],
+      breakouts: [
+        {
+          type: "column",
+          name: "CREATED_AT",
+          sourceName: "ORDERS",
+          unit: "month",
+        },
+      ],
+    },
+    {
+      aggregations: [{ type: "operator", operator: "count" }],
+      breakouts: [
+        {
+          type: "column",
+          sourceName: "ORDERS",
+          name: "CREATED_AT",
+          unit: "year",
+        },
+      ],
     },
   ],
 });
@@ -576,105 +609,208 @@ describe("parameters/utils/targets", () => {
 });
 
 function createComplex1StageQuery() {
-  const baseQuery = ordersJoinReviewsOnProductId();
-  const findColumn = columnFinder(baseQuery, Lib.visibleColumns(baseQuery, -1));
-  const userBirthdayColumn = findColumn("PEOPLE", "BIRTH_DATE");
-
-  return createQueryWithClauses({
-    query: baseQuery,
-    expressions: [
+  return Lib.createTestQuery(SAMPLE_PROVIDER, {
+    stages: [
       {
-        name: "User's 18th birthday",
-        operator: "datetime-add",
-        args: [checkNotNull(userBirthdayColumn), 18, "year"],
-      },
-    ],
-    aggregations: [
-      { operatorName: "count" },
-      { operatorName: "sum", tableName: "ORDERS", columnName: "TOTAL" },
-    ],
-    breakouts: [
-      {
-        tableName: "ORDERS",
-        columnName: "CREATED_AT",
-        temporalBucketName: "Month",
-      },
-      {
-        tableName: "PRODUCTS",
-        columnName: "CREATED_AT",
-        temporalBucketName: "Year",
-      },
-      {
-        tableName: "REVIEWS",
-        columnName: "CREATED_AT",
-        temporalBucketName: "Quarter",
-      },
-      {
-        columnName: "User's 18th birthday",
+        source: { type: "table", id: ORDERS_ID },
+        joins: [
+          {
+            source: { type: "table", id: REVIEWS_ID },
+            strategy: "left-join",
+            conditions: [
+              {
+                operator: "=",
+                left: {
+                  type: "column",
+                  name: "PRODUCT_ID",
+                  sourceName: "ORDERS",
+                },
+                right: {
+                  type: "column",
+                  name: "PRODUCT_ID",
+                  sourceName: "REVIEWS",
+                },
+              },
+            ],
+          },
+        ],
+        expressions: [
+          {
+            name: "User's 18th birthday",
+            value: {
+              type: "operator",
+              operator: "datetime-add",
+              args: [
+                { type: "column", name: "BIRTH_DATE", sourceName: "PEOPLE" },
+                { type: "literal", value: 18 },
+                { type: "literal", value: "year" },
+              ],
+            },
+          },
+        ],
+        aggregations: [
+          { type: "operator", operator: "count" },
+          {
+            type: "operator",
+            operator: "sum",
+            args: [{ type: "column", name: "TOTAL", sourceName: "ORDERS" }],
+          },
+        ],
+        breakouts: [
+          {
+            type: "column",
+            name: "CREATED_AT",
+            sourceName: "ORDERS",
+            unit: "month",
+          },
+          {
+            type: "column",
+            name: "CREATED_AT",
+            sourceName: "PRODUCTS",
+            unit: "year",
+            index: 0,
+          },
+          {
+            type: "column",
+            name: "CREATED_AT",
+            sourceName: "REVIEWS",
+            unit: "quarter",
+          },
+          {
+            type: "column",
+            name: "User's 18th birthday",
+          },
+        ],
       },
     ],
   });
 }
 
 function createComplex2StageQuery() {
-  const baseQuery = Lib.appendStage(createComplex1StageQuery());
-  const findColumn = columnFinder(baseQuery, Lib.visibleColumns(baseQuery, -1));
-  const countColumn = findColumn(null, "count");
-
-  const stageIndex = -1;
-  const {
-    table,
-    defaultStrategy,
-    defaultOperator,
-    findLHSColumn,
-    findRHSColumn,
-  } = getJoinQueryHelpers(baseQuery, stageIndex, REVIEWS_ID);
-
-  const createdAt = findLHSColumn("ORDERS", "CREATED_AT");
-  const reviewsCreatedAt = findRHSColumn("REVIEWS", "CREATED_AT");
-  const condition = Lib.joinConditionClause(
-    defaultOperator,
-    reviewsCreatedAt,
-    createdAt,
-  );
-  const join = Lib.joinClause(table, [condition], defaultStrategy);
-  const queryWithJoin = Lib.join(baseQuery, stageIndex, join);
-
-  return createQueryWithClauses({
-    query: queryWithJoin,
-    expressions: [
+  return Lib.createTestQuery(SAMPLE_PROVIDER, {
+    stages: [
       {
-        name: "Count + 1",
-        operator: "+",
-        args: [checkNotNull(countColumn), 1],
+        source: { type: "table", id: ORDERS_ID },
+        joins: [
+          {
+            source: { type: "table", id: REVIEWS_ID },
+            strategy: "left-join",
+            conditions: [
+              {
+                operator: "=",
+                left: {
+                  type: "column",
+                  name: "PRODUCT_ID",
+                  sourceName: "ORDERS",
+                },
+                right: {
+                  type: "column",
+                  name: "PRODUCT_ID",
+                  sourceName: "REVIEWS",
+                },
+              },
+            ],
+          },
+        ],
+        expressions: [
+          {
+            name: "User's 18th birthday",
+            value: {
+              type: "operator",
+              operator: "datetime-add",
+              args: [
+                { type: "column", name: "BIRTH_DATE", sourceName: "PEOPLE" },
+                { type: "literal", value: 18 },
+                { type: "literal", value: "year" },
+              ],
+            },
+          },
+        ],
+        aggregations: [
+          { type: "operator", operator: "count", args: [] },
+          {
+            type: "operator",
+            operator: "sum",
+            args: [
+              {
+                type: "column",
+                name: "TOTAL",
+                sourceName: "ORDERS",
+              },
+            ],
+          },
+        ],
+        breakouts: [
+          {
+            type: "column",
+            name: "CREATED_AT",
+            sourceName: "ORDERS",
+            unit: "month",
+          },
+          {
+            type: "column",
+            name: "CREATED_AT",
+            sourceName: "ORDERS",
+            unit: "year",
+          },
+          {
+            type: "column",
+            name: "CREATED_AT",
+            sourceName: "REVIEWS",
+            unit: "quarter",
+          },
+          {
+            type: "column",
+            name: "User's 18th birthday",
+          },
+        ],
+      },
+      {
+        joins: [
+          {
+            source: { type: "table", id: REVIEWS_ID },
+            strategy: "left-join",
+            conditions: [
+              {
+                operator: "=",
+                left: {
+                  type: "column",
+                  name: "CREATED_AT",
+                  sourceName: "ORDERS",
+                  index: 0,
+                },
+                right: {
+                  type: "column",
+                  name: "CREATED_AT",
+                  sourceName: "REVIEWS",
+                },
+              },
+            ],
+          },
+        ],
+        expressions: [
+          {
+            name: "Count + 1",
+            value: {
+              type: "operator",
+              operator: "+",
+              args: [
+                { type: "column", name: "count" },
+                { type: "literal", value: 1 },
+              ],
+            },
+          },
+        ],
+        aggregations: [{ type: "operator", operator: "count" }],
+        breakouts: [
+          {
+            type: "column",
+            name: "User's 18th birthday",
+          },
+        ],
       },
     ],
-    aggregations: [{ operatorName: "count" }],
-    breakouts: [{ columnName: "User's 18th birthday" }],
   });
-}
-
-function ordersJoinReviewsOnProductId() {
-  const stageIndex = -1;
-  const {
-    table,
-    defaultStrategy,
-    defaultOperator,
-    findLHSColumn,
-    findRHSColumn,
-  } = getJoinQueryHelpers(queryOrders, stageIndex, REVIEWS_ID);
-
-  const productsId = findLHSColumn("ORDERS", "PRODUCT_ID");
-  const reviewsProductId = findRHSColumn("REVIEWS", "PRODUCT_ID");
-  const condition = Lib.joinConditionClause(
-    defaultOperator,
-    reviewsProductId,
-    productsId,
-  );
-  const join = Lib.joinClause(table, [condition], defaultStrategy);
-  const query = Lib.join(queryOrders, stageIndex, join);
-
-  return query;
 }
 
 function createUnitOfTimeParameter() {

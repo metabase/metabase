@@ -66,7 +66,7 @@
 (mu/defn collect-field-references :- [:maybe [:sequential :mbql.clause/field]]
   "Collect all `:field` references from a given form."
   [form]
-  (lib.util.match/match form :field &match))
+  (lib.util.match/match-many form [:field & _] &match))
 
 (mu/defn ->field :- [:maybe [:and
                              (ms/InstanceOf :model/Field)

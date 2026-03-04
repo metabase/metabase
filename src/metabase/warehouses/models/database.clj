@@ -8,6 +8,7 @@
    [metabase.app-db.core :as mdb]
    [metabase.audit-app.core :as audit]
    [metabase.driver :as driver]
+   [metabase.driver.connection :as driver.conn]
    [metabase.driver.impl :as driver.impl]
    [metabase.driver.settings :as driver.settings]
    [metabase.driver.util :as driver.u]
@@ -50,6 +51,7 @@
 
 (t2/deftransforms :model/Database
   {:details                        mi/transform-encrypted-json
+   :write_data_details             mi/transform-encrypted-json
    :engine                         mi/transform-keyword
    :metadata_sync_schedule         mi/transform-cron-string
    :cache_field_values_schedule    mi/transform-cron-string
@@ -220,45 +222,68 @@
 (defn maybe-test-and-migrate-details!
   "When a driver has db-details to test and migrate:
    we loop through them until we find one that works and update the database with the working details."
-  [{:keys [engine details] :as database}]
-  (if-let [details-to-test (seq (driver/db-details-to-test-and-migrate (keyword engine) details))]
-    (do
-      (log/infof "Attempting to connect to %d possible legacy details" (count details-to-test))
-      (loop [[test-details & tail] details-to-test]
-        (if test-details
-          (if (driver.u/can-connect-with-details? engine (assoc test-details :engine engine))
-            (let [keys-remaining (-> test-details keys set)
-                  [_ removed _] (data/diff keys-remaining (-> details keys set))]
-              (log/infof "Successfully connected, migrating to: %s" (pr-str {:keys keys-remaining :keys-removed removed}))
-              (t2/update! :model/Database (:id database) {:details test-details})
-              test-details)
-            (recur tail))
-          ;; if we go through the list and we can't fine a working detail to test, keep original value
-          details)))
-    details))
+  [{:keys [engine] :as database}]
+  (let [details (driver.conn/default-details database)
+        test-and-migrate! (fn [details-to-test]
+                            (log/infof "Attempting to connect to %d possible legacy details" (count details-to-test))
+                            (loop [[test-details & tail] details-to-test]
+                              (if test-details
+                                (if (driver.u/can-connect-with-details? engine (assoc test-details :engine engine))
+                                  (let [keys-remaining (-> test-details keys set)
+                                        [_ removed _] (data/diff keys-remaining (-> details keys set))]
+                                    (log/infof "Successfully connected, migrating to: %s" (pr-str {:keys keys-remaining :keys-removed removed}))
+                                    (t2/update! :model/Database (:id database) {:details test-details})
+                                    test-details)
+                                  (recur tail))
+                                ;; if we go through the list and we can't fine a working detail to test, keep original value
+                                details)))]
+    (if-let [details-to-test (seq (driver/db-details-to-test-and-migrate (keyword engine) details))]
+      (test-and-migrate! details-to-test)
+      details)))
+
+(defn- check-connection!
+  "Checks connectivity for a set of database details. Returns true on success, false on failure.
+   Reports analytics with the given connection-type label."
+  [database driver engine details-map connection-type]
+  (try
+    (log/info (u/format-color :cyan "Health check [%s]: checking %s {:id %d}"
+                              connection-type (:name database) (:id database)))
+    (u/with-timeout (driver.settings/db-connection-timeout-ms)
+      (or (driver/can-connect? driver details-map)
+          (throw (Exception. (format "Failed to connect to Database (%s)" connection-type)))))
+    (log/info (u/format-color :green "Health check [%s]: success %s {:id %d}"
+                              connection-type (:name database) (:id database)))
+    (analytics/inc! :metabase-database/status {:driver engine :healthy true :connection-type connection-type})
+    true
+    (catch Throwable e
+      (let [humanized-message (some->> (u/all-ex-messages e)
+                                       (driver/humanize-connection-error-message driver))
+            reason            (if (keyword? humanized-message) "user-input" "exception")]
+        (log/error e (u/format-color :red "Health check [%s]: failure with error %s {:id %d :reason %s :message %s}"
+                                     connection-type
+                                     (:name database)
+                                     (:id database)
+                                     reason
+                                     humanized-message))
+        (analytics/inc! :metabase-database/status {:driver engine :healthy false :reason reason :connection-type connection-type}))
+      false)))
 
 (defn health-check-database!
   "Checks database health off-thread.
-   - checks connectivity
-   - cleans-up ambiguous legacy, db-details"
+   - checks connectivity for the default connection
+   - checks connectivity for the write connection (if configured)
+   - cleans-up ambiguous legacy db-details"
   [{:keys [engine] :as database}]
   (when-not (or (:is_audit database) (:is_sample database))
     (log/info (u/format-color :cyan "Health check: queueing %s {:id %d}" (:name database) (:id database)))
     (quick-task/submit-task!
      (fn []
-       (let [details (maybe-test-and-migrate-details! database)
-             engine (name engine)
-             driver (keyword engine)
-             details-map (assoc details :engine engine)]
-         (try
-           (log/info (u/format-color :cyan "Health check: checking %s {:id %d}" (:name database) (:id database)))
-           (u/with-timeout (driver.settings/db-connection-timeout-ms)
-             (or (driver/can-connect? driver details-map)
-                 (throw (Exception. "Failed to connect to Database"))))
-           (log/info (u/format-color :green "Health check: success %s {:id %d}" (:name database) (:id database)))
-           (analytics/inc! :metabase-database/status {:driver engine :healthy true})
-
-           ;; Detect and update provider name
+       (let [details     (maybe-test-and-migrate-details! database)
+             database    (assoc database :details details)
+             engine-str  (name engine)
+             driver      (keyword engine-str)
+             details-map (assoc details :engine engine-str)]
+         (when (check-connection! database driver engine-str details-map "default")
            (let [provider (provider-detection/detect-provider-from-database database)]
              (when (not= provider (:provider_name database))
                (try
@@ -267,18 +292,12 @@
                                            (:provider_name database) provider))
                  (t2/update! :model/Database (:id database) {:provider_name provider})
                  (catch Throwable provider-e
-                   (log/warnf provider-e "Error during provider detection for database {:id %d}" (:id database))))))
-
-           (catch Throwable e
-             (let [humanized-message (some->> (u/all-ex-messages e)
-                                              (driver/humanize-connection-error-message driver))
-                   reason (if (keyword? humanized-message) "user-input" "exception")]
-               (log/error e (u/format-color :red "Health check: failure with error %s {:id %d :reason %s :message %s}"
-                                            (:name database)
-                                            (:id database)
-                                            reason
-                                            humanized-message))
-               (analytics/inc! :metabase-database/status {:driver engine :healthy false :reason reason})))))))))
+                   (log/warnf provider-e "Error during provider detection for database {:id %d}" (:id database)))))))
+         (when (:write_data_details database)
+           (let [write-details (driver.conn/without-resolution-telemetry
+                                (driver.conn/with-write-connection
+                                  (driver.conn/effective-details database)))]
+             (check-connection! database driver engine-str (assoc write-details :engine engine-str) "write-data"))))))))
 
 (defn check-health!
   "Health checks databases connected to metabase asynchronously using a thread pool."
@@ -348,7 +367,9 @@
             (binding [*normalizing-details* true]
               (driver/normalize-db-details
                driver
-               (m/update-existing-in db [:details :auth-provider] keyword))))]
+               (-> db
+                   (m/update-existing-in [:details :auth-provider] keyword)
+                   (m/update-existing-in [:write_data_details :auth-provider] keyword)))))]
     (cond-> database
       ;; TODO - this is only really needed for API responses. This should be a `hydrate` thing instead!
       (and driver
@@ -453,7 +474,8 @@
                   (some some? [(:cache_field_values_schedule changes) (:metadata_sync_schedule changes)]))
                  infer-db-schedules
 
-                 (some? (:details changes))
+                 (or (some? (:details changes))
+                     (some? (:write_data_details changes)))
                  secret/handle-incoming-client-secrets!
 
                  (:uploads_enabled changes)
@@ -548,46 +570,48 @@
     driver.u/default-sensitive-fields))
 
 (methodical/defmethod mi/to-json :model/Database
-  "When encoding a Database as JSON remove the `details` for any User without write perms for the DB.
-  Users with write perms can see the `details` but remove anything resembling a password. No one gets to see this in
-  an API response!
+  "When encoding a Database as JSON remove the `details` and `write_data_details` for any User without write perms
+  for the DB. Users with write perms can see the details but remove anything resembling a password. No one gets to
+  see this in an API response!
 
   Also remove settings that the User doesn't have read perms for."
   [db json-generator]
-  (next-method
-   (let [db (if (not (mi/can-write? db))
-              (do (log/debug "Fully redacting database details during json encoding.")
-                  (dissoc db :details))
-              (do (log/debug "Redacting sensitive fields within database details during json encoding.")
-                  (-> db
-                      (secret/to-json-hydrate-redacted-secrets)
-                      (update :details (fn [details]
-                                         (reduce
-                                          #(m/update-existing %1 %2 (fn [v] (when v secret/protected-password)))
-                                          details
-                                          (sensitive-fields-for-db db)))))))]
-     (update db :settings
-             (fn [settings]
-               (when (map? settings)
-                 (u/prog1
-                   (m/filter-keys
-                    (fn [setting-name]
-                      (try
-                        (setting/can-read-setting? setting-name
-                                                   (setting/current-user-readable-visibilities))
-                        (catch Throwable e
+  (letfn [(redact-sensitive-fields [details]
+            (reduce
+             #(m/update-existing %1 %2 (fn [v] (when v secret/protected-password)))
+             details
+             (sensitive-fields-for-db db)))]
+    (next-method
+     (let [db (if (not (mi/can-write? db))
+                (do (log/debug "Fully redacting database details during json encoding.")
+                    (dissoc db :details :write_data_details))
+                (do (log/debug "Redacting sensitive fields within database details during json encoding.")
+                    (-> db
+                        (secret/to-json-hydrate-redacted-secrets)
+                        (update :details redact-sensitive-fields)
+                        (m/update-existing :write_data_details redact-sensitive-fields))))]
+       (update db :settings
+               (fn [settings]
+                 (when (map? settings)
+                   (u/prog1
+                     (m/filter-keys
+                      (fn [setting-name]
+                        (try
+                          (setting/can-read-setting? setting-name
+                                                     (setting/current-user-readable-visibilities))
+                          (catch Throwable e
                          ;; there is an known issue with exception is ignored when render API response (#32822)
                          ;; If you see this error, you probably need to define a setting for `setting-name`.
                          ;; But ideally, we should resolve the above issue, and remove this try/catch
-                          (log/errorf e "Error checking the readability of %s setting. The setting will be hidden in API response."
-                                      setting-name)
+                            (log/errorf e "Error checking the readability of %s setting. The setting will be hidden in API response."
+                                        setting-name)
                          ;; let's be conservative and hide it by defaults, if you want to see it,
                          ;; you need to define it :)
-                          false)))
-                    settings)
-                   (when (not= <> settings)
-                     (log/debug "Redacting non-user-readable database settings during json encoding.")))))))
-   json-generator))
+                            false)))
+                      settings)
+                     (when (not= <> settings)
+                       (log/debug "Redacting non-user-readable database settings during json encoding.")))))))
+     json-generator)))
 
 ;;; ------------------------------------------ Workspace Permissions Cache --------------------------------------------
 
@@ -634,16 +658,23 @@
                                          details
                                          ::serdes/skip))
                                      :import identity}
+               :write_data_details {:export-with-context
+                                    (fn [current _ details]
+                                      (if (and include-database-secrets
+                                               (not (:is_attached_dwh current)))
+                                        details
+                                        ::serdes/skip))
+                                    :import identity}
                :creator_id          (serdes/fk :model/User)
                :router_database_id (serdes/fk :model/Database)
                :initial_sync_status {:export identity :import (constantly "complete")}}})
 
 (defmethod serdes/extract-query "Database"
   [model-name {:keys [where]}]
-  (t2/reducible-select (keyword "model" model-name) {:where
-                                                     [:and
-                                                      (or where true)
-                                                      [:= :router_database_id nil]]}))
+  (t2/reducible-select (keyword "model" model-name)
+                       {:where [:and
+                                (or where true)
+                                [:= :router_database_id nil]]}))
 
 (defmethod serdes/entity-id "Database"
   [_ {:keys [name]}]
@@ -681,7 +712,7 @@
                   :updated-at    true}
    :search-terms {:name        search.spec/explode-camel-case
                   :description true}
-   :where        [:= :router_database_id nil]
+   :where [:= :router_database_id nil]
    :render-terms {:initial-sync-status true}})
 
 (defenterprise hydrate-router-user-attribute

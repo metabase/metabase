@@ -1,4 +1,5 @@
 import { trackSimpleEvent } from "metabase/lib/analytics";
+import type { DependencyEntitySelected } from "metabase-types/analytics";
 import type { CollectionId, ConcreteTableId } from "metabase-types/api";
 
 export const trackDataStudioLibraryCreated = (id: CollectionId) => {
@@ -102,5 +103,68 @@ export const trackDataStudioTableFieldValuesDiscardStarted = (
   trackSimpleEvent({
     event: "data_studio_table_field_values_discard_started",
     result,
+  });
+};
+
+export const trackDependencyDiagnosticsEntitySelected = ({
+  triggeredFrom,
+  entityId,
+  entityType,
+}: {
+  entityId: number;
+  entityType: string;
+  triggeredFrom: "broken" | "unreferenced";
+}) => {
+  trackSimpleEvent({
+    event: "dependency_diagnostics_entity_selected",
+    triggered_from: triggeredFrom,
+    target_id: entityId,
+    event_detail: entityType,
+  });
+};
+
+export const trackDependencyEntitySelected = ({
+  entityId,
+  eventDetail,
+  triggeredFrom,
+}: {
+  entityId: number;
+  eventDetail?: string;
+  triggeredFrom: DependencyEntitySelected["triggered_from"];
+}) => {
+  trackSimpleEvent({
+    event: "dependency_entity_selected",
+    triggered_from: triggeredFrom,
+    event_detail: eventDetail,
+    target_id: entityId,
+  });
+};
+
+export const trackDataStudioOpened = () => {
+  trackSimpleEvent({
+    event: "data_studio_opened",
+    triggered_from: "nav_menu",
+  });
+};
+
+export const trackMetricCreateStarted = (
+  triggeredFrom: "browse_metrics" | "data_studio_library" | "command_palette",
+) => {
+  trackSimpleEvent({
+    event: "metric_create_started",
+    triggered_from: triggeredFrom,
+  });
+};
+
+export const trackMetricCreated = (
+  result: "success" | "failure",
+  triggeredFrom: "data_studio" | "main_app",
+  targetId: number | null,
+) => {
+  trackSimpleEvent({
+    event: "metric_created",
+    triggered_from: triggeredFrom,
+    result,
+    target_id: targetId,
   });
 };

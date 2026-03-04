@@ -46,6 +46,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Test ${{ matrix.version.name }}
+        id: test-driver
         uses: ./.github/actions/test-driver
         with:
           build-static-viz: ${{ matrix.job.build-static-viz }}
@@ -64,6 +65,7 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_TEST_RESULTS_SECRET_ACCESS_KEY }}
           aws-region: ${{ vars.AWS_REGION }}
           trunk-api-token: ${{ secrets.TRUNK_API_TOKEN }}
+          previous-step-outcome: ${{ steps.test-driver.outputs.test-outcome }}
 
   semantic-search-tests-mariadb:
     if: ${{ !inputs.skip }}
@@ -118,6 +120,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Test ${{ matrix.version.name }}
+        id: test-driver
         uses: ./.github/actions/test-driver
         with:
           build-static-viz: ${{ matrix.job.build-static-viz }}
@@ -136,6 +139,7 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_TEST_RESULTS_SECRET_ACCESS_KEY }}
           aws-region: ${{ vars.AWS_REGION }}
           trunk-api-token: ${{ secrets.TRUNK_API_TOKEN }}
+          previous-step-outcome: ${{ steps.test-driver.outputs.test-outcome }}
 
   semantic-search-tests-mysql:
     if: ${{ !inputs.skip }}
@@ -190,6 +194,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Test ${{ matrix.version.name }}
+        id: test-driver
         uses: ./.github/actions/test-driver
         with:
           build-static-viz: ${{ matrix.job.build-static-viz }}
@@ -208,6 +213,7 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_TEST_RESULTS_SECRET_ACCESS_KEY }}
           aws-region: ${{ vars.AWS_REGION }}
           trunk-api-token: ${{ secrets.TRUNK_API_TOKEN }}
+          previous-step-outcome: ${{ steps.test-driver.outputs.test-outcome }}
 
   semantic-search-tests-postgres:
     if: ${{ !inputs.skip }}
@@ -263,6 +269,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Test ${{ matrix.version.name }}
+        id: test-driver
         uses: ./.github/actions/test-driver
         with:
           build-static-viz: ${{ matrix.job.build-static-viz }}
@@ -281,6 +288,7 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_TEST_RESULTS_SECRET_ACCESS_KEY }}
           aws-region: ${{ vars.AWS_REGION }}
           trunk-api-token: ${{ secrets.TRUNK_API_TOKEN }}
+          previous-step-outcome: ${{ steps.test-driver.outputs.test-outcome }}
 
   semantic-search-tests-result:
     needs:

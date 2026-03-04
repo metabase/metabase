@@ -23,7 +23,7 @@
    [toucan2.core :as t2])
   (:import
    (java.util TimeZone)
-   (org.quartz CronTrigger DisallowConcurrentExecution TriggerKey)))
+   (org.quartz CronTrigger DisallowConcurrentExecution JobExecutionContext TriggerKey)))
 
 (set! *warn-on-reflection* true)
 
@@ -152,8 +152,25 @@
 (task/defjob ^{:doc "Triggers that send a pulse to a list of channels at a specific time"}
   SendPulse
   [context]
-  (let [{:strs [pulse-id channel-ids]} (qc/from-job-data context)]
-    (send-pulse!* pulse-id channel-ids)))
+  (let [{:strs [pulse-id channel-ids]} (qc/from-job-data context)
+        ^JobExecutionContext ctx  context
+        scheduled-fire-time       (.getScheduledFireTime ctx)
+        fire-time                 (.getFireTime ctx)
+        fire-instance-id          (.getFireInstanceId ctx)
+        recovering?               (.isRecovering ctx)
+        refire-count              (.getRefireCount ctx)
+        trigger-key               (.. ctx getTrigger getKey getName)
+        scheduler-id              (.. ctx getScheduler getSchedulerInstanceId)]
+    (log/with-context {:quartz-fire-instance-id    fire-instance-id
+                       :quartz-scheduled-fire-time (str scheduled-fire-time)
+                       :quartz-fire-time           (str fire-time)
+                       :quartz-recovering          recovering?
+                       :quartz-refire-count        refire-count
+                       :quartz-trigger-key         trigger-key
+                       :quartz-scheduler-id        scheduler-id}
+      (log/infof "SendPulse fired for pulse %d (trigger=%s, scheduled=%s, actual=%s, recovering=%s, refire=%d, scheduler=%s)"
+                 pulse-id trigger-key scheduled-fire-time fire-time recovering? refire-count scheduler-id)
+      (send-pulse!* pulse-id channel-ids))))
 
 (declare update-send-pulse-trigger-if-needed!)
 

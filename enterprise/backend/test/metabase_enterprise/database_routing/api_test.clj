@@ -125,6 +125,10 @@
     (is (= "Cannot enable database routing for a database with uploads enabled"
            (mt/user-http-request :crowberto :put 400 (str "ee/database-routing/router-database/" db-id)
                                  {:user_attribute "db_name"}))))
+  (mt/with-temp [:model/Database {db-id :id} {:write_data_details {:host "other-host"}}]
+    (is (= "Cannot enable database routing for a database with a write connection configured"
+           (mt/user-http-request :crowberto :put 400 (str "ee/database-routing/router-database/" db-id)
+                                 {:user_attribute "db_name"}))))
   (mt/with-temp [:model/Database {router-db-id :id} {}
                  :model/Database {db-id :id} {:router_database_id router-db-id}]
     (is (= "Cannot make a destination database a router database"

@@ -82,6 +82,10 @@ export const getSeriesDefaultLineMissing = (
   settings: ComputedVisualizationSettings,
 ) => settings["line.missing"] ?? "interpolate";
 
+export const getSeriesDefaultShowSeriesTrendline = (
+  settings: ComputedVisualizationSettings,
+) => settings["graph.show_trendline"];
+
 export const getSeriesDefaultShowSeriesValues = (
   settings: ComputedVisualizationSettings,
 ) => settings["graph.show_values"];

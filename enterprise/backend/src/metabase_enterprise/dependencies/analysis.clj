@@ -24,7 +24,7 @@
    query  :- ::lib.schema/query]
   (if (lib/any-native-stage? query)
     (deps.native/validate-native-query driver query)
-    (lib/find-bad-refs-with-source query)))
+    (into #{} (remove :soft?) (lib/find-bad-refs-with-source query))))
 
 (defmulti check-entity
   "Given a metadata provider, an entity type and an entity id, find any bad refs in that entity."

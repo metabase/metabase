@@ -92,6 +92,73 @@
                   (is (map? (:owner response)))
                   (is (= lucky-id (get-in response [:owner :id]))))))))))))
 
+(deftest create-transform-with-param-test
+  (mt/with-premium-features #{}
+    (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
+      (mt/dataset transforms-dataset/transforms-test
+        (mt/with-data-analyst-role! (mt/user->id :lucky)
+          (mt/with-db-perm-for-group! (perms-group/all-users) (mt/id) :perms/transforms :yes
+            (with-transform-cleanup! [table-name "gadget_products"]
+              (testing "Can create a transform with a param"
+                (let [query        (lib/native-query (mt/metadata-provider) "select * from foo [[where {{id}} = id]]")
+                      schema       (get-test-schema)
+                      response     (mt/user-http-request :lucky :post 200 "transform"
+                                                         {:name   "Gadget Products"
+                                                          :source {:type  "query"
+                                                                   :query query}
+                                                          :target {:type   "table"
+                                                                   :schema schema
+                                                                   :name   table-name}})
+                      transform-id (:id response)]
+                  (is (some? transform-id)))))))))))
+
+(deftest create-transform-with-required-param-test
+  (mt/with-premium-features #{}
+    (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
+      (mt/dataset transforms-dataset/transforms-test
+        (mt/with-data-analyst-role! (mt/user->id :lucky)
+          (mt/with-db-perm-for-group! (perms-group/all-users) (mt/id) :perms/transforms :yes
+            (with-transform-cleanup! [table-name "gadget_products"]
+              (testing "Cannot create a transform with a required param"
+                (let [base-query   (lib/native-query (mt/metadata-provider) "select * from foo where {{id}} = id")
+                      tag          (get (lib/template-tags base-query) "id")
+                      query        (lib/with-template-tags base-query
+                                     {"id" (assoc tag :required true)})
+                      schema       (get-test-schema)
+                      response     (mt/user-http-request :lucky :post 400 "transform"
+                                                         {:name   "Gadget Products"
+                                                          :source {:type  "query"
+                                                                   :query query}
+                                                          :target {:type   "table"
+                                                                   :schema schema
+                                                                   :name   table-name}})
+                      transform-id (:id response)]
+                  (is (nil? transform-id))
+                  (is (= "You'll need to pick a value for 'ID' before this query can run."
+                         (:message response))))))))))))
+
+(deftest create-transform-with-unofficial-required-param-test
+  (mt/with-premium-features #{}
+    (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
+      (mt/dataset transforms-dataset/transforms-test
+        (mt/with-data-analyst-role! (mt/user->id :lucky)
+          (mt/with-db-perm-for-group! (perms-group/all-users) (mt/id) :perms/transforms :yes
+            (with-transform-cleanup! [table-name "gadget_products"]
+              (testing "Cannot create a transform with a param that is necessary but not marked as required"
+                (let [query   (lib/native-query (mt/metadata-provider) "select * from foo where {{id}} = id")
+                      schema       (get-test-schema)
+                      response     (mt/user-http-request :lucky :post 400 "transform"
+                                                         {:name   "Gadget Products"
+                                                          :source {:type  "query"
+                                                                   :query query}
+                                                          :target {:type   "table"
+                                                                   :schema schema
+                                                                   :name   table-name}})
+                      transform-id (:id response)]
+                  (is (nil? transform-id))
+                  (is (= "Cannot run the query: missing required parameters: #{\"id\"}"
+                         (:message response))))))))))))
+
 (deftest create-transform-with-owner-test
   (mt/with-premium-features #{}
     (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
@@ -181,6 +248,79 @@
                 (is (nil? (:owner_user_id updated)))
                 (is (nil? (:owner_email updated)))
                 (is (nil? (:owner updated)))))))))))
+
+(deftest update-transform-query-with-param-test
+  (mt/with-premium-features #{}
+    (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
+      (mt/dataset transforms-dataset/transforms-test
+        (with-transform-cleanup! [table-name "update_owner_test"]
+          (let [query (make-query "Gadget")
+                schema (get-test-schema)
+                created (mt/user-http-request :crowberto :post 200 "transform"
+                                              {:name "Transform for owner update"
+                                               :source {:type "query"
+                                                        :query query}
+                                               :target {:type "table"
+                                                        :schema schema
+                                                        :name table-name}})
+                transform-id (:id created)
+                new-query (lib/native-query (mt/metadata-provider) "select * from foo [[where {{id}} = id]]")]
+            (testing "Update query to a query with an optional param"
+              (mt/user-http-request :crowberto :put 200
+                                    (format "transform/%s" transform-id)
+                                    {:source {:type "query"
+                                              :query new-query}}))))))))
+
+(deftest update-transform-query-with-required-param-test
+  (mt/with-premium-features #{}
+    (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
+      (mt/dataset transforms-dataset/transforms-test
+        (with-transform-cleanup! [table-name "update_owner_test"]
+          (testing "Update query to a query with a required param"
+            (let [query        (make-query "Gadget")
+                  schema       (get-test-schema)
+                  created      (mt/user-http-request :crowberto :post 200 "transform"
+                                                     {:name "Transform for owner update"
+                                                      :source {:type "query"
+                                                               :query query}
+                                                      :target {:type "table"
+                                                               :schema schema
+                                                               :name table-name}})
+                  transform-id (:id created)
+                  base-query   (lib/native-query (mt/metadata-provider) "select * from foo where {{id}} = id")
+                  tag          (get (lib/template-tags base-query) "id")
+                  new-query        (lib/with-template-tags base-query
+                                     {"id" (assoc tag :required true)})
+                  response     (mt/user-http-request :crowberto :put 400
+                                                     (format "transform/%s" transform-id)
+                                                     {:source {:type "query"
+                                                               :query new-query}})]
+              (is (= "You'll need to pick a value for 'ID' before this query can run."
+                     (:message response))))))))))
+
+(deftest update-transform-query-with-unofficial-required-param-test
+  (mt/with-premium-features #{}
+    (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
+      (mt/dataset transforms-dataset/transforms-test
+        (with-transform-cleanup! [table-name "update_owner_test"]
+          (testing "Update query to a query with a param that is necessary but not marked as required"
+            (let [query        (make-query "Gadget")
+                  schema       (get-test-schema)
+                  created      (mt/user-http-request :crowberto :post 200 "transform"
+                                                     {:name "Transform for owner update"
+                                                      :source {:type "query"
+                                                               :query query}
+                                                      :target {:type "table"
+                                                               :schema schema
+                                                               :name table-name}})
+                  transform-id (:id created)
+                  new-query   (lib/native-query (mt/metadata-provider) "select * from foo where {{id}} = id")
+                  response     (mt/user-http-request :crowberto :put 400
+                                                     (format "transform/%s" transform-id)
+                                                     {:source {:type "query"
+                                                               :query new-query}})]
+              (is (= "Cannot run the query: missing required parameters: #{\"id\"}"
+                     (:message response))))))))))
 
 (deftest transform-type-detection-test
   (mt/with-premium-features #{}
@@ -351,15 +491,15 @@
                       (mt/user-http-request :lucky :get 200 "transform"))))
             (testing "last_run_start_time filter"
               (is (=? [{:id t1-id}]
-                      (mt/user-http-request :lucky :get 200 "transform" :last_run_start_time "2025-08-26T10:12:11"))))
+                      (mt/user-http-request :lucky :get 200 "transform" :last-run-start-time "2025-08-26T10:12:11"))))
             (testing "last_run_statuses filter"
               (is (=? [{:id t1-id}]
-                      (mt/user-http-request :lucky :get 200 "transform" :last_run_statuses ["started" "succeeded"]))))
+                      (mt/user-http-request :lucky :get 200 "transform" :last-run-statuses ["started" "succeeded"]))))
             (testing "tag_ids filter"
               (is (=? [{:id t1-id}]
-                      (mt/user-http-request :lucky :get 200 "transform" :tag_ids [tag1-id])))
+                      (mt/user-http-request :lucky :get 200 "transform" :tag-ids [tag1-id])))
               (is (=? [{:id t2-id}]
-                      (mt/user-http-request :lucky :get 200 "transform" :tag_ids [tag2-id]))))))))))
+                      (mt/user-http-request :lucky :get 200 "transform" :tag-ids [tag2-id]))))))))))
 
 (deftest get-transforms-test
   (mt/with-premium-features #{}
@@ -663,13 +803,13 @@
                        :model/TransformRun run2 {:transform_id (:id transform2)}]
           (testing "Filter by transform1 ID only returns transform1 runs"
             (let [response (mt/user-http-request :lucky :get 200 "transform/run"
-                                                 :transform_ids [(:id transform1)])]
+                                                 :transform-ids [(:id transform1)])]
               (assert-run-count response 1)
               (assert-transform-ids response #{(:id transform1)})
               (is (= (:id run1) (-> response :data first :id)))))
           (testing "Filter by transform2 ID only returns transform2 runs"
             (let [response (mt/user-http-request :lucky :get 200 "transform/run"
-                                                 :transform_ids [(:id transform2)])]
+                                                 :transform-ids [(:id transform2)])]
               (assert-run-count response 1)
               (assert-transform-ids response #{(:id transform2)})
               (is (= (:id run2) (-> response :data first :id))))))))))
@@ -685,7 +825,7 @@
                      :model/TransformRun _run3 {:transform_id (:id transform3)}]
         (testing "Filter by transform1 and transform2 IDs returns only those runs"
           (let [response (mt/user-http-request :crowberto :get 200 "transform/run"
-                                               :transform_ids [(:id transform1) (:id transform2)])]
+                                               :transform-ids [(:id transform1) (:id transform2)])]
             (assert-run-count response 2)
             (assert-transform-ids response #{(:id transform1) (:id transform2)})))))))
 
@@ -783,10 +923,10 @@
                         :status "succeeded"
                         :transform {:id t0-id}
                         :transform_id t0-id}]
-                      (transform-runs our-run-pred :start_time "2025-08-26~")))
-              (let [our-runs (transform-runs our-run-pred :start_time "~2025-08-25")]
+                      (transform-runs our-run-pred :start-time "2025-08-26~")))
+              (let [our-runs (transform-runs our-run-pred :start-time "~2025-08-25")]
                 (is (= 6 (count our-runs))))
-              (let [our-runs (transform-runs our-run-pred :start_time "2025-08-22~2025-08-23")]
+              (let [our-runs (transform-runs our-run-pred :start-time "2025-08-22~2025-08-23")]
                 (is (=? [{:transform {:id t1-id}
                           :run_method "manual"
                           :is_active nil
@@ -806,16 +946,16 @@
                         our-runs))))
             (testing "Filter by 'end_time'"
               (is (=? t0-runs
-                      (transform-runs our-run-pred :end_time "2025-08-26~")))
-              (is (empty? (transform-runs our-run-pred :end_time "~2025-08-21"))))
+                      (transform-runs our-run-pred :end-time "2025-08-26~")))
+              (is (empty? (transform-runs our-run-pred :end-time "~2025-08-21"))))
             (testing "Filter by 'run_methods'"
-              (let [our-runs (transform-runs our-run-pred :run_methods ["manual"])]
+              (let [our-runs (transform-runs our-run-pred :run-methods ["manual"])]
                 (is (= 3 (count our-runs)))
                 (is (every? (comp #{"manual"} :run_method) our-runs)))
-              (let [our-runs (transform-runs our-run-pred :run_methods ["cron"])]
+              (let [our-runs (transform-runs our-run-pred :run-methods ["cron"])]
                 (is (= 4 (count our-runs)))
                 (is (every? (comp #{"cron"} :run_method) our-runs)))
-              (let [our-runs (transform-runs our-run-pred :run_methods ["cron" "manual"])]
+              (let [our-runs (transform-runs our-run-pred :run-methods ["cron" "manual"])]
                 (is (= 7 (count our-runs)))))
             (testing "Filter by a combination"
               (is (=? [{:id r3-id
@@ -825,7 +965,7 @@
                         :end_time (utc-timestamp "2025-08-23T00:17:41")
                         :transform {:id t1-id}
                         :transform_id t1-id}]
-                      (transform-runs our-run-pred :run_methods ["manual"] :start_time "~2025-08-25" :end_time "~2025-08-23"))))))))))
+                      (transform-runs our-run-pred :run-methods ["manual"] :start-time "~2025-08-25" :end-time "~2025-08-23"))))))))))
 
 (deftest get-runs-filter-by-single-tag-test
   (mt/with-premium-features #{}
@@ -843,7 +983,7 @@
                      :model/TransformRun _run3 {:transform_id (:id transform3)}]
         (testing "Filter by tag1 returns only tagged transforms' runs"
           (let [response (mt/user-http-request :crowberto :get 200 "transform/run"
-                                               :transform_tag_ids [(:id tag1)])]
+                                               :transform-tag-ids [(:id tag1)])]
             (assert-run-count response 2)
             (assert-transform-ids response #{(:id transform1) (:id transform2)})
             (is (not (contains? (set (map :transform_id (:data response)))
@@ -897,7 +1037,7 @@
         ;; Associate tags with transforms
         (testing "Filter by tag1 and tag2 returns union (transforms with either tag)"
           (let [response               (mt/user-http-request :crowberto :get 200 "transform/run"
-                                                             :transform_tag_ids [(:id tag1) (:id tag2)])
+                                                             :transform-tag-ids [(:id tag1) (:id tag2)])
                 returned-transform-ids (set (map :transform_id (:data response)))]
             (assert-run-count response 3)
             (assert-transform-ids response #{(:id transform1) (:id transform2) (:id transform3)})
@@ -929,7 +1069,7 @@
         ;; Create multiple runs with different statuses for transform1
         (testing "Filter by transform1 ID and failed status"
           (let [response (mt/user-http-request :crowberto :get 200 "transform/run"
-                                               :transform_ids [(:id transform1)]
+                                               :transform-ids [(:id transform1)]
                                                :statuses ["failed"])]
             (assert-run-count response 2)
             (is (every? #(and (= (:id transform1) (:transform_id %))
@@ -952,7 +1092,7 @@
         ;; Associate tag1 with transform1 and transform2
         (testing "Filter by tag1 and failed status returns only failed runs of tagged transforms"
           (let [response (mt/user-http-request :crowberto :get 200 "transform/run"
-                                               :transform_tag_ids [(:id tag1)]
+                                               :transform-tag-ids [(:id tag1)]
                                                :statuses ["failed"])]
             (assert-run-count response 1)
             (is (= (:id transform2) (-> response :data first :transform_id)))
@@ -971,19 +1111,19 @@
                      :model/TransformRun _run1 {:transform_id (:id transform2)}]
         (testing "Filter by transform1 ID and tag1 returns transform1 (has both)"
           (let [response (mt/user-http-request :crowberto :get 200 "transform/run"
-                                               :transform_ids [(:id transform1)]
-                                               :transform_tag_ids [(:id tag1)])]
+                                               :transform-ids [(:id transform1)]
+                                               :transform-tag-ids [(:id tag1)])]
             (assert-run-count response 1)
             (assert-transform-ids response #{(:id transform1)})))
         (testing "Filter by transform1 ID and tag2 returns empty (transform1 doesn't have tag2)"
           (let [response (mt/user-http-request :crowberto :get 200 "transform/run"
-                                               :transform_ids [(:id transform1)]
-                                               :transform_tag_ids [(:id tag2)])]
+                                               :transform-ids [(:id transform1)]
+                                               :transform-tag-ids [(:id tag2)])]
             (assert-run-count response 0)))
         (testing "Filter by both transform IDs and tag1 returns only transform1"
           (let [response (mt/user-http-request :crowberto :get 200 "transform/run"
-                                               :transform_ids [(:id transform1) (:id transform2)]
-                                               :transform_tag_ids [(:id tag1)])]
+                                               :transform-ids [(:id transform1) (:id transform2)]
+                                               :transform-tag-ids [(:id tag1)])]
             (assert-run-count response 1)
             (assert-transform-ids response #{(:id transform1)})))))))
 

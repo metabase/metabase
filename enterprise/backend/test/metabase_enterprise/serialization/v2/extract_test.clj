@@ -1124,43 +1124,6 @@
                   (is (= #{[{:model "Card" :id card-eid-1}]}
                          (set (serdes/dependencies ser)))))))))))))
 
-(deftest http-action-test
-  (mt/with-empty-h2-app-db!
-    (ts/with-temp-dpc [:model/User     {ann-id :id} {:first_name "Ann"
-                                                     :last_name  "Wilson"
-                                                     :email      "ann@heart.band"}
-                       :model/Database {db-id :id :as db} {:name "My Database"}]
-      (mt/with-db db
-        (mt/with-actions [{card-id-1  :id
-                           card-eid-1 :entity_id}
-                          {:name          "Source question"
-                           :database_id   db-id
-                           :type          :model
-                           :query_type    :native
-                           :dataset_query (mt/native-query {:query "select 1"})
-                           :creator_id    ann-id}
-
-                          {:keys [action-id]}
-                          {:name       "My Action"
-                           :type       :http
-                           :template   {:method "GET", :url "https://camsaul.com"}
-                           :creator_id ann-id
-                           :model_id   card-id-1}]
-          (let [action (action/select-action :id action-id)]
-            (testing "action"
-              (let [ser (ts/extract-one "Action" action-id)]
-                (is (=? {:serdes/meta [{:model "Action" :id (:entity_id action) :label "my_action"}]
-                         :creator_id  "ann@heart.band"
-                         :type        "http"
-                         :created_at  string?
-                         :model_id    card-eid-1
-                         :http        [{:template {}}]}
-                        ser))
-                (is (not (contains? ser :id)))
-                (testing "depends on the Model"
-                  (is (= #{[{:model "Card" :id card-eid-1}]}
-                         (set (serdes/dependencies ser)))))))))))))
-
 (deftest query-action-test
   (mt/with-empty-h2-app-db!
     (ts/with-temp-dpc [:model/User     {ann-id :id} {:first_name "Ann"
@@ -1333,6 +1296,7 @@
           (is (= [{:id                   "abc",
                    :type                 :category,
                    :name                 "CATEGORY",
+                   :position             0,
                    :values_source_type   :card
                    :values_source_config {:card_id card-eid-1,
                                           :value_field [:field ["My Database" nil "Schemaless Table" "A Field"] nil]}}]
@@ -2592,8 +2556,12 @@
                 {:id "alpha" :name "A param" :type :category}
                 {:id "middle" :name "M param" :type :category}]
         result (serdes/export-parameters params)]
-    (is (= ["alpha" "middle" "zebra"]
-           (map :id result)))))
+    (testing "export sorts parameters by :id for stable diffs"
+      (is (= ["alpha" "middle" "zebra"]
+             (map :id result))))
+    (testing "export stamps :position from original array index"
+      (is (= [1 2 0]
+             (map :position result))))))
 
 (deftest ^:parallel export-parameters-empty-input-test
   (is (= [] (serdes/export-parameters []))))
@@ -2604,14 +2572,16 @@
 (deftest ^:parallel export-parameters-single-element-test
   (let [params [{:id "only" :name "Only param"}]
         result (serdes/export-parameters params)]
-    (is (= ["only"] (map :id result)))))
+    (is (= ["only"] (map :id result)))
+    (is (= [0] (map :position result)))))
 
 (deftest ^:parallel export-parameters-nil-id-sorts-first-test
   (let [params [{:id "beta" :name "B"}
                 {:id nil :name "Nil"}
                 {:id "alpha" :name "A"}]
         result (serdes/export-parameters params)]
-    (is (= [nil "alpha" "beta"] (map :id result)))))
+    (is (= [nil "alpha" "beta"] (map :id result)))
+    (is (= [1 2 0] (map :position result)))))
 
 (deftest ^:parallel export-parameter-mappings-sorts-by-parameter-id-test
   (let [mappings [{:parameter_id "z-param" :target [:dimension [:field 1 nil]]}
@@ -2651,7 +2621,32 @@
                                                                      :card_id card-id
                                                                      :target [:dimension [:field 2 nil]]}]}]
       (let [ser (ts/extract-one "Dashboard" dash-id)]
-        (is (= ["alpha" "beta" "zebra"]
-               (map :id (:parameters ser))))
+        (testing "parameters are sorted by :id"
+          (is (= ["alpha" "beta" "zebra"]
+                 (map :id (:parameters ser)))))
+        (testing "positions preserve original display order"
+          (is (= [1 2 0]
+                 (map :position (:parameters ser)))))
         (is (= ["alpha" "zebra"]
                (map :parameter_id (-> ser :dashcards first :parameter_mappings))))))))
+
+(deftest ^:parallel import-parameters-round-trip-test
+  (testing "export stamps position, import restores original display order"
+    (let [params   [{:id "zebra" :name "Z param" :type :category}
+                    {:id "alpha" :name "A param" :type :category}
+                    {:id "middle" :name "M param" :type :category}]
+          exported (serdes/export-parameters params)
+          imported (serdes/import-parameters exported)]
+      (is (= ["alpha" "middle" "zebra"] (map :id exported))
+          "export sorts by id")
+      (is (= [1 2 0] (map :position exported))
+          "export stamps position from original array index")
+      (is (= ["zebra" "alpha" "middle"] (map :id imported))
+          "import restores original display order via position"))))
+
+(deftest ^:parallel import-parameters-without-position-preserves-order-test
+  (testing "importing legacy params without :position preserves existing order"
+    (let [params   [{:id "zebra" :name "Z param" :type :category}
+                    {:id "alpha" :name "A param" :type :category}]
+          imported (serdes/import-parameters params)]
+      (is (= ["zebra" "alpha"] (map :id imported))))))

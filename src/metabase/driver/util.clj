@@ -224,8 +224,10 @@
                     [driver feature (mdb/unique-identifier) (:id database) (:updated-at database)])))))
 
 ;;; this can get called in post-select which doesn't always have ID
-(mu/defn- ensure-lib-database :- [:map
-                                  [:lib/type [:= :metadata/database]]]
+(mu/defn ensure-lib-database :- [:map
+                                 [:lib/type [:= :metadata/database]]]
+  "Ensures the database is in MLv2 metadata format (SnakeHatingMap with kebab-case keys).
+   If passed a Toucan2 instance, converts it. If already MLv2 metadata, returns as-is."
   [database :- [:or
                 [:map
                  [:lib/type [:= :metadata/database]]]
@@ -729,6 +731,21 @@
           password-fields (filter #(contains? #{:password :secret} (keyword (get % :type))) all-fields)]
       (into default-sensitive-fields (map (comp keyword :name) password-fields)))
     default-sensitive-fields))
+
+(defn fields-hidden-for-write-data-connection
+  "Returns the set of field names (strings) that should NOT appear in `write_data_details` for the given `driver`.
+   These are fields whose resolved `visible-if` includes `\"write-data-connection\" false`, meaning they are hidden
+   when the write-data-connection form marker is true."
+  [driver]
+  (when-some [conn-prop-fn (get-method driver/connection-properties driver)]
+    (let [all-props     (conn-prop-fn driver)
+          resolved      (connection-props-server->client driver all-props)
+          props-by-name (collect-all-props-by-name resolved)]
+      (into #{}
+            (keep (fn [[field-name {:keys [visible-if]}]]
+                    (when (false? (get visible-if "write-data-connection"))
+                      field-name)))
+            props-by-name))))
 
 (defn fetch-and-incorporate-auth-provider-details
   "Incorporates auth-provider responses with db-details.

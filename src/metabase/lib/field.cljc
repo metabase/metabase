@@ -117,6 +117,7 @@
     original-display-name :lib/original-display-name
     ref-display-name      :lib/ref-display-name
     model-display-name    :lib/model-display-name
+    from-model?           :lib/from-model?
     source                :lib/source
     source-uuid           :lib/source-uuid
     :as                   col}
@@ -126,14 +127,30 @@
                                (when (and model-display-name
                                           (not (str/includes? model-display-name " → ")))
                                  model-display-name)
-                               original-display-name
+                               ;; TODO (Cam 2026-02-27) HACK for Models, `:original-display-name` gets incorrectly
+                               ;; overriden at some point with a recalculated display name for the column, so user
+                               ;; edits to `:display-name` itself get stomped on. Since we want to preserve the user
+                               ;; edits in `:display-name` we should ignore `:original-display-name` which is
+                               ;; incorrect here. FIXME -- we should make sure `:original-display-name` is set right
+                               ;; away for metadata coming from models and we can remove this hack.
+                               (when (or (not from-model?)
+                                         (= source :source/joins))
+                                 original-display-name)
                                field-display-name)
         fk-field-id        (or fk-field-id original-fk-field-id)]
     (or simple-display-name
         (when (and parent-id
                    ;; check that we haven't nested yet
                    (or (nil? field-display-name)
-                       (= field-display-name humanized-name)))
+                       (= field-display-name humanized-name)
+                       ;; For card-metadata columns, :name may be the dotted form
+                       ;; (e.g. "grandparent.parent"). Humanizing it doesn't produce
+                       ;; the leaf display-name, so also check against the raw field's
+                       ;; display-name from the metadata provider.
+                       (when-let [field-id (when (pos-int? (:id col))
+                                             (:id col))]
+                         (when-let [raw-field (lib.metadata/field query field-id)]
+                           (= field-display-name (:display-name raw-field))))))
           (nest-display-name query col))
         (when-let [[source-index source-clause]
                    (and source-uuid
@@ -166,6 +183,8 @@
     fk-field-id          :fk-field-id
     original-fk-field-id :lib/original-fk-field-id
     table-id             :table-id
+    from-model?          :lib/from-model?
+    source               :lib/source
     :as                  _col}
    style
    display-name]
@@ -174,9 +193,17 @@
                               source-alias)
         fk-field-id       (or fk-field-id original-fk-field-id)
         join-display-name (when (and (= style :long)
-                                     ;; don't prepend a join display name if `:display-name` already contains one! Legacy
-                                     ;; result metadata might include it for joined Fields, don't want to add it twice.
-                                     ;; Otherwise we'll end up with display names like
+                                     ;; don't append join aliases to columns that were introduced (directly in the
+                                     ;; main previous stage/source card lineage) by models, since their
+                                     ;; `:display-name` should already include the join alias and if it doesn't it's
+                                     ;; because the user edited the display name to something else. Still ok to
+                                     ;; prepend join aliases when we JOIN a model, since that should be added on top
+                                     ;; of whatever is already there.
+                                     (or (not from-model?)
+                                         (= source :source/joins))
+                                     ;; don't prepend a join display name if `:display-name` already contains one!
+                                     ;; Legacy result metadata might include it for joined Fields, don't want to add
+                                     ;; it twice. Otherwise we'll end up with display names like
                                      ;;
                                      ;;    Products → Products → Category
                                      (not (str/includes? display-name " → ")))

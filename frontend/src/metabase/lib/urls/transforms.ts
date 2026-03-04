@@ -49,6 +49,10 @@ export function newPythonTransform() {
   return `${TRANSFORMS_ROOT_URL}/new/python`;
 }
 
+export function pythonTransformsUpsell() {
+  return `${TRANSFORMS_ROOT_URL}/python-transforms`;
+}
+
 export function newTransformFromCard(cardId: CardId) {
   return `${TRANSFORMS_ROOT_URL}/new/card/${cardId}`;
 }

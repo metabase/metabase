@@ -16,6 +16,7 @@ import CS from "metabase/css/core/index.css";
 import { usePageTitle } from "metabase/hooks/use-page-title";
 import { connect, useSelector } from "metabase/lib/redux";
 import {
+  PLUGIN_ADVANCED_PERMISSIONS,
   PLUGIN_DATABASE_REPLICATION,
   PLUGIN_DB_ROUTING,
   PLUGIN_TABLE_EDITING,
@@ -102,6 +103,10 @@ function DatabaseEditAppInner({
                   mb={{ base: "3rem", sm: "5.5rem" }}
                 >
                   <DatabaseConnectionInfoSection database={database} />
+
+                  <PLUGIN_ADVANCED_PERMISSIONS.WritableConnectionInfoSection
+                    database={database}
+                  />
 
                   <DatabaseModelFeaturesSection
                     database={database}
