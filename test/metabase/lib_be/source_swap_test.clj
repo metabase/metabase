@@ -8,6 +8,11 @@
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]))
 
+(defn- find-column
+  "Find the first column in `cols` whose `:name` matches `col-name`."
+  [cols col-name]
+  (m/find-first #(= col-name (:name %)) cols))
+
 (deftest ^:parallel swap-source-in-query-table->table-test
   (let [query (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
                   (lib/with-fields [(meta/field-metadata :orders :id)
@@ -151,7 +156,7 @@
 (deftest ^:parallel swap-source-in-query-join-filter-table->table-test
   (let [query          (as-> (lib/query meta/metadata-provider (meta/table-metadata :products)) q
                          (lib/join q (meta/table-metadata :orders))
-                         (lib/filter q (lib/not-null (m/find-first #(= (:name %) "PRODUCT_ID") (lib/filterable-columns q)))))
+                         (lib/filter q (lib/not-null (find-column (lib/filterable-columns q) "PRODUCT_ID"))))
         upgraded-query (lib-be/upgrade-field-refs-in-query query)
         swapped-query  (lib-be/swap-source-in-query upgraded-query
                                                     {:type :table, :id (meta/id :orders)}
@@ -180,7 +185,7 @@
         mp             (lib.tu/metadata-provider-with-card-from-query 1 reviews-query)
         query          (as-> (lib/query mp (meta/table-metadata :products)) q
                          (lib/join q (meta/table-metadata :orders))
-                         (lib/filter q (lib/not-null (m/find-first #(= (:name %) "PRODUCT_ID") (lib/filterable-columns q)))))
+                         (lib/filter q (lib/not-null (find-column (lib/filterable-columns q) "PRODUCT_ID"))))
         upgraded-query (lib-be/upgrade-field-refs-in-query query)
         swapped-query  (lib-be/swap-source-in-query upgraded-query
                                                     {:type :table, :id (meta/id :orders)}
@@ -299,7 +304,7 @@
         mp             (lib.tu/metadata-provider-with-card-from-query 1 reviews-query)
         query          (as-> (lib/query mp (meta/table-metadata :products)) q
                          (lib/join q (lib.metadata/card mp 1))
-                         (lib/filter q (lib/not-null (m/find-first #(= (:name %) "PRODUCT_ID") (lib/filterable-columns q)))))
+                         (lib/filter q (lib/not-null (find-column (lib/filterable-columns q) "PRODUCT_ID"))))
         join-alias     (-> query lib/joins first lib/current-join-alias)
         upgraded-query (lib-be/upgrade-field-refs-in-query query)
         swapped-query  (lib-be/swap-source-in-query upgraded-query
@@ -391,7 +396,7 @@
 
 (deftest ^:parallel swap-source-in-query-implicit-join-test
   (let [query          (as-> (lib/query meta/metadata-provider (meta/table-metadata :orders)) q
-                         (lib/filter q (lib/= (m/find-first #(= (:name %) "CATEGORY") (lib/filterable-columns q)) "Widget")))
+                         (lib/filter q (lib/= (find-column (lib/filterable-columns q) "CATEGORY") "Widget")))
         upgraded-query (lib-be/upgrade-field-refs-in-query query)
         swapped-query  (lib-be/swap-source-in-query upgraded-query
                                                     {:type :table, :id (meta/id :orders)}
@@ -417,7 +422,7 @@
   (let [reviews-query  (lib/query meta/metadata-provider (meta/table-metadata :reviews))
         mp             (lib.tu/metadata-provider-with-card-from-query 1 reviews-query)
         query          (as-> (lib/query mp (meta/table-metadata :orders)) q
-                         (lib/filter q (lib/= (m/find-first #(= (:name %) "CATEGORY") (lib/filterable-columns q)) "Widget")))
+                         (lib/filter q (lib/= (find-column (lib/filterable-columns q) "CATEGORY") "Widget")))
         upgraded-query (lib-be/upgrade-field-refs-in-query query)
         swapped-query  (lib-be/swap-source-in-query upgraded-query
                                                     {:type :table, :id (meta/id :orders)}
@@ -443,7 +448,7 @@
   (let [orders-query   (lib/query meta/metadata-provider (meta/table-metadata :orders))
         mp             (lib.tu/metadata-provider-with-card-from-query 1 orders-query)
         query          (as-> (lib/query mp (lib.metadata/card mp 1)) q
-                         (lib/filter q (lib/= (m/find-first #(= (:name %) "CATEGORY") (lib/filterable-columns q)) "Widget")))
+                         (lib/filter q (lib/= (find-column (lib/filterable-columns q) "CATEGORY") "Widget")))
         upgraded-query (lib-be/upgrade-field-refs-in-query query)
         swapped-query  (lib-be/swap-source-in-query upgraded-query
                                                     {:type :table, :id (meta/id :orders)}
@@ -469,7 +474,7 @@
   (let [orders-query   (lib/query meta/metadata-provider (meta/table-metadata :orders))
         mp             (lib.tu/metadata-provider-with-card-from-query 1 orders-query)
         query          (as-> (lib/query mp (lib.metadata/card mp 1)) q
-                         (lib/filter q (lib/= (m/find-first #(= (:name %) "CATEGORY") (lib/filterable-columns q)) "Widget")))
+                         (lib/filter q (lib/= (find-column (lib/filterable-columns q) "CATEGORY") "Widget")))
         upgraded-query (lib-be/upgrade-field-refs-in-query query)
         swapped-query  (lib-be/swap-source-in-query upgraded-query
                                                     {:type :card, :id 1}
@@ -671,7 +676,7 @@
 
 (deftest ^:parallel swap-source-in-parameter-target-implicit-join-test
   (let [query           (lib/query meta/metadata-provider (meta/table-metadata :orders))
-        category-col    (m/find-first #(= "CATEGORY" (:name %)) (lib/filterable-columns query))
+        category-col    (find-column (lib/filterable-columns query) "CATEGORY")
         target          [:dimension (lib/->legacy-MBQL (lib/ref category-col))]
         upgraded-target (lib-be/upgrade-field-ref-in-parameter-target query target)
         swapped-target  (lib-be/swap-source-in-parameter-target query target
@@ -690,7 +695,7 @@
   (let [orders-query    (lib/query meta/metadata-provider (meta/table-metadata :orders))
         mp              (lib.tu/metadata-provider-with-card-from-query 1 orders-query)
         query           (lib/query mp (lib.metadata/card mp 1))
-        category-col    (m/find-first #(= "CATEGORY" (:name %)) (lib/filterable-columns query))
+        category-col    (find-column (lib/filterable-columns query) "CATEGORY")
         target          [:dimension (lib/->legacy-MBQL (lib/ref category-col))]
         upgraded-target (lib-be/upgrade-field-ref-in-parameter-target query target)
         swapped-target  (lib-be/swap-source-in-parameter-target query target
@@ -709,7 +714,7 @@
   (let [reviews-query   (lib/query meta/metadata-provider (meta/table-metadata :reviews))
         mp              (lib.tu/metadata-provider-with-card-from-query 1 reviews-query)
         query           (lib/query mp (meta/table-metadata :orders))
-        category-col    (m/find-first #(= "CATEGORY" (:name %)) (lib/filterable-columns query))
+        category-col    (find-column (lib/filterable-columns query) "CATEGORY")
         target          [:dimension (lib/->legacy-MBQL (lib/ref category-col))]
         upgraded-target (lib-be/upgrade-field-ref-in-parameter-target query target)
         swapped-target  (lib-be/swap-source-in-parameter-target query target
@@ -728,7 +733,7 @@
   (let [orders-query    (lib/query meta/metadata-provider (meta/table-metadata :orders))
         mp              (lib.tu/metadata-provider-with-card-from-query 1 orders-query)
         query           (lib/query mp (lib.metadata/card mp 1))
-        category-col    (m/find-first #(= "CATEGORY" (:name %)) (lib/filterable-columns query))
+        category-col    (find-column (lib/filterable-columns query) "CATEGORY")
         target          [:dimension (lib/->legacy-MBQL (lib/ref category-col))]
         upgraded-target (lib-be/upgrade-field-ref-in-parameter-target query target)
         swapped-target  (lib-be/swap-source-in-parameter-target query target
@@ -751,18 +756,20 @@
                            (lib.tu/metadata-provider-with-card-from-query 1 orders-query)
                            (lib.tu/metadata-provider-with-card-from-query 2 products-query)
                            (lib.tu/metadata-provider-with-card-from-query 3 reviews-query))
-        find-column    (fn [cols col-name]
-                         (m/find-first #(= col-name (:name %)) cols))
         query          (as-> (lib/query mp (lib.metadata/card mp 1)) q
+                         (lib/with-fields q [(meta/field-metadata :orders :created-at)
+                                             (find-column (lib/fieldable-columns q) "CREATED_AT")])
                          (lib/join q (-> (lib/join-clause (lib.metadata/card mp 2))
                                          (lib/with-join-fields [(meta/field-metadata :products :id)
                                                                 (find-column (lib/join-condition-rhs-columns q (lib.metadata/card mp 2) nil nil) "ID")])))
                          (lib/expression q "expr_1" (lib/+ (meta/field-metadata :orders :id)
-                                                           (find-column (lib/expressionable-columns q) "ID")))
+                                                           (find-column (lib/expressionable-columns q nil) "ID")))
                          (lib/expression q "expr_2" (lib/+ (meta/field-metadata :orders :id)
-                                                           (find-column (lib/expressionable-columns q) "ID")))
-                         (lib/with-fields q [(meta/field-metadata :orders :created-at)
-                                             (find-column (lib/fieldable-columns q) "CREATED_AT")])
+                                                           (find-column (lib/expressionable-columns q nil) "ID")))
+                         (lib/filter q (lib/not-null (meta/field-metadata :orders :created-at)))
+                         (lib/filter q (lib/not-null (find-column (lib/filterable-columns q) "CREATED_AT")))
+                         (lib/aggregate q (lib/count))
+                         (lib/aggregate q (lib/count))
                          (lib/breakout q (meta/field-metadata :orders :created-at))
                          (lib/breakout q (find-column (lib/breakoutable-columns q) "CREATED_AT"))
                          (lib/order-by q (meta/field-metadata :orders :created-at))
@@ -773,54 +780,63 @@
                                                     {:type :card, :id 1}
                                                     {:type :card, :id 3})]
     (testing "before upgrade: 2 entries in each clause differing only in ref style"
-      (is (=? {:stages [{:fields   [[:field {} (meta/id :orders :created-at)]
-                                    [:field {} "CREATED_AT"]
-                                    [:expression {} "expr_1"]
-                                    [:expression {} "expr_2"]]
-                         :expressions [[:+ {:lib/expression-name "expr_1"}
-                                        [:field {} (meta/id :orders :id)]
-                                        [:field {} (meta/id :orders :id)]]
-                                       [:+ {:lib/expression-name "expr_2"}
-                                        [:field {} (meta/id :orders :id)]
-                                        [:field {} (meta/id :orders :id)]]]
-                         :breakout [[:field {} (meta/id :orders :created-at)]
-                                    [:field {} "CREATED_AT"]]
-                         :order-by [[:asc {} [:field {} (meta/id :orders :created-at)]]
-                                    [:asc {} [:field {} "CREATED_AT"]]]
-                         :joins    [{:fields [[:field {:join-alias join-alias} (meta/id :products :id)]
-                                              [:field {:join-alias join-alias} "ID"]]}]}]}
+      (is (=? {:stages [{:fields       [[:field {} (meta/id :orders :created-at)]
+                                        [:field {} "CREATED_AT"]
+                                        [:expression {} "expr_1"]
+                                        [:expression {} "expr_2"]]
+                         :joins        [{:fields [[:field {:join-alias join-alias} (meta/id :products :id)]
+                                                  [:field {:join-alias join-alias} "ID"]]}]
+                         :expressions  [[:+ {:lib/expression-name "expr_1"}
+                                         [:field {} (meta/id :orders :id)]
+                                         [:field {} "ID"]]
+                                        [:+ {:lib/expression-name "expr_2"}
+                                         [:field {} (meta/id :orders :id)]
+                                         [:field {} "ID"]]]
+                         :filters      [[:not-null {} [:field {} (meta/id :orders :created-at)]]
+                                        [:not-null {} [:field {} "CREATED_AT"]]]
+                         :aggregation  [[:count {}] [:count {}]]
+                         :breakout     [[:field {} (meta/id :orders :created-at)]
+                                        [:field {} "CREATED_AT"]]
+                         :order-by     [[:asc {} [:field {} (meta/id :orders :created-at)]]
+                                        [:asc {} [:field {} "CREATED_AT"]]]}]}
               query)))
-    (testing "upgrade deduplicates each clause to 1 name-based entry, except for expressions"
-      (is (=? {:stages [{:source-card 1
-                         :fields   [[:field {} "CREATED_AT"]
-                                    [:expression {} "expr_1"]
-                                    [:expression {} "expr_2"]]
-                         :expressions [[:+ {:lib/expression-name "expr_1"}
-                                        [:field {} "ID"]
-                                        [:field {} "ID"]]
-                                       [:+ {:lib/expression-name "expr_2"}
-                                        [:field {} "ID"]
-                                        [:field {} "ID"]]]
-                         :breakout [[:field {} "CREATED_AT"]]
-                         :order-by [[:asc {} [:field {} "CREATED_AT"]]]
-                         :joins    [{:stages [{:source-card 2}]
-                                     :fields [[:field {:join-alias join-alias} "ID"]]}]}]}
+    (testing "upgrade deduplicates :fields, :breakout, :order-by, but not :expressions, :filters, or :aggregation"
+      (is (=? {:stages [{:source-card  1
+                         :fields       [[:field {} "CREATED_AT"]
+                                        [:expression {} "expr_1"]
+                                        [:expression {} "expr_2"]]
+                         :joins        [{:stages [{:source-card 2}]
+                                         :fields [[:field {:join-alias join-alias} "ID"]]}]
+                         :expressions  [[:+ {:lib/expression-name "expr_1"}
+                                         [:field {} "ID"]
+                                         [:field {} "ID"]]
+                                        [:+ {:lib/expression-name "expr_2"}
+                                         [:field {} "ID"]
+                                         [:field {} "ID"]]]
+                         :filters      [[:not-null {} [:field {} "CREATED_AT"]]
+                                        [:not-null {} [:field {} "CREATED_AT"]]]
+                         :aggregation  [[:count {}] [:count {}]]
+                         :breakout     [[:field {} "CREATED_AT"]]
+                         :order-by     [[:asc {} [:field {} "CREATED_AT"]]]}]}
               upgraded-query)))
     (testing "swap to reviews card preserves name-based refs"
-      (is (=? {:stages [{:source-card 3
-                         :fields   [[:field {} "CREATED_AT"]
-                                    [:expression {} "expr_1"]
-                                    [:expression {} "expr_2"]]
-                         :expressions [[:+ {:lib/expression-name "expr_1"}
-                                        [:field {} "ID"]
-                                        [:field {} "ID"]]
-                                       [:+ {:lib/expression-name "expr_2"}
-                                        [:field {} "ID"]
-                                        [:field {} "ID"]]]
-                         :breakout [[:field {} "CREATED_AT"]]
-                         :order-by [[:asc {} [:field {} "CREATED_AT"]]]
-                         :joins    [{:stages [{:source-card 2}]
-                                     :fields [[:field {:join-alias join-alias} "ID"]]}]}]}
+      (is (=? {:stages [{:source-card  3
+                         :fields       [[:field {} "CREATED_AT"]
+                                        [:expression {} "expr_1"]
+                                        [:expression {} "expr_2"]]
+                         :joins        [{:stages [{:source-card 2}]
+                                         :fields [[:field {:join-alias join-alias} "ID"]]}]
+                         :expressions  [[:+ {:lib/expression-name "expr_1"}
+                                         [:field {} "ID"]
+                                         [:field {} "ID"]]
+                                        [:+ {:lib/expression-name "expr_2"}
+                                         [:field {} "ID"]
+                                         [:field {} "ID"]]]
+                         :filters      [[:not-null {} [:field {} "CREATED_AT"]]
+                                        [:not-null {} [:field {} "CREATED_AT"]]]
+                         :aggregation  [[:count {}] [:count {}]]
+                         :breakout     [[:field {} "CREATED_AT"]]
+                         :order-by     [[:asc {} [:field {} "CREATED_AT"]]]}]}
               swapped-query)))))
 
 (deftest ^:parallel swap-source-in-query-field-ref-to-expression-test
