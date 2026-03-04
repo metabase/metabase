@@ -320,6 +320,10 @@
   "Should we allow users to use workspaces?"
   :workspaces)
 
+(define-premium-feature enable-writable-connection?
+  "Should we allow admins to configure separate write connection credentials?"
+  :writable-connection)
+
 (defn- -token-features []
   {:advanced_permissions           (enable-advanced-permissions?)
    :ai_sql_fixer                   (enable-ai-sql-fixer?)
@@ -372,7 +376,8 @@
    :transforms-python              (enable-python-transforms?)
    :upload_management              (enable-upload-management?)
    :whitelabel                     (enable-whitelabeling?)
-   :workspaces                     (enable-workspaces?)})
+   :workspaces                     (enable-workspaces?)
+   :writable_connection            (enable-writable-connection?)})
 
 (defsetting token-features
   "Features registered for this instance's token"

@@ -57,7 +57,8 @@
                               :database-routing
                               :tenants
                               :cloud-custom-smtp
-                              :workspaces}
+                              :workspaces
+                              :writable-connection}
     (is (= {:advanced_permissions           true
             :attached_dwh                   true
             :audit_app                      true
@@ -109,5 +110,6 @@
             :etl_connections                false
             :etl_connections_pg             false
             :dependencies                   false
-            :workspaces                     true}
+            :workspaces                     true
+            :writable_connection            true}
            (:token-features (mt/user-http-request :crowberto :get 200 "session/properties"))))))
