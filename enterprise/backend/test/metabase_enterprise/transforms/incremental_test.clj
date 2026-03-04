@@ -15,10 +15,10 @@
    [metabase.lib.metadata :as lib.metadata]
    [metabase.query-processor :as qp]
    [metabase.test :as mt]
+   [metabase.transforms-base.util :as transforms-base.u]
    [metabase.transforms.execute :as transforms.execute]
    [metabase.transforms.test-dataset :as transforms-dataset]
    [metabase.transforms.test-util :as transforms.tu :refer [with-transform-cleanup!]]
-   [metabase.transforms.util :as transforms.u]
    [next.jdbc :as next.jdbc]
    [next.jdbc.result-set :as jdbc.rs]
    [toucan2.core :as t2]))
@@ -185,8 +185,8 @@
     (some-> result :data :rows first first bigint)))
 
 (defn get-checkpoint-value [transform]
-  (#'transforms.u/next-checkpoint-value
-   (transforms.u/next-checkpoint transform)))
+  (#'transforms-base.u/next-checkpoint-value
+   (transforms-base.u/next-checkpoint transform)))
 
 (defn- compare-checkpoint-values
   "Compare two checkpoint values with type-appropriate logic. "
@@ -606,7 +606,7 @@
             (testing "sync has picked up table"
               (is (=? {:name target-table, :fields [{:name "id"}]} (-> (t2/select-one :model/Table :name target-table) (t2/hydrate :fields)))))
             (testing "checkpoint is recognized"
-              (is (some? (transforms.u/next-checkpoint transform))))))))))
+              (is (some? (transforms-base.u/next-checkpoint transform))))))))))
 
 (deftest checkpoint-field-does-not-exist-test
   (mt/test-drivers #{:postgres}                             ; no db specifics
@@ -633,7 +633,7 @@
             (testing "target table has expected data"
               (is (= [{:id 42}] (pg-table-rows db-spec target-table))))
             (testing "checkpoint is not recognized, so transform acts as if no checkpoint"
-              (is (nil? (transforms.u/next-checkpoint transform))))
+              (is (nil? (transforms-base.u/next-checkpoint transform))))
             ;; Maybe this is unrealistic - you cannot select a column that does not exist
             ;; But the source tables schema can change, e.g. rename: you change event_time to event_ts or something
             ;; so one would have to be careful to disable or delete transforms ahead of a schema change like this

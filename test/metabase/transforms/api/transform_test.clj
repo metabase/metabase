@@ -12,14 +12,15 @@
    [metabase.query-processor :as qp]
    [metabase.search.test-util :as search.tu]
    [metabase.test :as mt]
+   [metabase.transforms-base.util :as transforms-base.u]
    [metabase.transforms.api.transform]
+   [metabase.transforms.crud]
    [metabase.transforms.query-test-util :as query-test-util]
    [metabase.transforms.test-dataset :as transforms-dataset]
    [metabase.transforms.test-util :refer [get-test-schema
                                           parse-instant
                                           utc-timestamp
                                           with-transform-cleanup!]]
-   [metabase.transforms.util :as transforms.util]
    [metabase.util :as u]
    [toucan2.core :as t2]))
 
@@ -646,7 +647,7 @@
                             (m/dissoc-in [:source :query :lib/metadata]))
                         (-> (mt/user-http-request :lucky :put 200 (format "transform/%s" (:id resp)) updated)
                             (update-in [:source :query] lib/normalize))))
-                (is (false? (transforms.util/target-table-exists? original)))))))))))
+                (is (false? (transforms-base.u/target-table-exists? original)))))))))))
 
 (deftest delete-transforms-test
   (mt/with-premium-features #{}
@@ -775,7 +776,7 @@
                                                                  original)
                         _                  (do (test-run! transform-id)
                                                (wait-for-table table1-name 5000))
-                        _                  (is (true? (transforms.util/target-table-exists? original)))
+                        _                  (is (true? (transforms-base.u/target-table-exists? original)))
                         _                  (check-query-results table1-name [5 11 16] "Gadget")
                         updated            {:name        "Doohickey Products"
                                             :description "Desc"
@@ -789,8 +790,8 @@
                              (update-in [:source :query] lib/normalize))))
                     (test-run! transform-id)
                     (wait-for-table table2-name 5000)
-                    (is (true? (transforms.util/target-table-exists? original)))
-                    (is (true? (transforms.util/target-table-exists? updated)))
+                    (is (true? (transforms-base.u/target-table-exists? original)))
+                    (is (true? (transforms-base.u/target-table-exists? updated)))
                     (check-query-results table2-name [2 3 4 13] "Doohickey")))))))))))
 
 (deftest get-runs-filter-by-single-transform-id-test

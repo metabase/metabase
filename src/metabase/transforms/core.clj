@@ -6,6 +6,13 @@
    [metabase.models.transforms.transform-run]
    [metabase.models.transforms.transform-run-cancelation]
    [metabase.models.transforms.transform-tag]
+   [metabase.transforms-base.ordering]
+   [metabase.transforms-base.util]
+   [metabase.transforms.canceling]
+   [metabase.transforms.crud]
+   [metabase.transforms.execute]
+   [metabase.transforms.jobs]
+   [metabase.transforms.schedule]
    [metabase.transforms.settings]
    [metabase.transforms.util]
    [potemkin :as p]))
@@ -13,15 +20,45 @@
 (p/import-vars
  [metabase.transforms.settings
   transform-timeout]
- [metabase.transforms.util
-  add-source-readable
+ [metabase.transforms-base.util
   native-query-transform?
   python-transform?
   query-transform?
   transform-source-database
   transform-source-type
-  transform-type
+  transform-type]
+ [metabase.transforms.util
+  add-source-readable
   is-temp-transform-table?]
+ [metabase.transforms.crud
+  python-source-table-ref->table-id
+  check-database-feature
+  check-feature-enabled!
+  extract-all-columns-from-query
+  extract-incremental-filter-columns-from-query
+  validate-incremental-column-type!
+  validate-transform-query!
+  get-transforms
+  get-transform
+  create-transform!
+  update-transform!
+  delete-transform!]
+ [metabase.transforms.canceling
+  cancel-run!]
+ [metabase.transforms.execute
+  execute!]
+ [metabase.transforms-base.ordering
+  transform-ordering
+  get-transform-cycle]
+ [metabase.transforms.jobs
+  run-job!
+  job-transforms]
+ [metabase.transforms.schedule
+  validate-cron-expression
+  initialize-job!
+  update-job!
+  delete-job!
+  existing-trigger]
  [metabase.models.transforms.transform-run
   timeout-run!
   paged-runs

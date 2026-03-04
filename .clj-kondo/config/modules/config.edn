@@ -882,6 +882,7 @@
            metabase.models.interface
            metabase.models.resolution
            metabase.models.serialization
+           metabase.models.transforms.transform
            metabase.models.util.spec-update
            metabase.models.visualization-settings}
    :uses #{api
@@ -898,6 +899,7 @@
            search
            settings
            transforms
+           transforms-base
            util}
    :friends #{transforms}}
 
@@ -1581,7 +1583,6 @@
            driver
            events
            lib
-           lib-be
            models
            premium-features
            queries
@@ -1589,13 +1590,60 @@
            request
            revisions
            settings
-           sync
            task
            task-history
+           transforms-base
            util}
    :friends #{models
               enterprise/transforms-python
               enterprise/workspaces}}
+
+  transforms-base
+  {:team "Querying"
+   :api  #{metabase.transforms-base.init
+           metabase.transforms-base.interface
+           metabase.transforms-base.util}
+   :uses #{driver
+           events
+           lib
+           lib-be
+           query-processor
+           sync
+           util}
+   :friends #{transforms
+              enterprise/transforms-python
+              enterprise/workspaces}}
+
+  transforms-inspector
+  {:team "Gadget"
+   :api  #{metabase.transforms-inspector.core
+           metabase.transforms-inspector.schema}
+   :uses #{driver
+           lib
+           lib-be
+           query-processor
+           sql-tools
+           transforms-base
+           util}}
+
+  transforms-rest
+  {:team "Gadget"
+   :api  #{metabase.transforms-rest.api.transform
+           metabase.transforms-rest.api.transform-job
+           metabase.transforms-rest.api.transform-tag}
+   :uses #{api
+           driver
+           events
+           models
+           query-processor
+           request
+           server
+           sql-tools
+           transforms
+           transforms-base
+           transforms-inspector
+           util}}
+
 
   types
   {:team "Querying"
@@ -2104,6 +2152,7 @@
            settings
            task
            transforms
+           transforms-base
            util}}
 
   enterprise/email
@@ -2220,6 +2269,7 @@
               system
               task
               transforms
+              transforms-base
               users-rest
               util
               warehouses-rest
@@ -2444,6 +2494,7 @@
            query-processor
            settings
            transforms
+           transforms-base
            util}}
 
   enterprise/upload-management
@@ -2475,6 +2526,7 @@
            settings
            system
            transforms
+           transforms-base
            util
            enterprise/transforms-python}}
 

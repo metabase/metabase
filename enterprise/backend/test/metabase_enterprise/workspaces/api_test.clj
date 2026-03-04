@@ -315,13 +315,13 @@
                    (t2/select-one-fn :name [:model/WorkspaceTransform :name] :workspace_id ws-id :ref_id ws-x-2-id)))))
 
         (testing "No updates are propagated back to core app on merge failure"
-          (let [update-transform! transforms.api/update-transform!]
-            (with-redefs [transforms.api/update-transform! (let [call-count (atom 0)]
-                                                             (fn [& args]
-                                                               (when (> @call-count 0)
-                                                                 (throw (Exception. "boom")))
-                                                               (swap! call-count inc)
-                                                               (apply update-transform! args)))]
+          (let [update-transform! transforms.core/update-transform!]
+            (mt/with-dynamic-fn-redefs [transforms.core/update-transform! (let [call-count (atom 0)]
+                                                                            (fn [& args]
+                                                                              (when (> @call-count 0)
+                                                                                (throw (Exception. "boom")))
+                                                                              (swap! call-count inc)
+                                                                              (apply update-transform! args)))]
               (testing "API response: empty merged, single error"
                 (let [resp (mt/user-http-request :crowberto :post 200 (ws-url ws-id "/merge"))]
                   (is (empty? (get-in resp [:merged :transforms])))
@@ -574,8 +574,8 @@
           _ (mt/user-http-request :crowberto :post 204
                                   (ws-url ws-id "/transform" ws-x-1-id "/archive"))]
       (testing "Failure on merge"
-        (with-redefs [transforms.api/delete-transform! (fn [& _args]
-                                                         (throw (Exception. "boom")))]
+        (mt/with-dynamic-fn-redefs [transforms.core/delete-transform! (fn [& _args]
+                                                                        (throw (Exception. "boom")))]
           (let [resp (mt/user-http-request :crowberto :post 500
                                            (ws-url ws-id "/transform" ws-x-1-id "/merge"))]
             (testing "Response"
