@@ -343,11 +343,11 @@
         on-data (fn [idx content]
                   (when (viz-data-types (:type content))
                     (let [value    (:value content)
-                          filename (or (some-> (:description value) (u/slugify {:max-length 80}))
+                          caption  (:caption value)
+                          filename (or (some-> caption (u/slugify {:max-length 80}))
                                        (case (:type content)
                                          "static_viz" (str "chart-" (:entity_id value))
                                          "adhoc_viz"  (str "adhoc-" (System/currentTimeMillis))))
-                          caption  (:caption value)
                           link     (case (:type content)
                                      "adhoc_viz"  (:link value)
                                      "static_viz" (str "/question/" (:entity_id value)))

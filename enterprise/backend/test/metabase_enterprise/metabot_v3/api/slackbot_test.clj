@@ -792,6 +792,122 @@
               (testing "second card still rendered"
                 (is (= 1 (count @image-calls)))))))))))
 
+(deftest format-viz-caption-test
+  (testing "format-viz-caption builds correct caption text"
+    (mt/with-temporary-setting-values [site-url "https://metabase.example.com"]
+      (testing "caption + link"
+        (is (= "📊 <https://metabase.example.com/question/42|My Chart>"
+               (#'slackbot.streaming/format-viz-caption "My Chart" "/question/42"))))
+      (testing "caption only"
+        (is (= "My Chart"
+               (#'slackbot.streaming/format-viz-caption "My Chart" nil))))
+      (testing "link only"
+        (is (= "📊 <https://metabase.example.com/question/42|Open in Metabase>"
+               (#'slackbot.streaming/format-viz-caption nil "/question/42"))))
+      (testing "neither"
+        (is (nil? (#'slackbot.streaming/format-viz-caption nil nil)))))))
+
+(deftest viz-caption-and-link-on-image-test
+  (testing "image viz posts include caption with link as initial-comment"
+    (with-slackbot-setup
+      (let [mock-data-parts [{:type  "static_viz"
+                              :value {:entity_id 101
+                                      :caption   "Revenue by Month"}}]
+            event-body      (update base-dm-event :event merge
+                                    {:text      "Show revenue"
+                                     :channel   "C456"
+                                     :ts        "1234567890.000020"
+                                     :event_ts  "1234567890.000020"
+                                     :thread_ts "1234567890.000000"})]
+        (with-slackbot-mocks
+          {:ai-text    "Here's your chart"
+           :data-parts mock-data-parts}
+          (fn [{:keys [image-calls stop-stream-calls]}]
+            (mt/client :post 200 "ee/metabot-v3/slack/events"
+                       (slack-request-options event-body)
+                       event-body)
+            (u/poll {:thunk      #(and (>= (count @stop-stream-calls) 1)
+                                       (>= (count @image-calls) 1))
+                     :done?      true?
+                     :timeout-ms 5000})
+            (let [img (first @image-calls)]
+              (testing "filename uses slugified caption"
+                (is (= "revenue_by_month.png" (:filename img))))
+              (testing "initial-comment contains caption with link"
+                (is (str/includes? (:initial-comment img) "Revenue by Month"))
+                (is (str/includes? (:initial-comment img) "/question/101"))))))))))
+
+(deftest table-viz-with-caption-test
+  (testing "table viz posts include caption block with link"
+    (with-slackbot-setup
+      (let [mock-query      {:database 1 :type "query" :query {:source-table 2}}
+            mock-data-parts [{:type  "adhoc_viz"
+                              :value {:query   mock-query
+                                      :caption "Sales Data"
+                                      :link    "/question#abc123"}}]
+            event-body      (update base-dm-event :event merge
+                                    {:text      "Show sales"
+                                     :ts        "1234567890.000021"
+                                     :event_ts  "1234567890.000021"
+                                     :thread_ts "1234567890.000000"})]
+        (with-slackbot-mocks
+          {:ai-text    "Here's your table"
+           :data-parts mock-data-parts}
+          (fn [{:keys [post-calls stop-stream-calls generate-adhoc-output-calls]}]
+            (mt/client :post 200 "ee/metabot-v3/slack/events"
+                       (slack-request-options event-body)
+                       event-body)
+            (u/poll {:thunk      #(and (>= (count @stop-stream-calls) 1)
+                                       (>= (count @generate-adhoc-output-calls) 1))
+                     :done?      true?
+                     :timeout-ms 5000})
+            (let [viz-post (some (fn [p] (when (:blocks p) p)) @post-calls)]
+              (testing "table viz posted as message with blocks"
+                (is (some? viz-post)))
+              (testing "first block is caption with mrkdwn text"
+                (let [caption-block (first (:blocks viz-post))]
+                  (is (= "section" (:type caption-block)))
+                  (is (= "mrkdwn" (get-in caption-block [:text :type])))
+                  (is (str/includes? (get-in caption-block [:text :text]) "Sales Data")))))))))))
+
+(deftest slack-user-mention-context-test
+  (testing "slack_user_mention is set for channel messages but not DMs"
+    (with-slackbot-setup
+      (testing "channel message includes user mention"
+        (let [event-body (update base-mention-event :event merge
+                                 {:text      "<@UBOT123> Show data"
+                                  :channel   "C456"
+                                  :ts        "1234567890.000030"
+                                  :event_ts  "1234567890.000030"
+                                  :thread_ts "1234567890.000000"})]
+          (with-slackbot-mocks
+            {:ai-text "Here's your data"}
+            (fn [{:keys [ai-request-calls stop-stream-calls]}]
+              (mt/client :post 200 "ee/metabot-v3/slack/events"
+                         (slack-request-options event-body)
+                         event-body)
+              (u/poll {:thunk      #(>= (count @stop-stream-calls) 1)
+                       :done?      true?
+                       :timeout-ms 5000})
+              (let [context (:context (first @ai-request-calls))]
+                (is (= "<@U123>" (:slack_user_mention context))))))))
+      (testing "DM does not include user mention"
+        (let [event-body (update base-dm-event :event merge
+                                 {:text      "Show data"
+                                  :ts        "1234567890.000031"
+                                  :event_ts  "1234567890.000031"})]
+          (with-slackbot-mocks
+            {:ai-text "Here's your data"}
+            (fn [{:keys [ai-request-calls stop-stream-calls]}]
+              (mt/client :post 200 "ee/metabot-v3/slack/events"
+                         (slack-request-options event-body)
+                         event-body)
+              (u/poll {:thunk      #(>= (count @stop-stream-calls) 1)
+                       :done?      true?
+                       :timeout-ms 5000})
+              (let [context (:context (first @ai-request-calls))]
+                (is (nil? (:slack_user_mention context)))))))))))
+
 (deftest generate-card-output-failed-qp-result-test
   (testing "throws when QP returns :status :failed for table card"
     (mt/with-temp [:model/Card {card-id :id} {:display :table}]
