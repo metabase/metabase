@@ -64,6 +64,8 @@
 
 (def cli-spec [["-h" "--help" "Show this help text"]
                ["-H" "--hot" "Enable hot reloading"] ;
+               [nil "--h2-tcp-port PORT" "Start an H2 TCP listener on the specified port"
+                :parse-fn #(Integer/parseInt %)]
                ["-p" "--port PORT" "Port to run the nREPL server on"
                 :default 50605
                 :parse-fn #(Integer/parseInt %)]])
@@ -75,9 +77,10 @@
 
   Command Line Args:
 
-  `--hot` - Checks for modified files and reloads them during a request."
+  `--hot` - Checks for modified files and reloads them during a request.
+  `--h2-tcp-port` - Starts an H2 TCP listener on the specified port."
   [& args]
-  (let [{:keys [help hot port]} (:options (cli/parse-opts args cli-spec))]
+  (let [{:keys [help hot h2-tcp-port port]} (:options (cli/parse-opts args cli-spec))]
     (when help
       #_:clj-kondo/ignore
       (do
@@ -89,6 +92,8 @@
       #_:clj-kondo/ignore
       (println "Enabling hot reloading of code. Backend code will reload on every request.")
       (alter-var-root #'*enable-hot-reload* (constantly true)))
+    (when h2-tcp-port
+      ((requiring-resolve 'dev.h2/tcp-listen) h2-tcp-port))
     (future
       #_:clj-kondo/ignore
       (println "Starting Metabase cider repl on port" port)
