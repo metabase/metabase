@@ -5,7 +5,8 @@
    The full transforms module (metabase.transforms.schema) extends these with
    additional fields like :id (required for scheduled execution)."
   (:require
-   [metabase.util.malli.registry :as mr])
+   [metabase.util.malli.registry :as mr]
+   [metabase.util.malli.schema :as ms])
   (:import
    (clojure.core.async.impl.channels ManyToManyChannel)
    (clojure.lang Atom)))
@@ -13,10 +14,10 @@
 ;;; ------------------------------------------------- Primitives -------------------------------------------------
 
 (mr/def ::atom
-  [:fn (partial instance? Atom)])
+  (ms/InstanceOfClass Atom))
 
 (mr/def ::chan
-  [:fn (partial instance? ManyToManyChannel)])
+  (ms/InstanceOfClass ManyToManyChannel))
 
 ;;; ------------------------------------------------- Transform -------------------------------------------------
 
@@ -57,5 +58,5 @@
   [:map
    [:status [:enum :succeeded :failed :cancelled :timeout]]
    [:result {:optional true} :any]
-   [:error {:optional true} [:maybe [:fn (partial instance? Throwable)]]]
+   [:error {:optional true} [:maybe (ms/InstanceOfClass Throwable)]]
    [:logs {:optional true} [:maybe :string]]])
