@@ -4,7 +4,6 @@
    [metabase-enterprise.replacement.protocols :as replacement.protocols]
    [metabase-enterprise.replacement.source :as source]
    [metabase-enterprise.replacement.source-swap :as source-swap]
-   [metabase-enterprise.replacement.swap.viz :as swap.viz]
    [metabase-enterprise.replacement.usages :as usages]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
@@ -23,7 +22,15 @@
     (succeed-run! [_])
     (fail-run! [_ _throwable])))
 
-(defn- bulk-load-metadata-for-entities!
+;; FIXME (bryan): we don't want to merge the compilation tracker into master
+(def ^:dynamic *compilation-tracker*
+  "When bound, called at phase boundaries: :before-upgrade, :after-upgrade, :after-swap.
+   Signature: (fn [phase {:keys [entities db-id]}] ...)
+   `entities` is the result of `bulk-load-metadata-for-entities!`: {[type id] loaded-object}
+   `db-id` is the database ID the runner is using."
+  nil)
+
+(defn bulk-load-metadata-for-entities!
   "Bulk load metadata for a batch of entities into the metadata provider cache.
 
   Fetches all card dataset queries in one query, converts them to lib queries, extracts all referenced entity IDs, and
@@ -90,6 +97,12 @@
                      :table (t2/select-one-fn :db_id :model/Table :id (second old-source)))
         batch-size 500]
 
+    (when *compilation-tracker*
+      (lib-be/with-metadata-provider-cache
+        (let [metadata-provider (lib-be/application-database-metadata-provider db-id)
+              loaded            (bulk-load-metadata-for-entities! metadata-provider all-transitive-dependents)]
+          (*compilation-tracker* :before-upgrade {:entities loaded :db-id db-id}))))
+
     ;; phase 1: Upgrade field refs for ALL transitive dependents
     (doseq [batch (partition-all batch-size all-transitive-dependents)]
       (lib-be/with-metadata-provider-cache
@@ -100,6 +113,12 @@
             ;; upgrade! knows how to handle all entity types including dashboards
             (field-refs/upgrade! entity object)
             (replacement.protocols/advance! progress)))))
+
+    (when *compilation-tracker*
+      (lib-be/with-metadata-provider-cache
+        (let [metadata-provider (lib-be/application-database-metadata-provider db-id)
+              loaded            (bulk-load-metadata-for-entities! metadata-provider all-transitive-dependents)]
+          (*compilation-tracker* :after-upgrade {:entities loaded :db-id db-id}))))
 
     ;; phase 2: Swap sources for ALL transitive dependents (with batched metadata warming)
     (let [failures (atom [])]
@@ -118,6 +137,12 @@
                   (log/warnf e "Failed to swap %s, continuing with next entity" entity)
                   (swap! failures conj {:entity entity :error (ex-message e)})))
               (replacement.protocols/advance! progress)))))
+
+      (when *compilation-tracker*
+        (lib-be/with-metadata-provider-cache
+          (let [metadata-provider (lib-be/application-database-metadata-provider db-id)
+                loaded            (bulk-load-metadata-for-entities! metadata-provider all-transitive-dependents)]
+            (*compilation-tracker* :after-swap {:entities loaded :db-id db-id}))))
 
       (when (seq @failures)
         {:failures @failures}))))
