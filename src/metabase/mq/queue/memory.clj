@@ -117,6 +117,11 @@
   "Maps bundle-id -> {:message ... :failures ...} for retry tracking."
   (atom {}))
 
+(def ^:dynamic *exclusive-processing*
+  "Set of queue names currently being processed exclusively.
+  Used to enforce single-consumer semantics for exclusive queues."
+  (atom #{}))
+
 (defn- ensure-queue!
   "Ensures a DelayQueue exists for the given queue name, creating one if necessary.
   Returns the queue."
@@ -141,6 +146,23 @@
     (.size q)
     0))
 
+(defn- try-acquire-exclusive!
+  "Attempts to mark an exclusive queue as processing. Returns true if acquired."
+  [queue-name]
+  (let [acquired? (atom false)]
+    (swap! *exclusive-processing*
+           (fn [s]
+             (if (contains? s queue-name)
+               s
+               (do (reset! acquired? true)
+                   (conj s queue-name)))))
+    @acquired?))
+
+(defn- release-exclusive!
+  "Releases the exclusive processing flag for the given queue."
+  [queue-name]
+  (swap! *exclusive-processing* disj queue-name))
+
 (defn- start-queue-listener! [queue-name]
   (let [queue  (ensure-queue! queue-name)
         {:keys [max-batch-messages max-next-ms]
@@ -150,9 +172,21 @@
      queue
      (bound-fn [messages]
        (doseq [msg messages]
-         (let [bundle-id (str (random-uuid))]
-           (swap! *bundle-registry* assoc bundle-id {:message msg :failures 0})
-           (q.impl/deliver-bundle! :queue.backend/memory queue-name bundle-id [msg]))))
+         (if (q.impl/exclusive? queue-name)
+           ;; For exclusive queues, spin-wait until we can acquire the lock
+           (loop []
+             (if (try-acquire-exclusive! queue-name)
+               (try
+                 (let [bundle-id (str (random-uuid))]
+                   (swap! *bundle-registry* assoc bundle-id {:message msg :failures 0})
+                   (q.impl/deliver-bundle! :queue.backend/memory queue-name bundle-id [msg]))
+                 (finally
+                   (release-exclusive! queue-name)))
+               (do (Thread/sleep 10)
+                   (recur))))
+           (let [bundle-id (str (random-uuid))]
+             (swap! *bundle-registry* assoc bundle-id {:message msg :failures 0})
+             (q.impl/deliver-bundle! :queue.backend/memory queue-name bundle-id [msg])))))
      {:max-batch-messages max-batch-messages
       :max-next-ms        max-next-ms})))
 

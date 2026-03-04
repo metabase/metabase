@@ -120,7 +120,7 @@
                       {:topic topic-name})))))
 
 (defmethod mq.impl/listen! "topic"
-  [topic-name listener]
+  [topic-name _opts listener]
   (let [instrumented (make-instrumented-listener topic-name listener)]
     (register-listener! topic-name instrumented)
     (topic.backend/subscribe! topic.backend/*backend* topic-name)))

@@ -26,7 +26,7 @@
 (deftest publish-and-subscribe-test
   (with-memory-topics
     (let [received (atom [])]
-      (mq/listen! :topic/test
+      (mq/listen! :topic/test {}
                   (fn [message]
                     (swap! received conj message)))
       (mq/with-topic :topic/test [t]
@@ -43,7 +43,7 @@
 (deftest batch-publish-test
   (with-memory-topics
     (let [received (atom [])]
-      (mq/listen! :topic/batch
+      (mq/listen! :topic/batch {}
                   (fn [message]
                     (swap! received conj message)))
       (mq/with-topic :topic/batch [t]
@@ -62,7 +62,7 @@
     (mq/with-topic :topic/late-join [t]
       (mq/put t "before-subscribe"))
     (let [received (atom [])]
-      (mq/listen! :topic/late-join
+      (mq/listen! :topic/late-join {}
                   (fn [message]
                     (swap! received conj message)))
 
@@ -78,7 +78,7 @@
 (deftest unsubscribe-stops-delivery-test
   (with-memory-topics
     (let [received (atom [])]
-      (mq/listen! :topic/unsub
+      (mq/listen! :topic/unsub {}
                   (fn [message]
                     (swap! received conj message)))
 
@@ -99,7 +99,7 @@
 (deftest error-handling-test
   (with-memory-topics
     (let [received (atom [])]
-      (mq/listen! :topic/errors
+      (mq/listen! :topic/errors {}
                   (fn [message]
                     (when (= "error!" message)
                       (throw (ex-info "Test error" {})))
@@ -120,10 +120,10 @@
 
 (deftest double-subscribe-throws-test
   (with-memory-topics
-    (mq/listen! :topic/double (fn [_] nil))
+    (mq/listen! :topic/double {} (fn [_] nil))
     (testing "Subscribing twice to the same topic throws"
       (is (thrown-with-msg? ExceptionInfo #"Listener already registered"
-                            (mq/listen! :topic/double (fn [_] nil)))))
+                            (mq/listen! :topic/double {} (fn [_] nil)))))
     (mq/unlisten! :topic/double)))
 
 (deftest concurrent-publish-ordering-test
@@ -132,7 +132,7 @@
       (let [received (atom [])
             n        20
             barrier  (CyclicBarrier. n)]
-        (mq/listen! :topic/concurrent-order
+        (mq/listen! :topic/concurrent-order {}
                     (fn [message]
                       (swap! received conj message)))
         ;; Publish concurrently from n threads
@@ -156,10 +156,10 @@
   (with-memory-topics
     (let [received-a (atom [])
           received-b (atom [])]
-      (mq/listen! :topic/isolated-a
+      (mq/listen! :topic/isolated-a {}
                   (fn [message]
                     (swap! received-a conj message)))
-      (mq/listen! :topic/isolated-b
+      (mq/listen! :topic/isolated-b {}
                   (fn [message]
                     (swap! received-b conj message)))
 

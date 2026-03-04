@@ -29,6 +29,17 @@
                 :message-bundles {bundle-id backend-key}}"
   (atom {}))
 
+(defn exclusive? [queue-name]
+  (:exclusive (get @*listeners* queue-name)))
+
+(defn exclusive-queue-names
+  "Returns the set of queue names (as strings) that are registered with `:exclusive true`."
+  []
+  (into #{}
+        (comp (filter (fn [[_k v]] (:exclusive v)))
+              (map (fn [[k _v]] (name k))))
+        @*listeners*))
+
 ;;; ------------------------------------------- Message handling -------------------------------------------
 
 (mu/defn handle!
@@ -156,21 +167,23 @@
       (throw (ex-info "Queue listener already defined" {:queue queue-name})))))
 
 (defmethod mq.impl/listen! "queue"
-  [queue-name listener]
+  [queue-name opts listener]
   (register-listener! queue-name {:listener           listener
                                   :max-batch-messages 1
-                                  :max-next-ms        0}))
+                                  :max-next-ms        0
+                                  :exclusive          (boolean (:exclusive opts))}))
 
 (mu/defn batch-listen!
   "Registers a batch listener function for the given queue.
   The listener will be called with a vec of messages, sized up to :max-batch-messages.
   Batches can span multiple backend bundles, waiting up to :max-next-ms for additional bundles.
+  Pass `:exclusive true` in config to ensure only one node processes messages at a time.
   Throws if a listener is already registered.
   Note: This registers the listener. Call [[start!]] to begin backend processing."
   [queue-name :- :metabase.mq.queue/queue-name
    listener :- fn?
-   config :- [:map [:max-batch-messages pos-int?] [:max-next-ms nat-int?]]]
-  (register-listener! queue-name (merge config {:listener listener})))
+   config :- [:map [:max-batch-messages pos-int?] [:max-next-ms nat-int?] [:exclusive {:optional true} :boolean]]]
+  (register-listener! queue-name (merge {:exclusive false} config {:listener listener})))
 
 (defmethod mq.impl/unlisten! "queue"
   [queue-name]

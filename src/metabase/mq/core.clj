@@ -7,14 +7,14 @@
   one listener and removed after successful processing.  Failed messages are retried up to a
   configurable limit.
 
-      (listen! :queue/my-task listener-fn)
+      (listen! :queue/my-task {} listener-fn)
       (with-queue :queue/my-task [q]
         (put q message))
 
   **Topic** — single-consumer pub/sub.  Each active node receives every published message.
   There can be up to one listener per node for each topic. Failed messages are never retried.
 
-      (listen! :topic/my-events listener-fn)
+      (listen! :topic/my-events {} listener-fn)
       (with-topic :topic/my-events [t]
         (put t payload))"
   (:require

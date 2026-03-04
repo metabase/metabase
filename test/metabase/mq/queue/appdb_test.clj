@@ -64,6 +64,43 @@
         (testing "When everything valid is pending, return nil"
           (is (nil? (#'q.appdb/fetch!))))))))
 
+(deftest exclusive-fetch-test
+  (let [exclusive-q (keyword "queue" (str "exclusive-" (gensym)))
+        normal-q    (keyword "queue" (str "normal-" (gensym)))]
+    (binding [q.impl/*listeners* (atom {exclusive-q {:listener identity :exclusive true}
+                                        normal-q    {:listener identity :exclusive false}})]
+      (t2/with-connection [_conn]
+        (testing "With no processing rows, exclusive queue messages are fetched normally"
+          (t2/insert! :queue_message_bundle
+                      {:queue_name (name exclusive-q)
+                       :messages   (json/encode ["exclusive-msg1"])})
+          (let [{:keys [queue messages]} (#'q.appdb/fetch!)]
+            (is (= exclusive-q queue))
+            (is (= ["exclusive-msg1"] messages))))
+
+        (testing "With a processing row on exclusive queue, fetch skips it"
+          (t2/insert! :queue_message_bundle
+                      {:queue_name (name exclusive-q)
+                       :messages   (json/encode ["exclusive-msg2"])})
+          ;; The first message is now 'processing', so the second should be skipped
+          (is (nil? (#'q.appdb/fetch!))
+              "Should return nil because exclusive queue has a processing row"))
+
+        (testing "Non-exclusive queue is still fetchable even when exclusive queue is blocked"
+          (t2/insert! :queue_message_bundle
+                      {:queue_name (name normal-q)
+                       :messages   (json/encode ["normal-msg1"])})
+          (let [{:keys [queue messages]} (#'q.appdb/fetch!)]
+            (is (= normal-q queue))
+            (is (= ["normal-msg1"] messages))))
+
+        (testing "After exclusive processing completes, next message can be fetched"
+          ;; Mark the processing row as done by deleting it (simulating bundle-successful!)
+          (t2/delete! :queue_message_bundle :queue_name (name exclusive-q) :status "processing")
+          (let [{:keys [queue messages]} (#'q.appdb/fetch!)]
+            (is (= exclusive-q queue))
+            (is (= ["exclusive-msg2"] messages))))))))
+
 (deftest message-successful-test
   (let [queue-name (keyword "queue" (str (gensym "successful-test-")))]
     (testing "Message successful deletes the message"

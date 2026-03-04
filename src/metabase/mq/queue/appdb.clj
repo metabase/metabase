@@ -23,28 +23,38 @@
 (defn- fetch!
   "Fetches the next pending message from any of the listening queues.
   Returns a map with :bundle-id, :queue, and :messages keys, or nil if no messages are available.
-  Marks the fetched message as 'processing' within the same transaction."
+  Marks the fetched message as 'processing' within the same transaction.
+  For exclusive queues, skips fetching if any row for that queue is already processing."
   []
   (when-let [queue-names (seq (keys @q.impl/*listeners*))]
-    (t2/with-transaction [conn]
-      (when-let [row (t2/query-one
-                      conn
-                      {:select   [:*]
-                       :from     [:queue_message_bundle]
-                       :where    [:and
-                                  [:in :queue_name (map name queue-names)]
-                                  [:= :status "pending"]]
-                       :order-by [[:id :asc]]
-                       :limit    1
-                       :for      [:update :skip-locked]})]
-        (t2/update! :queue_message_bundle
-                    (:id row)
-                    {:status_heartbeat (mi/now)
-                     :status           "processing"
-                     :owner            owner-id})
-        {:bundle-id (:id row)
-         :queue     (keyword "queue" (:queue_name row))
-         :messages  (json/decode (:messages row))}))))
+    (let [exclusive-names (q.impl/exclusive-queue-names)]
+      (t2/with-transaction [conn]
+        (when-let [row (t2/query-one
+                        conn
+                        {:select   [:*]
+                         :from     [:queue_message_bundle]
+                         :where    (into [:and
+                                          [:in :queue_name (map name queue-names)]
+                                          [:= :status "pending"]]
+                                         (when (seq exclusive-names)
+                                           [[:or
+                                             [:not-in :queue_name (vec exclusive-names)]
+                                             [:not [:exists {:select [[1 :one]]
+                                                             :from   [[:queue_message_bundle :qmb2]]
+                                                             :where  [:and
+                                                                      [:= :qmb2.queue_name :queue_message_bundle.queue_name]
+                                                                      [:= :qmb2.status "processing"]]}]]]]))
+                         :order-by [[:id :asc]]
+                         :limit    1
+                         :for      [:update :skip-locked]})]
+          (t2/update! :queue_message_bundle
+                      (:id row)
+                      {:status_heartbeat (mi/now)
+                       :status           "processing"
+                       :owner            owner-id})
+          {:bundle-id (:id row)
+           :queue     (keyword "queue" (:queue_name row))
+           :messages  (json/decode (:messages row))})))))
 
 ;;; ------------------------------------------- Failed Bundle Cleanup -------------------------------------------
 

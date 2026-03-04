@@ -34,6 +34,7 @@
   (let [topic-name :topic/sub-receive-test
         received   (atom [])]
     (mq.impl/listen! topic-name
+                     {}
                      (fn [message]
                        (swap! received conj message)))
     (topic.backend/publish! :topic.backend/appdb topic-name ["hello-appdb"])

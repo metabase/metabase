@@ -12,7 +12,7 @@
 (deftest e2e-publish-subscribe-test
   (mq.tu/with-sync-mq
     (let [received (atom [])]
-      (mq/listen! :topic/e2e
+      (mq/listen! :topic/e2e {}
                   (fn [message]
                     (swap! received conj message)))
 
@@ -32,7 +32,7 @@
 (deftest batch-publish-e2e-test
   (mq.tu/with-sync-mq
     (let [received (atom [])]
-      (mq/listen! :topic/batch
+      (mq/listen! :topic/batch {}
                   (fn [message]
                     (swap! received conj message)))
 
@@ -49,7 +49,7 @@
 (deftest error-handling-e2e-test
   (mq.tu/with-sync-mq
     (let [received (atom [])]
-      (mq/listen! :topic/errors
+      (mq/listen! :topic/errors {}
                   (fn [message]
                     (when (= "fail" message)
                       (throw (ex-info "Handler error" {})))
@@ -71,7 +71,7 @@
   (testing "When listener throws on one message in a batch, remaining messages are still delivered"
     (mq.tu/with-sync-mq
       (let [received (atom [])]
-        (mq/listen! :topic/batch-fail
+        (mq/listen! :topic/batch-fail {}
                     (fn [message]
                       (when (= "boom" message)
                         (throw (ex-info "Handler error" {})))
@@ -98,7 +98,7 @@
                               (let [f (bound-fn []
                                         (.await barrier)
                                         (try
-                                          (mq.impl/listen! topic-name (fn [_] nil))
+                                          (mq.impl/listen! topic-name {} (fn [_] nil))
                                           (swap! results conj :ok)
                                           (catch ExceptionInfo _
                                             (swap! results conj :error))))]
@@ -116,7 +116,7 @@
       (mq/put t "old-message"))
 
     (let [received (atom [])]
-      (mq/listen! :topic/late
+      (mq/listen! :topic/late {}
                   (fn [message]
                     (swap! received conj message)))
 

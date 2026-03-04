@@ -56,7 +56,7 @@
   (mq.tu/with-sync-mq {:queue/test (fn [_] nil)}
     (testing "Registering a second listener on the same queue throws"
       (is (thrown-with-msg? ExceptionInfo #"Queue listener already defined"
-                            (mq/listen! :queue/test (fn [_] nil)))))))
+                            (mq/listen! :queue/test {} (fn [_] nil)))))))
 
 (deftest concurrent-listen-throws-test
   (mq.tu/with-sync-mq
@@ -69,7 +69,7 @@
                               (let [f (bound-fn []
                                         (.await barrier)
                                         (try
-                                          (mq/listen! queue-name (fn [_] nil))
+                                          (mq/listen! queue-name {} (fn [_] nil))
                                           (swap! results conj :ok)
                                           (catch ExceptionInfo _
                                             (swap! results conj :error))))]
@@ -80,6 +80,31 @@
           (is (= 1 (count (filter #{:ok} @results))))
           (is (= (dec n) (count (filter #{:error} @results))))))
       (mq/unlisten! queue-name))))
+
+(deftest ^:parallel exclusive-listen-test
+  (let [heard-messages (atom [])]
+    (mq.tu/with-sync-mq {:queue/exclusive-test {:listener           (fn [message]
+                                                                      (swap! heard-messages conj message))
+                                                :max-batch-messages 1
+                                                :max-next-ms        0
+                                                :exclusive          true}}
+      (testing "Exclusive queue processes messages normally via sync backend"
+        (mq/with-queue :queue/exclusive-test [q]
+          (mq/put q "msg1")
+          (mq/put q "msg2"))
+        (is (= ["msg1" "msg2"] @heard-messages))))))
+
+(deftest ^:parallel batch-listen-exclusive-test
+  (let [heard-batches (atom [])]
+    (mq.tu/with-sync-mq
+      (mq/batch-listen! :queue/batch-exclusive
+                        (fn [batch] (swap! heard-batches conj batch))
+                        {:max-batch-messages 10 :max-next-ms 0 :exclusive true})
+      (testing "Exclusive batch-listen! registers and processes"
+        (mq/with-queue :queue/batch-exclusive [q]
+          (mq/put q "a")
+          (mq/put q "b"))
+        (is (= [["a" "b"]] @heard-batches))))))
 
 (deftest ^:parallel fifo-ordering-test
   (let [received (atom [])]

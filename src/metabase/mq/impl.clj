@@ -1,7 +1,8 @@
 (ns metabase.mq.impl
   "Shared protocol and helpers for buffering messages before publishing to queues or topics."
   (:require
-   [metabase.util.log :as log])
+   [metabase.util.log :as log]
+   [metabase.util.malli.registry :as mr])
   (:import
    (java.util.concurrent Future)))
 
@@ -66,12 +67,21 @@
          (log/error e# ~error-label)
          (throw e#)))))
 
+(mr/def ::channel-name
+  [:and :keyword [:fn {:error/message "Channel name must be namespaced to 'queue' or 'topic'"}
+                  #(#{"queue" "topic"} (namespace %))]])
+
+(mr/def ::listen-opts
+  [:map [:exclusive {:optional true} :boolean]])
+
 (defmulti listen!
   "Registers a listener for a queue or topic. Dispatches on (namespace channel-name).
    For :queue/* names, see metabase.mq.queue.impl.
-   For :topic/* names, see metabase.mq.topic.impl."
-  {:arglists '([channel-name listener])}
-  (fn [channel-name _listener] (namespace channel-name)))
+   For :topic/* names, see metabase.mq.topic.impl.
+   `opts` is an optional map; pass nil for defaults. Queues support `{:exclusive true}`."
+  {:arglists      '([channel-name opts listener])
+   :malli/schema  [:=> [:cat ::channel-name ::listen-opts fn?] :any]}
+  (fn [channel-name _opts _listener] (namespace channel-name)))
 
 (defmulti unlisten!
   "Removes the listener for a queue or topic and stops backend processing."

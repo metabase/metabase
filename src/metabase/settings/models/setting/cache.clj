@@ -153,6 +153,7 @@
 (defmethod startup/def-startup-logic! ::CacheInvalidationSubscription [_]
   (mq/listen!
    :topic/settings-cache-invalidated
+   {}
    (fn [_msg]
      (log/debug "Received settings cache invalidation signal")
      (restore-cache!))))

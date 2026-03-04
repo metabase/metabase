@@ -19,7 +19,7 @@
 
 (defmethod startup/def-startup-logic! ::DriverNotificationSubscription [_]
   ;; Subscribe to connection pool invalidation topic so other nodes can signal us to flush pools.
-  (mq/listen! :topic/connection-pool-invalidated
+  (mq/listen! :topic/connection-pool-invalidated {}
               (fn [{:keys [database-id all-databases]}]
                 (if all-databases
                   (doseq [{driver :engine, :as database} (t2/select :model/Database)]
