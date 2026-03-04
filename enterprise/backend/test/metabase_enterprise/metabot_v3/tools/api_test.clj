@@ -1293,7 +1293,7 @@
                                           :source {:type "python"
                                                    :source-database (mt/id)
                                                    :body "print('hello world')"
-                                                   :source-tables {}}
+                                                   :source-tables []}
                                           :target {:type "table"
                                                    :name "t2_table"}}]
         (testing "With insufficient permissions"
@@ -1332,7 +1332,7 @@
                                           :source {:type "python"
                                                    :body "print('hello world')"
                                                    :source-database (mt/id)
-                                                   :source-tables {}}
+                                                   :source-tables []}
                                           :target {:type "table"
                                                    :name "t2_table"
                                                    :database (mt/id)}}]

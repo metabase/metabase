@@ -10,7 +10,6 @@
    [metabase.sql-tools.core :as sql-tools]
    [metabase.transforms-base.core :as transforms-base]
    [metabase.transforms-base.util :as transforms-base.u]
-   [metabase.transforms.schema :as transforms.schema]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [toucan2.core :as t2]))
@@ -19,7 +18,7 @@
 
 (mu/defn- remap-python-source
   "Remap source-tables in a Python transform source to point to isolated tables."
-  [table-mapping source :- [:map [:source-tables [:sequential ::transforms.schema/source-table-entry]]]]
+  [table-mapping source :- [:map [:source-tables [:sequential ::transforms-base.u/source-table-entry]]]]
   (letfn [(remap [{:keys [database_id schema table table_id] :as entry}]
             (if-let [{:keys [id db-id] target-schema :schema target-table :table}
                      (or (table-mapping entry)

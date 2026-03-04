@@ -30,7 +30,7 @@
   {:name   "Python Transform"
    :source {:type            "python"
             :body            "print('hello world')"
-            :source-tables   {}
+            :source-tables   []
             :source-database (mt/id)}
    :target {:type     "table"
             :schema   (get-test-schema)
