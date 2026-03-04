@@ -12,6 +12,42 @@
 
 (set! *warn-on-reflection* true)
 
+(def ^:private locally-published-expiry-ms
+  "How long to keep locally-published IDs before they expire. Messages older than this
+   will be re-delivered by the polling loop if they haven't been consumed yet."
+  60000)
+
+(def ^:private locally-published-ids
+  "Atom holding a map of `[topic-name id] -> timestamp-ms` for messages published on this node.
+   Used to skip re-delivery in polling loops. Entries expire after [[locally-published-expiry-ms]]."
+  (atom {}))
+
+(defn- cleanup-expired-ids
+  "Returns `m` with expired entries removed."
+  [m]
+  (let [threshold (- (System/currentTimeMillis) locally-published-expiry-ms)]
+    (persistent!
+     (reduce-kv (fn [acc k ts]
+                  (if (< (long ts) threshold)
+                    (dissoc! acc k)
+                    acc))
+                (transient m)
+                m))))
+
+(defn locally-published?
+  "Returns true if the given message ID was published locally (and removes it from tracking).
+   Used by polling loops to skip messages already delivered inline."
+  [topic-name id]
+  (let [k       [topic-name id]
+        found?  (volatile! false)]
+    (swap! locally-published-ids
+           (fn [m]
+             (if (contains? m k)
+               (do (vreset! found? true)
+                   (dissoc m k))
+               m)))
+    @found?))
+
 (mr/def :metabase.mq.topic/topic-name
   [:and :keyword [:fn {:error/message "Topic name must be namespaced to 'topic'"}
                   #(= "topic" (namespace %))]])
@@ -39,12 +75,23 @@
 
 (defn- publish!
   "Publishes messages to the given topic. All active subscribers will receive them.
-  `messages` is a vector of values stored as a JSON array in a single row."
+  `messages` is a vector of values stored as a JSON array in a single row.
+  The message is delivered to local listeners immediately in a background thread.
+  The backend stores it for delivery to other nodes via their polling loops."
   [topic-name messages]
-  (topic.backend/publish! topic.backend/*backend* topic-name messages)
-  (mq.impl/analytics-inc! :metabase-mq/topic-messages-published
-                          {:topic (name topic-name)}
-                          (count messages)))
+  (let [id (topic.backend/publish! topic.backend/*backend* topic-name messages)]
+    (if id
+      (do
+        (swap! locally-published-ids
+               (fn [m] (-> m
+                           (assoc [topic-name id] (System/currentTimeMillis))
+                           cleanup-expired-ids)))
+        (future (handle! topic-name messages)))
+      ;; sync backend returns nil — deliver inline for deterministic tests
+      (handle! topic-name messages))
+    (mq.impl/analytics-inc! :metabase-mq/topic-messages-published
+                            {:topic (name topic-name)}
+                            (count messages))))
 
 (defn- make-instrumented-listener
   "Wraps a listener with Prometheus metrics instrumentation."

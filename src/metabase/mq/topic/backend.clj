@@ -21,7 +21,8 @@
 
 (defmulti publish!
   "Publishes messages to the given topic. `messages` is a vector of values that will be JSON-encoded
-  as an array and stored in a single row for batch efficiency."
+  as an array and stored in a single row for batch efficiency.
+  Return the batch id of the messages published to avoid re-publishing locally."
   {:arglists '([backend topic-name messages])}
   (fn [backend _topic-name _messages]
     backend))

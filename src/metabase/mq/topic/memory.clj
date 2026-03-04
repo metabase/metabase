@@ -65,7 +65,8 @@
             {:keys [rows]} (get-topic topic-name)
             new-rows (sort-by :id (filterv #(> (:id %) offset) @rows))]
         (doseq [{:keys [id messages]} new-rows]
-          (topic.impl/handle! topic-name messages)
+          (when-not (topic.impl/locally-published? topic-name id)
+            (topic.impl/handle! topic-name messages))
           (swap! *offsets* assoc topic-name id)))
       (catch Exception e
         (log/errorf e "Error polling memory topic %s" (name topic-name))))))
@@ -105,7 +106,8 @@
   (ensure-topic! topic-name)
   (let [{:keys [rows next-id]} (get-topic topic-name)
         id (swap! next-id inc)]
-    (swap! rows conj {:id id :messages messages :created-at (System/currentTimeMillis)})))
+    (swap! rows conj {:id id :messages messages :created-at (System/currentTimeMillis)})
+    id))
 
 (defmethod topic.backend/subscribe! :topic.backend/memory
   [_ topic-name]

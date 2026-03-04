@@ -12,17 +12,14 @@
    [metabase.startup.core :as startup]
    [metabase.util.log :as log]
    [methodical.core :as methodical]
+   ^{:clj-kondo/ignore [:discouraged-namespace]}
    [toucan2.core :as t2]))
 
 ;;; ----------------------------------------- Topic subscription -------------------------------------------
 
-(def connection-pool-invalidated-topic
-  "Topic keyword for signaling connection pool invalidation across nodes."
-  :topic/connection-pool-invalidated)
-
 (defmethod startup/def-startup-logic! ::DriverNotificationSubscription [_]
   ;; Subscribe to connection pool invalidation topic so other nodes can signal us to flush pools.
-  (mq/listen! connection-pool-invalidated-topic
+  (mq/listen! :topic/connection-pool-invalidated
               (fn [{:keys [database-id all-databases]}]
                 (if all-databases
                   (doseq [{driver :engine, :as database} (t2/select :model/Database)]
@@ -54,12 +51,7 @@
       (when (or details-changed?
                 (not= (remove-irrelevant-data database)
                       (remove-irrelevant-data previous-database)))
-        (driver/notify-database-updated (:engine database) database)
-        ;; Broadcast to other nodes so they flush their connection pools too
-        (try
-          (mq/with-topic connection-pool-invalidated-topic [t]
-            (mq/put t {:database-id (:id database)}))
-          (catch Exception e
-            (log/warn e "Failed to publish connection pool invalidation topic")))))
+        (mq/with-topic :topic/connection-pool-invalidated [t]
+          (mq/put t {:database-id (:id database)}))))
     (catch Throwable e
       (log/warnf e "Failed to process driver notifications event. %s" topic))))

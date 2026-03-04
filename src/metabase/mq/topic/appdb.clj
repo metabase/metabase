@@ -71,7 +71,8 @@
                                          o))
                               rows (poll-messages! topic-name offset)]
                           (doseq [{:keys [id messages]} rows]
-                            (topic.impl/handle! topic-name (json/decode messages))
+                            (when-not (topic.impl/locally-published? topic-name id)
+                              (topic.impl/handle! topic-name (json/decode messages)))
                             (swap! offsets assoc topic-name id)))
                         (catch Exception e
                           (log/errorf e "Error polling topic %s" (name topic-name)))))
@@ -131,9 +132,9 @@
 
 (defmethod topic.backend/publish! :topic.backend/appdb
   [_ topic-name messages]
-  (t2/insert! :topic_message_batch
-              {:topic_name (name topic-name)
-               :messages   (json/encode messages)}))
+  (t2/insert-returning-pk! :topic_message_batch
+                           {:topic_name (name topic-name)
+                            :messages   (json/encode messages)}))
 
 (defmethod topic.backend/subscribe! :topic.backend/appdb
   [_ topic-name]

@@ -445,7 +445,7 @@
                                              :num-users  num-users
                                              :prefix     prefix})
          user-id (:user-id test-env)
-         _ (Thread/sleep 1000)
+         _ (Thread/sleep 1000) ;; Wait for search index
          queries [;; Exact prefix match
                   (str prefix "_table_00001")
                   ;; Partial prefix match

@@ -19,10 +19,6 @@
 
 (set! *warn-on-reflection* true)
 
-(def queue-name
-  "The name of the persistent queue used for field value invalidation."
-  :queue/field-value-invalidation)
-
 (defn- batch-invalidate-field-values!
   "Recalculate the field values for the given fields."
   [field-batches]
@@ -30,7 +26,7 @@
        (run! field-values/create-or-update-full-field-values!)))
 
 (defmethod startup/def-startup-logic! ::FieldValueInvalidation [_]
-  (mq/batch-listen! queue-name
+  (mq/batch-listen! :queue/field-value-invalidation
                     (fn [messages]
                       (batch-invalidate-field-values! (into [] cat messages)))
                     {:max-batch-messages 10 :max-next-ms 10}))
@@ -145,7 +141,7 @@
                           (apply concat))]
     ;; Note that for now we only rescan field values when values are *added* and not when they are *removed*.
     (when (seq stale-fields)
-      (mq/with-queue queue-name [q]
+      (mq/with-queue :queue/field-value-invalidation [q]
         (mq/put q [stale-fields])))))
 
 ;; TODO this is fairly dirty, would be cleaner to map from db values to de-coerced values via middleware
