@@ -130,11 +130,11 @@
   "Stats for Transforms"
   metabase-enterprise.transforms.core
   []
-  {:basic-runs                   0
-   :advanced-runs                0
+  {:transform-basic-runs                   0
+   :transform-advanced-runs                0
    :transform-usage-date         (yesterday)
-   :rolling-basic-runs           0
-   :rolling-advanced-runs        0
+   :transform-rolling-basic-runs           0
+   :transform-rolling-advanced-runs        0
    :transform-rolling-usage-date (today)})
 
 (defn metering-stats

@@ -92,9 +92,9 @@
         advanced?      (feature-gating/python-transforms-enabled?)
         yesterday-runs (count-all-runs yesterday-utc)
         today-runs     (count-all-runs today-utc)]
-    {:basic-runs                   (if advanced? 0 yesterday-runs)
-     :advanced-runs                (if advanced? yesterday-runs 0)
+    {:transform-basic-runs                   (if advanced? 0 yesterday-runs)
+     :transform-advanced-runs                (if advanced? yesterday-runs 0)
      :transform-usage-date         (str (t/local-date yesterday-utc))
-     :rolling-basic-runs           (if advanced? 0 today-runs)
-     :rolling-advanced-runs        (if advanced? today-runs 0)
+     :transform-rolling-basic-runs           (if advanced? 0 today-runs)
+     :transform-rolling-advanced-runs        (if advanced? today-runs 0)
      :transform-rolling-usage-date (str (t/local-date today-utc))}))
