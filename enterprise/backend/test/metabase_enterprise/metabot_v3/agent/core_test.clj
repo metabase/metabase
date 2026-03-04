@@ -536,7 +536,7 @@
                                :state           {}
                                :context         {}
                                :profile-id      :internal
-                               :conversation-id "00000000-0000-0000-0000-000000000001"}))
+                               :tracking-opts   {:session-id "00000000-0000-0000-0000-000000000001"}}))
               ;; The collector also contains token_usage events; filter for just ai_service_events.
               (let [events (snowplow-test/pop-event-data-and-user-id!)
                     tool-events (filter #(= "agent_used_tool" (get-in % [:data "event"])) events)]
@@ -581,7 +581,7 @@
                                :state           {}
                                :context         {}
                                :profile-id      :internal
-                               :conversation-id "00000000-0000-0000-0000-000000000002"}))
+                               :tracking-opts   {:session-id "00000000-0000-0000-0000-000000000002"}}))
               (let [events (snowplow-test/pop-event-data-and-user-id!)
                     tool-events (filter #(= "agent_used_tool" (get-in % [:data "event"])) events)]
                 (is (=? [{:data {"event"  "agent_used_tool"
@@ -617,7 +617,7 @@
                                :state           {}
                                :context         {}
                                :profile-id      :internal
-                               :conversation-id "00000000-0000-0000-0000-000000000001"}))
+                               :tracking-opts   {:session-id "00000000-0000-0000-0000-000000000001"}}))
               ;; Filter for just token_usage events (other events may also be present)
               (let [events      (snowplow-test/pop-event-data-and-user-id!)
                     token-events (filter #(contains? (:data %) "total_tokens") events)]
@@ -665,7 +665,7 @@
                              :state               {}
                              :context             {}
                              :profile-id          :internal
-                             :conversation-id     "00000000-0000-0000-0000-000000000002"
+                             :tracking-opts       {:session-id "00000000-0000-0000-0000-000000000002"}
                              :track-user-intent?  true}))
             (tu/poll-until 5000
                            (some #(= "user_intent" (get-in % [:properties "data" "data" "event"]))
@@ -690,7 +690,7 @@
                          :state           {}
                          :context         {}
                          :profile-id      :internal
-                         :conversation-id "00000000-0000-0000-0000-000000000003"}))
+                         :tracking-opts   {:session-id "00000000-0000-0000-0000-000000000003"}}))
         (is (false? @classify-called))))))
 
 (deftest user-intent-classifier-exception-swallowed-test
@@ -706,7 +706,7 @@
                          :state               {}
                          :context             {}
                          :profile-id          :internal
-                         :conversation-id     "00000000-0000-0000-0000-000000000004"
+                         :tracking-opts       {:session-id "00000000-0000-0000-0000-000000000004"}
                          :track-user-intent?  true}))
         (tu/poll-until 5000 @classify-called)
         (is (true? @classify-called))))))

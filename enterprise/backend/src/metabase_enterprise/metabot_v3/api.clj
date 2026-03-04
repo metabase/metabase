@@ -178,7 +178,7 @@
                                :state              state
                                :profile-id         (keyword profile-id)
                                :context            enriched-context
-                               :conversation-id    conversation-id
+                               :tracking-opts      {:session-id conversation-id}
                                :track-user-intent? true}
                         debug? (assoc :debug? true))))
           (catch org.eclipse.jetty.io.EofException _

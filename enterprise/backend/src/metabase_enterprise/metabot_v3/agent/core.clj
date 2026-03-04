@@ -291,7 +291,7 @@
 
 (defn- init-agent
   "Initialize agent state."
-  [{:keys [messages state profile-id context conversation-id tracking-opts]}]
+  [{:keys [messages state profile-id context tracking-opts]}]
   (let [context      (assign-context-ids context)
         profile      (or (profiles/get-profile profile-id)
                          (throw (ex-info "Unknown profile" {:profile-id profile-id})))
@@ -315,7 +315,6 @@
      :memory-atom   memory-atom
      :tracking-opts (merge {:profile-name (:name profile)
                             :request-id   (str (random-uuid))
-                            :session-id   conversation-id
                             :source       "metabot_agent"
                             :tag          "agent"}
                            tracking-opts)}))
@@ -426,8 +425,8 @@
             [:profile-id ::profile-id]
             [:state {:optional true} [:maybe ::state]]
             [:context {:optional true} [:maybe ::context]]
-            [:conversation-id {:optional true} [:maybe ms/UUIDString]]
             [:tracking-opts {:optional true} [:maybe [:map
+                                                      [:session-id {:optional true} [:maybe ms/UUIDString]]
                                                       [:source {:optional true} [:maybe :string]]
                                                       [:tag {:optional true} [:maybe :string]]]]]
             [:track-user-intent? {:optional true} [:maybe :boolean]]
