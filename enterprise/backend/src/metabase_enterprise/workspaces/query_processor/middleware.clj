@@ -1,8 +1,8 @@
 (ns metabase-enterprise.workspaces.query-processor.middleware
   "QP preprocessing middleware that rewrites table references in native SQL queries for workspace transforms.
 
-  When a query carries a `:workspace-remapping` key (attached by workspace execute code), this middleware
-  rewrites table names in the native SQL using [[sql-tools/replace-names]]."
+  When a query carries a `:workspace-remapping` key in its `:middleware` map (attached by workspace execute
+  code), this middleware rewrites table names in the native SQL using [[sql-tools/replace-names]]."
   (:require
    [metabase.driver :as driver]
    [metabase.lib.schema :as lib.schema]
@@ -15,7 +15,7 @@
 (defenterprise apply-workspace-remapping
   "Pre-processing middleware. Rewrites table references in native SQL queries for workspace transforms."
   :feature :workspaces
-  [{remapping :workspace-remapping :as query}]
+  [{{remapping :workspace-remapping} :middleware :as query}]
   (cond
     ;; Not in a workspace that requires remapping.
     (not remapping)
@@ -32,4 +32,4 @@
                                                                   sql
                                                                   remapping
                                                                   {:allow-unused? true})))
-        (dissoc :workspace-remapping))))
+        (update :middleware dissoc :workspace-remapping))))

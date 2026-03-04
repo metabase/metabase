@@ -38,7 +38,7 @@
                               {:schema tgt-schema :table tgt-table}]))
                      ;; Keep only the named reference tuples that we will destructure, the table-id keys are irrelevant.
                      (filter (comp vector? key) table-mapping))]
-    (assoc-in source [:query :workspace-remapping] {:tables tables})))
+    (assoc-in source [:query :middleware :workspace-remapping] {:tables tables})))
 
 (defn- attach-table-field-remapping [_table-mapping _field-map source]
   (throw (ex-info "Remapping MBQL queries is not supported yet" {:source source})))

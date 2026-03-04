@@ -323,8 +323,9 @@
                  :database             1
                  :stages               [{:lib/type     :mbql.stage/mbql
                                          :source-table 1}]
-                 :workspace-remapping  {:tables {{:schema "public" :table "orders"}
-                                                 {:schema "ws_isolated" :table "public__orders"}}}}]
+                 :middleware           {:workspace-remapping
+                                        {:tables {{:schema "public" :table "orders"}
+                                                  {:schema "ws_isolated" :table "public__orders"}}}}}]
       (is (thrown-with-msg? ExceptionInfo
                             #"Workspace remapping is currently only supported for native queries"
                             (ws.qp.middleware/apply-workspace-remapping query))))))
