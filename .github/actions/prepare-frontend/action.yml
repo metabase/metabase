@@ -34,6 +34,8 @@ runs:
           ~/.m2
           ~/.gitlibs
         key: ${{ steps.get-cache-keys.outputs.m2-cache-key }}
+        restore-keys: |
+          M2-${{ runner.os }}-
 
     - name: Get bun cache directory
       id: bun-cache
@@ -51,6 +53,8 @@ runs:
           ${{ steps.bun-cache.outputs.dir }}
           node_modules
         key: ${{ steps.get-cache-keys.outputs.node-cache-key }}
+        restore-keys: |
+          node-modules-${{ runner.os }}-
 
     # postinstall lifecycle hook can be dangerous in CI so we only run it locally (see package.json)
     # If a job wants to patch packages, it does so explicitly in the CI. This setting is opt-out.
