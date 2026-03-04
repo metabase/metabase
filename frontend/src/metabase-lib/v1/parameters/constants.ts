@@ -168,6 +168,22 @@ export const PARAMETER_OPERATOR_TYPES = {
       },
     },
   ],
+  id: [
+    {
+      type: "number/=",
+      operator: "=",
+      get name() {
+        return t`Numeric ID`;
+      },
+    },
+    {
+      type: "string/=",
+      operator: "=",
+      get name() {
+        return t`Text ID`;
+      },
+    },
+  ],
 } as const;
 
 export const OPTIONS_WITH_OPERATOR_SUBTYPES = [
