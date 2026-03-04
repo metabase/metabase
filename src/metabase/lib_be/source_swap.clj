@@ -39,27 +39,22 @@
   [old-column :- ::lib.schema.metadata/column
    new-column :- ::lib.schema.metadata/column]
   (cond-> []
-    (and new-column (not= (:effective-type old-column) (:effective-type new-column)))
+    (not= (:effective-type old-column) (:effective-type new-column))
     (conj :column-type-mismatch)
 
-    (and new-column
-         (lib.types.isa/primary-key? old-column)
+    (and (lib.types.isa/primary-key? old-column)
          (not (lib.types.isa/primary-key? new-column)))
     (conj :missing-primary-key)
 
-    (and new-column
-         (not (lib.types.isa/primary-key? old-column))
+    (and (not (lib.types.isa/primary-key? old-column))
          (lib.types.isa/primary-key? new-column))
     (conj :extra-primary-key)
 
-    (and new-column
-         (lib.types.isa/foreign-key? old-column)
+    (and (lib.types.isa/foreign-key? old-column)
          (not (lib.types.isa/foreign-key? new-column)))
     (conj :missing-foreign-key)
 
-    (and new-column
-         old-column
-         (lib.types.isa/foreign-key? old-column)
+    (and (lib.types.isa/foreign-key? old-column)
          (lib.types.isa/foreign-key? new-column)
          (not= (:fk-target-field-id old-column) (:fk-target-field-id new-column)))
     (conj :foreign-key-mismatch)))
