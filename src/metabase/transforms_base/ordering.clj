@@ -1,4 +1,7 @@
-(ns metabase.transforms.ordering
+(ns metabase.transforms-base.ordering
+  "Transform dependency ordering and cycle detection.
+
+   Pure functions for computing execution order based on table dependencies."
   (:require
    [clojure.set :as set]
    [clojure.string :as str]
@@ -10,13 +13,34 @@
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.query-processor.preprocess :as qp.preprocess]
-   [metabase.transforms.interface :as transforms.i]
-   [metabase.transforms.util :as transforms.util]
+   [metabase.transforms-base.interface :as transforms-base.i]
+   [metabase.transforms-base.util :as transforms-base.u]
    [metabase.util.i18n :as i18n]
    [metabase.util.malli :as mu]
-   [toucan2.core :as t2]))
+   [toucan2.core :as t2])
+  (:import
+   (clojure.lang ExceptionInfo)))
 
 (set! *warn-on-reflection* true)
+
+;;; ------------------------------------------------- Query Dependencies -------------------------------------------------
+
+(defn query-table-dependencies
+  "Compute table dependencies for a query transform.
+  This is the base implementation - callers may wrap with additional error handling."
+  [{:keys [source]}]
+  (let [query (-> (:query source)
+                  transforms-base.u/massage-sql-query
+                  qp.preprocess/preprocess)
+        driver (-> query
+                   lib.metadata/database
+                   :engine)]
+    (if (lib/native-only-query? query)
+      (driver/native-query-deps driver query)
+      (into #{}
+            (map (fn [table-id]
+                   {:table table-id}))
+            (lib/all-source-table-ids query)))))
 
 (defn- database-routing-error-ex-data [^Throwable e]
   (when e
@@ -24,22 +48,11 @@
       (ex-data e)
       (recur (.getCause e)))))
 
-(defmethod transforms.i/table-dependencies :query
-  [{:keys [source] :as transform}]
+(defmethod transforms-base.i/table-dependencies :query
+  [transform]
   (try
-    (let [query (-> (:query source)
-                    transforms.util/massage-sql-query
-                    qp.preprocess/preprocess)
-          driver (-> query
-                     lib.metadata/database
-                     :engine)]
-      (if (lib/native-only-query? query)
-        (driver/native-query-deps driver query)
-        (into #{}
-              (map (fn [table-id]
-                     {:table table-id}))
-              (lib/all-source-table-ids query))))
-    (catch clojure.lang.ExceptionInfo e
+    (query-table-dependencies transform)
+    (catch ExceptionInfo e
       (if-some [data (database-routing-error-ex-data e)]
         (let [message (i18n/trs "Failed to run transform because the database {0} has database routing turned on. Running transforms on databases with db routing enabled is not supported." (:database-name data))]
           (throw (ex-info message
@@ -49,9 +62,11 @@
                           e)))
         (throw e)))))
 
+;;; ------------------------------------------------- Ordering Logic -------------------------------------------------
+
 (defn- dependency-map [transforms]
   (into {}
-        (map (juxt :id transforms.i/table-dependencies))
+        (map (juxt :id transforms-base.i/table-dependencies))
         transforms))
 
 (mu/defn- output-table-map
@@ -95,7 +110,7 @@
   (let [;; Group all transforms by their database, skipping transforms with no target db
         transforms-by-db (->> transforms
                               (keep (fn [transform]
-                                      (when-let [db-id (transforms.i/target-db-id transform)]
+                                      (when-let [db-id (transforms-base.i/target-db-id transform)]
                                         {db-id [transform]})))
                               (apply merge-with into))
         transform-ids    (into #{} (map :id) transforms)
@@ -167,7 +182,7 @@
         output-tables    (output-table-map mp db-transforms)
         transform-ids    (into #{} (map :id) db-transforms)
         target-refs      (target-ref-map transforms)
-        node->children   #(->> % transforms-by-id transforms.i/table-dependencies
+        node->children   #(->> % transforms-by-id transforms-base.i/table-dependencies
                                (keep (fn [dep] (resolve-dependency dep output-tables transform-ids target-refs))))
         id->name         (comp :name transforms-by-id)
         cycle            (find-cycle node->children [transform-id])]

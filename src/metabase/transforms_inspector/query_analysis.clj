@@ -17,7 +17,7 @@
    [metabase.lib.core :as lib]
    [metabase.query-processor.preprocess :as qp.preprocess]
    [metabase.sql-tools.core :as sql-tools]
-   [metabase.transforms.util :as transforms.util]
+   [metabase.transforms-base.util :as transforms-base.u]
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.log :as log]
@@ -81,7 +81,7 @@
    Returns {:join-structure [...] :visited-fields {...}} or nil on failure."
   [transform]
   (let [preprocessed (-> transform :source :query
-                         transforms.util/massage-sql-query
+                         transforms-base.u/massage-sql-query
                          qp.preprocess/preprocess)]
     (when (<= (count (:stages preprocessed)) 1)
       {:preprocessed-query preprocessed
@@ -232,10 +232,10 @@
   [transform sources]
   (try
     (let [native-query (-> (get-in transform [:source :query])
-                           transforms.util/massage-sql-query
+                           transforms-base.u/massage-sql-query
                            qp.preprocess/preprocess)
           sql (lib/raw-native-query native-query)
-          db-id (transforms.util/transform-source-database transform)
+          db-id (transforms-base.u/transform-source-database transform)
           driver (t2/select-one-fn (comp keyword :engine) :model/Database :id db-id)
           parsed (macaw-parsed-query sql driver)
           ast (macaw.ast/->ast parsed {:with-instance? false})]
