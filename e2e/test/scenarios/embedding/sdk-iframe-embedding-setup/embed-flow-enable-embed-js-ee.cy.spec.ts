@@ -137,8 +137,10 @@ describe("scenarios > embedding > sdk iframe embed setup > enable embed js (EE)"
 
         cy.findByLabelText(authMethodLabel).click();
 
-        embedModalEnableEmbeddingCard()
-          .should("contain.text", "Agree to the usage conditions to continue.")
+        embedModalEnableEmbeddingCard().should(
+          "contain.text",
+          "Agree to the usage conditions to continue.",
+        );
 
         embedModalEnableEmbeddingCard().within(() => {
           cy.findByText(cardText).should("not.exist");
