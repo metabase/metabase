@@ -80,17 +80,9 @@
       (m/update-existing :type keyword)))
 
 (defn transform-source-in
-  "Serialize a transform source map for JSON storage.
-  Normalizes source-tables and prepares queries."
+  "Serialize a transform source map for JSON storage."
   [m]
   (-> m
-      (m/update-existing :source-tables
-                         (fn [st]
-                           ;; TODO (Ngoc 2026-03-04) -- remove map->vec conversion when FE sends array format for source-tables
-                           (-> (if (map? st)
-                                 (transforms-base.u/source-tables-map->vec st)
-                                 st)
-                               transforms-base.u/normalize-source-tables)))
       (m/update-existing :query (comp lib/prepare-for-serialization lib-be/normalize-query))
       mi/json-in))
 
@@ -337,7 +329,17 @@
                :collection_id      (serdes/fk :model/Collection)
                :source_database_id (serdes/fk :model/Database :name)
                :source             {:export #(update % :query serdes/export-mbql)
-                                    :import #(update % :query serdes/import-mbql)}
+                                    :import (fn [source]
+                                              (-> source
+                                                  (m/update-existing :source-tables
+                                                                     (fn [st]
+                                                                       (if (map? st)
+                                                                        ;; YAML parser keywordizes map keys, but
+                                                                        ;; source-tables-map->vec expects string keys
+                                                                         (transforms-base.u/source-tables-map->vec
+                                                                          (update-keys st name))
+                                                                         st)))
+                                                  (m/update-existing :query serdes/import-mbql)))}
                :target             {:export serdes/export-mbql :import serdes/import-mbql}
                :tags               (serdes/nested :model/TransformTransformTag :transform_id opts)}})
 

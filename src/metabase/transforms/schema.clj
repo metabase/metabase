@@ -47,11 +47,12 @@
     [:map
      [:source-database {:optional true} :int]
      ;; NB: if source is checkpoint, only one table allowed
-     ;; TODO (Ngoc 2026-03-04) -- remove decode/normalize when FE sends array format for source-tables
+     ;; decode/normalize: convert FE map format to vec and enrich with DB metadata
      [:source-tables   [:sequential {:decode/normalize (fn [st]
-                                                         (if (map? st)
-                                                           (transforms-base.u/source-tables-map->vec st)
-                                                           st))}
+                                                         (-> (if (map? st)
+                                                               (transforms-base.u/source-tables-map->vec st)
+                                                               st)
+                                                             transforms-base.u/normalize-source-tables))}
                         ::source-table-entry]]
      [:type {:decode/normalize lib.schema.common/normalize-keyword} [:= :python]]
      [:body :string]
