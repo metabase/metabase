@@ -2080,9 +2080,7 @@
   (testing "GET /api/ee/workspace/checkout returns checkout status for a transform"
     (mt/with-temp [:model/Transform tx {:name   "Native Transform"
                                         :source {:type  :query
-                                                 :query {:database (mt/id)
-                                                         :type     :native
-                                                         :native   {:query "SELECT 1"}}}
+                                                 :query (mt/native-query {:query "SELECT 1"})}
                                         :target {:type     "table"
                                                  :database (mt/id)
                                                  :schema   "public"

@@ -8,6 +8,7 @@
    [metabase-enterprise.workspaces.query-processor.middleware :as ws.qp.middleware]
    [metabase-enterprise.workspaces.test-util :as ws.tu]
    [metabase.lib.core :as lib]
+   [metabase.lib.test-metadata :as meta]
    [metabase.query-processor.compile :as qp.compile]
    [metabase.test :as mt]
    [metabase.transforms.test-util :as transforms.tu]
@@ -78,7 +79,7 @@
                                        :name         "num"
                                        :display-name "Num"
                                        :type         :number
-                                       :default      "1"}}}))
+                                       :default      "1"}}))
             _            (t2/update! :model/WorkspaceTransform
                                      {:workspace_id workspace-id :ref_id ref-id}
                                      {:source {:type "query" :query native-query}})
