@@ -56,7 +56,7 @@
                               :now                              true
                               :regex/lookaheads-and-lookbehinds false
                               :rename                           true
-                              :schemas                          true
+                              :schemas                          false
                               :set-timezone                     true
                               :split-part                       true
                               :standard-deviation-aggregations  true
@@ -130,7 +130,7 @@
         (sql-jdbc.common/handle-additional-options details :separator-style :url))))
 
 (defmethod driver/database-supports? [:clickhouse :uploads] [_driver _feature db]
-  (boolean (-> db clickhouse-version/dbms-version :cloud)))
+  true #_(boolean (-> db clickhouse-version/dbms-version :cloud)))
 
 (defmethod driver/can-connect? :clickhouse
   [driver details]
