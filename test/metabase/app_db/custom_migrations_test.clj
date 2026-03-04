@@ -2624,6 +2624,49 @@
             (migrate! :down 52)
             (is (zero? (t2/count :notification :payload_type "notification/card")))))))))
 
+(deftest fix-clickhouse-upload-db-schema-names-test
+  (testing "FixClickHouseUploadDBSchemaNames, v59.2026-03-04T00:00:00: fix clickhouse upload db schema names"
+    (encryption-test/with-secret-key "fake-secret-key"
+      (impl/test-migrations
+       ["v59.2026-03-04T00:00:00"] [migrate!]
+       ;; set up data here
+        (let [insert-table! (fn [db-id name schema active is-upload display-name]
+                              (t2/insert-returning-pk! :metabase_table
+                                                       {:db_id db-id
+                                                        :name name
+                                                        :schema schema
+                                                        :active active
+                                                        :is_upload is-upload
+                                                        :display_name display-name
+                                                        :created_at :%now
+                                                        :updated_at :%now}))
+              db-id (t2/insert-returning-pk! :metabase_database
+                                             {:name "clickhouse cloud upload db"
+                                              :engine "clickhouse"
+                                              :created_at :%now
+                                              :updated_at :%now
+                                              :uploads_enabled true
+                                              :uploads_schema_name nil
+                                              :uploads_table_prefix "uploads_"
+                                              :details (mi/encrypted-json-in {:dbname "db_foo"})})
+              uploaded-0 (insert-table! db-id "uploads_test_table_0" "db_foo" true  true "Test Table 0")
+              uploaded-1 (insert-table! db-id "uploads_test_table_1" nil      false true "Test Table 1")
+              uploaded-2 (insert-table! db-id "uploads_test_table_2" nil      false true "Test Table 2")
+              synced-1   (insert-table! db-id "uploads_test_table_1" "db_foo" true  false "Uploads Test Table 1")
+              synced-2   (insert-table! db-id "uploads_test_table_2" "db_foo" true  false "Uploads Test Table 2")
+              assert-table-state (fn [table-id name schema active is-upload]
+                                   (is (= {:name name
+                                           :schema schema
+                                           :active active
+                                           :is_upload is-upload} (t2/select-one [:metabase_table :name :schema :active :is_upload] :id table-id))))]
+          (migrate!)
+          (is (= "db_foo" (:uploads_schema_name (t2/select-one :metabase_database :id db-id))))
+          (assert-table-state uploaded-0 "uploads_test_table_0" "db_foo" true true)
+          (assert-table-state uploaded-1 "uploads_test_table_1" "db_foo" true true)
+          (assert-table-state uploaded-2 "uploads_test_table_2" "db_foo" true true)
+          (assert-table-state synced-1 "uploads_test_table_1_retired_69667" "db_foo" false false)
+          (assert-table-state synced-2 "uploads_test_table_2_retired_69667" "db_foo" false false))))))
+
 (deftest migrate-clickhouse-details-to-multi-db-test
   (testing "v57.2025-08-22T00:16:00: migrate clickhouse db details to use `enable-multiple-db` with db filters"
     (encryption-test/with-secret-key "dont-tell-anyone-about-this"
