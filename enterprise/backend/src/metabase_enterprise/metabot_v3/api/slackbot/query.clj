@@ -233,7 +233,7 @@
   "Render a saved card (already fetched from DB) to PNG bytes."
   [card]
   (let [{:keys [width]} (render-dimensions (:display card))
-        options {:channel.render/include-title? true
+        options {:channel.render/include-title? false
                  :channel.render/padding-x render-padding-x-px
                  :channel.render/padding-y 0}
         results (pulse-card-query-results card)]
@@ -247,7 +247,7 @@
 
 (defn generate-card-output
   "Generate output for a saved card based on its display type.
-   Returns a map with :type (:table or :image) and :content.
+   Returns a map with :type (:table or :image), :content, and :card-name.
 
    - `table` and display types not supported by static viz render as native Slack table blocks
    - static viz chart types render as PNG"
@@ -255,10 +255,12 @@
   (let [card (t2/select-one :model/Card :id card-id)]
     (when-not card
       (throw (ex-info "Card not found" {:card-id card-id :type :card-not-found})))
-    (if (-> card :display keyword supported-png-display-types)
-      {:type    :image
-       :content (render-saved-card-png card)}
-      (let [results (pulse-card-query-results card)]
-        (throw-on-failed-query! results)
-        {:type    :table
-         :content (format-results-as-table-blocks results)}))))
+    (assoc
+     (if (-> card :display keyword supported-png-display-types)
+       {:type    :image
+        :content (render-saved-card-png card)}
+       (let [results (pulse-card-query-results card)]
+         (throw-on-failed-query! results)
+         {:type    :table
+          :content (format-results-as-table-blocks results)}))
+     :card-name (:name card))))

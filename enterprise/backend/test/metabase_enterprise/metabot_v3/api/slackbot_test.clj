@@ -69,20 +69,20 @@
 
 (defmacro ^:private with-slackbot-setup
   "Wrap body with all required settings for slackbot to be fully configured.
-   Uses `with-temporary-raw-setting-values` for secrets whose getters mask the value,
-   since `with-temporary-setting-values` would save and restore the masked value."
+   Uses `with-temporary-raw-setting-values` to avoid settings with masking getters
+   saving/restoring the obfuscated value instead of the original."
   [& body]
   `(with-redefs [slackbot.config/validate-bot-token! (constantly {:ok true})
                  slackbot.client/get-bot-user-id     (constantly "UBOT123")]
      (with-ensure-encryption
        (mt/with-premium-features #{:metabot-v3 :sso-slack}
-         (mt/with-temporary-setting-values [site-url "https://localhost:3000"
-                                            sso-settings/slack-connect-client-id "test-client-id"
-                                            sso-settings/slack-connect-enabled true]
-           (mt/with-temporary-raw-setting-values [metabot-slack-signing-secret test-signing-secret
-                                                  slack-app-token "xoxb-test"
-                                                  slack-connect-client-secret "test-secret"]
-             ~@body))))))
+         (mt/with-temporary-raw-setting-values [site-url "https://localhost:3000"
+                                                slack-connect-client-id "test-client-id"
+                                                slack-connect-enabled "true"
+                                                metabot-slack-signing-secret test-signing-secret
+                                                slack-app-token "xoxb-test"
+                                                slack-connect-client-secret "test-secret"]
+           ~@body)))))
 
 (defn- compute-slack-signature
   "Compute a valid Slack signature for testing"
@@ -262,7 +262,7 @@
            mock-lines))
        slackbot.query/generate-card-output     (fn [card-id]
                                                  (swap! generate-card-output-calls conj {:card-id card-id})
-                                                 {:type :image :content fake-png-bytes})
+                                                 {:type :image :content fake-png-bytes :card-name (str "Card " card-id)})
        slackbot.query/generate-adhoc-output (fn [query & {:keys [display]}]
                                               (swap! generate-adhoc-output-calls conj {:query query :display display})
                                               (if (#{:bar :line :pie :area :row :scatter :funnel :waterfall :combo :progress :gauge :map} display)
@@ -513,7 +513,7 @@
                 (is (= 2 (count @image-calls)))
                 (is (every? #(= "C456" (:channel %)) @image-calls))
                 (is (every? #(= "1234567890.000000" (:thread-ts %)) @image-calls))
-                (is (= #{"chart-101.png" "chart-202.png"}
+                (is (= #{"card_101.png" "card_202.png"}
                        (set (map :filename @image-calls))))
                 (is (every? #(= (vec fake-png-bytes) (vec (:image-bytes %)))
                             @image-calls))))))))))
@@ -604,7 +604,7 @@
           (is (= "Slack integration is not fully configured." (post-events 503)))))
 
       (testing "returns 503 when signing-secret missing (can't sign request)"
-        (mt/with-temporary-setting-values [metabot.settings/metabot-slack-signing-secret nil]
+        (mt/with-temporary-raw-setting-values [metabot-slack-signing-secret nil]
           (is (= "Slack integration is not fully configured."
                  (mt/client :post 503 "ee/metabot-v3/slack/events" request-body))))))))
 
@@ -706,8 +706,8 @@
               (is (= :line (:display (first @generate-adhoc-output-calls)))))
             (testing "all images posted"
               (is (= 3 (count @image-calls)))
-              (is (= #{"chart-101.png" "chart-202.png"}
-                     (set (filter #(str/starts-with? % "chart-") (map :filename @image-calls)))))
+              (is (= #{"card_101.png" "card_202.png"}
+                     (set (filter #(str/starts-with? % "card") (map :filename @image-calls)))))
               (is (= 1 (count (filter #(str/starts-with? % "adhoc-") (map :filename @image-calls))))))))))))
 
 (deftest generate-card-output-display-type-test
@@ -779,7 +779,7 @@
               [slackbot.query/generate-card-output (fn [card-id]
                                                      (if (= card-id 999999)
                                                        (throw (ex-info "Unexpected render error" {}))
-                                                       {:type :image :content fake-png}))]
+                                                       {:type :image :content fake-png :card-name (str "Card " card-id)}))]
               (mt/client :post 200 "ee/metabot-v3/slack/events"
                          (slack-request-options event-body) event-body)
               (u/poll {:thunk      #(and (>= (count @stop-stream-calls) 1)
@@ -808,11 +808,11 @@
         (is (nil? (#'slackbot.streaming/format-viz-caption nil nil)))))))
 
 (deftest viz-caption-and-link-on-image-test
-  (testing "image viz posts include caption with link as initial-comment"
+  (testing "image viz for static_viz uses the card name as caption, not the AI-provided caption"
     (with-slackbot-setup
       (let [mock-data-parts [{:type  "static_viz"
                               :value {:entity_id 101
-                                      :caption   "Revenue by Month"}}]
+                                      :caption   "AI-generated caption"}}]
             event-body      (update base-dm-event :event merge
                                     {:text      "Show revenue"
                                      :channel   "C456"
@@ -831,10 +831,11 @@
                      :done?      true?
                      :timeout-ms 5000})
             (let [img (first @image-calls)]
-              (testing "filename uses slugified caption"
-                (is (= "revenue_by_month.png" (:filename img))))
-              (testing "initial-comment contains caption with link"
-                (is (str/includes? (:initial-comment img) "Revenue by Month"))
+              (testing "filename uses slugified card name"
+                (is (= "card_101.png" (:filename img))))
+              (testing "initial-comment uses card name with link, not AI caption"
+                (is (str/includes? (:initial-comment img) "Card 101"))
+                (is (not (str/includes? (:initial-comment img) "AI-generated caption")))
                 (is (str/includes? (:initial-comment img) "/question/101"))))))))))
 
 (deftest table-viz-with-caption-test
@@ -1350,26 +1351,26 @@
                  :slack-connect-client-secret nil
                  :metabot-slack-signing-secret nil}]
       (testing "set all credentials"
-        (mt/with-temporary-setting-values [sso-settings/slack-connect-client-id nil
-                                           sso-settings/slack-connect-client-secret nil
-                                           metabot.settings/metabot-slack-signing-secret nil
-                                           sso-settings/slack-connect-enabled false]
-          (is (= {:ok true} (mt/user-http-request :crowberto :put 200 "ee/metabot-v3/slack/settings" creds)))
-          (is (every? some? [(sso-settings/slack-connect-client-id)
-                             (sso-settings/slack-connect-client-secret)
-                             (metabot.settings/metabot-slack-signing-secret)]))
-          (is (true? (sso-settings/slack-connect-enabled)))))
+        (mt/with-temporary-setting-values [sso-settings/slack-connect-enabled false]
+          (mt/with-temporary-raw-setting-values [slack-connect-client-id nil
+                                                 slack-connect-client-secret nil
+                                                 metabot-slack-signing-secret nil]
+            (is (= {:ok true} (mt/user-http-request :crowberto :put 200 "ee/metabot-v3/slack/settings" creds)))
+            (is (every? some? [(sso-settings/slack-connect-client-id)
+                               (sso-settings/slack-connect-client-secret)
+                               (metabot.settings/metabot-slack-signing-secret)]))
+            (is (true? (sso-settings/slack-connect-enabled))))))
 
       (testing "clear all credentials"
-        (mt/with-temporary-setting-values [sso-settings/slack-connect-client-id "x"
-                                           sso-settings/slack-connect-client-secret "x"
-                                           metabot.settings/metabot-slack-signing-secret "x"
-                                           sso-settings/slack-connect-enabled true]
-          (is (= {:ok true} (mt/user-http-request :crowberto :put 200 "ee/metabot-v3/slack/settings" clear)))
-          (is (every? nil? [(sso-settings/slack-connect-client-id)
-                            (sso-settings/slack-connect-client-secret)
-                            (metabot.settings/metabot-slack-signing-secret)]))
-          (is (false? (sso-settings/slack-connect-enabled)))))
+        (mt/with-temporary-setting-values [sso-settings/slack-connect-enabled true]
+          (mt/with-temporary-raw-setting-values [slack-connect-client-id "x"
+                                                 slack-connect-client-secret "x"
+                                                 metabot-slack-signing-secret "x"]
+            (is (= {:ok true} (mt/user-http-request :crowberto :put 200 "ee/metabot-v3/slack/settings" clear)))
+            (is (every? nil? [(sso-settings/slack-connect-client-id)
+                              (sso-settings/slack-connect-client-secret)
+                              (metabot.settings/metabot-slack-signing-secret)]))
+            (is (false? (sso-settings/slack-connect-enabled))))))
 
       (testing "partial credentials returns 400"
         (doseq [partial [(assoc creds :slack-connect-client-id nil)

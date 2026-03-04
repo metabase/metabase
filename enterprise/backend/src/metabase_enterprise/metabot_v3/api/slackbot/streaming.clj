@@ -212,11 +212,15 @@
 
 (defn- send-visualizations!
   "Wait for all in-flight visualization futures and post results to Slack.
-   Called after stop-stream so results always appear after streamed text."
+   Called after stop-stream so results always appear after streamed text.
+   For saved cards (static_viz), uses the actual card name as the caption."
   [client channel thread-ts prefetched-viz]
   (doseq [[idx {:keys [^Future future filename caption link]}] prefetched-viz]
     (try
-      (let [output (.get future)]
+      (let [output   (.get future)
+            ;; For saved cards, prefer the actual card name over the AI-generated caption
+            caption  (or (:card-name output) caption)
+            filename (or (some-> caption (u/slugify {:max-length 80})) filename)]
         (deliver-viz! client channel thread-ts output filename caption link))
       (catch ExecutionException e
         (let [cause (or (.getCause e) e)]
