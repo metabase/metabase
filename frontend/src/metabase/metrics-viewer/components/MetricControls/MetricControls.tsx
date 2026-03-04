@@ -13,7 +13,6 @@ import { getProjectionInfo } from "../../utils/metrics";
 import { getTabConfig } from "../../utils/tab-config";
 
 import { BinningButton } from "./BinningButton";
-import { Box } from "metabase/ui";
 import { BucketButton } from "./BucketButton";
 import { ChartTypePicker } from "./ChartTypePicker";
 import { DimensionFilterButton } from "./DimensionFilterButton";
@@ -75,18 +74,17 @@ export function MetricControls({
 
   return (
     <Flex
+      h="3rem"
       className={S.container}
       align="center"
       gap="xs"
       data-testid="metrics-viewer-controls"
     >
-      <Box ml="sm" mr="xs">
-        <ChartTypePicker
-          chartTypes={chartTypes}
-          value={effectiveDisplayType}
-          onChange={onDisplayTypeChange}
-        />
-      </Box>
+      <ChartTypePicker
+        chartTypes={chartTypes}
+        value={effectiveDisplayType}
+        onChange={onDisplayTypeChange}
+      />
       {hasFilterControls && projectionInfo.filterDimension && (
         <>
           <Divider orientation="vertical" className={S.divider} />
