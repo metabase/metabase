@@ -16,7 +16,7 @@
 (defn- filters->condition
   [filters]
   (when (seq filters)
-    (lib.util/fresh-uuids
+    (lib/fresh-uuids
      (if (next filters)
        (apply lib/and filters)
        (first filters)))))
@@ -48,7 +48,7 @@
         c2-maybe-unwrapped (cond-> c2
                              (= :and c2-operator) (subvec 2))
         c1-operator (first c1)]
-    (lib.util/fresh-uuids
+    (lib/fresh-uuids
      (if (= :and c1-operator)
        (if (= :and c2-operator)
          (into c1 c2-maybe-unwrapped)
@@ -148,7 +148,7 @@
                                           (lib/ref col)
                                           ;; This is probably due to a field-id where it shouldn't be
                                           &match))]
-                      (update (lib.util/fresh-uuids replacement)
+                      (update (lib/fresh-uuids replacement)
                               1
                               #(merge
                                 %
@@ -243,7 +243,7 @@
         query-with-joins (reduce #(lib/join %1 agg-stage-index %2)
                                  query
                                  new-joins)]
-    (lib.util/update-query-stage query-with-joins agg-stage-index add-join-aliases source-field->join-alias)))
+    (lib/update-query-stage query-with-joins agg-stage-index add-join-aliases source-field->join-alias)))
 
 (defn- splice-compatible-metrics
   "Splices in metric definitions that are compatible with the query."
@@ -261,7 +261,7 @@
                              (lib/expressions temp-query)))
             new-query (reduce
                        (fn [query [metric-id {metric-query :query}]]
-                         (if (and (= (lib.util/source-table-id query) (lib.util/source-table-id metric-query))
+                         (if (and (= (lib/primary-source-table-id query) (lib/primary-source-table-id metric-query))
                                   (or (= (lib/stage-count metric-query) 1)
                                       (= (:qp/stage-had-source-card (last (:stages metric-query)))
                                          (:qp/stage-had-source-card (lib/query-stage query agg-stage-index)))))

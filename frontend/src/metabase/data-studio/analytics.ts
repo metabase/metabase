@@ -168,3 +168,47 @@ export const trackMetricCreated = (
     target_id: targetId,
   });
 };
+
+export const trackMeasureCreateStarted = (tableId: ConcreteTableId) => {
+  trackSimpleEvent({
+    event: "measure_create_started",
+    triggered_from: "data_studio_measures_list",
+    target_id: tableId,
+  });
+};
+
+export const trackMeasureCreated = (
+  result: "success" | "failure",
+  measureId?: number,
+) => {
+  trackSimpleEvent({
+    event: "measure_created",
+    triggered_from: "data_studio_measures",
+    result,
+    target_id: measureId ?? null,
+  });
+};
+
+export const trackSegmentCreateStarted = (
+  triggeredFrom: "data_studio_segments" | "admin_datamodel_segments",
+  tableId?: number,
+) => {
+  trackSimpleEvent({
+    event: "segment_create_started",
+    triggered_from: triggeredFrom,
+    target_id: tableId ?? null,
+  });
+};
+
+export const trackSegmentCreated = (
+  result: "success" | "failure",
+  triggeredFrom: "data_studio_segments" | "admin_datamodel_segments",
+  segmentId?: number,
+) => {
+  trackSimpleEvent({
+    event: "segment_created",
+    triggered_from: triggeredFrom,
+    result,
+    target_id: segmentId ?? null,
+  });
+};

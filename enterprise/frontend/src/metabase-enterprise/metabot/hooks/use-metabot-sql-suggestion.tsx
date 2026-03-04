@@ -94,7 +94,7 @@ export function useMetabotSQLSuggestion({
   }, [dispatch, bufferId]);
 
   const suggestionModels: SuggestionModel[] = useMemo(
-    () => ["dataset", "card", "table"],
+    () => ["dataset", "table"],
     [],
   );
 
