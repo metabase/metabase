@@ -4,6 +4,7 @@
    [metabase-enterprise.replacement.field-refs :as field-refs]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
+   [metabase.lib.field.resolution :as lib.field.resolution]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.test :as mt]
    [metabase.util.json :as json]
@@ -107,6 +108,27 @@
         (let [updated-viz (t2/select-one-fn :visualization_settings :model/Card :id (:id card))]
           (is (= "hello" (:some_setting updated-viz))
               "other settings should be preserved"))))))
+
+;;; ----------------------------------------- upgrade-field-ref-to-name edge cases ----------------------------------------
+
+(deftest upgrade-card-prefers-deduplicated-name-test
+  (testing "upgrade! uses :lib/deduplicated-name when present on the resolved column"
+    (mt/dataset test-data
+      (mt/with-temp [:model/Card card {:dataset_query          (table-query :products)
+                                       :visualization_settings {:column_settings
+                                                                {(ref-key (mt/id :products :title)) {:column_title "Custom"}}}}]
+        (let [original-resolve lib.field.resolution/resolve-field-ref]
+          (with-redefs [lib.field.resolution/resolve-field-ref
+                        (fn [query stage field-ref]
+                          (when-let [col (original-resolve query stage field-ref)]
+                            (assoc col :lib/deduplicated-name "TITLE_2")))]
+            (field-refs/upgrade! [:card (:id card)] card)
+            (let [updated-viz (t2/select-one-fn :visualization_settings :model/Card :id (:id card))
+                  cs          (:column_settings updated-viz)]
+              (is (contains? cs (name-key "TITLE_2"))
+                  "should use deduplicated name when it differs from base name")
+              (is (not (contains? cs (name-key "TITLE")))
+                  "should not use base name when deduplicated name is available"))))))))
 
 ;;; ----------------------------------------- upgrade! for joins with join-alias -----------------------------------------
 
