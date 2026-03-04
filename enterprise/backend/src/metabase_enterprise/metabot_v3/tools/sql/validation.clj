@@ -36,7 +36,7 @@
 (mr/def ::validation-result
   [:map
    [:valid? :boolean]
-   [:dialect {:optional true} :string]
+   [:dialect {:optional true} [:maybe :string]]
    [:error-message {:optional true} :string]
    [:transpiled-sql {:optional true} :string]])
 
