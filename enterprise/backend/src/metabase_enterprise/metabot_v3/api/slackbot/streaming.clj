@@ -441,12 +441,12 @@
                            bot-user-id
                            channel-id
                            extra-history
-                           {:on-text         on-text
-                            :on-tool-start   on-tool-start
-                            :on-tool-end     on-tool-end
-                            :on-data         on-data
-                            :slack-msg-id    (:ts event)
-                            :get-response-ts (fn [] (:stream_ts @stream-state))})]
+                           {:on-text             on-text
+                            :on-tool-start       on-tool-start
+                            :on-tool-end         on-tool-end
+                            :on-data             on-data
+                            :req-slack-msg-id    (:ts event)
+                            :get-res-slack-msg-id (fn [] (:stream_ts @stream-state))})]
            (request-flush!)
            (await slack-writer)
            (if-let [{:keys [stream_ts channel]} @stream-state]
