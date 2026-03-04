@@ -3,7 +3,10 @@ import type { Location } from "history";
 import { Box, Flex, Stack } from "metabase/ui";
 
 import { BreakoutLegend } from "../../components/BreakoutLegend/BreakoutLegend";
-import { MetricsViewerEmptyState } from "../../components/EmptyState";
+import {
+  MetricsViewerEmptyState,
+  MetricsViewerNoTabsEmptyState,
+} from "../../components/EmptyState";
 import { MetricSearchPanel } from "../../components/MetricSearchPanel";
 import { MetricsViewerCardsGrid } from "../../components/MetricsViewerCardsGrid";
 import {
@@ -50,6 +53,9 @@ export function MetricsViewerPage(props: MetricsViewerPageProps) {
   } = useMetricsViewer(props);
 
   const hasDefinitions = definitions.length > 0;
+  const hasLoadedDefinitions = definitions.some(
+    (entry) => entry.definition != null,
+  );
 
   return (
     <Stack h="100%" gap={0} className={S.root}>
@@ -113,6 +119,8 @@ export function MetricsViewerPage(props: MetricsViewerPageProps) {
                   onTabUpdate={updateActiveTab}
                   onDimensionChange={changeDimension}
                 />
+              ) : hasLoadedDefinitions ? (
+                <MetricsViewerNoTabsEmptyState />
               ) : null}
             </Flex>
             <BreakoutLegend
