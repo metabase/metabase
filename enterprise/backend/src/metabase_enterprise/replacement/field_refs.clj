@@ -118,7 +118,8 @@
 (defn- transform-upgrade-field-refs!
   [transform]
   (let [source (:source transform)]
-    (when (and (= :query (:type source) (replacement.util/valid-query? (:query source))))
+    (when (and (= :query (:type source))
+               (replacement.util/valid-query? (:query source)))
       (let [query (:query source)
             query' (lib-be/upgrade-field-refs-in-query query)]
         (when (not= query query')
