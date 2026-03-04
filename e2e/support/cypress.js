@@ -8,8 +8,8 @@ import "cypress-real-events/support";
 import addContext from "mochawesome/addContext";
 import "./commands";
 
-const isCI = Cypress.env("CI");
-const isNetworkThrottlingEnabled = Cypress.env("ENABLE_NETWORK_THROTTLING");
+const isCI = Cypress.expose("CI");
+const isNetworkThrottlingEnabled = Cypress.expose("ENABLE_NETWORK_THROTTLING");
 
 // remove default html output on test failure
 configure({
@@ -31,7 +31,7 @@ Cypress.on("uncaught:exception", (err, runnable) => false);
 
 Cypress.on("test:before:run", () => {
   // Check wether FE is running in dev mode
-  const feHealthcheck = Cypress.env().feHealthcheck;
+  const feHealthcheck = Cypress.expose("feHealthcheck");
   if (feHealthcheck?.enabled) {
     fetch(feHealthcheck.url).catch(() =>
       alert(
@@ -160,7 +160,7 @@ if (isCI) {
 beforeEach(function () {
   const isCurrentTesOss =
     this.currentTest._testConfig.unverifiedTestConfig.tags === "@OSS";
-  const isBuildOss = Cypress.env("MB_EDITION") === "oss";
+  const isBuildOss = Cypress.expose("MB_EDITION") === "oss";
   const testName = this.currentTest.title;
   if (Cypress.config("isInteractive") && isCurrentTesOss && !isBuildOss) {
     console.log(

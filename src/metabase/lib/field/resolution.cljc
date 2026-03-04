@@ -63,7 +63,7 @@
                  :nfc-path                               (conj (vec parent-nfc-path) (:name parent-metadata))
                  :display-name                           new-display-name
                  ;; this is used by the `display-name-method` for `:metadata/column` in [[metabase.lib.field]]
-                 :metabase.lib.field/simple-display-name new-display-name)))))
+                 :lib/simple-display-name new-display-name)))))
 
 (mu/defn- field-metadata :- [:maybe ::lib.metadata.calculation/visible-column]
   "Metadata about the field from the metadata provider."
@@ -135,8 +135,8 @@
   #{:base-type
     :effective-type
     :display-name
-    :metabase.lib.query/transformation-added-base-type
-    :metabase.lib.field/original-effective-type})
+    :lib/transformation-added-base-type
+    :lib/original-effective-type})
 
 (def ^:private opts-propagated-renamed-keys
   "Keys in `:field` opts that get copied into column metadata with different keys when they have non-nil values.
@@ -148,7 +148,7 @@
   the stage where the join was performed. Subsequent stages are supposed to use field name refs, e.g.
   `My_Join__CATEGORY` or something like that. Historically a lot of field refs use IDs plus `:join-alias` well beyond
   the stage where the join originally happened... this is fine (since we can easily resolve it) but we do not want
-  metadata to include `:metabase.lib.join/join-alias` in this case since it means the join happened in the current
+  metadata to include `:lib/join-alias` in this case since it means the join happened in the current
   stage. If we include it incorrectly then it is liable to break code downstream and 'double-dip' the desired alias
   calculation code (e.g. we might spit out `My_Join__My_Join__CATEGORY`).
 
@@ -156,10 +156,10 @@
   previous stage (in which case having `:source-field` in the first place was probably incorrect). If appropriate it
   is propagated by [[resolve-in-implicit-join]]."
   {:lib/uuid                :lib/source-uuid
-   :binning                 :metabase.lib.field/binning
+   :binning                 :lib/binning
    :source-field-join-alias :fk-join-alias
    :source-field-name       :fk-field-name
-   :temporal-unit           :metabase.lib.field/temporal-unit
+   :temporal-unit           :lib/temporal-unit
    ;; display-name gets copied to both display-name and lib/ref-display-name
    :display-name            :lib/ref-display-name
    :name                    :lib/ref-name})
@@ -226,32 +226,31 @@
                   [k v])))
         opts-metadata-fns))
 
-(def ^:private model-propagated-keys
-  #{:lib/card-id
-    :lib/original-display-name
-    :lib/original-expression-name
-    :lib/original-fk-field-id
-    :lib/original-fk-field-name
-    :lib/original-fk-join-alias
-    :lib/original-join-alias
-    :lib/original-name
-    :lib/type
-    :active
-    :base-type
-    :converted-timezone
-    :description
-    :display-name
-    :fingerprint
-    :id
-    :semantic-type
-    :table-id
-    :visibility-type})
-
 (def ^:private regular-card-propagated-keys
   #{:lib/card-id
+    :lib/from-model?
     :active
     :fingerprint
     :visibility-type})
+
+(def ^:private model-propagated-keys
+  (set/union
+   regular-card-propagated-keys
+   #{:lib/original-display-name
+     :lib/original-expression-name
+     :lib/original-fk-field-id
+     :lib/original-fk-field-name
+     :lib/original-fk-join-alias
+     :lib/original-join-alias
+     :lib/original-name
+     :lib/type
+     :base-type
+     :converted-timezone
+     :description
+     :display-name
+     :id
+     :semantic-type
+     :table-id}))
 
 (declare resolve-in-previous-stage-returned-columns-and-update-keys)
 
@@ -273,8 +272,11 @@
             ;; unique/unambiguous if multiple versions of the column (e.g. with different bucketing units) are
             ;; returned
             (when-some [col (resolve-in-previous-stage-returned-columns-and-update-keys query card-cols (:lib/source-column-alias col))]
-              (let [col (assoc col :lib/source :source/card, :lib/card-id card-id)
-                    propagated-keys (if (= (:type card) :model)
+              (let [col             (assoc col :lib/source :source/card, :lib/card-id card-id)
+                    model?          (= (:type card) :model)
+                    col             (cond-> col
+                                      model? (assoc :lib/from-model? true))
+                    propagated-keys (if model?
                                       model-propagated-keys
                                       regular-card-propagated-keys)]
                 (select-keys col propagated-keys))))))
@@ -698,7 +700,7 @@
                                            (:joins (lib.util/query-stage query stage-number)))
                                      join-alias))
                  {:lib/source                   :source/joins
-                  :metabase.lib.join/join-alias join-alias})))
+                  :lib/join-alias join-alias})))
           (options-metadata opts)
           {:lib/original-ref-style-for-result-metadata-purposes (if (pos-int? id-or-name)
                                                                   :original-ref-style/id

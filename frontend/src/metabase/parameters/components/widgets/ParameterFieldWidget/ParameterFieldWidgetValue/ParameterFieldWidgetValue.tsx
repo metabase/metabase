@@ -8,7 +8,7 @@ import { normalizeValue } from "../normalizeValue";
 type ParameterFieldWidgetValueProps = {
   value: unknown;
   fields: Field[];
-  parameter: Parameter;
+  parameter?: Parameter;
   cardId?: CardId;
   dashboardId?: DashboardId;
   displayValue?: string;

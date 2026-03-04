@@ -15,7 +15,8 @@ import type {
 export type QueryEditorSidebarType =
   | "data-reference"
   | "snippet"
-  | "native-query";
+  | "native-query"
+  | "template-tags";
 
 export type QueryEditorModalType = "preview-query";
 

@@ -347,14 +347,14 @@
                  {:lib/type                     :metadata/column
                   :name                         "ID"
                   :display-name                 "ID"
-                  :metabase.lib.join/join-alias "Cat"
+                  :lib/join-alias "Cat"
                   :id                           (meta/id :categories :id)
                   :table-id                     (meta/id :categories)
                   :base-type                    :type/BigInteger}
                  {:lib/type                     :metadata/column
                   :name                         "NAME"
                   :display-name                 "Name"
-                  :metabase.lib.join/join-alias "Cat"
+                  :lib/join-alias "Cat"
                   :id                           (meta/id :categories :name)
                   :table-id                     (meta/id :categories)
                   :base-type                    :type/Text}]
@@ -497,11 +497,11 @@
             :lib/source              :source/table-defaults}
            {:name                         "ID"
             :lib/source-column-alias      "ID"
-            :metabase.lib.join/join-alias "Cat"
+            :lib/join-alias "Cat"
             :lib/source                   :source/joins}
            {:name                         "NAME"
             :lib/source-column-alias      "NAME"
-            :metabase.lib.join/join-alias "Cat"
+            :lib/join-alias "Cat"
             :lib/source                   :source/joins}]
           (-> (lib.tu/venues-query)
               (lib/join (-> (lib/join-clause
@@ -645,7 +645,7 @@
                {:display-name "ID",   :lib/source :source/joins}
                {:display-name "Name", :lib/source :source/joins}]
               (lib/orderable-columns query)))
-      (let [query' (lib/order-by query (m/find-first #(and (= (:metabase.lib.join/join-alias %) "Cat")
+      (let [query' (lib/order-by query (m/find-first #(and (= (:lib/join-alias %) "Cat")
                                                            (= (:display-name %) "Name"))
                                                      (lib/orderable-columns query)))]
         (is (=? [{:display-name "ID",          :lib/source :source/table-defaults}
@@ -717,7 +717,7 @@
             [nil          "PRICE"]
             ["Categories" "ID"] ; this column is not projected, but should still be returned.
             ["Categories" "NAME"]]
-           (map (juxt :metabase.lib.join/join-alias :lib/source-column-alias)
+           (map (juxt :lib/join-alias :lib/source-column-alias)
                 (-> (lib.tu/venues-query)
                     (lib/join (-> (lib/join-clause
                                    (meta/table-metadata :categories)

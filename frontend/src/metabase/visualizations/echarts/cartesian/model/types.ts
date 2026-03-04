@@ -8,10 +8,12 @@ import type {
   X_AXIS_DATA_KEY,
 } from "metabase/visualizations/echarts/cartesian/constants/dataset";
 import type {
+  Card,
   CardId,
   DatasetColumn,
   DateTimeAbsoluteUnit,
   RowValue,
+  VisualizationSettingKey,
 } from "metabase-types/api";
 
 export type BreakoutValue = Exclude<RowValue, object>;
@@ -30,11 +32,9 @@ export type DataKey =
   | typeof X_AXIS_DATA_KEY
   | typeof INDEX_KEY;
 
-export type VizSettingsKey = string;
-
 export type LegacySeriesSettingsObjectKey = {
-  card: {
-    _seriesKey: VizSettingsKey;
+  card: Partial<Card> & {
+    _seriesKey?: VisualizationSettingKey;
   };
 };
 
@@ -48,7 +48,7 @@ export type BaseSeriesModel = {
 };
 
 export type RegularSeriesModel = BaseSeriesModel & {
-  vizSettingsKey: VizSettingsKey;
+  vizSettingsKey: VisualizationSettingKey;
 
   // TODO: remove when the settings definitions are updated for the dynamic combo chart.
   // This object is used as a key for the `series` function of the computed

@@ -40,7 +40,7 @@
                  {:lib/uuid       (str (random-uuid))
                   :base-type      (:base-type metadata)
                   :effective-type ((some-fn :effective-type :base-type) metadata)}
-                 (when-let [unit (:metabase.lib.field/temporal-unit metadata)]
+                 (when-let [unit (:lib/temporal-unit metadata)]
                    {:temporal-unit unit}))]
     [:expression options ((some-fn :lib/expression-name :name) metadata)]))
 
@@ -72,12 +72,11 @@
            (when <>
              (log/warnf "Found expression %s in previous stage" (pr-str expression-name)))))
        (when (lib.util/first-stage? query stage-number)
-         (when-let [source-card-id (lib.util/source-card-id query)]
-           (when-let [source-card (lib.metadata/card query source-card-id)]
-             (u/prog1 (resolve-expression (:dataset-query source-card) expression-name)
-               (when <>
-                 (log/warnf "Found expression %s in source card %d. Next time, use a :field name ref!"
-                            (pr-str expression-name) source-card-id))))))
+         (when-let [source-card (lib.metadata.calculation/primary-source-card query)]
+           (u/prog1 (resolve-expression (:dataset-query source-card) expression-name)
+             (when <>
+               (log/warnf "Found expression %s in source card %d. Next time, use a :field name ref!"
+                          (pr-str expression-name) (:id source-card))))))
        (throw (ex-info (i18n/tru "No expression named {0}" (pr-str expression-name))
                        {:expression-name expression-name
                         :query           query
@@ -106,7 +105,7 @@
                 :effective-type          (or (:effective-type opts) base-type)
                 :lib/source              :source/expressions}
                (when-let [unit (lib.temporal-bucket/raw-temporal-bucket expression-ref-clause)]
-                 {:metabase.lib.field/temporal-unit unit})
+                 {:lib/temporal-unit unit})
                (when lib.metadata.calculation/*propagate-binning-and-bucketing*
                  (when-let [unit (lib.temporal-bucket/raw-temporal-bucket expression-ref-clause)]
                    {:inherited-temporal-unit unit})))))))

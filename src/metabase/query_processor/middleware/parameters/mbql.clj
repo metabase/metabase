@@ -114,10 +114,10 @@
    target-column :- [:or ::lib.schema.id/field :string]
    temporal-unit :- ::lib.schema.temporal-bucketing/unit
    new-unit      :- ::lib.schema.temporal-bucketing/unit]
-  (lib.util.match/replace stage
-    [(tag :guard #{:field :expression})
-     (opts :guard #(= temporal-unit (:temporal-unit %)))
-     (_id-or-name :guard #(= target-column %))]
+  (lib.util.match/replace-lite stage
+    [#{:field :expression}
+     (opts :guard (= (:temporal-unit opts) temporal-unit))
+     (id-or-name :guard (= id-or-name target-column))]
     (lib/with-temporal-bucket &match new-unit)))
 
 (mu/defn- update-breakout-unit :- ::lib.schema/stage

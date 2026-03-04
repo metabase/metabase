@@ -177,6 +177,16 @@ describe("EditableDashboard", () => {
 
     expect(screen.getByTestId("dashboard-name-heading")).toBeEnabled();
   });
+
+  // eslint-disable-next-line jest/expect-expect -- Just want to ensure the type passes
+  it('should accept "drillThroughQuestionProps.dataPicker"', async () => {
+    <EditableDashboard
+      dashboardId={1}
+      drillThroughQuestionProps={{
+        dataPicker: "staged",
+      }}
+    />;
+  });
 });
 
 function setupSimpleDataPickerEndpoints() {

@@ -50,7 +50,7 @@ describe("scenarios > admin > transforms", () => {
     cy.intercept("POST", "/api/transform-tag").as("createTag");
     cy.intercept("PUT", "/api/transform-tag/*").as("updateTag");
     cy.intercept("DELETE", "/api/transform-tag/*").as("deleteTag");
-    cy.intercept("POST", "/api/ee/dependencies/check_transform").as(
+    cy.intercept("POST", "/api/ee/dependencies/check-transform").as(
       "checkTransformDependencies",
     );
   });
@@ -167,69 +167,6 @@ describe("scenarios > admin > transforms", () => {
       getTableLink().click();
       H.queryBuilderHeader().findByText(DB_NAME).should("be.visible");
       H.assertQueryBuilderRowCount(3);
-    });
-
-    it("should be able to use the data reference and snippets when writing a SQL transform", () => {
-      H.createSnippet({
-        name: "snippet1",
-        content: "'foo'",
-      });
-
-      visitTransformListPage();
-      cy.button("Create a transform").click();
-      H.popover().findByText("SQL query").click();
-      H.popover().findByText(DB_NAME).click();
-
-      function testDataReference() {
-        cy.log("open the data reference");
-        cy.findByTestId("native-query-editor-action-buttons")
-          .findByLabelText("Learn about your data")
-          .click();
-
-        editorSidebar()
-          .should("be.visible")
-          .within(() => {
-            cy.log("The current database should be opened by default");
-            cy.findByText("Data Reference").should("not.exist");
-            cy.findByText("Writable Postgres12").should("be.visible");
-          });
-
-        cy.findByTestId("native-query-editor-action-buttons")
-          .findByLabelText("Learn about your data")
-          .click();
-
-        editorSidebar().should("not.exist");
-      }
-
-      function testSnippets() {
-        cy.findByTestId("native-query-editor-action-buttons")
-          .findByLabelText("SQL Snippets")
-          .click();
-
-        editorSidebar()
-          .should("be.visible")
-          .within(() => {
-            cy.findByText("snippet1").should("be.visible");
-            cy.icon("snippet").click();
-          });
-
-        H.NativeEditor.value().should("eq", "{{snippet: snippet1}}");
-
-        cy.findByTestId("native-query-editor-action-buttons")
-          .findByLabelText("SQL Snippets")
-          .click();
-
-        editorSidebar().should("not.exist");
-
-        cy.findByTestId("native-query-editor-action-buttons")
-          .findByLabelText("Preview the query")
-          .click();
-
-        H.modal().findByText("'foo'").should("be.visible");
-      }
-
-      testDataReference();
-      testSnippets();
     });
 
     it(
@@ -2323,9 +2260,7 @@ LIMIT
         });
         cy.button("Create a transform").click();
         H.popover().findByText("Python script").click();
-        cy.get(".cm-clickable-token")
-          .should("be.visible")
-          .click({ metaKey: true });
+        cy.get(".cm-clickable-token").should("be.visible").click(H.holdMetaKey);
 
         cy.get("@windowOpen").should(
           "have.been.calledWithMatch",
@@ -4115,10 +4050,6 @@ function assertOptionNotSelected(name: string) {
   getTagsInputContainer().findByText(name).should("not.exist");
 }
 
-function editorSidebar() {
-  return cy.findByTestId("editor-sidebar");
-}
-
 function getPythonDataPicker() {
   return cy.findByTestId("python-data-picker");
 }
@@ -4341,41 +4272,6 @@ describe("scenarios > data studio > transforms > permissions > pro-self-hosted",
       cy.findByRole("columnheader", { name: /Transforms/ })
         .scrollIntoView()
         .should("be.visible");
-    });
-  });
-});
-
-describe("scenarios > data studio > transforms > permissions > starter", () => {
-  beforeEach(() => {
-    H.restore();
-    cy.signInAsAdmin();
-  });
-
-  it("should have transforms upsell", () => {
-    H.activateToken("starter").then(() => {
-      cy.log("Visit data studio page");
-      cy.visit("/data-studio");
-      H.DataStudio.nav().should("be.visible");
-
-      cy.log("Verify Transforms menu item is visible");
-      H.DataStudio.nav().findByText("Transforms").should("be.visible");
-
-      cy.log(
-        "Verify there is an upsell gem icon is displayed in Transforms menu item",
-      );
-      H.DataStudio.nav()
-        .findByText("Transforms")
-        .closest("a")
-        .within(() => {
-          cy.findByTestId("upsell-gem").should("be.visible");
-        });
-
-      cy.log("Verify transforms page is accessible");
-      H.DataStudio.nav().findByText("Transforms").click();
-
-      cy.findByText("Start transforming your data in Metabase").should(
-        "be.visible",
-      );
     });
   });
 });

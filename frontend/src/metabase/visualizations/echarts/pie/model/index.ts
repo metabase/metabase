@@ -18,7 +18,11 @@ import type {
   ComputedVisualizationSettings,
   RenderingContext,
 } from "metabase/visualizations/types";
-import type { RawSeries, RowValue } from "metabase-types/api";
+import {
+  type RawSeries,
+  type RowValue,
+  getRowsForStableKeys,
+} from "metabase-types/api";
 
 import type { ShowWarning } from "../../types";
 import {
@@ -254,20 +258,35 @@ export function getPieChartModel(
   renderingContext: RenderingContext,
   showWarning?: ShowWarning,
 ): PieChartModel {
-  const [
-    {
-      data: { rows: dataRows },
-    },
-  ] = rawSeries;
+  const [{ data }] = rawSeries;
+  const { rows: dataRows, untranslatedRows } = data;
+  const stableKeyRows = getRowsForStableKeys(data);
   const colDescs = getPieColumns(rawSeries, settings);
+  const dimensionIndex = colDescs.dimensionDesc.index;
+
+  const translatedNameByKey = new Map<string, string>();
+  if (untranslatedRows) {
+    const format = getDimensionFormatter(
+      settings,
+      colDescs.dimensionDesc.column,
+    );
+    for (let index = 0; index < untranslatedRows.length; index++) {
+      const key = getKeyFromDimensionValue(
+        untranslatedRows[index][dimensionIndex],
+      );
+      if (!translatedNameByKey.has(key)) {
+        translatedNameByKey.set(key, format(dataRows[index][dimensionIndex]));
+      }
+    }
+  }
 
   const areAllNegative = dataRows.every(
     (row) => getNumberOr(row[colDescs.metricDesc.index], 0) < 0,
   );
 
   const rowIndiciesByKey = new Map<string | number, number>();
-  dataRows.forEach((row, index) => {
-    const key = getKeyFromDimensionValue(row[colDescs.dimensionDesc.index]);
+  stableKeyRows.forEach((row, index) => {
+    const key = getKeyFromDimensionValue(row[dimensionIndex]);
 
     if (rowIndiciesByKey.has(key)) {
       return;
@@ -276,8 +295,8 @@ export function getPieChartModel(
   });
 
   const aggregatedRows = getAggregatedRows(
-    dataRows,
-    colDescs.dimensionDesc.index,
+    stableKeyRows,
+    dimensionIndex,
     colDescs.metricDesc.index,
     colDescs.middleDimensionDesc == null ? showWarning : undefined,
     colDescs.dimensionDesc.column,
@@ -286,7 +305,7 @@ export function getPieChartModel(
   const rowValuesByKey = new Map<string | number, number>();
   aggregatedRows.map((row) =>
     rowValuesByKey.set(
-      getKeyFromDimensionValue(row[colDescs.dimensionDesc.index]),
+      getKeyFromDimensionValue(row[dimensionIndex]),
       getNumberOr(row[colDescs.metricDesc.index], 0),
     ),
   );
@@ -354,7 +373,7 @@ export function getPieChartModel(
 
       const o = {
         key,
-        name,
+        name: translatedNameByKey.get(key) ?? name,
         value: Math.abs(value),
         rawValue: value,
         normalizedPercentage,
@@ -425,7 +444,7 @@ export function getPieChartModel(
       }
 
       const dimensionNode = sliceTree.get(
-        getKeyFromDimensionValue(row[colDescs.dimensionDesc.index]),
+        getKeyFromDimensionValue(stableKeyRows[index][dimensionIndex]),
       );
       const dimensionIsOther = dimensionNode == null;
       if (dimensionIsOther) {

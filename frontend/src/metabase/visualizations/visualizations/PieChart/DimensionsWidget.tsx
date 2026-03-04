@@ -85,17 +85,19 @@ const THREE_RING_SETTING_TITLES = [
   OUTER_RING_TITLE,
 ];
 
+export type DimensionsWidgetProps = {
+  rawSeries: RawSeries;
+  settings: ComputedVisualizationSettings;
+  onChangeSettings: (newSettings: ComputedVisualizationSettings) => void;
+  onShowWidget: (widget: any, ref: any) => void;
+};
+
 export function DimensionsWidget({
   rawSeries,
   settings,
   onChangeSettings,
   onShowWidget,
-}: {
-  rawSeries: RawSeries;
-  settings: ComputedVisualizationSettings;
-  onChangeSettings: (newSettings: ComputedVisualizationSettings) => void;
-  onShowWidget: (widget: any, ref: any) => void;
-}) {
+}: DimensionsWidgetProps) {
   // Dimension settings
   const [dimensions, setDimensions] = useState<(string | undefined)[]>(() => [
     ...getPieDimensions(settings),

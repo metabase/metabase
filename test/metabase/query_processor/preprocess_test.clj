@@ -611,7 +611,7 @@
                   :lib/breakout?                true
                   :lib/source-column-alias      "CATEGORY"
                   :lib/desired-column-alias     "PRODUCTS__via__PRODUCT_ID__CATEGORY"
-                  :metabase.lib.join/join-alias (symbol "nil #_\"key is not present.\"")
+                  :lib/join-alias (symbol "nil #_\"key is not present.\"")
                   :lib/original-join-alias      (symbol "nil #_\"key is not present.\"")
                   :source_alias                 (symbol "nil #_\"key is not present.\"")
                   :fk_field_id                  (meta/id :orders :product-id)}

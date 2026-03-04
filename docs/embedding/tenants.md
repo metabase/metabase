@@ -192,16 +192,18 @@ You can create tenant-level [user attributes](#tenant-attributes) which all user
 
 ![Edit tenant](./images/edit-tenant.png)
 
-To add a tenant attribute:
+There are three ways to add a tenant attribute, using the Metabase UI, the API, or JWT SSO.
+
+To create a tenant attribute manually using the Metabase UI:
 
 1. Go to **Admin settings > People**
 2. Select **Tenants** on the left sidebar.
 3. Click on **three dots** next to the tenant.
 4. Input the attribute key and value.
 
-Once you add a tenant attribute, all users of that tenant will inherit the attribute, but the value can be overridden for any particular user, see [Edit user attributes](../people-and-groups/managing.md#adding-a-user-attribute).
+For details on how to set tenant attributes using JWT tenant claims, see [Setting tenant attributes using tenant claims](#setting-tenant-attributes-using-tenant-claims) below.
 
-Currently, you can't assign custom tenant attributes with SSO. The only way to assign attributes is through the Metabase UI (but you can provision attributes for _individual users_ through SSO, see [JWT user attributes](../people-and-groups/authenticating-with-jwt.md)). However, if you're using user attribute to set permissions, then you can use the [special slug attribute](#special-tenant-slug-attribute) which Metabase creates automatically.
+Once you add a tenant attribute, all users of that tenant will inherit the attribute, but the value can be overridden for any particular user, see [Edit user attributes](../people-and-groups/managing.md#adding-a-user-attribute).
 
 ### Special tenant slug attribute
 
@@ -263,6 +265,24 @@ When user provisioning with JWT is enabled:
 1. Metabase reads the tenant identifier from the JWT claim. By default, this is the `@tenant` key (you can configure this).
 2. If the tenant doesn't exist, Metabase automatically creates it. Metabase will use the value of the `@tenant` key (or your chosen assignment attribute) as the tenant slug.
 3. New users are automatically assigned to the tenant from their JWT.
+
+### Setting tenant attributes using tenant claims
+
+To create tenant attributes from JWT SSO, include a claim `@tenant.attributes`:
+
+```json
+{
+  "@tenant": "meowdern_solutions",
+  "@tenant.attributes": {
+    "industry": "cat food"
+  },
+  "email": "mittens@example.com",
+  "first_name": "Mister",
+  "last_name": "Mittens"
+}
+```
+
+If a tenant attribute with this name doesn't exist, Metabase will create the attribute and assign the value from the JWT claim. However, if the tenant attribute already exists, Metabase will **not** update the value.
 
 ### Troubleshooting JWT authentication with tenants
 
@@ -329,8 +349,7 @@ Permissions are granted to groups. Which permissions are available to each group
 ### Internal user collection permissions
 
 - Metabase Admins will have **Curate** access to all shared collections and all tenant collections.
-- Other internal groups can be granted **View** or **Curate** access to **shared collections**, see [Configuring shared collection permissions](#configuring-shared-collections-permissions).
-- Non-admin internal users will have **No** access to tenant-specific collections. Currently, this can't be configured.
+- Other internal groups and non-admin users have **No** access by default, but can be granted **View** or **Curate** access to **shared collections**. See [Configuring shared collection permissions](#configuring-shared-collections-permissions) for details.
 
 For configuring permissions to _internal_ collections for internal users, see [general docs on collection permissions](../permissions/collections.md).
 

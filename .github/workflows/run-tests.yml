@@ -103,7 +103,8 @@ jobs:
       (needs.files-changed.outputs.embedding_sdk_components == 'true' ||
       needs.files-changed.outputs.frontend_sources == 'true' ||
       needs.files-changed.outputs.embedding_documentation == 'true' ||
-      needs.files-changed.outputs.embedding_sdk_ci == 'true')
+      needs.files-changed.outputs.embedding_sdk_ci == 'true' ||
+      needs.files-changed.outputs.embedding_sdk_host_sample_apps == 'true')
     uses: ./.github/workflows/embedding-sdk-package-build.yml
     secrets: inherit
 

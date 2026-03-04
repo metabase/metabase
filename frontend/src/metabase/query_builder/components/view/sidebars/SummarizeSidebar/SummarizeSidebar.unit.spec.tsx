@@ -3,8 +3,9 @@ import { useState } from "react";
 
 import { renderWithProviders, screen, waitFor, within } from "__support__/ui";
 import * as Lib from "metabase-lib";
-import { createQuery, createQueryWithClauses } from "metabase-lib/test-helpers";
+import { DEFAULT_TEST_QUERY, SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
 import { createMockCard } from "metabase-types/api/mocks";
+import { ORDERS_ID } from "metabase-types/api/mocks/presets";
 import {
   createMockQueryBuilderState,
   createMockState,
@@ -18,44 +19,65 @@ type SetupOpts = {
 };
 
 function createSummarizedQuery() {
-  return createQueryWithClauses({
-    aggregations: [
-      { operatorName: "max", tableName: "ORDERS", columnName: "QUANTITY" },
-    ],
-    breakouts: [
+  return Lib.createTestQuery(SAMPLE_PROVIDER, {
+    stages: [
       {
-        tableName: "ORDERS",
-        columnName: "CREATED_AT",
-        temporalBucketName: "Month",
-      },
-      {
-        tableName: "PRODUCTS",
-        columnName: "CATEGORY",
+        source: { type: "table", id: ORDERS_ID },
+        aggregations: [
+          {
+            type: "operator",
+            operator: "max",
+            args: [{ type: "column", name: "QUANTITY" }],
+          },
+        ],
+        breakouts: [
+          {
+            type: "column",
+            sourceName: "ORDERS",
+            name: "CREATED_AT",
+            unit: "month",
+          },
+          {
+            type: "column",
+            sourceName: "PRODUCTS",
+            name: "CATEGORY",
+          },
+        ],
       },
     ],
   });
 }
 
 function createQueryWithBreakoutsForSameColumn() {
-  return createQueryWithClauses({
-    aggregations: [{ operatorName: "count" }],
-    breakouts: [
+  return Lib.createTestQuery(SAMPLE_PROVIDER, {
+    stages: [
       {
-        tableName: "ORDERS",
-        columnName: "CREATED_AT",
-        temporalBucketName: "Year",
-      },
-      {
-        tableName: "ORDERS",
-        columnName: "CREATED_AT",
-        temporalBucketName: "Quarter",
+        source: { type: "table", id: ORDERS_ID },
+        aggregations: [{ type: "operator", operator: "count", args: [] }],
+        breakouts: [
+          {
+            type: "column",
+            sourceName: "ORDERS",
+            name: "CREATED_AT",
+            unit: "year",
+          },
+          {
+            type: "column",
+            sourceName: "ORDERS",
+            name: "CREATED_AT",
+            unit: "quarter",
+          },
+        ],
       },
     ],
   });
 }
 
 async function setup({
-  query: initialQuery = createQuery(),
+  query: initialQuery = Lib.createTestQuery(
+    SAMPLE_PROVIDER,
+    DEFAULT_TEST_QUERY,
+  ),
   withDefaultAggregation = true,
 }: SetupOpts = {}) {
   const onQueryChange = jest.fn();
@@ -144,8 +166,13 @@ describe("SummarizeSidebar", () => {
 
     it("should allow to remove last not default aggregation (metabase#48033)", async () => {
       await setup({
-        query: createQueryWithClauses({
-          aggregations: [{ operatorName: "count" }],
+        query: Lib.createTestQuery(SAMPLE_PROVIDER, {
+          stages: [
+            {
+              source: { type: "table", id: ORDERS_ID },
+              aggregations: [{ type: "operator", operator: "count", args: [] }],
+            },
+          ],
         }),
       });
 
@@ -177,7 +204,7 @@ describe("SummarizeSidebar", () => {
   });
 
   it("should list breakoutable columns", async () => {
-    const query = createQuery();
+    const query = Lib.createTestQuery(SAMPLE_PROVIDER, DEFAULT_TEST_QUERY);
     const columns = Lib.breakoutableColumns(query, -1);
     await setup({ query });
 

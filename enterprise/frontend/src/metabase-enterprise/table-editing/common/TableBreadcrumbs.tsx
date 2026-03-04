@@ -44,7 +44,7 @@ export const TableBreadcrumbs = ({
   }, [database, table, showEditBreadcrumb]);
 
   return (
-    <ViewHeading color="medium">
+    <ViewHeading c="text-secondary">
       <HeadBreadcrumbs parts={parts} variant="head" />
     </ViewHeading>
   );

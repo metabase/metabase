@@ -269,14 +269,14 @@
                    {:lib/type                     :metadata/column
                     :name                         "ID"
                     :display-name                 "ID"
-                    :metabase.lib.join/join-alias "Cat"
+                    :lib/join-alias "Cat"
                     :id                           (meta/id :categories :id)
                     :table-id                     (meta/id :categories)
                     :base-type                    :type/BigInteger}
                    {:lib/type                     :metadata/column
                     :name                         "NAME"
                     :display-name                 "Name"
-                    :metabase.lib.join/join-alias "Cat"
+                    :lib/join-alias "Cat"
                     :id                           (meta/id :categories :name)
                     :table-id                     (meta/id :categories)
                     :base-type                    :type/Text}]
@@ -558,7 +558,7 @@
             [nil          "PRICE"]
             ["Categories" "ID"] ; this column is not projected, but should still be returned.
             ["Categories" "NAME"]]
-           (map (juxt :metabase.lib.join/join-alias :lib/source-column-alias)
+           (map (juxt :lib/join-alias :lib/source-column-alias)
                 (-> (lib.tu/venues-query)
                     (lib/join (-> (lib/join-clause
                                    (meta/table-metadata :categories)

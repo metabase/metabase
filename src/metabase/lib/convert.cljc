@@ -494,8 +494,8 @@
   (->> (cond-> m
          ;; Following construct ensures that transformation mbql -> pmbql -> mbql, does not add base-type where those
          ;; were not present originally. Base types are added in [[metabase.lib.query/add-types-to-fields]].
-         (:metabase.lib.query/transformation-added-base-type m)
-         (dissoc :metabase.lib.query/transformation-added-base-type :base-type))
+         (:lib/transformation-added-base-type m)
+         (dissoc :lib/transformation-added-base-type :base-type))
        (into {} (comp (disqualify)
                       ;; remove `:effective-type` if `:base-type` is not present OR if it's the same as `:base-type`.
                       (remove (let [keys-to-remove (if (or (nil? (:base-type m))

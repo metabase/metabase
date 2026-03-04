@@ -45,6 +45,7 @@ import type {
   ComputedVisualizationSettings,
   RemappingHydratedChartData,
   VisualizationProps,
+  VisualizationSettingsDefinitions,
 } from "metabase/visualizations/types";
 import {
   getClickData,
@@ -132,8 +133,7 @@ const RowChartVisualization = ({
   );
 
   const groupedData = useMemo(
-    () =>
-      getGroupedDataset(data.rows, chartColumns, settings, formatColumnValue),
+    () => getGroupedDataset(data, chartColumns, settings, formatColumnValue),
     [chartColumns, data, settings, formatColumnValue],
   );
   const goal = useMemo(() => getChartGoal(settings), [settings]);
@@ -338,10 +338,11 @@ RowChartVisualization.noHeader = true;
 RowChartVisualization.minSize = getMinSize("row");
 RowChartVisualization.defaultSize = getDefaultSize("row");
 
-RowChartVisualization.settings = {
+const settings: VisualizationSettingsDefinitions = {
   ...ROW_CHART_SETTINGS,
   ...GRAPH_DATA_SETTINGS,
 };
+RowChartVisualization.settings = settings;
 
 RowChartVisualization.isSensible = ({ cols, rows }: DatasetData) => {
   return (

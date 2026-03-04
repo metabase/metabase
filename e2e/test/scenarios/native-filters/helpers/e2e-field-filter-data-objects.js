@@ -94,6 +94,6 @@ export const DATE_FILTER_SUBTYPES = {
         // 2022.
         dayjs().diff(dayjs("2022-05-24"), "month") + 2,
     },
-    representativeResult: "Synergistic Steel Chair",
+    representativeResult: "Rustic Paper Wallet",
   },
 };
