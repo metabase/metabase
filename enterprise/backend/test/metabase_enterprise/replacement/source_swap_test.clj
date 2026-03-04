@@ -805,7 +805,7 @@
                 ;; DashboardCard parameter mapping should reference orders_b ID field
                 (let [updated-dc (t2/select-one :model/DashboardCard :id dashcard-id)
                       target     (get-in updated-dc [:parameter_mappings 0 :target])]
-                  (is (=? [:dimension [:field "ID" {}]] target)
+                  (is (=? [:dimension [:field (mt/id :orders_b :id) {}]] target)
                       "Parameter mapping target should reference the ID field"))))))))))
 
 (deftest run-swap-series-card-updates-dashboard-params-test
