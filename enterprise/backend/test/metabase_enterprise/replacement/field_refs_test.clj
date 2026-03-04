@@ -317,10 +317,6 @@
   (testing "upgrade! with :table entity is a no-op"
     (is (nil? (field-refs/upgrade! [:table 123])))))
 
-(deftest upgrade-dispatch-unknown-map-test
-  (testing "upgrade! with a map that matches no condition returns :do-nothing"
-    (is (= :do-nothing (field-refs/upgrade! {:some-key 1 :other-key 2})))))
-
 (deftest upgrade-dispatch-dashboard-via-upgrade!-test
   (testing "upgrade! with [:dashboard id] dispatches to dashboard upgrade"
     (let [called (atom nil)]
@@ -404,7 +400,7 @@
       (mt/with-temp [:model/Card card {:dataset_query          (table-query :products)
                                        :visualization_settings {:column_settings
                                                                 {(ref-key (mt/id :products :title)) {:column_title "Map Card"}}}}]
-        (field-refs/upgrade! card)
+        (field-refs/upgrade! [:card (:id card)] card)
         (let [updated-viz (t2/select-one-fn :visualization_settings :model/Card :id (:id card))
               cs          (:column_settings updated-viz)]
           (is (= {:column_title "Map Card"} (get cs (name-key "TITLE")))
@@ -417,7 +413,7 @@
                        (fn [obj] (reset! called obj))}
         (fn []
           (let [transform {:id 42 :source {:type :query :query {}} :name "T"}]
-            (field-refs/upgrade! transform)
+            (field-refs/upgrade! [:transform (:id transform)] transform)
             (is (= transform @called)
                 "transform map dispatch should call transform-upgrade-field-refs!")))))))
 
@@ -428,7 +424,7 @@
                        (fn [obj] (reset! called obj))}
         (fn []
           (let [segment {:definition {:some "def"} :table_id 1 :id 42}]
-            (field-refs/upgrade! segment)
+            (field-refs/upgrade! [:segment (:id segment)] segment)
             (is (= segment @called)
                 "segment map dispatch should call segment-upgrade-field-refs!")))))))
 
@@ -439,7 +435,7 @@
                        (fn [obj] (reset! called obj))}
         (fn []
           (let [measure {:definition {:some "def"} :table_id 1 :aggregation [:count] :id 42}]
-            (field-refs/upgrade! measure)
+            (field-refs/upgrade! [:measure (:id measure)] measure)
             (is (= measure @called)
                 "entity with aggregation should dispatch to measure, not segment")))))))
 
@@ -450,7 +446,7 @@
                        (fn [obj] (reset! called obj))}
         (fn []
           (let [measure {:definition {:some "def"} :id 42}]
-            (field-refs/upgrade! measure)
+            (field-refs/upgrade! [:measure (:id measure)] measure)
             (is (= measure @called)
                 "measure map dispatch should call measure-upgrade-field-refs!")))))))
 
