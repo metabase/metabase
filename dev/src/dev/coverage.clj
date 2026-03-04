@@ -133,7 +133,9 @@
   (let [;; Try different possible file paths
         possible-paths [(str "src/" file)
                         file
-                        (str "test/" file)]
+                        (str "test/" file)
+                        (str "enterprise/backend/src/" file)
+                        (str "enterprise/backend/test/" file)]
         source-file (first (filter #(and % (.exists (java.io.File. ^String %))) possible-paths))]
     (when-not source-file
       (throw (ex-info (str "Could not find source file for: " file)
