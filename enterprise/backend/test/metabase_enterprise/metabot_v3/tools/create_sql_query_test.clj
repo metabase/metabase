@@ -12,30 +12,32 @@
       (testing "creates a basic SQL query"
         (mt/with-current-user (mt/user->id :crowberto)
           (let [sql "SELECT 1 as test"
-                result (create-sql-query/create-sql-query
-                        {:database-id db-id
-                         :sql sql
-                         :name "Test Query"})]
+
+                {result :action-result}
+                (create-sql-query/create-sql-query
+                 {:database-id db-id
+                  :sql sql
+                  :name "Test Query"})]
             (is (contains? result :query-id))
-            (is (= sql (:query-content result)))
+            (is (= "SELECT\n  1 AS \"test\"" (:query-content result)))
             (is (= db-id (:database result)))
             (is (= {:database db-id
                     :type :native
-                    :native {:query sql}}
+                    :native {:query "SELECT\n  1 AS \"test\""}}
                    (:query result)))))))))
 
 (deftest create-sql-query-validation-failure-test
-  (mt/test-drivers #{:postgres}
+  (mt/test-drivers #{:h2 :postgres}
     (mt/with-temp [:model/Database {db-id :id} {:engine driver/*driver*}]
       (testing "attempts to create query with wrong syntax"
         (mt/with-current-user (mt/user->id :crowberto)
           (let [sql "select 123abc ="
 
-                {:keys [valid? dialect error-message]}
+                {{:keys [valid? dialect error-message]} :validation-result}
                 (create-sql-query/create-sql-query
                  {:database-id db-id
                   :sql sql
                   :name "Test Query"})]
-            (is (= "postgres" dialect))
+            (is (= (name driver/*driver*) dialect))
             (is (false? valid?))
             (is (str/starts-with? error-message "Invalid expression / Unexpected token."))))))))

@@ -36,14 +36,13 @@
    "sqlserver" "tsql",
    ;; Embedded/lightweight
    "sqlite" "sqlite",
-   ;; H2 uses generic dialect as best effort
-   "h2" nil})
+   ;; H2 uses PostgreSQL compatibility mode as approximation
+   "h2" "postgres"})
 
 (defn database-id->dialect
   "Get dialect for database id."
   [db-id]
-  (when (integer? db-id)
-    (-> db-id driver.u/database->driver name dialect-mapping)))
+  (some-> db-id driver.u/database->driver name))
 
 (defn query->dialect
   "Get queries dialect."
@@ -85,15 +84,17 @@
     (let [dialect* (dialect-mapping dialect)
           {:keys [error-message transpiled-sql status]}
           (sql-tools/transpile-sql sql dialect* dialect*)]
-      (merge {:dialect dialect*}
-             (cond (= :success status)
-                   {:valid? true
-                    :transpiled-sql transpiled-sql}
+      (merge
+       ;; Return contains original input dialect, not the mapping.
+       {:dialect dialect}
+       (cond (= :success status)
+             {:valid? true
+              :transpiled-sql transpiled-sql}
 
-                   (= :skipped status)
-                   {:valid? true
-                    :transpiled-sql transpiled-sql}
+             (= :skipped status)
+             {:valid? true
+              :transpiled-sql transpiled-sql}
 
-                   (= :error status)
-                   {:valid? false
-                    :error-message error-message})))))
+             (= :error status)
+             {:valid? false
+              :error-message error-message})))))
