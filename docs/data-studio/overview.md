@@ -25,3 +25,11 @@ Data Studio provides tools to shape and track your data so everyone can trust th
 - **[Transforms](./transforms/transforms-overview.md)**: Wrangle your data in Metabase, write the query results back to your database, and reuse them in Metabase as sources for new queries.
 
 \* Available on [Pro and Enterprise plans](https://www.metabase.com/pricing/).
+
+## Get to Data Studio
+
+To keys to Data Studio are granted only to people in either the Admin or Data Analyst groups (The Data Analyst group is available on [Pro and Enterprise plans](https://www.metabase.com/pricing/).
+
+1. Click the **grid** icon in the upper right.
+2. Select **Data Studio**.
+
