@@ -31,7 +31,7 @@
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [metabase.util.number :as u.number]
-   [metabase.util.performance :refer [mapv some select-keys not-empty get-in #?(:clj doseq) #?(:clj for)]]))
+   [metabase.util.performance :refer [mapv some select-keys not-empty get-in every? empty? #?(:clj doseq) #?(:clj for)]]))
 
 (mu/defn column-metadata->expression-ref :- :mbql.clause/expression
   "Given `:metadata/column` column metadata for an expression, construct an `:expression` reference."
@@ -630,6 +630,53 @@
      (lib.util/clause? expr)
      (some #(invalid-nesting % (conj path-tags (first expr))) (nnext expr)))))
 
+(defn- find-type-error
+  "Given a Malli explanation, find the most informative type-mismatch error.
+   Returns the first error whose schema has `:error/expected-type`, or nil."
+  [explanation]
+  (some (fn [error]
+          (let [schema (:schema error)
+                props (or (mc/properties schema)
+                          (mc/type-properties schema))]
+            (when (:error/expected-type props)
+              error)))
+        (:errors explanation)))
+
+(defn- parent-operator-tag
+  "Given an expression and an error's `:in` path, determine the MBQL operator tag
+   of the clause containing the failing subexpression. Returns nil if the path is
+   empty (root-level error) or the parent cannot be determined."
+  [expr in-path]
+  (when (and (seq in-path) (every? integer? in-path))
+    (let [parent-path (pop (vec in-path))
+          parent (if (empty? parent-path)
+                   expr
+                   (get-in expr parent-path))]
+      (when (and (vector? parent) (keyword? (first parent)))
+        (first parent)))))
+
+(defn- operator-display-name
+  "Return a user-facing display name for an MBQL operator tag."
+  [tag]
+  (or (get infix-operator-display-name tag)
+      (name tag)))
+
+(defn- expected-type-description
+  "Return a translated, user-facing description of an expected type."
+  [expected-type]
+  (when (keyword? expected-type)
+    (condp = expected-type
+      :type/Boolean (i18n/tru "a boolean")
+      :type/Text (i18n/tru "a string")
+      :type/Integer (i18n/tru "an integer")
+      :type/Float (i18n/tru "a number")
+      :type/Number (i18n/tru "a number")
+      :type/Date (i18n/tru "a date")
+      :type/Time (i18n/tru "a time")
+      :type/DateTime (i18n/tru "a date time")
+      :type/Temporal (i18n/tru "a date, time, or date time")
+      nil)))
+
 (mu/defn diagnose-expression :- [:maybe [:map [:message :string]]]
   "Checks `expr` for type errors and, if `expression-mode` is :expression and
   `expression-position` is provided, for cyclic references with other expressions.
@@ -664,7 +711,17 @@
                   error-friendly? (:error/friendly props)
                   error-message-or-fn (:error/message props)
                   error-message (if (fn? error-message-or-fn) (str (error-message-or-fn)) (str error-message-or-fn))
-                  fallback-message (i18n/tru "Types are incompatible.")
+                  type-error (find-type-error explanation)
+                  op-tag (when type-error (parent-operator-tag expr (:in type-error)))
+                  expected (when type-error
+                             (:error/expected-type
+                              (or (mc/properties (:schema type-error))
+                                  (mc/type-properties (:schema type-error)))))
+                  op-name (when op-tag (operator-display-name op-tag))
+                  type-desc (when expected (expected-type-description expected))
+                  fallback-message (if (and op-name type-desc)
+                                     (i18n/tru "Types are incompatible: {0} expects {1}." op-name type-desc)
+                                     (i18n/tru "Types are incompatible."))
                   message (if error-friendly? error-message fallback-message)]
               {:message message
                :friendly true}))

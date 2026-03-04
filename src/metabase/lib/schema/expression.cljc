@@ -134,7 +134,8 @@
     [true  [:ref :metabase.lib.schema.mbql-clause/clause]]
     [false [:ref :metabase.lib.schema.literal/literal]]]
    [:fn
-    {:error/message description}
+    {:error/message description
+     :error/expected-type base-type}
     #(and (not (non-expression-clause? %))
           (or *suppress-expression-type-check?*
               (type-of? % base-type)))]])
