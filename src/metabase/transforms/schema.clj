@@ -7,22 +7,6 @@
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]))
 
-(mr/def ::source-table-ref
-  "A reference to a source table by name, for cases where table_id may not exist yet.
-  Also saves querying metadata in situations where we'll need the name."
-  [:map
-   [:database_id :int]
-   [:schema {:optional true} [:maybe :string]]
-   [:table :string]
-   [:table_id {:optional true} [:maybe :int]]])
-
-(mr/def ::source-table-value
-  "Either a table ID (int) or a reference map."
-  [:or :int ::source-table-ref])
-
-;; Re-export from transforms-base.util where the canonical definition lives.
-(mr/def ::source-table-entry ::transforms-base.u/source-table-entry)
-
 (mr/def ::checkpoint-strategy
   [:map
    [:type [:= "checkpoint"]]
@@ -52,7 +36,7 @@
                                                          (if (map? st)
                                                            (transforms-base.u/source-tables-map->vec (update-keys st name))
                                                            st))}
-                        ::source-table-entry]]
+                        ::transforms-base.u/source-table-entry]]
      [:type {:decode/normalize lib.schema.common/normalize-keyword} [:= :python]]
      [:body :string]
      [:source-incremental-strategy {:optional true} ::source-incremental-strategy]]]])
@@ -85,8 +69,6 @@
    ["table-incremental" ::table-incremental-target]])
 
 (mr/def ::id pos-int?)
-
-(mr/def ::run-id pos-int?)
 
 (mr/def ::transform
   [:map

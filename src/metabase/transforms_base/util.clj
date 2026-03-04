@@ -596,6 +596,15 @@
   [v]
   (and (map? v) (nil? (:table_id v))))
 
+(mr/def ::source-table-entry
+  "A source table entry in the array format. Combines alias with table reference."
+  [:map
+   [:alias :string]
+   [:database_id {:optional true} :int]
+   [:schema {:optional true} [:maybe :string]]
+   [:table {:optional true} :string]
+   [:table_id {:optional true} [:maybe :int]]])
+
 (mu/defn normalize-source-tables :- [:sequential ::source-table-entry]
   "Normalize source-table entries by enriching them with full metadata.
   For entries with only :table_id, looks up :database_id/:schema/:table.
@@ -654,15 +663,6 @@
                       {:unresolved unresolved
                        :transform-message "Input table not found"})))
     resolved))
-
-(mr/def ::source-table-entry
-  "A source table entry in the array format. Combines alias with table reference."
-  [:map
-   [:alias :string]
-   [:database_id {:optional true} :int]
-   [:schema {:optional true} [:maybe :string]]
-   [:table {:optional true} :string]
-   [:table_id {:optional true} [:maybe :int]]])
 
 (mu/defn source-tables-map->vec :- [:sequential ::source-table-entry]
   "Convert map format `{alias -> value}` to vec format `[{:alias alias ...}]`.
