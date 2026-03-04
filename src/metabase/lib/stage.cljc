@@ -209,7 +209,7 @@
       ;; 1b: default visible Fields for the source Table
       (when source-table
         (assert (integer? source-table))
-        (let [table (lib.metadata/table query source-table)]
+        (when-some [table (lib.metadata/table query source-table)]
           (lib.metadata.calculation/returned-columns query stage-number table options)))
       ;; 1e. Metadata associated with a Metric
       (when metric-based?

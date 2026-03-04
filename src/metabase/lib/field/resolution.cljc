@@ -567,8 +567,9 @@
     ;; `returned-columns`... we'd get fallback metadata, right?
     (and source-table-id
          (string? id-or-name))
-    (m/find-first #(= (:name %) id-or-name)
-                  (lib.metadata.calculation/returned-columns query (lib.metadata/table query source-table-id)))
+    (when-some [table (lib.metadata/table query source-table-id)]
+      (m/find-first #(= (:name %) id-or-name)
+                    (lib.metadata.calculation/returned-columns query table)))
 
     (= (:lib/type stage) :mbql.stage/native)
     (when-some [col (resolve-in-current-stage-metadata query stage-number id-or-name)]
