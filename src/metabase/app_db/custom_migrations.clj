@@ -1854,3 +1854,58 @@
 
 (define-migration MoveExistingAtSymbolUserAttributes
   (reserve-at-symbol-user-attributes/migrate!))
+
+(define-migration FixClickHouseUploadDBSchemaNames
+  (let [clickhouse-upload-db (t2/query {:select [:id :details]
+                                        :from [:metabase_database]
+                                        :where [:and
+                                                [:= :engine "clickhouse"]
+                                                [:= :uploads_enabled true]
+                                                [:= :uploads_schema_name nil]]})
+        set-uploads-schema-name! (fn [{:keys [id details]}]
+                                   (let [decrypted-details (encrypted-json-out details)
+                                         db-name (:dbname decrypted-details)]
+                                     (when db-name
+                                       (t2/query {:update :metabase_database
+                                                  :set    {:uploads_schema_name db-name}
+                                                  :where  [:= :id id]}))))]
+    (if-not (= 1 (count clickhouse-upload-db))
+      (log/warn "FixClickHouseUploadDBSchemaNames: expected 1 ClickHouse upload database with missing uploads_schema_name, found" (count clickhouse-upload-db))
+      (do
+        (run! set-uploads-schema-name! clickhouse-upload-db)
+        (let [active-non-upload-tables (t2/query {:select [:mt.id :mt.name]
+                                                  :from [[:metabase_table :mt]]
+                                                  :join [[:metabase_database :md] [:= :mt.db_id :md.id]]
+                                                  :where [:and
+                                                          [:= :md.engine "clickhouse"]
+                                                          [:= :md.uploads_enabled true]
+                                                          [:not= :md.uploads_schema_name nil]
+                                                          [:= :mt.schema :md.uploads_schema_name]
+                                                          [:= :mt.active true]
+                                                          [:= :mt.is_upload false]]})
+              retire-non-upload-table! (fn [{:keys [id name]}]
+                                         (t2/query {:update :metabase_table
+                                                    :set {:active false
+                                                          :name (str name "_retired_69667")}
+                                                    :where [:= :id id]}))
+              inactive-upload-tables (t2/query {:select [:mt.id :md.uploads_schema_name]
+                                                :from [[:metabase_table :mt]]
+                                                :join [[:metabase_database :md] [:= :mt.db_id :md.id]]
+                                                :where [:and
+                                                        [:= :md.engine "clickhouse"]
+                                                        [:= :md.uploads_enabled true]
+                                                        [:not= :md.uploads_schema_name nil]
+                                                        [:= :mt.schema nil]
+                                                        [:= :mt.active false]
+                                                        [:= :mt.is_upload true]]})
+              revive-upload-table! (fn [{:keys [id uploads_schema_name]}]
+                                     (t2/query {:update :metabase_table
+                                                :set {:active true
+                                                      :schema uploads_schema_name}
+                                                :where [:= :id id]}))]
+          (if (or (not= (count active-non-upload-tables) (count inactive-upload-tables))
+                  (= 0 (count active-non-upload-tables)))
+            (log/warn "FixClickHouseUploadDBSchemaNames: expected the same number of active non-upload tables and inactive upload tables, found" (count active-non-upload-tables) "active non-upload tables and" (count inactive-upload-tables) "inactive upload tables")
+            (do
+              (run! retire-non-upload-table! active-non-upload-tables)
+              (run! revive-upload-table! inactive-upload-tables))))))))
