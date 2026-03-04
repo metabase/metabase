@@ -27,6 +27,15 @@
       (#'mdb.setup/verify-db-connection :h2 (mdb.data-source/raw-connection-string->DataSource
                                              (format "jdbc:h2:mem:%s" (mt/random-name)))))))
 
+(deftest supported-app-db-version?-test
+  (testing "Should be able to check if an app DB is a supported version"
+    (is (true? (#'mdb.setup/supported-app-db-version? :h2 {:major 2 :minor 1 :patch 214})))
+    (is (true? (#'mdb.setup/supported-app-db-version? :h2 {:major 2 :minor 2 :patch 0})))
+    (is (true? (#'mdb.setup/supported-app-db-version? :h2 {:major 3 :minor 0 :patch 0})))
+    (is (false? (#'mdb.setup/supported-app-db-version? :h2 {:major 2 :minor 1 :patch 213})))
+    (is (false? (#'mdb.setup/supported-app-db-version? :h2 {:major 2 :minor 0 :patch 214})))
+    (is (false? (#'mdb.setup/supported-app-db-version? :h2 {:major 1 :minor 1 :patch 214})))))
+
 (deftest setup-db-test
   (testing "Should be able to set up an arbitrary application DB"
     (letfn [(test* [data-source]
