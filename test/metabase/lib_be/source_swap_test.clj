@@ -5,6 +5,7 @@
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
@@ -335,6 +336,39 @@
                                                   [:field {:join-alias join-alias} (meta/id :reviews :product-id)]]]}]
                          :filters [[:not-null {} [:field {:join-alias join-alias} (meta/id :reviews :product-id)]]]}]}
               swapped-query)))))
+
+(deftest ^:parallel upgrade-field-refs-multiple-identity-expressions-test
+  (testing "Multiple identity expressions referencing the same field should all be preserved"
+    (let [created-at-id (meta/id :orders :created-at)
+          tax-id        (meta/id :orders :tax)
+          total-id      (meta/id :orders :total)
+          query         (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
+                            (lib/with-fields [(meta/field-metadata :orders :tax)
+                                              (meta/field-metadata :orders :total)
+                                              (meta/field-metadata :orders :created-at)])
+                            (lib/expression "Big Endian Time" (meta/field-metadata :orders :created-at))
+                            (lib/expression "Date Only Time" (meta/field-metadata :orders :created-at))
+                            (lib/expression "Tax Rate" (lib// (meta/field-metadata :orders :tax)
+                                                              (meta/field-metadata :orders :total)))
+                            (lib/expression "Original Time Copy" (meta/field-metadata :orders :created-at)))
+          upgraded      (lib-be/upgrade-field-refs-in-query query)]
+      (testing "before upgrade: all four expressions present"
+        (is (=? {:stages [{:expressions [[:field {:lib/expression-name "Big Endian Time"} created-at-id]
+                                         [:field {:lib/expression-name "Date Only Time"} created-at-id]
+                                         [:/ {:lib/expression-name "Tax Rate"}
+                                          [:field {} tax-id]
+                                          [:field {} total-id]]
+                                         [:field {:lib/expression-name "Original Time Copy"} created-at-id]]}]}
+                query)))
+      (testing "after upgrade: all four expressions still present"
+        (is (= 4 (count (get-in upgraded [:stages 0 :expressions]))))
+        (is (=? {:stages [{:expressions [[:field {:lib/expression-name "Big Endian Time"} created-at-id]
+                                         [:field {:lib/expression-name "Date Only Time"} created-at-id]
+                                         [:/ {:lib/expression-name "Tax Rate"}
+                                          [:field {} tax-id]
+                                          [:field {} total-id]]
+                                         [:field {:lib/expression-name "Original Time Copy"} created-at-id]]}]}
+                upgraded))))))
 
 (deftest ^:parallel swap-source-in-query-identity-expression-test
   (let [query          (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
