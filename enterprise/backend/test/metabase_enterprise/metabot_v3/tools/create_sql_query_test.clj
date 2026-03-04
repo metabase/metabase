@@ -8,7 +8,7 @@
 
 (deftest create-sql-query-test
   (mt/test-drivers #{:postgres :h2}
-    (mt/with-temp [:model/Database {db-id :id} {}]
+    (mt/with-temp [:model/Database {db-id :id} {:engine driver/*driver*}]
       (testing "creates a basic SQL query"
         (mt/with-current-user (mt/user->id :crowberto)
           (let [sql "SELECT 1 as test"
@@ -26,7 +26,7 @@
                     :native {:query "SELECT\n  1 AS \"test\""}}
                    (:query result)))))))))
 
-(deftest create-sql-query-validation-failure-test
+(deftest create-sql-query-validation-error-test
   (mt/test-drivers #{:h2 :postgres}
     (mt/with-temp [:model/Database {db-id :id} {:engine driver/*driver*}]
       (testing "attempts to create query with wrong syntax"
