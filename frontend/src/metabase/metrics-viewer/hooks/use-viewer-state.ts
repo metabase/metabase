@@ -1,7 +1,7 @@
 import { useCallback, useRef, useState } from "react";
 
 import { measureApi, metricApi } from "metabase/api";
-import { objectFromEntries } from "metabase/lib/objects";
+import { getObjectEntries, objectFromEntries } from "metabase/lib/objects";
 import { useDispatch, useStore } from "metabase/lib/redux";
 import { getMetadata } from "metabase/selectors/metadata";
 import type {
@@ -91,17 +91,21 @@ function addDefinitionToTabs(
   );
 
   return tabs.map((tab) => {
-    const existingDimensionId = tab.dimensionMapping[newDefId];
-    if (existingDimensionId != null) {
+    if (newDefId in tab.dimensionMapping) {
       return tab;
     }
 
     const { [newDefId]: _, ...otherMappings } = tab.dimensionMapping;
+    const activeOtherMappings = objectFromEntries(
+      getObjectEntries(otherMappings).filter(
+        (entry): entry is [MetricSourceId, string] => entry[1] != null,
+      ),
+    );
     const storedTab: StoredMetricsViewerTab = {
       id: tab.id,
       type: tab.type,
       label: tab.label,
-      dimensionsBySource: otherMappings,
+      dimensionsBySource: activeOtherMappings,
     };
 
     const matchingDimension = findMatchingDimensionForTab(
@@ -222,7 +226,9 @@ export function useViewerState(): UseViewerStateResult {
             const { [id]: _, ...rest } = tab.dimensionMapping;
             return { ...tab, dimensionMapping: rest };
           })
-          .filter((tab) => Object.keys(tab.dimensionMapping).length > 0);
+          .filter((tab) =>
+            Object.values(tab.dimensionMapping).some((v) => v != null),
+          );
 
         return {
           ...prev,
@@ -252,8 +258,8 @@ export function useViewerState(): UseViewerStateResult {
           definition,
         );
 
-        const newTabs = updatedTabs.filter(
-          (tab) => Object.keys(tab.dimensionMapping).length > 0,
+        const newTabs = updatedTabs.filter((tab) =>
+          Object.values(tab.dimensionMapping).some((v) => v != null),
         );
 
         return {
@@ -393,10 +399,9 @@ export function useViewerState(): UseViewerStateResult {
           if (tab.id !== tabId) {
             return tab;
           }
-          const { [definitionId]: _, ...rest } = tab.dimensionMapping;
           return {
             ...tab,
-            dimensionMapping: rest,
+            dimensionMapping: { ...tab.dimensionMapping, [definitionId]: null },
             projectionConfig: {
               ...tab.projectionConfig,
               dimensionFilter: undefined,

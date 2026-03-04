@@ -61,7 +61,7 @@ export interface MetricsViewerTabState {
   type: MetricsViewerTabType;
   label: string;
   display: MetricsViewerDisplayType;
-  dimensionMapping: Record<MetricSourceId, DimensionId>;
+  dimensionMapping: Record<MetricSourceId, DimensionId | null>;
   projectionConfig: MetricsViewerTabProjectionConfig;
 }
 

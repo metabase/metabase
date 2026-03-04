@@ -107,7 +107,7 @@ function tabToSerializedTab(tab: MetricsViewerTabState): SerializedTab {
     definitions: Object.entries(tab.dimensionMapping).map(
       ([sourceId, dimensionId]) => ({
         definitionId: sourceId as MetricSourceId,
-        dimensionId,
+        ...(dimensionId != null ? { dimensionId } : {}),
       }),
     ),
     projectionConfig: hasProjectionConfig
@@ -123,12 +123,10 @@ function tabToSerializedTab(tab: MetricsViewerTabState): SerializedTab {
 export function deserializeTab(
   serializedTab: SerializedTab,
 ): MetricsViewerTabState {
-  const dimensionMapping: Record<MetricSourceId, string> = {};
+  const dimensionMapping: Record<MetricSourceId, string | null> = {};
   for (const serializedDefinition of serializedTab.definitions) {
-    if (serializedDefinition.dimensionId) {
-      dimensionMapping[serializedDefinition.definitionId] =
-        serializedDefinition.dimensionId;
-    }
+    dimensionMapping[serializedDefinition.definitionId] =
+      serializedDefinition.dimensionId ?? null;
   }
   return {
     id: serializedTab.id,

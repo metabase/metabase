@@ -421,7 +421,7 @@ export function buildDimensionItemsFromDefinitions(
     const entryColors = sourceColors[entry.id];
     const modifiedDefinition = modifiedDefinitions.get(entry.id);
 
-    if (dimensionId !== undefined && modifiedDefinition) {
+    if (dimensionId != null && modifiedDefinition) {
       const projections = LibMetric.projections(modifiedDefinition);
       if (projections.length === 0) {
         return [];
