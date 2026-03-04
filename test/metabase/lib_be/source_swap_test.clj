@@ -5,12 +5,17 @@
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.lib.test-metadata :as meta]
-   [metabase.lib.test-util :as lib.tu]))
+   [metabase.lib.test-util :as lib.tu]
+   [metabase.util.malli :as mu]))
 
-(defn- find-column
+(set! *warn-on-reflection* true)
+
+(mu/defn- find-column :- [:maybe ::lib.schema.metadata/column]
   "Find the first column in `cols` whose `:name` matches `col-name`."
-  [cols col-name]
+  [cols     :- [:sequential ::lib.schema.metadata/column]
+   col-name :- :string]
   (m/find-first #(= col-name (:name %)) cols))
 
 (deftest ^:parallel swap-source-in-query-table->table-test
@@ -496,9 +501,9 @@
                                     "Widget"]]}]}
               swapped-query)))))
 
-(defn- filter-all-columns
+(mu/defn- filter-all-columns :- ::lib.schema/query
   "Add a not-null filter for every filterable column in the query."
-  [query]
+  [query :- ::lib.schema/query]
   (reduce (fn [q col] (lib/filter q (lib/not-null col)))
           query
           (lib/filterable-columns query)))

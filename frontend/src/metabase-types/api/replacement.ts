@@ -42,8 +42,8 @@ export type ReplaceSourceColumnErrorType =
   (typeof REPLACE_SOURCE_COLUMN_ERROR_TYPES)[number];
 
 export type ReplaceSourceColumnMapping = {
-  source: ReplaceSourceColumnInfo | null;
-  target: ReplaceSourceColumnInfo | null;
+  source?: ReplaceSourceColumnInfo;
+  target?: ReplaceSourceColumnInfo;
   errors?: ReplaceSourceColumnErrorType[];
 };
 
