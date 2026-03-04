@@ -296,6 +296,73 @@
               cs          (:column_settings updated-viz)]
           (is (some? cs) "column_settings should exist after upgrade"))))))
 
+(deftest dashboard-upgrade-dimension-vectors-processed-test
+  (testing "dimension vectors in parameterMappings are keywordized and passed to upgrade-field-ref-in-parameter-target"
+    (mt/dataset test-data
+      (let [field-id           (mt/id :products :category)
+            original-dimension ["dimension" ["field" field-id {"base-type" "type/Text"}]]
+            captured-args      (atom [])
+            original-upgrade   lib-be/upgrade-field-ref-in-parameter-target]
+        (mt/with-temp [:model/Card card {:dataset_query          (table-query :products)
+                                         :visualization_settings {}}
+                       :model/Dashboard {dashboard-id :id} {:name "Test Dashboard"}
+                       :model/DashboardCard {dashcard-id :id}
+                       {:dashboard_id dashboard-id
+                        :card_id      (:id card)
+                        :visualization_settings
+                        {:column_settings
+                         {(name-key "TITLE")
+                          {:click_behavior
+                           {:parameterMapping
+                            {"dim-key"
+                             {:target {:type      "dimension"
+                                       :dimension original-dimension}}}}}}}}]
+          (with-redefs [lib-be/upgrade-field-ref-in-parameter-target
+                        (fn [query dim]
+                          (swap! captured-args conj {:query query :dim dim})
+                          (original-upgrade query dim))]
+            (field-refs/dashboard-upgrade-field-refs! dashboard-id)
+            (let [updated-viz (t2/select-one-fn :visualization_settings :model/DashboardCard :id dashcard-id)
+                  target-dim  (get-in updated-viz [:column_settings (name-key "TITLE")
+                                                   :click_behavior :parameterMapping
+                                                   "dim-key" :target :dimension])
+                  dim-call    (first (filter #(and (vector? (:dim %))
+                                                   (= :dimension (first (:dim %))))
+                                             @captured-args))]
+              (is (some? dim-call)
+                  "upgrade-field-ref-in-parameter-target should be called with a dimension vector")
+              (is (some? (:query dim-call))
+                  "query should not be nil")
+              (is (= :type/Text (get-in (:dim dim-call) [1 2 :base-type]))
+                  "base-type should be keywordized")
+              (is (not= original-dimension target-dim)
+                  "dimension should be upgraded from original form"))))))))
+
+(deftest dashboard-upgrade-malformed-dimension-preserved-test
+  (testing "malformed dimension vectors pass through unchanged via exception handler"
+    (mt/dataset test-data
+      (let [malformed-dimension ["dimension" "not-a-vector"]]
+        (mt/with-temp [:model/Card card {:dataset_query          (table-query :products)
+                                         :visualization_settings {}}
+                       :model/Dashboard {dashboard-id :id} {:name "Test Dashboard"}
+                       :model/DashboardCard {dashcard-id :id}
+                       {:dashboard_id dashboard-id
+                        :card_id      (:id card)
+                        :visualization_settings
+                        {:column_settings
+                         {(name-key "TITLE")
+                          {:click_behavior
+                           {:parameterMapping
+                            {"key1"
+                             {:target {:dimension malformed-dimension}}}}}}}}]
+          (field-refs/dashboard-upgrade-field-refs! dashboard-id)
+          (let [updated-viz (t2/select-one-fn :visualization_settings :model/DashboardCard :id dashcard-id)
+                target-dim  (get-in updated-viz [:column_settings (name-key "TITLE")
+                                                 :click_behavior :parameterMapping
+                                                 "key1" :target :dimension])]
+            (is (= malformed-dimension target-dim)
+                "malformed dimension should be preserved unchanged")))))))
+
 (deftest dashboard-upgrade-no-column-settings-test
   (testing "dashboard-upgrade-field-refs! is a no-op for dashcards without column_settings"
     (mt/dataset test-data
