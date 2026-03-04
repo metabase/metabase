@@ -492,8 +492,7 @@ using, this usually looks like `https://your-org-name.example.com` or `https://e
   :export?    false)
 
 (defsetting oidc-user-provisioning-enabled?
-  (deferred-tru "When a user logs in via OIDC, create a Metabase account for them automatically if they don''t have one.")
-  :type    :boolean
+  (deferred-tru "Determines what happens when a user logs in via OIDC and doesn''t have a Metabase account.")  :type    :boolean
   :default true
   :feature :sso-oidc
   :export?    false

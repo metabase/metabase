@@ -32,6 +32,7 @@ import {
   useGetCustomOidcProvidersQuery,
   useUpdateCustomOidcMutation,
 } from "metabase-enterprise/api";
+import { provisioningOptions } from "metabase-enterprise/auth/utils";
 
 function getOidcFormSchema() {
   return Yup.object({
@@ -272,7 +273,8 @@ export function SettingsOIDCForm() {
           <AdminSettingInput
             name="oidc-user-provisioning-enabled?"
             title={t`User provisioning`}
-            inputType="boolean"
+            inputType="radio"
+            options={provisioningOptions("OIDC")}
           />
         </SettingsSection>
 
