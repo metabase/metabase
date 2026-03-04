@@ -553,13 +553,28 @@ export const GRAPH_DISPLAY_VALUES_SETTINGS: VisualizationSettingsDefinitions = {
       const hasBars = getSeriesDisplays(series, vizSettings).some(
         (display) => display === "bar",
       );
-      return (
-        vizSettings["stackable.stack_type"] !== "stacked" ||
-        vizSettings["graph.show_values"] !== true ||
-        !hasBars ||
-        (vizSettings["graph.show_stack_values"] !== "series" &&
-          vizSettings["graph.show_stack_values"] !== "all")
-      );
+
+      if (!hasBars || vizSettings["graph.show_values"] !== true) {
+        return true;
+      }
+
+      const stackType = vizSettings["stackable.stack_type"];
+
+      // For normalized stacks ("Stack - 100%"), always show the setting
+      if (stackType === "normalized") {
+        return false;
+      }
+
+      // For regular stacked charts, only show when segment values are visible
+      if (stackType === "stacked") {
+        return !(
+          vizSettings["graph.show_stack_values"] === "series" ||
+          vizSettings["graph.show_stack_values"] === "all"
+        );
+      }
+
+      // Hide for non-stacked charts
+      return true;
     },
     props: {
       options: [
@@ -735,8 +750,7 @@ export const GRAPH_AXIS_SETTINGS: VisualizationSettingsDefinitions = {
       "graph.x_axis._is_histogram",
     ],
     isValid: isXAxisScaleValid,
-    getDefault: (series, vizSettings) =>
-      getDefaultXAxisScale(vizSettings, series[0]?.card?.display),
+    getDefault: (series, vizSettings) => getDefaultXAxisScale(vizSettings),
     getProps: (series, vizSettings) => ({
       options: getAvailableXAxisScales(series, vizSettings),
     }),
