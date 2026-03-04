@@ -55,19 +55,18 @@
                       :isolated_table_id number?}]
                     (t2/select :model/WorkspaceOutput :workspace_id (:id workspace) :ref_id (:ref_id ws-transform))))))
 
-        (testing "app DB records are rolled back"
-          ;; TransformRun is +1 because cascade delete was removed in d1e940e66b5
-          (is (= (update before :xfrun inc)
+        (testing "no app DB records are created (transforms-base/execute! skips TransformRun)"
+          (is (= before
                  {:xf    (t2/count :model/Transform)
                   :xfrun (t2/count :model/TransformRun)})))))))
 
-(deftest dry-run-workspace-transform-test
+(deftest dry-run-sql-workspace-transform-test
   (testing "Dry-running a workspace transform returns rows without persisting"
     (let [workspace    (ws.tu/create-ready-ws! "Dry-Run Test Workspace")
           db-id        (:database_id workspace)
           body         {:name   "Dry-Run Transform"
                         :source {:type  "query"
-                                 :query (mt/native-query {:query "SELECT 1 as id, 'hello' as name UNION ALL SELECT 2, 'world' ORDER BY 1"})}
+                                 :query (mt/native-query {:query "SELECT * FROM (SELECT 1 as id, 'hello' as name UNION ALL SELECT 2, 'world') t ORDER BY 1"})}
                         :target {:type     "table"
                                  :database db-id
                                  :schema   nil

@@ -3,6 +3,7 @@ import { useMemo } from "react";
 import { useGetTransformQuery } from "metabase/api";
 import { useSelector } from "metabase/lib/redux";
 import { getMetadata } from "metabase/selectors/metadata";
+import { collapseSourceTableReferences } from "metabase/transforms/utils";
 import { useGetWorkspaceTransformQuery } from "metabase-enterprise/api";
 import type {
   PythonTransformSource,
@@ -78,12 +79,14 @@ export function useTransformSources(
   return {
     oldSource,
     oldSourceTables: isPythonTransformSource(globalTransform?.source)
-      ? globalTransform.source["source-tables"]
+      ? collapseSourceTableReferences(globalTransform.source["source-tables"])
       : undefined,
     oldTarget: globalTransform?.target,
     newSource,
     newSourceTables: isPythonTransformSource(workspaceTransform?.source)
-      ? workspaceTransform.source["source-tables"]
+      ? collapseSourceTableReferences(
+          workspaceTransform.source["source-tables"],
+        )
       : undefined,
     newTarget: workspaceTransform?.target,
     hasError,

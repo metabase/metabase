@@ -133,8 +133,6 @@ The process for adding plugins when running via Docker is similar, but you'll ne
 
 ## Writeable connection
 
-{% include plans-blockquote.html feature="Writeable connection" is_plural=true%}
-
 Set up an additional connection used for write operations. See [Writeable connections](../writeable-connection.md).
 
 ## Danger zone

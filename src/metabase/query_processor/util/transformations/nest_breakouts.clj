@@ -10,7 +10,6 @@
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.lib.schema.util :as lib.schema.util]
-   [metabase.lib.util :as lib.util]
    [metabase.lib.util.match :as lib.util.match]
    [metabase.lib.walk :as lib.walk]
    [metabase.util.malli :as mu]
@@ -42,7 +41,7 @@
   (-> stage
       (dissoc :breakout :aggregation :order-by :limit :lib/stage-metadata)
       (assoc :fields (mapv
-                      lib.util/fresh-uuids
+                      lib/fresh-uuids
                       (fields-used-in-breakouts-aggregations-or-expressions stage)))))
 
 (defn- update-temporal-bucket
@@ -67,7 +66,7 @@
           update-temporal-bucket
           lib/ref
           (cond-> (:lib/external-remap col) (lib/update-options assoc ::externally-remapped-field true)))
-      (lib.util/fresh-uuids &match))))
+      (lib/fresh-uuids &match))))
 
 (def ^:private granularity
   {:time-unbucketed 0

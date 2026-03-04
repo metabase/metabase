@@ -99,8 +99,6 @@ To connect to Azure SQL, you'll need to set the port to 1433.
 
 ## Writeable connection
 
-{% include plans-blockquote.html feature="Writeable connection" is_plural=true%}
-
 Set up an additional connection used for write operations. See [Writeable connections](../writeable-connection.md).
 
 ## Database routing

@@ -32,6 +32,7 @@ import type {
   DatasetData,
   RawSeries,
   SeriesOrderSetting,
+  VisualizationDisplay,
 } from "metabase-types/api";
 
 export function getDefaultDimensionFilter(display: string) {
@@ -121,11 +122,14 @@ export function getDefaultMetrics(
   return defaultMetrics.slice(0, getMaxMetricsSupported(card.display));
 }
 
-export const STACKABLE_SERIES_DISPLAY_TYPES = new Set(["area", "bar"]);
+export const STACKABLE_SERIES_DISPLAY_TYPES = new Set<VisualizationDisplay>([
+  "area",
+  "bar",
+]);
 
 export const isStackingValueValid = (
   settings: ComputedVisualizationSettings,
-  seriesDisplays: string[],
+  seriesDisplays: VisualizationDisplay[],
 ) => {
   if (settings["stackable.stack_type"] == null) {
     return true;
@@ -225,7 +229,7 @@ export const getSeriesOrderVisibilitySettings = (
   }));
 };
 
-export const getDefaultYAxisTitle = (metricNames: string[]) => {
+export const getDefaultYAxisTitle = (metricNames: (string | undefined)[]) => {
   const metricsCount = new Set(metricNames).size;
   return metricsCount === 1 ? metricNames[0] : null;
 };
@@ -364,9 +368,9 @@ export const isXAxisScaleValid = (
     return false;
   }
 
-  return (
+  return Boolean(
     !isWaterfall ||
-    (xAxisScale && !WATERFALL_UNSUPPORTED_X_AXIS_SCALES.includes(xAxisScale))
+      (xAxisScale && !WATERFALL_UNSUPPORTED_X_AXIS_SCALES.includes(xAxisScale)),
   );
 };
 
