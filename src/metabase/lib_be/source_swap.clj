@@ -19,7 +19,6 @@
    [metabase.lib.util :as lib.util]
    [metabase.lib.walk :as lib.walk]
    [metabase.util :as u]
-   [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [metabase.util.performance :as perf]))
@@ -208,14 +207,12 @@
   "If the parameter target is a field ref, upgrade it to use a name-based field ref when possible."
   [query  :- ::lib.schema/query
    target :- ::lib.schema.parameter/target]
-  (let [result (or (when (lib.parameters/parameter-target-field-ref target)
-                     (when-let [stage-number (parameter-target-stage-number query target)]
-                       (lib.parameters/update-parameter-target-field-ref
-                        target
-                        #(upgrade-field-ref query stage-number %))))
-                   target)]
-    (log/warnf "upgrade-field-ref-in-parameter-target\nbefore: %s\nafter:  %s" (pr-str target) (pr-str result))
-    result))
+  (or (when (lib.parameters/parameter-target-field-ref target)
+        (when-let [stage-number (parameter-target-stage-number query target)]
+          (lib.parameters/update-parameter-target-field-ref
+           target
+           #(upgrade-field-ref query stage-number %))))
+      target))
 
 ;;; ------------------------------------------------ swap-source -------------------------------------------------------
 
