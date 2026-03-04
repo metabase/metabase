@@ -1,5 +1,6 @@
 import type { TooltipOption } from "echarts/types/dist/shared";
 
+import { alpha } from "metabase/lib/colors/palette";
 import { reactNodeToHtmlString } from "metabase/lib/react-to-html";
 import { EChartsTooltip } from "metabase/visualizations/components/ChartTooltip/EChartsTooltip";
 import type { ComputedVisualizationSettings } from "metabase/visualizations/types";
@@ -55,20 +56,33 @@ export const getTooltipOption = (
 ): TooltipOption => {
   return {
     ...getTooltipBaseOption(containerRef),
-    trigger: "item",
+    trigger: "axis",
+    axisPointer: {
+      type: "line",
+      lineStyle: {
+        type: "solid",
+        width: 1,
+        color: alpha("black", 0.25),
+      },
+    },
     formatter: (params) => {
-      if (Array.isArray(params)) {
+      if (!Array.isArray(params) || params.length === 0) {
         return "";
       }
 
-      const { dataIndex, seriesId } = params;
+      // When using axis trigger, params is an array of all series at that axis point
+      // We use the first param to get the dataIndex, and find the first non-special series
+      const validParam = params.find(
+        (param) =>
+          param.seriesId !== TIMELINE_EVENT_SERIES_ID &&
+          param.seriesId !== GOAL_LINE_SERIES_ID,
+      );
 
-      if (
-        seriesId === TIMELINE_EVENT_SERIES_ID ||
-        seriesId === GOAL_LINE_SERIES_ID
-      ) {
+      if (!validParam) {
         return "";
       }
+
+      const { dataIndex, seriesId } = validParam;
 
       return reactNodeToHtmlString(
         <ChartItemTooltip
