@@ -330,27 +330,6 @@ describe("scenarios > metrics > explorer", () => {
       cy.log("switching back to All dimensions should restore the grid");
       switchToTab("All dimensions");
       H.MetricsViewer.getAllCards().should("have.length", dimensionTabs.length);
-
-      cy.log("split view on a tab should be reflected in its grid card");
-      switchToTab("Category");
-      H.MetricsViewer.getAllMetricVisualizations().should("have.length", 1);
-      H.MetricsViewer.getLayoutControls()
-        .findByRole("button", { name: "split view" })
-        .click();
-      H.MetricsViewer.getAllMetricVisualizations().should("have.length", 2);
-
-      switchToTab("All dimensions");
-      H.MetricsViewer.getAllCards().should("have.length", dimensionTabs.length);
-      H.MetricsViewer.getAllCards()
-        .contains("Category")
-        .closest("[data-testid='metrics-viewer-card']")
-        .findAllByTestId("visualization-root")
-        .should("have.length", 2);
-      H.MetricsViewer.getAllCards()
-        .contains("Created At")
-        .closest("[data-testid='metrics-viewer-card']")
-        .findAllByTestId("visualization-root")
-        .should("have.length", 1);
     });
 
     it("should add a dimension tab and remove it", () => {
@@ -384,6 +363,11 @@ describe("scenarios > metrics > explorer", () => {
       H.MetricsViewer.assertVizType("Bar");
 
       cy.log("remove the added tab");
+
+      // Need to hover the tab so that the remove button is accessible
+      H.MetricsViewer.tablist()
+        .findByRole("tab", { name: "Source" })
+        .realHover();
       H.MetricsViewer.getRemoveTabButton("Source").click();
       H.MetricsViewer.tablist()
         .findByRole("tab", { name: "Source" })
@@ -399,10 +383,10 @@ describe("scenarios > metrics > explorer", () => {
   });
 
   // ============================================================================
-  // Split View Mode
+  // Automatic Split View
   // ============================================================================
 
-  describe("Visualization settings", () => {
+  describe("Automatic split view", () => {
     beforeEach(() => {
       intercedptDatasetQuery();
       H.MetricsViewer.goToViewer();
@@ -410,25 +394,40 @@ describe("scenarios > metrics > explorer", () => {
       cy.wait("@dataset");
     });
 
-    it("should allow to split the view when multiple metrics are present", () => {
-      H.MetricsViewer.getLayoutControls()
-        .findByRole("button", { name: "split view" })
-        .should("not.exist");
+    it("should show unified view for display types that support multiple series", () => {
       addMetric("Count of products");
       cy.wait("@dataset");
+
+      cy.log("line charts support multiple series, so should be unified");
+      H.MetricsViewer.assertVizType("Line");
       H.MetricsViewer.getAllMetricVisualizations().should("have.length", 1);
 
-      H.MetricsViewer.getLayoutControls()
-        .findByRole("button", { name: "split view" })
-        .click();
-      H.MetricsViewer.getAllMetricVisualizations().should("have.length", 2);
+      cy.log("bar charts also support multiple series");
+      switchToTab("Category");
+      H.MetricsViewer.assertVizType("Bar");
+      H.MetricsViewer.getAllMetricVisualizations().should("have.length", 1);
+    });
 
+    it("should automatically split for display types that do not support multiple series", () => {
+      cy.log("with a single series, map shows one visualization");
+      switchToTab("State");
+      H.MetricsViewer.assertVizType("Map");
+      H.MetricsViewer.getAllMetricVisualizations().should("have.length", 1);
+
+      cy.log("add a breakout to create multiple series");
+      switchToTab("Created At");
       selectBreakout("Count of orders", "Source");
-      H.MetricsViewer.getAllMetricVisualizations().should("have.length", 6);
-      H.MetricsViewer.getLayoutControls()
-        .findByRole("button", { name: "unified view" })
-        .click();
+      cy.wait("@dataset");
+
+      cy.log("line supports multiple series, so should remain unified");
       H.MetricsViewer.getAllMetricVisualizations().should("have.length", 1);
+
+      cy.log("map does not support multiple series, so should auto-split");
+      switchToTab("State");
+      H.MetricsViewer.getAllMetricVisualizations().should(
+        "have.length.greaterThan",
+        1,
+      );
     });
   });
 
