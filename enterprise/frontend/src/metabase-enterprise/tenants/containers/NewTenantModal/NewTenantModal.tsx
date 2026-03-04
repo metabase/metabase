@@ -31,6 +31,7 @@ export const NewTenantModal = ({ onClose, location }: NewUserModalProps) => {
       ...vals,
       name: vals.name ?? "",
       slug: vals.slug ?? "",
+      attributes: vals.attributes ?? {},
     }).unwrap();
     dispatch(addUndo({ message: t`Tenant creation successful` }));
     onClose();
