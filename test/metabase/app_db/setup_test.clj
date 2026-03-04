@@ -50,7 +50,10 @@
   (testing "Can parse H2 version strings"
     (is (= {:major 2 :minor 1 :patch 214} (#'mdb.setup/parse-db-version "2.1.214 (2022-06-13)"))))
   (testing "Can parse postgres version strings"
-    (is (= {:major 18 :minor 3 :patch 0} (#'mdb.setup/parse-db-version "18.3 (Debian 18.3-1.pgdg13+1)"))))
+    (is (= {:major 18 :minor 3 :patch 0} (#'mdb.setup/parse-db-version "18.3 (Debian 18.3-1.pgdg13+1)")))
+    (is (= {:major 14 :minor 22 :patch 0} (#'mdb.setup/parse-db-version "14.22 (Debian 14.22-1.pgdg13+1)")))
+    (is (= {:major 11 :minor 16 :patch 0} (#'mdb.setup/parse-db-version "11.16 (Debian 11.16-1.pgdg90+1)"))))
+
   (testing "Can parse mysql version strings"
     (is (= {:major 2 :minor 1 :patch 214} (#'mdb.setup/parse-db-version "TODO"))))
   (testing "Can parse mariadb version strings"
