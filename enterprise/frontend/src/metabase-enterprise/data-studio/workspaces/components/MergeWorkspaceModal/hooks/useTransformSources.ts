@@ -3,8 +3,8 @@ import { useMemo } from "react";
 import { useGetTransformQuery } from "metabase/api";
 import { useSelector } from "metabase/lib/redux";
 import { getMetadata } from "metabase/selectors/metadata";
+import { collapseSourceTableReferences } from "metabase/transforms/utils";
 import { useGetWorkspaceTransformQuery } from "metabase-enterprise/api";
-import { extractTableId } from "metabase-enterprise/transforms-python/components/PythonTransformEditor/PythonDataPicker/utils";
 import type {
   PythonTransformSource,
   PythonTransformTableAliases,
@@ -79,35 +79,20 @@ export function useTransformSources(
   return {
     oldSource,
     oldSourceTables: isPythonTransformSource(globalTransform?.source)
-      ? normalizeSourceTables(globalTransform.source["source-tables"])
+      ? collapseSourceTableReferences(globalTransform.source["source-tables"])
       : undefined,
     oldTarget: globalTransform?.target,
     newSource,
     newSourceTables: isPythonTransformSource(workspaceTransform?.source)
-      ? normalizeSourceTables(workspaceTransform.source["source-tables"])
+      ? collapseSourceTableReferences(
+          workspaceTransform.source["source-tables"],
+        )
       : undefined,
     newTarget: workspaceTransform?.target,
     hasError,
     isLoading,
     diffStats,
   };
-}
-
-/**
- * Normalize source-tables from the backend (which may contain map refs with table_id)
- * to the canonical { alias: tableId } shape.
- */
-function normalizeSourceTables(
-  raw: Record<string, unknown>,
-): PythonTransformTableAliases {
-  const result: PythonTransformTableAliases = {};
-  for (const [alias, value] of Object.entries(raw)) {
-    const id = extractTableId(value as Record<string, unknown>);
-    if (id != null) {
-      result[alias] = id;
-    }
-  }
-  return result;
 }
 
 function isPythonTransformSource(

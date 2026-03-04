@@ -3,6 +3,7 @@ import { t } from "ttag";
 
 import { skipToken, useListTablesQuery } from "metabase/api";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
+import { extractTableId } from "metabase/transforms/utils";
 import { Box, Button, Icon, Stack, Text } from "metabase/ui";
 import type {
   ConcreteTableId,
@@ -17,7 +18,6 @@ import S from "./PythonDataPicker.module.css";
 import { TableSelector } from "./TableSelector";
 import type { TableSelection } from "./types";
 import {
-  extractTableId,
   getInitialTableSelections,
   selectionsToTableAliases,
   slugify,
