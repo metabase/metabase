@@ -1,11 +1,11 @@
-(ns metabase-enterprise.metabot-v3.tools.sql-validation
+(ns metabase-enterprise.metabot-v3.tools.sql.validation
   (:require
    [metabase.driver.util :as driver.u]
    [metabase.sql-tools.core :as sql-tools]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]))
 
-;; TODO: Complete the dialect map
+;; TODO: Should use only the driver for mapping
 (def driver->dialect
   "Map of driver to parser dialect."
   {:postgres "postgres"

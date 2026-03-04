@@ -11,7 +11,7 @@
   - `edit-sql-query`,
   - `replace-sql-query`."
   (:require
-   [metabase-enterprise.metabot-v3.tools.sql-validation :as metabot-v3.tools.sql-validation]
+   [metabase-enterprise.metabot-v3.tools.sql.validation :as metabot-v3.tools.sql.validation]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli.registry :as mr]))
 
@@ -32,7 +32,7 @@
   "Result of an operation as described this ns' docstring. Stores validation result and action result iff validation
   was successful."
   [:map
-   [:validation-result ::metabot-v3.tools.sql-validation/validation-result]
+   [:validation-result ::metabot-v3.tools.sql.validation/validation-result]
    [:action-result {:optional true} ::action-result]])
 
 (defn update-query-sql

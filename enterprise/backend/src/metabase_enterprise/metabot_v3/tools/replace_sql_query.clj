@@ -1,8 +1,8 @@
 (ns metabase-enterprise.metabot-v3.tools.replace-sql-query
   "Tool for replacing SQL query content entirely while preserving metadata."
   (:require
-   [metabase-enterprise.metabot-v3.tools.sql-validation :as metabot-v3.tools.sql-validation]
    [metabase-enterprise.metabot-v3.tools.sql.common :as metabot-v3.tools.sql.common]
+   [metabase-enterprise.metabot-v3.tools.sql.validation :as metabot-v3.tools.sql.validation]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]))
@@ -37,10 +37,10 @@
                        :query-id query-id
                        :available-queries (keys queries-state)})))
 
-    (let [dialect (metabot-v3.tools.sql-validation/query->dialect query)
+    (let [dialect (metabot-v3.tools.sql.validation/query->dialect query)
 
           {:keys [valid? transpiled-sql] :as validation-result}
-          (metabot-v3.tools.sql-validation/validate-sql dialect sql)]
+          (metabot-v3.tools.sql.validation/validate-sql dialect sql)]
       (merge {:validation-result validation-result}
              (when valid?
                (let [;; Replace the SQL content - handle both formats
