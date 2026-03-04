@@ -343,9 +343,7 @@ is_sample: false
                                                                                  "test-data (h2)" source-tables-yaml
                                                                                  :collection-id coll-entity-id)}}
                 mock-source (test-helpers/create-mock-source :initial-files test-files)
-                result      #p (impl/import! (source.p/snapshot mock-source) task-id)]
-            (when (= :error (:status result))
-              (println "ERROR:" (:message result)))
+                result      (impl/import! (source.p/snapshot mock-source) task-id)]
             (is (= :success (:status result))
                 (str "Import should succeed. Result: " result))
             (when-let [transform (t2/select-one :model/Transform :entity_id transform-entity-id)]
