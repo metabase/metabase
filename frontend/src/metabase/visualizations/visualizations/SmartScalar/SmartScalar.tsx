@@ -8,10 +8,6 @@ import {
   ScalarWrapper,
 } from "metabase/visualizations/components/ScalarValue/ScalarValue";
 import { useBrowserRenderingContext } from "metabase/visualizations/hooks/use-browser-rendering-context";
-import {
-  type NormalizableVisualizationProps,
-  useNormalizedVisualizationProps,
-} from "metabase/visualizations/hooks/use-normalized-visualization-props";
 import { ChartSettingsError } from "metabase/visualizations/lib/errors";
 import { compactifyValue } from "metabase/visualizations/lib/scalar_utils";
 import { columnSettings } from "metabase/visualizations/lib/settings/column";
@@ -23,6 +19,7 @@ import {
 import type {
   VisualizationDefinition,
   VisualizationPassThroughProps,
+  VisualizationProps,
   VisualizationSettingsDefinitions,
 } from "metabase/visualizations/types";
 import { isDimension, isMetric } from "metabase-lib/v1/types/utils/isa";
@@ -51,11 +48,9 @@ import {
   validateComparisons,
 } from "./utils";
 
-type SmartScalarProps = NormalizableVisualizationProps &
-  VisualizationPassThroughProps;
+type SmartScalarProps = VisualizationProps & VisualizationPassThroughProps;
 
 function SmartScalarComponent(props: SmartScalarProps) {
-  const normalizedProps = useNormalizedVisualizationProps(props);
   const { totalNumGridCols } = props;
   const {
     onVisualizationClick,
@@ -69,7 +64,7 @@ function SmartScalarComponent(props: SmartScalarProps) {
     height: normalizedHeight,
     fontFamily,
     onRenderError,
-  } = normalizedProps;
+  } = props;
   const scalarRef = useRef(null);
   const { getColor } = useBrowserRenderingContext({ fontFamily });
 

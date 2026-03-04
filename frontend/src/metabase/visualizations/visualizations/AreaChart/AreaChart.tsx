@@ -1,10 +1,6 @@
 import { t } from "ttag";
 
 import {
-  type NormalizableVisualizationProps,
-  useNormalizedVisualizationProps,
-} from "metabase/visualizations/hooks/use-normalized-visualization-props";
-import {
   getDefaultSize,
   getMinSize,
 } from "metabase/visualizations/shared/utils/sizes";
@@ -14,7 +10,7 @@ import {
   getCartesianChartDefinition,
 } from "metabase/visualizations/visualizations/CartesianChart/chart-definition";
 
-import type { VisualizationDefinition } from "../../types";
+import type { VisualizationDefinition, VisualizationProps } from "../../types";
 
 const AREA_CHART_DEFINITION = getCartesianChartDefinition({
   getUiName: () => t`Area`,
@@ -27,10 +23,8 @@ const AREA_CHART_DEFINITION = getCartesianChartDefinition({
   settings: COMBO_CHARTS_SETTINGS_DEFINITIONS,
 }) as VisualizationDefinition;
 
-function AreaChartComponent(props: NormalizableVisualizationProps) {
-  const normalizedProps = useNormalizedVisualizationProps(props);
-
-  return <CartesianChart {...normalizedProps} />;
+function AreaChartComponent(props: VisualizationProps) {
+  return <CartesianChart {...props} />;
 }
 
 export const AreaChart = Object.assign(

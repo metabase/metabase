@@ -3,10 +3,6 @@ import { t } from "ttag";
 
 import { color, staticVizOverrides } from "metabase/lib/colors";
 import {
-  type NormalizableVisualizationProps,
-  useNormalizedVisualizationProps,
-} from "metabase/visualizations/hooks/use-normalized-visualization-props";
-import {
   GRAPH_AXIS_SETTINGS,
   GRAPH_DATA_SETTINGS,
   GRAPH_DISPLAY_VALUES_SETTINGS,
@@ -19,6 +15,7 @@ import {
 import type {
   ComputedVisualizationSettings,
   VisualizationDefinition,
+  VisualizationProps,
 } from "metabase/visualizations/types";
 import { toVisualizationSettingsDefinitions } from "metabase/visualizations/types";
 import { isDimension, isMetric } from "metabase-lib/v1/types/utils/isa";
@@ -94,10 +91,8 @@ const WATERFALL_CHART_DEFINITION = getCartesianChartDefinition({
   }),
 }) as VisualizationDefinition;
 
-function WaterfallChartComponent(props: NormalizableVisualizationProps) {
-  const normalizedProps = useNormalizedVisualizationProps(props);
-
-  return <CartesianChart {...normalizedProps} />;
+function WaterfallChartComponent(props: VisualizationProps) {
+  return <CartesianChart {...props} />;
 }
 
 export const WaterfallChart = Object.assign(

@@ -1,10 +1,6 @@
 import { t } from "ttag";
 
 import {
-  type NormalizableVisualizationProps,
-  useNormalizedVisualizationProps,
-} from "metabase/visualizations/hooks/use-normalized-visualization-props";
-import {
   getDefaultSize,
   getMinSize,
 } from "metabase/visualizations/shared/utils/sizes";
@@ -20,7 +16,7 @@ import {
   GRAPH_TREND_SETTINGS,
   TOOLTIP_SETTINGS,
 } from "../../lib/settings/graph";
-import type { VisualizationDefinition } from "../../types";
+import type { VisualizationDefinition, VisualizationProps } from "../../types";
 import { toVisualizationSettingsDefinitions } from "../../types";
 
 const SCATTER_PLOT_DEFINITION = getCartesianChartDefinition({
@@ -42,10 +38,8 @@ const SCATTER_PLOT_DEFINITION = getCartesianChartDefinition({
   }),
 }) as VisualizationDefinition;
 
-function ScatterPlotComponent(props: NormalizableVisualizationProps) {
-  const normalizedProps = useNormalizedVisualizationProps(props);
-
-  return <CartesianChart {...normalizedProps} />;
+function ScatterPlotComponent(props: VisualizationProps) {
+  return <CartesianChart {...props} />;
 }
 
 export const ScatterPlot = Object.assign(

@@ -9,7 +9,6 @@ import ChartCaption from "metabase/visualizations/components/ChartCaption";
 import { TransformedVisualization } from "metabase/visualizations/components/TransformedVisualization";
 import { ChartSettingOrderedSimple } from "metabase/visualizations/components/settings/ChartSettingOrderedSimple";
 import { useBrowserRenderingContext } from "metabase/visualizations/hooks/use-browser-rendering-context";
-import { useNormalizedVisualizationProps } from "metabase/visualizations/hooks/use-normalized-visualization-props";
 import { groupRawSeriesMetrics } from "metabase/visualizations/lib/dataset";
 import {
   ChartSettingsError,
@@ -194,7 +193,6 @@ const FUNNEL_CHART_DEFINITION: VisualizationDefinition = {
 };
 
 function FunnelComponent(props: VisualizationProps) {
-  const normalizedProps = useNormalizedVisualizationProps(props);
   const {
     headerIcon,
     settings,
@@ -210,7 +208,7 @@ function FunnelComponent(props: VisualizationProps) {
     isDashboard,
     isEditing,
     titleMenuItems,
-  } = normalizedProps;
+  } = props;
   const hasTitle = showTitle && settings["card.title"];
 
   const groupedRawSeries = groupRawSeriesMetrics(
@@ -223,7 +221,7 @@ function FunnelComponent(props: VisualizationProps) {
   if (settings["funnel.type"] === "bar") {
     return (
       <TransformedVisualization
-        originalProps={{ ...normalizedProps, rawSeries: groupedRawSeries }}
+        originalProps={{ ...props, rawSeries: groupedRawSeries }}
         VisualizationComponent={BarChart}
         transformSeries={funnelToBarTransform}
         renderingContext={renderingContext}
@@ -253,7 +251,7 @@ function FunnelComponent(props: VisualizationProps) {
         />
       )}
       <FunnelNormal
-        {...normalizedProps}
+        {...props}
         rawSeries={groupedRawSeries}
         className={CS.flexFull}
       />

@@ -16,18 +16,14 @@ import {
   usePieChartValuesColorsClasses,
 } from "metabase/visualizations/echarts/tooltip";
 import { useBrowserRenderingContext } from "metabase/visualizations/hooks/use-browser-rendering-context";
-import {
-  type NormalizableVisualizationProps,
-  useNormalizedVisualizationProps,
-} from "metabase/visualizations/hooks/use-normalized-visualization-props";
+import type { VisualizationProps } from "metabase/visualizations/types";
 import { useTooltipMouseLeave } from "metabase/visualizations/visualizations/CartesianChart/use-tooltip-mouse-leave";
 
 import S from "./PieChart.module.css";
 import { PIE_CHART_DEFINITION } from "./chart-definition";
 import { useChartEvents } from "./use-chart-events";
 
-function PieChartComponent(props: NormalizableVisualizationProps) {
-  const normalizedProps = useNormalizedVisualizationProps(props);
+function PieChartComponent(props: VisualizationProps) {
   const {
     fontFamily,
     rawSeries,
@@ -36,9 +32,9 @@ function PieChartComponent(props: NormalizableVisualizationProps) {
     isDashboard,
     isDocument,
     isFullscreen,
-  } = normalizedProps;
-  const hoveredIndex = normalizedProps.hovered?.index;
-  const hoveredSliceKeyPath = normalizedProps.hovered?.pieSliceKeyPath;
+  } = props;
+  const hoveredIndex = props.hovered?.index;
+  const hoveredSliceKeyPath = props.hovered?.pieSliceKeyPath;
 
   const containerRef = useRef<HTMLDivElement>(null);
   const chartRef = useRef<EChartsType>();
@@ -113,7 +109,7 @@ function PieChartComponent(props: NormalizableVisualizationProps) {
     [],
   );
 
-  const eventHandlers = useChartEvents(normalizedProps, chartRef, chartModel);
+  const eventHandlers = useChartEvents(props, chartRef, chartModel);
 
   const slices = useMemo(
     () => getArrayFromMapValues(chartModel.sliceTree),
@@ -156,7 +152,7 @@ function PieChartComponent(props: NormalizableVisualizationProps) {
   const showLegend = settings["pie.show_legend"];
 
   const onHoverChange = (hoverData: any) =>
-    normalizedProps.onHoverChange(
+    props.onHoverChange(
       hoverData && {
         ...hoverData,
         pieLegendHoverIndex: hoverData.index,
@@ -185,10 +181,10 @@ function PieChartComponent(props: NormalizableVisualizationProps) {
       legendColors={legendColors}
       showLegend={showLegend}
       onHoverChange={onHoverChange}
-      className={normalizedProps.className}
+      className={props.className}
       chartClassName={S.PieChartContainer}
-      gridSize={normalizedProps.gridSize}
-      hovered={normalizedProps.hovered}
+      gridSize={props.gridSize}
+      hovered={props.hovered}
       isDashboard={isDashboard}
       onToggleSeriesVisibility={handleToggleSeriesVisibility}
       isDocument={isDocument}

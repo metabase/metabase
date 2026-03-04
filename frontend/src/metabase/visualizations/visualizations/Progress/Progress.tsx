@@ -5,7 +5,7 @@ import { t } from "ttag";
 import CS from "metabase/css/core/index.css";
 import { formatValue } from "metabase/lib/formatting";
 import { Flex, Icon } from "metabase/ui";
-import type { NormalizableVisualizationProps } from "metabase/visualizations/hooks/use-normalized-visualization-props";
+import type { VisualizationProps } from "metabase/visualizations/types";
 
 import { PROGRESS_CHART_DEFINITION } from "./chart-definition";
 import {
@@ -22,7 +22,7 @@ const MAX_BAR_HEIGHT = 65;
 const MIN_BAR_HEIGHT = 30;
 const COMPONENT_HEIGHT_TO_MIN_BAR_HEIGHT = 99;
 
-function ProgressComponent(props: NormalizableVisualizationProps) {
+function ProgressComponent(props: VisualizationProps) {
   const {
     className,
     isMobile,
