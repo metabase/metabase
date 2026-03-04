@@ -301,6 +301,101 @@ describe("scenarios > metrics > explorer", () => {
       H.MetricsViewer.changeVizType("line");
       H.MetricsViewer.assertVizType("Line");
     });
+
+    it("should show all dimension tabs in a grid on the All dimensions tab", () => {
+      const dimensionTabs = ["Created At", "State", "Category", "Vendor"];
+
+      addMetric("Count of products");
+      cy.wait("@dataset");
+
+      cy.log("All dimensions tab should be selected by default");
+      H.MetricsViewer.tablist()
+        .findByRole("tab", { name: "All dimensions" })
+        .click();
+
+      cy.log("should show one visualization card per dimension tab");
+      H.MetricsViewer.getAllCards().should("have.length", dimensionTabs.length);
+
+      cy.log("each card should be labeled with its dimension name");
+      dimensionTabs.forEach((name) => {
+        H.MetricsViewer.getAllCards().contains(name).should("be.visible");
+      });
+
+      cy.log(
+        "clicking a dimension tab should show a single visualization instead of the grid",
+      );
+      switchToTab("Category");
+      H.MetricsViewer.getAllMetricVisualizations().should("have.length", 1);
+
+      cy.log("switching back to All dimensions should restore the grid");
+      switchToTab("All dimensions");
+      H.MetricsViewer.getAllCards().should("have.length", dimensionTabs.length);
+
+      cy.log("split view on a tab should be reflected in its grid card");
+      switchToTab("Category");
+      H.MetricsViewer.getAllMetricVisualizations().should("have.length", 1);
+      H.MetricsViewer.getLayoutControls()
+        .findByRole("button", { name: "split view" })
+        .click();
+      H.MetricsViewer.getAllMetricVisualizations().should("have.length", 2);
+
+      switchToTab("All dimensions");
+      H.MetricsViewer.getAllCards().should("have.length", dimensionTabs.length);
+      H.MetricsViewer.getAllCards()
+        .contains("Category")
+        .closest("[data-testid='metrics-viewer-card']")
+        .findAllByTestId("visualization-root")
+        .should("have.length", 2);
+      H.MetricsViewer.getAllCards()
+        .contains("Created At")
+        .closest("[data-testid='metrics-viewer-card']")
+        .findAllByTestId("visualization-root")
+        .should("have.length", 1);
+    });
+
+    it("should add a dimension tab and remove it", () => {
+      H.MetricsViewer.tabsShouldBe([
+        "All dimensions",
+        "Created At",
+        "State",
+        "Category",
+        "Vendor",
+      ]);
+
+      cy.log("add a new dimension tab");
+      H.MetricsViewer.getAddDimensionButton().click();
+      H.popover().findByPlaceholderText(/Find/).should("be.visible");
+      H.popover().findByText("Source").click();
+      cy.wait("@dataset");
+
+      H.MetricsViewer.tabsShouldBe([
+        "All dimensions",
+        "Created At",
+        "State",
+        "Category",
+        "Vendor",
+        "Source",
+      ]);
+
+      cy.log("new tab should be selected and show correct viz type");
+      H.MetricsViewer.tablist()
+        .findByRole("tab", { name: "Source" })
+        .should("have.attr", "aria-selected", "true");
+      H.MetricsViewer.assertVizType("Bar");
+
+      cy.log("remove the added tab");
+      H.MetricsViewer.getRemoveTabButton("Source").click();
+      H.MetricsViewer.tablist()
+        .findByRole("tab", { name: "Source" })
+        .should("not.exist");
+      H.MetricsViewer.tabsShouldBe([
+        "All dimensions",
+        "Created At",
+        "State",
+        "Category",
+        "Vendor",
+      ]);
+    });
   });
 
   // ============================================================================

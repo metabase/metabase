@@ -102,7 +102,12 @@ export function MetricsViewerCard({
   }
 
   return (
-    <Paper withBorder shadow="none" className={S.card}>
+    <Paper
+      withBorder
+      shadow="none"
+      className={S.card}
+      data-testid="metrics-viewer-card"
+    >
       <Stack h="100%">
         {tab.label && (
           <Text fw="bold" size="md" truncate="end" px="md" pt="sm">
