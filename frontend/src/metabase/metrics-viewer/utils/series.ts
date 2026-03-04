@@ -183,7 +183,7 @@ function splitByBreakout(
       .join(": ");
 
     const seriesKey = getSeriesVizSettingsKey(
-      cols[metricColumnIndexes[0] || 0], // TODO: Find a better solution here
+      cols[metricColumnIndexes[0] || 0], // first metric column after projections
       false,
       true,
       1,
@@ -294,7 +294,7 @@ export function buildRawSeriesFromDefinitions(
     const name = getDefinitionName(entry.definition);
 
     const seriesKey = getSeriesVizSettingsKey(
-      result.data.cols[1], // TODO: There is almost certainly be a better way to do this
+      result.data.cols[1], // metric API returns [projection_cols..., aggregation_col]
       false,
       true,
       1,

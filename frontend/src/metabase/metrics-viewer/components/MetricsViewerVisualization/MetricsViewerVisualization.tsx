@@ -1,3 +1,5 @@
+import { noop } from "underscore";
+
 import { DebouncedFrame } from "metabase/common/components/DebouncedFrame";
 import type { DimensionItem } from "metabase/metrics-viewer/components/DimensionPillBar";
 import { DimensionPillBar } from "metabase/metrics-viewer/components/DimensionPillBar";
@@ -16,8 +18,6 @@ import type {
 } from "../../types/viewer-state";
 
 import S from "./MetricsViewerVisualization.module.css";
-
-const noop = () => {};
 
 type MetricsViewerVisualizationProps = {
   rawSeries: SingleSeries[];

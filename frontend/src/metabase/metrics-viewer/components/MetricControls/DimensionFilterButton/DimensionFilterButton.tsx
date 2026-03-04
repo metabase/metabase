@@ -14,7 +14,10 @@ import type {
 import * as LibMetric from "metabase-lib/metric";
 
 import type { DimensionFilterValue } from "../../../utils/metrics";
-import { buildDimensionFilterClause, parseFilter } from "../../../utils/metrics";
+import {
+  buildDimensionFilterClause,
+  parseFilter,
+} from "../../../utils/metrics";
 import S from "../MetricControls.module.css";
 
 function getFilterDisplayName(
@@ -28,15 +31,6 @@ function getFilterDisplayName(
   }
 
   switch (dimensionFilter.type) {
-    case "string": {
-      const operator = Lib.describeFilterOperator(
-        dimensionFilter.operator,
-      ).toLowerCase();
-      if (dimensionFilter.values.length === 0) {
-        return operator;
-      }
-      return `${operator} ${dimensionFilter.values.join(", ")}`;
-    }
     case "boolean": {
       if (
         dimensionFilter.operator === "=" &&
@@ -45,21 +39,6 @@ function getFilterDisplayName(
         return dimensionFilter.values[0] ? t`True` : t`False`;
       }
       return Lib.describeFilterOperator(dimensionFilter.operator).toLowerCase();
-    }
-    case "number": {
-      const operator = Lib.describeFilterOperator(
-        dimensionFilter.operator,
-      ).toLowerCase();
-      if (dimensionFilter.values.length === 0) {
-        return operator;
-      }
-      return `${operator} ${dimensionFilter.values.join(", ")}`;
-    }
-    case "coordinate": {
-      const operator = Lib.describeFilterOperator(
-        dimensionFilter.operator,
-      ).toLowerCase();
-      return `${operator} ${dimensionFilter.values.join(", ")}`;
     }
     case "time": {
       const operator = Lib.describeFilterOperator(
@@ -70,9 +49,19 @@ function getFilterDisplayName(
         .join(", ");
       return `${operator} ${formattedValues}`;
     }
-    case "default": {
-      return Lib.describeFilterOperator(dimensionFilter.operator).toLowerCase();
+    case "string":
+    case "number":
+    case "coordinate": {
+      const operator = Lib.describeFilterOperator(
+        dimensionFilter.operator,
+      ).toLowerCase();
+      if (dimensionFilter.values.length === 0) {
+        return operator;
+      }
+      return `${operator} ${dimensionFilter.values.join(", ")}`;
     }
+    case "default":
+      return Lib.describeFilterOperator(dimensionFilter.operator).toLowerCase();
     default:
       return "";
   }

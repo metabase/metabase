@@ -23,7 +23,10 @@ export function parseSourceId(sourceId: MetricSourceId): {
   type: "metric" | "measure";
   id: number;
 } {
-  const [type, idStr] = sourceId.split(":") as ["metric" | "measure", string];
+  const [type, idStr] = sourceId.split(":");
+  if (type !== "metric" && type !== "measure") {
+    throw new Error(`Invalid source ID format: ${sourceId}`);
+  }
   const id = Number(idStr);
   if (Number.isNaN(id)) {
     throw new Error(`Invalid source ID format: ${sourceId}`);
