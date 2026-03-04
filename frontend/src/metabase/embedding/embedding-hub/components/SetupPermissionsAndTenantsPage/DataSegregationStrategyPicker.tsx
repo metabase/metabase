@@ -5,12 +5,11 @@ import { t } from "ttag";
 import type { IconName } from "metabase/ui";
 import { Button, Flex, Group, Icon, Radio, Stack, Text } from "metabase/ui";
 
+import type { DataSegregationStrategy } from "../../types";
+
 import S from "./DataSegregationStrategyPicker.module.css";
 
-export type DataSegregationStrategy =
-  | "row-column-level-security"
-  | "connection-impersonation"
-  | "database-routing";
+export type { DataSegregationStrategy };
 
 interface DataSegregationStrategyPickerProps {
   value: DataSegregationStrategy | null;
