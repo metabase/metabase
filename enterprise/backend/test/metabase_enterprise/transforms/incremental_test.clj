@@ -317,7 +317,7 @@
             transform-type [:native :mbql :python]
             :when (valid-checkpoint-transform-combo? checkpoint-type transform-type)]
       (testing (format "with %s checkpoint on %s transform" (name checkpoint-type) (name transform-type))
-        (mt/test-drivers (disj (test-drivers) :bigquery-cloud-sdk) ; will follow up with a fix via GDGT-1777
+        (mt/test-drivers (test-drivers)
           (mt/with-premium-features #{:transforms :transforms-python}
             (mt/dataset transforms-dataset/transforms-test
               (with-transform-cleanup! [target-table (target-table-gen "switch_incr_to_non_incr")]
