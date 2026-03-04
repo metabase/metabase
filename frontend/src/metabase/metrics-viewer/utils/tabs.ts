@@ -74,12 +74,19 @@ type DimensionInfo = {
   displayName: string;
   type: MetricsViewerTabType;
   group?: DimensionGroup;
+  isDefault?: boolean;
 };
 
 export function getDimensionsByType(
   def: MetricDefinition,
 ): Map<string, DimensionInfo> {
   const result = new Map<string, DimensionInfo>();
+
+  const defaultDimIds = new Set(
+    LibMetric.defaultBreakoutDimensions(def)
+      .map(dim => LibMetric.dimensionValuesInfo(def, dim).id)
+      .filter(Boolean),
+  );
 
   for (const dimension of LibMetric.projectionableDimensions(def)) {
     if (!isDimensionCandidate(dimension)) {
@@ -104,6 +111,7 @@ export function getDimensionsByType(
       displayName: displayInfo.displayName,
       type,
       group: displayInfo.group,
+      isDefault: defaultDimIds.has(valuesInfo.id),
     });
   }
 
@@ -173,6 +181,18 @@ function findFirstDimOfType(
 ): DimensionInfo | null {
   for (const [, info] of dims) {
     if (info.type === type) {
+      return info;
+    }
+  }
+  return null;
+}
+
+function findDefaultDimOfType(
+  dims: Map<string, DimensionInfo>,
+  type: MetricsViewerTabType,
+): DimensionInfo | null {
+  for (const [, info] of dims) {
+    if (info.type === type && info.isDefault) {
       return info;
     }
   }
@@ -262,15 +282,42 @@ function resolveAggregateDimensions(
   let referenceDimension: DimensionMetadata | null = null;
   let referenceName: string | null = null;
 
+  let defaultRef: { sourceId: MetricSourceId; dim: DimensionInfo } | null =
+    null;
   for (const sourceId of sourceOrder) {
+    const dims = dimsBySource.get(sourceId);
+    if (!dims) {
+      continue;
+    }
+    const defaultDim = findDefaultDimOfType(dims, config.type);
+    if (defaultDim) {
+      defaultRef = { sourceId, dim: defaultDim };
+      break;
+    }
+  }
+
+  if (defaultRef) {
+    mapping[defaultRef.sourceId] = defaultRef.dim.id;
+    referenceDimension = defaultRef.dim.dimension;
+    referenceName = defaultRef.dim.name ?? null;
+  }
+
+  for (const sourceId of sourceOrder) {
+    if (mapping[sourceId]) {
+      continue;
+    }
+
     const dimensions = dimsBySource.get(sourceId);
     if (!dimensions) {
       continue;
     }
 
-    let match: DimensionInfo | null = null;
+    let match: DimensionInfo | null = findDefaultDimOfType(
+      dimensions,
+      config.type,
+    );
 
-    if (referenceDimension) {
+    if (!match && referenceDimension) {
       let nameMatch: DimensionInfo | null = null;
 
       for (const [, info] of dimensions) {
@@ -577,6 +624,11 @@ export function findMatchingDimensionForTab(
     }
 
     return null;
+  }
+
+  const defaultDim = findDefaultDimOfType(dimensionsByType, config.type);
+  if (defaultDim) {
+    return defaultDim.id;
   }
 
   const reference = findReferenceFromTab(tab, config.type, baseDefinitions);

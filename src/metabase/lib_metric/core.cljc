@@ -67,6 +67,7 @@
      metadata-provider]
     [lib-metric.projection
      add-projection-positions
+     default-breakout-dimensions
      projectable-dimensions])
 
    :cljs
@@ -92,4 +93,5 @@
      (def metric-context-metadata-provider "See [[lib-metric.metadata.provider/metric-context-metadata-provider]]." lib-metric.metadata.provider/metric-context-metadata-provider)
      (def metadata-provider "See [[lib-metric.metadata.js/metadata-provider]]." lib-metric.metadata.js/metadata-provider)
      (def add-projection-positions "See [[lib-metric.projection/add-projection-positions]]." lib-metric.projection/add-projection-positions)
+     (def default-breakout-dimensions "See [[lib-metric.projection/default-breakout-dimensions]]." lib-metric.projection/default-breakout-dimensions)
      (def projectable-dimensions "See [[lib-metric.projection/projectable-dimensions]]." lib-metric.projection/projectable-dimensions)))

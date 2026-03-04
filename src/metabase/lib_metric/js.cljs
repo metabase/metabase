@@ -583,6 +583,11 @@
    (to-array (lib-metric.projection/projectable-dimensions-for-source
               definition source-metadata))))
 
+(defn ^:export defaultBreakoutDimensions
+  "Get dimensions corresponding to the source metric's default breakout columns."
+  [definition]
+  (to-array (lib-metric.projection/default-breakout-dimensions definition)))
+
 (defn ^:export dimensionReference
   "Convert a DimensionMetadata map to a bare dimension reference [:dimension {} uuid].
    If already a reference, returns it as-is."

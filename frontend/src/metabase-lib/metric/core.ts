@@ -370,6 +370,12 @@ export function projections(
   return LibMetric.projections(definition) as ProjectionClause[];
 }
 
+export function defaultBreakoutDimensions(
+  definition: MetricDefinition,
+): DimensionMetadata[] {
+  return LibMetric.defaultBreakoutDimensions(definition) as DimensionMetadata[];
+}
+
 export function projectionableDimensions(
   definition: MetricDefinition,
 ): DimensionMetadata[];

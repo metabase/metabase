@@ -5,6 +5,8 @@
    [metabase.lib-metric.definition :as lib-metric.definition]
    [metabase.lib-metric.dimension :as lib-metric.dimension]
    [metabase.lib-metric.schema :as lib-metric.schema]
+   [metabase.lib.core :as lib]
+   [metabase.lib.metadata.protocols :as lib.metadata.protocols]
    [metabase.lib.options :as lib.options]
    [metabase.lib.schema.temporal-bucketing :as lib.schema.temporal-bucketing]
    [metabase.util.i18n :as i18n]
@@ -302,3 +304,39 @@
                                   (if binning-val
                                     (assoc opts :binning binning-val)
                                     (dissoc opts :binning))))))
+
+;;; -------------------------------------------------- Default Breakout Dimensions --------------------------------------------------
+
+(defn- dimension-has-field-id?
+  "Check if a dimension has a source matching any of the given field IDs."
+  [field-ids dimension]
+  (some (fn [source]
+          (when-let [fid (:field-id source)]
+            (field-ids fid)))
+        (:sources dimension)))
+
+(mu/defn default-breakout-dimensions :- [:sequential ::lib-metric.schema/metadata-dimension]
+  "Get dimensions corresponding to the source metric's default breakout columns.
+   Returns DimensionMetadata objects matching the breakout field-ids in the dataset_query."
+  [definition :- ::lib-metric.schema/metric-definition]
+  (let [{:keys [expression metadata-provider]} definition
+        leaf-type (lib-metric.definition/expression-leaf-type expression)
+        leaf-id   (lib-metric.definition/expression-leaf-id expression)]
+    (if-not leaf-type
+      []
+      (let [metadata-type (case leaf-type :metric :metadata/metric :measure :metadata/measure)
+            metadata      (first (lib.metadata.protocols/metadatas
+                                  metadata-provider
+                                  {:lib/type metadata-type :id #{leaf-id}}))
+            raw-query     (lib-metric.dimension/dimensionable-query metadata)]
+        (if-not raw-query
+          []
+          (let [pmbql-query        (lib/query metadata-provider raw-query)
+                breakout-clauses   (lib/breakouts pmbql-query)
+                breakout-field-ids (into #{}
+                                        (keep lib-metric.dimension/dimension-target->field-id)
+                                        breakout-clauses)]
+            (if (empty? breakout-field-ids)
+              []
+              (filterv #(dimension-has-field-id? breakout-field-ids %)
+                       (projectable-dimensions definition)))))))))
