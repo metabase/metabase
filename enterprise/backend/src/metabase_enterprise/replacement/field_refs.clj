@@ -1,12 +1,15 @@
 (ns metabase-enterprise.replacement.field-refs
   (:require
    [clojure.walk :as clojure.walk]
+   [metabase-enterprise.replacement.schema :as replacement.schema]
+   [metabase-enterprise.replacement.util :as replacement.util]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.field.resolution :as lib.field.resolution]
    [metabase.lib.options :as lib.options]
    [metabase.lib.util :as lib.util]
    [metabase.models.visualization-settings :as vs]
+   [metabase.util.malli :as mu]
    [toucan2.core :as t2]))
 
 ;; I tried putting the various {dashboard-card,card,transform}-upgrade-field-refs! functions in the respective models
@@ -42,7 +45,7 @@
 
 (defn- upgrade-field-ref-to-name
   [query field-ref]
-  (when (= :field (first field-ref))
+  (when (= :field (keyword (first field-ref)))
     (try
       (let [field-ref (lib/->pMBQL field-ref)]
         (when (lib.util/field-clause? field-ref)
@@ -90,31 +93,32 @@
 
 (defn- card-upgrade-field-refs!
   [card]
-  (let [dataset-query  (:dataset_query card)
-        dataset-query' (lib-be/upgrade-field-refs-in-query dataset-query)
-        viz            (:visualization_settings card)
-        viz' (-> viz
-                 vs/db->norm
-                 (update-existing ::vs/column-settings upgrade-card-column-settings dataset-query')
-                 (upgrade-viz-settings-locations dataset-query')
-                 vs/norm->db)
-        changes (cond-> {}
-                  (not= dataset-query dataset-query')
-                  (assoc :dataset_query dataset-query')
+  (when (replacement.util/valid-query? (:dataset_query card))
+    (let [dataset-query  (:dataset_query card)
+          dataset-query' (lib-be/upgrade-field-refs-in-query dataset-query)
+          viz            (:visualization_settings card)
+          viz' (-> viz
+                   vs/db->norm
+                   (update-existing ::vs/column-settings upgrade-card-column-settings dataset-query')
+                   (upgrade-viz-settings-locations dataset-query')
+                   vs/norm->db)
+          changes (cond-> {}
+                    (not= dataset-query dataset-query')
+                    (assoc :dataset_query dataset-query')
 
-                  ;; result_metadata is set to nil for native queries if not present in changes
-                  (and (not= dataset-query dataset-query') (lib/native-only-query? dataset-query'))
-                  (assoc :result_metadata (:result_metadata card))
+                    ;; result_metadata is set to nil for native queries if not present in changes
+                    (and (not= dataset-query dataset-query') (lib/native-only-query? dataset-query'))
+                    (assoc :result_metadata (:result_metadata card))
 
-                  (not= viz viz')
-                  (assoc :visualization_settings viz'))]
-    (when (seq changes)
-      (t2/update! :model/Card (:id card) changes))))
+                    (not= viz viz')
+                    (assoc :visualization_settings viz'))]
+      (when (seq changes)
+        (t2/update! :model/Card (:id card) changes)))))
 
 (defn- transform-upgrade-field-refs!
   [transform]
   (let [source (:source transform)]
-    (when (= :query (:type source))
+    (when (and (= :query (:type source) (replacement.util/valid-query? (:query source))))
       (let [query (:query source)
             query' (lib-be/upgrade-field-refs-in-query query)]
         (when (not= query query')
@@ -122,17 +126,19 @@
 
 (defn- segment-upgrade-field-refs!
   [segment]
-  (let [definition  (:definition segment)
-        definition' (lib-be/upgrade-field-refs-in-query definition)]
-    (when (not= definition definition')
-      (t2/update! :model/Segment (:id segment) {:definition definition'}))))
+  (when (replacement.util/valid-query? (:definition segment))
+    (let [definition  (:definition segment)
+          definition' (lib-be/upgrade-field-refs-in-query definition)]
+      (when (not= definition definition')
+        (t2/update! :model/Segment (:id segment) {:definition definition'})))))
 
 (defn- measure-upgrade-field-refs!
   [measure]
-  (let [definition  (:definition measure)
-        definition' (lib-be/upgrade-field-refs-in-query definition)]
-    (when (not= definition definition')
-      (t2/update! :model/Measure (:id measure) {:definition definition'}))))
+  (when (replacement.util/valid-query? (:definition measure))
+    (let [definition  (:definition measure)
+          definition' (lib-be/upgrade-field-refs-in-query definition)]
+      (when (not= definition definition')
+        (t2/update! :model/Measure (:id measure) {:definition definition'})))))
 
 (defn dashboard-upgrade-field-refs!
   "Upgrade field refs in parameter_mappings and column_settings for all dashcards in a dashboard.
@@ -151,12 +157,15 @@
       (let [parameter-mappings  (:parameter_mappings dashcard)
             parameter-mappings' (mapv (fn [pm]
                                         (if-let [card (get cards-by-id (:card_id pm))]
-                                          (let [query (lib-be/upgrade-field-refs-in-query (:dataset_query card))]
-                                            (upgrade-parameter-mappings query pm))
+                                          (if (replacement.util/valid-query? (:dataset_query card))
+                                            (let [query (lib-be/upgrade-field-refs-in-query (:dataset_query card))]
+                                              (upgrade-parameter-mappings query pm))
+                                            pm)
                                           pm))
                                       parameter-mappings)
             primary-card    (get cards-by-id (:card_id dashcard))
-            primary-query   (some-> primary-card :dataset_query lib-be/upgrade-field-refs-in-query)
+            primary-query   (when (replacement.util/valid-query? (:dataset_query primary-card))
+                              (lib-be/upgrade-field-refs-in-query (:dataset_query primary-card)))
             viz             (vs/db->norm (:visualization_settings dashcard))
             column-settings (::vs/column-settings viz)
             column-settings' (if primary-query
@@ -172,39 +181,22 @@
         (when (seq changes)
           (t2/update! :model/DashboardCard (:id dashcard) changes))))))
 
-(defn upgrade!
+(mu/defn upgrade!
   "Upgrade field refs in an entity.
 
-  The entity can be:
-  - A [type id] tuple like [:dashboard 123] or [:card 456] (used by runner)
-  - A map object (card, transform, segment, or measure) with the entity already loaded
-  - nil or other (no-op)
-
-  For [type id] tuples, `loaded-object` should be the pre-fetched entity map from
-  bulk-load-metadata-for-entities!. Dashboards don't use loaded-object (not bulk-loaded)."
-  ([entity]
-   (upgrade! entity nil))
-  ([entity loaded-object]
-   (cond
-     ;; [type id] tuple format - used by runner
-     (and (vector? entity) (= 2 (count entity)))
-     (let [[entity-type entity-id] entity]
-       (case entity-type
-         :dashboard (dashboard-upgrade-field-refs! entity-id)
-         :card      (when loaded-object (card-upgrade-field-refs! loaded-object))
-         :transform (when loaded-object (transform-upgrade-field-refs! loaded-object))
-         :segment   (when loaded-object (segment-upgrade-field-refs! loaded-object))
-         :measure   (when loaded-object (measure-upgrade-field-refs! loaded-object))
-         ;; table, document - no-op
-         nil))
-
-     ;; Direct entity map (for backwards compatibility)
-     (map? entity)
-     (cond
-       (:dataset_query entity) (card-upgrade-field-refs! entity)
-       (and (:source entity) (:id entity)) (transform-upgrade-field-refs! entity)
-       (and (:definition entity) (:table_id entity) (not (:aggregation entity))) (segment-upgrade-field-refs! entity)
-       (:definition entity) (measure-upgrade-field-refs! entity)
-       :else :do-nothing)
-
-     :else :do-nothing)))
+  `entity-ref` is a [type id] tuple like [:dashboard 123] or [:card 456].
+  `loaded-object` is an optional pre-fetched entity map from bulk-load-metadata-for-entities!.
+  Dashboards don't use loaded-object (not bulk-loaded)."
+  ([entity-ref :- ::replacement.schema/entity-ref]
+   (upgrade! entity-ref nil))
+  ([entity-ref :- ::replacement.schema/entity-ref
+    loaded-object]
+   (let [[entity-type entity-id] entity-ref]
+     (case entity-type
+       :dashboard (dashboard-upgrade-field-refs! entity-id)
+       :card      (when loaded-object (card-upgrade-field-refs! loaded-object))
+       :transform (when loaded-object (transform-upgrade-field-refs! loaded-object))
+       :segment   (when loaded-object (segment-upgrade-field-refs! loaded-object))
+       :measure   (when loaded-object (measure-upgrade-field-refs! loaded-object))
+       ;; table - no-op
+       nil))))

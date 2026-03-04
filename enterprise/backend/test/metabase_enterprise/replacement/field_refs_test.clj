@@ -313,12 +313,8 @@
 
 ;;; ----------------------------------------- upgrade! dispatch ----------------------------------------
 
-(deftest upgrade-dispatch-nil-test
-  (testing "upgrade! with nil entity is a no-op"
-    (is (= :do-nothing (field-refs/upgrade! nil)))))
-
-(deftest upgrade-dispatch-unknown-vector-test
-  (testing "upgrade! with unknown entity type vector is a no-op"
+(deftest upgrade-dispatch-table-test
+  (testing "upgrade! with :table entity is a no-op"
     (is (nil? (field-refs/upgrade! [:table 123])))))
 
 (deftest upgrade-dispatch-unknown-map-test

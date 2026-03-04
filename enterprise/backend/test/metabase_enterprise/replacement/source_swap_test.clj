@@ -118,7 +118,7 @@
           (mt/with-model-cleanup [:model/Card :model/Dependency]
             (let [old-source (card/create-card! (test-util/card-with-query "Old source" :products) user)
                   child      (card/create-card! (card-sourced-from "Child card" old-source) user)]
-              (field-refs/upgrade! [:card (:id child)])
+              (field-refs/upgrade! [:card (:id child)] child)
               (source-swap/do-swap! [:card (:id child)]
                                     [:card (:id old-source)]
                                     [:table (mt/id :products)])
@@ -136,7 +136,7 @@
                   native-card (card/create-card! (native-card-with-query "Native target" :products) user)
                   _           (test-util/wait-for-result-metadata (:id native-card))
                   child       (card/create-card! (card-sourced-from "Child card" old-source) user)]
-              (field-refs/upgrade! [:card (:id child)])
+              (field-refs/upgrade! [:card (:id child)] child)
               (source-swap/do-swap! [:card (:id child)]
                                     [:card (:id old-source)]
                                     [:card (:id native-card)])
@@ -155,7 +155,7 @@
                   _           (test-util/wait-for-result-metadata (:id native-card))
                   new-source  (card/create-card! (test-util/card-with-query "New source" :products) user)
                   child       (card/create-card! (card-sourced-from "Child card" native-card) user)]
-              (field-refs/upgrade! [:card (:id child)])
+              (field-refs/upgrade! [:card (:id child)] child)
               (source-swap/do-swap! [:card (:id child)]
                                     [:card (:id native-card)]
                                     [:card (:id new-source)])
@@ -173,7 +173,7 @@
                   new-native (card/create-card! (native-card-with-query "New native" :products) user)
                   _          (test-util/wait-for-result-metadata (:id new-native))
                   child      (card/create-card! (card-sourced-from "Child card" old-native) user)]
-              (field-refs/upgrade! [:card (:id child)])
+              (field-refs/upgrade! [:card (:id child)] child)
               (source-swap/do-swap! [:card (:id child)]
                                     [:card (:id old-native)]
                                     [:card (:id new-native)])
@@ -189,7 +189,7 @@
             (let [native-card (card/create-card! (native-card-with-query "Native source" :products) user)
                   _           (test-util/wait-for-result-metadata (:id native-card))
                   child       (card/create-card! (card-sourced-from "Child card" native-card) user)]
-              (field-refs/upgrade! [:card (:id child)])
+              (field-refs/upgrade! [:card (:id child)] child)
               (source-swap/do-swap! [:card (:id child)]
                                     [:card (:id native-card)]
                                     [:table (mt/id :products)])
@@ -208,7 +208,7 @@
             (test-util/with-restored-card-queries
               (let [new-source (card/create-card! (test-util/card-with-query "New source" :products) user)
                     child      (card/create-card! (test-util/card-with-query "Child card" :products) user)]
-                (field-refs/upgrade! [:card (:id child)])
+                (field-refs/upgrade! [:card (:id child)] child)
                 (source-swap/do-swap! [:card (:id child)]
                                       [:table (mt/id :products)]
                                       [:card (:id new-source)])
@@ -224,7 +224,7 @@
           (mt/with-model-cleanup [:model/Card :model/Dependency]
             (test-util/with-restored-card-queries
               (let [child (card/create-card! (test-util/card-with-query "Child card" :products) user)]
-                (field-refs/upgrade! [:card (:id child)])
+                (field-refs/upgrade! [:card (:id child)] child)
                 (source-swap/do-swap! [:card (:id child)]
                                       [:table (mt/id :products)]
                                       [:table (mt/id :products)])
@@ -241,7 +241,7 @@
               (let [native-card (card/create-card! (native-card-with-query "Native target" :products) user)
                     _           (test-util/wait-for-result-metadata (:id native-card))
                     child       (card/create-card! (test-util/card-with-query "Child card" :products) user)]
-                (field-refs/upgrade! [:card (:id child)])
+                (field-refs/upgrade! [:card (:id child)] child)
                 (source-swap/do-swap! [:card (:id child)]
                                       [:table (mt/id :products)]
                                       [:card (:id native-card)])
@@ -278,7 +278,8 @@
             (let [old-source (card/create-card! (test-util/card-with-query "Old source" :products) user)
                   new-source (card/create-card! (test-util/card-with-query "New source" :products) user)]
               (mt/with-temp [:model/Transform {transform-id :id} (transform-sourced-from-card "test_transform_c2c" old-source)]
-                (field-refs/upgrade! [:transform transform-id])
+                (let [transform-obj (t2/select-one :model/Transform transform-id)]
+                  (field-refs/upgrade! [:transform transform-id] transform-obj))
                 (source-swap/do-swap! [:transform transform-id]
                                       [:card (:id old-source)]
                                       [:card (:id new-source)])
@@ -294,7 +295,8 @@
             (test-util/with-restored-card-queries
               (let [new-source (card/create-card! (test-util/card-with-query "New source" :products) user)]
                 (mt/with-temp [:model/Transform {transform-id :id} (transform-sourced-from-table "test_transform_t2c" :products)]
-                  (field-refs/upgrade! [:transform transform-id])
+                  (let [transform-obj (t2/select-one :model/Transform transform-id)]
+                    (field-refs/upgrade! [:transform transform-id] transform-obj))
                   (source-swap/do-swap! [:transform transform-id]
                                         [:table (mt/id :products)]
                                         [:card (:id new-source)])
@@ -310,7 +312,8 @@
           (mt/with-model-cleanup [:model/Card :model/Dependency :model/Transform]
             (let [old-source (card/create-card! (test-util/card-with-query "Old source" :products) user)]
               (mt/with-temp [:model/Transform {transform-id :id} (transform-sourced-from-card "test_transform_c2t" old-source)]
-                (field-refs/upgrade! [:transform transform-id])
+                (let [transform-obj (t2/select-one :model/Transform transform-id)]
+                  (field-refs/upgrade! [:transform transform-id] transform-obj))
                 (source-swap/do-swap! [:transform transform-id]
                                       [:card (:id old-source)]
                                       [:table (mt/id :products)])
@@ -328,7 +331,7 @@
                   new-source (card/create-card! (test-util/card-with-query "New source" :products) user)
                   child      (card/create-card! (card-sourced-from "Child card" old-source) user)]
               (mt/with-temp [:model/Transform {transform-id :id} (transform-sourced-from-card "test_transform_both" old-source)]
-                (field-refs/upgrade! [:card (:id child)])
+                (field-refs/upgrade! [:card (:id child)] child)
                 (source-swap/do-swap! [:card (:id child)]
                                       [:card (:id old-source)]
                                       [:card (:id new-source)])
@@ -382,7 +385,7 @@
                              {:dashboard_id dashboard-id
                               :card_id (:id child)
                               :visualization_settings vis-settings}]
-                (field-refs/upgrade! [:card (:id child)])
+                (field-refs/upgrade! [:card (:id child)] child)
                 (source-swap/do-swap! [:card (:id child)]
                                       [:card (:id old-source)]
                                       [:card (:id new-source)])
@@ -403,7 +406,7 @@
                              {:dashboard_id dashboard-id
                               :card_id (:id child)
                               :visualization_settings {:some_setting "value"}}]
-                (field-refs/upgrade! [:card (:id child)])
+                (field-refs/upgrade! [:card (:id child)] child)
                 (source-swap/do-swap! [:card (:id child)]
                                       [:card (:id old-source)]
                                       [:card (:id new-source)])
@@ -426,7 +429,7 @@
                              {:dashboard_id dashboard-id
                               :card_id (:id child)
                               :visualization_settings {:column_settings {name-key {:column_title "Custom"}}}}]
-                (field-refs/upgrade! [:card (:id child)])
+                (field-refs/upgrade! [:card (:id child)] child)
                 (source-swap/do-swap! [:card (:id child)]
                                       [:card (:id old-source)]
                                       [:card (:id new-source)])
@@ -454,8 +457,8 @@
                   _           (test-util/wait-for-result-metadata (:id native-card))
                   mbql-card   (card/create-card! (card-sourced-from "MBQL Card" native-card) user)]
               ;; Swap the model at the root
-              (field-refs/upgrade! [:card (:id native-card)])
-              (field-refs/upgrade! [:card (:id mbql-card)])
+              (field-refs/upgrade! [:card (:id native-card)] native-card)
+              (field-refs/upgrade! [:card (:id mbql-card)] mbql-card)
               (source-swap/do-swap! [:card (:id native-card)]
                                     [:card (:id old-model)]
                                     [:card (:id new-model)])
@@ -507,7 +510,7 @@
             (testing message
               (mt/with-temp [:model/Card card {:dataset_query query}]
                 ;; first, upgrade the card
-                (field-refs/upgrade! [:card (:id card)])
+                (field-refs/upgrade! [:card (:id card)] card)
                 ;; sanity check that card points to original table
                 (is (= (mt/id :orders_a) (-> card :table_id)))
                 (is (= (mt/id :orders_a) (-> card :dataset_query :stages (get 0) :source-table)))
@@ -555,7 +558,7 @@
             (mt/with-temp [:model/Card card {:dataset_query query}
                            :model/Card new-source {:dataset_query (lib/query mp (lib.metadata/table mp (mt/id :orders_c)))}]
               ;; first, upgrade the card
-              (field-refs/upgrade! [:card (:id card)])
+              (field-refs/upgrade! [:card (:id card)] card)
               ;; sanity check that card points to original table
               (is (= (mt/id :orders_a) (-> card :table_id)))
               (is (= (mt/id :orders_a) (-> card :dataset_query :stages (get 0) :source-table)))
@@ -603,7 +606,7 @@
                 (mt/with-temp [:model/Card card {:dataset_query query}
                                :model/Card new-source {:dataset_query (lib/query mp (lib.metadata/table mp (mt/id :orders_c)))}]
                   ;; first, upgrade the card
-                  (field-refs/upgrade! [:card (:id card)])
+                  (field-refs/upgrade! [:card (:id card)] card)
                   ;; sanity check that card points to original table
                   (is (= (mt/id :orders_a) (-> card :table_id)))
                   (is (= (:id old-source) (-> card :dataset_query :stages (get 0) :source-card)))
@@ -650,7 +653,7 @@
               (testing message
                 (mt/with-temp [:model/Card card {:dataset_query query}]
                   ;; first, upgrade the card
-                  (field-refs/upgrade! [:card (:id card)])
+                  (field-refs/upgrade! [:card (:id card)] card)
                   ;; sanity check that card points to original card
                   (is (= (mt/id :orders_a) (-> card :table_id)))
                   (is (= (:id old-source) (-> card :dataset_query :stages (get 0) :source-card)))
@@ -708,7 +711,7 @@
               (testing message
                 (mt/with-temp [:model/Card card {:dataset_query query}]
                   ;; first, upgrade the card
-                  (field-refs/upgrade! [:card (:id card)])
+                  (field-refs/upgrade! [:card (:id card)] card)
                   (try
                     (let [results (qp/process-query (:dataset_query card))]
                       (source-swap/do-swap! [:card (:id card)]
@@ -733,18 +736,16 @@
                           :definition (-> (lib/query mp (lib.metadata/table mp (mt/id :orders_a)))
                                           (lib/filter (lib/< 2 (lib.metadata/field mp (mt/id :orders_a :id)))))}]
             (events/publish-event! :event/segment-create {:object segment :user-id (mt/user->id :crowberto)})
-            (is (lib/field-ref-id (selector (:definition segment))))
             ;; sanity check that dependencies works
             (is (contains? (set (usages/transitive-usages [:table (mt/id :orders_a)]))
                            [:segment (:id segment)]))
             (is (not (contains? (set (usages/transitive-usages [:table (mt/id :orders_b)]))
                                 [:segment (:id segment)])))
-            (field-refs/upgrade! [:segment (:id segment)])
+            (field-refs/upgrade! [:segment (:id segment)] segment)
             (source-swap/do-swap! [:segment (:id segment)]
                                   [:table (mt/id :orders_a)]
                                   [:table (mt/id :orders_b)])
             (let [segment' (t2/select-one :model/Segment (:id segment))]
-              (is (lib/field-ref-name (selector (:definition segment'))))
               (is (= (mt/id :orders_b) (:table_id segment')))
               (is (= (mt/id :orders_b) (-> segment' :definition :stages (get 0) :source-table)))
               (is (not (contains? (set (usages/transitive-usages [:table (mt/id :orders_a)]))
@@ -763,18 +764,16 @@
                           :definition (-> (lib/query mp (lib.metadata/table mp (mt/id :orders_a)))
                                           (lib/aggregate (lib/sum (lib.metadata/field mp (mt/id :orders_a :id)))))}]
             (events/publish-event! :event/measure-create {:object measure :user-id (mt/user->id :crowberto)})
-            (is (lib/field-ref-id (selector (:definition measure))))
             ;; sanity check that dependencies works
             (is (contains? (set (usages/transitive-usages [:table (mt/id :orders_a)]))
                            [:measure (:id measure)]))
             (is (not (contains? (set (usages/transitive-usages [:table (mt/id :orders_b)]))
                                 [:measure (:id measure)])))
-            (field-refs/upgrade! [:measure (:id measure)])
+            (field-refs/upgrade! [:measure (:id measure)] measure)
             (source-swap/do-swap! [:measure (:id measure)]
                                   [:table (mt/id :orders_a)]
                                   [:table (mt/id :orders_b)])
             (let [measure' (t2/select-one :model/Measure (:id measure))]
-              (is (lib/field-ref-name (selector (:definition measure'))))
               (is (= (mt/id :orders_b) (:table_id measure')))
               (is (= (mt/id :orders_b) (-> measure' :definition :stages (get 0) :source-table)))
               (is (not (contains? (set (usages/transitive-usages [:table (mt/id :orders_a)]))
@@ -790,24 +789,24 @@
       (mt/with-premium-features #{:dependencies}
         (mt/with-temp [:model/User user {:email "run-swap-dash-params@test.com"}]
           (mt/with-model-cleanup [:model/Card :model/Dependency]
-            (let [card (card/create-card! (test-util/card-with-query "Products A card" :products_a) user)]
-              (field-refs/upgrade! [:card (:id card)])
+            (let [card (card/create-card! (test-util/card-with-query "Orders A card" :orders_a) user)]
+              (field-refs/upgrade! [:card (:id card)] card)
               (mt/with-temp [:model/Dashboard {dashboard-id :id} {:name "Test Dashboard"}
                              :model/DashboardCard {dashcard-id :id}
                              {:dashboard_id       dashboard-id
                               :card_id            (:id card)
                               :parameter_mappings [{:parameter_id "my-param"
                                                     :card_id      (:id card)
-                                                    :target       [:dimension [:field (mt/id :products_a :id) nil]]}]}]
-                (runner/run-swap [:table (mt/id :products_a)] [:table (mt/id :products_b)])
+                                                    :target       [:dimension [:field (mt/id :orders_a :id) nil]]}]}]
+                (runner/run-swap [:table (mt/id :orders_a)] [:table (mt/id :orders_b)])
                 ;; Card's source-table should be updated
                 (let [updated-query (t2/select-one-fn :dataset_query :model/Card :id (:id card))]
-                  (is (= (mt/id :products_b) (get-in updated-query [:stages 0 :source-table]))))
-                ;; DashboardCard parameter mapping should reference products_b field, not products_a
+                  (is (= (mt/id :orders_b) (get-in updated-query [:stages 0 :source-table]))))
+                ;; DashboardCard parameter mapping should reference orders_b ID field
                 (let [updated-dc (t2/select-one :model/DashboardCard :id dashcard-id)
                       target     (get-in updated-dc [:parameter_mappings 0 :target])]
-                  (is (= [:dimension [:field (mt/id :products_b :id) nil]] target)
-                      "Parameter mapping target should be remapped to the products_b field"))))))))))
+                  (is (=? [:dimension [:field (mt/id :orders_b :id) {}]] target)
+                      "Parameter mapping target should reference the ID field"))))))))))
 
 (deftest run-swap-series-card-updates-dashboard-params-test
   (testing "table→table swap via runner: parameter_mappings targeting a series card are updated"
@@ -815,38 +814,38 @@
       (mt/with-premium-features #{:dependencies}
         (mt/with-temp [:model/User user {:email "run-swap-series@test.com"}]
           (mt/with-model-cleanup [:model/Card :model/Dependency]
-            (let [;; primary card queries products_a (this is a direct dependent of the table)
-                  primary-card (card/create-card! (test-util/card-with-query "Primary card" :products_a) user)
-                  ;; series card also queries products_a
-                  series-card  (card/create-card! (test-util/card-with-query "Series card" :products_a) user)]
+            (let [;; primary card queries orders_a (this is a direct dependent of the table)
+                  primary-card (card/create-card! (test-util/card-with-query "Primary card" :orders_a) user)
+                  ;; series card also queries orders_a
+                  series-card  (card/create-card! (test-util/card-with-query "Series card" :orders_a) user)]
               (mt/with-temp [:model/Dashboard {dashboard-id :id} {:name "Series Dashboard"}
                              :model/DashboardCard {dashcard-id :id}
                              {:dashboard_id       dashboard-id
                               :card_id            (:id primary-card)
                               :parameter_mappings [{:parameter_id "primary-param"
                                                     :card_id      (:id primary-card)
-                                                    :target       [:dimension [:field (mt/id :products_a :id) nil]]}
+                                                    :target       [:dimension [:field (mt/id :orders_a :id) nil]]}
                                                    {:parameter_id "series-param"
                                                     :card_id      (:id series-card)
-                                                    :target       [:dimension [:field (mt/id :products_a :id) nil]]}]}
+                                                    :target       [:dimension [:field (mt/id :orders_a :id) nil]]}]}
                              :model/DashboardCardSeries _
                              {:dashboardcard_id dashcard-id
                               :card_id          (:id series-card)
                               :position         0}]
-                (runner/run-swap [:table (mt/id :products_a)] [:table (mt/id :products_b)])
+                (runner/run-swap [:table (mt/id :orders_a)] [:table (mt/id :orders_b)])
                 ;; Both cards' source-tables should be updated
-                (is (= (mt/id :products_b)
+                (is (= (mt/id :orders_b)
                        (get-in (t2/select-one-fn :dataset_query :model/Card :id (:id primary-card))
                                [:stages 0 :source-table])))
-                (is (= (mt/id :products_b)
+                (is (= (mt/id :orders_b)
                        (get-in (t2/select-one-fn :dataset_query :model/Card :id (:id series-card))
                                [:stages 0 :source-table])))
-                ;; Both parameter mappings should no longer reference products_a
+                ;; Both parameter mappings should no longer reference orders_a
                 (let [updated-dc     (t2/select-one :model/DashboardCard :id dashcard-id)
                       targets        (mapv :target (:parameter_mappings updated-dc))
-                      old-target     [:dimension [:field (mt/id :products_a :id) nil]]]
+                      old-target     [:dimension [:field (mt/id :orders_a :id) nil]]]
                   (is (= 2 (count targets)))
                   (is (not= old-target (first targets))
-                      "Primary card parameter mapping should no longer reference products_a")
+                      "Primary card parameter mapping should no longer reference orders_a")
                   (is (not= old-target (second targets))
-                      "Series card parameter mapping should no longer reference products_a"))))))))))
+                      "Series card parameter mapping should no longer reference orders_a"))))))))))

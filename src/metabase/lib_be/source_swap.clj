@@ -368,7 +368,9 @@
    new-source :- ::lib-be.schema.source-swap/source]
   (or (when (lib.parameters/parameter-target-field-ref target)
         (when-let [stage-number (parameter-target-stage-number query target)]
-          (lib.parameters/update-parameter-target-field-ref
-           target
-           #(swap-field-ref query stage-number (build-field-id-mapping query old-source new-source) %))))
+          (let [new-query (swap-source-table-or-card-in-query query old-source new-source)
+                field-id-mapping (build-field-id-mapping query old-source new-source)]
+            (lib.parameters/update-parameter-target-field-ref
+             target
+             #(swap-field-ref new-query stage-number field-id-mapping %)))))
       target))
