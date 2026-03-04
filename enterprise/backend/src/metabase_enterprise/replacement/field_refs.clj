@@ -2,6 +2,7 @@
   (:require
    [clojure.walk :as clojure.walk]
    [metabase.lib-be.core :as lib-be]
+   [metabase.lib.convert :as lib.convert]
    [metabase.lib.core :as lib]
    [metabase.lib.field.resolution :as lib.field.resolution]
    [metabase.lib.options :as lib.options]
@@ -42,11 +43,15 @@
 
 (defn- upgrade-field-ref-to-name
   [query field-ref]
-  (let [field-ref (lib/->pMBQL field-ref)]
-    (when (lib.util/field-clause? field-ref)
-      (when-let [column (lib.field.resolution/resolve-field-ref query -1 field-ref)]
-        (when-not (:lib.field.resolution/fallback-metadata? column)
-          ((some-fn :lib/deduplicated-name :name) column))))))
+  (try
+    (lib.convert/with-aggregation-list (:aggregation (lib.util/query-stage query -1))
+      (let [field-ref (lib/->pMBQL field-ref)]
+        (when (lib.util/field-clause? field-ref)
+          (when-let [column (lib.field.resolution/resolve-field-ref query -1 field-ref)]
+            (when-not (:lib.field.resolution/fallback-metadata? column)
+              ((some-fn :lib/deduplicated-name :name) column))))))
+    (catch Exception _
+      nil)))
 
 (defn- upgrade-card-column-settings
   [column-settings query]
