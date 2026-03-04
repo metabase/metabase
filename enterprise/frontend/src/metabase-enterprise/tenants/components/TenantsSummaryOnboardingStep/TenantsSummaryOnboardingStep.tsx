@@ -1,8 +1,10 @@
 import { useMemo } from "react";
 import { push } from "react-router-redux";
+import { match } from "ts-pattern";
 import { t } from "ttag";
 
 import { RelatedSettingCard } from "metabase/admin/components/RelatedSettingsSection";
+import type { DataSegregationStrategy } from "metabase/embedding/embedding-hub";
 import { useDispatch } from "metabase/lib/redux";
 import type { CreatedTenantData } from "metabase/plugins/oss/tenants";
 import { Button, Flex, SimpleGrid, Stack, Text, Title } from "metabase/ui";
@@ -17,10 +19,18 @@ import { TenantSummaryCard } from "./TenantSummaryCard";
  */
 const MAX_FETCHED_TENANTS_TO_SHOW = 3;
 
+const ISOLATION_ATTRIBUTE_KEYS = [
+  "tenant_identifier",
+  "database_role",
+  "database_slug",
+] as const;
+
 export const TenantsSummaryOnboardingStep = ({
   tenants,
+  strategy,
 }: {
   tenants: CreatedTenantData[];
+  strategy?: DataSegregationStrategy | null;
 }) => {
   const dispatch = useDispatch();
 
@@ -41,12 +51,22 @@ export const TenantsSummaryOnboardingStep = ({
     const lastTenants =
       tenantsData?.data?.slice(-MAX_FETCHED_TENANTS_TO_SHOW) ?? [];
 
-    return lastTenants.map((tenant) => ({
-      name: tenant.name,
-      slug: tenant.slug,
-      tenantIdentifier: tenant.attributes?.tenant_identifier ?? "",
-    }));
+    return lastTenants.map((tenant) => {
+      // Detect which isolation attribute is set on the tenant
+      const dataIsolationFieldKey = ISOLATION_ATTRIBUTE_KEYS.find(
+        (key) => tenant.attributes?.[key] != null,
+      );
+
+      return {
+        name: tenant.name,
+        slug: tenant.slug,
+        dataIsolationFieldValue:
+          tenant.attributes?.[dataIsolationFieldKey ?? ""] ?? "",
+      };
+    });
   }, [tenants, tenantsData]);
+
+  const isolationFieldLabel = getIsolationFieldLabel(strategy);
 
   return (
     <Stack gap="lg">
@@ -59,7 +79,10 @@ export const TenantsSummaryOnboardingStep = ({
           <TenantSummaryCard
             key={tenant.slug}
             name={tenant.name}
-            tenantIdentifier={tenant.tenantIdentifier || null}
+            isolationFieldLabel={
+              tenant.dataIsolationFieldValue ? isolationFieldLabel : null
+            }
+            isolationFieldValue={tenant.dataIsolationFieldValue || null}
             slug={tenant.slug}
           />
         ))}
@@ -107,3 +130,12 @@ const RelatedSettingsSection = () => (
     />
   </SimpleGrid>
 );
+
+export const getIsolationFieldLabel = (
+  strategy: DataSegregationStrategy | null | undefined,
+): string | null =>
+  match(strategy)
+    .with("row-column-level-security", () => "tenant_identifier")
+    .with("connection-impersonation", () => "database_role")
+    .with("database-routing", () => "database_slug")
+    .otherwise(() => null);
