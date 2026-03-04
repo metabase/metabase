@@ -20,8 +20,8 @@
        (filter #(history-message-types (:_type %)))
        (mapv normalize-history-message)))
 
-(defn get-message-history
-  "Fetch tool call history for Slack messages. Returns {slack-msg-id -> [messages...]}."
+(defn message-history
+  "Tool call history for Slack messages. Returns {slack-msg-id -> [messages...]}."
   [conversation-id slack-msg-ids]
   (when (seq slack-msg-ids)
     (->> (t2/select :model/MetabotMessage

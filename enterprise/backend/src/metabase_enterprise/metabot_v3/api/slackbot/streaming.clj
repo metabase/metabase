@@ -45,14 +45,14 @@
   "_Thinking..._")
 
 (defn- ignore-msg?
-  "Skip messages that aren't useful to the chat history"
+  "True for messages that should be excluded from chat history."
   [msg]
   (and (slackbot.events/bot-message? msg)
        (or (= (:text msg) thinking-placeholder)
            (str/blank? (:text msg)))))
 
 (defn- thread->bot-msg-ids
-  "Slack message ids produced by our bot"
+  "Slack message ids produced by our bot."
   [thread]
   (->> (:messages thread)
        (filter slackbot.events/bot-message?)
@@ -66,7 +66,7 @@
    This preserves tool history that Slack doesn't store while respecting edits."
   [thread bot-user-id conversation-id]
   (let [bot-msg-ids (thread->bot-msg-ids thread)
-        msg-history (slackbot.persistence/get-message-history conversation-id bot-msg-ids)]
+        msg-history (slackbot.persistence/message-history conversation-id bot-msg-ids)]
     (->> (:messages thread)
          (filter :text)
          (remove ignore-msg?)
