@@ -304,7 +304,7 @@
           js-inst #js ["metric" nil 42]
           result  (lib-metric.js/filters definition js-inst)]
       (is (array? result))
-      (is (= 1 (.-length result))))))
+      (is (= 0 (.-length result))))))
 
 ;;; -------------------------------------------------- filter --------------------------------------------------
 

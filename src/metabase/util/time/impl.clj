@@ -39,6 +39,11 @@
   [value]
   (t/offset-date-time value))
 
+(defn same-time?
+  "True if these two temporal values are equal."
+  [d1 d2]
+  (= d1 d2))
+
 (defn same-day?
   "Given two platform-specific datetimes, checks if they fall within the same day."
   [d1 d2]

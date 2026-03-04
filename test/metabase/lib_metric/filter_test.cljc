@@ -751,14 +751,17 @@
           parts (lib-metric.filter/time-filter-parts mock-definition clause)]
       (is (= :> (:operator parts)))
       (is (= (:id mock-time-dim) (:id (:dimension parts))))
-      (is (= [(u.time/coerce-to-time "09:00:00")] (:values parts))))))
+      (is (= 1 (count (:values parts))))
+      (is (u.time/same-time? (u.time/coerce-to-time "09:00:00") (first (:values parts)))))))
 
 (deftest ^:parallel time-filter-parts-between-test
   (testing "time-filter-parts extracts between parts"
     (let [clause [:between {} [:dimension {} "00000000-0000-0000-0000-000000000005"] "09:00:00" "17:00:00"]
           parts (lib-metric.filter/time-filter-parts mock-definition clause)]
       (is (= :between (:operator parts)))
-      (is (= [(u.time/coerce-to-time "09:00:00") (u.time/coerce-to-time "17:00:00")] (:values parts))))))
+      (is (= 2 (count (:values parts))))
+      (is (u.time/same-time? (u.time/coerce-to-time "09:00:00") (first (:values parts))))
+      (is (u.time/same-time? (u.time/coerce-to-time "17:00:00") (second (:values parts)))))))
 
 (deftest ^:parallel time-filter-parts-returns-nil-for-non-time-test
   (testing "time-filter-parts returns nil for non-time dimension"
