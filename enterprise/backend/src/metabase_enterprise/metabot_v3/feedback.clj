@@ -9,7 +9,7 @@
 
 (defn submit-to-harbormaster!
   "Submit metabot feedback to Harbormaster via the Store API.
-   Returns true if feedback was submitted, false if token/URL is missing."
+   Throws if the token or Store API URL is missing."
   [feedback]
   (let [token    (premium-features/premium-embedding-token)
         base-url (store-api/store-api-url)]

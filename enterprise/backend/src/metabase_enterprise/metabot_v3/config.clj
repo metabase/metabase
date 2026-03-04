@@ -14,7 +14,7 @@
 
 (def slackbot-metabot-id
   "The ID of the Slack Metabot instance."
-  "d7a1b2c3-e4f5-6789-abcd-ef0123456789")
+  "9a89fe64-54b9-4ab2-8022-eccd772e5073")
 
 (def metabot-config
   "The name of the collection exposed by the answer-sources tool."

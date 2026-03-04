@@ -394,12 +394,15 @@
          (cond-> (build-base-feedback user_id conversation_id positive)
            true       (assoc-in [:feedback :freeform_feedback] (or freeform ""))
            issue-type (assoc-in [:feedback :issue_type] issue-type)))
+        (catch Exception e
+          (log/error e "[slackbot] Error submitting feedback to Harbormaster")))
+      (try
         (when (and channel_id message_ts)
           (let [client  {:token (channel.settings/unobfuscated-slack-app-token)}
                 message (slackbot.client/fetch-message client channel_id message_ts)]
             (replace-feedback-buttons-with-thanks client channel_id message_ts (:blocks message))))
         (catch Exception e
-          (log/error e "[slackbot] Error submitting feedback modal"))))))
+          (log/error e "[slackbot] Error replacing feedback buttons"))))))
 
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :post "/interactive"
