@@ -224,7 +224,7 @@
    Unlike `streaming-request`, this doesn't return a StreamingResponse - it processes
    the stream internally and calls `on-line` for each line as it arrives.
    Returns the collected lines when complete."
-  [{:keys [on-line] :as opts}
+  [{:keys [on-line on-complete] :as opts}
    :- [:map
        [:context :map]
        [:message ::metabot-v3.client.schema/message]
@@ -233,7 +233,8 @@
        [:conversation-id :string]
        [:session-id :string]
        [:state :map]
-       [:on-line {:optional true} [:function [:=> [:cat :string] :any]]]]]
+       [:on-line {:optional true} [:function [:=> [:cat :string] :any]]]
+       [:on-complete {:optional true} [:function [:=> [:cat :any] :any]]]]]
   (let [response (open-ai-stream! opts)
         lines    (atom [])]
     (try
@@ -245,6 +246,8 @@
             (recur (.readLine response-reader)))))
       (catch java.io.IOException e
         (log/debugf e "Stream closed while reading AI response (%d lines collected)" (count @lines))))
+    (when on-complete
+      (on-complete @lines))
     @lines))
 
 (mu/defn select-metric-request
