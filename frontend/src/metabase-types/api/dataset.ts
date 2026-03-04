@@ -94,6 +94,7 @@ export interface DatasetColumn {
   fk_target_field_id?: FieldId | null;
 
   _dimension?: Dimension; // present in pivoted data
+  remapping?: Map<RowValue, string | number>;
 }
 
 export interface ResultsMetadata {

@@ -19,7 +19,7 @@ type VisualizationWarningKey =
   | typeof MULTIPLE_TIMEZONES
   | typeof PIE_NEGATIVES;
 
-type VisualizationWarning = {
+export type VisualizationWarning = {
   key: VisualizationWarningKey;
   text: string;
 };

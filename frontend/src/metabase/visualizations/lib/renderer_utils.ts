@@ -1,15 +1,43 @@
+import type { Dayjs } from "dayjs";
 import { getIn } from "icepick";
 import _ from "underscore";
 
 import { formatNullable } from "metabase/lib/formatting/nullable";
 import { parseTimestamp } from "metabase/lib/time-dayjs";
 import { datasetContainsNoResults } from "metabase-lib/v1/queries/utils/dataset";
+import type {
+  DatasetData,
+  DatetimeUnit,
+  RawSeries,
+  RowValue,
+  Series,
+  SingleSeries,
+  VisualizationSettings,
+} from "metabase-types/api";
+import { isObjectWithRaw } from "metabase-types/guards";
 
 import { dimensionIsNumeric } from "./numeric";
 import { dimensionIsExplicitTimeseries } from "./timeseries";
-import { invalidDateWarning, nullDimensionWarning } from "./warnings";
+import {
+  type VisualizationWarning,
+  invalidDateWarning,
+  nullDimensionWarning,
+} from "./warnings";
 
-export function parseXValue(xValue, options, warn) {
+type ParseOptions = {
+  isNumeric: boolean;
+  isTimeseries: boolean;
+  isQuantitative: boolean;
+  unit: DatetimeUnit | undefined;
+};
+
+type Warn = (warning: VisualizationWarning) => void;
+
+export function parseXValue(
+  xValue: RowValue,
+  options: ParseOptions,
+  warn: Warn = () => undefined,
+) {
   const { parsedValue, warning } = memoizedParseXValue(xValue, options);
   if (warning !== undefined) {
     warn(warning);
@@ -18,7 +46,13 @@ export function parseXValue(xValue, options, warn) {
 }
 
 const memoizedParseXValue = _.memoize(
-  (xValue, { isNumeric, isTimeseries, isQuantitative, unit }) => {
+  (
+    xValue: RowValue,
+    { isNumeric, isTimeseries, isQuantitative, unit }: ParseOptions,
+  ): {
+    parsedValue: RowValue;
+    warning?: VisualizationWarning;
+  } => {
     // don't parse as timestamp if we're going to display as a quantitative
     // scale, e.x. years and Unix timestamps
     if (isTimeseries && !isQuantitative) {
@@ -32,7 +66,13 @@ const memoizedParseXValue = _.memoize(
   (x, options) => [x, typeof x, ...Object.values(options)].join(),
 );
 
-function getParseOptions({ settings, data }) {
+function getParseOptions({
+  data,
+  settings,
+}: {
+  data: DatasetData;
+  settings: VisualizationSettings;
+}): ParseOptions {
   const columnIndex = getColumnIndex({ settings, data });
   return {
     isNumeric: dimensionIsNumeric(data, columnIndex),
@@ -42,19 +82,26 @@ function getParseOptions({ settings, data }) {
       // column type is timeseries
       dimensionIsExplicitTimeseries(data, columnIndex),
     isQuantitative: isQuantitative(settings),
-    unit: data.cols[columnIndex].unit,
+    unit: data.cols[columnIndex]?.unit,
   };
 }
 
-function canDisplayNull(settings) {
+function canDisplayNull(settings: VisualizationSettings): boolean {
   // histograms are converted to ordinal scales, so we need this ugly logic as a workaround
   return !isOrdinal(settings) || isHistogram(settings);
 }
 
-export function getXValues({ settings, series }) {
+export function getXValues({
+  series,
+  settings,
+}: {
+  series: Series;
+  settings: VisualizationSettings;
+}) {
   // if _raw isn't set then we already have the raw series
-  const { _raw: rawSeries = series } = series;
-  const warn = () => {}; // no op since warning in handled by getDatas
+  const rawSeries =
+    isObjectWithRaw(series) && series._raw ? series._raw : series;
+  const warn = () => undefined; // no op since warning in handled by getDatas
   const uniqueValues = new Set();
   let isAscending = true;
   let isDescending = true;
@@ -67,14 +114,14 @@ export function getXValues({ settings, series }) {
     }
 
     const parseOptions = getParseOptions({ settings, data });
-    let lastValue;
+    let lastValue: RowValue | undefined;
     for (const row of data.rows) {
       // non ordinal dimensions can't display null values, so we exclude them from xValues
       if (canDisplayNull(settings) && row[columnIndex] === null) {
         continue;
       }
       const value = parseXValue(row[columnIndex], parseOptions, warn);
-      if (lastValue !== undefined) {
+      if (lastValue != null && value != null) {
         isAscending = isAscending && lastValue <= value;
         isDescending = isDescending && value <= lastValue;
       }
@@ -96,7 +143,13 @@ export function getXValues({ settings, series }) {
   return xValues;
 }
 
-function getColumnIndex({ settings, data: { cols } }) {
+function getColumnIndex({
+  settings,
+  data: { cols },
+}: {
+  data: DatasetData;
+  settings: VisualizationSettings;
+}) {
   const [dim] = settings["graph.dimensions"] || [];
   const i = cols.findIndex((c) => c.name === dim);
   return i === -1 ? 0 : i;
@@ -105,11 +158,14 @@ function getColumnIndex({ settings, data: { cols } }) {
 // Crossfilter calls toString on each dayjs object, which calls format(), which is very slow.
 // Replace toString with a function that just returns the unparsed ISO input date, since that works
 // just as well and is much faster
-function dayjs_fast_toString() {
+function dayjs_fast_toString(this: { _i: string }): string {
   return this._i;
 }
 
-function parseTimestampAndWarn(value, unit) {
+function parseTimestampAndWarn(
+  value: RowValue,
+  unit?: DatetimeUnit,
+): { parsedValue: Dayjs | null; warning?: VisualizationWarning } {
   if (value == null) {
     return { parsedValue: null, warning: nullDimensionWarning() };
   }
@@ -123,28 +179,38 @@ function parseTimestampAndWarn(value, unit) {
 
 /************************************************************ PROPERTIES ************************************************************/
 
-export const isTimeseries = (settings) =>
+export const isTimeseries = (settings: VisualizationSettings): boolean =>
   settings["graph.x_axis.scale"] === "timeseries";
-export const isQuantitative = (settings) =>
-  ["linear", "log", "pow"].indexOf(settings["graph.x_axis.scale"]) >= 0;
-export const isHistogram = (settings) =>
+
+export const isQuantitative = (settings: VisualizationSettings): boolean =>
+  ["linear", "log", "pow"].indexOf(String(settings["graph.x_axis.scale"])) >= 0;
+
+export const isHistogram = (settings: VisualizationSettings): boolean =>
   settings["graph.x_axis._scale_original"] === "histogram" ||
   settings["graph.x_axis.scale"] === "histogram";
-export const isOrdinal = (settings) =>
+
+export const isOrdinal = (settings: VisualizationSettings): boolean =>
   settings["graph.x_axis.scale"] === "ordinal";
 
-export const isStacked = (settings, datas) => settings["stackable.stack_type"];
-export const isNormalized = (settings, datas) =>
+export const isStacked = (settings: VisualizationSettings) =>
+  settings["stackable.stack_type"];
+
+export const isNormalized = (settings: VisualizationSettings) =>
   settings["stackable.stack_type"] === "normalized";
 
 // find the first nonempty single series
-export const getFirstNonEmptySeries = (series) =>
+export const getFirstNonEmptySeries = (
+  series: RawSeries,
+): SingleSeries | undefined =>
   _.find(series, (s) => !datasetContainsNoResults(s.data));
 
-function hasRemappingAndValuesAreStrings({ cols }, i = 0) {
+function hasRemappingAndValuesAreStrings(
+  { cols }: DatasetData,
+  i = 0,
+): boolean {
   const column = cols[i];
 
-  if (column.remapping && column.remapping.size > 0) {
+  if (column?.remapping && column.remapping.size > 0) {
     // We have remapped values, so check their type for determining whether the dimension is numeric
     // ES6 Map makes the lookup of first value a little verbose
     return typeof column.remapping.values().next().value === "string";
@@ -153,9 +219,14 @@ function hasRemappingAndValuesAreStrings({ cols }, i = 0) {
   }
 }
 
-export const isRemappedToString = (series) =>
-  hasRemappingAndValuesAreStrings(getFirstNonEmptySeries(series).data);
+export const isRemappedToString = (series: RawSeries): boolean => {
+  const nonEmptySeries = getFirstNonEmptySeries(series)?.data;
 
-export const hasClickBehavior = (series) =>
+  return nonEmptySeries
+    ? hasRemappingAndValuesAreStrings(nonEmptySeries)
+    : false;
+};
+
+export const hasClickBehavior = (series: Series): boolean =>
   getIn(series, [0, "card", "visualization_settings", "click_behavior"]) !=
   null;
