@@ -1,7 +1,7 @@
 import { useDisclosure } from "@mantine/hooks";
 import cx from "classnames";
 import type { ReactElement } from "react";
-import { useEffect, useMemo, useRef } from "react";
+import { useEffect, useMemo } from "react";
 import { t } from "ttag";
 
 import {
@@ -13,7 +13,6 @@ import { QuestionVisualization } from "embedding-sdk-bundle/components/private/S
 import { SdkQuestion } from "embedding-sdk-bundle/components/public/SdkQuestion";
 import { QuestionAlertsButton } from "embedding-sdk-bundle/components/public/notifications/QuestionAlertsButton";
 import { useCollectionData } from "embedding-sdk-bundle/hooks/private/use-collection-data";
-import { useHideEmptyElement } from "embedding-sdk-bundle/hooks/private/use-hide-empty-element";
 import { useQuestionEditorSync } from "embedding-sdk-bundle/hooks/private/use-question-editor-sync";
 import { useSdkBreadcrumbs } from "embedding-sdk-bundle/hooks/private/use-sdk-breadcrumb";
 import { shouldRunCardQuery } from "embedding-sdk-bundle/lib/sdk-question";
@@ -36,6 +35,7 @@ import {
   FlexibleSizeComponent,
   type FlexibleSizeProps,
 } from "../FlexibleSizeComponent";
+import { HideIfEmpty } from "../HideIfEmpty/HideIfEmpty";
 import { SdkInternalNavigationBackButton } from "../SdkInternalNavigation/SdkInternalNavigationBackButton";
 import { BreakoutDropdown } from "../SdkQuestion/components/Breakout/BreakoutDropdown";
 import { ChartTypeDropdown } from "../SdkQuestion/components/ChartTypeDropdown";
@@ -159,9 +159,6 @@ export const SdkQuestionDefaultView = ({
     { skipCollectionFetching: !isSaveEnabled },
   );
 
-  const hideEmptyParentRef = useRef<HTMLDivElement>(null);
-  useHideEmptyElement("[data-hide-empty]", hideEmptyParentRef);
-
   if (
     !isEditorOpen &&
     (isLocaleLoading || isQuestionLoading || isQueryResultLoading)
@@ -191,33 +188,32 @@ export const SdkQuestionDefaultView = ({
       className={cx(InteractiveQuestionS.Container, className)}
       style={style}
     >
-      <Stack
-        ref={hideEmptyParentRef}
+      <HideIfEmpty
+        component={Stack}
         className={InteractiveQuestionS.TopBar}
         gap="sm"
         p="md"
-        data-hide-empty
       >
-        <Group
+        <HideIfEmpty
+          component={Group}
           justify="space-between"
           align="flex-end"
           data-testid="interactive-question-top-toolbar"
-          data-hide-empty
         >
-          <Group gap="xs" data-hide-empty>
+          <HideIfEmpty component={Group} gap="xs">
             <Stack align="flex-start">
               <SdkInternalNavigationBackButton />
               <DefaultViewTitle title={title} />
             </Stack>
-          </Group>
+          </HideIfEmpty>
           {showSaveButton && <SaveButton onClick={openSaveModal} />}
-        </Group>
+        </HideIfEmpty>
         {queryResults && (
-          <ResultToolbar
+          <HideIfEmpty
+            component={ResultToolbar}
             data-testid="interactive-question-result-toolbar"
-            data-hide-empty
           >
-            <Group gap="xs" data-hide-empty>
+            <HideIfEmpty component={Group} gap="xs">
               {isEditorOpen ? (
                 <PopoverBackButton
                   onClick={toggleEditor}
@@ -257,8 +253,8 @@ export const SdkQuestionDefaultView = ({
                   )}
                 </>
               )}
-            </Group>
-            <Group gap="sm" ml="auto" data-hide-empty>
+            </HideIfEmpty>
+            <HideIfEmpty component={Group} gap="sm" ml="auto">
               {!isEditorOpen && (
                 <>
                   <DownloadWidgetDropdown />
@@ -266,8 +262,8 @@ export const SdkQuestionDefaultView = ({
                 </>
               )}
               <EditorButton isOpen={isEditorOpen} onClick={toggleEditor} />
-            </Group>
-          </ResultToolbar>
+            </HideIfEmpty>
+          </HideIfEmpty>
         )}
 
         {isGuestEmbed && (
@@ -275,7 +271,7 @@ export const SdkQuestionDefaultView = ({
             <SdkQuestion.SqlParametersList />
           </Box>
         )}
-      </Stack>
+      </HideIfEmpty>
 
       <Box
         className={cx(InteractiveQuestionS.Main, "sdk-question-main")}

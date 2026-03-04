@@ -1,6 +1,7 @@
-import { type PropsWithChildren, useRef } from "react";
+import type { PropsWithChildren } from "react";
 
 import { FlexibleSizeComponent } from "embedding-sdk-bundle/components/private/FlexibleSizeComponent";
+import { HideIfEmpty } from "embedding-sdk-bundle/components/private/HideIfEmpty/HideIfEmpty";
 import { withPublicComponentWrapper } from "embedding-sdk-bundle/components/private/PublicComponentWrapper";
 import {
   Breakout,
@@ -28,7 +29,6 @@ import {
   type SdkQuestionProps,
 } from "embedding-sdk-bundle/components/public/SdkQuestion/SdkQuestion";
 import { QuestionAlertsButton } from "embedding-sdk-bundle/components/public/notifications/QuestionAlertsButton";
-import { useHideEmptyElement } from "embedding-sdk-bundle/hooks/private/use-hide-empty-element";
 import { useNormalizeGuestEmbedQuestionOrDashboardComponentProps } from "embedding-sdk-bundle/hooks/private/use-normalize-guest-embed-question-or-dashboard-component-props";
 import { useSdkSelector } from "embedding-sdk-bundle/store";
 import { getIsGuestEmbed } from "embedding-sdk-bundle/store/selectors";
@@ -125,9 +125,6 @@ const StaticQuestionInner = (
     );
   };
 
-  const hideEmptyParentRef = useRef<HTMLDivElement>(null);
-  useHideEmptyElement("[data-hide-empty]", hideEmptyParentRef);
-
   return (
     <SdkQuestion
       questionId={questionId ?? null}
@@ -151,27 +148,30 @@ const StaticQuestionInner = (
             w="100%"
             h="100%"
             gap="xs"
-            ref={hideEmptyParentRef}
           >
-            <Stack
+            <HideIfEmpty
+              component={Stack}
               className={InteractiveQuestionS.TopBar}
               gap="sm"
               p="md"
-              data-hide-empty
               data-testid="static-question-top-bar"
             >
               {title && <DefaultViewTitle title={title} />}
-              <ResultToolbar data-hide-empty data-testid="result-toolbar">
+
+              <HideIfEmpty
+                component={ResultToolbar}
+                data-testid="result-toolbar"
+              >
                 {withChartTypeSelector && <SdkQuestion.ChartTypeDropdown />}
-                {/* This container is always shown on the right */}
-                <Group gap="sm" ml="auto" data-hide-empty>
+
+                <HideIfEmpty component={Group} gap="sm" ml="auto">
                   <SdkQuestion.DownloadWidgetDropdown />
                   <QuestionAlertsButton />
-                </Group>
-              </ResultToolbar>
+                </HideIfEmpty>
+              </HideIfEmpty>
 
               {isGuestEmbed && <SdkQuestion.SqlParametersList />}
-            </Stack>
+            </HideIfEmpty>
 
             <Box className={InteractiveQuestionS.Main} w="100%" h="100%">
               <Box className={InteractiveQuestionS.Content}>
