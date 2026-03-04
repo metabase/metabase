@@ -129,11 +129,6 @@
                                 initial-comment (assoc :initial_comment initial-comment))))
       res)))
 
-(defn update-message
-  "Update an existing Slack message."
-  [client message]
-  (:body (slack-post-json client "/chat.update" message)))
-
 (defn delete-message
   "Remove a Slack message"
   [client message]

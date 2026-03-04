@@ -252,15 +252,16 @@
    - `table` and display types not supported by static viz render as native Slack table blocks
    - static viz chart types render as PNG"
   [card-id]
-  (let [card (t2/select-one :model/Card :id card-id)]
-    (when-not card
-      (throw (ex-info "Card not found" {:card-id card-id :type :card-not-found})))
-    (assoc
-     (if (-> card :display keyword supported-png-display-types)
-       {:type    :image
-        :content (render-saved-card-png card)}
-       (let [results (pulse-card-query-results card)]
-         (throw-on-failed-query! results)
-         {:type    :table
-          :content (format-results-as-table-blocks results)}))
-     :card-name (:name card))))
+  (let [card      (t2/select-one :model/Card :id card-id)
+        _         (when-not card
+                    (throw (ex-info "Card not found" {:card-id card-id :type :card-not-found})))
+        card-name (:name card)]
+    (if (-> card :display keyword supported-png-display-types)
+      {:type      :image
+       :content   (render-saved-card-png card)
+       :card-name card-name}
+      (let [results (pulse-card-query-results card)]
+        (throw-on-failed-query! results)
+        {:type      :table
+         :content   (format-results-as-table-blocks results)
+         :card-name card-name}))))

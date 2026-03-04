@@ -183,10 +183,9 @@
                 Pass ::no-user to simulate an unlinked Slack user (returns nil).
 
    Calls body-fn with a map containing tracking atoms:
-   {:post-calls, :delete-calls, :image-calls, :update-calls,
-    :generate-card-output-calls, :generate-adhoc-output-calls, :ephemeral-calls,
-    :ai-request-calls, :fake-png-bytes, :stream-calls, :append-text-calls,
-    :stop-stream-calls}"
+   {:post-calls, :delete-calls, :image-calls, :generate-card-output-calls,
+    :generate-adhoc-output-calls, :ephemeral-calls, :ai-request-calls,
+    :fake-png-bytes, :stream-calls, :append-text-calls, :stop-stream-calls}"
   [{:keys [ai-text data-parts user-id]
     :or   {data-parts []
            user-id    ::default}}
@@ -194,7 +193,6 @@
   (let [post-calls                  (atom [])
         delete-calls                (atom [])
         image-calls                 (atom [])
-        update-calls                (atom [])
         generate-card-output-calls  (atom [])
         generate-adhoc-output-calls (atom [])
         ephemeral-calls             (atom [])
@@ -244,9 +242,6 @@
                                                                  :thread-ts       thread-ts
                                                                  :initial-comment initial-comment})
                                         {:ok true :file_id "F123"})
-       slackbot.client/update-message (fn [_ msg]
-                                        (swap! update-calls conj msg)
-                                        {:ok true})
        ;; Mock the streaming client - returns AISDK-formatted lines
        metabot-v3.client/streaming-request-with-callback
        (fn [opts]
@@ -271,7 +266,6 @@
       (body-fn {:post-calls                  post-calls
                 :delete-calls                delete-calls
                 :image-calls                 image-calls
-                :update-calls                update-calls
                 :generate-card-output-calls  generate-card-output-calls
                 :generate-adhoc-output-calls generate-adhoc-output-calls
                 :ephemeral-calls             ephemeral-calls

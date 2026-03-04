@@ -213,7 +213,7 @@
    Called after stop-stream so results always appear after streamed text.
    For saved cards (static_viz), uses the actual card name as the title."
   [client channel thread-ts prefetched-viz]
-  (doseq [[idx {:keys [^Future future filename title link]}] prefetched-viz]
+  (doseq [[idx {:keys [^Future future filename title link]}] (sort-by first prefetched-viz)]
     (try
       (let [output   (.get future)
             title    (or (:card-name output) title)
@@ -252,6 +252,19 @@
       (when (seq text)
         (dismiss-thinking-msg! client channel thinking-ts)
         (slackbot.client/append-markdown-text client channel stream_ts text)))))
+
+(defn- viz-metadata
+  "Extract title, filename, and link metadata from a visualization data-part."
+  [{:keys [type value]}]
+  (let [title    (:title value)
+        filename (or (some-> title (u/slugify {:max-length 80}))
+                     (case type
+                       "static_viz" (str "chart-" (:entity_id value))
+                       "adhoc_viz"  (str "adhoc-" (random-uuid))))
+        link     (case type
+                   "adhoc_viz"  (:link value)
+                   "static_viz" (str "/question/" (:entity_id value)))]
+    {:title title :filename filename :link link}))
 
 (defn- make-streaming-callbacks
   "Create streaming callback functions and associated control functions.
@@ -343,16 +356,8 @@
         prefetched-viz (atom {})
         on-data (fn [idx content]
                   (when (viz-data-types (:type content))
-                    (let [value    (:value content)
-                          title    (:title value)
-                          filename (or (some-> title (u/slugify {:max-length 80}))
-                                       (case (:type content)
-                                         "static_viz" (str "chart-" (:entity_id value))
-                                         "adhoc_viz"  (str "adhoc-" (System/currentTimeMillis))))
-                          link     (case (:type content)
-                                     "adhoc_viz"  (:link value)
-                                     "static_viz" (str "/question/" (:entity_id value)))
-                          task     (bound-fn* #(generate-viz-output content))]
+                    (let [{:keys [title filename link]} (viz-metadata content)
+                          task (bound-fn* #(generate-viz-output content))]
                       (swap! prefetched-viz assoc idx
                              {:future   (.submit viz-prefetch-executor ^Callable task)
                               :filename filename
