@@ -27,6 +27,12 @@
   [query]
   (database-id->dialect (:database query)))
 
+(defn- contains-template-tags?
+  "Predicate that checks whether sql string contains"
+  [sql]
+  (boolean (and (string? sql)
+                (re-find #"\{\{|\[\[" sql))))
+
 (mr/def ::validation-result
   [:map
    [:valid? :boolean]
@@ -37,16 +43,18 @@
 (mu/defn validate-sql :- ::validation-result
   "Validate sql query.
 
-  Empty queries are considered valid. When dialect is empty, the query is considered valid.
+  Validation is short-circuited and query is considered valid for following cases:
+  - sql string is empty,
+  - dialect is `nil`,
+  - sql contains Metabase template tags.
 
-  Else, query is transpiled into from and into the same dialect. If that action yields successfully, the query
-  is considered valid.
-
-  Transpilation logic skips the queries with template tags. Those are considered valid."
+  When that is not the case, the query is transpiled into from and into the same dialect. If that action yields
+  successfully, the query is considered valid."
   [dialect :- [:maybe :string]
    sql :- :string]
   (if (or (nil? dialect)
-          (str/blank? sql))
+          (str/blank? sql)
+          (contains-template-tags? sql))
     {:valid? true
      :dialect dialect
      :transpiled-sql sql}
