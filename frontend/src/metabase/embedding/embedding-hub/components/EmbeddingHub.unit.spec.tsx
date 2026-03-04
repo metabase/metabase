@@ -134,7 +134,6 @@ describe("EmbeddingHub", () => {
         "add-data": true,
         "create-dashboard": true,
         "create-test-embed": true,
-        "create-models": false,
         "configure-row-column-security": false,
         "embed-production": false,
         "sso-configured": false,
