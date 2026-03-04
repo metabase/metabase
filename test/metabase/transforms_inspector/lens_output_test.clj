@@ -6,9 +6,9 @@
    [metabase.lib.metadata :as lib.metadata]
    [metabase.query-processor.preprocess :as qp.preprocess]
    [metabase.test :as mt]
+   [metabase.transforms-base.util :as transforms-base.u]
    [metabase.transforms-inspector.core :as inspector.core]
    [metabase.transforms-inspector.lens.core :as lens.core]
-   [metabase.transforms.util :as transforms.util]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -52,7 +52,7 @@
                                    (lib/with-join-alias "Products")))])
                       (lib/with-join-alias "Products")
                       (lib/with-join-fields :all)))
-        transforms.util/massage-sql-query
+        transforms-base.u/massage-sql-query
         qp.preprocess/preprocess)))
 
 (defn- extract-join-structure
@@ -100,7 +100,7 @@
   (let [orders-info  (build-table-info (mt/id :orders))
         mp           (mt/metadata-provider)
         preprocessed (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
-                         transforms.util/massage-sql-query
+                         transforms-base.u/massage-sql-query
                          qp.preprocess/preprocess)]
     {:transform           {}
      :source-type         :mbql
