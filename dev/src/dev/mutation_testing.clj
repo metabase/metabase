@@ -725,6 +725,70 @@
         (println "  " (:primary-fn r) "-" (:error r))))
     (println "========================================")))
 
+(defn run-one!
+  "Run mutation testing for a single function. No branching or PR creation.
+   Generates a report, invokes Claude to write tests, and verifies mutations are killed.
+
+   Arguments:
+   - fq-fn-sym  — fully-qualified function symbol (e.g. 'my.ns/my-fn)
+   - test-ns-sym — test namespace symbol (e.g. 'my.ns-test)
+
+   Options:
+   - :max-retries — max Claude retries for surviving mutations (default 2)"
+  ([fq-fn-sym test-ns-sym] (run-one! fq-fn-sym test-ns-sym {}))
+  ([fq-fn-sym test-ns-sym opts]
+   (let [fq-fn-name   (symbol fq-fn-sym)
+         target-ns    (symbol (namespace fq-fn-name))
+         test-ns      (symbol (str test-ns-sym))
+         parsed       (parse-namespace target-ns)
+         {:keys [source-path test-path report-path]} parsed
+         max-retries  (get opts :max-retries 2)]
+
+     ;; 1. Generate report
+     (println "Generating mutation testing report for" (str target-ns) "...")
+     (coverage/generate-report target-ns [test-ns] report-path)
+     (println "Report written to" report-path)
+
+     ;; 2. Run coverage for the single function
+     (println "Running coverage for" (str fq-fn-name) "...")
+     (let [coverage-results (coverage/test-namespace target-ns [test-ns])
+           fn-data          (get coverage-results fq-fn-name)]
+       (when-not fn-data
+         (throw (ex-info (str "Function not found in coverage results: " fq-fn-name)
+                         {:available (keys coverage-results)})))
+       (let [mutations (:survived fn-data)]
+         (if (empty? mutations)
+           (do (println "No surviving mutations for" (str fq-fn-name) "— nothing to do.")
+               {:status :success :killed [] :survived []})
+
+           (do
+             (println (count mutations) "surviving mutations")
+
+             ;; 3. Invoke Claude
+             (println "Invoking Claude to write tests...")
+             (let [prompt (build-test-prompt {:target-ns   target-ns
+                                              :test-ns     test-ns
+                                              :source-path source-path
+                                              :test-path   test-path
+                                              :fn-names    [fq-fn-name]
+                                              :mutations   mutations})]
+               (invoke-claude! prompt))
+
+             ;; 4. Verify and retry
+             (println "Verifying mutations killed...")
+             (let [result (verify-and-retry! {:fn-names    [fq-fn-name]
+                                              :test-ns     test-ns
+                                              :test-path   test-path
+                                              :max-retries max-retries})]
+               (println "\nResult:" (:status result))
+               (println "  Killed:" (count (:killed result)))
+               (println "  Survived:" (count (:survived result)))
+               (when (seq (:survived result))
+                 (println "\n  Surviving mutations:")
+                 (doseq [{:keys [description]} (:survived result)]
+                   (println "   -" description)))
+               result))))))))
+
 (defn run!
   "Main entry point. Runs the full mutation testing workflow for a namespace.
 
