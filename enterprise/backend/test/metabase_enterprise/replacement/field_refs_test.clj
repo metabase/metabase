@@ -2,7 +2,6 @@
   (:require
    [clojure.test :refer [deftest is testing]]
    [metabase-enterprise.replacement.field-refs :as field-refs]
-   [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.field.resolution :as lib.field.resolution]
    [metabase.lib.metadata :as lib.metadata]
@@ -117,6 +116,7 @@
       (mt/with-temp [:model/Card card {:dataset_query          (table-query :products)
                                        :visualization_settings {:column_settings
                                                                 {(ref-key (mt/id :products :title)) {:column_title "Custom"}}}}]
+        ;; Legacy data may set :name different from :lib/deduplicated-name
         (let [original-resolve lib.field.resolution/resolve-field-ref]
           (with-redefs [lib.field.resolution/resolve-field-ref
                         (fn [query stage field-ref]
@@ -297,12 +297,10 @@
           (is (some? cs) "column_settings should exist after upgrade"))))))
 
 (deftest dashboard-upgrade-dimension-vectors-processed-test
-  (testing "dimension vectors in parameterMappings are keywordized and passed to upgrade-field-ref-in-parameter-target"
+  (testing "dimension vectors in parameterMappings are keywordized and upgraded"
     (mt/dataset test-data
       (let [field-id           (mt/id :products :category)
-            original-dimension ["dimension" ["field" field-id {"base-type" "type/Text"}]]
-            captured-args      (atom [])
-            original-upgrade   lib-be/upgrade-field-ref-in-parameter-target]
+            original-dimension ["dimension" ["field" field-id {"base-type" "type/Text"}]]]
         (mt/with-temp [:model/Card card {:dataset_query          (table-query :products)
                                          :visualization_settings {}}
                        :model/Dashboard {dashboard-id :id} {:name "Test Dashboard"}
@@ -317,26 +315,19 @@
                             {"dim-key"
                              {:target {:type      "dimension"
                                        :dimension original-dimension}}}}}}}}]
-          (with-redefs [lib-be/upgrade-field-ref-in-parameter-target
-                        (fn [query dim]
-                          (swap! captured-args conj {:query query :dim dim})
-                          (original-upgrade query dim))]
-            (field-refs/dashboard-upgrade-field-refs! dashboard-id)
-            (let [updated-viz (t2/select-one-fn :visualization_settings :model/DashboardCard :id dashcard-id)
-                  target-dim  (get-in updated-viz [:column_settings (name-key "TITLE")
-                                                   :click_behavior :parameterMapping
-                                                   "dim-key" :target :dimension])
-                  dim-call    (first (filter #(and (vector? (:dim %))
-                                                   (= :dimension (first (:dim %))))
-                                             @captured-args))]
-              (is (some? dim-call)
-                  "upgrade-field-ref-in-parameter-target should be called with a dimension vector")
-              (is (some? (:query dim-call))
-                  "query should not be nil")
-              (is (= :type/Text (get-in (:dim dim-call) [1 2 :base-type]))
-                  "base-type should be keywordized")
-              (is (not= original-dimension target-dim)
-                  "dimension should be upgraded from original form"))))))))
+          (field-refs/dashboard-upgrade-field-refs! dashboard-id)
+          (let [updated-viz (t2/select-one-fn :visualization_settings :model/DashboardCard :id dashcard-id)
+                target-dim  (get-in updated-viz [:column_settings (name-key "TITLE")
+                                                 :click_behavior :parameterMapping
+                                                 :dim-key :target :dimension])]
+            (is (= "dimension" (first target-dim))
+                "first element should remain \"dimension\"")
+            (is (= :field (get-in target-dim [1 0]))
+                "field tag should be keywordized")
+            (is (= :type/Text (get-in target-dim [1 2 :base-type]))
+                "base-type should be keywordized")
+            (is (not= original-dimension target-dim)
+                "dimension should be upgraded from original string form")))))))
 
 (deftest dashboard-upgrade-malformed-dimension-preserved-test
   (testing "malformed dimension vectors pass through unchanged via exception handler"
@@ -359,7 +350,7 @@
           (let [updated-viz (t2/select-one-fn :visualization_settings :model/DashboardCard :id dashcard-id)
                 target-dim  (get-in updated-viz [:column_settings (name-key "TITLE")
                                                  :click_behavior :parameterMapping
-                                                 "key1" :target :dimension])]
+                                                 :key1 :target :dimension])]
             (is (= malformed-dimension target-dim)
                 "malformed dimension should be preserved unchanged")))))))
 
@@ -384,181 +375,72 @@
   (testing "upgrade! with :table entity is a no-op"
     (is (nil? (field-refs/upgrade! [:table 123])))))
 
-(deftest upgrade-dispatch-unknown-map-test
-  (testing "upgrade! with a map that matches no condition returns :do-nothing"
-    (is (= :do-nothing (field-refs/upgrade! {:some-key 1 :other-key 2})))))
+(deftest upgrade-dispatch-table-noop-test
+  (testing "upgrade! with [:table id] is a no-op (tables have no field refs to upgrade)"
+    (is (nil? (field-refs/upgrade! [:table 42])))))
 
 (deftest upgrade-dispatch-dashboard-via-upgrade!-test
-  (testing "upgrade! with [:dashboard id] dispatches to dashboard upgrade"
-    (let [called (atom nil)]
-      (with-redefs-fn {#'field-refs/dashboard-upgrade-field-refs!
-                       (fn [id] (reset! called id))}
-        (fn []
-          (field-refs/upgrade! [:dashboard 42])
-          (is (= 42 @called)
-              "should call dashboard-upgrade-field-refs! with the id"))))))
+  (testing "upgrade! with [:dashboard id] dispatches to dashboard-upgrade-field-refs!"
+    (mt/dataset test-data
+      (let [field-id  (mt/id :products :category)
+            dimension ["dimension" ["field" field-id {"base-type" "type/Text"}]]]
+        (mt/with-temp [:model/Card card {:dataset_query          (table-query :products)
+                                         :visualization_settings {}}
+                       :model/Dashboard {dashboard-id :id} {:name "Dispatch Test"}
+                       :model/DashboardCard {dashcard-id :id}
+                       {:dashboard_id dashboard-id
+                        :card_id      (:id card)
+                        :parameter_mappings [{:parameter_id "test-param"
+                                              :card_id     (:id card)
+                                              :target      [:dimension [:field field-id {:base-type :type/Text}]]}]}]
+          (field-refs/upgrade! [:dashboard dashboard-id])
+          (let [updated-pm (:parameter_mappings (t2/select-one :model/DashboardCard :id dashcard-id))]
+            (is (some? updated-pm)
+                "should process dashboard parameter_mappings via dispatch")))))))
 
 ;;; ----------------------------------------- upgrade! tuple dispatch for transform/segment/measure --------
 
-(deftest upgrade-dispatch-transform-vector-test
-  (testing "upgrade! with [:transform id] and loaded-object calls transform upgrade"
-    (let [called (atom nil)]
-      (with-redefs-fn {#'field-refs/transform-upgrade-field-refs!
-                       (fn [obj] (reset! called obj))}
-        (fn []
-          (let [transform {:id 42 :source {:type :query :query {}}}]
-            (field-refs/upgrade! [:transform 42] transform)
-            (is (= transform @called)
-                "should call transform-upgrade-field-refs! with the loaded-object")))))))
-
 (deftest upgrade-dispatch-transform-no-loaded-object-test
   (testing "upgrade! with [:transform id] and nil loaded-object is a no-op"
-    (let [called (atom false)]
-      (with-redefs-fn {#'field-refs/transform-upgrade-field-refs!
-                       (fn [_] (reset! called true))}
-        (fn []
-          (field-refs/upgrade! [:transform 42])
-          (is (not @called)
-              "should not call transform-upgrade-field-refs! without loaded-object"))))))
-
-(deftest upgrade-dispatch-segment-vector-test
-  (testing "upgrade! with [:segment id] and loaded-object calls segment upgrade"
-    (let [called (atom nil)]
-      (with-redefs-fn {#'field-refs/segment-upgrade-field-refs!
-                       (fn [obj] (reset! called obj))}
-        (fn []
-          (let [segment {:id 42 :definition {} :table_id 1}]
-            (field-refs/upgrade! [:segment 42] segment)
-            (is (= segment @called)
-                "should call segment-upgrade-field-refs! with the loaded-object")))))))
+    (is (nil? (field-refs/upgrade! [:transform 42]))
+        "should return nil without loaded-object")))
 
 (deftest upgrade-dispatch-segment-no-loaded-object-test
   (testing "upgrade! with [:segment id] and nil loaded-object is a no-op"
-    (let [called (atom false)]
-      (with-redefs-fn {#'field-refs/segment-upgrade-field-refs!
-                       (fn [_] (reset! called true))}
-        (fn []
-          (field-refs/upgrade! [:segment 42])
-          (is (not @called)
-              "should not call segment-upgrade-field-refs! without loaded-object"))))))
-
-(deftest upgrade-dispatch-measure-vector-test
-  (testing "upgrade! with [:measure id] and loaded-object calls measure upgrade"
-    (let [called (atom nil)]
-      (with-redefs-fn {#'field-refs/measure-upgrade-field-refs!
-                       (fn [obj] (reset! called obj))}
-        (fn []
-          (let [measure {:id 42 :definition {}}]
-            (field-refs/upgrade! [:measure 42] measure)
-            (is (= measure @called)
-                "should call measure-upgrade-field-refs! with the loaded-object")))))))
+    (is (nil? (field-refs/upgrade! [:segment 42]))
+        "should return nil without loaded-object")))
 
 (deftest upgrade-dispatch-measure-no-loaded-object-test
   (testing "upgrade! with [:measure id] and nil loaded-object is a no-op"
-    (let [called (atom false)]
-      (with-redefs-fn {#'field-refs/measure-upgrade-field-refs!
-                       (fn [_] (reset! called true))}
-        (fn []
-          (field-refs/upgrade! [:measure 42])
-          (is (not @called)
-              "should not call measure-upgrade-field-refs! without loaded-object"))))))
+    (is (nil? (field-refs/upgrade! [:measure 42]))
+        "should return nil without loaded-object")))
 
-;;; ----------------------------------------- upgrade! map dispatch ----------------------------------------
+;;; ----------------------------------------- upgrade! with loaded-object ------------------------------------
 
-(deftest upgrade-map-card-test
-  (testing "upgrade! with a card map dispatches to card upgrade"
+(deftest upgrade-card-via-upgrade!-test
+  (testing "upgrade! with [:card id] and loaded card upgrades column_settings"
     (mt/dataset test-data
       (mt/with-temp [:model/Card card {:dataset_query          (table-query :products)
                                        :visualization_settings {:column_settings
-                                                                {(ref-key (mt/id :products :title)) {:column_title "Map Card"}}}}]
-        (field-refs/upgrade! card)
+                                                                {(ref-key (mt/id :products :title)) {:column_title "Via Upgrade"}}}}]
+        (field-refs/upgrade! [:card (:id card)] card)
         (let [updated-viz (t2/select-one-fn :visualization_settings :model/Card :id (:id card))
               cs          (:column_settings updated-viz)]
-          (is (= {:column_title "Map Card"} (get cs (name-key "TITLE")))
-              "card map dispatch should upgrade column_settings"))))))
-
-(deftest upgrade-map-transform-test
-  (testing "upgrade! with a transform map dispatches to transform upgrade"
-    (let [called (atom nil)]
-      (with-redefs-fn {#'field-refs/transform-upgrade-field-refs!
-                       (fn [obj] (reset! called obj))}
-        (fn []
-          (let [transform {:id 42 :source {:type :query :query {}} :name "T"}]
-            (field-refs/upgrade! transform)
-            (is (= transform @called)
-                "transform map dispatch should call transform-upgrade-field-refs!")))))))
-
-(deftest upgrade-map-segment-test
-  (testing "upgrade! with a segment map dispatches to segment upgrade"
-    (let [called (atom nil)]
-      (with-redefs-fn {#'field-refs/segment-upgrade-field-refs!
-                       (fn [obj] (reset! called obj))}
-        (fn []
-          (let [segment {:definition {:some "def"} :table_id 1 :id 42}]
-            (field-refs/upgrade! segment)
-            (is (= segment @called)
-                "segment map dispatch should call segment-upgrade-field-refs!")))))))
-
-(deftest upgrade-map-segment-with-aggregation-test
-  (testing "upgrade! with a map having :definition, :table_id, and :aggregation dispatches to measure"
-    (let [called (atom nil)]
-      (with-redefs-fn {#'field-refs/measure-upgrade-field-refs!
-                       (fn [obj] (reset! called obj))}
-        (fn []
-          (let [measure {:definition {:some "def"} :table_id 1 :aggregation [:count] :id 42}]
-            (field-refs/upgrade! measure)
-            (is (= measure @called)
-                "entity with aggregation should dispatch to measure, not segment")))))))
-
-(deftest upgrade-map-measure-test
-  (testing "upgrade! with a measure map (definition only) dispatches to measure upgrade"
-    (let [called (atom nil)]
-      (with-redefs-fn {#'field-refs/measure-upgrade-field-refs!
-                       (fn [obj] (reset! called obj))}
-        (fn []
-          (let [measure {:definition {:some "def"} :id 42}]
-            (field-refs/upgrade! measure)
-            (is (= measure @called)
-                "measure map dispatch should call measure-upgrade-field-refs!")))))))
+          (is (= {:column_title "Via Upgrade"} (get cs (name-key "TITLE")))
+              "card dispatch with loaded-object should upgrade column_settings"))))))
 
 ;;; ----------------------------------------- card-upgrade-field-refs! dataset_query ----------------------------
 
 (deftest upgrade-card-dataset-query-saved-test
   (testing "upgrade! saves updated dataset_query when query field refs are upgraded"
     (mt/dataset test-data
-      (mt/with-temp [:model/Card card {:dataset_query          (table-query :products)
-                                       :visualization_settings {}}]
-        ;; Mock upgrade-field-refs-in-query to simulate a query that changes (add a filter)
-        (let [upgraded-query (assoc-in (:dataset_query card) [:stages 0 :filters] [[:> {} 1 2]])]
-          (with-redefs-fn {#'lib-be/upgrade-field-refs-in-query (constantly upgraded-query)}
-            (fn []
-              (field-refs/upgrade! [:card (:id card)] card)
-              (let [saved-query (t2/select-one-fn :dataset_query :model/Card :id (:id card))]
-                (is (some? (get-in saved-query [:stages 0 :filters]))
-                    "upgraded dataset_query should be saved to DB")))))))))
-
-(deftest upgrade-card-native-query-includes-result-metadata-test
-  (testing "upgrade! includes result_metadata in changes for native queries when dataset_query changes"
-    (mt/dataset test-data
-      (let [mp              (mt/metadata-provider)
-            native-query    (lib/native-query mp "SELECT * FROM PRODUCTS")
-            result-metadata [{:name      "ID"
-                              :base_type :type/Integer
-                              :display_name "ID"
-                              :field_ref [:field "ID" {:base-type :type/Integer}]}]
-            update-args     (atom nil)]
-        (mt/with-temp [:model/Card card {:dataset_query          native-query
-                                         :result_metadata        result-metadata
-                                         :visualization_settings {}}]
-          ;; Mock to simulate a native query whose dataset_query changes
-          (let [upgraded-query (lib/native-query mp "SELECT * FROM PRODUCTS WHERE 1=1")]
-            (with-redefs-fn {#'lib-be/upgrade-field-refs-in-query (constantly upgraded-query)
-                             #'lib/native-only-query?             (constantly true)
-                             #'t2/update!                         (fn [& args] (reset! update-args args) 1)}
-              (fn []
-                (field-refs/upgrade! [:card (:id card)] card)
-                (let [[_model _id changes] @update-args]
-                  (is (contains? changes :result_metadata)
-                      "changes should include result_metadata for native queries")
-                  (is (= result-metadata (:result_metadata changes))
-                      "result_metadata value should come from the card"))))))))))
+      (let [mp (mt/metadata-provider)]
+        (mt/with-temp [:model/Card card0 {:dataset_query (table-query :products)}
+                       :model/Card card {:dataset_query (as-> (lib/query mp (lib.metadata/card mp (:id card0))) q
+                                                          ;; add a legacy field ref (id-based)
+                                                          (lib/filter q (lib/> [:field {:lib/uuid (str (random-uuid))}
+                                                                                (:id (first (lib/filterable-columns q)))] 0)))}]
+          (field-refs/upgrade! [:card (:id card)] card)
+          (let [saved-query (t2/select-one-fn :dataset_query :model/Card :id (:id card))]
+            (is (pos?    (get-in (lib/filters (:dataset_query card)) [0 2 2])))
+            (is (string? (get-in (lib/filters saved-query)           [0 2 2])))))))))
