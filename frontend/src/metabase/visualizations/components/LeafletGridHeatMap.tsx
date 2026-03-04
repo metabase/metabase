@@ -56,12 +56,15 @@ export class LeafletGridHeatMap extends LeafletMap<LeafletGridHeatMapProps> {
     }
 
     this.gridLayer = L.layerGroup([]).addTo(this.map);
-    this.componentDidUpdate({} as LeafletGridHeatMapProps);
+    this.syncGridLayer();
   }
 
   componentDidUpdate(prevProps: LeafletGridHeatMapProps) {
     super.componentDidUpdate(prevProps);
+    this.syncGridLayer();
+  }
 
+  private syncGridLayer() {
     try {
       const { gridLayer } = this;
       if (!gridLayer) {

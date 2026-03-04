@@ -136,6 +136,8 @@ export class LeafletMap<
         const zoom = map.getZoom();
         this.props.onMapZoomChange(zoom);
       });
+
+      this.syncMapFromProps();
     } catch (error) {
       console.error(error);
       this.props.onRenderError(
@@ -145,13 +147,17 @@ export class LeafletMap<
   }
 
   componentDidUpdate(prevProps: T) {
+    this.syncMapFromProps(prevProps);
+  }
+
+  protected syncMapFromProps(prevProps?: T) {
     if (!this.map) {
       return;
     }
 
     const { bounds, settings, zoomControl, zoom, lat, lng } = this.props;
 
-    if (prevProps.zoomControl !== zoomControl) {
+    if (prevProps && prevProps.zoomControl !== zoomControl) {
       if (zoomControl === false) {
         this.map.zoomControl?.remove();
       } else if (this.map.zoomControl) {
