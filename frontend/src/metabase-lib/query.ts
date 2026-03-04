@@ -10,6 +10,7 @@ import type {
   TableId,
   TestNativeQuerySpec,
   TestQuerySpec,
+  WrappedCardId,
 } from "metabase-types/api";
 
 import type {
@@ -112,7 +113,9 @@ export function swapClauses(
   return ML.swap_clauses(query, stageIndex, sourceClause, targetClause);
 }
 
-export function sourceTableOrCardId(query: Query): TableId | null {
+export function sourceTableOrCardId(
+  query: Query,
+): TableId | WrappedCardId | null {
   return ML.source_table_or_card_id(query);
 }
 

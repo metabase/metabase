@@ -24,8 +24,9 @@ import * as Lib from "metabase-lib";
 import {
   getQuestionIdFromVirtualTableId,
   getQuestionVirtualTableId,
+  isVirtualCardId,
 } from "metabase-lib/v1/metadata/utils/saved-questions";
-import type { TableId } from "metabase-types/api";
+import type { TableId, WrappedCardId } from "metabase-types/api";
 
 import {
   type NotebookContextType,
@@ -80,10 +81,12 @@ export function NotebookDataPicker({
   const isEmbed = isEmbedding();
   const isTenantUser = useSelector(getIsTenantUser);
 
-  const handleChange = async (tableId: TableId) => {
-    const cardId = getQuestionIdFromVirtualTableId(tableId);
-    if (cardId != null) {
-      await dispatch(loadCard(cardId));
+  const handleChange = async (tableId: TableId | WrappedCardId) => {
+    if (isVirtualCardId(tableId)) {
+      const cardId = getQuestionIdFromVirtualTableId(tableId);
+      if (cardId != null) {
+        await dispatch(loadCard(cardId));
+      }
     } else {
       await dispatch(loadMetadataForTable(tableId));
     }
@@ -160,7 +163,7 @@ type ModernDataPickerProps = {
   canChangeDatabase: boolean;
   hasMetrics: boolean;
   isDisabled: boolean;
-  onChange: (tableId: TableId) => void;
+  onChange: (tableId: TableId | WrappedCardId) => void;
   shouldDisableItem?: (item: OmniPickerItem) => boolean;
   shouldDisableDatabase?: (database: QueryEditorDatabasePickerItem) => boolean;
   shouldShowLibrary?: boolean;

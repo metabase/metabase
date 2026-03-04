@@ -2,8 +2,11 @@ import { checkNotNull } from "metabase/lib/types";
 import * as Urls from "metabase/lib/urls";
 import * as Lib from "metabase-lib";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
-import { getQuestionIdFromVirtualTableId } from "metabase-lib/v1/metadata/utils/saved-questions";
-import type { TableId } from "metabase-types/api";
+import {
+  getQuestionIdFromVirtualTableId,
+  isVirtualCardId,
+} from "metabase-lib/v1/metadata/utils/saved-questions";
+import type { TableId, WrappedCardId } from "metabase-types/api";
 
 type Props = {
   query: Lib.Query;
@@ -54,9 +57,12 @@ export const isObjectWithModel = (
   );
 };
 
-export function getDatabaseId(metadata: Metadata, tableId: TableId) {
-  const cardId = getQuestionIdFromVirtualTableId(tableId);
-  if (cardId != null) {
+export function getDatabaseId(
+  metadata: Metadata,
+  tableId: TableId | WrappedCardId,
+) {
+  if (isVirtualCardId(tableId)) {
+    const cardId = getQuestionIdFromVirtualTableId(tableId);
     const question = checkNotNull(metadata.question(cardId));
     return checkNotNull(question.card().database_id ?? question.databaseId());
   } else {

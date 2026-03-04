@@ -7,6 +7,7 @@ import type {
   DatasetColumn,
   FieldId,
   TableId,
+  WrappedCardId,
 } from "metabase-types/api";
 
 import type {
@@ -174,7 +175,7 @@ export function describeTemporalUnit(
 
 export function tableOrCardMetadata(
   queryOrMetadataProvider: Query | MetadataProvider,
-  tableID: TableId,
+  tableID: TableId | WrappedCardId,
 ): CardMetadata | TableMetadata | null {
   return ML.table_or_card_metadata(queryOrMetadataProvider, tableID);
 }

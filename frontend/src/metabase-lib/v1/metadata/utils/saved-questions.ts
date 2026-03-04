@@ -38,14 +38,23 @@ export function isVirtualCardId(
   return typeof id === "string" && id.startsWith("card__");
 }
 
+export function getQuestionIdFromVirtualTableId(tableId: null): null;
+export function getQuestionIdFromVirtualTableId(tableId: TableId | null): null;
+export function getQuestionIdFromVirtualTableId(tableId: WrappedCardId): CardId;
 export function getQuestionIdFromVirtualTableId(
-  tableId: TableId | WrappedCardId,
+  tableId: TableId | WrappedCardId | null,
+): CardId | null;
+export function getQuestionIdFromVirtualTableId(
+  tableId: TableId | WrappedCardId | null,
 ): CardId | null {
   if (typeof tableId !== "string") {
     return null;
   }
   const id = parseInt(tableId.replace("card__", ""));
-  return Number.isSafeInteger(id) ? id : null;
+  if (!Number.isSafeInteger(id)) {
+    throw new Error(`Invalid virtual table id: ${tableId}`);
+  }
+  return id;
 }
 
 export function convertSavedQuestionToVirtualTable(card: Card): Table {
