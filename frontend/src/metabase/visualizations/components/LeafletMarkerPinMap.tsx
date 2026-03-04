@@ -26,13 +26,17 @@ interface LeafletMarkerPinMapProps extends LeafletMapProps<Point> {
 }
 
 export class LeafletMarkerPinMap extends LeafletMap<LeafletMarkerPinMapProps> {
-  pinMarkerLayer!: L.LayerGroup;
-  pinMarkerIcon!: L.Icon;
+  pinMarkerLayer: L.LayerGroup | null = null;
+  pinMarkerIcon: L.Icon | null = null;
 
   componentDidMount() {
     super.componentDidMount();
 
-    this.pinMarkerLayer = L.layerGroup([]).addTo(this.map!);
+    if (!this.map) {
+      return;
+    }
+
+    this.pinMarkerLayer = L.layerGroup([]).addTo(this.map);
     this.pinMarkerIcon = L.icon({
       iconUrl: getSubpathSafeUrl("app/assets/img/pin.png"),
       iconSize: [28, 32],
@@ -61,7 +65,7 @@ export class LeafletMarkerPinMap extends LeafletMap<LeafletMarkerPinMapProps> {
 
   _createMarkers = (points?: Point[] | null) => {
     const { pinMarkerLayer } = this;
-    if (!this.map || !points) {
+    if (!this.map || !pinMarkerLayer || !points) {
       return;
     }
 
@@ -135,7 +139,9 @@ export class LeafletMarkerPinMap extends LeafletMap<LeafletMarkerPinMapProps> {
   };
 
   _createMarker = (rowIndex: number) => {
-    const marker = L.marker([0, 0], { icon: this.pinMarkerIcon });
+    const marker = L.marker([0, 0], {
+      ...(this.pinMarkerIcon ? { icon: this.pinMarkerIcon } : {}),
+    });
     return this._setupMarkerEvents(marker, rowIndex);
   };
 
