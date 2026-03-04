@@ -1,6 +1,17 @@
 (ns metabase.lib-metric.types.isa
   "Type predicate functions for lib-metric dimensions.
-   Simpler implementation than metabase.lib.types.isa."
+   Simpler implementation than metabase.lib.types.isa.
+
+   Predicates fall into two categories:
+
+   1. **Effective-type predicates** (`temporal?`, `numeric?`, `boolean?`, `string?`,
+      `string-like?`, `category?`): route through [[field-type?]] which checks
+      `:effective-type` (and optionally `:semantic-type`) via
+      [[constants/type-hierarchies]]. These answer \"what kind of data is in this column?\".
+
+   2. **Semantic-type predicates** (`coordinate?`, `foreign-key?`, `primary-key?`,
+      `location?`, `URL?`, `entity-name?`, etc.): check `:semantic-type` directly
+      with `clojure.core/isa?`. These answer \"what does this column *mean*?\"."
   (:refer-clojure :exclude [boolean? string?])
   (:require
    [metabase.lib-metric.types.constants :as constants]

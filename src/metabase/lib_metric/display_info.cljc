@@ -38,6 +38,7 @@
       (:effective-type x)       (assoc :effective-type (:effective-type x))
       (:semantic-type x)        (assoc :semantic-type (:semantic-type x))
       (:description x)          (assoc :description (:description x))
+      ;; Support both :selected? (from lib/) and :selected (from lib-metric/) naming conventions
       (some? (:selected? x))    (assoc :selected (:selected? x))
       (some? (:selected x))     (assoc :selected (:selected x))
       (some? (:default? x))     (assoc :default (:default? x))
@@ -202,6 +203,25 @@
   [op]
   (operators/display-name op))
 
+(defn- describe-temporal-interval
+  "Describe a temporal interval as human-readable text.
+   n can be :current, 0, a negative int (past), or a positive int (future)."
+  [n unit]
+  (let [unit-name (name unit)]
+    (cond
+      (or (= n :current) (= n 0))
+      (i18n/tru "the current {0}" unit-name)
+
+      (and (number? n) (neg? n))
+      (let [abs-n (abs n)]
+        (i18n/tru "in the last {0} {1}s" abs-n unit-name))
+
+      (and (number? n) (pos? n))
+      (i18n/tru "in the next {0} {1}s" n unit-name)
+
+      :else
+      (str n " " unit-name))))
+
 (defn- filter-clause-display-name
   "Generate a display name for a filter clause."
   [definition [op _opts & args]]
@@ -222,6 +242,16 @@
         (if dim-name
           (i18n/tru "{0} {1} {2} and {3}" dim-name op-name (format-filter-value v1) (format-filter-value v2))
           (i18n/tru "{0} {1} and {2}" op-name (format-filter-value v1) (format-filter-value v2))))
+
+      ;; Relative date filters
+      :time-interval
+      (let [[dim-ref n unit] args
+            dim-name (when (dimension-ref? dim-ref)
+                       (dimension-display-name definition dim-ref))
+            interval-desc (describe-temporal-interval n unit)]
+        (if dim-name
+          (i18n/tru "{0} is {1}" dim-name interval-desc)
+          interval-desc))
 
       ;; Default: binary/varargs operators
       (let [values (rest args)

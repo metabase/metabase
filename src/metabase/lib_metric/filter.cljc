@@ -41,13 +41,13 @@
   "Build a map of {dimension-id -> [filter-indices]} from a sequence of filters.
    Each dimension ID maps to a vector of zero-based indices where it appears."
   [filters]
-  (reduce-kv
-   (fn [acc idx filter-clause]
+  (reduce
+   (fn [acc [idx filter-clause]]
      (if-let [dim-id (leading-dimension-ref filter-clause)]
        (update acc dim-id (fnil conj []) idx)
        acc))
    {}
-   (vec filters)))
+   (map-indexed vector filters)))
 
 ;;; -------------------------------------------------- Filter Operators --------------------------------------------------
 

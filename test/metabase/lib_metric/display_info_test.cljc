@@ -3,7 +3,7 @@
    [clojure.test :refer [deftest is testing]]
    [metabase.lib-metric.display-info :as display-info]))
 
-(deftest default-display-info-test
+(deftest ^:parallel default-display-info-common-fields-test
   (testing "extracts common fields from entity"
     (let [entity {:name "test-name"
                   :display-name "Test Name"
@@ -16,25 +16,24 @@
       (is (= :type/Text (:effective-type result)))
       (is (= :type/Category (:semantic-type result)))
       (is (= "A description" (:description result)))))
-
   (testing "uses name as display-name fallback"
     (let [entity {:name "fallback-name"}
           result (display-info/default-display-info nil entity)]
-      (is (= "fallback-name" (:display-name result)))))
+      (is (= "fallback-name" (:display-name result))))))
 
+(deftest ^:parallel default-display-info-selected-default-test
   (testing "handles selected and default flags"
     (let [entity {:name "test" :selected? true :default? false}
           result (display-info/default-display-info nil entity)]
       (is (true? (:selected result)))
       (is (false? (:default result)))))
-
   (testing "handles alternate selected/default keys"
     (let [entity {:name "test" :selected true :default true}
           result (display-info/default-display-info nil entity)]
       (is (true? (:selected result)))
       (is (true? (:default result))))))
 
-(deftest display-info-method-metric-test
+(deftest ^:parallel display-info-method-metric-display-name-test
   (testing ":metadata/metric returns display-name"
     (let [metric {:lib/type :metadata/metric
                   :name "revenue"
@@ -42,36 +41,38 @@
           result (display-info/display-info nil metric)]
       (is (= "Total Revenue" (:display-name result)))
       (is (= "revenue" (:name result)))))
-
   (testing ":metadata/metric falls back to name"
     (let [metric {:lib/type :metadata/metric
                   :name "revenue"}
           result (display-info/display-info nil metric)]
-      (is (= "revenue" (:display-name result)))))
+      (is (= "revenue" (:display-name result))))))
 
+(deftest ^:parallel display-info-method-metric-fallback-test
   (testing ":metadata/metric has fallback for missing name"
     (let [metric {:lib/type :metadata/metric}
           result (display-info/display-info nil metric)]
-      (is (string? (:display-name result)))))
+      (is (string? (:display-name result))))))
 
+(deftest ^:parallel display-info-method-metric-column-name-test
   (testing ":metadata/metric includes column-name from display-name"
     (let [metric {:lib/type :metadata/metric
                   :name "revenue"
                   :display-name "Total Revenue"}
           result (display-info/display-info nil metric)]
       (is (= "total_revenue" (:column-name result)))))
-
   (testing ":metadata/metric column-name falls back to name"
     (let [metric {:lib/type :metadata/metric
                   :name "Revenue"}
           result (display-info/display-info nil metric)]
-      (is (= "revenue" (:column-name result)))))
+      (is (= "revenue" (:column-name result))))))
 
+(deftest ^:parallel display-info-method-metric-column-name-nil-test
   (testing ":metadata/metric column-name is nil when no name"
     (let [metric {:lib/type :metadata/metric}
           result (display-info/display-info nil metric)]
-      (is (nil? (:column-name result)))))
+      (is (nil? (:column-name result))))))
 
+(deftest ^:parallel display-info-method-metric-result-column-name-test
   (testing ":metadata/metric prefers result-column-name over slugified display-name"
     (let [metric {:lib/type :metadata/metric
                   :name "revenue"
@@ -80,7 +81,7 @@
           result (display-info/display-info nil metric)]
       (is (= "sum" (:column-name result))))))
 
-(deftest display-info-method-measure-test
+(deftest ^:parallel display-info-method-measure-display-name-test
   (testing ":metadata/measure returns display-name"
     (let [measure {:lib/type :metadata/measure
                    :name "count"
@@ -88,20 +89,19 @@
           result (display-info/display-info nil measure)]
       (is (= "Count" (:display-name result)))
       (is (= "count" (:name result)))))
-
   (testing ":metadata/measure falls back to name"
     (let [measure {:lib/type :metadata/measure
                    :name "sum"}
           result (display-info/display-info nil measure)]
-      (is (= "sum" (:display-name result)))))
+      (is (= "sum" (:display-name result))))))
 
+(deftest ^:parallel display-info-method-measure-column-name-test
   (testing ":metadata/measure includes column-name"
     (let [measure {:lib/type :metadata/measure
                    :name "Order Total"
                    :display-name "Order Total"}
           result (display-info/display-info nil measure)]
       (is (= "order_total" (:column-name result)))))
-
   (testing ":metadata/measure prefers result-column-name over slugified display-name"
     (let [measure {:lib/type :metadata/measure
                    :name "Order Total"
@@ -110,7 +110,7 @@
           result (display-info/display-info nil measure)]
       (is (= "sum" (:column-name result))))))
 
-(deftest display-info-method-dimension-test
+(deftest ^:parallel display-info-method-dimension-fields-test
   (testing ":metadata/dimension returns expected fields"
     (let [dimension {:lib/type :metadata/dimension
                      :name "category"
@@ -125,15 +125,17 @@
       (is (= :type/Text (:effective-type result)))
       (is (= :type/Category (:semantic-type result)))
       (is (= [0 1] (:filter-positions result)))
-      (is (= [2] (:projection-positions result)))))
+      (is (= [2] (:projection-positions result))))))
 
+(deftest ^:parallel display-info-method-dimension-defaults-test
   (testing ":metadata/dimension defaults positions to empty vectors"
     (let [dimension {:lib/type :metadata/dimension
                      :name "test"}
           result (display-info/display-info nil dimension)]
       (is (= [] (:filter-positions result)))
-      (is (= [] (:projection-positions result)))))
+      (is (= [] (:projection-positions result))))))
 
+(deftest ^:parallel display-info-method-dimension-source-indicators-test
   (testing ":metadata/dimension includes source indicators"
     (let [join-dim {:lib/type :metadata/dimension
                     :name "join-col"
@@ -144,7 +146,7 @@
       (is (true? (:is-from-join (display-info/display-info nil join-dim))))
       (is (true? (:is-calculated (display-info/display-info nil expr-dim)))))))
 
-(deftest display-info-method-temporal-bucket-test
+(deftest ^:parallel display-info-method-temporal-bucket-test
   (testing ":temporal-bucket returns expected fields"
     (let [bucket {:lib/type :temporal-bucket
                   :unit :month
@@ -155,7 +157,6 @@
       (is (string? (:display-name result)))
       (is (true? (:default result)))
       (is (false? (:selected result)))))
-
   (testing ":temporal-bucket identifies extraction units"
     (let [extraction {:lib/type :temporal-bucket
                       :unit :month-of-year}
@@ -178,7 +179,7 @@
         (is (true? (:default result)))
         (is (false? (:selected result))))))
 
-(deftest display-info-method-default-test
+(deftest ^:parallel display-info-method-default-test
   (testing "unknown types get default display-info"
     (let [unknown {:lib/type :unknown/type
                    :name "test"
@@ -187,23 +188,42 @@
       (is (= "Test" (:display-name result)))
       (is (= "test" (:name result))))))
 
-(deftest display-info-filter-clause-test
+(deftest ^:parallel display-info-filter-clause-basic-test
   (testing "filter clause generates readable display-name with dimension UUID as fallback"
     (let [clause [:= {} [:dimension {} "dim-uuid"] "value"]
           result (display-info/display-info nil clause)]
       (is (= "dim-uuid is value" (:display-name result)))))
-
   (testing "contains filter clause"
     (let [clause [:contains {} [:dimension {} "dim-uuid"] "search"]
           result (display-info/display-info nil clause)]
-      (is (= "dim-uuid contains search" (:display-name result)))))
+      (is (= "dim-uuid contains search" (:display-name result))))))
 
+(deftest ^:parallel display-info-filter-clause-between-and-unary-test
   (testing "between filter clause"
     (let [clause [:between {} [:dimension {} "dim-uuid"] 1 10]
           result (display-info/display-info nil clause)]
       (is (= "dim-uuid is between 1 and 10" (:display-name result)))))
-
   (testing "unary operator (is-null)"
     (let [clause [:is-null {} [:dimension {} "dim-uuid"]]
           result (display-info/display-info nil clause)]
       (is (= "dim-uuid is empty" (:display-name result))))))
+
+(deftest ^:parallel display-info-filter-clause-time-interval-test
+  (testing "time-interval filter (past)"
+    (let [clause [:time-interval {} [:dimension {} "dim-uuid"] -30 :day]
+          result (display-info/display-info nil clause)]
+      (is (= "dim-uuid is in the last 30 days" (:display-name result)))))
+  (testing "time-interval filter (future)"
+    (let [clause [:time-interval {} [:dimension {} "dim-uuid"] 7 :week]
+          result (display-info/display-info nil clause)]
+      (is (= "dim-uuid is in the next 7 weeks" (:display-name result))))))
+
+(deftest ^:parallel display-info-filter-clause-time-interval-current-test
+  (testing "time-interval filter (current)"
+    (let [clause [:time-interval {} [:dimension {} "dim-uuid"] :current :month]
+          result (display-info/display-info nil clause)]
+      (is (= "dim-uuid is the current month" (:display-name result)))))
+  (testing "time-interval filter (zero means current)"
+    (let [clause [:time-interval {} [:dimension {} "dim-uuid"] 0 :year]
+          result (display-info/display-info nil clause)]
+      (is (= "dim-uuid is the current year" (:display-name result))))))

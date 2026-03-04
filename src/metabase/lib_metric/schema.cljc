@@ -182,10 +182,13 @@
            (lib.schema.common/normalize-options-map (or opts {}))
            id])))))
 
+(def ^:private normalize-metric-ref (normalize-expression-ref :metric))
+(def ^:private normalize-measure-ref (normalize-expression-ref :measure))
+
 (mr/def ::metric-expression-ref
   "A metric reference in an expression: [:metric {:lib/uuid uuid} card-id]."
   [:tuple
-   {:decode/normalize (normalize-expression-ref :metric)}
+   {:decode/normalize normalize-metric-ref}
    [:= {:decode/normalize lib.schema.common/normalize-keyword} :metric]
    [:map {:decode/normalize lib.schema.common/normalize-options-map}
     [:lib/uuid ::lib.schema.common/non-blank-string]]
@@ -194,7 +197,7 @@
 (mr/def ::measure-expression-ref
   "A measure reference in an expression: [:measure {:lib/uuid uuid} measure-id]."
   [:tuple
-   {:decode/normalize (normalize-expression-ref :measure)}
+   {:decode/normalize normalize-measure-ref}
    [:= {:decode/normalize lib.schema.common/normalize-keyword} :measure]
    [:map {:decode/normalize lib.schema.common/normalize-options-map}
     [:lib/uuid ::lib.schema.common/non-blank-string]]

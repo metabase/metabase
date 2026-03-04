@@ -280,10 +280,11 @@
 
                          :else nil)]
     (when strategies
-      (for [strategy strategies]
-        (cond-> strategy
-          existing                     (dissoc :default)
-          (strategy= strategy existing) (assoc :selected true))))))
+      (mapv (fn [strategy]
+              (cond-> strategy
+                existing                      (dissoc :default)
+                (strategy= strategy existing) (assoc :selected true)))
+            strategies))))
 
 (mu/defn binning :- [:maybe ::lib-metric.schema/binning]
   "Get the current binning from a projection clause."

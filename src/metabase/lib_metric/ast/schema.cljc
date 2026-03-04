@@ -220,10 +220,11 @@
 
 ;;; -------------------- Source Nodes --------------------
 
-(mr/def ::source-metric
-  "Metric source - contains the metric's query as AST."
+(defn- source-node-schema
+  "Create a source node schema with the given node-type keyword."
+  [node-type]
   [:map
-   [:node/type [:= :source/metric]]
+   [:node/type [:= node-type]]
    [:id pos-int?]
    [:name {:optional true} [:maybe string?]]
    [:aggregation ::aggregation-node]
@@ -232,17 +233,13 @@
    [:joins {:optional true} [:maybe [:sequential ::join-node]]]
    [:filters {:optional true} [:maybe [:ref ::filter-node]]]])
 
+(mr/def ::source-metric
+  "Metric source - contains the metric's query as AST."
+  (source-node-schema :source/metric))
+
 (mr/def ::source-measure
   "Measure source - contains the measure's definition as AST."
-  [:map
-   [:node/type [:= :source/measure]]
-   [:id pos-int?]
-   [:name {:optional true} [:maybe string?]]
-   [:aggregation ::aggregation-node]
-   [:base-table ::table-node]
-   [:metadata {:optional true} [:maybe :map]]
-   [:joins {:optional true} [:maybe [:sequential ::join-node]]]
-   [:filters {:optional true} [:maybe [:ref ::filter-node]]]])
+  (source-node-schema :source/measure))
 
 (mr/def ::source-node
   "Union of source node types."
