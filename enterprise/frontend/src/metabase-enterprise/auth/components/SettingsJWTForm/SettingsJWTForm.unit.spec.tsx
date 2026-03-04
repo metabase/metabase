@@ -57,9 +57,7 @@ describe("SettingsJWTForm", () => {
       ATTRS["jwt-identity-provider-uri"],
     );
     await userEvent.type(
-      await screen.findByRole("textbox", {
-        name: /String used by the JWT signing key/,
-      }),
+      await screen.findByLabelText(/String used by the JWT signing key/),
       ATTRS["jwt-shared-secret"],
     );
     await userEvent.type(
