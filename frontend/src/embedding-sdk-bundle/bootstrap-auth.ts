@@ -3,11 +3,18 @@
  *
  * This starts authentication as soon as the auth config is available,
  * in parallel with loading the main bundle chunks.
+ *
+ * Uses shared auth functions from embedding/auth-common for SSO discovery,
+ * JWT exchange, and session validation. Rspack inlines these into the bootstrap
+ * bundle since the bootstrap entry is excluded from splitChunks.
  */
 
-// These are intentionally inlined (not imported from embedding-sdk-shared)
-// to keep the bootstrap entry fully self-contained with zero shared modules.
-// Sharing modules with the chunked entry would break the rspack runtime isolation.
+import {
+  connectToInstanceAuthSso,
+  jwtDefaultRefreshTokenFunction,
+  validateSession,
+} from "embedding/auth-common";
+import * as MetabaseError from "embedding-sdk-bundle/errors";
 
 type SdkAuthState = {
   status: "idle" | "in-progress" | "completed" | "error" | "skipped";
@@ -150,79 +157,33 @@ async function performFullAuthFlow(config: {
 } | null> {
   const headers = getSdkRequestHeaders();
 
-  // Step 1: Get JWT provider URI (skip discovery if jwtProviderUri provided)
-  let providerUri = config.jwtProviderUri;
-  if (!providerUri) {
-    const ssoUrl = new URL(`${config.metabaseInstanceUrl}/auth/sso`);
+  // Step 1: SSO discovery (skip if jwtProviderUri provided)
+  const ssoResult = config.jwtProviderUri
+    ? { method: "jwt" as const, url: config.jwtProviderUri }
+    : await connectToInstanceAuthSso(config.metabaseInstanceUrl, {
+        headers,
+        preferredAuthMethod: config.preferredAuthMethod as
+          | "jwt"
+          | "saml"
+          | undefined,
+      });
 
-    if (config.preferredAuthMethod) {
-      ssoUrl.searchParams.set("preferred_method", config.preferredAuthMethod);
-    }
-
-    const ssoResponse = await fetch(ssoUrl.toString(), { headers });
-
-    if (!ssoResponse.ok) {
-      throw new Error(
-        `Failed to discover SSO method: ${ssoResponse.status} ${ssoResponse.statusText}`,
-      );
-    }
-
-    const ssoData = await ssoResponse.json();
-    if (ssoData.method !== "jwt") {
-      // SAML (or any non-JWT method) requires a popup — can't be pre-fetched
-      return null;
-    }
-    providerUri = ssoData.url;
+  if (ssoResult.method !== "jwt") {
+    // SAML (or any non-JWT method) requires a popup — can't be pre-fetched
+    return null;
   }
 
-  // Step 2: Get JWT from customer backend
-  let jwt: string;
-  if (config.fetchRequestToken) {
-    const response = await config.fetchRequestToken();
-    if (!response || typeof response.jwt !== "string") {
-      throw new Error(
-        `fetchRequestToken must return { jwt: string }, got: ${JSON.stringify(response)}`,
-      );
-    }
-    jwt = response.jwt;
-  } else {
-    // providerUri is guaranteed to be set here (either from config or discovery)
-    const jwtUrl = new URL(providerUri as string);
-    jwtUrl.searchParams.set("response", "json");
+  // Steps 2+3: Fetch JWT from customer backend + exchange for session token
+  const session = await jwtDefaultRefreshTokenFunction(
+    ssoResult.url,
+    config.metabaseInstanceUrl,
+    getSdkRequestHeaders(ssoResult.hash),
+    config.fetchRequestToken ?? null,
+  );
 
-    const jwtResponse = await fetch(jwtUrl.toString(), {
-      method: "GET",
-      credentials: "include",
-    });
+  validateSession(session);
 
-    if (!jwtResponse.ok) {
-      throw new Error(
-        `Failed to fetch JWT from provider: ${jwtResponse.status} ${jwtResponse.statusText}`,
-      );
-    }
-
-    const jwtData = await jwtResponse.json();
-    if (!jwtData || typeof jwtData.jwt !== "string") {
-      throw new Error(
-        `JWT provider must return { jwt: string }, got: ${JSON.stringify(jwtData)}`,
-      );
-    }
-    jwt = jwtData.jwt;
-  }
-  // Step 3: Exchange JWT for session token
-  const sessionUrl = new URL(`${config.metabaseInstanceUrl}/auth/sso`);
-  sessionUrl.searchParams.set("jwt", jwt);
-
-  const sessionResponse = await fetch(sessionUrl.toString(), { headers });
-
-  if (!sessionResponse.ok) {
-    throw new Error(
-      `Failed to exchange JWT for session: ${sessionResponse.status} ${sessionResponse.statusText}`,
-    );
-  }
-
-  const session = await sessionResponse.json();
-  // Step 4: Fetch user and site settings in parallel
+  // Step 4: Fetch user and site settings in parallel (bootstrap-specific)
   const authHeaders = {
     ...headers,
     // eslint-disable-next-line metabase/no-literal-metabase-strings -- header name
@@ -234,7 +195,7 @@ async function performFullAuthFlow(config: {
       headers: authHeaders,
     }).then(async (r) => {
       if (!r.ok) {
-        throw new Error(`Failed to fetch current user: ${r.status}`);
+        throw MetabaseError.USER_FETCH_FAILED();
       }
       return r.json();
     }),
@@ -258,7 +219,7 @@ function getSdkRequestHeaders(hash?: string): Record<string, string> {
     // eslint-disable-next-line metabase/no-literal-metabase-strings -- header name
     "X-Metabase-Client-Version":
       // Intentionally hardcoded — cannot import getBuildInfo here without
-      // creating a shared module that breaks rspack runtime isolation.
+      // pulling in the full build-info module.
       "unknown",
     // eslint-disable-next-line metabase/no-literal-metabase-strings -- header name
     ...(hash && { "X-Metabase-SDK-JWT-Hash": hash }),
