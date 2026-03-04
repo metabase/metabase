@@ -1458,7 +1458,7 @@
             :slack-user-id "U123"
             :channel-id    "C123"
             :message-ts    "123.456"})
-          (let [view (get-in (first @open-view-calls) [:view])]
+          (let [view (:view (first @open-view-calls))]
             (is (= 2 (count (:blocks view))) "negative modal should have issue_type and freeform blocks")
             (is (= "issue_type" (:block_id (first (:blocks view)))))))))))
 

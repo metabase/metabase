@@ -143,7 +143,7 @@
         text          (:text event)
         has-text?     (not (str/blank? text))
         file-handling (when (seq files)
-                        (slackbot.uploads/handle-file-uploads client files))
+                        (slackbot.uploads/handle-file-uploads files))
         extra-history (cond
                         ;; Pre-flight error (uploads disabled, no permission)
                         (:error file-handling)
