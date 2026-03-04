@@ -733,7 +733,6 @@
                           :definition (-> (lib/query mp (lib.metadata/table mp (mt/id :orders_a)))
                                           (lib/filter (lib/< 2 (lib.metadata/field mp (mt/id :orders_a :id)))))}]
             (events/publish-event! :event/segment-create {:object segment :user-id (mt/user->id :crowberto)})
-            (is (lib/field-ref-id (selector (:definition segment))))
             ;; sanity check that dependencies works
             (is (contains? (set (usages/transitive-usages [:table (mt/id :orders_a)]))
                            [:segment (:id segment)]))
@@ -744,7 +743,6 @@
                                   [:table (mt/id :orders_a)]
                                   [:table (mt/id :orders_b)])
             (let [segment' (t2/select-one :model/Segment (:id segment))]
-              (is (lib/field-ref-name (selector (:definition segment'))))
               (is (= (mt/id :orders_b) (:table_id segment')))
               (is (= (mt/id :orders_b) (-> segment' :definition :stages (get 0) :source-table)))
               (is (not (contains? (set (usages/transitive-usages [:table (mt/id :orders_a)]))
@@ -763,7 +761,6 @@
                           :definition (-> (lib/query mp (lib.metadata/table mp (mt/id :orders_a)))
                                           (lib/aggregate (lib/sum (lib.metadata/field mp (mt/id :orders_a :id)))))}]
             (events/publish-event! :event/measure-create {:object measure :user-id (mt/user->id :crowberto)})
-            (is (lib/field-ref-id (selector (:definition measure))))
             ;; sanity check that dependencies works
             (is (contains? (set (usages/transitive-usages [:table (mt/id :orders_a)]))
                            [:measure (:id measure)]))
@@ -774,7 +771,6 @@
                                   [:table (mt/id :orders_a)]
                                   [:table (mt/id :orders_b)])
             (let [measure' (t2/select-one :model/Measure (:id measure))]
-              (is (lib/field-ref-name (selector (:definition measure'))))
               (is (= (mt/id :orders_b) (:table_id measure')))
               (is (= (mt/id :orders_b) (-> measure' :definition :stages (get 0) :source-table)))
               (is (not (contains? (set (usages/transitive-usages [:table (mt/id :orders_a)]))

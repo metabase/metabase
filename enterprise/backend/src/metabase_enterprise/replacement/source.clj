@@ -15,7 +15,7 @@
 
 (mu/defn- has-incoming-fks? :- :boolean
   "Returns true if any active field has a FK pointing to a field in `table-id`."
-  [table-id :- ::lib.schema.id/table-id]
+  [table-id :- ::lib.schema.id/table]
   (if-let [field-ids (not-empty (t2/select-pks-set :model/Field :table_id table-id :active true))]
     (t2/exists? :model/Field :fk_target_field_id [:in field-ids] :active true)
     false))
