@@ -871,44 +871,6 @@
                   (is (= "mrkdwn" (get-in caption-block [:text :type])))
                   (is (str/includes? (get-in caption-block [:text :text]) "Sales Data")))))))))))
 
-(deftest slack-user-mention-context-test
-  (testing "slack_user_mention is set for channel messages but not DMs"
-    (with-slackbot-setup
-      (testing "channel message includes user mention"
-        (let [event-body (update base-mention-event :event merge
-                                 {:text      "<@UBOT123> Show data"
-                                  :channel   "C456"
-                                  :ts        "1234567890.000030"
-                                  :event_ts  "1234567890.000030"
-                                  :thread_ts "1234567890.000000"})]
-          (with-slackbot-mocks
-            {:ai-text "Here's your data"}
-            (fn [{:keys [ai-request-calls stop-stream-calls]}]
-              (mt/client :post 200 "ee/metabot-v3/slack/events"
-                         (slack-request-options event-body)
-                         event-body)
-              (u/poll {:thunk      #(>= (count @stop-stream-calls) 1)
-                       :done?      true?
-                       :timeout-ms 5000})
-              (let [context (:context (first @ai-request-calls))]
-                (is (= "<@U123>" (:slack_user_mention context))))))))
-      (testing "DM does not include user mention"
-        (let [event-body (update base-dm-event :event merge
-                                 {:text      "Show data"
-                                  :ts        "1234567890.000031"
-                                  :event_ts  "1234567890.000031"})]
-          (with-slackbot-mocks
-            {:ai-text "Here's your data"}
-            (fn [{:keys [ai-request-calls stop-stream-calls]}]
-              (mt/client :post 200 "ee/metabot-v3/slack/events"
-                         (slack-request-options event-body)
-                         event-body)
-              (u/poll {:thunk      #(>= (count @stop-stream-calls) 1)
-                       :done?      true?
-                       :timeout-ms 5000})
-              (let [context (:context (first @ai-request-calls))]
-                (is (nil? (:slack_user_mention context)))))))))))
-
 (deftest generate-card-output-failed-qp-result-test
   (testing "throws when QP returns :status :failed for table card"
     (mt/with-temp [:model/Card {card-id :id} {:display :table}]

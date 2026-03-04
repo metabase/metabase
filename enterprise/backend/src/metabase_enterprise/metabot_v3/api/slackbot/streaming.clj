@@ -117,7 +117,7 @@
    - on-tool-start: Called with {:id :name} when a tool starts
    - on-tool-end: Called with {:id :result} when a tool completes
    - on-data: Called with (index, parsed-content) for each DATA line"
-  [conversation-id prompt thread bot-user-id channel-id slack-user-id extra-history
+  [conversation-id prompt thread bot-user-id channel-id extra-history
    {:keys [on-text on-tool-start on-tool-end on-data]}]
   (let [data-idx       (volatile! -1)
         message        (metabot-v3.envelope/user-message prompt)
@@ -154,9 +154,7 @@
                         {:context         (metabot-v3.context/create-context
                                            {:current_time_with_timezone (str (java.time.OffsetDateTime/now))
                                             :capabilities               capabilities
-                                            :slack_channel_id           channel-id
-                                            :slack_user_mention         (when slack-user-id
-                                                                          (str "<@" slack-user-id ">"))})
+                                            :slack_channel_id           channel-id})
                          :metabot-id      metabot-id
                          :profile-id      profile-id
                          :session-id      session-id
@@ -407,18 +405,17 @@
      (letfn [(send-fallback [text]
                (slackbot.client/post-message client (merge message-ctx {:text text})))]
        (try
-         (let [data-parts (make-streaming-ai-request
-                           (slack-thread->conversation-id (:team_id auth-info) channel thread-ts)
-                           prompt
-                           thread
-                           bot-user-id
-                           channel-id
-                           (when-not (slackbot.events/dm? event) (:user event))
-                           extra-history
-                           {:on-text       on-text
-                            :on-tool-start on-tool-start
-                            :on-tool-end   on-tool-end
-                            :on-data       on-data})]
+         (let [_data-parts (make-streaming-ai-request
+                            (slack-thread->conversation-id (:team_id auth-info) channel thread-ts)
+                            prompt
+                            thread
+                            bot-user-id
+                            channel-id
+                            extra-history
+                            {:on-text       on-text
+                             :on-tool-start on-tool-start
+                             :on-tool-end   on-tool-end
+                             :on-data       on-data})]
            (request-flush!)
            (await slack-writer)
            (if-let [{:keys [stream_ts channel]} @stream-state]
