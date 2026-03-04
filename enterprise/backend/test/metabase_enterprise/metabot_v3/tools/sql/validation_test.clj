@@ -6,7 +6,7 @@
 
 ;;;; contains-template-tags?
 
-(def contains-template-tags-positive-cases
+(def ^:private contains-template-tags-positive-cases
   [{:context "Should detect {{variable}} syntax"
     :dialect "postgres" :sql "SELECT * FROM users WHERE id = {{user_id}}"}
    {:context "Should detect {{#model_id}} syntax"
@@ -23,7 +23,7 @@
     (testing context
       (is (true? (#'metabot-v3.tools.sql.validation/contains-template-tags? sql))))))
 
-(def contains-template-tags-negative-cases
+(def ^:private contains-template-tags-negative-cases
   [{:context "Single curly braces (e.g., JSON) should not trigger detection"
     :sql "SELECT '{\"key\": \"value\"}'::jsonb"}
    {:context "Pure SQL without templates should return False"
@@ -38,7 +38,7 @@
 
 ;;;; validate-sql
 
-(def validation-cases
+(def ^:private validation-cases
   [{:context "Valid PostgreSQL SQL should pass validation and return normalized SQL."
     :dialect "postgres" :sql "SELECT id, name FROM users WHERE created_at > NOW()"
     :expected {:valid? true :dialect "postgres"}}
@@ -78,6 +78,33 @@
 
 (deftest validate-sql-test
   (doseq [{:keys [context dialect expected sql]} validation-cases]
+    (testing context
+      (is (=? expected
+              (metabot-v3.tools.sql.validation/validate-sql dialect sql))))))
+
+(def ^:private transpilation-cases
+  "Testing _context_ describe a test case. Apart from that, pretty formatting is checked by comparisons of raw output
+  stirngs in `:transpiled-sql`."
+  [{:context "Snowflake should quote identifiers in normalized SQL"
+    :dialect "snowflake" :sql "SELECT id FROM PUBLIC.users"
+    :expected {:valid? true :transpiled-sql "SELECT\n  \"id\"\nFROM \"PUBLIC\".\"users\""}}
+   {:context "PostgreSQL should quote identifiers in normalized SQL"
+    :dialect "postgres" :sql "SELECT id FROM public.users"
+    :expected {:valid? true :transpiled-sql "SELECT\n  \"id\"\nFROM \"public\".\"users\""}}
+   {:context "MySQL should not add identifier quoting (not case-sensitive)"
+    :dialect "mysql" :sql "SELECT id FROM users"
+    :expected {:valid? true :transpiled-sql "SELECT\n  id\nFROM users"}}
+   {:context "Multiple SQL statements should be rejected"
+    :dialect "postgres" :sql "SELECT 1; SELECT 2"
+    :expected {:valid? false
+               :error-message "Multiple SQL statements are not supported. Please provide a single query."}}
+   {:context "Transpilation should preserve the query's logical structure"
+    :dialect "snowflake" :sql "SELECT a, b FROM t WHERE x > 1 ORDER BY a"
+    :expected {:valid? true :transpiled-sql
+               "SELECT\n  \"a\",\n  \"b\"\nFROM \"t\"\nWHERE\n  \"x\" > 1\nORDER BY\n  \"a\""}}])
+
+(deftest transpile-sql-test
+  (doseq [{:keys [context dialect expected sql]} transpilation-cases]
     (testing context
       (is (=? expected
               (metabot-v3.tools.sql.validation/validate-sql dialect sql))))))
