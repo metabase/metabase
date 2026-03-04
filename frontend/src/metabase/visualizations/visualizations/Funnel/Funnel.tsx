@@ -27,7 +27,6 @@ import type {
   ComputedVisualizationSettings,
   VisualizationDefinition,
   VisualizationProps,
-  VisualizationSettingsDefinitions,
 } from "metabase/visualizations/types";
 import { BarChart } from "metabase/visualizations/visualizations/BarChart";
 import { funnelToBarTransform } from "metabase/visualizations/visualizations/Funnel/funnel-bar-transform";
@@ -189,7 +188,7 @@ const FUNNEL_CHART_DEFINITION: VisualizationDefinition = {
       getDefault: (series: RawSeries) => (series.length > 1 ? "bar" : "funnel"),
       useRawSeries: true,
     },
-  } as VisualizationSettingsDefinitions,
+  },
 };
 
 function FunnelComponent(props: VisualizationProps) {
