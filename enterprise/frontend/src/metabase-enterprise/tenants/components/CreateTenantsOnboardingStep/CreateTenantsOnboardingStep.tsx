@@ -17,8 +17,11 @@ import {
   Text,
   TextInput,
 } from "metabase/ui";
+import type { FieldId } from "metabase-types/api";
 
 import { useCreateTenantMutation } from "../../../api/tenants";
+
+import { TenantIdentifierInput } from "./TenantIdentifierInput";
 
 const createEmptyTenant = (index: number): CreatedTenantData => ({
   name: `Tenant ${index}`,
@@ -28,8 +31,10 @@ const createEmptyTenant = (index: number): CreatedTenantData => ({
 
 export const CreateTenantsOnboardingStep = ({
   onTenantsCreated,
+  selectedFieldIds,
 }: {
   onTenantsCreated?: (tenants: CreatedTenantData[]) => void;
+  selectedFieldIds?: FieldId[];
 }) => {
   const [sendToast] = useToast();
 
@@ -76,6 +81,9 @@ export const CreateTenantsOnboardingStep = ({
         await createTenant({
           name: tenant.name,
           slug: tenant.slug,
+          attributes: {
+            tenant_identifier: tenant.tenantIdentifier,
+          },
         }).unwrap();
       }
 
@@ -136,14 +144,12 @@ export const CreateTenantsOnboardingStep = ({
                 )}
               </Group>
 
-              <TenantFormField
-                label="tenant_identifier"
-                description={t`Users will only see rows where this matches the value in the column you selected.`}
+              <TenantIdentifierInput
                 value={tenant.tenantIdentifier}
                 onChange={(value) =>
                   updateTenantCard(index, "tenantIdentifier", value)
                 }
-                placeholder="1"
+                selectedFieldIds={selectedFieldIds}
               />
 
               <TenantFormField
