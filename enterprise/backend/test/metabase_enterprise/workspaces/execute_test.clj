@@ -71,13 +71,14 @@
       (let [ref-id       (workspace-map :x1)
             workspace    (t2/select-one :model/Workspace workspace-id)
             ;; Update the transform source to use template tags
-            native-query (mt/native-query
-                          {:query         "SELECT {{num}} as id"
-                           :template-tags {"num" {:id           "num"
-                                                  :name         "num"
-                                                  :display-name "Num"
-                                                  :type         :number
-                                                  :default      "1"}}})
+            native-query (-> (lib/native-query (mt/metadata-provider)
+                                               "SELECT {{num}} as id")
+                             (lib/with-template-tags
+                               {"num" {:id           "num"
+                                       :name         "num"
+                                       :display-name "Num"
+                                       :type         :number
+                                       :default      "1"}}}))
             _            (t2/update! :model/WorkspaceTransform
                                      {:workspace_id workspace-id :ref_id ref-id}
                                      {:source {:type "query" :query native-query}})
