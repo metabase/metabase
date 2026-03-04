@@ -7,7 +7,6 @@ export type EmbeddingHubStepId =
   | "configure-row-column-security"
   | "sso-configured"
   | "embed-production"
-  | "create-models"
   | "data-permissions-and-enable-tenants";
 
 export interface EmbeddingHubStep {
