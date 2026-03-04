@@ -64,13 +64,22 @@
       can-create-queries        (conj "permission:save_questions")
       can-create-native-queries (conj "permission:write_sql_queries"))))
 
+(defn- escape-slack-link-text
+  "Escape characters that have structural meaning inside Slack mrkdwn links (`<URL|label>`)."
+  [s]
+  (-> s
+      (str/replace "&" "&amp;")
+      (str/replace "<" "&lt;")
+      (str/replace ">" "&gt;")
+      (str/replace "|" "\u2502")))
+
 (defn- format-viz-title
   "Build the title text for a visualization message.
    Combines the title with a link to the query in Metabase."
   [title link]
   (let [full-link (when link (str (system/site-url) link))]
     (cond
-      (and title full-link) (str "📊 <" full-link "|" title ">")
+      (and title full-link) (str "📊 <" full-link "|" (escape-slack-link-text title) ">")
       title                 title
       full-link             (str "📊 <" full-link "|Open in Metabase>")
       :else                 nil)))

@@ -799,7 +799,15 @@
         (is (= "📊 <https://metabase.example.com/question/42|Open in Metabase>"
                (#'slackbot.streaming/format-viz-title nil "/question/42"))))
       (testing "neither"
-        (is (nil? (#'slackbot.streaming/format-viz-title nil nil)))))))
+        (is (nil? (#'slackbot.streaming/format-viz-title nil nil))))
+      (testing "special characters in title are escaped"
+        (is (= "📊 <https://metabase.example.com/question/42|Sales &amp; Revenue>"
+               (#'slackbot.streaming/format-viz-title "Sales & Revenue" "/question/42")))
+        (is (= "📊 <https://metabase.example.com/question/42|Foo &lt;Bar&gt; \u2502 Baz>"
+               (#'slackbot.streaming/format-viz-title "Foo <Bar> | Baz" "/question/42"))))
+      (testing "title-only does not escape (no link syntax)"
+        (is (= "Sales & Revenue"
+               (#'slackbot.streaming/format-viz-title "Sales & Revenue" nil)))))))
 
 (deftest viz-caption-and-link-on-image-test
   (testing "image viz for static_viz uses the card name as caption, not the AI-provided caption"
